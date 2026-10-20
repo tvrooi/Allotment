@@ -5,8 +5,9 @@ name: Release
 # with SLSA build provenance, and publishes them together as a GitHub release. Tags with a
 # suffix (e.g. v1.1.0-beta.1) are marked as betas ("pre-release" on GitHub).
 #
-# Manual runs and PRs that touch packaging only build and check (and, for manual runs,
-# sign): they never publish anything.
+# Publish tested main dispatches this workflow on a tag after successful main CI.
+# Manual runs on a branch and PRs only validate packaging; a dispatch on a tested version
+# tag publishes, including recovery of a failed release. No custom PAT is required.
 #
 # File names don't include the version, so the website can link to
 # releases/latest/download/<file> (see website/src/pages/download.tsx):
