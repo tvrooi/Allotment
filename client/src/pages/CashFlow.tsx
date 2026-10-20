@@ -1205,6 +1205,9 @@ export default function CashFlowPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6">
+        <p className="text-xs text-text-secondary mb-3">
+          Budget accounts · includes transfers across the budget boundary
+        </p>
         <StatCardRow cards={statCards} variant="hero" />
         {isPhone && (
           <div className="flex items-center justify-between gap-3 mt-5 mb-3">

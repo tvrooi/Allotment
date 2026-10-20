@@ -1,6 +1,6 @@
-import { and, eq, isNull, sql, type SQL } from 'drizzle-orm';
+import { and, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { transactions } from '../db/schema.js';
+import { accounts, transactions } from '../db/schema.js';
 
 // A split is stored as a parent row holding the full amount plus child rows holding
 // the parts, all in the same account. Account balances count the parent only;
@@ -15,6 +15,31 @@ export const inAccountBalance: SQL = isNull(transactions.parentTransactionId);
  * Balances and net worth still count those.
  */
 export const isIncomeOrSpending: SQL = sql`not (${transactions.isAdjustment} = 1 and ${transactions.categoryId} is null)`;
+
+/** Account scope shared by the envelope budget and default income/spending reports. */
+export const onBudget: SQL = inArray(
+  transactions.accountId,
+  db.select({ id: accounts.id }).from(accounts).where(eq(accounts.isOffBudget, 0)),
+);
+
+/** Only the budget side of a confirmed transfer across the budget boundary counts.
+ * The correlated outer reference is explicit SQL: Drizzle unqualifies Column objects in
+ * single-table SELECT expressions, where it would otherwise bind to counterpart's column.
+ */
+export const isBudgetBoundary: SQL = sql`(${onBudget} and exists (
+  select 1 from transactions counterpart
+  inner join accounts other_account on other_account.id = counterpart.account_id
+  where counterpart.id = "transactions"."transfer_transaction_id"
+    and other_account.is_off_budget = 1
+))`;
+
+/** Leaf activity, excluding internal transfers and uncategorized balance corrections. */
+export const reportActivity: SQL = and(
+  eq(transactions.isParent, 0),
+  isIncomeOrSpending,
+  or(isNull(transactions.transferTransactionId), isBudgetBoundary),
+)!;
+export const budgetActivity: SQL = and(onBudget, reportActivity)!;
 
 /** Sum of an account's transactions, as added to its starting balance. */
 export function accountTransactionSum(accountId: string): number {

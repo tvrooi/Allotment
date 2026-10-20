@@ -88,7 +88,7 @@ export function TransactionDetailPanel({
   const isReconciled = tx.reconciled === 1;
   const isTransfer = !!tx.transferTransactionId;
   const isSplitParent = tx.isParent === 1 && tx.children && tx.children.length > 0;
-  const canEditCategory = !isReconciled && !isTransfer && !isSplitParent;
+  const canEditCategory = !isReconciled && (!isTransfer || !!tx.isBudgetBoundary) && !isSplitParent;
 
   const payeeName = tx.payeeName || (isTransfer ? 'Transfer' : '—');
   const payee = tx.payeeId ? payees.find((p) => p.id === tx.payeeId) : undefined;
@@ -97,7 +97,9 @@ export function TransactionDetailPanel({
   // balance correction can't be a transfer
   const canSave = useCanSave();
   const transferAccounts =
-    canSave && !tx.isAdjustment ? accounts.filter((a) => a.id !== tx.accountId && !a.closedAt) : [];
+    canSave && !isTransfer && !tx.isAdjustment
+      ? accounts.filter((a) => a.id !== tx.accountId && !a.closedAt)
+      : [];
 
   function saveDate() {
     if (localDate !== tx.date) {
@@ -252,7 +254,7 @@ export function TransactionDetailPanel({
                 );
               })}
             </div>
-          ) : isTransfer ? (
+          ) : isTransfer && !tx.isBudgetBoundary ? (
             <div className="flex items-center gap-2">
               <div className="flex-1 min-w-0 truncate text-sm text-brand-500 px-3 py-2 border border-border rounded-lg bg-surface-alt">
                 {tx.payeeName || 'Transfer'}
@@ -296,6 +298,25 @@ export function TransactionDetailPanel({
             </div>
           )}
         </div>
+
+        {tx.isBudgetBoundary && (
+          <div className="text-xs text-text-secondary">
+            <p>
+              Transfer across the budget boundary. Choose an expense category for money leaving, or
+              an income/refund category for money returning.
+            </p>
+            {!isReconciled && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => unlinkTransfer.mutate(tx)}
+                disabled={!canSave || unlinkTransfer.isPending}
+              >
+                Not a transfer
+              </Button>
+            )}
+          </div>
+        )}
 
         {!isTransfer && (
           <div>

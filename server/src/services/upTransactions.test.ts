@@ -60,6 +60,54 @@ describe('Up transaction mapping', () => {
       ),
     );
   });
+  it.each([
+    [-40, null], // ordinary change
+    [-240, -200], // total already includes the boost
+    [-100, -100], // even-dollar purchase with a boost
+    [0, null],
+  ])(
+    'retains round-up metadata (%s cents) without changing or duplicating a purchase',
+    (total, boost) => {
+      const raw = upMockTransaction('rounding', -1760);
+      const tx = upTransactionSchema.parse({
+        ...raw,
+        attributes: {
+          ...raw.attributes,
+          roundUp: {
+            amount: { currencyCode: 'AUD', valueInBaseUnits: total },
+            boostPortion: boost === null ? null : { currencyCode: 'AUD', valueInBaseUnits: boost },
+          },
+        },
+      });
+      expect(tx.attributes.roundUp?.amount.valueInBaseUnits).toBe(total);
+      expect(upImportRows(tx, 'spending')).toEqual(
+        upImportRows(upTransactionSchema.parse(raw), 'spending'),
+      );
+      tx.attributes.status = 'HELD';
+      expect(upImportRows(tx, 'spending')).toEqual([]);
+    },
+  );
+  it('keeps identical small bank credits distinct across destinations', () => {
+    const rows = ['saver-a', 'saver-b'].flatMap((account) =>
+      ['one', 'two'].flatMap((id) => {
+        const tx = upTransactionSchema.parse(upMockTransaction(id, 40, 'SETTLED', account));
+        return upImportRows(tx, account);
+      }),
+    );
+    expect(rows).toHaveLength(4);
+    expect(new Set(rows.map((r) => r.importedId)).size).toBe(4);
+    expect(rows.reduce((sum, r) => sum + r.amount, 0)).toBe(160);
+  });
+  it('keeps a late settlement on the timestamp’s local day across DST and midnight', () => {
+    const raw = upMockTransaction('late', -1760);
+    raw.attributes.createdAt = '2026-10-04T00:10:00+10:00';
+    raw.attributes.settledAt = '2026-10-07T01:00:00+11:00';
+    expect(upImportRows(upTransactionSchema.parse(raw), 'spending')[0]).toMatchObject({
+      date: '2026-10-04',
+      amount: -1760,
+      importedId: 'up:spending:late',
+    });
+  });
   it('rejects non-AUD and unsafe or fractional amounts', () => {
     for (const amount of [1.5, Number.MAX_SAFE_INTEGER, NaN]) {
       expect(upTransactionSchema.safeParse(upMockTransaction('bad', amount)).success).toBe(false);

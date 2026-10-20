@@ -8,6 +8,7 @@ import { db, sqlite } from '../db/index.js';
 import { accounts, transactions, upAccountMappings, upConnections } from '../db/schema.js';
 import { upRouter } from './up.js';
 import { createBackup, parseBackup, restoreBackup } from '../services/backupService.js';
+import { linkTransfer } from '../services/transferService.js';
 import { syncUp } from '../services/upSyncService.js';
 import { getUpTransactions, validateUpPage } from '../services/upService.js';
 import { startUpMock, UP_TEST_TOKEN } from '../test/upMock.js';
@@ -96,6 +97,71 @@ describe('native Up integration', () => {
     expect(
       db.select().from(transactions).where(eq(transactions.id, coffee.id)).get(),
     ).toMatchObject({ notes: 'My note', payeeName: 'My coffee', reconciled: 1 });
+  });
+  it('imports an explicit round-up pair once, without changing the purchase or counting the boost twice', async () => {
+    await setup();
+    await request('/map-accounts', {
+      mappings: [
+        { upAccountId: 'spending', action: 'create' },
+        { upAccountId: 'saver', action: 'create' },
+      ],
+    });
+    mock.setMode('round-ups');
+    expect(await syncUp()).toMatchObject({ added: 4, errors: [] });
+    const find = (importedId: string) =>
+      db.select().from(transactions).where(eq(transactions.importedId, importedId)).get()!;
+    const purchase = find('up:spending:purchase');
+    const debit = find('up:spending:round-debit');
+    const credit = find('up:saver:round-credit');
+    expect(purchase.amount).toBe(-1760);
+    expect(debit.amount).toBe(-240);
+    expect(credit.amount).toBe(240);
+    const opening = () =>
+      db
+        .select({ id: accounts.id, startingBalance: accounts.startingBalance })
+        .from(accounts)
+        .all();
+    const initial = opening();
+    expect(initial.find((a) => a.id === purchase.accountId)?.startingBalance).toBe(0);
+    expect(initial.find((a) => a.id === credit.accountId)?.startingBalance).toBe(5000);
+    linkTransfer(debit.id, credit.id);
+    db.update(transactions)
+      .set({ notes: 'Reviewed transfer', reconciled: 1 })
+      .where(eq(transactions.id, credit.id))
+      .run();
+    db.update(transactions)
+      .set({ payeeName: 'My purchase', notes: 'Keep my note' })
+      .where(eq(transactions.id, purchase.id))
+      .run();
+    const snapshot = db.select().from(transactions).all();
+    expect(await syncUp()).toMatchObject({ added: 0, skipped: 4, errors: [] });
+    expect(db.select().from(transactions).all()).toEqual(snapshot);
+    expect(opening()).toEqual(initial);
+    mock.setMode('round-ups-mismatch');
+    const mismatch = await syncUp();
+    expect(mismatch).toMatchObject({ added: 0, skipped: 4 });
+    expect(mismatch.errors.join(' ')).toContain('opening balance was preserved');
+    expect(opening()).toEqual(initial);
+    expect(db.select().from(transactions).all()).toEqual(snapshot);
+  });
+  it('reports a changed amount for an existing import without rewriting a user edit or opening balance', async () => {
+    const id = await mapSpending();
+    await syncUp();
+    const coffee = db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.importedId, 'up:spending:coffee'))
+      .get()!;
+    db.update(transactions)
+      .set({ amount: -900, notes: 'Reviewed amount', reconciled: 1 })
+      .where(eq(transactions.id, coffee.id))
+      .run();
+    const edited = db.select().from(transactions).where(eq(transactions.id, coffee.id)).get();
+    expect((await syncUp()).errors.join(' ')).toContain('Review transactions and reconcile');
+    expect(db.select().from(transactions).where(eq(transactions.id, coffee.id)).get()).toEqual(
+      edited,
+    );
+    expect(db.select().from(accounts).where(eq(accounts.id, id)).get()!.startingBalance).toBe(0);
   });
   it('shares concurrent syncs rather than importing twice', async () => {
     await mapSpending();

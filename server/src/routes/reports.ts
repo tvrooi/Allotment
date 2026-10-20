@@ -6,7 +6,13 @@ import type { Request, Response } from 'express';
 import { monthBounds } from '../utils/date.js';
 import { isLiabilityType } from '../utils/accountTypes.js';
 import { isMonth, isRealDate } from '../utils/validation.js';
-import { inAccountBalance, isIncomeOrSpending, mainAmount } from '../services/balances.js';
+import {
+  inAccountBalance,
+  budgetActivity,
+  reportActivity,
+  onBudget,
+  mainAmount,
+} from '../services/balances.js';
 import { currencyContext, todayIso, valueToday } from '../services/mainAmountService.js';
 import { isForeign } from '../utils/currencies.js';
 
@@ -196,14 +202,9 @@ reportsRouter.get('/spending-by-category', (req, res) => {
   const range = optionalMonthParams(req, res);
   if (!range) return;
   const { from, to } = range;
-  // Only real spending: a split's parent row (its children carry the categories) and transfers
-  // have no category and would otherwise show up as "Uncategorized"; income categories aren't spending
-  const conditions = [
-    eq(transactions.isParent, 0),
-    isNull(transactions.transferTransactionId),
-    isIncomeOrSpending,
-    sql`coalesce(${categoryGroups.isIncome}, 0) = 0`,
-  ];
+  // Budget accounts only; splits count through their parts. Only the budget leg of a
+  // boundary transfer counts as activity. Income categories aren't spending.
+  const conditions = [budgetActivity, sql`coalesce(${categoryGroups.isIncome}, 0) = 0`];
   if (from) conditions.push(gte(transactions.date, monthBounds(from).from));
   if (to) conditions.push(lte(transactions.date, monthBounds(to).to));
 
@@ -252,9 +253,7 @@ reportsRouter.get('/income-vs-expenses', (req, res) => {
       and(
         gte(transactions.date, monthBounds(from).from),
         lte(transactions.date, monthBounds(to).to),
-        eq(transactions.isParent, 0),
-        isNull(transactions.transferTransactionId),
-        isIncomeOrSpending,
+        budgetActivity,
       ),
     )
     .groupBy(sql`strftime('%Y-%m', ${transactions.date})`, isIncome)
@@ -306,9 +305,7 @@ reportsRouter.get('/cash-flow', (req, res) => {
       and(
         gte(transactions.date, monthBounds(from).from),
         lte(transactions.date, monthBounds(to).to),
-        eq(accounts.isOffBudget, 0),
-        inAccountBalance,
-        isIncomeOrSpending,
+        budgetActivity,
       ),
     )
     .groupBy(sql`strftime('%Y-%m', ${transactions.date})`)
@@ -319,7 +316,7 @@ reportsRouter.get('/cash-flow', (req, res) => {
 });
 
 // Money in and out per day, for the transaction calendar. Like cash flow it covers budget
-// accounts only, and leaves out transfers; a split counts once, through its parts.
+// accounts only, including boundary transfers; a split counts once, through its parts.
 reportsRouter.get('/daily-flow', (req, res) => {
   const range = monthRangeParams(req, res);
   if (!range) return;
@@ -337,10 +334,7 @@ reportsRouter.get('/daily-flow', (req, res) => {
       and(
         gte(transactions.date, monthBounds(from).from),
         lte(transactions.date, monthBounds(to).to),
-        eq(accounts.isOffBudget, 0),
-        eq(transactions.isParent, 0),
-        isNull(transactions.transferTransactionId),
-        isIncomeOrSpending,
+        budgetActivity,
       ),
     )
     .groupBy(transactions.date)
@@ -353,7 +347,7 @@ reportsRouter.get('/income-by-category', (req, res) => {
   const range = optionalMonthParams(req, res);
   if (!range) return;
   const { from, to } = range;
-  const conditions = [eq(categoryGroups.isIncome, 1)];
+  const conditions = [budgetActivity, eq(categoryGroups.isIncome, 1)];
   if (from) conditions.push(gte(transactions.date, monthBounds(from).from));
   if (to) conditions.push(lte(transactions.date, monthBounds(to).to));
 
@@ -384,7 +378,7 @@ reportsRouter.get('/spending-trends', (req, res) => {
   if (typeof category_ids !== 'string' || !category_ids) return res.json([]);
 
   const ids = category_ids.split(',');
-  const conditions = [];
+  const conditions = [budgetActivity];
   if (from) conditions.push(gte(transactions.date, monthBounds(from).from));
   if (to) conditions.push(lte(transactions.date, monthBounds(to).to));
   // Daily totals (for short ranges) put the date (yyyy-MM-dd) in `month`
@@ -437,11 +431,8 @@ reportsRouter.get('/spending-comparison', (req, res) => {
           lt(transactions.amount, 0),
           gte(transactions.date, from),
           lte(transactions.date, to),
-          // Real spending: a split counts once (through its parts), transfers aren't spending
-          eq(transactions.isParent, 0),
-          isNull(transactions.transferTransactionId),
-          isIncomeOrSpending,
-          eq(accounts.isOffBudget, 0),
+          // Real spending: split parts and the budget leg of boundary transfers
+          budgetActivity,
         ),
       )
       .groupBy(transactions.date)
@@ -686,15 +677,14 @@ reportsRouter.get('/custom', (req, res) => {
   const conditions: ReturnType<typeof eq>[] = [
     gte(transactions.date, monthBounds(from).from),
     lte(transactions.date, monthBounds(to).to),
-    // A split counts once, through its categorized parts; transfers only move money
-    eq(transactions.isParent, 0),
-    isNull(transactions.transferTransactionId),
-    isIncomeOrSpending,
+    // Same activity policy as built-in reports; explicit accounts can include off budget
+    reportActivity,
   ];
 
   if (balance_type === 'expense') conditions.push(lt(transactions.amount, 0));
   else if (balance_type === 'income') conditions.push(eq(categoryGroups.isIncome, 1));
 
+  if (!account_ids?.split(',').some(Boolean)) conditions.push(onBudget);
   if (account_ids) {
     const ids = account_ids.split(',').filter(Boolean);
     if (ids.length) conditions.push(inArray(transactions.accountId, ids));

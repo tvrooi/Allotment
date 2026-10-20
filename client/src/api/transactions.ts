@@ -53,6 +53,7 @@ export interface ImportRow {
 
 export function getTransactions(params: TransactionQueryParams = {}) {
   const q = new URLSearchParams();
+  if (params.budgetReport) q.set('budget_report', '1');
   if (params.accountId) q.set('account_id', params.accountId);
   if (params.month) q.set('month', params.month);
   if (params.from) q.set('from', params.from);

@@ -183,7 +183,6 @@ function markTransfer(row: TransactionRow, otherId: string, otherAccountName: st
   db.update(transactions)
     .set({
       transferTransactionId: otherId,
-      categoryId: null,
       payeeId: null,
       payeeName: transferName(otherAccountName),
       importedPayee: row.importedPayee ?? row.payeeName,
@@ -219,7 +218,7 @@ function linkRows(id: string, otherId: string): LinkResult {
   db.delete(transferMatchDismissals)
     .where(eq(transferMatchDismissals.id, pairKey(a.id, b.id)))
     .run();
-  // A transfer is worth the same on both sides: neither income nor spending
+  // Both sides retain the same budget-currency value; the budget boundary determines activity.
   refreshMainAmounts([a.id]);
 
   return { transactions: [getRow(a.id), getRow(b.id)], previous: [a, b], created: false };

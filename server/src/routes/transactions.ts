@@ -1,7 +1,19 @@
 import { Router, type Response } from 'express';
 import { db } from '../db/index.js';
 import { transactions, payees, accounts, categories } from '../db/schema.js';
-import { eq, and, or, like, gte, lte, sql, isNull, isNotNull, inArray } from 'drizzle-orm';
+import {
+  eq,
+  and,
+  or,
+  like,
+  gte,
+  lte,
+  sql,
+  isNull,
+  isNotNull,
+  inArray,
+  getTableColumns,
+} from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { deleteTransactionRow, resolvePayee } from '../services/transactionHelpers.js';
@@ -16,7 +28,12 @@ import {
   unlinkTransfer,
 } from '../services/transferService.js';
 import { isoDate } from '../utils/validation.js';
-import { isIncomeOrSpending } from '../services/balances.js';
+import {
+  isIncomeOrSpending,
+  onBudget,
+  reportActivity,
+  isBudgetBoundary,
+} from '../services/balances.js';
 import {
   accountCurrency,
   convertAmount,
@@ -120,9 +137,21 @@ transactionsRouter.get('/', (req, res) => {
     reconciled,
   } = req.query as Record<string, string>;
 
-  let query = db.select().from(transactions).$dynamic();
+  let query = db
+    .select({
+      ...getTableColumns(transactions),
+      isBudgetBoundary: isBudgetBoundary.mapWith(Boolean),
+    })
+    .from(transactions)
+    .$dynamic();
 
   const conditions: ReturnType<typeof eq>[] = [isNull(transactions.parentTransactionId)];
+  const budgetReport = req.query.budget_report === '1';
+  if (budgetReport) {
+    conditions.push(onBudget);
+    // Register queries return split parents, with their categorized parts attached below.
+    conditions.push(or(eq(transactions.isParent, 1), reportActivity)!);
+  }
   if (account_id) conditions.push(eq(transactions.accountId, account_id));
   if (month) {
     conditions.push(gte(transactions.date, `${month}-01`));
@@ -141,7 +170,7 @@ transactionsRouter.get('/', (req, res) => {
         inArray(transactions.id, parentsWithUncategorizedPart),
       )!,
     );
-    conditions.push(isNull(transactions.transferTransactionId));
+    conditions.push(or(isNull(transactions.transferTransactionId), isBudgetBoundary)!);
     conditions.push(isIncomeOrSpending);
   }
   if (category_ids) {
@@ -184,7 +213,7 @@ transactionsRouter.get('/', (req, res) => {
     .all();
 
   const parentIds = rows.filter((r) => r.isParent === 1).map((r) => r.id);
-  const childrenMap = new Map<string, typeof rows>();
+  const childrenMap = new Map<string, (typeof transactions.$inferSelect)[]>();
   if (parentIds.length) {
     const children = db
       .select()
@@ -520,8 +549,18 @@ transactionsRouter.put('/:id', (req, res) => {
   if (existing.isParent === 1 && (changes('amount') || data.categoryId)) {
     return res.status(400).json({ error: 'Edit the parts of a split transaction instead' });
   }
-  if (existing.transferTransactionId && (changes('accountId') || data.categoryId)) {
-    return res.status(400).json({ error: 'Transfers have no category and stay in their accounts' });
+  if (existing.transferTransactionId) {
+    const boundary = db
+      .select({ value: isBudgetBoundary.mapWith(Boolean) })
+      .from(transactions)
+      .where(eq(transactions.id, existing.id))
+      .get()!.value;
+    if (changes('accountId') || (changes('categoryId') && data.categoryId && !boundary)) {
+      return res.status(400).json({
+        error:
+          'Only the budget side of a boundary transfer can have a category; transfers stay in their accounts',
+      });
+    }
   }
   const ctx = currencyContext();
   const accountId = data.accountId ?? existing.accountId;
@@ -548,6 +587,12 @@ transactionsRouter.put('/:id', (req, res) => {
   // A transfer between two currencies keeps each side's own amount: what left isn't what arrived
   const crossCurrency =
     !!other && accountCurrency(existing.accountId, ctx) !== accountCurrency(other.accountId, ctx);
+  if (
+    other?.reconciled === 1 &&
+    (changes('date') || changes('amount') || data.mainAmount !== undefined)
+  ) {
+    return res.status(403).json({ error: 'Cannot modify a reconciled transfer counterpart' });
+  }
   const { mainAmount, ...fields } = data;
 
   db.transaction((tx) => {
@@ -588,7 +633,9 @@ transactionsRouter.put('/:id', (req, res) => {
   });
   // A typed-in value stays unless what it was for changed (another amount, day or account)
   const moved = changes('amount') || changes('date') || changes('accountId');
-  refreshMainAmounts([existing.id], { keepManual: mainAmount !== undefined || !moved });
+  if (moved || mainAmount !== undefined) {
+    refreshMainAmounts([existing.id], { keepManual: mainAmount !== undefined || !moved });
+  }
   const updated = db.select().from(transactions).where(eq(transactions.id, req.params.id)).get();
   res.json(updated);
 });
@@ -600,6 +647,16 @@ transactionsRouter.delete('/:id', (req, res) => {
   if (existing.reconciled === 1)
     return res.status(403).json({ error: 'Cannot modify a reconciled transaction' });
 
+  if (existing.transferTransactionId) {
+    const other = db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.id, existing.transferTransactionId))
+      .get();
+    if (other?.reconciled === 1) {
+      return res.status(403).json({ error: 'Cannot modify a reconciled transfer counterpart' });
+    }
+  }
   deleteTransactionRow(existing);
   res.status(204).send();
 });

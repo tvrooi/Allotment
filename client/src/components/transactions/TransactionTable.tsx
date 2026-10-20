@@ -33,6 +33,7 @@ import { formatDay, formatDayLong } from '../../utils/dates';
 const ROWS_PER_PAGE = 300;
 
 interface Props {
+  budgetReport?: boolean;
   accountId?: string;
   categoryId?: string;
   categoryIds?: string[];
@@ -48,6 +49,7 @@ interface Props {
 }
 
 export function TransactionTable({
+  budgetReport,
   accountId,
   categoryId,
   categoryIds,
@@ -73,6 +75,7 @@ export function TransactionTable({
 
   const params = useMemo(() => {
     const base = filtersToParams(filters, accountId);
+    if (budgetReport) base.budgetReport = true;
     if (categoryIds?.length) base.categoryIds = categoryIds;
     else if (categoryId && !base.categoryId) base.categoryId = categoryId;
     if (categoryGroupId) base.categoryGroupId = categoryGroupId;
@@ -90,6 +93,7 @@ export function TransactionTable({
     }
     return base;
   }, [
+    budgetReport,
     filters,
     accountId,
     categoryId,

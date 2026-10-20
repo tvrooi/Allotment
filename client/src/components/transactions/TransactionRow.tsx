@@ -63,7 +63,8 @@ export function TransactionRow({
 
   const isTransfer = !!tx.transferTransactionId;
   const isSplitParent = tx.isParent === 1 && tx.children && tx.children.length > 0;
-  const canEditCategory = !tx.reconciled && !isTransfer && !isSplitParent;
+  const canEditCategory =
+    !tx.reconciled && (!isTransfer || !!tx.isBudgetBoundary) && !isSplitParent;
   const canEditPayee = !tx.reconciled && !isTransfer;
 
   const payeeName = tx.payeeName || (isTransfer ? 'Transfer' : '—');
@@ -169,7 +170,7 @@ export function TransactionRow({
               {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
               <span className="text-sm">Split ({tx.children!.length})</span>
             </button>
-          ) : isTransfer ? (
+          ) : isTransfer && !tx.isBudgetBoundary ? (
             <span className="text-sm text-brand-500">Transfer</span>
           ) : (
             <>
@@ -227,7 +228,7 @@ export function TransactionRow({
               onClose={() => setShowCategoryPicker(false)}
               transferAccounts={
                 // A balance correction can't be a transfer
-                canSave && !tx.isAdjustment
+                canSave && !isTransfer && !tx.isAdjustment
                   ? transferAccounts.filter((a) => a.id !== tx.accountId)
                   : []
               }

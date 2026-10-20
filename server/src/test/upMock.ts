@@ -45,6 +45,7 @@ export async function startUpMock(port = 0) {
     if (mode === 'rate-limit') return send({}, 429);
     if (mode === 'malformed') return send({ data: [{ id: 1 }] });
     if (mode === 'slow') await new Promise((r) => setTimeout(r, 100));
+    const roundUps = mode.startsWith('round-ups');
     if (url.pathname === '/accounts') {
       const a = (id: string, accountType: string, balance: number) => ({
         id,
@@ -56,7 +57,56 @@ export async function startUpMock(port = 0) {
         },
       });
       return send({
-        data: [a('spending', 'TRANSACTIONAL', 8_500), a('saver', 'SAVER', 5_000)],
+        data: [
+          a(
+            'spending',
+            'TRANSACTIONAL',
+            roundUps ? (mode === 'round-ups-mismatch' ? 7_444 : 7_445) : 8_500,
+          ),
+          a('saver', 'SAVER', roundUps ? 5_240 : 5_000),
+        ],
+        links: { next: null },
+      });
+    }
+    // Synthetic explicit debit/credit posting shape, not captured bank data. The public
+    // schema does not prove this is how every round-up is journalled by Up.
+    if (roundUps && url.pathname === '/accounts/spending/transactions') {
+      const purchase = upMockTransaction('purchase', -1_760);
+      const debit = upMockTransaction('round-debit', -240);
+      return send({
+        data: [
+          upMockTransaction('salary', 10_000),
+          {
+            ...purchase,
+            attributes: {
+              ...purchase.attributes,
+              roundUp: {
+                amount: money(-240),
+                boostPortion: money(-200),
+              },
+            },
+          },
+          {
+            ...debit,
+            relationships: { ...debit.relationships, transferAccount: { data: { id: 'saver' } } },
+          },
+          upMockTransaction('held', -555, 'HELD'),
+        ],
+        links: { next: null },
+      });
+    }
+    if (roundUps && url.pathname === '/accounts/saver/transactions') {
+      const credit = upMockTransaction('round-credit', 240, 'SETTLED', 'saver');
+      return send({
+        data: [
+          {
+            ...credit,
+            relationships: {
+              ...credit.relationships,
+              transferAccount: { data: { id: 'spending' } },
+            },
+          },
+        ],
         links: { next: null },
       });
     }

@@ -191,6 +191,8 @@ export interface Transaction {
   notes: string | null;
   reconciled: number;
   transferTransactionId: string | null;
+  /** Computed by the server: this is the on-budget side of a transfer to/from off budget. */
+  isBudgetBoundary?: boolean;
   isParent: number;
   parentTransactionId: string | null;
   importedId: string | null;
@@ -270,6 +272,7 @@ export interface Payee {
 }
 
 export interface TransactionQueryParams {
+  budgetReport?: boolean;
   accountId?: string;
   month?: string;
   from?: string;
