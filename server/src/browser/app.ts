@@ -37,6 +37,7 @@ app.get('/server/info', (_req, res) => res.json({ mode: 'demo', version: DEMO_VE
 app.get('/plaid/status', (_req, res) => res.json({ configured: false, environment: null }));
 app.get('/plaid/items', (_req, res) => res.json([]));
 app.get('/simplefin/connections', (_req, res) => res.json([]));
+app.get('/up/connection', (_req, res) => res.json(null));
 app.get('/enable-banking/status', (_req, res) =>
   res.json({
     configured: false,
@@ -72,6 +73,7 @@ app.use('/currency', currencyRouter as unknown as ShimRouter);
 
 app.use('/plaid', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
 app.use('/simplefin', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
+app.use('/up', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
 app.use('/enable-banking', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
 app.use('/auth', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
 

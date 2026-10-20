@@ -311,6 +311,30 @@ export const goals = sqliteTable('goals', {
     .default(sql`(datetime('now'))`),
 });
 
+// One personal Up token exposes the user's spending, Saver and joint accounts.
+export const upConnections = sqliteTable('up_connections', {
+  id: text('id').primaryKey(),
+  accessToken: encryptedText('access_token').notNull(),
+  syncStatus: text('sync_status').notNull().default('good'),
+  syncError: text('sync_error'),
+  lastSyncedAt: text('last_synced_at'),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+export const upAccountMappings = sqliteTable('up_account_mappings', {
+  id: text('id').primaryKey(),
+  connectionId: text('connection_id')
+    .notNull()
+    .references(() => upConnections.id, { onDelete: 'cascade' }),
+  upAccountId: text('up_account_id').notNull(),
+  name: text('name').notNull(),
+  accountType: text('account_type').notNull(),
+  accountId: text('account_id').references(() => accounts.id, { onDelete: 'set null' }),
+  isEnabled: integer('is_enabled').notNull().default(1),
+});
+
 export const simplefinConnections = sqliteTable('simplefin_connections', {
   id: text('id').primaryKey(),
   accessUrl: encryptedText('access_url').notNull(),

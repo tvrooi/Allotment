@@ -1,3 +1,20 @@
+# FlyBudget Up community fork
+
+Native Up Bank imports and a desktop client that connects to a self-hosted FlyBudget server.
+Maintained fork of [dtymoszenko/FlyBudget](https://github.com/dtymoszenko/FlyBudget), licensed under AGPL-3.0-only.
+
+- [Downloads](https://github.com/tvrooi/FlyBudget/releases) (macOS, Windows, Linux)
+- [Home Assistant installation](https://github.com/tvrooi/home-assistant-apps)
+- [Desktop server connection](DESKTOP-SERVER.md)
+- [Up support and limitations](UP-SUPPORT.md)
+- [Development and releases](MAINTENANCE.md)
+
+The desktop installers are not Apple-notarized or Windows Authenticode-signed. Up sync currently
+runs on server startup and **Sync Now**, with no periodic timer or webhook. This is an independent
+preview, not an official release from FlyBudget, Up or Home Assistant.
+
+---
+
 <p align="center">
   <a href="https://flybudget.org">
     <img src="client/public/logo.png" alt="FlyBudget" width="96" />

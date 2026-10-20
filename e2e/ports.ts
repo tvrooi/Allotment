@@ -9,3 +9,5 @@ export const DEMO_PORT = 3174;
 export const ENABLE_BANKING_MOCK_PORT = 3175;
 /** Stand-in for Frankfurter's exchange rates (mockFrankfurter.ts), used by the desktop server */
 export const FRANKFURTER_MOCK_PORT = 3176;
+/** Stand-in for Up's personal API. */
+export const UP_MOCK_PORT = 3177;

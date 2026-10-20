@@ -5,7 +5,7 @@ sidebar_label: Connecting a bank
 
 # Connecting a bank
 
-FlyBudget can import transactions automatically through three services. All are optional:
+FlyBudget can import transactions automatically through Up or three bank-feed services. All are optional:
 [importing files](./importing) (CSV, or CAMT.053 statements) works with almost every bank and
 costs nothing.
 
@@ -18,6 +18,44 @@ costs nothing.
 
 Connect any of them from **Settings → Connected Banks**, the **+** next to Accounts in the
 sidebar, or the welcome screen.
+
+## Up (Australia)
+
+Connect directly to [Up](https://up.com.au) with your own personal access token. No bank-feed
+subscription or separate automation service is needed. Up's personal API is for your own accounts.
+
+1. Create a personal access token at [Up's developer portal](https://api.up.com.au/).
+2. Open **Settings → Connected Banks → Up → Connect Up**, or choose **Connect Up** from the
+   Accounts add menu or welcome screen.
+3. Paste your token. FlyBudget verifies it with Up before saving it. It uses the same credential
+   encryption as the other banks and is never included in exported backups.
+4. For each spending, Saver, 2Up or home-loan account Up makes available, create a new FlyBudget
+   account, link an empty account using AUD, or skip it. Linking an account that already has
+   transactions is refused: CSV and manual entries cannot reliably be matched to Up transaction IDs.
+5. Choose **Save & Sync**. The first sync may take a while for an account with years of history.
+
+FlyBudget imports **settled transactions only**, in integer AUD cents, dated on the bank's local
+purchase date. Foreign purchases use Up's AUD amount. Cashback is imported separately. Pending
+card holds are excluded from transactions and removed from the effect of Up's available balance
+when setting the settled register balance. Compare the register with settled activity rather
+than Up's spendable or available amount.
+
+The connector reads all available history on each sync so it can recover old settlements and
+missing transactions after restoring a backup. Up's stable transaction IDs prevent repeat imports.
+Existing imported transactions, including your edits, reconciled rows and split transactions,
+are preserved. Rules run on new transactions. If a page fails, that account's partial history is
+not imported; the error is shown and other selected accounts can still sync. If Up limits requests,
+wait a few minutes before retrying.
+
+Sync runs when FlyBudget starts and when you choose **Sync Now**. There is no timer or webhook
+receiver. For transfers between your spending account and Savers (including Round Ups), review
+the transfer suggestions in the register and link the two sides. They remain ordinary transactions
+until linked, so review them before relying on spending reports.
+
+**Reconnect / choose accounts** accepts a replacement token, refreshes the available accounts,
+and keeps existing account links. **Disconnect Up** removes FlyBudget's saved token and links,
+but keeps your transactions. To revoke access at Up itself, also revoke the token in Up's
+developer portal. Up's API does not offer token revocation to FlyBudget.
 
 ## Plaid
 

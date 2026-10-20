@@ -2,7 +2,7 @@ name: Docker
 
 # Builds the self-hosted server image (Dockerfile) and smoke-tests the running
 # container on every PR and push to main. Pushing a version tag like v1.0.0 also
-# publishes it for amd64 and arm64 to ghcr.io/dtymoszenko/flybudget, with signed
+# publishes it for amd64 and arm64 to ghcr.io/tvrooi/flybudget, with signed
 # SLSA build provenance.
 #
 # Tags: the exact version (0.2.0, 0.2.0-beta.1), major.minor for stable releases,
@@ -12,7 +12,7 @@ name: Docker
 # weekly; results appear under Security → Code scanning.
 #
 # Verify an image with:
-#   gh attestation verify oci://ghcr.io/dtymoszenko/flybudget:<version> -R dtymoszenko/FlyBudget
+#   gh attestation verify oci://ghcr.io/tvrooi/flybudget:<version> -R tvrooi/FlyBudget
 
 on:
   push:
@@ -29,7 +29,7 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 env:
-  IMAGE: ghcr.io/dtymoszenko/flybudget
+  IMAGE: ghcr.io/tvrooi/flybudget
 
 jobs:
   test:

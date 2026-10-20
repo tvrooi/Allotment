@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   cla:
-    if: github.event_name == 'pull_request_target' || github.event.issue.pull_request
+    if: github.repository == 'dtymoszenko/FlyBudget' && (github.event_name == 'pull_request_target' || github.event.issue.pull_request)
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write # the reminder comment

@@ -10,11 +10,12 @@ import { AddAccountModal } from '../accounts/AddAccountModal';
 import { ConnectBankModal } from '../plaid/ConnectBankModal';
 import { PlaidSetupModal } from '../plaid/PlaidSetupModal';
 import { SimplefinConnectModal } from '../simplefin/SimplefinConnectModal';
+import { UpConnectModal } from '../up/UpConnectModal';
 import { ConnectEnableBankingModal } from '../enablebanking/ConnectEnableBankingModal';
 import type { Account } from '../../types';
 
-/** Four 36px rows plus padding */
-const MENU_HEIGHT = 152;
+/** Five rows plus padding, allowing for phone touch targets. */
+const MENU_HEIGHT = 228;
 
 function AccountRow({ account }: { account: Account }) {
   const isNegative = account.balance < 0;
@@ -65,6 +66,7 @@ export function SidebarAccountList() {
   const [connectOpen, setConnectOpen] = useState(false);
   const [plaidSetupOpen, setPlaidSetupOpen] = useState(false);
   const [simplefinOpen, setSimplefinOpen] = useState(false);
+  const [upOpen, setUpOpen] = useState(false);
   const [enableBankingOpen, setEnableBankingOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -220,6 +222,15 @@ export function SidebarAccountList() {
                 <button
                   onClick={() => {
                     setMenuOpen(false);
+                    setUpOpen(true);
+                  }}
+                  className="flex items-center gap-2 w-full px-3 py-2 max-md:min-h-11 text-left text-sm whitespace-nowrap text-text-secondary hover:bg-hover hover:text-text transition-colors"
+                >
+                  <Building2 size={14} className="shrink-0" /> Connect Up
+                </button>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
                     setEnableBankingOpen(true);
                   }}
                   className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm whitespace-nowrap text-text-secondary hover:bg-hover hover:text-text transition-colors"
@@ -241,6 +252,7 @@ export function SidebarAccountList() {
         onConfigured={() => setConnectOpen(true)}
       />
       <SimplefinConnectModal isOpen={simplefinOpen} onClose={() => setSimplefinOpen(false)} />
+      <UpConnectModal isOpen={upOpen} onClose={() => setUpOpen(false)} />
       <ConnectEnableBankingModal
         isOpen={enableBankingOpen}
         onClose={() => setEnableBankingOpen(false)}

@@ -16,7 +16,7 @@ name: Release
 #   FlyBudget-Linux-amd64.deb, FlyBudget-Linux-arm64.deb
 #
 # Verify a download with:
-#   gh attestation verify FlyBudget-Windows-Setup.exe -R dtymoszenko/FlyBudget
+#   gh attestation verify FlyBudget-Windows-Setup.exe -R tvrooi/FlyBudget
 
 on:
   push:
@@ -27,6 +27,9 @@ on:
       - .github/workflows/release.yml
       - electron-builder.json
       - electron/**
+      - homeassistant/**
+      - scripts/**
+      - Dockerfile
 
 permissions: {}
 
@@ -35,7 +38,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Require matching version and green main CI for published releases
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+          git fetch origin main --depth=100
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs" \
+            --jq '.check_runs[] | select(.name == "CI passed" and .conclusion == "success") | .id' > /tmp/passed
+          test -s /tmp/passed
+
   build:
+    needs: verify
     name: build (${{ matrix.name }})
     strategy:
       fail-fast: false
@@ -75,11 +99,6 @@ jobs:
             client/package-lock.json
             server/package-lock.json
 
-      - name: Set version from tag
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: bash
-        run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
-
       - run: npm ci
       - run: npm ci
         working-directory: client
@@ -103,6 +122,9 @@ jobs:
         # Ubuntu 24.04 restricts unprivileged user namespaces, which Chromium's sandbox uses.
         # Installing the .deb sets up the sandbox helper instead (see the install guide).
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Choose local mode in a fresh CI-only profile
+        run: node scripts/prepare-packaged-smoke.cjs
+
       - name: Check that the app starts
         shell: bash
         env:
@@ -161,9 +183,79 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  homeassistant:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+      - run: node --test homeassistant/ha-launch.test.cjs
+      - run: python3 -m unittest discover -s scripts
+      - run: python3 homeassistant/package.py --out /tmp/flybudget-ha
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+      - name: Build image for smoke test
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
+        with:
+          context: /tmp/flybudget-ha/flybudget_up
+          load: true
+          tags: flybudget-ha:test
+          cache-from: type=gha,scope=ha
+          cache-to: type=gha,scope=ha,mode=max
+      - run: node homeassistant/smoke-test.cjs flybudget-ha:test
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1
+        if: startsWith(github.ref, 'refs/tags/v')
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: version
+        run: echo "value=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Publish tested HA image for both supported architectures
+        id: image
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
+        with:
+          context: /tmp/flybudget-ha/flybudget_up
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/tvrooi/flybudget-ha:${{ steps.version.outputs.value }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/tvrooi/FlyBudget
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=AGPL-3.0-only
+          provenance: mode=max
+          sbom: true
+      - name: Export catalog only after successful image publication
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          DIGEST: ${{ steps.image.outputs.digest }}
+        run: python3 scripts/export-ha-catalog.py --out release-output/home-assistant-app.zip --commit "$GITHUB_SHA" --digest "$DIGEST"
+      - name: Attest catalog bundle
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8
+        with:
+          subject-path: release-output/home-assistant-app.zip
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          name: app-homeassistant
+          path: release-output/home-assistant-app.zip
+          if-no-files-found: error
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, homeassistant]
     runs-on: ubuntu-latest
     permissions:
       contents: write # create the GitHub release
@@ -177,7 +269,7 @@ jobs:
       # One file with every download's SHA-256, for people who check downloads that way
       - name: Write checksums
         working-directory: release
-        run: sha256sum FlyBudget-* | grep -v -e '\.sigstore\.json' -e '\.intoto\.jsonl' > SHA256SUMS.txt
+        run: sha256sum FlyBudget-* home-assistant-app.zip | grep -v -e '\.sigstore\.json' -e '\.intoto\.jsonl' > SHA256SUMS.txt
 
       - name: Publish GitHub release
         env:

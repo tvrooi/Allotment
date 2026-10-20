@@ -1,6 +1,6 @@
 {
   "name": "flybudget",
-  "version": "0.2.0",
+  "version": "0.2.0-up.4",
   "license": "AGPL-3.0-only",
   "description": "A fast, open-source budgeting app that gives you complete control over your financial data.",
   "main": "electron/dist/main.js",
@@ -13,18 +13,19 @@
     "build:server:bundle": "esbuild server/src/index.ts --bundle --platform=node --target=node22 --external:better-sqlite3 --format=cjs --outfile=electron/dist/server.js",
     "compile:electron": "tsc -p electron/tsconfig.json",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "release:prepare": "python3 scripts/prepare-release.py"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dtymoszenko/flybudget.git"
+    "url": "git+https://github.com/tvrooi/FlyBudget.git"
   },
   "keywords": [],
   "author": "David Tymoszenko",
   "bugs": {
-    "url": "https://github.com/dtymoszenko/flybudget/issues"
+    "url": "https://github.com/tvrooi/FlyBudget/issues"
   },
-  "homepage": "https://github.com/dtymoszenko/flybudget#readme",
+  "homepage": "https://github.com/tvrooi/FlyBudget#readme",
   "devDependencies": {
     "concurrently": "^10.0.6",
     "cross-env": "^10.1.0",

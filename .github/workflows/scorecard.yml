@@ -12,6 +12,7 @@ permissions: read-all
 
 jobs:
   analysis:
+    if: github.repository == 'dtymoszenko/FlyBudget'
     runs-on: ubuntu-latest
     permissions:
       # Upload results to the code scanning dashboard
