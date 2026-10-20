@@ -230,6 +230,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ghcr.io/tvrooi/flybudget-ha:${{ steps.version.outputs.value }}
+          no-cache: true
           labels: |
             org.opencontainers.image.source=https://github.com/tvrooi/FlyBudget
             org.opencontainers.image.revision=${{ github.sha }}

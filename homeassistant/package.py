@@ -43,6 +43,12 @@ upstream = (root / 'Dockerfile').read_text()
 dockerfile = upstream.replace('FROM --platform=$BUILDPLATFORM ', 'FROM ')
 dockerfile = dockerfile.replace('ENTRYPOINT ["/usr/bin/tini", "--"]', '')
 dockerfile = dockerfile.replace('CMD ["node", "server.js"]', '')
+# Name the common runtime so each BuildKit target can add HA's own architecture name.
+prefix, runtime = dockerfile.rsplit('\nFROM ', 1)
+base, body = runtime.split('\n', 1)
+assert ' AS ' not in base, 'The runtime stage already has an unexpected name'
+dockerfile = prefix + '\nFROM ' + base + ' AS ha-common\n' + body
+
 dockerfile += '''
 
 # Home Assistant local app wrapper. Prepare Supervisor's private volume, then
@@ -53,13 +59,18 @@ RUN apt-get update \\
  && rm -rf /var/lib/apt/lists/*
 COPY homeassistant/start.sh homeassistant/ha-launch.cjs /app/
 RUN chmod 755 /app/start.sh
-ARG BUILD_ARCH
 LABEL io.hass.name="FlyBudget Up Preview" \\
-      io.hass.type="addon" \\
-      io.hass.version="__RELEASE_VERSION__" \\
-      io.hass.arch="${BUILD_ARCH}"
+      io.hass.type="app" \\
+      io.hass.version="__RELEASE_VERSION__"
 ENTRYPOINT ["/app/start.sh"]
 CMD []
+
+# TARGETARCH is a BuildKit global (arm64/amd64); HA calls ARM64 "aarch64".
+FROM ha-common AS ha-amd64
+LABEL io.hass.arch="amd64"
+FROM ha-common AS ha-arm64
+LABEL io.hass.arch="aarch64"
+FROM ha-${TARGETARCH} AS final
 '''
 dockerfile = dockerfile.replace('__RELEASE_VERSION__', version)
 (app / 'Dockerfile').write_text(dockerfile)
