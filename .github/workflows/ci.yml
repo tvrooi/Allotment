@@ -69,6 +69,9 @@ jobs:
       - run: npm ci
       - run: npm audit signatures
       - run: npx tsc -p electron/tsconfig.json --noEmit
+      - run: npm run compile:electron
+      - run: node --test electron/connection.test.cjs homeassistant/ha-launch.test.cjs
+      - run: python3 -m unittest discover -s scripts -p "test_*.py"
       # The whole repository follows .prettierrc (fix with `npm run format`)
       - run: npm run format:check
 

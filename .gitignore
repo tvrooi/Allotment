@@ -43,3 +43,7 @@ transactions*.csv
 
 # Self-hosting encryption key (docker-compose.yml)
 flybudget_data_key.txt
+
+__pycache__/
+*.pyc
+release-output/

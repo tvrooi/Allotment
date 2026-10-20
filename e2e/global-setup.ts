@@ -13,9 +13,11 @@ import {
   ENABLE_BANKING_MOCK_PORT,
   FRANKFURTER_MOCK_PORT,
   SERVER_PORT,
+  UP_MOCK_PORT,
 } from './ports';
 import { startEnableBankingMock } from './mockEnableBanking';
 import { startFrankfurterMock } from './mockFrankfurter';
+import { startUpMock } from './mockUp';
 
 // Starts FlyBudget twice, each on a throwaway database:
 //
@@ -238,6 +240,7 @@ export default async function globalSetup() {
 
   const demo = await startDemoServer(path.join(dir, 'client-demo'));
   const enableBanking = await startEnableBankingMock();
+  const up = await startUpMock(UP_MOCK_PORT);
   const frankfurter = await startFrankfurterMock();
 
   const apiToken = randomBytes(32).toString('hex');
@@ -251,6 +254,7 @@ export default async function globalSetup() {
     FLYBUDGET_API_TOKEN: apiToken,
     FLYBUDGET_DATA_KEY: dataKey,
     FLYBUDGET_ENABLE_BANKING_API: `http://127.0.0.1:${ENABLE_BANKING_MOCK_PORT}`,
+    FLYBUDGET_UP_API: up.base,
     FLYBUDGET_EXCHANGE_RATES_URL: `http://127.0.0.1:${FRANKFURTER_MOCK_PORT}/v1`,
   };
   // Replaced when a test restarts it
@@ -315,6 +319,7 @@ export default async function globalSetup() {
     control.close();
     demo.close();
     enableBanking.close();
+    await up.close();
     frankfurter.close();
     stop(desktop);
     stop(server);

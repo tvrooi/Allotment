@@ -1,0 +1,123 @@
+import { SavingPausedHint } from '../connection/SavingPausedHint';
+import { useState } from 'react';
+import { Loader2, RefreshCw } from 'lucide-react';
+import { useUpConnection, useRefreshUp } from '../../hooks/useUp';
+import { syncUp, disconnectUp, type UpSyncResult } from '../../api/up';
+import { useCanSave } from '../../hooks/useConnection';
+import { Button } from '../ui/Button';
+import { ConfirmModal } from '../ui/ConfirmModal';
+import { UpConnectModal } from './UpConnectModal';
+
+export function UpSettings() {
+  const { data: connection, isLoading, error: loadError } = useUpConnection();
+  const [showConnect, setShowConnect] = useState(false);
+  const [showDisconnect, setShowDisconnect] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<UpSyncResult | null>(null);
+  const canSave = useCanSave();
+  const refresh = useRefreshUp();
+  async function sync() {
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    try {
+      setResult(await syncUp());
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not sync Up.');
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="space-y-4 max-w-xl">
+      <p className="text-xs text-text-secondary">
+        Connect directly to Up in Australia with a personal access token. No bank-feed subscription
+        is required. Sync runs when FlyBudget starts and when you choose Sync Now.
+      </p>
+      {isLoading && <Loader2 size={20} className="animate-spin" />}
+      {connection && (
+        <div className="rounded-lg border border-border bg-surface p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-text">Up</h3>
+          {connection.accounts
+            .filter((a) => a.isEnabled)
+            .map((a) => (
+              <p key={a.upAccountId} className="text-xs text-text-secondary">
+                {a.name} → {a.accountName ?? 'Not linked'}
+              </p>
+            ))}
+          {connection.syncError && (
+            <p role="alert" className="text-xs text-negative">
+              {connection.syncError}
+            </p>
+          )}
+          {connection.lastSyncedAt && (
+            <p className="text-xs text-text-tertiary">
+              Last synced: {new Date(connection.lastSyncedAt).toLocaleString()}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={sync} disabled={!canSave || busy}>
+              {busy ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Sync
+              Now
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setShowConnect(true)}
+              disabled={!canSave || busy}
+            >
+              Reconnect / choose accounts
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => setShowDisconnect(true)}
+              disabled={!canSave || busy}
+            >
+              Disconnect Up
+            </Button>
+          </div>
+        </div>
+      )}
+      {!connection && !isLoading && (
+        <Button onClick={() => setShowConnect(true)} disabled={!canSave}>
+          Connect Up
+        </Button>
+      )}
+      {result && (
+        <p
+          role="status"
+          className={`text-sm ${result.errors.length ? 'text-negative' : 'text-positive'}`}
+        >
+          Imported {result.added} new transactions. {result.errors.join(' ')}
+        </p>
+      )}
+      {(error || loadError) && (
+        <p role="alert" className="text-sm text-negative">
+          {error ?? loadError?.message}
+        </p>
+      )}
+      <SavingPausedHint />
+      <UpConnectModal
+        isOpen={showConnect}
+        onClose={() => {
+          setShowConnect(false);
+          void refresh();
+        }}
+      />
+      <ConfirmModal
+        isOpen={showDisconnect}
+        onClose={() => setShowDisconnect(false)}
+        title="Disconnect Up"
+        danger
+        confirmLabel="Disconnect"
+        message="FlyBudget will forget your token and account links. Your accounts and transactions stay. To revoke the token itself, also revoke it in Up’s developer portal."
+        onConfirm={async () => {
+          await disconnectUp();
+          setResult(null);
+          await refresh();
+        }}
+      />
+    </div>
+  );
+}

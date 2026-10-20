@@ -35,6 +35,8 @@ import { schedulesRouter } from './routes/schedules.js';
 import { goalsRouter } from './routes/goals.js';
 import { plaidRouter } from './routes/plaid.js';
 import { simplefinRouter } from './routes/simplefin.js';
+import { upRouter } from './routes/up.js';
+import { syncUp } from './services/upSyncService.js';
 import { enableBankingCallback, enableBankingRouter } from './routes/enableBanking.js';
 import { serverRouter } from './routes/server.js';
 import { currencyRouter, setRateDownloader } from './routes/currency.js';
@@ -108,6 +110,7 @@ setRateDownloader({ download: fetchRates, checkUrl: assertSafeUrl, defaultUrl: D
 app.use('/api/currency', currencyRouter);
 app.use('/api/plaid', bankRateLimit, plaidRouter);
 app.use('/api/simplefin', bankRateLimit, simplefinRouter);
+app.use('/api/up', bankRateLimit, upRouter);
 app.use('/api/enable-banking', bankRateLimit, enableBankingRouter);
 app.use('/api', apiNotFound);
 
@@ -212,6 +215,7 @@ function runStartupTasks() {
 
   // Bank sync BEFORE schedule auto-create (so real txns get matched first)
   const bankSyncDone = Promise.all([
+    syncUp().catch(() => console.error('Up sync could not complete.')),
     isPlaidConfigured()
       ? syncAllItems()
           .then((results) => {

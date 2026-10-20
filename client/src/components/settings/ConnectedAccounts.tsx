@@ -20,8 +20,9 @@ import { Button } from '../ui/Button';
 import type { SimplefinSetupResult } from '../../types';
 import { IS_DEMO } from '../../demo/demoApi';
 import { NotInDemo } from '../demo/NotInDemo';
+import { UpSettings } from '../up/UpSettings';
 
-type Provider = 'plaid' | 'simplefin' | 'enablebanking';
+type Provider = 'plaid' | 'simplefin' | 'enablebanking' | 'up';
 
 export function ConnectedAccounts() {
   return IS_DEMO ? <ConnectedAccountsDemo /> : <ConnectedAccountsSettings />;
@@ -81,6 +82,13 @@ function ConnectedAccountsSettings() {
       {/* Provider toggle */}
       <div className="flex rounded-lg bg-surface-alt p-1 w-fit max-w-full overflow-x-auto">
         <button
+          onClick={() => setProvider('up')}
+          title="Up Bank, Australia"
+          className={`px-4 py-1.5 max-md:min-h-11 text-sm font-medium rounded-md whitespace-nowrap transition-all ${provider === 'up' ? 'bg-surface text-text shadow-sm ring-2 ring-brand-600' : 'text-text-tertiary hover:text-text-secondary'}`}
+        >
+          Up
+        </button>
+        <button
           onClick={() => setProvider('plaid')}
           className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ease-in-out ${
             provider === 'plaid'
@@ -129,6 +137,7 @@ function ConnectedAccountsSettings() {
       </div>
 
       {/* Plaid content */}
+      {provider === 'up' && <UpSettings />}
       {provider === 'plaid' && (
         <div className="space-y-4">
           {syncAll.isSuccess && syncAll.data && (

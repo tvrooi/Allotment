@@ -9,6 +9,9 @@
   "files": [
     "electron/dist/main.js",
     "electron/dist/preload.js",
+    "electron/dist/connection.js",
+    "electron/dist/connectionPage.js",
+    "electron/dist/connectionPreload.js",
     "electron/dist/server.js",
     "electron/resources/icon.png",
     "client/dist/**",

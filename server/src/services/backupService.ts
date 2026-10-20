@@ -20,6 +20,7 @@ import {
   scheduleOccurrences,
   schedules,
   simplefinAccountMappings,
+  upAccountMappings,
   enableBankingAccountMappings,
   transactions,
   transferMatchDismissals,
@@ -170,6 +171,11 @@ export function restoreBackup(data: ParsedBackup) {
     .where(isNotNull(enableBankingAccountMappings.accountId))
     .all();
   const restoredAccounts = new Set(data.accounts.map((a) => a.id as string));
+  const upLinks = db
+    .select({ id: upAccountMappings.id, accountId: upAccountMappings.accountId })
+    .from(upAccountMappings)
+    .where(isNotNull(upAccountMappings.accountId))
+    .all();
 
   db.transaction((tx) => {
     // Foreign keys are checked once, at commit, so rows can go in table by table
@@ -191,6 +197,7 @@ export function restoreBackup(data: ParsedBackup) {
     for (const [table, links] of [
       [plaidAccountMappings, plaidLinks],
       [simplefinAccountMappings, simplefinLinks],
+      [upAccountMappings, upLinks],
       [enableBankingAccountMappings, enableBankingLinks],
     ] as const) {
       for (const link of links) {
