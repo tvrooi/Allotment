@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { and, eq, ne } from 'drizzle-orm';
+import { and, eq, ne, inArray } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { db } from '../db/index.js';
@@ -8,12 +8,21 @@ import {
   transactions,
   upAccountMappings,
   upConnections,
+  upSourceRecords,
   plaidAccountMappings,
   simplefinAccountMappings,
   enableBankingAccountMappings,
 } from '../db/schema.js';
 import { cleanUpText, getUpAccounts, upErrorMessage } from '../services/upService.js';
-import { isUpSyncing, syncUp, UP_CONNECTION_ID } from '../services/upSyncService.js';
+import {
+  isUpSyncing,
+  syncUp,
+  UP_CONNECTION_ID,
+  setUpConnecting,
+  nextUpSyncAt,
+  UP_POLL_INTERVALS,
+} from '../services/upSyncService.js';
+import { upReview, roundUpDays } from '../services/upReviewService.js';
 import {
   accountCurrency,
   currencyContext,
@@ -59,6 +68,10 @@ upRouter.get('/connection', (_req, res) => {
       syncStatus: upConnections.syncStatus,
       syncError: upConnections.syncError,
       lastSyncedAt: upConnections.lastSyncedAt,
+      pollIntervalMinutes: upConnections.pollIntervalMinutes,
+      lastAttemptAt: upConnections.lastAttemptAt,
+      lastCompletedAt: upConnections.lastCompletedAt,
+      nextSyncAt: upConnections.nextSyncAt,
     })
     .from(upConnections)
     .where(eq(upConnections.id, UP_CONNECTION_ID))
@@ -94,6 +107,7 @@ upRouter.post('/setup', async (req, res) => {
   if (!parsed.success)
     return res.status(400).json({ error: 'Enter your Up personal access token.' });
   settingUp = true;
+  setUpConnecting(true);
   try {
     const discovered = await getUpAccounts(parsed.data.accessToken);
     if (!discovered.length)
@@ -154,6 +168,7 @@ upRouter.post('/setup', async (req, res) => {
     res.status(422).json({ error: upErrorMessage(err) });
   } finally {
     settingUp = false;
+    setUpConnecting(false);
   }
 });
 
@@ -269,4 +284,69 @@ upRouter.delete('/connection', (_req, res) => {
   if (isUpSyncing()) return res.status(409).json({ error: 'Wait for the Up sync to finish.' });
   db.delete(upConnections).where(eq(upConnections.id, UP_CONNECTION_ID)).run();
   res.status(204).send();
+});
+
+upRouter.patch('/settings', (req, res) => {
+  if (isUpSyncing()) return res.status(409).json({ error: 'Wait for the Up sync to finish.' });
+  const parsed = z
+    .object({ pollIntervalMinutes: z.union(UP_POLL_INTERVALS.map((v) => z.literal(v))) })
+    .strict()
+    .safeParse(req.body);
+  if (!parsed.success)
+    return res.status(400).json({ error: 'Choose a supported background sync interval.' });
+  const connection = db
+    .select({ id: upConnections.id, failureCount: upConnections.failureCount })
+    .from(upConnections)
+    .where(eq(upConnections.id, UP_CONNECTION_ID))
+    .get();
+  if (!connection) return res.status(404).json({ error: 'Connect Up first.' });
+  const minutes = parsed.data.pollIntervalMinutes;
+  db.update(upConnections)
+    .set({
+      pollIntervalMinutes: minutes,
+      nextSyncAt: nextUpSyncAt(minutes, connection.failureCount),
+    })
+    .where(eq(upConnections.id, connection.id))
+    .run();
+  res.json({ pollIntervalMinutes: minutes });
+});
+
+upRouter.get('/review', (req, res) => {
+  const offset = z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(2_000_000)
+    .safeParse(req.query.offset ?? 0);
+  if (!offset.success) return res.status(400).json({ error: 'Invalid review page.' });
+  res.json(upReview(offset.data));
+});
+upRouter.post('/review/acknowledge', (req, res) => {
+  const parsed = z
+    .object({ importedId: z.string().min(1).max(1024), revision: z.number().int().positive() })
+    .strict()
+    .safeParse(req.body);
+  if (!parsed.success)
+    return res.status(400).json({ error: 'Choose a review item and its current revision.' });
+  const updated = db
+    .update(upSourceRecords)
+    .set({ reviewState: 'reviewed', previousJson: null })
+    .where(
+      and(
+        eq(upSourceRecords.importedId, parsed.data.importedId),
+        eq(upSourceRecords.revision, parsed.data.revision),
+        inArray(upSourceRecords.reviewState, ['new', 'changed', 'missing']),
+      ),
+    )
+    .run();
+  if (!updated.changes)
+    return res
+      .status(409)
+      .json({ error: 'This item changed or was already reviewed. Refresh before reviewing it.' });
+  res.json({ reviewed: true });
+});
+upRouter.get('/round-ups', (_req, res) => {
+  // Bank-local dates can be a day ahead/behind UTC; include an extra day at this boundary.
+  const since = new Date(Date.now() - 91 * 86400_000).toISOString().slice(0, 10);
+  res.json({ since, days: roundUpDays(since) });
 });

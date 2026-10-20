@@ -29,8 +29,8 @@ on your phone/tablet. FlyBudget uses one owner password for this budget.
   Remote pages run in a sandbox without Node access or the local desktop API bridge.
 - **Home Assistant:** the FlyBudget service, authoritative SQLite database, encrypted bank token
   and Up sync. It stays available when the desktop app is closed.
-- **Up:** contacted by the server. Sync runs on server startup and when you choose **Sync Now**;
-  it is not scheduled periodically yet. Opening the desktop app does not restart this server.
+- **Up:** contacted by the server. Sync runs on server startup and when you choose **Sync Now**, plus
+  opt-in background polling. Opening the desktop app does not restart this server.
 
 Server mode does not start the desktop's embedded server, open its local database, or copy that
 database onto Home Assistant. **Use this computer** opens a separate local budget. Switching
@@ -64,3 +64,10 @@ The smoke test uses real Electron and an isolated local server, with a throwaway
 It checks the native picker, HTTP confirmation, login/setup, server writes visible to another
 signed-in device, session persistence, and that no local database or credential key was created.
 It does not use real Up credentials.
+
+## Desktop program updates
+
+Server screens update through **Budget → Reload**. **Budget → Check for desktop updates…**
+offers installer downloads without Apple membership. Verified signed Mac builds additionally
+offer Download and Restart. The first updater-enabled build needs one manual install;
+see [Desktop updates](docs/DESKTOP-UPDATES.md).

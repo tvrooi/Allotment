@@ -37,9 +37,9 @@ installation. Never add credentials or deployment hostnames to these instruction
 The standing permission covers routine updates of the same app. It does not authorise moving a budget
 between app IDs, replacing/deleting a budget, changing credentials, or bypassing security protections.
 If the existing installation is still the local preview, the one-time move to the catalog app remains a
-separate migration task under the backup-and-restore procedure below. Desktop installation remains a
-manual download; provide the release's installer links and say when only reopening the connected client
-is needed for server/UI changes.
+separate migration task under the backup-and-restore procedure below. The first updater-enabled signed Mac desktop needs a manual install. Later signed Mac builds
+can download and restart through the app; other platforms use manual downloads. Reopening/reloading
+the connected client is sufficient for server/UI changes.
 
 ## Release a tested update
 
@@ -63,9 +63,9 @@ is needed for server/UI changes.
    or cross-repository write access. A failed/incomplete release cannot update the catalog.
 6. With the administrative access established above, verify the existing app, complete its cold backup,
    check for updates and install the new version. Verify the live result before reporting success.
-   Provide desktop installers from Releases; desktop-specific changes need a manual download because
-   there is no desktop auto-updater. Server UI/Up changes appear in the connected desktop without
-   reinstalling it.
+   Provide desktop installers from Releases. Signed Mac clients can update through the app after
+   the first updater-enabled signed build is installed; see docs/DESKTOP-UPDATES.md. Other platforms
+   use manual installers. Server UI/Up changes appear without reinstalling the desktop.
 
 A merged, prepared app version now starts publication automatically after main CI; it does not
 publish unchecked code or directly deploy to Home Assistant. If the publishing step fails before
@@ -102,8 +102,8 @@ CI, container vulnerability scans and Scorecard remain active. No upstream CLA w
 
 ## Current limits
 
-- Up imports settled AUD transactions; startup and manual **Sync Now**, no timer/webhooks.
+- Up imports settled AUD transactions; startup/manual sync and opt-in server polling with backoff, no webhooks.
 - One owner password and one Up token per budget; no multi-user separation.
 - Remote desktop budgets require the server to be reachable; no full offline merge.
-- macOS builds are ad-hoc signed and unnotarized; Windows builds lack Authenticode signing.
+- Mac signing/notarization is optional until configured. Unsigned Mac, Windows and Linux builds check for releases in the app and offer installer downloads; automatic installation requires a verified Developer ID signed Mac build.
 - Keep real tokens, passwords, databases, bank exports and deployment hostnames out of GitHub.

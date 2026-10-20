@@ -61,4 +61,7 @@ starts **Release** automatically. Documentation-only PRs keep the version unchan
 release tags must point to a main commit with successful CI. Manual recovery can run **Release** on an
 existing tested tag; a manual run on a branch only validates packaging.
 GitHub builds installers and the HA image. Only a completed release is eligible for catalog promotion.
-Up sync has startup/manual Sync Now only; no periodic timer/webhooks. Desktop updates are manual downloads.
+Up sync runs at startup/manual Sync Now, with opt-in server polling and backoff; no webhooks.
+Bank-source review never rewrites ledger rows. Desktop in-app updates require a verified Developer ID
+signed Mac build; unsigned builds offer installer downloads from inside the app. Signing/notarization
+is optional until configured; see docs/DESKTOP-UPDATES.md.

@@ -1,5 +1,14 @@
 # Changes
 
+## 0.2.0-up.6
+
+- Add opt-in background Up sync, failure backoff and visible freshness.
+- Keep bank observations separate from the ledger; review new imports, changed and omitted bank records without overwriting edits or reconciliation.
+- Preserve initialized opening balances even after a register is emptied.
+- Show expandable daily round-up purchase details, with boosts included once and original register access. No inferred transfer links or historical ledger repair.
+- Preserve token-free bank observations and review history in JSON backup version 4.
+- Add native desktop release checks and installer downloads without requiring Apple membership. Verified Developer ID signed Mac builds additionally support download/restart installation; signing and notarization remain optional until configured. The first updater build needs one manual install.
+
 ## 0.2.0-up.5
 
 - Use consistent budget-account scopes across reports and drill-downs.

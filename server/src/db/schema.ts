@@ -318,6 +318,11 @@ export const upConnections = sqliteTable('up_connections', {
   syncStatus: text('sync_status').notNull().default('good'),
   syncError: text('sync_error'),
   lastSyncedAt: text('last_synced_at'),
+  pollIntervalMinutes: integer('poll_interval_minutes').notNull().default(0),
+  lastAttemptAt: text('last_attempt_at'),
+  lastCompletedAt: text('last_completed_at'),
+  nextSyncAt: text('next_sync_at'),
+  failureCount: integer('failure_count').notNull().default(0),
   createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -333,7 +338,29 @@ export const upAccountMappings = sqliteTable('up_account_mappings', {
   accountType: text('account_type').notNull(),
   accountId: text('account_id').references(() => accounts.id, { onDelete: 'set null' }),
   isEnabled: integer('is_enabled').notNull().default(1),
+  initializedAt: text('initialized_at'),
 });
+
+// Bank observations are separate from the editable/reconciled ledger. No credentials or raw payloads.
+export const upSourceRecords = sqliteTable(
+  'up_source_records',
+  {
+    importedId: text('imported_id').primaryKey(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    transactionId: text('transaction_id').references(() => transactions.id, {
+      onDelete: 'set null',
+    }),
+    sourceJson: text('source_json').notNull(),
+    previousJson: text('previous_json'),
+    reviewState: text('review_state').notNull().default('reviewed'),
+    revision: integer('revision').notNull().default(1),
+    seenInLatest: integer('seen_in_latest').notNull().default(1),
+    lastSeenAt: text('last_seen_at').notNull(),
+  },
+  (table) => [index('up_source_review').on(table.reviewState, table.lastSeenAt)],
+);
 
 export const simplefinConnections = sqliteTable('simplefin_connections', {
   id: text('id').primaryKey(),

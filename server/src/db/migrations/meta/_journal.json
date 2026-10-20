@@ -183,6 +183,13 @@
       "when": 1791200000000,
       "tag": "0025_up_bank",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1791300000000,
+      "tag": "0026_up_review",
+      "breakpoints": true
     }
   ]
 }

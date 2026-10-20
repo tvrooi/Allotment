@@ -58,3 +58,56 @@ test('shows an invalid Up token without saving a connection', async ({ page, api
   await expect(dialog.getByRole('alert')).toContainText('Up did not accept your token');
   expect(await api.call('GET', '/up/connection')).toBeNull();
 });
+
+test('sets background sync, reviews imports, and expands daily round-up details without altering the ledger', async ({
+  page,
+  api,
+}) => {
+  await fetch(`http://127.0.0.1:${UP_MOCK_PORT}/__mock/round-ups-current`, { method: 'POST' });
+  await api.call('DELETE', '/up/connection');
+  await api.call('POST', '/up/setup', { accessToken: UP_TEST_TOKEN });
+  await api.call('POST', '/up/map-accounts', {
+    mappings: [
+      { upAccountId: 'spending', action: 'create' },
+      { upAccountId: 'saver', action: 'create' },
+    ],
+  });
+  await api.call('POST', '/up/sync');
+  const before = await api.transactions();
+  await open(page, '/settings?tab=connections');
+  await page.getByRole('button', { name: 'Up', exact: true }).click();
+  await expect(page.getByLabel('Background sync')).toHaveValue('0');
+  await page.getByLabel('Background sync').selectOption('15');
+  await expect(page.getByText('Next background attempt:', { exact: false })).toBeVisible();
+  expect(
+    ((await api.call('GET', '/up/connection')) as { pollIntervalMinutes: number })
+      .pollIntervalMinutes,
+  ).toBe(15);
+  const review = page.getByRole('region', { name: 'Up review', exact: true });
+  await expect(review.getByRole('heading')).toHaveText('Needs review (4)');
+  await review
+    .getByRole('button', { name: 'Acknowledge · keep local record', exact: true })
+    .first()
+    .click();
+  await expect(review.getByRole('heading')).toHaveText('Needs review (3)');
+  const rounds = page.getByRole('region', { name: 'Daily Up round-ups', exact: true });
+  await rounds.getByText('A$2.40 reported', { exact: false }).click();
+  await expect(rounds.getByText('Includes A$2 in boosts.')).toBeVisible();
+  await expect(
+    rounds.getByText('purchase · purchase -A$17.60 · round-up A$2.40', { exact: true }),
+  ).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('up-review-desktop.png') });
+  expect(await api.transactions()).toEqual(before);
+  await page.getByLabel('Background sync').selectOption('0');
+  await expect(page.getByText('Next background attempt:', { exact: false })).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'Up', exact: true }).click();
+  await rounds.scrollIntoViewIfNeeded();
+  await rounds.getByText('A$2.40 reported', { exact: false }).click();
+  await expect(rounds.getByText('Includes A$2 in boosts.')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await page.screenshot({ path: test.info().outputPath('up-review-phone.png') });
+  await api.call('DELETE', '/up/connection');
+});

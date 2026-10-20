@@ -5,6 +5,7 @@ import { accounts, transactions, upAccountMappings, upConnections } from '../db/
 import { buildRuleContext, insertNewTransaction, loadRules } from './ruleService.js';
 import { accountCurrency, currencyContext } from './mainAmountService.js';
 import { accountTransactionSum } from './balances.js';
+import { observeUpAccount } from './upReviewService.js';
 import {
   getUpAccounts,
   getUpTransactions,
@@ -21,14 +22,56 @@ export interface UpSyncResult {
   errors: string[];
 }
 let inFlight: Promise<UpSyncResult> | null = null;
+let connecting = false;
+export const setUpConnecting = (value: boolean) => {
+  connecting = value;
+};
 export const isUpSyncing = () => inFlight !== null;
 
 /** Sharing the promise prevents startup and two Sync clicks from importing twice. */
 export function syncUp(): Promise<UpSyncResult> {
   if (inFlight) return inFlight;
-  inFlight = runSync().finally(() => {
-    inFlight = null;
-  });
+  if (connecting)
+    return Promise.resolve({
+      added: 0,
+      skipped: 0,
+      errors: ['Wait for the Up connection to finish.'],
+    });
+  inFlight = runSync()
+    .catch(() => {
+      // A damaged encrypted token can fail before runSync reaches its request handler.
+      // Persist backoff without selecting/decrypting that token again or exposing an error payload.
+      const current = db
+        .select({
+          interval: upConnections.pollIntervalMinutes,
+          failures: upConnections.failureCount,
+        })
+        .from(upConnections)
+        .where(eq(upConnections.id, UP_CONNECTION_ID))
+        .get();
+      const errors = [
+        'Could not read the Up connection. Check the saved connection and encryption key.',
+      ];
+      if (current) {
+        const completedAt = new Date().toISOString(),
+          failures = Math.min(current.failures + 1, 10);
+        db.update(upConnections)
+          .set({
+            syncStatus: 'error',
+            syncError: errors[0],
+            lastAttemptAt: completedAt,
+            lastCompletedAt: completedAt,
+            failureCount: failures,
+            nextSyncAt: nextUpSyncAt(current.interval, failures, Date.parse(completedAt)),
+          })
+          .where(eq(upConnections.id, UP_CONNECTION_ID))
+          .run();
+      }
+      return { added: 0, skipped: 0, errors };
+    })
+    .finally(() => {
+      inFlight = null;
+    });
   return inFlight;
 }
 
@@ -40,6 +83,11 @@ async function runSync(): Promise<UpSyncResult> {
     .where(eq(upConnections.id, UP_CONNECTION_ID))
     .get();
   if (!connection) return result;
+  const now = new Date().toISOString();
+  db.update(upConnections)
+    .set({ lastAttemptAt: now })
+    .where(eq(upConnections.id, UP_CONNECTION_ID))
+    .run();
   const setStatus = (syncStatus: string, syncError: string | null) =>
     db
       .update(upConnections)
@@ -79,6 +127,7 @@ async function runSync(): Promise<UpSyncResult> {
         db.transaction(() => {
           let added = 0;
           let skipped = 0;
+          const newIds = new Set<string>();
           for (const row of rows) {
             const existing = db
               .select({ id: transactions.id })
@@ -109,17 +158,24 @@ async function runSync(): Promise<UpSyncResult> {
               ruleOpts,
             );
             added++;
+            newIds.add(row.importedId);
           }
           const startingBalance = target - accountTransactionSum(accountId);
           if (!Number.isSafeInteger(startingBalance))
             throw new UpError('Up returned amounts outside the supported range.');
           // Establish an opening balance only for an empty register. Later discrepancies
           // need review, not an invisible historical adjustment that hides missing postings.
-          if (!hadHistory) {
+          if (!hadHistory && !mapping.initializedAt) {
             db.update(accounts).set({ startingBalance }).where(eq(accounts.id, accountId)).run();
           } else {
             balanceMismatch = startingBalance !== local.startingBalance;
           }
+          observeUpAccount(accountId, unique, now, newIds, mapping.upAccountId);
+          if (!mapping.initializedAt)
+            db.update(upAccountMappings)
+              .set({ initializedAt: now })
+              .where(eq(upAccountMappings.id, mapping.id))
+              .run();
           result.added += added;
           result.skipped += skipped;
         });
@@ -141,5 +197,39 @@ async function runSync(): Promise<UpSyncResult> {
     result.errors.push(upErrorMessage(err));
     setStatus('error', result.errors.join(' '));
   }
+  const completedAt = new Date().toISOString();
+  const failures = result.errors.length ? Math.min(connection.failureCount + 1, 10) : 0;
+  db.update(upConnections)
+    .set({
+      lastCompletedAt: completedAt,
+      failureCount: failures,
+      nextSyncAt: nextUpSyncAt(connection.pollIntervalMinutes, failures, Date.parse(completedAt)),
+    })
+    .where(eq(upConnections.id, UP_CONNECTION_ID))
+    .run();
   return result;
+}
+
+export const UP_POLL_INTERVALS = [0, 15, 30, 60, 240] as const;
+export function nextUpSyncAt(minutes: number, failures: number, now = Date.now()): string | null {
+  if (!minutes) return null;
+  const delay = Math.max(minutes, failures ? Math.min(24 * 60, 15 * 2 ** (failures - 1)) : 0);
+  return new Date(now + delay * 60_000).toISOString();
+}
+export async function syncUpIfDue(now = Date.now()) {
+  if (inFlight || connecting) return;
+  const connection = db
+    .select({ interval: upConnections.pollIntervalMinutes, next: upConnections.nextSyncAt })
+    .from(upConnections)
+    .where(eq(upConnections.id, UP_CONNECTION_ID))
+    .get();
+  if (connection?.interval && (!connection.next || Date.parse(connection.next) <= now))
+    await syncUp();
+}
+export function startUpPolling() {
+  const timer = setInterval(() => {
+    void syncUpIfDue().catch(() => console.warn('Up background sync could not finish.'));
+  }, 60_000);
+  timer.unref();
+  return () => clearInterval(timer);
 }

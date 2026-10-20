@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage, session, shell } from 'electron';
+import { desktopUpdates } from './desktopUpdates';
 import { randomBytes } from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -228,7 +229,8 @@ function createWindow(): void {
   if (IS_DEV) win.webContents.openDevTools();
 }
 
-// Keep the server selector available even when the server cannot be reached.
+let updates: ReturnType<typeof desktopUpdates> | null = null;
+// Keep the server selector and updater available even when the budget server cannot be reached.
 Menu.setApplicationMenu(
   Menu.buildFromTemplate([
     ...(process.platform === 'darwin' ? [{ role: 'appMenu' as const }] : []),
@@ -236,6 +238,12 @@ Menu.setApplicationMenu(
       label: 'Budget',
       submenu: [
         { id: 'budget-location', label: 'Budget location…', click: () => showLocationPicker() },
+        {
+          label: 'Check for desktop updates…',
+          click: () => {
+            void updates?.check();
+          },
+        },
         { role: 'reload' },
         ...(process.platform !== 'darwin' ? [{ role: 'quit' as const }] : []),
       ],
@@ -271,6 +279,14 @@ app.on('activate', () => {
 
 app.whenReady().then(async () => {
   if (!isPrimaryInstance) return;
+  updates = desktopUpdates();
+  if (!IS_DEV) {
+    const updateTimer = setTimeout(() => {
+      void updates?.check(false);
+    }, 60_000);
+    updateTimer.unref();
+    app.once('will-quit', () => clearTimeout(updateTimer));
+  }
 
   protectSession(session.defaultSession);
 

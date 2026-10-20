@@ -13,6 +13,10 @@ export interface UpConnection {
   syncStatus: 'good' | 'syncing' | 'error';
   syncError: string | null;
   lastSyncedAt: string | null;
+  pollIntervalMinutes: number;
+  lastAttemptAt: string | null;
+  lastCompletedAt: string | null;
+  nextSyncAt: string | null;
   accounts: (Omit<UpDiscoveredAccount, 'balance'> & { accountName: string | null })[];
 }
 export interface UpMappingChoice {
@@ -39,3 +43,56 @@ export const mapUpAccounts = (mappings: UpMappingChoice[]) =>
   });
 export const syncUp = () => apiFetch<UpSyncResult>('/up/sync', { method: 'POST' });
 export const disconnectUp = () => apiFetch<void>('/up/connection', { method: 'DELETE' });
+
+export const setUpPolling = (pollIntervalMinutes: number) =>
+  apiFetch('/up/settings', { method: 'PATCH', body: JSON.stringify({ pollIntervalMinutes }) });
+interface UpObservation {
+  status: 'HELD' | 'SETTLED';
+  amount: number;
+  createdAt: string;
+  settledAt: string | null;
+  description: string;
+  notes: string;
+  roundUpAmount: number | null;
+  boostAmount: number | null;
+  cashbackAmount: number | null;
+  cashbackDescription: string | null;
+  transferAccountId: string | null;
+  transferAccountName: string | null;
+}
+export interface UpReviewItem {
+  importedId: string;
+  accountId: string;
+  accountName: string;
+  transactionId: string | null;
+  reviewState: string;
+  revision: number;
+  current: UpObservation;
+  previous: UpObservation | null;
+}
+export const getUpReview = (offset: number) =>
+  apiFetch<{ total: number; pending: number; items: UpReviewItem[] }>(
+    `/up/review?offset=${offset}`,
+  );
+export const acknowledgeUpReview = (importedId: string, revision: number) =>
+  apiFetch('/up/review/acknowledge', {
+    method: 'POST',
+    body: JSON.stringify({ importedId, revision }),
+  });
+export const getUpRoundUps = () =>
+  apiFetch<{
+    since: string;
+    days: {
+      date: string;
+      accountId: string;
+      accountName: string;
+      amount: number;
+      boost: number;
+      purchases: {
+        transactionId: string | null;
+        description: string;
+        amount: number;
+        roundUpAmount: number;
+      }[];
+    }[];
+  }>('/up/round-ups');

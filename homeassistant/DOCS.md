@@ -47,8 +47,9 @@ token at [Up's developer portal](https://api.up.com.au/) and paste it directly i
 Choose new accounts or empty AUD accounts and **Save & Sync**. Your other devices use that
 server connection; you do not enter a separate token on each device.
 
-Up sync currently runs on app startup or **Sync Now**, not on a background timer. With a server
-that stays running, opening a browser does not restart the server, so use **Sync Now** for updates.
+Up sync runs on app startup or **Sync Now**. In Settings → Connected Banks → Up, opt in to
+background sync every 15, 30, 60 or 240 minutes; failures delay retries. It defaults off. With a server
+that stays running, opening a browser does not restart the server; use **Sync Now** or enable background sync for updates.
 Only settled transactions are imported. Review internal transfers and Round Ups in the register.
 
 This is a new server installation. The Mac preview's local budget does not automatically move
