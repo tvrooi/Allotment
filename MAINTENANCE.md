@@ -12,6 +12,35 @@ and builds. Review the diff and merge green checks. Small changes need only the 
 checks; let CI run the full suite. AGENTS.md is deliberately short; detailed architecture is in
 `docs/DEVELOPMENT.md` and should be read only when needed.
 
+## Default delivery workflow
+
+The owner has given standing authorization for requested features and fixes to go through the complete
+routine delivery process: implement, run relevant tests, technically review the diff, open a PR to this
+fork, merge after successful CI, prepare and publish a tested release, promote the completed release to
+the HA catalog, back up and update the existing HA app in place, verify the result, and provide the new
+desktop download links. Do not request fresh approval at every routine step. A narrower instruction in
+a particular task takes precedence. Documentation-only changes need no release; dependency updates
+still require review and must not be auto-merged.
+
+Before installing, identify the actual installed app and version and confirm administrative access.
+Complete and verify a restorable cold backup containing the database and encryption key before changing
+the live app. After updating, verify the running version, health, budget access and bank connection
+status. Record deployment details privately outside the repository. Only report installation as complete
+once the live update has been verified; a published image or catalog update alone is not installation.
+If access or backup verification is unavailable, finish the independent release work and report that
+specific installation blocker.
+
+The currently exposed Home Assistant device-control connector does not provide app management or
+backup operations. Establish an appropriate administrative access path once before promising unattended
+installation. Never add credentials or deployment hostnames to these instructions or to GitHub.
+
+The standing permission covers routine updates of the same app. It does not authorise moving a budget
+between app IDs, replacing/deleting a budget, changing credentials, or bypassing security protections.
+If the existing installation is still the local preview, the one-time move to the catalog app remains a
+separate migration task under the backup-and-restore procedure below. Desktop installation remains a
+manual download; provide the release's installer links and say when only reopening the connected client
+is needed for server/UI changes.
+
 ## Release a tested update
 
 1. Run `npm run release:prepare -- 0.2.0-up.5` (choose the next version), add CHANGELOG.md notes,
@@ -27,9 +56,11 @@ checks; let CI run the full suite. AGENTS.md is deliberately short; detailed arc
    You can run it manually immediately. It verifies the bundle's provenance, checksums, expected
    filenames, version and image digest, then commits only the catalog metadata. It needs no PAT
    or cross-repository write access. A failed/incomplete release cannot update the catalog.
-6. In Home Assistant, check for updates and click **Update**. Take a cold HA backup first. Download
-   desktop installers from Releases when desktop code changes; there is no desktop auto-updater.
-   Server UI/Up changes appear in the connected desktop without reinstalling it.
+6. With the administrative access established above, verify the existing app, complete its cold backup,
+   check for updates and install the new version. Verify the live result before reporting success.
+   Provide desktop installers from Releases; desktop-specific changes need a manual download because
+   there is no desktop auto-updater. Server UI/Up changes appear in the connected desktop without
+   reinstalling it.
 
 A merge alone does not deploy anything. Pre-release `-up.N` tags are intentional for this fork.
 Keep the GHCR package public so Home Assistant can pull it without storing registry credentials.
