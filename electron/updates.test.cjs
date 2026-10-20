@@ -242,3 +242,20 @@ test('unsigned packaged apps offer an installer without downloading or replacing
   assert.equal(f.driver.downloads, 0);
   assert.equal(f.driver.installs, 0);
 });
+
+test('unsigned configuration removes empty certificate variables instead of treating cwd as a certificate', () => {
+  const { execFileSync } = require('node:child_process');
+  const result = execFileSync(
+    process.execPath,
+    [
+      '-e',
+      "require('./electron-builder.release.cjs'); process.stdout.write(String(process.env.CSC_LINK))",
+    ],
+    {
+      cwd: require('node:path').resolve(__dirname, '..'),
+      env: { ...process.env, FLYBUDGET_MAC_SIGNING: 'false', CSC_LINK: '', CSC_KEY_PASSWORD: '' },
+      encoding: 'utf8',
+    },
+  );
+  assert.equal(result, 'undefined');
+});

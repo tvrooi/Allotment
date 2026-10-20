@@ -73,7 +73,10 @@ export function UpReview({ canSave }: { canSave: boolean }) {
             )}
             <ul className="space-y-3">
               {review.data.items.map((item) => (
-                <li key={item.importedId} className="border-t border-border pt-3 space-y-2 break-words">
+                <li
+                  key={item.importedId}
+                  className="border-t border-border pt-3 space-y-2 break-words"
+                >
                   <p className="text-sm text-text">
                     {item.reviewState === 'new'
                       ? 'New import'

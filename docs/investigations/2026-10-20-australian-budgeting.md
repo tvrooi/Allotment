@@ -325,7 +325,7 @@ Developer ID signed Mac builds. The first updater build requires one manual inst
 signed-to-signed update still needs verification after the owner configures signing secrets.
 Windows/Linux automatic installation remains disabled pending platform verification support.
 
-Verification for this suite: 46 focused server tests, 206 client tests, 14 desktop tests and three
+Verification for this suite: 46 focused server tests, 206 client tests, 15 desktop tests and three
 Up browser scenarios passed. The browser scenarios include a phone viewport and assert that review
 acknowledgement leaves ledger rows unchanged. Server and Electron TypeScript checks passed.
 Unsigned release checking is tested separately from signed installation; a real signed-to-signed

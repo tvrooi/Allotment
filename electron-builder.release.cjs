@@ -16,5 +16,10 @@ if (process.env.FLYBUDGET_MAC_SIGNING === 'true') {
   config.mac.hardenedRuntime = true;
   config.mac.notarize = true;
   config.forceCodeSigning = true;
+} else {
+  // electron-builder treats even an empty CSC_LINK as a certificate path.
+  // GitHub supplies empty values when signing is not configured.
+  delete process.env.CSC_LINK;
+  delete process.env.CSC_KEY_PASSWORD;
 }
 module.exports = config;
