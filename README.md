@@ -32,10 +32,12 @@ Open this checkout as a dedicated Codex project. Start with [AGENTS.md](AGENTS.m
 the files and relevant checks. Read the longer [development reference](docs/DEVELOPMENT.md) only
 when needed. Use feature branches and PRs to this fork; green CI is required on main.
 
-[MAINTENANCE.md](MAINTENANCE.md) documents the full release process. In brief: prepare the next
-`0.2.0-up.N` version and notes, merge green CI, then push its matching `v` tag. GitHub builds and
-tests installers and containers. Only a completed, verified release reaches the HA catalog. A merge
-alone does not deploy to your live budget.
+[MAINTENANCE.md](MAINTENANCE.md) documents the full release process. Feature/fix PRs include the next
+`0.2.0-up.N` version and release notes. After merging and successful main CI, GitHub automatically tags
+that prepared version, builds and tests installers/containers, then publishes the completed release.
+The HA catalog follows verified releases; its installed app can use Home Assistant's **Auto update**.
+Documentation-only merges do not publish a new version. Your local preview does not move into the
+catalog app automatically, and a merge does not bypass release checks or the backup/migration rules.
 
 ## Upstream, security and license
 

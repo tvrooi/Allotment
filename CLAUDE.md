@@ -55,7 +55,10 @@ Documentation-only changes do not need a release. Before a live update, verify t
 complete a restorable cold backup including the encryption key, then verify health and budget access after
 updating. Missing administrative access or an unverified backup is a blocker to installation, not success.
 The standing authorization does not cover moving to a different HA app ID or migrating/replacing a budget.
-For each release, `npm run release:prepare -- <version>`, update CHANGELOG.md, merge green CI,
-then push matching `v<version>`. Release tags must point to a main commit with successful CI.
+For app changes, run `npm run release:prepare -- <next-version>` and update CHANGELOG.md in the
+feature PR before merging. After main CI passes, **Publish tested main** creates the matching tag and
+starts **Release** automatically. Documentation-only PRs keep the version unchanged. Never move a tag;
+release tags must point to a main commit with successful CI. Manual recovery can run **Release** on an
+existing tested tag; a manual run on a branch only validates packaging.
 GitHub builds installers and the HA image. Only a completed release is eligible for catalog promotion.
 Up sync has startup/manual Sync Now only; no periodic timer/webhooks. Desktop updates are manual downloads.

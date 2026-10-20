@@ -43,9 +43,14 @@ is needed for server/UI changes.
 
 ## Release a tested update
 
-1. Run `npm run release:prepare -- 0.2.0-up.5` (choose the next version), add CHANGELOG.md notes,
-   and merge that release PR once **CI passed** is green.
-2. Push `v0.2.0-up.5` pointing at that tested main commit. Never move or reuse a published tag.
+1. Include `npm run release:prepare -- 0.2.0-up.5` (choose the next unused version) and CHANGELOG.md
+   notes in the feature/fix PR. Documentation-only changes leave the version unchanged.
+2. Merge after **CI passed** is green. CI runs again on the main commit; after it succeeds,
+   **Publish tested main** creates the matching `v0.2.0-up.5` tag and explicitly starts **Release**.
+   It only accepts this fork's main push CI, skips superseded commits and versions already tagged,
+   and never moves/reuses a tag or overwrites an existing release. The bot token needs no PAT and
+   cannot access Home Assistant. A missing version bump is reported as a skipped release; agents
+   must prepare the version as part of app changes, so the owner only needs to merge the tested PR.
 3. **Release** builds Windows, macOS (ARM/Intel), Linux installers and the HA image for AMD64/ARM64.
    It smoke-tests the actual HA container, including login, private Supervisor options, strict-host
    watchdog and persistent database/key. Desktop packages start in disposable CI-only local profiles.
@@ -62,8 +67,20 @@ is needed for server/UI changes.
    there is no desktop auto-updater. Server UI/Up changes appear in the connected desktop without
    reinstalling it.
 
-A merge alone does not deploy anything. Pre-release `-up.N` tags are intentional for this fork.
-Keep the GHCR package public so Home Assistant can pull it without storing registry credentials.
+A merged, prepared app version now starts publication automatically after main CI; it does not
+publish unchecked code or directly deploy to Home Assistant. If the publishing step fails before
+starting **Release**, retry **Publish tested main** on main. If a tag already belongs to an earlier
+main commit, run **Release** manually on that exact tag after verifying its successful main CI;
+never retag it. Release still publishes only after all installer/image checks succeed.
+
+To receive routine automatic HA updates, add the catalog repository using Settings → Apps → Install
+app → Repositories, then enable **Auto update** on the catalog-installed FlyBudget app after the
+backup/update path has been verified. Adding a repository only registers a source; it does not
+replace the local app, move its budget or enable updates on that local app. The existing local
+preview still needs separately authorised migration before it can follow catalog updates.
+
+Pre-release `-up.N` tags are intentional for this fork. Keep the GHCR package public so Home Assistant
+can pull it without storing registry credentials.
 
 ## First release and migration
 
