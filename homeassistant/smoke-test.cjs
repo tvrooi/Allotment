@@ -48,6 +48,17 @@ const keyHash = () =>
 
 async function run() {
   try {
+    const metadata = JSON.parse(docker('image', 'inspect', image))[0];
+    const labels = metadata.Config.Labels;
+    const expectedArch = { arm64: 'aarch64', amd64: 'amd64' }[metadata.Architecture];
+    assert.ok(expectedArch, 'Only the declared HA architectures are supported.');
+    assert.equal(
+      labels['io.hass.arch'],
+      expectedArch,
+      'Prebuilt images need HA architecture labels.',
+    );
+    assert.equal(labels['io.hass.type'], 'app');
+    assert.equal(labels['io.hass.version'], require('../package.json').version);
     docker('volume', 'create', volume);
     // Supervisor-managed paths can be root-only. Keep these permissions inside
     // the Linux volume; a macOS bind mount does not reproduce them reliably.

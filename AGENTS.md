@@ -38,6 +38,8 @@ Keep this file and CLAUDE.md identical.
   HTTPS away from home; never bypass TLS errors.
 - HA `/data/options.json` stays root-only; root opens it before dropping to uid 1000. Never regenerate
   an existing key. Supervisor watchdog must be TCP because strict hosts reject its IP-based HTTP probe.
+- Prebuilt HA images need `io.hass.type=app`, version and architecture labels. BuildKit says `arm64`;
+  HA says `aarch64`. The container smoke test verifies the actual image metadata.
 - Never migrate, replace or delete a live budget as part of a code release. HA catalog installation has
   a different app ID from `local_flybudget_up`; migration needs a cold backup including the encryption key.
 
