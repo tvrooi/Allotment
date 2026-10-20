@@ -1,3 +1,7 @@
+> Detailed architecture reference carried from the working preview. For current fork policy,
+> release commands and focused checks, AGENTS.md and MAINTENANCE.md govern. References below
+> to the upstream CLA, registry and contributor workflow describe upstream only.
+
 # AGENTS.md
 
 This file provides guidance to AI coding agents (Codex and others) when working with code in this repository.

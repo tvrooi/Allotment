@@ -15,7 +15,7 @@ fixes land on `main` and ship in the next release; older releases are not patche
 **Please do not open a public issue for security problems.**
 
 Report privately through GitHub: go to the
-[Security tab](https://github.com/dtymoszenko/FlyBudget/security) →
+[Security tab](https://github.com/tvrooi/FlyBudget/security) →
 **Report a vulnerability**. Please include:
 
 - what the issue is and where (file, endpoint, or screen)
@@ -23,16 +23,8 @@ Report privately through GitHub: go to the
 - the impact you think it has
 - your OS and whether you're using the web app or the desktop (Electron) app
 
-What to expect:
-
-- **Acknowledgement** within 7 days
-- **Status updates** at least every 14 days while it's being investigated
-- If **accepted**, a fix is prioritized and credited to you in the release notes
-  and advisory (unless you'd rather stay anonymous)
-- If **declined**, you'll get an explanation of why it isn't considered a vulnerability
-
-This is a personal open-source project maintained in my spare time, so response
-times are best-effort.
+This is a personal community fork. Reports are handled on a best-effort basis; there is no
+promised response time. Coordinate upstream vulnerabilities with the original project when appropriate.
 
 ## Scope
 
@@ -52,7 +44,7 @@ Out of scope:
 
 - attacks that require someone who already has full access to your user account
   or machine
-- vulnerabilities in third-party services (Plaid, SimpleFIN) themselves, which
+- vulnerabilities in third-party services (Up, Plaid, SimpleFIN) themselves, which
   should be reported to them
 - outdated dependencies with no demonstrated impact on FlyBudget (Dependabot
   already tracks these)
@@ -61,7 +53,7 @@ Out of scope:
 
 FlyBudget is local-first: there is no FlyBudget server, account, telemetry, or
 crash reporting. Your data never leaves your computer except when bank sync
-talks to Plaid or SimpleFIN on your behalf.
+talks to Up, Plaid, SimpleFIN or Enable Banking on your behalf.
 
 You can also host FlyBudget yourself with Docker ("server mode", see
 [Self-hosting](https://flybudget.org/community/self-hosting)). Then the data
