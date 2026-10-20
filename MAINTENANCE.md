@@ -49,8 +49,8 @@ verification. A Home Assistant full backup is the rollback path.
 
 Fetch `upstream/main`, merge it into a dedicated branch, review schema/security changes and resolve
 conflicts. Run CI and release normally. Never pull upstream directly into the production app.
-The original AGPL license/copyright notices remain. Upstream's CLA workflow and dependency auto-merge
-are scoped to upstream; this fork does not accept its CLA or auto-merge updates on your behalf.
+The original AGPL license/copyright notices remain. The inherited CLA and dependency auto-merge workflows are removed in this fork by owner approval.
+CI, container vulnerability scans and Scorecard remain active. No upstream CLA was accepted.
 
 ## Current limits
 
