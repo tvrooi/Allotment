@@ -70,6 +70,12 @@ async function runSync(): Promise<UpSyncResult> {
         const rows = unique.flatMap((t) => upImportRows(t, mapping.upAccountId));
         const target = upSettledBalance(bank, unique);
         const ruleOpts = { rules: loadRules(), ctx: buildRuleContext(), currencies: ctx };
+        const hadHistory = !!db
+          .select({ id: transactions.id })
+          .from(transactions)
+          .where(eq(transactions.accountId, accountId))
+          .get();
+        let balanceMismatch = false;
         db.transaction(() => {
           let added = 0;
           let skipped = 0;
@@ -107,10 +113,20 @@ async function runSync(): Promise<UpSyncResult> {
           const startingBalance = target - accountTransactionSum(accountId);
           if (!Number.isSafeInteger(startingBalance))
             throw new UpError('Up returned amounts outside the supported range.');
-          db.update(accounts).set({ startingBalance }).where(eq(accounts.id, accountId)).run();
+          // Establish an opening balance only for an empty register. Later discrepancies
+          // need review, not an invisible historical adjustment that hides missing postings.
+          if (!hadHistory) {
+            db.update(accounts).set({ startingBalance }).where(eq(accounts.id, accountId)).run();
+          } else {
+            balanceMismatch = startingBalance !== local.startingBalance;
+          }
           result.added += added;
           result.skipped += skipped;
         });
+        if (balanceMismatch)
+          result.errors.push(
+            'An Up account balance differs from its imported register. Review transactions and reconcile; the opening balance was preserved.',
+          );
       } catch (err) {
         result.errors.push(upErrorMessage(err));
       }

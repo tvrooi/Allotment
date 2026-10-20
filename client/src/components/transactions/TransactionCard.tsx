@@ -44,7 +44,7 @@ export function TransactionCard({
     <span className="inline-flex items-center gap-1 text-brand-600">
       <Split size={12} aria-hidden /> Split ({tx.children!.length})
     </span>
-  ) : isTransfer ? (
+  ) : isTransfer && !tx.isBudgetBoundary ? (
     <span className="inline-flex items-center gap-1">
       <ArrowLeftRight size={12} aria-hidden /> Transfer
     </span>

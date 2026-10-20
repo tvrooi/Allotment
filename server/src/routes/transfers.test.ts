@@ -93,7 +93,7 @@ describe('transfers between existing transactions', () => {
     expect(linked.body.created).toBe(false);
     expect(row(out.id)).toMatchObject({
       transferTransactionId: into.id,
-      categoryId: null,
+      categoryId: 'c-card',
       payeeName: 'Transfer: Card A',
       importedPayee: 'PAYMENT TO CARD',
     });

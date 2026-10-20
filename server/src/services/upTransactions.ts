@@ -28,6 +28,7 @@ export const upTransactionSchema = z.object({
       .object({ text: z.string().max(10_000) })
       .nullable()
       .optional(),
+    roundUp: z.object({ amount: money, boostPortion: money.nullable() }).nullable().optional(),
     cashback: z
       .object({ description: z.string().max(10_000), amount: money })
       .nullable()
@@ -62,6 +63,8 @@ export function upImportRows(tx: UpTransaction, upAccountId: string) {
     notes: notes.join(' · ').slice(0, 5_000) || null,
     importedId: `up:${upAccountId}:${tx.id}`,
   };
+  // Round-up metadata alone does not identify another bank posting or destination.
+  // Keep the purchase amount and bank ID; never add the boost twice or invent transfer legs.
   // Cashback is additional money received, not a reduction in the purchase amount.
   return a.cashback
     ? [

@@ -10,6 +10,7 @@ export function cashFlowSelection(
   to: string,
 ) {
   return {
+    budgetReport: true,
     categoryId: node.nodeType === 'subcategory' ? (node.categoryId ?? undefined) : undefined,
     categoryGroupId: node.nodeType === 'expense-group' ? (node.groupId ?? undefined) : undefined,
     uncategorized:

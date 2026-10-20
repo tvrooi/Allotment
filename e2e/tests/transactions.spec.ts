@@ -397,6 +397,52 @@ test.describe('transfers between existing transactions (#89)', () => {
   });
 });
 
+test('categorises a transfer across the budget boundary without changing either bank row', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Budget checking', 100_000);
+  const retirement = await api.createAccount('Retirement tracking', 0, 'retirement');
+  await importRows(api, checking.id, [
+    { date: isoDay(), amount: -10_000, payeeName: 'CONTRIBUTION' },
+  ]);
+  await importRows(api, retirement.id, [{ date: isoDay(), amount: 10_000, payeeName: 'RECEIVED' }]);
+  const [out] = await api.transactions(`?account_id=${checking.id}`);
+  const [into] = await api.transactions(`?account_id=${retirement.id}`);
+  await api.call('POST', '/transactions/transfers/link', {
+    transactionId: out.id,
+    otherTransactionId: into.id,
+  });
+  await open(page, `/accounts/${checking.id}`);
+  await row(page, 'Transfer: Retirement tracking').click();
+  const panel = page.getByRole('complementary', { name: 'Transaction details' });
+  await expect(panel.getByText(/Transfer across the budget boundary/)).toBeVisible();
+  await panel.getByRole('button', { name: 'Uncategorized', exact: true }).click();
+  await page.getByPlaceholder('Search categories...').fill('Savings');
+  await page.getByRole('button', { name: /Savings$/ }).click();
+  await expect(panel.getByRole('button', { name: /Savings$/ })).toBeVisible();
+  const [reviewed] = await api.transactions(`?account_id=${checking.id}`);
+  expect(reviewed).toMatchObject({
+    id: out.id,
+    importedId: out.importedId,
+    amount: -10_000,
+    categoryId: (await api.category('Savings')).id,
+    transferTransactionId: into.id,
+  });
+  const [counterpart] = await api.transactions(`?account_id=${retirement.id}`);
+  expect(counterpart).toMatchObject({
+    id: into.id,
+    importedId: into.importedId,
+    amount: 10_000,
+    categoryId: null,
+  });
+  await panel.getByRole('button', { name: 'Not a transfer', exact: true }).click();
+  await expect(row(page, 'CONTRIBUTION')).toBeVisible();
+  expect((await api.transactions(`?account_id=${checking.id}`))[0].categoryId).toBe(
+    reviewed.categoryId,
+  );
+});
+
 test('sending a new transaction twice (offline retry) saves it once', async ({ api }) => {
   const checking = await api.createAccount('Everyday Checking', 100_000);
   const savings = await api.createAccount('Savings', 0, 'savings');
