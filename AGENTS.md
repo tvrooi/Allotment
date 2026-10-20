@@ -47,8 +47,15 @@ Keep this file and CLAUDE.md identical.
 
 Use a feature branch and PR to this fork (explicit `--repo tvrooi/FlyBudget`, never upstream by accident).
 Conventional commits. Keep a brief test result in the PR. Never accept the upstream CLA on the user's behalf.
-Do not auto-merge dependency updates. Do not publish a release unless requested.
-For a requested release, `npm run release:prepare -- <version>`, update CHANGELOG.md, merge green CI,
+Do not auto-merge dependency updates.
+For owner-requested features and fixes, standing authorization covers technical review, merging green PRs,
+publishing tested releases, backing up and updating the existing HA app in place, and providing desktop
+download links. Complete these routine steps without asking again; an explicit per-task restriction wins.
+Documentation-only changes do not need a release. Before a live update, verify the installed app identity,
+complete a restorable cold backup including the encryption key, then verify health and budget access after
+updating. Missing administrative access or an unverified backup is a blocker to installation, not success.
+The standing authorization does not cover moving to a different HA app ID or migrating/replacing a budget.
+For each release, `npm run release:prepare -- <version>`, update CHANGELOG.md, merge green CI,
 then push matching `v<version>`. Release tags must point to a main commit with successful CI.
 GitHub builds installers and the HA image. Only a completed release is eligible for catalog promotion.
 Up sync has startup/manual Sync Now only; no periodic timer/webhooks. Desktop updates are manual downloads.
