@@ -36,7 +36,7 @@ import { goalsRouter } from './routes/goals.js';
 import { plaidRouter } from './routes/plaid.js';
 import { simplefinRouter } from './routes/simplefin.js';
 import { upRouter } from './routes/up.js';
-import { syncUp } from './services/upSyncService.js';
+import { syncUp, startUpPolling } from './services/upSyncService.js';
 import { enableBankingCallback, enableBankingRouter } from './routes/enableBanking.js';
 import { serverRouter } from './routes/server.js';
 import { currencyRouter, setRateDownloader } from './routes/currency.js';
@@ -162,6 +162,8 @@ export async function startServer(port: number | string): Promise<void> {
         ).unref();
       }
       runStartupTasks();
+      const stopUpPolling = startUpPolling();
+      server.once('close', stopUpPolling);
       resolve();
     });
     server.on('error', (err) => console.error('Server error:', err));

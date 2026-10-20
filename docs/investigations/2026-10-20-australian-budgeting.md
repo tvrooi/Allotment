@@ -271,3 +271,62 @@ The key design decision is to share the same accounting definitions across repor
 - Goals: `server/src/routes/goals.ts`, `client/src/pages/Goals.tsx`; undo: `client/src/store/undoStore.ts` and mutation hooks.
 
 Public sources were checked on 20 October 2026. Product/API capabilities can change; experimental Actual features are identified as such. The original investigation changed no application code; phase-one verification is recorded above and in its pull request. Numeric examples and hypothetical payday dates were checked independently.
+
+## Phase two: sync review and supported round-up details (20 October 2026)
+
+A later owner-authorised, read-only inspection of bank-source event shapes ran on the HA host.
+It returned only aggregate structural facts: settled debit purchases have round-up metadata
+but no transfer-account relationship; separately described positive saver credits have a
+transfer-account relationship but no round-up object or purchase-level link. No bank identifiers,
+amounts, descriptions, credentials or raw payloads were exported to this checkout. This confirms
+why matching equal amounts or descriptions is insufficient to pair purchases and saver credits.
+
+Implemented an additive bank-observation table, separate from editable/reconciled transactions.
+It retains only status, signed minor-unit amounts, original bank timestamps, trimmed description/notes,
+round-up/boost/cashback details and the supplied transfer-account relationship. A full validated
+account response is required before observations or imports change. New settled IDs import once;
+existing IDs are not rewritten. Held transactions remain outside the ledger. Omitted observations
+are flagged, never treated as proof of deletion/reversal. Changes are compared against earlier
+bank observations, not against user edits. The first observation of existing history establishes
+a baseline; it cannot recover bank corrections from before that observation.
+
+Settings → Connected Banks → Up includes a paginated review queue. Acknowledgement means
+**keep the local record** and uses a revision check to reject stale review actions. It is not
+an action to apply bank corrections. Reconciled rows, categories, splits, notes, amounts, bank IDs
+and opening balances remain intact. Review history/observations survive JSON backup/restore
+(version 4) and disconnect; tokens remain excluded from portable backups. Account deletion
+removes its observations through the existing account deletion boundary.
+
+Background polling is opt-in (off, 15, 30, 60 or 240 minutes), executes on the server, shares the
+manual/startup in-flight sync, pauses during connection setup, and backs off repeated failures
+to at most one attempt per day. It re-reads the complete history, preserving overlap for old
+settlements/corrections instead of relying on a lossy date cursor. It does not use webhooks.
+Only a completely successful run advances last-successful-sync time; last completion and
+next attempt are separate. Active clients refresh after a background completion. Account
+initialization is now persistent, preventing a deleted register from re-bootstrapping an
+existing opening balance on its next sync.
+
+Daily expansion shows **round-up metadata on settled purchases**, grouped by bank-local creation
+date and source account, including boosts once. It is deliberately not labelled confirmed savings
+or linked transfers. Saver credits are not added again. Dates/late settlements update the earlier
+day; held amounts are excluded. These are recent source details, with the original register
+always accessible. No destination is inferred, and no financial ledger backfill is performed.
+
+**Remaining uncertainties/work:** a supported purchase-to-saver correlation, source debit
+accounting across boosts/holds/reversals, positive round-up reversal semantics, reviewed application
+of bank corrections, transfer-match inbox integration, and incremental-history optimisation with
+periodic full reconciliation. Daily confirmed transfer grouping and automatic round-up repair
+remain deferred. Acknowledgement is the only new review write; it cannot alter a bank transaction.
+
+The parallel desktop updater uses only the native main process; remote pages get no updater bridge.
+Unsigned builds check public fork releases and offer the correct installer download inside the app.
+Apple membership/signing is optional for now; automatic replacement remains restricted to verified
+Developer ID signed Mac builds. The first updater build requires one manual install; a real
+signed-to-signed update still needs verification after the owner configures signing secrets.
+Windows/Linux automatic installation remains disabled pending platform verification support.
+
+Verification for this suite: 46 focused server tests, 206 client tests, 14 desktop tests and three
+Up browser scenarios passed. The browser scenarios include a phone viewport and assert that review
+acknowledgement leaves ledger rows unchanged. Server and Electron TypeScript checks passed.
+Unsigned release checking is tested separately from signed installation; a real signed-to-signed
+installation remains unverified and is not required for the current manual-installer path.

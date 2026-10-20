@@ -2,11 +2,12 @@ import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { useState } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { useUpConnection, useRefreshUp } from '../../hooks/useUp';
-import { syncUp, disconnectUp, type UpSyncResult } from '../../api/up';
+import { syncUp, disconnectUp, setUpPolling, type UpSyncResult } from '../../api/up';
 import { useCanSave } from '../../hooks/useConnection';
 import { Button } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { UpConnectModal } from './UpConnectModal';
+import { UpReview } from './UpReview';
 
 export function UpSettings() {
   const { data: connection, isLoading, error: loadError } = useUpConnection();
@@ -34,7 +35,8 @@ export function UpSettings() {
     <div className="space-y-4 max-w-xl">
       <p className="text-xs text-text-secondary">
         Connect directly to Up in Australia with a personal access token. No bank-feed subscription
-        is required. Sync runs when FlyBudget starts and when you choose Sync Now.
+        is required. Sync runs at startup and with Sync Now. Optional background sync runs on your
+        server, including when this window is closed.
       </p>
       {isLoading && <Loader2 size={20} className="animate-spin" />}
       {connection && (
@@ -55,6 +57,45 @@ export function UpSettings() {
           {connection.lastSyncedAt && (
             <p className="text-xs text-text-tertiary">
               Last synced: {new Date(connection.lastSyncedAt).toLocaleString()}
+            </p>
+          )}
+          <label className="block text-xs text-text-secondary">
+            Background sync
+            <select
+              aria-label="Background sync"
+              className="block mt-1 rounded border border-border bg-surface p-2 text-text"
+              value={connection.pollIntervalMinutes ?? 0}
+              disabled={!canSave || busy || connection.syncStatus === 'syncing'}
+              onChange={async (e) => {
+                setBusy(true);
+                setError(null);
+                try {
+                  await setUpPolling(Number(e.target.value));
+                  await refresh();
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'Could not save background sync.');
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              <option value={0}>Off · startup and manual only</option>
+              {[15, 30, 60, 240].map((minutes) => (
+                <option key={minutes} value={minutes}>
+                  Every {minutes} minutes
+                </option>
+              ))}
+            </select>
+          </label>
+          {connection.nextSyncAt && (
+            <p className="text-xs text-text-tertiary">
+              Next background attempt: {new Date(connection.nextSyncAt).toLocaleString()}. Failures
+              delay retries.
+            </p>
+          )}
+          {connection.syncStatus === 'syncing' && (
+            <p role="status" className="text-xs text-text-secondary">
+              Syncing with Up…
             </p>
           )}
           <div className="flex flex-wrap gap-2">
@@ -98,6 +139,7 @@ export function UpSettings() {
         </p>
       )}
       <SavingPausedHint />
+      {connection && <UpReview canSave={canSave} />}
       <UpConnectModal
         isOpen={showConnect}
         onClose={() => {
@@ -111,7 +153,7 @@ export function UpSettings() {
         title="Disconnect Up"
         danger
         confirmLabel="Disconnect"
-        message="FlyBudget will forget your token and account links. Your accounts and transactions stay. To revoke the token itself, also revoke it in Up’s developer portal."
+        message="FlyBudget will forget your token and account links. Your accounts, transactions and observed bank details stay. To revoke the token itself, also revoke it in Up’s developer portal."
         onConfirm={async () => {
           await disconnectUp();
           setResult(null);

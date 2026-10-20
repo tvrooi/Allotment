@@ -21,11 +21,13 @@ import {
   schedules,
   simplefinAccountMappings,
   upAccountMappings,
+  upSourceRecords,
   enableBankingAccountMappings,
   transactions,
   transferMatchDismissals,
 } from '../db/schema.js';
 import { fillMissingMainAmounts, ratesChanged } from './mainAmountService.js';
+import { upObservationSchema } from './upTransactions.js';
 
 // Full JSON backup of the user's data, and restoring one.
 //
@@ -36,7 +38,7 @@ import { fillMissingMainAmounts, ratesChanged } from './mainAmountService.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 3;
+export const BACKUP_VERSION = 4;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -48,6 +50,7 @@ const TABLES = {
   payees,
   schedules,
   transactions,
+  upSourceRecords,
   scheduleOccurrences,
   scheduleMatchDismissals,
   transferMatchDismissals,
@@ -133,6 +136,24 @@ export function parseBackup(input: unknown): ParsedBackup {
             : typeof value === 'string' && value.length <= 1_000_000;
         if (!ok) throw new InvalidBackupError(`Row ${i + 1} of "${name}" has an invalid "${key}"`);
         row[key] = value;
+      }
+      if (name === 'upSourceRecords') {
+        for (const field of ['sourceJson', 'previousJson']) {
+          if (row[field] == null) continue;
+          try {
+            upObservationSchema.parse(JSON.parse(row[field] as string));
+          } catch {
+            throw new InvalidBackupError(`Row ${i + 1} of "${name}" has invalid bank details`);
+          }
+        }
+        if (
+          !['new', 'changed', 'missing', 'pending', 'reviewed'].includes(
+            String(row.reviewState ?? 'reviewed'),
+          ) ||
+          (row.revision !== undefined && Number(row.revision) < 1) ||
+          (row.seenInLatest !== undefined && ![0, 1].includes(Number(row.seenInLatest)))
+        )
+          throw new InvalidBackupError('Invalid Up review state');
       }
       return row;
     });

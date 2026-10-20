@@ -17,7 +17,11 @@ without reinstalling it. Desktop-specific changes require downloading a new inst
 
 macOS builds are ad-hoc signed and unnotarized. Windows builds are not Authenticode-signed.
 Up currently imports settled AUD transactions, including Savers and available 2Up accounts.
-Sync runs at server startup and via **Sync Now**; there is no periodic timer or webhook yet.
+Sync runs at server startup and via **Sync Now**. Settings → Connected Banks → Up also offers
+opt-in background sync every 15, 30, 60 or 240 minutes, with delayed retries after failures.
+Review new imports and bank changes there; acknowledging never overwrites local edits. Daily
+round-up details show purchase metadata without inventing transfers or double-counting saver credits.
+No webhooks are used.
 
 ## Moving an existing local HA preview
 
@@ -36,6 +40,9 @@ when needed. Use feature branches and PRs to this fork; green CI is required on 
 `0.2.0-up.N` version and release notes. After merging and successful main CI, GitHub automatically tags
 that prepared version, builds and tests installers/containers, then publishes the completed release.
 The HA catalog follows verified releases; its installed app can use Home Assistant's **Auto update**.
+Desktops offer **Budget → Check for desktop updates…** and installer downloads. Verified signed Mac
+builds additionally support restart-and-install. The first updater build needs one manual install.
+[Desktop updates and optional signing](docs/DESKTOP-UPDATES.md).
 Documentation-only merges do not publish a new version. Your local preview does not move into the
 catalog app automatically, and a merge does not bypass release checks or the backup/migration rules.
 

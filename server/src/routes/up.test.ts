@@ -5,13 +5,20 @@ import type { AddressInfo } from 'net';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { eq, sql } from 'drizzle-orm';
 import { db, sqlite } from '../db/index.js';
-import { accounts, transactions, upAccountMappings, upConnections } from '../db/schema.js';
+import {
+  accounts,
+  transactions,
+  upAccountMappings,
+  upConnections,
+  upSourceRecords,
+} from '../db/schema.js';
 import { upRouter } from './up.js';
 import { createBackup, parseBackup, restoreBackup } from '../services/backupService.js';
 import { linkTransfer } from '../services/transferService.js';
-import { syncUp } from '../services/upSyncService.js';
+import { syncUp, syncUpIfDue, nextUpSyncAt, setUpConnecting } from '../services/upSyncService.js';
 import { getUpTransactions, validateUpPage } from '../services/upService.js';
-import { startUpMock, UP_TEST_TOKEN } from '../test/upMock.js';
+import { startUpMock, UP_TEST_TOKEN, upMockTransaction } from '../test/upMock.js';
+import { roundUpDays } from '../services/upReviewService.js';
 
 let mock: Awaited<ReturnType<typeof startUpMock>>;
 let server: Server;
@@ -66,6 +73,257 @@ async function mapSpending() {
 }
 
 describe('native Up integration', () => {
+  it('backs off a damaged encrypted connection without exposing it or calling the bank', async () => {
+    await mapSpending();
+    const calls = mock.calls();
+    await request('/settings', { pollIntervalMinutes: 15 }, 'PATCH');
+    sqlite.prepare('UPDATE up_connections SET access_token = ?').run('enc:v1:damaged-test-value');
+    const result = await syncUp();
+    expect(result.errors).toEqual([
+      'Could not read the Up connection. Check the saved connection and encryption key.',
+    ]);
+    const connection = await (await request('/connection', undefined, 'GET')).json();
+    expect(connection).toMatchObject({ syncStatus: 'error', pollIntervalMinutes: 15 });
+    expect(connection.nextSyncAt).toBeTruthy();
+    expect(mock.calls()).toBe(calls);
+    expect(JSON.stringify(connection)).not.toContain('damaged-test-value');
+  });
+  it('keeps a previously settled bank regression in review, including after acknowledgement', async () => {
+    await mapSpending();
+    await syncUp();
+    const snapshot = db.select().from(transactions).all();
+    mock.setHistory('spending', [
+      upMockTransaction('salary', 10000),
+      upMockTransaction('coffee', -1000, 'HELD'),
+      upMockTransaction('held', -500, 'HELD'),
+    ]);
+    await syncUp();
+    const changed = db
+      .select()
+      .from(upSourceRecords)
+      .where(eq(upSourceRecords.importedId, 'up:spending:coffee'))
+      .get()!;
+    expect(changed.reviewState).toBe('changed');
+    await request('/review/acknowledge', {
+      importedId: changed.importedId,
+      revision: changed.revision,
+    });
+    await syncUp();
+    expect(
+      db
+        .select()
+        .from(upSourceRecords)
+        .where(eq(upSourceRecords.importedId, changed.importedId))
+        .get()!.reviewState,
+    ).toBe('reviewed');
+    expect(db.select().from(transactions).all()).toEqual(snapshot);
+  });
+  it('validates portable source details before any restore and preserves first-sync historical edits', async () => {
+    await mapSpending();
+    await syncUp();
+    const original = db.select().from(transactions).get()!;
+    db.update(transactions)
+      .set({ notes: 'Already reviewed', reconciled: 1 })
+      .where(eq(transactions.id, original.id))
+      .run();
+    db.delete(upSourceRecords).run();
+    await syncUp();
+    expect(
+      db
+        .select()
+        .from(upSourceRecords)
+        .all()
+        .filter((r) => r.transactionId)
+        .every((r) => r.reviewState === 'reviewed'),
+    ).toBe(true);
+    const backup = createBackup();
+    const malformed = structuredClone(backup) as Record<string, any>;
+    malformed.upSourceRecords[0].sourceJson = '{}';
+    expect(() => parseBackup(malformed)).toThrow('invalid bank details');
+    expect(
+      db.select().from(transactions).where(eq(transactions.id, original.id)).get(),
+    ).toMatchObject({ notes: 'Already reviewed', reconciled: 1 });
+  });
+  it('records independent bank observations, pending activity and idempotent new-import reviews', async () => {
+    await mapSpending();
+    await syncUp();
+    const get = async () => (await request('/review', undefined, 'GET')).json();
+    expect(await get()).toMatchObject({ total: 2, pending: 1 });
+    const item = (await get()).items[0];
+    expect(
+      (
+        await request('/review/acknowledge', {
+          importedId: item.importedId,
+          revision: item.revision,
+        })
+      ).ok,
+    ).toBe(true);
+    expect(
+      (
+        await request('/review/acknowledge', {
+          importedId: item.importedId,
+          revision: item.revision,
+        })
+      ).status,
+    ).toBe(409);
+    await syncUp();
+    expect(await get()).toMatchObject({ total: 1, pending: 1 });
+    expect(db.select().from(upSourceRecords).all()).toHaveLength(3);
+    expect(JSON.stringify(createBackup())).toContain('upSourceRecords');
+    expect(JSON.stringify(createBackup())).not.toContain(UP_TEST_TOKEN);
+    const backup = createBackup();
+    restoreBackup(parseBackup(backup));
+    expect(await get()).toMatchObject({ total: 1, pending: 1 });
+  });
+  it('compares bank changes against bank history, preserves local edits, and rejects stale review', async () => {
+    await mapSpending();
+    await syncUp();
+    const id = 'up:spending:coffee';
+    const row = db.select().from(transactions).where(eq(transactions.importedId, id)).get()!;
+    const revision = db
+      .select()
+      .from(upSourceRecords)
+      .where(eq(upSourceRecords.importedId, id))
+      .get()!.revision;
+    db.update(transactions)
+      .set({ amount: -900, notes: 'My note', reconciled: 1 })
+      .where(eq(transactions.id, row.id))
+      .run();
+    const before = db.select().from(transactions).all();
+    mock.setHistory('spending', [
+      upMockTransaction('salary', 10000),
+      upMockTransaction('coffee', -950),
+      upMockTransaction('held', -500, 'HELD'),
+    ]);
+    await syncUp();
+    const review = await (await request('/review', undefined, 'GET')).json();
+    const item = review.items.find((r: { importedId: string }) => r.importedId === id);
+    expect(item).toMatchObject({
+      reviewState: 'changed',
+      previous: { amount: -1000 },
+      current: { amount: -950 },
+    });
+    expect(db.select().from(transactions).all()).toEqual(before);
+    expect((await request('/review/acknowledge', { importedId: id, revision })).status).toBe(409);
+    expect(
+      (await request('/review/acknowledge', { importedId: id, revision: item.revision })).ok,
+    ).toBe(true);
+    await syncUp();
+    expect(
+      db.select().from(upSourceRecords).where(eq(upSourceRecords.importedId, id)).get()!
+        .reviewState,
+    ).toBe('reviewed');
+  });
+  it('groups settled round-up metadata by bank-local day and source, without inventing money', async () => {
+    await mapSpending();
+    const held = {
+      ...upMockTransaction('late', -1760, 'HELD'),
+      attributes: {
+        ...upMockTransaction('late', -1760, 'HELD').attributes,
+        createdAt: '2026-10-05T00:10:00+11:00',
+        roundUp: {
+          amount: { currencyCode: 'AUD', valueInBaseUnits: -240 },
+          boostPortion: { currencyCode: 'AUD', valueInBaseUnits: -200 },
+        },
+      },
+    };
+    mock.setHistory('spending', [held]);
+    await syncUp();
+    expect(roundUpDays('2026-10-01')).toEqual([]);
+    const settled = {
+      ...held,
+      attributes: { ...held.attributes, status: 'SETTLED', settledAt: '2026-10-07T09:00:00+11:00' },
+    };
+    mock.setHistory('spending', [settled]);
+    await syncUp();
+    expect(roundUpDays('2026-10-01')).toMatchObject([
+      {
+        date: '2026-10-05',
+        amount: 240,
+        boost: 200,
+        purchases: [{ amount: -1760, roundUpAmount: 240 }],
+      },
+    ]);
+    expect(db.select().from(transactions).all()).toHaveLength(1);
+    await syncUp();
+    expect(roundUpDays('2026-10-01')[0].amount).toBe(240);
+    expect(db.select().from(transactions).get()!.importedId).toBe('up:spending:late');
+  });
+  it('flags omitted observations once without deleting ledger rows; failed pages cannot mark records missing', async () => {
+    await mapSpending();
+    await syncUp();
+    const before = db.select().from(transactions).all();
+    mock.setMode('page-failure');
+    await syncUp();
+    expect(
+      db
+        .select()
+        .from(upSourceRecords)
+        .all()
+        .every((r) => r.seenInLatest === 1),
+    ).toBe(true);
+    mock.setMode('normal');
+    mock.setHistory('spending', [
+      upMockTransaction('salary', 10000),
+      upMockTransaction('held', -500, 'HELD'),
+    ]);
+    await syncUp();
+    const missing = db
+      .select()
+      .from(upSourceRecords)
+      .where(eq(upSourceRecords.importedId, 'up:spending:coffee'))
+      .get()!;
+    expect(missing).toMatchObject({ reviewState: 'missing', seenInLatest: 0 });
+    await syncUp();
+    expect(
+      db
+        .select()
+        .from(upSourceRecords)
+        .where(eq(upSourceRecords.importedId, missing.importedId))
+        .get()!.revision,
+    ).toBe(missing.revision);
+    expect(db.select().from(transactions).all()).toEqual(before);
+  });
+  it('does not bootstrap an initialized opening balance after its register was emptied', async () => {
+    const id = await mapSpending();
+    await syncUp();
+    db.delete(transactions).run();
+    mock.setHistory('spending', [
+      upMockTransaction('salary', 10000),
+      upMockTransaction('coffee', -1200),
+      upMockTransaction('held', -500, 'HELD'),
+    ]);
+    expect((await syncUp()).errors.join(' ')).toContain('opening balance was preserved');
+    expect(db.select().from(accounts).where(eq(accounts.id, id)).get()!.startingBalance).toBe(0);
+  });
+  it('polls only when opted in and due, pauses during setup, and backs off errors', async () => {
+    await mapSpending();
+    const calls = mock.calls();
+    await syncUpIfDue();
+    expect(mock.calls()).toBe(calls);
+    expect((await request('/settings', { pollIntervalMinutes: 1 }, 'PATCH')).status).toBe(400);
+    expect((await request('/settings', { pollIntervalMinutes: 15 }, 'PATCH')).ok).toBe(true);
+    await syncUpIfDue();
+    expect(mock.calls()).toBe(calls);
+    db.update(upConnections).set({ nextSyncAt: '2000-01-01T00:00:00Z' }).run();
+    setUpConnecting(true);
+    await syncUpIfDue();
+    expect(mock.calls()).toBe(calls);
+    setUpConnecting(false);
+    await syncUpIfDue();
+    expect(mock.calls()).toBeGreaterThan(calls);
+    mock.setMode('rate-limit');
+    await syncUp();
+    await syncUp();
+    const connection = db.select().from(upConnections).get()!;
+    expect(connection.failureCount).toBe(2);
+    expect(Date.parse(connection.nextSyncAt!) - Date.parse(connection.lastCompletedAt!)).toBe(
+      30 * 60000,
+    );
+    expect(nextUpSyncAt(15, 10, 0)).toBe(new Date(24 * 60 * 60000).toISOString());
+    expect((await request('/settings', { pollIntervalMinutes: 0 }, 'PATCH')).ok).toBe(true);
+    expect(db.select().from(upConnections).get()!.nextSyncAt).toBeNull();
+  });
   it('validates a token before saving it and never exposes it in responses or backups', async () => {
     expect((await request('/setup', { accessToken: 'wrong' })).status).toBe(422);
     expect(db.select().from(upConnections).all()).toHaveLength(0);

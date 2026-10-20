@@ -42,6 +42,22 @@ export const upTransactionSchema = z.object({
 export type UpAccount = z.infer<typeof upAccountSchema>;
 export type UpTransaction = z.infer<typeof upTransactionSchema>;
 
+export const upObservationSchema = z
+  .object({
+    status: z.enum(['HELD', 'SETTLED']),
+    amount: money.shape.valueInBaseUnits,
+    createdAt: timestamp,
+    settledAt: timestamp.nullable(),
+    description: z.string().max(200),
+    notes: z.string().max(5000),
+    roundUpAmount: money.shape.valueInBaseUnits.nullable(),
+    boostAmount: money.shape.valueInBaseUnits.nullable(),
+    cashbackAmount: money.shape.valueInBaseUnits.nullable(),
+    cashbackDescription: z.string().max(200).nullable(),
+    transferAccountId: bankId.nullable(),
+  })
+  .strict();
+
 export class UpError extends Error {}
 export const upErrorMessage = (err: unknown) =>
   err instanceof UpError ? err.message : 'Could not reach Up. Try again later.';

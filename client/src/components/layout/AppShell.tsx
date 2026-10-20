@@ -11,9 +11,11 @@ import { DemoBanner } from '../demo/DemoBanner';
 import { Sidebar, SidebarDrawer } from './Sidebar';
 import { BrandName } from '../ui/BrandName';
 import logoUrl from '/logo.png';
+import { useUpFreshness } from '../../hooks/useUp';
 
 export function AppShell() {
   useUndoKeyboard();
+  useUpFreshness();
   const { data: accounts = [], isLoading } = useAccounts();
   const setupSkipped = usePreferencesStore((s) => s.setupSkipped);
   const isPhone = useIsPhone();

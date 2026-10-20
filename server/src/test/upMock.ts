@@ -29,9 +29,24 @@ export function upMockTransaction(
 export async function startUpMock(port = 0) {
   let mode = 'normal';
   let calls = 0;
+  const histories = new Map<string, ReturnType<typeof upMockTransaction>[]>();
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url!, 'http://localhost');
     const send = (body: unknown, status = 200) => {
+      if (
+        mode === 'round-ups-current' &&
+        body &&
+        typeof body === 'object' &&
+        'data' in body &&
+        Array.isArray(body.data)
+      ) {
+        for (const row of body.data)
+          if (row.attributes?.status) {
+            row.attributes.createdAt = new Date().toISOString();
+            if (row.attributes.status === 'SETTLED')
+              row.attributes.settledAt = new Date().toISOString();
+          }
+      }
       res.writeHead(status, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(body));
     };
@@ -45,6 +60,10 @@ export async function startUpMock(port = 0) {
     if (mode === 'rate-limit') return send({}, 429);
     if (mode === 'malformed') return send({ data: [{ id: 1 }] });
     if (mode === 'slow') await new Promise((r) => setTimeout(r, 100));
+    const overridden = [...histories].find(
+      ([id]) => url.pathname === `/accounts/${id}/transactions`,
+    );
+    if (overridden) return send({ data: overridden[1], links: { next: null } });
     const roundUps = mode.startsWith('round-ups');
     if (url.pathname === '/accounts') {
       const a = (id: string, accountType: string, balance: number) => ({
@@ -138,6 +157,10 @@ export async function startUpMock(port = 0) {
     base: `http://127.0.0.1:${(server.address() as AddressInfo).port}/`,
     setMode: (next: string) => {
       mode = next;
+      histories.clear();
+    },
+    setHistory: (id: string, rows: ReturnType<typeof upMockTransaction>[]) => {
+      histories.set(id, rows);
     },
     calls: () => calls,
     close: () =>
