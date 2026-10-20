@@ -107,3 +107,7 @@ CI, container vulnerability scans and Scorecard remain active. No upstream CLA w
 - Remote desktop budgets require the server to be reachable; no full offline merge.
 - Mac signing/notarization is optional until configured. Unsigned Mac, Windows and Linux builds check for releases in the app and offer installer downloads; automatic installation requires a verified Developer ID signed Mac build.
 - Keep real tokens, passwords, databases, bank exports and deployment hostnames out of GitHub.
+
+If GitHub does not start CI after a main merge, run the **CI** workflow manually on `main`.
+This runs the same checks and preserves the tested-main release gate; never substitute PR checks
+for the main commit or publish an untested tag.
