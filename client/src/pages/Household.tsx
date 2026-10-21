@@ -1,6 +1,8 @@
+import { useSearchParams } from 'react-router-dom';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../api/client';
+import { useSchedules } from '../hooks/useSchedules';
 import { useTransactions } from '../hooks/useTransactions';
 import { useAccounts } from '../hooks/useAccounts';
 
@@ -13,6 +15,8 @@ type Entry = {
   description: string;
   amount: number;
   payerId: string | null;
+  transactionId: string | null;
+  billId: string | null;
   shares: { personId: string; amount: number }[];
 };
 type Bill = {
@@ -48,6 +52,7 @@ function cents(value: FormDataEntryValue | null) {
   return Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
 }
 export default function HouseholdPage() {
+  const [params] = useSearchParams();
   const cache = useQueryClient();
   const [id, setId] = useState('');
   const [error, setError] = useState('');
@@ -73,10 +78,12 @@ export default function HouseholdPage() {
     enabled: !!selected,
   });
   const { data: accounts = [] } = useAccounts();
+  const { data: schedules = [] } = useSchedules();
   const { data: bankPayments = [] } = useTransactions({
     from: from || undefined,
     to: to || undefined,
   });
+  const payment = bankPayments.find((t) => t.id === params.get('transaction'));
   const mutation = useMutation({
     mutationFn: ({
       path,
@@ -256,6 +263,7 @@ export default function HouseholdPage() {
           <section className="border rounded p-4 space-y-3">
             <h2 className="text-xl font-semibold">Record an event</h2>
             <form
+              key={`${selected}-${payment?.id ?? 'manual'}`}
               className="grid gap-3"
               onSubmit={(e) =>
                 submit(e, (f) => ({
@@ -264,7 +272,8 @@ export default function HouseholdPage() {
                     kind,
                     date: f.get('date'),
                     description: f.get('description'),
-                    amount: kind === 'refund' ? undefined : cents(f.get('amount')),
+                    amount:
+                      kind === 'refund' && !f.get('amount') ? undefined : cents(f.get('amount')),
                     payerId: f.get('payerId') || null,
                     recipientId: f.get('recipientId') || null,
                     transactionId: f.get('transactionId') || null,
@@ -300,7 +309,13 @@ export default function HouseholdPage() {
               </label>
               <label>
                 Description
-                <input className={control} name="description" required maxLength={200} />
+                <input
+                  className={control}
+                  name="description"
+                  required
+                  maxLength={200}
+                  defaultValue={payment?.payeeName ?? ''}
+                />
               </label>
               <label>
                 Date
@@ -308,20 +323,30 @@ export default function HouseholdPage() {
                   className={control}
                   type="date"
                   name="date"
-                  defaultValue={today()}
+                  defaultValue={payment?.date ?? today()}
                   required
                 />
               </label>
-              {kind !== 'refund' && (
+              {
                 <label>
-                  Amount (AUD)
-                  <input className={control} name="amount" inputMode="decimal" required />
+                  {kind === 'refund' ? 'Refund amount (AUD, blank = remaining)' : 'Amount (AUD)'}
+                  <input
+                    className={control}
+                    name="amount"
+                    defaultValue={payment ? (Math.abs(payment.amount) / 100).toFixed(2) : ''}
+                    inputMode="decimal"
+                    required={kind !== 'refund'}
+                  />
                 </label>
-              )}
+              }
               {kind !== 'refund' && (
                 <label>
                   Paid by
-                  <select className={control} name="payerId">
+                  <select
+                    className={control}
+                    name="payerId"
+                    defaultValue={payment?.accountId === state.group.accountId ? '' : self?.id}
+                  >
                     {kind === 'expense' && state.group.accountId && (
                       <option value="">Household pool</option>
                     )}
@@ -407,16 +432,14 @@ export default function HouseholdPage() {
               )}
               <label>
                 Existing bank payment (optional)
-                <select className={control} name="transactionId">
+                <select className={control} name="transactionId" defaultValue={payment?.id ?? ''}>
                   <option value="">No bank link</option>
                   {bankPayments
                     .filter(
                       (t) =>
                         !t.isParent &&
                         !t.parentTransactionId &&
-                        !state.events.some(
-                          (e) => (e as Entry & { transactionId: string }).transactionId === t.id,
-                        ),
+                        !state.events.some((e) => e.transactionId === t.id),
                     )
                     .map((t) => (
                       <option key={t.id} value={t.id}>
@@ -459,7 +482,9 @@ export default function HouseholdPage() {
                       defaultValue={(b.reserved / 100).toFixed(2)}
                     />
                   </label>
-                  <button disabled={mutation.isPending || b.status === 'paid'}>
+                  <button
+                    disabled={mutation.isPending || state.events.some((e) => e.billId === b.id)}
+                  >
                     Update reservation
                   </button>
                 </form>
@@ -475,6 +500,7 @@ export default function HouseholdPage() {
                     dueDate: f.get('dueDate'),
                     amount: cents(f.get('amount')),
                     personalShare: cents(f.get('personalShare')),
+                    scheduleId: f.get('scheduleId') || null,
                     reserved: cents(f.get('reserved')),
                   },
                 }))
@@ -491,6 +517,19 @@ export default function HouseholdPage() {
               <label>
                 Estimated / billed total
                 <input name="amount" className={control} required />
+              </label>
+              <label>
+                Recurring schedule (optional)
+                <select name="scheduleId" className={control}>
+                  <option value="">One-off bill</option>
+                  {schedules
+                    .filter((s) => !s.autoCreate)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                </select>
               </label>
               <label>
                 My estimated share

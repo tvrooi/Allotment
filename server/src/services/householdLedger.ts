@@ -30,12 +30,18 @@ type Share = { eventId: string; personId: string; amount: number };
 /** Positive = prepaid credit / owed to the person; negative = owes the group. Pool is implicit. */
 export function householdLedger(people: { id: string }[], events: Event[], shares: Share[]) {
   const balances: Record<string, number> = Object.fromEntries(people.map((p) => [p.id, 0]));
+  const byEvent = new Map<string, Share[]>();
+  for (const share of shares) {
+    const list = byEvent.get(share.eventId) ?? [];
+    list.push(share);
+    byEvent.set(share.eventId, list);
+  }
   let pool = 0;
   for (const e of events) {
     if (e.kind === 'expense' || e.kind === 'refund') {
       if (e.payerId) balances[e.payerId] += e.amount;
       else pool -= e.amount;
-      for (const s of shares.filter((s) => s.eventId === e.id)) balances[s.personId] -= s.amount;
+      for (const s of byEvent.get(e.id) ?? []) balances[s.personId] -= s.amount;
     } else if (e.kind === 'contribution') {
       balances[e.payerId!] += e.amount;
       pool += e.amount;

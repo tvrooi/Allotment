@@ -3,7 +3,11 @@ import { getTableColumns, isNotNull, sql } from 'drizzle-orm';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { databasePath, db, sqlite } from '../db/index.js';
 import {
-  householdGroups, householdPeople, householdEvents, householdShares, householdBills,
+  householdGroups,
+  householdPeople,
+  householdEvents,
+  householdShares,
+  householdBills,
   accounts,
   budgetSettings,
   exchangeRates,
@@ -68,7 +72,11 @@ const TABLES = {
   paydayPlans,
   paydayFundingEvents,
   paydayFundingReceipts,
-  householdGroups, householdPeople, householdEvents, householdShares, householdBills,
+  householdGroups,
+  householdPeople,
+  householdEvents,
+  householdShares,
+  householdBills,
 } satisfies Record<string, SQLiteTable>;
 
 export type BackupTable = keyof typeof TABLES;

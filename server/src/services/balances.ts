@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { accounts, transactions, householdGroups } from '../db/schema.js';
+import { accounts, transactions } from '../db/schema.js';
 
 // A split is stored as a parent row holding the full amount plus child rows holding
 // the parts, all in the same account. Account balances count the parent only;
@@ -17,17 +17,13 @@ export const inAccountBalance: SQL = isNull(transactions.parentTransactionId);
 export const isIncomeOrSpending: SQL = sql`not (${transactions.isAdjustment} = 1 and ${transactions.categoryId} is null)`;
 
 /** Account scope shared by the envelope budget and default income/spending reports. */
+export const personalBudgetAccount: SQL = and(
+  eq(accounts.isOffBudget, 0),
+  sql`not exists (select 1 from household_groups hg where hg.account_id = ${accounts.id})`,
+)!;
 export const onBudget: SQL = inArray(
   transactions.accountId,
-  db
-    .select({ id: accounts.id })
-    .from(accounts)
-    .where(
-      and(
-        eq(accounts.isOffBudget, 0),
-        sql`not exists (select 1 from household_groups hg where hg.account_id = ${accounts.id})`,
-      ),
-    ),
+  db.select({ id: accounts.id }).from(accounts).where(personalBudgetAccount),
 );
 
 /** Only the budget side of a confirmed transfer across the budget boundary counts.

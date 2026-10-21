@@ -377,3 +377,18 @@ financial foundation. Multi-user authentication remains a separate design task.
 The phase 1–3 implementation record above does not establish live
 installation status. No release, budget migration or live deployment is part of
 adding this planning phase.
+
+## Phase four: household attribution and shared expenses (21 October 2026)
+
+Implemented a private AUD household/person ledger and shared bills in `0.2.0-up.8`.
+The owner selected both contribution-based personal budgeting and expense-share
+reporting. Household cash is excluded from the existing personal budget/payday
+funding calculations; real bank records remain unchanged. The ledger supports
+explicit exact/equal/percentage/weighted shares, pool advances, direct payments by
+others, partial net settlements and refunds reversing saved allocations. Shared
+bill reservations cannot reuse received funding, and schedule automatic creation
+is guarded against duplicate bill payments. Personal/household expense scope is
+persistent and exportable. Household and payday history round-trip together in
+backup version 6. See [Households](../HOUSEHOLDS.md) for setup, accounting policies,
+net-worth scope and remaining boundaries. Phase 6 remains a separate workstream;
+this phase reuses the existing personal budget boundary and payday calculations.

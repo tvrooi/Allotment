@@ -1,3 +1,4 @@
+import { householdBills } from '../db/schema.js';
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import { schedules, scheduleOccurrences, transactions, payees } from '../db/schema.js';
@@ -368,6 +369,14 @@ schedulesRouter.put('/:id', (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const data = parsed.data;
+  if (
+    data.autoCreate === 1 &&
+    db.select().from(householdBills).where(eq(householdBills.scheduleId, existing.id)).get()
+  )
+    return res.status(400).json({
+      error:
+        'Shared bills must match an existing payment; automatic creation would risk duplicates',
+    });
   if (
     data.recurrenceRule &&
     data.recurrenceRule.type !== (data.recurrenceType ?? existing.recurrenceType)

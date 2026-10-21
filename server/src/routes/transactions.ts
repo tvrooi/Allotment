@@ -1,7 +1,7 @@
 import { householdEvents } from '../db/schema.js';
 import { Router, type Response } from 'express';
 import { db } from '../db/index.js';
-import { transactions, payees, accounts, categories } from '../db/schema.js';
+import { transactions, payees, accounts, categories, categoryGroups } from '../db/schema.js';
 import {
   eq,
   and,
@@ -45,13 +45,35 @@ import { isForeign } from '../utils/currencies.js';
 
 export const transactionsRouter = Router();
 transactionsRouter.param('id', (req, res, next, id) => {
-  if (
-    req.method !== 'GET' &&
-    db.select().from(householdEvents).where(eq(householdEvents.transactionId, id)).get()
-  ) {
-    return res
-      .status(409)
-      .json({ error: 'Remove the linked household entry before changing this bank transaction' });
+  const linked = db
+    .select()
+    .from(householdEvents)
+    .where(eq(householdEvents.transactionId, id))
+    .get();
+  if (linked && req.method !== 'GET') {
+    const safeEdit =
+      req.method === 'PUT' &&
+      Object.keys(req.body ?? {}).every((k) =>
+        ['categoryId', 'notes', 'payeeId', 'payeeName', 'reconciled'].includes(k),
+      );
+    if (!safeEdit)
+      return res.status(409).json({
+        error:
+          'Remove the linked household entry before changing the payment amount, date or account',
+      });
+    if ((linked.kind === 'settlement' || linked.kind === 'refund') && req.body.categoryId) {
+      const category = db
+        .select({ income: categoryGroups.isIncome })
+        .from(categories)
+        .innerJoin(categoryGroups, eq(categories.groupId, categoryGroups.id))
+        .where(eq(categories.id, req.body.categoryId))
+        .get();
+      if (category?.income)
+        return res.status(400).json({
+          error:
+            'Household repayments and refunds belong in the original expense category, not income',
+        });
+    }
   }
   next();
 });

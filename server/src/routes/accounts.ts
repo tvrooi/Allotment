@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
-import { accounts, transactions } from '../db/schema.js';
+import { accounts, transactions, householdGroups } from '../db/schema.js';
 import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -245,6 +245,17 @@ accountsRouter.put('/:id', (req, res) => {
   if (!existing) return res.status(404).json({ error: 'Not found' });
 
   const data = { ...parsed.data };
+  const household = db
+    .select()
+    .from(householdGroups)
+    .where(eq(householdGroups.accountId, existing.id))
+    .get();
+  if (
+    household &&
+    data.currency !== undefined &&
+    (data.currency ?? budgetCurrency()) !== household.currency
+  )
+    return res.status(409).json({ error: 'A household pool must keep its declared currency' });
   if (data.currency !== undefined) {
     const budget = budgetCurrency();
     const before = existing.currency ?? budget;

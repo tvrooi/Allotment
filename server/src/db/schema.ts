@@ -642,9 +642,9 @@ export const householdEvents = sqliteTable('household_events', {
   transactionId: text('transaction_id')
     .references(() => transactions.id, { onDelete: 'restrict' })
     .unique(),
-  reversesId: text('reverses_id')
-    .references((): AnySQLiteColumn => householdEvents.id, { onDelete: 'restrict' })
-    .unique(),
+  reversesId: text('reverses_id').references((): AnySQLiteColumn => householdEvents.id, {
+    onDelete: 'restrict',
+  }),
   billId: text('bill_id'),
 });
 export const householdShares = sqliteTable('household_shares', {

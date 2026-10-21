@@ -150,14 +150,14 @@ they do not establish the version installed on a live Home Assistant instance.
 The phased fork plan is tracked in the
 [Australian budgeting investigation](docs/investigations/2026-10-20-australian-budgeting.md).
 
-| Phase | Deliverable                                                                                          | Recorded status                                                                                                     |
-| ----- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| 1     | Report account scopes, budget boundaries and preservation of Up opening balances                     | Implemented; verification recorded in the investigation. Automatic round-up repair remains deferred.                |
-| 2     | Background Up sync, bank-source review and supported daily round-up details                          | Implemented in `0.2.0-up.6`; verification recorded. Source corrections are acknowledged, not applied to the ledger. |
-| 3     | Payday funding and bill coverage                                                                     | Implemented in `0.2.0-up.7` (#8); phase 6 will unify its funding calculation with the main budget.                  |
-| 4     | Household/person ledger, shared bills and personal-share reports                                     | Planned; household accounting policy remains to be chosen.                                                          |
-| 5     | Savings forecasts using paydays, bills and household shares                                          | Planned; depends on shared accounting definitions from phases 3, 4 and 6.                                           |
-| 6     | YNAB envelope correctness, credit-card funding, category goals, targets, buffer and review workflows | Planned; investigation and implementation instructions complete, no implementation yet.                             |
+| Phase | Deliverable                                                                                          | Recorded status                                                                                                                   |
+| ----- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Report account scopes, budget boundaries and preservation of Up opening balances                     | Implemented; verification recorded in the investigation. Automatic round-up repair remains deferred.                              |
+| 2     | Background Up sync, bank-source review and supported daily round-up details                          | Implemented in `0.2.0-up.6`; verification recorded. Source corrections are acknowledged, not applied to the ledger.               |
+| 3     | Payday funding and bill coverage                                                                     | Implemented in `0.2.0-up.7` (#8); phase 6 will unify its funding calculation with the main budget.                                |
+| 4     | Household/person ledger, shared bills and personal-share reports                                     | Implemented in `0.2.0-up.8`: private AUD ledger, contribution-based personal budgeting, expense shares and reserved shared bills. |
+| 5     | Savings forecasts using paydays, bills and household shares                                          | Planned; depends on shared accounting definitions from phases 3, 4 and 6.                                                         |
+| 6     | YNAB envelope correctness, credit-card funding, category goals, targets, buffer and review workflows | Planned; investigation and implementation instructions complete, no implementation yet.                                           |
 
 Phase numbers remain stable references, not a strict execution order. Do **6A first**
 (cash-backed funding, consistent availability, deficit recovery and atomic money moves),

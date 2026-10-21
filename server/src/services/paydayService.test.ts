@@ -3,6 +3,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import {
+  householdGroups,
   accounts,
   categories,
   categoryGroups,
@@ -79,6 +80,7 @@ beforeAll(() => {
 afterAll(() => vi.useRealTimers());
 beforeEach(() => {
   for (const table of [
+    householdGroups,
     paydayFundingReceipts,
     paydayFundingEvents,
     paydayPlans,
@@ -112,6 +114,19 @@ beforeEach(() => {
 });
 
 describe('payday funding', () => {
+  it('excludes household pool receipts and pool cash from personal payday funding', () => {
+    income();
+    db.insert(accounts)
+      .values({ id: 'joint', name: 'Joint', type: 'checking', startingBalance: 9999999 })
+      .run();
+    db.insert(householdGroups)
+      .values({ id: 'home', name: 'Home', currency: 'AUD', accountId: 'joint' })
+      .run();
+    income('housemate', 9999999, { accountId: 'joint' });
+    expect(incomeOptions('2026-10-15').map((r) => r.id)).toEqual(['pay']);
+    const id = plan();
+    expect(previewPayday(id, request).available).toBe(200000);
+  });
   it('enumerates exact fortnightly dates, three-pay months, year boundaries and 27-pay years', () => {
     const c = config();
     expect(paydays(c, '2026-10-01', '2026-11-15').map((p) => p.expectedDate)).toEqual([
@@ -337,7 +352,7 @@ describe('payday funding', () => {
     const p = previewPayday('plan', request);
     applyPayday('plan', request, JSON.stringify(p));
     const backup = createBackup();
-    expect(backup.version).toBe(5);
+    expect(backup.version).toBe(6);
     restoreBackup(parseBackup(backup));
     expect(applyPayday('plan', request, JSON.stringify(p)).alreadyApplied).toBe(true);
     expect(incomeOptions('2026-10-21')).toEqual([]);

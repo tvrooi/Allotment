@@ -5,6 +5,7 @@ import type { AddressInfo } from 'net';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { db } from '../db/index.js';
 import { accounts, transactions, categories, categoryGroups } from '../db/schema.js';
+import { transactionsRouter } from './transactions.js';
 import { householdsRouter } from './households.js';
 import { allocateShares } from '../services/householdLedger.js';
 import { createBackup, parseBackup, restoreBackup } from '../services/backupService.js';
@@ -16,6 +17,7 @@ beforeAll(async () => {
   migrate(db, { migrationsFolder: 'src/db/migrations' });
   const app = express();
   app.use(express.json());
+  app.use('/api/transactions', transactionsRouter);
   app.use('/api/households', householdsRouter);
   server = await new Promise<Server>((resolve) => {
     const s = app.listen(0, '127.0.0.1', () => resolve(s));
@@ -214,6 +216,55 @@ describe('household attribution', () => {
         ).status,
       ).toBe(400);
   });
+  it('reverses repeated partial refunds without losing cents', async () => {
+    const g = await group();
+    const saved = await call(`/${g.group.id}/events`, {
+      kind: 'expense',
+      date,
+      description: 'Three ways',
+      amount: 10000,
+      payerId: g.people[0].id,
+      shares: g.people.map((p: any) => ({ personId: p.id, value: 1 })),
+    });
+    const original = saved.data.events[0];
+    for (const amount of [3333, 3333, 3334]) {
+      const refund = await call(`/${g.group.id}/events`, {
+        kind: 'refund',
+        date,
+        description: 'Partial refund',
+        amount,
+        reversesId: original.id,
+      });
+      expect(refund.status).toBe(201);
+    }
+    const state = (await call(`/${g.group.id}`)).data;
+    expect(Object.values(state.balances)).toEqual([0, 0, 0]);
+    expect(
+      (
+        await call(`/${g.group.id}/events`, {
+          kind: 'refund',
+          date,
+          description: 'Over-refund',
+          amount: 1,
+          reversesId: original.id,
+        })
+      ).status,
+    ).toBe(400);
+  });
+  it('protects the full amount of a linked reconciled payment', async () => {
+    const url = base.replace('/households', '/transactions/rent');
+    const edit = async (body: unknown) =>
+      fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    expect((await edit({ amount: -191200 })).status).toBe(409);
+    // Reconciled rows keep the existing stricter edit protections; no household write weakens them.
+    const g = (await call('')).data.find((g: any) => g.accountId === 'pool');
+    const state = (await call(`/${g.id}`)).data;
+    expect(state.events.find((e: any) => e.transactionId === 'rent').amount).toBe(478000);
+  });
   it('does not reserve the same received cash for two bills and round-trips household data in backups', async () => {
     const existing = (await call('')).data.find((g: any) => g.accountId === 'pool');
     // A manually recorded receipt must also be present in the account before being reservable.
@@ -248,11 +299,52 @@ describe('household attribution', () => {
         })
       ).status,
     ).toBe(400);
+    const billState = (await call(`/${g.group.id}`)).data;
+    const power = billState.bills.find((b: any) => b.description === 'Power');
+    expect(
+      (
+        await call(`/${g.group.id}/events`, {
+          kind: 'expense',
+          date,
+          description: 'Unrelated',
+          amount: 4000,
+          shares: [{ personId: g.people[0].id, value: 1 }],
+        })
+      ).status,
+    ).toBe(400);
+    const paid = await call(`/${g.group.id}/events`, {
+      kind: 'expense',
+      date,
+      description: 'Power paid',
+      amount: 7000,
+      billId: power.id,
+      shares: [{ personId: g.people[0].id, value: 1 }],
+    });
+    expect(paid.status).toBe(201);
+    expect(paid.data.bills.find((b: any) => b.id === power.id).status).toBe('paid');
+    const paidEntry = paid.data.events.find((e: any) => e.billId === power.id);
+    const refunded = await call(`/${g.group.id}/events`, {
+      kind: 'refund',
+      date,
+      description: 'Bill reversed',
+      reversesId: paidEntry.id,
+    });
+    expect(refunded.status).toBe(201);
+    expect(refunded.data.bills.find((b: any) => b.id === power.id).status).toBe('needs review');
+    expect(
+      (await call(`/${g.group.id}/bills/${power.id}/reservation`, { reserved: 7000 }, 'PUT'))
+        .status,
+    ).toBe(400);
     const backup = createBackup();
     const parsed = parseBackup(backup);
     expect(parsed.householdGroups.length).toBeGreaterThan(0);
     expect(parsed.householdShares.length).toBeGreaterThan(0);
     restoreBackup(parsed);
-    expect(createBackup()).toMatchObject({householdGroups:backup.householdGroups,householdEvents:backup.householdEvents,householdShares:backup.householdShares,householdBills:backup.householdBills});
+    expect(createBackup()).toMatchObject({
+      householdGroups: backup.householdGroups,
+      householdEvents: backup.householdEvents,
+      householdShares: backup.householdShares,
+      householdBills: backup.householdBills,
+    });
   });
 });

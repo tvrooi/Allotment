@@ -1,9 +1,11 @@
-import { Router } from 'express';
-import { eq } from 'drizzle-orm';
+import { Router, type Response } from 'express';
+import { eq, inArray } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { db } from '../db/index.js';
 import {
+  categories,
+  categoryGroups,
   accounts,
   budgetSettings,
   transactions,
@@ -41,8 +43,13 @@ function snapshot(id: string) {
   const allocations = db
     .select()
     .from(shares)
-    .all()
-    .filter((s) => entries.some((e) => e.id === s.eventId));
+    .where(
+      inArray(
+        shares.eventId,
+        db.select({ id: events.id }).from(events).where(eq(events.groupId, id)),
+      ),
+    )
+    .all();
   const ledger = householdLedger(members, entries, allocations);
   const account = group.accountId
     ? db.select().from(accounts).where(eq(accounts.id, group.accountId)).get()
@@ -67,22 +74,24 @@ function snapshot(id: string) {
         ...b,
         paid,
         status:
-          paid === 0 && entries.some((e) => e.billId === b.id)
+          !paid && b.reserved > 0 && Math.min(cash, ledger.pool) < reserved
             ? 'needs review'
-            : paid >= b.amount
-              ? 'paid'
-              : paid > 0
-                ? 'needs review'
-                : b.reserved >= b.amount
-                  ? 'funded'
-                  : b.dueDate <= new Date().toISOString().slice(0, 10)
-                    ? 'due'
-                    : 'shortfall',
+            : paid === 0 && entries.some((e) => e.billId === b.id)
+              ? 'needs review'
+              : paid >= b.amount
+                ? 'paid'
+                : paid > 0
+                  ? 'needs review'
+                  : b.reserved >= b.amount
+                    ? 'funded'
+                    : b.dueDate <= new Date().toISOString().slice(0, 10)
+                      ? 'due'
+                      : 'shortfall',
       };
     }),
   };
 }
-function run(res: any, fn: () => unknown, status = 200) {
+function run(res: Response, fn: () => unknown, status = 200) {
   try {
     const result = db.transaction(fn);
     res.status(status).json(result);
@@ -98,6 +107,8 @@ householdsRouter.post('/', (req, res) =>
     res,
     () => {
       const input = groupSchema.parse(req.body);
+      if (new Set(input.people.map((n) => n.toLocaleLowerCase())).size !== input.people.length)
+        throw new Error('Use distinct participant names');
       if (input.selfIndex >= input.people.length) throw new Error('Choose your participant');
       if (input.accountId) {
         const account = db.select().from(accounts).where(eq(accounts.id, input.accountId)).get();
@@ -107,6 +118,12 @@ householdsRouter.post('/', (req, res) =>
         if (db.select().from(groups).where(eq(groups.accountId, input.accountId)).get())
           throw new Error('Account already belongs to a household');
       }
+      // Pin the declared pool currency so later budget relabelling cannot reinterpret it.
+      if (input.accountId)
+        db.update(accounts)
+          .set({ currency: input.currency })
+          .where(eq(accounts.id, input.accountId))
+          .run();
       const group = {
         id: nanoid(),
         name: input.name,
@@ -165,16 +182,29 @@ householdsRouter.post('/:id/events', (req, res) =>
         const original = state.events.find(
           (e) => e.id === input.reversesId && e.kind === 'expense',
         );
-        if (!original || state.events.some((e) => e.reversesId === original.id))
-          throw new Error('Choose an expense that has not been refunded');
-        if (input.amount && input.amount !== original.amount)
-          throw new Error(
-            'Refund must reverse the full expense; record partial refunds as separate agreed expenses',
-          );
-        amount = -original.amount;
+        if (!original) throw new Error('Choose the original expense');
+        if (input.date < original.date)
+          throw new Error('Refund cannot precede the original expense');
+        const prior = state.events.filter((e) => e.reversesId === original.id);
+        const remaining = original.amount + prior.reduce((n, e) => n + e.amount, 0);
+        const refund = input.amount ?? remaining;
+        if (refund <= 0 || refund > remaining)
+          throw new Error('Refund exceeds the unrefunded expense');
+        amount = -refund;
         input.payerId = original.payerId;
         input.billId = original.billId;
-        portions = original.shares.map((s) => ({ personId: s.personId, amount: -s.amount }));
+        const weights = original.shares.map(
+          (s) =>
+            s.amount +
+            prior.reduce(
+              (n, e) =>
+                n +
+                e.shares.filter((p) => p.personId === s.personId).reduce((n, s) => n + s.amount, 0),
+              0,
+            ),
+        );
+        const allocated = allocateShares(refund, weights);
+        portions = original.shares.map((s, i) => ({ personId: s.personId, amount: -allocated[i] }));
       } else if (input.kind === 'expense') {
         if (
           !amount ||
@@ -245,13 +275,29 @@ householdsRouter.post('/:id/events', (req, res) =>
           Math.abs(tx.amount) !== Math.abs(amount)
         )
           throw new Error('Bank amount and currency must match exactly');
+        if ((input.kind === 'settlement' || input.kind === 'refund') && tx.categoryId) {
+          const category = db
+            .select({ income: categoryGroups.isIncome })
+            .from(categories)
+            .innerJoin(categoryGroups, eq(categories.groupId, categoryGroups.id))
+            .where(eq(categories.id, tx.categoryId))
+            .get();
+          if (category?.income)
+            throw new Error(
+              'Categorize repayments and refunds against the original expense, not salary',
+            );
+        }
         if (tx.date !== input.date) throw new Error('Event date must match the bank transaction');
         const self = state.people.find((p) => p.isSelf)!.id;
         const expectedAccount =
           input.payerId === null || input.kind === 'contribution' ? state.group.accountId : null;
         if (expectedAccount && tx.accountId !== expectedAccount)
           throw new Error('Choose the household account transaction');
-        if (input.kind === 'expense' && input.payerId && input.payerId !== self)
+        if (
+          (input.kind === 'expense' || input.kind === 'refund') &&
+          input.payerId &&
+          input.payerId !== self
+        )
           throw new Error('Another person’s payment cannot be linked to your bank debit');
         if (
           (input.kind === 'expense' || input.kind === 'refund') &&
@@ -338,7 +384,12 @@ householdsRouter.put('/:id/bills/:billId/reservation', (req, res) =>
     const state = snapshot(req.params.id);
     const bill = state.bills.find((b) => b.id === req.params.billId);
     const reserved = z.number().int().min(0).max(1e12).parse(req.body.reserved);
-    if (!bill || bill.paid || reserved > bill.amount || reserved > state.unreserved + bill.reserved)
+    if (
+      !bill ||
+      state.events.some((e) => e.billId === bill.id) ||
+      reserved > bill.amount ||
+      reserved > state.unreserved + bill.reserved
+    )
       throw new Error('Reservation exceeds available funds or bill is already paid');
     db.update(bills).set({ reserved }).where(eq(bills.id, bill.id)).run();
     return snapshot(state.group.id);
