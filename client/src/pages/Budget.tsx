@@ -1,3 +1,4 @@
+import { MoneyMoves } from '../components/budget/MoneyMoves';
 import { useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { format, parseISO, addMonths, subMonths } from 'date-fns';
@@ -23,7 +24,7 @@ import { useIsPhone } from '../hooks/useIsPhone';
 import { useCanSave } from '../hooks/useConnection';
 import { ExternalLink } from '../components/ui/ExternalLink';
 import { docsUrl } from '../utils/project';
-import { splitCategories } from '../utils/budgetFigures';
+import { categoryFigures, splitCategories } from '../utils/budgetFigures';
 import type { BudgetCategory, BudgetGroup, BudgetType } from '../types';
 
 function AmountInput({
@@ -78,11 +79,6 @@ function AmountInput({
   );
 }
 
-function getStatus(spent: number, planned: number): 'over' | 'healthy' {
-  if (spent > planned) return 'over';
-  return 'healthy';
-}
-
 interface CategoryRowProps {
   cat: BudgetCategory;
   isIncome: boolean;
@@ -108,9 +104,7 @@ function CategoryRow({
   // Offline: amounts can't be saved, so they can't be edited (and an open editor closes)
   const canSave = useCanSave();
   const isEditing = editingId === cat.id && canSave;
-  const actual = isIncome ? cat.balance - cat.carryOver - cat.budgeted : cat.spent;
-  const rawRemaining = cat.budgeted - actual;
-  const remaining = isIncome ? Math.max(rawRemaining, 0) : rawRemaining;
+  const { actual, remaining } = categoryFigures(cat, isIncome);
 
   let remainingClass: string;
   const pillBase = 'font-medium rounded-full px-2.5 py-0.5 text-text';
@@ -129,7 +123,11 @@ function CategoryRow({
           {showCategoryIcons && cat.icon && <span className="text-xs mr-1">{cat.icon}</span>}
           {cat.name}
         </div>
-        <SpentBar spent={actual} budgeted={cat.budgeted} isIncome={isIncome} />
+        <SpentBar
+          spent={isIncome ? actual : cat.spent}
+          budgeted={cat.budgeted}
+          isIncome={isIncome}
+        />
       </td>
       <td className="py-1.5 px-3 text-right align-top">
         <div className="relative inline-block">
@@ -210,7 +208,7 @@ function IncomeGroupSection({
     const raw = group.categories.reduce(
       (acc, c) => ({
         budgeted: acc.budgeted + c.budgeted,
-        spent: acc.spent + c.spent,
+        spent: acc.spent + categoryFigures(c, false).actual,
         balance: acc.balance + c.balance,
         carryOver: acc.carryOver + c.carryOver,
       }),
@@ -318,7 +316,7 @@ function BudgetTypeSection({
       categories.reduce(
         (acc, c) => ({
           budgeted: acc.budgeted + c.budgeted,
-          spent: acc.spent + c.spent,
+          spent: acc.spent + categoryFigures(c, false).actual,
           balance: acc.balance + c.balance,
         }),
         { budgeted: 0, spent: 0, balance: 0 },
@@ -329,8 +327,8 @@ function BudgetTypeSection({
   const { shown, hidden: inactive } = splitCategories(categories, false);
   const visibleCats = showUnbudgeted || showAll ? categories : shown;
 
-  const status = getStatus(totals.spent, totals.budgeted);
-  const remaining = totals.budgeted - totals.spent;
+  const status = totals.balance < 0 ? 'over' : 'healthy';
+  const remaining = totals.balance;
   const remainingColor = status === 'over' ? 'text-negative' : 'text-positive';
 
   return (
@@ -447,7 +445,7 @@ export default function BudgetPage() {
   const expenseTotals = useMemo(
     () => ({
       budgeted: allExpenseCats.reduce((s, c) => s + c.budgeted, 0),
-      spent: allExpenseCats.reduce((s, c) => s + c.spent, 0),
+      spent: allExpenseCats.reduce((s, c) => s + categoryFigures(c, false).actual, 0),
       balance: allExpenseCats.reduce((s, c) => s + c.balance, 0),
     }),
     [allExpenseCats],
@@ -489,7 +487,7 @@ export default function BudgetPage() {
     groups.length > 0 && !groups.some((g) => g.categories.some((c) => c.budgeted !== 0));
   const tbb = summary?.toBeBudgeted ?? 0;
   const carryOver = summary?.carryOver ?? 0;
-  const expRemaining = expenseTotals.budgeted - expenseTotals.spent;
+  const expRemaining = expenseTotals.balance;
   const expBalColor =
     expRemaining > 0 ? 'text-positive' : expRemaining < 0 ? 'text-negative' : 'text-text-tertiary';
 
@@ -546,10 +544,10 @@ export default function BudgetPage() {
         <div className="flex items-start gap-3 px-6 py-3 bg-brand-50 border-b border-border-light text-sm text-text-secondary shrink-0">
           <Lightbulb size={16} className="text-brand-600 shrink-0 mt-0.5" aria-hidden />
           <p>
-            Nothing is planned for {format(monthDate, 'MMMM')} yet. {isPhone ? 'Tap' : 'Click'} an
-            amount in the <strong className="font-medium text-text">Planned</strong> column to set
-            what you expect to earn and spend in each category. Categories you leave empty are
-            tucked away once you've planned something.{' '}
+            No assignments for {format(monthDate, 'MMMM')} yet. {isPhone ? 'Tap' : 'Click'} an
+            amount in the <strong className="font-medium text-text">Assigned</strong> column to set
+            income expectations and assignments from existing money. Expense balances carry forward.
+            Categories you leave empty are tucked away once you've planned something.{' '}
             <ExternalLink
               href={docsUrl('budgeting')}
               className="font-medium text-brand-600 hover:text-brand-700"
@@ -560,6 +558,11 @@ export default function BudgetPage() {
         </div>
       )}
 
+      {(setBudgetMutation.error || setBulkMutation.error) && (
+        <p role="alert" className="px-6 py-3 text-negative">
+          {(setBudgetMutation.error || setBulkMutation.error)?.message}
+        </p>
+      )}
       <MissingRatesBanner className="mx-6 mt-3 shrink-0" />
 
       {/* Phones: the summary (with To Be Budgeted) goes above the table instead of beside it */}
@@ -671,13 +674,13 @@ export default function BudgetPage() {
                     </div>
                   </td>
                   <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
-                    Planned
+                    Assigned
                   </td>
                   <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
-                    Actual
+                    Activity
                   </td>
                   <td className="py-2 pl-3 pr-6 text-right text-xs font-bold text-text">
-                    Remaining
+                    Available
                   </td>
                 </tr>
 
@@ -737,13 +740,16 @@ export default function BudgetPage() {
 
         <div className="w-80 max-md:w-full shrink-0 border-l max-md:border-l-0 max-md:border-b border-border p-4 self-start max-md:self-stretch sticky max-md:static top-0">
           <div>
+            <MoneyMoves key={selectedMonth} month={selectedMonth} categories={allExpenseCats} />
             <BudgetSummaryWidget
+              funding={summary}
+              expenseAvailable={expenseTotals.balance}
               toBeBudgeted={tbb}
               carryOver={carryOver}
               incomePlanned={incomeTotals.budgeted}
               incomeEarned={incomeTotals.received}
               expensesPlanned={expenseTotals.budgeted}
-              expensesSpent={expenseTotals.spent}
+              expensesSpent={Math.max(0, -expenseTotals.spent)}
               savingsPlanned={savingsTotals.budgeted}
               savingsContributed={savingsTotals.spent}
               fixedExpenses={expensesByBudgetType.fixed}

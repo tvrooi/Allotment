@@ -1,3 +1,4 @@
+import { categoryFigures } from '../utils/budgetFigures';
 import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
@@ -154,15 +155,17 @@ function BudgetWidget({
       </p>
       <div className="mt-3 border-t border-border-light pt-3 space-y-2.5">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-text-secondary">Planned</span>
+          <span className="text-sm text-text-secondary">{isIncome ? 'Expected' : 'Assigned'}</span>
           <span className="text-sm tabular-nums text-text">{formatCurrency(budgeted)}</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-sm text-text-secondary">Actual</span>
+          <span className="text-sm text-text-secondary">{isIncome ? 'Received' : 'Activity'}</span>
           <span className="text-sm tabular-nums text-text">{formatCurrency(actual)}</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-sm text-text-secondary">Remaining</span>
+          <span className="text-sm text-text-secondary">
+            {isIncome ? 'Remaining' : 'Available'}
+          </span>
           <span className={`text-sm tabular-nums font-medium ${remColor}`}>
             {formatCurrency(remaining)}
           </span>
@@ -276,9 +279,7 @@ export default function CategoryDetailPage() {
   const isIncome = historyData?.isIncome ?? cat?.isIncome ?? false;
   const categoryName = cat?.name ?? 'Category';
 
-  const actual = cat ? (isIncome ? cat.balance : cat.spent) : 0;
-  const rawRemaining = cat ? cat.budgeted - actual : 0;
-  const remaining = isIncome ? Math.max(rawRemaining, 0) : rawRemaining;
+  const { actual, remaining } = cat ? categoryFigures(cat, isIncome) : { actual: 0, remaining: 0 };
 
   return (
     <div className="flex flex-col h-full">

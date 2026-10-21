@@ -1,6 +1,6 @@
 # Phase 6: YNAB envelope budgeting and funding workflows
 
-Added 21 October 2026. Status: **planned; not implemented or deployed**.
+Added 21 October 2026. Status: **6A implemented; 6B–6G planned. Release/live status must be verified separately.**
 
 This is an implementation handoff for Sol, based on Jesse Mecham's _You Need a
 Budget_ (principally chapters 2–7) and a source investigation of `tvrooi/FlyBudget`
@@ -47,7 +47,10 @@ The author's personal debt-repayment preferences are not mandatory application r
 
 ## 6A: authoritative funding, availability and deficit recovery
 
-Status: not started. Implement as focused, compatible PRs.
+Status: implemented in the phase 6A feature branch for `0.2.0-up.9`.
+Accounting policy and compatibility details: [Envelope funding](ENVELOPE-FUNDING.md).
+Local service, API, client and browser verification is recorded there. Release and live
+installation remain unverified until their delivery gates complete.
 
 Source map: `server/src/routes/budget.ts`, `server/src/services/balances.ts`,
 `server/src/services/mainAmounts.ts`, `server/src/services/paydayService.ts`,

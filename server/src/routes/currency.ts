@@ -8,6 +8,7 @@ import { db } from '../db/index.js';
 import {
   accounts,
   budgetMonths,
+  budgetMoves,
   exchangeRates,
   goals,
   paydayPlans,
@@ -111,7 +112,14 @@ function relabelBlocker(current: string | null, next: string): string | null {
             config.rules.some((r: { amount: number }) => r.amount !== 0)
           );
         }) || !!db.select({ id: paydayFundingEvents.id }).from(paydayFundingEvents).get();
-    if (planned || goal || schedule || payday || all.some((a) => !a.currency && hasAmounts(a))) {
+    if (
+      planned ||
+      goal ||
+      schedule ||
+      payday ||
+      db.select().from(budgetMoves).get() ||
+      all.some((a) => !a.currency && hasAmounts(a))
+    ) {
       return `Your budget already has amounts in ${current ?? 'its currency'}, and ${next} has a different number of decimals, so they would change. Choose a currency with ${minorUnits(current)} decimals, or start a new budget.`;
     }
   }

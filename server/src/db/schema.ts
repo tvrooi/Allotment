@@ -670,3 +670,20 @@ export const householdBills = sqliteTable('household_bills', {
   reserved: integer('reserved').notNull().default(0),
   scheduleId: text('schedule_id').references(() => schedules.id, { onDelete: 'set null' }),
 });
+
+export const budgetRevision = sqliteTable('budget_revision', {
+  id: integer('id').primaryKey(),
+  revision: text('revision').notNull(),
+});
+export const budgetMoves = sqliteTable('budget_moves', {
+  id: text('id').primaryKey(),
+  month: text('month').notNull(),
+  sourceId: text('source_id').notNull(),
+  destinationId: text('destination_id').notNull(),
+  amount: integer('amount').notNull(),
+  sourceBefore: integer('source_before').notNull(),
+  destinationBefore: integer('destination_before').notNull(),
+  afterRevision: text('after_revision').notNull(),
+  undone: integer('undone').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+});

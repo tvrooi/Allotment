@@ -87,7 +87,9 @@ function Section({
         )}
         <span className="flex-1 text-sm font-semibold text-text">{section.label}</span>
         <span className="text-xs text-text-tertiary tabular-nums">
-          {formatCurrency(actual)} of {formatCurrency(planned)}
+          {isIncome
+            ? `${formatCurrency(actual)} of ${formatCurrency(planned)} expected`
+            : `${formatCurrency(categories.reduce((s, c) => s + c.balance, 0))} available`}
         </span>
       </button>
       {!collapsed && (
@@ -143,11 +145,11 @@ function CategoryCard({
           className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-medium tabular-nums text-text ${pill}`}
         >
           {formatCurrency(remaining)}
-          <span className="sr-only"> remaining</span>
+          <span className="sr-only"> {isIncome ? 'remaining' : 'available'}</span>
         </span>
       </div>
       <SpentBar
-        spent={actual}
+        spent={isIncome ? actual : cat.spent}
         budgeted={cat.budgeted}
         isIncome={isIncome}
         className="h-1.5 w-full mt-2"
@@ -161,7 +163,7 @@ function CategoryCard({
           className="min-h-11 flex items-center gap-1.5 text-left disabled:opacity-50"
         >
           <span className="grid">
-            <span className="text-xs text-text-tertiary">Planned</span>
+            <span className="text-xs text-text-tertiary">{isIncome ? 'Expected' : 'Assigned'}</span>
             <span className="text-sm font-medium tabular-nums text-text">
               {formatCurrency(cat.budgeted)}
             </span>
@@ -172,7 +174,7 @@ function CategoryCard({
           to={`/budget/category/${cat.id}`}
           className="min-h-11 grid justify-items-end content-center text-right"
         >
-          <span className="text-xs text-text-tertiary">{isIncome ? 'Received' : 'Spent'}</span>
+          <span className="text-xs text-text-tertiary">{isIncome ? 'Received' : 'Activity'}</span>
           <span className="text-sm font-medium tabular-nums text-text">
             {formatCurrency(actual)}
           </span>

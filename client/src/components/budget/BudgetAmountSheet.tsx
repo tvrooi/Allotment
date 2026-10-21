@@ -97,7 +97,9 @@ function SheetBody({
     <form onSubmit={save} className="grid gap-4">
       <p className="text-sm text-text-secondary">{format(parseISO(`${month}-01`), 'MMMM yyyy')}</p>
       <label className="grid gap-1">
-        <span className="text-sm font-medium text-text-secondary">Planned</span>
+        <span className="text-sm font-medium text-text-secondary">
+          {isIncome ? 'Expected' : 'Assigned'}
+        </span>
         <input
           autoFocus
           type="text"

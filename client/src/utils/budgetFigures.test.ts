@@ -22,12 +22,12 @@ const category = fc
   }));
 
 describe('categoryFigures (property-based)', () => {
-  it('expenses: remaining is planned minus spent', () => {
+  it('expenses: activity is signed and availability includes rollover', () => {
     fc.assert(
       fc.property(category, (cat) => {
         const { actual, remaining } = categoryFigures(cat, false);
-        expect(actual).toBe(cat.spent);
-        expect(remaining).toBe(cat.budgeted - cat.spent);
+        expect(actual).toBe(cat.balance - cat.carryOver - cat.budgeted);
+        expect(remaining).toBe(cat.balance);
       }),
     );
   });
@@ -46,7 +46,11 @@ describe('categoryFigures (property-based)', () => {
   it('a category is inactive only with nothing planned and nothing happening', () => {
     fc.assert(
       fc.property(category, fc.boolean(), (cat, isIncome) => {
-        const idle = cat.budgeted === 0 && categoryFigures(cat, isIncome).actual === 0;
+        const idle =
+          cat.balance === 0 &&
+          cat.carryOver === 0 &&
+          cat.budgeted === 0 &&
+          categoryFigures(cat, isIncome).actual === 0;
         expect(isActiveCategory(cat, isIncome)).toBe(!idle);
       }),
     );

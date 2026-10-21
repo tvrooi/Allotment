@@ -6,11 +6,17 @@ export const getBudget = (month: string) => apiFetch<BudgetGroup[]>(`/budget/${m
 export const getBudgetSummary = (month: string) =>
   apiFetch<BudgetSummary>(`/budget/${month}/summary`);
 
-export const setBudget = (month: string, categoryId: string, budgeted: number) =>
-  apiFetch<{ month: string; categoryId: string; budgeted: number }>(
-    `/budget/${month}/${categoryId}`,
-    { method: 'PUT', body: JSON.stringify({ budgeted }) },
-  );
+export const setBudget = (month: string, categoryId: string, budgeted: number, revision?: string) =>
+  apiFetch<{
+    month: string;
+    categoryId: string;
+    budgeted: number;
+    previousBudgeted: number;
+    revision: string;
+  }>(`/budget/${month}/${categoryId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ budgeted, revision }),
+  });
 
 export interface CategoryHistory {
   categoryId: string;
