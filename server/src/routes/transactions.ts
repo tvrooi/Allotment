@@ -1,6 +1,7 @@
+import { householdEvents } from '../db/schema.js';
 import { Router, type Response } from 'express';
 import { db } from '../db/index.js';
-import { transactions, payees, accounts, categories } from '../db/schema.js';
+import { transactions, payees, accounts, categories, categoryGroups } from '../db/schema.js';
 import {
   eq,
   and,
@@ -43,6 +44,48 @@ import {
 import { isForeign } from '../utils/currencies.js';
 
 export const transactionsRouter = Router();
+transactionsRouter.param('id', (req, res, next, id) => {
+  const counterpartId = db
+    .select({ id: transactions.transferTransactionId })
+    .from(transactions)
+    .where(eq(transactions.id, id))
+    .get()?.id;
+  const linked = db
+    .select()
+    .from(householdEvents)
+    .where(
+      counterpartId
+        ? inArray(householdEvents.transactionId, [id, counterpartId])
+        : eq(householdEvents.transactionId, id),
+    )
+    .get();
+  if (linked && req.method !== 'GET') {
+    const safeEdit =
+      req.method === 'PUT' &&
+      Object.keys(req.body ?? {}).every((k) =>
+        ['categoryId', 'notes', 'payeeId', 'payeeName', 'reconciled'].includes(k),
+      );
+    if (!safeEdit)
+      return res.status(409).json({
+        error:
+          'Remove the linked household entry before changing the payment amount, date or account',
+      });
+    if ((linked.kind === 'settlement' || linked.kind === 'refund') && req.body.categoryId) {
+      const category = db
+        .select({ income: categoryGroups.isIncome })
+        .from(categories)
+        .innerJoin(categoryGroups, eq(categories.groupId, categoryGroups.id))
+        .where(eq(categories.id, req.body.categoryId))
+        .get();
+      if (category?.income)
+        return res.status(400).json({
+          error:
+            'Household repayments and refunds belong in the original expense category, not income',
+        });
+    }
+  }
+  next();
+});
 
 const id = z.string().min(1).max(64);
 // Amounts are integer cents; the cap keeps sums far inside Number.MAX_SAFE_INTEGER

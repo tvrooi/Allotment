@@ -1,5 +1,13 @@
 # Changes
 
+## 0.2.0-up.8
+
+- Add a private AUD household ledger with explicit people, exact saved expense shares, advances, partial repayments and allocation-preserving refunds.
+- Keep household pool cash and receipts out of personal envelope and payday funding while retaining the real bank register and contribution-based transfer categories.
+- Track shared bill estimates, personal shares and reservations against received funds without duplicating imported payments or auto-created schedules.
+- Add persistent personal/household expense scope, gross-versus-share display, bank-payment linking and exportable statements.
+- Preserve household and payday history together in portable backup version 6. See `docs/HOUSEHOLDS.md` for accounting policy and limits.
+
 ## 0.2.0-up.7
 
 - Add opt-in fortnightly payday plans and an Until next payday budget view for desktop and phones.

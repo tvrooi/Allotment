@@ -17,9 +17,13 @@ export const inAccountBalance: SQL = isNull(transactions.parentTransactionId);
 export const isIncomeOrSpending: SQL = sql`not (${transactions.isAdjustment} = 1 and ${transactions.categoryId} is null)`;
 
 /** Account scope shared by the envelope budget and default income/spending reports. */
+export const personalBudgetAccount: SQL = and(
+  eq(accounts.isOffBudget, 0),
+  sql`not exists (select 1 from household_groups hg where hg.account_id = ${accounts.id})`,
+)!;
 export const onBudget: SQL = inArray(
   transactions.accountId,
-  db.select({ id: accounts.id }).from(accounts).where(eq(accounts.isOffBudget, 0)),
+  db.select({ id: accounts.id }).from(accounts).where(personalBudgetAccount),
 );
 
 /** Only the budget side of a confirmed transfer across the budget boundary counts.
@@ -30,7 +34,7 @@ export const isBudgetBoundary: SQL = sql`(${onBudget} and exists (
   select 1 from transactions counterpart
   inner join accounts other_account on other_account.id = counterpart.account_id
   where counterpart.id = "transactions"."transfer_transaction_id"
-    and other_account.is_off_budget = 1
+    and (other_account.is_off_budget = 1 or exists (select 1 from household_groups hg where hg.account_id = other_account.id))
 ))`;
 
 /** Leaf activity, excluding internal transfers and uncategorized balance corrections. */

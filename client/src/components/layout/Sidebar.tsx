@@ -187,6 +187,12 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
           collapsed={!isExpanded}
         />
         <NavItem
+          to="/household"
+          icon={<Wallet size={18} />}
+          label="Household"
+          collapsed={!isExpanded}
+        />
+        <NavItem
           to="/reports"
           icon={<BarChart3 size={18} />}
           label="Reports"

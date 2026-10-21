@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { X, Lock, Trash2, Repeat, Unlink, Wand2 } from 'lucide-react';
 import { useUpdateTransaction, useDeleteTransaction } from '../../hooks/useTransactions';
@@ -50,6 +51,7 @@ export function TransactionDetailPanel({
   accountLogo,
   onClose,
 }: Props) {
+  const navigate = useNavigate();
   const updateTx = useUpdateTransaction();
   const currency = useAccountCurrency()(tx.accountId);
   const updatePayee = useUpdatePayee();
@@ -374,6 +376,18 @@ export function TransactionDetailPanel({
       </div>
 
       <div className="px-5 py-4 border-t border-border space-y-2">
+        {!tx.isParent && !tx.parentTransactionId && !tx.isAdjustment && tx.amount < 0 && (
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={() => {
+              onClose();
+              navigate(`/household?transaction=${encodeURIComponent(tx.id)}`);
+            }}
+          >
+            Split with people
+          </Button>
+        )}
         {!isTransfer && (
           <Button variant="secondary" onClick={startRule} className="w-full">
             <Wand2 size={14} />

@@ -3,6 +3,11 @@ import { getTableColumns, isNotNull, sql } from 'drizzle-orm';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { databasePath, db, sqlite } from '../db/index.js';
 import {
+  householdGroups,
+  householdPeople,
+  householdEvents,
+  householdShares,
+  householdBills,
   accounts,
   budgetSettings,
   exchangeRates,
@@ -42,7 +47,7 @@ import { upObservationSchema } from './upTransactions.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 5;
+export const BACKUP_VERSION = 6;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -67,6 +72,11 @@ const TABLES = {
   paydayPlans,
   paydayFundingEvents,
   paydayFundingReceipts,
+  householdGroups,
+  householdPeople,
+  householdEvents,
+  householdShares,
+  householdBills,
 } satisfies Record<string, SQLiteTable>;
 
 export type BackupTable = keyof typeof TABLES;

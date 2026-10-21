@@ -14,8 +14,8 @@ phase 3 payday funding; do not treat that completed work as missing.
 
 Phases 1 and 2 of the [Australian budgeting plan](investigations/2026-10-20-australian-budgeting.md)
 have recorded implementation and verification. Phase 3 payday funding is now
-implemented in `0.2.0-up.7` (#8); phase 4 household attribution and phase 5 forecasts
-remain planned. Live installation
+implemented in `0.2.0-up.7` (#8); phase 4 household attribution is implemented in `0.2.0-up.8` with contribution-based
+personal budgeting and private expense-share reports; phase 5 forecasts remain planned. Live installation
 status must be verified separately from the checkout and release notes.
 
 Keep those phase IDs. Phase 6 is an additional workstream whose foundation must

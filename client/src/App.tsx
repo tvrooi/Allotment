@@ -3,6 +3,7 @@ import { AppShell } from './components/layout/AppShell';
 import { AuthGate } from './components/auth/AuthGate';
 import { IS_DEMO } from './demo/demoApi';
 import WelcomePage from './pages/Welcome';
+import HouseholdPage from './pages/Household';
 import DashboardPage from './pages/Dashboard';
 import AccountsPage from './pages/Accounts';
 import AccountTransactionsPage from './pages/AccountTransactions';
@@ -40,6 +41,7 @@ export default function App() {
             <Route path="/accounts/:id/reconcile" element={<ReconcilePage />} />
             <Route path="/accounts/:id" element={<AccountTransactionsPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />
+            <Route path="/household" element={<HouseholdPage />} />
             <Route path="/recurring" element={<RecurringTransactionsPage />} />
             <Route path="/cash-flow" element={<CashFlowPage />} />
             <Route path="/reports" element={<ReportsPage />} />
