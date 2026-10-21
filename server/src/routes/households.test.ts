@@ -1,3 +1,4 @@
+import { linkTransfer } from '../services/transferService.js';
 import { beforeAll, afterAll, describe, it, expect } from 'vitest';
 import express from 'express';
 import type { Server } from 'http';
@@ -264,6 +265,29 @@ describe('household attribution', () => {
     const g = (await call('')).data.find((g: any) => g.accountId === 'pool');
     const state = (await call(`/${g.id}`)).data;
     expect(state.events.find((e: any) => e.transactionId === 'rent').amount).toBe(478000);
+  });
+  it('requires unlinking household attribution before converting a linked payment to a transfer', async () => {
+    const g = await group();
+    db.insert(transactions)
+      .values([
+        { id: 'shared-bank', accountId: 'mine', date, amount: -100 },
+        { id: 'shared-counterpart', accountId: 'pool', date, amount: 100 },
+      ])
+      .run();
+    expect(
+      (
+        await call(`/${g.group.id}/events`, {
+          kind: 'expense',
+          date,
+          description: 'Shared bank purchase',
+          amount: 100,
+          payerId: g.people[0].id,
+          transactionId: 'shared-bank',
+          shares: [{ personId: g.people[0].id, value: 1 }],
+        })
+      ).status,
+    ).toBe(201);
+    expect(() => linkTransfer('shared-bank', 'shared-counterpart')).toThrow(/household/);
   });
   it('does not reserve the same received cash for two bills and round-trips household data in backups', async () => {
     const existing = (await call('')).data.find((g: any) => g.accountId === 'pool');

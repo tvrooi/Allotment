@@ -45,10 +45,19 @@ import { isForeign } from '../utils/currencies.js';
 
 export const transactionsRouter = Router();
 transactionsRouter.param('id', (req, res, next, id) => {
+  const counterpartId = db
+    .select({ id: transactions.transferTransactionId })
+    .from(transactions)
+    .where(eq(transactions.id, id))
+    .get()?.id;
   const linked = db
     .select()
     .from(householdEvents)
-    .where(eq(householdEvents.transactionId, id))
+    .where(
+      counterpartId
+        ? inArray(householdEvents.transactionId, [id, counterpartId])
+        : eq(householdEvents.transactionId, id),
+    )
     .get();
   if (linked && req.method !== 'GET') {
     const safeEdit =
