@@ -392,3 +392,19 @@ persistent and exportable. Household and payday history round-trip together in
 backup version 6. See [Households](../HOUSEHOLDS.md) for setup, accounting policies,
 net-worth scope and remaining boundaries. Phase 6 remains a separate workstream;
 this phase reuses the existing personal budget boundary and payday calculations.
+
+## Phase eight: Monarch-informed investigation and planning (21 October 2026)
+
+Status: **planned; implementation brief prepared, no application implementation**.
+The [phase 8 brief](../MONARCH-DEVELOPMENT-PHASE.md) adds the recommendations from
+an actual signed-in Monarch REA inspection and owner-authorized synthetic-data
+checks as a single development phase. Phase 7 remains reserved by its existing
+financial-resilience proposal; earlier IDs and completed work are preserved.
+
+Scope covers transaction filtering/summaries, home dashboard preferences,
+merchant breakdowns and annual planning, plus goal/debt presentation built on
+implemented phase 6A–6C services. It does not introduce another allocation or
+funding engine. Expansion proposals cover receipts/review, tags/saved views,
+holdings and forecasting; forecasts remain coordinated with phases 5/7.
+The brief records synthetic acceptance cases, evidence limits and delivery gates.
+Adding the phase requires no application release or live-budget change.
