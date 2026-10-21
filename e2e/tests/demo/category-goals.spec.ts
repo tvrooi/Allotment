@@ -33,6 +33,7 @@ test('category-funded goals use shared accounting and survive demo backup restor
     };
   });
   expect(result).toEqual({ linked: true, same: true, version: 9 });
-  await page.reload();
+  await page.getByRole('link', { name: 'Budget', exact: true }).click();
+  await page.getByRole('link', { name: 'Goals', exact: true }).click();
   await expect(page.getByText('Category demo', { exact: true })).toBeVisible();
 });
