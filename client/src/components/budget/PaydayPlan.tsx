@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import * as api from '../../api/payday';
 import { formatCurrency, centsToInput, parseCents, isUnreadableAmount } from '../../utils/currency';
+import { formatDay } from '../../utils/dates';
 import { Input, Select } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { useCanSave } from '../../hooks/useConnection';
@@ -354,7 +355,7 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
           >
             {data!.paydays.map((p) => (
               <option key={p.scheduledDate} value={p.scheduledDate}>
-                {p.expectedDate}
+                {formatDay(p.expectedDate)}
                 {data!.history.some((e) => e.scheduledDate === p.scheduledDate) ? ' · applied' : ''}
               </option>
             ))}
@@ -428,7 +429,7 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
       )}
       {preview && (
         <section aria-label="Funding preview" className="space-y-3">
-          <h3 className="font-semibold">Until next payday · {preview.nextPayday}</h3>
+          <h3 className="font-semibold">Until next payday · {formatDay(preview.nextPayday)}</h3>
           <p className="text-sm">
             Received {formatCurrency(preview.received)} · available to this plan{' '}
             {formatCurrency(preview.available)} · allocate {formatCurrency(preview.totalAllocated)}{' '}
@@ -478,7 +479,7 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
             </table>
           </div>
           <details>
-            <summary className="cursor-pointer text-sm font-medium">
+            <summary className="cursor-pointer select-none text-sm font-medium text-text-secondary hover:text-text">
               Bills before next payday ({preview.bills.length})
             </summary>
             {preview.bills.length === 0 && (
@@ -519,15 +520,15 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
         </p>
       )}
       <details>
-        <summary className="cursor-pointer text-sm font-medium">
+        <summary className="cursor-pointer select-none text-sm font-medium text-text-secondary hover:text-text">
           Funding history ({data!.history.length})
         </summary>
         {data!.history.map((event) => {
           const saved = JSON.parse(event.snapshotJson) as api.PaydayPreview;
           return (
             <details key={event.id} className="py-2 text-sm">
-              <summary className="cursor-pointer">
-                Payday {event.scheduledDate} · applied {event.appliedDate} ·{' '}
+              <summary className="cursor-pointer select-none text-text-secondary hover:text-text">
+                Payday {formatDay(event.scheduledDate)} · applied {formatDay(event.appliedDate)} ·{' '}
                 {formatCurrency(saved.totalAllocated)}
               </summary>
               {saved.rows
@@ -626,7 +627,7 @@ function ArchivedHistory({ plan }: { plan: api.PaydayPlan }) {
       <p>This plan is archived. Funding history is preserved.</p>
       {data?.history.map((e) => (
         <p key={e.id}>
-          {e.scheduledDate} ·{' '}
+          {formatDay(e.scheduledDate)} ·{' '}
           {formatCurrency((JSON.parse(e.snapshotJson) as api.PaydayPreview).totalAllocated)}
         </p>
       ))}

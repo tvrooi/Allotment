@@ -1,6 +1,7 @@
 import type { BudgetSummary } from '../../types';
 import { useState } from 'react';
 import { formatCurrency } from '../../utils/currency';
+import { formatAsOfDay } from '../../utils/dates';
 
 interface ExpenseBreakdown {
   planned: number;
@@ -162,14 +163,33 @@ export function BudgetSummaryWidget({
       </div>
 
       {funding && (
-        <div className="px-4 pb-3 text-xs text-text-secondary grid gap-1">
-          <p>Unassigned as of {funding.asOf}</p>
-          <p>Envelope deficits: {formatCurrency(funding.overspent)}</p>
-          <p>Uncategorised spending: {formatCurrency(funding.uncategorized)}</p>
-          <p>Future assignments reserved: {formatCurrency(funding.futureAssigned)}</p>
-          <p>Card payment shortfall: {formatCurrency(funding.paymentShortfall ?? 0)}</p>
-          <p>Payments without funding: {formatCurrency(funding.uncoveredCardPayments ?? 0)}</p>
-          <p>Unreviewed card accounts retain net-debt funding.</p>
+        <div className="px-4 pb-3 text-xs">
+          <p className="text-text-tertiary mb-1.5">
+            Unassigned as of {formatAsOfDay(funding.asOf)}
+          </p>
+          <dl className="grid gap-1">
+            {(
+              [
+                ['Envelope deficits', funding.overspent],
+                ['Uncategorised spending', funding.uncategorized],
+                ['Future assignments reserved', funding.futureAssigned],
+                ['Card payment shortfall', funding.paymentShortfall ?? 0],
+                ['Payments without funding', funding.uncoveredCardPayments ?? 0],
+              ] as const
+            ).map(([label, value]) => (
+              <div key={label} className="flex justify-between gap-2">
+                <dt className="text-text-secondary">{label}</dt>
+                <dd
+                  className={`tabular-nums ${value > 0 && label !== 'Future assignments reserved' ? 'text-negative font-medium' : 'text-text'}`}
+                >
+                  {formatCurrency(value)}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <p className="text-text-tertiary mt-1.5">
+            Unreviewed card accounts retain net-debt funding.
+          </p>
         </div>
       )}
       <div className="flex justify-center gap-4 px-4 pb-2">
