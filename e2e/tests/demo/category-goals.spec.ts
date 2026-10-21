@@ -12,7 +12,7 @@ test('category-funded goals use shared accounting and survive demo backup restor
         headers: { 'Content-Type': 'application/json' },
         body: body === undefined ? undefined : JSON.stringify(body),
       });
-      if (!res.ok()) throw new Error(await res.text());
+      if (!res.ok) throw new Error(await res.text());
       return res.json();
     }
     const groups = await call('GET', '/categories');
