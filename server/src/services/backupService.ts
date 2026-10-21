@@ -25,7 +25,11 @@ import {
   enableBankingAccountMappings,
   transactions,
   transferMatchDismissals,
+  paydayPlans,
+  paydayFundingEvents,
+  paydayFundingReceipts,
 } from '../db/schema.js';
+import { paydayConfigSchema, fundingSnapshotSchema } from './paydayConfig.js';
 import { fillMissingMainAmounts, ratesChanged } from './mainAmountService.js';
 import { upObservationSchema } from './upTransactions.js';
 
@@ -38,7 +42,7 @@ import { upObservationSchema } from './upTransactions.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 4;
+export const BACKUP_VERSION = 5;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -60,6 +64,9 @@ const TABLES = {
   dashboardPages,
   dashboardWidgets,
   goals,
+  paydayPlans,
+  paydayFundingEvents,
+  paydayFundingReceipts,
 } satisfies Record<string, SQLiteTable>;
 
 export type BackupTable = keyof typeof TABLES;
@@ -136,6 +143,28 @@ export function parseBackup(input: unknown): ParsedBackup {
             : typeof value === 'string' && value.length <= 1_000_000;
         if (!ok) throw new InvalidBackupError(`Row ${i + 1} of "${name}" has an invalid "${key}"`);
         row[key] = value;
+      }
+      if (name === 'paydayPlans') {
+        try {
+          paydayConfigSchema.parse(JSON.parse(row.configJson as string));
+        } catch {
+          throw new InvalidBackupError('Invalid payday plan');
+        }
+        if (row.archived !== undefined && ![0, 1].includes(Number(row.archived)))
+          throw new InvalidBackupError('Invalid payday plan state');
+      }
+      if (name === 'paydayFundingEvents') {
+        try {
+          const snapshot = fundingSnapshotSchema.parse(JSON.parse(row.snapshotJson as string));
+          if (
+            snapshot.planId !== row.planId ||
+            snapshot.scheduledDate !== row.scheduledDate ||
+            snapshot.today !== row.appliedDate
+          )
+            throw new Error('Funding identity does not match its history');
+        } catch {
+          throw new InvalidBackupError('Invalid payday funding history');
+        }
       }
       if (name === 'upSourceRecords') {
         for (const field of ['sourceJson', 'previousJson']) {

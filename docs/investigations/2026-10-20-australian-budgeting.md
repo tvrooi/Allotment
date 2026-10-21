@@ -1,6 +1,6 @@
 # FlyBudget: Australian budgeting and shared expenses investigation
 
-20 October 2026 · Investigation and phase-one implementation notes; no release
+20 October 2026 · Investigation with implementation notes for phases one to three
 
 Source reviewed: `tvrooi/FlyBudget` at `f952208ad41c3d65643aeb826f4256220df6672b` (`v0.2.0-up.4`). This investigation used source code, synthetic examples and public documentation. The original investigation did not inspect or change the live budget, bank connection or Home Assistant installation. A later user-authorised read-only UI check is described in the phase-one notes below. Examples of percentages and account balances are illustrative.
 
@@ -330,3 +330,28 @@ Up browser scenarios passed. The browser scenarios include a phone viewport and 
 acknowledgement leaves ledger rows unchanged. Server and Electron TypeScript checks passed.
 Unsigned release checking is tested separately from signed installation; a real signed-to-signed
 installation remains unverified and is not required for the current manual-installer path.
+
+## Phase three: payday funding and bill coverage (21 October 2026)
+
+Implemented an optional **Budget → Until next payday** view with fortnightly anchors,
+weekend/date adjustments, named plans for multiple employers and the plan's explicit
+calendar time zone. Expected wages remain separate from received income. The existing
+recurrence engine enumerates actual paydays, including three-pay months and 27-pay years.
+
+Funding rules cover bills until next pay, fixed contributions, deadline catch-up,
+monthly smoothing, integer percentages and a remainder category. Existing balances and
+rollover offset bill/target shortfalls. Smoothing uses actual dates in the calendar year
+and catches up immediately where bills fall due sooner. Coverage reads existing schedules
+and occurrences without creating transactions or another independent budget.
+
+Previews are read-only. Applying requires actual received income, caps funding to available
+cash after existing/future allocations and overspending, and adds allocations to the current
+monthly budget in one transaction. Generated salary expectations cannot fund a plan until
+reconciled. The saved preview must still match the plan and financial state when applied.
+Persistent unique payday and receipt identities prevent duplicate allocations, including
+across plans; the history survives editing, archival, source-row deletion and portable
+backup/restore version 5. Existing ledger rows and reconciliation are never rewritten.
+
+See [Payday plans](../PAYDAY-PLANS.md) for setup, funding methods and correction behaviour.
+Phase four remains household/person attribution; phase five remains read-only forecasts.
+Round-up linking and automatic bank corrections remain deferred as described in phase two.
