@@ -158,6 +158,8 @@ The phased fork plan is tracked in the
 | 4     | Household/person ledger, shared bills and personal-share reports                                     | Implemented in `0.2.0-up.8`: private AUD ledger, contribution-based personal budgeting, expense shares and reserved shared bills.                                                               |
 | 5     | Savings forecasts using paydays, bills and household shares                                          | Planned; depends on shared accounting definitions from phases 3, 4 and 6.                                                                                                                       |
 | 6     | YNAB envelope correctness, credit-card funding, category goals, targets, buffer and review workflows | 6A implemented in `0.2.0-up.9`; 6B merged in `0.2.0-up.10`; 6C implemented on the `0.2.0-up.12` feature branch; 6D–6G remain planned. See the phase brief for verification and delivery status. |
+| 7     | Financial resilience, flexibility reserves, life-choice scenarios and sustainable review             | Existing proposal in [PR #11](https://github.com/tvrooi/FlyBudget/pull/11); reserved phase ID, pending merge.                                                                                   |
+| 8     | Monarch-informed transaction investigation, dashboard personalization and planning workflows         | Planned; [phase 8 implementation brief](docs/MONARCH-DEVELOPMENT-PHASE.md) prepared; no application implementation in this addition.                                                            |
 
 Phase numbers remain stable references, not a strict execution order. Foundations
 6A and 6B are implemented; 6C category-funded goals are implemented on the feature branch; next is 6D true-expense targets. Use 6E to integrate the already implemented phase 3 planner
@@ -168,6 +170,16 @@ The [phase 6 implementation brief](docs/YNAB-DEVELOPMENT-PHASE.md) contains the 
 acceptance examples, compatibility constraints and release gates for Sol. It is the
 authoritative scope for this addition; the general upstream ideas below remain uncommitted.
 The original plan addition changed no application code. See [Card payments](docs/CARD-PAYMENTS.md) for phase 6B implementation and compatibility rules.
+
+Phase 7 remains reserved by the [financial-resilience proposal (#11)](https://github.com/tvrooi/FlyBudget/pull/11).
+The [phase 8 implementation brief](docs/MONARCH-DEVELOPMENT-PHASE.md) consolidates
+actual Monarch REA findings into one additional phase. It builds on implemented
+6A–6C funding/card/goal services, coordinates targets and review with 6D–6G,
+and keeps forecasting with phases 5/7. Transaction filters, filtered summaries,
+home-card preferences, merchant breakdowns, annual planning and goal/debt workflow
+integration are implementation work; receipts/review, tags/saved views, holdings
+and forecast expansions receive bounded proposals. This documentation addition
+changes no application behavior and requires no release.
 
 ### General upstream ideas
 
