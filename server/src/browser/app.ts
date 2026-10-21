@@ -1,3 +1,4 @@
+import { householdsRouter } from '../routes/households.js';
 // The in-browser demo's "server": the real budget routers, mounted like index.ts does,
 // plus answers for the few server-only endpoints the app asks about. Runs in a Web Worker
 // (see worker.ts and README.md here).
@@ -62,6 +63,7 @@ app.use('/reports', reportsRouter as unknown as ShimRouter);
 app.use('/export', exportRouter as unknown as ShimRouter);
 app.use('/custom-reports', customReportsRouter as unknown as ShimRouter);
 app.use('/dashboards', dashboardsRouter as unknown as ShimRouter);
+app.use('/households', householdsRouter as unknown as ShimRouter);
 app.use('/schedules', schedulesRouter as unknown as ShimRouter);
 app.use('/goals', goalsRouter as unknown as ShimRouter);
 app.use('/payday', paydayRouter as unknown as ShimRouter);

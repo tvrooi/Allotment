@@ -1,3 +1,4 @@
+import { householdEvents } from '../db/schema.js';
 import { Router, type Response } from 'express';
 import { db } from '../db/index.js';
 import { transactions, payees, accounts, categories } from '../db/schema.js';
@@ -43,6 +44,17 @@ import {
 import { isForeign } from '../utils/currencies.js';
 
 export const transactionsRouter = Router();
+transactionsRouter.param('id', (req, res, next, id) => {
+  if (
+    req.method !== 'GET' &&
+    db.select().from(householdEvents).where(eq(householdEvents.transactionId, id)).get()
+  ) {
+    return res
+      .status(409)
+      .json({ error: 'Remove the linked household entry before changing this bank transaction' });
+  }
+  next();
+});
 
 const id = z.string().min(1).max(64);
 // Amounts are integer cents; the cap keeps sums far inside Number.MAX_SAFE_INTEGER

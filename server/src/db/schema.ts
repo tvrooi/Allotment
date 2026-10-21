@@ -5,6 +5,7 @@ import {
   uniqueIndex,
   index,
   customType,
+  type AnySQLiteColumn,
 } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { secretCipher } from './secretCrypto.js';
@@ -609,3 +610,62 @@ export const exchangeRates = sqliteTable(
   },
   (table) => [index('exchange_rates_pair_date_idx').on(table.base, table.quote, table.date)],
 );
+
+/** Private household ledger. Amounts are in the group's declared currency. */
+export const householdGroups = sqliteTable('household_groups', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  currency: text('currency').notNull(),
+  accountId: text('account_id')
+    .references(() => accounts.id, { onDelete: 'restrict' })
+    .unique(),
+});
+export const householdPeople = sqliteTable('household_people', {
+  id: text('id').primaryKey(),
+  groupId: text('group_id')
+    .notNull()
+    .references(() => householdGroups.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  isSelf: integer('is_self').notNull().default(0),
+});
+export const householdEvents = sqliteTable('household_events', {
+  id: text('id').primaryKey(),
+  groupId: text('group_id')
+    .notNull()
+    .references(() => householdGroups.id, { onDelete: 'cascade' }),
+  kind: text('kind').notNull(),
+  date: text('date').notNull(),
+  description: text('description').notNull(),
+  amount: integer('amount').notNull(),
+  payerId: text('payer_id').references(() => householdPeople.id, { onDelete: 'restrict' }),
+  recipientId: text('recipient_id').references(() => householdPeople.id, { onDelete: 'restrict' }),
+  transactionId: text('transaction_id')
+    .references(() => transactions.id, { onDelete: 'restrict' })
+    .unique(),
+  reversesId: text('reverses_id')
+    .references((): AnySQLiteColumn => householdEvents.id, { onDelete: 'restrict' })
+    .unique(),
+  billId: text('bill_id'),
+});
+export const householdShares = sqliteTable('household_shares', {
+  id: text('id').primaryKey(),
+  eventId: text('event_id')
+    .notNull()
+    .references(() => householdEvents.id, { onDelete: 'cascade' }),
+  personId: text('person_id')
+    .notNull()
+    .references(() => householdPeople.id, { onDelete: 'restrict' }),
+  amount: integer('amount').notNull(),
+});
+export const householdBills = sqliteTable('household_bills', {
+  id: text('id').primaryKey(),
+  groupId: text('group_id')
+    .notNull()
+    .references(() => householdGroups.id, { onDelete: 'cascade' }),
+  description: text('description').notNull(),
+  dueDate: text('due_date').notNull(),
+  amount: integer('amount').notNull(),
+  personalShare: integer('personal_share').notNull().default(0),
+  reserved: integer('reserved').notNull().default(0),
+  scheduleId: text('schedule_id').references(() => schedules.id, { onDelete: 'set null' }),
+});
