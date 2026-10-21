@@ -31,7 +31,7 @@ already in the register.
 | Bills until next payday | Top up the category's balance to unpaid scheduled bills before the next pay.                                                                                         |
 | Fixed per pay           | Add the specified amount at each selected payday.                                                                                                                    |
 | Target by date          | Divide the remaining category-balance shortfall over the actual paydays left through the due date. A target due before the next payday needs its full shortfall now. |
-| Smooth monthly cost     | Spread twelve monthly costs over actual payday dates in the following year. If the next bills need more, catch up immediately and show any shortfall.                |
+| Smooth monthly cost     | Spread twelve monthly costs over actual payday dates in the calendar year (26 or 27). If the next bills need more, catch up immediately and show any shortfall.      |
 | Percentage of pay       | Use an integer percentage of selected received income, rounded down to minor units.                                                                                  |
 | Remainder               | Fund the category with available money left after all higher priorities.                                                                                             |
 

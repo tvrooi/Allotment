@@ -1,6 +1,6 @@
 import { and, eq, lte, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { addDays, addYears, differenceInCalendarDays, format, parseISO } from 'date-fns';
+import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { db } from '../db/index.js';
 import {
   accounts,
@@ -58,6 +58,17 @@ export function paydays(config: PaydayConfig, from: string, to: string) {
     day(from, -3),
     day(to, 3),
   ).filter((p) => p.expectedDate >= from && p.expectedDate <= to);
+}
+/** Count the whole calendar-year cycle, even when a plan starts midyear. A rolling
+ * year beginning on payday always includes 27 dates and would underfund annual costs.
+ */
+export function paydaysInYear(config: PaydayConfig, date: string) {
+  const from = `${date.slice(0, 4)}-01-01`;
+  const to = `${date.slice(0, 4)}-12-31`;
+  const periods = Math.floor(
+    differenceInCalendarDays(parseISO(from), parseISO(config.anchorDate)) / 14,
+  );
+  return paydays({ ...config, anchorDate: day(config.anchorDate, (periods - 1) * 14) }, from, to);
 }
 export function expenseCategories() {
   return db
@@ -382,12 +393,7 @@ export function previewPayday(planId: string, request: PaydayRequest) {
         needed = Math.ceil(Math.max(0, rule.amount - balance) / remainingPays);
       }
       if (rule.method === 'monthly') {
-        const yearEnd = format(addYears(parseISO(request.actualPayDate), 1), 'yyyy-MM-dd');
-        const pays =
-          1 +
-          paydays(plan, day(request.actualPayDate, 1), day(yearEnd, -1)).filter(
-            (p) => p.scheduledDate > request.scheduledDate,
-          ).length;
+        const pays = paydaysInYear(plan, request.actualPayDate).length;
         needed = Math.max(Math.ceil((rule.amount * 12) / pays), billsDue - balance, 0);
       }
       if (rule.method === 'percentage')

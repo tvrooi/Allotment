@@ -18,6 +18,7 @@ import {
   applyPayday,
   previewPayday,
   paydays,
+  paydaysInYear,
   incomeOptions,
   billCoverage,
 } from './paydayService.js';
@@ -139,6 +140,16 @@ describe('payday funding', () => {
       ),
     ).toEqual([{ scheduledDate: '2026-10-03', expectedDate: '2026-10-02' }]);
     vi.setSystemTime(new Date('2026-10-21T02:00:00Z'));
+  });
+  it('counts the full calendar-year cycle for smoothing, including plans started midyear', () => {
+    expect(paydaysInYear(config(), '2026-10-15')).toHaveLength(26);
+    expect(paydaysInYear({ ...config(), anchorDate: '2026-12-31' }, '2026-12-31')).toHaveLength(27);
+    expect(
+      paydaysInYear(
+        { ...config(), anchorDate: '2027-01-01', weekendAdjust: 'before' },
+        '2027-01-01',
+      ),
+    ).toHaveLength(27);
   });
   it('previews without writes and applies additive monthly allocations once, preserving ledger and rollover', () => {
     plan();
@@ -286,7 +297,7 @@ describe('payday funding', () => {
       allocated: 100000,
     });
     db.delete(schedules).run();
-    expect(previewPayday('plan', request).rows[0].needed).toBe(53334); // 27 actual dates in this rolling year
+    expect(previewPayday('plan', request).rows[0].needed).toBe(55385); // 26 calendar-year paydays on this cycle
   });
   it('uses integer percentages and puts the remainder last', () => {
     plan(config([rule('savings', 'remainder'), rule('food', 'percentage', 0, { percent: 33 })]));

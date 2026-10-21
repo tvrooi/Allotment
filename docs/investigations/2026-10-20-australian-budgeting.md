@@ -340,7 +340,7 @@ recurrence engine enumerates actual paydays, including three-pay months and 27-p
 
 Funding rules cover bills until next pay, fixed contributions, deadline catch-up,
 monthly smoothing, integer percentages and a remainder category. Existing balances and
-rollover offset bill/target shortfalls. Smoothing uses actual dates in the following year
+rollover offset bill/target shortfalls. Smoothing uses actual dates in the calendar year
 and catches up immediately where bills fall due sooner. Coverage reads existing schedules
 and occurrences without creating transactions or another independent budget.
 
