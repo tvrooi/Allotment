@@ -1,3 +1,4 @@
+import { deleteTransactionRow } from '../services/transactionHelpers.js';
 import { linkTransfer } from '../services/transferService.js';
 import { beforeAll, afterAll, describe, it, expect } from 'vitest';
 import express from 'express';
@@ -288,6 +289,28 @@ describe('household attribution', () => {
       ).status,
     ).toBe(201);
     expect(() => linkTransfer('shared-bank', 'shared-counterpart')).toThrow(/household/);
+  });
+  it('keeps agreed shares and flags review when a bank sync removes a linked payment', async () => {
+    const groupRows = (await call('')).data;
+    const states = await Promise.all(groupRows.map((g: any) => call(`/${g.id}`)));
+    const state = states
+      .map((s) => s.data)
+      .find((s) => s.events.some((e: any) => e.transactionId === 'shared-bank'));
+    const event = state.events.find((e: any) => e.transactionId === 'shared-bank');
+    expect(() =>
+      deleteTransactionRow({ id: 'shared-bank', transferTransactionId: null }),
+    ).not.toThrow();
+    const after = (await call(`/${state.group.id}`)).data;
+    expect(after.events.find((e: any) => e.id === event.id)).toMatchObject({
+      amount: event.amount,
+      transactionId: null,
+      reviewReason: expect.stringContaining('removed'),
+      shares: event.shares,
+    });
+    expect(after.balances).toEqual(state.balances);
+    expect(
+      db.select().from(transactions).where(eq(transactions.id, 'shared-bank')).get(),
+    ).toBeUndefined();
   });
   it('does not reserve the same received cash for two bills and round-trips household data in backups', async () => {
     const existing = (await call('')).data.find((g: any) => g.accountId === 'pool');

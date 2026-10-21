@@ -646,6 +646,7 @@ export const householdEvents = sqliteTable('household_events', {
     onDelete: 'restrict',
   }),
   billId: text('bill_id'),
+  reviewReason: text('review_reason'),
 });
 export const householdShares = sqliteTable('household_shares', {
   id: text('id').primaryKey(),

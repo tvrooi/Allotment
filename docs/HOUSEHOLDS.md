@@ -49,6 +49,9 @@ expense rather than salary. The Household report excludes repayments from spendi
 the bank/category budget retains the real cash refund. Linked transaction notes,
 payees, reconciliation and expense categories remain editable. Remove the household
 entry before changing the bank amount, date, account, split or transfer structure.
+If a bank sync removes a linked payment, its household entry and saved shares remain;
+the bank link is detached and the entry is visibly flagged for review. Sync can
+continue without silently erasing the agreed expense.
 
 Refunds reference the original expense and reverse its saved shares. Partial
 refunds allocate proportionally to the remaining unrefunded shares; the last refund

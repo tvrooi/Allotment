@@ -17,6 +17,7 @@ type Entry = {
   payerId: string | null;
   transactionId: string | null;
   billId: string | null;
+  reviewReason: string | null;
   shares: { personId: string; amount: number }[];
 };
 type Bill = {
@@ -587,6 +588,9 @@ export default function HouseholdPage() {
             </button>
             {expenses.map((e) => (
               <div key={e.id} className="border-b py-2">
+                {e.reviewReason && (
+                  <strong className="text-red-600">Needs review: {e.reviewReason}. </strong>
+                )}
                 {e.date} · {e.description} · Gross {money(e.amount)} · My share{' '}
                 {money(
                   e.shares.filter((s) => s.personId === self?.id).reduce((n, s) => n + s.amount, 0),
@@ -598,6 +602,9 @@ export default function HouseholdPage() {
             <summary>All contributions, payments & repayments</summary>
             {state.events.map((e) => (
               <p key={e.id}>
+                {e.reviewReason && (
+                  <strong className="text-red-600">Needs review: {e.reviewReason}. </strong>
+                )}
                 {e.date} · {e.kind} · {e.description} · {money(e.amount)}{' '}
                 <button
                   disabled={mutation.isPending}
