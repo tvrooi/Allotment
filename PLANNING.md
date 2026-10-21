@@ -143,7 +143,7 @@ The schema lives in [`server/src/db/schema.ts`](server/src/db/schema.ts) and the
 
 ### Community fork development plan (21 October 2026)
 
-The current main baseline is `0.2.0-up.7`, commit `e821e1c` (phase 3 payday funding).
+The reviewed implementation baseline is `0.2.0-up.8`, commit `4b97955` (phase 4 household accounting).
 The YNAB findings originated from `0.2.0-up.6`, commit `865b014`.
 Implementation and verification below describe this checkout and its recorded checks;
 they do not establish the version installed on a live Home Assistant instance.
@@ -159,6 +159,8 @@ The phased fork plan is tracked in the
 | 5     | Savings forecasts using paydays, bills and household shares                                          | Planned; depends on shared accounting definitions from phases 3, 4 and 6.                                                         |
 | 6     | YNAB envelope correctness, credit-card funding, category goals, targets, buffer and review workflows | Planned; investigation and implementation instructions complete, no implementation yet.                                           |
 
+| 7 | Financial resilience, flexibility reserves, life-choice scenarios and sustainable review | Planned; [implementation brief](docs/PSYCHOLOGY-OF-MONEY-DEVELOPMENT-PHASE.md) prepared; no application implementation. |
+
 Phase numbers remain stable references, not a strict execution order. Do **6A first**
 (cash-backed funding, consistent availability, deficit recovery and atomic money moves),
 then 6B credit-card funding and 6C–6D category goals/targets. Use 6E to integrate the already implemented phase 3 planner
@@ -169,6 +171,12 @@ The [phase 6 implementation brief](docs/YNAB-DEVELOPMENT-PHASE.md) contains the 
 acceptance examples, compatibility constraints and release gates for Sol. It is the
 authoritative scope for this addition; the general upstream ideas below remain uncommitted.
 No application change, version bump or deployment is part of adding this plan.
+
+Phase 7 extends phase 6F buffers, phase 6G review and phase 5 scenarios. Its financial
+features depend on their shared accounting foundation. Start with optional priorities;
+then add flexibility reserves, stress scenarios, goal lifecycle and recovery workflows.
+See the [phase 7 handoff](docs/PSYCHOLOGY-OF-MONEY-DEVELOPMENT-PHASE.md) for dependencies,
+concrete acceptance cases and delivery requirements. It does not create a second funding engine.
 
 ### General upstream ideas
 
