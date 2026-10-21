@@ -288,6 +288,8 @@ export interface TransactionQueryParams {
 }
 
 export interface BudgetCategory {
+  activity?: number;
+  cardCreditAdjustment?: number;
   id: string;
   groupId: string;
   name: string;
@@ -311,6 +313,11 @@ export interface BudgetGroup {
 }
 
 export interface BudgetSummary {
+  paymentReserved: number;
+  paymentShortfall: number;
+  cashOverspent: number;
+  creditOverspent: number;
+  unlinkedCardInflows: number;
   asOf: string;
   complete: boolean;
   resolved: boolean;

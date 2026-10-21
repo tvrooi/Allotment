@@ -1,3 +1,4 @@
+import { creditFundingRouter } from './creditFunding.js';
 import { previewMove, applyMove, undoMove, BudgetError } from '../services/budgetMoves.js';
 import {
   budgetGroups,
@@ -21,6 +22,7 @@ import { budgetActivity, mainAmount } from '../services/balances.js';
 import { isMonth } from '../utils/validation.js';
 
 export const budgetRouter = Router();
+budgetRouter.use('/cards', creditFundingRouter);
 
 const cents = z.number().int().min(-1e13).max(1e13);
 const upsertSchema = z.object({ budgeted: cents, revision: z.string().optional() });

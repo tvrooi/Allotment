@@ -8,9 +8,8 @@ import type { BudgetCategory } from '../types';
  * planned isn't a shortfall).
  */
 export function categoryFigures(cat: BudgetCategory, isIncome: boolean) {
-  const actual = isIncome
-    ? cat.balance - cat.carryOver - cat.budgeted
-    : cat.balance - cat.carryOver - cat.budgeted;
+  const actual =
+    cat.activity ?? cat.balance - cat.carryOver - cat.budgeted - (cat.cardCreditAdjustment ?? 0);
   const raw = cat.budgeted - actual;
   return { actual, remaining: isIncome ? Math.max(raw, 0) : cat.balance };
 }

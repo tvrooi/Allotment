@@ -1,6 +1,6 @@
 # Phase 6: YNAB envelope budgeting and funding workflows
 
-Added 21 October 2026. Status: **6A implemented; 6B–6G planned. Release/live status must be verified separately.**
+Added 21 October 2026. Status: **6A–6B implemented; 6C–6G planned. Release/live status must be verified separately.**
 
 This is an implementation handoff for Sol, based on Jesse Mecham's _You Need a
 Budget_ (principally chapters 2–7) and a source investigation of `tvrooi/FlyBudget`
@@ -125,7 +125,8 @@ for history and safe undo; undo must detect intervening changes rather than over
 
 ## 6B: credit-card payment funding
 
-Status: not started; depends on 6A.
+Status: implemented for `0.2.0-up.10`; verification and release/live status are tracked separately.
+See [Credit-card payment funding](CREDIT-CARD-FUNDING.md) for the accounting policy, reviewed setup, ordering and compatibility rules.
 
 Source map: shared budget service, account classification, transaction helpers,
 transfer services and budget components. Document cash, debt and payment-funding

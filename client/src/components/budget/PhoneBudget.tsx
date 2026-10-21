@@ -148,6 +148,11 @@ function CategoryCard({
           <span className="sr-only"> {isIncome ? 'remaining' : 'available'}</span>
         </span>
       </div>
+      {!!cat.cardCreditAdjustment && (
+        <p className="text-xs text-text-tertiary">
+          Card credit adjustment: {formatCurrency(cat.cardCreditAdjustment)}
+        </p>
+      )}
       <SpentBar
         spent={isIncome ? actual : cat.spent}
         budgeted={cat.budgeted}

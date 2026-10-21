@@ -687,3 +687,33 @@ export const budgetMoves = sqliteTable('budget_moves', {
   undone: integer('undone').notNull().default(0),
   createdAt: text('created_at').notNull(),
 });
+
+/** Opt-in date: earlier ledger history retains the phase 6A net-debt treatment. */
+export const creditCardPlans = sqliteTable('credit_card_plans', {
+  accountId: text('account_id')
+    .primaryKey()
+    .references(() => accounts.id, { onDelete: 'cascade' }),
+  enabledFrom: text('enabled_from').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+/** Explicit adjustments to payment funding; transactions themselves remain untouched. */
+export const creditFundingEvents = sqliteTable('credit_funding_events', {
+  id: text('id').primaryKey(),
+  accountId: text('account_id')
+    .notNull()
+    .references(() => creditCardPlans.accountId, { onDelete: 'cascade' }),
+  date: text('date').notNull(),
+  amount: integer('amount').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+/** Stable within-day order shared by ledger inserts and explicit payment funding. */
+export const creditEventOrder = sqliteTable(
+  'credit_event_order',
+  {
+    sequence: integer('sequence').primaryKey({ autoIncrement: true }),
+    kind: text('kind').notNull(),
+    entityId: text('entity_id').notNull(),
+  },
+  (table) => [uniqueIndex('credit_event_order_identity').on(table.kind, table.entityId)],
+);

@@ -313,6 +313,12 @@ export default function CategoryDetailPage() {
             )}
           </div>
           <div>
+            {!!cat?.cardCreditAdjustment && (
+              <p className="text-sm text-text-secondary">
+                Card credit adjustment: {formatCurrency(cat.cardCreditAdjustment)}. Available
+                excludes noncash card credit.
+              </p>
+            )}
             <BudgetWidget
               budgeted={cat?.budgeted ?? 0}
               actual={actual}

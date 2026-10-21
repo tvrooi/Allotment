@@ -1,5 +1,13 @@
 # Changes
 
+## 0.2.0-up.10
+
+- Add reviewed, opt-in payment-reserve setup for personal on-budget credit cards and lines of credit. Existing cards keep their prior treatment until confirmed; no bank rows or historical assignments are rewritten.
+- Reserve cash from funded purchases, expose unfunded credit spending and payment shortfalls, and consume reserves on confirmed repayments without duplicate category spending.
+- Support explicit debt-paydown funding from unassigned cash, refunds before/after repayment, positive card credit, overpayments, splits, fees and card-to-card balance transfers.
+- Show cash versus credit deficits and noncash card-credit adjustments consistently on desktop, phones, category details and the offline demo.
+- Preserve within-day ledger/funding order and card history in portable backup version 8, with stale-preview and duplicate-application protection. See `docs/CREDIT-CARD-FUNDING.md` for dates, currency and compatibility policy.
+
 ## 0.2.0-up.9
 
 - Unify monthly budget and payday funding around existing liquid resources, opening funds, carried envelopes and future reservations. Expected salaries cannot fund assignments; missing rates block new funding.

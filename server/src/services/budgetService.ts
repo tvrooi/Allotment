@@ -1,3 +1,4 @@
+import { assessCredit, type CardPlan } from './creditAccounting.js';
 import { and, eq, gte, lte, lt, sql } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import {
@@ -21,7 +22,11 @@ const receivedActivity = and(
 export const fundingRevision = () =>
   `${todayIso()}:${db.select().from(budgetRevision).get()?.revision ?? 'initial'}`;
 
-export function budgetGroups(month: string, today = todayIso()) {
+export function budgetGroups(
+  month: string,
+  today = todayIso(),
+  credit = assessCredit(monthBounds(month).to < today ? monthBounds(month).to : today),
+) {
   const { from, to: end } = monthBounds(month);
   const to = end < today ? end : today;
 
@@ -74,14 +79,19 @@ export function budgetGroups(month: string, today = todayIso()) {
         const bm = budgetMap[c.id];
         const budgetedAmt = bm?.budgeted ?? 0;
         const activity = spentMap[c.id] ?? 0;
-        const carryOver = (priorBudgetMap[c.id] ?? 0) + (priorActivityMap[c.id] ?? 0);
+        const priorCreditAdjustment =
+          (month > to.slice(0, 7) ? credit.adjustments : credit.priorAdjustments).get(c.id) ?? 0;
+        const cardCreditAdjustment = (credit.adjustments.get(c.id) ?? 0) - priorCreditAdjustment;
+        const carryOver =
+          (priorBudgetMap[c.id] ?? 0) + (priorActivityMap[c.id] ?? 0) + priorCreditAdjustment;
         return {
           ...c,
           budgeted: budgetedAmt,
           activity,
+          cardCreditAdjustment,
           spent: Math.abs(Math.min(activity, 0)),
           carryOver,
-          balance: carryOver + budgetedAmt + activity,
+          balance: carryOver + budgetedAmt + activity + cardCreditAdjustment,
         };
       }),
   }));
@@ -89,17 +99,17 @@ export function budgetGroups(month: string, today = todayIso()) {
   return result;
 }
 
-/** Net liquid resources = unassigned + positive current envelopes + positive future
- * assignments. Negative envelopes are disclosed, never used to offset reservations.
- * Cash and savings count; on-budget debt reduces resources (interim net-debt model).
- * Assets never unlock assignments. This deliberately reserves all outstanding debt;
- * explicit card payment reserves belong to 6B. Opening funds take effect on the earlier
- * of account creation and its first transaction, matching bookedValue's date policy.
- * Month views stop at min(month end, today); today's position reserves every future
- * positive assignment, including legacy commitments, without forecasting wages.
+/** Existing cash = unassigned + positive envelopes + future commitments + card reserves.
+ * Reviewed cards exclude debt/positive store credit from cash resources. Cards awaiting
+ * setup retain phase 6A's net-debt policy; historical views before setup remain unchanged.
  */
-export function fundingState(asOf = todayIso()) {
-  const groups = budgetGroups(asOf.slice(0, 7), asOf);
+export function fundingState(
+  asOf = todayIso(),
+  proposedPlan?: CardPlan,
+  proposedFunding?: { id: string; accountId: string; date: string; amount: number },
+) {
+  const credit = assessCredit(asOf, proposedPlan, proposedFunding);
+  const groups = budgetGroups(asOf.slice(0, 7), asOf, credit);
   const cats = groups.filter((g) => !g.isIncome).flatMap((g) => g.categories);
   const balances = new Map(cats.map((c) => [c.id, c.balance]));
   const expenseIds = new Set(cats.map((c) => c.id));
@@ -109,11 +119,13 @@ export function fundingState(asOf = todayIso()) {
     .all()
     .filter((r) => r.month > asOf.slice(0, 7) && expenseIds.has(r.categoryId))
     .reduce((s, r) => s + Math.max(0, r.budgeted), 0);
-  const reserved = cats.reduce((s, c) => s + Math.max(0, c.balance), 0) + futureAssigned;
+  const reserved =
+    cats.reduce((s, c) => s + Math.max(0, c.balance), 0) + futureAssigned + credit.paymentReserved;
   const ctx = currencyContext();
   let resources = 0;
   let openingFunds = 0;
-  let complete = true;
+  let complete = credit.complete;
+  const reviewedCards = new Set(credit.cards.map((c) => c.accountId));
   for (const account of db.select().from(accounts).where(personalBudgetAccount).all()) {
     const liquid = ['checking', 'savings', 'cash', 'credit', 'line_of_credit'].includes(
       account.type,
@@ -148,8 +160,8 @@ export function fundingState(asOf = todayIso()) {
     );
     if (value === null || opening === null) complete = false;
     else {
-      resources += liquid ? value : Math.min(0, value);
-      openingFunds += liquid ? opening : Math.min(0, opening);
+      resources += reviewedCards.has(account.id) ? 0 : liquid ? value : Math.min(0, value);
+      openingFunds += reviewedCards.has(account.id) ? 0 : liquid ? opening : Math.min(0, opening);
     }
   }
   const activity = db
@@ -169,6 +181,12 @@ export function fundingState(asOf = todayIso()) {
   const unassigned = resources - reserved;
   return {
     balances,
+    cards: credit.cards,
+    paymentReserved: credit.paymentReserved,
+    paymentShortfall: credit.paymentShortfall,
+    creditOverspent: credit.creditOverspent,
+    cashOverspent: Math.max(0, overspent - credit.creditOverspent),
+    unlinkedCardInflows: credit.unlinkedCardInflows,
     asOf,
     resources,
     openingFunds,
@@ -180,7 +198,13 @@ export function fundingState(asOf = todayIso()) {
     unassigned,
     available: complete ? Math.max(0, unassigned) : 0,
     revision: fundingRevision(),
-    resolved: complete && uncategorized === 0 && overspent === 0 && unassigned >= 0,
+    resolved:
+      complete &&
+      uncategorized === 0 &&
+      overspent === 0 &&
+      unassigned >= 0 &&
+      credit.paymentShortfall === 0 &&
+      credit.unlinkedCardInflows === 0,
   };
 }
 

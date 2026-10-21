@@ -142,7 +142,7 @@ export function BudgetSummaryWidget({
           text: 'text-caution',
           label: funding.complete
             ? 'Review funding and unresolved spending'
-            : 'Incomplete: missing exchange rates',
+            : 'Incomplete: review rates and payment dates',
         }
       : getHeroStyle(toBeBudgeted, incomePlanned);
 
@@ -167,7 +167,14 @@ export function BudgetSummaryWidget({
           <p>Envelope deficits: {formatCurrency(funding.overspent)}</p>
           <p>Uncategorised spending: {formatCurrency(funding.uncategorized)}</p>
           <p>Future assignments reserved: {formatCurrency(funding.futureAssigned)}</p>
-          <p>Outstanding debt reduces the money available to assign.</p>
+          <p>Card payments reserved: {formatCurrency(funding.paymentReserved ?? 0)}</p>
+          <p>Card payment shortfalls: {formatCurrency(funding.paymentShortfall ?? 0)}</p>
+          <p>Cash deficits: {formatCurrency(funding.cashOverspent ?? funding.overspent)}</p>
+          <p>Credit category deficits: {formatCurrency(funding.creditOverspent ?? 0)}</p>
+          {!!funding.unlinkedCardInflows && (
+            <p>Review unlinked card inflows: {funding.unlinkedCardInflows}</p>
+          )}
+          <p>Cards awaiting setup retain their existing debt treatment.</p>
         </div>
       )}
       <div className="flex justify-center gap-4 px-4 pb-2">

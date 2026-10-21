@@ -1,3 +1,4 @@
+import { CardPayments } from '../components/budget/CardPayments';
 import { MoneyMoves } from '../components/budget/MoneyMoves';
 import { useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -122,6 +123,11 @@ function CategoryRow({
         <div className="text-sm text-text">
           {showCategoryIcons && cat.icon && <span className="text-xs mr-1">{cat.icon}</span>}
           {cat.name}
+          {!!cat.cardCreditAdjustment && (
+            <p className="text-xs text-text-tertiary">
+              Card credit adjustment: {formatCurrency(cat.cardCreditAdjustment)}
+            </p>
+          )}
         </div>
         <SpentBar
           spent={isIncome ? actual : cat.spent}
@@ -740,6 +746,7 @@ export default function BudgetPage() {
 
         <div className="w-80 max-md:w-full shrink-0 border-l max-md:border-l-0 max-md:border-b border-border p-4 self-start max-md:self-stretch sticky max-md:static top-0">
           <div>
+            <CardPayments key={`cards:${selectedMonth}`} month={selectedMonth} />
             <MoneyMoves key={selectedMonth} month={selectedMonth} categories={allExpenseCats} />
             <BudgetSummaryWidget
               funding={summary}

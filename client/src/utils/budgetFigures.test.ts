@@ -119,3 +119,41 @@ describe('splitCategories picks common categories to top up a section', () => {
     expect(shown.map((c) => c.name)).toEqual(['Zoo Trips', 'Alpacas', 'Kayaks']);
   });
 });
+
+it('keeps a refund after card repayment visible as ledger activity without inventing cash availability', () => {
+  const cat: BudgetCategory = {
+    id: 'food',
+    groupId: 'expenses',
+    name: 'Food',
+    icon: null,
+    budgetType: 'flexible',
+    sortOrder: 0,
+    createdAt: '',
+    budgeted: 10000,
+    spent: 0,
+    carryOver: 0,
+    balance: 2000,
+    activity: 0,
+    cardCreditAdjustment: -8000,
+  };
+  expect(categoryFigures(cat, false)).toEqual({ actual: 0, remaining: 2000 });
+  expect(isActiveCategory(cat, false)).toBe(true);
+});
+it('shows a purchase using positive card credit as activity while preserving the cash envelope', () => {
+  const cat: BudgetCategory = {
+    id: 'food',
+    groupId: 'expenses',
+    name: 'Food',
+    icon: null,
+    budgetType: 'flexible',
+    sortOrder: 0,
+    createdAt: '',
+    budgeted: 0,
+    spent: 8000,
+    carryOver: 2000,
+    balance: 2000,
+    activity: -8000,
+    cardCreditAdjustment: 8000,
+  };
+  expect(categoryFigures(cat, false)).toEqual({ actual: -8000, remaining: 2000 });
+});

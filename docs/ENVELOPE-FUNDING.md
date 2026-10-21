@@ -1,5 +1,8 @@
 # Envelope funding (phase 6A)
 
+Phase 6B adds [reviewed card payment reserves](CREDIT-CARD-FUNDING.md). Cards awaiting
+setup retain the interim net-debt treatment below.
+
 One calculation service supplies the monthly summary and payday planner. Expense
 Available is previous Available + Assigned + signed Activity. Refunds increase it;
 negative balances remain visible across months. Income expectations remain separate
@@ -30,8 +33,9 @@ reserve cash.
 
 This is an **interim net-debt model**: outstanding on-budget debt reduces assignable
 resources immediately. It does not create dedicated credit-card payment reserves or
-claim to distinguish funded purchases from new card debt. Those workflows are phase
-6B. Do not enable a different card calculator alongside this foundation.
+claim to distinguish funded purchases from new card debt. Reviewed cards use the
+phase 6B service and dedicated payment reserves instead. Do not enable a different
+card calculator alongside this foundation.
 
 ## Dates and currency
 

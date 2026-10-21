@@ -1,3 +1,4 @@
+import { isRealDate } from '../utils/validation.js';
 import path from 'path';
 import { getTableColumns, isNotNull, sql } from 'drizzle-orm';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
@@ -13,6 +14,9 @@ import {
   exchangeRates,
   budgetMonths,
   budgetMoves,
+  creditCardPlans,
+  creditEventOrder,
+  creditFundingEvents,
   categories,
   categoryGroups,
   customReports,
@@ -48,7 +52,7 @@ import { upObservationSchema } from './upTransactions.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 7;
+export const BACKUP_VERSION = 8;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -59,6 +63,7 @@ const TABLES = {
   categories,
   payees,
   schedules,
+  creditEventOrder,
   transactions,
   upSourceRecords,
   scheduleOccurrences,
@@ -66,6 +71,8 @@ const TABLES = {
   transferMatchDismissals,
   budgetMonths,
   budgetMoves,
+  creditCardPlans,
+  creditFundingEvents,
   rules,
   customReports,
   dashboardPages,
@@ -156,6 +163,18 @@ export function parseBackup(input: unknown): ParsedBackup {
         if (!ok) throw new InvalidBackupError(`Row ${i + 1} of "${name}" has an invalid "${key}"`);
         row[key] = value;
       }
+      if (
+        name === 'creditEventOrder' &&
+        (!['transaction', 'funding'].includes(String(row.kind)) || Number(row.sequence) <= 0)
+      )
+        throw new InvalidBackupError('Invalid credit event order');
+      if (name === 'creditCardPlans' && !isRealDate(String(row.enabledFrom)))
+        throw new InvalidBackupError('Invalid card setup date');
+      if (
+        name === 'creditFundingEvents' &&
+        (!isRealDate(String(row.date)) || Math.abs(Number(row.amount)) > 1e13)
+      )
+        throw new InvalidBackupError('Invalid card funding history');
       if (name === 'paydayPlans') {
         try {
           paydayConfigSchema.parse(JSON.parse(row.configJson as string));
