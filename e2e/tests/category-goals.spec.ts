@@ -13,6 +13,7 @@ for (const phone of [false, true]) {
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Name', { exact: true }).fill('Trip');
     await dialog.getByLabel('Target', { exact: true }).fill('500');
+    await dialog.getByLabel('Target', { exact: true }).press('Tab');
     await dialog.getByLabel('Progress source').selectOption(category.id);
     await expect(dialog.getByLabel('Saved so far')).toHaveCount(0);
     await dialog.getByRole('button', { name: 'Add Goal' }).click();
@@ -30,6 +31,7 @@ for (const phone of [false, true]) {
     await dialog.getByLabel('Progress source').selectOption('');
     await expect(dialog.getByLabel('Saved so far')).toHaveValue('');
     await dialog.getByLabel('Saved so far').fill('75');
+    await dialog.getByLabel('Saved so far').press('Tab');
     await dialog.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(dialog).toBeHidden();
     const rows = await api.call('GET', '/goals');
