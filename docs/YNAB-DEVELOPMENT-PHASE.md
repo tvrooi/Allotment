@@ -1,6 +1,6 @@
 # Phase 6: YNAB envelope budgeting and funding workflows
 
-Added 21 October 2026. Status: **6A implemented; 6B implemented on the `0.2.0-up.10` development branch; 6C–6G planned. Release/live status must be verified separately.**
+Added 21 October 2026. Status: **6A implemented; 6B merged in `0.2.0-up.10`; 6C implemented on the `0.2.0-up.11` feature branch; 6D–6G planned. Release/live status must be verified separately.**
 
 This is an implementation handoff for Sol, based on Jesse Mecham's _You Need a
 Budget_ (principally chapters 2–7) and a source investigation of `tvrooi/FlyBudget`
@@ -153,7 +153,7 @@ historical assignments or rewrite the ledger to force the new model to balance.
 
 ## 6C: category-funded goals and honest savings summaries
 
-Status: not started; depends on the shared funding model.
+Status: implemented on the `0.2.0-up.11` feature branch. Verification and delivery are tracked in [Category-funded goals](CATEGORY-GOALS.md). Release and live installation require separate verification.
 
 Source map: `server/src/routes/goals.ts`, `server/src/db/schema.ts`,
 `client/src/pages/Goals.tsx`, `client/src/components/goals/GoalFormModal.tsx`,

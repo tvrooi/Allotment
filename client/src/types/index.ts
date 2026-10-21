@@ -763,6 +763,14 @@ export interface RuleTestResult {
 
 // Goals
 export interface Goal {
+  categoryId?: string | null;
+  categoryName?: string;
+  fundedAmount?: number | null;
+  fundingComplete?: boolean;
+  assignedThisMonth?: number;
+  activity?: number;
+  available?: number | null;
+  asOf?: string;
   id: string;
   name: string;
   targetAmount: number;

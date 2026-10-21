@@ -3,9 +3,32 @@ import * as goalsApi from '../api/goals';
 import { useUndoStore } from '../store/undoStore';
 import type { Goal } from '../types';
 
+// Restore the tracking value before explicitly relinking; it is never funded progress.
+async function recreateGoal(snapshot: Goal) {
+  const created = await goalsApi.createGoal({
+    name: snapshot.name,
+    targetAmount: snapshot.targetAmount,
+    currentAmount: snapshot.currentAmount,
+    targetDate: snapshot.targetDate,
+    accountId: snapshot.accountId,
+    icon: snapshot.icon,
+    color: snapshot.color,
+  });
+  try {
+    if (snapshot.categoryId)
+      await goalsApi.updateGoal(created.id, { categoryId: snapshot.categoryId });
+  } catch (error) {
+    await goalsApi.deleteGoal(created.id);
+    throw error;
+  }
+  return created;
+}
+
 export function useGoals() {
   return useQuery({
     queryKey: ['goals'],
+    staleTime: 0,
+    refetchOnMount: 'always',
     queryFn: goalsApi.getGoals,
   });
 }
@@ -15,23 +38,16 @@ export function useCreateGoal() {
   return useMutation({
     mutationFn: goalsApi.createGoal,
     onSuccess: (created) => {
+      let activeId = created.id;
       qc.invalidateQueries({ queryKey: ['goals'] });
       useUndoStore.getState().push({
         description: `Create goal "${created.name}"`,
         undo: async () => {
-          await goalsApi.deleteGoal(created.id);
+          await goalsApi.deleteGoal(activeId);
           qc.invalidateQueries({ queryKey: ['goals'] });
         },
         redo: async () => {
-          await goalsApi.createGoal({
-            name: created.name,
-            targetAmount: created.targetAmount,
-            currentAmount: created.currentAmount,
-            targetDate: created.targetDate,
-            accountId: created.accountId,
-            icon: created.icon,
-            color: created.color,
-          });
+          activeId = (await recreateGoal(created)).id;
           qc.invalidateQueries({ queryKey: ['goals'] });
         },
       });
@@ -58,7 +74,8 @@ export function useUpdateGoal() {
           await goalsApi.updateGoal(id, {
             name: snapshot.name,
             targetAmount: snapshot.targetAmount,
-            currentAmount: snapshot.currentAmount,
+            currentAmount: snapshot.categoryId ? undefined : snapshot.currentAmount,
+            categoryId: snapshot.categoryId,
             targetDate: snapshot.targetDate,
             accountId: snapshot.accountId,
             icon: snapshot.icon,
@@ -86,21 +103,15 @@ export function useDeleteGoal() {
     onSuccess: (snapshot) => {
       qc.invalidateQueries({ queryKey: ['goals'] });
       if (!snapshot) return;
+      let restoredId: string | undefined;
       useUndoStore.getState().push({
         description: `Delete goal "${snapshot.name}"`,
         undo: async () => {
-          await goalsApi.createGoal({
-            name: snapshot.name,
-            targetAmount: snapshot.targetAmount,
-            currentAmount: snapshot.currentAmount,
-            targetDate: snapshot.targetDate,
-            accountId: snapshot.accountId,
-            icon: snapshot.icon,
-            color: snapshot.color,
-          });
+          restoredId = (await recreateGoal(snapshot)).id;
           qc.invalidateQueries({ queryKey: ['goals'] });
         },
         redo: async () => {
+          if (restoredId) await goalsApi.deleteGoal(restoredId);
           qc.invalidateQueries({ queryKey: ['goals'] });
         },
       });

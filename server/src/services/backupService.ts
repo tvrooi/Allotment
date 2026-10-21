@@ -50,7 +50,7 @@ import { upObservationSchema } from './upTransactions.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 8;
+export const BACKUP_VERSION = 9;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -216,6 +216,21 @@ export function parseBackup(input: unknown): ParsedBackup {
       }
       return row;
     });
+  }
+  const linked = new Set<string>();
+  for (const goal of result.goals) {
+    if (goal.categoryId == null) continue;
+    const category = result.categories.find((c) => c.id === goal.categoryId);
+    const group = result.categoryGroups.find((g) => g.id === category?.groupId);
+    if (
+      !category ||
+      !group ||
+      group.isIncome ||
+      linked.has(String(goal.categoryId)) ||
+      result.cardFunding.some((c) => c.categoryId === goal.categoryId)
+    )
+      throw new InvalidBackupError('Invalid or duplicate goal category');
+    linked.add(String(goal.categoryId));
   }
   return result;
 }

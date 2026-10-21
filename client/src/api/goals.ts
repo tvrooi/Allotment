@@ -9,6 +9,7 @@ export const createGoal = (data: {
   currentAmount?: number;
   targetDate?: string | null;
   accountId?: string | null;
+  categoryId?: string | null;
   icon?: string;
   color?: string;
 }) => apiFetch<Goal>('/goals', { method: 'POST', body: JSON.stringify(data) });
@@ -21,6 +22,7 @@ export const updateGoal = (
     currentAmount: number;
     targetDate: string | null;
     accountId: string | null;
+    categoryId: string | null;
     icon: string;
     color: string;
   }>,

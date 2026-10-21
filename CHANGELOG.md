@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.11
+
+- Add explicit category-funded goals whose progress follows shared envelope availability, including assignments, money moves, refunds and spending.
+- Keep existing manual goals and their saved values intact; account links remain references and do not reserve funds. Each expense category can fund only one goal.
+- Show assigned funds, activity, availability and incomplete funding assessments on desktop and phones. Preserve goal linkage and manual history in backup format 9 while accepting older backups.
+
 ## 0.2.0-up.10
 
 - Add reviewed credit-card and line-of-credit payment envelopes. Existing debt and bank history stay intact until an explicit setup preview is approved.

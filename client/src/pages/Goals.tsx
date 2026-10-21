@@ -17,10 +17,15 @@ import { usePreferencesStore } from '../store/preferencesStore';
 import type { Goal } from '../types';
 import { formatDay } from '../utils/dates';
 
+function amountOf(goal: Goal) {
+  return goal.categoryId ? (goal.fundedAmount ?? 0) : goal.currentAmount;
+}
 function progressOf(goal: Goal) {
   const pct =
-    goal.targetAmount > 0 ? Math.min(100, (goal.currentAmount / goal.targetAmount) * 100) : 0;
-  return { pct, remaining: Math.max(0, goal.targetAmount - goal.currentAmount) };
+    goal.targetAmount > 0
+      ? Math.min(100, (Math.max(0, amountOf(goal)) / goal.targetAmount) * 100)
+      : 0;
+  return { pct, remaining: Math.max(0, goal.targetAmount - amountOf(goal)) };
 }
 
 /** Target date status, plus the monthly amount needed to get there on time (Monarch-style). */
@@ -62,9 +67,15 @@ function GoalRow({
   onDelete: () => void;
 }) {
   const { pct, remaining } = progressOf(goal);
-  const complete = remaining === 0 && goal.targetAmount > 0;
+  const complete = remaining === 0 && goal.targetAmount > 0 && goal.fundingComplete !== false;
   const schedule = scheduleOf(goal, remaining);
-  const details = [schedule && `Target ${schedule.date}`, accountName].filter(Boolean).join(' · ');
+  const details = [
+    goal.categoryId ? `Category funded: ${goal.categoryName ?? ''}` : 'Manual tracking',
+    schedule && `Target ${schedule.date}`,
+    accountName,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <div
@@ -79,7 +90,7 @@ function GoalRow({
         </div>
         <div className="text-right shrink-0">
           <span className="text-sm font-medium tabular-nums text-text block">
-            {formatCurrency(goal.currentAmount)}
+            {formatCurrency(amountOf(goal))}
           </span>
           <span className="text-xs text-text-tertiary tabular-nums block mt-0.5">
             of {formatCurrency(goal.targetAmount)}
@@ -95,6 +106,13 @@ function GoalRow({
         </div>
       </div>
 
+      {goal.categoryId && (
+        <p className="mt-2 text-xs text-text-secondary">
+          {goal.fundingComplete === false
+            ? 'Funding assessment incomplete — check exchange rates.'
+            : `Assigned this month ${formatCurrency(goal.assignedThisMonth ?? 0)} · Activity ${formatCurrency(goal.activity ?? 0)} · Available ${formatCurrency(goal.available ?? 0)}`}
+        </p>
+      )}
       <div className="mt-3 pl-12">
         <div className="h-1.5 rounded-full bg-surface-alt overflow-hidden">
           <div
@@ -145,7 +163,7 @@ function GoalGroup({
   defaultCollapsed?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
-  const saved = goals.reduce((s, g) => s + g.currentAmount, 0);
+  const saved = goals.reduce((s, g) => s + amountOf(g), 0);
 
   return (
     <Card padding="none">
@@ -201,7 +219,7 @@ export default function GoalsPage() {
   const inProgress = goals.filter((g) => progressOf(g).remaining > 0 || g.targetAmount <= 0);
   const completed = goals.filter((g) => progressOf(g).remaining === 0 && g.targetAmount > 0);
 
-  const totalSaved = goals.reduce((s, g) => s + g.currentAmount, 0);
+  const totalSaved = goals.reduce((s, g) => s + amountOf(g), 0);
   const totalTarget = goals.reduce((s, g) => s + g.targetAmount, 0);
   const leftToSave = goals.reduce((s, g) => s + progressOf(g).remaining, 0);
   const overallPct = totalTarget > 0 ? Math.floor((totalSaved / totalTarget) * 100) : 0;
@@ -247,11 +265,22 @@ export default function GoalsPage() {
       ) : (
         <div className="flex-1 overflow-y-auto">
           <div className="px-6 pt-5 pb-6 space-y-4">
+            <p className="text-sm text-text-secondary">
+              Category funded:{' '}
+              {formatCurrency(
+                goals.filter((g) => g.categoryId).reduce((s, g) => s + amountOf(g), 0),
+              )}{' '}
+              · Manually tracked:{' '}
+              {formatCurrency(
+                goals.filter((g) => !g.categoryId).reduce((s, g) => s + amountOf(g), 0),
+              )}
+              . Manual values may overlap other goals or accounts.
+            </p>
             <StatCardRow
               variant="hero"
               cards={[
                 {
-                  label: 'Saved',
+                  label: 'Goal progress',
                   value: formatCurrency(totalSaved),
                   sub: `${overallPct}% of target`,
                 },
@@ -289,7 +318,7 @@ export default function GoalsPage() {
       <GoalFormModal
         isOpen={addOpen}
         onClose={() => setAddOpen(false)}
-        onSave={(data) => createGoal.mutate(data)}
+        onSave={(data) => createGoal.mutateAsync(data)}
       />
 
       {editModal.value && (
@@ -297,7 +326,7 @@ export default function GoalsPage() {
           key={editModal.value.id}
           isOpen={editModal.isOpen}
           onClose={() => setEditGoal(null)}
-          onSave={(data) => updateGoal.mutate({ id: editModal.value!.id, data })}
+          onSave={(data) => updateGoal.mutateAsync({ id: editModal.value!.id, data })}
           editGoal={editModal.value}
         />
       )}
