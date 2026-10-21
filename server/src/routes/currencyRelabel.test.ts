@@ -4,7 +4,7 @@ import type { AddressInfo } from 'net';
 import type { Server } from 'http';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { db } from '../db/index.js';
-import { accounts, budgetSettings, goals, schedules } from '../db/schema.js';
+import { accounts, budgetSettings, goals, schedules, paydayPlans } from '../db/schema.js';
 import { currencyRouter } from './currency.js';
 
 // Correcting the budget's currency only relabels: nothing is converted. Amounts are stored in
@@ -27,6 +27,7 @@ beforeAll(async () => {
 afterAll(() => server.close());
 
 beforeEach(() => {
+  db.delete(paydayPlans).run();
   db.delete(goals).run();
   db.delete(schedules).run();
   db.delete(accounts).run();
@@ -53,6 +54,13 @@ const schedule = (id: string, accountId: string | null, amount = -1_500) => ({
 });
 
 describe('correcting the budget currency', () => {
+  it('preserves the minor-unit meaning of payday templates', async () => {
+    db.insert(paydayPlans)
+      .values({ id: 'pay', configJson: JSON.stringify({ expectedIncome: 10000, rules: [] }) })
+      .run();
+    expect((await relabel('JPY')).status).toBe(409);
+    expect((await relabel('EUR')).status).toBe(200);
+  });
   it('is fine with nothing that has an amount', async () => {
     db.insert(goals).values({ id: 'g', name: 'Someday', targetAmount: 0 }).run();
     expect((await relabel('JPY')).status).toBe(200);

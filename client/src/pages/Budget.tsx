@@ -17,6 +17,7 @@ import { BudgetEditPopover } from '../components/budget/BudgetEditPopover';
 import { Button } from '../components/ui/Button';
 import { SpentBar } from '../components/budget/SpentBar';
 import { PhoneBudget } from '../components/budget/PhoneBudget';
+import { PaydayPlan } from '../components/budget/PaydayPlan';
 import { MissingRatesBanner } from '../components/currency/MissingRatesBanner';
 import { useIsPhone } from '../hooks/useIsPhone';
 import { useCanSave } from '../hooks/useConnection';
@@ -406,6 +407,7 @@ const BUDGET_TYPES: { key: BudgetType; label: string }[] = [
 ];
 
 export default function BudgetPage() {
+  const [paydayView, setPaydayView] = useState(false);
   const { selectedMonth, setSelectedMonth } = useAppStore();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [incomeCollapsed, setIncomeCollapsed] = useState(false);
@@ -491,16 +493,34 @@ export default function BudgetPage() {
   const expBalColor =
     expRemaining > 0 ? 'text-positive' : expRemaining < 0 ? 'text-negative' : 'text-text-tertiary';
 
+  if (paydayView)
+    return (
+      <div className="flex flex-col h-full bg-surface text-text">
+        <div className="px-6 py-4 border-b border-border flex flex-wrap items-center gap-3">
+          <Button variant="secondary" onClick={() => setPaydayView(false)}>
+            Monthly budget
+          </Button>
+          <h1 className="text-lg font-semibold">Until next payday</h1>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <PaydayPlan />
+        </div>
+      </div>
+    );
+
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 py-4 border-b border-border shrink-0">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap gap-3 items-center justify-between">
           <div className="flex items-center gap-1">
             <span className="text-lg font-semibold text-text">
               {format(monthDate, 'MMMM yyyy')}
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setPaydayView(true)}>
+              Until next payday
+            </Button>
             <button
               onClick={() => setSelectedMonth(format(subMonths(monthDate, 1), 'yyyy-MM'))}
               aria-label="Previous month"

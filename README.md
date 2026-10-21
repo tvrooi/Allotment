@@ -23,6 +23,9 @@ Review new imports and bank changes there; acknowledging never overwrites local 
 round-up details show purchase metadata without inventing transfers or double-counting saver credits.
 No webhooks are used.
 
+**Budget → Until next payday** offers optional fortnightly funding plans, bill coverage and
+allocation previews using received income. [Payday plans guide](docs/PAYDAY-PLANS.md).
+
 ## Moving an existing local HA preview
 
 The repository-installed app has a different identifier and private data directory. Adding the

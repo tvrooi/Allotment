@@ -132,6 +132,38 @@ export const budgetMonths = sqliteTable(
   (table) => [uniqueIndex('budget_months_month_category_idx').on(table.month, table.categoryId)],
 );
 
+export const paydayPlans = sqliteTable('payday_plans', {
+  id: text('id').primaryKey(),
+  configJson: text('config_json').notNull(),
+  archived: integer('archived').notNull().default(0),
+});
+
+export const paydayFundingEvents = sqliteTable(
+  'payday_funding_events',
+  {
+    id: text('id').primaryKey(),
+    planId: text('plan_id')
+      .notNull()
+      .references(() => paydayPlans.id),
+    scheduledDate: text('scheduled_date').notNull(),
+    appliedDate: text('applied_date').notNull(),
+    snapshotJson: text('snapshot_json').notNull(),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [uniqueIndex('payday_event_plan_date').on(table.planId, table.scheduledDate)],
+);
+
+// Retain the receipt identity even if its ledger row is later deleted. A second plan
+// cannot allocate that same income again; restoring a backup preserves this guard.
+export const paydayFundingReceipts = sqliteTable('payday_funding_receipts', {
+  transactionId: text('transaction_id').primaryKey(),
+  eventId: text('event_id')
+    .notNull()
+    .references(() => paydayFundingEvents.id, { onDelete: 'cascade' }),
+});
+
 export const rules = sqliteTable('rules', {
   id: text('id').primaryKey(),
   conditions: text('conditions').notNull(),

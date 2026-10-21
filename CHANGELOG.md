@@ -1,5 +1,14 @@
 # Changes
 
+## 0.2.0-up.7
+
+- Add opt-in fortnightly payday plans and an Until next payday budget view for desktop and phones.
+- Preview bill coverage, fixed funding, due-date targets, monthly smoothing, percentages and remainder allocations using actual payday dates.
+- Cap funding to received income and available budget cash; preserve rollover, existing allocations and bank transactions.
+- Apply allocations atomically with persistent payday/deposit duplicate protection and stale-preview checks.
+- Preserve funding history and archived plans in JSON backup version 5; accept older backups.
+- Keep unconfirmed scheduled salaries out of available funding and protect payday amounts when changing currency decimals.
+
 ## 0.2.0-up.6
 
 - Add opt-in background Up sync, failure backoff and visible freshness.
