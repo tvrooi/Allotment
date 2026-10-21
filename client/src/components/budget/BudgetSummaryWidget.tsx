@@ -1,3 +1,4 @@
+import type { BudgetSummary } from '../../types';
 import { useState } from 'react';
 import { formatCurrency } from '../../utils/currency';
 
@@ -7,6 +8,8 @@ interface ExpenseBreakdown {
 }
 
 interface BudgetSummaryWidgetProps {
+  funding?: BudgetSummary;
+  expenseAvailable?: number;
   toBeBudgeted: number;
   carryOver: number;
   incomePlanned: number;
@@ -42,11 +45,20 @@ interface SummarySectionProps {
   actual: number;
   actualLabel: string;
   type: 'income' | 'expenses' | 'savings';
+  available?: number;
 }
 
-function SummarySection({ label, planned, actual, actualLabel, type }: SummarySectionProps) {
+function SummarySection({
+  label,
+  planned,
+  actual,
+  actualLabel,
+  type,
+  available,
+}: SummarySectionProps) {
   const rawRemaining = planned - actual;
-  const displayRemaining = type === 'income' ? Math.max(rawRemaining, 0) : rawRemaining;
+  const displayRemaining =
+    available ?? (type === 'income' ? Math.max(rawRemaining, 0) : rawRemaining);
   const ratio =
     type === 'income' ? (actual > 0 ? 1 : 0) : planned > 0 ? Math.min(actual / planned, 1) : 0;
   const barColor = getBarColor(actual, planned, type);
@@ -64,7 +76,7 @@ function SummarySection({ label, planned, actual, actualLabel, type }: SummarySe
       <div className="flex items-baseline justify-between">
         <span className="text-sm font-semibold text-text">{label}</span>
         <span className="text-sm tabular-nums text-text-tertiary">
-          {formatCurrency(planned)} planned
+          {formatCurrency(planned)} {type === 'income' ? 'expected' : 'assigned'}
         </span>
       </div>
 
@@ -86,7 +98,13 @@ function SummarySection({ label, planned, actual, actualLabel, type }: SummarySe
           <span className={`text-sm font-medium tabular-nums ${remainingColor}`}>
             {displayRemaining === 0 ? '$0' : formatCurrency(displayRemaining)}
           </span>
-          <span className="text-xs text-text-tertiary">remaining</span>
+          <span className="text-xs text-text-tertiary">
+            {available !== undefined
+              ? 'Available'
+              : type === 'income'
+                ? 'expected income remaining'
+                : 'monthly spending progress remaining'}
+          </span>
         </div>
       </div>
     </div>
@@ -102,6 +120,8 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 export function BudgetSummaryWidget({
+  funding,
+  expenseAvailable,
   toBeBudgeted,
   carryOver,
   incomePlanned,
@@ -115,7 +135,16 @@ export function BudgetSummaryWidget({
   nonMonthlyExpenses,
 }: BudgetSummaryWidgetProps) {
   const [activeTab, setActiveTab] = useState<Tab>('summary');
-  const hero = getHeroStyle(toBeBudgeted, incomePlanned);
+  const hero =
+    funding && (!funding.complete || !funding.resolved)
+      ? {
+          bg: 'bg-caution-subtle',
+          text: 'text-caution',
+          label: funding.complete
+            ? 'Review funding and unresolved spending'
+            : 'Incomplete: missing exchange rates',
+        }
+      : getHeroStyle(toBeBudgeted, incomePlanned);
 
   return (
     <div className="rounded-lg shadow-card border border-border-light overflow-hidden bg-surface">
@@ -126,12 +155,21 @@ export function BudgetSummaryWidget({
           className={`${hero.bg} rounded-lg px-4 py-3 text-center`}
         >
           <p className={`text-lg font-semibold tabular-nums ${hero.text}`}>
-            {formatCurrency(toBeBudgeted)}
+            {funding?.complete === false ? 'Incomplete' : formatCurrency(toBeBudgeted)}
           </p>
           <p className={`text-xs ${hero.text} mt-0.5 opacity-75`}>{hero.label}</p>
         </div>
       </div>
 
+      {funding && (
+        <div className="px-4 pb-3 text-xs text-text-secondary grid gap-1">
+          <p>Unassigned as of {funding.asOf}</p>
+          <p>Envelope deficits: {formatCurrency(funding.overspent)}</p>
+          <p>Uncategorised spending: {formatCurrency(funding.uncategorized)}</p>
+          <p>Future assignments reserved: {formatCurrency(funding.futureAssigned)}</p>
+          <p>Outstanding debt reduces the money available to assign.</p>
+        </div>
+      )}
       <div className="flex justify-center gap-4 px-4 pb-2">
         {TABS.map((tab) => (
           <button
@@ -160,10 +198,11 @@ export function BudgetSummaryWidget({
             />
             <div className="border-t border-border-light" />
             <SummarySection
-              label="Expenses"
+              label="Expense envelopes"
+              available={expenseAvailable}
               planned={expensesPlanned}
               actual={expensesSpent}
-              actualLabel="spent"
+              actualLabel="Spent this month"
               type="expenses"
             />
             {savingsPlanned > 0 && (
@@ -173,7 +212,7 @@ export function BudgetSummaryWidget({
                   label="Save up"
                   planned={savingsPlanned}
                   actual={savingsContributed}
-                  actualLabel="contributed"
+                  actualLabel="spent from savings categories"
                   type="savings"
                 />
               </>

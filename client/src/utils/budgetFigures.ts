@@ -8,14 +8,21 @@ import type { BudgetCategory } from '../types';
  * planned isn't a shortfall).
  */
 export function categoryFigures(cat: BudgetCategory, isIncome: boolean) {
-  const actual = isIncome ? cat.balance - cat.carryOver - cat.budgeted : cat.spent;
+  const actual = isIncome
+    ? cat.balance - cat.carryOver - cat.budgeted
+    : cat.balance - cat.carryOver - cat.budgeted;
   const raw = cat.budgeted - actual;
-  return { actual, remaining: isIncome ? Math.max(raw, 0) : raw };
+  return { actual, remaining: isIncome ? Math.max(raw, 0) : cat.balance };
 }
 
 /** A category with nothing planned and no activity is "inactive" and tucked away. */
 export function isActiveCategory(cat: BudgetCategory, isIncome: boolean) {
-  return cat.budgeted !== 0 || categoryFigures(cat, isIncome).actual !== 0;
+  return (
+    cat.balance !== 0 ||
+    cat.carryOver !== 0 ||
+    cat.budgeted !== 0 ||
+    categoryFigures(cat, isIncome).actual !== 0
+  );
 }
 
 /** Each budget section always lists at least this many categories */

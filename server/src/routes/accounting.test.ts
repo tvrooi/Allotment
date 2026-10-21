@@ -149,8 +149,16 @@ describe('budget boundary and report account scopes', () => {
     expect(
       (await get('/reports/income-by-category?from=2026-05&to=2026-05'))[0].totalReceived,
     ).toBe(300);
-    expect(await get('/budget/2026-05/summary')).toMatchObject({ income: 300, toBeBudgeted: 300 });
-    expect(await get('/budget/2026-06/summary')).toMatchObject({ income: 0, carryOver: 300 });
+    expect(await get('/budget/2026-05/summary')).toMatchObject({
+      income: 300,
+      toBeBudgeted: -500,
+      overspent: 800,
+    });
+    expect(await get('/budget/2026-06/summary')).toMatchObject({
+      income: 0,
+      toBeBudgeted: -500,
+      overspent: 800,
+    });
   });
 
   it('uses budget accounts in every default activity report, drill-down and custom aggregation', async () => {

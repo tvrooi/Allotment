@@ -311,6 +311,14 @@ export interface BudgetGroup {
 }
 
 export interface BudgetSummary {
+  asOf: string;
+  complete: boolean;
+  resolved: boolean;
+  overspent: number;
+  uncategorized: number;
+  futureAssigned: number;
+  resources: number;
+  reserved: number;
   month: string;
   income: number;
   totalBudgeted: number;

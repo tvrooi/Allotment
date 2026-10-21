@@ -12,6 +12,7 @@ import {
   budgetSettings,
   exchangeRates,
   budgetMonths,
+  budgetMoves,
   categories,
   categoryGroups,
   customReports,
@@ -47,7 +48,7 @@ import { upObservationSchema } from './upTransactions.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 6;
+export const BACKUP_VERSION = 7;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -64,6 +65,7 @@ const TABLES = {
   scheduleMatchDismissals,
   transferMatchDismissals,
   budgetMonths,
+  budgetMoves,
   rules,
   customReports,
   dashboardPages,

@@ -143,7 +143,7 @@ The schema lives in [`server/src/db/schema.ts`](server/src/db/schema.ts) and the
 
 ### Community fork development plan (21 October 2026)
 
-The current main baseline is `0.2.0-up.7`, commit `e821e1c` (phase 3 payday funding).
+The phase 6A development baseline is `0.2.0-up.8`, commit `4b97955` (phase 4 household attribution).
 The YNAB findings originated from `0.2.0-up.6`, commit `865b014`.
 Implementation and verification below describe this checkout and its recorded checks;
 they do not establish the version installed on a live Home Assistant instance.
@@ -157,7 +157,7 @@ The phased fork plan is tracked in the
 | 3     | Payday funding and bill coverage                                                                     | Implemented in `0.2.0-up.7` (#8); phase 6 will unify its funding calculation with the main budget.                                |
 | 4     | Household/person ledger, shared bills and personal-share reports                                     | Implemented in `0.2.0-up.8`: private AUD ledger, contribution-based personal budgeting, expense shares and reserved shared bills. |
 | 5     | Savings forecasts using paydays, bills and household shares                                          | Planned; depends on shared accounting definitions from phases 3, 4 and 6.                                                         |
-| 6     | YNAB envelope correctness, credit-card funding, category goals, targets, buffer and review workflows | Planned; investigation and implementation instructions complete, no implementation yet.                                           |
+| 6     | YNAB envelope correctness, credit-card funding, category goals, targets, buffer and review workflows | 6A implemented in `0.2.0-up.9`; 6B–6G remain planned. See the phase brief for verification and delivery status.                   |
 
 Phase numbers remain stable references, not a strict execution order. Do **6A first**
 (cash-backed funding, consistent availability, deficit recovery and atomic money moves),

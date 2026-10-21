@@ -1,5 +1,6 @@
+import { fundingState } from './budgetService.js';
 import { personalBudgetAccount } from './balances.js';
-import { and, eq, lte, sql } from 'drizzle-orm';
+import { and, eq, lte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { db } from '../db/index.js';
@@ -15,7 +16,7 @@ import {
   paydayFundingEvents,
   paydayFundingReceipts,
 } from '../db/schema.js';
-import { budgetActivity, inAccountBalance, mainAmount } from './balances.js';
+import { budgetActivity, mainAmount } from './balances.js';
 import { currencyContext, convertAmount } from './mainAmountService.js';
 import {
   buildRecurrenceRule,
@@ -117,120 +118,6 @@ export function incomeOptions(today: string) {
       )
       .sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id))
   );
-}
-
-function budgetState(today: string) {
-  const cats = expenseCategories();
-  const assigned = db
-    .select({
-      categoryId: budgetMonths.categoryId,
-      total: sql<number>`coalesce(sum(${budgetMonths.budgeted}), 0)`,
-    })
-    .from(budgetMonths)
-    .groupBy(budgetMonths.categoryId)
-    .all();
-  const activity = db
-    .select({
-      categoryId: transactions.categoryId,
-      total: sql<number>`coalesce(sum(${mainAmount}), 0)`,
-    })
-    .from(transactions)
-    .where(and(budgetActivity, lte(transactions.date, today)))
-    .groupBy(transactions.categoryId)
-    .all();
-  const currentAssigned = db
-    .select({
-      categoryId: budgetMonths.categoryId,
-      total: sql<number>`coalesce(sum(${budgetMonths.budgeted}), 0)`,
-    })
-    .from(budgetMonths)
-    .where(lte(budgetMonths.month, today.slice(0, 7)))
-    .groupBy(budgetMonths.categoryId)
-    .all();
-  const balances = new Map(
-    cats.map((c) => [
-      c.id,
-      (currentAssigned.find((r) => r.categoryId === c.id)?.total ?? 0) +
-        (activity.find((r) => r.categoryId === c.id)?.total ?? 0),
-    ]),
-  );
-  const incomeIds = new Set(
-    db
-      .select({ id: categories.id })
-      .from(categories)
-      .innerJoin(categoryGroups, eq(categories.groupId, categoryGroups.id))
-      .where(eq(categoryGroups.isIncome, 1))
-      .all()
-      .map((c) => c.id),
-  );
-  const income = activity.reduce(
-    (sum, r) => sum + (r.categoryId && incomeIds.has(r.categoryId) ? r.total : 0),
-    0,
-  );
-  const totalAssigned = cats.reduce(
-    (sum, c) => sum + (assigned.find((r) => r.categoryId === c.id)?.total ?? 0),
-    0,
-  );
-  const overspent = [...balances.values()].reduce((sum, value) => sum + Math.max(0, -value), 0);
-  // Count future allocations as reserved. Exclude future-dated wages, off-budget
-  // income, and generated salary expectations from money available to this plan.
-  const generated = db
-    .select({
-      amount: mainAmount,
-      importedId: transactions.importedId,
-      reconciled: transactions.reconciled,
-    })
-    .from(transactions)
-    .innerJoin(categories, eq(categories.id, transactions.categoryId))
-    .innerJoin(categoryGroups, eq(categoryGroups.id, categories.groupId))
-    .where(and(budgetActivity, eq(categoryGroups.isIncome, 1), lte(transactions.date, today)))
-    .all()
-    .reduce(
-      (sum, r) =>
-        sum + (r.importedId?.startsWith('schedule:') && !r.reconciled ? Math.max(0, r.amount) : 0),
-      0,
-    );
-  const ctx = currencyContext();
-  let cash = 0;
-  for (const account of db.select().from(accounts).where(personalBudgetAccount).all()) {
-    const total = db
-      .select({ amount: sql<number>`coalesce(sum(${transactions.amount}), 0)` })
-      .from(transactions)
-      .where(
-        and(
-          eq(transactions.accountId, account.id),
-          inAccountBalance,
-          lte(transactions.date, today),
-        ),
-      )
-      .get()!.amount;
-    const value = convertAmount(
-      account.startingBalance + total,
-      account.currency ?? ctx.budget,
-      ctx.budget,
-      today,
-      ctx,
-    );
-    if (value === null) throw new PaydayError('Add missing account exchange rates before funding');
-    cash += value;
-  }
-  // Positive envelopes already reserve cash, including rollover and future budgets.
-  const futureAssigned =
-    totalAssigned -
-    cats.reduce(
-      (sum, c) => sum + (currentAssigned.find((r) => r.categoryId === c.id)?.total ?? 0),
-      0,
-    );
-  const reserved =
-    [...balances.values()].reduce((sum, value) => sum + Math.max(0, value), 0) +
-    Math.max(0, futureAssigned);
-  return {
-    balances,
-    available: Math.max(
-      0,
-      Math.min(income - generated - totalAssigned - overspent, cash - reserved),
-    ),
-  };
 }
 
 export function billCoverage(from: string, to: string, today: string) {
@@ -353,7 +240,8 @@ export function previewPayday(planId: string, request: PaydayRequest) {
     return income;
   });
   const received = selected.reduce((sum, r) => sum + r.amount, 0);
-  const state = budgetState(today);
+  const state = fundingState(today);
+  if (!state.complete) throw new PaydayError('Add missing account exchange rates before funding');
   const future = request.actualPayDate > today;
   const available = future || existing ? 0 : Math.min(state.available, received);
   const bills = billCoverage(
