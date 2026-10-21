@@ -413,7 +413,7 @@ export default function BudgetPage() {
   const [expensesCollapsed, setExpensesCollapsed] = useState(false);
 
   const { data: groups = [], isPlaceholderData: switchingMonth } = useBudget(selectedMonth);
-  const { data: summary } = useBudgetSummary(selectedMonth);
+  const { data: summary, isPlaceholderData: switchingSummary } = useBudgetSummary(selectedMonth);
   const setBudgetMutation = useSetBudget();
   const setBulkMutation = useSetBudgetBulk();
   const isPhone = useIsPhone();
@@ -748,8 +748,8 @@ export default function BudgetPage() {
             <CardPayments
               key={`cards:${selectedMonth}`}
               month={selectedMonth}
-              groups={groups}
               summary={summary}
+              loading={switchingMonth || switchingSummary}
             />
             <MoneyMoves
               key={selectedMonth}
