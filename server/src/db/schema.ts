@@ -375,6 +375,10 @@ export const upAccountMappings = sqliteTable('up_account_mappings', {
   accountId: text('account_id').references(() => accounts.id, { onDelete: 'set null' }),
   isEnabled: integer('is_enabled').notNull().default(1),
   initializedAt: text('initialized_at'),
+  /** Up's settled balance at the last complete sync, for the round-up accounting check. */
+  settledBalance: integer('settled_balance'),
+  /** When the owner enabled round-up debits proven missing by that balance; null = off. */
+  roundUpDebitsAt: text('round_up_debits_at'),
 });
 
 // Bank observations are separate from the editable/reconciled ledger. No credentials or raw payloads.

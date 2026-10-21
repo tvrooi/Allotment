@@ -111,3 +111,42 @@ test('sets background sync, reviews imports, and expands daily round-up details 
   await page.screenshot({ path: test.info().outputPath('up-review-phone.png') });
   await api.call('DELETE', '/up/connection');
 });
+
+test('adds balance-proven round-up debits only after an explicit choice', async ({ page, api }) => {
+  test.slow();
+  const mode = (name: string) =>
+    fetch(`http://127.0.0.1:${UP_MOCK_PORT}/__mock/${name}`, { method: 'POST' });
+  await mode('implicit-round-ups-start');
+  // The earlier Up tests share the bank rate limit (20 writes a minute). This test needs
+  // eight, so start it in a fresh window rather than tripping the limit midway.
+  for (;;) {
+    const res = await api.request.fetch('/api/up/connection', { method: 'DELETE' });
+    const limit = res.headers()['ratelimit'] ?? '';
+    const remaining = Number(/r=(\d+)/.exec(limit)?.[1] ?? 20);
+    const reset = Number(/t=(\d+)/.exec(limit)?.[1] ?? 0);
+    if (res.status() !== 429 && remaining >= 8) break;
+    await page.waitForTimeout((reset + 1) * 1000);
+  }
+  await api.call('POST', '/up/setup', { accessToken: UP_TEST_TOKEN });
+  await api.call('POST', '/up/map-accounts', {
+    mappings: [{ upAccountId: 'spending', action: 'create' }],
+  });
+  await api.call('POST', '/up/sync');
+  await mode('implicit-round-ups');
+  await api.call('POST', '/up/sync');
+  expect(await api.transactions()).toHaveLength(2);
+  await open(page, '/settings?tab=connections');
+  await page.getByRole('button', { name: 'Up', exact: true }).click();
+  const check = page.getByRole('region', { name: 'Round-up accounting check', exact: true });
+  await expect(check).toContainText('higher than Up by exactly the round-ups');
+  await expect(check).toContainText('Difference -A$2.40');
+  await check.getByRole('button', { name: 'Add 1 round-up debit (-A$2.40)' }).click();
+  await expect(check).toContainText('The register matches Up’s settled balance.');
+  await expect(check.getByRole('button', { name: 'Stop adding round-up debits' })).toBeVisible();
+  const rows = await api.transactions();
+  expect(rows).toHaveLength(3);
+  expect(rows.find((t) => t.payeeName === 'Up round-up')).toMatchObject({ amount: -240 });
+  await api.call('POST', '/up/sync');
+  expect(await api.transactions()).toHaveLength(3);
+  await api.call('DELETE', '/up/connection');
+});

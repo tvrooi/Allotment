@@ -1,11 +1,15 @@
 import { and, eq } from 'drizzle-orm';
-import { createHash } from 'crypto';
 import { db } from '../db/index.js';
 import { accounts, transactions, upAccountMappings, upConnections } from '../db/schema.js';
 import { buildRuleContext, insertNewTransaction, loadRules } from './ruleService.js';
 import { accountCurrency, currencyContext } from './mainAmountService.js';
 import { accountTransactionSum } from './balances.js';
-import { observeUpAccount } from './upReviewService.js';
+import {
+  bankObservation,
+  observeUpAccount,
+  roundUpDebit,
+  upTransactionId,
+} from './upReviewService.js';
 import {
   getUpAccounts,
   getUpTransactions,
@@ -147,9 +151,7 @@ async function runSync(): Promise<UpSyncResult> {
             insertNewTransaction(
               {
                 ...row,
-                id: createHash('sha256')
-                  .update(`${accountId}:${row.importedId}`)
-                  .digest('base64url'),
+                id: upTransactionId(accountId, row.importedId),
                 accountId,
                 payeeId: null,
                 importedPayee: row.payeeName,
@@ -160,6 +162,41 @@ async function runSync(): Promise<UpSyncResult> {
             added++;
             newIds.add(row.importedId);
           }
+          // Only after the owner enabled it for a balance proven short by exactly these amounts.
+          if (mapping.roundUpDebitsAt)
+            for (const tx of unique) {
+              const row = roundUpDebit(
+                `up:${mapping.upAccountId}:${tx.id}`,
+                bankObservation(tx),
+                mapping.initializedAt,
+              );
+              if (
+                !row ||
+                db
+                  .select({ id: transactions.id })
+                  .from(transactions)
+                  .where(
+                    and(
+                      eq(transactions.accountId, accountId),
+                      eq(transactions.importedId, row.importedId),
+                    ),
+                  )
+                  .get()
+              )
+                continue;
+              insertNewTransaction(
+                {
+                  ...row,
+                  id: upTransactionId(accountId, row.importedId),
+                  accountId,
+                  payeeId: null,
+                  importedPayee: row.payeeName,
+                  categoryId: null,
+                },
+                ruleOpts,
+              );
+              added++;
+            }
           const startingBalance = target - accountTransactionSum(accountId);
           if (!Number.isSafeInteger(startingBalance))
             throw new UpError('Up returned amounts outside the supported range.');
@@ -171,11 +208,10 @@ async function runSync(): Promise<UpSyncResult> {
             balanceMismatch = startingBalance !== local.startingBalance;
           }
           observeUpAccount(accountId, unique, now, newIds, mapping.upAccountId);
-          if (!mapping.initializedAt)
-            db.update(upAccountMappings)
-              .set({ initializedAt: now })
-              .where(eq(upAccountMappings.id, mapping.id))
-              .run();
+          db.update(upAccountMappings)
+            .set({ initializedAt: mapping.initializedAt ?? now, settledBalance: target })
+            .where(eq(upAccountMappings.id, mapping.id))
+            .run();
           result.added += added;
           result.skipped += skipped;
         });
