@@ -393,6 +393,20 @@ backup version 6. See [Households](../HOUSEHOLDS.md) for setup, accounting polic
 net-worth scope and remaining boundaries. Phase 6 remains a separate workstream;
 this phase reuses the existing personal budget boundary and payday calculations.
 
+## Phase five: read-only savings forecasts (21 October 2026)
+
+Implemented on the `0.2.0-up.13` feature branch. The Forecast page combines a cash runway and
+goal trajectory from existing definitions: the personal budget boundary and received-income
+rule, active payday plans, pending unmatched schedule occurrences, future-dated register rows,
+unreserved household bill shares and category-funded goal availability. No forecast table or
+migration was added; scenarios are request parameters and are never stored. Payday plans and
+scheduled salary are mutually exclusive income sources, matched occurrences are replaced by
+their transactions, scheduled pool contributions disable household shares by default, and the
+variable-spending average excludes scheduled, transfer, adjustment and household-linked rows.
+Overdue unmatched occurrences are reported rather than guessed. Deterministic synthetic fixtures
+and a whole-database snapshot verify no writes. Saved scenarios, formula builder, inflation and
+super projections remain out of scope. See [Forecasts](../FORECASTS.md).
+
 ## Phase eight: Monarch-informed investigation and planning (21 October 2026)
 
 Status: **planned; implementation brief prepared, no application implementation**.

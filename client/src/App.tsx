@@ -18,6 +18,7 @@ import ReconcilePage from './pages/ReconcilePage';
 import RecurringTransactionsPage from './pages/RecurringTransactions';
 import SettingsPage from './pages/Settings';
 import GoalsPage from './pages/Goals';
+import ForecastPage from './pages/Forecast';
 import CashFlowPage from './pages/CashFlow';
 import CategoryDetailPage from './pages/CategoryDetail';
 
@@ -52,6 +53,7 @@ export default function App() {
             <Route path="/rules" element={<RulesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/goals" element={<GoalsPage />} />
+            <Route path="/forecast" element={<ForecastPage />} />
           </Route>
         </Routes>
       </Router>
