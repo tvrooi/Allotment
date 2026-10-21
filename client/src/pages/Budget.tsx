@@ -17,6 +17,8 @@ import {
 import { BudgetSummaryWidget } from '../components/budget/BudgetSummaryWidget';
 import { BudgetEditPopover } from '../components/budget/BudgetEditPopover';
 import { Button } from '../components/ui/Button';
+import { targetLabel } from '../utils/targets';
+import { FundTargets } from '../components/budget/FundTargets';
 import { SpentBar } from '../components/budget/SpentBar';
 import { PhoneBudget } from '../components/budget/PhoneBudget';
 import { PaydayPlan } from '../components/budget/PaydayPlan';
@@ -88,7 +90,7 @@ interface CategoryRowProps {
   onStartEdit: (id: string) => void;
   onSave: (cents: number) => void;
   onCancel: () => void;
-  onApplyBulk: (categoryId: string, cents: number) => void;
+  onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
 }
 
 function CategoryRow({
@@ -129,6 +131,13 @@ function CategoryRow({
           budgeted={cat.budgeted}
           isIncome={isIncome}
         />
+        {cat.target && (
+          <p
+            className={`text-xs mt-0.5 ${cat.target.underfunded ? 'text-caution' : 'text-text-tertiary'}`}
+          >
+            {targetLabel(cat.target)}
+          </p>
+        )}
       </td>
       <td className="py-1.5 px-3 text-right align-top">
         <div className="relative inline-block">
@@ -145,7 +154,7 @@ function CategoryRow({
                 isIncome={isIncome}
                 currentAmount={cat.budgeted}
                 month={month}
-                onApplyBulk={(cents) => onApplyBulk(cat.id, cents)}
+                onApplyBulk={(cents, expected) => onApplyBulk(cat.id, cents, expected)}
               />
             </>
           ) : (
@@ -187,7 +196,7 @@ interface IncomeGroupProps {
   onStartEdit: (id: string) => void;
   onSave: (categoryId: string, cents: number) => void;
   onCancel: () => void;
-  onApplyBulk: (categoryId: string, cents: number) => void;
+  onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
   /** Nothing is planned this month yet: list every category, so there's something to plan */
   showAll: boolean;
 }
@@ -294,7 +303,7 @@ interface BudgetTypeSectionProps {
   onStartEdit: (id: string) => void;
   onSave: (categoryId: string, cents: number) => void;
   onCancel: () => void;
-  onApplyBulk: (categoryId: string, cents: number) => void;
+  onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
   showAll: boolean;
 }
 
@@ -480,8 +489,8 @@ export default function BudgetPage() {
     setEditingId(null);
   }
 
-  function handleApplyBulk(categoryId: string, budgeted: number) {
-    setBulkMutation.mutate({ categoryId, budgeted, fromMonth: selectedMonth });
+  function handleApplyBulk(categoryId: string, budgeted: number, expected: Record<string, number>) {
+    setBulkMutation.mutate({ categoryId, budgeted, fromMonth: selectedMonth, expected });
   }
 
   function goToToday() {
@@ -521,6 +530,7 @@ export default function BudgetPage() {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <FundTargets month={selectedMonth} groups={groups} />
             <Button variant="secondary" size="sm" onClick={() => setPaydayView(true)}>
               Until next payday
             </Button>

@@ -23,6 +23,7 @@ import { TransactionTable } from '../components/transactions/TransactionTable';
 import type { Transaction } from '../types';
 import { useXAxisLayout } from '../hooks/useXAxisLayout';
 import { formatDay } from '../utils/dates';
+import { TargetCard } from '../components/budget/TargetCard';
 
 function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
@@ -320,6 +321,11 @@ export default function CategoryDetailPage() {
               month={selectedMonth}
               isIncome={isIncome}
             />
+            {id && cat && !isIncome && !cat.paymentAccountId && (
+              <div className="mt-4">
+                <TargetCard categoryId={id} target={cat.target} />
+              </div>
+            )}
           </div>
         </div>
 

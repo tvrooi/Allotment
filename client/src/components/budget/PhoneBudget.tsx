@@ -8,6 +8,7 @@ import { useCanSave } from '../../hooks/useConnection';
 import { formatCurrency } from '../../utils/currency';
 import { categoryFigures, splitCategories } from '../../utils/budgetFigures';
 import type { BudgetCategory } from '../../types';
+import { targetLabel } from '../../utils/targets';
 
 export interface PhoneBudgetSection {
   key: string;
@@ -20,7 +21,7 @@ interface Props {
   sections: PhoneBudgetSection[];
   month: string;
   onSave: (categoryId: string, cents: number) => void;
-  onApplyBulk: (categoryId: string, cents: number) => void;
+  onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
   /** Nothing is planned this month yet: list every category, so there's something to plan */
   showAll?: boolean;
 }
@@ -154,6 +155,13 @@ function CategoryCard({
         isIncome={isIncome}
         className="h-1.5 w-full mt-2"
       />
+      {cat.target && (
+        <p
+          className={`text-xs mt-1 ${cat.target.underfunded ? 'text-caution' : 'text-text-tertiary'}`}
+        >
+          {targetLabel(cat.target)}
+        </p>
+      )}
       <div className="mt-1 grid grid-cols-2 gap-2">
         <button
           type="button"

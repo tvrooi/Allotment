@@ -1,3 +1,4 @@
+import { perPeriodNeed } from './fundingMath.js';
 import { and, eq, gt, inArray, isNotNull, lte, notInArray, sql } from 'drizzle-orm';
 import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { db } from '../db/index.js';
@@ -422,7 +423,7 @@ function plannedContribution(
       1 +
       paydays(plan, day(payDate, 1), rule.dueDate).filter((p) => p.scheduledDate > scheduledDate)
         .length;
-    return Math.ceil(Math.max(0, rule.amount - balance) / left);
+    return perPeriodNeed(rule.amount, balance, left);
   }
   return 0;
 }

@@ -6,12 +6,7 @@ import {
   previewCardAssignment,
 } from '../services/cardFundingSetup.js';
 import { previewMove, applyMove, undoMove, BudgetError } from '../services/budgetMoves.js';
-import {
-  budgetGroups,
-  budgetSummary,
-  fundingRevision,
-  fundingState,
-} from '../services/budgetService.js';
+import { budgetSummary, fundingRevision, fundingState } from '../services/budgetService.js';
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import {
@@ -26,6 +21,15 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { budgetActivity, mainAmount } from '../services/balances.js';
 import { isMonth } from '../utils/validation.js';
+import { addMonthsTo } from '../services/fundingMath.js';
+import { targetSchema } from '../services/targetConfig.js';
+import {
+  applyTargetFunding,
+  budgetWithTargets,
+  previewTargetFunding,
+  saveTarget,
+} from '../services/targetService.js';
+import { categoryTargets } from '../db/schema.js';
 
 export const budgetRouter = Router();
 
@@ -77,7 +81,7 @@ for (const action of ['preview', 'apply'])
     }
   });
 
-budgetRouter.get('/:month', (req, res) => res.json(budgetGroups(req.params.month)));
+budgetRouter.get('/:month', (req, res) => res.json(budgetWithTargets(req.params.month)));
 
 // Existing overcommitments survive; new reservations require existing resources.
 function fundedWrite(action: () => void) {
@@ -206,9 +210,10 @@ budgetRouter.get('/category/:categoryId/history', (req, res) => {
     }
   }
 
+  // Every month in the stated window counts, including months with no spending: one $600
+  // expense in six months averages $100 a month, not $600.
   const total = history.reduce((s, h) => s + h.amount, 0);
-  const nonZeroCount = history.filter((h) => h.amount > 0).length;
-  const average = nonZeroCount > 0 ? Math.round(total / nonZeroCount) : 0;
+  const average = Math.round(total / months);
   const lastMonthKey = history.length >= 2 ? history[history.length - 2]?.month : undefined;
   const lastMonth = lastMonthKey ? (rowMap[lastMonthKey] ?? 0) : 0;
 
@@ -218,6 +223,39 @@ budgetRouter.get('/category/:categoryId/history', (req, res) => {
 const bulkSchema = z.object({
   budgeted: cents,
   fromMonth: z.string().refine(isMonth),
+  /** The assignments the user reviewed in the preview, by month. */
+  expected: z.record(z.string().refine(isMonth), cents),
+});
+const bulkMonths = (fromMonth: string) =>
+  Array.from({ length: 12 }, (_, i) => addMonthsTo(fromMonth, i));
+const assignment = (month: string, categoryId: string) =>
+  db
+    .select()
+    .from(budgetMonths)
+    .where(and(eq(budgetMonths.month, month), eq(budgetMonths.categoryId, categoryId)))
+    .get()?.budgeted ?? 0;
+
+/** Shows each of the 12 months the bulk change would overwrite, before anything is written. */
+budgetRouter.get('/category/:categoryId/bulk-preview', (req, res) => {
+  const parsed = z
+    .object({
+      budgeted: z.coerce.number().int().min(-1e13).max(1e13),
+      fromMonth: z.string().refine(isMonth),
+    })
+    .safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  const { categoryId } = req.params;
+  if (!db.select().from(categories).where(eq(categories.id, categoryId)).get())
+    return res.status(404).json({ error: 'Category not found' });
+  res.json({
+    categoryId,
+    budgeted: parsed.data.budgeted,
+    months: bulkMonths(parsed.data.fromMonth).map((month) => ({
+      month,
+      current: assignment(month, categoryId),
+      next: parsed.data.budgeted,
+    })),
+  });
 });
 
 budgetRouter.put('/category/:categoryId/bulk', (req, res, next) => {
@@ -225,22 +263,14 @@ budgetRouter.put('/category/:categoryId/bulk', (req, res, next) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const { categoryId } = req.params;
-  const { budgeted, fromMonth } = parsed.data;
-
-  let y = parseInt(fromMonth.slice(0, 4));
-  let m = parseInt(fromMonth.slice(5, 7));
-  const months: string[] = [];
-  for (let i = 0; i < 12; i++) {
-    months.push(`${y}-${String(m).padStart(2, '0')}`);
-    m++;
-    if (m > 12) {
-      m = 1;
-      y++;
-    }
-  }
+  const { budgeted, fromMonth, expected } = parsed.data;
+  const months = bulkMonths(fromMonth);
 
   try {
     fundedWrite(() => {
+      // Existing assignments change only as reviewed in the preview.
+      if (months.some((month) => expected[month] !== assignment(month, categoryId)))
+        throw new BudgetError('These months changed. Review the preview again.');
       for (const month of months) {
         const existing = db
           .select()
@@ -315,6 +345,47 @@ budgetRouter.get('/moves/history', (_req, res) =>
 budgetRouter.post('/moves/:id/undo', (req, res, next) => {
   try {
     res.json(undoMove(req.params.id));
+  } catch (error) {
+    if (error instanceof BudgetError)
+      return res.status(error.status).json({ error: error.message });
+    next(error);
+  }
+});
+
+budgetRouter.put('/category/:categoryId/target', (req, res, next) => {
+  const parsed = targetSchema.safeParse(req.body);
+  if (!parsed.success)
+    return res.status(400).json({ error: parsed.error.issues.map((i) => i.message).join('; ') });
+  try {
+    res.json(saveTarget(req.params.categoryId, parsed.data));
+  } catch (error) {
+    if (error instanceof BudgetError)
+      return res.status(error.status).json({ error: error.message });
+    next(error);
+  }
+});
+/** Removing a target keeps every assignment it suggested. */
+budgetRouter.delete('/category/:categoryId/target', (req, res) => {
+  db.delete(categoryTargets).where(eq(categoryTargets.categoryId, req.params.categoryId)).run();
+  res.status(204).send();
+});
+budgetRouter.post('/:month/targets/preview', (req, res) =>
+  res.json(previewTargetFunding(req.params.month)),
+);
+budgetRouter.post('/:month/targets/apply', (req, res, next) => {
+  const parsed = z
+    .object({
+      revision: z.string().min(1).max(200),
+      rows: z
+        .array(z.object({ categoryId: z.string().min(1).max(64), proposed: cents }))
+        .max(10_000),
+    })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Preview target funding first' });
+  try {
+    res.json(
+      applyTargetFunding(req.params.month, parsed.data.revision, parsed.data.rows, fundedWrite),
+    );
   } catch (error) {
     if (error instanceof BudgetError)
       return res.status(error.status).json({ error: error.message });

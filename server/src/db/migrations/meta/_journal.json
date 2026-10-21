@@ -232,6 +232,13 @@
       "when": 1791900000000,
       "tag": "0032_up_round_up_debits",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1792000000000,
+      "tag": "0033_category_targets",
+      "breakpoints": true
     }
   ]
 }

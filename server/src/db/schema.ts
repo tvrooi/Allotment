@@ -347,6 +347,22 @@ export const goals = sqliteTable('goals', {
     .default(sql`(datetime('now'))`),
 });
 
+/** Persistent funding target per expense category (phase 6D). Suggestions only. */
+export const categoryTargets = sqliteTable('category_targets', {
+  categoryId: text('category_id')
+    .primaryKey()
+    .references(() => categories.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(),
+  amount: integer('amount').notNull(),
+  dueDate: text('due_date'),
+  cycleMonths: integer('cycle_months'),
+  /** Month the target was set, for the even rate a by-date target started with. */
+  createdMonth: text('created_month').notNull(),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
 // One personal Up token exposes the user's spending, Saver and joint accounts.
 export const upConnections = sqliteTable('up_connections', {
   id: text('id').primaryKey(),
