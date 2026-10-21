@@ -331,6 +331,9 @@ export const goals = sqliteTable('goals', {
   name: text('name').notNull(),
   targetAmount: integer('target_amount').notNull(),
   currentAmount: integer('current_amount').notNull().default(0),
+  categoryId: text('category_id')
+    .references(() => categories.id, { onDelete: 'set null' })
+    .unique(),
   targetDate: text('target_date'),
   accountId: text('account_id').references(() => accounts.id, { onDelete: 'set null' }),
   icon: text('icon').notNull().default('🎯'),
