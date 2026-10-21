@@ -28,7 +28,7 @@ for (const phone of [false, true]) {
     ).toBeVisible();
     await page.getByText('Trip', { exact: true }).click();
     await dialog.getByLabel('Progress source').selectOption('');
-    await expect(dialog.getByLabel('Saved so far')).toHaveValue('0');
+    await expect(dialog.getByLabel('Saved so far')).toHaveValue('');
     await dialog.getByLabel('Saved so far').fill('75');
     await dialog.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(dialog).toBeHidden();

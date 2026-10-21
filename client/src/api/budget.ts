@@ -79,3 +79,17 @@ export const applyCardSetup = (preview: CardSetupPreview) =>
     method: 'POST',
     body: JSON.stringify(preview),
   });
+
+export interface CardFundingPreview {
+  categoryId: string;
+  budgeted: number;
+  revision: string;
+  available: number;
+  shortfall: number;
+  unassigned: number;
+}
+export const previewCardAssignment = (accountId: string, month: string, amount: number) =>
+  apiFetch<CardFundingPreview>(`/budget/card-funding/${accountId}/funding-preview`, {
+    method: 'POST',
+    body: JSON.stringify({ month, amount }),
+  });

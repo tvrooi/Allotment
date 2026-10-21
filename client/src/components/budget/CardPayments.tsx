@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from '../../api/budget';
-import type { BudgetGroup, BudgetSummary } from '../../types';
+import type { BudgetSummary } from '../../types';
 import { useSetBudget } from '../../hooks/useBudget';
 import { useCanSave } from '../../hooks/useConnection';
 import { formatCurrency, parseCents, isUnreadableAmount } from '../../utils/currency';
@@ -10,12 +10,12 @@ import { Modal } from '../ui/Modal';
 
 export function CardPayments({
   month,
-  groups,
   summary,
+  loading = false,
 }: {
   month: string;
-  groups: BudgetGroup[];
   summary?: BudgetSummary;
+  loading?: boolean;
 }) {
   const qc = useQueryClient(),
     canSave = useCanSave(),
@@ -28,15 +28,12 @@ export function CardPayments({
     [busy, setBusy] = useState(false);
   const [funding, setFunding] = useState(''),
     [fundAmount, setFundAmount] = useState(''),
-    [fundPreview, setFundPreview] = useState<number | null>(null);
-  const [fundRevision, setFundRevision] = useState<string>(),
-    [fundBudgeted, setFundBudgeted] = useState(0);
+    [fundPreview, setFundPreview] = useState<api.CardFundingPreview | null>(null);
   const data = useQuery({ queryKey: ['card-funding'], queryFn: api.getCardFunding });
   const refresh = () => {
     for (const key of ['budget', 'budget-summary', 'card-funding', 'payday'])
       qc.invalidateQueries({ queryKey: [key] });
   };
-  const cats = groups.flatMap((g) => g.categories);
   async function run(action: () => Promise<void>) {
     setBusy(true);
     setError('');
@@ -94,7 +91,13 @@ export function CardPayments({
           <Button
             size="sm"
             variant="secondary"
-            disabled={!canSave || busy || month !== data.data.asOf.slice(0, 7)}
+            disabled={
+              !canSave ||
+              busy ||
+              loading ||
+              summary?.month !== month ||
+              month !== data.data.asOf.slice(0, 7)
+            }
             title={
               month !== data.data.asOf.slice(0, 7)
                 ? 'Select the current month to add payment funding'
@@ -115,21 +118,19 @@ export function CardPayments({
               onSubmit={(e) => {
                 e.preventDefault();
                 run(async () => {
+                  if (loading || summary?.month !== month)
+                    throw new Error('Wait for this month to finish loading');
                   const value = number(fundAmount);
                   if (value <= 0) throw new Error('Enter a positive amount');
-                  const cat = cats.find((c) => c.id === card.categoryId);
-                  if (!cat || !summary?.revision) throw new Error('Refresh the budget');
                   if (fundPreview === null) {
-                    setFundPreview(value);
-                    setFundRevision(summary.revision);
-                    setFundBudgeted(cat.budgeted + value);
+                    setFundPreview(await api.previewCardAssignment(card.accountId, month, value));
                     return;
                   }
                   await setBudget.mutateAsync({
                     month,
-                    categoryId: card.categoryId,
-                    budgeted: fundBudgeted,
-                    revision: fundRevision,
+                    categoryId: fundPreview.categoryId,
+                    budgeted: fundPreview.budgeted,
+                    revision: fundPreview.revision,
                   });
                   setFunding('');
                   refresh();
@@ -152,12 +153,9 @@ export function CardPayments({
               </label>
               {fundPreview !== null && (
                 <p role="status">
-                  Payment availability after assignment:{' '}
-                  {formatCurrency(card.available + fundPreview)}. Shortfall:{' '}
-                  {formatCurrency(
-                    Math.max(0, card.debt - Math.max(0, card.available + fundPreview)),
-                  )}
-                  .
+                  Payment availability after assignment: {formatCurrency(fundPreview.available)}.
+                  Shortfall: {formatCurrency(fundPreview.shortfall)}. Unassigned after funding:{' '}
+                  {formatCurrency(fundPreview.unassigned)}.
                 </p>
               )}
               <Button type="submit" size="sm" disabled={busy || !canSave}>

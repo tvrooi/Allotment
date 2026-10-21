@@ -1,5 +1,10 @@
 import { todayIso } from '../services/mainAmountService.js';
-import { cardAccounts, previewCardSetup, applyCardSetup } from '../services/cardFundingSetup.js';
+import {
+  cardAccounts,
+  previewCardSetup,
+  applyCardSetup,
+  previewCardAssignment,
+} from '../services/cardFundingSetup.js';
 import { previewMove, applyMove, undoMove, BudgetError } from '../services/budgetMoves.js';
 import {
   budgetGroups,
@@ -36,6 +41,19 @@ budgetRouter.param('month', (_req, res, next, month) => {
 budgetRouter.get('/card-funding/accounts', (_req, res) =>
   res.json({ asOf: todayIso(), accounts: cardAccounts(), cards: fundingState().cards }),
 );
+budgetRouter.post('/card-funding/:accountId/funding-preview', (req, res, next) => {
+  const parsed = z
+    .object({ month: z.string().refine(isMonth), amount: z.number().int().positive().max(1e13) })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    res.json(previewCardAssignment(req.params.accountId, parsed.data.month, parsed.data.amount));
+  } catch (error) {
+    if (error instanceof BudgetError)
+      return res.status(error.status).json({ error: error.message });
+    next(error);
+  }
+});
 const cardSetupSchema = z.object({
   initialFunding: z.number().int().min(0).max(1e13),
   revision: z.string().optional(),

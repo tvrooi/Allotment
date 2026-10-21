@@ -1,10 +1,16 @@
 # Changes
 
-## 0.2.0-up.11
+## 0.2.0-up.12
 
 - Add explicit category-funded goals whose progress follows shared envelope availability, including assignments, money moves, refunds and spending.
 - Keep existing manual goals and their saved values intact; account links remain references and do not reserve funds. Each expense category can fund only one goal.
 - Show assigned funds, activity, availability and incomplete funding assessments on desktop and phones. Preserve goal linkage and manual history in backup format 9 while accepting older backups.
+
+## 0.2.0-up.11
+
+- Calculate payment assignment previews from a consistent server-side budget snapshot, with guarded totals and the actual effects of refunds and prior funding.
+- Pause card debt funding while the selected month or its funding summary is loading, so an assignment from the previous month cannot be reused in a payment-funding preview.
+- Cover delayed month responses with a browser regression that verifies the exact saved current-month assignment.
 
 ## 0.2.0-up.10
 

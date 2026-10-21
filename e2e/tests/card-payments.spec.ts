@@ -106,3 +106,58 @@ test('existing debt setup is reviewed, does not rewrite transactions, and stale 
   const summary = await api.call('GET', `/budget/${thisMonth()}/summary`);
   expect(summary).toMatchObject({ paymentShortfall: 31000, resources: 101000, resolved: false });
 });
+
+test('debt funding waits for the selected month before reading its existing assignment', async ({
+  page,
+  api,
+}) => {
+  await api.createAccount('Cash', 100000);
+  const card = await api.createAccount('Existing card', -50000, 'credit');
+  const preview = await api.call('POST', `/budget/card-funding/${card.id}/preview`, {
+    initialFunding: 10000,
+  });
+  await api.call('POST', `/budget/card-funding/${card.id}/apply`, preview);
+  const current = thisMonth(),
+    d = new Date(`${current}-01T12:00:00`);
+  d.setMonth(d.getMonth() - 1);
+  const prior = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  const position = (await api.call('GET', `/budget/${current}/summary`)).cards[0];
+  await api.call('PUT', `/budget/${prior}/${position.categoryId}`, { budgeted: 20000 });
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(`**/api/budget/${current}`, async (route) => {
+    await gate;
+    await route.continue();
+  });
+  try {
+    await open(page, '/budget');
+    const oldResponse = page.waitForResponse((response) =>
+      response.url().endsWith(`/api/budget/${prior}`),
+    );
+    await page.getByRole('button', { name: 'Previous month', exact: true }).click();
+    await oldResponse;
+    await expect(page.getByTestId('card-payment')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Today', exact: true }).click();
+    const panel = page.getByTestId('card-payment').filter({ hasText: 'Existing card' });
+    await expect(panel.getByRole('button', { name: 'Fund debt' })).toBeDisabled();
+    release();
+    await expect(panel.getByRole('button', { name: 'Fund debt' })).toBeEnabled();
+    await panel.getByRole('button', { name: 'Fund debt' }).click();
+    await panel.getByLabel('Additional funding for Existing card').fill('100');
+    await panel.getByRole('button', { name: 'Preview funding' }).click();
+    await expect(panel.getByRole('status')).toContainText(
+      'Payment availability after assignment: $400',
+    );
+    await panel.getByRole('button', { name: 'Assign payment funds' }).click();
+    await expect(panel).toContainText('Available for payment: $400');
+    const groups = await api.call('GET', `/budget/${current}`);
+    expect(
+      groups.flatMap((g: any) => g.categories).find((c: any) => c.id === position.categoryId)
+        .budgeted,
+    ).toBe(20000);
+  } finally {
+    release();
+  }
+});

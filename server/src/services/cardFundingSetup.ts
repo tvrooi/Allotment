@@ -127,3 +127,75 @@ export function applyCardSetup(accountId: string, initialFunding: number, revisi
     return install(accountId, initialFunding);
   });
 }
+
+export interface CardFundingPreview {
+  month: string;
+  accountId: string;
+  categoryId: string;
+  budgeted: number;
+  revision: string;
+  available: number;
+  shortfall: number;
+  unassigned: number;
+}
+class FundingPreviewRollback {
+  constructor(public value: CardFundingPreview) {}
+}
+/** Read the assignment and calculate its effects in one snapshot, then roll back.
+ * The resulting total/revision can be applied through the existing guarded budget write.
+ */
+export function previewCardAssignment(
+  accountId: string,
+  month: string,
+  amount: number,
+): CardFundingPreview {
+  if (month !== todayIso().slice(0, 7))
+    throw new BudgetError('Choose the current month for payment funding', 400);
+  if (!Number.isSafeInteger(amount) || amount <= 0 || amount > 1e13)
+    throw new BudgetError('Enter a positive funding amount', 400);
+  try {
+    db.transaction(() => {
+      const mapping = db
+        .select()
+        .from(cardFunding)
+        .where(eq(cardFunding.accountId, accountId))
+        .get();
+      if (!mapping) throw new BudgetError('Review this card setup first', 400);
+      const before = fundingState();
+      if (!before.complete) throw new BudgetError('Add missing exchange rates before funding');
+      const existing = db
+        .select()
+        .from(budgetMonths)
+        .where(and(eq(budgetMonths.categoryId, mapping.categoryId), eq(budgetMonths.month, month)))
+        .get();
+      const budgeted = (existing?.budgeted ?? 0) + amount;
+      if (!Number.isSafeInteger(budgeted) || Math.abs(budgeted) > 1e13)
+        throw new BudgetError('Assignment is too large', 400);
+      db.insert(budgetMonths)
+        .values({ id: nanoid(), month, categoryId: mapping.categoryId, budgeted })
+        .onConflictDoUpdate({
+          target: [budgetMonths.month, budgetMonths.categoryId],
+          set: { budgeted },
+        })
+        .run();
+      const after = fundingState(),
+        card = after.cards.find((c) => c.accountId === accountId)!;
+      if (after.reserved > before.reserved && after.unassigned < 0)
+        throw new BudgetError('Insufficient unassigned money for this payment funding');
+      throw new FundingPreviewRollback({
+        month,
+        accountId,
+        categoryId: mapping.categoryId,
+        budgeted,
+        revision: before.revision,
+        available: card.available,
+        shortfall: card.shortfall,
+        unassigned: after.unassigned,
+      });
+    });
+  } catch (error) {
+    if (error instanceof FundingPreviewRollback) return error.value;
+    throw error;
+  }
+  throw new BudgetError('Could not preview funding');
+}

@@ -1,6 +1,6 @@
 # Category-funded goals (phase 6C)
 
-Implementation: `0.2.0-up.11` feature branch. Release publication and live installation are separate delivery gates.
+Implementation: `0.2.0-up.12` feature branch. Release publication and live installation are separate delivery gates.
 
 Existing goals remain manual tracking goals. Their saved amount and optional account reference are preserved. An account link does not reserve money and an account transfer does not fund a goal.
 

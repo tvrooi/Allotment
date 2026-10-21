@@ -12,7 +12,7 @@ import {
   budgetSettings,
   exchangeRates,
 } from '../db/schema.js';
-import { applyCardSetup, previewCardSetup } from './cardFundingSetup.js';
+import { applyCardSetup, previewCardSetup, previewCardAssignment } from './cardFundingSetup.js';
 import { budgetGroups, fundingState } from './budgetService.js';
 import { applyMove, previewMove } from './budgetMoves.js';
 import { createBackup, parseBackup, restoreBackup } from './backupService.js';
@@ -483,4 +483,33 @@ it('keeps payment envelopes managed in historical views before setup without rep
     .find((c) => c.id === position().categoryId)!;
   expect(payment).toMatchObject({ paymentAccountId: 'card', activity: 0, balance: 0 });
   expect(fundingState('2026-09-30').cards).toEqual([]);
+});
+
+it('previews the current assignment atomically and rolls back every preview write', () => {
+  db.update(accounts).set({ startingBalance: -50000 }).where(eq(accounts.id, 'card')).run();
+  setup(10000);
+  assign(position().categoryId, 20000, '2026-09');
+  const before = db.select().from(budgetMonths).all(),
+    revision = state().revision;
+  const preview = previewCardAssignment('card', month, 10000);
+  expect(preview).toMatchObject({
+    budgeted: 20000,
+    revision,
+    available: 40000,
+    shortfall: 10000,
+    unassigned: 60000,
+  });
+  expect(db.select().from(budgetMonths).all()).toEqual(before);
+  expect(state().revision).toBe(revision);
+  expect(() => previewCardAssignment('card', '2026-09', 10000)).toThrow(/current month/);
+});
+
+it('previews actual refund effects instead of assuming payment availability grows linearly', () => {
+  db.update(accounts).set({ startingBalance: -50000 }).where(eq(accounts.id, 'card')).run();
+  setup();
+  entry('refund', 30000);
+  const preview = previewCardAssignment('card', month, 10000);
+  expect(preview).toMatchObject({ budgeted: 10000, available: 0, shortfall: 20000 });
+  expect(position().available).toBe(0);
+  expect(cat().balance).toBe(0);
 });
