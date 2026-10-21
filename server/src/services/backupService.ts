@@ -16,6 +16,7 @@ import {
   budgetMoves,
   categories,
   cardFunding,
+  categoryTargets,
   categoryGroups,
   customReports,
   dashboardPages,
@@ -40,6 +41,7 @@ import {
 import { paydayConfigSchema, fundingSnapshotSchema } from './paydayConfig.js';
 import { fillMissingMainAmounts, ratesChanged } from './mainAmountService.js';
 import { upObservationSchema } from './upTransactions.js';
+import { targetSchema } from './targetConfig.js';
 
 // Full JSON backup of the user's data, and restoring one.
 //
@@ -50,7 +52,7 @@ import { upObservationSchema } from './upTransactions.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 9;
+export const BACKUP_VERSION = 10;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -60,6 +62,7 @@ const TABLES = {
   categoryGroups,
   categories,
   cardFunding,
+  categoryTargets,
   payees,
   schedules,
   transactions,
@@ -231,6 +234,25 @@ export function parseBackup(input: unknown): ParsedBackup {
     )
       throw new InvalidBackupError('Invalid or duplicate goal category');
     linked.add(String(goal.categoryId));
+  }
+  for (const target of result.categoryTargets) {
+    const category = result.categories.find((c) => c.id === target.categoryId);
+    const group = result.categoryGroups.find((g) => g.id === category?.groupId);
+    const valid = targetSchema.safeParse({
+      type: target.type,
+      amount: target.amount,
+      ...(target.dueDate != null && { dueDate: target.dueDate }),
+      ...(target.cycleMonths != null && { cycleMonths: target.cycleMonths }),
+    });
+    if (
+      !category ||
+      !group ||
+      group.isIncome ||
+      !valid.success ||
+      !/^\d{4}-\d{2}$/.test(String(target.createdMonth)) ||
+      result.cardFunding.some((c) => c.categoryId === target.categoryId)
+    )
+      throw new InvalidBackupError('Invalid category target');
   }
   return result;
 }

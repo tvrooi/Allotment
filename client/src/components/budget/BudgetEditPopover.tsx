@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, LabelList, ResponsiveContainer } from 'rec
 import { useCategoryHistory } from '../../hooks/useBudget';
 import { formatCurrency } from '../../utils/currency';
 import { chartColors } from '../../utils/chartColors';
+import { BulkPreview } from './BulkPreview';
 import { useXAxisLayout } from '../../hooks/useXAxisLayout';
 
 interface BudgetEditPopoverProps {
@@ -11,7 +12,7 @@ interface BudgetEditPopoverProps {
   isIncome: boolean;
   currentAmount: number;
   month: string;
-  onApplyBulk: (cents: number) => void;
+  onApplyBulk: (cents: number, expected: Record<string, number>) => void;
 }
 
 export function BudgetEditPopover({
@@ -22,7 +23,7 @@ export function BudgetEditPopover({
   onApplyBulk,
 }: BudgetEditPopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const [checked, setChecked] = useState(true);
+  const [planning, setPlanning] = useState(false);
   const { data } = useCategoryHistory(categoryId, month);
 
   useEffect(() => {
@@ -106,32 +107,26 @@ export function BudgetEditPopover({
         )}
       </div>
 
-      <button
-        type="button"
-        className="flex items-center gap-2 text-sm text-text cursor-pointer w-full text-left"
-        onClick={() => {
-          const next = !checked;
-          setChecked(next);
-          if (next) onApplyBulk(currentAmount);
-        }}
-      >
-        <span
-          className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${checked ? 'bg-brand-600 border-brand-600' : 'border-border'}`}
+      {planning ? (
+        <BulkPreview
+          categoryId={categoryId}
+          cents={currentAmount}
+          month={month}
+          onCancel={() => setPlanning(false)}
+          onConfirm={(expected) => {
+            onApplyBulk(currentAmount, expected);
+            setPlanning(false);
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          className="text-sm text-brand-600 hover:text-brand-700 w-full text-left"
+          onClick={() => setPlanning(true)}
         >
-          {checked && (
-            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-              <path
-                d="M1 4L3.5 6.5L9 1"
-                stroke="white"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          )}
-        </span>
-        Apply {formatCurrency(currentAmount)} to all future months
-      </button>
+          Use {formatCurrency(currentAmount)} for the next 12 months…
+        </button>
+      )}
     </div>
   );
 }

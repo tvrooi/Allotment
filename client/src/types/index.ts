@@ -287,6 +287,20 @@ export interface TransactionQueryParams {
   offset?: number;
 }
 
+/** A category target's needs for the viewed month (server: services/targetService.ts) */
+export interface TargetStatus {
+  type: 'monthly' | 'by-date' | 'recurring' | 'refill';
+  amount: number;
+  dueDate: string | null;
+  cycleMonths: number | null;
+  periodsLeft: number | null;
+  required: number;
+  assigned: number;
+  underfunded: number;
+  catchUp: number;
+  ended: boolean;
+}
+
 export interface BudgetCategory {
   id: string;
   groupId: string;
@@ -295,6 +309,7 @@ export interface BudgetCategory {
   budgetType: BudgetType | null;
   sortOrder: number;
   createdAt: string;
+  target?: TargetStatus | null;
   paymentAccountId?: string | null;
   budgeted: number;
   spent: number;

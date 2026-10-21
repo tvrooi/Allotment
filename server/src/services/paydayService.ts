@@ -1,3 +1,4 @@
+import { perPeriodNeed } from './fundingMath.js';
 import { fundingState } from './budgetService.js';
 import { personalBudgetAccount } from './balances.js';
 import { and, eq, lte } from 'drizzle-orm';
@@ -283,7 +284,7 @@ export function previewPayday(planId: string, request: PaydayRequest) {
                 (p) => p.scheduledDate > request.scheduledDate,
               ).length
             : 0);
-        needed = Math.ceil(Math.max(0, rule.amount - balance) / remainingPays);
+        needed = perPeriodNeed(rule.amount, balance, remainingPays);
       }
       if (rule.method === 'monthly') {
         const pays = paydaysInYear(plan, request.actualPayDate).length;

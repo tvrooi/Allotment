@@ -71,11 +71,13 @@ export function useSetBudgetBulk() {
       categoryId,
       budgeted,
       fromMonth,
+      expected,
     }: {
       categoryId: string;
       budgeted: number;
       fromMonth: string;
-    }) => budgetApi.setBudgetBulk(categoryId, budgeted, fromMonth),
+      expected: Record<string, number>;
+    }) => budgetApi.setBudgetBulk(categoryId, budgeted, fromMonth, expected),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['budget'] });
       qc.invalidateQueries({ queryKey: ['budget-summary'] });

@@ -34,11 +34,64 @@ export const getCategoryHistory = (categoryId: string, currentMonth?: string, mo
   return apiFetch<CategoryHistory>(`/budget/category/${categoryId}/history${qs ? `?${qs}` : ''}`);
 };
 
-export const setBudgetBulk = (categoryId: string, budgeted: number, fromMonth: string) =>
+export interface BulkPreview {
+  categoryId: string;
+  budgeted: number;
+  months: { month: string; current: number; next: number }[];
+}
+export const getBulkPreview = (categoryId: string, budgeted: number, fromMonth: string) =>
+  apiFetch<BulkPreview>(
+    `/budget/category/${categoryId}/bulk-preview?budgeted=${budgeted}&fromMonth=${fromMonth}`,
+  );
+/** `expected` is the reviewed preview: existing assignments change only as shown there. */
+export const setBudgetBulk = (
+  categoryId: string,
+  budgeted: number,
+  fromMonth: string,
+  expected: Record<string, number>,
+) =>
   apiFetch<{ categoryId: string; budgeted: number; months: string[] }>(
     `/budget/category/${categoryId}/bulk`,
-    { method: 'PUT', body: JSON.stringify({ budgeted, fromMonth }) },
+    { method: 'PUT', body: JSON.stringify({ budgeted, fromMonth, expected }) },
   );
+
+export type TargetInput =
+  | { type: 'monthly' | 'refill'; amount: number }
+  | { type: 'by-date'; amount: number; dueDate: string }
+  | { type: 'recurring'; amount: number; dueDate: string; cycleMonths: number };
+export const saveTarget = (categoryId: string, target: TargetInput) =>
+  apiFetch(`/budget/category/${categoryId}/target`, {
+    method: 'PUT',
+    body: JSON.stringify(target),
+  });
+export const deleteTarget = (categoryId: string) =>
+  apiFetch(`/budget/category/${categoryId}/target`, { method: 'DELETE' });
+
+export interface TargetFundingPreview {
+  month: string;
+  complete: boolean;
+  available: number;
+  total: number;
+  shortfall: number;
+  revision: string;
+  rows: {
+    categoryId: string;
+    name: string;
+    underfunded: number;
+    proposed: number;
+    shortfall: number;
+  }[];
+}
+export const previewTargetFunding = (month: string) =>
+  apiFetch<TargetFundingPreview>(`/budget/${month}/targets/preview`, { method: 'POST' });
+export const applyTargetFunding = (preview: TargetFundingPreview) =>
+  apiFetch<{ applied: number }>(`/budget/${preview.month}/targets/apply`, {
+    method: 'POST',
+    body: JSON.stringify({
+      revision: preview.revision,
+      rows: preview.rows.map((r) => ({ categoryId: r.categoryId, proposed: r.proposed })),
+    }),
+  });
 
 export interface CardPosition {
   accountId: string;

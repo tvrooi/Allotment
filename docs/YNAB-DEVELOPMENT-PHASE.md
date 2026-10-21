@@ -1,6 +1,6 @@
 # Phase 6: YNAB envelope budgeting and funding workflows
 
-Added 21 October 2026. Status: **6A implemented; 6B merged in `0.2.0-up.10`; 6C implemented on the `0.2.0-up.12` feature branch; 6D–6G planned. Release/live status must be verified separately.**
+Added 21 October 2026. Status: **6A implemented; 6B merged in `0.2.0-up.10`; 6C implemented in `0.2.0-up.12`; 6D implemented on the `0.2.0-up.15` feature branch; 6E–6G planned. Release/live status must be verified separately.**
 
 This is an implementation handoff for Sol, based on Jesse Mecham's _You Need a
 Budget_ (principally chapters 2–7) and a source investigation of `tvrooi/FlyBudget`
@@ -174,7 +174,7 @@ goal automatically. Existing manual values survive upgrade and backup/restore.
 
 ## 6D: true-expense targets
 
-Status: not started; depends on 6A and category linkage from 6C.
+Status: implemented on the `0.2.0-up.15` feature branch. See [Category targets](CATEGORY-TARGETS.md).
 
 Support fixed monthly contributions, a balance by a deadline, recurring bill targets
 with a next due date and replenishment to a selected balance. Calculate suggested

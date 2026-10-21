@@ -1,3 +1,4 @@
+import { addMonthsTo } from '../services/fundingMath.js';
 import { beforeAll, beforeEach, afterAll, expect, it } from 'vitest';
 import express from 'express';
 import type { Server } from 'http';
@@ -59,7 +60,12 @@ it('assigns opening funds once and rejects overcommitment without changing eithe
 it('reserves future assignments against today and atomically rejects an unfunded bulk write', async () => {
   expect((await put('/2099-01/food', { budgeted: 10000 })).status).toBe(200);
   expect((await put(`/${month}/rent`, { budgeted: 1 })).status).toBe(409);
-  expect((await put('/category/rent/bulk', { fromMonth: month, budgeted: 1 })).status).toBe(409);
+  const expected = Object.fromEntries(
+    Array.from({ length: 12 }, (_, i) => [addMonthsTo(month, i), 0]),
+  );
+  expect(
+    (await put('/category/rent/bulk', { fromMonth: month, budgeted: 1, expected })).status,
+  ).toBe(409);
   expect(db.select().from(budgetMonths).all()).toHaveLength(1);
 });
 it('preserves old overcommitments while allowing reductions and rejects stale edit undo', async () => {
