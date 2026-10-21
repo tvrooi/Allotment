@@ -56,6 +56,7 @@ for (const phone of [false, true]) {
     await page.getByRole('button', { name: 'Undo move', exact: true }).click();
     await expect(row).toContainText('$250');
     await row.getByRole('link').first().click();
+    await expect(page).toHaveURL(new RegExp(`#/budget/category/${food.id}$`));
     await expect(page.getByText('Available', { exact: true })).toBeVisible();
     await expect(page.getByText('$250', { exact: true }).first()).toBeVisible();
   });

@@ -143,7 +143,7 @@ The schema lives in [`server/src/db/schema.ts`](server/src/db/schema.ts) and the
 
 ### Community fork development plan (21 October 2026)
 
-The current main baseline is `0.2.0-up.7`, commit `e821e1c` (phase 3 payday funding).
+The phase 6A development baseline is `0.2.0-up.8`, commit `4b97955` (phase 4 household attribution).
 The YNAB findings originated from `0.2.0-up.6`, commit `865b014`.
 Implementation and verification below describe this checkout and its recorded checks;
 they do not establish the version installed on a live Home Assistant instance.
