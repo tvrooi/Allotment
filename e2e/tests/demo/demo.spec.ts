@@ -276,3 +276,57 @@ test('the demo runs under a strict Content Security Policy', async ({ page }) =>
   );
   expect(blocked).toBe(true);
 });
+
+test('reviewed card funding uses the same accounting inside the browser demo', async ({ page }) => {
+  await openDemo(page, '/transactions');
+  const result = await page.evaluate(async () => {
+    const call = async (method: string, path: string, data?: unknown) => {
+      const response = await fetch(`/api${path}`, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        ...(data === undefined ? {} : { body: JSON.stringify(data) }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json();
+    };
+    await call('POST', '/accounts', {
+      name: 'Example cash',
+      type: 'checking',
+      startingBalance: 100000,
+    });
+    const card = await call('POST', '/accounts', {
+      name: 'Example payment card',
+      type: 'credit',
+      startingBalance: 0,
+    });
+    const groups = await call('GET', '/categories');
+    const group = groups.find((g: { isIncome: number }) => !g.isIncome);
+    const category = await call('POST', '/categories', {
+      groupId: group.id,
+      name: 'Card example',
+      budgetType: 'flexible',
+    });
+    const d = new Date();
+    const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    await call('PUT', `/budget/${date.slice(0, 7)}/${category.id}`, { budgeted: 10000 });
+    const preview = await call('POST', `/budget/card-funding/${card.id}/preview`, {
+      initialFunding: 0,
+    });
+    await call('POST', `/budget/card-funding/${card.id}/apply`, preview);
+    await call('POST', '/transactions', {
+      accountId: card.id,
+      date,
+      amount: -8000,
+      categoryId: category.id,
+    });
+    const summary = await call('GET', `/budget/${date.slice(0, 7)}/summary`);
+    return summary.cards.find((c: { accountId: string }) => c.accountId === card.id);
+  });
+  expect(result).toMatchObject({ debt: 8000, available: 8000, shortfall: 0 });
+  await page.evaluate(() => {
+    location.hash = '#/budget';
+  });
+  await expect(
+    page.getByTestId('card-payment').filter({ hasText: 'Example payment card' }),
+  ).toContainText('Available for payment: $80');
+});

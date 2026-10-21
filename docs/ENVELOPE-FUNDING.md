@@ -30,8 +30,8 @@ reserve cash.
 
 This is an **interim net-debt model**: outstanding on-budget debt reduces assignable
 resources immediately. It does not create dedicated credit-card payment reserves or
-claim to distinguish funded purchases from new card debt. Those workflows are phase
-6B. Do not enable a different card calculator alongside this foundation.
+claim to distinguish funded purchases from new card debt. Reviewed payment reserves are added in [phase 6B](CARD-PAYMENTS.md) through this
+same service. The interim net-debt treatment remains for unreviewed cards.
 
 ## Dates and currency
 

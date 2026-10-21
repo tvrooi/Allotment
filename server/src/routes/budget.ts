@@ -1,3 +1,5 @@
+import { todayIso } from '../services/mainAmountService.js';
+import { cardAccounts, previewCardSetup, applyCardSetup } from '../services/cardFundingSetup.js';
 import { previewMove, applyMove, undoMove, BudgetError } from '../services/budgetMoves.js';
 import {
   budgetGroups,
@@ -30,6 +32,32 @@ budgetRouter.param('month', (_req, res, next, month) => {
   if (!isMonth(month)) return res.status(400).json({ error: 'Expected a month as YYYY-MM' });
   next();
 });
+
+budgetRouter.get('/card-funding/accounts', (_req, res) =>
+  res.json({ asOf: todayIso(), accounts: cardAccounts(), cards: fundingState().cards }),
+);
+const cardSetupSchema = z.object({
+  initialFunding: z.number().int().min(0).max(1e13),
+  revision: z.string().optional(),
+});
+for (const action of ['preview', 'apply'])
+  budgetRouter.post(`/card-funding/:accountId/${action}`, (req, res, next) => {
+    const parsed = cardSetupSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+    try {
+      if (action === 'apply' && !parsed.data.revision)
+        return res.status(400).json({ error: 'Preview this setup before applying' });
+      res.json(
+        action === 'preview'
+          ? previewCardSetup(req.params.accountId, parsed.data.initialFunding)
+          : applyCardSetup(req.params.accountId, parsed.data.initialFunding, parsed.data.revision!),
+      );
+    } catch (error) {
+      if (error instanceof BudgetError)
+        return res.status(error.status).json({ error: error.message });
+      next(error);
+    }
+  });
 
 budgetRouter.get('/:month', (req, res) => res.json(budgetGroups(req.params.month)));
 

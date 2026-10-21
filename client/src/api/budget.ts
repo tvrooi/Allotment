@@ -39,3 +39,43 @@ export const setBudgetBulk = (categoryId: string, budgeted: number, fromMonth: s
     `/budget/category/${categoryId}/bulk`,
     { method: 'PUT', body: JSON.stringify({ budgeted, fromMonth }) },
   );
+
+export interface CardPosition {
+  accountId: string;
+  categoryId: string;
+  name: string;
+  startDate: string;
+  debt: number;
+  prepaid: number;
+  available: number;
+  shortfall: number;
+  uncoveredPayments: number;
+  excessFunding: number;
+  fundedPurchases: number;
+}
+export interface CardSetupPreview {
+  accountId: string;
+  initialFunding: number;
+  revision: string;
+  asOf: string;
+  beforeUnassigned: number;
+  unassigned: number;
+  resources: number;
+  card: CardPosition;
+}
+export const getCardFunding = () =>
+  apiFetch<{
+    asOf: string;
+    accounts: { id: string; name: string; configured: boolean }[];
+    cards: CardPosition[];
+  }>('/budget/card-funding/accounts');
+export const previewCardSetup = (accountId: string, initialFunding: number) =>
+  apiFetch<CardSetupPreview>(`/budget/card-funding/${accountId}/preview`, {
+    method: 'POST',
+    body: JSON.stringify({ initialFunding }),
+  });
+export const applyCardSetup = (preview: CardSetupPreview) =>
+  apiFetch(`/budget/card-funding/${preview.accountId}/apply`, {
+    method: 'POST',
+    body: JSON.stringify(preview),
+  });

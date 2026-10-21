@@ -167,7 +167,9 @@ export function BudgetSummaryWidget({
           <p>Envelope deficits: {formatCurrency(funding.overspent)}</p>
           <p>Uncategorised spending: {formatCurrency(funding.uncategorized)}</p>
           <p>Future assignments reserved: {formatCurrency(funding.futureAssigned)}</p>
-          <p>Outstanding debt reduces the money available to assign.</p>
+          <p>Card payment shortfall: {formatCurrency(funding.paymentShortfall ?? 0)}</p>
+          <p>Payments without funding: {formatCurrency(funding.uncoveredCardPayments ?? 0)}</p>
+          <p>Unreviewed card accounts retain net-debt funding.</p>
         </div>
       )}
       <div className="flex justify-center gap-4 px-4 pb-2">

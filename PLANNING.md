@@ -150,25 +150,24 @@ they do not establish the version installed on a live Home Assistant instance.
 The phased fork plan is tracked in the
 [Australian budgeting investigation](docs/investigations/2026-10-20-australian-budgeting.md).
 
-| Phase | Deliverable                                                                                          | Recorded status                                                                                                                   |
-| ----- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | Report account scopes, budget boundaries and preservation of Up opening balances                     | Implemented; verification recorded in the investigation. Automatic round-up repair remains deferred.                              |
-| 2     | Background Up sync, bank-source review and supported daily round-up details                          | Implemented in `0.2.0-up.6`; verification recorded. Source corrections are acknowledged, not applied to the ledger.               |
-| 3     | Payday funding and bill coverage                                                                     | Implemented in `0.2.0-up.7` (#8); phase 6 will unify its funding calculation with the main budget.                                |
-| 4     | Household/person ledger, shared bills and personal-share reports                                     | Implemented in `0.2.0-up.8`: private AUD ledger, contribution-based personal budgeting, expense shares and reserved shared bills. |
-| 5     | Savings forecasts using paydays, bills and household shares                                          | Planned; depends on shared accounting definitions from phases 3, 4 and 6.                                                         |
-| 6     | YNAB envelope correctness, credit-card funding, category goals, targets, buffer and review workflows | 6A implemented in `0.2.0-up.9`; 6B–6G remain planned. See the phase brief for verification and delivery status.                   |
+| Phase | Deliverable                                                                                          | Recorded status                                                                                                                                                         |
+| ----- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Report account scopes, budget boundaries and preservation of Up opening balances                     | Implemented; verification recorded in the investigation. Automatic round-up repair remains deferred.                                                                    |
+| 2     | Background Up sync, bank-source review and supported daily round-up details                          | Implemented in `0.2.0-up.6`; verification recorded. Source corrections are acknowledged, not applied to the ledger.                                                     |
+| 3     | Payday funding and bill coverage                                                                     | Implemented in `0.2.0-up.7` (#8); phase 6 will unify its funding calculation with the main budget.                                                                      |
+| 4     | Household/person ledger, shared bills and personal-share reports                                     | Implemented in `0.2.0-up.8`: private AUD ledger, contribution-based personal budgeting, expense shares and reserved shared bills.                                       |
+| 5     | Savings forecasts using paydays, bills and household shares                                          | Planned; depends on shared accounting definitions from phases 3, 4 and 6.                                                                                               |
+| 6     | YNAB envelope correctness, credit-card funding, category goals, targets, buffer and review workflows | 6A implemented in `0.2.0-up.9`; 6B implemented on the `0.2.0-up.10` development branch; 6C–6G remain planned. See the phase brief for verification and delivery status. |
 
-Phase numbers remain stable references, not a strict execution order. Do **6A first**
-(cash-backed funding, consistent availability, deficit recovery and atomic money moves),
-then 6B credit-card funding and 6C–6D category goals/targets. Use 6E to integrate the already implemented phase 3 planner
+Phase numbers remain stable references, not a strict execution order. Foundations
+6A and 6B are implemented; next are 6C–6D category goals/targets. Use 6E to integrate the already implemented phase 3 planner
 rather than implementing a second payday planner. Phases 4 and 5 must consume the same
 accounting service. Buffer and review work follows the financial foundation.
 
 The [phase 6 implementation brief](docs/YNAB-DEVELOPMENT-PHASE.md) contains the source map,
 acceptance examples, compatibility constraints and release gates for Sol. It is the
 authoritative scope for this addition; the general upstream ideas below remain uncommitted.
-No application change, version bump or deployment is part of adding this plan.
+The original plan addition changed no application code. See [Card payments](docs/CARD-PAYMENTS.md) for phase 6B implementation and compatibility rules.
 
 ### General upstream ideas
 

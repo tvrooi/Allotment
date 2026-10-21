@@ -1,3 +1,4 @@
+import { CardPayments } from '../components/budget/CardPayments';
 import { MoneyMoves } from '../components/budget/MoneyMoves';
 import { useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -421,7 +422,11 @@ export default function BudgetPage() {
 
   const incomeGroups = useMemo(() => groups.filter((g) => g.isIncome), [groups]);
   const allExpenseCats = useMemo(
-    () => groups.filter((g) => !g.isIncome).flatMap((g) => g.categories),
+    () =>
+      groups
+        .filter((g) => !g.isIncome)
+        .flatMap((g) => g.categories)
+        .filter((c) => !c.paymentAccountId),
     [groups],
   );
 
@@ -740,7 +745,17 @@ export default function BudgetPage() {
 
         <div className="w-80 max-md:w-full shrink-0 border-l max-md:border-l-0 max-md:border-b border-border p-4 self-start max-md:self-stretch sticky max-md:static top-0">
           <div>
-            <MoneyMoves key={selectedMonth} month={selectedMonth} categories={allExpenseCats} />
+            <CardPayments
+              key={`cards:${selectedMonth}`}
+              month={selectedMonth}
+              groups={groups}
+              summary={summary}
+            />
+            <MoneyMoves
+              key={selectedMonth}
+              month={selectedMonth}
+              categories={groups.filter((g) => !g.isIncome).flatMap((g) => g.categories)}
+            />
             <BudgetSummaryWidget
               funding={summary}
               expenseAvailable={expenseTotals.balance}

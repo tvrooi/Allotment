@@ -687,3 +687,19 @@ export const budgetMoves = sqliteTable('budget_moves', {
   undone: integer('undone').notNull().default(0),
   createdAt: text('created_at').notNull(),
 });
+
+/** Reviewed cutover to explicit payment funding; no bank or historical ledger edits. */
+export const cardFunding = sqliteTable('card_funding', {
+  accountId: text('account_id')
+    .primaryKey()
+    .references(() => accounts.id, { onDelete: 'restrict' }),
+  categoryId: text('category_id')
+    .notNull()
+    .unique()
+    .references(() => categories.id, { onDelete: 'restrict' }),
+  startDate: text('start_date').notNull(),
+  baselineIds: text('baseline_ids').notNull(),
+  reviewedBalance: integer('reviewed_balance').notNull(),
+  initialFunding: integer('initial_funding').notNull(),
+  createdAt: text('created_at').notNull(),
+});

@@ -1,6 +1,12 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
-import { categories, categoryGroups, transactions, budgetMonths } from '../db/schema.js';
+import {
+  categories,
+  categoryGroups,
+  transactions,
+  budgetMonths,
+  cardFunding,
+} from '../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -21,7 +27,19 @@ const categorySchema = z.object({
 
 categoriesRouter.get('/', (_req, res) => {
   const groups = db.select().from(categoryGroups).orderBy(categoryGroups.sortOrder).all();
-  const cats = db.select().from(categories).orderBy(categories.sortOrder).all();
+  const paymentIds = new Set(
+    db
+      .select()
+      .from(cardFunding)
+      .all()
+      .map((m) => m.categoryId),
+  );
+  const cats = db
+    .select()
+    .from(categories)
+    .orderBy(categories.sortOrder)
+    .all()
+    .filter((c) => !paymentIds.has(c.id));
   const result = groups.map((g) => ({
     ...g,
     categories: cats.filter((c) => c.groupId === g.id),
@@ -60,7 +78,23 @@ categoriesRouter.put('/groups/reorder', (req, res) => {
   res.json({ ok: true });
 });
 
+function paymentCategory(id: string) {
+  return !!db.select().from(cardFunding).where(eq(cardFunding.categoryId, id)).get();
+}
+function paymentGroup(id: string) {
+  return db
+    .select()
+    .from(cardFunding)
+    .all()
+    .some(
+      (m) =>
+        db.select().from(categories).where(eq(categories.id, m.categoryId)).get()?.groupId === id,
+    );
+}
+const managedError = { error: 'Payment envelopes are managed from Budget → Card payments' };
+
 categoriesRouter.put('/groups/:id', (req, res) => {
+  if (paymentGroup(req.params.id)) return res.status(409).json(managedError);
   const parsed = groupSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
@@ -77,6 +111,7 @@ categoriesRouter.put('/groups/:id', (req, res) => {
 });
 
 categoriesRouter.delete('/groups/:id', (req, res) => {
+  if (paymentGroup(req.params.id)) return res.status(409).json(managedError);
   db.delete(categoryGroups).where(eq(categoryGroups.id, req.params.id)).run();
   res.status(204).send();
 });
@@ -111,6 +146,7 @@ categoriesRouter.put('/reorder', (req, res) => {
 });
 
 categoriesRouter.put('/:id', (req, res) => {
+  if (paymentCategory(req.params.id)) return res.status(409).json(managedError);
   const parsed = categorySchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
@@ -132,6 +168,7 @@ categoriesRouter.get('/:id/transaction-count', (req, res) => {
 });
 
 categoriesRouter.delete('/:id', (req, res) => {
+  if (paymentCategory(req.params.id)) return res.status(409).json(managedError);
   const reassignTo = typeof req.query.reassignTo === 'string' ? req.query.reassignTo : undefined;
 
   if (reassignTo === req.params.id) return res.status(400).json({ error: 'Pick another category' });

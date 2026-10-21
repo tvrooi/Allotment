@@ -1,3 +1,4 @@
+import { calculateCardFunding } from './cardFunding.js';
 import { and, eq, gte, lte, lt, sql } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import {
@@ -7,6 +8,7 @@ import {
   categoryGroups,
   transactions,
   budgetRevision,
+  cardFunding,
 } from '../db/schema.js';
 import { budgetActivity, inAccountBalance, mainAmount, personalBudgetAccount } from './balances.js';
 import { currencyContext, convertAmount, todayIso } from './mainAmountService.js';
@@ -21,7 +23,7 @@ const receivedActivity = and(
 export const fundingRevision = () =>
   `${todayIso()}:${db.select().from(budgetRevision).get()?.revision ?? 'initial'}`;
 
-export function budgetGroups(month: string, today = todayIso()) {
+function rawBudgetGroups(month: string, today = todayIso()) {
   const { from, to: end } = monthBounds(month);
   const to = end < today ? end : today;
 
@@ -89,17 +91,59 @@ export function budgetGroups(month: string, today = todayIso()) {
   return result;
 }
 
+function assessment(month: string, today = todayIso()) {
+  const end = monthBounds(month).to;
+  const asOf = end < today ? end : today;
+  const raw = rawBudgetGroups(month, today);
+  const current = month === asOf.slice(0, 7) ? raw : rawBudgetGroups(asOf.slice(0, 7), asOf);
+  const card = calculateCardFunding(
+    asOf,
+    current.filter((g) => !g.isIncome).flatMap((g) => g.categories),
+  );
+  const paymentAccounts = new Map(
+    db
+      .select()
+      .from(cardFunding)
+      .all()
+      .map((m) => [m.categoryId, m.accountId]),
+  );
+  const groups = raw.map((g) => ({
+    ...g,
+    categories: g.categories.map((c) => {
+      const changes = card.adjustments.filter((a) => a.categoryId === c.id);
+      const carry = changes
+        .filter((a) => a.date.slice(0, 7) < month)
+        .reduce((s, a) => s + a.amount, 0);
+      const activity = changes
+        .filter((a) => a.date.slice(0, 7) === month)
+        .reduce((s, a) => s + a.amount, 0);
+      return {
+        ...c,
+        carryOver: c.carryOver + carry,
+        activity: c.activity + activity,
+        balance: c.balance + carry + activity,
+        paymentAccountId: paymentAccounts.get(c.id) ?? null,
+      };
+    }),
+  }));
+  return { groups, card };
+}
+export function budgetGroups(month: string, today = todayIso()) {
+  return assessment(month, today).groups;
+}
+
 /** Net liquid resources = unassigned + positive current envelopes + positive future
  * assignments. Negative envelopes are disclosed, never used to offset reservations.
- * Cash and savings count; on-budget debt reduces resources (interim net-debt model).
- * Assets never unlock assignments. This deliberately reserves all outstanding debt;
- * explicit card payment reserves belong to 6B. Opening funds take effect on the earlier
+ * Cash and savings count; reviewed cards use explicit payment reserves and only
+ * positive card balances count as resources. Unreviewed debt retains 6A net-debt
+ * treatment. Assets never unlock assignments. See docs/CARD-PAYMENTS.md. Opening funds take effect on the earlier
  * of account creation and its first transaction, matching bookedValue's date policy.
  * Month views stop at min(month end, today); today's position reserves every future
  * positive assignment, including legacy commitments, without forecasting wages.
  */
 export function fundingState(asOf = todayIso()) {
-  const groups = budgetGroups(asOf.slice(0, 7), asOf);
+  const { groups, card } = assessment(asOf.slice(0, 7), asOf);
+  const enrolledCards = new Set(card.positions.map((p) => p.accountId));
   const cats = groups.filter((g) => !g.isIncome).flatMap((g) => g.categories);
   const balances = new Map(cats.map((c) => [c.id, c.balance]));
   const expenseIds = new Set(cats.map((c) => c.id));
@@ -113,7 +157,7 @@ export function fundingState(asOf = todayIso()) {
   const ctx = currencyContext();
   let resources = 0;
   let openingFunds = 0;
-  let complete = true;
+  let complete = card.complete;
   for (const account of db.select().from(accounts).where(personalBudgetAccount).all()) {
     const liquid = ['checking', 'savings', 'cash', 'credit', 'line_of_credit'].includes(
       account.type,
@@ -139,17 +183,28 @@ export function fundingState(asOf = todayIso()) {
       asOf,
       ctx,
     );
-    const opening = convertAmount(
-      account.startingBalance,
-      account.currency ?? ctx.budget,
-      ctx.budget,
-      effective,
-      ctx,
-    );
+    const opening =
+      account.startingBalance === 0
+        ? 0
+        : convertAmount(
+            account.startingBalance,
+            account.currency ?? ctx.budget,
+            ctx.budget,
+            effective,
+            ctx,
+          );
     if (value === null || opening === null) complete = false;
     else {
-      resources += liquid ? value : Math.min(0, value);
-      openingFunds += liquid ? opening : Math.min(0, opening);
+      resources += enrolledCards.has(account.id)
+        ? Math.max(0, value)
+        : liquid
+          ? value
+          : Math.min(0, value);
+      openingFunds += enrolledCards.has(account.id)
+        ? Math.max(0, opening)
+        : liquid
+          ? opening
+          : Math.min(0, opening);
     }
   }
   const activity = db
@@ -165,10 +220,15 @@ export function fundingState(asOf = todayIso()) {
   const uncategorized = activity
     .filter((r) => !r.categoryId && r.amount < 0)
     .reduce((s, r) => s - r.amount, 0);
-  const overspent = cats.reduce((s, c) => s + Math.max(0, -c.balance), 0);
+  const overspent = cats
+    .filter((c) => !c.paymentAccountId)
+    .reduce((s, c) => s + Math.max(0, -c.balance), 0);
   const unassigned = resources - reserved;
   return {
     balances,
+    cards: card.positions,
+    paymentShortfall: card.positions.reduce((s, p) => s + p.shortfall, 0),
+    uncoveredCardPayments: card.positions.reduce((s, p) => s + p.uncoveredPayments, 0),
     asOf,
     resources,
     openingFunds,
@@ -180,7 +240,12 @@ export function fundingState(asOf = todayIso()) {
     unassigned,
     available: complete ? Math.max(0, unassigned) : 0,
     revision: fundingRevision(),
-    resolved: complete && uncategorized === 0 && overspent === 0 && unassigned >= 0,
+    resolved:
+      complete &&
+      uncategorized === 0 &&
+      overspent === 0 &&
+      unassigned >= 0 &&
+      card.positions.every((p) => p.shortfall === 0 && p.uncoveredPayments === 0),
   };
 }
 

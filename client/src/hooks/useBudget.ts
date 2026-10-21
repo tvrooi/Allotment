@@ -27,11 +27,13 @@ export function useSetBudget() {
       month,
       categoryId,
       budgeted,
+      revision,
     }: {
       month: string;
       categoryId: string;
       budgeted: number;
-    }) => budgetApi.setBudget(month, categoryId, budgeted),
+      revision?: string;
+    }) => budgetApi.setBudget(month, categoryId, budgeted, revision),
     onSuccess: (result, { month, categoryId, budgeted }) => {
       qc.invalidateQueries({ queryKey: ['budget'] });
       qc.invalidateQueries({ queryKey: ['budget-summary'] });
