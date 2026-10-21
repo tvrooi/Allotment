@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.11
+
+- Calculate payment assignment previews from a consistent server-side budget snapshot, with guarded totals and the actual effects of refunds and prior funding.
+- Pause card debt funding while the selected month or its funding summary is loading, so an assignment from the previous month cannot be reused in a payment-funding preview.
+- Cover delayed month responses with a browser regression that verifies the exact saved current-month assignment.
+
 ## 0.2.0-up.10
 
 - Add reviewed credit-card and line-of-credit payment envelopes. Existing debt and bank history stay intact until an explicit setup preview is approved.
