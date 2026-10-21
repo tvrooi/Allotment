@@ -473,3 +473,14 @@ for (const creditFirst of [false, true])
     expect(position('second')).toMatchObject({ debt: 5000, available: 5000, excessFunding: 0 });
     expect(state()).toMatchObject({ resources: 100000, unassigned: 95000 });
   });
+
+it('keeps payment envelopes managed in historical views before setup without replaying funding', () => {
+  setup();
+  assign('food', 10000);
+  entry('purchase', -8000);
+  const payment = budgetGroups('2026-09')
+    .flatMap((g) => g.categories)
+    .find((c) => c.id === position().categoryId)!;
+  expect(payment).toMatchObject({ paymentAccountId: 'card', activity: 0, balance: 0 });
+  expect(fundingState('2026-09-30').cards).toEqual([]);
+});

@@ -8,6 +8,7 @@ import {
   categoryGroups,
   transactions,
   budgetRevision,
+  cardFunding,
 } from '../db/schema.js';
 import { budgetActivity, inAccountBalance, mainAmount, personalBudgetAccount } from './balances.js';
 import { currencyContext, convertAmount, todayIso } from './mainAmountService.js';
@@ -99,6 +100,13 @@ function assessment(month: string, today = todayIso()) {
     asOf,
     current.filter((g) => !g.isIncome).flatMap((g) => g.categories),
   );
+  const paymentAccounts = new Map(
+    db
+      .select()
+      .from(cardFunding)
+      .all()
+      .map((m) => [m.categoryId, m.accountId]),
+  );
   const groups = raw.map((g) => ({
     ...g,
     categories: g.categories.map((c) => {
@@ -114,7 +122,7 @@ function assessment(month: string, today = todayIso()) {
         carryOver: c.carryOver + carry,
         activity: c.activity + activity,
         balance: c.balance + carry + activity,
-        paymentAccountId: card.positions.find((p) => p.categoryId === c.id)?.accountId ?? null,
+        paymentAccountId: paymentAccounts.get(c.id) ?? null,
       };
     }),
   }));
