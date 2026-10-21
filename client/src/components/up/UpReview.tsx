@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { acknowledgeUpReview, getUpReview, getUpRoundUps, type UpReviewItem } from '../../api/up';
 import { formatMoney } from '../../utils/currency';
+import { formatDay } from '../../utils/dates';
 import { Button } from '../ui/Button';
 import { UpRoundUpCheck } from './UpRoundUpCheck';
 
@@ -87,7 +88,7 @@ export function UpReview({ canSave }: { canSave: boolean }) {
                     · {item.current.description}
                   </p>
                   <p className="text-xs text-text-secondary">
-                    {item.accountName} · {item.current.createdAt.slice(0, 10)} ·{' '}
+                    {item.accountName} · {formatDay(item.current.createdAt.slice(0, 10))} ·{' '}
                     {formatMoney(item.current.amount, 'AUD')}
                   </p>
                   {item.reviewState === 'missing' && (
@@ -98,7 +99,9 @@ export function UpReview({ canSave }: { canSave: boolean }) {
                   )}
                   {item.reviewState === 'changed' && (
                     <details className="text-xs text-text-secondary">
-                      <summary>Compare bank observations</summary>
+                      <summary className="cursor-pointer select-none text-text-secondary hover:text-text">
+                        Compare bank observations
+                      </summary>
                       <dl className="space-y-1 mt-2">
                         <dt>Previously reported</dt>
                         <dd>{item.previous && <BankDetails source={item.previous} />}</dd>
@@ -117,6 +120,7 @@ export function UpReview({ canSave }: { canSave: boolean }) {
                       Open original register
                     </Link>
                     <Button
+                      size="sm"
                       variant="secondary"
                       disabled={!canSave || busy}
                       onClick={() => void acknowledge(item.importedId, item.revision)}
@@ -129,6 +133,7 @@ export function UpReview({ canSave }: { canSave: boolean }) {
             </ul>
             <div className="flex gap-2">
               <Button
+                size="sm"
                 variant="secondary"
                 disabled={offset === 0}
                 onClick={() => setOffset(Math.max(0, offset - 50))}
@@ -136,6 +141,7 @@ export function UpReview({ canSave }: { canSave: boolean }) {
                 Previous
               </Button>
               <Button
+                size="sm"
                 variant="secondary"
                 disabled={offset + 50 >= review.data.total}
                 onClick={() => setOffset(offset + 50)}
@@ -174,9 +180,9 @@ export function UpReview({ canSave }: { canSave: boolean }) {
             key={day.date + day.accountId}
             className="text-xs text-text-secondary border-t border-border pt-2 break-words"
           >
-            <summary>
-              {day.date} · {day.accountName} · {formatMoney(day.amount, 'AUD')} reported ·{' '}
-              {day.purchases.length} purchase{day.purchases.length === 1 ? '' : 's'}
+            <summary className="cursor-pointer select-none text-text-secondary hover:text-text">
+              {formatDay(day.date)} · {day.accountName} · {formatMoney(day.amount, 'AUD')} reported
+              · {day.purchases.length} purchase{day.purchases.length === 1 ? '' : 's'}
             </summary>
             <p className="mt-2">Includes {formatMoney(day.boost, 'AUD')} in boosts.</p>
             <ul className="mt-2 space-y-1">

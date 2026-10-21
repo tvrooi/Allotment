@@ -9,6 +9,7 @@ import {
   BarChart3,
   Workflow,
   Target,
+  House,
   TrendingUp,
   Users,
   Zap,
@@ -189,7 +190,7 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
         />
         <NavItem
           to="/household"
-          icon={<Wallet size={18} />}
+          icon={<House size={18} />}
           label="Household"
           collapsed={!isExpanded}
         />

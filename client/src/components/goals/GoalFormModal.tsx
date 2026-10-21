@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { Select } from '../ui/Input';
 import { CurrencyInput } from '../ui/CurrencyInput';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useCategories } from '../../hooks/useCategories';
@@ -113,11 +114,10 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
 
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-text-secondary">Progress source</label>
-          <select
+          <Select
             aria-label="Progress source"
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            className="w-full px-3 py-2 border border-border rounded-md bg-surface text-text"
           >
             <option value="">Manual tracking</option>
             {groups
@@ -128,7 +128,7 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
                   {c.name}
                 </option>
               ))}
-          </select>
+          </Select>
           <p className="text-xs text-text-secondary">
             Category goals use available budget money. Assigning funds increases progress; spending
             or moving funds reduces it. Each category can fund one goal. Account links are for

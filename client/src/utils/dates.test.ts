@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { format, parse } from 'date-fns';
-import { formatDay, formatShortDay, formatWeekday, shortDayPattern } from './dates';
+import { formatAsOfDay, formatDay, formatShortDay, formatWeekday, shortDayPattern } from './dates';
 import type { DateFormatOption } from '../store/preferencesStore';
 
 const PATTERNS: DateFormatOption[] = [
@@ -45,5 +45,13 @@ describe('dates shown in the Date Format preference (property-based)', () => {
     expect(format(new Date(2026, 0, 5), shortDayPattern({ year: true }, 'dd.MM.yyyy'))).toBe(
       "5. Jan '26",
     );
+  });
+});
+
+describe('formatAsOfDay', () => {
+  it("shows a month view's 31st as that month's last day", () => {
+    expect(formatAsOfDay('2026-09-31', 'yyyy-MM-dd')).toBe('2026-09-30');
+    expect(formatAsOfDay('2026-02-31', 'yyyy-MM-dd')).toBe('2026-02-28');
+    expect(formatAsOfDay('2026-10-21', 'yyyy-MM-dd')).toBe('2026-10-21');
   });
 });

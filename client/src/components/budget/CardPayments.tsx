@@ -7,6 +7,7 @@ import { useCanSave } from '../../hooks/useConnection';
 import { formatCurrency, parseCents, isUnreadableAmount } from '../../utils/currency';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
+import { formatAsOfDay } from '../../utils/dates';
 
 export function CardPayments({
   month,
@@ -58,17 +59,17 @@ export function CardPayments({
   return (
     <section
       aria-label="Card payment funding"
-      className="mb-4 rounded-lg border border-border p-3 text-sm space-y-3"
+      className="mb-4 bg-surface rounded-lg shadow-card border border-border-light p-4 text-sm space-y-3"
     >
-      <h2 className="font-semibold">Card payments</h2>
+      <h2 className="font-semibold text-text">Card payments</h2>
       <p className="text-xs text-text-secondary">
-        Payment reserves as of {summary?.asOf ?? 'today'}. Record bank repayments as linked
-        transfers.
+        Payment reserves as of {summary?.asOf ? formatAsOfDay(summary.asOf) : 'today'}. Record bank
+        repayments as linked transfers.
       </p>
       {summary?.cards?.map((card) => (
         <div
           key={card.accountId}
-          className="border-t border-border pt-2 space-y-1"
+          className="border-t border-border-light pt-2 space-y-1"
           data-testid="card-payment"
         >
           <h3 className="font-semibold">{card.name}</h3>

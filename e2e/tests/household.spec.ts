@@ -74,5 +74,5 @@ test('prepaid pool expenses do not create a second reimbursement claim', async (
   expect(Object.values(ledger.balances)).toEqual([0, 0]);
   await open(page, '/household');
   await expect(page.getByRole('heading', { name: 'People & balances' })).toBeVisible();
-  await expect(page.getByText(/Received pool funding remaining:/)).toContainText('0.00');
+  await expect(page.getByText(/Received pool funding remaining:/)).toContainText('$0');
 });

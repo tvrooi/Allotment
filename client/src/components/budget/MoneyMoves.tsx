@@ -5,6 +5,7 @@ import { useCanSave } from '../../hooks/useConnection';
 import { formatCurrency, parseCents, isUnreadableAmount } from '../../utils/currency';
 import type { BudgetCategory } from '../../types';
 import { Button } from '../ui/Button';
+import { Input, Select } from '../ui/Input';
 
 type Preview = {
   revision: string;
@@ -76,19 +77,31 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
       setMessage(e.message);
     },
   });
+  const label = 'grid gap-1 text-xs font-medium text-text-secondary';
   return (
-    <div className="mb-4 text-sm">
-      <Button variant="secondary" onClick={() => setOpen(!open)}>
+    <section
+      aria-label="Move money"
+      className="mb-4 bg-surface rounded-lg shadow-card border border-border-light p-4 text-sm space-y-3"
+    >
+      <h2 className="font-semibold text-text">Move money</h2>
+      <Button
+        size="sm"
+        variant="secondary"
+        className="w-full"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
         Move money / Cover overspending
       </Button>
       {open && (
-        <section aria-label="Move money" className="mt-3 grid gap-3">
-          <p>Cover an overspent envelope or change priorities. Both assignments change together.</p>
-          <label>
+        <div className="grid gap-3">
+          <p className="text-xs text-text-secondary">
+            Cover an overspent envelope or change priorities. Both assignments change together.
+          </p>
+          <label className={label}>
             From
-            <select
+            <Select
               aria-label="Move from"
-              className="block w-full bg-surface border border-border p-2"
               value={sourceId}
               onChange={(e) => {
                 setSource(e.target.value);
@@ -101,13 +114,12 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
                   {c.name} ({formatCurrency(c.balance)} available)
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
-          <label>
+          <label className={label}>
             To
-            <select
+            <Select
               aria-label="Move to"
-              className="block w-full bg-surface border border-border p-2"
               value={destinationId}
               onChange={(e) => {
                 setDestination(e.target.value);
@@ -120,14 +132,14 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
                   {c.name} ({formatCurrency(c.balance)} available)
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
-          <label>
+          <label className={label}>
             Amount
-            <input
+            <Input
               aria-label="Move amount"
-              className="block w-full bg-surface border border-border p-2"
               inputMode="decimal"
+              placeholder="0.00"
               value={amount}
               onChange={(e) => {
                 setAmount(e.target.value);
@@ -136,48 +148,64 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
             />
           </label>
           <Button
+            size="sm"
             disabled={!canSave || mutation.isPending || !sourceId || !destinationId}
             onClick={() => mutation.mutate('preview')}
           >
             Preview move
           </Button>
           {preview && (
-            <div role="region" aria-label="Money move preview">
+            <div
+              role="region"
+              aria-label="Money move preview"
+              className="bg-surface-alt rounded-lg p-3 space-y-1 text-xs text-text-secondary"
+            >
               <p>From available after move: {formatCurrency(preview.sourceAfter)}</p>
               <p>To available after move: {formatCurrency(preview.destinationAfter)}</p>
               <p>{preview.targetNotice}</p>
-              <Button
-                disabled={!canSave || mutation.isPending}
-                onClick={() => mutation.mutate('apply')}
-              >
-                Apply move
-              </Button>
+              <div className="pt-1">
+                <Button
+                  size="sm"
+                  disabled={!canSave || mutation.isPending}
+                  onClick={() => mutation.mutate('apply')}
+                >
+                  Apply move
+                </Button>
+              </div>
             </div>
           )}
-          {message && <p role="status">{message}</p>}
-          <details>
-            <summary>Money move history</summary>
-            {history.data?.map((op) => (
-              <div key={op.id} className="my-2">
-                {op.month}: {formatCurrency(op.amount)}:{' '}
-                {categories.find((c) => c.id === op.sourceId)?.name ?? 'Removed category'} →{' '}
-                {categories.find((c) => c.id === op.destinationId)?.name ?? 'Removed category'}{' '}
-                {op.undone ? (
-                  'Undone'
-                ) : (
-                  <button
-                    disabled={!canSave || mutation.isPending}
-                    className="underline"
-                    onClick={() => mutation.mutate(`undo:${op.id}`)}
-                  >
-                    Undo move
-                  </button>
-                )}
-              </div>
-            ))}
+          {message && (
+            <p role="status" className="text-xs text-text-secondary">
+              {message}
+            </p>
+          )}
+          <details className="text-xs text-text-secondary">
+            <summary className="cursor-pointer select-none text-text-secondary hover:text-text">
+              Money move history
+            </summary>
+            <ul className="mt-2 space-y-1.5">
+              {history.data?.map((op) => (
+                <li key={op.id}>
+                  {op.month}: {formatCurrency(op.amount)}:{' '}
+                  {categories.find((c) => c.id === op.sourceId)?.name ?? 'Removed category'} →{' '}
+                  {categories.find((c) => c.id === op.destinationId)?.name ?? 'Removed category'}{' '}
+                  {op.undone ? (
+                    <span className="text-text-tertiary">Undone</span>
+                  ) : (
+                    <button
+                      disabled={!canSave || mutation.isPending}
+                      className="font-medium text-brand-600 hover:text-brand-700 disabled:opacity-50"
+                      onClick={() => mutation.mutate(`undo:${op.id}`)}
+                    >
+                      Undo move
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
           </details>
-        </section>
+        </div>
       )}
-    </div>
+    </section>
   );
 }
