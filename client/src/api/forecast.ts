@@ -1,0 +1,71 @@
+import { apiFetch } from './client';
+
+export interface ForecastScenarioInput {
+  name: string;
+  spendingPercent: number;
+  incomePercent: number;
+  dailySpending: number | null;
+  annualReturnBasisPoints: number;
+  goalContributions: { goalId: string; amountPerPay: number }[];
+  oneOffs: { date: string; amount: number; description: string }[];
+}
+export interface ForecastRequest {
+  horizonDays: number;
+  lookbackDays: number;
+  incomeSource: 'payday' | 'schedules' | null;
+  includeHousehold: boolean | null;
+  scenarios: ForecastScenarioInput[];
+}
+export interface ForecastEvent {
+  id: string;
+  date: string;
+  kind: 'income' | 'bill' | 'scheduled' | 'household' | 'register' | 'one-off';
+  description: string;
+  amount: number;
+  categoryId: string | null;
+  estimated: boolean;
+}
+export interface GoalProjection {
+  id: string;
+  name: string;
+  source: 'category' | 'manual';
+  start: number | null;
+  target: number;
+  targetDate: string | null;
+  end: number | null;
+  contributed: number;
+  attainmentDate: string | null;
+  onTrack: boolean | null;
+  points: { date: string; balance: number }[];
+}
+export interface ScenarioResult extends ForecastScenarioInput {
+  days: { date: string; balance: number; income: number; scheduled: number; variable: number }[];
+  events: ForecastEvent[];
+  endBalance: number;
+  lowest: { date: string; balance: number };
+  nextPayday: string | null;
+  lowestBeforeNextPayday: { date: string; balance: number } | null;
+  variableTotal: number;
+  goals: GoalProjection[];
+}
+export interface Forecast {
+  today: string;
+  end: string;
+  horizonDays: number;
+  currency: string | null;
+  incomeSource: 'payday' | 'schedules';
+  includeHousehold: boolean;
+  startBalance: number;
+  accounts: { id: string; name: string; balance: number }[];
+  spending: { from: string; to: string; days: number; total: number; count: number };
+  history: { date: string; balance: number }[];
+  freshness: { latestTransaction: string | null; upLastSyncedAt: string | null };
+  plans: { id: string; name: string; expectedIncome: number }[];
+  assumptions: string[];
+  warnings: string[];
+  scenarios: ScenarioResult[];
+}
+
+/** Read-only projection: the request only carries assumptions; nothing is saved. */
+export const getForecast = (request: ForecastRequest) =>
+  apiFetch<Forecast>('/forecast', { method: 'POST', body: JSON.stringify(request) });

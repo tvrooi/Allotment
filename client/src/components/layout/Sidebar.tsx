@@ -9,6 +9,7 @@ import {
   BarChart3,
   Workflow,
   Target,
+  TrendingUp,
   Users,
   Zap,
   Settings,
@@ -205,6 +206,12 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
           collapsed={!isExpanded}
         />
         <NavItem to="/goals" icon={<Target size={18} />} label="Goals" collapsed={!isExpanded} />
+        <NavItem
+          to="/forecast"
+          icon={<TrendingUp size={18} />}
+          label="Forecast"
+          collapsed={!isExpanded}
+        />
       </nav>
 
       {/* Account list */}

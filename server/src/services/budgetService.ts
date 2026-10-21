@@ -141,6 +141,9 @@ export function budgetGroups(month: string, today = todayIso()) {
  * Month views stop at min(month end, today); today's position reserves every future
  * positive assignment, including legacy commitments, without forecasting wages.
  */
+/** Account types whose balance is spendable cash (or card debt) in the envelope budget. */
+export const LIQUID_ACCOUNT_TYPES = ['checking', 'savings', 'cash', 'credit', 'line_of_credit'];
+
 export function fundingState(asOf = todayIso()) {
   const { groups, card } = assessment(asOf.slice(0, 7), asOf);
   const enrolledCards = new Set(card.positions.map((p) => p.accountId));
@@ -159,9 +162,7 @@ export function fundingState(asOf = todayIso()) {
   let openingFunds = 0;
   let complete = card.complete;
   for (const account of db.select().from(accounts).where(personalBudgetAccount).all()) {
-    const liquid = ['checking', 'savings', 'cash', 'credit', 'line_of_credit'].includes(
-      account.type,
-    );
+    const liquid = LIQUID_ACCOUNT_TYPES.includes(account.type);
     const rows = db
       .select()
       .from(transactions)

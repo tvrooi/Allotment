@@ -26,6 +26,9 @@ No webhooks are used.
 **Budget → Until next payday** offers optional fortnightly funding plans, bill coverage and
 allocation previews using received income. [Payday plans guide](docs/PAYDAY-PLANS.md).
 
+**Forecast** projects cash until payday and goal attainment under labelled scenarios, read-only.
+[Forecasts guide](docs/FORECASTS.md).
+
 ## Moving an existing local HA preview
 
 The repository-installed app has a different identifier and private data directory. Adding the

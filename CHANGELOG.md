@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.13
+
+- Add a read-only Forecast page with a day-by-day cash runway built from payday plans, pending recurring bills, future-dated entries, household bill shares and averaged variable spending. It never creates transactions or assignments.
+- Compare labelled Base, Conservative and Stretch scenarios with editable spending, income, daily spending, one-off amounts, goal contributions and growth. Show the lowest balance before payday, goal attainment dates, assumptions, data freshness and a CSV export.
+- Prevent double counting: payday plans and scheduled salary are never combined, matched occurrences are replaced by real payments, and scheduled household contributions switch off household bill shares by default.
+
 ## 0.2.0-up.12
 
 - Add explicit category-funded goals whose progress follows shared envelope availability, including assignments, money moves, refunds and spending.
