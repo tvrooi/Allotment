@@ -116,6 +116,7 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
         a.createdAt.replace(' ', 'T').localeCompare(b.createdAt.replace(' ', 'T')) ||
         a.id.localeCompare(b.id),
     );
+  const processed = new Set<string>();
   for (const t of parents) {
     const s = stateByAccount.get(t.accountId);
     if (!s) continue;
@@ -125,6 +126,7 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
     }
     const before = s.native;
     s.native += t.amount;
+    processed.add(t.id);
     if (!eligible(t)) continue;
     const counterpart = t.transferTransactionId ? byId.get(t.transferTransactionId) : undefined;
     const value = amount(t);
@@ -134,18 +136,23 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
       if (value > 0) {
         const repaid = Math.min(value, Math.max(0, debtBefore - debtAfter));
         const otherCard = stateByAccount.get(counterpart.accountId);
+        const fundedPayment = Math.min(repaid, Math.max(0, s.reserve));
         if (otherCard && eligible(counterpart)) {
-          const shifted = Math.min(repaid, Math.max(0, s.reserve));
-          reserve(s, t.date, -shifted);
+          const otherBefore = processed.has(counterpart.id)
+            ? otherCard.native - counterpart.amount
+            : otherCard.native;
+          const newDebt =
+            Math.max(0, -money(otherBefore + counterpart.amount, otherCard, t.date)) -
+            Math.max(0, -money(otherBefore, otherCard, t.date));
+          const shifted = Math.min(fundedPayment, Math.max(0, newDebt));
+          reserve(s, t.date, -fundedPayment);
           reserve(otherCard, t.date, shifted);
-        } else {
-          reserve(s, t.date, -repaid);
-          let unfundedPayment = Math.max(0, repaid - Math.max(0, s.reserve + repaid));
-          for (const [id, owed] of s.unfunded) {
-            const paid = Math.min(unfundedPayment, owed);
-            s.unfunded.set(id, owed - paid);
-            unfundedPayment -= paid;
-          }
+        } else reserve(s, t.date, -repaid);
+        let unfundedPayment = repaid - fundedPayment;
+        for (const [id, owed] of s.unfunded) {
+          const paid = Math.min(unfundedPayment, owed);
+          s.unfunded.set(id, owed - paid);
+          unfundedPayment -= paid;
         }
       }
       continue;
@@ -153,17 +160,18 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
     const leaves = t.isParent
       ? all.filter((c) => c.parentTransactionId === t.id).sort((a, b) => a.id.localeCompare(b.id))
       : [t];
-    let prepaidSpent = Math.max(0, -value - Math.max(0, debtAfter - debtBefore));
-    let refundDebt = Math.max(0, debtBefore - debtAfter);
-    let refundPrepaid = Math.max(0, value - refundDebt);
+    // Follow each split leaf through the card balance. Mixed debit/refund splits
+    // must not reserve the gross debit while discarding their offsetting credit.
+    let leafBalance = money(before, s, t.date);
     for (const leaf of leaves) {
-      if (!activityIds.has(leaf.id)) continue;
       const value = amount(leaf),
         id = leaf.categoryId;
+      const leafBefore = leafBalance;
+      leafBalance += value;
+      if (!activityIds.has(leaf.id)) continue;
       if (value < 0) {
         const spending = -value;
-        const prepaid = Math.min(spending, prepaidSpent);
-        prepaidSpent -= prepaid;
+        const prepaid = Math.min(spending, Math.max(0, leafBefore));
         if (!id || !expenseIds.has(id)) continue;
         const backed = Math.min(spending, Math.max(0, pool.get(id) ?? 0));
         pool.set(id, (pool.get(id) ?? 0) - spending);
@@ -172,10 +180,8 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
         s.funded += funded;
         s.unfunded.set(id, (s.unfunded.get(id) ?? 0) + Math.max(0, spending - prepaid - funded));
       } else if (value > 0) {
-        const debtPart = Math.min(value, refundDebt);
-        refundDebt -= debtPart;
-        const prepaid = Math.min(value - debtPart, refundPrepaid);
-        refundPrepaid -= prepaid;
+        const debtPart = Math.min(value, Math.max(0, -leafBefore));
+        const prepaid = value - debtPart;
         const deficitRecovery = Math.min(prepaid, Math.max(0, -s.reserve));
         reserve(s, leaf.date, deficitRecovery);
         const unfunded = id ? Math.min(debtPart, s.unfunded.get(id) ?? 0) : 0;

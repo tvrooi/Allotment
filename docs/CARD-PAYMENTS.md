@@ -72,7 +72,8 @@ previous net-debt model; later stored assignments remain future commitments as i
   consumes payment funding. Extra manually assigned payment cash remains reserved,
   labelled Extra reserve, until explicitly moved elsewhere.
 - A linked balance transfer between two reviewed cards moves existing payment funding
-  to the receiving debt account. It creates no expense or cash. If the other card was
+  to the receiving debt account, consuming any prepaid card value before reserving
+  cash for new debt. It creates no expense or cash. If the other card was
   not reviewed at the transfer, its starting debt is handled by its own setup review.
 - Cash advances create actual cash and unfunded card debt. They are transfers, not
   earned income or successful saving. This phase does not add a savings/runway metric.

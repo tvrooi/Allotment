@@ -429,3 +429,47 @@ it('uses record creation time before random IDs for same-day purchases and payme
   entry('b-new-charge', -5000, null, { createdAt: `${date}T03:00:00.000Z` });
   expect(position()).toMatchObject({ debt: 5000, available: 0, shortfall: 5000 });
 });
+
+it('nets mixed purchase/refund split parts without inventing excess payment funding', () => {
+  setup();
+  assign('food', 15000);
+  entry('parent', -10000, null, { isParent: 1 });
+  entry('part-a', -15000, 'food', { parentTransactionId: 'parent' });
+  entry('part-b', 5000, 'other', { parentTransactionId: 'parent' });
+  expect(position()).toMatchObject({
+    debt: 10000,
+    available: 10000,
+    shortfall: 0,
+    excessFunding: 0,
+  });
+  expect(cat().balance).toBe(0);
+  expect(cat('other').balance).toBe(5000);
+  expect(state().unassigned).toBe(85000);
+});
+
+for (const creditFirst of [false, true])
+  it(`consumes prepaid card resources before shifting balance-transfer funding (${creditFirst ? 'credit' : 'debit'} row first)`, () => {
+    db.insert(accounts)
+      .values({
+        id: 'second',
+        name: 'Second',
+        type: 'credit',
+        startingBalance: 5000,
+        createdAt: '2026-09-01',
+      })
+      .run();
+    setup();
+    setup(0, 'second');
+    assign('food', 8000);
+    entry('1purchase', -10000);
+    entry(creditFirst ? '2a' : '2b', 10000, null, {
+      transferTransactionId: creditFirst ? '2b' : '2a',
+    });
+    entry(creditFirst ? '2b' : '2a', -10000, null, {
+      accountId: 'second',
+      transferTransactionId: creditFirst ? '2a' : '2b',
+    });
+    expect(position()).toMatchObject({ debt: 0, available: 0 });
+    expect(position('second')).toMatchObject({ debt: 5000, available: 5000, excessFunding: 0 });
+    expect(state()).toMatchObject({ resources: 100000, unassigned: 95000 });
+  });
