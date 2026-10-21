@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
-import { accounts, transactions, householdGroups } from '../db/schema.js';
+import { cardFunding, accounts, transactions, householdGroups } from '../db/schema.js';
 import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -244,6 +244,17 @@ accountsRouter.put('/:id', (req, res) => {
   const existing = db.select().from(accounts).where(eq(accounts.id, req.params.id)).get();
   if (!existing) return res.status(404).json({ error: 'Not found' });
 
+  if (
+    db.select().from(cardFunding).where(eq(cardFunding.accountId, existing.id)).get() &&
+    ((parsed.data.isOffBudget !== undefined && parsed.data.isOffBudget !== 0) ||
+      (parsed.data.type !== undefined &&
+        !['credit', 'line_of_credit'].includes(parsed.data.type)) ||
+      (parsed.data.currency !== undefined &&
+        (parsed.data.currency ?? budgetCurrency()) !== (existing.currency ?? budgetCurrency())))
+  )
+    return res.status(409).json({
+      error: 'An account with payment funding must keep its credit type, budget scope and currency',
+    });
   const data = { ...parsed.data };
   const household = db
     .select()

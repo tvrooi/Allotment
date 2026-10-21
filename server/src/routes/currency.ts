@@ -8,6 +8,7 @@ import { db } from '../db/index.js';
 import {
   accounts,
   budgetMonths,
+  cardFunding,
   budgetMoves,
   exchangeRates,
   goals,
@@ -118,6 +119,7 @@ function relabelBlocker(current: string | null, next: string): string | null {
       schedule ||
       payday ||
       db.select().from(budgetMoves).get() ||
+      db.select().from(cardFunding).get() ||
       all.some((a) => !a.currency && hasAmounts(a))
     ) {
       return `Your budget already has amounts in ${current ?? 'its currency'}, and ${next} has a different number of decimals, so they would change. Choose a currency with ${minorUnits(current)} decimals, or start a new budget.`;

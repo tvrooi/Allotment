@@ -1,7 +1,14 @@
 import { householdEvents } from '../db/schema.js';
 import { Router, type Response } from 'express';
 import { db } from '../db/index.js';
-import { transactions, payees, accounts, categories, categoryGroups } from '../db/schema.js';
+import {
+  transactions,
+  payees,
+  accounts,
+  categories,
+  categoryGroups,
+  cardFunding,
+} from '../db/schema.js';
 import {
   eq,
   and,
@@ -44,6 +51,28 @@ import {
 import { isForeign } from '../utils/currencies.js';
 
 export const transactionsRouter = Router();
+transactionsRouter.use((req, res, next) => {
+  if (req.method === 'GET') return next();
+  const body = req.body;
+  const rows = [
+    body,
+    ...(Array.isArray(body?.splits) ? body.splits : []),
+    ...(Array.isArray(body?.rows) ? body.rows : []),
+  ];
+  const ids = new Set(
+    db
+      .select()
+      .from(cardFunding)
+      .all()
+      .map((m) => m.categoryId),
+  );
+  if (rows.some((row) => row && ids.has(row.categoryId)))
+    return res.status(400).json({
+      error: 'Payment envelopes hold funding; record card repayments as linked transfers',
+    });
+  next();
+});
+
 transactionsRouter.param('id', (req, res, next, id) => {
   const counterpartId = db
     .select({ id: transactions.transferTransactionId })

@@ -1,4 +1,5 @@
 import path from 'path';
+import { isoDate } from '../utils/validation.js';
 import { getTableColumns, isNotNull, sql } from 'drizzle-orm';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { databasePath, db, sqlite } from '../db/index.js';
@@ -14,6 +15,7 @@ import {
   budgetMonths,
   budgetMoves,
   categories,
+  cardFunding,
   categoryGroups,
   customReports,
   dashboardPages,
@@ -48,7 +50,7 @@ import { upObservationSchema } from './upTransactions.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 7;
+export const BACKUP_VERSION = 8;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -57,6 +59,7 @@ const TABLES = {
   accounts,
   categoryGroups,
   categories,
+  cardFunding,
   payees,
   schedules,
   transactions,
@@ -155,6 +158,21 @@ export function parseBackup(input: unknown): ParsedBackup {
             : typeof value === 'string' && value.length <= 1_000_000;
         if (!ok) throw new InvalidBackupError(`Row ${i + 1} of "${name}" has an invalid "${key}"`);
         row[key] = value;
+      }
+      if (name === 'cardFunding') {
+        try {
+          const ids = JSON.parse(String(row.baselineIds));
+          if (
+            !Array.isArray(ids) ||
+            ids.some((id) => typeof id !== 'string') ||
+            !isoDate.safeParse(row.startDate).success ||
+            Number(row.initialFunding) < 0 ||
+            Number(row.initialFunding) > 1e13
+          )
+            throw new Error();
+        } catch {
+          throw new InvalidBackupError('Invalid card funding setup');
+        }
       }
       if (name === 'paydayPlans') {
         try {

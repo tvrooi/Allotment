@@ -295,6 +295,7 @@ export interface BudgetCategory {
   budgetType: BudgetType | null;
   sortOrder: number;
   createdAt: string;
+  paymentAccountId?: string | null;
   budgeted: number;
   spent: number;
   carryOver: number;
@@ -311,6 +312,10 @@ export interface BudgetGroup {
 }
 
 export interface BudgetSummary {
+  revision?: string;
+  cards?: import('../api/budget').CardPosition[];
+  paymentShortfall?: number;
+  uncoveredCardPayments?: number;
   asOf: string;
   complete: boolean;
   resolved: boolean;
