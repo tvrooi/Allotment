@@ -70,10 +70,19 @@ The connector needs no extra container, subscription, webhook or incoming networ
 
 ## Current limits
 
-- Sync happens on startup and on request, without a background timer. It fetches full history on
-  every sync, so large accounts can take time or hit Up's rate limit. Retry later if that happens.
-- Internal transfers and Round Ups use FlyBudget's existing transfer-review flow. Link the two
-  sides in the register before relying on income and spending reports.
+- Sync runs at startup, with **Sync Now**, and optionally in the background (15, 30, 60 or 240
+  minutes, with backoff after failures). It fetches full history on every sync, so large accounts
+  can take time or hit Up's rate limit.
+- Internal transfers use FlyBudget's existing transfer-review flow. Link the two sides in the
+  register before relying on income and spending reports.
+- Round-ups: Up attaches round-up details to a purchase, but does not link it to the Saver credit.
+  **Round-up accounting check** (Settings → Connected Banks → Up) compares each account's register
+  with Up's settled balance. When the register is higher by exactly the round-ups settled since
+  the first sync, you can choose **Add round-up debits**. That adds one uncategorized
+  "Up round-up" debit per purchase (boost included) and keeps adding them on later syncs; link
+  each to its Saver credit with transfer suggestions. Nothing is added when the balance already
+  matches or the difference has another cause. Purchases settled before the first sync are part
+  of the opening balance and get no debit. **Stop adding round-up debits** keeps rows already added.
 - Linking existing CSV/manual history is deliberately refused to prevent double imports.
 - Existing imported transactions are preserved, including edits, splits and reconciled rows.
   Later bank corrections or deletions of a settled transaction are not applied automatically.

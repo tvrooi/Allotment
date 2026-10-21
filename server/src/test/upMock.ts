@@ -64,6 +64,32 @@ export async function startUpMock(port = 0) {
       ([id]) => url.pathname === `/accounts/${id}/transactions`,
     );
     if (overridden) return send({ data: overridden[1], links: { next: null } });
+    // Synthetic shape with no separate spending-side round-up debit: the purchase settles
+    // after the first sync and the account balance includes its round-up.
+    const implicit = mode.startsWith('implicit-round-ups');
+    if (implicit && url.pathname === '/accounts/spending/transactions') {
+      const purchase = upMockTransaction('later-purchase', -1_760);
+      const now = new Date().toISOString();
+      return send({
+        data: [
+          upMockTransaction('salary', 10_000),
+          ...(mode === 'implicit-round-ups-start'
+            ? []
+            : [
+                {
+                  ...purchase,
+                  attributes: {
+                    ...purchase.attributes,
+                    createdAt: now,
+                    settledAt: now,
+                    roundUp: { amount: money(-240), boostPortion: money(-200) },
+                  },
+                },
+              ]),
+        ],
+        links: { next: null },
+      });
+    }
     const roundUps = mode.startsWith('round-ups');
     if (url.pathname === '/accounts') {
       const a = (id: string, accountType: string, balance: number) => ({
@@ -80,7 +106,14 @@ export async function startUpMock(port = 0) {
           a(
             'spending',
             'TRANSACTIONAL',
-            roundUps ? (mode === 'round-ups-mismatch' ? 7_444 : 7_445) : 8_500,
+            implicit
+              ? ({ 'implicit-round-ups-start': 10_000, 'implicit-round-ups-odd': 7_999 }[mode] ??
+                  8_000)
+              : roundUps
+                ? mode === 'round-ups-mismatch'
+                  ? 7_444
+                  : 7_445
+                : 8_500,
           ),
           a('saver', 'SAVER', roundUps ? 5_240 : 5_000),
         ],

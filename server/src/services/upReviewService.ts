@@ -1,5 +1,7 @@
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { createHash } from 'crypto';
 import { db } from '../db/index.js';
+import { accountTransactionSum } from './balances.js';
 import { accounts, transactions, upSourceRecords, upAccountMappings } from '../db/schema.js';
 import { cleanUpText, upObservationSchema, type UpTransaction } from './upTransactions.js';
 
@@ -219,4 +221,116 @@ export function roundUpDays(since: string) {
   return [...groups.values()].sort(
     (a, b) => b.date.localeCompare(a.date) || a.accountName.localeCompare(b.accountName),
   );
+}
+
+// Round-up accounting. Up attaches round-up metadata to a settled purchase but supplies no
+// link to the Saver credit, so purchases and credits are never paired here. The account's own
+// settled balance decides whether the spending-side debit is missing from the register.
+export const ROUND_UP_SUFFIX = ':roundup';
+const dollars = (cents: number) =>
+  `$${Math.floor(Math.abs(cents) / 100)}.${String(Math.abs(cents) % 100).padStart(2, '0')}`;
+
+/** The debit a settled purchase's round-up implies, for purchases settled after the first
+ * sync. Earlier purchases are already part of the bootstrapped opening balance. */
+export function roundUpDebit(
+  importedId: string,
+  source: Observation,
+  initializedAt: string | null,
+) {
+  if (!initializedAt || source.status !== 'SETTLED' || !source.settledAt) return null;
+  if (source.roundUpAmount === null || source.roundUpAmount >= 0) return null;
+  if (Date.parse(source.settledAt) <= Date.parse(initializedAt)) return null;
+  return {
+    date: source.createdAt.slice(0, 10),
+    amount: source.roundUpAmount,
+    payeeName: 'Up round-up',
+    notes: [
+      `Round-up from ${source.description || 'an Up purchase'}`,
+      source.boostAmount ? `includes ${dollars(source.boostAmount)} boost` : null,
+      'Up internal transfer: review the transfer suggestions in the register.',
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    importedId: importedId + ROUND_UP_SUFFIX,
+  };
+}
+
+export const upTransactionId = (accountId: string, importedId: string) =>
+  createHash('sha256').update(`${accountId}:${importedId}`).digest('base64url');
+
+const hasImport = (accountId: string, importedId: string) =>
+  !!db
+    .select({ id: transactions.id })
+    .from(transactions)
+    .where(and(eq(transactions.accountId, accountId), eq(transactions.importedId, importedId)))
+    .get();
+
+export type RoundUpVerdict = 'unknown' | 'matches' | 'round-ups' | 'unexplained';
+/** Compare Up's last settled balance with the register, per linked account. */
+export function roundUpCheck() {
+  return db
+    .select({ mapping: upAccountMappings, account: accounts })
+    .from(upAccountMappings)
+    .innerJoin(accounts, eq(accounts.id, upAccountMappings.accountId))
+    .where(and(isNotNull(upAccountMappings.initializedAt), eq(upAccountMappings.isEnabled, 1)))
+    .all()
+    .map(({ mapping, account }) => {
+      const missing = db
+        .select()
+        .from(upSourceRecords)
+        .where(and(eq(upSourceRecords.accountId, account.id), eq(upSourceRecords.seenInLatest, 1)))
+        .all()
+        .map((r) => roundUpDebit(r.importedId, observation(r.sourceJson), mapping.initializedAt))
+        .filter((row) => row !== null && !hasImport(account.id, row.importedId))
+        .map((row) => row!);
+      const total = missing.reduce((s, r) => s + r.amount, 0);
+      const register = account.startingBalance + accountTransactionSum(account.id);
+      const difference = mapping.settledBalance === null ? null : mapping.settledBalance - register;
+      const verdict: RoundUpVerdict =
+        difference === null
+          ? 'unknown'
+          : difference === 0
+            ? 'matches'
+            : total !== 0 && difference === total
+              ? 'round-ups'
+              : 'unexplained';
+      return {
+        accountId: account.id,
+        accountName: account.name,
+        settledBalance: mapping.settledBalance,
+        register,
+        difference,
+        missing: { count: missing.length, total },
+        verdict,
+        enabledAt: mapping.roundUpDebitsAt,
+        rows: missing,
+      };
+    });
+}
+
+export class RoundUpError extends Error {}
+/** Owner-approved: add the debits the balance proves missing, and keep adding new ones on sync. */
+export function enableRoundUpDebits(
+  accountId: string,
+  expected: { count: number; total: number },
+  insert: (row: NonNullable<ReturnType<typeof roundUpDebit>>) => void,
+) {
+  return db.transaction(() => {
+    const check = roundUpCheck().find((c) => c.accountId === accountId);
+    if (!check) throw new RoundUpError('Choose a synced Up account.');
+    if (check.enabledAt) return { added: 0, enabledAt: check.enabledAt };
+    if (check.verdict !== 'round-ups')
+      throw new RoundUpError(
+        'The balance difference is not explained by round-ups alone. Nothing was added.',
+      );
+    if (check.missing.count !== expected.count || check.missing.total !== expected.total)
+      throw new RoundUpError('The round-up check changed. Refresh before adding debits.');
+    for (const row of check.rows) insert(row);
+    const enabledAt = new Date().toISOString();
+    db.update(upAccountMappings)
+      .set({ roundUpDebitsAt: enabledAt })
+      .where(eq(upAccountMappings.accountId, accountId))
+      .run();
+    return { added: check.rows.length, enabledAt };
+  });
 }

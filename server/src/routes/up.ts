@@ -22,7 +22,15 @@ import {
   nextUpSyncAt,
   UP_POLL_INTERVALS,
 } from '../services/upSyncService.js';
-import { upReview, roundUpDays } from '../services/upReviewService.js';
+import {
+  enableRoundUpDebits,
+  roundUpCheck,
+  roundUpDays,
+  RoundUpError,
+  upReview,
+  upTransactionId,
+} from '../services/upReviewService.js';
+import { buildRuleContext, insertNewTransaction, loadRules } from '../services/ruleService.js';
 import {
   accountCurrency,
   currencyContext,
@@ -349,4 +357,55 @@ upRouter.get('/round-ups', (_req, res) => {
   // Bank-local dates can be a day ahead/behind UTC; include an extra day at this boundary.
   const since = new Date(Date.now() - 91 * 86400_000).toISOString().slice(0, 10);
   res.json({ since, days: roundUpDays(since) });
+});
+
+upRouter.get('/round-up-check', (_req, res) => {
+  res.json(roundUpCheck().map(({ rows: _rows, ...check }) => check));
+});
+upRouter.post('/round-up-debits', (req, res) => {
+  if (isUpSyncing()) return res.status(409).json({ error: 'Wait for the Up sync to finish.' });
+  const parsed = z
+    .object({
+      accountId: z.string().min(1).max(64),
+      count: z.number().int().min(1).max(100_000),
+      total: z.number().int().min(-1e13).max(-1),
+    })
+    .strict()
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Choose the round-ups to add.' });
+  const { accountId, count, total } = parsed.data;
+  const ruleOpts = {
+    rules: loadRules(),
+    ctx: buildRuleContext(),
+    currencies: currencyContext(),
+  };
+  try {
+    res.json(
+      enableRoundUpDebits(accountId, { count, total }, (row) =>
+        insertNewTransaction(
+          {
+            ...row,
+            id: upTransactionId(accountId, row.importedId),
+            accountId,
+            payeeId: null,
+            importedPayee: row.payeeName,
+            categoryId: null,
+          },
+          ruleOpts,
+        ),
+      ),
+    );
+  } catch (err) {
+    if (err instanceof RoundUpError) return res.status(409).json({ error: err.message });
+    throw err;
+  }
+});
+/** Stops adding new round-up debits. Rows already added stay, like any imported row. */
+upRouter.delete('/round-up-debits/:accountId', (req, res) => {
+  if (isUpSyncing()) return res.status(409).json({ error: 'Wait for the Up sync to finish.' });
+  db.update(upAccountMappings)
+    .set({ roundUpDebitsAt: null })
+    .where(eq(upAccountMappings.accountId, req.params.accountId))
+    .run();
+  res.status(204).send();
 });

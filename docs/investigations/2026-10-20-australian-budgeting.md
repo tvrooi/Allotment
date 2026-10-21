@@ -393,6 +393,22 @@ backup version 6. See [Households](../HOUSEHOLDS.md) for setup, accounting polic
 net-worth scope and remaining boundaries. Phase 6 remains a separate workstream;
 this phase reuses the existing personal budget boundary and payday calculations.
 
+## Deferred round-up accounting (21 October 2026)
+
+Implemented in `0.2.0-up.14`. The earlier inspection established that purchase/Saver pairing is
+not supported by Up's data, so pairing remains manual through transfer suggestions. The
+spending-side debit question is now decided by each account's own settled balance, stored at
+every complete sync. Purchases settled after the first sync whose round-up has no register
+row are summed; if the register exceeds Up's settled balance by exactly that sum, the owner can
+explicitly add those debits and enable them for later syncs. A zero difference means Up already
+lists the debits (or the register is complete); any other difference is reported as unexplained
+and adds nothing. Debits use stable `:roundup` import IDs, are uncategorized and never alter the
+purchase, opening balance or reconciled rows.
+
+Still deferred: automatic purchase-to-Saver linking (unsupported by the API), positive round-up
+reversal semantics, held-purchase round-up timing, application of bank corrections to existing
+ledger rows (the current policy keeps local records) and incremental history fetching.
+
 ## Phase five: read-only savings forecasts (21 October 2026)
 
 Implemented on the `0.2.0-up.13` feature branch. The Forecast page combines a cash runway and

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { acknowledgeUpReview, getUpReview, getUpRoundUps, type UpReviewItem } from '../../api/up';
 import { formatMoney } from '../../utils/currency';
 import { Button } from '../ui/Button';
+import { UpRoundUpCheck } from './UpRoundUpCheck';
 
 function BankDetails({ source }: { source: UpReviewItem['current'] }) {
   return (
@@ -150,6 +151,7 @@ export function UpReview({ canSave }: { canSave: boolean }) {
           </p>
         )}
       </section>
+      <UpRoundUpCheck canSave={canSave} />
       <section
         aria-label="Daily Up round-ups"
         className="rounded-lg border border-border bg-surface p-4 space-y-3"

@@ -402,6 +402,105 @@ describe('native Up integration', () => {
     expect(opening()).toEqual(initial);
     expect(db.select().from(transactions).all()).toEqual(snapshot);
   });
+  it('reports matching balances when Up lists the round-up debit itself', async () => {
+    await setup();
+    await request('/map-accounts', {
+      mappings: [
+        { upAccountId: 'spending', action: 'create' },
+        { upAccountId: 'saver', action: 'create' },
+      ],
+    });
+    mock.setMode('round-ups');
+    await syncUp();
+    const checks = await (await request('/round-up-check', undefined, 'GET')).json();
+    expect(checks.map((c: { verdict: string }) => c.verdict)).toEqual(['matches', 'matches']);
+    expect(checks[0].missing).toEqual({ count: 0, total: 0 });
+  });
+  it('adds round-up debits only when the settled balance proves exactly those are missing', async () => {
+    const id = await mapSpending();
+    mock.setMode('implicit-round-ups-start');
+    expect(await syncUp()).toMatchObject({ added: 1, errors: [] });
+    mock.setMode('implicit-round-ups-odd');
+    const odd = await syncUp();
+    expect(odd.errors.join(' ')).toContain('opening balance was preserved');
+    const check = async () =>
+      (await (await request('/round-up-check', undefined, 'GET')).json())[0];
+    // $79.99 at the bank vs $82.40 in the register: $2.40 of round-ups explains only part of it.
+    expect(await check()).toMatchObject({
+      verdict: 'unexplained',
+      difference: -241,
+      missing: { count: 1, total: -240 },
+    });
+    const refused = await request('/round-up-debits', { accountId: id, count: 1, total: -240 });
+    expect(refused.status).toBe(409);
+    expect(db.select().from(transactions).all()).toHaveLength(2);
+
+    mock.setMode('implicit-round-ups');
+    await syncUp();
+    expect(await check()).toMatchObject({
+      verdict: 'round-ups',
+      settledBalance: 8000,
+      register: 8240,
+      difference: -240,
+      missing: { count: 1, total: -240 },
+      enabledAt: null,
+    });
+    const stale = await request('/round-up-debits', { accountId: id, count: 2, total: -480 });
+    expect(stale.status).toBe(409);
+    const purchase = db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.importedId, 'up:spending:later-purchase'))
+      .get()!;
+    const added = await request('/round-up-debits', { accountId: id, count: 1, total: -240 });
+    expect(await added.json()).toMatchObject({ added: 1 });
+    const debit = db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.importedId, 'up:spending:later-purchase:roundup'))
+      .get()!;
+    expect(debit).toMatchObject({ amount: -240, payeeName: 'Up round-up', categoryId: null });
+    expect(debit.notes).toContain('includes $2.00 boost');
+    // The purchase itself and the opening balance are untouched.
+    expect(db.select().from(transactions).where(eq(transactions.id, purchase.id)).get()).toEqual(
+      purchase,
+    );
+    expect(db.select().from(accounts).where(eq(accounts.id, id)).get()!.startingBalance).toBe(0);
+    expect(await check()).toMatchObject({ verdict: 'matches', difference: 0 });
+    // Later syncs neither duplicate the debit nor report a mismatch.
+    expect(await syncUp()).toMatchObject({ added: 0, errors: [] });
+    expect(db.select().from(transactions).all()).toHaveLength(3);
+    expect(
+      (await request('/round-up-debits', { accountId: id, count: 1, total: -240 })).status,
+    ).toBe(200);
+    expect(db.select().from(transactions).all()).toHaveLength(3);
+    expect((await request(`/round-up-debits/${id}`, undefined, 'DELETE')).status).toBe(204);
+    expect((await check()).enabledAt).toBeNull();
+    expect(db.select().from(transactions).all()).toHaveLength(3);
+  });
+  it('adds new round-up debits during sync once enabled', async () => {
+    const id = await mapSpending();
+    mock.setMode('implicit-round-ups-start');
+    await syncUp();
+    db.update(upAccountMappings)
+      .set({ roundUpDebitsAt: new Date().toISOString() })
+      .where(eq(upAccountMappings.accountId, id))
+      .run();
+    mock.setMode('implicit-round-ups');
+    expect(await syncUp()).toMatchObject({ added: 2, errors: [] });
+    expect(
+      db
+        .select()
+        .from(transactions)
+        .all()
+        .map((t) => t.importedId)
+        .sort(),
+    ).toEqual([
+      'up:spending:later-purchase',
+      'up:spending:later-purchase:roundup',
+      'up:spending:salary',
+    ]);
+  });
   it('reports a changed amount for an existing import without rewriting a user edit or opening balance', async () => {
     const id = await mapSpending();
     await syncUp();

@@ -96,3 +96,21 @@ export const getUpRoundUps = () =>
       }[];
     }[];
   }>('/up/round-ups');
+export interface UpRoundUpCheck {
+  accountId: string;
+  accountName: string;
+  settledBalance: number | null;
+  register: number;
+  difference: number | null;
+  missing: { count: number; total: number };
+  verdict: 'unknown' | 'matches' | 'round-ups' | 'unexplained';
+  enabledAt: string | null;
+}
+export const getUpRoundUpCheck = () => apiFetch<UpRoundUpCheck[]>('/up/round-up-check');
+export const enableUpRoundUpDebits = (accountId: string, count: number, total: number) =>
+  apiFetch<{ added: number; enabledAt: string }>('/up/round-up-debits', {
+    method: 'POST',
+    body: JSON.stringify({ accountId, count, total }),
+  });
+export const disableUpRoundUpDebits = (accountId: string) =>
+  apiFetch(`/up/round-up-debits/${encodeURIComponent(accountId)}`, { method: 'DELETE' });
