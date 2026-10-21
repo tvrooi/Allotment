@@ -141,6 +141,37 @@ The schema lives in [`server/src/db/schema.ts`](server/src/db/schema.ts) and the
 
 ## Roadmap and ideas
 
+### Community fork development plan (21 October 2026)
+
+The current main baseline is `0.2.0-up.7`, commit `e821e1c` (phase 3 payday funding).
+The YNAB findings originated from `0.2.0-up.6`, commit `865b014`.
+Implementation and verification below describe this checkout and its recorded checks;
+they do not establish the version installed on a live Home Assistant instance.
+The phased fork plan is tracked in the
+[Australian budgeting investigation](docs/investigations/2026-10-20-australian-budgeting.md).
+
+| Phase | Deliverable                                                                                          | Recorded status                                                                                                     |
+| ----- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 1     | Report account scopes, budget boundaries and preservation of Up opening balances                     | Implemented; verification recorded in the investigation. Automatic round-up repair remains deferred.                |
+| 2     | Background Up sync, bank-source review and supported daily round-up details                          | Implemented in `0.2.0-up.6`; verification recorded. Source corrections are acknowledged, not applied to the ledger. |
+| 3     | Payday funding and bill coverage                                                                     | Implemented in `0.2.0-up.7` (#8); phase 6 will unify its funding calculation with the main budget.                  |
+| 4     | Household/person ledger, shared bills and personal-share reports                                     | Planned; household accounting policy remains to be chosen.                                                          |
+| 5     | Savings forecasts using paydays, bills and household shares                                          | Planned; depends on shared accounting definitions from phases 3, 4 and 6.                                           |
+| 6     | YNAB envelope correctness, credit-card funding, category goals, targets, buffer and review workflows | Planned; investigation and implementation instructions complete, no implementation yet.                             |
+
+Phase numbers remain stable references, not a strict execution order. Do **6A first**
+(cash-backed funding, consistent availability, deficit recovery and atomic money moves),
+then 6B credit-card funding and 6C–6D category goals/targets. Use 6E to integrate the already implemented phase 3 planner
+rather than implementing a second payday planner. Phases 4 and 5 must consume the same
+accounting service. Buffer and review work follows the financial foundation.
+
+The [phase 6 implementation brief](docs/YNAB-DEVELOPMENT-PHASE.md) contains the source map,
+acceptance examples, compatibility constraints and release gates for Sol. It is the
+authoritative scope for this addition; the general upstream ideas below remain uncommitted.
+No application change, version bump or deployment is part of adding this plan.
+
+### General upstream ideas
+
 Open directions. None of these are committed. To discuss or pick something up, open an issue or join the [Discord](https://discord.gg/xVHK4mUUNw).
 
 - **Multi-device sync:** one budget shared between the desktop app, phones and a server, merging offline changes (see "Keep offline sync possible" in `CLAUDE.md`)

@@ -200,14 +200,15 @@ flowchart TD
 
 Proposed entities are bank-source metadata/corrections, household groups and participants, expense allocations, contributions, settlement allocations, funding templates/events, valuation records and forecast scenarios. These are design candidates, not a migration specification. Keep them additive, exportable and covered by backup/restore. Preserve bank IDs and reconciled records. Avoid placing sensitive source payloads in logs or fixtures; retain only needed metadata.
 
-| Order               | Deliverable                                                                        | Minimum evidence before release                                                                                   |
-| ------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| 1                   | Verify round-up accounting; unify report account scopes and budget-boundary policy | Paired debit/credit fixtures, repeat-sync tests, starting-balance reconciliation, off-budget/report consistency   |
-| 2                   | Background sync/review and daily round-up presentation                             | Late settlement/correction, no double count, clear freshness, expanded original records                           |
-| 3                   | Payday plan and bill coverage                                                      | Actual date enumeration, catch-up funding, insufficient funds, no duplicate allocations or scheduled salary/bills |
-| 4                   | Household/person ledger, shared bills and personal-share reports                   | Prepaid vs reimbursable examples, partial settlement, refunds, own/others' balances and no spendable receivables  |
-| 5                   | Savings forecast using the same paydays, bills and shares                          | Deterministic scenario fixtures; no writes; no duplicate goals, transfers or planned/actual payments              |
-| Parallel small work | Super terminology/valuation-date workflow and existing-logo guidance               | Historical valuation preserved; no spendable super; manual logo remains authoritative                             |
+| Order               | Deliverable                                                                            | Minimum evidence before release                                                                                     |
+| ------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 1                   | Verify round-up accounting; unify report account scopes and budget-boundary policy     | Paired debit/credit fixtures, repeat-sync tests, starting-balance reconciliation, off-budget/report consistency     |
+| 2                   | Background sync/review and daily round-up presentation                                 | Late settlement/correction, no double count, clear freshness, expanded original records                             |
+| 3                   | Payday plan and bill coverage                                                          | Actual date enumeration, catch-up funding, insufficient funds, no duplicate allocations or scheduled salary/bills   |
+| 4                   | Household/person ledger, shared bills and personal-share reports                       | Prepaid vs reimbursable examples, partial settlement, refunds, own/others' balances and no spendable receivables    |
+| 5                   | Savings forecast using the same paydays, bills and shares                              | Deterministic scenario fixtures; no writes; no duplicate goals, transfers or planned/actual payments                |
+| 6                   | YNAB envelope correctness, credit funding, category goals, targets, buffers and review | Shared funding invariant; opening/future funds, rollover, deficits, card reserves, atomic moves and backup coverage |
+| Parallel small work | Super terminology/valuation-date workflow and existing-logo guidance                   | Historical valuation preserved; no spendable super; manual logo remains authoritative                               |
 
 Each deliverable should be a focused pull request with a short acceptance example and relevant tests. Feature flags or opt-in setup should keep existing budgets stable. Complete a tested backup/restore before any live data migration; there is no live migration or release in this investigation.
 
@@ -355,3 +356,24 @@ backup/restore version 5. Existing ledger rows and reconciliation are never rewr
 See [Payday plans](../PAYDAY-PLANS.md) for setup, funding methods and correction behaviour.
 Phase four remains household/person attribution; phase five remains read-only forecasts.
 Round-up linking and automatic bank corrections remain deferred as described in phase two.
+
+## Phase six: YNAB envelope budgeting (21 October 2026)
+
+Status: **planned; implementation instructions prepared, no application changes yet**.
+See the [phase 6 implementation brief](../YNAB-DEVELOPMENT-PHASE.md) for the full
+scope, source map, acceptance cases and delivery gates. The
+[project roadmap](../../PLANNING.md#community-fork-development-plan-21-october-2026)
+now records the phase statuses together.
+
+Phase 3 payday funding is implemented in `0.2.0-up.7`; phases 4 and 5 remain
+planned. Phase IDs do not imply execution order. Implement phase 6A's
+authoritative cash-backed funding, consistent availability, deficit handling and
+atomic category moves before the pending funding/forecast features. Follow with
+credit-card payment funding, category-funded goals and true-expense targets.
+Phase 6E integrates the existing phase 3 payday planner with the shared funding model. Household accounting and forecasts
+consume the same definitions. Buffer metrics and onboarding/review follow the
+financial foundation. Multi-user authentication remains a separate design task.
+
+The phase 1–3 implementation record above does not establish live
+installation status. No release, budget migration or live deployment is part of
+adding this planning phase.
