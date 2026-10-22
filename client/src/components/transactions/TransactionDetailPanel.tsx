@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { X, Lock, Trash2, Repeat, Unlink, Wand2 } from 'lucide-react';
+import { X, Lock, Trash2, Repeat, Unlink, Wand2, Split } from 'lucide-react';
 import { useUpdateTransaction, useDeleteTransaction } from '../../hooks/useTransactions';
 import { useTransferToAccount, useUnlinkTransfer } from '../../hooks/useTransfers';
 import { useCanSave } from '../../hooks/useConnection';
@@ -21,6 +21,7 @@ import { MainAmountField } from '../currency/MainAmountField';
 import { RECURRENCE_TYPE_LABELS } from '../../types';
 import { GoalLink } from '../goals/GoalLink';
 import { TransactionMarks } from './TransactionMarks';
+import { SplitTransactionModal } from './SplitTransactionModal';
 import type {
   Transaction,
   CategoryGroup,
@@ -72,6 +73,7 @@ export function TransactionDetailPanel({
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [ruleDraft, setRuleDraft] = useState<RuleInput | null>(null);
+  const [splitting, setSplitting] = useState(false);
   const ruleModal = useModalValue(ruleDraft);
 
   useEffect(() => {
@@ -83,16 +85,25 @@ export function TransactionDetailPanel({
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !showCategoryPicker && !showDeleteConfirm && !ruleDraft) onClose();
+      if (
+        e.key === 'Escape' &&
+        !showCategoryPicker &&
+        !showDeleteConfirm &&
+        !ruleDraft &&
+        !splitting
+      )
+        onClose();
     }
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [onClose, showCategoryPicker, showDeleteConfirm, ruleDraft]);
+  }, [onClose, showCategoryPicker, showDeleteConfirm, ruleDraft, splitting]);
 
   const isReconciled = tx.reconciled === 1;
   const isTransfer = !!tx.transferTransactionId;
   const isSplitParent = tx.isParent === 1 && tx.children && tx.children.length > 0;
   const canEditCategory = !isReconciled && (!isTransfer || !!tx.isBudgetBoundary) && !isSplitParent;
+  // Synced and earlier transactions can be split into categories here, or have their parts changed
+  const canSplit = !isReconciled && !isTransfer && !tx.isAdjustment && !tx.parentTransactionId;
 
   const payeeName = tx.payeeName || (isTransfer ? 'Transfer' : '—');
   const payee = tx.payeeId ? payees.find((p) => p.id === tx.payeeId) : undefined;
@@ -233,7 +244,23 @@ export function TransactionDetailPanel({
         <MainAmountField tx={tx} disabled={isReconciled} />
 
         <div>
-          <label className="text-xs font-medium text-text-secondary mb-1.5 block">Category</label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-medium text-text-secondary block">Category</label>
+            {canSplit && (
+              <button
+                type="button"
+                onClick={() => setSplitting(true)}
+                disabled={!canSave}
+                className="inline-flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700 disabled:opacity-50 max-md:min-h-11"
+                title={
+                  isSplitParent ? 'Change the parts or unsplit' : 'Split into several categories'
+                }
+              >
+                <Split size={12} />
+                {isSplitParent ? 'Edit split' : 'Split'}
+              </button>
+            )}
+          </div>
           {isSplitParent ? (
             <div className="space-y-2">
               <div className="text-sm text-brand-600 font-medium">
@@ -407,6 +434,14 @@ export function TransactionDetailPanel({
           </Button>
         )}
       </div>
+
+      <SplitTransactionModal
+        transaction={tx}
+        currency={currency}
+        groups={groups}
+        isOpen={splitting}
+        onClose={() => setSplitting(false)}
+      />
 
       {ruleModal.value && (
         <RuleEditorFlow

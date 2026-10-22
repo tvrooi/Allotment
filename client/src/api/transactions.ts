@@ -212,3 +212,86 @@ export const restoreReview = (changes: ReviewChange[]) =>
     method: 'POST',
     body: JSON.stringify({ restore: changes }),
   });
+
+// ─── Splitting after the fact and editing many at once ────────────────────────
+
+export interface SplitPartInput {
+  categoryId: string | null;
+  /** Signed cents, like the transaction */
+  amount: number;
+  notes?: string | null;
+}
+
+/** Split a transaction into parts, change its parts, or (no parts) put it back together */
+export const splitTransaction = (id: string, splits: SplitPartInput[]) =>
+  apiFetch<Transaction>(`/transactions/${id}/split`, {
+    method: 'PUT',
+    body: JSON.stringify({ splits }),
+  });
+
+/** Only the fields being changed; anything left out stays as it is */
+export interface BulkChanges {
+  categoryId?: string | null;
+  payeeName?: string;
+  /** null removes the notes */
+  notes?: string | null;
+  hiddenFromReports?: boolean;
+  reviewed?: boolean;
+  addTagIds?: string[];
+  removeTagIds?: string[];
+}
+
+export type BulkSkipReason = 'reconciled' | 'transfer' | 'split' | 'household';
+
+export interface BulkPreview {
+  matched: number;
+  changing: number;
+  skipped: Record<BulkSkipReason, number>;
+  accounts: { id: string; name: string }[];
+}
+
+/** A changed row's previous values (opaque to the client: sent back for undo) */
+export type BulkRestore = { id: string } & Record<string, unknown>;
+
+export interface BulkResult {
+  matched: number;
+  changed: number;
+  skipped: Record<BulkSkipReason, number>;
+  restore: BulkRestore[];
+}
+
+interface BulkTarget {
+  params: TransactionQueryParams;
+  /** Hand-picked rows (only these, if they are in the selection) */
+  ids?: string[];
+}
+
+const bulkBody = ({ params, ids }: BulkTarget) => ({
+  selection: Object.fromEntries(transactionQuery(params)),
+  ...(ids ? { ids } : {}),
+});
+
+/** What a bulk edit would change, without changing anything */
+export const previewBulkEdit = (target: BulkTarget, changes: BulkChanges) =>
+  apiFetch<BulkPreview>('/transactions/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ ...bulkBody(target), changes, preview: true }),
+  });
+
+/** Apply a bulk edit; refused (409) if the selection no longer has `expectedCount` rows */
+export const bulkEditTransactions = (
+  target: BulkTarget,
+  changes: BulkChanges,
+  expectedCount: number,
+) =>
+  apiFetch<BulkResult>('/transactions/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ ...bulkBody(target), changes, expectedCount }),
+  });
+
+/** Undo a bulk edit: put these rows' previous values back */
+export const restoreBulkEdit = (restore: BulkRestore[]) =>
+  apiFetch<{ restored: number }>('/transactions/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ restore }),
+  });
