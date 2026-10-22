@@ -40,6 +40,7 @@ export function FundTargets({ month, groups }: { month: string; groups: BudgetGr
       setPreview(null);
       await qc.invalidateQueries({ queryKey: ['budget'] });
       await qc.invalidateQueries({ queryKey: ['budget-summary'] });
+      await qc.invalidateQueries({ queryKey: ['review'] });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not fund targets.');
       await load();

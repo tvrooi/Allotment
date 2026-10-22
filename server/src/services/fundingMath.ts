@@ -16,3 +16,9 @@ export function addMonthsTo(month: string, count: number) {
   const total = Number(month.slice(0, 4)) * 12 + Number(month.slice(5, 7)) - 1 + count;
   return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`;
 }
+
+/** The real last day of `month` (YYYY-MM), as YYYY-MM-DD. */
+export function monthEnd(month: string) {
+  const last = new Date(Date.UTC(+month.slice(0, 4), +month.slice(5, 7), 0)).getUTCDate();
+  return `${month}-${String(last).padStart(2, '0')}`;
+}

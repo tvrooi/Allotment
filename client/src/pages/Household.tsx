@@ -123,6 +123,7 @@ export default function HouseholdPage() {
       await cache.invalidateQueries({ queryKey: ['households'] });
       await cache.invalidateQueries({ queryKey: ['budget'] });
       await cache.invalidateQueries({ queryKey: ['budget-summary'] });
+      await cache.invalidateQueries({ queryKey: ['review'] });
       await cache.invalidateQueries({ queryKey: ['reports'] });
     },
     onError: (e: Error) => setError(e.message),

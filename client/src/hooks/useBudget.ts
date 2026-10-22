@@ -37,6 +37,7 @@ export function useSetBudget() {
     onSuccess: (result, { month, categoryId, budgeted }) => {
       qc.invalidateQueries({ queryKey: ['budget'] });
       qc.invalidateQueries({ queryKey: ['budget-summary'] });
+      qc.invalidateQueries({ queryKey: ['review'] });
       const oldBudgeted = result.previousBudgeted;
       let revision = result.revision;
       useUndoStore.getState().push({
@@ -45,11 +46,13 @@ export function useSetBudget() {
           revision = (await budgetApi.setBudget(month, categoryId, oldBudgeted, revision)).revision;
           qc.invalidateQueries({ queryKey: ['budget'] });
           qc.invalidateQueries({ queryKey: ['budget-summary'] });
+          qc.invalidateQueries({ queryKey: ['review'] });
         },
         redo: async () => {
           revision = (await budgetApi.setBudget(month, categoryId, budgeted, revision)).revision;
           qc.invalidateQueries({ queryKey: ['budget'] });
           qc.invalidateQueries({ queryKey: ['budget-summary'] });
+          qc.invalidateQueries({ queryKey: ['review'] });
         },
       });
     },
@@ -81,6 +84,7 @@ export function useSetBudgetBulk() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['budget'] });
       qc.invalidateQueries({ queryKey: ['budget-summary'] });
+      qc.invalidateQueries({ queryKey: ['review'] });
     },
   });
 }

@@ -23,6 +23,7 @@ import { schedulesRouter } from '../routes/schedules.js';
 import { goalsRouter } from '../routes/goals.js';
 import { paydayRouter } from '../routes/payday.js';
 import { forecastRouter } from '../routes/forecast.js';
+import { reviewRouter } from '../routes/review.js';
 import { currencyRouter } from '../routes/currency.js';
 
 /** Answer for anything that needs a real server: bank connections, sign-in. */
@@ -69,6 +70,7 @@ app.use('/schedules', schedulesRouter as unknown as ShimRouter);
 app.use('/goals', goalsRouter as unknown as ShimRouter);
 app.use('/payday', paydayRouter as unknown as ShimRouter);
 app.use('/forecast', forecastRouter as unknown as ShimRouter);
+app.use('/review', reviewRouter as unknown as ShimRouter);
 // Rates can be typed in, but not downloaded: the demo never talks to another server
 app.put('/currency/download', (req, res, next) => {
   const body = req.body as { enabled?: unknown; url?: unknown } | undefined;

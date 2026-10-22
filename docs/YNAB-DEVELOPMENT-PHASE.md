@@ -1,6 +1,6 @@
 # Phase 6: YNAB envelope budgeting and funding workflows
 
-Added 21 October 2026. Status: **6A implemented; 6B merged in `0.2.0-up.10`; 6C implemented in `0.2.0-up.12`; 6D implemented on the `0.2.0-up.15` feature branch; 6E–6G planned. Release/live status must be verified separately.**
+Added 21 October 2026. Status: **6A implemented; 6B merged in `0.2.0-up.10`; 6C implemented in `0.2.0-up.12`; 6D implemented on the `0.2.0-up.15` feature branch; 6E–6G implemented on the `0.2.0-up.17` feature branch. Release/live status must be verified separately.**
 
 This is an implementation handoff for Sol, based on Jesse Mecham's _You Need a
 Budget_ (principally chapters 2–7) and a source investigation of `tvrooi/FlyBudget`
@@ -197,8 +197,10 @@ correctly, and applying suggestions cannot silently overcommit existing money.
 
 ## 6E: payday assistance, coordinated with phase 3
 
-Status: payday functionality implemented in phase 3 (`0.2.0-up.7`); phase 6
-integration and consistency verification not started.
+Status: payday functionality implemented in phase 3 (`0.2.0-up.7`); phase 6 integration
+implemented on the `0.2.0-up.17` feature branch. The planner reads the shared funding service,
+adds a **Category target** rule that funds a 6D target's monthly requirement over the month's
+remaining paydays, and documents amendment/retry behaviour. See [Payday plans](PAYDAY-PLANS.md).
 
 Reuse `server/src/services/paydayService.ts`, `server/src/routes/payday.ts`,
 `client/src/components/payday/` and the existing monthly allocation ledger. See
@@ -226,7 +228,9 @@ are not counted twice.
 
 ## 6F: buffer and next-month funding
 
-Status: not started; depends on trustworthy funding and target definitions.
+Status: implemented on the `0.2.0-up.17` feature branch: next-month commitments and needs, unresolved
+items and an optional, assumption-labelled cash runway. Money age is not implemented. See
+[Budget review](BUDGET-REVIEW.md).
 
 Show existing commitments to next month, remaining funding needed for configured
 requirements and unresolved deficits/spending. Optional cash runway must show its
@@ -241,7 +245,9 @@ funds; incomplete history or rates produces a visibly incomplete assessment.
 
 ## 6G: onboarding and household review
 
-Status: not started; depends on the preceding financial workflows.
+Status: implemented on the `0.2.0-up.17` feature branch: a Review page reconciled with the budget
+summary, inline resolution, a derived six-step guided setup and category-group filtering. See
+[Budget review](BUDGET-REVIEW.md).
 
 Guide users to confirm balances, identify needs before the next income, assign
 existing cash, prepare for irregular expenses, check categories before spending and

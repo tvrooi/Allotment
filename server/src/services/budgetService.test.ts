@@ -116,11 +116,20 @@ it('discloses prior deficits and uncategorised activity even with zero unassigne
   });
 });
 it('does not count off-budget assets or borrowing as free funding', () => {
+  // Dated explicitly: the default is the real clock, which can be after the faked today.
+  const createdAt = '2026-09-01';
   db.insert(accounts)
     .values([
-      { id: 'asset', name: 'Asset', type: 'investment', startingBalance: 999999 },
-      { id: 'off', name: 'Off', type: 'checking', startingBalance: 999999, isOffBudget: 1 },
-      { id: 'card', name: 'Card', type: 'credit', startingBalance: -20000 },
+      { id: 'asset', name: 'Asset', type: 'investment', startingBalance: 999999, createdAt },
+      {
+        id: 'off',
+        name: 'Off',
+        type: 'checking',
+        startingBalance: 999999,
+        isOffBudget: 1,
+        createdAt,
+      },
+      { id: 'card', name: 'Card', type: 'credit', startingBalance: -20000, createdAt },
     ])
     .run();
   expect(fundingState().resources).toBe(80000);

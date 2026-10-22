@@ -14,6 +14,7 @@ import {
   paydayPlans,
   paydayFundingEvents,
   paydayFundingReceipts,
+  categoryTargets,
 } from '../db/schema.js';
 import {
   applyPayday,
@@ -80,6 +81,7 @@ beforeAll(() => {
 afterAll(() => vi.useRealTimers());
 beforeEach(() => {
   for (const table of [
+    categoryTargets,
     householdGroups,
     paydayFundingReceipts,
     paydayFundingEvents,
@@ -432,5 +434,129 @@ describe('payday funding', () => {
     plan(config([rule('salary', 'fixed', 100)]));
     income();
     expect(() => previewPayday('plan', request)).toThrow(/expense or savings/);
+  });
+});
+
+describe('payday funding with category targets (6E)', () => {
+  const target = (categoryId: string, type: string, amount: number, extra = {}) =>
+    db
+      .insert(categoryTargets)
+      .values({ categoryId, type, amount, createdMonth: '2026-10', ...extra })
+      .run();
+  it('spreads what a target still needs this month over the month’s remaining paydays', () => {
+    // October 2026 has three paydays (1, 15, 29); today is the 21st, so the 15th and 29th remain.
+    plan(config([rule('savings', 'target'), rule('food', 'target'), rule('other', 'target')]));
+    income();
+    target('savings', 'monthly', 30000);
+    target('food', 'monthly', 20000);
+    assign('food', 5000, '2026-10');
+    const p = previewPayday('plan', request);
+    expect(p.rows.map((r) => [r.categoryId, r.targetUnderfunded, r.needed])).toEqual([
+      ['savings', 30000, 15000],
+      ['food', 15000, 7500],
+      // No target: the rule funds nothing rather than guessing.
+      ['other', null, 0],
+    ]);
+    applyPayday('plan', request, JSON.stringify(p));
+    // The month's target figures now include the payday's assignments, so the next payday
+    // needs only the rest, and reapplying the same payday assigns nothing more.
+    expect(
+      db
+        .select()
+        .from(budgetMonths)
+        .all()
+        .filter((b) => b.month === '2026-10')
+        .map((b) => [b.categoryId, b.budgeted])
+        .sort(),
+    ).toEqual([
+      ['food', 12500],
+      ['savings', 15000],
+    ]);
+    expect(applyPayday('plan', request, JSON.stringify(p)).alreadyApplied).toBe(true);
+    db.insert(transactions)
+      .values({
+        id: 'pay2',
+        accountId: 'cash',
+        date: '2026-10-21',
+        categoryId: 'salary',
+        amount: 100000,
+      })
+      .run();
+    const second = previewPayday('plan', {
+      scheduledDate: '2026-10-29',
+      actualPayDate: '2026-10-21',
+      incomeIds: ['pay2'],
+    });
+    expect(second.rows.map((r) => r.needed)).toEqual([15000, 7500, 0]);
+  });
+  it('funds a balance-by-date target across a year boundary from the shared requirement', () => {
+    vi.setSystemTime(new Date('2026-12-28T02:00:00Z'));
+    try {
+      plan(config([rule('savings', 'target')]));
+      db.insert(transactions)
+        .values({
+          id: 'pay',
+          accountId: 'cash',
+          date: '2026-12-24',
+          categoryId: 'salary',
+          amount: 200000,
+        })
+        .run();
+      // $1,200 by February with $300 carried in: three months (Dec–Feb) need $300 each.
+      target('savings', 'by-date', 120000, { dueDate: '2027-02-15' });
+      assign('savings', 30000, '2026-11');
+      const p = previewPayday('plan', {
+        scheduledDate: '2026-12-24',
+        actualPayDate: '2026-12-24',
+        incomeIds: ['pay'],
+      });
+      // The next payday (7 January) is in another month, so this pay funds December's need.
+      expect(p.rows[0]).toMatchObject({
+        targetUnderfunded: 30000,
+        needed: 30000,
+        allocated: 30000,
+      });
+      expect(p.month).toBe('2026-12');
+    } finally {
+      vi.setSystemTime(new Date('2026-10-21T02:00:00Z'));
+    }
+  });
+  it('counts remaining paydays to the real end of a 30-day month', () => {
+    vi.setSystemTime(new Date('2026-11-20T02:00:00Z'));
+    try {
+      plan(config([rule('savings', 'target')]));
+      db.insert(transactions)
+        .values({
+          id: 'pay',
+          accountId: 'cash',
+          date: '2026-11-12',
+          categoryId: 'salary',
+          amount: 200000,
+        })
+        .run();
+      target('savings', 'monthly', 30000);
+      // November paydays: 12 and 26. On the 20th, this pay and the 26th share the need.
+      const p = previewPayday('plan', {
+        scheduledDate: '2026-11-12',
+        actualPayDate: '2026-11-12',
+        incomeIds: ['pay'],
+      });
+      expect(p.rows[0]).toMatchObject({ targetUnderfunded: 30000, needed: 15000 });
+    } finally {
+      vi.setSystemTime(new Date('2026-10-21T02:00:00Z'));
+    }
+  });
+  it('accepts plans saved before target rules existed and caps target funding to received pay', () => {
+    expect(
+      paydayConfigSchema.parse(config([rule('rent', 'due', 1000, { dueDate: '2026-12-01' })])),
+    ).toBeTruthy();
+    plan(config([rule('savings', 'target')]));
+    income('pay', 10000);
+    target('savings', 'monthly', 50000);
+    expect(previewPayday('plan', request).rows[0]).toMatchObject({
+      needed: 25000,
+      allocated: 10000,
+      shortfall: 15000,
+    });
   });
 });

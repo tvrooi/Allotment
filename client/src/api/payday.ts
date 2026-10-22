@@ -1,6 +1,7 @@
 import { apiFetch } from './client';
 
-export type FundingMethod = 'bills' | 'fixed' | 'due' | 'monthly' | 'percentage' | 'remainder';
+export type FundingMethod =
+  'bills' | 'fixed' | 'due' | 'monthly' | 'percentage' | 'target' | 'remainder';
 export interface FundingRule {
   categoryId: string;
   method: FundingMethod;
@@ -63,6 +64,8 @@ export interface PaydayPreview {
     allocated: number;
     shortfall: number;
     uncoveredBills: number;
+    /** What the category's target still needs this month; null without a target rule. */
+    targetUnderfunded: number | null;
   }[];
   bills: {
     id: string;

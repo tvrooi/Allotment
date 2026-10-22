@@ -37,7 +37,14 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
     enabled: open,
   });
   const refresh = () => {
-    for (const key of ['budget', 'budget-summary', 'budget-moves', 'payday', 'category-history'])
+    for (const key of [
+      'budget',
+      'budget-summary',
+      'budget-moves',
+      'payday',
+      'category-history',
+      'review',
+    ])
       qc.invalidateQueries({ queryKey: [key] });
   };
   const mutation = useMutation({
