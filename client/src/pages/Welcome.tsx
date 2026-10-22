@@ -90,6 +90,11 @@ export default function WelcomePage() {
 
   return (
     <div className="h-dvh overflow-y-auto bg-page">
+      {/* macOS desktop app: the window has no title bar, so this strip moves it */}
+      <div
+        aria-hidden
+        className="hidden mac-window:block sticky top-0 z-10 h-10 bg-page drag-region"
+      />
       <div className="min-h-full flex flex-col items-center px-4 sm:px-6">
         <main className="flex-1 w-full max-w-3xl flex flex-col justify-center py-10 text-center">
           <img src={logoUrl} alt="" className="w-20 h-20 mx-auto mb-5" />

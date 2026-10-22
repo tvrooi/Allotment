@@ -75,7 +75,7 @@ function showLocationPicker(message = ''): void {
     minHeight: 640,
     title: 'Budget location',
     webPreferences: {
-      preload: path.join(__dirname, 'connectionPreload.js'),
+      preload: path.join(__dirname, IS_DEV ? 'dist/connectionPreload.js' : 'connectionPreload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -183,10 +183,23 @@ function createWindow(): void {
     minHeight: 600,
     icon: iconPath,
     title: remote ? `FlyBudget — ${new URL(appUrl).host}` : 'FlyBudget',
+    // macOS: no title bar. The sidebar and page run to the top of the window with the
+    // traffic lights inset into the sidebar, and the page draws its own drag strips
+    // (`drag-region` in client/src/index.css). A remote server's page has no preload, so
+    // it can't know it's in the Mac app and keeps the normal title bar.
+    ...(process.platform === 'darwin' &&
+      !remote && {
+        titleBarStyle: 'hidden',
+        trafficLightPosition: { x: 16, y: 14 },
+      }),
     webPreferences: {
       // Remote content gets no desktop IPC or local API token. Relative API calls
       // and the server's ordinary password login work just as in a browser.
-      ...(!remote ? { preload: path.join(__dirname, 'preload.js') } : {}),
+      // Dev runs main.ts with tsx, but a preload must be JavaScript: `electron:dev`
+      // compiles it to electron/dist/ first.
+      ...(!remote
+        ? { preload: path.join(__dirname, IS_DEV ? 'dist/preload.js' : 'preload.js') }
+        : {}),
       session: targetSession,
       contextIsolation: true,
       nodeIntegration: false,

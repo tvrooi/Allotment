@@ -1,5 +1,26 @@
 @import 'tailwindcss';
 
+/* The macOS desktop app's window has no title bar (electron/main.ts) */
+@custom-variant mac-window (&:where(.mac-window, .mac-window *));
+
+/* Dragging this area moves the window (Electron). Clicks on it never reach the page. */
+@utility drag-region {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+/* A control inside a drag-region that still takes clicks */
+@utility no-drag-region {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* The macOS title strip above the page (AppShell) takes the colour of the page's top, so
+   pages that start white don't get a band of the page background above them */
+.mac-title-strip:has(~ main > .bg-surface:first-child) {
+  background-color: var(--color-surface);
+}
+
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;

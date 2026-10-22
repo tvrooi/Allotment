@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -65,34 +65,50 @@ export function Sidebar() {
   // Tracked in both modes, so unpinning keeps the sidebar open until the pointer leaves it
   const [hovered, setHovered] = useState(false);
   const [focusWithin, setFocusWithin] = useState(false);
+  const pointerDown = useRef(false);
   const handleMouseEnter = useCallback(() => setHovered(true), []);
   const handleMouseLeave = useCallback(() => setHovered(false), []);
 
   const isAutoHide = sidebarMode === 'auto-hide';
   const isExpanded = isAutoHide ? hovered || focusWithin : true;
 
+  // One layout for both modes, so pinning and unpinning slide the page instead of jumping:
+  // the aside holds the page's space and animates between the rail and full width, and the
+  // panel inside overlays the page while an unpinned sidebar is open.
+  // macOS desktop app: the collapsed rail is 92px so the traffic lights get even margins.
   return (
     <aside
-      onFocusCapture={() => setFocusWithin(true)}
+      // Focus keeps an unpinned sidebar open, except focus from a click (on the pin, a link),
+      // or it would stay open after the pointer leaves
+      onPointerDownCapture={() => {
+        pointerDown.current = true;
+        // Listened for on the window: the press may end outside the sidebar
+        const done = new AbortController();
+        const release = () => {
+          pointerDown.current = false;
+          done.abort();
+        };
+        window.addEventListener('pointerup', release, { capture: true, signal: done.signal });
+        window.addEventListener('pointercancel', release, { capture: true, signal: done.signal });
+      }}
+      onFocusCapture={() => {
+        if (!pointerDown.current) setFocusWithin(true);
+      }}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setFocusWithin(false);
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={
-        isAutoHide
-          ? 'w-16 shrink-0 h-screen relative z-30'
-          : 'w-[232px] shrink-0 h-screen overflow-hidden border-r border-sidebar-border'
-      }
+      className={`shrink-0 h-screen relative z-30 transition-[width] duration-200 ${
+        isAutoHide ? 'w-16 mac-window:w-[92px]' : 'w-[232px] mac-window:w-[246px]'
+      }`}
     >
+      {/* overflow-clip, not hidden: tabbing to a control the rail hides mustn't scroll the
+          panel sideways */}
       <div
-        className={
-          isAutoHide
-            ? `absolute left-0 top-0 h-full overflow-hidden border-r border-sidebar-border transition-[width,box-shadow] duration-200 ${
-                isExpanded ? 'w-[232px] shadow-xl' : 'w-16'
-              }`
-            : 'w-full h-full'
-        }
+        className={`absolute left-0 top-0 h-full overflow-clip border-r border-sidebar-border transition-[width,box-shadow] duration-200 ${
+          isExpanded ? 'w-[232px] mac-window:w-[246px]' : 'w-16 mac-window:w-[92px]'
+        } ${isAutoHide && isExpanded ? 'shadow-xl' : ''}`}
       >
         <SidebarContent isExpanded={isExpanded} />
       </div>
@@ -109,7 +125,13 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
     'relative p-1.5 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi';
 
   return (
-    <div className="w-[232px] h-full flex flex-col bg-sidebar-bg">
+    // macOS desktop app: the collapsed rail is 28px wider (room for the traffic lights), so
+    // everything moves 14px right to stay centred in it
+    <div className="w-[232px] mac-window:w-[246px] mac-window:pl-3.5 h-full flex flex-col bg-sidebar-bg">
+      {/* macOS desktop app: room for the traffic lights, and a handle to move the window */}
+      {!onClose && (
+        <div aria-hidden className="hidden mac-window:block h-10 shrink-0 drag-region" />
+      )}
       {/* Logo */}
       <div className="shrink-0 flex items-center gap-2.5 px-4 py-5 border-b border-sidebar-border">
         <img src={logoUrl} alt="" className="w-7 h-7 shrink-0" />
