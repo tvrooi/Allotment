@@ -127,14 +127,9 @@ interface SankeyDiagramProps {
 const formatDollars = (cents: number) =>
   formatCurrency(Math.sign(cents) * Math.round(Math.abs(cents) / 100) * 100);
 
-function lighten(hex: string, amt: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const nr = Math.round(r + (255 - r) * amt);
-  const ng = Math.round(g + (255 - g) * amt);
-  const nb = Math.round(b + (255 - b) * amt);
-  return `#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`;
+function lighten(color: string, amt: number): string {
+  // Keep theme variables live, including uncategorized spending's axis colour.
+  return amt === 0 ? color : `color-mix(in srgb, ${color}, white ${amt * 100}%)`;
 }
 
 function highlightPath(
@@ -1179,7 +1174,9 @@ export default function CashFlowPage() {
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 py-4 border-b border-border shrink-0">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-lg font-semibold text-text shrink-0">Cash Flow</h1>
+          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text shrink-0">
+            Cash Flow
+          </h1>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex flex-wrap gap-0">
               {PRESETS.map((p) => (

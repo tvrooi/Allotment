@@ -524,7 +524,9 @@ export default function ReviewPage() {
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 max-md:px-4 py-4 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-text">Review</h1>
+          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+            Review
+          </h1>
           <p className="text-xs text-text-tertiary">
             {review.data ? `As of ${formatDay(review.data.asOf)}` : 'Loading…'} · Read-only; changes
             happen only when you act.

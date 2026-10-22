@@ -15,7 +15,7 @@ export default function MatchSuggestionsPanel() {
   const totalCandidates = suggestions.reduce((s, sg) => s + sg.candidates.length, 0);
 
   return (
-    <div className="shrink-0 bg-brand-600 text-white">
+    <div className="shrink-0 bg-brand-600 text-brand-contrast">
       <div className="flex items-center justify-between px-6 py-2 text-sm font-medium">
         <span>
           {totalCandidates} transaction{totalCandidates !== 1 ? 's' : ''} may match your recurring

@@ -139,7 +139,9 @@ export default function PayeesPage() {
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 py-4 border-b border-border shrink-0">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-lg font-semibold text-text">Payees</h1>
+          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+            Payees
+          </h1>
           <div className="flex items-center gap-2">
             {selected.size >= 2 && (
               <button

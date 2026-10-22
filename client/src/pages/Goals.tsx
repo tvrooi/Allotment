@@ -325,7 +325,9 @@ export default function GoalsPage() {
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 py-4 border-b border-border shrink-0 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-text">Goals</h1>
+        <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+          Goals
+        </h1>
         <Button size="sm" onClick={() => setAddOpen(true)}>
           <Plus size={14} /> Add Goal
         </Button>

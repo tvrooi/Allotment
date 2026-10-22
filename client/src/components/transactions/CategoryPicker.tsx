@@ -196,7 +196,7 @@ export function CategoryPicker({
                     onClick={() => setNewBudgetType(key)}
                     className={`flex-1 text-xs py-1 rounded border transition-colors ${
                       newBudgetType === key
-                        ? 'bg-brand-600 text-white border-brand-600'
+                        ? 'bg-brand-600 text-brand-contrast border-brand-600'
                         : 'bg-surface text-text-secondary border-border hover:border-brand-400'
                     }`}
                   >
@@ -222,7 +222,7 @@ export function CategoryPicker({
                 type="button"
                 onClick={handleCreate}
                 disabled={!newName.trim() || createCategory.isPending}
-                className="flex-1 text-xs font-medium text-white bg-brand-600 hover:bg-brand-700 rounded px-2 py-1.5 disabled:opacity-50"
+                className="flex-1 text-xs font-medium text-brand-contrast bg-brand-600 hover:bg-brand-700 rounded px-2 py-1.5 disabled:opacity-50"
               >
                 {createCategory.isPending ? 'Creating...' : 'Create'}
               </button>

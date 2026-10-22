@@ -72,7 +72,10 @@ export function DemoBanner() {
           )}
           <span className="max-md:hidden">Start over</span>
         </button>
-        <a href={DOWNLOAD_URL} className={`${button} bg-brand-600 text-white hover:bg-brand-700`}>
+        <a
+          href={DOWNLOAD_URL}
+          className={`${button} bg-brand-600 text-brand-contrast hover:bg-brand-700`}
+        >
           <Download size={14} aria-hidden />
           Download<span className="max-md:hidden"> FlyBudget</span>
         </a>

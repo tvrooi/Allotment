@@ -19,7 +19,7 @@ export function NotInDemo() {
         <p className="text-text-secondary mt-1 leading-relaxed">{TEXT}</p>
         <a
           href={DOWNLOAD_URL}
-          className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 max-md:min-h-11 text-xs font-medium rounded-md bg-brand-600 text-white hover:bg-brand-700 transition-colors"
+          className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 max-md:min-h-11 text-xs font-medium rounded-md bg-brand-600 text-brand-contrast hover:bg-brand-700 transition-colors"
         >
           <Download size={12} aria-hidden /> Download FlyBudget
         </a>
@@ -39,7 +39,7 @@ export function NotInDemoModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
         </Button>
         <a
           href={DOWNLOAD_URL}
-          className="inline-flex items-center gap-1.5 px-4 py-2 max-md:min-h-11 text-sm font-medium rounded-md bg-brand-600 text-white hover:bg-brand-700 transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 max-md:min-h-11 text-sm font-medium rounded-md bg-brand-600 text-brand-contrast hover:bg-brand-700 transition-colors"
         >
           <Download size={14} aria-hidden /> Download FlyBudget
         </a>
