@@ -178,6 +178,68 @@ describe('bulkEdit', () => {
     expect(result.changed).toBe(3);
   });
 
+  it('leaves transfers their payee and counts only rows that really change', () => {
+    addTx('x', -100, { payeeName: 'Cafe' });
+    addTx('t1', -500, { payeeName: 'Transfer: Card', categoryId: null });
+    addTx('t2', 500, { accountId: 'card', payeeName: 'Transfer: Cash', categoryId: null });
+    db.update(transactions)
+      .set({ transferTransactionId: 't2' })
+      .where(eq(transactions.id, 't1'))
+      .run();
+    db.update(transactions)
+      .set({ transferTransactionId: 't1' })
+      .where(eq(transactions.id, 't2'))
+      .run();
+    const preview = previewBulkEdit(all, { payeeName: 'Cafe' });
+    // x already has that payee name but no payee id, so linking it is the one change
+    expect(preview).toMatchObject({ matched: 3, changing: 1, skipped: { transfer: 2 } });
+    bulkEdit(all, { payeeName: 'Cafe' }, 3);
+    expect(row('t1').payeeName).toBe('Transfer: Card');
+    expect(row('t2').payeeName).toBe('Transfer: Cash');
+    // Asking for what every row already has changes nothing, and says so
+    expect(previewBulkEdit(all, { payeeName: 'Cafe', hiddenFromReports: false })).toMatchObject({
+      changing: 0,
+    });
+    expect(bulkEdit(all, { payeeName: 'Cafe', hiddenFromReports: false }, 3).changed).toBe(0);
+  });
+
+  it('previews exactly what the apply changes', () => {
+    fc.assert(
+      fc.property(
+        fc.array(
+          fc.record({
+            categoryId: fc.constantFrom('food', 'fun', null),
+            hidden: fc.boolean(),
+            reconciled: fc.boolean(),
+          }),
+          { minLength: 1, maxLength: 8 },
+        ),
+        fc.record(
+          {
+            categoryId: fc.constantFrom('fun', null),
+            hiddenFromReports: fc.boolean(),
+            notes: fc.constantFrom('bank note', null),
+          },
+          { requiredKeys: [] },
+        ),
+        (rows, changes) => {
+          reset();
+          rows.forEach((r, i) =>
+            addTx(`t${i}`, -100 * (i + 1), {
+              categoryId: r.categoryId,
+              hiddenFromReports: r.hidden ? 1 : 0,
+              reconciled: r.reconciled ? 1 : 0,
+            }),
+          );
+          if (!Object.keys(changes).length) return;
+          const preview = previewBulkEdit(all, changes);
+          expect(bulkEdit(all, changes, rows.length).changed).toBe(preview.changing);
+        },
+      ),
+      { numRuns: 150 },
+    );
+  });
+
   it('honours hand-picked and unticked rows', () => {
     addTx('x', -100);
     addTx('y', -200);

@@ -8,6 +8,7 @@ import {
   householdEvents,
   incomeReviews,
   paydayFundingReceipts,
+  payees,
   tags,
   transactions,
   transactionTags,
@@ -15,7 +16,7 @@ import {
 import { unlinkOccurrenceByTransactionId } from './matchingEngine.js';
 import { refreshMainAmounts } from './mainAmountService.js';
 import { resolvePayee } from './transactionHelpers.js';
-import { MarkError } from './transactionMarks.js';
+import { MarkError, tagsByTransaction } from './transactionMarks.js';
 import { registerCondition, type Selection } from './transactionSelection.js';
 
 // Splitting a transaction after it arrives, and editing many at once
@@ -206,6 +207,9 @@ export interface BulkPreview {
   accounts: { id: string; name: string }[];
 }
 
+/** Stands in for a payee the apply would create: no row has its id yet */
+const NEW_PAYEE = '\u0000new';
+
 /** Category, payee and notes: what a reconciled, transfer, split or household row can't take */
 const LEDGER_FIELDS = ['categoryId', 'payeeName', 'notes'] as const;
 
@@ -228,7 +232,12 @@ function ledgerBlock(
 ): SkipReason | null {
   if (row.reconciled === 1) return 'reconciled';
   if (household.has(row.id)) return 'household';
-  if (changes.categoryId !== undefined && row.transferTransactionId) return 'transfer';
+  // A transfer's payee names the other account and its category is the budget boundary's
+  if (
+    (changes.categoryId !== undefined || changes.payeeName !== undefined) &&
+    row.transferTransactionId
+  )
+    return 'transfer';
   if (changes.categoryId !== undefined && row.isParent === 1) return 'split';
   return null;
 }
@@ -247,6 +256,64 @@ function validateChanges(changes: BulkChanges) {
     const known = db.select({ id: tags.id }).from(tags).where(inArray(tags.id, tagIds)).all();
     if (known.length !== tagIds.length) throw new MarkError('Unknown tag');
   }
+}
+
+type Row = typeof transactions.$inferSelect;
+
+/**
+ * What would change on one row, from the same comparisons for the preview and the apply:
+ * the column updates, the previous values for undo, and the tags it would end up with
+ * (null when its tags stay as they are).
+ */
+function rowDiff(
+  row: Row,
+  ledgerAllowed: boolean,
+  changes: BulkChanges,
+  payee: { payeeId: string | null; payeeName: string | null } | null,
+  currentTags: string[],
+  at: string,
+) {
+  const update: Partial<typeof transactions.$inferInsert> = {};
+  const before: BulkRestore = { id: row.id };
+  if (ledgerAllowed) {
+    if (changes.categoryId !== undefined && changes.categoryId !== row.categoryId) {
+      update.categoryId = changes.categoryId;
+      before.categoryId = row.categoryId;
+    }
+    if (payee && (payee.payeeId !== row.payeeId || payee.payeeName !== row.payeeName)) {
+      update.payeeId = payee.payeeId;
+      update.payeeName = payee.payeeName;
+      before.payeeId = row.payeeId;
+      before.payeeName = row.payeeName;
+    }
+    if (changes.notes !== undefined && changes.notes !== row.notes) {
+      update.notes = changes.notes;
+      before.notes = row.notes;
+    }
+  }
+  if (
+    changes.hiddenFromReports !== undefined &&
+    (row.hiddenFromReports === 1) !== changes.hiddenFromReports
+  ) {
+    update.hiddenFromReports = changes.hiddenFromReports ? 1 : 0;
+    before.hiddenFromReports = row.hiddenFromReports;
+  }
+  if (changes.reviewed !== undefined && (row.reviewedAt !== null) !== changes.reviewed) {
+    update.reviewedAt = changes.reviewed ? at : null;
+    before.reviewedAt = row.reviewedAt;
+  }
+  let nextTags: string[] | null = null;
+  if (changes.addTagIds?.length || changes.removeTagIds?.length) {
+    const next = new Set(currentTags);
+    for (const t of changes.addTagIds ?? []) next.add(t);
+    for (const t of changes.removeTagIds ?? []) next.delete(t);
+    const same = next.size === currentTags.length && currentTags.every((t) => next.has(t));
+    if (!same) {
+      before.tagIds = currentTags;
+      nextTags = [...next];
+    }
+  }
+  return { update, before, nextTags, changes: Object.keys(before).length > 1 };
 }
 
 function plan(target: BulkTarget, changes: BulkChanges) {
@@ -286,12 +353,18 @@ function plan(target: BulkTarget, changes: BulkChanges) {
 /** What a bulk edit would do, without changing anything: for the confirmation */
 export function previewBulkEdit(target: BulkTarget, changes: BulkChanges): BulkPreview {
   const { items, skipped } = plan(target, changes);
-  const hasOther =
-    changes.hiddenFromReports !== undefined ||
-    changes.reviewed !== undefined ||
-    !!changes.addTagIds?.length ||
-    !!changes.removeTagIds?.length;
-  const changing = items.filter((i) => i.ledgerAllowed || hasOther).length;
+  // The payee the apply would use, without creating it: a new one matches no row's id
+  let payee: { payeeId: string | null; payeeName: string | null } | null = null;
+  if (changes.payeeName !== undefined) {
+    const name = changes.payeeName.trim();
+    const existing = db.select({ id: payees.id }).from(payees).where(eq(payees.name, name)).get();
+    payee = { payeeId: existing?.id ?? NEW_PAYEE, payeeName: name };
+  }
+  const tagsOf = tagsByTransaction(items.map((i) => i.row.id));
+  const at = new Date().toISOString();
+  const changing = items.filter(
+    (i) => rowDiff(i.row, i.ledgerAllowed, changes, payee, tagsOf.get(i.row.id) ?? [], at).changes,
+  ).length;
   const accountIds = [...new Set(items.map((i) => i.row.accountId))];
   return {
     matched: items.length,
@@ -326,37 +399,12 @@ export function bulkEdit(target: BulkTarget, changes: BulkChanges, expectedCount
   const restore: BulkRestore[] = [];
   const at = new Date().toISOString();
 
+  const tagsOf = tagsByTransaction(items.map((i) => i.row.id));
   db.transaction((tx) => {
     for (const { row, ledgerAllowed } of items) {
-      const update: Partial<typeof transactions.$inferInsert> = {};
-      const before: BulkRestore = { id: row.id };
-      if (ledgerAllowed) {
-        if (changes.categoryId !== undefined && changes.categoryId !== row.categoryId) {
-          update.categoryId = changes.categoryId;
-          before.categoryId = row.categoryId;
-        }
-        if (payee && (payee.payeeId !== row.payeeId || payee.payeeName !== row.payeeName)) {
-          update.payeeId = payee.payeeId;
-          update.payeeName = payee.payeeName;
-          before.payeeId = row.payeeId;
-          before.payeeName = row.payeeName;
-        }
-        if (changes.notes !== undefined && changes.notes !== row.notes) {
-          update.notes = changes.notes;
-          before.notes = row.notes;
-        }
-      }
-      if (
-        changes.hiddenFromReports !== undefined &&
-        (row.hiddenFromReports === 1) !== changes.hiddenFromReports
-      ) {
-        update.hiddenFromReports = changes.hiddenFromReports ? 1 : 0;
-        before.hiddenFromReports = row.hiddenFromReports;
-      }
-      if (changes.reviewed !== undefined && (row.reviewedAt !== null) !== changes.reviewed) {
-        update.reviewedAt = changes.reviewed ? at : null;
-        before.reviewedAt = row.reviewedAt;
-      }
+      const diff = rowDiff(row, ledgerAllowed, changes, payee, tagsOf.get(row.id) ?? [], at);
+      if (!diff.changes) continue;
+      const { update } = diff;
       if (Object.keys(update).length) {
         tx.update(transactions).set(update).where(eq(transactions.id, row.id)).run();
         // A split's parts share its payee
@@ -367,25 +415,12 @@ export function bulkEdit(target: BulkTarget, changes: BulkChanges, expectedCount
             .run();
         }
       }
-      if (changes.addTagIds?.length || changes.removeTagIds?.length) {
-        const current = tx
-          .select({ tagId: transactionTags.tagId })
-          .from(transactionTags)
-          .where(eq(transactionTags.transactionId, row.id))
-          .all()
-          .map((t) => t.tagId);
-        const next = new Set(current);
-        for (const t of changes.addTagIds ?? []) next.add(t);
-        for (const t of changes.removeTagIds ?? []) next.delete(t);
-        const same = next.size === current.length && current.every((t) => next.has(t));
-        if (!same) {
-          before.tagIds = current;
-          tx.delete(transactionTags).where(eq(transactionTags.transactionId, row.id)).run();
-          for (const tagId of next)
-            tx.insert(transactionTags).values({ transactionId: row.id, tagId }).run();
-        }
+      if (diff.nextTags) {
+        tx.delete(transactionTags).where(eq(transactionTags.transactionId, row.id)).run();
+        for (const tagId of diff.nextTags)
+          tx.insert(transactionTags).values({ transactionId: row.id, tagId }).run();
       }
-      if (Object.keys(before).length > 1) restore.push(before);
+      restore.push(diff.before);
     }
   });
   return { matched: items.length, changed: restore.length, skipped, restore };

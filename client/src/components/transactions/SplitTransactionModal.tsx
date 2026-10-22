@@ -99,7 +99,9 @@ export function SplitTransactionModal({
   const filled = (mode === 'amount' ? amounts : typed).filter((a): a is number => a !== null);
   const left =
     mode === 'amount' ? leftToSplit(total, filled) : WHOLE - filled.reduce((a, b) => a + b, 0);
-  const complete = parts.length >= 2 && amounts.every((a) => a !== null) && left === 0;
+  // A percentage of a tiny amount can round a part to nothing; every part needs some money
+  const tooSmall = mode === 'percent' && amounts.some((a) => a === 0);
+  const complete = parts.length >= 2 && amounts.every((a) => a !== null && a !== 0) && left === 0;
 
   function update(i: number, change: Partial<Part>) {
     setParts((ps) => ps.map((p, j) => (j === i ? { ...p, ...change } : p)));
@@ -242,6 +244,11 @@ export function SplitTransactionModal({
           )}
         </div>
 
+        {tooSmall && (
+          <p className="text-sm text-caution">
+            One part would be less than a cent. Use fewer parts or split by amount.
+          </p>
+        )}
         {split.error && (
           <p role="alert" className="text-sm text-negative">
             {split.error.message}
