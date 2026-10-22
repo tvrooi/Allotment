@@ -22,9 +22,11 @@ export const OFFLINE_QUERY_KEYS: ReadonlySet<string> = new Set([
   'payees',
   'reports',
   'rules',
+  'saved-views',
   'schedule-occurrences',
   'schedule-summary',
   'schedules',
+  'tags',
   'transactions',
 ]);
 

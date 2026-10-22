@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { categories, payees, rules, transactions } from '../db/schema.js';
+import { categories, payees, rules, tags, transactions } from '../db/schema.js';
 import { and, desc, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import {
@@ -15,6 +15,7 @@ import {
   type TxState,
 } from './rulesEngine.js';
 import { resolvePayee } from './transactionHelpers.js';
+import { addTransactionTag, tagsByTransaction } from './transactionMarks.js';
 import {
   currencyContext,
   newRowValue,
@@ -58,7 +59,18 @@ export function buildRuleContext(): RuleContext {
       .all()
       .map((c) => c.id),
   );
-  return { payeeName: (id) => payeeNames.get(id), categoryExists: (id) => categoryIds.has(id) };
+  const tagIds = new Set(
+    db
+      .select({ id: tags.id })
+      .from(tags)
+      .all()
+      .map((t) => t.id),
+  );
+  return {
+    payeeName: (id) => payeeNames.get(id),
+    categoryExists: (id) => categoryIds.has(id),
+    tagExists: (id) => tagIds.has(id),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -104,15 +116,14 @@ export function insertNewTransaction(input: NewTransactionInput, opts: InsertOpt
       null;
   }
 
-  const { tx, split } = runRules(
-    { ...input, payeeId },
-    opts.rules ?? loadRules(),
-    opts.ctx ?? buildRuleContext(),
-    {
-      category: !!opts.keepUserCategory && !!input.categoryId,
-      notes: !!opts.keepUserNotes && !!input.notes,
-    },
-  );
+  const {
+    tx,
+    split,
+    tags: ruleTags,
+  } = runRules({ ...input, payeeId }, opts.rules ?? loadRules(), opts.ctx ?? buildRuleContext(), {
+    category: !!opts.keepUserCategory && !!input.categoryId,
+    notes: !!opts.keepUserNotes && !!input.notes,
+  });
 
   if (!tx.payeeId && tx.payeeName) tx.payeeId = resolvePayee(tx.payeeName, null).payeeId;
   if (!tx.categoryId && !split && tx.payeeId) {
@@ -144,7 +155,10 @@ export function insertNewTransaction(input: NewTransactionInput, opts: InsertOpt
 
   const parts = split && computeSplitAmounts(tx.amount, split);
   if (!parts) {
-    db.insert(transactions).values(row).run();
+    db.transaction(() => {
+      db.insert(transactions).values(row).run();
+      for (const tagId of ruleTags) addTransactionTag(row.id, tagId);
+    });
     return { transaction: row, children: [] };
   }
 
@@ -166,6 +180,7 @@ export function insertNewTransaction(input: NewTransactionInput, opts: InsertOpt
   db.transaction(() => {
     db.insert(transactions).values(parent).run();
     for (const c of children) db.insert(transactions).values(c).run();
+    for (const tagId of ruleTags) addTransactionTag(parent.id, tagId);
   });
   return { transaction: parent, children };
 }
@@ -223,6 +238,8 @@ export type PlannedChange = {
     category?: { from: string | null; to: string | null };
     notes?: { from: string | null; to: string | null };
     split?: Array<{ amount: number; categoryId: string | null; notes: string | null }>;
+    /** Tags the rules would add (phase 9) */
+    tags?: string[];
   };
   next: {
     payeeId: string | null;
@@ -284,8 +301,9 @@ export function planRules(opts: PlanOptions): PlannedChange[] {
           .map((p) => [p.id, p.cat!]),
       );
 
+  const existingTags = tagsByTransaction(candidates(opts).map((t) => t.id));
   return candidates(opts).flatMap((t): PlannedChange[] => {
-    const { tx, split } = runRules(txState(t), selected, ctx);
+    const { tx, split, tags: ruleTags } = runRules(txState(t), selected, ctx);
     if (defaults && !tx.categoryId && !split && tx.payeeId)
       tx.categoryId = defaults.get(tx.payeeId) ?? null;
 
@@ -296,6 +314,8 @@ export function planRules(opts: PlanOptions): PlannedChange[] {
     else if (tx.categoryId !== t.categoryId)
       changes.category = { from: t.categoryId, to: tx.categoryId };
     if ((tx.notes ?? null) !== (t.notes ?? null)) changes.notes = { from: t.notes, to: tx.notes };
+    const newTags = ruleTags.filter((id) => !existingTags.get(t.id)?.includes(id));
+    if (newTags.length) changes.tags = newTags;
     if (!Object.keys(changes).length) return [];
 
     return [
@@ -353,6 +373,7 @@ export function applyRules(opts: PlanOptions & { transactionIds: string[] }): nu
           })
           .run();
       }
+      for (const tagId of p.changes.tags ?? []) addTransactionTag(t.id, tagId);
       // The parts share the whole's budget-currency value
       if (split) refreshMainAmounts([t.id]);
     }

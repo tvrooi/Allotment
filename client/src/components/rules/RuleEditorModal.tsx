@@ -390,7 +390,7 @@ function ActionRow({
   onChange: (a: RuleAction) => void;
   onRemove: () => void;
 }) {
-  const { lookups } = useRuleLookups();
+  const { lookups, tagOptions } = useRuleLookups();
   return (
     <div className="rounded-lg">
       <div className="flex flex-wrap items-start gap-2">
@@ -432,6 +432,26 @@ function ActionRow({
               className={`${fieldClass} w-full`}
             />
           )}
+          {a.type === 'add_tag' &&
+            (tagOptions.length ? (
+              <select
+                value={a.value}
+                onChange={(e) => onChange({ ...a, value: e.target.value })}
+                className={`${fieldClass} w-full`}
+                aria-label="Tag"
+              >
+                <option value="">Choose a tag…</option>
+                {tagOptions.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="text-xs text-text-tertiary pt-2">
+                Create a tag first in Settings → Tags or a transaction's details.
+              </p>
+            ))}
           {a.type === 'split' && (
             <p className="text-xs text-text-tertiary pt-2">
               Splits the transaction into parts, each with its own category.

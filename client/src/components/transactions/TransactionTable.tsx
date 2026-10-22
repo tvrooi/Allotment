@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Plus, Receipt, SearchX, Upload, Link2 } from 'lucide-react';
 import { useTransactions } from '../../hooks/useTransactions';
 import { SelectionSummary } from './SelectionSummary';
+import { SaveViewModal } from './SavedViews';
 import { useCategories } from '../../hooks/useCategories';
 import { usePayees } from '../../hooks/usePayees';
 import { useAccounts } from '../../hooks/useAccounts';
@@ -59,6 +60,8 @@ interface Props {
   initialFilters?: FilterState;
   /** Called whenever the filters change (All Transactions writes them to its URL) */
   onFiltersChange?: (filters: FilterState) => void;
+  /** All Transactions: the filters can be saved as a view */
+  canSaveView?: boolean;
 }
 
 export function TransactionTable({
@@ -78,6 +81,7 @@ export function TransactionTable({
   onAddTransaction,
   initialFilters,
   onFiltersChange,
+  canSaveView,
 }: Props) {
   const [filters, setFilters] = useState<FilterState>(
     () =>
@@ -95,6 +99,7 @@ export function TransactionTable({
     onFiltersChange?.(filters);
   }, [filters, onFiltersChange]);
   const [showAdd, setShowAdd] = useState(false);
+  const [savingView, setSavingView] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
 
@@ -301,9 +306,11 @@ export function TransactionTable({
           setFilters(f);
         }}
         fixedAccount={Boolean(accountId)}
+        onSaveView={canSaveView ? () => setSavingView(true) : undefined}
         externalMonth={month}
         externalRange={from && to ? `${formatDay(from)} – ${formatDay(to)}` : undefined}
       />
+      {savingView && <SaveViewModal filters={filters} onClose={() => setSavingView(false)} />}
       <div className="px-4 py-2 border-b border-border-light bg-surface flex flex-wrap gap-2 justify-between items-center">
         <SelectionSummary
           params={params}

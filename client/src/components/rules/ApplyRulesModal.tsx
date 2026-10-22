@@ -220,7 +220,8 @@ function Changes({
   item: RulePreviewItem;
   category: (id: string | null) => string;
 }) {
-  const { payee, category: cat, notes, split } = item.changes;
+  const { payee, category: cat, notes, split, tags } = item.changes;
+  const { lookups } = useRuleLookups();
   const blank = (s: string | null) => s || '(empty)';
   return (
     <div className="space-y-0.5 max-w-80">
@@ -231,6 +232,12 @@ function Changes({
         <div className="text-text">
           <span className="text-text-tertiary">Split </span>
           {split.map((s) => `${formatCurrency(s.amount)} ${category(s.categoryId)}`).join(' · ')}
+        </div>
+      )}
+      {tags && (
+        <div className="text-text">
+          <span className="text-text-tertiary">Add tags </span>
+          {tags.map((id) => lookups.tag?.(id) ?? '(deleted)').join(', ')}
         </div>
       )}
     </div>

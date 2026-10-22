@@ -68,6 +68,9 @@ describe('transaction filters', () => {
       categoryGroupId: fc.constantFrom(null, 'g'),
       uncategorized: fc.boolean(),
       payeeName: fc.constantFrom(null, '', 'Mock cafe'),
+      tagIds: fc.constantFrom([], ['t1'], ['t1', 't2']),
+      reviewed: fc.constantFrom('all' as const, 'yes' as const, 'no' as const),
+      hidden: fc.constantFrom('all' as const, 'yes' as const, 'no' as const),
     });
     fc.assert(
       fc.property(arb, (partial) => {
@@ -77,6 +80,7 @@ describe('transaction filters', () => {
           accountIds: [...partial.accountIds],
           categoryIds: [...partial.categoryIds],
           payeeIds: [...partial.payeeIds],
+          tagIds: [...partial.tagIds],
           maxAmount: null,
         };
         expect(filtersFromSearch(filtersToSearch(f))).toEqual(f);
@@ -112,6 +116,26 @@ describe('transaction filters', () => {
     expect(filtersFromSearch(new URLSearchParams('')).datePreset).toBe('this-month');
   });
 
+  it('sends review, visibility and tag filters as the server reads them', () => {
+    const f: FilterState = {
+      ...DEFAULT_FILTERS,
+      datePreset: 'all',
+      tagIds: ['t1'],
+      reviewed: 'no',
+      hidden: 'yes',
+    };
+    expect(filtersToParams(f, undefined, today)).toEqual({
+      tagIds: ['t1'],
+      reviewed: 0,
+      hidden: 1,
+    });
+    expect(filtersFromSearch(new URLSearchParams('reviewed=maybe&hidden=2'))).toMatchObject({
+      reviewed: 'all',
+      hidden: 'all',
+    });
+    expect(filtersFromSearch(new URLSearchParams('tag_ids=t1')).datePreset).toBe('all');
+  });
+
   it('counts active filters but not the date range', () => {
     expect(activeFilterCount(DEFAULT_FILTERS)).toBe(0);
     expect(activeFilterCount({ ...DEFAULT_FILTERS, datePreset: 'all' })).toBe(0);
@@ -138,6 +162,9 @@ describe('transaction filters', () => {
       categoryGroupId: 'g',
       uncategorized: true,
       payeeName: 'x',
+      tagIds: ['t'],
+      reviewed: 'no',
+      hidden: 'yes',
     };
     for (const key of filtersToSearch(everything).keys()) expect(FILTER_KEYS.has(key)).toBe(true);
     expect(transactionsLink({ payeeIds: ['p'] })).toBe(

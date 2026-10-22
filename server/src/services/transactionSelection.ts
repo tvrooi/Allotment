@@ -3,7 +3,12 @@ import { z } from 'zod';
 import { db } from '../db/index.js';
 import { categories, transactions } from '../db/schema.js';
 import { isRealDate } from '../utils/validation.js';
-import { budgetActivity, isBudgetBoundary, isIncomeOrSpending, mainAmount } from './balances.js';
+import {
+  isBudgetBoundary,
+  isIncomeOrSpending,
+  mainAmount,
+  reportedBudgetActivity,
+} from './balances.js';
 
 // One transaction selection for the register, its summary and the filtered CSV export
 // (docs/MONARCH-DEVELOPMENT-PHASE.md, "One transaction selection"). Filters are evaluated
@@ -43,6 +48,9 @@ export const selectionSchema = z
     min_amount: bound,
     max_amount: bound,
     reconciled: flag,
+    reviewed: flag,
+    hidden: flag,
+    tag_ids: idList,
     transfers: z.enum(['include', 'exclude']),
     budget_report: flag,
   })
@@ -77,7 +85,7 @@ function monthEnd(m: string) {
   return `${m}-${String(new Date(Date.UTC(y, mm, 0)).getUTCDate()).padStart(2, '0')}`;
 }
 
-/** Account, date and reconciled state: the same on a split's parts as on its parent */
+/** Account and date: the same on a split's parts as on its parent */
 function rowConditions(s: Selection): SQL[] {
   const c: SQL[] = [];
   const accountIds = [...(s.account_ids ?? []), ...(s.account_id ? [s.account_id] : [])];
@@ -90,13 +98,44 @@ function rowConditions(s: Selection): SQL[] {
   return c;
 }
 
-/** The reconciled flag lives on the register row: a split part reads its parent's */
-const registerReconciled = sql<number>`coalesce((select p.reconciled from transactions p where p.id = "transactions"."parent_transaction_id"), ${transactions.reconciled})`;
+/**
+ * State that lives on the register row (reconciled, reviewed, hidden from reports, tags), as
+ * conditions on either a register row itself or a leaf, which reads its parent's.
+ */
+function registerStateConditions(s: Selection, on: 'register' | 'leaf'): SQL[] {
+  const own = (column: string) => sql.raw(`"transactions"."${column}"`);
+  const state = (column: string) =>
+    on === 'register'
+      ? own(column)
+      : sql.raw(
+          `coalesce((select p.${column} from transactions p where p.id = "transactions"."parent_transaction_id"), "transactions"."${column}")`,
+        );
+  const rowId =
+    on === 'register'
+      ? own('id')
+      : sql.raw(`coalesce("transactions"."parent_transaction_id", "transactions"."id")`);
+  const c: SQL[] = [];
+  if (s.reconciled) c.push(sql`${state('reconciled')} = ${Number(s.reconciled)}`);
+  if (s.reviewed === '1') c.push(sql`${state('reviewed_at')} is not null`);
+  if (s.reviewed === '0') c.push(sql`${state('reviewed_at')} is null`);
+  if (s.hidden) c.push(sql`${state('hidden_from_reports')} = ${Number(s.hidden)}`);
+  if (s.tag_ids?.length) {
+    c.push(
+      sql`exists (select 1 from transaction_tags tt where tt.transaction_id = ${rowId} and tt.tag_id in (${sql.join(
+        s.tag_ids.map((id) => sql`${id}`),
+        sql`, `,
+      )}))`,
+    );
+  }
+  return c;
+}
 
 /** Conditions on a leaf row that only a leaf can answer (category, payee, amount…) */
 function leafOnlyConditions(s: Selection): SQL[] {
   const c: SQL[] = [];
-  if (s.budget_report === '1') c.push(budgetActivity);
+  // The cash-flow scope: what reports count, so a drill-down agrees with its chart (rows
+  // hidden from reports are left out, phase 9)
+  if (s.budget_report === '1') c.push(reportedBudgetActivity);
   if (s.uncategorized === '1') {
     c.push(
       isNull(transactions.categoryId),
@@ -157,15 +196,22 @@ function leafOnlyConditions(s: Selection): SQL[] {
 
 /** Leaves (unsplit rows and split parts) the selection matches: what the summary and export count */
 export function leafCondition(s: Selection): SQL {
-  const c = [eq(transactions.isParent, 0), ...rowConditions(s), ...leafOnlyConditions(s)];
-  if (s.reconciled) c.push(sql`${registerReconciled} = ${Number(s.reconciled)}`);
+  const c = [
+    eq(transactions.isParent, 0),
+    ...rowConditions(s),
+    ...registerStateConditions(s, 'leaf'),
+    ...leafOnlyConditions(s),
+  ];
   return and(...c)!;
 }
 
 /** Register rows (unsplit transactions and split parents) the selection matches */
 export function registerCondition(s: Selection): SQL {
-  const c = [isNull(transactions.parentTransactionId), ...rowConditions(s)];
-  if (s.reconciled) c.push(eq(transactions.reconciled, Number(s.reconciled)));
+  const c = [
+    isNull(transactions.parentTransactionId),
+    ...rowConditions(s),
+    ...registerStateConditions(s, 'register'),
+  ];
   const leaf = leafOnlyConditions(s);
   if (leaf.length) {
     const parentsWithMatch = db

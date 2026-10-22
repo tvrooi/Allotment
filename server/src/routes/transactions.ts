@@ -29,6 +29,14 @@ import {
   registerCondition,
   summarizeSelection,
 } from '../services/transactionSelection.js';
+import {
+  MarkError,
+  restoreReview,
+  reviewSelection,
+  setFlags,
+  setTransactionTags,
+  tagsByTransaction,
+} from '../services/transactionMarks.js';
 import { isBudgetBoundary } from '../services/balances.js';
 import {
   accountCurrency,
@@ -179,6 +187,64 @@ transactionsRouter.get('/summary', (req, res) => {
   res.json(summarizeSelection(selection.data));
 });
 
+// ─── Phase 9: review, visibility in reports, tags ─────────────────────────────
+
+function sendMarkError(res: Response, error: unknown) {
+  if (error instanceof MarkError) return res.status(error.status).json({ error: error.message });
+  throw error;
+}
+
+const reviewChangeSchema = z.object({ id, previous: z.string().max(40).nullable() });
+const reviewSchema = z.union([
+  z.object({
+    // The register's selection, as its query parameters
+    selection: z.record(z.string(), z.string().max(20_000)),
+    reviewed: z.boolean(),
+    expectedCount: z.number().int().min(0).max(1_000_000),
+  }),
+  // Undo: put these rows' previous states back
+  z.object({ restore: z.array(reviewChangeSchema).max(1_000_000) }),
+]);
+
+// POST /transactions/review — mark the selection reviewed, guarded by the confirmed count
+transactionsRouter.post('/review', (req, res) => {
+  const parsed = reviewSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  if ('restore' in parsed.data) return res.json(restoreReview(parsed.data.restore));
+  const selection = parseSelection(parsed.data.selection);
+  if (!selection.success) return res.status(400).json({ error: selection.error.flatten() });
+  try {
+    res.json(reviewSelection(selection.data, parsed.data.reviewed, parsed.data.expectedCount));
+  } catch (error) {
+    sendMarkError(res, error);
+  }
+});
+
+// PATCH /transactions/:id/flags — the detail panel's Reviewed and Hide from reports toggles
+transactionsRouter.patch('/:id/flags', (req, res) => {
+  const parsed = z
+    .object({ reviewed: z.boolean().optional(), hiddenFromReports: z.boolean().optional() })
+    .strict()
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    res.json(setFlags(req.params.id, parsed.data));
+  } catch (error) {
+    sendMarkError(res, error);
+  }
+});
+
+// PUT /transactions/:id/tags — replace the transaction's tags
+transactionsRouter.put('/:id/tags', (req, res) => {
+  const parsed = z.object({ tagIds: z.array(id).max(100) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    res.json({ tagIds: setTransactionTags(req.params.id, parsed.data.tagIds) });
+  } catch (error) {
+    sendMarkError(res, error);
+  }
+});
+
 transactionsRouter.get('/', (req, res) => {
   const selection = parseSelection(req.query as Record<string, unknown>);
   if (!selection.success) return res.status(400).json({ error: selection.error.flatten() });
@@ -225,8 +291,10 @@ transactionsRouter.get('/', (req, res) => {
     }
   }
 
+  const tagMap = tagsByTransaction(rows.map((r) => r.id));
   const result = rows.map((r) => ({
     ...r,
+    tagIds: tagMap.get(r.id) ?? [],
     ...(r.isParent === 1 ? { children: childrenMap.get(r.id) ?? [] } : {}),
   }));
 

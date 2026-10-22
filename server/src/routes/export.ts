@@ -10,6 +10,8 @@ import {
 } from '../services/backupService.js';
 import { z } from 'zod';
 import { leafCondition, parseSelection } from '../services/transactionSelection.js';
+import { listTags, tagsByTransaction } from '../services/transactionMarks.js';
+import { sql } from 'drizzle-orm';
 import { minorUnits } from '../utils/currencies.js';
 import { minorToDecimal } from '../utils/money.js';
 import { budgetCurrency, hasForeignAccounts } from '../services/mainAmountService.js';
@@ -69,6 +71,12 @@ exportRouter.get('/transactions/csv', (req, res) => {
       accountId: transactions.accountId,
       mainAmount: transactions.mainAmount,
       mainAmountSource: transactions.mainAmountSource,
+      // Review, visibility and tags live on the register row: a split part reads its parent's
+      registerId: sql<string>`coalesce(${transactions.parentTransactionId}, ${transactions.id})`,
+      reviewedAt: sql<
+        string | null
+      >`coalesce((select p.reviewed_at from transactions p where p.id = "transactions"."parent_transaction_id"), "transactions"."reviewed_at")`,
+      hidden: sql<number>`coalesce((select p.hidden_from_reports from transactions p where p.id = "transactions"."parent_transaction_id"), "transactions"."hidden_from_reports")`,
     })
     .from(transactions)
     .where(leafCondition(selection.data))
@@ -89,9 +97,12 @@ exportRouter.get('/transactions/csv', (req, res) => {
       .map((c) => [c.id, c.name]),
   );
 
+  const tagNames = new Map(listTags().map((t) => [t.id, t.name]));
+  const rowTags = tagsByTransaction([...new Set(rows.map((r) => r.registerId))]);
+
   const columns = ['Date', 'Account', 'Payee', 'Category', 'Notes', 'Amount'];
   if (multi) columns.push('Currency', `Amount (${budget})`);
-  const header = `${[...columns, 'Reconciled'].join(sep)}\n`;
+  const header = `${[...columns, 'Reconciled', 'Tags', 'Reviewed', 'Hidden from reports'].join(sep)}\n`;
   const body = rows
     .map((r) => {
       const currency = currencyOf[r.accountId] ?? null;
@@ -107,6 +118,15 @@ exportRouter.get('/transactions/csv', (req, res) => {
           ? [currency ?? '', value === null ? '' : csvAmount(value, decimal, minorUnits(budget))]
           : []),
         r.reconciled ? 'Yes' : 'No',
+        escapeCsv(
+          (rowTags.get(r.registerId) ?? [])
+            .map((id) => tagNames.get(id) ?? '')
+            .filter(Boolean)
+            .join('; '),
+          sep,
+        ),
+        r.reviewedAt ? 'Yes' : 'No',
+        r.hidden ? 'Yes' : 'No',
       ].join(sep);
     })
     .join('\n');

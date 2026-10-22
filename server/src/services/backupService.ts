@@ -42,6 +42,9 @@ import {
   goalStatusEvents,
   reviewCompletions,
   incomeReviews,
+  tags,
+  transactionTags,
+  savedViews,
 } from '../db/schema.js';
 import { paydayConfigSchema, fundingSnapshotSchema } from './paydayConfig.js';
 import { fillMissingMainAmounts, ratesChanged } from './mainAmountService.js';
@@ -50,6 +53,7 @@ import { targetSchema } from './targetConfig.js';
 import { CADENCES, PURPOSES, reviewSnapshotSchema } from './resilienceConfig.js';
 import { GOAL_STATUSES } from './goalLifecycle.js';
 import { purposeError } from './resilienceService.js';
+import { validateViewQuery } from './transactionMarks.js';
 
 // Full JSON backup of the user's data, and restoring one.
 //
@@ -60,7 +64,7 @@ import { purposeError } from './resilienceService.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 11;
+export const BACKUP_VERSION = 12;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -81,6 +85,9 @@ const TABLES = {
   budgetMonths,
   budgetMoves,
   rules,
+  tags,
+  transactionTags,
+  savedViews,
   customReports,
   dashboardPages,
   dashboardWidgets,
@@ -229,6 +236,23 @@ export function parseBackup(input: unknown): ParsedBackup {
           (row.seenInLatest !== undefined && ![0, 1].includes(Number(row.seenInLatest)))
         )
           throw new InvalidBackupError('Invalid Up review state');
+      }
+      if (name === 'tags') {
+        const tagName = String(row.name ?? '').trim();
+        if (!tagName || tagName.length > 60) throw new InvalidBackupError('Invalid tag name');
+        if (row.color !== undefined && !/^#[0-9a-fA-F]{6}$/.test(String(row.color)))
+          throw new InvalidBackupError('Invalid tag colour');
+      }
+      if (name === 'savedViews') {
+        try {
+          row.query = validateViewQuery(String(row.query));
+        } catch {
+          throw new InvalidBackupError('Invalid saved view');
+        }
+      }
+      if (name === 'transactions' && row.hiddenFromReports !== undefined) {
+        if (![0, 1].includes(Number(row.hiddenFromReports)))
+          throw new InvalidBackupError('Invalid report visibility');
       }
       return row;
     });

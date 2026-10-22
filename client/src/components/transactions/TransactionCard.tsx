@@ -1,3 +1,4 @@
+import { RowMarks } from './TransactionMarks';
 import { useMemo } from 'react';
 import { ArrowLeftRight, ChevronRight, Lock, Split } from 'lucide-react';
 import { PayeeIcon } from '../payees/PayeeIcon';
@@ -87,6 +88,7 @@ export function TransactionCard({
           {tx.reconciled ? (
             <Lock size={11} className="shrink-0 text-text-disabled" aria-label="Reconciled" />
           ) : null}
+          <RowMarks tx={tx} />
         </span>
         {tx.notes && <span className="text-xs text-text-tertiary truncate">{tx.notes}</span>}
       </span>

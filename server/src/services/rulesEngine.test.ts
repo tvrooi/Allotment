@@ -294,6 +294,48 @@ describe('running rules (property-based)', () => {
     );
   });
 
+  it('adds known tags once, never removes them, and changes nothing else', () => {
+    const tagCtx = { ...ctx, tagExists: (id: string) => id === 'holiday' };
+    const rule = (actions: Action[]) => ({
+      id: 'r',
+      conditionsOp: 'and' as const,
+      conditions: [],
+      actions,
+      enabled: true,
+      sortOrder: 0,
+    });
+    fc.assert(
+      fc.property(arbTx, (tx) => {
+        const out = runRules(
+          tx,
+          [
+            rule([{ type: 'add_tag', value: 'holiday' }]),
+            rule([
+              { type: 'add_tag', value: 'holiday' },
+              { type: 'add_tag', value: 'deleted' },
+            ]),
+          ],
+          tagCtx,
+        );
+        expect(out.tags).toEqual(['holiday']);
+        expect(out.tx).toEqual(tx);
+        expect(out.split).toBeNull();
+      }),
+    );
+    // A context from before tags (no tagExists) skips the action
+    const plain: TxState = {
+      accountId: 'a1',
+      date: '2026-10-01',
+      amount: -100,
+      payeeId: null,
+      payeeName: null,
+      importedPayee: null,
+      notes: null,
+      categoryId: null,
+    };
+    expect(runRules(plain, [rule([{ type: 'add_tag', value: 'holiday' }])], ctx).tags).toEqual([]);
+  });
+
   it('never applies disabled rules', () => {
     fc.assert(
       fc.property(arbTx, fc.array(arbRule(), { maxLength: 5 }), (tx, rules) => {
@@ -302,7 +344,7 @@ describe('running rules (property-based)', () => {
           rules.map((r) => ({ ...r, enabled: false })),
           ctx,
         );
-        expect(out).toEqual({ tx, split: null, matchedRuleIds: [] });
+        expect(out).toEqual({ tx, split: null, matchedRuleIds: [], tags: [] });
       }),
     );
   });
