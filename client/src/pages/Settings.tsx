@@ -7,6 +7,7 @@ import {
   SlidersHorizontal,
   Link2,
   Server,
+  Compass,
 } from 'lucide-react';
 import { ServerSettings } from '../components/settings/ServerSettings';
 import { CategoryManager } from '../components/settings/CategoryManager';
@@ -15,6 +16,7 @@ import { DataExport } from '../components/settings/DataExport';
 import { PreferencesPanel } from '../components/settings/PreferencesPanel';
 import { CurrencySettings } from '../components/settings/CurrencySettings';
 import { ConnectedAccounts } from '../components/settings/ConnectedAccounts';
+import { PrioritiesSettings } from '../components/settings/PrioritiesSettings';
 import { LICENSE_URL, SOURCE_CODE_URL } from '../utils/project';
 
 const tabs = [
@@ -23,6 +25,8 @@ const tabs = [
   { id: 'connections', label: 'Connected Banks', icon: Link2 },
   // The budget's currency, exchange rates and how each currency is written
   { id: 'currencies', label: 'Currencies', icon: Coins },
+  // Optional financial priorities and category purposes (phase 7A)
+  { id: 'priorities', label: 'Priorities', icon: Compass },
   { id: 'data', label: 'Data', icon: Download },
   { id: 'preferences', label: 'Preferences', icon: SlidersHorizontal },
   // Where the data lives; on a self-hosted server also security, devices and password
@@ -73,6 +77,7 @@ export default function SettingsPage() {
           {activeTab === 'accounts' && <AccountReorder />}
           {activeTab === 'connections' && <ConnectedAccounts />}
           {activeTab === 'currencies' && <CurrencySettings />}
+          {activeTab === 'priorities' && <PrioritiesSettings />}
           {activeTab === 'data' && <DataExport />}
           {activeTab === 'preferences' && <PreferencesPanel />}
           {activeTab === 'server' && <ServerSettings onOpenTab={setActiveTab} />}

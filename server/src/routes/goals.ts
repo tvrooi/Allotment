@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
-import { goals, categories, categoryGroups, cardFunding } from '../db/schema.js';
+import { goals, categories, categoryGroups, cardFunding, categoryPurposes } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -8,6 +8,8 @@ import { isoDate } from '../utils/validation.js';
 
 import { budgetGroups, fundingState } from '../services/budgetService.js';
 import { todayIso } from '../services/mainAmountService.js';
+import { BudgetError } from '../services/budgetMoves.js';
+import { changeGoalStatus, goalHistory, statusChangeSchema } from '../services/goalLifecycle.js';
 
 export const goalsRouter = Router();
 
@@ -55,6 +57,11 @@ function linkageError(categoryId: string | null | undefined, id?: string) {
   if (!group || group.isIncome) return 'Choose an expense category';
   if (db.select().from(cardFunding).where(eq(cardFunding.categoryId, categoryId)).get())
     return 'Card payment reserves cannot fund savings goals';
+  if (
+    db.select().from(categoryPurposes).where(eq(categoryPurposes.categoryId, categoryId)).get()
+      ?.purpose === 'flexibility'
+  )
+    return 'This category is your flexibility reserve; choose another category for the goal';
   const owner = db.select().from(goals).where(eq(goals.categoryId, categoryId)).get();
   return owner && owner.id !== id ? 'This category already funds another goal' : null;
 }
@@ -84,6 +91,10 @@ goalsRouter.post('/', (req, res) => {
     icon: parsed.data.icon ?? '🎯',
     color: parsed.data.color ?? '#2563EB',
     sortOrder: 0,
+    status: 'active',
+    statusReason: null,
+    replacedByGoalId: null,
+    statusChangedAt: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -123,3 +134,20 @@ goalsRouter.delete('/:id', (req, res) => {
   db.delete(goals).where(eq(goals.id, req.params.id)).run();
   res.status(204).send();
 });
+
+/** Pause, complete, retire or reactivate a goal, optionally moving its money in the same
+ * confirmed action (phase 7D). A stale goal or budget refuses the whole change. */
+goalsRouter.post('/:id/status', (req, res, next) => {
+  const parsed = statusChangeSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    const { goal, move } = changeGoalStatus(req.params.id, parsed.data);
+    res.json({ goal: present([goal])[0], move });
+  } catch (error) {
+    if (error instanceof BudgetError)
+      return res.status(error.status).json({ error: error.message });
+    next(error);
+  }
+});
+
+goalsRouter.get('/:id/history', (req, res) => res.json(goalHistory(req.params.id)));

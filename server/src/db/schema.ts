@@ -339,12 +339,82 @@ export const goals = sqliteTable('goals', {
   icon: text('icon').notNull().default('🎯'),
   color: text('color').notNull().default('#2563EB'),
   sortOrder: integer('sort_order').notNull().default(0),
+  /** active | paused | completed | retired (phase 7D); only active goals get suggestions */
+  status: text('status').notNull().default('active'),
+  statusReason: text('status_reason'),
+  replacedByGoalId: text('replaced_by_goal_id'),
+  statusChangedAt: text('status_changed_at'),
   createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`),
   updatedAt: text('updated_at')
     .notNull()
     .default(sql`(datetime('now'))`),
+});
+
+/** Each goal status change, with the money move confirmed in the same action (phase 7D). */
+export const goalStatusEvents = sqliteTable('goal_status_events', {
+  id: text('id').primaryKey(),
+  goalId: text('goal_id')
+    .notNull()
+    .references(() => goals.id, { onDelete: 'cascade' }),
+  fromStatus: text('from_status').notNull(),
+  toStatus: text('to_status').notNull(),
+  reason: text('reason'),
+  replacementGoalId: text('replacement_goal_id').references(() => goals.id, {
+    onDelete: 'set null',
+  }),
+  moveId: text('move_id').references(() => budgetMoves.id, { onDelete: 'set null' }),
+  createdAt: text('created_at').notNull(),
+});
+
+/** The budget's optional priorities profile (phase 7A): one row, id 'default'. */
+export const financialPriorities = sqliteTable('financial_priorities', {
+  id: text('id').primaryKey(),
+  purpose: text('purpose'),
+  /** Replaces the measured essentials average when set, in budget minor units */
+  essentialMonthlyAmount: integer('essential_monthly_amount'),
+  /** amount | months | null */
+  reserveTargetType: text('reserve_target_type'),
+  reserveTargetAmount: integer('reserve_target_amount'),
+  reserveTargetMonths: integer('reserve_target_months'),
+  reserveMinimum: integer('reserve_minimum'),
+  /** payday | monthly | quarterly | off */
+  reviewCadence: text('review_cadence').notNull().default('off'),
+  reminderSnoozedUntil: text('reminder_snoozed_until'),
+  revision: integer('revision').notNull().default(1),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+/** A label on an expense category: essential | enjoyment | flexibility (phase 7A). */
+export const categoryPurposes = sqliteTable('category_purposes', {
+  categoryId: text('category_id')
+    .primaryKey()
+    .references(() => categories.id, { onDelete: 'cascade' }),
+  purpose: text('purpose').notNull(),
+});
+
+/** A completed review and the figures it saw, for the next comparison (phase 7E). */
+export const reviewCompletions = sqliteTable('review_completions', {
+  id: text('id').primaryKey(),
+  completedAt: text('completed_at').notNull(),
+  asOf: text('as_of').notNull(),
+  snapshotJson: text('snapshot_json').notNull(),
+});
+
+/** One applied extra-income split per received deposit (phase 7F). */
+export const incomeReviews = sqliteTable('income_reviews', {
+  id: text('id').primaryKey(),
+  transactionId: text('transaction_id').notNull().unique(),
+  month: text('month').notNull(),
+  categoryId: text('category_id').references(() => categories.id, { onDelete: 'set null' }),
+  received: integer('received').notNull(),
+  baseline: integer('baseline').notNull(),
+  reservePercent: integer('reserve_percent').notNull(),
+  assigned: integer('assigned').notNull(),
+  createdAt: text('created_at').notNull(),
 });
 
 /** Persistent funding target per expense category (phase 6D). Suggestions only. */

@@ -8,8 +8,8 @@ existing features; it is not a claim of complete Monarch parity.
 
 ## Position and dependencies
 
-Keep the existing phase IDs. Phase 7 is reserved by the financial-resilience
-proposal in [PR #11](https://github.com/tvrooi/FlyBudget/pull/11); this is phase 8.
+Keep the existing phase IDs. Phase 7 is the financial-resilience
+[brief](PSYCHOLOGY-OF-MONEY-DEVELOPMENT-PHASE.md); this is phase 8.
 Phase numbers identify workstreams, not a strict execution order.
 
 The initial inspection compared FlyBudget commit `05f653e`. This brief is
@@ -23,7 +23,7 @@ Filtering and dashboard presentation can proceed independently. Goal/budget
 integration must use the shared funding services and phase 6C category linkage.
 Annual planning must agree with phase 6D targets and phase 6E payday integration
 when those features land. Forecasts remain phase 5; resilience scenarios and
-goal lifecycle belong with the proposed phase 7. Do not create competing funding,
+goal lifecycle belong with phase 7. Do not create competing funding,
 goal-progress, debt or forecasting engines.
 
 ## Deliverables within this single phase

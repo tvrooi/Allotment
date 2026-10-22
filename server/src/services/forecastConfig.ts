@@ -30,6 +30,22 @@ export const scenarioSchema = z.object({
     )
     .max(50)
     .default([]),
+  /** Date ranges in which no income arrives: a lost job or career break (phase 7C). */
+  incomePauses: z
+    .array(z.object({ from: isoDate, to: isoDate }))
+    .max(10)
+    .default([]),
+  /** A signed monthly cost from a date, on that day each month: a rent rise (phase 7C). */
+  costChanges: z
+    .array(
+      z.object({
+        from: isoDate,
+        monthlyAmount: z.number().int().min(-1e13).max(1e13),
+        description: z.string().trim().min(1).max(100),
+      }),
+    )
+    .max(20)
+    .default([]),
 });
 export type ForecastScenario = z.infer<typeof scenarioSchema>;
 

@@ -71,6 +71,11 @@ spending. `POST /api/forecast` accepts `horizonDays`, `lookbackDays`, `incomeSou
 `includeHousehold` and up to three `scenarios`; invalid goal references or one-offs outside
 the horizon return 400. The in-browser demo runs the same route.
 
+## Life events (phase 7C)
+
+Scenarios also accept income pauses, monthly cost changes and report the first dated shortfall
+and reserve use. See [Resilience](RESILIENCE.md#life-events-in-forecasts-7c).
+
 ## Limits
 
 No saved scenarios, investment holdings, superannuation projection, tax modelling, inflation

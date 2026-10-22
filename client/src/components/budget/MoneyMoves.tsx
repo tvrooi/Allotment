@@ -12,6 +12,8 @@ type Preview = {
   sourceAfter: number;
   destinationAfter: number;
   targetNotice: string;
+  /** Set when the move takes the flexibility reserve below its minimum (allowed). */
+  reserveNotice: { minimum: number; availableAfter: number; belowBy: number } | null;
 };
 type Operation = {
   month: string;
@@ -44,6 +46,8 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
       'payday',
       'category-history',
       'review',
+      'forecast',
+      'goals',
     ])
       qc.invalidateQueries({ queryKey: [key] });
   };
@@ -170,6 +174,14 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
               <p>From available after move: {formatCurrency(preview.sourceAfter)}</p>
               <p>To available after move: {formatCurrency(preview.destinationAfter)}</p>
               <p>{preview.targetNotice}</p>
+              {preview.reserveNotice && (
+                <p className="text-caution">
+                  This leaves your flexibility reserve at{' '}
+                  {formatCurrency(preview.reserveNotice.availableAfter)},{' '}
+                  {formatCurrency(preview.reserveNotice.belowBy)} below your{' '}
+                  {formatCurrency(preview.reserveNotice.minimum)} minimum. You can still move it.
+                </p>
+              )}
               <div className="pt-1">
                 <Button
                   size="sm"

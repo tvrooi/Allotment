@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
-import { budgetMonths, budgetMoves } from '../db/schema.js';
+import { budgetMonths, budgetMoves, categoryPurposes, financialPriorities } from '../db/schema.js';
 import { budgetGroups, fundingRevision, fundingState } from './budgetService.js';
 import { todayIso } from './mainAmountService.js';
 
@@ -93,28 +93,74 @@ export function previewMove(month: string, request: MoveRequest) {
     destinationAfter: destination.balance + amount,
     // Targets will consume these same balances when category targets ship in 6C–6D.
     targetNotice: 'Moving money changes the funds available for these purposes.',
+    reserveNotice: reserveNotice(month, request, today),
   };
 }
 export function applyMove(month: string, request: MoveRequest, revision: string) {
   return db.transaction(() => {
     if (revision !== fundingRevision())
       throw new BudgetError('Your budget changed. Refresh the preview.');
-    const preview = previewMove(month, request);
-    write(month, request.sourceId, preview.sourceBefore - request.amount);
-    write(month, request.destinationId, preview.destinationBefore + request.amount);
-    const operation = {
-      id: nanoid(),
-      month,
-      ...request,
-      sourceBefore: preview.sourceBefore,
-      destinationBefore: preview.destinationBefore,
-      afterRevision: fundingRevision(),
-      undone: 0,
-      createdAt: new Date().toISOString(),
-    };
-    db.insert(budgetMoves).values(operation).run();
-    return operation;
+    return moveWithinTransaction(month, request);
   });
+}
+/** The move itself, for a caller that already holds a transaction and checked the revision
+ * (sql.js, used by the demo, cannot nest top-level transactions). */
+export function moveWithinTransaction(month: string, request: MoveRequest) {
+  const preview = previewMove(month, request);
+  write(month, request.sourceId, preview.sourceBefore - request.amount);
+  write(month, request.destinationId, preview.destinationBefore + request.amount);
+  const operation = {
+    id: nanoid(),
+    month,
+    ...request,
+    sourceBefore: preview.sourceBefore,
+    destinationBefore: preview.destinationBefore,
+    afterRevision: fundingRevision(),
+    undone: 0,
+    createdAt: new Date().toISOString(),
+  };
+  db.insert(budgetMoves).values(operation).run();
+  return operation;
+}
+
+/** Runs an assignment change in one transaction, refusing it if it reserves more money
+ * than the budget has (or rates are missing). Shared by manual, target and income writes. */
+export function fundedWrite(action: () => void) {
+  return db.transaction(() => {
+    const before = fundingState();
+    action();
+    const after = fundingState();
+    if (after.reserved > before.reserved && (!after.complete || after.unassigned < 0))
+      throw new BudgetError(
+        after.complete
+          ? 'Insufficient unassigned money. Reduce an assignment or move existing money.'
+          : 'Add missing exchange rates before assigning money.',
+      );
+  });
+}
+
+/** A minimum on the flexibility reserve is a preference (phase 7B): taking it below the
+ * minimum is allowed, with this notice in the preview. */
+function reserveNotice(month: string, request: MoveRequest, today: string) {
+  const minimum = db.select().from(financialPriorities).get()?.reserveMinimum;
+  if (!minimum) return null;
+  const flexible = new Set(
+    db
+      .select()
+      .from(categoryPurposes)
+      .all()
+      .filter((p) => p.purpose === 'flexibility')
+      .map((p) => p.categoryId),
+  );
+  if (!flexible.has(request.sourceId) || flexible.has(request.destinationId)) return null;
+  const available = budgetGroups(today.slice(0, 7), today)
+    .flatMap((g) => g.categories)
+    .filter((c) => flexible.has(c.id))
+    .reduce((s, c) => s + Math.max(0, c.balance), 0);
+  const after = available - request.amount;
+  return after < minimum
+    ? { minimum, availableAfter: after, belowBy: minimum - after, month }
+    : null;
 }
 export function undoMove(id: string) {
   return db.transaction(() => {

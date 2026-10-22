@@ -481,6 +481,7 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
                           (r.targetUnderfunded === null
                             ? ' · no target set'
                             : ` · ${formatCurrency(r.targetUnderfunded)} still needed this month`)}
+                        {r.goalInactive && ' · goal not active, nothing proposed'}
                       </div>
                     </td>
                     <td className="p-2 text-right">{formatCurrency(r.balance)}</td>

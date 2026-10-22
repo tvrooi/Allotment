@@ -9,14 +9,26 @@ import SpendingBreakdown from '../components/dashboard/SpendingBreakdown';
 import RecentTransactions from '../components/dashboard/RecentTransactions';
 import UpcomingBills from '../components/dashboard/UpcomingBills';
 import { HelpFooter } from '../components/layout/HelpFooter';
+import { useQuery } from '@tanstack/react-query';
+import { getResume } from '../api/review';
+import { ReminderBanner } from '../components/review/Resilience';
 
 const now = new Date();
 const currentMonth = format(now, 'yyyy-MM');
 const sixMonthsAgo = format(subMonths(now, 5), 'yyyy-MM');
 
+/** The optional review reminder (phase 7E); renders nothing unless one is due. */
+function Reminder() {
+  const resume = useQuery({ queryKey: ['review', 'resume'], queryFn: getResume });
+  return resume.data ? <ReminderBanner resume={resume.data} /> : null;
+}
+
 export default function Dashboard() {
   return (
     <div className="p-6 max-md:p-4 max-w-[1400px] mx-auto">
+      <div className="mb-5 empty:hidden">
+        <Reminder />
+      </div>
       <div className="mb-6 empty:hidden">
         <GettingStarted currentMonth={currentMonth} />
       </div>

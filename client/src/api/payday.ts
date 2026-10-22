@@ -66,6 +66,8 @@ export interface PaydayPreview {
     uncoveredBills: number;
     /** What the category's target still needs this month; null without a target rule. */
     targetUnderfunded: number | null;
+    /** Its goal is paused, completed or retired (phase 7D): nothing is proposed */
+    goalInactive?: boolean;
   }[];
   bills: {
     id: string;
