@@ -146,3 +146,36 @@ export const previewCardAssignment = (accountId: string, month: string, amount: 
     method: 'POST',
     body: JSON.stringify({ month, amount }),
   });
+
+/** The annual overview (server: services/annualOverview.ts). Balances are never summed. */
+export interface AnnualOverview {
+  year: number;
+  asOf: string;
+  /** The month whose closing balances are shown; null before the year starts */
+  balanceMonth: string | null;
+  months: { month: string; planned: boolean; assigned: number; activity: number; income: number }[];
+  groups: {
+    id: string;
+    name: string;
+    isIncome: boolean;
+    categories: {
+      id: string;
+      name: string;
+      months: { month: string; planned: boolean; assigned: number; activity: number }[];
+      assigned: number;
+      activity: number;
+      available: number | null;
+    }[];
+  }[];
+  totals: { assigned: number; activity: number; income: number; plannedAssigned: number };
+  today: {
+    complete: boolean;
+    available: number;
+    unassigned: number;
+    futureAssigned: number;
+    cards: { accountId: string; name: string; debt: number; reserve: number; shortfall: number }[];
+    paymentShortfall: number;
+  };
+}
+
+export const getAnnualOverview = (year: number) => apiFetch<AnnualOverview>(`/budget/year/${year}`);

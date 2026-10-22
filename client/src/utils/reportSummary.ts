@@ -36,3 +36,22 @@ export function expenseFigure(netCents: number): { value: string; tone: Tone } {
   if (v > 0) return { value: `+${formatCurrency(v)}`, tone: 'positive' };
   return { value: formatCurrency(0), tone: 'neutral' };
 }
+
+/**
+ * Income and spending over a period (docs/MONARCH-DEVELOPMENT-PHASE.md): income is
+ * income-category activity; spending is expense activity net of refunds over the whole
+ * period, never below zero. Transfers, borrowing and valuation changes are neither.
+ */
+export function periodFlow(months: { income: number; expenseNet: number }[]) {
+  const income = months.reduce((s, m) => s + m.income, 0);
+  const spending = Math.max(0, -months.reduce((s, m) => s + m.expenseNet, 0));
+  return { income, spending, net: income - spending };
+}
+
+/**
+ * The share of income not spent, in percent and unrounded; null without positive income
+ * (shown as a dash, never as 0%). Screens differ only in how they round it.
+ */
+export function savingsRate(income: number, spending: number): number | null {
+  return income > 0 ? ((income - spending) / income) * 100 : null;
+}

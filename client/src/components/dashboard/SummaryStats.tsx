@@ -4,7 +4,7 @@ import { useBudget } from '../../hooks/useBudget';
 import { useIncomeVsExpenses } from '../../hooks/useReports';
 import { formatCurrency } from '../../utils/currency';
 import { StatCard } from '../ui/StatCard';
-import { monthsToAverage } from '../../utils/reportSummary';
+import { monthsToAverage, periodFlow, savingsRate } from '../../utils/reportSummary';
 import { usePreferencesStore } from '../../store/preferencesStore';
 
 interface Props {
@@ -49,9 +49,12 @@ export default function SummaryStats({ currentMonth }: Props) {
 
   // Only months since the budget's first income or spending (not the full 12 before it)
   const monthCount = monthsToAverage(ieData);
-  const avgIncome = Math.round(ieData.reduce((sum, p) => sum + p.income, 0) / monthCount);
-  const avgExpenses = Math.round(ieData.reduce((sum, p) => sum + p.expenses, 0) / monthCount);
-  const savingsRate = avgIncome > 0 ? Math.round(((avgIncome - avgExpenses) / avgIncome) * 100) : 0;
+  // The shared definition over the same months (utils/reportSummary.ts), rounded for display
+  const flow = periodFlow(ieData);
+  const avgIncome = Math.round(flow.income / monthCount);
+  const avgExpenses = Math.round(flow.spending / monthCount);
+  const exactRate = savingsRate(flow.income, flow.spending);
+  const rate = exactRate === null ? null : Math.round(exactRate);
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -85,11 +88,11 @@ export default function SummaryStats({ currentMonth }: Props) {
             ))}
           </select>
         </div>
-        {avgIncome > 0 ? (
+        {rate !== null ? (
           <p
-            className={`text-lg font-semibold tabular-nums mt-0.5 ${savingsRate >= savingsGoal ? 'text-positive' : 'text-negative'}`}
+            className={`text-lg font-semibold tabular-nums mt-0.5 ${rate >= savingsGoal ? 'text-positive' : 'text-negative'}`}
           >
-            {savingsRate}%
+            {rate}%
           </p>
         ) : (
           <>

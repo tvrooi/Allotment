@@ -19,6 +19,7 @@ import { formatMoney } from '../../utils/currency';
 import { useAccountCurrency } from '../../hooks/useCurrency';
 import { MainAmountField } from '../currency/MainAmountField';
 import { RECURRENCE_TYPE_LABELS } from '../../types';
+import { GoalLink } from '../goals/GoalLink';
 import type {
   Transaction,
   CategoryGroup,
@@ -300,6 +301,8 @@ export function TransactionDetailPanel({
             </div>
           )}
         </div>
+
+        <GoalLink categoryIds={[tx.categoryId, ...(tx.children ?? []).map((c) => c.categoryId)]} />
 
         {tx.isBudgetBoundary && (
           <div className="text-xs text-text-secondary">

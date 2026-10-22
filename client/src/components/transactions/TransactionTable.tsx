@@ -2,10 +2,17 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, Receipt, SearchX, Upload, Link2 } from 'lucide-react';
 import { useTransactions } from '../../hooks/useTransactions';
+import { SelectionSummary } from './SelectionSummary';
 import { useCategories } from '../../hooks/useCategories';
 import { usePayees } from '../../hooks/usePayees';
 import { useAccounts } from '../../hooks/useAccounts';
-import { TransactionFilters, DEFAULT_FILTERS, filtersToParams } from './TransactionFilters';
+import { TransactionFilters } from './TransactionFilters';
+import {
+  activeFilterCount,
+  DEFAULT_FILTERS,
+  filtersToParams,
+  type FilterState,
+} from '../../utils/transactionFilters';
 import { TransactionFormRow } from './TransactionFormRow';
 import { TransactionRow } from './TransactionRow';
 import { TransactionCard } from './TransactionCard';
@@ -24,7 +31,6 @@ import { formatCurrency } from '../../utils/currency';
 import { transactionValue } from '../../utils/accountMoney';
 import { formatMoney } from '../../utils/currency';
 import { useAccountCurrency, useBudgetCurrency } from '../../hooks/useCurrency';
-import type { FilterState } from './TransactionFilters';
 import type { CategoryGroup } from '../../types';
 import type { CreateTransactionData } from '../../api/transactions';
 import { formatDay, formatDayLong } from '../../utils/dates';
@@ -39,6 +45,9 @@ interface Props {
   categoryIds?: string[];
   categoryGroupId?: string;
   uncategorized?: boolean;
+  /** A merchant drill-down: its payee record, or its stored name ('' = no payee) */
+  payeeIds?: string[];
+  payeeName?: string;
   from?: string;
   to?: string;
   month?: string;
@@ -46,6 +55,10 @@ interface Props {
   overlayDetail?: boolean;
   /** All Transactions: opens the add-transaction dialog from the empty state */
   onAddTransaction?: () => void;
+  /** Filters to start with (All Transactions reads them from its URL) */
+  initialFilters?: FilterState;
+  /** Called whenever the filters change (All Transactions writes them to its URL) */
+  onFiltersChange?: (filters: FilterState) => void;
 }
 
 export function TransactionTable({
@@ -55,18 +68,32 @@ export function TransactionTable({
   categoryIds,
   categoryGroupId,
   uncategorized,
+  payeeIds,
+  payeeName,
   from,
   to,
   month,
   onClearMonth,
   overlayDetail,
   onAddTransaction,
+  initialFilters,
+  onFiltersChange,
 }: Props) {
-  const [filters, setFilters] = useState<FilterState>(() => ({
-    ...DEFAULT_FILTERS,
-    datePreset:
-      categoryId || categoryIds?.length || categoryGroupId ? 'all' : DEFAULT_FILTERS.datePreset,
-  }));
+  const [filters, setFilters] = useState<FilterState>(
+    () =>
+      initialFilters ?? {
+        ...DEFAULT_FILTERS,
+        datePreset:
+          categoryId || categoryIds?.length || categoryGroupId ? 'all' : DEFAULT_FILTERS.datePreset,
+      },
+  );
+  // Report changes after render, so the URL follows the filters (and back/forward restore them)
+  const reported = useRef(filters);
+  useEffect(() => {
+    if (reported.current === filters) return;
+    reported.current = filters;
+    onFiltersChange?.(filters);
+  }, [filters, onFiltersChange]);
   const [showAdd, setShowAdd] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
@@ -77,13 +104,15 @@ export function TransactionTable({
     const base = filtersToParams(filters, accountId);
     if (budgetReport) base.budgetReport = true;
     if (categoryIds?.length) base.categoryIds = categoryIds;
-    else if (categoryId && !base.categoryId) base.categoryId = categoryId;
+    else if (categoryId && !base.categoryIds?.length) base.categoryId = categoryId;
     if (categoryGroupId) base.categoryGroupId = categoryGroupId;
     if (uncategorized) {
       delete base.categoryId;
       delete base.categoryIds;
       base.uncategorized = true;
     }
+    if (payeeIds?.length) base.payeeIds = payeeIds;
+    if (payeeName !== undefined) base.payeeName = payeeName;
     if (from) base.from = from;
     if (to) base.to = to;
     if (month) {
@@ -100,6 +129,8 @@ export function TransactionTable({
     categoryIds,
     categoryGroupId,
     uncategorized,
+    payeeIds,
+    payeeName,
     from,
     to,
     month,
@@ -107,14 +138,21 @@ export function TransactionTable({
   const { data: transactions = [], isLoading } = useTransactions(params);
   // Whether there are any transactions at all here, to tell "nothing yet" from "filtered out"
   const scoped = Boolean(
-    categoryId || categoryIds?.length || categoryGroupId || uncategorized || month || from || to,
+    categoryId ||
+    categoryIds?.length ||
+    categoryGroupId ||
+    uncategorized ||
+    payeeIds?.length ||
+    payeeName !== undefined ||
+    month ||
+    from ||
+    to,
   );
   const { data: anyTransactions = [] } = useTransactions(
     accountId ? { accountId, limit: 1 } : { limit: 1 },
   );
   const isFirstRun = !scoped && anyTransactions.length === 0;
-  const filtersChanged =
-    filters.search !== DEFAULT_FILTERS.search || filters.categoryId !== DEFAULT_FILTERS.categoryId;
+  const filtersChanged = activeFilterCount(filters) > 0;
   const { data: groups = [] } = useCategories();
   const { data: payees = [] } = usePayees();
   const { data: accounts = [] } = useAccounts();
@@ -262,12 +300,16 @@ export function TransactionTable({
           if (month && onClearMonth) onClearMonth();
           setFilters(f);
         }}
-        categoryName={filters.categoryId ? categoryMap.get(filters.categoryId)?.name : undefined}
+        fixedAccount={Boolean(accountId)}
         externalMonth={month}
         externalRange={from && to ? `${formatDay(from)} – ${formatDay(to)}` : undefined}
       />
       <div className="px-4 py-2 border-b border-border-light bg-surface flex flex-wrap gap-2 justify-between items-center">
-        <span className="text-xs text-text-tertiary">{transactions.length} transactions</span>
+        <SelectionSummary
+          params={params}
+          loadedCount={transactions.length}
+          fixedAccount={Boolean(accountId)}
+        />
         {accountId && (
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={() => setShowImport(true)}>
@@ -440,7 +482,12 @@ export function TransactionTable({
                         isSelected={detailId === tx.id}
                         onOpenDetail={setDetailId}
                         onFilterCategory={(catId) =>
-                          setFilters((f) => ({ ...f, categoryId: catId, datePreset: 'all' }))
+                          setFilters((f) => ({
+                            ...f,
+                            categoryIds: [catId],
+                            uncategorized: false,
+                            datePreset: 'all',
+                          }))
                         }
                         onFilterSearch={(search) =>
                           setFilters((f) => ({ ...f, search, datePreset: 'all' }))

@@ -230,7 +230,7 @@ test.describe('account register', () => {
     await page.getByRole('button', { name: 'All Time' }).click();
     await expect(page.getByText('2 transactions')).toBeVisible();
     await page.getByPlaceholder('Search payee or notes…').fill('book');
-    await expect(page.getByText('1 transactions')).toBeVisible();
+    await expect(page.getByText('1 transaction', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Old Bookshop', exact: true })).toBeVisible();
   });
 
@@ -252,6 +252,45 @@ test.describe('account register', () => {
     await expect(page.getByRole('button', { name: 'A-Mart', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'B-Bank', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Rainy Day Savings' })).toBeVisible();
+  });
+
+  test('combines filters, summarises the selection and keeps it in the link', async ({
+    page,
+    api,
+  }) => {
+    // The phase 8 fixture (docs/MONARCH-DEVELOPMENT-PHASE.md), mock data only
+    const { checking, savings } = await setup(api);
+    const day = isoDay();
+    for (const [accountId, amount, payeeName] of [
+      [checking.id, 200_000, 'Mock payroll'],
+      [checking.id, -12_000, 'Mock grocer'],
+      [checking.id, -4_500, 'Mock cafe'],
+      [checking.id, -9_000, 'Mock grocer'],
+      [savings.id, -20_000, 'Mock grocer'],
+    ] as const) {
+      await api.createTransaction({ accountId, date: day, amount, payeeName });
+    }
+    await open(page, '/transactions');
+    await page.getByRole('button', { name: 'Filters' }).click();
+    await page.getByRole('checkbox', { name: 'Everyday Checking' }).check();
+    await page.getByRole('button', { name: 'Money out', exact: true }).click();
+    await page.getByLabel('At least').fill('100.01');
+    await page.getByLabel('At least').press('Enter');
+
+    await expect(page.getByText('1 transaction', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Mock grocer', exact: true })).toHaveCount(1);
+    await expect(page.getByText(/^Out/)).toHaveText('Out $120');
+
+    // The selection is in the URL: a reload keeps it
+    await page.reload();
+    await expect(page.getByText('1 transaction', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Clear all' }).click();
+    await expect(page.getByText('5 transactions', { exact: true })).toBeVisible();
+
+    // Search covers payees across accounts
+    await page.getByPlaceholder('Search payee or notes…').fill('grocer');
+    await expect(page.getByText('3 transactions', { exact: true })).toBeVisible();
+    await expect(page.getByText(/^Out/)).toHaveText('Out $410');
   });
 });
 

@@ -229,6 +229,37 @@ reportsRouter.get('/spending-by-category', (req, res) => {
   );
 });
 
+// Spending by merchant (the payee) under the same definition as categories: budget accounts,
+// split parts, expense and uncategorized activity. `net` keeps its sign (negative = spent), so
+// merchants with net refunds still count and the rows add up to the period's spending.
+reportsRouter.get('/spending-by-payee', (req, res) => {
+  const range = optionalMonthParams(req, res);
+  if (!range) return;
+  const { from, to } = range;
+  const conditions = [budgetActivity, sql`coalesce(${categoryGroups.isIncome}, 0) = 0`];
+  if (from) conditions.push(gte(transactions.date, monthBounds(from).from));
+  if (to) conditions.push(lte(transactions.date, monthBounds(to).to));
+  const payeeName = sql<string>`coalesce(${payees.name}, nullif(${transactions.payeeName}, ''), '')`;
+  const rows = db
+    .select({
+      payeeId: transactions.payeeId,
+      payeeName,
+      net: sql<number>`coalesce(sum(${mainAmount}), 0)`,
+      count: sql<number>`count(distinct coalesce(${transactions.parentTransactionId}, ${transactions.id}))`,
+    })
+    .from(transactions)
+    .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    .leftJoin(categoryGroups, eq(categories.groupId, categoryGroups.id))
+    .leftJoin(payees, eq(transactions.payeeId, payees.id))
+    .where(and(...conditions))
+    // A payee record, else the stored name: rows with neither are "No payee"
+    .groupBy(
+      sql`case when ${transactions.payeeId} is not null then ${transactions.payeeId} else ${payeeName} end`,
+    )
+    .all();
+  res.json(rows.filter((r) => r.net !== 0).sort((a, b) => a.net - b.net));
+});
+
 reportsRouter.get('/income-vs-expenses', (req, res) => {
   const range = monthRangeParams(req, res);
   if (!range) return;
