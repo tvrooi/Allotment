@@ -22,6 +22,24 @@ test('Cash Flow clicks scope transactions to the category, group and chart range
     await api.createTransaction({ accountId: account.id, ...tx });
   await open(page, '/cash-flow');
   await page.getByRole('button', { name: '1M', exact: true }).click();
+
+  // Both ordinary and uncategorized nodes need valid fills after theme changes.
+  const nodes = page.locator('svg rect[rx="3"]');
+  await expect(nodes.first()).toBeVisible();
+  const renderedColors = () =>
+    nodes.evaluateAll((rects) =>
+      rects.map((rect) => ({
+        valid: CSS.supports('color', rect.getAttribute('fill') ?? ''),
+        fill: getComputedStyle(rect).fill,
+      })),
+    );
+  const lightColors = await renderedColors();
+  expect(lightColors.every((color) => color.valid)).toBe(true);
+  await page.evaluate(() => document.documentElement.classList.add('dark'));
+  const darkColors = await renderedColors();
+  expect(darkColors.every((color) => color.valid)).toBe(true);
+  expect(darkColors).not.toEqual(lightColors);
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
   await page.getByRole('button', { name: /Show transactions: .*Groceries$/ }).click();
   const list = page.getByRole('region', { name: /Transactions:/ });
   await expect(list).toContainText('Current groceries');
