@@ -202,7 +202,9 @@ test.describe('preferences', () => {
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download CSV' }).click();
     const csv = fs.readFileSync(await (await download).path(), 'utf8');
-    expect(csv.split('\n')[0]).toBe('Date;Account;Payee;Category;Notes;Amount;Reconciled');
+    expect(csv.split('\n')[0]).toBe(
+      'Date;Account;Payee;Category;Notes;Amount;Reconciled;Tags;Reviewed;Hidden from reports',
+    );
     expect(csv).toContain(';Girokonto;Bäckerei;');
     expect(csv).toContain(';-12,50;');
   });

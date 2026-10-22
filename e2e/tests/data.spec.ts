@@ -595,7 +595,7 @@ test.describe('export, backup and restore', () => {
     await page.getByRole('button', { name: 'Download Backup' }).click();
     const backupFile = await (await download).path();
     const backup = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
-    expect(backup).toMatchObject({ format: 'flybudget-backup', version: 11 });
+    expect(backup).toMatchObject({ format: 'flybudget-backup', version: 12 });
     expect(backup.goals).toHaveLength(1);
     // Never any bank credentials or login data
     expect(Object.keys(backup)).not.toContain('plaidItems');

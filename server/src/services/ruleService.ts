@@ -155,10 +155,10 @@ export function insertNewTransaction(input: NewTransactionInput, opts: InsertOpt
 
   const parts = split && computeSplitAmounts(tx.amount, split);
   if (!parts) {
-    db.transaction(() => {
-      db.insert(transactions).values(row).run();
-      for (const tagId of ruleTags) addTransactionTag(row.id, tagId);
-    });
+    // No transaction of its own: imports already run inside one, and the browser demo's
+    // database can't open a second inside it
+    db.insert(transactions).values(row).run();
+    for (const tagId of ruleTags) addTransactionTag(row.id, tagId);
     return { transaction: row, children: [] };
   }
 
