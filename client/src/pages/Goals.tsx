@@ -151,9 +151,11 @@ function GoalRow({
       )}
       {goal.categoryId && (
         <p className="mt-2 text-xs text-text-secondary">
-          {goal.fundingComplete === false
-            ? 'Funding assessment incomplete — check exchange rates.'
-            : `Assigned this month ${formatCurrency(goal.assignedThisMonth ?? 0)} · Activity ${formatCurrency(goal.activity ?? 0)} · Available ${formatCurrency(goal.available ?? 0)}`}
+          <span>
+            {goal.fundingComplete === false
+              ? 'Funding assessment incomplete — check exchange rates.'
+              : `Assigned this month ${formatCurrency(goal.assignedThisMonth ?? 0)} · Activity ${formatCurrency(goal.activity ?? 0)} · Available ${formatCurrency(goal.available ?? 0)}`}
+          </span>
           {/* Progress comes only from the category: these lead to where its money is moved */}
           <span className="ml-2 inline-flex gap-3" onClick={(e) => e.stopPropagation()}>
             <Link
