@@ -35,9 +35,9 @@ Keep this file and CLAUDE.md identical.
 - Up imports settled AUD only; stable IDs prevent duplicates. Preserve reconciled/user-edited rows.
   Review transfer suggestions; never silently guess transfers. Tokens are encrypted and excluded from exports.
 - Keep host/origin/auth protections. Remote Electron pages must have no Node or preload bridge.
+  HTTPS away from home; never bypass TLS errors.
 - Read-only access tokens (`server/src/auth/accessTokens.ts`) reach only an allowlist of side-effect-free
   GET routes plus the read-only MCP endpoint. Never add a writing, settings, backup, auth or bank route.
-  HTTPS away from home; never bypass TLS errors.
 - HA `/data/options.json` stays root-only; root opens it before dropping to uid 1000. Never regenerate
   an existing key. Supervisor watchdog must be TCP because strict hosts reject its IP-based HTTP probe.
 - Prebuilt HA images need `io.hass.type=app`, version and architecture labels. BuildKit says `arm64`;
