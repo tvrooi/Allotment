@@ -1,6 +1,6 @@
 # Phase 8 expansion proposals
 
-Added 22 October 2026. Status: **proposals only**. Nothing here is implemented or
+Added 22 October 2026. Status: **proposals only**. Proposals 2 and 3 are scheduled as [phase 9](PHASE-9-DEVELOPMENT-PHASE.md). Nothing here is implemented or
 scheduled. Each proposal is bounded so it can become one focused phase or PR series
 under the rules of the [phase 8 brief](MONARCH-DEVELOPMENT-PHASE.md): integer minor
 units, additive migrations, shared transaction write helpers, mock data in tests,
