@@ -1,7 +1,6 @@
 # Phase 9: tags, saved views, review and report visibility
 
-Added 22 October 2026 against main `2be0990` (`0.2.0-up.19`). Status: **planned; brief
-only, no application implementation in this change**.
+Added 22 October 2026 against main `2be0990` (`0.2.0-up.19`). Status: **implemented in `0.2.0-up.20`**.
 
 Phase 9 implements proposals 2 and 3 of the [phase 8 expansion proposals](PHASE-8-PROPOSALS.md)
 (per-transaction review and visibility; tags and saved views). They build on the
@@ -58,7 +57,9 @@ holdings and long-term forecasting stay as proposals.
   or reconciliation. A hidden row still moves money, so the budget must still see it.
   Hiding changes reports only.
 - Hidden rows stay in the register with a mark and are counted in the register
-  summary, which describes bank movement. `hidden=0|1` filters them.
+  summary, which describes bank movement. `hidden=0|1` filters them. The Cash Flow
+  drill-down scope (`budget_report=1`) is report scope, so it leaves hidden rows out
+  and agrees with the chart it came from.
 
 ### Review
 
