@@ -78,9 +78,9 @@ test('auto-hidden navigation expands for keyboard focus and collapses after leav
   await open(page, '/dashboard');
   await page.getByRole('button', { name: 'Pin sidebar' }).click();
   await page.mouse.move(1000, 100);
-  await page.getByRole('button', { name: 'Customize', exact: true }).focus();
   const sidebar = page.getByRole('complementary');
   const dashboard = sidebar.getByRole('link', { name: 'Dashboard', exact: true });
+  // Focus left on the pin by the click doesn't keep it open once the pointer leaves
   await expect(dashboard.locator('span')).toHaveCSS('opacity', '0');
 
   // Focus expands navigation even while the pointer stays outside it.

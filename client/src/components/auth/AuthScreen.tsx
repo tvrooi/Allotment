@@ -10,6 +10,8 @@ export function AuthScreen({
 }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface-alt px-4">
+      {/* macOS desktop app (the reconnect screen): the window has no title bar, so this strip moves it */}
+      <div aria-hidden className="hidden mac-window:block fixed inset-x-0 top-0 h-10 drag-region" />
       <div className="w-full max-w-sm bg-surface rounded-xl border border-border-light shadow-card p-8">
         <div className="flex flex-col items-center mb-6">
           <img src="/logo.png" alt="" className="w-12 h-12 mb-3" />
