@@ -63,19 +63,26 @@ export default function Dashboard() {
   const [customizing, setCustomizing] = useState(false);
 
   return (
-    <div className="p-6 max-md:p-4 max-w-[1400px] mx-auto">
+    <div className="p-8 max-md:p-4 max-w-[1400px] mx-auto">
+      <div className="flex items-center justify-between gap-4 mb-7">
+        <div>
+          <h1 className="font-display text-4xl max-md:text-3xl tracking-tight text-text">
+            Your money, at a glance
+          </h1>
+          <p className="text-sm text-text-secondary mt-2">
+            A little clarity for your everyday plans.
+          </p>
+        </div>
+        <Button variant="secondary" size="sm" onClick={() => setCustomizing(true)}>
+          <LayoutGrid size={15} aria-hidden /> Customize
+        </Button>
+      </div>
       {/* Not cards: they keep their own show/hide rules */}
       <div className="mb-5 empty:hidden">
         <Reminder />
       </div>
       <div className="mb-6 empty:hidden">
         <GettingStarted currentMonth={currentMonth} />
-      </div>
-
-      <div className="flex justify-end mb-2">
-        <Button variant="ghost" size="sm" onClick={() => setCustomizing(true)}>
-          <LayoutGrid size={13} /> Customize
-        </Button>
       </div>
 
       {cards.length === 0 ? (
@@ -92,7 +99,7 @@ export default function Dashboard() {
         />
       ) : (
         // Rows take their tallest card's height, so side-by-side cards line up
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-md:gap-4">
           {cards.map((id) => (
             <section
               key={id}

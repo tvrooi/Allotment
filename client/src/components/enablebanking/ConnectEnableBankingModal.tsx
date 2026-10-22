@@ -655,7 +655,7 @@ function MappingCard({
   const toggle = (active: boolean) =>
     `px-3 py-1 max-md:min-h-11 text-xs font-medium rounded-md transition-colors ${
       active
-        ? 'bg-brand-600 text-white'
+        ? 'bg-brand-600 text-brand-contrast'
         : 'bg-surface text-text-secondary border border-border hover:bg-surface-alt disabled:opacity-40 disabled:cursor-not-allowed'
     }`;
   const fieldClass =

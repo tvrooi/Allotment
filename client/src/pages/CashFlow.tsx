@@ -1179,7 +1179,9 @@ export default function CashFlowPage() {
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 py-4 border-b border-border shrink-0">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-lg font-semibold text-text shrink-0">Cash Flow</h1>
+          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text shrink-0">
+            Cash Flow
+          </h1>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex flex-wrap gap-0">
               {PRESETS.map((p) => (

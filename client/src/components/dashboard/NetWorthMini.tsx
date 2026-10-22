@@ -4,6 +4,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { useNetWorth } from '../../hooks/useReports';
 import { useAccounts } from '../../hooks/useAccounts';
 import { ButtonLink } from '../ui/Button';
+import { Card } from '../ui/Card';
 import { formatCurrency } from '../../utils/currency';
 import { chartColors } from '../../utils/chartColors';
 import { formatDateAxisLabels, formatDateLabel } from '../../utils/chartTicks';
@@ -111,25 +112,23 @@ export default function NetWorthMini() {
 
   if (isLoading) {
     return (
-      <div className="py-2">
+      <Card>
         <div className="flex items-center justify-between mb-2">
           <div className="h-8 w-48 bg-surface-alt rounded animate-pulse" />
           <div className="h-8 w-28 bg-surface-alt rounded animate-pulse" />
         </div>
         <div className="h-28 bg-surface-alt rounded animate-pulse mt-4" />
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div>
-      <div className="flex items-start justify-between">
+    <Card>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <p className="text-xs font-medium text-text-tertiary uppercase tracking-wide">
-            Net Worth
-          </p>
+          <p className="text-sm font-medium text-text-secondary">Net Worth</p>
           <p
-            className={`text-3xl font-semibold tabular-nums mt-1 ${latest >= 0 ? 'text-text' : 'text-negative'}`}
+            className={`text-4xl max-md:text-3xl font-semibold tracking-tight tabular-nums mt-2 break-words ${latest >= 0 ? 'text-text' : 'text-negative'}`}
           >
             {formatCurrency(latest)}
           </p>
@@ -154,6 +153,7 @@ export default function NetWorthMini() {
           </ButtonLink>
         ) : (
           <select
+            aria-label="Net worth period"
             value={preset}
             onChange={(e) => setPreset(e.target.value as Preset)}
             className="text-sm border border-border rounded-lg px-3 py-1.5 bg-surface text-text cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-600"
@@ -193,6 +193,6 @@ export default function NetWorthMini() {
           </ResponsiveContainer>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

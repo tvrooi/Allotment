@@ -254,7 +254,9 @@ export default function HouseholdPage() {
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 py-4 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-lg font-semibold text-text">Household</h1>
+          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+            Household
+          </h1>
           <p className="text-sm text-text-tertiary mt-0.5">
             Agreed shares, pool advances and repayments, tracked privately. Bank payments keep their
             full amounts; claims are not spendable cash.

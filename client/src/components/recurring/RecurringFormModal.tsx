@@ -395,7 +395,7 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem }
           <button
             type="submit"
             disabled={!name || amount === 0 || !canSave}
-            className="px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-md hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 text-sm font-medium text-brand-contrast bg-brand-600 rounded-md hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {editItem ? 'Save Changes' : 'Add Recurring'}
           </button>

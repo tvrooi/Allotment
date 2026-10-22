@@ -1,5 +1,5 @@
 name: FlyBudget Up Preview
-version: '0.2.0-up.20'
+version: '0.2.0-up.21'
 slug: flybudget_up
 description: A private, password-protected budget with native Up Bank transaction imports.
 arch:

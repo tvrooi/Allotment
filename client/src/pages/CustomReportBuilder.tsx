@@ -117,7 +117,9 @@ export default function CustomReportBuilder() {
           >
             <ArrowLeft size={16} />
           </Link>
-          <h1 className="text-lg font-semibold text-text">{reportName || 'Custom Report'}</h1>
+          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+            {reportName || 'Custom Report'}
+          </h1>
           <SavedReportsList activeId={id} />
         </div>
         <div className="flex items-center gap-2">

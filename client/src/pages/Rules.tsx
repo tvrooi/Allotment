@@ -264,7 +264,9 @@ export default function RulesPage() {
       <div className="px-6 py-4 border-b border-border shrink-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-lg font-semibold text-text">Rules</h1>
+            <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+              Rules
+            </h1>
             <p className="text-xs text-text-tertiary mt-0.5">
               Rules run on new and imported transactions, top to bottom. Each matching rule applies,
               and a rule higher up wins when two set the same thing.

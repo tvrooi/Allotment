@@ -91,7 +91,7 @@ function MonthGrid({
               onClick={() => onPick(v)}
               className={`py-1.5 max-md:min-h-11 text-xs font-medium rounded-md transition-colors ${
                 selected
-                  ? 'bg-brand-600 text-white'
+                  ? 'bg-brand-600 text-brand-contrast'
                   : disabled
                     ? 'text-text-disabled cursor-not-allowed'
                     : 'text-text-secondary hover:bg-hover cursor-pointer'
@@ -258,7 +258,7 @@ export function MonthRangePicker({
                 <button
                   type="button"
                   onClick={apply}
-                  className="px-3 py-1 max-md:min-h-11 max-md:min-w-11 text-xs font-medium text-white bg-brand-600 rounded-md hover:bg-brand-700 transition-colors cursor-pointer"
+                  className="px-3 py-1 max-md:min-h-11 max-md:min-w-11 text-xs font-medium text-brand-contrast bg-brand-600 rounded-md hover:bg-brand-700 transition-colors cursor-pointer"
                 >
                   Done
                 </button>
