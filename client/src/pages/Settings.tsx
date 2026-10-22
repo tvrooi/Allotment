@@ -8,6 +8,7 @@ import {
   Link2,
   Server,
   Compass,
+  Tag,
 } from 'lucide-react';
 import { ServerSettings } from '../components/settings/ServerSettings';
 import { CategoryManager } from '../components/settings/CategoryManager';
@@ -17,11 +18,14 @@ import { PreferencesPanel } from '../components/settings/PreferencesPanel';
 import { CurrencySettings } from '../components/settings/CurrencySettings';
 import { ConnectedAccounts } from '../components/settings/ConnectedAccounts';
 import { PrioritiesSettings } from '../components/settings/PrioritiesSettings';
+import { TagManager } from '../components/settings/TagManager';
 import { LICENSE_URL, SOURCE_CODE_URL } from '../utils/project';
 
 const tabs = [
   { id: 'categories', label: 'Categories', icon: Layers },
   { id: 'accounts', label: 'Accounts', icon: ArrowUpDown },
+  // Phase 9 transaction tags
+  { id: 'tags', label: 'Tags', icon: Tag },
   { id: 'connections', label: 'Connected Banks', icon: Link2 },
   // The budget's currency, exchange rates and how each currency is written
   { id: 'currencies', label: 'Currencies', icon: Coins },
@@ -75,6 +79,7 @@ export default function SettingsPage() {
         <div className="max-w-2xl">
           {activeTab === 'categories' && <CategoryManager />}
           {activeTab === 'accounts' && <AccountReorder />}
+          {activeTab === 'tags' && <TagManager />}
           {activeTab === 'connections' && <ConnectedAccounts />}
           {activeTab === 'currencies' && <CurrencySettings />}
           {activeTab === 'priorities' && <PrioritiesSettings />}

@@ -4,6 +4,7 @@ import {
   integer,
   uniqueIndex,
   index,
+  primaryKey,
   customType,
   type AnySQLiteColumn,
 } from 'drizzle-orm/sqlite-core';
@@ -106,6 +107,13 @@ export const transactions = sqliteTable(
     mainAmount: integer('main_amount'),
     /** Where `mainAmount` came from: rate | manual | transfer | missing (services/mainAmounts.ts) */
     mainAmountSource: text('main_amount_source'),
+    /** When the user marked it reviewed (phase 9). Never set by imports, sync, rules or restore */
+    reviewedAt: text('reviewed_at'),
+    /**
+     * 1 to leave it out of income/spending reports (phase 9). Balances, the envelope budget,
+     * forecasts and reconciliation still count it. A split's parts follow their parent.
+     */
+    hiddenFromReports: integer('hidden_from_reports').notNull().default(0),
     createdAt: text('created_at')
       .notNull()
       .default(sql`(datetime('now'))`),
@@ -277,6 +285,40 @@ export const transferMatchDismissals = sqliteTable('transfer_match_dismissals', 
     .notNull()
     .references(() => transactions.id, { onDelete: 'cascade' }),
   dismissedAt: text('dismissed_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+// Phase 9 tags: on register rows (unsplit transactions and split parents); parts inherit
+export const tags = sqliteTable('tags', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  color: text('color').notNull().default('#6366f1'),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+export const transactionTags = sqliteTable(
+  'transaction_tags',
+  {
+    transactionId: text('transaction_id')
+      .notNull()
+      .references(() => transactions.id, { onDelete: 'cascade' }),
+    tagId: text('tag_id')
+      .notNull()
+      .references(() => tags.id, { onDelete: 'cascade' }),
+  },
+  (table) => [primaryKey({ columns: [table.transactionId, table.tagId] })],
+);
+
+/** An All Transactions URL query saved under a name (phase 9) */
+export const savedViews = sqliteTable('saved_views', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  query: text('query').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`),
 });

@@ -8,8 +8,8 @@ import { isLiabilityType } from '../utils/accountTypes.js';
 import { isMonth, isRealDate } from '../utils/validation.js';
 import {
   inAccountBalance,
-  budgetActivity,
-  reportActivity,
+  reportedBudgetActivity,
+  reportedActivity,
   onBudget,
   mainAmount,
 } from '../services/balances.js';
@@ -204,7 +204,7 @@ reportsRouter.get('/spending-by-category', (req, res) => {
   const { from, to } = range;
   // Budget accounts only; splits count through their parts. Only the budget leg of a
   // boundary transfer counts as activity. Income categories aren't spending.
-  const conditions = [budgetActivity, sql`coalesce(${categoryGroups.isIncome}, 0) = 0`];
+  const conditions = [reportedBudgetActivity, sql`coalesce(${categoryGroups.isIncome}, 0) = 0`];
   if (from) conditions.push(gte(transactions.date, monthBounds(from).from));
   if (to) conditions.push(lte(transactions.date, monthBounds(to).to));
 
@@ -236,7 +236,7 @@ reportsRouter.get('/spending-by-payee', (req, res) => {
   const range = optionalMonthParams(req, res);
   if (!range) return;
   const { from, to } = range;
-  const conditions = [budgetActivity, sql`coalesce(${categoryGroups.isIncome}, 0) = 0`];
+  const conditions = [reportedBudgetActivity, sql`coalesce(${categoryGroups.isIncome}, 0) = 0`];
   if (from) conditions.push(gte(transactions.date, monthBounds(from).from));
   if (to) conditions.push(lte(transactions.date, monthBounds(to).to));
   const payeeName = sql<string>`coalesce(${payees.name}, nullif(${transactions.payeeName}, ''), '')`;
@@ -284,7 +284,7 @@ reportsRouter.get('/income-vs-expenses', (req, res) => {
       and(
         gte(transactions.date, monthBounds(from).from),
         lte(transactions.date, monthBounds(to).to),
-        budgetActivity,
+        reportedBudgetActivity,
       ),
     )
     .groupBy(sql`strftime('%Y-%m', ${transactions.date})`, isIncome)
@@ -336,7 +336,7 @@ reportsRouter.get('/cash-flow', (req, res) => {
       and(
         gte(transactions.date, monthBounds(from).from),
         lte(transactions.date, monthBounds(to).to),
-        budgetActivity,
+        reportedBudgetActivity,
       ),
     )
     .groupBy(sql`strftime('%Y-%m', ${transactions.date})`)
@@ -365,7 +365,7 @@ reportsRouter.get('/daily-flow', (req, res) => {
       and(
         gte(transactions.date, monthBounds(from).from),
         lte(transactions.date, monthBounds(to).to),
-        budgetActivity,
+        reportedBudgetActivity,
       ),
     )
     .groupBy(transactions.date)
@@ -378,7 +378,7 @@ reportsRouter.get('/income-by-category', (req, res) => {
   const range = optionalMonthParams(req, res);
   if (!range) return;
   const { from, to } = range;
-  const conditions = [budgetActivity, eq(categoryGroups.isIncome, 1)];
+  const conditions = [reportedBudgetActivity, eq(categoryGroups.isIncome, 1)];
   if (from) conditions.push(gte(transactions.date, monthBounds(from).from));
   if (to) conditions.push(lte(transactions.date, monthBounds(to).to));
 
@@ -409,7 +409,7 @@ reportsRouter.get('/spending-trends', (req, res) => {
   if (typeof category_ids !== 'string' || !category_ids) return res.json([]);
 
   const ids = category_ids.split(',');
-  const conditions = [budgetActivity];
+  const conditions = [reportedBudgetActivity];
   if (from) conditions.push(gte(transactions.date, monthBounds(from).from));
   if (to) conditions.push(lte(transactions.date, monthBounds(to).to));
   // Daily totals (for short ranges) put the date (yyyy-MM-dd) in `month`
@@ -463,7 +463,7 @@ reportsRouter.get('/spending-comparison', (req, res) => {
           gte(transactions.date, from),
           lte(transactions.date, to),
           // Real spending: split parts and the budget leg of boundary transfers
-          budgetActivity,
+          reportedBudgetActivity,
         ),
       )
       .groupBy(transactions.date)
@@ -709,7 +709,7 @@ reportsRouter.get('/custom', (req, res) => {
     gte(transactions.date, monthBounds(from).from),
     lte(transactions.date, monthBounds(to).to),
     // Same activity policy as built-in reports; explicit accounts can include off budget
-    reportActivity,
+    reportedActivity,
   ];
 
   if (balance_type === 'expense') conditions.push(lt(transactions.amount, 0));

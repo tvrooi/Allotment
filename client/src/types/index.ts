@@ -210,6 +210,31 @@ export interface Transaction {
   mainAmountSource?: MainAmountSource | null;
   createdAt: string;
   children?: Transaction[];
+  /** Phase 9: when the user marked it reviewed (null = not reviewed) */
+  reviewedAt?: string | null;
+  /** Phase 9: 1 = left out of income/spending reports (balances and the budget still count it) */
+  hiddenFromReports?: number;
+  /** Phase 9: tag ids on this register row (a split's parts share them) */
+  tagIds?: string[];
+}
+
+/** A tag (phase 9) */
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
+  /** Transactions carrying it (from GET /tags) */
+  count?: number;
+}
+
+/** A saved All Transactions view: its URL query (phase 9) */
+export interface SavedView {
+  id: string;
+  name: string;
+  query: string;
+  sortOrder: number;
+  createdAt: string;
 }
 
 export type MainAmountSource = 'rate' | 'manual' | 'transfer' | 'missing';
@@ -294,6 +319,11 @@ export interface TransactionQueryParams {
   maxAmount?: number;
   transfers?: 'include' | 'exclude';
   reconciled?: 0 | 1;
+  /** Phase 9: register-row state; a split's parts share it */
+  reviewed?: 0 | 1;
+  hidden?: 0 | 1;
+  /** Any of these tags */
+  tagIds?: string[];
   limit?: number;
   offset?: number;
 }
@@ -626,7 +656,8 @@ export interface RuleSplitPart {
 export type RuleAction =
   | { type: 'set_category' | 'set_payee'; value: string }
   | { type: 'set_notes' | 'prepend_notes' | 'append_notes'; value: string }
-  | { type: 'split'; parts: RuleSplitPart[] };
+  | { type: 'split'; parts: RuleSplitPart[] }
+  | { type: 'add_tag'; value: string };
 
 export interface Rule {
   id: string;
@@ -788,6 +819,8 @@ export interface RulePreviewItem {
     category?: { from: string | null; to: string | null };
     notes?: { from: string | null; to: string | null };
     split?: Array<{ amount: number; categoryId: string | null; notes: string | null }>;
+    /** Tags the rules would add (phase 9) */
+    tags?: string[];
   };
 }
 

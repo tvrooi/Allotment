@@ -73,6 +73,9 @@ export function transactionQuery(params: TransactionQueryParams = {}): URLSearch
   if (params.maxAmount !== undefined) q.set('max_amount', String(params.maxAmount));
   if (params.transfers === 'exclude') q.set('transfers', 'exclude');
   if (params.reconciled !== undefined) q.set('reconciled', String(params.reconciled));
+  if (params.reviewed !== undefined) q.set('reviewed', String(params.reviewed));
+  if (params.hidden !== undefined) q.set('hidden', String(params.hidden));
+  if (params.tagIds?.length) q.set('tag_ids', params.tagIds.join(','));
   return q;
 }
 
@@ -164,4 +167,48 @@ export const importConfirm = (accountId: string, rows: ImportRow[]) =>
   apiFetch<{ imported: number; skipped: number }>('/transactions/import/confirm', {
     method: 'POST',
     body: JSON.stringify({ accountId, rows }),
+  });
+
+// ─── Phase 9: review, report visibility and tags ──────────────────────────────
+
+export const setTransactionFlags = (
+  id: string,
+  flags: { reviewed?: boolean; hiddenFromReports?: boolean },
+) =>
+  apiFetch<Transaction>(`/transactions/${id}/flags`, {
+    method: 'PATCH',
+    body: JSON.stringify(flags),
+  });
+
+export const setTransactionTags = (id: string, tagIds: string[]) =>
+  apiFetch<{ tagIds: string[] }>(`/transactions/${id}/tags`, {
+    method: 'PUT',
+    body: JSON.stringify({ tagIds }),
+  });
+
+export interface ReviewChange {
+  id: string;
+  previous: string | null;
+}
+
+/** Mark the selection reviewed; refused (409) if it no longer has `expectedCount` rows */
+export const reviewSelection = (
+  params: TransactionQueryParams,
+  reviewed: boolean,
+  expectedCount: number,
+) =>
+  apiFetch<{ matched: number; changes: ReviewChange[] }>('/transactions/review', {
+    method: 'POST',
+    body: JSON.stringify({
+      selection: Object.fromEntries(transactionQuery(params)),
+      reviewed,
+      expectedCount,
+    }),
+  });
+
+/** Undo a review: put these rows' previous states back */
+export const restoreReview = (changes: ReviewChange[]) =>
+  apiFetch<{ restored: number }>('/transactions/review', {
+    method: 'POST',
+    body: JSON.stringify({ restore: changes }),
   });

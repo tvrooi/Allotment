@@ -1,3 +1,4 @@
+import { RowMarks } from './TransactionMarks';
 import { useMemo, useState } from 'react';
 import { ChevronRight, ChevronDown, ArrowRight, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -133,6 +134,7 @@ export function TransactionRow({
           ) : (
             <span className="text-sm font-medium text-text truncate">{payeeName}</span>
           )}
+          <RowMarks tx={tx} />
           {tx.payeeName && onFilterSearch && (
             <button
               className={`${arrowBase} group-hover/payee:opacity-100`}

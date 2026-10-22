@@ -7,6 +7,8 @@ import type { TransactionQueryParams } from '../types';
 
 export type DatePreset = 'this-month' | 'last-3' | 'this-year' | 'all' | 'custom';
 export type Direction = 'all' | 'debit' | 'credit';
+/** A yes/no register-row state filter (phase 9): reviewed, hidden from reports */
+export type Tristate = 'all' | 'yes' | 'no';
 
 export interface FilterState {
   search: string;
@@ -22,6 +24,10 @@ export interface FilterState {
   minAmount: number | null;
   maxAmount: number | null;
   excludeTransfers: boolean;
+  /** Phase 9: any of these tags; reviewed and hidden-from-reports state */
+  tagIds: string[];
+  reviewed: Tristate;
+  hidden: Tristate;
   // Scope a drill-down brings with it (Cash Flow, reports, merchant breakdown)
   budgetReport: boolean;
   categoryGroupId: string | null;
@@ -42,6 +48,9 @@ export const DEFAULT_FILTERS: FilterState = {
   minAmount: null,
   maxAmount: null,
   excludeTransfers: false,
+  tagIds: [],
+  reviewed: 'all',
+  hidden: 'all',
   budgetReport: false,
   categoryGroupId: null,
   uncategorized: false,
@@ -65,6 +74,9 @@ export const FILTER_KEYS = new Set([
   'budget_report',
   'category_group_id',
   'uncategorized',
+  'tag_ids',
+  'reviewed',
+  'hidden',
 ]);
 
 const PRESETS: DatePreset[] = ['this-month', 'last-3', 'this-year', 'all', 'custom'];
@@ -110,6 +122,9 @@ export function filtersToParams(
   if (f.minAmount !== null) p.minAmount = f.minAmount;
   if (f.maxAmount !== null) p.maxAmount = f.maxAmount;
   if (f.excludeTransfers) p.transfers = 'exclude';
+  if (f.tagIds.length) p.tagIds = f.tagIds;
+  if (f.reviewed !== 'all') p.reviewed = f.reviewed === 'yes' ? 1 : 0;
+  if (f.hidden !== 'all') p.hidden = f.hidden === 'yes' ? 1 : 0;
   if (f.budgetReport) p.budgetReport = true;
   return p;
 }
@@ -125,6 +140,9 @@ export function activeFilterCount(f: FilterState): number {
     f.direction !== 'all',
     f.minAmount !== null || f.maxAmount !== null,
     f.excludeTransfers,
+    f.tagIds.length > 0,
+    f.reviewed !== 'all',
+    f.hidden !== 'all',
     f.budgetReport,
   ].filter(Boolean).length;
 }
@@ -135,6 +153,7 @@ const isDay = (s: string | null): s is string => {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
 };
 const ids = (s: string | null) => (s ? s.split(',').filter(Boolean).slice(0, 500) : []);
+const tristate = (s: string | null): Tristate => (s === '1' ? 'yes' : s === '0' ? 'no' : 'all');
 const amount = (s: string | null) => (s !== null && /^\d{1,13}$/.test(s) ? Number(s) : null);
 
 /**
@@ -158,6 +177,9 @@ export function filtersFromSearch(sp: URLSearchParams): FilterState {
     minAmount: amount(sp.get('min_amount')),
     maxAmount: amount(sp.get('max_amount')),
     excludeTransfers: sp.get('transfers') === 'exclude',
+    tagIds: ids(sp.get('tag_ids')),
+    reviewed: tristate(sp.get('reviewed')),
+    hidden: tristate(sp.get('hidden')),
     budgetReport: sp.get('budget_report') === '1',
     categoryGroupId: sp.get('category_group_id') || null,
     uncategorized: sp.get('uncategorized') === '1',
@@ -176,7 +198,11 @@ export function filtersFromSearch(sp: URLSearchParams): FilterState {
   } else {
     // A drill-down to a category or merchant shows all of its history
     const scoped =
-      f.categoryIds.length || f.categoryGroupId || f.uncategorized || f.payeeIds.length;
+      f.categoryIds.length ||
+      f.categoryGroupId ||
+      f.uncategorized ||
+      f.payeeIds.length ||
+      f.tagIds.length;
     f.datePreset = scoped || f.payeeName !== null ? 'all' : DEFAULT_FILTERS.datePreset;
   }
   return f;
@@ -200,6 +226,9 @@ export function filtersToSearch(f: FilterState): URLSearchParams {
   if (f.minAmount !== null) sp.set('min_amount', String(f.minAmount));
   if (f.maxAmount !== null) sp.set('max_amount', String(f.maxAmount));
   if (f.excludeTransfers) sp.set('transfers', 'exclude');
+  if (f.tagIds.length) sp.set('tag_ids', f.tagIds.join(','));
+  if (f.reviewed !== 'all') sp.set('reviewed', f.reviewed === 'yes' ? '1' : '0');
+  if (f.hidden !== 'all') sp.set('hidden', f.hidden === 'yes' ? '1' : '0');
   if (f.budgetReport) sp.set('budget_report', '1');
   if (f.categoryGroupId) sp.set('category_group_id', f.categoryGroupId);
   if (f.uncategorized) sp.set('uncategorized', '1');

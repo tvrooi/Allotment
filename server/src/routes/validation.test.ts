@@ -210,11 +210,15 @@ describe('transactions CSV in either number format', () => {
       fetch(`${base}/export/transactions/csv?from=2026-01-05&to=2026-01-05${q}`);
 
     const comma = await (await get('&decimal=comma')).text();
-    expect(comma.split('\n')[0]).toBe('Date;Account;Payee;Category;Notes;Amount;Reconciled');
+    expect(comma.split('\n')[0]).toBe(
+      'Date;Account;Payee;Category;Notes;Amount;Reconciled;Tags;Reviewed;Hidden from reports',
+    );
     expect(comma).toContain('2026-01-05;Girokonto;"Bäckerei; Café";;;-12,50;No');
 
     const dot = await (await get('')).text();
-    expect(dot.split('\n')[0]).toBe('Date,Account,Payee,Category,Notes,Amount,Reconciled');
+    expect(dot.split('\n')[0]).toBe(
+      'Date,Account,Payee,Category,Notes,Amount,Reconciled,Tags,Reviewed,Hidden from reports',
+    );
     expect(dot).toContain('2026-01-05,Girokonto,Bäckerei; Café,,,-12.50,No');
 
     expect((await get('&decimal=bogus')).status).toBe(400);

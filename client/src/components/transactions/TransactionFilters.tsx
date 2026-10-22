@@ -3,6 +3,7 @@ import { Search, X, SlidersHorizontal } from 'lucide-react';
 import { useCategories } from '../../hooks/useCategories';
 import { usePayees } from '../../hooks/usePayees';
 import { useAccounts } from '../../hooks/useAccounts';
+import { useTags } from '../../hooks/useTags';
 import {
   amountToInput,
   formatCurrency,
@@ -17,6 +18,7 @@ import {
   type DatePreset,
   type Direction,
   type FilterState,
+  type Tristate,
 } from '../../utils/transactionFilters';
 
 const DATE_PRESETS: { value: DatePreset; label: string }[] = [
@@ -33,9 +35,53 @@ const DIRECTIONS: { value: Direction; label: string }[] = [
   { value: 'credit', label: 'Money in' },
 ];
 
+const TRISTATE: { value: Tristate; label: string }[] = [
+  { value: 'all', label: 'Any' },
+  { value: 'yes', label: 'Yes' },
+  { value: 'no', label: 'No' },
+];
+
+/** A row of mutually exclusive buttons */
+function Segmented<T extends string>({
+  legend,
+  options,
+  value,
+  onChange,
+}: {
+  legend: string;
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <fieldset>
+      <legend className="text-xs font-medium text-text-secondary mb-1">{legend}</legend>
+      <div className="inline-flex rounded-md border border-border overflow-hidden">
+        {options.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={value === o.value}
+            onClick={() => onChange(o.value)}
+            className={`px-2.5 py-1 max-md:min-h-11 text-xs font-medium ${
+              value === o.value
+                ? 'bg-brand-600 text-white'
+                : 'bg-surface text-text-secondary hover:text-text'
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 interface Props {
   state: FilterState;
   onChange: (s: FilterState) => void;
+  /** All Transactions: offers to save the current filters as a view */
+  onSaveView?: () => void;
   /** An account's own register: no account filter */
   fixedAccount?: boolean;
   externalMonth?: string;
@@ -177,12 +223,14 @@ export function TransactionFilters({
   fixedAccount,
   externalMonth,
   externalRange,
+  onSaveView,
 }: Props) {
   const [rawSearch, setRawSearch] = useState(state.search);
   const [open, setOpen] = useState(false);
   const { data: groups = [] } = useCategories();
   const { data: payees = [] } = usePayees();
   const { data: accounts = [] } = useAccounts();
+  const { data: tags = [] } = useTags();
 
   useEffect(() => {
     setRawSearch(state.search);
@@ -327,26 +375,12 @@ export function TransactionFilters({
             onChange={(payeeIds) => set({ payeeIds })}
           />
           <div className="space-y-3 min-w-0">
-            <fieldset>
-              <legend className="text-xs font-medium text-text-secondary mb-1">Direction</legend>
-              <div className="inline-flex rounded-md border border-border overflow-hidden">
-                {DIRECTIONS.map((d) => (
-                  <button
-                    key={d.value}
-                    type="button"
-                    aria-pressed={state.direction === d.value}
-                    onClick={() => set({ direction: d.value })}
-                    className={`px-2.5 py-1 max-md:min-h-11 text-xs font-medium ${
-                      state.direction === d.value
-                        ? 'bg-brand-600 text-white'
-                        : 'bg-surface text-text-secondary hover:text-text'
-                    }`}
-                  >
-                    {d.label}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
+            <Segmented
+              legend="Direction"
+              options={DIRECTIONS}
+              value={state.direction}
+              onChange={(direction) => set({ direction })}
+            />
             <fieldset>
               <legend className="text-xs font-medium text-text-secondary mb-1">
                 Amount (inclusive, either direction)
@@ -393,6 +427,28 @@ export function TransactionFilters({
               />
               <span className="text-sm text-text-secondary">Hide transfers</span>
             </label>
+          </div>
+          {tags.length > 0 && (
+            <CheckList
+              label="Tags"
+              options={tags}
+              selected={state.tagIds}
+              onChange={(tagIds) => set({ tagIds })}
+            />
+          )}
+          <div className="space-y-3 min-w-0">
+            <Segmented
+              legend="Reviewed"
+              options={TRISTATE}
+              value={state.reviewed}
+              onChange={(reviewed) => set({ reviewed })}
+            />
+            <Segmented
+              legend="Hidden from reports"
+              options={TRISTATE}
+              value={state.hidden}
+              onChange={(hidden) => set({ hidden })}
+            />
           </div>
         </div>
       )}
@@ -451,6 +507,24 @@ export function TransactionFilters({
           {state.excludeTransfers && (
             <Chip label="No transfers" onClear={() => set({ excludeTransfers: false })} />
           )}
+          {state.tagIds.length > 0 && (
+            <Chip
+              label={`Tagged ${listLabel(state.tagIds.map((id) => nameOf(tags, id)))}`}
+              onClear={() => set({ tagIds: [] })}
+            />
+          )}
+          {state.reviewed !== 'all' && (
+            <Chip
+              label={state.reviewed === 'yes' ? 'Reviewed' : 'Not reviewed'}
+              onClear={() => set({ reviewed: 'all' })}
+            />
+          )}
+          {state.hidden !== 'all' && (
+            <Chip
+              label={state.hidden === 'yes' ? 'Hidden from reports' : 'Shown in reports'}
+              onClear={() => set({ hidden: 'all' })}
+            />
+          )}
           <button
             type="button"
             onClick={() =>
@@ -465,6 +539,15 @@ export function TransactionFilters({
           >
             Clear all
           </button>
+          {onSaveView && (
+            <button
+              type="button"
+              onClick={onSaveView}
+              className="text-xs text-brand-600 hover:text-brand-700"
+            >
+              Save view
+            </button>
+          )}
           {state.datePreset === 'custom' && (state.from || state.to) && (
             <span className="text-xs text-text-tertiary">
               {state.from ? formatDay(state.from) : 'Start'} –{' '}

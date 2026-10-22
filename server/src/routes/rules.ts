@@ -80,6 +80,7 @@ const actionSchema = z.union([
     value: z.string().max(5_000),
   }),
   z.object({ type: z.literal('split'), parts: z.array(splitPartSchema).min(1).max(20) }),
+  z.object({ type: z.literal('add_tag'), value: id }),
 ]);
 
 const conditionsOp = z.enum(['and', 'or']);

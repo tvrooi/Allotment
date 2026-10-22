@@ -45,6 +45,17 @@ export const reportActivity: SQL = and(
 )!;
 export const budgetActivity: SQL = and(onBudget, reportActivity)!;
 
+/**
+ * Rows the user has not hidden from reports (phase 9). A split part follows its parent. Only
+ * income/spending reports use this: balances, the envelope budget, forecasts and
+ * reconciliation still count hidden rows, because they still moved money.
+ */
+export const shownInReports: SQL = sql`coalesce((select p.hidden_from_reports from transactions p where p.id = "transactions"."parent_transaction_id"), "transactions"."hidden_from_reports") = 0`;
+/** budgetActivity for reports: what Cash Flow, categories, merchants and trends count */
+export const reportedBudgetActivity: SQL = and(budgetActivity, shownInReports)!;
+/** reportActivity for reports that choose their own accounts (custom reports) */
+export const reportedActivity: SQL = and(reportActivity, shownInReports)!;
+
 /** Sum of an account's transactions, as added to its starting balance. */
 export function accountTransactionSum(accountId: string): number {
   const row = db

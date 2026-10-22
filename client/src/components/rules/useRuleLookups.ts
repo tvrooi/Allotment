@@ -2,16 +2,18 @@ import { useMemo } from 'react';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useCategories } from '../../hooks/useCategories';
 import { usePayees } from '../../hooks/usePayees';
+import { useTags } from '../../hooks/useTags';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import type { RuleLookups } from '../../utils/ruleFormat';
 import type { CategoryGroup } from '../../types';
 import type { PickerOption } from './OptionPicker';
 
-/** Names and picker options for the payees, accounts and categories rules refer to */
+/** Names and picker options for the payees, accounts, categories and tags rules refer to */
 export function useRuleLookups() {
   const { data: payees = [] } = usePayees();
   const { data: accounts = [] } = useAccounts();
   const { data: groups = [] } = useCategories();
+  const { data: tags = [] } = useTags();
   const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
 
   return useMemo(() => {
@@ -31,11 +33,14 @@ export function useRuleLookups() {
     const payeeNames = names(payeeOptions);
     const accountNames = names(accountOptions);
     const categoryNames = names(categoryOptions);
+    const tagOptions: PickerOption[] = tags.map((t) => ({ id: t.id, label: t.name }));
+    const tagNames = names(tagOptions);
     const lookups: RuleLookups = {
       payee: (id) => payeeNames.get(id),
       account: (id) => accountNames.get(id),
       category: (id) => categoryNames.get(id),
+      tag: (id) => tagNames.get(id),
     };
-    return { lookups, payeeOptions, accountOptions, categoryOptions };
-  }, [payees, accounts, groups, showCategoryIcons]);
+    return { lookups, payeeOptions, accountOptions, categoryOptions, tagOptions };
+  }, [payees, accounts, groups, tags, showCategoryIcons]);
 }
