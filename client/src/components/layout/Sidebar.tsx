@@ -111,7 +111,7 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
   return (
     <div className="w-[232px] h-full flex flex-col bg-sidebar-bg">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 py-5 border-b border-sidebar-border">
+      <div className="shrink-0 flex items-center gap-2.5 px-4 py-5 border-b border-sidebar-border">
         <img src={logoUrl} alt="" className="w-7 h-7 shrink-0" />
         {/* Brand colours follow the light and dark navigation surfaces. */}
         <BrandName
@@ -167,77 +167,85 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
         </div>
       </div>
 
-      {/* Primary nav */}
-      <nav className="pt-4 px-3 space-y-1">
-        <NavItem
-          to="/dashboard"
-          icon={<LayoutDashboard size={18} />}
-          label="Dashboard"
-          collapsed={!isExpanded}
-        />
-        <NavItem
-          to="/accounts"
-          icon={<Landmark size={18} />}
-          label="Accounts"
-          collapsed={!isExpanded}
-        />
-        <NavItem
-          to="/transactions"
-          icon={<ArrowLeftRight size={18} />}
-          label="Transactions"
-          collapsed={!isExpanded}
-        />
-        <NavItem to="/budget" icon={<Wallet size={18} />} label="Budget" collapsed={!isExpanded} />
-        <NavItem
-          to="/review"
-          icon={<ClipboardCheck size={18} />}
-          label="Review"
-          collapsed={!isExpanded}
-        />
-        <NavItem
-          to="/recurring"
-          icon={<Repeat size={18} />}
-          label="Recurring"
-          collapsed={!isExpanded}
-        />
-        <NavItem
-          to="/household"
-          icon={<House size={18} />}
-          label="Household"
-          collapsed={!isExpanded}
-        />
-        <NavItem
-          to="/reports"
-          icon={<BarChart3 size={18} />}
-          label="Reports"
-          collapsed={!isExpanded}
-        />
-        <NavItem
-          to="/cash-flow"
-          icon={<Workflow size={18} />}
-          label="Cash Flow"
-          collapsed={!isExpanded}
-        />
-        <NavItem to="/goals" icon={<Target size={18} />} label="Goals" collapsed={!isExpanded} />
-        <NavItem
-          to="/forecast"
-          icon={<TrendingUp size={18} />}
-          label="Forecast"
-          collapsed={!isExpanded}
-        />
-      </nav>
+      {/* Navigation and accounts share a scroll area on short screens. */}
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+        {/* Primary nav */}
+        <nav className="pt-4 px-3 space-y-1">
+          <NavItem
+            to="/dashboard"
+            icon={<LayoutDashboard size={18} />}
+            label="Dashboard"
+            collapsed={!isExpanded}
+          />
+          <NavItem
+            to="/accounts"
+            icon={<Landmark size={18} />}
+            label="Accounts"
+            collapsed={!isExpanded}
+          />
+          <NavItem
+            to="/transactions"
+            icon={<ArrowLeftRight size={18} />}
+            label="Transactions"
+            collapsed={!isExpanded}
+          />
+          <NavItem
+            to="/budget"
+            icon={<Wallet size={18} />}
+            label="Budget"
+            collapsed={!isExpanded}
+          />
+          <NavItem
+            to="/review"
+            icon={<ClipboardCheck size={18} />}
+            label="Review"
+            collapsed={!isExpanded}
+          />
+          <NavItem
+            to="/recurring"
+            icon={<Repeat size={18} />}
+            label="Recurring"
+            collapsed={!isExpanded}
+          />
+          <NavItem
+            to="/household"
+            icon={<House size={18} />}
+            label="Household"
+            collapsed={!isExpanded}
+          />
+          <NavItem
+            to="/reports"
+            icon={<BarChart3 size={18} />}
+            label="Reports"
+            collapsed={!isExpanded}
+          />
+          <NavItem
+            to="/cash-flow"
+            icon={<Workflow size={18} />}
+            label="Cash Flow"
+            collapsed={!isExpanded}
+          />
+          <NavItem to="/goals" icon={<Target size={18} />} label="Goals" collapsed={!isExpanded} />
+          <NavItem
+            to="/forecast"
+            icon={<TrendingUp size={18} />}
+            label="Forecast"
+            collapsed={!isExpanded}
+          />
+        </nav>
 
-      {/* Account list */}
-      <div
-        className={`flex-1 flex flex-col min-h-0 overflow-hidden transition-opacity duration-200 ${
-          isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-      >
-        <SidebarAccountList />
+        {/* Account list */}
+        <div
+          className={`flex flex-col min-h-40 pb-3 transition-opacity duration-200 ${
+            isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          <SidebarAccountList />
+        </div>
       </div>
 
       {/* Footer nav */}
-      <nav className="py-3 px-3 border-t border-sidebar-border space-y-1">
+      <nav className="shrink-0 py-3 px-3 border-t border-sidebar-border space-y-1">
         <NavItem to="/payees" icon={<Users size={18} />} label="Payees" collapsed={!isExpanded} />
         <NavItem to="/rules" icon={<Zap size={18} />} label="Rules" collapsed={!isExpanded} />
         <NavItem
@@ -249,7 +257,7 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
       </nav>
 
       {/* Where the data lives and whether the server is reachable */}
-      <div className="py-1.5 px-3 border-t border-sidebar-border">
+      <div className="shrink-0 py-1.5 px-3 border-t border-sidebar-border">
         <ServerStatus collapsed={!isExpanded} />
       </div>
     </div>

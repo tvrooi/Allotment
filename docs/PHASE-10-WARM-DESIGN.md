@@ -55,8 +55,9 @@ bank integration or authorization changes belong in this phase.
 
 - Client: all 224 unit tests pass; production TypeScript/Vite build passes.
 - Desktop: dashboard customization, navigation, settings and report suites pass,
-  including the new keyboard-focus regression for auto-hidden navigation.
-- Phone: all 16 layout, drawer, transaction, budget, dialog and touch-target checks
+  including the new keyboard-focus regression for auto-hidden navigation. Navigation
+  and accounts share a scroll area so short drawers retain their account links.
+- Phone: all 17 layout, drawer, transaction, budget, dialog and touch-target checks
   pass. The all-pages overflow check covers a 390px screen.
 - Demo: all 11 existing browser flows pass, including preferences and bank/data
   isolation checks.
