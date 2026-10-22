@@ -1,6 +1,7 @@
 import { monthEnd, perPeriodNeed } from './fundingMath.js';
 import { fundingState } from './budgetService.js';
 import { budgetWithTargets } from './targetService.js';
+import { inactiveGoalCategories } from './goalLifecycle.js';
 import { personalBudgetAccount } from './balances.js';
 import { and, eq, lte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -17,6 +18,7 @@ import {
   paydayPlans,
   paydayFundingEvents,
   paydayFundingReceipts,
+  incomeReviews,
 } from '../db/schema.js';
 import { budgetActivity, mainAmount } from './balances.js';
 import { currencyContext, convertAmount } from './mainAmountService.js';
@@ -88,13 +90,19 @@ export function validateCategories(config: PaydayConfig) {
     throw new PaydayError('Funding rules must use existing expense or savings categories');
 }
 export function incomeOptions(today: string) {
-  const used = new Set(
-    db
+  // A deposit funds one payday event or one extra-income split (phase 7F), never both.
+  const used = new Set([
+    ...db
       .select()
       .from(paydayFundingReceipts)
       .all()
       .map((r) => r.transactionId),
-  );
+    ...db
+      .select()
+      .from(incomeReviews)
+      .all()
+      .map((r) => r.transactionId),
+  ]);
   return (
     db
       .select({
@@ -280,6 +288,8 @@ export function previewPayday(planId: string, request: PaydayRequest) {
       day(request.actualPayDate > today ? request.actualPayDate : today, 1),
       monthEnd(month),
     ).filter((p) => p.scheduledDate > request.scheduledDate).length;
+  // A paused, completed or retired goal (7D) gets no new funding from any rule.
+  const inactive = inactiveGoalCategories();
   let remaining = available;
   const rows = rules
     .filter((r) => r.method !== 'remainder')
@@ -311,6 +321,7 @@ export function previewPayday(planId: string, request: PaydayRequest) {
       const target = rule.method === 'target' ? targets.get(rule.categoryId) : null;
       if (target && !target.ended) needed = perPeriodNeed(target.underfunded, 0, paysLeftInMonth);
       if (rule.method === 'remainder') needed = remaining;
+      if (inactive.has(rule.categoryId)) needed = 0;
       const allocated = Math.min(needed, remaining);
       remaining -= allocated;
       return {
@@ -324,6 +335,7 @@ export function previewPayday(planId: string, request: PaydayRequest) {
         shortfall: needed - allocated,
         uncoveredBills: Math.max(0, billsDue - balance - allocated),
         targetUnderfunded: rule.method === 'target' ? (target?.underfunded ?? null) : null,
+        goalInactive: inactive.has(rule.categoryId),
       };
     });
   return {

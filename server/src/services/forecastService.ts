@@ -1,4 +1,5 @@
-import { perPeriodNeed } from './fundingMath.js';
+import { addMonthsTo, monthEnd, perPeriodNeed } from './fundingMath.js';
+import { resilienceState } from './resilienceService.js';
 import { and, eq, gt, inArray, isNotNull, lte, notInArray, sql } from 'drizzle-orm';
 import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { db } from '../db/index.js';
@@ -46,7 +47,7 @@ const floorDiv = (a: bigint, b: bigint) => {
 export type ForecastEvent = {
   id: string;
   date: string;
-  kind: 'income' | 'bill' | 'scheduled' | 'household' | 'register' | 'one-off';
+  kind: 'income' | 'bill' | 'scheduled' | 'household' | 'register' | 'one-off' | 'cost-change';
   description: string;
   amount: number;
   categoryId: string | null;
@@ -371,6 +372,7 @@ function variableSpending(today: string, lookbackDays: number, excludeHousehold:
 type GoalPlan = {
   id: string;
   name: string;
+  status: string;
   source: 'category' | 'manual';
   categoryId: string | null;
   start: number | null;
@@ -388,6 +390,7 @@ function goalPlans(today: string, warnings: string[]): GoalPlan[] {
   return rows.map((g) => ({
     id: g.id,
     name: g.name,
+    status: g.status,
     source: g.categoryId ? 'category' : 'manual',
     categoryId: g.categoryId,
     start: g.categoryId
@@ -410,7 +413,8 @@ function plannedContribution(
   incomePercent: number,
 ) {
   const rule = plan.rules.find((r) => r.categoryId === goal.categoryId);
-  if (!rule) return 0;
+  // A paused, completed or retired goal (7D) receives no planned contributions.
+  if (!rule || goal.status !== 'active') return 0;
   if (rule.method === 'fixed') return rule.amount;
   if (rule.method === 'percentage')
     return Number(
@@ -442,15 +446,41 @@ function projectScenario(
     notes: Set<string>;
     warnings: string[];
     end: string;
+    reserve: number | null;
   },
 ) {
   const { today, dates } = ctx;
-  const income =
+  const expectedIncome =
     ctx.incomeSource === 'payday'
       ? paydayEvents(ctx.plans, today, ctx.end, scenario.incomePercent)
       : scheduledEvents(today, ctx.end, 'schedules', scenario.incomePercent, new Set(), []).filter(
           (e) => e.kind === 'income',
         );
+  const paused = (date: string) =>
+    scenario.incomePauses.some((p) => p.from <= date && date <= p.to);
+  const income = expectedIncome.filter((e) => !paused(e.date));
+  const pausedIncome = expectedIncome
+    .filter((e) => paused(e.date) && e.date >= today && e.date <= ctx.end)
+    .reduce((s, e) => s + e.amount, 0);
+  const costChanges = scenario.costChanges.flatMap((c, i) => {
+    const events: ForecastEvent[] = [];
+    for (let m = 0; ; m++) {
+      const month = addMonthsTo(c.from.slice(0, 7), m);
+      const last = Number(monthEnd(month).slice(8));
+      const date = `${month}-${String(Math.min(Number(c.from.slice(8)), last)).padStart(2, '0')}`;
+      if (date > ctx.end) break;
+      events.push({
+        id: `cost-change:${i}:${month}`,
+        date,
+        kind: 'cost-change',
+        description: c.description,
+        amount: -c.monthlyAmount,
+        categoryId: null,
+        estimated: true,
+      });
+    }
+    return events;
+  });
   const oneOffs = scenario.oneOffs.map((o, i): ForecastEvent => ({
     id: `one-off:${i}`,
     date: o.date,
@@ -460,7 +490,7 @@ function projectScenario(
     categoryId: null,
     estimated: true,
   }));
-  const events = [...ctx.baseEvents, ...income, ...oneOffs].filter(
+  const events = [...ctx.baseEvents, ...income, ...oneOffs, ...costChanges].filter(
     (e) => e.date >= today && e.date <= ctx.end,
   );
   // Cumulative rounding: day k spends floor(rate × k), so totals never drift.
@@ -475,6 +505,8 @@ function projectScenario(
   for (const e of events) byDate.set(e.date, [...(byDate.get(e.date) ?? []), e]);
   let balance = ctx.startBalance;
   let lowest = { date: today, balance };
+  let firstShortfall: { date: string; balance: number } | null =
+    balance < 0 ? { date: today, balance } : null;
   const nextPay = income.map((e) => e.date).sort()[0] ?? null;
   let lowestBeforePay: { date: string; balance: number } | null = nextPay
     ? { date: today, balance }
@@ -487,6 +519,7 @@ function projectScenario(
       k === 0 ? 0 : Number(floorDiv(num * BigInt(k), den) - floorDiv(num * BigInt(k - 1), den));
     balance += inflow + other - variable;
     if (balance < lowest.balance) lowest = { date, balance };
+    if (!firstShortfall && balance < 0) firstShortfall = { date, balance };
     if (lowestBeforePay && nextPay && date < nextPay && balance < lowestBeforePay.balance)
       lowestBeforePay = { date, balance };
     return { date, balance, income: inflow, scheduled: other, variable };
@@ -503,9 +536,10 @@ function projectScenario(
         end: null,
         contributed: 0,
       };
-    const pays = ctx.plans.flatMap((plan) =>
-      paydays(plan, day(today, 1), ctx.end).map((p) => ({ plan, ...p })),
-    );
+    // No pay arrives during an income pause, so nothing is assigned from it either.
+    const pays = ctx.plans
+      .flatMap((plan) => paydays(plan, day(today, 1), ctx.end).map((p) => ({ plan, ...p })))
+      .filter((p) => !paused(p.expectedDate));
     const withdrawals = new Map<string, number>();
     if (goal.categoryId)
       for (const e of ctx.baseEvents)
@@ -574,6 +608,15 @@ function projectScenario(
     events: events.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id)),
     endBalance: balance,
     lowest,
+    /** The first day cash falls below zero within the horizon; null is "none within the
+     * horizon", never a claim of safety beyond it. */
+    firstShortfall,
+    pausedIncome,
+    /** How far the lowest balance falls into today's flexibility reserve (phase 7C). */
+    reserveUse:
+      ctx.reserve === null
+        ? null
+        : Math.min(ctx.reserve, Math.max(0, ctx.reserve - lowest.balance)),
     nextPayday: nextPay,
     lowestBeforeNextPayday: lowestBeforePay,
     variableTotal: days.reduce((s, d) => s + d.variable, 0),
@@ -597,6 +640,10 @@ export function buildForecast(request: ForecastRequest) {
       throw new ForecastError('A goal contribution refers to a goal that no longer exists');
     if (s.oneOffs.some((o) => o.date < today || o.date > end))
       throw new ForecastError('One-off amounts must fall within the forecast horizon');
+    if (s.incomePauses.some((p) => p.from > p.to || p.from > end || p.to < today))
+      throw new ForecastError('Income pauses must end after they start and overlap the horizon');
+    if (s.costChanges.some((c) => c.from < today || c.from > end))
+      throw new ForecastError('Cost changes must start within the forecast horizon');
   }
   const contributionsScheduled = scheduledHouseholdContributions();
   const includeHousehold = request.includeHousehold ?? !contributionsScheduled;
@@ -630,6 +677,10 @@ export function buildForecast(request: ForecastRequest) {
     .from(transactions)
     .where(and(lte(transactions.date, today), inAccountBalance))
     .get()?.date;
+  // Today's flexibility reserve (7B), when one is set up and its figures are complete.
+  const resilience = resilienceState(today);
+  const reserve =
+    resilience.status === 'not-set-up' ? null : (resilience.flexibility.available ?? null);
   const scenarios = request.scenarios.map((s) =>
     projectScenario(s, {
       today,
@@ -643,6 +694,7 @@ export function buildForecast(request: ForecastRequest) {
       notes,
       warnings,
       end,
+      reserve,
     }),
   );
   return {

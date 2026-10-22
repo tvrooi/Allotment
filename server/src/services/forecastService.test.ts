@@ -10,6 +10,7 @@ import {
   budgetMonths,
   categories,
   categoryGroups,
+  categoryPurposes,
   goals,
   householdBills,
   householdEvents,
@@ -103,6 +104,7 @@ afterAll(() => {
 });
 beforeEach(() => {
   for (const table of [
+    categoryPurposes,
     householdBills,
     householdEvents,
     householdPeople,
@@ -466,5 +468,136 @@ describe('goal trajectory', () => {
       body: JSON.stringify({ incomeSource: 'payday' }),
     });
     expect(noPlan.status).toBe(400);
+  });
+});
+
+describe('adverse-event scenarios (phase 7C)', () => {
+  const zeroCash = () => {
+    db.delete(transactions).run();
+    db.update(accounts)
+      .set({ startingBalance: 0 })
+      .where(sql`id = 'cash'`)
+      .run();
+  };
+
+  it('finds the first dated shortfall even when the period ends positive', () => {
+    zeroCash();
+    schedule('bill', -50000, '2026-10-26');
+    const s = base({
+      horizonDays: 14,
+      scenarios: [
+        {
+          name: 'Base',
+          dailySpending: 0,
+          oneOffs: [{ date: '2026-10-31', amount: 100000, description: 'Refund' }],
+        },
+      ],
+    });
+    expect(s.firstShortfall).toEqual({ date: '2026-10-26', balance: -50000 });
+    expect(s.endBalance).toBe(50000);
+  });
+
+  it('shows an emergency leaving the second month end short', () => {
+    db.delete(transactions).run();
+    db.update(accounts)
+      .set({ startingBalance: 600000 })
+      .where(sql`id = 'cash'`)
+      .run();
+    schedule('essentials', -300000, '2026-10-31');
+    const s = base({
+      horizonDays: 60,
+      scenarios: [
+        {
+          name: 'Base',
+          dailySpending: 0,
+          oneOffs: [{ date: '2026-10-22', amount: -200000, description: 'Emergency' }],
+        },
+      ],
+    });
+    expect(balanceOn(s, '2026-10-31')).toBe(100000);
+    expect(s.firstShortfall).toEqual({ date: '2026-11-30', balance: -200000 });
+  });
+
+  it('pauses income and keeps combined events exactly once', () => {
+    plan();
+    const request = {
+      horizonDays: 30,
+      scenarios: [
+        {
+          name: 'Missed pay',
+          dailySpending: 0,
+          incomePauses: [{ from: '2026-10-29', to: '2026-10-29' }],
+          oneOffs: [{ date: '2026-11-02', amount: -80000, description: 'Car repair' }],
+        },
+      ],
+    };
+    const s = forecast(request).scenarios[0];
+    expect(s.pausedIncome).toBe(300000);
+    expect(s.events.filter((e) => e.kind === 'income').map((e) => e.date)).toEqual(['2026-11-12']);
+    expect(s.events.filter((e) => e.kind === 'one-off')).toHaveLength(1);
+    expect(balanceOn(s, '2026-11-02')).toBe(122000 - 80000);
+    expect(forecast(request)).toEqual(forecast(request));
+  });
+
+  it('stops goal contributions while income is paused', () => {
+    plan([{ categoryId: 'house', method: 'fixed', amount: 20000, dueDate: null, percent: 0 }]);
+    db.insert(goals)
+      .values({ id: 'g', name: 'House', targetAmount: 1e6, categoryId: 'house' })
+      .run();
+    const paused = base({
+      horizonDays: 30,
+      scenarios: [{ name: 'Base', incomePauses: [{ from: '2026-10-22', to: '2026-11-30' }] }],
+    });
+    expect(paused.goals[0].contributed).toBe(0);
+  });
+
+  it('applies a monthly cost change from its date, falling back to month ends', () => {
+    const s = base({
+      horizonDays: 45,
+      scenarios: [
+        {
+          name: 'Rent rise',
+          dailySpending: 0,
+          costChanges: [{ from: '2026-10-31', monthlyAmount: 20000, description: 'Rent rise' }],
+        },
+      ],
+    });
+    expect(s.events.filter((e) => e.kind === 'cost-change').map((e) => [e.date, e.amount])).toEqual(
+      [
+        ['2026-10-31', -20000],
+        ['2026-11-30', -20000],
+      ],
+    );
+  });
+
+  it('rejects pauses and cost changes outside the horizon', () => {
+    for (const scenario of [
+      { name: 'x', incomePauses: [{ from: '2026-11-05', to: '2026-11-01' }] },
+      { name: 'x', incomePauses: [{ from: '2027-06-01', to: '2027-06-30' }] },
+      { name: 'x', costChanges: [{ from: '2026-10-01', monthlyAmount: 1, description: 'x' }] },
+    ])
+      expect(() => forecast({ horizonDays: 30, scenarios: [scenario] })).toThrow();
+  });
+
+  it('reports how far the lowest balance falls into the flexibility reserve', () => {
+    expect(base({ horizonDays: 14 }).reserveUse).toBeNull();
+    db.insert(categoryPurposes).values({ categoryId: 'holiday', purpose: 'flexibility' }).run();
+    db.insert(budgetMonths)
+      .values({ id: 'h', categoryId: 'holiday', month: '2026-10', budgeted: 50000 })
+      .run();
+    const s = base({
+      horizonDays: 14,
+      scenarios: [
+        {
+          name: 'Base',
+          dailySpending: 0,
+          oneOffs: [{ date: '2026-10-25', amount: -100000, description: 'Emergency' }],
+        },
+      ],
+    });
+    // $1,220 cash − $1,000 emergency leaves $220, $280 into the $500 reserve.
+    expect(s.lowest.balance).toBe(22000);
+    expect(s.reserveUse).toBe(28000);
+    db.delete(categoryPurposes).run();
   });
 });

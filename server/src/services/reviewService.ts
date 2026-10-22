@@ -14,7 +14,8 @@ import {
 } from '../db/schema.js';
 import { LIQUID_ACCOUNT_TYPES, fundingState, receivedActivity } from './budgetService.js';
 import { budgetActivity, mainAmount, personalBudgetAccount } from './balances.js';
-import { budgetWithTargets, targetStatus } from './targetService.js';
+import { budgetWithTargets, pausedStatus, targetStatus } from './targetService.js';
+import { inactiveGoalCategories } from './goalLifecycle.js';
 import { addMonthsTo, monthEnd } from './fundingMath.js';
 import { todayIso } from './mainAmountService.js';
 import { billCoverage, paydays, PaydayError } from './paydayService.js';
@@ -28,7 +29,7 @@ import { computeOccurrenceDates, type RecurrenceDefinition } from '../utils/recu
 const day = (date: string, count: number) => format(addDays(parseISO(date), count), 'yyyy-MM-dd');
 const sum = (values: number[]) => values.reduce((s, v) => s + v, 0);
 /** Targets for money set aside for a known future bill rather than everyday spending. */
-const TRUE_EXPENSE_TARGETS = new Set(['by-date', 'recurring']);
+export const TRUE_EXPENSE_TARGETS = new Set(['by-date', 'recurring']);
 /** Complete months of history behind the runway's spending rate. */
 const SPENDING_MONTHS = 3;
 
@@ -166,14 +167,16 @@ export function bufferState(today = todayIso()) {
 
   // Next month's targets start from today's availability, as if nothing more is spent or
   // assigned this month. Overspending carries, as it does in the budget.
+  const inactive = inactiveGoalCategories();
   const nextNeeds = cats
     .filter((c) => targets.has(c.id))
     .map((c) => {
-      const status = targetStatus(
+      const computed = targetStatus(
         targets.get(c.id)!,
         { budgeted: assignedIn(next, c.id), carryOver: c.balance },
         next,
       );
+      const status = inactive.has(c.id) ? pausedStatus(computed) : computed;
       return {
         categoryId: c.id,
         name: c.name,
@@ -259,11 +262,26 @@ function cashRunway(
   cats: ExpenseCategory[],
   restricted: Set<string>,
 ) {
+  const counted = new Set(cats.filter((c) => !restricted.has(c.id)).map((c) => c.id));
+  const measured = measureSpending(today, (r) =>
+    r.categoryId ? counted.has(r.categoryId) : r.amount < 0,
+  );
+  if (!measured.incomplete.length && state.complete && measured.total === 0)
+    measured.incomplete.push('No spending in the history to measure a runway against.');
+  return measured;
+}
+
+/** Net spending (refunds reduce it) over the last SPENDING_MONTHS complete calendar months,
+ * for the rows `counts` selects. The 6F runway and the 7B essentials both use this window,
+ * so "monthly spending" means the same thing in both. */
+export function measureSpending(
+  today: string,
+  counts: (row: { categoryId: string | null; amount: number }) => boolean,
+) {
   const month = today.slice(0, 7);
   const from = `${addMonthsTo(month, -SPENDING_MONTHS)}-01`;
   const to = monthEnd(addMonthsTo(month, -1));
   const days = Math.round((parseISO(to).getTime() - parseISO(from).getTime()) / 86_400_000) + 1;
-  const counted = new Set(cats.filter((c) => !restricted.has(c.id)).map((c) => c.id));
   const rows = db
     .select({
       date: transactions.date,
@@ -275,7 +293,7 @@ function cashRunway(
     .where(and(receivedActivity, lte(transactions.date, to)))
     .all();
   const inWindow = rows.filter((r) => r.date >= from);
-  const window = inWindow.filter((r) => (r.categoryId ? counted.has(r.categoryId) : r.amount < 0));
+  const window = inWindow.filter(counts);
   const incomplete: string[] = [];
   // History begins when the earliest personal budget account took effect: its creation or
   // its first transaction, whichever is earlier (the same date policy as opening funds).
@@ -304,9 +322,7 @@ function cashRunway(
   if (inWindow.some((r) => r.source === 'missing'))
     incomplete.push('Some spending in the history has no exchange rate.');
   const total = Math.max(0, -sum(window.map((r) => r.amount)));
-  if (!incomplete.length && state.complete && total === 0)
-    incomplete.push('No spending in the history to measure a runway against.');
-  return { from, to, days, total, incomplete };
+  return { from, to, days, months: SPENDING_MONTHS, total, incomplete };
 }
 
 type Step = {

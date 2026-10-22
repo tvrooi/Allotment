@@ -37,11 +37,19 @@ import {
   paydayPlans,
   paydayFundingEvents,
   paydayFundingReceipts,
+  financialPriorities,
+  categoryPurposes,
+  goalStatusEvents,
+  reviewCompletions,
+  incomeReviews,
 } from '../db/schema.js';
 import { paydayConfigSchema, fundingSnapshotSchema } from './paydayConfig.js';
 import { fillMissingMainAmounts, ratesChanged } from './mainAmountService.js';
 import { upObservationSchema } from './upTransactions.js';
 import { targetSchema } from './targetConfig.js';
+import { CADENCES, PURPOSES, reviewSnapshotSchema } from './resilienceConfig.js';
+import { GOAL_STATUSES } from './goalLifecycle.js';
+import { purposeError } from './resilienceService.js';
 
 // Full JSON backup of the user's data, and restoring one.
 //
@@ -52,7 +60,7 @@ import { targetSchema } from './targetConfig.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 10;
+export const BACKUP_VERSION = 11;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -77,9 +85,14 @@ const TABLES = {
   dashboardPages,
   dashboardWidgets,
   goals,
+  goalStatusEvents,
   paydayPlans,
   paydayFundingEvents,
   paydayFundingReceipts,
+  financialPriorities,
+  categoryPurposes,
+  reviewCompletions,
+  incomeReviews,
   householdGroups,
   householdPeople,
   householdEvents,
@@ -235,6 +248,67 @@ export function parseBackup(input: unknown): ParsedBackup {
       throw new InvalidBackupError('Invalid or duplicate goal category');
     linked.add(String(goal.categoryId));
   }
+  // Phase 7 (format 11). Older backups have none of these: every goal restores active.
+  const goalIds = new Set(result.goals.map((g) => String(g.id)));
+  for (const goal of result.goals)
+    if (
+      !GOAL_STATUSES.includes(String(goal.status ?? 'active') as never) ||
+      (goal.replacedByGoalId != null &&
+        (!goalIds.has(String(goal.replacedByGoalId)) || goal.replacedByGoalId === goal.id))
+    )
+      throw new InvalidBackupError('Invalid goal status');
+  for (const event of result.goalStatusEvents)
+    if (
+      !goalIds.has(String(event.goalId)) ||
+      !GOAL_STATUSES.includes(String(event.fromStatus) as never) ||
+      !GOAL_STATUSES.includes(String(event.toStatus) as never)
+    )
+      throw new InvalidBackupError('Invalid goal status history');
+  for (const p of result.financialPriorities) {
+    const type = p.reserveTargetType ?? null;
+    if (
+      p.id !== 'default' ||
+      !CADENCES.includes(String(p.reviewCadence ?? 'off') as never) ||
+      !(
+        (type === null && p.reserveTargetAmount == null && p.reserveTargetMonths == null) ||
+        (type === 'amount' && Number(p.reserveTargetAmount) > 0 && p.reserveTargetMonths == null) ||
+        (type === 'months' &&
+          Number(p.reserveTargetMonths) >= 1 &&
+          Number(p.reserveTargetMonths) <= 60 &&
+          p.reserveTargetAmount == null)
+      ) ||
+      [p.essentialMonthlyAmount, p.reserveMinimum].some((v) => v != null && Number(v) <= 0)
+    )
+      throw new InvalidBackupError('Invalid financial priorities');
+  }
+  for (const p of result.categoryPurposes) {
+    const error =
+      !PURPOSES.includes(String(p.purpose) as never) ||
+      purposeError(String(p.categoryId), String(p.purpose), {
+        category: (id) => result.categories.find((c) => c.id === id) as never,
+        group: (id) => result.categoryGroups.find((g) => g.id === id) as never,
+        isCardReserve: (id) => result.cardFunding.some((c) => c.categoryId === id),
+        fundsGoal: (id) => result.goals.some((g) => g.categoryId === id),
+        targetType: (id) =>
+          result.categoryTargets.find((t) => t.categoryId === id)?.type as string | undefined,
+      });
+    if (error) throw new InvalidBackupError('Invalid category purpose');
+  }
+  for (const c of result.reviewCompletions)
+    try {
+      reviewSnapshotSchema.parse(JSON.parse(String(c.snapshotJson)));
+      if (!isoDate.safeParse(c.asOf).success) throw new Error();
+    } catch {
+      throw new InvalidBackupError('Invalid review history');
+    }
+  for (const r of result.incomeReviews)
+    if (
+      Number(r.baseline) < 0 ||
+      Number(r.assigned) < 0 ||
+      Number(r.reservePercent) < 0 ||
+      Number(r.reservePercent) > 100
+    )
+      throw new InvalidBackupError('Invalid income review');
   for (const target of result.categoryTargets) {
     const category = result.categories.find((c) => c.id === target.categoryId);
     const group = result.categoryGroups.find((g) => g.id === category?.groupId);

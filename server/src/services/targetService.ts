@@ -13,6 +13,8 @@ import { BudgetError } from './budgetMoves.js';
 import { addMonthsTo, monthsBetween, perPeriodNeed } from './fundingMath.js';
 import { todayIso } from './mainAmountService.js';
 import type { TargetInput } from './targetConfig.js';
+import { inactiveGoalCategories } from './goalLifecycle.js';
+import { categoryPurposes } from '../db/schema.js';
 
 // Category targets (phase 6D) say how much a category needs in a month. They read the
 // shared envelope figures and never assign money themselves: funding them is a separate,
@@ -74,9 +76,16 @@ export function targetStatus(target: TargetRow, figures: Figures, month: string)
     underfunded,
     catchUp,
     ended,
+    paused: false,
   };
 }
 export type TargetStatus = ReturnType<typeof targetStatus>;
+
+/** A target whose goal is paused, completed or retired (7D) asks for nothing more. Its
+ * funding stays; only the suggestion stops. */
+export function pausedStatus(status: TargetStatus): TargetStatus {
+  return { ...status, required: 0, underfunded: 0, catchUp: 0, paused: true };
+}
 
 /** The month's budget groups, each expense category with its target status (or null). */
 export function budgetWithTargets(month: string, today = todayIso()) {
@@ -87,11 +96,14 @@ export function budgetWithTargets(month: string, today = todayIso()) {
       .all()
       .map((t) => [t.categoryId, t]),
   );
+  const inactive = inactiveGoalCategories();
   return budgetGroups(month, today).map((g) => ({
     ...g,
     categories: g.categories.map((c) => {
       const target = targets.get(c.id);
-      return { ...c, target: target && !g.isIncome ? targetStatus(target, c, month) : null };
+      if (!target || g.isIncome) return { ...c, target: null };
+      const status = targetStatus(target, c, month);
+      return { ...c, target: inactive.has(c.id) ? pausedStatus(status) : status };
     }),
   }));
 }
@@ -105,6 +117,15 @@ export function saveTarget(categoryId: string, input: TargetInput, today = today
   if (!group || group.isIncome) throw new BudgetError('Targets need an expense category', 400);
   if (db.select().from(cardFunding).where(eq(cardFunding.categoryId, categoryId)).get())
     throw new BudgetError('Card payment reserves are funded from card activity, not targets', 400);
+  if (
+    (input.type === 'by-date' || input.type === 'recurring') &&
+    db.select().from(categoryPurposes).where(eq(categoryPurposes.categoryId, categoryId)).get()
+      ?.purpose === 'flexibility'
+  )
+    throw new BudgetError(
+      'A flexibility reserve has no deadline. Use a monthly or refill target instead.',
+      400,
+    );
   const row = {
     categoryId,
     type: input.type,

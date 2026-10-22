@@ -5,7 +5,13 @@ import {
   applyCardSetup,
   previewCardAssignment,
 } from '../services/cardFundingSetup.js';
-import { previewMove, applyMove, undoMove, BudgetError } from '../services/budgetMoves.js';
+import {
+  previewMove,
+  applyMove,
+  undoMove,
+  BudgetError,
+  fundedWrite,
+} from '../services/budgetMoves.js';
 import { budgetSummary, fundingRevision, fundingState } from '../services/budgetService.js';
 import { Router } from 'express';
 import { db } from '../db/index.js';
@@ -84,19 +90,6 @@ for (const action of ['preview', 'apply'])
 budgetRouter.get('/:month', (req, res) => res.json(budgetWithTargets(req.params.month)));
 
 // Existing overcommitments survive; new reservations require existing resources.
-function fundedWrite(action: () => void) {
-  return db.transaction(() => {
-    const before = fundingState();
-    action();
-    const after = fundingState();
-    if (after.reserved > before.reserved && (!after.complete || after.unassigned < 0))
-      throw new BudgetError(
-        after.complete
-          ? 'Insufficient unassigned money. Reduce an assignment or move existing money.'
-          : 'Add missing exchange rates before assigning money.',
-      );
-  });
-}
 budgetRouter.put('/:month/:categoryId', (req, res, next) => {
   const parsed = upsertSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
