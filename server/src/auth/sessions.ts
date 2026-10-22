@@ -3,6 +3,7 @@ import { and, eq, gt, lte, ne } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { authConfig, sessions } from '../db/schema.js';
 import { hashPassword, verifyPassword } from './password.js';
+import { revokeAllAccessTokens } from './accessTokens.js';
 
 // Server-mode login: one password for the whole server (like Actual Budget's
 // server password), set by the first visitor. Sessions are random 256-bit tokens;
@@ -49,6 +50,8 @@ export async function changePassword(newPassword: string, keepSessionToken?: str
     .run();
   const keep = keepSessionToken ? digest(keepSessionToken) : '';
   db.delete(sessions).where(ne(sessions.id, keep)).run();
+  // Read-only tokens were issued under the old password: they stop working too
+  revokeAllAccessTokens();
 }
 
 // --- Trusted devices ---

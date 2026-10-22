@@ -164,10 +164,7 @@
       "indexes": {
         "budget_months_month_category_idx": {
           "name": "budget_months_month_category_idx",
-          "columns": [
-            "month",
-            "category_id"
-          ],
+          "columns": ["month", "category_id"],
           "isUnique": true
         }
       },
@@ -176,12 +173,8 @@
           "name": "budget_months_category_id_categories_id_fk",
           "tableFrom": "budget_months",
           "tableTo": "categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["category_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -251,12 +244,8 @@
           "name": "categories_group_id_category_groups_id_fk",
           "tableFrom": "categories",
           "tableTo": "category_groups",
-          "columnsFrom": [
-            "group_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["group_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -501,12 +490,8 @@
           "name": "dashboard_widgets_page_id_dashboard_pages_id_fk",
           "tableFrom": "dashboard_widgets",
           "tableTo": "dashboard_pages",
-          "columnsFrom": [
-            "page_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["page_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -514,12 +499,8 @@
           "name": "dashboard_widgets_custom_report_id_custom_reports_id_fk",
           "tableFrom": "dashboard_widgets",
           "tableTo": "custom_reports",
-          "columnsFrom": [
-            "custom_report_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["custom_report_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -621,12 +602,8 @@
           "name": "goals_account_id_accounts_id_fk",
           "tableFrom": "goals",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -681,12 +658,8 @@
           "name": "payees_default_category_id_categories_id_fk",
           "tableFrom": "payees",
           "tableTo": "categories",
-          "columnsFrom": [
-            "default_category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["default_category_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -767,10 +740,7 @@
       "indexes": {
         "plaid_account_mapping_unique": {
           "name": "plaid_account_mapping_unique",
-          "columns": [
-            "plaid_item_id",
-            "plaid_account_id"
-          ],
+          "columns": ["plaid_item_id", "plaid_account_id"],
           "isUnique": true
         }
       },
@@ -779,12 +749,8 @@
           "name": "plaid_account_mappings_plaid_item_id_plaid_items_id_fk",
           "tableFrom": "plaid_account_mappings",
           "tableTo": "plaid_items",
-          "columnsFrom": [
-            "plaid_item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["plaid_item_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -792,12 +758,8 @@
           "name": "plaid_account_mappings_account_id_accounts_id_fk",
           "tableFrom": "plaid_account_mappings",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1070,12 +1032,8 @@
           "name": "recurring_transactions_account_id_accounts_id_fk",
           "tableFrom": "recurring_transactions",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1083,12 +1041,8 @@
           "name": "recurring_transactions_category_id_categories_id_fk",
           "tableFrom": "recurring_transactions",
           "tableTo": "categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["category_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1096,12 +1050,8 @@
           "name": "recurring_transactions_payee_id_payees_id_fk",
           "tableFrom": "recurring_transactions",
           "tableTo": "payees",
-          "columnsFrom": [
-            "payee_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["payee_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1209,10 +1159,7 @@
       "indexes": {
         "idx_dismissal_unique": {
           "name": "idx_dismissal_unique",
-          "columns": [
-            "occurrence_id",
-            "transaction_id"
-          ],
+          "columns": ["occurrence_id", "transaction_id"],
           "isUnique": true
         }
       },
@@ -1221,12 +1168,8 @@
           "name": "schedule_match_dismissals_occurrence_id_schedule_occurrences_id_fk",
           "tableFrom": "schedule_match_dismissals",
           "tableTo": "schedule_occurrences",
-          "columnsFrom": [
-            "occurrence_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["occurrence_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1234,12 +1177,8 @@
           "name": "schedule_match_dismissals_transaction_id_transactions_id_fk",
           "tableFrom": "schedule_match_dismissals",
           "tableTo": "transactions",
-          "columnsFrom": [
-            "transaction_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["transaction_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1341,31 +1280,22 @@
       "indexes": {
         "idx_occ_schedule_date_unique": {
           "name": "idx_occ_schedule_date_unique",
-          "columns": [
-            "schedule_id",
-            "scheduled_date"
-          ],
+          "columns": ["schedule_id", "scheduled_date"],
           "isUnique": true
         },
         "idx_occ_expected_date": {
           "name": "idx_occ_expected_date",
-          "columns": [
-            "expected_date"
-          ],
+          "columns": ["expected_date"],
           "isUnique": false
         },
         "idx_occ_status": {
           "name": "idx_occ_status",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         },
         "idx_occ_matched_tx_unique": {
           "name": "idx_occ_matched_tx_unique",
-          "columns": [
-            "matched_transaction_id"
-          ],
+          "columns": ["matched_transaction_id"],
           "isUnique": true
         }
       },
@@ -1374,12 +1304,8 @@
           "name": "schedule_occurrences_schedule_id_schedules_id_fk",
           "tableFrom": "schedule_occurrences",
           "tableTo": "schedules",
-          "columnsFrom": [
-            "schedule_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["schedule_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1387,12 +1313,8 @@
           "name": "schedule_occurrences_matched_transaction_id_transactions_id_fk",
           "tableFrom": "schedule_occurrences",
           "tableTo": "transactions",
-          "columnsFrom": [
-            "matched_transaction_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["matched_transaction_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1571,23 +1493,17 @@
       "indexes": {
         "idx_schedules_status": {
           "name": "idx_schedules_status",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         },
         "idx_schedules_payee": {
           "name": "idx_schedules_payee",
-          "columns": [
-            "payee_id"
-          ],
+          "columns": ["payee_id"],
           "isUnique": false
         },
         "idx_schedules_account": {
           "name": "idx_schedules_account",
-          "columns": [
-            "account_id"
-          ],
+          "columns": ["account_id"],
           "isUnique": false
         }
       },
@@ -1596,12 +1512,8 @@
           "name": "schedules_account_id_accounts_id_fk",
           "tableFrom": "schedules",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1609,12 +1521,8 @@
           "name": "schedules_transfer_account_id_accounts_id_fk",
           "tableFrom": "schedules",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "transfer_account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["transfer_account_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1622,12 +1530,8 @@
           "name": "schedules_category_id_categories_id_fk",
           "tableFrom": "schedules",
           "tableTo": "categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["category_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1635,12 +1539,8 @@
           "name": "schedules_payee_id_payees_id_fk",
           "tableFrom": "schedules",
           "tableTo": "payees",
-          "columnsFrom": [
-            "payee_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["payee_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1753,10 +1653,7 @@
       "indexes": {
         "simplefin_account_mapping_unique": {
           "name": "simplefin_account_mapping_unique",
-          "columns": [
-            "connection_id",
-            "simplefin_account_id"
-          ],
+          "columns": ["connection_id", "simplefin_account_id"],
           "isUnique": true
         }
       },
@@ -1765,12 +1662,8 @@
           "name": "simplefin_account_mappings_connection_id_simplefin_connections_id_fk",
           "tableFrom": "simplefin_account_mappings",
           "tableTo": "simplefin_connections",
-          "columnsFrom": [
-            "connection_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["connection_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1778,12 +1671,8 @@
           "name": "simplefin_account_mappings_account_id_accounts_id_fk",
           "tableFrom": "simplefin_account_mappings",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1982,45 +1871,32 @@
       "indexes": {
         "transactions_account_date_idx": {
           "name": "transactions_account_date_idx",
-          "columns": [
-            "account_id",
-            "date"
-          ],
+          "columns": ["account_id", "date"],
           "isUnique": false
         },
         "transactions_category_idx": {
           "name": "transactions_category_idx",
-          "columns": [
-            "category_id"
-          ],
+          "columns": ["category_id"],
           "isUnique": false
         },
         "transactions_date_idx": {
           "name": "transactions_date_idx",
-          "columns": [
-            "date"
-          ],
+          "columns": ["date"],
           "isUnique": false
         },
         "transactions_recurring_idx": {
           "name": "transactions_recurring_idx",
-          "columns": [
-            "recurring_transaction_id"
-          ],
+          "columns": ["recurring_transaction_id"],
           "isUnique": false
         },
         "transactions_imported_id_idx": {
           "name": "transactions_imported_id_idx",
-          "columns": [
-            "imported_id"
-          ],
+          "columns": ["imported_id"],
           "isUnique": false
         },
         "idx_transactions_schedule": {
           "name": "idx_transactions_schedule",
-          "columns": [
-            "schedule_id"
-          ],
+          "columns": ["schedule_id"],
           "isUnique": false
         }
       },
@@ -2029,12 +1905,8 @@
           "name": "transactions_account_id_accounts_id_fk",
           "tableFrom": "transactions",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2042,12 +1914,8 @@
           "name": "transactions_payee_id_payees_id_fk",
           "tableFrom": "transactions",
           "tableTo": "payees",
-          "columnsFrom": [
-            "payee_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["payee_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -2055,12 +1923,8 @@
           "name": "transactions_category_id_categories_id_fk",
           "tableFrom": "transactions",
           "tableTo": "categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["category_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -2068,12 +1932,8 @@
           "name": "transactions_recurring_transaction_id_recurring_transactions_id_fk",
           "tableFrom": "transactions",
           "tableTo": "recurring_transactions",
-          "columnsFrom": [
-            "recurring_transaction_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["recurring_transaction_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -2081,12 +1941,8 @@
           "name": "transactions_schedule_id_schedules_id_fk",
           "tableFrom": "transactions",
           "tableTo": "schedules",
-          "columnsFrom": [
-            "schedule_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["schedule_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }

@@ -1,3 +1,4 @@
+import { ReadOnlyAccess } from './ReadOnlyAccess';
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -376,7 +377,10 @@ function SelfHostedSettings() {
       setCurrent('');
       setNext('');
       setConfirm('');
-      setMessage({ ok: true, text: 'Password changed. Other devices have been signed out.' });
+      setMessage({
+        ok: true,
+        text: 'Password changed. Other devices have been signed out and read-only tokens revoked.',
+      });
     } catch (err) {
       setMessage({ ok: false, text: (err as Error).message });
     } finally {
@@ -388,12 +392,14 @@ function SelfHostedSettings() {
     <div className="max-w-xl space-y-8">
       <SecurityChecks />
       <SignedInDevices />
+      <ReadOnlyAccess />
       <OfflineCopySettings />
 
       <section className="pt-6 border-t border-border-light max-w-md">
         <SectionTitle>Change password</SectionTitle>
         <p className="text-xs text-text-tertiary mt-1">
-          This password protects your FlyBudget server. Changing it signs out every other device.
+          This password protects your FlyBudget server. Changing it signs out every other device and
+          revokes every read-only token.
         </p>
         <form onSubmit={changePassword} className="space-y-3 mt-4">
           <div>
