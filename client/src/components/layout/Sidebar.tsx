@@ -17,6 +17,7 @@ import {
   Pin,
   X,
   CircleHelp,
+  ClipboardCheck,
 } from 'lucide-react';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { SidebarAccountList } from './SidebarAccountList';
@@ -182,6 +183,12 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
           collapsed={!isExpanded}
         />
         <NavItem to="/budget" icon={<Wallet size={18} />} label="Budget" collapsed={!isExpanded} />
+        <NavItem
+          to="/review"
+          icon={<ClipboardCheck size={18} />}
+          label="Review"
+          collapsed={!isExpanded}
+        />
         <NavItem
           to="/recurring"
           icon={<Repeat size={18} />}

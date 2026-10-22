@@ -5,7 +5,7 @@ const money = z.number().int().min(0).max(1e13);
 export const fundingRuleSchema = z
   .object({
     categoryId: z.string().min(1).max(64),
-    method: z.enum(['bills', 'fixed', 'due', 'monthly', 'percentage', 'remainder']),
+    method: z.enum(['bills', 'fixed', 'due', 'monthly', 'percentage', 'target', 'remainder']),
     amount: money.default(0),
     dueDate: isoDate.nullable().default(null),
     percent: z.number().int().min(0).max(100).default(0),

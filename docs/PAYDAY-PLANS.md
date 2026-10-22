@@ -33,6 +33,7 @@ already in the register.
 | Target by date          | Divide the remaining category-balance shortfall over the actual paydays left through the due date. A target due before the next payday needs its full shortfall now. |
 | Smooth monthly cost     | Spread twelve monthly costs over actual payday dates in the calendar year (26 or 27). If the next bills need more, catch up immediately and show any shortfall.      |
 | Percentage of pay       | Use an integer percentage of selected received income, rounded down to minor units.                                                                                  |
+| Category target         | Fund what the category's [target](CATEGORY-TARGETS.md) still needs this month, divided over this and the month's remaining paydays (rounded up). No target: nothing. |
 | Remainder               | Fund the category with available money left after all higher priorities.                                                                                             |
 
 For example, a $1,200 bill due before the next payday and $200 already in its
@@ -56,6 +57,24 @@ across all plans. A repeated request returns the saved result. Editing a plan do
 reapply old funding. If the budget, income or plan changes after a preview, refresh it
 before applying. Unallocated portions of selected deposits remain available for manual
 budgeting; the whole deposit is marked used by the payday plan.
+
+## Shared calculation (phase 6E)
+
+The planner reads every figure from the shared envelope service (`fundingState`): category
+balances, unassigned money, card payment reserves and exchange-rate completeness. It keeps no
+second ledger and no second definition of available money. Two limits apply and are not the same:
+the general budget may offer opening funds for manual assignment, while a payday's funding is
+also capped by the selected received deposits. **Target by date** uses the deadline arithmetic
+shared with category targets and forecasts (`fundingMath.ts`), counting actual paydays.
+**Category target** uses the category target's own monthly requirement, so a target is defined
+once: after one payday funds part of it, the month's next payday needs only the rest.
+
+**Amendments and retries.** A payday is applied at most once, with whatever was funded at the
+time; a shortfall is shown in its history but is not retried. To fund the rest, use a later
+payday, **Fund targets**, or assign manually. Editing a plan, its rules or a target never
+reapplies an applied payday. A deposit used by an event stays used even if part of it was left
+unallocated (that remainder is available for manual budgeting). Retrying the same request returns
+the saved event; a changed budget between preview and apply is refused until previewed again.
 
 Funding history survives plan archival, source-transaction deletion and JSON backup/
 restore (format version 5). Archive a plan to stop using it while keeping its history.

@@ -1,5 +1,6 @@
-import { perPeriodNeed } from './fundingMath.js';
+import { monthEnd, perPeriodNeed } from './fundingMath.js';
 import { fundingState } from './budgetService.js';
+import { budgetWithTargets } from './targetService.js';
 import { personalBudgetAccount } from './balances.js';
 import { and, eq, lte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -264,6 +265,21 @@ export function previewPayday(planId: string, request: PaydayRequest) {
         percent: 0,
       });
   const rules = [...automaticRules, ...plan.rules];
+  // Category targets (6D) say what each category still needs this month; a target rule
+  // spreads that over this and the month's remaining paydays instead of redefining it.
+  const month = today.slice(0, 7);
+  const targets = new Map(
+    budgetWithTargets(month, today)
+      .flatMap((g) => g.categories)
+      .map((c) => [c.id, c.target]),
+  );
+  const paysLeftInMonth =
+    1 +
+    paydays(
+      plan,
+      day(request.actualPayDate > today ? request.actualPayDate : today, 1),
+      monthEnd(month),
+    ).filter((p) => p.scheduledDate > request.scheduledDate).length;
   let remaining = available;
   const rows = rules
     .filter((r) => r.method !== 'remainder')
@@ -292,6 +308,8 @@ export function previewPayday(planId: string, request: PaydayRequest) {
       }
       if (rule.method === 'percentage')
         needed = Number((BigInt(received) * BigInt(rule.percent)) / 100n);
+      const target = rule.method === 'target' ? targets.get(rule.categoryId) : null;
+      if (target && !target.ended) needed = perPeriodNeed(target.underfunded, 0, paysLeftInMonth);
       if (rule.method === 'remainder') needed = remaining;
       const allocated = Math.min(needed, remaining);
       remaining -= allocated;
@@ -305,6 +323,7 @@ export function previewPayday(planId: string, request: PaydayRequest) {
         allocated,
         shortfall: needed - allocated,
         uncoveredBills: Math.max(0, billsDue - balance - allocated),
+        targetUnderfunded: rule.method === 'target' ? (target?.underfunded ?? null) : null,
       };
     });
   return {
@@ -314,7 +333,7 @@ export function previewPayday(planId: string, request: PaydayRequest) {
     actualPayDate: request.actualPayDate,
     nextPayday: next.expectedDate,
     today,
-    month: today.slice(0, 7),
+    month,
     expectedIncome: plan.expectedIncome,
     received,
     available,

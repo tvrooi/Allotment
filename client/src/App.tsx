@@ -19,6 +19,7 @@ import RecurringTransactionsPage from './pages/RecurringTransactions';
 import SettingsPage from './pages/Settings';
 import GoalsPage from './pages/Goals';
 import ForecastPage from './pages/Forecast';
+import ReviewPage from './pages/Review';
 import CashFlowPage from './pages/CashFlow';
 import CategoryDetailPage from './pages/CategoryDetail';
 
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/goals" element={<GoalsPage />} />
             <Route path="/forecast" element={<ForecastPage />} />
+            <Route path="/review" element={<ReviewPage />} />
           </Route>
         </Routes>
       </Router>

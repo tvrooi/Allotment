@@ -16,7 +16,7 @@ import { monthBounds } from '../utils/date.js';
 
 // Generated income remains an expectation until reconciled. Spending is recognised
 // when dated, including generated bills, to avoid offering committed cash again.
-const receivedActivity = and(
+export const receivedActivity = and(
   budgetActivity,
   sql`not (${transactions.amount} > 0 and coalesce(${transactions.importedId}, '') like 'schedule:%' and ${transactions.reconciled} = 0)`,
 )!;

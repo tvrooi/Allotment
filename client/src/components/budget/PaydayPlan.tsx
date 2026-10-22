@@ -14,6 +14,7 @@ const methods: Record<api.FundingMethod, string> = {
   due: 'Target by date',
   monthly: 'Smooth monthly cost',
   percentage: 'Percentage of pay',
+  target: 'Category target',
   remainder: 'Remainder',
 };
 const field = 'flex flex-col gap-1 text-sm text-text-secondary';
@@ -212,6 +213,12 @@ function PlanEditor({ plan, onDone }: { plan?: api.PaydayPlan; onDone: (id?: str
                 />
               </label>
             )}
+            {rule.method === 'target' && (
+              <p className="text-xs text-text-secondary sm:col-span-2">
+                Funds what the category's target still needs this month, shared between this and the
+                month's remaining paydays. Set the target on the category's page.
+              </p>
+            )}
           </div>
           <div className="flex gap-2">
             <Button
@@ -312,6 +319,7 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
       qc.invalidateQueries({ queryKey: ['payday'] });
       qc.invalidateQueries({ queryKey: ['budget'] });
       qc.invalidateQueries({ queryKey: ['budget-summary'] });
+      qc.invalidateQueries({ queryKey: ['review'] });
     },
     onError: () => setPreview(null),
   });
@@ -467,7 +475,13 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
                   <tr key={r.categoryId} className="border-t border-border">
                     <td className="p-2">
                       {r.name}
-                      <div className="text-xs text-text-tertiary">{methods[r.method]}</div>
+                      <div className="text-xs text-text-tertiary">
+                        {methods[r.method]}
+                        {r.method === 'target' &&
+                          (r.targetUnderfunded === null
+                            ? ' · no target set'
+                            : ` · ${formatCurrency(r.targetUnderfunded)} still needed this month`)}
+                      </div>
                     </td>
                     <td className="p-2 text-right">{formatCurrency(r.balance)}</td>
                     <td className="p-2 text-right">{formatCurrency(r.needed)}</td>

@@ -57,7 +57,7 @@ manual goals use their saved value, which may overlap other goals or accounts.
 
 Contributions follow the payday plan rule for the goal's category on each future payday: fixed,
 percentage of expected pay, smoothed monthly (over the calendar-year paydays) or target-by-date.
-Bill and remainder rules contribute nothing in the forecast. A scenario contribution per pay
+Bill, category-target and remainder rules contribute nothing in the forecast. A scenario contribution per pay
 replaces the plan; without a plan it applies every 14 days. Scheduled bills in a goal's
 category reduce it. Growth is credited on positive balances at each calendar month end,
 rounded down to cents. Goal contributions are envelope assignments, so they do not change
