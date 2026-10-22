@@ -4,6 +4,7 @@ import { formatDay } from './dates';
 
 /** One line for a budget row: what the target still needs this month. */
 export function targetLabel(t: TargetStatus): string {
+  if (t.paused) return 'Goal not active · no new funding suggested';
   if (t.ended) return 'Target date passed';
   const due = t.dueDate ? ` · due ${formatDay(t.dueDate)}` : '';
   if (t.underfunded === 0) return `Target funded${due}`;

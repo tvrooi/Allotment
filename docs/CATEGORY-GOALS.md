@@ -13,3 +13,5 @@ The goal row distinguishes this month's assignments, signed activity and current
 Backup format 9 stores category linkage and the untouched manual value, not derived progress. Older backups restore as manual goals. Restore rejects missing, income, payment-reserve and duplicate category claims before changing the budget. The browser demo runs the same routes and calculations.
 
 Verification is recorded in the feature PR. Regression coverage includes assignment changes, spending, refunds, account transfers, future reservations, invalid/duplicate links, unlink and category deletion, incomplete rates, and new/legacy backup restore. Browser coverage exercises desktop/phone linking and manual tracking, plus demo backup restore. Live installation requires administrative access and a verified cold backup including the encryption key, as specified in MAINTENANCE.md.
+
+Goals can be paused, completed, retired or replaced (phase 7D); see [Resilience](RESILIENCE.md#goals-can-change-7d). A goal that is not active keeps its funding and category link but gets no target, payday or forecast funding suggestions.

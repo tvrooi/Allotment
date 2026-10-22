@@ -15,6 +15,12 @@ import { FundTargets } from '../components/budget/FundTargets';
 import { formatCurrency } from '../utils/currency';
 import { formatDay } from '../utils/dates';
 import { FUNDING_VIEWS } from '../utils/fundingViews';
+import {
+  ExtraIncome,
+  ReminderBanner,
+  ResilienceCard,
+  ResumeCard,
+} from '../components/review/Resilience';
 
 // Phases 6F–6G: a read-only review of everything the budget has not resolved, a guided
 // setup, and next month's commitments with an optional runway. Every figure comes from the
@@ -511,7 +517,9 @@ export default function ReviewPage() {
   const review = useQuery({ queryKey: ['review'], queryFn: api.getReview });
   const buffer = useQuery({ queryKey: ['review', 'buffer'], queryFn: api.getBuffer });
   const guide = useQuery({ queryKey: ['review', 'guide'], queryFn: api.getGuide });
-  const error = review.error ?? buffer.error ?? guide.error;
+  const resilience = useQuery({ queryKey: ['review', 'resilience'], queryFn: api.getResilience });
+  const resume = useQuery({ queryKey: ['review', 'resume'], queryFn: api.getResume });
+  const error = review.error ?? buffer.error ?? guide.error ?? resilience.error ?? resume.error;
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 max-md:px-4 py-4 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-3">
@@ -544,24 +552,34 @@ export default function ReviewPage() {
             {error instanceof Error ? error.message : 'Could not load the review.'}
           </p>
         )}
+        {resume.data && (
+          <div className="mb-4">
+            <ReminderBanner resume={resume.data} />
+          </div>
+        )}
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] max-lg:grid-cols-1 gap-4 items-start">
           <div className="space-y-4">
+            {resume.data && <ResumeCard resume={resume.data} />}
             {review.data && <NeedsAttention review={review.data} group={group} />}
+            {resilience.data && <ResilienceCard data={resilience.data} />}
             {buffer.data && <Buffer buffer={buffer.data} />}
           </div>
-          {guide.data && (
-            <Card>
-              <h2 className="text-base font-semibold text-text">Guided setup</h2>
-              <p className="text-xs text-text-secondary">
-                Each step is checked against your budget as it is now.
-              </p>
-              <ol className="mt-2">
-                {guide.data.steps.map((s) => (
-                  <GuideStep key={s.id} step={s} guide={guide.data} />
-                ))}
-              </ol>
-            </Card>
-          )}
+          <div className="space-y-4">
+            {guide.data && (
+              <Card>
+                <h2 className="text-base font-semibold text-text">Guided setup</h2>
+                <p className="text-xs text-text-secondary">
+                  Each step is checked against your budget as it is now.
+                </p>
+                <ol className="mt-2">
+                  {guide.data.steps.map((s) => (
+                    <GuideStep key={s.id} step={s} guide={guide.data} />
+                  ))}
+                </ol>
+              </Card>
+            )}
+            {resilience.data && <ExtraIncome resilience={resilience.data} />}
+          </div>
         </div>
       </div>
     </div>

@@ -8,6 +8,9 @@ export interface ForecastScenarioInput {
   annualReturnBasisPoints: number;
   goalContributions: { goalId: string; amountPerPay: number }[];
   oneOffs: { date: string; amount: number; description: string }[];
+  /** Phase 7C: ranges with no income, and monthly cost changes from a date */
+  incomePauses: { from: string; to: string }[];
+  costChanges: { from: string; monthlyAmount: number; description: string }[];
 }
 export interface ForecastRequest {
   horizonDays: number;
@@ -19,7 +22,7 @@ export interface ForecastRequest {
 export interface ForecastEvent {
   id: string;
   date: string;
-  kind: 'income' | 'bill' | 'scheduled' | 'household' | 'register' | 'one-off';
+  kind: 'income' | 'bill' | 'scheduled' | 'household' | 'register' | 'one-off' | 'cost-change';
   description: string;
   amount: number;
   categoryId: string | null;
@@ -43,6 +46,11 @@ export interface ScenarioResult extends ForecastScenarioInput {
   events: ForecastEvent[];
   endBalance: number;
   lowest: { date: string; balance: number };
+  /** First day below zero within the horizon; null means none within the horizon */
+  firstShortfall: { date: string; balance: number } | null;
+  pausedIncome: number;
+  /** How far the lowest balance falls into today's flexibility reserve; null without one */
+  reserveUse: number | null;
   nextPayday: string | null;
   lowestBeforeNextPayday: { date: string; balance: number } | null;
   variableTotal: number;

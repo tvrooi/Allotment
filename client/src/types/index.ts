@@ -299,6 +299,8 @@ export interface TargetStatus {
   underfunded: number;
   catchUp: number;
   ended: boolean;
+  /** Its goal is paused, completed or retired (phase 7D): it asks for nothing more */
+  paused?: boolean;
 }
 
 export interface BudgetCategory {
@@ -795,9 +797,15 @@ export interface Goal {
   icon: string;
   color: string;
   sortOrder: number;
+  /** Phase 7D: only active goals get funding suggestions; funding stays when paused */
+  status: GoalStatus;
+  statusReason: string | null;
+  replacedByGoalId: string | null;
+  statusChangedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
+export type GoalStatus = 'active' | 'paused' | 'completed' | 'retired';
 
 // Plaid Bank Sync
 export type PlaidSyncStatus = 'good' | 'syncing' | 'error' | 'login_required';

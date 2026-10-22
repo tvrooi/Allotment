@@ -75,6 +75,11 @@ Money age is not implemented. It would need documented treatment of opening bala
 transfers, cards and incomplete history before it could be presented; the runway does not
 depend on it.
 
+## Phase 7 additions
+
+The page also shows **Resume budgeting**, the **Flexibility and resilience** card and **Extra
+income**; see [Resilience](RESILIENCE.md). They read the same `fundingState` figures.
+
 ## API
 
 `GET /api/review`, `GET /api/review/buffer` and `GET /api/review/guide` are read-only and

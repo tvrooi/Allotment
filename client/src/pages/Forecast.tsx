@@ -38,6 +38,7 @@ const KIND_LABEL: Record<api.ForecastEvent['kind'], string> = {
   household: 'Household share',
   register: 'Future-dated',
   'one-off': 'One-off',
+  'cost-change': 'Cost change',
 };
 const DEFAULT_SCENARIOS: api.ForecastScenarioInput[] = [
   { name: 'Base', spendingPercent: 100, incomePercent: 100 },
@@ -49,7 +50,47 @@ const DEFAULT_SCENARIOS: api.ForecastScenarioInput[] = [
   annualReturnBasisPoints: 0,
   goalContributions: [],
   oneOffs: [],
+  incomePauses: [],
+  costChanges: [],
 }));
+const addDays = (date: string, days: number) => {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+/** Life-event templates (phase 7C): they only prefill the scenario; nothing is saved. */
+const TEMPLATES: {
+  label: string;
+  apply: (s: api.ForecastScenarioInput, today: string) => api.ForecastScenarioInput;
+}[] = [
+  {
+    label: 'No income for 3 months',
+    apply: (s, today) => ({
+      ...s,
+      incomePauses: [...s.incomePauses, { from: addDays(today, 1), to: addDays(today, 91) }],
+    }),
+  },
+  {
+    label: 'Emergency cost',
+    apply: (s, today) => ({
+      ...s,
+      oneOffs: [
+        ...s.oneOffs,
+        { date: addDays(today, 1), amount: -200000, description: 'Emergency' },
+      ],
+    }),
+  },
+  {
+    label: 'Essentials rise',
+    apply: (s, today) => ({
+      ...s,
+      costChanges: [
+        ...s.costChanges,
+        { from: addDays(today, 1), monthlyAmount: 20000, description: 'Higher essentials' },
+      ],
+    }),
+  },
+];
 const field = 'flex flex-col gap-1 text-xs text-text-secondary';
 
 function AmountInput({
@@ -232,6 +273,109 @@ function ScenarioEditor({
           <Plus size={14} /> One-off amount
         </Button>
       </div>
+      <details
+        className="mt-3"
+        open={scenario.incomePauses.length + scenario.costChanges.length > 0}
+      >
+        <summary className="text-xs text-text-secondary cursor-pointer">Life events</summary>
+        <div className="mt-2 space-y-2">
+          <div className="flex flex-wrap gap-1">
+            {TEMPLATES.map((t) => (
+              <Button
+                key={t.label}
+                size="sm"
+                variant="secondary"
+                onClick={() => onChange(t.apply(scenario, today))}
+              >
+                {t.label}
+              </Button>
+            ))}
+          </div>
+          {scenario.incomePauses.map((p, i) => {
+            const set = (patch: Partial<typeof p>) =>
+              onChange({
+                ...scenario,
+                incomePauses: scenario.incomePauses.map((x, j) =>
+                  j === i ? { ...x, ...patch } : x,
+                ),
+              });
+            return (
+              <div
+                key={i}
+                className="grid grid-cols-[auto_1fr_1fr_auto] gap-1 items-center text-xs"
+              >
+                <span className="text-text-secondary">No income</span>
+                <Input
+                  aria-label="No income from"
+                  type="date"
+                  value={p.from}
+                  onChange={(e) => set({ from: e.target.value })}
+                />
+                <Input
+                  aria-label="No income until"
+                  type="date"
+                  value={p.to}
+                  onChange={(e) => set({ to: e.target.value })}
+                />
+                <button
+                  type="button"
+                  aria-label="Remove income pause"
+                  className="p-1 text-text-tertiary hover:text-negative"
+                  onClick={() =>
+                    onChange({
+                      ...scenario,
+                      incomePauses: scenario.incomePauses.filter((_, j) => j !== i),
+                    })
+                  }
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            );
+          })}
+          {scenario.costChanges.map((c, i) => {
+            const set = (patch: Partial<typeof c>) =>
+              onChange({
+                ...scenario,
+                costChanges: scenario.costChanges.map((x, j) => (j === i ? { ...x, ...patch } : x)),
+              });
+            return (
+              <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-1 items-center">
+                <Input
+                  aria-label="Cost change description"
+                  value={c.description}
+                  onChange={(e) => set({ description: e.target.value })}
+                />
+                <Input
+                  aria-label="Cost change from"
+                  type="date"
+                  min={today}
+                  value={c.from}
+                  onChange={(e) => set({ from: e.target.value })}
+                />
+                <AmountInput
+                  label="Extra cost per month"
+                  value={c.monthlyAmount}
+                  onChange={(n) => set({ monthlyAmount: n ?? 0 })}
+                />
+                <button
+                  type="button"
+                  aria-label="Remove cost change"
+                  className="p-1 text-text-tertiary hover:text-negative"
+                  onClick={() =>
+                    onChange({
+                      ...scenario,
+                      costChanges: scenario.costChanges.filter((_, j) => j !== i),
+                    })
+                  }
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </details>
     </Card>
   );
 }
@@ -408,6 +552,22 @@ export default function ForecastPage() {
                   },
                 ]}
               />
+              <p role="status" aria-label="Shortfall" className="text-sm text-text-secondary">
+                {scenario.firstShortfall ? (
+                  <span className="text-negative">
+                    First shortfall {formatDay(scenario.firstShortfall.date)}:{' '}
+                    {formatCurrency(scenario.firstShortfall.balance)}.
+                  </span>
+                ) : (
+                  'No shortfall within this horizon.'
+                )}
+                {scenario.pausedIncome > 0 &&
+                  ` ${formatCurrency(scenario.pausedIncome)} of expected income does not arrive.`}
+                {scenario.reserveUse !== null &&
+                  (scenario.reserveUse > 0
+                    ? ` The lowest balance falls ${formatCurrency(scenario.reserveUse)} into your flexibility reserve.`
+                    : ' The lowest balance stays above your flexibility reserve.')}
+              </p>
               <Card padding="sm">
                 <p className="text-sm font-semibold text-text mb-2">Cash runway</p>
                 <div className="h-72" aria-label="Cash runway chart">
