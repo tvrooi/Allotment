@@ -16,7 +16,7 @@ import {
 } from '../utils/currency';
 import { BudgetSummaryWidget } from '../components/budget/BudgetSummaryWidget';
 import { BudgetEditPopover } from '../components/budget/BudgetEditPopover';
-import { Button } from '../components/ui/Button';
+import { Button, ButtonLink } from '../components/ui/Button';
 import { targetLabel } from '../utils/targets';
 import { FundTargets } from '../components/budget/FundTargets';
 import { SpentBar } from '../components/budget/SpentBar';
@@ -529,7 +529,10 @@ export default function BudgetPage() {
               {format(monthDate, 'MMMM yyyy')}
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <ButtonLink variant="ghost" size="sm" to={`/budget/year/${selectedMonth.slice(0, 4)}`}>
+              Year
+            </ButtonLink>
             <FundTargets month={selectedMonth} groups={groups} />
             <Button variant="secondary" size="sm" onClick={() => setPaydayView(true)}>
               Until next payday

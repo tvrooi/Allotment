@@ -1,9 +1,10 @@
 # Phase 8: transaction investigation, dashboard and planning workflows
 
 Added 21 October 2026; amended 22 October 2026 against main `2319038`.
-Status: **in progress**. Delivered: (2) transaction selection, summary, filtered
+Status: **implemented**. Delivered: (2) transaction selection, summary, filtered
 export and the shared savings rate in `0.2.0-up.19`; (3) home dashboard preferences
-in `0.2.0-up.20`.
+in `0.2.0-up.20`; (4) merchant breakdown and annual overview and (5) goal/debt
+presentation and the [expansion proposals](PHASE-8-PROPOSALS.md) in `0.2.0-up.21`.
 
 This phase consolidates the recommendations from the owner's signed-in Monarch
 REA inspection into the fork's development pipeline. It extends FlyBudget's

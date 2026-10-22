@@ -8,6 +8,7 @@ import DashboardPage from './pages/Dashboard';
 import AccountsPage from './pages/Accounts';
 import AccountTransactionsPage from './pages/AccountTransactions';
 import BudgetPage from './pages/Budget';
+import AnnualBudgetPage from './pages/AnnualBudget';
 import TransactionsPage from './pages/Transactions';
 import ReportsPage from './pages/Reports';
 import CustomReportBuilder from './pages/CustomReportBuilder';
@@ -38,6 +39,8 @@ export default function App() {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/budget" element={<BudgetPage />} />
+            <Route path="/budget/year" element={<AnnualBudgetPage />} />
+            <Route path="/budget/year/:year" element={<AnnualBudgetPage />} />
             <Route path="/budget/category/:id" element={<CategoryDetailPage />} />
             <Route path="/accounts" element={<AccountsPage />} />
             <Route path="/accounts/:id/reconcile" element={<ReconcilePage />} />

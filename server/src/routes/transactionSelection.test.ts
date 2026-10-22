@@ -224,6 +224,29 @@ describe('phase 8 fixture', () => {
     }
   });
 
+  it('selects merchants without a payee record by name, and rows with no payee by an empty name', async () => {
+    await withRows(
+      [
+        {
+          id: 'named',
+          accountId: 'mock',
+          date: '2026-10-25',
+          amount: -300,
+          payeeName: 'Market stall',
+        },
+        { id: 'blank', accountId: 'mock', date: '2026-10-25', amount: -200, payeeName: '' },
+        { id: 'none', accountId: 'mock', date: '2026-10-25', amount: -100 },
+      ],
+      async () => {
+        const day = 'from=2026-10-25&to=2026-10-25';
+        expect(await register(`${day}&payee_name=Market%20stall`)).toEqual(['named']);
+        expect(await register(`${day}&payee_name=`)).toEqual(['blank', 'none']);
+        expect(await summary(`${day}&payee_name=`)).toMatchObject({ count: 2, moneyOut: 300 });
+        expect(await register(`${day}&search=`)).toEqual(['blank', 'named', 'none']);
+      },
+    );
+  });
+
   it('treats search wildcards literally', async () => {
     expect(await register('search=%25')).toEqual([]);
     expect(await register('search=_')).toEqual([]);

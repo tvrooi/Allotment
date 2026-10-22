@@ -58,11 +58,15 @@ export const selectionSchema = z
 
 export type Selection = z.infer<typeof selectionSchema>;
 
-/** Only the selection's own keys, so paging and format options can share the query string */
+/**
+ * Only the selection's own keys, so paging and format options can share the query string.
+ * An empty value means "not set", except `payee_name`, where it selects rows with no payee.
+ */
 export function parseSelection(query: Record<string, unknown>) {
   const own = Object.fromEntries(
     Object.entries(query).filter(
-      ([key, value]) => Object.hasOwn(selectionSchema.shape, key) && value !== '',
+      ([key, value]) =>
+        Object.hasOwn(selectionSchema.shape, key) && (value !== '' || key === 'payee_name'),
     ),
   );
   return selectionSchema.safeParse(own);

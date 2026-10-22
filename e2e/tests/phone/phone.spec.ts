@@ -83,6 +83,7 @@ test('every page fits a phone screen', async ({ page, api }, testInfo) => {
     ['transactions', '/transactions'],
     ['budget', '/budget'],
     ['budget-category', `/budget/category/${groceries.id}`],
+    ['budget-year', '/budget/year'],
     ['recurring', '/recurring'],
     ['reports', '/reports'],
     ['custom-report', '/reports/custom'],

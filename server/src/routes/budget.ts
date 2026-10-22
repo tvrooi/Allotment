@@ -13,6 +13,7 @@ import {
   fundedWrite,
 } from '../services/budgetMoves.js';
 import { budgetSummary, fundingRevision, fundingState } from '../services/budgetService.js';
+import { annualOverview } from '../services/annualOverview.js';
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import {
@@ -86,6 +87,14 @@ for (const action of ['preview', 'apply'])
       next(error);
     }
   });
+
+// The annual overview: monthly assignments and activity, summed; balances never are
+budgetRouter.get('/year/:year', (req, res) => {
+  const year = Number(req.params.year);
+  if (!/^\d{4}$/.test(req.params.year) || year < 1900 || year > 2200)
+    return res.status(400).json({ error: 'Expected a year as YYYY' });
+  res.json(annualOverview(year));
+});
 
 budgetRouter.get('/:month', (req, res) => res.json(budgetWithTargets(req.params.month)));
 

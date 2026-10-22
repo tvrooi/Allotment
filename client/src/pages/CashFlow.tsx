@@ -9,6 +9,7 @@ import { periodFlow, savingsRate } from '../utils/reportSummary';
 import { formatCurrency } from '../utils/currency';
 import { cashFlowSelection, cashFlowTransactionsLink } from '../utils/cashFlowSelection';
 import { Link } from 'react-router-dom';
+import { MerchantBreakdown } from '../components/reports/MerchantBreakdown';
 import { downloadCsv } from '../utils/exportCsv';
 import { usePreferencesStore } from '../store/preferencesStore';
 import { chartColors } from '../utils/chartColors';
@@ -1104,6 +1105,8 @@ export default function CashFlowPage() {
   const isPhone = useIsPhone();
   const [phoneView, setPhoneView] = useState<'list' | 'diagram'>('list');
   const showList = isPhone && phoneView === 'list';
+  // Categories (the diagram or list) or merchants, over the same period and spending total
+  const [groupBy, setGroupBy] = useState<'category' | 'merchant'>('category');
 
   useEffect(() => {
     if (preset === 'custom') return;
@@ -1216,54 +1219,89 @@ export default function CashFlowPage() {
           Budget accounts · includes transfers across the budget boundary
         </p>
         <StatCardRow cards={statCards} variant="hero" />
-        {isPhone && (
-          <div className="flex items-center justify-between gap-3 mt-5 mb-3">
-            <div
-              role="group"
-              aria-label="Show as"
-              className="flex border border-border rounded-md overflow-hidden"
+        <div
+          role="group"
+          aria-label="Group spending by"
+          className="inline-flex mt-5 border border-border rounded-md overflow-hidden"
+        >
+          {(
+            [
+              ['category', 'Categories'],
+              ['merchant', 'Merchants'],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={groupBy === id}
+              onClick={() => {
+                setGroupBy(id);
+                setSelectedNode(null);
+              }}
+              className={`max-md:min-h-11 px-3 py-1 text-xs font-medium cursor-pointer ${
+                groupBy === id ? 'bg-surface-alt text-text' : 'text-text-tertiary'
+              } ${id === 'merchant' ? 'border-l border-border' : ''}`}
             >
-              {(
-                [
-                  ['list', 'List'],
-                  ['diagram', 'Diagram'],
-                ] as const
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  aria-pressed={phoneView === id}
-                  onClick={() => setPhoneView(id)}
-                  className={`min-h-11 px-4 text-sm font-medium cursor-pointer ${
-                    phoneView === id ? 'bg-surface-alt text-text' : 'text-text-tertiary'
-                  } ${id === 'diagram' ? 'border-l border-border' : ''}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            {!showList && (
-              <p className="text-xs text-text-tertiary text-right">Swipe to see it all</p>
-            )}
+              {label}
+            </button>
+          ))}
+        </div>
+        {groupBy === 'merchant' ? (
+          <div className="mt-4">
+            <MerchantBreakdown from={from} to={to} />
           </div>
-        )}
-        {showList ? (
-          <CashFlowList
-            from={from}
-            to={to}
-            selectedNode={selectedNode}
-            onNodeClick={handleNodeClick}
-          />
         ) : (
-          // Phones: the diagram scrolls sideways on its own, edge to edge
-          <div className="w-full max-md:overflow-x-auto max-md:-mx-6 max-md:px-6 max-md:w-auto">
-            <SankeyDiagram
-              from={from}
-              to={to}
-              selectedNode={selectedNode}
-              onNodeClick={handleNodeClick}
-            />
-          </div>
+          <>
+            {isPhone && (
+              <div className="flex items-center justify-between gap-3 mt-5 mb-3">
+                <div
+                  role="group"
+                  aria-label="Show as"
+                  className="flex border border-border rounded-md overflow-hidden"
+                >
+                  {(
+                    [
+                      ['list', 'List'],
+                      ['diagram', 'Diagram'],
+                    ] as const
+                  ).map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-pressed={phoneView === id}
+                      onClick={() => setPhoneView(id)}
+                      className={`min-h-11 px-4 text-sm font-medium cursor-pointer ${
+                        phoneView === id ? 'bg-surface-alt text-text' : 'text-text-tertiary'
+                      } ${id === 'diagram' ? 'border-l border-border' : ''}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {!showList && (
+                  <p className="text-xs text-text-tertiary text-right">Swipe to see it all</p>
+                )}
+              </div>
+            )}
+            {showList ? (
+              <CashFlowList
+                from={from}
+                to={to}
+                selectedNode={selectedNode}
+                onNodeClick={handleNodeClick}
+              />
+            ) : (
+              // Phones: the diagram scrolls sideways on its own, edge to edge
+              <div className="w-full max-md:overflow-x-auto max-md:-mx-6 max-md:px-6 max-md:w-auto">
+                <SankeyDiagram
+                  from={from}
+                  to={to}
+                  selectedNode={selectedNode}
+                  onNodeClick={handleNodeClick}
+                />
+              </div>
+            )}
+          </>
         )}
 
         {selectedNode && (

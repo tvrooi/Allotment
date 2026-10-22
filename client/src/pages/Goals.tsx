@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useMemo, useState } from 'react';
 import { Plus, ChevronDown, ChevronRight, Target } from 'lucide-react';
 import { differenceInCalendarDays, differenceInCalendarMonths, parseISO } from 'date-fns';
@@ -13,6 +14,7 @@ import { docsUrl } from '../utils/project';
 import { Card } from '../components/ui/Card';
 import { StatCardRow } from '../components/reports/ChartHelpers';
 import RowMenu from '../components/ui/RowMenu';
+import { transactionsLink } from '../utils/transactionFilters';
 import { formatCurrency } from '../utils/currency';
 import { usePreferencesStore } from '../store/preferencesStore';
 import type { Goal, GoalStatus } from '../types';
@@ -152,6 +154,21 @@ function GoalRow({
           {goal.fundingComplete === false
             ? 'Funding assessment incomplete — check exchange rates.'
             : `Assigned this month ${formatCurrency(goal.assignedThisMonth ?? 0)} · Activity ${formatCurrency(goal.activity ?? 0)} · Available ${formatCurrency(goal.available ?? 0)}`}
+          {/* Progress comes only from the category: these lead to where its money is moved */}
+          <span className="ml-2 inline-flex gap-3" onClick={(e) => e.stopPropagation()}>
+            <Link
+              to={`/budget/category/${goal.categoryId}`}
+              className="text-brand-600 hover:text-brand-700"
+            >
+              Assign or move money
+            </Link>
+            <Link
+              to={transactionsLink({ categoryIds: [goal.categoryId], datePreset: 'all' })}
+              className="text-brand-600 hover:text-brand-700"
+            >
+              Transactions
+            </Link>
+          </span>
         </p>
       )}
       <div className="mt-3 pl-12">

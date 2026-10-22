@@ -45,6 +45,9 @@ interface Props {
   categoryIds?: string[];
   categoryGroupId?: string;
   uncategorized?: boolean;
+  /** A merchant drill-down: its payee record, or its stored name ('' = no payee) */
+  payeeIds?: string[];
+  payeeName?: string;
   from?: string;
   to?: string;
   month?: string;
@@ -65,6 +68,8 @@ export function TransactionTable({
   categoryIds,
   categoryGroupId,
   uncategorized,
+  payeeIds,
+  payeeName,
   from,
   to,
   month,
@@ -106,6 +111,8 @@ export function TransactionTable({
       delete base.categoryIds;
       base.uncategorized = true;
     }
+    if (payeeIds?.length) base.payeeIds = payeeIds;
+    if (payeeName !== undefined) base.payeeName = payeeName;
     if (from) base.from = from;
     if (to) base.to = to;
     if (month) {
@@ -122,6 +129,8 @@ export function TransactionTable({
     categoryIds,
     categoryGroupId,
     uncategorized,
+    payeeIds,
+    payeeName,
     from,
     to,
     month,
@@ -129,7 +138,15 @@ export function TransactionTable({
   const { data: transactions = [], isLoading } = useTransactions(params);
   // Whether there are any transactions at all here, to tell "nothing yet" from "filtered out"
   const scoped = Boolean(
-    categoryId || categoryIds?.length || categoryGroupId || uncategorized || month || from || to,
+    categoryId ||
+    categoryIds?.length ||
+    categoryGroupId ||
+    uncategorized ||
+    payeeIds?.length ||
+    payeeName !== undefined ||
+    month ||
+    from ||
+    to,
   );
   const { data: anyTransactions = [] } = useTransactions(
     accountId ? { accountId, limit: 1 } : { limit: 1 },
