@@ -80,8 +80,17 @@ export function Sidebar() {
     <aside
       // Focus keeps an unpinned sidebar open, except focus from a click (on the pin, a link),
       // or it would stay open after the pointer leaves
-      onPointerDownCapture={() => (pointerDown.current = true)}
-      onPointerUpCapture={() => setTimeout(() => (pointerDown.current = false))}
+      onPointerDownCapture={() => {
+        pointerDown.current = true;
+        // Listened for on the window: the press may end outside the sidebar
+        const done = new AbortController();
+        const release = () => {
+          pointerDown.current = false;
+          done.abort();
+        };
+        window.addEventListener('pointerup', release, { capture: true, signal: done.signal });
+        window.addEventListener('pointercancel', release, { capture: true, signal: done.signal });
+      }}
       onFocusCapture={() => {
         if (!pointerDown.current) setFocusWithin(true);
       }}
