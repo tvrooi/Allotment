@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { expenseFigure, incomeFigure, monthsToAverage } from './reportSummary';
+import {
+  expenseFigure,
+  incomeFigure,
+  monthsToAverage,
+  periodFlow,
+  savingsRate,
+} from './reportSummary';
 import { formatCurrency } from './currency';
 
 const cents = fc.integer({ min: -100_000_000, max: 100_000_000 });
@@ -69,5 +75,36 @@ describe('incomeFigure (property-based)', () => {
         expect(tone).toBe(c > 0 ? 'positive' : c < 0 ? 'negative' : 'neutral');
       }),
     );
+  });
+});
+
+describe('savings rate (phase 8 fixture)', () => {
+  it('is 91.75% for October and nets refunds across the period', () => {
+    const october = periodFlow([{ income: 200000, expenseNet: -16500 }]);
+    expect(october).toEqual({ income: 200000, spending: 16500, net: 183500 });
+    expect(savingsRate(october.income, october.spending)).toBe(91.75);
+    const allTime = periodFlow([
+      { income: 0, expenseNet: -9000 },
+      { income: 200000, expenseNet: -16500 },
+    ]);
+    expect(allTime).toMatchObject({ spending: 25500, net: 174500 });
+    // A month of net refunds lowers spending; spending never goes below zero
+    expect(
+      periodFlow([
+        { income: 100, expenseNet: -50 },
+        { income: 0, expenseNet: 20 },
+      ]),
+    ).toEqual({
+      income: 100,
+      spending: 30,
+      net: 70,
+    });
+    expect(periodFlow([{ income: 0, expenseNet: 20 }]).spending).toBe(0);
+  });
+
+  it('is undefined without positive income', () => {
+    expect(savingsRate(0, 100)).toBeNull();
+    expect(savingsRate(-5, 0)).toBeNull();
+    expect(savingsRate(100, 150)).toBe(-50);
   });
 });

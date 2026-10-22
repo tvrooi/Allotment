@@ -1,8 +1,14 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { format, subMonths, startOfYear, endOfYear, subYears } from 'date-fns';
-import { useSpendingByCategory, useIncomeByCategory } from '../hooks/useReports';
+import {
+  useSpendingByCategory,
+  useIncomeByCategory,
+  useIncomeVsExpenses,
+} from '../hooks/useReports';
+import { periodFlow, savingsRate } from '../utils/reportSummary';
 import { formatCurrency } from '../utils/currency';
-import { cashFlowSelection } from '../utils/cashFlowSelection';
+import { cashFlowSelection, cashFlowTransactionsLink } from '../utils/cashFlowSelection';
+import { Link } from 'react-router-dom';
 import { downloadCsv } from '../utils/exportCsv';
 import { usePreferencesStore } from '../store/preferencesStore';
 import { chartColors } from '../utils/chartColors';
@@ -1124,14 +1130,15 @@ export default function CashFlowPage() {
   const { data: incData = [] } = useIncomeByCategory(from, to);
   const { data: spData = [] } = useSpendingByCategory(from, to);
 
+  // Headline totals and savings rate use the shared definition (utils/reportSummary.ts):
+  // spending is net of refunds across all expense categories, as on the dashboard
+  const { data: ieData = [] } = useIncomeVsExpenses(from, to);
   const statCards = useMemo((): StatCard[] => {
-    const totalIncome = incData.reduce((s, d) => s + d.totalReceived, 0);
-    const totalExpenses = spData.reduce((s, d) => s + d.totalSpent, 0);
-    const net = totalIncome - totalExpenses;
-    const savingsRate = totalIncome > 0 ? (net / totalIncome) * 100 : 0;
+    const { income, spending, net } = periodFlow(ieData);
+    const rate = savingsRate(income, spending);
     return [
-      { label: 'Total income', value: formatCurrency(totalIncome), tone: 'positive' },
-      { label: 'Total expenses', value: formatCurrency(totalExpenses), tone: 'negative' },
+      { label: 'Total income', value: formatCurrency(income), tone: 'positive' },
+      { label: 'Total expenses', value: formatCurrency(spending), tone: 'negative' },
       {
         label: 'Total net income',
         value: formatCurrency(net),
@@ -1139,11 +1146,11 @@ export default function CashFlowPage() {
       },
       {
         label: 'Savings rate',
-        value: `${savingsRate.toFixed(1)}%`,
-        tone: savingsRate < 0 ? 'negative' : undefined,
+        value: rate === null ? '—' : `${rate.toFixed(1)}%`,
+        tone: rate !== null && rate < 0 ? 'negative' : undefined,
       },
     ];
-  }, [incData, spData]);
+  }, [ieData]);
 
   const handleNodeClick = useCallback((node: SelectedNode | null) => {
     setSelectedNode(node);
@@ -1269,12 +1276,20 @@ export default function CashFlowPage() {
               <h2 id="cash-flow-transactions-heading" className="text-sm font-semibold text-text">
                 Transactions: {selectedNode.name}
               </h2>
-              <button
-                onClick={() => setSelectedNode(null)}
-                className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary cursor-pointer transition-colors"
-              >
-                <X size={14} /> Clear
-              </button>
+              <div className="flex items-center gap-3">
+                <Link
+                  to={cashFlowTransactionsLink(selectedNode, from, to)}
+                  className="text-xs text-brand-600 hover:text-brand-700"
+                >
+                  Open in Transactions
+                </Link>
+                <button
+                  onClick={() => setSelectedNode(null)}
+                  className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary cursor-pointer transition-colors"
+                >
+                  <X size={14} /> Clear
+                </button>
+              </div>
             </div>
             <div className="bg-surface rounded-lg shadow-card border border-border-light overflow-hidden">
               <TransactionTable

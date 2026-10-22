@@ -6,7 +6,9 @@ import type { Transaction, TransactionQueryParams } from '../types';
 function findTxInCache(qc: QueryClient, id: string): Transaction | undefined {
   const caches = qc.getQueriesData<Transaction[]>({ queryKey: ['transactions'] });
   for (const [, data] of caches) {
-    const found = data?.find((t) => t.id === id);
+    // Not every answer under 'transactions' is a list (the summary is an object)
+    if (!Array.isArray(data)) continue;
+    const found = data.find((t) => t.id === id);
     if (found) return found;
   }
 }
@@ -15,6 +17,16 @@ export function useTransactions(params: TransactionQueryParams = {}) {
   return useQuery({
     queryKey: ['transactions', params],
     queryFn: () => txApi.getTransactions(params),
+  });
+}
+
+/** Count, money in/out and date span of the register's selection. Under 'transactions', so
+ * every change to transactions refreshes it. */
+export function useTransactionSummary(params: TransactionQueryParams, enabled = true) {
+  return useQuery({
+    queryKey: ['transactions', 'summary', params],
+    queryFn: () => txApi.getTransactionSummary(params),
+    enabled,
   });
 }
 

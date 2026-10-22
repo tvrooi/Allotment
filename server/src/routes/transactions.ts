@@ -9,19 +9,7 @@ import {
   categoryGroups,
   cardFunding,
 } from '../db/schema.js';
-import {
-  eq,
-  and,
-  or,
-  like,
-  gte,
-  lte,
-  sql,
-  isNull,
-  isNotNull,
-  inArray,
-  getTableColumns,
-} from 'drizzle-orm';
+import { eq, and, sql, isNull, inArray, getTableColumns } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { deleteTransactionRow, resolvePayee } from '../services/transactionHelpers.js';
@@ -37,11 +25,11 @@ import {
 } from '../services/transferService.js';
 import { isoDate } from '../utils/validation.js';
 import {
-  isIncomeOrSpending,
-  onBudget,
-  reportActivity,
-  isBudgetBoundary,
-} from '../services/balances.js';
+  parseSelection,
+  registerCondition,
+  summarizeSelection,
+} from '../services/transactionSelection.js';
+import { isBudgetBoundary } from '../services/balances.js';
 import {
   accountCurrency,
   convertAmount,
@@ -182,89 +170,27 @@ const importRowSchema = z.object({
 });
 const importRowsSchema = z.array(importRowSchema).max(100_000);
 
-// GET /transactions — excludes split children; attaches children array to parents
-/**
- * Transactions in any of these categories. The list shows split parents (their parts are
- * nested under them), so a split with a part in one of them counts too.
- */
-function inCategories(ids: string[]) {
-  const parentsWithPart = db
-    .select({ id: transactions.parentTransactionId })
-    .from(transactions)
-    .where(inArray(transactions.categoryId, ids));
-  return or(inArray(transactions.categoryId, ids), inArray(transactions.id, parentsWithPart))!;
-}
+// GET /transactions — excludes split children; attaches children array to parents.
+// The selection is shared with the summary and the filtered export (services/transactionSelection.ts).
+// GET /transactions/summary — count, money in/out and date span of the same selection. Reads only.
+transactionsRouter.get('/summary', (req, res) => {
+  const selection = parseSelection(req.query as Record<string, unknown>);
+  if (!selection.success) return res.status(400).json({ error: selection.error.flatten() });
+  res.json(summarizeSelection(selection.data));
+});
 
 transactionsRouter.get('/', (req, res) => {
-  const {
-    account_id,
-    month,
-    from,
-    to,
-    category_id,
-    category_ids,
-    category_group_id,
-    uncategorized,
-    search,
-    reconciled,
-  } = req.query as Record<string, string>;
+  const selection = parseSelection(req.query as Record<string, unknown>);
+  if (!selection.success) return res.status(400).json({ error: selection.error.flatten() });
 
-  let query = db
+  const query = db
     .select({
       ...getTableColumns(transactions),
       isBudgetBoundary: isBudgetBoundary.mapWith(Boolean),
     })
     .from(transactions)
+    .where(registerCondition(selection.data))
     .$dynamic();
-
-  const conditions: ReturnType<typeof eq>[] = [isNull(transactions.parentTransactionId)];
-  const budgetReport = req.query.budget_report === '1';
-  if (budgetReport) {
-    conditions.push(onBudget);
-    // Register queries return split parents, with their categorized parts attached below.
-    conditions.push(or(eq(transactions.isParent, 1), reportActivity)!);
-  }
-  if (account_id) conditions.push(eq(transactions.accountId, account_id));
-  if (month) {
-    conditions.push(gte(transactions.date, `${month}-01`));
-    conditions.push(lte(transactions.date, `${month}-31`));
-  }
-  if (from) conditions.push(gte(transactions.date, from));
-  if (to) conditions.push(lte(transactions.date, to));
-  if (uncategorized === '1') {
-    const parentsWithUncategorizedPart = db
-      .select({ id: transactions.parentTransactionId })
-      .from(transactions)
-      .where(and(isNull(transactions.categoryId), isNotNull(transactions.parentTransactionId)));
-    conditions.push(
-      or(
-        and(isNull(transactions.categoryId), eq(transactions.isParent, 0)),
-        inArray(transactions.id, parentsWithUncategorizedPart),
-      )!,
-    );
-    conditions.push(or(isNull(transactions.transferTransactionId), isBudgetBoundary)!);
-    conditions.push(isIncomeOrSpending);
-  }
-  if (category_ids) {
-    const ids = category_ids.split(',').filter(Boolean);
-    if (ids.length) conditions.push(inCategories(ids));
-  } else if (category_id) {
-    conditions.push(inCategories([category_id]));
-  }
-  if (category_group_id) {
-    const catIds = db
-      .select({ id: categories.id })
-      .from(categories)
-      .where(eq(categories.groupId, category_group_id))
-      .all()
-      .map((r) => r.id);
-    if (catIds.length) conditions.push(inCategories(catIds));
-  }
-  if (search) conditions.push(like(transactions.payeeName, `%${search}%`));
-  if (reconciled === '0' || reconciled === '1')
-    conditions.push(eq(transactions.reconciled, Number(reconciled)));
-
-  query = query.where(and(...conditions));
 
   // No limit unless asked for: the register, reconcile and category views need every match
   // (a hidden cap cut off older transactions and broke the reconciled balance)

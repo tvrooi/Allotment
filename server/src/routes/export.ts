@@ -8,9 +8,8 @@ import {
   restoreBackup,
   saveSafetyCopy,
 } from '../services/backupService.js';
-import { eq, and, gte, lte } from 'drizzle-orm';
 import { z } from 'zod';
-import { isRealDate } from '../utils/validation.js';
+import { leafCondition, parseSelection } from '../services/transactionSelection.js';
 import { minorUnits } from '../utils/currencies.js';
 import { minorToDecimal } from '../utils/money.js';
 import { budgetCurrency, hasForeignAccounts } from '../services/mainAmountService.js';
@@ -48,23 +47,16 @@ export function csvAmount(cents: number, decimal: '.' | ',', minor = 2): string 
 const csvFormatSchema = z.enum(['dot', 'comma']).default('dot');
 
 exportRouter.get('/transactions/csv', (req, res) => {
-  const { from, to } = req.query;
   const decimalFormat = csvFormatSchema.safeParse(req.query.decimal);
   if (!decimalFormat.success) {
     return res.status(400).json({ error: 'Expected `decimal` to be dot or comma' });
   }
   const [sep, decimal] =
     decimalFormat.data === 'comma' ? ([';', ','] as const) : ([',', '.'] as const);
-  if (
-    (from !== undefined && !isRealDate(String(from))) ||
-    (to !== undefined && !isRealDate(String(to)))
-  ) {
-    return res.status(400).json({ error: 'Expected `from` and `to` as YYYY-MM-DD' });
-  }
-  // A split is exported as its parts (which carry the categories), so amounts add up
-  const filters = [eq(transactions.isParent, 0)];
-  if (typeof from === 'string') filters.push(gte(transactions.date, from));
-  if (typeof to === 'string') filters.push(lte(transactions.date, to));
+  // The register's selection (services/transactionSelection.ts). A split is exported as its
+  // matching parts (which carry the categories), so amounts add up to the filtered summary.
+  const selection = parseSelection(req.query as Record<string, unknown>);
+  if (!selection.success) return res.status(400).json({ error: selection.error.flatten() });
 
   const rows = db
     .select({
@@ -79,7 +71,7 @@ exportRouter.get('/transactions/csv', (req, res) => {
       mainAmountSource: transactions.mainAmountSource,
     })
     .from(transactions)
-    .where(and(...filters))
+    .where(leafCondition(selection.data))
     .orderBy(transactions.date)
     .all();
 

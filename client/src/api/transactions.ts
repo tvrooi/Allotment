@@ -2,6 +2,7 @@ import { apiFetch } from './client';
 import type {
   Transaction,
   TransactionQueryParams,
+  TransactionSummary,
   ImportPreviewRow,
   TransferLinkResult,
   TransferSuggestion,
@@ -51,9 +52,11 @@ export interface ImportRow {
   importedId: string;
 }
 
-export function getTransactions(params: TransactionQueryParams = {}) {
+/** The selection as the server's query string; shared by the register, summary and export */
+export function transactionQuery(params: TransactionQueryParams = {}): URLSearchParams {
   const q = new URLSearchParams();
   if (params.budgetReport) q.set('budget_report', '1');
+  if (params.accountIds?.length) q.set('account_ids', params.accountIds.join(','));
   if (params.accountId) q.set('account_id', params.accountId);
   if (params.month) q.set('month', params.month);
   if (params.from) q.set('from', params.from);
@@ -62,12 +65,36 @@ export function getTransactions(params: TransactionQueryParams = {}) {
   else if (params.categoryId) q.set('category_id', params.categoryId);
   if (params.categoryGroupId) q.set('category_group_id', params.categoryGroupId);
   if (params.uncategorized) q.set('uncategorized', '1');
+  if (params.payeeIds?.length) q.set('payee_ids', params.payeeIds.join(','));
+  if (params.payeeName !== undefined) q.set('payee_name', params.payeeName);
   if (params.search) q.set('search', params.search);
+  if (params.direction) q.set('direction', params.direction);
+  if (params.minAmount !== undefined) q.set('min_amount', String(params.minAmount));
+  if (params.maxAmount !== undefined) q.set('max_amount', String(params.maxAmount));
+  if (params.transfers === 'exclude') q.set('transfers', 'exclude');
   if (params.reconciled !== undefined) q.set('reconciled', String(params.reconciled));
+  return q;
+}
+
+export function getTransactions(params: TransactionQueryParams = {}) {
+  const q = transactionQuery(params);
   if (params.limit) q.set('limit', String(params.limit));
   if (params.offset) q.set('offset', String(params.offset));
   const qs = q.toString();
   return apiFetch<Transaction[]>(`/transactions${qs ? `?${qs}` : ''}`);
+}
+
+export function getTransactionSummary(params: TransactionQueryParams = {}) {
+  const qs = transactionQuery(params).toString();
+  return apiFetch<TransactionSummary>(`/transactions/summary${qs ? `?${qs}` : ''}`);
+}
+
+/** The filtered CSV export of the same selection (server: GET /export/transactions/csv) */
+export function transactionsCsvPath(params: TransactionQueryParams, decimalComma: boolean) {
+  const q = transactionQuery(params);
+  if (decimalComma) q.set('decimal', 'comma');
+  const qs = q.toString();
+  return `/export/transactions/csv${qs ? `?${qs}` : ''}`;
 }
 
 export const createTransaction = (data: CreateTransactionData) =>

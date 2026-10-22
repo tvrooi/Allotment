@@ -271,9 +271,11 @@ export interface Payee {
   createdAt: string;
 }
 
+/** A transaction selection (server: services/transactionSelection.ts) */
 export interface TransactionQueryParams {
   budgetReport?: boolean;
   accountId?: string;
+  accountIds?: string[];
   month?: string;
   from?: string;
   to?: string;
@@ -281,10 +283,33 @@ export interface TransactionQueryParams {
   uncategorized?: boolean;
   categoryGroupId?: string;
   categoryIds?: string[];
+  payeeIds?: string[];
+  /** A merchant without a payee record ('' = no payee) */
+  payeeName?: string;
+  /** Payee name or notes */
   search?: string;
+  direction?: 'debit' | 'credit';
+  /** Magnitudes in minor units, both inclusive */
+  minAmount?: number;
+  maxAmount?: number;
+  transfers?: 'include' | 'exclude';
   reconciled?: 0 | 1;
   limit?: number;
   offset?: number;
+}
+
+/** Totals of a selection's matching rows; a filtered split counts only its matching parts */
+export interface TransactionSummary {
+  count: number;
+  leafCount: number;
+  /** Budget currency, positive numbers */
+  moneyIn: number;
+  moneyOut: number;
+  net: number;
+  /** Left out of the totals: their exchange rate is missing */
+  missingRateCount: number;
+  firstDate: string | null;
+  lastDate: string | null;
 }
 
 /** A category target's needs for the viewed month (server: services/targetService.ts) */
