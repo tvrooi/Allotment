@@ -78,12 +78,15 @@ export function TransactionDetailPanel({
   const [splitting, setSplitting] = useState(false);
   const ruleModal = useModalValue(ruleDraft);
 
-  useEffect(() => {
-    setLocalDate(tx.date);
-    setLocalNotes(tx.notes ?? '');
-    setLocalPayee({ id: tx.payeeId, name: tx.payeeName ?? '' });
-    setShowCategoryPicker(false);
-  }, [tx.id, tx.date, tx.notes, tx.payeeId, tx.payeeName]);
+  // Each field follows only its own saved value: a refetch after one edit must not wipe
+  // another field that's being typed but not saved yet
+  useEffect(() => setLocalDate(tx.date), [tx.id, tx.date]);
+  useEffect(() => setLocalNotes(tx.notes ?? ''), [tx.id, tx.notes]);
+  useEffect(
+    () => setLocalPayee({ id: tx.payeeId, name: tx.payeeName ?? '' }),
+    [tx.id, tx.payeeId, tx.payeeName],
+  );
+  useEffect(() => setShowCategoryPicker(false), [tx.id]);
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
