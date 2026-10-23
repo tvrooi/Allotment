@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.27
+
+- Add **Investments**: record what investment, retirement and crypto accounts hold (shares, ETFs, funds, bonds or coins, including fractions), enter dated prices yourself, and see each holding's value. Holdings never change an account's balance, the budget or net worth; when the holdings and the recorded balance differ, **Record as value** opens the usual Update Value adjustment for you to confirm.
+- Record purchases with their total cost to see **unrealized gains**. A cost you don't know stays unknown rather than counting as zero, and a holding shows a gain only when every unit's cost is known. Prices older than a week are marked stale; other currencies are converted at the latest exchange rate or left out with a note. See [Investments](docs/INVESTMENTS.md).
+- The sidebar's **Add account** menu no longer closes when the sidebar scrolls the button into view. Backup format 14 includes securities, prices, holdings and purchases; format 13 backups restore unchanged (P3).
+
 ## 0.2.0-up.26
 
 - On macOS, a desktop window connected to a self-hosted server now has no title bar either, like the app's own budget. The app first checks that the server's version can draw that layout; an older server keeps the usual title bar until it's updated.

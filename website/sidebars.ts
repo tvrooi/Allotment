@@ -22,6 +22,7 @@ const sidebars: SidebarsConfig = {
         'rules',
         'reports',
         'goals',
+        'investments',
         'payees',
         'currencies',
         'settings',

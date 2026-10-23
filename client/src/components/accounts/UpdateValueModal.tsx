@@ -13,17 +13,19 @@ interface Props {
   /** Render only while open, so the input starts at the current value */
   account: Account;
   onClose: () => void;
+  /** Where the input starts instead of the current value (Investments: the holdings' value) */
+  initialValue?: number;
 }
 
 /**
  * Sets a manually tracked account (home, car, loan, crypto…) to its current value
  * by adding a dated adjustment transaction, so net worth history keeps the change.
  */
-export function UpdateValueModal({ account, onClose }: Props) {
+export function UpdateValueModal({ account, onClose, initialValue }: Props) {
   const liability = isLiabilityType(account.type);
   // Debts are entered as the positive amount owed
   const current = liability ? -account.balance : account.balance;
-  const [value, setValue] = useState(current);
+  const [value, setValue] = useState(initialValue ?? current);
   const canSave = useCanSave();
   const createTransaction = useCreateTransaction();
 

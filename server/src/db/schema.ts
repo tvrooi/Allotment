@@ -876,3 +876,77 @@ export const cardFunding = sqliteTable('card_funding', {
   initialFunding: integer('initial_funding').notNull(),
   createdAt: text('created_at').notNull(),
 });
+
+// P3 investments (docs/INVESTMENTS.md): manual positions, kept apart from the ledger. Nothing
+// here changes an account's balance; recording holdings as a value is a separate, explicit step.
+
+/** An instrument a position can hold: a share, ETF, fund, bond or coin, priced in one currency */
+export const securities = sqliteTable('securities', {
+  id: text('id').primaryKey(),
+  symbol: text('symbol').notNull(),
+  name: text('name').notNull(),
+  /** stock | etf | fund | bond | crypto | other: what the instrument is, not what it holds */
+  kind: text('kind').notNull().default('other'),
+  /** ISO 4217 code its prices are quoted in */
+  currency: text('currency').notNull(),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+/** A price entered for a day: one per security per day, in minor units of its currency per unit */
+export const securityPrices = sqliteTable(
+  'security_prices',
+  {
+    securityId: text('security_id')
+      .notNull()
+      .references(() => securities.id, { onDelete: 'cascade' }),
+    date: text('date').notNull(),
+    price: integer('price').notNull(),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [primaryKey({ columns: [table.securityId, table.date] })],
+);
+
+/** How many units of a security an investment account holds (millionths of a unit) */
+export const holdings = sqliteTable(
+  'holdings',
+  {
+    id: text('id').primaryKey(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    securityId: text('security_id')
+      .notNull()
+      .references(() => securities.id, { onDelete: 'restrict' }),
+    quantity: integer('quantity').notNull(),
+    notes: text('notes'),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    updatedAt: text('updated_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [uniqueIndex('holdings_account_security_idx').on(table.accountId, table.securityId)],
+);
+
+/** Units bought on one day and what they cost in total; null cost = not known, never zero */
+export const taxLots = sqliteTable(
+  'tax_lots',
+  {
+    id: text('id').primaryKey(),
+    holdingId: text('holding_id')
+      .notNull()
+      .references(() => holdings.id, { onDelete: 'cascade' }),
+    acquiredOn: text('acquired_on').notNull(),
+    quantity: integer('quantity').notNull(),
+    costBasis: integer('cost_basis'),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [index('tax_lots_holding_idx').on(table.holdingId)],
+);

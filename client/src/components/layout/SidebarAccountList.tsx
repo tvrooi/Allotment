@@ -82,15 +82,24 @@ export function SidebarAccountList() {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') setMenuPos(null);
     }
-    const close = () => setMenuPos(null);
+    // The menu is placed where the button was: close it once the button moves. A scroll that
+    // leaves it in place (bringing it into view as it's clicked, say) keeps the menu open.
+    const openedAt = buttonRef.current?.getBoundingClientRect();
+    const closeOnMove = () => {
+      const now = buttonRef.current?.getBoundingClientRect();
+      if (!openedAt || !now || now.top !== openedAt.top || now.left !== openedAt.left) {
+        setMenuPos(null);
+      }
+    };
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('scroll', close, true);
+    const close = () => setMenuPos(null);
+    window.addEventListener('scroll', closeOnMove, true);
     window.addEventListener('resize', close);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('scroll', closeOnMove, true);
       window.removeEventListener('resize', close);
     };
   }, [menuOpen]);
