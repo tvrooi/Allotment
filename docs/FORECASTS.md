@@ -2,9 +2,9 @@
 
 Implementation: `0.2.0-up.13` feature branch. Release publication and live installation are separate delivery gates.
 
-Open **Forecast** in the sidebar. The page is read-only: it never creates transactions, schedules,
-goal values or budget assignments, and nothing about a scenario is stored. Refreshing the page
-returns to the default scenarios.
+Open **Forecast** in the sidebar. The forecast is read-only: it never creates transactions,
+schedules, goal values or budget assignments. A scenario's assumptions are stored only when you
+choose **Save** (see [Saved scenarios](#saved-scenarios)); everything else resets on refresh.
 
 ## Cash runway
 
@@ -18,7 +18,9 @@ A day-by-day balance from today to the chosen horizon (30 days to two years):
   when no plan exists or you choose it, pending scheduled income in income categories. The two
   sources are never combined, so a scheduled salary and a payday plan cannot both be counted.
 - **Bills and other movements** are pending, unmatched recurring occurrences on the personal
-  side of the budget boundary, plus future-dated register entries. A matched, paid or skipped
+  side of the budget boundary, plus future-dated register entries. Items marked **Possibly
+  ended** (their last two payments never came) are left out, and the assumptions name them.
+  Marking one **Still active** brings it back. A matched, paid or skipped
   occurrence is replaced by its real transaction. Internal transfers between personal accounts
   net to zero. Overdue unmatched occurrences are reported as a warning, not guessed as paid
   or unpaid.
@@ -49,6 +51,27 @@ confidence intervals. Each can change:
 | Goal contributions per pay | Plan                                    | Replaces a goal's planned per-pay contribution.      |
 | One-off amounts            | None                                    | Signed cash movements inside the horizon.            |
 
+## Saved scenarios
+
+Each scenario card has a name and a **Save** button, and shows whether it's saved, changed since
+it was saved, or not saved. Saved scenarios (at most 20) come back after a refresh and on other
+devices: the page opens with Base, Conservative and Stretch, each replaced by a saved scenario of
+the same name, and other saved ones in place of unsaved defaults. **Open saved** brings another
+one into the comparison (replacing the selected one when three are shown), the copy button
+duplicates a scenario as an unsaved copy, × removes one from the comparison without deleting it,
+and the bin deletes the saved copy (undoable).
+
+Each saved scenario has a version. A save or delete names the version it started from; when
+another device changed or deleted it meanwhile, nothing is overwritten and the card offers **Use
+theirs** or **Keep mine** (**Save as new** if it was deleted). The stat cards show the selected
+scenario's lowest and closing balances against the first scenario as a money difference, not a
+percentage.
+
+`GET /api/forecast/scenarios` lists them; `POST` takes `{scenario}`, `PUT /:id` takes
+`{scenario, expectedVersion}`, and `DELETE /:id?expectedVersion=n` removes one. A stale version
+returns 409 with the current copy (`current`, null when deleted); a duplicate name returns 409.
+Backup format 13 includes them, validated with the same scenario rules.
+
 ## Goal trajectory
 
 Each goal starts from its current value: category-funded goals use today's positive envelope
@@ -78,6 +101,6 @@ and reserve use. See [Resilience](RESILIENCE.md#life-events-in-forecasts-7c).
 
 ## Limits
 
-No saved scenarios, investment holdings, superannuation projection, tax modelling, inflation
-adjustment or formula builder. Variable income is modelled only through the income percentage.
+No investment holdings, superannuation projection, tax modelling, inflation adjustment or formula
+builder. Horizon, history and income settings are not saved with scenarios. Variable income is modelled only through the income percentage.
 Daily forecast dates use the server's local date; payday enumeration uses each plan's dates.

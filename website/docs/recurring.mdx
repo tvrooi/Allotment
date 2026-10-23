@@ -50,6 +50,13 @@ Payees you already track aren't suggested. Transactions are only grouped when th
 payee, so if a bank spells the same company several ways, [merge the payees](./payees#merging-payees)
 first.
 
+Below the results, **Almost recurring** lists payees that look regular but didn't qualify, with
+the reason: the amounts vary by more than 7.5%, there are only two payments so far, the dates
+drift more than two days, or money went both in and out (a refund between payments). **Add
+anyway** opens a new recurring item filled in from them. It starts at the next expected
+payment, so earlier ones don't show as missed; varying amounts are tracked as **Variable** and
+drifting dates get a week's leeway.
+
 ## Paid, upcoming and missed
 
 When a transaction arrives that matches a recurring item (the same payee, near the expected date
@@ -65,8 +72,22 @@ Each item's status:
 | **Scheduled**             | Due later than that.                               |
 | **Due**                   | Due today.                                         |
 | **Missed**                | The date passed without a payment.                 |
+| **Possibly ended**        | The last two payments never came (see below).      |
 | **Skipped**               | You skipped this date.                             |
 | **Paused** / **Canceled** | The item is on hold, or no longer repeats.         |
+
+### Possibly ended
+
+A subscription you stopped would otherwise show as missed every month. When the last two
+payments of an item never arrived, FlyBudget marks it **Possibly ended**, lists it at the top of
+the page, and leaves it out of the **Forecast**. Choose:
+
+- **Cancel recurring**: it stops repeating. Its paid history stays; the payments that never came
+  are marked skipped rather than missed.
+- **Still active**: it's fine (perhaps paid in a way FlyBudget didn't link). It's only flagged
+  again if two more payments are missed.
+
+Both can be undone, and **Still active** is also in the item's ⋮ menu.
 
 ## The Monthly tab
 

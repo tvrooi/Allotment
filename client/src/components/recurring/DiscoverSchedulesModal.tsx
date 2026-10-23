@@ -4,7 +4,9 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { useDiscoverSchedules, useCreateDiscoveredSchedules } from '../../hooks/useSchedules';
 import { formatScheduleAmount } from './scheduleFormat';
-import type { DiscoveredSchedule } from '../../types';
+import { nearMissReason } from '../../utils/nearMiss';
+import { formatDay } from '../../utils/dates';
+import type { DiscoveredSchedule, NearMiss } from '../../types';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -30,10 +32,15 @@ function describe(item: DiscoveredSchedule): string {
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  /** Track a near miss anyway: opens the recurring form filled in from it */
+  onAddAnyway: (miss: NearMiss) => void;
 }
 
-export default function DiscoverSchedulesModal({ isOpen, onClose }: Props) {
-  const { data: found = [], isLoading, isFetching } = useDiscoverSchedules(isOpen);
+const NO_RESULTS = { found: [] as DiscoveredSchedule[], nearMisses: [] as NearMiss[] };
+
+export default function DiscoverSchedulesModal({ isOpen, onClose, onAddAnyway }: Props) {
+  const { data = NO_RESULTS, isLoading, isFetching } = useDiscoverSchedules(isOpen);
+  const { found, nearMisses } = data;
   const createMut = useCreateDiscoveredSchedules();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [lastClicked, setLastClicked] = useState<number | null>(null);
@@ -80,7 +87,8 @@ export default function DiscoverSchedulesModal({ isOpen, onClose }: Props) {
         </p>
         <p className="text-xs text-text-tertiary">
           Missing something? Transactions are only grouped when they share the same payee, so
-          renaming payees to match may help. Payees you already track aren't listed.
+          renaming payees to match may help. Payees you already track aren't listed, and payees that
+          almost qualified are shown below with the reason.
         </p>
       </div>
 
@@ -158,6 +166,42 @@ export default function DiscoverSchedulesModal({ isOpen, onClose }: Props) {
           )}
         </div>
       </div>
+
+      {!loading && nearMisses.length > 0 && (
+        <section aria-labelledby="near-misses" className="mt-4">
+          <h3 id="near-misses" className="text-sm font-semibold text-text">
+            Almost recurring
+          </h3>
+          <p className="text-xs text-text-tertiary mt-0.5">
+            These look regular but didn't qualify. Add one anyway to track it; it starts from the
+            next expected payment.
+          </p>
+          <ul className="mt-2 border border-border-light rounded-lg divide-y divide-border-light max-h-[220px] overflow-y-auto">
+            {nearMisses.map((m) => (
+              <li key={m.id} className="flex items-center gap-3 px-3 py-2.5 max-md:flex-wrap">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-text truncate">
+                    {m.payeeName}
+                    <span className="font-normal text-text-tertiary"> · {m.accountName}</span>
+                  </p>
+                  <p className="text-xs text-text-secondary">{nearMissReason(m)}</p>
+                  <p className="text-xs text-text-tertiary">
+                    {m.count} in the last 4 months · latest {formatDay(m.lastDate)}
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => onAddAnyway(m)}
+                  aria-label={`Add ${m.payeeName} anyway`}
+                >
+                  Add anyway
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="flex items-center justify-between mt-4">
         <span className="text-xs text-text-tertiary">

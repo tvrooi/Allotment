@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { Download, Plus, Trash2 } from 'lucide-react';
+import { Copy, Download, Plus, Save, Trash2, X } from 'lucide-react';
 import {
   CartesianGrid,
   Legend,
@@ -19,6 +19,7 @@ import { Input, Select } from '../components/ui/Input';
 import { StatCardRow } from '../components/reports/ChartHelpers';
 import { useDebounce } from '../hooks/useDebounce';
 import { useGoals } from '../hooks/useGoals';
+import { MAX_SLOTS, useScenarioSlots, type Slot } from '../hooks/useScenarioSlots';
 import { chartColors } from '../utils/chartColors';
 import {
   centsToInput,
@@ -122,17 +123,54 @@ function AmountInput({
   );
 }
 
+/** The scenario's name: kept when left empty or the same as another scenario's */
+function NameInput({
+  name,
+  otherNames,
+  onChange,
+}: {
+  name: string;
+  otherNames: string[];
+  onChange: (name: string) => void;
+}) {
+  const [raw, setRaw] = useState(name);
+  const [prev, setPrev] = useState(name);
+  if (prev !== name) {
+    setPrev(name);
+    setRaw(name);
+  }
+  const commit = () => {
+    const next = raw.trim().slice(0, 40);
+    if (next && !otherNames.some((n) => n.toLowerCase() === next.toLowerCase())) onChange(next);
+    else setRaw(name);
+  };
+  return (
+    <Input
+      aria-label="Scenario name"
+      value={raw}
+      maxLength={40}
+      onChange={(e) => setRaw(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+    />
+  );
+}
+
 function ScenarioEditor({
   scenario,
   color,
   today,
   goals,
+  otherNames,
+  footer,
   onChange,
 }: {
   scenario: api.ForecastScenarioInput;
   color: string;
   today: string;
   goals: { id: string; name: string }[];
+  otherNames: string[];
+  footer?: ReactNode;
   onChange: (s: api.ForecastScenarioInput) => void;
 }) {
   const percent = (key: 'spendingPercent' | 'incomePercent', label: string, max: number) => (
@@ -151,10 +189,18 @@ function ScenarioEditor({
   );
   return (
     <Card padding="sm">
-      <p className="text-sm font-semibold text-text mb-2 flex items-center gap-2">
-        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} aria-hidden />
-        {scenario.name}
-      </p>
+      <div className="text-sm text-text mb-2 flex items-center gap-2">
+        <span
+          className="w-2.5 h-2.5 rounded-full shrink-0"
+          style={{ backgroundColor: color }}
+          aria-hidden
+        />
+        <NameInput
+          name={scenario.name}
+          otherNames={otherNames}
+          onChange={(name) => onChange({ ...scenario, name })}
+        />
+      </div>
       <div className="grid grid-cols-2 gap-2">
         {percent('spendingPercent', 'Variable spending %', 500)}
         {percent('incomePercent', 'Income %', 200)}
@@ -376,8 +422,107 @@ function ScenarioEditor({
           })}
         </div>
       </details>
+      {footer}
     </Card>
   );
+}
+
+/** Saved or not, Save, and what to do when another device changed the saved copy */
+function SaveBar({
+  slot,
+  dirty,
+  canDuplicate,
+  canRemove,
+  slots,
+}: {
+  slot: Slot;
+  dirty: boolean;
+  canDuplicate: boolean;
+  canRemove: boolean;
+  slots: ReturnType<typeof useScenarioSlots>;
+}) {
+  const name = slot.scenario.name;
+  return (
+    <div className="mt-3 pt-3 border-t border-border-light space-y-2">
+      {slot.theirs !== undefined && (
+        <div role="alert" className="text-xs text-caution space-y-1.5">
+          <p>
+            {slot.theirs
+              ? `"${slot.theirs.scenario.name}" was changed on another device since you opened it.`
+              : 'This scenario was deleted on another device.'}
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {slot.theirs && (
+              <Button size="sm" variant="secondary" onClick={() => slots.loadTheirs(slot)}>
+                Use theirs
+              </Button>
+            )}
+            <Button size="sm" variant="secondary" onClick={() => slots.keepMine(slot)}>
+              {slot.theirs ? 'Keep mine' : 'Save as new'}
+            </Button>
+          </div>
+        </div>
+      )}
+      {slot.error && (
+        <p role="alert" className="text-xs text-negative">
+          {slot.error}
+        </p>
+      )}
+      <p className="text-xs text-text-tertiary" aria-live="polite">
+        {!slot.saved ? 'Not saved' : dirty ? 'Unsaved changes' : 'Saved'}
+      </p>
+      <div className="flex items-center gap-1">
+        <Button
+          size="sm"
+          variant={slot.saved && dirty ? 'primary' : 'secondary'}
+          disabled={!dirty || slot.theirs !== undefined}
+          aria-label={`Save ${name}`}
+          onClick={() => slots.save(slot)}
+        >
+          <Save size={13} /> Save
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={!canDuplicate}
+          aria-label={`Duplicate ${name}`}
+          title={canDuplicate ? undefined : `Compare up to ${MAX_SLOTS} scenarios`}
+          onClick={() => slots.duplicate(slot)}
+        >
+          <Copy size={13} />
+        </Button>
+        {slot.saved && (
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-label={`Delete saved ${name}`}
+            title="Delete the saved copy"
+            onClick={() => slots.deleteSaved(slot)}
+          >
+            <Trash2 size={13} />
+          </Button>
+        )}
+        {canRemove && (
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-label={`Remove ${name} from the comparison`}
+            title="Remove from the comparison (a saved copy stays saved)"
+            onClick={() => slots.remove(slot)}
+          >
+            <X size={13} />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** "+$120 vs Base": the difference from the first scenario, in money rather than a percentage */
+function versus(value: number, baseline: number, baselineName: string) {
+  const diff = value - baseline;
+  if (diff === 0) return `Same as ${baselineName}`;
+  return `${diff > 0 ? '+' : '−'}${formatCurrency(Math.abs(diff))} vs ${baselineName}`;
 }
 
 export default function ForecastPage() {
@@ -385,7 +530,8 @@ export default function ForecastPage() {
   const [lookbackDays, setLookback] = useState(90);
   const [incomeSource, setIncomeSource] = useState<api.ForecastRequest['incomeSource']>(null);
   const [includeHousehold, setHousehold] = useState<boolean | null>(null);
-  const [scenarios, setScenarios] = useState(DEFAULT_SCENARIOS);
+  const slots = useScenarioSlots(DEFAULT_SCENARIOS);
+  const { scenarios } = slots;
   const [selected, setSelected] = useState(0);
   const request = useDebounce<api.ForecastRequest>(
     { horizonDays, lookbackDays, incomeSource, includeHousehold, scenarios },
@@ -395,11 +541,14 @@ export default function ForecastPage() {
     queryKey: ['forecast', request],
     queryFn: () => api.getForecast(request),
     placeholderData: keepPreviousData,
+    enabled: slots.ready,
   });
   const { data: goalRows = [] } = useGoals();
   const goalOptions = goalRows.map((g) => ({ id: g.id, name: g.name }));
   const today = data?.today ?? new Date().toISOString().slice(0, 10);
   const scenario = data?.scenarios[Math.min(selected, (data?.scenarios.length ?? 1) - 1)];
+  const baseline = data?.scenarios[0];
+  const compared = !!scenario && !!baseline && scenario !== baseline;
 
   // Actual history is solid; each scenario is a dashed projection from today.
   const chart = useMemo(() => {
@@ -544,12 +693,17 @@ export default function ForecastPage() {
                   {
                     label: 'Lowest balance',
                     value: formatCurrency(scenario.lowest.balance),
-                    sub: formatDay(scenario.lowest.date),
+                    sub: compared
+                      ? `${formatDay(scenario.lowest.date)} · ${versus(scenario.lowest.balance, baseline.lowest.balance, baseline.name)}`
+                      : formatDay(scenario.lowest.date),
                     tone: scenario.lowest.balance < 0 ? 'negative' : undefined,
                   },
                   {
                     label: `Balance on ${formatDay(data.end)}`,
                     value: formatCurrency(scenario.endBalance),
+                    sub: compared
+                      ? versus(scenario.endBalance, baseline.endBalance, baseline.name)
+                      : undefined,
                     tone: scenario.endBalance < 0 ? 'negative' : undefined,
                   },
                 ]}
@@ -754,18 +908,62 @@ export default function ForecastPage() {
             </div>
           )}
           <section aria-labelledby="scenario-assumptions" className="space-y-3">
-            <h2 id="scenario-assumptions" className="text-sm font-semibold text-text">
-              Scenario assumptions
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 id="scenario-assumptions" className="text-sm font-semibold text-text">
+                Scenario assumptions
+              </h2>
+              {slots.available.length > 0 && (
+                <label className="flex items-center gap-2 text-xs text-text-secondary">
+                  {slots.slots.length < MAX_SLOTS
+                    ? 'Open saved'
+                    : `Replace ${slots.slots[Math.min(selected, slots.slots.length - 1)].scenario.name} with`}
+                  <Select
+                    aria-label="Open a saved scenario"
+                    value=""
+                    onChange={(e) => {
+                      const saved = slots.available.find((s) => s.id === e.target.value);
+                      if (!saved) return;
+                      slots.open(
+                        saved,
+                        slots.slots.length < MAX_SLOTS
+                          ? undefined
+                          : slots.slots[Math.min(selected, slots.slots.length - 1)],
+                      );
+                    }}
+                  >
+                    <option value="">Choose…</option>
+                    {slots.available.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.scenario.name}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+              )}
+            </div>
+            <p className="text-xs text-text-tertiary">
+              Save a scenario to keep it after a refresh and on your other devices. The comparison
+              shows each scenario against the first one.
+            </p>
             <div className="grid gap-3 lg:grid-cols-3">
-              {scenarios.map((s, i) => (
+              {slots.slots.map((slot, i) => (
                 <ScenarioEditor
-                  key={s.name}
-                  scenario={s}
+                  key={slot.uid}
+                  scenario={slot.scenario}
                   color={COLORS[i]}
                   today={today}
                   goals={goalOptions}
-                  onChange={(next) => setScenarios(scenarios.map((x, j) => (j === i ? next : x)))}
+                  otherNames={scenarios.filter((_, j) => j !== i).map((x) => x.name)}
+                  onChange={(next) => slots.change(slot.uid, next)}
+                  footer={
+                    <SaveBar
+                      slot={slot}
+                      dirty={slots.isDirty(slot)}
+                      canDuplicate={slots.slots.length < MAX_SLOTS}
+                      canRemove={slots.slots.length > 1}
+                      slots={slots}
+                    />
+                  }
                 />
               ))}
             </div>

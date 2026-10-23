@@ -69,6 +69,8 @@ export const payees = sqliteTable('payees', {
   }),
   /** Custom logo as a small image data URL; null = colored initials */
   logo: text('logo'),
+  /** 1 = don't offer to recategorize this payee's other transactions after a change */
+  skipCategoryFollowup: integer('skip_category_followup').notNull().default(0),
   createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -211,6 +213,8 @@ export const schedules = sqliteTable(
     autoCreateFrom: text('auto_create_from'),
     source: text('source').notNull().default('manual'),
     occurrenceHorizon: text('occurrence_horizon'),
+    /** "Still active": occurrences missed on or before this date don't suggest it ended */
+    confirmedActiveAt: text('confirmed_active_at'),
     createdAt: text('created_at')
       .notNull()
       .default(sql`(datetime('now'))`),
@@ -319,6 +323,22 @@ export const savedViews = sqliteTable('saved_views', {
   query: text('query').notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+/** A saved forecast scenario: its assumptions as JSON, versioned so two devices can't
+ * silently overwrite each other */
+export const forecastScenarios = sqliteTable('forecast_scenarios', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  assumptions: text('assumptions').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  version: integer('version').notNull().default(1),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text('updated_at')
     .notNull()
     .default(sql`(datetime('now'))`),
 });

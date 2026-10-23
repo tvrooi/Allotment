@@ -13,7 +13,11 @@ const createSchema = z.object({
   defaultCategoryId: z.string().max(64).nullable().optional(),
 });
 
-const updateSchema = createSchema.partial().extend({ logo: logoSchema.optional() });
+const updateSchema = createSchema.partial().extend({
+  logo: logoSchema.optional(),
+  /** Stop offering to recategorize this payee's other transactions */
+  skipCategoryFollowup: z.union([z.literal(0), z.literal(1)]).optional(),
+});
 
 const mergeSchema = z.object({
   keepId: z.string(),

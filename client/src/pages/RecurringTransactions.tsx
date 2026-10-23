@@ -4,6 +4,7 @@ import MonthlyTab from '../components/recurring/MonthlyTab';
 import AllTab from '../components/recurring/AllTab';
 import RecurringFormModal from '../components/recurring/RecurringFormModal';
 import MatchSuggestionsPanel from '../components/recurring/MatchSuggestionsPanel';
+import PossiblyEndedPanel from '../components/recurring/PossiblyEndedPanel';
 import OccurrenceMatchModal from '../components/recurring/OccurrenceMatchModal';
 import DiscoverSchedulesModal from '../components/recurring/DiscoverSchedulesModal';
 import UpcomingLengthModal from '../components/recurring/UpcomingLengthModal';
@@ -17,6 +18,7 @@ import {
 } from '../hooks/useSchedules';
 import type { Schedule } from '../types';
 import { format, subDays, addDays } from 'date-fns';
+import { nearMissDraft, type ScheduleDraft } from '../utils/nearMiss';
 
 const tabs = [
   { id: 'monthly' as const, label: 'Monthly' },
@@ -29,6 +31,7 @@ export default function RecurringTransactionsPage() {
   const [activeTab, setActiveTab] = useState<TabId>('monthly');
   const [formOpen, setFormOpen] = useState(false);
   const [editItem, setEditItem] = useState<Schedule | null>(null);
+  const [draft, setDraft] = useState<ScheduleDraft | null>(null);
   const [matchOccurrenceId, setMatchOccurrenceId] = useState<string | null>(null);
   const [discoverOpen, setDiscoverOpen] = useState(false);
   const [upcomingOpen, setUpcomingOpen] = useState(false);
@@ -68,6 +71,7 @@ export default function RecurringTransactionsPage() {
       createSchedule.mutate(data, {
         onSuccess: () => {
           setFormOpen(false);
+          setDraft(null);
         },
       });
     }
@@ -76,10 +80,12 @@ export default function RecurringTransactionsPage() {
   function handleClose() {
     setFormOpen(false);
     setEditItem(null);
+    setDraft(null);
   }
 
   function handleAdd() {
     setEditItem(null);
+    setDraft(null);
     setFormOpen(true);
   }
 
@@ -117,6 +123,7 @@ export default function RecurringTransactionsPage() {
       </div>
 
       <MatchSuggestionsPanel />
+      <PossiblyEndedPanel allRecurring={allRecurring} />
 
       <div className="flex-1 overflow-y-auto">
         {activeTab === 'monthly' && (
@@ -144,9 +151,19 @@ export default function RecurringTransactionsPage() {
         onClose={handleClose}
         onSave={handleSave}
         editItem={editItem}
+        draft={draft}
       />
 
-      <DiscoverSchedulesModal isOpen={discoverOpen} onClose={() => setDiscoverOpen(false)} />
+      <DiscoverSchedulesModal
+        isOpen={discoverOpen}
+        onClose={() => setDiscoverOpen(false)}
+        onAddAnyway={(miss) => {
+          setDiscoverOpen(false);
+          setEditItem(null);
+          setDraft(nearMissDraft(miss, format(new Date(), 'yyyy-MM-dd')));
+          setFormOpen(true);
+        }}
+      />
       <UpcomingLengthModal isOpen={upcomingOpen} onClose={() => setUpcomingOpen(false)} />
 
       <OccurrenceMatchModal

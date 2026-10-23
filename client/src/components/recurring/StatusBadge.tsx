@@ -4,6 +4,7 @@ import {
   Calendar,
   CalendarDays,
   CheckCircle2,
+  Hourglass,
   Pause,
   SkipForward,
   XCircle,
@@ -12,7 +13,7 @@ import {
 import type { OccurrenceDisplayStatus } from '../../types';
 
 // Occurrence statuses + schedule-level states (Actual Budget's badge scheme)
-export type RecurringBadgeStatus = OccurrenceDisplayStatus | 'paused' | 'scheduled';
+export type RecurringBadgeStatus = OccurrenceDisplayStatus | 'paused' | 'scheduled' | 'ended';
 
 const BADGE: Record<RecurringBadgeStatus, { label: string; className: string; Icon: LucideIcon }> =
   {
@@ -27,6 +28,11 @@ const BADGE: Record<RecurringBadgeStatus, { label: string; className: string; Ic
     },
     cancelled: { label: 'Canceled', className: 'bg-surface-alt text-text-tertiary', Icon: XCircle },
     paused: { label: 'Paused', className: 'bg-caution-subtle text-caution', Icon: Pause },
+    ended: {
+      label: 'Possibly ended',
+      className: 'bg-caution-subtle text-caution',
+      Icon: Hourglass,
+    },
     scheduled: {
       label: 'Scheduled',
       className: 'bg-surface-alt text-text-secondary',

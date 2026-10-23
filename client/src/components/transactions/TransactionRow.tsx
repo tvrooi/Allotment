@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { ChevronRight, ChevronDown, ArrowRight, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUpdateTransaction } from '../../hooks/useTransactions';
+import { useOfferCategoryFollowup } from '../../hooks/useCategoryFollowup';
 import { useTransferToAccount } from '../../hooks/useTransfers';
 import { useCanSave } from '../../hooks/useConnection';
 import { useUpdatePayee } from '../../hooks/usePayees';
@@ -55,6 +56,7 @@ export function TransactionRow({
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showPayeePicker, setShowPayeePicker] = useState(false);
   const updateTx = useUpdateTransaction();
+  const offerFollowup = useOfferCategoryFollowup();
   const transferTo = useTransferToAccount();
   // Making a transfer needs the server: not offered while saving is paused
   const canSave = useCanSave();
@@ -78,7 +80,10 @@ export function TransactionRow({
     if (catId?.startsWith('transfer:')) {
       transferTo.mutate({ id: tx.id, accountId: catId.slice('transfer:'.length) });
     } else {
-      updateTx.mutate({ id: tx.id, data: { categoryId: catId } });
+      updateTx
+        .mutateAsync({ id: tx.id, data: { categoryId: catId } })
+        .then(() => offerFollowup(tx, catId))
+        .catch(() => {});
     }
     setShowCategoryPicker(false);
   }

@@ -71,6 +71,19 @@ it.
 For quick fixes you don't need the panel: hover over the payee or category in the list and click
 it to pick another. The category picker can also create a new category on the spot.
 
+After you change a category, a message at the bottom offers to fix the cause too, not just this
+row:
+
+- **Also change N others** gives the payee's other transactions the same category (reconciled
+  ones, transfers and split transactions are left alone).
+- **Always use for this payee** makes it the payee's [default category](./payees#default-categories)
+  for new transactions.
+- **Create rule** opens a [rule](./rules) for the payee, filled in.
+- **Don't ask for this payee** stops these offers for that payee.
+
+Each choice can be undone from the same message. Nothing is offered when the payee's other
+transactions already have that category and it's already the default.
+
 - **Create rule** (in the panel) starts a [rule](./rules) from this transaction, with its payee
   and category filled in.
 - **Delete Transaction** removes it, after asking. Deleting a transfer leaves the other side as
