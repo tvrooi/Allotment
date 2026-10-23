@@ -92,7 +92,9 @@ test('changing the password signs out other browsers', async ({ browser, baseURL
   await owner.getByRole('textbox', { name: 'Confirm new password' }).fill(NEW_PASSWORD);
   await owner.getByRole('button', { name: 'Change password' }).click();
   await expect(
-    owner.getByText('Password changed. Other devices have been signed out.'),
+    owner.getByText(
+      'Password changed. Other devices have been signed out and read-only tokens revoked.',
+    ),
   ).toBeVisible();
 
   // The other browser's next request finds its session gone
@@ -156,6 +158,48 @@ test('Settings → Server shows the security check and signed-in devices', async
   await phone.reload();
   await expect(phone.getByText('Sign in to FlyBudget')).toBeVisible();
   await phone.context().close();
+});
+
+test('a read-only access token reads the budget, over the API and MCP, until revoked', async ({
+  playwright,
+  baseURL,
+}) => {
+  await owner.goto(`${baseURL}/settings?tab=server`);
+  const section = owner.getByRole('heading', { name: 'Read-only access' }).locator('..');
+  await section.getByPlaceholder('e.g. Claude').fill('Assistant');
+  await section.getByRole('button', { name: 'Create token' }).click();
+  const token = (await section.getByRole('status').locator('code').first().textContent())!;
+  expect(token).toMatch(/^fbro_/);
+
+  const api = await playwright.request.newContext({
+    baseURL,
+    extraHTTPHeaders: { authorization: `Bearer ${token}` },
+  });
+  expect((await api.get('/api/accounts')).status()).toBe(200);
+  // Reading only: no writes, backups or token management
+  expect(
+    (await api.post('/api/accounts', { data: { name: 'x', type: 'checking' } })).status(),
+  ).toBe(403);
+  expect((await api.get('/api/export/backup')).status()).toBe(403);
+  expect((await api.get('/api/access-tokens')).status()).toBe(403);
+
+  const mcp = (body: object) => api.post('/api/mcp', { data: { jsonrpc: '2.0', ...body } });
+  const init = await (
+    await mcp({ id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } })
+  ).json();
+  expect(init.result.serverInfo.name).toBe('flybudget');
+  const call = await (
+    await mcp({ id: 2, method: 'tools/call', params: { name: 'list_accounts', arguments: {} } })
+  ).json();
+  expect(call.result.isError).toBe(false);
+  expect(Array.isArray(JSON.parse(call.result.content[0].text))).toBe(true);
+
+  await section.getByRole('button', { name: 'Done' }).click();
+  await section.getByRole('button', { name: 'Revoke Assistant' }).click();
+  await owner.getByRole('dialog').getByRole('button', { name: 'Revoke' }).click();
+  await expect(section.getByRole('button', { name: 'Revoke Assistant' })).toBeHidden();
+  expect((await api.get('/api/accounts')).status()).toBe(401);
+  await api.dispose();
 });
 
 test('the sidebar shows the server and can sign out', async ({ baseURL }) => {

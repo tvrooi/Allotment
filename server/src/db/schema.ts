@@ -709,6 +709,24 @@ export const sessions = sqliteTable('sessions', {
   lastUsedAt: text('last_used_at'),
 });
 
+/**
+ * Read-only access tokens (Settings → Server → Read-only access): for tools such as an AI
+ * assistant or an MCP client to read the budget. Only the SHA-256 of a token is stored; the
+ * token itself is shown once. They never write and are never part of a backup.
+ */
+export const accessTokens = sqliteTable('access_tokens', {
+  id: text('id').primaryKey(),
+  tokenHash: text('token_hash').notNull().unique(),
+  name: text('name').notNull(),
+  scope: text('scope').notNull().default('read'),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  expiresAt: text('expires_at').notNull(),
+  lastUsedAt: text('last_used_at'),
+  revokedAt: text('revoked_at'),
+});
+
 /** The budget's own settings: one row, id 'budget' */
 export const budgetSettings = sqliteTable('budget_settings', {
   id: text('id').primaryKey(),
