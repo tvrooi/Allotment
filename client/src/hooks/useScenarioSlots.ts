@@ -61,7 +61,11 @@ export function useScenarioSlots(defaults: api.ForecastScenarioInput[]) {
       queryFn: api.getSavedScenarios,
       staleTime: 0,
     });
-    patch(slot.uid, { theirs: list.find((s) => s.id === slot.saved!.id) ?? null });
+    const theirs = list.find((s) => s.id === slot.saved!.id) ?? null;
+    // A 409 for the copy we started from (a name another saved scenario has) isn't a conflict
+    if (theirs && theirs.version === slot.saved.version)
+      patch(slot.uid, { error: (error as Error).message });
+    else patch(slot.uid, { theirs });
   }
 
   async function write(slot: Slot, expectedVersion: number | null) {

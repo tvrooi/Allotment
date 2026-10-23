@@ -12,6 +12,8 @@ import {
   categoryGroups,
   forecastScenarios,
   payees,
+  scheduleOccurrences,
+  schedules,
   transactions,
 } from '../db/schema.js';
 import { errorHandler } from '../middleware/security.js';
@@ -19,6 +21,7 @@ import { exportRouter } from './export.js';
 import { forecastRouter } from './forecast.js';
 import { payeesRouter } from './payees.js';
 import { schedulesRouter } from './schedules.js';
+import { endSchedule } from '../services/scheduleActivity.js';
 
 // Category follow-ups, recurring near misses and "possibly ended", and saved forecast
 // scenarios (docs/research/monarch-flybudget-seamless-ux.md, P2). Mock data only.
@@ -149,6 +152,33 @@ describe('recurring', () => {
     await send('POST', `/schedules/${id}/reopen`, ended.body);
     expect(await statuses()).toEqual(before);
     expect((await send('GET', `/schedules/${id}`)).body.status).toBe('active');
+  });
+});
+
+describe('ending a weekend-adjusted item', () => {
+  it('sorts occurrences into missed and upcoming by their expected date', () => {
+    db.insert(schedules)
+      .values({
+        id: 'weekend',
+        name: 'Weekend-adjusted',
+        amount: -500,
+        recurrenceType: 'monthly',
+        startDate: '2026-08-01',
+        weekendAdjust: 'after',
+      })
+      .run();
+    // Scheduled on Saturday 24 Oct, expected Monday 26 Oct: still to come on Sunday 25 Oct
+    const occ = (id: string, scheduledDate: string, expectedDate: string) => ({
+      id,
+      scheduleId: 'weekend',
+      scheduledDate,
+      expectedDate,
+      expectedAmount: -500,
+    });
+    db.insert(scheduleOccurrences)
+      .values([occ('sep', '2026-09-26', '2026-09-28'), occ('oct', '2026-10-24', '2026-10-26')])
+      .run();
+    expect(endSchedule('weekend', '2026-10-25')).toEqual({ skipped: ['sep'], cancelled: ['oct'] });
   });
 });
 

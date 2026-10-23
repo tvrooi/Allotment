@@ -22,7 +22,8 @@ export function CategoryFollowupToast() {
   const undo = useUndoStore((s) => s.undo);
   const bulkEdit = useBulkEdit();
   const updatePayee = useUpdatePayee();
-  const [done, setDone] = useState<string | null>(null);
+  // What happened, and whether an undo command was recorded for it
+  const [done, setDone] = useState<{ message: string; undoable: boolean } | null>(null);
   const [rule, setRule] = useState<RuleInput | null>(null);
   const [holding, setHolding] = useState(false);
 
@@ -34,7 +35,9 @@ export function CategoryFollowupToast() {
   }, [offer, holding, done, clear]);
 
   const busy = bulkEdit.isPending || updatePayee.isPending;
-  const after = (message: string) => ({ onSuccess: () => setDone(message) });
+  const after = (message: string) => ({
+    onSuccess: () => setDone({ message, undoable: true }),
+  });
 
   return (
     <>
@@ -50,16 +53,18 @@ export function CategoryFollowupToast() {
         >
           {done ? (
             <>
-              <span>{done}</span>
-              <button
-                className={action}
-                onClick={() => {
-                  clear();
-                  undo();
-                }}
-              >
-                Undo
-              </button>
+              <span>{done.message}</span>
+              {done.undoable && (
+                <button
+                  className={action}
+                  onClick={() => {
+                    clear();
+                    undo();
+                  }}
+                >
+                  Undo
+                </button>
+              )}
             </>
           ) : (
             <>
@@ -79,14 +84,17 @@ export function CategoryFollowupToast() {
                         expectedCount: offer.matched,
                       },
                       {
+                        // Nothing restorable means nothing was recorded to undo
                         onSuccess: (r) =>
-                          setDone(
-                            `Changed ${plural(r.changed, 'transaction')} to ${offer.categoryName}`,
-                          ),
+                          setDone({
+                            message: `Changed ${plural(r.changed, 'transaction')} to ${offer.categoryName}`,
+                            undoable: r.restore.length > 0,
+                          }),
                         onError: () =>
-                          setDone(
-                            `${offer.payeeName}'s transactions changed meanwhile; nothing was changed`,
-                          ),
+                          setDone({
+                            message: `${offer.payeeName}'s transactions changed meanwhile; nothing was changed`,
+                            undoable: false,
+                          }),
                       },
                     )
                   }

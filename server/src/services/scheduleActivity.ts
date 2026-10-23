@@ -92,8 +92,9 @@ export function endSchedule(id: string, today = format(new Date(), 'yyyy-MM-dd')
       .where(and(eq(scheduleOccurrences.scheduleId, id), eq(scheduleOccurrences.status, 'pending')))
       .all()
       .filter((o) => !o.matchedTransactionId);
-    const skipped = pending.filter((o) => o.scheduledDate < today).map((o) => o.id);
-    const cancelled = pending.filter((o) => o.scheduledDate >= today).map((o) => o.id);
+    // Due or missed is decided by the expected date (after weekend adjustment), as everywhere else
+    const skipped = pending.filter((o) => o.expectedDate < today).map((o) => o.id);
+    const cancelled = pending.filter((o) => o.expectedDate >= today).map((o) => o.id);
     if (skipped.length)
       db.update(scheduleOccurrences)
         .set({ status: 'skipped', skippedAt: today })
