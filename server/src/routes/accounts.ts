@@ -68,7 +68,9 @@ function shown(
     const booked = bookedValue(account, ctx);
     currencyDifference = booked === null ? null : value.mainBalance - booked;
   }
-  return { ...account, currency, balance, hasTransactions, ...value, currencyDifference };
+  // Bank import settings (an IBAN, for one) have their own route: GET /:id/import-settings
+  const { importSettings: _importSettings, ...rest } = account;
+  return { ...rest, currency, balance, hasTransactions, ...value, currencyDifference };
 }
 
 function withBalance(account: typeof accounts.$inferSelect) {
