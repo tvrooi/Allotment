@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.26
+
+- On macOS, a desktop window connected to a self-hosted server now has no title bar either, like the app's own budget. The app first checks that the server's version can draw that layout; an older server keeps the usual title bar until it's updated.
+
 ## 0.2.0-up.25
 
 - After you change a transaction's category, offer to **fix the cause**: give the payee's other transactions the same category, make it the payee's default, create a rule, or stop asking for that payee. Each choice can be undone from the same message.

@@ -15,6 +15,7 @@
     "electron/dist/updates.js",
     "electron/dist/desktopUpdates.js",
     "electron/dist/releaseCheck.js",
+    "electron/dist/macWindow.js",
     "electron/dist/server.js",
     "electron/resources/icon.png",
     "client/dist/**",
