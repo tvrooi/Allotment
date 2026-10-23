@@ -35,6 +35,8 @@ Keep this file and CLAUDE.md identical.
 - Up imports settled AUD only; stable IDs prevent duplicates. Preserve reconciled/user-edited rows.
   Review transfer suggestions; never silently guess transfers. Tokens are encrypted and excluded from exports.
 - Keep host/origin/auth protections. Remote Electron pages must have no Node or preload bridge.
+  A server window drops the macOS title bar only when its page has the `flybudget-mac-window`
+  marker, and learns it through its user agent (`electron/macWindow.ts`), never a bridge.
   HTTPS away from home; never bypass TLS errors.
 - Read-only access tokens (`server/src/auth/accessTokens.ts`) reach only an allowlist of side-effect-free
   GET routes plus the read-only MCP endpoint. Never add a writing, settings, backup, auth or bank route.

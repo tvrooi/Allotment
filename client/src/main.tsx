@@ -15,8 +15,11 @@ import { loadOutbox } from './offline/outbox';
 import { IS_DEMO, startDemoApi } from './demo/demoApi';
 
 initTheme();
-// The macOS desktop app has no title bar: `mac-window:` styles add the drag strips
-if (window.__PLATFORM__ === 'darwin') document.documentElement.classList.add('mac-window');
+// The macOS desktop app has no title bar: `mac-window:` styles add the drag strips. Its
+// local budget says so through the preload; a server window, which has none, through its
+// user agent (MAC_WINDOW_AGENT in electron/macWindow.ts)
+if (window.__PLATFORM__ === 'darwin' || navigator.userAgent.includes(' FlyBudgetMacWindow/1'))
+  document.documentElement.classList.add('mac-window');
 
 const queryClient = new QueryClient({
   mutationCache: new MutationCache({

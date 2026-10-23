@@ -18,6 +18,9 @@ assert.ok(fs.existsSync(path.join(client, 'index.html')), 'Pass a built web clie
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'flybudget-desktop-remote-'));
 const profile = path.join(temporary, 'desktop');
 fs.mkdirSync(profile);
+// A copy, so the test can play an older server by removing the Mac window marker
+const served = path.join(temporary, 'client');
+fs.cpSync(client, served, { recursive: true });
 const harness = path.join(temporary, 'launch.cjs');
 fs.writeFileSync(
   harness,
@@ -49,6 +52,20 @@ const launch = async () => {
   return instance;
 };
 
+const isMac = process.platform === 'darwin';
+// Whether the server window has no title bar: the page's Mac layout and the inset buttons
+async function macWindow(page) {
+  return {
+    layout: await page.evaluate(() => document.documentElement.classList.contains('mac-window')),
+    buttons: await desktop.evaluate(({ BrowserWindow }) => {
+      const win = BrowserWindow.getAllWindows().find((w) =>
+        w.webContents.getURL().startsWith('http://'),
+      );
+      return win.getWindowButtonPosition?.() ?? null;
+    }),
+  };
+}
+
 (async () => {
   const port = await freePort();
   const url = `http://127.0.0.1:${port}/`;
@@ -64,7 +81,7 @@ const launch = async () => {
       FLYBUDGET_HOST: '127.0.0.1',
       FLYBUDGET_DATA_KEY: randomBytes(32).toString('base64'),
       DB_PATH: path.join(temporary, 'server.db'),
-      CLIENT_DIST: client,
+      CLIENT_DIST: served,
       MIGRATIONS_PATH: path.join(root, 'server/src/db/migrations'),
       NODE_PATH: path.join(root, 'server/node_modules'),
     },
@@ -158,6 +175,11 @@ const launch = async () => {
   const reopened = await desktop.firstWindow();
   await reopened.getByRole('link', { name: 'Accounts', exact: true }).click();
   await expect(reopened.getByText('Shared server account', { exact: true }).first()).toBeVisible();
+  // macOS: this server's page draws the Mac layout, so its window has no title bar
+  assert.deepEqual(
+    await macWindow(reopened),
+    isMac ? { layout: true, buttons: { x: 16, y: 14 } } : { layout: false, buttons: null },
+  );
   await desktop.evaluate(({ Menu }) => {
     Menu.getApplicationMenu().getMenuItemById('budget-location').click();
   });
@@ -173,6 +195,17 @@ const launch = async () => {
     }),
     false,
   );
+  await desktop.close();
+  // An older server's page doesn't draw the Mac layout: its window keeps the title bar
+  const index = path.join(served, 'index.html');
+  fs.writeFileSync(
+    index,
+    fs.readFileSync(index, 'utf8').replace(/<meta name="flybudget-mac-window"[^>]*>/, ''),
+  );
+  desktop = await launch();
+  const older = await desktop.firstWindow();
+  await expect(older.getByRole('link', { name: 'Accounts', exact: true })).toBeVisible();
+  assert.deepEqual(await macWindow(older), { layout: false, buttons: null });
   await desktop.close();
   desktop = null;
   server.kill();
@@ -200,7 +233,7 @@ const launch = async () => {
   const recovery = desktop.windows().find((win) => win.url().startsWith('data:'));
   await expect(recovery.getByRole('alert')).toContainText('Could not reach the server');
   console.log(
-    'PASS: native server picker, HTTP consent, isolated renderer, password login, shared writes, saved session, no local database/key, offline recovery.',
+    'PASS: native server picker, HTTP consent, isolated renderer, password login, shared writes, saved session, Mac title bar by server support, no local database/key, offline recovery.',
   );
 })()
   .catch((error) => {

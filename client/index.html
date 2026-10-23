@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="/logo.png" />
     <title>FlyBudget</title>
+    <!-- Tells the Mac desktop app this page draws its own drag strips, so a server window can
+         drop the title bar (electron/macWindow.ts). Keep it in the <head>. -->
+    <meta name="flybudget-mac-window" content="drag-strips" />
   </head>
   <body>
     <div id="root"></div>
