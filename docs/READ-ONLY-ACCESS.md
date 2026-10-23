@@ -76,8 +76,17 @@ never reach more than the token itself, and the app's validation applies. Result
 
 ### Claude Code on the web
 
-Store the token as an environment secret in the cloud environment's settings, for example
-`FLYBUDGET_READONLY_TOKEN`, together with the server's address. Don't put either in a prompt.
+The repository's `.mcp.json` declares a `flybudget` server built from two environment
+variables, and `.claude/settings.json` enables it. Add both to the cloud environment's
+settings, never to a prompt or the repository:
+
+- `FLYBUDGET_URL`: the server's address, without a trailing slash, for example
+  `https://budget.example.com`
+- `FLYBUDGET_READONLY_TOKEN`: the read-only token
+
+The server is read when a session starts, so start a new session after adding them; `/mcp`
+shows whether it connected. A claude.ai custom connector can't use this endpoint: connectors
+sign in with OAuth and can't send a fixed bearer header.
 
 ## Privacy
 
