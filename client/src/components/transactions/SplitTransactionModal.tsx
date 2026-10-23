@@ -161,7 +161,7 @@ export function SplitTransactionModal({
               type="button"
               aria-pressed={mode === m}
               onClick={() => switchMode(m)}
-              className={`px-3 py-1 text-xs font-medium rounded-full max-md:min-h-11 ${mode === m ? 'bg-brand-600 text-white' : 'text-text-secondary hover:text-text'}`}
+              className={`px-3 py-1 text-xs font-medium rounded-full max-md:min-h-11 ${mode === m ? 'bg-brand-600 text-brand-contrast' : 'text-text-secondary hover:text-text'}`}
             >
               {m === 'amount' ? 'By amount' : 'By percent'}
             </button>

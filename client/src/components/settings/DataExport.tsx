@@ -134,7 +134,7 @@ export function DataExport() {
           onClick={() => {
             download(`${API_BASE}/backup`);
           }}
-          className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-white bg-text-secondary rounded-md hover:opacity-90 transition-colors"
+          className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-surface bg-text-secondary rounded-md hover:opacity-90 transition-colors"
         >
           <Download size={14} /> Download Backup
         </button>

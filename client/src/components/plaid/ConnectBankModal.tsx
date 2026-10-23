@@ -295,7 +295,7 @@ function AccountMappingCard({
           onClick={() => onChange({ action: 'skip' })}
           className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
             mapping.action === 'skip'
-              ? 'bg-text-secondary text-white'
+              ? 'bg-text-secondary text-surface'
               : 'bg-surface text-text-secondary border border-border hover:bg-surface-alt'
           }`}
         >

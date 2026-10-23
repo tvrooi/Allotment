@@ -23,56 +23,56 @@
 
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+  --font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;
 
-  /* Brand — terracotta; foreground adapts for filled controls in each theme */
-  --color-brand-50: #fcf1eb;
-  --color-brand-100: #f7e0d3;
-  --color-brand-200: #ebbea7;
-  --color-brand-300: #d99576;
-  --color-brand-500: #c26647;
-  --color-brand-600: #ad472e;
-  --color-brand-700: #923a26;
+  /* Brand — orange; foreground adapts for filled controls in each theme */
+  --color-brand-50: #fff4ee;
+  --color-brand-100: #ffe9de;
+  --color-brand-200: #ffd7c4;
+  --color-brand-300: #f48d68;
+  --color-brand-500: #ff692d;
+  --color-brand-600: #bf3e00;
+  --color-brand-700: #9f3300;
   --color-brand-contrast: #ffffff;
-  --color-brand-800: #793322;
+  --color-brand-800: #592c1d;
 
-  /* Surfaces — ivory and stone */
-  --color-page: #f8f6f2;
+  /* Surfaces — warm neutrals */
+  --color-page: #f6f5f3;
   --color-surface: #ffffff;
-  --color-surface-alt: #efebe5;
-  --color-hover: #f4f0ea;
+  --color-surface-alt: #efece9;
+  --color-hover: #eeebe8;
 
   /* Borders */
-  --color-border: #e2dbd2;
-  --color-border-light: #eee8e0;
+  --color-border: #e4e1de;
+  --color-border-light: #efece9;
 
   /* Text */
-  --color-text: #292620;
-  --color-text-secondary: #655f56;
-  --color-text-tertiary: #6e675e;
-  --color-text-disabled: #b7afa4;
+  --color-text: #22201d;
+  --color-text-secondary: #5f5d5b;
+  --color-text-tertiary: #696765;
+  --color-text-disabled: #8f8c8a;
 
   /* Semantic */
   --color-semantic-contrast: #ffffff;
-  --color-positive: #387253;
-  --color-positive-subtle: #edf4ee;
-  --color-negative: #b44440;
-  --color-negative-subtle: #fbefed;
-  --color-caution: #8e621b;
-  --color-caution-subtle: #fbf3df;
+  --color-positive: #1b7550;
+  --color-positive-subtle: #e6f6eb;
+  --color-negative: #cb2b30;
+  --color-negative-subtle: #feebec;
+  --color-caution: #9a5a00;
+  --color-caution-subtle: #fff7c2;
 
   /* Sidebar */
-  --color-sidebar-bg: #efebe5;
-  --color-sidebar-deep: #e6dfd5;
-  --color-sidebar-hover: #e6dfd5;
-  --color-sidebar-active: #e4d8cb;
-  --color-sidebar-border: #dfd8ce;
-  --color-sidebar-text: #655f56;
-  --color-sidebar-text-hi: #292620;
+  --color-sidebar-bg: #f6f5f3;
+  --color-sidebar-deep: #ebe8e5;
+  --color-sidebar-hover: #ebe8e5;
+  --color-sidebar-active: #e4e1de;
+  --color-sidebar-border: #e4e1de;
+  --color-sidebar-text: #5f5d5b;
+  --color-sidebar-text-hi: #22201d;
 
   /* Shadows */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-card: 0 2px 8px rgba(58, 43, 25, 0.035);
+  --shadow-card: 0 2px 4px rgba(34, 32, 29, 0.1);
   --shadow-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
   --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.06);
 
@@ -132,11 +132,11 @@
   --color-chart-brand-fill: #eff5f2;
   --color-chart-positive-light: #699377;
   --color-chart-negative-light: #c77c71;
-  --color-chart-grid: #eee8e0;
-  --color-chart-axis: #756e64;
+  --color-chart-grid: #efece9;
+  --color-chart-axis: #696765;
   --color-chart-tooltip-bg: #ffffff;
-  --color-chart-tooltip-border: #e2dbd2;
-  --color-chart-label: #655f56;
+  --color-chart-tooltip-border: #e4e1de;
+  --color-chart-label: #5f5d5b;
 
   /* Investment badge */
   --color-invest-bg: #efe9f3;
@@ -145,49 +145,49 @@
   /* Radii */
   --radius-sm: 6px;
   --radius-md: 10px;
-  --radius-lg: 16px;
+  --radius-lg: 12px;
   --radius-xl: 20px;
 }
 
 .dark {
-  --color-page: #1c1916;
-  --color-surface: #27221e;
-  --color-surface-alt: #332d27;
-  --color-hover: #3b332c;
+  --color-page: #1c1a17;
+  --color-surface: #262320;
+  --color-surface-alt: #302c28;
+  --color-hover: #3a3531;
 
-  --color-border: #51473d;
-  --color-border-light: #40372f;
+  --color-border: #4a443e;
+  --color-border-light: #3a3531;
 
-  --color-text: #f4eee5;
-  --color-text-secondary: #c5b9aa;
-  --color-text-tertiary: #b0a392;
-  --color-text-disabled: #766b5f;
+  --color-text: #f4f1ec;
+  --color-text-secondary: #c9c3bb;
+  --color-text-tertiary: #aaa39a;
+  --color-text-disabled: #766f67;
 
-  --color-brand-50: #3c2920;
-  --color-brand-100: #523225;
-  --color-brand-200: #714631;
-  --color-brand-300: #bb7c5c;
-  --color-brand-500: #e2a381;
-  --color-brand-600: #edb494;
-  --color-brand-700: #f4c8aa;
-  --color-brand-contrast: #292018;
-  --color-brand-800: #f9dbc5;
+  --color-brand-50: #3a2318;
+  --color-brand-100: #4a2a1c;
+  --color-brand-200: #6b3a22;
+  --color-brand-300: #c9582a;
+  --color-brand-500: #ff692d;
+  --color-brand-600: #ff8a57;
+  --color-brand-700: #ffa57e;
+  --color-brand-contrast: #22201d;
+  --color-brand-800: #ffc4a6;
 
-  --color-semantic-contrast: #292018;
-  --color-positive: #9dc7a7;
-  --color-positive-subtle: #28392c;
-  --color-negative: #eda49a;
-  --color-negative-subtle: #442b28;
-  --color-caution: #e3c07c;
-  --color-caution-subtle: #3e3421;
+  --color-semantic-contrast: #22201d;
+  --color-positive: #6cc695;
+  --color-positive-subtle: #1f3a2c;
+  --color-negative: #ff8f8c;
+  --color-negative-subtle: #44262a;
+  --color-caution: #f0b955;
+  --color-caution-subtle: #3f3219;
 
-  --color-sidebar-bg: #231e1a;
-  --color-sidebar-deep: #1c1916;
-  --color-sidebar-hover: #352c25;
-  --color-sidebar-active: #49372b;
-  --color-sidebar-border: #40372f;
-  --color-sidebar-text: #c5b9aa;
-  --color-sidebar-text-hi: #f4eee5;
+  --color-sidebar-bg: #211e1b;
+  --color-sidebar-deep: #1c1a17;
+  --color-sidebar-hover: #2f2a26;
+  --color-sidebar-active: #3d352f;
+  --color-sidebar-border: #38322d;
+  --color-sidebar-text: #c9c3bb;
+  --color-sidebar-text-hi: #f4f1ec;
 
   --color-chart-brand: #92bdb4;
   --color-chart-brand-light: #b2d1c8;
@@ -195,17 +195,17 @@
   --color-chart-brand-fill: #283630;
   --color-chart-positive-light: #b6d7bd;
   --color-chart-negative-light: #f1bcb0;
-  --color-chart-grid: #40372f;
-  --color-chart-axis: #b0a392;
-  --color-chart-tooltip-bg: #332d27;
-  --color-chart-tooltip-border: #51473d;
-  --color-chart-label: #c5b9aa;
+  --color-chart-grid: #302c28;
+  --color-chart-axis: #aaa39a;
+  --color-chart-tooltip-bg: #302c28;
+  --color-chart-tooltip-border: #4a443e;
+  --color-chart-label: #c9c3bb;
 
   --color-invest-bg: #382d40;
   --color-invest-text: #d0b3de;
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.6);
   --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.6);
 }
@@ -236,6 +236,11 @@ select,
 [type='checkbox'],
 [type='radio'] {
   cursor: pointer;
+}
+
+/* Headings are Inter at weight 500 */
+.font-display {
+  font-weight: 500;
 }
 
 body {
