@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.26
+
+- On macOS, a desktop window connected to a self-hosted server now has no title bar either, like the app's own budget. The app first checks that the server's version can draw that layout; an older server keeps the usual title bar until it's updated.
+
 ## 0.2.0-up.24
 
 - **Split** a transaction after it arrives, including bank-synced ones: from its details, by amount or by percentage (the parts always add up exactly), change the parts later, or put it back together. Undo works for each step.

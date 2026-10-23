@@ -11,6 +11,7 @@ import {
   type BudgetLocation,
 } from './connection';
 import { connectionPage } from './connectionPage';
+import { serverDrawsMacWindow, withMacWindowAgent } from './macWindow';
 
 // electron/package.json sets "type": "commonjs", so both dev (main.ts via tsx/cjs)
 // and the build (tsc → CommonJS) run this as CommonJS and the built-in __dirname is
@@ -164,13 +165,32 @@ async function waitForServer(port: number, ms = 15000): Promise<void> {
   throw new Error(`Server failed to start on port ${port}`);
 }
 
-function createWindow(): void {
+// Set while a window is being created, so `activate` can't open a second one meanwhile
+let creatingWindow: Promise<void> | null = null;
+
+function createWindow(): Promise<void> {
+  creatingWindow ??= openWindow().finally(() => {
+    creatingWindow = null;
+  });
+  return creatingWindow;
+}
+
+async function openWindow(): Promise<void> {
   const remote = location.mode === 'server';
   const appUrl = location.mode === 'server' ? location.url : LOCAL_URL;
   const targetSession = remote
     ? session.fromPartition(serverPartition(appUrl))
     : session.defaultSession;
   protectSession(targetSession);
+  // macOS: no title bar. The sidebar and page run to the top of the window with the
+  // traffic lights inset into the sidebar, and the page draws its own drag strips
+  // (`drag-region` in client/src/index.css). A server's page has no preload, so it's only
+  // asked to (through its user agent) when its web client says it can (macWindow.ts);
+  // an older server keeps the normal title bar.
+  const seamless =
+    process.platform === 'darwin' &&
+    (!remote ||
+      (await serverDrawsMacWindow(appUrl, (url, init) => targetSession.fetch(url, init))));
   // Dev runs main.ts from electron/; the build runs main.js from electron/dist/
   const iconPath = IS_DEV
     ? path.join(__dirname, 'resources/icon.png')
@@ -183,15 +203,10 @@ function createWindow(): void {
     minHeight: 600,
     icon: iconPath,
     title: remote ? `FlyBudget — ${new URL(appUrl).host}` : 'FlyBudget',
-    // macOS: no title bar. The sidebar and page run to the top of the window with the
-    // traffic lights inset into the sidebar, and the page draws its own drag strips
-    // (`drag-region` in client/src/index.css). A remote server's page has no preload, so
-    // it can't know it's in the Mac app and keeps the normal title bar.
-    ...(process.platform === 'darwin' &&
-      !remote && {
-        titleBarStyle: 'hidden',
-        trafficLightPosition: { x: 16, y: 14 },
-      }),
+    ...(seamless && {
+      titleBarStyle: 'hidden',
+      trafficLightPosition: { x: 16, y: 14 },
+    }),
     webPreferences: {
       // Remote content gets no desktop IPC or local API token. Relative API calls
       // and the server's ordinary password login work just as in a browser.
@@ -229,6 +244,9 @@ function createWindow(): void {
   };
   win.webContents.on('will-navigate', keepInApp);
   win.webContents.on('will-redirect', keepInApp);
+  // Tells the server's page it's in a window without a title bar (client/src/main.tsx)
+  if (remote && seamless)
+    win.webContents.setUserAgent(withMacWindowAgent(win.webContents.getUserAgent()));
 
   void win.loadURL(appUrl).catch(() => {
     if (win.isDestroyed()) return;
@@ -286,7 +304,8 @@ app.on('web-contents-created', (_event, contents) => {
 
 app.on('activate', () => {
   if (!app.isReady() || BrowserWindow.getAllWindows().length !== 0) return;
-  if (budgetReady) createWindow();
+  if (creatingWindow) return;
+  if (budgetReady) void createWindow();
   else showLocationPicker();
 });
 
@@ -362,7 +381,7 @@ app.whenReady().then(async () => {
   }
 
   budgetReady = true;
-  createWindow();
+  await createWindow();
 });
 
 app.on('window-all-closed', () => {
