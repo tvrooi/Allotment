@@ -1,6 +1,8 @@
 # Monarch REA inspection status
 
-**22 October continuation:** Local REA browser discovery and page capture now work. See [the current research index](docs/research/README.md). The historical failure below describes the earlier environment; the current investigation is partially captured and waiting for the Mac to be unlocked, not blocked before its first capture.
+**Current status (22 October 2026):** not blocked. Local REA browser discovery and page capture work, all ten main destinations have live coverage, and committed split and bulk edits were tested. Coverage of individual actions is still partial: see [the research index](docs/research/README.md) and its catalog for what remains.
+
+**Historical checkpoint (21 October 2026),** kept for the record; nothing below is a current prerequisite.
 
 21 October 2026. Requested deliverable: a findings report from an actual REA inspection of signed-in Monarch, compared with FlyBudget. Status: blocked before page capture.
 

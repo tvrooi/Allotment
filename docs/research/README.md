@@ -18,7 +18,7 @@ Start with the [master action catalog](monarch-action-catalog.md) for consolidat
 
 All ten main destinations have live coverage. Transactions, Budget, Goals/debt pay-down, Reports, Investments, Forecasting and populated Recurring received deeper inspection. Account history/transfer tools, rule previews, settings, receipt/retail controls and the initial CSV wizard were also inspected. This remains partial action coverage; sampled calculations do not establish every formula or validation.
 
-The earlier Mac locks and loan-not-created checkpoint are historical. The synthetic loan was subsequently created; its latest verified balance is1,025 after the 25 debit. REA controlled scenarios now work with the supported `environment.service_workers=allow` option. Raw captures remain outside the repository because they may contain financial/profile data.
+The earlier Mac locks and loan-not-created checkpoint are historical. The synthetic loan was subsequently created; its latest verified balance is 1,025 after the 25 debit. REA controlled scenarios now work with the supported `environment.service_workers=allow` option. Raw captures remain outside the repository because they may contain financial/profile data.
 
 Retained synthetic inventory, pending explicit cleanup permission:
 
@@ -28,6 +28,6 @@ Retained synthetic inventory, pending explicit cleanup permission:
 
 Adding synthetic accounts affects aggregate net worth. No cleanup deletion is recorded. The synthetic-only recategorization rule stayed an unsaved draft: no rule or transaction category edit was committed. No balance-history save, account transfer, CSV/receipt upload, security change or Save to Budget submission was performed.
 
-Remaining gaps include committed split/bulk/rule paths; populated multi-debt/multi-lot calculations; receipt/retail matching and CSV mapping/validation; forecast timing, depletion, tax, variable-rate interpolation and drag boundaries; unvisited global settings; and downstream confirmations/error/recovery. See the catalog for action-specific limits rather than treating a visible control as tested completion.
+Remaining gaps include committed rule application; populated multi-debt/multi-lot calculations; receipt/retail matching and CSV mapping/validation; forecast timing, variable-rate interpolation and drag boundaries; unvisited global settings; and downstream confirmations/error/recovery. See the catalog for action-specific limits rather than treating a visible control as tested completion.
 
 No application changes or release are part of these findings. The documents are a reconstruction guide and investigation ledger, not a claim of source equivalence.
