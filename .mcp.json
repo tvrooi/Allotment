@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "flybudget": {
+      "type": "http",
+      "url": "${FLYBUDGET_URL}/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${FLYBUDGET_READONLY_TOKEN}"
+      }
+    }
+  }
+}
