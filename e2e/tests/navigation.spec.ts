@@ -69,3 +69,26 @@ test('unknown routes inside the app fall back gracefully', async ({ page, api })
   await open(page, '/');
   await expect(page).toHaveURL(/#\/dashboard$/);
 });
+
+test('auto-hidden navigation expands for keyboard focus and collapses after leaving', async ({
+  page,
+  api,
+}) => {
+  await api.createAccount('Everyday Checking');
+  await open(page, '/dashboard');
+  await page.getByRole('button', { name: 'Pin sidebar' }).click();
+  await page.mouse.move(1000, 100);
+  const sidebar = page.getByRole('complementary');
+  const dashboard = sidebar.getByRole('link', { name: 'Dashboard', exact: true });
+  // Focus left on the pin by the click doesn't keep it open once the pointer leaves
+  await expect(dashboard.locator('span')).toHaveCSS('opacity', '0');
+
+  // Focus expands navigation even while the pointer stays outside it.
+  await dashboard.focus();
+  await expect(dashboard.locator('span')).toHaveCSS('opacity', '1');
+  await sidebar.getByRole('link', { name: 'Transactions', exact: true }).press('Enter');
+  await expect(page).toHaveURL(/#\/transactions$/);
+
+  await page.getByRole('textbox', { name: 'Search payee or notes…' }).focus();
+  await expect(dashboard.locator('span')).toHaveCSS('opacity', '0');
+});

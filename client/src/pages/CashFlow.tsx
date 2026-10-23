@@ -1,8 +1,15 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { format, subMonths, startOfYear, endOfYear, subYears } from 'date-fns';
-import { useSpendingByCategory, useIncomeByCategory } from '../hooks/useReports';
+import {
+  useSpendingByCategory,
+  useIncomeByCategory,
+  useIncomeVsExpenses,
+} from '../hooks/useReports';
+import { periodFlow, savingsRate } from '../utils/reportSummary';
 import { formatCurrency } from '../utils/currency';
-import { cashFlowSelection } from '../utils/cashFlowSelection';
+import { cashFlowSelection, cashFlowTransactionsLink } from '../utils/cashFlowSelection';
+import { Link } from 'react-router-dom';
+import { MerchantBreakdown } from '../components/reports/MerchantBreakdown';
 import { downloadCsv } from '../utils/exportCsv';
 import { usePreferencesStore } from '../store/preferencesStore';
 import { chartColors } from '../utils/chartColors';
@@ -120,14 +127,9 @@ interface SankeyDiagramProps {
 const formatDollars = (cents: number) =>
   formatCurrency(Math.sign(cents) * Math.round(Math.abs(cents) / 100) * 100);
 
-function lighten(hex: string, amt: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const nr = Math.round(r + (255 - r) * amt);
-  const ng = Math.round(g + (255 - g) * amt);
-  const nb = Math.round(b + (255 - b) * amt);
-  return `#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`;
+function lighten(color: string, amt: number): string {
+  // Keep theme variables live, including uncategorized spending's axis colour.
+  return amt === 0 ? color : `color-mix(in srgb, ${color}, white ${amt * 100}%)`;
 }
 
 function highlightPath(
@@ -1098,6 +1100,8 @@ export default function CashFlowPage() {
   const isPhone = useIsPhone();
   const [phoneView, setPhoneView] = useState<'list' | 'diagram'>('list');
   const showList = isPhone && phoneView === 'list';
+  // Categories (the diagram or list) or merchants, over the same period and spending total
+  const [groupBy, setGroupBy] = useState<'category' | 'merchant'>('category');
 
   useEffect(() => {
     if (preset === 'custom') return;
@@ -1124,14 +1128,15 @@ export default function CashFlowPage() {
   const { data: incData = [] } = useIncomeByCategory(from, to);
   const { data: spData = [] } = useSpendingByCategory(from, to);
 
+  // Headline totals and savings rate use the shared definition (utils/reportSummary.ts):
+  // spending is net of refunds across all expense categories, as on the dashboard
+  const { data: ieData = [] } = useIncomeVsExpenses(from, to);
   const statCards = useMemo((): StatCard[] => {
-    const totalIncome = incData.reduce((s, d) => s + d.totalReceived, 0);
-    const totalExpenses = spData.reduce((s, d) => s + d.totalSpent, 0);
-    const net = totalIncome - totalExpenses;
-    const savingsRate = totalIncome > 0 ? (net / totalIncome) * 100 : 0;
+    const { income, spending, net } = periodFlow(ieData);
+    const rate = savingsRate(income, spending);
     return [
-      { label: 'Total income', value: formatCurrency(totalIncome), tone: 'positive' },
-      { label: 'Total expenses', value: formatCurrency(totalExpenses), tone: 'negative' },
+      { label: 'Total income', value: formatCurrency(income), tone: 'positive' },
+      { label: 'Total expenses', value: formatCurrency(spending), tone: 'negative' },
       {
         label: 'Total net income',
         value: formatCurrency(net),
@@ -1139,11 +1144,11 @@ export default function CashFlowPage() {
       },
       {
         label: 'Savings rate',
-        value: `${savingsRate.toFixed(1)}%`,
-        tone: savingsRate < 0 ? 'negative' : undefined,
+        value: rate === null ? '—' : `${rate.toFixed(1)}%`,
+        tone: rate !== null && rate < 0 ? 'negative' : undefined,
       },
     ];
-  }, [incData, spData]);
+  }, [ieData]);
 
   const handleNodeClick = useCallback((node: SelectedNode | null) => {
     setSelectedNode(node);
@@ -1169,7 +1174,9 @@ export default function CashFlowPage() {
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 py-4 border-b border-border shrink-0">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-lg font-semibold text-text shrink-0">Cash Flow</h1>
+          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text shrink-0">
+            Cash Flow
+          </h1>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex flex-wrap gap-0">
               {PRESETS.map((p) => (
@@ -1205,55 +1212,93 @@ export default function CashFlowPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6">
+        <p className="text-xs text-text-secondary mb-3">
+          Budget accounts · includes transfers across the budget boundary
+        </p>
         <StatCardRow cards={statCards} variant="hero" />
-        {isPhone && (
-          <div className="flex items-center justify-between gap-3 mt-5 mb-3">
-            <div
-              role="group"
-              aria-label="Show as"
-              className="flex border border-border rounded-md overflow-hidden"
+        <div
+          role="group"
+          aria-label="Group spending by"
+          className="inline-flex mt-5 border border-border rounded-md overflow-hidden"
+        >
+          {(
+            [
+              ['category', 'Categories'],
+              ['merchant', 'Merchants'],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={groupBy === id}
+              onClick={() => {
+                setGroupBy(id);
+                setSelectedNode(null);
+              }}
+              className={`max-md:min-h-11 px-3 py-1 text-xs font-medium cursor-pointer ${
+                groupBy === id ? 'bg-surface-alt text-text' : 'text-text-tertiary'
+              } ${id === 'merchant' ? 'border-l border-border' : ''}`}
             >
-              {(
-                [
-                  ['list', 'List'],
-                  ['diagram', 'Diagram'],
-                ] as const
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  aria-pressed={phoneView === id}
-                  onClick={() => setPhoneView(id)}
-                  className={`min-h-11 px-4 text-sm font-medium cursor-pointer ${
-                    phoneView === id ? 'bg-surface-alt text-text' : 'text-text-tertiary'
-                  } ${id === 'diagram' ? 'border-l border-border' : ''}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            {!showList && (
-              <p className="text-xs text-text-tertiary text-right">Swipe to see it all</p>
-            )}
+              {label}
+            </button>
+          ))}
+        </div>
+        {groupBy === 'merchant' ? (
+          <div className="mt-4">
+            <MerchantBreakdown from={from} to={to} />
           </div>
-        )}
-        {showList ? (
-          <CashFlowList
-            from={from}
-            to={to}
-            selectedNode={selectedNode}
-            onNodeClick={handleNodeClick}
-          />
         ) : (
-          // Phones: the diagram scrolls sideways on its own, edge to edge
-          <div className="w-full max-md:overflow-x-auto max-md:-mx-6 max-md:px-6 max-md:w-auto">
-            <SankeyDiagram
-              from={from}
-              to={to}
-              selectedNode={selectedNode}
-              onNodeClick={handleNodeClick}
-            />
-          </div>
+          <>
+            {isPhone && (
+              <div className="flex items-center justify-between gap-3 mt-5 mb-3">
+                <div
+                  role="group"
+                  aria-label="Show as"
+                  className="flex border border-border rounded-md overflow-hidden"
+                >
+                  {(
+                    [
+                      ['list', 'List'],
+                      ['diagram', 'Diagram'],
+                    ] as const
+                  ).map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-pressed={phoneView === id}
+                      onClick={() => setPhoneView(id)}
+                      className={`min-h-11 px-4 text-sm font-medium cursor-pointer ${
+                        phoneView === id ? 'bg-surface-alt text-text' : 'text-text-tertiary'
+                      } ${id === 'diagram' ? 'border-l border-border' : ''}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {!showList && (
+                  <p className="text-xs text-text-tertiary text-right">Swipe to see it all</p>
+                )}
+              </div>
+            )}
+            {showList ? (
+              <CashFlowList
+                from={from}
+                to={to}
+                selectedNode={selectedNode}
+                onNodeClick={handleNodeClick}
+              />
+            ) : (
+              // Phones: the diagram scrolls sideways on its own, edge to edge
+              <div className="w-full max-md:overflow-x-auto max-md:-mx-6 max-md:px-6 max-md:w-auto">
+                <SankeyDiagram
+                  from={from}
+                  to={to}
+                  selectedNode={selectedNode}
+                  onNodeClick={handleNodeClick}
+                />
+              </div>
+            )}
+          </>
         )}
 
         {selectedNode && (
@@ -1266,12 +1311,20 @@ export default function CashFlowPage() {
               <h2 id="cash-flow-transactions-heading" className="text-sm font-semibold text-text">
                 Transactions: {selectedNode.name}
               </h2>
-              <button
-                onClick={() => setSelectedNode(null)}
-                className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary cursor-pointer transition-colors"
-              >
-                <X size={14} /> Clear
-              </button>
+              <div className="flex items-center gap-3">
+                <Link
+                  to={cashFlowTransactionsLink(selectedNode, from, to)}
+                  className="text-xs text-brand-600 hover:text-brand-700"
+                >
+                  Open in Transactions
+                </Link>
+                <button
+                  onClick={() => setSelectedNode(null)}
+                  className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary cursor-pointer transition-colors"
+                >
+                  <X size={14} /> Clear
+                </button>
+              </div>
             </div>
             <div className="bg-surface rounded-lg shadow-card border border-border-light overflow-hidden">
               <TransactionTable

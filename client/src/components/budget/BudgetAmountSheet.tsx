@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { BulkPreview } from './BulkPreview';
 import { useCategoryHistory } from '../../hooks/useBudget';
 import { useCanSave } from '../../hooks/useConnection';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
@@ -22,7 +23,7 @@ interface Props {
   onClose: () => void;
   onSave: (categoryId: string, cents: number) => void;
   /** Sets the amount for this month and the 11 after it */
-  onApplyBulk: (categoryId: string, cents: number) => void;
+  onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
 }
 
 /**
@@ -70,6 +71,7 @@ function SheetBody({
 }: Omit<Props, 'category'> & { category: BudgetCategory }) {
   const [raw, setRaw] = useState(category.budgeted ? centsToInput(category.budgeted) : '');
   const [allYear, setAllYear] = useState(false);
+  const [review, setReview] = useState<number | null>(null);
   // Shown after Save with text that isn't an amount, until the text changes
   const [invalid, setInvalid] = useState(false);
   const { data: history } = useCategoryHistory(category.id, month);
@@ -83,8 +85,9 @@ function SheetBody({
       return;
     }
     const cents = Math.abs(parseCents(raw));
-    if (allYear) onApplyBulk(category.id, cents);
-    else onSave(category.id, cents);
+    // Twelve months are only overwritten after their preview is reviewed below.
+    if (allYear) return setReview(cents);
+    onSave(category.id, cents);
     onClose();
   }
 
@@ -97,7 +100,9 @@ function SheetBody({
     <form onSubmit={save} className="grid gap-4">
       <p className="text-sm text-text-secondary">{format(parseISO(`${month}-01`), 'MMMM yyyy')}</p>
       <label className="grid gap-1">
-        <span className="text-sm font-medium text-text-secondary">Planned</span>
+        <span className="text-sm font-medium text-text-secondary">
+          {isIncome ? 'Expected' : 'Assigned'}
+        </span>
         <input
           autoFocus
           type="text"
@@ -146,11 +151,27 @@ function SheetBody({
         <input
           type="checkbox"
           checked={allYear}
-          onChange={(e) => setAllYear(e.target.checked)}
+          onChange={(e) => {
+            setAllYear(e.target.checked);
+            setReview(null);
+          }}
           className="h-5 w-5 accent-brand-600"
         />
         Use this amount for the next 12 months
       </label>
+
+      {review !== null && (
+        <BulkPreview
+          categoryId={category.id}
+          cents={review}
+          month={month}
+          onCancel={() => setReview(null)}
+          onConfirm={(expected) => {
+            onApplyBulk(category.id, review, expected);
+            onClose();
+          }}
+        />
+      )}
 
       <SavingPausedHint />
       <div className="flex gap-2">

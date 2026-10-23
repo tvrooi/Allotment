@@ -13,7 +13,7 @@
 
 services:
   flybudget:
-    image: ghcr.io/dtymoszenko/flybudget:latest
+    image: ghcr.io/tvrooi/flybudget:latest
     container_name: flybudget
     ports:
       # Change the first number to use a different port on your server.

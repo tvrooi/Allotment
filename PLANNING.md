@@ -141,6 +141,53 @@ The schema lives in [`server/src/db/schema.ts`](server/src/db/schema.ts) and the
 
 ## Roadmap and ideas
 
+### Community fork development plan (21 October 2026)
+
+The phase 6A development baseline is `0.2.0-up.8`, commit `4b97955` (phase 4 household attribution).
+The YNAB findings originated from `0.2.0-up.6`, commit `865b014`.
+Implementation and verification below describe this checkout and its recorded checks;
+they do not establish the version installed on a live Home Assistant instance.
+The phased fork plan is tracked in the
+[Australian budgeting investigation](docs/investigations/2026-10-20-australian-budgeting.md).
+
+| Phase | Deliverable                                                                                          | Recorded status                                                                                                                                                                                                                                                                                                                  |
+| ----- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Report account scopes, budget boundaries and preservation of Up opening balances                     | Implemented; verification recorded in the investigation. Balance-proven round-up debits are opt-in from `0.2.0-up.14`.                                                                                                                                                                                                           |
+| 2     | Background Up sync, bank-source review and supported daily round-up details                          | Implemented in `0.2.0-up.6`; verification recorded. Source corrections are acknowledged, not applied to the ledger.                                                                                                                                                                                                              |
+| 3     | Payday funding and bill coverage                                                                     | Implemented in `0.2.0-up.7` (#8); phase 6 will unify its funding calculation with the main budget.                                                                                                                                                                                                                               |
+| 4     | Household/person ledger, shared bills and personal-share reports                                     | Implemented in `0.2.0-up.8`: private AUD ledger, contribution-based personal budgeting, expense shares and reserved shared bills.                                                                                                                                                                                                |
+| 5     | Savings forecasts using paydays, bills and household shares                                          | Implemented in `0.2.0-up.13`: read-only cash runway, goal trajectory and scenarios. See [Forecasts](docs/FORECASTS.md).                                                                                                                                                                                                          |
+| 6     | YNAB envelope correctness, credit-card funding, category goals, targets, buffer and review workflows | 6A implemented in `0.2.0-up.9`; 6B merged in `0.2.0-up.10`; 6C implemented in `0.2.0-up.12`; 6D targets in `0.2.0-up.15`; 6E–6G payday integration, buffer and review in `0.2.0-up.17`. See the phase brief for verification and delivery status.                                                                                |
+| 7     | Financial resilience, flexibility reserves, life-choice scenarios and sustainable review             | 7A–7F implemented in `0.2.0-up.18`. See the amended [phase 7 brief](docs/PSYCHOLOGY-OF-MONEY-DEVELOPMENT-PHASE.md) and [Resilience](docs/RESILIENCE.md).                                                                                                                                                                         |
+| 8     | Monarch-informed transaction investigation, dashboard personalization and planning workflows         | Implemented under the amended [phase 8 brief](docs/MONARCH-DEVELOPMENT-PHASE.md): transaction selection, summary and filtered export, a shared savings rate, home dashboard preferences, merchant breakdown, annual overview, goal/debt presentation and [expansion proposals](docs/PHASE-8-PROPOSALS.md), all in `0.2.0-up.19`. |
+| 9     | Tags, saved views, per-transaction review and report visibility                                      | Implemented in `0.2.0-up.20` under the [phase 9 brief](docs/PHASE-9-DEVELOPMENT-PHASE.md): tags with a rule action, per-transaction review, hide from reports and saved views.                                                                                                                                                   |
+
+Phase numbers remain stable references, not a strict execution order. Foundations
+6A and 6B are implemented; 6C category-funded goals are implemented; phase 5 read-only forecasts are implemented in `0.2.0-up.13`; 6D true-expense targets are implemented; 6E payday integration, 6F buffer and 6G review are implemented in `0.2.0-up.17`; phase 7 is implemented in `0.2.0-up.18`.
+6E integrated the already implemented phase 3 planner rather than implementing a second payday planner. Phases 4 and 5 must consume the same
+accounting service. Buffer and review work follows the financial foundation.
+
+The [phase 6 implementation brief](docs/YNAB-DEVELOPMENT-PHASE.md) contains the source map,
+acceptance examples, compatibility constraints and release gates for Sol. It is the
+authoritative scope for this addition; the general upstream ideas below remain uncommitted.
+The original plan addition changed no application code. See [Card payments](docs/CARD-PAYMENTS.md) for phase 6B implementation and compatibility rules.
+
+The [phase 7 brief](docs/PSYCHOLOGY-OF-MONEY-DEVELOPMENT-PHASE.md) amends the
+[financial-resilience proposal (#11)](https://github.com/tvrooi/FlyBudget/pull/11) against the implemented
+phases 5 and 6. It adds no second funding, forecast or review engine.
+The [phase 8 implementation brief](docs/MONARCH-DEVELOPMENT-PHASE.md) consolidates
+actual Monarch REA findings into one additional phase. It builds on the implemented
+6A–6G funding, card, goal, target and review services and phase 7 resilience,
+and keeps forecasting with phases 5/7. Its 22 October amendment fixes the shared
+transaction selection, split and transfer handling, one savings-rate definition,
+per-device dashboard preferences and the annual-overview calculation. Transaction filters, filtered summaries,
+home-card preferences, merchant breakdowns, annual planning and goal/debt workflow
+integration are implementation work; receipts/review, tags/saved views, holdings
+and forecast expansions receive bounded proposals. This documentation addition
+changes no application behavior and requires no release.
+
+### General upstream ideas
+
 Open directions. None of these are committed. To discuss or pick something up, open an issue or join the [Discord](https://discord.gg/xVHK4mUUNw).
 
 - **Multi-device sync:** one budget shared between the desktop app, phones and a server, merging offline changes (see "Keep offline sync possible" in `CLAUDE.md`)

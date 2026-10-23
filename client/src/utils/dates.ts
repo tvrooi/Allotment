@@ -17,6 +17,16 @@ export function formatDay(date: DateInput, pattern: DateFormatOption = preferenc
   return format(toDate(date), pattern);
 }
 
+/**
+ * A server "as of" day, which month views can report as the 31st of any month: shown as that
+ * month's last day rather than failing on a date that doesn't exist.
+ */
+export function formatAsOfDay(day: string, pattern: DateFormatOption = preference()): string {
+  const [y, m, d] = day.split('-').map(Number);
+  const last = new Date(y, m, 0).getDate();
+  return format(new Date(y, m - 1, Math.min(d, last)), pattern);
+}
+
 /** A full date with the month written out where the format has words: "January 5, 2026" */
 export function formatDayLong(date: DateInput, pattern: DateFormatOption = preference()): string {
   return pattern === 'MMM d, yyyy'

@@ -139,7 +139,7 @@ test.describe('budget', () => {
     await open(page, '/budget');
 
     const card = page.getByTestId('budget-card').filter({ hasText: 'Groceries' });
-    await expect(card).toContainText('$457.50 remaining');
+    await expect(card).toContainText('$457.50 available');
     await expect(card).toContainText('$42.50');
     await expect(page.getByRole('table')).toHaveCount(0);
     await expectTouchSize(page.getByRole('button', { name: 'Previous month' }));
@@ -153,14 +153,17 @@ test.describe('budget', () => {
     await sheet.getByRole('textbox', { name: 'Planned for Groceries' }).fill('425');
     await sheet.getByRole('button', { name: 'Save' }).click();
     await expect(sheet).toBeHidden();
-    await expect(card).toContainText('$382.50 remaining');
+    await expect(card).toContainText('$382.50 available');
 
-    // Enter saves too, and the amount can be used for the next 12 months
+    // Enter saves too; the next 12 months are only overwritten after reviewing their preview
     await card.getByRole('button', { name: /^Planned for Groceries/ }).click();
     await sheet.getByRole('checkbox', { name: 'Use this amount for the next 12 months' }).check();
     const input = sheet.getByRole('textbox', { name: 'Planned for Groceries' });
-    await input.fill('300');
+    await input.fill('30');
     await input.press('Enter');
+    const review = sheet.getByRole('region', { name: 'Next 12 months preview' });
+    await expect(review).toContainText('12 of 12 months change');
+    await review.getByRole('button', { name: 'Apply to 12 months' }).click();
     await expect(sheet).toBeHidden();
     const [y, m] = thisMonth().split('-').map(Number);
     const later = new Date(y, m - 1 + 5, 1);
@@ -170,7 +173,7 @@ test.describe('budget', () => {
         const budget = await api.call<any[]>('GET', `/budget/${laterMonth}`);
         return budget.flatMap((g) => g.categories).find((c) => c.id === groceries.id).budgeted;
       })
-      .toBe(30_000);
+      .toBe(3_000);
   });
 
   test('inactive categories are tucked away until asked for, keeping a few in view', async ({

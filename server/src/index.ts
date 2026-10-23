@@ -1,3 +1,4 @@
+import { householdsRouter } from './routes/households.js';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -26,6 +27,7 @@ import { categoriesRouter } from './routes/categories.js';
 import { transactionsRouter } from './routes/transactions.js';
 import { budgetRouter } from './routes/budget.js';
 import { payeesRouter } from './routes/payees.js';
+import { tagsRouter, savedViewsRouter } from './routes/tags.js';
 import { rulesRouter } from './routes/rules.js';
 import { reportsRouter } from './routes/reports.js';
 import { RESTORE_PATH, exportRouter } from './routes/export.js';
@@ -33,8 +35,14 @@ import { customReportsRouter } from './routes/customReports.js';
 import { dashboardsRouter } from './routes/dashboards.js';
 import { schedulesRouter } from './routes/schedules.js';
 import { goalsRouter } from './routes/goals.js';
+import { paydayRouter } from './routes/payday.js';
+import { forecastRouter } from './routes/forecast.js';
+import { reviewRouter } from './routes/review.js';
+import { prioritiesRouter } from './routes/priorities.js';
 import { plaidRouter } from './routes/plaid.js';
 import { simplefinRouter } from './routes/simplefin.js';
+import { upRouter } from './routes/up.js';
+import { syncUp, startUpPolling } from './services/upSyncService.js';
 import { enableBankingCallback, enableBankingRouter } from './routes/enableBanking.js';
 import { serverRouter } from './routes/server.js';
 import { currencyRouter, setRateDownloader } from './routes/currency.js';
@@ -98,16 +106,24 @@ app.use('/api/transactions', transactionsRouter);
 app.use('/api/budget', budgetRouter);
 app.use('/api/payees', payeesRouter);
 app.use('/api/rules', rulesRouter);
+app.use('/api/tags', tagsRouter);
+app.use('/api/saved-views', savedViewsRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/export', exportRouter);
 app.use('/api/custom-reports', customReportsRouter);
 app.use('/api/dashboards', dashboardsRouter);
+app.use('/api/households', householdsRouter);
 app.use('/api/schedules', schedulesRouter);
 app.use('/api/goals', goalsRouter);
+app.use('/api/payday', paydayRouter);
+app.use('/api/forecast', forecastRouter);
+app.use('/api/review', reviewRouter);
+app.use('/api/priorities', prioritiesRouter);
 setRateDownloader({ download: fetchRates, checkUrl: assertSafeUrl, defaultUrl: DEFAULT_RATES_URL });
 app.use('/api/currency', currencyRouter);
 app.use('/api/plaid', bankRateLimit, plaidRouter);
 app.use('/api/simplefin', bankRateLimit, simplefinRouter);
+app.use('/api/up', bankRateLimit, upRouter);
 app.use('/api/enable-banking', bankRateLimit, enableBankingRouter);
 app.use('/api', apiNotFound);
 
@@ -159,6 +175,8 @@ export async function startServer(port: number | string): Promise<void> {
         ).unref();
       }
       runStartupTasks();
+      const stopUpPolling = startUpPolling();
+      server.once('close', stopUpPolling);
       resolve();
     });
     server.on('error', (err) => console.error('Server error:', err));
@@ -212,6 +230,7 @@ function runStartupTasks() {
 
   // Bank sync BEFORE schedule auto-create (so real txns get matched first)
   const bankSyncDone = Promise.all([
+    syncUp().catch(() => console.error('Up sync could not complete.')),
     isPlaidConfigured()
       ? syncAllItems()
           .then((results) => {

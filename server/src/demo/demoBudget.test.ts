@@ -133,11 +133,12 @@ describe('the demo budget, loaded', () => {
 
   const get = async (path: string) => (await fetch(base + path)).json();
 
-  it('never has a month with more budgeted than it had', async () => {
+  it('reconciles historical resources and reservations, disclosing overcommitments', async () => {
     for (let i = 0; i < 18; i++) {
       const month = format(subMonths(today, i), 'yyyy-MM');
       const summary = await get(`/budget/${month}/summary`);
-      expect(summary.toBeBudgeted, month).toBeGreaterThanOrEqual(0);
+      expect(summary.toBeBudgeted + summary.reserved, month).toBe(summary.resources);
+      if (summary.toBeBudgeted < 0) expect(summary.resolved, month).toBe(false);
     }
   });
 

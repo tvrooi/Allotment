@@ -1,30 +1,31 @@
 {
   "name": "flybudget",
-  "version": "0.2.0",
+  "version": "0.2.0-up.22",
   "license": "AGPL-3.0-only",
   "description": "A fast, open-source budgeting app that gives you complete control over your financial data.",
   "main": "electron/dist/main.js",
   "desktopName": "flybudget.desktop",
   "scripts": {
     "dev": "concurrently --names client,server --prefix-colors cyan,yellow \"npm run dev --prefix client\" \"npm run dev --prefix server\"",
-    "electron:dev": "cross-env ELECTRON_DEV=true concurrently --kill-others-on-fail --names client,server,electron --prefix-colors cyan,yellow,magenta \"npm run dev --prefix client\" \"npm run dev --prefix server\" \"wait-on tcp:3001 tcp:5173 && electron --require tsx/cjs ./electron/main.ts\"",
-    "electron:build": "npm run build:client:electron && npm run build:server:bundle && npm run compile:electron && electron-builder",
+    "electron:dev": "cross-env ELECTRON_DEV=true concurrently --kill-others-on-fail --names client,server,electron --prefix-colors cyan,yellow,magenta \"npm run dev --prefix client\" \"npm run dev --prefix server\" \"wait-on tcp:3001 tcp:5173 && npm run compile:electron && electron --require tsx/cjs ./electron/main.ts\"",
+    "electron:build": "npm run build:client:electron && npm run build:server:bundle && npm run compile:electron && electron-builder --config electron-builder.release.cjs",
     "build:client:electron": "npm run build --prefix client -- --mode electron",
     "build:server:bundle": "esbuild server/src/index.ts --bundle --platform=node --target=node22 --external:better-sqlite3 --format=cjs --outfile=electron/dist/server.js",
     "compile:electron": "tsc -p electron/tsconfig.json",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "release:prepare": "python3 scripts/prepare-release.py"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dtymoszenko/flybudget.git"
+    "url": "git+https://github.com/tvrooi/FlyBudget.git"
   },
   "keywords": [],
   "author": "David Tymoszenko",
   "bugs": {
-    "url": "https://github.com/dtymoszenko/flybudget/issues"
+    "url": "https://github.com/tvrooi/FlyBudget/issues"
   },
-  "homepage": "https://github.com/dtymoszenko/flybudget#readme",
+  "homepage": "https://github.com/tvrooi/FlyBudget#readme",
   "devDependencies": {
     "concurrently": "^10.0.6",
     "cross-env": "^10.1.0",
@@ -40,5 +41,8 @@
     "concurrently": {
       "shell-quote": "^1.11.0"
     }
+  },
+  "dependencies": {
+    "electron-updater": "6.8.9"
   }
 }

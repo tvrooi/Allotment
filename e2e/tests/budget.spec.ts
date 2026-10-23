@@ -47,9 +47,13 @@ test.describe('budget', () => {
     const summary = await api.call('GET', `/budget/${thisMonth()}/summary`);
     expect(summary).toMatchObject({ income: 300_000, totalBudgeted: 300_000, toBeBudgeted: 0 });
 
-    await plan(page, 'Restaurants', '50');
-    await expect(toBeBudgeted(page)).toContainText('-$50');
-    await expect(toBeBudgeted(page)).toContainText('Over budget');
+    // The API rejects overassignment before it can consume money twice.
+    const rejected = await api.request.put(
+      `/api/budget/${thisMonth()}/${(await api.category('Restaurants')).id}`,
+      { data: { budgeted: 5000 } },
+    );
+    expect(rejected.status()).toBe(409);
+    expect((await api.call('GET', `/budget/${thisMonth()}/summary`)).toBeBudgeted).toBe(0);
   });
 
   test('spending shows against its categories, including split parts', async ({ page, api }) => {
@@ -118,13 +122,14 @@ test.describe('budget', () => {
     await expect(toBeBudgeted(page)).toContainText('$600');
     await page.getByRole('button', { name: 'Previous month' }).click();
     await page.getByRole('button', { name: 'Previous month' }).click();
-    await expect(toBeBudgeted(page)).toContainText('$0');
+    // Future commitments remain visible even before their income was received.
+    await expect(toBeBudgeted(page)).toContainText('-$400');
     await page.getByRole('button', { name: 'Today' }).click();
     await expect(toBeBudgeted(page)).toContainText('$600');
   });
 
   test('a category links to its detail page with its transactions', async ({ page, api }) => {
-    const checking = await api.createAccount('Checking', 0);
+    const checking = await api.createAccount('Checking', 100000);
     const groceries = await api.category('Groceries');
     await api.call('PUT', `/budget/${thisMonth()}/${groceries.id}`, { budgeted: 20_000 });
     await api.createTransaction({
@@ -145,7 +150,7 @@ test.describe('budget', () => {
     page,
     api,
   }) => {
-    await api.createAccount('Checking', 0);
+    await api.createAccount('Checking', 100000);
     const groceries = await api.category('Groceries');
     await api.call('PUT', `/budget/${thisMonth()}/${groceries.id}`, { budgeted: 20_000 });
     await open(page, '/budget');

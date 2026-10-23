@@ -1,7 +1,7 @@
-import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
+import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
-import { accounts, transactions, transferMatchDismissals } from '../db/schema.js';
+import { accounts, transactions, transferMatchDismissals, householdEvents } from '../db/schema.js';
 import { restoreBankPayee } from './transactionHelpers.js';
 import {
   accountCurrency,
@@ -68,6 +68,7 @@ export function newTransferRow(fields: {
  * not a split or a part of one, not reconciled (locked), and not a balance correction.
  */
 const eligible = and(
+  sql`not exists (select 1 from household_events he where he.transaction_id = ${transactions.id})`,
   isNull(transactions.transferTransactionId),
   eq(transactions.isParent, 0),
   isNull(transactions.parentTransactionId),
@@ -112,6 +113,8 @@ function loadDismissed(): Set<string> {
 
 /** Why `row` can't be one side of a transfer, or null if it can */
 function ineligibleReason(row: TransactionRow): string | null {
+  if (db.select().from(householdEvents).where(eq(householdEvents.transactionId, row.id)).get())
+    return 'Remove the linked household entry before changing this payment into a transfer';
   if (row.reconciled === 1) return 'Reconciled transactions are locked';
   if (row.transferTransactionId) return 'This is already a transfer';
   if (row.isParent === 1 || row.parentTransactionId)
@@ -183,7 +186,6 @@ function markTransfer(row: TransactionRow, otherId: string, otherAccountName: st
   db.update(transactions)
     .set({
       transferTransactionId: otherId,
-      categoryId: null,
       payeeId: null,
       payeeName: transferName(otherAccountName),
       importedPayee: row.importedPayee ?? row.payeeName,
@@ -219,7 +221,7 @@ function linkRows(id: string, otherId: string): LinkResult {
   db.delete(transferMatchDismissals)
     .where(eq(transferMatchDismissals.id, pairKey(a.id, b.id)))
     .run();
-  // A transfer is worth the same on both sides: neither income nor spending
+  // Both sides retain the same budget-currency value; the budget boundary determines activity.
   refreshMainAmounts([a.id]);
 
   return { transactions: [getRow(a.id), getRow(b.id)], previous: [a, b], created: false };
@@ -308,6 +310,17 @@ export function unlinkTransfer(
       .from(transactions)
       .where(eq(transactions.id, tx.transferTransactionId))
       .get();
+    if (
+      [tx, other].some(
+        (row) =>
+          row &&
+          db.select().from(householdEvents).where(eq(householdEvents.transactionId, row.id)).get(),
+      )
+    )
+      throw new TransferError(
+        'Remove the linked household entry before unlinking this transfer',
+        409,
+      );
     if (tx.reconciled === 1 || other?.reconciled === 1) {
       throw new TransferError('Reconciled transactions are locked', 403);
     }

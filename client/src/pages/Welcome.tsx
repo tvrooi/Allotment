@@ -10,6 +10,7 @@ import { AddAccountModal } from '../components/accounts/AddAccountModal';
 import { ConnectBankModal } from '../components/plaid/ConnectBankModal';
 import { PlaidSetupModal } from '../components/plaid/PlaidSetupModal';
 import { SimplefinConnectModal } from '../components/simplefin/SimplefinConnectModal';
+import { UpConnectModal } from '../components/up/UpConnectModal';
 import { ConnectEnableBankingModal } from '../components/enablebanking/ConnectEnableBankingModal';
 import { HelpFooter } from '../components/layout/HelpFooter';
 import { ExternalLink } from '../components/ui/ExternalLink';
@@ -71,6 +72,7 @@ export default function WelcomePage() {
   const [showPlaid, setShowPlaid] = useState(false);
   const [showPlaidSetup, setShowPlaidSetup] = useState(false);
   const [showSimplefin, setShowSimplefin] = useState(false);
+  const [showUp, setShowUp] = useState(false);
   const [showEnableBanking, setShowEnableBanking] = useState(false);
   const [showManual, setShowManual] = useState(false);
 
@@ -88,6 +90,11 @@ export default function WelcomePage() {
 
   return (
     <div className="h-dvh overflow-y-auto bg-page">
+      {/* macOS desktop app: the window has no title bar, so this strip moves it */}
+      <div
+        aria-hidden
+        className="hidden mac-window:block sticky top-0 z-10 h-10 bg-page drag-region"
+      />
       <div className="min-h-full flex flex-col items-center px-4 sm:px-6">
         <main className="flex-1 w-full max-w-3xl flex flex-col justify-center py-10 text-center">
           <img src={logoUrl} alt="" className="w-20 h-20 mx-auto mb-5" />
@@ -101,6 +108,15 @@ export default function WelcomePage() {
           </p>
 
           <div className="grid gap-4 mt-8 grid-cols-1 sm:grid-cols-2">
+            <SetupOption
+              icon={<span className="font-bold text-brand-600">Up</span>}
+              title="Connect Up"
+              tag="Free · Australia"
+              time="~5 min"
+              description="Import settled transactions directly from Up, including Savers and 2Up accounts. Create a personal access token in Up’s developer portal."
+              action="Connect Up"
+              onClick={() => setShowUp(true)}
+            />
             <SetupOption
               icon={<PlaidLogo size={24} className="text-text" />}
               title="Connect with Plaid"
@@ -173,6 +189,7 @@ export default function WelcomePage() {
         onConfigured={() => setShowPlaid(true)}
       />
       <SimplefinConnectModal isOpen={showSimplefin} onClose={() => setShowSimplefin(false)} />
+      <UpConnectModal isOpen={showUp} onClose={() => setShowUp(false)} />
       <ConnectEnableBankingModal
         isOpen={showEnableBanking}
         onClose={() => setShowEnableBanking(false)}

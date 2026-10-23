@@ -7,6 +7,8 @@ import {
   SlidersHorizontal,
   Link2,
   Server,
+  Compass,
+  Tag,
 } from 'lucide-react';
 import { ServerSettings } from '../components/settings/ServerSettings';
 import { CategoryManager } from '../components/settings/CategoryManager';
@@ -15,14 +17,20 @@ import { DataExport } from '../components/settings/DataExport';
 import { PreferencesPanel } from '../components/settings/PreferencesPanel';
 import { CurrencySettings } from '../components/settings/CurrencySettings';
 import { ConnectedAccounts } from '../components/settings/ConnectedAccounts';
+import { PrioritiesSettings } from '../components/settings/PrioritiesSettings';
+import { TagManager } from '../components/settings/TagManager';
 import { LICENSE_URL, SOURCE_CODE_URL } from '../utils/project';
 
 const tabs = [
   { id: 'categories', label: 'Categories', icon: Layers },
   { id: 'accounts', label: 'Accounts', icon: ArrowUpDown },
+  // Phase 9 transaction tags
+  { id: 'tags', label: 'Tags', icon: Tag },
   { id: 'connections', label: 'Connected Banks', icon: Link2 },
   // The budget's currency, exchange rates and how each currency is written
   { id: 'currencies', label: 'Currencies', icon: Coins },
+  // Optional financial priorities and category purposes (phase 7A)
+  { id: 'priorities', label: 'Priorities', icon: Compass },
   { id: 'data', label: 'Data', icon: Download },
   { id: 'preferences', label: 'Preferences', icon: SlidersHorizontal },
   // Where the data lives; on a self-hosted server also security, devices and password
@@ -44,7 +52,9 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 py-4 border-b border-border shrink-0">
-        <h1 className="text-lg font-semibold text-text">Settings</h1>
+        <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+          Settings
+        </h1>
         <div className="flex gap-0 mt-3 border-b border-border-light -mb-px overflow-x-auto [scrollbar-width:none]">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -71,8 +81,10 @@ export default function SettingsPage() {
         <div className="max-w-2xl">
           {activeTab === 'categories' && <CategoryManager />}
           {activeTab === 'accounts' && <AccountReorder />}
+          {activeTab === 'tags' && <TagManager />}
           {activeTab === 'connections' && <ConnectedAccounts />}
           {activeTab === 'currencies' && <CurrencySettings />}
+          {activeTab === 'priorities' && <PrioritiesSettings />}
           {activeTab === 'data' && <DataExport />}
           {activeTab === 'preferences' && <PreferencesPanel />}
           {activeTab === 'server' && <ServerSettings onOpenTab={setActiveTab} />}

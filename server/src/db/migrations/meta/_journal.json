@@ -176,6 +176,83 @@
       "when": 1791100000000,
       "tag": "0024_multi_currency",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1791200000000,
+      "tag": "0025_up_bank",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1791300000000,
+      "tag": "0026_up_review",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "6",
+      "when": 1791400000000,
+      "tag": "0027_payday_funding",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "6",
+      "when": 1791500000000,
+      "tag": "0028_households",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1791600000000,
+      "tag": "0029_budget_funding",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1791700000000,
+      "tag": "0030_card_payment_funding",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1791800000000,
+      "tag": "0031_category_goals",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1791900000000,
+      "tag": "0032_up_round_up_debits",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1792000000000,
+      "tag": "0033_category_targets",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "6",
+      "when": 1792100000000,
+      "tag": "0034_financial_resilience",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "6",
+      "when": 1792200000000,
+      "tag": "0035_transaction_review_tags",
+      "breakpoints": true
     }
   ]
 }

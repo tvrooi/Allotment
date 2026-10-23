@@ -4,7 +4,7 @@ import { useBudget } from '../../hooks/useBudget';
 import { useIncomeVsExpenses } from '../../hooks/useReports';
 import { formatCurrency } from '../../utils/currency';
 import { StatCard } from '../ui/StatCard';
-import { monthsToAverage } from '../../utils/reportSummary';
+import { monthsToAverage, periodFlow, savingsRate } from '../../utils/reportSummary';
 import { usePreferencesStore } from '../../store/preferencesStore';
 
 interface Props {
@@ -49,9 +49,12 @@ export default function SummaryStats({ currentMonth }: Props) {
 
   // Only months since the budget's first income or spending (not the full 12 before it)
   const monthCount = monthsToAverage(ieData);
-  const avgIncome = Math.round(ieData.reduce((sum, p) => sum + p.income, 0) / monthCount);
-  const avgExpenses = Math.round(ieData.reduce((sum, p) => sum + p.expenses, 0) / monthCount);
-  const savingsRate = avgIncome > 0 ? Math.round(((avgIncome - avgExpenses) / avgIncome) * 100) : 0;
+  // The shared definition over the same months (utils/reportSummary.ts), rounded for display
+  const flow = periodFlow(ieData);
+  const avgIncome = Math.round(flow.income / monthCount);
+  const avgExpenses = Math.round(flow.spending / monthCount);
+  const exactRate = savingsRate(flow.income, flow.spending);
+  const rate = exactRate === null ? null : Math.round(exactRate);
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -70,13 +73,14 @@ export default function SummaryStats({ currentMonth }: Props) {
         value={formatCurrency(avgExpenses)}
         valueColor={avgExpenses > 0 ? 'text-negative' : undefined}
       />
-      <div className="bg-surface-alt rounded-lg px-4 py-3 border border-border-light">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-text-tertiary">Savings Rate</p>
+      <div className="bg-surface rounded-lg px-5 py-4 border border-border-light shadow-card">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <p className="text-xs font-medium text-text-secondary">Savings Rate</p>
           <select
+            aria-label="Savings rate goal"
             value={savingsGoal}
             onChange={(e) => setSavingsGoal(Number(e.target.value))}
-            className="text-[10px] border border-border rounded px-1 py-0.5 bg-surface text-text-secondary cursor-pointer focus:outline-none"
+            className="text-xs border border-border rounded-md px-2 py-1 bg-surface text-text-secondary cursor-pointer max-md:min-h-11"
           >
             {GOAL_OPTIONS.map((g) => (
               <option key={g} value={g}>
@@ -85,15 +89,15 @@ export default function SummaryStats({ currentMonth }: Props) {
             ))}
           </select>
         </div>
-        {avgIncome > 0 ? (
+        {rate !== null ? (
           <p
-            className={`text-lg font-semibold tabular-nums mt-0.5 ${savingsRate >= savingsGoal ? 'text-positive' : 'text-negative'}`}
+            className={`text-xl font-semibold tabular-nums tracking-tight mt-2 ${rate >= savingsGoal ? 'text-positive' : 'text-negative'}`}
           >
-            {savingsRate}%
+            {rate}%
           </p>
         ) : (
           <>
-            <p className="text-lg font-semibold tabular-nums mt-0.5 text-text">—</p>
+            <p className="text-xl font-semibold tabular-nums mt-2 text-text">—</p>
             <p className="text-xs text-text-tertiary mt-0.5">Shown once you have income</p>
           </>
         )}

@@ -1,7 +1,7 @@
 import { forwardRef } from 'react';
 
 const inputClass =
-  'block w-full rounded-md border border-border px-3 py-2 text-sm bg-surface text-text focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600';
+  'block w-full rounded-md border border-border px-3 py-2.5 text-sm bg-surface text-text placeholder:text-text-tertiary transition-colors focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600';
 
 export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   (props, ref) => <input ref={ref} className={inputClass} {...props} />,

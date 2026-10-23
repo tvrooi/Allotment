@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { X, Lock, Trash2, Repeat, Unlink, Wand2 } from 'lucide-react';
 import { useUpdateTransaction, useDeleteTransaction } from '../../hooks/useTransactions';
@@ -18,6 +19,8 @@ import { formatMoney } from '../../utils/currency';
 import { useAccountCurrency } from '../../hooks/useCurrency';
 import { MainAmountField } from '../currency/MainAmountField';
 import { RECURRENCE_TYPE_LABELS } from '../../types';
+import { GoalLink } from '../goals/GoalLink';
+import { TransactionMarks } from './TransactionMarks';
 import type {
   Transaction,
   CategoryGroup,
@@ -50,6 +53,7 @@ export function TransactionDetailPanel({
   accountLogo,
   onClose,
 }: Props) {
+  const navigate = useNavigate();
   const updateTx = useUpdateTransaction();
   const currency = useAccountCurrency()(tx.accountId);
   const updatePayee = useUpdatePayee();
@@ -88,7 +92,7 @@ export function TransactionDetailPanel({
   const isReconciled = tx.reconciled === 1;
   const isTransfer = !!tx.transferTransactionId;
   const isSplitParent = tx.isParent === 1 && tx.children && tx.children.length > 0;
-  const canEditCategory = !isReconciled && !isTransfer && !isSplitParent;
+  const canEditCategory = !isReconciled && (!isTransfer || !!tx.isBudgetBoundary) && !isSplitParent;
 
   const payeeName = tx.payeeName || (isTransfer ? 'Transfer' : '—');
   const payee = tx.payeeId ? payees.find((p) => p.id === tx.payeeId) : undefined;
@@ -97,7 +101,9 @@ export function TransactionDetailPanel({
   // balance correction can't be a transfer
   const canSave = useCanSave();
   const transferAccounts =
-    canSave && !tx.isAdjustment ? accounts.filter((a) => a.id !== tx.accountId && !a.closedAt) : [];
+    canSave && !isTransfer && !tx.isAdjustment
+      ? accounts.filter((a) => a.id !== tx.accountId && !a.closedAt)
+      : [];
 
   function saveDate() {
     if (localDate !== tx.date) {
@@ -252,7 +258,7 @@ export function TransactionDetailPanel({
                 );
               })}
             </div>
-          ) : isTransfer ? (
+          ) : isTransfer && !tx.isBudgetBoundary ? (
             <div className="flex items-center gap-2">
               <div className="flex-1 min-w-0 truncate text-sm text-brand-500 px-3 py-2 border border-border rounded-lg bg-surface-alt">
                 {tx.payeeName || 'Transfer'}
@@ -296,6 +302,29 @@ export function TransactionDetailPanel({
             </div>
           )}
         </div>
+
+        <GoalLink categoryIds={[tx.categoryId, ...(tx.children ?? []).map((c) => c.categoryId)]} />
+
+        {!tx.parentTransactionId && <TransactionMarks tx={tx} />}
+
+        {tx.isBudgetBoundary && (
+          <div className="text-xs text-text-secondary">
+            <p>
+              Transfer across the budget boundary. Choose an expense category for money leaving, or
+              an income/refund category for money returning.
+            </p>
+            {!isReconciled && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => unlinkTransfer.mutate(tx)}
+                disabled={!canSave || unlinkTransfer.isPending}
+              >
+                Not a transfer
+              </Button>
+            )}
+          </div>
+        )}
 
         {!isTransfer && (
           <div>
@@ -353,6 +382,18 @@ export function TransactionDetailPanel({
       </div>
 
       <div className="px-5 py-4 border-t border-border space-y-2">
+        {!tx.isParent && !tx.parentTransactionId && !tx.isAdjustment && tx.amount < 0 && (
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={() => {
+              onClose();
+              navigate(`/household?transaction=${encodeURIComponent(tx.id)}`);
+            }}
+          >
+            Split with people
+          </Button>
+        )}
         {!isTransfer && (
           <Button variant="secondary" onClick={startRule} className="w-full">
             <Wand2 size={14} />

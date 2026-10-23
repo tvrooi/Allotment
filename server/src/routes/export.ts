@@ -8,9 +8,10 @@ import {
   restoreBackup,
   saveSafetyCopy,
 } from '../services/backupService.js';
-import { eq, and, gte, lte } from 'drizzle-orm';
 import { z } from 'zod';
-import { isRealDate } from '../utils/validation.js';
+import { leafCondition, parseSelection } from '../services/transactionSelection.js';
+import { listTags, tagsByTransaction } from '../services/transactionMarks.js';
+import { sql } from 'drizzle-orm';
 import { minorUnits } from '../utils/currencies.js';
 import { minorToDecimal } from '../utils/money.js';
 import { budgetCurrency, hasForeignAccounts } from '../services/mainAmountService.js';
@@ -48,23 +49,16 @@ export function csvAmount(cents: number, decimal: '.' | ',', minor = 2): string 
 const csvFormatSchema = z.enum(['dot', 'comma']).default('dot');
 
 exportRouter.get('/transactions/csv', (req, res) => {
-  const { from, to } = req.query;
   const decimalFormat = csvFormatSchema.safeParse(req.query.decimal);
   if (!decimalFormat.success) {
     return res.status(400).json({ error: 'Expected `decimal` to be dot or comma' });
   }
   const [sep, decimal] =
     decimalFormat.data === 'comma' ? ([';', ','] as const) : ([',', '.'] as const);
-  if (
-    (from !== undefined && !isRealDate(String(from))) ||
-    (to !== undefined && !isRealDate(String(to)))
-  ) {
-    return res.status(400).json({ error: 'Expected `from` and `to` as YYYY-MM-DD' });
-  }
-  // A split is exported as its parts (which carry the categories), so amounts add up
-  const filters = [eq(transactions.isParent, 0)];
-  if (typeof from === 'string') filters.push(gte(transactions.date, from));
-  if (typeof to === 'string') filters.push(lte(transactions.date, to));
+  // The register's selection (services/transactionSelection.ts). A split is exported as its
+  // matching parts (which carry the categories), so amounts add up to the filtered summary.
+  const selection = parseSelection(req.query as Record<string, unknown>);
+  if (!selection.success) return res.status(400).json({ error: selection.error.flatten() });
 
   const rows = db
     .select({
@@ -77,9 +71,15 @@ exportRouter.get('/transactions/csv', (req, res) => {
       accountId: transactions.accountId,
       mainAmount: transactions.mainAmount,
       mainAmountSource: transactions.mainAmountSource,
+      // Review, visibility and tags live on the register row: a split part reads its parent's
+      registerId: sql<string>`coalesce(${transactions.parentTransactionId}, ${transactions.id})`,
+      reviewedAt: sql<
+        string | null
+      >`coalesce((select p.reviewed_at from transactions p where p.id = "transactions"."parent_transaction_id"), "transactions"."reviewed_at")`,
+      hidden: sql<number>`coalesce((select p.hidden_from_reports from transactions p where p.id = "transactions"."parent_transaction_id"), "transactions"."hidden_from_reports")`,
     })
     .from(transactions)
-    .where(and(...filters))
+    .where(leafCondition(selection.data))
     .orderBy(transactions.date)
     .all();
 
@@ -97,9 +97,12 @@ exportRouter.get('/transactions/csv', (req, res) => {
       .map((c) => [c.id, c.name]),
   );
 
+  const tagNames = new Map(listTags().map((t) => [t.id, t.name]));
+  const rowTags = tagsByTransaction([...new Set(rows.map((r) => r.registerId))]);
+
   const columns = ['Date', 'Account', 'Payee', 'Category', 'Notes', 'Amount'];
   if (multi) columns.push('Currency', `Amount (${budget})`);
-  const header = `${[...columns, 'Reconciled'].join(sep)}\n`;
+  const header = `${[...columns, 'Reconciled', 'Tags', 'Reviewed', 'Hidden from reports'].join(sep)}\n`;
   const body = rows
     .map((r) => {
       const currency = currencyOf[r.accountId] ?? null;
@@ -115,6 +118,15 @@ exportRouter.get('/transactions/csv', (req, res) => {
           ? [currency ?? '', value === null ? '' : csvAmount(value, decimal, minorUnits(budget))]
           : []),
         r.reconciled ? 'Yes' : 'No',
+        escapeCsv(
+          (rowTags.get(r.registerId) ?? [])
+            .map((id) => tagNames.get(id) ?? '')
+            .filter(Boolean)
+            .join('; '),
+          sep,
+        ),
+        r.reviewedAt ? 'Yes' : 'No',
+        r.hidden ? 'Yes' : 'No',
       ].join(sep);
     })
     .join('\n');

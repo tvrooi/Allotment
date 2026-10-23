@@ -808,10 +808,15 @@ function SpendingTrendsDetail({
   );
 }
 
-/** Transactions on one day of the calendar, counted the same way (budget accounts, no transfers). */
+/** Calendar drill-down uses the same server-side budget activity scope as its totals. */
 function DayTransactions({ day, onClose }: { day: string; onClose: () => void }) {
   const showIcons = usePreferencesStore((s) => s.showCategoryIcons);
-  const { data = [], isLoading } = useTransactions({ from: day, to: day, limit: 1000 });
+  const { data = [], isLoading } = useTransactions({
+    from: day,
+    to: day,
+    limit: 1000,
+    budgetReport: true,
+  });
   const { data: accounts = [] } = useAccounts();
   const { data: groups = [] } = useCategories();
   const { data: payees = [] } = usePayees();
@@ -821,9 +826,7 @@ function DayTransactions({ day, onClose }: { day: string; onClose: () => void })
     [groups],
   );
   const logos = useMemo(() => new Map(payees.map((p) => [p.id, p.logo])), [payees]);
-  const rows = data.filter(
-    (t) => !t.transferTransactionId && accountsById.get(t.accountId)?.isOffBudget === 0,
-  );
+  const rows = data;
   const moneyIn = rows.reduce((s, t) => s + Math.max(t.amount, 0), 0);
   const moneyOut = rows.reduce((s, t) => s - Math.min(t.amount, 0), 0);
 

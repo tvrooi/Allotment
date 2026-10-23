@@ -274,7 +274,7 @@ function AccountMappingCard({
           }
           className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
             mapping.action === 'create'
-              ? 'bg-brand-600 text-white'
+              ? 'bg-brand-600 text-brand-contrast'
               : 'bg-surface text-text-secondary border border-border hover:bg-surface-alt'
           }`}
         >
@@ -285,7 +285,7 @@ function AccountMappingCard({
           disabled={availableAccounts.length === 0}
           className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
             mapping.action === 'link'
-              ? 'bg-brand-600 text-white'
+              ? 'bg-brand-600 text-brand-contrast'
               : 'bg-surface text-text-secondary border border-border hover:bg-surface-alt disabled:opacity-40 disabled:cursor-not-allowed'
           }`}
         >

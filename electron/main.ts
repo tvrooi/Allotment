@@ -1,7 +1,16 @@
-import { app, BrowserWindow, dialog, Menu, safeStorage, session, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage, session, shell } from 'electron';
+import { desktopUpdates } from './desktopUpdates';
 import { randomBytes } from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import {
+  loadLocation,
+  saveLocation,
+  sameOrigin,
+  serverPartition,
+  type BudgetLocation,
+} from './connection';
+import { connectionPage } from './connectionPage';
 
 // electron/package.json sets "type": "commonjs", so both dev (main.ts via tsx/cjs)
 // and the build (tsc → CommonJS) run this as CommonJS and the built-in __dirname is
@@ -19,16 +28,11 @@ const API_TOKEN = IS_DEV ? undefined : randomBytes(32).toString('hex');
 
 // Dev loads the Vite server; the packaged app is served by the embedded server so
 // the page is same-origin with the API.
-const APP_URL = IS_DEV ? 'http://localhost:5173/' : `http://localhost:${PORT}/`;
-const APP_ORIGIN = new URL(APP_URL).origin;
-
-function isAppUrl(url: string): boolean {
-  try {
-    return new URL(url).origin === APP_ORIGIN;
-  } catch {
-    return false;
-  }
-}
+const LOCAL_URL = IS_DEV ? 'http://localhost:5173/' : `http://localhost:${PORT}/`;
+let location: BudgetLocation = { mode: 'local' };
+let picker: BrowserWindow | null = null;
+let pickerUrl = '';
+let budgetReady = false;
 
 function openExternalIfSafe(url: string): void {
   try {
@@ -38,8 +42,8 @@ function openExternalIfSafe(url: string): void {
   }
 }
 
-// Set ALL env vars BEFORE requiring any server code so db/index.ts picks them up
-if (!IS_DEV) {
+// Called only for a local budget. Server mode never opens the local database or key.
+function configureLocalServer(): void {
   const userData = app.getPath('userData');
   process.env.DB_PATH = path.join(userData, 'budget.db');
   process.env.ELECTRON_PROD = 'true';
@@ -50,8 +54,68 @@ if (!IS_DEV) {
   // client/dist/ is two levels up from electron/dist/
   process.env.CLIENT_DIST = path.join(__dirname, '../../client/dist');
   process.env.FLYBUDGET_API_TOKEN = API_TOKEN;
+  process.env.EXPRESS_PORT = String(PORT);
 }
-process.env.EXPRESS_PORT = String(PORT);
+
+function protectSession(target: Electron.Session): void {
+  target.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
+  target.setPermissionCheckHandler(() => false);
+}
+
+function showLocationPicker(message = ''): void {
+  if (picker && !picker.isDestroyed()) {
+    picker.focus();
+    return;
+  }
+  pickerUrl = connectionPage(location, message);
+  picker = new BrowserWindow({
+    width: 640,
+    height: 680,
+    minWidth: 560,
+    minHeight: 640,
+    title: 'Budget location',
+    webPreferences: {
+      preload: path.join(__dirname, IS_DEV ? 'dist/connectionPreload.js' : 'connectionPreload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      devTools: IS_DEV,
+      spellcheck: false,
+    },
+  });
+  picker.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  picker.webContents.on('will-navigate', (event) => event.preventDefault());
+  picker.webContents.on('will-redirect', (event) => event.preventDefault());
+  picker.on('closed', () => {
+    picker = null;
+    pickerUrl = '';
+  });
+  void picker.loadURL(pickerUrl);
+}
+
+ipcMain.handle('budget-location:save', (event, value: unknown): string | null => {
+  // The server page has no bridge, and even a forged message must come from the
+  // current picker's main frame at its exact locally generated URL.
+  if (
+    !picker ||
+    event.sender !== picker.webContents ||
+    event.senderFrame !== picker.webContents.mainFrame ||
+    event.senderFrame.url !== pickerUrl
+  ) {
+    return 'Open Budget → Budget location to change the server.';
+  }
+  try {
+    saveLocation(app.getPath('userData'), value);
+  } catch (error) {
+    return error instanceof Error ? error.message : 'Could not save the connection.';
+  }
+  // Restart so a switch to server mode cannot leave a local bank sync running.
+  app.relaunch();
+  app.quit();
+  return null;
+});
 
 /**
  * The key that encrypts bank credentials inside budget.db (see
@@ -101,6 +165,12 @@ async function waitForServer(port: number, ms = 15000): Promise<void> {
 }
 
 function createWindow(): void {
+  const remote = location.mode === 'server';
+  const appUrl = location.mode === 'server' ? location.url : LOCAL_URL;
+  const targetSession = remote
+    ? session.fromPartition(serverPartition(appUrl))
+    : session.defaultSession;
+  protectSession(targetSession);
   // Dev runs main.ts from electron/; the build runs main.js from electron/dist/
   const iconPath = IS_DEV
     ? path.join(__dirname, 'resources/icon.png')
@@ -112,8 +182,25 @@ function createWindow(): void {
     minWidth: 900,
     minHeight: 600,
     icon: iconPath,
+    title: remote ? `FlyBudget — ${new URL(appUrl).host}` : 'FlyBudget',
+    // macOS: no title bar. The sidebar and page run to the top of the window with the
+    // traffic lights inset into the sidebar, and the page draws its own drag strips
+    // (`drag-region` in client/src/index.css). A remote server's page has no preload, so
+    // it can't know it's in the Mac app and keeps the normal title bar.
+    ...(process.platform === 'darwin' &&
+      !remote && {
+        titleBarStyle: 'hidden',
+        trafficLightPosition: { x: 16, y: 14 },
+      }),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      // Remote content gets no desktop IPC or local API token. Relative API calls
+      // and the server's ordinary password login work just as in a browser.
+      // Dev runs main.ts with tsx, but a preload must be JavaScript: `electron:dev`
+      // compiles it to electron/dist/ first.
+      ...(!remote
+        ? { preload: path.join(__dirname, IS_DEV ? 'dist/preload.js' : 'preload.js') }
+        : {}),
+      session: targetSession,
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -136,24 +223,47 @@ function createWindow(): void {
 
   // The window may only ever show the app itself.
   const keepInApp = (event: Electron.Event, url: string) => {
-    if (isAppUrl(url)) return;
+    if (sameOrigin(url, appUrl)) return;
     event.preventDefault();
     openExternalIfSafe(url);
   };
   win.webContents.on('will-navigate', keepInApp);
   win.webContents.on('will-redirect', keepInApp);
 
-  win.loadURL(APP_URL);
+  void win.loadURL(appUrl).catch(() => {
+    if (win.isDestroyed()) return;
+    if (remote) {
+      showLocationPicker(
+        'Could not reach the server. Check that FlyBudget is running and your home network or VPN is connected, then connect again.',
+      );
+      win.close();
+    }
+  });
   if (IS_DEV) win.webContents.openDevTools();
 }
 
-// No menu bar on Windows and Linux. macOS always shows one, and its keyboard shortcuts
-// (copy and paste, undo in text fields, hide, quit) only work through menu items, so give
-// it the standard app, Edit and Window menus.
+let updates: ReturnType<typeof desktopUpdates> | null = null;
+// Keep the server selector and updater available even when the budget server cannot be reached.
 Menu.setApplicationMenu(
-  process.platform === 'darwin'
-    ? Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'windowMenu' }])
-    : null,
+  Menu.buildFromTemplate([
+    ...(process.platform === 'darwin' ? [{ role: 'appMenu' as const }] : []),
+    {
+      label: 'Budget',
+      submenu: [
+        { id: 'budget-location', label: 'Budget location…', click: () => showLocationPicker() },
+        {
+          label: 'Check for desktop updates…',
+          click: () => {
+            void updates?.check();
+          },
+        },
+        { role: 'reload' },
+        ...(process.platform !== 'darwin' ? [{ role: 'quit' as const }] : []),
+      ],
+    },
+    { role: 'editMenu' },
+    { role: 'windowMenu' },
+  ]),
 );
 
 // Only one instance: a second one would fail to bind the port and show a blank window
@@ -174,16 +284,47 @@ app.on('web-contents-created', (_event, contents) => {
   contents.on('will-attach-webview', (event) => event.preventDefault());
 });
 
+app.on('activate', () => {
+  if (!app.isReady() || BrowserWindow.getAllWindows().length !== 0) return;
+  if (budgetReady) createWindow();
+  else showLocationPicker();
+});
+
 app.whenReady().then(async () => {
   if (!isPrimaryInstance) return;
+  updates = desktopUpdates();
+  if (!IS_DEV) {
+    const updateTimer = setTimeout(() => {
+      void updates?.check(false);
+    }, 60_000);
+    updateTimer.unref();
+    app.once('will-quit', () => clearTimeout(updateTimer));
+  }
 
-  // FlyBudget needs no camera, microphone, location, notifications, etc.
-  session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) =>
-    callback(false),
-  );
-  session.defaultSession.setPermissionCheckHandler(() => false);
+  protectSession(session.defaultSession);
 
   if (!IS_DEV) {
+    let saved: BudgetLocation | null;
+    try {
+      saved = loadLocation(app.getPath('userData'));
+    } catch (error) {
+      showLocationPicker((error as Error).message);
+      return;
+    }
+    if (!saved) {
+      // Existing users keep opening their local budget; new installs choose once.
+      if (fs.existsSync(path.join(app.getPath('userData'), 'budget.db'))) {
+        saved = { mode: 'local' };
+      } else {
+        showLocationPicker();
+        return;
+      }
+    }
+    location = saved;
+  }
+
+  if (!IS_DEV && location.mode === 'local') {
+    configureLocalServer();
     const dataKey = loadCredentialKey();
     if (dataKey) process.env.FLYBUDGET_DATA_KEY = dataKey;
     // Shown in the app's server status (the bundled server can't read package.json)
@@ -220,11 +361,8 @@ app.whenReady().then(async () => {
     });
   }
 
+  budgetReady = true;
   createWindow();
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
 });
 
 app.on('window-all-closed', () => {

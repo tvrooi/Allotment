@@ -1,13 +1,22 @@
 import path from 'path';
+import { isoDate } from '../utils/validation.js';
 import { getTableColumns, isNotNull, sql } from 'drizzle-orm';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { databasePath, db, sqlite } from '../db/index.js';
 import {
+  householdGroups,
+  householdPeople,
+  householdEvents,
+  householdShares,
+  householdBills,
   accounts,
   budgetSettings,
   exchangeRates,
   budgetMonths,
+  budgetMoves,
   categories,
+  cardFunding,
+  categoryTargets,
   categoryGroups,
   customReports,
   dashboardPages,
@@ -20,11 +29,31 @@ import {
   scheduleOccurrences,
   schedules,
   simplefinAccountMappings,
+  upAccountMappings,
+  upSourceRecords,
   enableBankingAccountMappings,
   transactions,
   transferMatchDismissals,
+  paydayPlans,
+  paydayFundingEvents,
+  paydayFundingReceipts,
+  financialPriorities,
+  categoryPurposes,
+  goalStatusEvents,
+  reviewCompletions,
+  incomeReviews,
+  tags,
+  transactionTags,
+  savedViews,
 } from '../db/schema.js';
+import { paydayConfigSchema, fundingSnapshotSchema } from './paydayConfig.js';
 import { fillMissingMainAmounts, ratesChanged } from './mainAmountService.js';
+import { upObservationSchema } from './upTransactions.js';
+import { targetSchema } from './targetConfig.js';
+import { CADENCES, PURPOSES, reviewSnapshotSchema } from './resilienceConfig.js';
+import { GOAL_STATUSES } from './goalLifecycle.js';
+import { purposeError } from './resilienceService.js';
+import { validateViewQuery } from './transactionMarks.js';
 
 // Full JSON backup of the user's data, and restoring one.
 //
@@ -35,7 +64,7 @@ import { fillMissingMainAmounts, ratesChanged } from './mainAmountService.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 3;
+export const BACKUP_VERSION = 12;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -44,18 +73,38 @@ const TABLES = {
   accounts,
   categoryGroups,
   categories,
+  cardFunding,
+  categoryTargets,
   payees,
   schedules,
   transactions,
+  upSourceRecords,
   scheduleOccurrences,
   scheduleMatchDismissals,
   transferMatchDismissals,
   budgetMonths,
+  budgetMoves,
   rules,
+  tags,
+  transactionTags,
+  savedViews,
   customReports,
   dashboardPages,
   dashboardWidgets,
   goals,
+  goalStatusEvents,
+  paydayPlans,
+  paydayFundingEvents,
+  paydayFundingReceipts,
+  financialPriorities,
+  categoryPurposes,
+  reviewCompletions,
+  incomeReviews,
+  householdGroups,
+  householdPeople,
+  householdEvents,
+  householdShares,
+  householdBills,
 } satisfies Record<string, SQLiteTable>;
 
 export type BackupTable = keyof typeof TABLES;
@@ -133,8 +182,175 @@ export function parseBackup(input: unknown): ParsedBackup {
         if (!ok) throw new InvalidBackupError(`Row ${i + 1} of "${name}" has an invalid "${key}"`);
         row[key] = value;
       }
+      if (name === 'cardFunding') {
+        try {
+          const ids = JSON.parse(String(row.baselineIds));
+          if (
+            !Array.isArray(ids) ||
+            ids.some((id) => typeof id !== 'string') ||
+            !isoDate.safeParse(row.startDate).success ||
+            Number(row.initialFunding) < 0 ||
+            Number(row.initialFunding) > 1e13
+          )
+            throw new Error();
+        } catch {
+          throw new InvalidBackupError('Invalid card funding setup');
+        }
+      }
+      if (name === 'paydayPlans') {
+        try {
+          paydayConfigSchema.parse(JSON.parse(row.configJson as string));
+        } catch {
+          throw new InvalidBackupError('Invalid payday plan');
+        }
+        if (row.archived !== undefined && ![0, 1].includes(Number(row.archived)))
+          throw new InvalidBackupError('Invalid payday plan state');
+      }
+      if (name === 'paydayFundingEvents') {
+        try {
+          const snapshot = fundingSnapshotSchema.parse(JSON.parse(row.snapshotJson as string));
+          if (
+            snapshot.planId !== row.planId ||
+            snapshot.scheduledDate !== row.scheduledDate ||
+            snapshot.today !== row.appliedDate
+          )
+            throw new Error('Funding identity does not match its history');
+        } catch {
+          throw new InvalidBackupError('Invalid payday funding history');
+        }
+      }
+      if (name === 'upSourceRecords') {
+        for (const field of ['sourceJson', 'previousJson']) {
+          if (row[field] == null) continue;
+          try {
+            upObservationSchema.parse(JSON.parse(row[field] as string));
+          } catch {
+            throw new InvalidBackupError(`Row ${i + 1} of "${name}" has invalid bank details`);
+          }
+        }
+        if (
+          !['new', 'changed', 'missing', 'pending', 'reviewed'].includes(
+            String(row.reviewState ?? 'reviewed'),
+          ) ||
+          (row.revision !== undefined && Number(row.revision) < 1) ||
+          (row.seenInLatest !== undefined && ![0, 1].includes(Number(row.seenInLatest)))
+        )
+          throw new InvalidBackupError('Invalid Up review state');
+      }
+      if (name === 'tags') {
+        const tagName = String(row.name ?? '').trim();
+        if (!tagName || tagName.length > 60) throw new InvalidBackupError('Invalid tag name');
+        if (row.color !== undefined && !/^#[0-9a-fA-F]{6}$/.test(String(row.color)))
+          throw new InvalidBackupError('Invalid tag colour');
+      }
+      if (name === 'savedViews') {
+        try {
+          row.query = validateViewQuery(String(row.query));
+        } catch {
+          throw new InvalidBackupError('Invalid saved view');
+        }
+      }
+      if (name === 'transactions' && row.hiddenFromReports !== undefined) {
+        if (![0, 1].includes(Number(row.hiddenFromReports)))
+          throw new InvalidBackupError('Invalid report visibility');
+      }
       return row;
     });
+  }
+  const linked = new Set<string>();
+  for (const goal of result.goals) {
+    if (goal.categoryId == null) continue;
+    const category = result.categories.find((c) => c.id === goal.categoryId);
+    const group = result.categoryGroups.find((g) => g.id === category?.groupId);
+    if (
+      !category ||
+      !group ||
+      group.isIncome ||
+      linked.has(String(goal.categoryId)) ||
+      result.cardFunding.some((c) => c.categoryId === goal.categoryId)
+    )
+      throw new InvalidBackupError('Invalid or duplicate goal category');
+    linked.add(String(goal.categoryId));
+  }
+  // Phase 7 (format 11). Older backups have none of these: every goal restores active.
+  const goalIds = new Set(result.goals.map((g) => String(g.id)));
+  for (const goal of result.goals)
+    if (
+      !GOAL_STATUSES.includes(String(goal.status ?? 'active') as never) ||
+      (goal.replacedByGoalId != null &&
+        (!goalIds.has(String(goal.replacedByGoalId)) || goal.replacedByGoalId === goal.id))
+    )
+      throw new InvalidBackupError('Invalid goal status');
+  for (const event of result.goalStatusEvents)
+    if (
+      !goalIds.has(String(event.goalId)) ||
+      !GOAL_STATUSES.includes(String(event.fromStatus) as never) ||
+      !GOAL_STATUSES.includes(String(event.toStatus) as never)
+    )
+      throw new InvalidBackupError('Invalid goal status history');
+  for (const p of result.financialPriorities) {
+    const type = p.reserveTargetType ?? null;
+    if (
+      p.id !== 'default' ||
+      !CADENCES.includes(String(p.reviewCadence ?? 'off') as never) ||
+      !(
+        (type === null && p.reserveTargetAmount == null && p.reserveTargetMonths == null) ||
+        (type === 'amount' && Number(p.reserveTargetAmount) > 0 && p.reserveTargetMonths == null) ||
+        (type === 'months' &&
+          Number(p.reserveTargetMonths) >= 1 &&
+          Number(p.reserveTargetMonths) <= 60 &&
+          p.reserveTargetAmount == null)
+      ) ||
+      [p.essentialMonthlyAmount, p.reserveMinimum].some((v) => v != null && Number(v) <= 0)
+    )
+      throw new InvalidBackupError('Invalid financial priorities');
+  }
+  for (const p of result.categoryPurposes) {
+    const error =
+      !PURPOSES.includes(String(p.purpose) as never) ||
+      purposeError(String(p.categoryId), String(p.purpose), {
+        category: (id) => result.categories.find((c) => c.id === id) as never,
+        group: (id) => result.categoryGroups.find((g) => g.id === id) as never,
+        isCardReserve: (id) => result.cardFunding.some((c) => c.categoryId === id),
+        fundsGoal: (id) => result.goals.some((g) => g.categoryId === id),
+        targetType: (id) =>
+          result.categoryTargets.find((t) => t.categoryId === id)?.type as string | undefined,
+      });
+    if (error) throw new InvalidBackupError('Invalid category purpose');
+  }
+  for (const c of result.reviewCompletions)
+    try {
+      reviewSnapshotSchema.parse(JSON.parse(String(c.snapshotJson)));
+      if (!isoDate.safeParse(c.asOf).success) throw new Error();
+    } catch {
+      throw new InvalidBackupError('Invalid review history');
+    }
+  for (const r of result.incomeReviews)
+    if (
+      Number(r.baseline) < 0 ||
+      Number(r.assigned) < 0 ||
+      Number(r.reservePercent) < 0 ||
+      Number(r.reservePercent) > 100
+    )
+      throw new InvalidBackupError('Invalid income review');
+  for (const target of result.categoryTargets) {
+    const category = result.categories.find((c) => c.id === target.categoryId);
+    const group = result.categoryGroups.find((g) => g.id === category?.groupId);
+    const valid = targetSchema.safeParse({
+      type: target.type,
+      amount: target.amount,
+      ...(target.dueDate != null && { dueDate: target.dueDate }),
+      ...(target.cycleMonths != null && { cycleMonths: target.cycleMonths }),
+    });
+    if (
+      !category ||
+      !group ||
+      group.isIncome ||
+      !valid.success ||
+      !/^\d{4}-\d{2}$/.test(String(target.createdMonth)) ||
+      result.cardFunding.some((c) => c.categoryId === target.categoryId)
+    )
+      throw new InvalidBackupError('Invalid category target');
   }
   return result;
 }
@@ -170,6 +386,11 @@ export function restoreBackup(data: ParsedBackup) {
     .where(isNotNull(enableBankingAccountMappings.accountId))
     .all();
   const restoredAccounts = new Set(data.accounts.map((a) => a.id as string));
+  const upLinks = db
+    .select({ id: upAccountMappings.id, accountId: upAccountMappings.accountId })
+    .from(upAccountMappings)
+    .where(isNotNull(upAccountMappings.accountId))
+    .all();
 
   db.transaction((tx) => {
     // Foreign keys are checked once, at commit, so rows can go in table by table
@@ -191,6 +412,7 @@ export function restoreBackup(data: ParsedBackup) {
     for (const [table, links] of [
       [plaidAccountMappings, plaidLinks],
       [simplefinAccountMappings, simplefinLinks],
+      [upAccountMappings, upLinks],
       [enableBankingAccountMappings, enableBankingLinks],
     ] as const) {
       for (const link of links) {

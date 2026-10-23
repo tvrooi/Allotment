@@ -7,6 +7,7 @@ import {
   plaidConfig,
   plaidItems,
   simplefinConnections,
+  upConnections,
 } from '../db/schema.js';
 import { secretCipher } from '../db/secretCrypto.js';
 
@@ -21,6 +22,17 @@ export function encryptStoredCredentials(): number {
   if (!secretCipher.enabled) return 0;
   let count = 0;
   db.transaction((tx) => {
+    for (const row of tx
+      .select()
+      .from(upConnections)
+      .where(notEncrypted(upConnections.accessToken))
+      .all()) {
+      tx.update(upConnections)
+        .set({ accessToken: row.accessToken })
+        .where(eq(upConnections.id, row.id))
+        .run();
+      count++;
+    }
     for (const row of tx.select().from(plaidConfig).where(notEncrypted(plaidConfig.secret)).all()) {
       tx.update(plaidConfig).set({ secret: row.secret }).where(eq(plaidConfig.id, row.id)).run();
       count++;

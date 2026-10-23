@@ -189,7 +189,7 @@ export function TransactionFormRow({
       disabled={!canAdd}
       className={
         sheet
-          ? `${sheetBtn} flex-1 bg-brand-600 text-white`
+          ? `${sheetBtn} flex-1 bg-brand-600 text-brand-contrast`
           : 'p-1.5 rounded text-brand-600 hover:text-brand-700 hover:bg-brand-100 disabled:opacity-40 disabled:pointer-events-none'
       }
       title={

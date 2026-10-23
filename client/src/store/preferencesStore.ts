@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { IS_DEMO } from '../demo/isDemo';
+import type { FormFactor, HomeLayout } from '../utils/homeCards';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type DateFormatOption =
@@ -43,6 +44,11 @@ interface PreferencesState {
   setupSkipped: boolean;
   /** The getting started checklist on the dashboard was hidden */
   gettingStartedHidden: boolean;
+  /**
+   * Home dashboard cards on this device, separately for phone and desktop widths (missing =
+   * the default). Read through utils/homeCards.ts normalizeLayout. Presentation only.
+   */
+  homeLayouts: Partial<Record<FormFactor, HomeLayout>>;
   setTheme: (theme: Theme) => void;
   setCurrencySymbol: (symbol: string) => void;
   setAmountFormat: (format: AmountFormat | 'auto') => void;
@@ -59,12 +65,14 @@ interface PreferencesState {
   setKeepOfflineCopy: (keep: boolean) => void;
   setSetupSkipped: (skipped: boolean) => void;
   setGettingStartedHidden: (hidden: boolean) => void;
+  /** Null goes back to the default layout */
+  setHomeLayout: (factor: FormFactor, layout: HomeLayout | null) => void;
 }
 
 const PREFERENCES_KEY = 'budget-preferences';
 
-/** 1: amount format and symbol position (Automatic for new installs) */
-export const PREFERENCES_VERSION = 1;
+/** 1: amount format and symbol position (Automatic for new installs). 2: home card layouts */
+export const PREFERENCES_VERSION = 2;
 
 /**
  * Preferences saved by an older version, brought up to date. Installs from before the amount
@@ -76,6 +84,11 @@ export function migratePreferences(persisted: unknown, version: number): unknown
   const state = persisted && typeof persisted === 'object' ? { ...persisted } : {};
   if (version < 1) {
     Object.assign(state, { amountFormat: 'dot', symbolPosition: 'before' });
+  }
+  // Layouts are checked card by card when drawn; something that isn't one is dropped
+  const layouts = (state as { homeLayouts?: unknown }).homeLayouts;
+  if (layouts !== undefined && (layouts === null || typeof layouts !== 'object')) {
+    delete (state as { homeLayouts?: unknown }).homeLayouts;
   }
   return state;
 }
@@ -98,6 +111,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       keepOfflineCopy: true,
       setupSkipped: false,
       gettingStartedHidden: false,
+      homeLayouts: {},
       setTheme: (theme) => set({ theme }),
       setCurrencySymbol: (currencySymbol) => set({ currencySymbol }),
       setAmountFormat: (amountFormat) => set({ amountFormat }),
@@ -119,6 +133,13 @@ export const usePreferencesStore = create<PreferencesState>()(
       setKeepOfflineCopy: (keepOfflineCopy) => set({ keepOfflineCopy }),
       setSetupSkipped: (setupSkipped) => set({ setupSkipped }),
       setGettingStartedHidden: (gettingStartedHidden) => set({ gettingStartedHidden }),
+      setHomeLayout: (factor, layout) =>
+        set((s) => {
+          const homeLayouts = { ...s.homeLayouts };
+          if (layout) homeLayouts[factor] = layout;
+          else delete homeLayouts[factor];
+          return { homeLayouts };
+        }),
     }),
     {
       name: PREFERENCES_KEY,

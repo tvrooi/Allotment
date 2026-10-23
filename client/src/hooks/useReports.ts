@@ -28,6 +28,12 @@ export const useIncomeVsExpenses = (from: string, to: string) =>
     queryFn: () => reportsApi.getIncomeVsExpenses(from, to),
   });
 
+export const useSpendingByPayee = (from: string, to: string) =>
+  useQuery({
+    queryKey: ['reports', 'spending-by-payee', from, to],
+    queryFn: () => reportsApi.getSpendingByPayee(from, to),
+  });
+
 export const useDailyFlow = (from: string, to: string) =>
   useQuery({
     queryKey: ['reports', 'daily-flow', from, to],

@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 // Self-hosted so the app never contacts Google Fonts (privacy, and a stricter CSP)
 import '@fontsource/inter/400.css';
@@ -15,8 +15,15 @@ import { loadOutbox } from './offline/outbox';
 import { IS_DEMO, startDemoApi } from './demo/demoApi';
 
 initTheme();
+// The macOS desktop app has no title bar: `mac-window:` styles add the drag strips
+if (window.__PLATFORM__ === 'darwin') document.documentElement.classList.add('mac-window');
 
 const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['goals'] });
+    },
+  }),
   defaultOptions: {
     queries: { staleTime: 30_000, retry: 1 },
   },

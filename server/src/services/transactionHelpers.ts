@@ -1,6 +1,6 @@
 import { db } from '../db/index.js';
-import { payees, transactions } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { payees, transactions, householdEvents } from '../db/schema.js';
+import { eq, inArray } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { unlinkOccurrenceByTransactionId } from './matchingEngine.js';
 import { refreshMainAmounts } from './mainAmountService.js';
@@ -65,6 +65,14 @@ export function deleteTransactionRow(row: { id: string; transferTransactionId: s
         .all()
         .map((c) => c.id),
     ];
+    // Bank removals must not stall a sync or erase agreed household obligations.
+    tx.update(householdEvents)
+      .set({
+        transactionId: null,
+        reviewReason: 'Linked bank payment was removed; review this household entry',
+      })
+      .where(inArray(householdEvents.transactionId, ids))
+      .run();
     for (const id of ids) unlinkOccurrenceByTransactionId(id);
     const other = row.transferTransactionId
       ? tx.select().from(transactions).where(eq(transactions.id, row.transferTransactionId)).get()

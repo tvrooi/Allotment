@@ -1,25 +1,47 @@
+import { todayIso } from '../services/mainAmountService.js';
+import {
+  cardAccounts,
+  previewCardSetup,
+  applyCardSetup,
+  previewCardAssignment,
+} from '../services/cardFundingSetup.js';
+import {
+  previewMove,
+  applyMove,
+  undoMove,
+  BudgetError,
+  fundedWrite,
+} from '../services/budgetMoves.js';
+import { budgetSummary, fundingRevision, fundingState } from '../services/budgetService.js';
+import { annualOverview } from '../services/annualOverview.js';
 import { Router } from 'express';
 import { db } from '../db/index.js';
-import { accounts, budgetMonths, categories, categoryGroups, transactions } from '../db/schema.js';
-import { eq, and, gte, lte, lt, sql, inArray } from 'drizzle-orm';
+import {
+  budgetMonths,
+  budgetMoves,
+  categories,
+  categoryGroups,
+  transactions,
+} from '../db/schema.js';
+import { eq, and, gte, lt, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
-import { monthBounds } from '../utils/date.js';
-import { mainAmount } from '../services/balances.js';
+import { budgetActivity, mainAmount } from '../services/balances.js';
 import { isMonth } from '../utils/validation.js';
+import { addMonthsTo } from '../services/fundingMath.js';
+import { targetSchema } from '../services/targetConfig.js';
+import {
+  applyTargetFunding,
+  budgetWithTargets,
+  previewTargetFunding,
+  saveTarget,
+} from '../services/targetService.js';
+import { categoryTargets } from '../db/schema.js';
 
 export const budgetRouter = Router();
 
 const cents = z.number().int().min(-1e13).max(1e13);
-const upsertSchema = z.object({ budgeted: cents });
-
-// The budget only counts money in on-budget accounts: a categorized dividend in an
-// off-budget brokerage account isn't money to budget
-const onBudgetAccountIds = db
-  .select({ id: accounts.id })
-  .from(accounts)
-  .where(eq(accounts.isOffBudget, 0));
-const onBudget = inArray(transactions.accountId, onBudgetAccountIds);
+const upsertSchema = z.object({ budgeted: cents, revision: z.string().optional() });
 
 // Every route here takes a YYYY-MM month
 budgetRouter.param('month', (_req, res, next, month) => {
@@ -27,102 +49,93 @@ budgetRouter.param('month', (_req, res, next, month) => {
   next();
 });
 
-budgetRouter.get('/:month', (req, res) => {
-  const { month } = req.params;
-  const { from, to } = monthBounds(month);
+budgetRouter.get('/card-funding/accounts', (_req, res) =>
+  res.json({ asOf: todayIso(), accounts: cardAccounts(), cards: fundingState().cards }),
+);
+budgetRouter.post('/card-funding/:accountId/funding-preview', (req, res, next) => {
+  const parsed = z
+    .object({ month: z.string().refine(isMonth), amount: z.number().int().positive().max(1e13) })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    res.json(previewCardAssignment(req.params.accountId, parsed.data.month, parsed.data.amount));
+  } catch (error) {
+    if (error instanceof BudgetError)
+      return res.status(error.status).json({ error: error.message });
+    next(error);
+  }
+});
+const cardSetupSchema = z.object({
+  initialFunding: z.number().int().min(0).max(1e13),
+  revision: z.string().optional(),
+});
+for (const action of ['preview', 'apply'])
+  budgetRouter.post(`/card-funding/:accountId/${action}`, (req, res, next) => {
+    const parsed = cardSetupSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+    try {
+      if (action === 'apply' && !parsed.data.revision)
+        return res.status(400).json({ error: 'Preview this setup before applying' });
+      res.json(
+        action === 'preview'
+          ? previewCardSetup(req.params.accountId, parsed.data.initialFunding)
+          : applyCardSetup(req.params.accountId, parsed.data.initialFunding, parsed.data.revision!),
+      );
+    } catch (error) {
+      if (error instanceof BudgetError)
+        return res.status(error.status).json({ error: error.message });
+      next(error);
+    }
+  });
 
-  const groups = db.select().from(categoryGroups).orderBy(categoryGroups.sortOrder).all();
-  const cats = db.select().from(categories).orderBy(categories.sortOrder).all();
-  const budgeted = db.select().from(budgetMonths).where(eq(budgetMonths.month, month)).all();
-
-  const spentRows = db
-    .select({
-      categoryId: transactions.categoryId,
-      spent: sql<number>`coalesce(sum(${mainAmount}), 0)`,
-    })
-    .from(transactions)
-    .where(and(gte(transactions.date, from), lte(transactions.date, to), onBudget))
-    .groupBy(transactions.categoryId)
-    .all();
-
-  const priorBudgetedRows = db
-    .select({
-      categoryId: budgetMonths.categoryId,
-      total: sql<number>`coalesce(sum(${budgetMonths.budgeted}), 0)`,
-    })
-    .from(budgetMonths)
-    .where(lt(budgetMonths.month, month))
-    .groupBy(budgetMonths.categoryId)
-    .all();
-
-  const priorActivityRows = db
-    .select({
-      categoryId: transactions.categoryId,
-      total: sql<number>`coalesce(sum(${mainAmount}), 0)`,
-    })
-    .from(transactions)
-    .where(and(lt(transactions.date, from), onBudget))
-    .groupBy(transactions.categoryId)
-    .all();
-
-  const spentMap = Object.fromEntries(spentRows.map((r) => [r.categoryId, r.spent]));
-  const budgetMap = Object.fromEntries(budgeted.map((b) => [b.categoryId, b]));
-  const priorBudgetMap = Object.fromEntries(priorBudgetedRows.map((r) => [r.categoryId, r.total]));
-  const priorActivityMap = Object.fromEntries(
-    priorActivityRows.map((r) => [r.categoryId, r.total]),
-  );
-
-  const result = groups.map((g) => ({
-    ...g,
-    categories: cats
-      .filter((c) => c.groupId === g.id)
-      .map((c) => {
-        const bm = budgetMap[c.id];
-        const budgetedAmt = bm?.budgeted ?? 0;
-        const activity = spentMap[c.id] ?? 0;
-        const carryOver = (priorBudgetMap[c.id] ?? 0) + (priorActivityMap[c.id] ?? 0);
-        return {
-          ...c,
-          budgeted: budgetedAmt,
-          spent: Math.abs(Math.min(activity, 0)),
-          carryOver,
-          balance: carryOver + budgetedAmt + activity,
-        };
-      }),
-  }));
-
-  res.json(result);
+// The annual overview: monthly assignments and activity, summed; balances never are
+budgetRouter.get('/year/:year', (req, res) => {
+  const year = Number(req.params.year);
+  if (!/^\d{4}$/.test(req.params.year) || year < 1900 || year > 2200)
+    return res.status(400).json({ error: 'Expected a year as YYYY' });
+  res.json(annualOverview(year));
 });
 
-budgetRouter.put('/:month/:categoryId', (req, res) => {
+budgetRouter.get('/:month', (req, res) => res.json(budgetWithTargets(req.params.month)));
+
+// Existing overcommitments survive; new reservations require existing resources.
+budgetRouter.put('/:month/:categoryId', (req, res, next) => {
   const parsed = upsertSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-
   const { month, categoryId } = req.params;
-  const existing = db
-    .select()
-    .from(budgetMonths)
-    .where(and(eq(budgetMonths.month, month), eq(budgetMonths.categoryId, categoryId)))
-    .get();
-
-  if (existing) {
-    db.update(budgetMonths)
-      .set({ budgeted: parsed.data.budgeted })
-      .where(eq(budgetMonths.id, existing.id))
-      .run();
-  } else {
-    db.insert(budgetMonths)
-      .values({
-        id: nanoid(),
-        month,
-        categoryId,
-        budgeted: parsed.data.budgeted,
-        notes: null,
-      })
-      .run();
+  if (!db.select().from(categories).where(eq(categories.id, categoryId)).get())
+    return res.status(404).json({ error: 'Category not found' });
+  try {
+    let previousBudgeted = 0;
+    fundedWrite(() => {
+      previousBudgeted =
+        db
+          .select()
+          .from(budgetMonths)
+          .where(and(eq(budgetMonths.month, month), eq(budgetMonths.categoryId, categoryId)))
+          .get()?.budgeted ?? 0;
+      if (parsed.data.revision && parsed.data.revision !== fundingRevision())
+        throw new BudgetError('Your budget changed. Refresh before editing.');
+      db.insert(budgetMonths)
+        .values({ id: nanoid(), month, categoryId, budgeted: parsed.data.budgeted })
+        .onConflictDoUpdate({
+          target: [budgetMonths.month, budgetMonths.categoryId],
+          set: { budgeted: parsed.data.budgeted },
+        })
+        .run();
+    });
+    res.json({
+      month,
+      categoryId,
+      budgeted: parsed.data.budgeted,
+      previousBudgeted,
+      revision: fundingRevision(),
+    });
+  } catch (error) {
+    if (error instanceof BudgetError)
+      return res.status(error.status).json({ error: error.message });
+    next(error);
   }
-
-  res.json({ month, categoryId, budgeted: parsed.data.budgeted });
 });
 
 const historyQuerySchema = z.object({
@@ -178,7 +191,7 @@ budgetRouter.get('/category/:categoryId/history', (req, res) => {
         eq(transactions.categoryId, categoryId),
         gte(transactions.date, startDate),
         lt(transactions.date, endDate),
-        onBudget,
+        budgetActivity,
       ),
     )
     .groupBy(sql`strftime('%Y-%m', ${transactions.date})`)
@@ -199,9 +212,10 @@ budgetRouter.get('/category/:categoryId/history', (req, res) => {
     }
   }
 
+  // Every month in the stated window counts, including months with no spending: one $600
+  // expense in six months averages $100 a month, not $600.
   const total = history.reduce((s, h) => s + h.amount, 0);
-  const nonZeroCount = history.filter((h) => h.amount > 0).length;
-  const average = nonZeroCount > 0 ? Math.round(total / nonZeroCount) : 0;
+  const average = Math.round(total / months);
   const lastMonthKey = history.length >= 2 ? history[history.length - 2]?.month : undefined;
   const lastMonth = lastMonthKey ? (rowMap[lastMonthKey] ?? 0) : 0;
 
@@ -210,106 +224,173 @@ budgetRouter.get('/category/:categoryId/history', (req, res) => {
 
 const bulkSchema = z.object({
   budgeted: cents,
-  fromMonth: z.string().regex(/^\d{4}-\d{2}$/),
+  fromMonth: z.string().refine(isMonth),
+  /** The assignments the user reviewed in the preview, by month. */
+  expected: z.record(z.string().refine(isMonth), cents),
+});
+const bulkMonths = (fromMonth: string) =>
+  Array.from({ length: 12 }, (_, i) => addMonthsTo(fromMonth, i));
+const assignment = (month: string, categoryId: string) =>
+  db
+    .select()
+    .from(budgetMonths)
+    .where(and(eq(budgetMonths.month, month), eq(budgetMonths.categoryId, categoryId)))
+    .get()?.budgeted ?? 0;
+
+/** Shows each of the 12 months the bulk change would overwrite, before anything is written. */
+budgetRouter.get('/category/:categoryId/bulk-preview', (req, res) => {
+  const parsed = z
+    .object({
+      budgeted: z.coerce.number().int().min(-1e13).max(1e13),
+      fromMonth: z.string().refine(isMonth),
+    })
+    .safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  const { categoryId } = req.params;
+  if (!db.select().from(categories).where(eq(categories.id, categoryId)).get())
+    return res.status(404).json({ error: 'Category not found' });
+  res.json({
+    categoryId,
+    budgeted: parsed.data.budgeted,
+    months: bulkMonths(parsed.data.fromMonth).map((month) => ({
+      month,
+      current: assignment(month, categoryId),
+      next: parsed.data.budgeted,
+    })),
+  });
 });
 
-budgetRouter.put('/category/:categoryId/bulk', (req, res) => {
+budgetRouter.put('/category/:categoryId/bulk', (req, res, next) => {
   const parsed = bulkSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const { categoryId } = req.params;
-  const { budgeted, fromMonth } = parsed.data;
+  const { budgeted, fromMonth, expected } = parsed.data;
+  const months = bulkMonths(fromMonth);
 
-  let y = parseInt(fromMonth.slice(0, 4));
-  let m = parseInt(fromMonth.slice(5, 7));
-  const months: string[] = [];
-  for (let i = 0; i < 12; i++) {
-    months.push(`${y}-${String(m).padStart(2, '0')}`);
-    m++;
-    if (m > 12) {
-      m = 1;
-      y++;
-    }
+  try {
+    fundedWrite(() => {
+      // Existing assignments change only as reviewed in the preview.
+      if (months.some((month) => expected[month] !== assignment(month, categoryId)))
+        throw new BudgetError('These months changed. Review the preview again.');
+      for (const month of months) {
+        const existing = db
+          .select()
+          .from(budgetMonths)
+          .where(and(eq(budgetMonths.month, month), eq(budgetMonths.categoryId, categoryId)))
+          .get();
+
+        if (existing) {
+          db.update(budgetMonths).set({ budgeted }).where(eq(budgetMonths.id, existing.id)).run();
+        } else {
+          db.insert(budgetMonths)
+            .values({
+              id: nanoid(),
+              month,
+              categoryId,
+              budgeted,
+              notes: null,
+            })
+            .run();
+        }
+      }
+    });
+  } catch (error) {
+    if (error instanceof BudgetError)
+      return res.status(error.status).json({ error: error.message });
+    return next(error);
   }
-
-  for (const month of months) {
-    const existing = db
-      .select()
-      .from(budgetMonths)
-      .where(and(eq(budgetMonths.month, month), eq(budgetMonths.categoryId, categoryId)))
-      .get();
-
-    if (existing) {
-      db.update(budgetMonths).set({ budgeted }).where(eq(budgetMonths.id, existing.id)).run();
-    } else {
-      db.insert(budgetMonths)
-        .values({
-          id: nanoid(),
-          month,
-          categoryId,
-          budgeted,
-          notes: null,
-        })
-        .run();
-    }
-  }
-
   res.json({ categoryId, budgeted, months });
 });
 
-budgetRouter.get('/:month/summary', (req, res) => {
-  const { month } = req.params;
-  const { from, to } = monthBounds(month);
+budgetRouter.get('/:month/summary', (req, res) => res.json(budgetSummary(req.params.month)));
 
-  const incomeRow = db
-    .select({ total: sql<number>`coalesce(sum(${mainAmount}), 0)` })
-    .from(transactions)
-    .innerJoin(categories, eq(transactions.categoryId, categories.id))
-    .innerJoin(categoryGroups, eq(categories.groupId, categoryGroups.id))
-    .where(
-      and(
-        gte(transactions.date, from),
-        lte(transactions.date, to),
-        eq(categoryGroups.isIncome, 1),
-        onBudget,
-      ),
-    )
-    .get();
+const moveSchema = z.object({
+  sourceId: z.string().min(1),
+  destinationId: z.string().min(1),
+  amount: cents.positive(),
+  revision: z.string().optional(),
+});
+function moveHandler(action: 'preview' | 'apply') {
+  return (
+    req: import('express').Request,
+    res: import('express').Response,
+    next: import('express').NextFunction,
+  ) => {
+    const parsed = moveSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+    try {
+      res.json(
+        action === 'preview'
+          ? previewMove(String(req.params.month), parsed.data)
+          : applyMove(String(req.params.month), parsed.data, parsed.data.revision ?? ''),
+      );
+    } catch (error) {
+      if (error instanceof BudgetError)
+        return res.status(error.status).json({ error: error.message });
+      next(error);
+    }
+  };
+}
+budgetRouter.post('/:month/moves/preview', moveHandler('preview'));
+budgetRouter.post('/:month/moves', moveHandler('apply'));
+budgetRouter.get('/moves/history', (_req, res) =>
+  res.json(
+    db
+      .select()
+      .from(budgetMoves)
+      .orderBy(sql`${budgetMoves.createdAt} desc`)
+      .limit(100)
+      .all(),
+  ),
+);
+budgetRouter.post('/moves/:id/undo', (req, res, next) => {
+  try {
+    res.json(undoMove(req.params.id));
+  } catch (error) {
+    if (error instanceof BudgetError)
+      return res.status(error.status).json({ error: error.message });
+    next(error);
+  }
+});
 
-  const budgetedRow = db
-    .select({ total: sql<number>`coalesce(sum(${budgetMonths.budgeted}), 0)` })
-    .from(budgetMonths)
-    .innerJoin(categories, eq(budgetMonths.categoryId, categories.id))
-    .innerJoin(categoryGroups, eq(categories.groupId, categoryGroups.id))
-    .where(and(eq(budgetMonths.month, month), eq(categoryGroups.isIncome, 0)))
-    .get();
-
-  const priorIncomeRow = db
-    .select({ total: sql<number>`coalesce(sum(${mainAmount}), 0)` })
-    .from(transactions)
-    .innerJoin(categories, eq(transactions.categoryId, categories.id))
-    .innerJoin(categoryGroups, eq(categories.groupId, categoryGroups.id))
-    .where(and(lt(transactions.date, from), eq(categoryGroups.isIncome, 1), onBudget))
-    .get();
-
-  const priorBudgetedRow = db
-    .select({ total: sql<number>`coalesce(sum(${budgetMonths.budgeted}), 0)` })
-    .from(budgetMonths)
-    .innerJoin(categories, eq(budgetMonths.categoryId, categories.id))
-    .innerJoin(categoryGroups, eq(categories.groupId, categoryGroups.id))
-    .where(and(lt(budgetMonths.month, month), eq(categoryGroups.isIncome, 0)))
-    .get();
-
-  // tbb = income + leftover from prior months - what's already budgeted
-  const income = incomeRow?.total ?? 0;
-  const totalBudgeted = budgetedRow?.total ?? 0;
-  const carryOver = (priorIncomeRow?.total ?? 0) - (priorBudgetedRow?.total ?? 0);
-
-  res.json({
-    month,
-    income,
-    totalBudgeted,
-    carryOver,
-    toBeBudgeted: income + carryOver - totalBudgeted,
-  });
+budgetRouter.put('/category/:categoryId/target', (req, res, next) => {
+  const parsed = targetSchema.safeParse(req.body);
+  if (!parsed.success)
+    return res.status(400).json({ error: parsed.error.issues.map((i) => i.message).join('; ') });
+  try {
+    res.json(saveTarget(req.params.categoryId, parsed.data));
+  } catch (error) {
+    if (error instanceof BudgetError)
+      return res.status(error.status).json({ error: error.message });
+    next(error);
+  }
+});
+/** Removing a target keeps every assignment it suggested. */
+budgetRouter.delete('/category/:categoryId/target', (req, res) => {
+  db.delete(categoryTargets).where(eq(categoryTargets.categoryId, req.params.categoryId)).run();
+  res.status(204).send();
+});
+budgetRouter.post('/:month/targets/preview', (req, res) =>
+  res.json(previewTargetFunding(req.params.month)),
+);
+budgetRouter.post('/:month/targets/apply', (req, res, next) => {
+  const parsed = z
+    .object({
+      revision: z.string().min(1).max(200),
+      rows: z
+        .array(z.object({ categoryId: z.string().min(1).max(64), proposed: cents }))
+        .max(10_000),
+    })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Preview target funding first' });
+  try {
+    res.json(
+      applyTargetFunding(req.params.month, parsed.data.revision, parsed.data.rows, fundedWrite),
+    );
+  } catch (error) {
+    if (error instanceof BudgetError)
+      return res.status(error.status).json({ error: error.message });
+    next(error);
+  }
 });

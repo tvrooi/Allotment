@@ -22,6 +22,18 @@ export const getIncomeVsExpenses = (from: string, to: string) =>
 export const getSpendingByCategory = (from: string, to: string) =>
   apiFetch<SpendingByCategory[]>(`/reports/spending-by-category${toQueryString(from, to)}`);
 
+/** Spending by merchant (payee); `net` is negative for money spent, positive for net refunds */
+export interface SpendingByPayee {
+  payeeId: string | null;
+  /** '' when the rows have no payee */
+  payeeName: string;
+  net: number;
+  count: number;
+}
+
+export const getSpendingByPayee = (from: string, to: string) =>
+  apiFetch<SpendingByPayee[]>(`/reports/spending-by-payee${toQueryString(from, to)}`);
+
 export const getIncomeByCategory = (from: string, to: string) =>
   apiFetch<IncomeByCategoryItem[]>(`/reports/income-by-category${toQueryString(from, to)}`);
 

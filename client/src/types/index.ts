@@ -191,6 +191,8 @@ export interface Transaction {
   notes: string | null;
   reconciled: number;
   transferTransactionId: string | null;
+  /** Computed by the server: this is the on-budget side of a transfer to/from off budget. */
+  isBudgetBoundary?: boolean;
   isParent: number;
   parentTransactionId: string | null;
   importedId: string | null;
@@ -208,6 +210,31 @@ export interface Transaction {
   mainAmountSource?: MainAmountSource | null;
   createdAt: string;
   children?: Transaction[];
+  /** Phase 9: when the user marked it reviewed (null = not reviewed) */
+  reviewedAt?: string | null;
+  /** Phase 9: 1 = left out of income/spending reports (balances and the budget still count it) */
+  hiddenFromReports?: number;
+  /** Phase 9: tag ids on this register row (a split's parts share them) */
+  tagIds?: string[];
+}
+
+/** A tag (phase 9) */
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
+  /** Transactions carrying it (from GET /tags) */
+  count?: number;
+}
+
+/** A saved All Transactions view: its URL query (phase 9) */
+export interface SavedView {
+  id: string;
+  name: string;
+  query: string;
+  sortOrder: number;
+  createdAt: string;
 }
 
 export type MainAmountSource = 'rate' | 'manual' | 'transfer' | 'missing';
@@ -269,8 +296,11 @@ export interface Payee {
   createdAt: string;
 }
 
+/** A transaction selection (server: services/transactionSelection.ts) */
 export interface TransactionQueryParams {
+  budgetReport?: boolean;
   accountId?: string;
+  accountIds?: string[];
   month?: string;
   from?: string;
   to?: string;
@@ -278,10 +308,54 @@ export interface TransactionQueryParams {
   uncategorized?: boolean;
   categoryGroupId?: string;
   categoryIds?: string[];
+  payeeIds?: string[];
+  /** A merchant without a payee record ('' = no payee) */
+  payeeName?: string;
+  /** Payee name or notes */
   search?: string;
+  direction?: 'debit' | 'credit';
+  /** Magnitudes in minor units, both inclusive */
+  minAmount?: number;
+  maxAmount?: number;
+  transfers?: 'include' | 'exclude';
   reconciled?: 0 | 1;
+  /** Phase 9: register-row state; a split's parts share it */
+  reviewed?: 0 | 1;
+  hidden?: 0 | 1;
+  /** Any of these tags */
+  tagIds?: string[];
   limit?: number;
   offset?: number;
+}
+
+/** Totals of a selection's matching rows; a filtered split counts only its matching parts */
+export interface TransactionSummary {
+  count: number;
+  leafCount: number;
+  /** Budget currency, positive numbers */
+  moneyIn: number;
+  moneyOut: number;
+  net: number;
+  /** Left out of the totals: their exchange rate is missing */
+  missingRateCount: number;
+  firstDate: string | null;
+  lastDate: string | null;
+}
+
+/** A category target's needs for the viewed month (server: services/targetService.ts) */
+export interface TargetStatus {
+  type: 'monthly' | 'by-date' | 'recurring' | 'refill';
+  amount: number;
+  dueDate: string | null;
+  cycleMonths: number | null;
+  periodsLeft: number | null;
+  required: number;
+  assigned: number;
+  underfunded: number;
+  catchUp: number;
+  ended: boolean;
+  /** Its goal is paused, completed or retired (phase 7D): it asks for nothing more */
+  paused?: boolean;
 }
 
 export interface BudgetCategory {
@@ -292,6 +366,8 @@ export interface BudgetCategory {
   budgetType: BudgetType | null;
   sortOrder: number;
   createdAt: string;
+  target?: TargetStatus | null;
+  paymentAccountId?: string | null;
   budgeted: number;
   spent: number;
   carryOver: number;
@@ -308,6 +384,18 @@ export interface BudgetGroup {
 }
 
 export interface BudgetSummary {
+  revision?: string;
+  cards?: import('../api/budget').CardPosition[];
+  paymentShortfall?: number;
+  uncoveredCardPayments?: number;
+  asOf: string;
+  complete: boolean;
+  resolved: boolean;
+  overspent: number;
+  uncategorized: number;
+  futureAssigned: number;
+  resources: number;
+  reserved: number;
   month: string;
   income: number;
   totalBudgeted: number;
@@ -568,7 +656,8 @@ export interface RuleSplitPart {
 export type RuleAction =
   | { type: 'set_category' | 'set_payee'; value: string }
   | { type: 'set_notes' | 'prepend_notes' | 'append_notes'; value: string }
-  | { type: 'split'; parts: RuleSplitPart[] };
+  | { type: 'split'; parts: RuleSplitPart[] }
+  | { type: 'add_tag'; value: string };
 
 export interface Rule {
   id: string;
@@ -730,6 +819,8 @@ export interface RulePreviewItem {
     category?: { from: string | null; to: string | null };
     notes?: { from: string | null; to: string | null };
     split?: Array<{ amount: number; categoryId: string | null; notes: string | null }>;
+    /** Tags the rules would add (phase 9) */
+    tags?: string[];
   };
 }
 
@@ -747,6 +838,14 @@ export interface RuleTestResult {
 
 // Goals
 export interface Goal {
+  categoryId?: string | null;
+  categoryName?: string;
+  fundedAmount?: number | null;
+  fundingComplete?: boolean;
+  assignedThisMonth?: number;
+  activity?: number;
+  available?: number | null;
+  asOf?: string;
   id: string;
   name: string;
   targetAmount: number;
@@ -756,9 +855,15 @@ export interface Goal {
   icon: string;
   color: string;
   sortOrder: number;
+  /** Phase 7D: only active goals get funding suggestions; funding stays when paused */
+  status: GoalStatus;
+  statusReason: string | null;
+  replacedByGoalId: string | null;
+  statusChangedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
+export type GoalStatus = 'active' | 'paused' | 'completed' | 'retired';
 
 // Plaid Bank Sync
 export type PlaidSyncStatus = 'good' | 'syncing' | 'error' | 'login_required';

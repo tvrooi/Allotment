@@ -54,7 +54,9 @@ export type Action =
   | { type: 'set_category'; value: string }
   | { type: 'set_payee'; value: string }
   | { type: 'set_notes' | 'prepend_notes' | 'append_notes'; value: string }
-  | { type: 'split'; parts: SplitPart[] };
+  | { type: 'split'; parts: SplitPart[] }
+  /** Phase 9: adds a tag; never removes one */
+  | { type: 'add_tag'; value: string };
 
 export type ConditionsOp = 'and' | 'or';
 
@@ -83,6 +85,8 @@ export type TxState = {
 export type RuleContext = {
   payeeName: (id: string) => string | undefined;
   categoryExists: (id: string) => boolean;
+  /** Optional: contexts built before tags existed simply skip add_tag */
+  tagExists?: (id: string) => boolean;
 };
 
 export type Locks = { category?: boolean; payee?: boolean; notes?: boolean };
@@ -91,6 +95,8 @@ export type RuleOutcome = {
   tx: TxState;
   split: SplitPart[] | null;
   matchedRuleIds: string[];
+  /** Tags to add (phase 9) */
+  tags: string[];
 };
 
 // ---------------------------------------------------------------------------
@@ -224,6 +230,7 @@ export function runRules(
   const locked = { ...locks };
   let split: SplitPart[] | null = null;
   const matchedRuleIds: string[] = [];
+  const tags: string[] = [];
 
   for (const rule of rules) {
     if (!rule.enabled || !matchesRule(rule, tx)) continue;
@@ -267,12 +274,17 @@ export function runRules(
           tx.categoryId = null;
           locked.category = applied = true;
           break;
+        case 'add_tag':
+          if (!ctx.tagExists?.(a.value)) break;
+          if (!tags.includes(a.value)) tags.push(a.value);
+          applied = true;
+          break;
       }
     }
     if (applied) matchedRuleIds.push(rule.id);
   }
 
-  return { tx, split, matchedRuleIds };
+  return { tx, split, matchedRuleIds, tags };
 }
 
 /**

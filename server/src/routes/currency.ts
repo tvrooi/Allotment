@@ -8,8 +8,12 @@ import { db } from '../db/index.js';
 import {
   accounts,
   budgetMonths,
+  cardFunding,
+  budgetMoves,
   exchangeRates,
   goals,
+  paydayPlans,
+  paydayFundingEvents,
   schedules,
   transactions,
 } from '../db/schema.js';
@@ -97,7 +101,27 @@ function relabelBlocker(current: string | null, next: string): string | null {
       .where(ne(schedules.amount, 0))
       .all()
       .some((s) => !s.accountId || inBudgetCurrency.has(s.accountId));
-    if (planned || goal || schedule || all.some((a) => !a.currency && hasAmounts(a))) {
+    const payday =
+      db
+        .select()
+        .from(paydayPlans)
+        .all()
+        .some((p) => {
+          const config = JSON.parse(p.configJson);
+          return (
+            config.expectedIncome !== 0 ||
+            config.rules.some((r: { amount: number }) => r.amount !== 0)
+          );
+        }) || !!db.select({ id: paydayFundingEvents.id }).from(paydayFundingEvents).get();
+    if (
+      planned ||
+      goal ||
+      schedule ||
+      payday ||
+      db.select().from(budgetMoves).get() ||
+      db.select().from(cardFunding).get() ||
+      all.some((a) => !a.currency && hasAmounts(a))
+    ) {
       return `Your budget already has amounts in ${current ?? 'its currency'}, and ${next} has a different number of decimals, so they would change. Choose a currency with ${minorUnits(current)} decimals, or start a new budget.`;
     }
   }

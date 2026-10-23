@@ -7,6 +7,7 @@ describe('Cash Flow drill-down selection', () => {
     expect(
       cashFlowSelection({ nodeType: 'subcategory', categoryId: 'groceries' }, '2026-08', '2026-10'),
     ).toEqual({
+      budgetReport: true,
       categoryId: 'groceries',
       categoryGroupId: undefined,
       uncategorized: false,

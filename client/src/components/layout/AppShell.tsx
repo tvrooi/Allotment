@@ -11,9 +11,11 @@ import { DemoBanner } from '../demo/DemoBanner';
 import { Sidebar, SidebarDrawer } from './Sidebar';
 import { BrandName } from '../ui/BrandName';
 import logoUrl from '/logo.png';
+import { useUpFreshness } from '../../hooks/useUp';
 
 export function AppShell() {
   useUndoKeyboard();
+  useUpFreshness();
   const { data: accounts = [], isLoading } = useAccounts();
   const setupSkipped = usePreferencesStore((s) => s.setupSkipped);
   const isPhone = useIsPhone();
@@ -36,6 +38,11 @@ export function AppShell() {
     <div className="flex h-screen bg-page overflow-hidden">
       <Sidebar />
       <div className="flex-1 min-w-0 flex flex-col">
+        {/* macOS desktop app: the window has no title bar, so this strip moves it */}
+        <div
+          aria-hidden
+          className="mac-title-strip hidden mac-window:block h-10 shrink-0 drag-region"
+        />
         <DemoBanner />
         <ConnectionBanner />
         <main className="flex-1 overflow-y-auto">
@@ -89,21 +96,22 @@ function PhoneShell() {
     <div className="flex flex-col h-dvh bg-page overflow-hidden">
       <SidebarDrawer open={open} onClose={close} />
       <div inert={open} className="flex-1 min-h-0 flex flex-col">
-        <header className="shrink-0 flex items-center gap-2 h-12 px-2 bg-sidebar-bg border-b border-sidebar-border">
+        {/* macOS desktop app (a narrow window): clear of the traffic lights, and moves the window */}
+        <header className="shrink-0 flex items-center gap-2 h-12 px-2 mac-window:pl-20 mac-window:drag-region bg-sidebar-bg border-b border-sidebar-border">
           <button
             ref={menuButton}
             onClick={() => setOpen(true)}
             aria-label="Open menu"
             aria-expanded={open}
             aria-controls="app-sidebar"
-            className="p-2 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md text-sidebar-text-hi hover:bg-sidebar-hover"
+            className="p-2 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md text-sidebar-text-hi hover:bg-sidebar-hover no-drag-region"
           >
             <Menu size={20} />
           </button>
           <img src={logoUrl} alt="" className="w-6 h-6" />
           <BrandName
             className="text-sm font-semibold tracking-tight"
-            flyClassName="text-brand-500"
+            flyClassName="text-brand-600"
             budgetClassName="text-sidebar-text-hi"
           />
         </header>

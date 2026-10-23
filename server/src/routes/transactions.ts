@@ -1,7 +1,15 @@
+import { householdEvents } from '../db/schema.js';
 import { Router, type Response } from 'express';
 import { db } from '../db/index.js';
-import { transactions, payees, accounts, categories } from '../db/schema.js';
-import { eq, and, or, like, gte, lte, sql, isNull, isNotNull, inArray } from 'drizzle-orm';
+import {
+  transactions,
+  payees,
+  accounts,
+  categories,
+  categoryGroups,
+  cardFunding,
+} from '../db/schema.js';
+import { eq, and, sql, isNull, inArray, getTableColumns } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { deleteTransactionRow, resolvePayee } from '../services/transactionHelpers.js';
@@ -16,7 +24,20 @@ import {
   unlinkTransfer,
 } from '../services/transferService.js';
 import { isoDate } from '../utils/validation.js';
-import { isIncomeOrSpending } from '../services/balances.js';
+import {
+  parseSelection,
+  registerCondition,
+  summarizeSelection,
+} from '../services/transactionSelection.js';
+import {
+  MarkError,
+  restoreReview,
+  reviewSelection,
+  setFlags,
+  setTransactionTags,
+  tagsByTransaction,
+} from '../services/transactionMarks.js';
+import { isBudgetBoundary } from '../services/balances.js';
 import {
   accountCurrency,
   convertAmount,
@@ -26,6 +47,70 @@ import {
 import { isForeign } from '../utils/currencies.js';
 
 export const transactionsRouter = Router();
+transactionsRouter.use((req, res, next) => {
+  if (req.method === 'GET') return next();
+  const body = req.body;
+  const rows = [
+    body,
+    ...(Array.isArray(body?.splits) ? body.splits : []),
+    ...(Array.isArray(body?.rows) ? body.rows : []),
+  ];
+  const ids = new Set(
+    db
+      .select()
+      .from(cardFunding)
+      .all()
+      .map((m) => m.categoryId),
+  );
+  if (rows.some((row) => row && ids.has(row.categoryId)))
+    return res.status(400).json({
+      error: 'Payment envelopes hold funding; record card repayments as linked transfers',
+    });
+  next();
+});
+
+transactionsRouter.param('id', (req, res, next, id) => {
+  const counterpartId = db
+    .select({ id: transactions.transferTransactionId })
+    .from(transactions)
+    .where(eq(transactions.id, id))
+    .get()?.id;
+  const linked = db
+    .select()
+    .from(householdEvents)
+    .where(
+      counterpartId
+        ? inArray(householdEvents.transactionId, [id, counterpartId])
+        : eq(householdEvents.transactionId, id),
+    )
+    .get();
+  if (linked && req.method !== 'GET') {
+    const safeEdit =
+      req.method === 'PUT' &&
+      Object.keys(req.body ?? {}).every((k) =>
+        ['categoryId', 'notes', 'payeeId', 'payeeName', 'reconciled'].includes(k),
+      );
+    if (!safeEdit)
+      return res.status(409).json({
+        error:
+          'Remove the linked household entry before changing the payment amount, date or account',
+      });
+    if ((linked.kind === 'settlement' || linked.kind === 'refund') && req.body.categoryId) {
+      const category = db
+        .select({ income: categoryGroups.isIncome })
+        .from(categories)
+        .innerJoin(categoryGroups, eq(categories.groupId, categoryGroups.id))
+        .where(eq(categories.id, req.body.categoryId))
+        .get();
+      if (category?.income)
+        return res.status(400).json({
+          error:
+            'Household repayments and refunds belong in the original expense category, not income',
+        });
+    }
+  }
+  next();
+});
 
 const id = z.string().min(1).max(64);
 // Amounts are integer cents; the cap keeps sums far inside Number.MAX_SAFE_INTEGER
@@ -93,77 +178,85 @@ const importRowSchema = z.object({
 });
 const importRowsSchema = z.array(importRowSchema).max(100_000);
 
-// GET /transactions — excludes split children; attaches children array to parents
-/**
- * Transactions in any of these categories. The list shows split parents (their parts are
- * nested under them), so a split with a part in one of them counts too.
- */
-function inCategories(ids: string[]) {
-  const parentsWithPart = db
-    .select({ id: transactions.parentTransactionId })
-    .from(transactions)
-    .where(inArray(transactions.categoryId, ids));
-  return or(inArray(transactions.categoryId, ids), inArray(transactions.id, parentsWithPart))!;
+// GET /transactions — excludes split children; attaches children array to parents.
+// The selection is shared with the summary and the filtered export (services/transactionSelection.ts).
+// GET /transactions/summary — count, money in/out and date span of the same selection. Reads only.
+transactionsRouter.get('/summary', (req, res) => {
+  const selection = parseSelection(req.query as Record<string, unknown>);
+  if (!selection.success) return res.status(400).json({ error: selection.error.flatten() });
+  res.json(summarizeSelection(selection.data));
+});
+
+// ─── Phase 9: review, visibility in reports, tags ─────────────────────────────
+
+function sendMarkError(res: Response, error: unknown) {
+  if (error instanceof MarkError) return res.status(error.status).json({ error: error.message });
+  throw error;
 }
 
+const reviewChangeSchema = z.object({ id, previous: z.string().max(40).nullable() });
+const reviewSchema = z.union([
+  z.object({
+    // The register's selection, as its query parameters
+    selection: z.record(z.string(), z.string().max(20_000)),
+    reviewed: z.boolean(),
+    expectedCount: z.number().int().min(0).max(1_000_000),
+  }),
+  // Undo: put these rows' previous states back
+  z.object({ restore: z.array(reviewChangeSchema).max(1_000_000) }),
+]);
+
+// POST /transactions/review — mark the selection reviewed, guarded by the confirmed count
+transactionsRouter.post('/review', (req, res) => {
+  const parsed = reviewSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  if ('restore' in parsed.data) return res.json(restoreReview(parsed.data.restore));
+  const selection = parseSelection(parsed.data.selection);
+  if (!selection.success) return res.status(400).json({ error: selection.error.flatten() });
+  try {
+    res.json(reviewSelection(selection.data, parsed.data.reviewed, parsed.data.expectedCount));
+  } catch (error) {
+    sendMarkError(res, error);
+  }
+});
+
+// PATCH /transactions/:id/flags — the detail panel's Reviewed and Hide from reports toggles
+transactionsRouter.patch('/:id/flags', (req, res) => {
+  const parsed = z
+    .object({ reviewed: z.boolean().optional(), hiddenFromReports: z.boolean().optional() })
+    .strict()
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    res.json(setFlags(req.params.id, parsed.data));
+  } catch (error) {
+    sendMarkError(res, error);
+  }
+});
+
+// PUT /transactions/:id/tags — replace the transaction's tags
+transactionsRouter.put('/:id/tags', (req, res) => {
+  const parsed = z.object({ tagIds: z.array(id).max(100) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    res.json({ tagIds: setTransactionTags(req.params.id, parsed.data.tagIds) });
+  } catch (error) {
+    sendMarkError(res, error);
+  }
+});
+
 transactionsRouter.get('/', (req, res) => {
-  const {
-    account_id,
-    month,
-    from,
-    to,
-    category_id,
-    category_ids,
-    category_group_id,
-    uncategorized,
-    search,
-    reconciled,
-  } = req.query as Record<string, string>;
+  const selection = parseSelection(req.query as Record<string, unknown>);
+  if (!selection.success) return res.status(400).json({ error: selection.error.flatten() });
 
-  let query = db.select().from(transactions).$dynamic();
-
-  const conditions: ReturnType<typeof eq>[] = [isNull(transactions.parentTransactionId)];
-  if (account_id) conditions.push(eq(transactions.accountId, account_id));
-  if (month) {
-    conditions.push(gte(transactions.date, `${month}-01`));
-    conditions.push(lte(transactions.date, `${month}-31`));
-  }
-  if (from) conditions.push(gte(transactions.date, from));
-  if (to) conditions.push(lte(transactions.date, to));
-  if (uncategorized === '1') {
-    const parentsWithUncategorizedPart = db
-      .select({ id: transactions.parentTransactionId })
-      .from(transactions)
-      .where(and(isNull(transactions.categoryId), isNotNull(transactions.parentTransactionId)));
-    conditions.push(
-      or(
-        and(isNull(transactions.categoryId), eq(transactions.isParent, 0)),
-        inArray(transactions.id, parentsWithUncategorizedPart),
-      )!,
-    );
-    conditions.push(isNull(transactions.transferTransactionId));
-    conditions.push(isIncomeOrSpending);
-  }
-  if (category_ids) {
-    const ids = category_ids.split(',').filter(Boolean);
-    if (ids.length) conditions.push(inCategories(ids));
-  } else if (category_id) {
-    conditions.push(inCategories([category_id]));
-  }
-  if (category_group_id) {
-    const catIds = db
-      .select({ id: categories.id })
-      .from(categories)
-      .where(eq(categories.groupId, category_group_id))
-      .all()
-      .map((r) => r.id);
-    if (catIds.length) conditions.push(inCategories(catIds));
-  }
-  if (search) conditions.push(like(transactions.payeeName, `%${search}%`));
-  if (reconciled === '0' || reconciled === '1')
-    conditions.push(eq(transactions.reconciled, Number(reconciled)));
-
-  query = query.where(and(...conditions));
+  const query = db
+    .select({
+      ...getTableColumns(transactions),
+      isBudgetBoundary: isBudgetBoundary.mapWith(Boolean),
+    })
+    .from(transactions)
+    .where(registerCondition(selection.data))
+    .$dynamic();
 
   // No limit unless asked for: the register, reconcile and category views need every match
   // (a hidden cap cut off older transactions and broke the reconciled balance)
@@ -184,7 +277,7 @@ transactionsRouter.get('/', (req, res) => {
     .all();
 
   const parentIds = rows.filter((r) => r.isParent === 1).map((r) => r.id);
-  const childrenMap = new Map<string, typeof rows>();
+  const childrenMap = new Map<string, (typeof transactions.$inferSelect)[]>();
   if (parentIds.length) {
     const children = db
       .select()
@@ -198,8 +291,10 @@ transactionsRouter.get('/', (req, res) => {
     }
   }
 
+  const tagMap = tagsByTransaction(rows.map((r) => r.id));
   const result = rows.map((r) => ({
     ...r,
+    tagIds: tagMap.get(r.id) ?? [],
     ...(r.isParent === 1 ? { children: childrenMap.get(r.id) ?? [] } : {}),
   }));
 
@@ -520,8 +615,18 @@ transactionsRouter.put('/:id', (req, res) => {
   if (existing.isParent === 1 && (changes('amount') || data.categoryId)) {
     return res.status(400).json({ error: 'Edit the parts of a split transaction instead' });
   }
-  if (existing.transferTransactionId && (changes('accountId') || data.categoryId)) {
-    return res.status(400).json({ error: 'Transfers have no category and stay in their accounts' });
+  if (existing.transferTransactionId) {
+    const boundary = db
+      .select({ value: isBudgetBoundary.mapWith(Boolean) })
+      .from(transactions)
+      .where(eq(transactions.id, existing.id))
+      .get()!.value;
+    if (changes('accountId') || (changes('categoryId') && data.categoryId && !boundary)) {
+      return res.status(400).json({
+        error:
+          'Only the budget side of a boundary transfer can have a category; transfers stay in their accounts',
+      });
+    }
   }
   const ctx = currencyContext();
   const accountId = data.accountId ?? existing.accountId;
@@ -548,6 +653,12 @@ transactionsRouter.put('/:id', (req, res) => {
   // A transfer between two currencies keeps each side's own amount: what left isn't what arrived
   const crossCurrency =
     !!other && accountCurrency(existing.accountId, ctx) !== accountCurrency(other.accountId, ctx);
+  if (
+    other?.reconciled === 1 &&
+    (changes('date') || changes('amount') || data.mainAmount !== undefined)
+  ) {
+    return res.status(403).json({ error: 'Cannot modify a reconciled transfer counterpart' });
+  }
   const { mainAmount, ...fields } = data;
 
   db.transaction((tx) => {
@@ -588,7 +699,9 @@ transactionsRouter.put('/:id', (req, res) => {
   });
   // A typed-in value stays unless what it was for changed (another amount, day or account)
   const moved = changes('amount') || changes('date') || changes('accountId');
-  refreshMainAmounts([existing.id], { keepManual: mainAmount !== undefined || !moved });
+  if (moved || mainAmount !== undefined) {
+    refreshMainAmounts([existing.id], { keepManual: mainAmount !== undefined || !moved });
+  }
   const updated = db.select().from(transactions).where(eq(transactions.id, req.params.id)).get();
   res.json(updated);
 });
@@ -600,6 +713,16 @@ transactionsRouter.delete('/:id', (req, res) => {
   if (existing.reconciled === 1)
     return res.status(403).json({ error: 'Cannot modify a reconciled transaction' });
 
+  if (existing.transferTransactionId) {
+    const other = db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.id, existing.transferTransactionId))
+      .get();
+    if (other?.reconciled === 1) {
+      return res.status(403).json({ error: 'Cannot modify a reconciled transfer counterpart' });
+    }
+  }
   deleteTransactionRow(existing);
   res.status(204).send();
 });

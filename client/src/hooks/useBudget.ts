@@ -1,7 +1,6 @@
 import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as budgetApi from '../api/budget';
 import { useUndoStore } from '../store/undoStore';
-import type { BudgetGroup } from '../types';
 
 // Switching months keeps showing the previous month until the next one arrives, so the
 // page doesn't collapse to an empty budget (and jump) in between
@@ -28,40 +27,32 @@ export function useSetBudget() {
       month,
       categoryId,
       budgeted,
+      revision,
     }: {
       month: string;
       categoryId: string;
       budgeted: number;
-    }) => budgetApi.setBudget(month, categoryId, budgeted),
-    onMutate: async ({ month, categoryId }) => {
-      const groups = qc.getQueryData<BudgetGroup[]>(['budget', month]);
-      let oldBudgeted = 0;
-      if (groups) {
-        for (const g of groups) {
-          const cat = g.categories.find((c) => c.id === categoryId);
-          if (cat) {
-            oldBudgeted = cat.budgeted;
-            break;
-          }
-        }
-      }
-      return { oldBudgeted };
-    },
-    onSuccess: (_, { month, categoryId, budgeted }, ctx) => {
-      qc.invalidateQueries({ queryKey: ['budget', month] });
-      qc.invalidateQueries({ queryKey: ['budget-summary', month] });
-      const oldBudgeted = ctx?.oldBudgeted ?? 0;
+      revision?: string;
+    }) => budgetApi.setBudget(month, categoryId, budgeted, revision),
+    onSuccess: (result, { month, categoryId, budgeted }) => {
+      qc.invalidateQueries({ queryKey: ['budget'] });
+      qc.invalidateQueries({ queryKey: ['budget-summary'] });
+      qc.invalidateQueries({ queryKey: ['review'] });
+      const oldBudgeted = result.previousBudgeted;
+      let revision = result.revision;
       useUndoStore.getState().push({
         description: `Set budget`,
         undo: async () => {
-          await budgetApi.setBudget(month, categoryId, oldBudgeted);
-          qc.invalidateQueries({ queryKey: ['budget', month] });
-          qc.invalidateQueries({ queryKey: ['budget-summary', month] });
+          revision = (await budgetApi.setBudget(month, categoryId, oldBudgeted, revision)).revision;
+          qc.invalidateQueries({ queryKey: ['budget'] });
+          qc.invalidateQueries({ queryKey: ['budget-summary'] });
+          qc.invalidateQueries({ queryKey: ['review'] });
         },
         redo: async () => {
-          await budgetApi.setBudget(month, categoryId, budgeted);
-          qc.invalidateQueries({ queryKey: ['budget', month] });
-          qc.invalidateQueries({ queryKey: ['budget-summary', month] });
+          revision = (await budgetApi.setBudget(month, categoryId, budgeted, revision)).revision;
+          qc.invalidateQueries({ queryKey: ['budget'] });
+          qc.invalidateQueries({ queryKey: ['budget-summary'] });
+          qc.invalidateQueries({ queryKey: ['review'] });
         },
       });
     },
@@ -83,14 +74,17 @@ export function useSetBudgetBulk() {
       categoryId,
       budgeted,
       fromMonth,
+      expected,
     }: {
       categoryId: string;
       budgeted: number;
       fromMonth: string;
-    }) => budgetApi.setBudgetBulk(categoryId, budgeted, fromMonth),
+      expected: Record<string, number>;
+    }) => budgetApi.setBudgetBulk(categoryId, budgeted, fromMonth, expected),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['budget'] });
       qc.invalidateQueries({ queryKey: ['budget-summary'] });
+      qc.invalidateQueries({ queryKey: ['review'] });
     },
   });
 }

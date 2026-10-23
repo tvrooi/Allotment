@@ -1,3 +1,4 @@
+import { householdsRouter } from '../routes/households.js';
 // The in-browser demo's "server": the real budget routers, mounted like index.ts does,
 // plus answers for the few server-only endpoints the app asks about. Runs in a Web Worker
 // (see worker.ts and README.md here).
@@ -14,12 +15,17 @@ import { transactionsRouter } from '../routes/transactions.js';
 import { budgetRouter } from '../routes/budget.js';
 import { payeesRouter } from '../routes/payees.js';
 import { rulesRouter } from '../routes/rules.js';
+import { tagsRouter, savedViewsRouter } from '../routes/tags.js';
 import { reportsRouter } from '../routes/reports.js';
 import { exportRouter } from '../routes/export.js';
 import { customReportsRouter } from '../routes/customReports.js';
 import { dashboardsRouter } from '../routes/dashboards.js';
 import { schedulesRouter } from '../routes/schedules.js';
 import { goalsRouter } from '../routes/goals.js';
+import { paydayRouter } from '../routes/payday.js';
+import { forecastRouter } from '../routes/forecast.js';
+import { reviewRouter } from '../routes/review.js';
+import { prioritiesRouter } from '../routes/priorities.js';
 import { currencyRouter } from '../routes/currency.js';
 
 /** Answer for anything that needs a real server: bank connections, sign-in. */
@@ -37,6 +43,7 @@ app.get('/server/info', (_req, res) => res.json({ mode: 'demo', version: DEMO_VE
 app.get('/plaid/status', (_req, res) => res.json({ configured: false, environment: null }));
 app.get('/plaid/items', (_req, res) => res.json([]));
 app.get('/simplefin/connections', (_req, res) => res.json([]));
+app.get('/up/connection', (_req, res) => res.json(null));
 app.get('/enable-banking/status', (_req, res) =>
   res.json({
     configured: false,
@@ -56,12 +63,19 @@ app.use('/transactions', transactionsRouter as unknown as ShimRouter);
 app.use('/budget', budgetRouter as unknown as ShimRouter);
 app.use('/payees', payeesRouter as unknown as ShimRouter);
 app.use('/rules', rulesRouter as unknown as ShimRouter);
+app.use('/tags', tagsRouter as unknown as ShimRouter);
+app.use('/saved-views', savedViewsRouter as unknown as ShimRouter);
 app.use('/reports', reportsRouter as unknown as ShimRouter);
 app.use('/export', exportRouter as unknown as ShimRouter);
 app.use('/custom-reports', customReportsRouter as unknown as ShimRouter);
 app.use('/dashboards', dashboardsRouter as unknown as ShimRouter);
+app.use('/households', householdsRouter as unknown as ShimRouter);
 app.use('/schedules', schedulesRouter as unknown as ShimRouter);
 app.use('/goals', goalsRouter as unknown as ShimRouter);
+app.use('/payday', paydayRouter as unknown as ShimRouter);
+app.use('/forecast', forecastRouter as unknown as ShimRouter);
+app.use('/review', reviewRouter as unknown as ShimRouter);
+app.use('/priorities', prioritiesRouter as unknown as ShimRouter);
 // Rates can be typed in, but not downloaded: the demo never talks to another server
 app.put('/currency/download', (req, res, next) => {
   const body = req.body as { enabled?: unknown; url?: unknown } | undefined;
@@ -72,6 +86,7 @@ app.use('/currency', currencyRouter as unknown as ShimRouter);
 
 app.use('/plaid', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
 app.use('/simplefin', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
+app.use('/up', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
 app.use('/enable-banking', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
 app.use('/auth', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
 

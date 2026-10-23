@@ -3,10 +3,12 @@ import { AppShell } from './components/layout/AppShell';
 import { AuthGate } from './components/auth/AuthGate';
 import { IS_DEMO } from './demo/demoApi';
 import WelcomePage from './pages/Welcome';
+import HouseholdPage from './pages/Household';
 import DashboardPage from './pages/Dashboard';
 import AccountsPage from './pages/Accounts';
 import AccountTransactionsPage from './pages/AccountTransactions';
 import BudgetPage from './pages/Budget';
+import AnnualBudgetPage from './pages/AnnualBudget';
 import TransactionsPage from './pages/Transactions';
 import ReportsPage from './pages/Reports';
 import CustomReportBuilder from './pages/CustomReportBuilder';
@@ -17,6 +19,8 @@ import ReconcilePage from './pages/ReconcilePage';
 import RecurringTransactionsPage from './pages/RecurringTransactions';
 import SettingsPage from './pages/Settings';
 import GoalsPage from './pages/Goals';
+import ForecastPage from './pages/Forecast';
+import ReviewPage from './pages/Review';
 import CashFlowPage from './pages/CashFlow';
 import CategoryDetailPage from './pages/CategoryDetail';
 
@@ -35,11 +39,14 @@ export default function App() {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/budget" element={<BudgetPage />} />
+            <Route path="/budget/year" element={<AnnualBudgetPage />} />
+            <Route path="/budget/year/:year" element={<AnnualBudgetPage />} />
             <Route path="/budget/category/:id" element={<CategoryDetailPage />} />
             <Route path="/accounts" element={<AccountsPage />} />
             <Route path="/accounts/:id/reconcile" element={<ReconcilePage />} />
             <Route path="/accounts/:id" element={<AccountTransactionsPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />
+            <Route path="/household" element={<HouseholdPage />} />
             <Route path="/recurring" element={<RecurringTransactionsPage />} />
             <Route path="/cash-flow" element={<CashFlowPage />} />
             <Route path="/reports" element={<ReportsPage />} />
@@ -50,6 +57,8 @@ export default function App() {
             <Route path="/rules" element={<RulesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/goals" element={<GoalsPage />} />
+            <Route path="/forecast" element={<ForecastPage />} />
+            <Route path="/review" element={<ReviewPage />} />
           </Route>
         </Routes>
       </Router>

@@ -1,3 +1,5 @@
+import { CardPayments } from '../components/budget/CardPayments';
+import { MoneyMoves } from '../components/budget/MoneyMoves';
 import { useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { format, parseISO, addMonths, subMonths } from 'date-fns';
@@ -14,15 +16,18 @@ import {
 } from '../utils/currency';
 import { BudgetSummaryWidget } from '../components/budget/BudgetSummaryWidget';
 import { BudgetEditPopover } from '../components/budget/BudgetEditPopover';
-import { Button } from '../components/ui/Button';
+import { Button, ButtonLink } from '../components/ui/Button';
+import { targetLabel } from '../utils/targets';
+import { FundTargets } from '../components/budget/FundTargets';
 import { SpentBar } from '../components/budget/SpentBar';
 import { PhoneBudget } from '../components/budget/PhoneBudget';
+import { PaydayPlan } from '../components/budget/PaydayPlan';
 import { MissingRatesBanner } from '../components/currency/MissingRatesBanner';
 import { useIsPhone } from '../hooks/useIsPhone';
 import { useCanSave } from '../hooks/useConnection';
 import { ExternalLink } from '../components/ui/ExternalLink';
 import { docsUrl } from '../utils/project';
-import { splitCategories } from '../utils/budgetFigures';
+import { categoryFigures, splitCategories } from '../utils/budgetFigures';
 import type { BudgetCategory, BudgetGroup, BudgetType } from '../types';
 
 function AmountInput({
@@ -77,11 +82,6 @@ function AmountInput({
   );
 }
 
-function getStatus(spent: number, planned: number): 'over' | 'healthy' {
-  if (spent > planned) return 'over';
-  return 'healthy';
-}
-
 interface CategoryRowProps {
   cat: BudgetCategory;
   isIncome: boolean;
@@ -90,7 +90,7 @@ interface CategoryRowProps {
   onStartEdit: (id: string) => void;
   onSave: (cents: number) => void;
   onCancel: () => void;
-  onApplyBulk: (categoryId: string, cents: number) => void;
+  onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
 }
 
 function CategoryRow({
@@ -107,9 +107,7 @@ function CategoryRow({
   // Offline: amounts can't be saved, so they can't be edited (and an open editor closes)
   const canSave = useCanSave();
   const isEditing = editingId === cat.id && canSave;
-  const actual = isIncome ? cat.balance - cat.carryOver - cat.budgeted : cat.spent;
-  const rawRemaining = cat.budgeted - actual;
-  const remaining = isIncome ? Math.max(rawRemaining, 0) : rawRemaining;
+  const { actual, remaining } = categoryFigures(cat, isIncome);
 
   let remainingClass: string;
   const pillBase = 'font-medium rounded-full px-2.5 py-0.5 text-text';
@@ -128,7 +126,18 @@ function CategoryRow({
           {showCategoryIcons && cat.icon && <span className="text-xs mr-1">{cat.icon}</span>}
           {cat.name}
         </div>
-        <SpentBar spent={actual} budgeted={cat.budgeted} isIncome={isIncome} />
+        <SpentBar
+          spent={isIncome ? actual : cat.spent}
+          budgeted={cat.budgeted}
+          isIncome={isIncome}
+        />
+        {cat.target && (
+          <p
+            className={`text-xs mt-0.5 ${cat.target.underfunded ? 'text-caution' : 'text-text-tertiary'}`}
+          >
+            {targetLabel(cat.target)}
+          </p>
+        )}
       </td>
       <td className="py-1.5 px-3 text-right align-top">
         <div className="relative inline-block">
@@ -145,7 +154,7 @@ function CategoryRow({
                 isIncome={isIncome}
                 currentAmount={cat.budgeted}
                 month={month}
-                onApplyBulk={(cents) => onApplyBulk(cat.id, cents)}
+                onApplyBulk={(cents, expected) => onApplyBulk(cat.id, cents, expected)}
               />
             </>
           ) : (
@@ -187,7 +196,7 @@ interface IncomeGroupProps {
   onStartEdit: (id: string) => void;
   onSave: (categoryId: string, cents: number) => void;
   onCancel: () => void;
-  onApplyBulk: (categoryId: string, cents: number) => void;
+  onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
   /** Nothing is planned this month yet: list every category, so there's something to plan */
   showAll: boolean;
 }
@@ -209,7 +218,7 @@ function IncomeGroupSection({
     const raw = group.categories.reduce(
       (acc, c) => ({
         budgeted: acc.budgeted + c.budgeted,
-        spent: acc.spent + c.spent,
+        spent: acc.spent + categoryFigures(c, false).actual,
         balance: acc.balance + c.balance,
         carryOver: acc.carryOver + c.carryOver,
       }),
@@ -294,7 +303,7 @@ interface BudgetTypeSectionProps {
   onStartEdit: (id: string) => void;
   onSave: (categoryId: string, cents: number) => void;
   onCancel: () => void;
-  onApplyBulk: (categoryId: string, cents: number) => void;
+  onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
   showAll: boolean;
 }
 
@@ -317,7 +326,7 @@ function BudgetTypeSection({
       categories.reduce(
         (acc, c) => ({
           budgeted: acc.budgeted + c.budgeted,
-          spent: acc.spent + c.spent,
+          spent: acc.spent + categoryFigures(c, false).actual,
           balance: acc.balance + c.balance,
         }),
         { budgeted: 0, spent: 0, balance: 0 },
@@ -328,8 +337,8 @@ function BudgetTypeSection({
   const { shown, hidden: inactive } = splitCategories(categories, false);
   const visibleCats = showUnbudgeted || showAll ? categories : shown;
 
-  const status = getStatus(totals.spent, totals.budgeted);
-  const remaining = totals.budgeted - totals.spent;
+  const status = totals.balance < 0 ? 'over' : 'healthy';
+  const remaining = totals.balance;
   const remainingColor = status === 'over' ? 'text-negative' : 'text-positive';
 
   return (
@@ -406,13 +415,14 @@ const BUDGET_TYPES: { key: BudgetType; label: string }[] = [
 ];
 
 export default function BudgetPage() {
+  const [paydayView, setPaydayView] = useState(false);
   const { selectedMonth, setSelectedMonth } = useAppStore();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [incomeCollapsed, setIncomeCollapsed] = useState(false);
   const [expensesCollapsed, setExpensesCollapsed] = useState(false);
 
   const { data: groups = [], isPlaceholderData: switchingMonth } = useBudget(selectedMonth);
-  const { data: summary } = useBudgetSummary(selectedMonth);
+  const { data: summary, isPlaceholderData: switchingSummary } = useBudgetSummary(selectedMonth);
   const setBudgetMutation = useSetBudget();
   const setBulkMutation = useSetBudgetBulk();
   const isPhone = useIsPhone();
@@ -421,7 +431,11 @@ export default function BudgetPage() {
 
   const incomeGroups = useMemo(() => groups.filter((g) => g.isIncome), [groups]);
   const allExpenseCats = useMemo(
-    () => groups.filter((g) => !g.isIncome).flatMap((g) => g.categories),
+    () =>
+      groups
+        .filter((g) => !g.isIncome)
+        .flatMap((g) => g.categories)
+        .filter((c) => !c.paymentAccountId),
     [groups],
   );
 
@@ -445,7 +459,7 @@ export default function BudgetPage() {
   const expenseTotals = useMemo(
     () => ({
       budgeted: allExpenseCats.reduce((s, c) => s + c.budgeted, 0),
-      spent: allExpenseCats.reduce((s, c) => s + c.spent, 0),
+      spent: allExpenseCats.reduce((s, c) => s + categoryFigures(c, false).actual, 0),
       balance: allExpenseCats.reduce((s, c) => s + c.balance, 0),
     }),
     [allExpenseCats],
@@ -475,8 +489,8 @@ export default function BudgetPage() {
     setEditingId(null);
   }
 
-  function handleApplyBulk(categoryId: string, budgeted: number) {
-    setBulkMutation.mutate({ categoryId, budgeted, fromMonth: selectedMonth });
+  function handleApplyBulk(categoryId: string, budgeted: number, expected: Record<string, number>) {
+    setBulkMutation.mutate({ categoryId, budgeted, fromMonth: selectedMonth, expected });
   }
 
   function goToToday() {
@@ -487,20 +501,44 @@ export default function BudgetPage() {
     groups.length > 0 && !groups.some((g) => g.categories.some((c) => c.budgeted !== 0));
   const tbb = summary?.toBeBudgeted ?? 0;
   const carryOver = summary?.carryOver ?? 0;
-  const expRemaining = expenseTotals.budgeted - expenseTotals.spent;
+  const expRemaining = expenseTotals.balance;
   const expBalColor =
     expRemaining > 0 ? 'text-positive' : expRemaining < 0 ? 'text-negative' : 'text-text-tertiary';
+
+  if (paydayView)
+    return (
+      <div className="flex flex-col h-full bg-surface text-text">
+        <div className="px-6 py-4 border-b border-border flex flex-wrap items-center gap-3">
+          <Button variant="secondary" onClick={() => setPaydayView(false)}>
+            Monthly budget
+          </Button>
+          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight">
+            Until next payday
+          </h1>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <PaydayPlan />
+        </div>
+      </div>
+    );
 
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 py-4 border-b border-border shrink-0">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap gap-3 items-center justify-between">
           <div className="flex items-center gap-1">
             <span className="text-lg font-semibold text-text">
               {format(monthDate, 'MMMM yyyy')}
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <ButtonLink variant="ghost" size="sm" to={`/budget/year/${selectedMonth.slice(0, 4)}`}>
+              Year
+            </ButtonLink>
+            <FundTargets month={selectedMonth} groups={groups} />
+            <Button variant="secondary" size="sm" onClick={() => setPaydayView(true)}>
+              Until next payday
+            </Button>
             <button
               onClick={() => setSelectedMonth(format(subMonths(monthDate, 1), 'yyyy-MM'))}
               aria-label="Previous month"
@@ -526,10 +564,10 @@ export default function BudgetPage() {
         <div className="flex items-start gap-3 px-6 py-3 bg-brand-50 border-b border-border-light text-sm text-text-secondary shrink-0">
           <Lightbulb size={16} className="text-brand-600 shrink-0 mt-0.5" aria-hidden />
           <p>
-            Nothing is planned for {format(monthDate, 'MMMM')} yet. {isPhone ? 'Tap' : 'Click'} an
-            amount in the <strong className="font-medium text-text">Planned</strong> column to set
-            what you expect to earn and spend in each category. Categories you leave empty are
-            tucked away once you've planned something.{' '}
+            No assignments for {format(monthDate, 'MMMM')} yet. {isPhone ? 'Tap' : 'Click'} an
+            amount in the <strong className="font-medium text-text">Assigned</strong> column to set
+            income expectations and assignments from existing money. Expense balances carry forward.
+            Categories you leave empty are tucked away once you've planned something.{' '}
             <ExternalLink
               href={docsUrl('budgeting')}
               className="font-medium text-brand-600 hover:text-brand-700"
@@ -540,6 +578,11 @@ export default function BudgetPage() {
         </div>
       )}
 
+      {(setBudgetMutation.error || setBulkMutation.error) && (
+        <p role="alert" className="px-6 py-3 text-negative">
+          {(setBudgetMutation.error || setBulkMutation.error)?.message}
+        </p>
+      )}
       <MissingRatesBanner className="mx-6 mt-3 shrink-0" />
 
       {/* Phones: the summary (with To Be Budgeted) goes above the table instead of beside it */}
@@ -651,13 +694,13 @@ export default function BudgetPage() {
                     </div>
                   </td>
                   <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
-                    Planned
+                    Assigned
                   </td>
                   <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
-                    Actual
+                    Activity
                   </td>
                   <td className="py-2 pl-3 pr-6 text-right text-xs font-bold text-text">
-                    Remaining
+                    Available
                   </td>
                 </tr>
 
@@ -717,13 +760,26 @@ export default function BudgetPage() {
 
         <div className="w-80 max-md:w-full shrink-0 border-l max-md:border-l-0 max-md:border-b border-border p-4 self-start max-md:self-stretch sticky max-md:static top-0">
           <div>
+            <CardPayments
+              key={`cards:${selectedMonth}`}
+              month={selectedMonth}
+              summary={summary}
+              loading={switchingMonth || switchingSummary}
+            />
+            <MoneyMoves
+              key={selectedMonth}
+              month={selectedMonth}
+              categories={groups.filter((g) => !g.isIncome).flatMap((g) => g.categories)}
+            />
             <BudgetSummaryWidget
+              funding={summary}
+              expenseAvailable={expenseTotals.balance}
               toBeBudgeted={tbb}
               carryOver={carryOver}
               incomePlanned={incomeTotals.budgeted}
               incomeEarned={incomeTotals.received}
               expensesPlanned={expenseTotals.budgeted}
-              expensesSpent={expenseTotals.spent}
+              expensesSpent={Math.max(0, -expenseTotals.spent)}
               savingsPlanned={savingsTotals.budgeted}
               savingsContributed={savingsTotals.spent}
               fixedExpenses={expensesByBudgetType.fixed}

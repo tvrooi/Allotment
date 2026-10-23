@@ -9,6 +9,12 @@
   "files": [
     "electron/dist/main.js",
     "electron/dist/preload.js",
+    "electron/dist/connection.js",
+    "electron/dist/connectionPage.js",
+    "electron/dist/connectionPreload.js",
+    "electron/dist/updates.js",
+    "electron/dist/desktopUpdates.js",
+    "electron/dist/releaseCheck.js",
     "electron/dist/server.js",
     "electron/resources/icon.png",
     "client/dist/**",
@@ -26,6 +32,15 @@
     }
   ],
   "npmRebuild": false,
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "tvrooi",
+      "repo": "FlyBudget",
+      "channel": "up",
+      "releaseType": "prerelease"
+    }
+  ],
   "toolsets": {
     "winCodeSign": "1.1.0"
   },
@@ -45,6 +60,10 @@
     "target": [
       {
         "target": "dmg",
+        "arch": ["arm64", "x64"]
+      },
+      {
+        "target": "zip",
         "arch": ["arm64", "x64"]
       }
     ],

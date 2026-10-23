@@ -202,7 +202,9 @@ test.describe('preferences', () => {
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download CSV' }).click();
     const csv = fs.readFileSync(await (await download).path(), 'utf8');
-    expect(csv.split('\n')[0]).toBe('Date;Account;Payee;Category;Notes;Amount;Reconciled');
+    expect(csv.split('\n')[0]).toBe(
+      'Date;Account;Payee;Category;Notes;Amount;Reconciled;Tags;Reviewed;Hidden from reports',
+    );
     expect(csv).toContain(';Girokonto;Bäckerei;');
     expect(csv).toContain(';-12,50;');
   });
@@ -252,7 +254,7 @@ test('settings link to the license and the source code', async ({ page, api }) =
     'https://www.gnu.org/licenses/agpl-3.0.html',
   );
   const source = page.getByRole('link', { name: 'Source code' });
-  await expect(source).toHaveAttribute('href', 'https://github.com/dtymoszenko/FlyBudget');
+  await expect(source).toHaveAttribute('href', 'https://github.com/tvrooi/FlyBudget');
   // Opens outside the app (the desktop app hands https links to the system browser)
   await expect(source).toHaveAttribute('target', '_blank');
   await expect(source).toHaveAttribute('rel', /noopener/);

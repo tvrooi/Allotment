@@ -4,7 +4,9 @@ import {
   integer,
   uniqueIndex,
   index,
+  primaryKey,
   customType,
+  type AnySQLiteColumn,
 } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { secretCipher } from './secretCrypto.js';
@@ -105,6 +107,13 @@ export const transactions = sqliteTable(
     mainAmount: integer('main_amount'),
     /** Where `mainAmount` came from: rate | manual | transfer | missing (services/mainAmounts.ts) */
     mainAmountSource: text('main_amount_source'),
+    /** When the user marked it reviewed (phase 9). Never set by imports, sync, rules or restore */
+    reviewedAt: text('reviewed_at'),
+    /**
+     * 1 to leave it out of income/spending reports (phase 9). Balances, the envelope budget,
+     * forecasts and reconciliation still count it. A split's parts follow their parent.
+     */
+    hiddenFromReports: integer('hidden_from_reports').notNull().default(0),
     createdAt: text('created_at')
       .notNull()
       .default(sql`(datetime('now'))`),
@@ -131,6 +140,38 @@ export const budgetMonths = sqliteTable(
   },
   (table) => [uniqueIndex('budget_months_month_category_idx').on(table.month, table.categoryId)],
 );
+
+export const paydayPlans = sqliteTable('payday_plans', {
+  id: text('id').primaryKey(),
+  configJson: text('config_json').notNull(),
+  archived: integer('archived').notNull().default(0),
+});
+
+export const paydayFundingEvents = sqliteTable(
+  'payday_funding_events',
+  {
+    id: text('id').primaryKey(),
+    planId: text('plan_id')
+      .notNull()
+      .references(() => paydayPlans.id),
+    scheduledDate: text('scheduled_date').notNull(),
+    appliedDate: text('applied_date').notNull(),
+    snapshotJson: text('snapshot_json').notNull(),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [uniqueIndex('payday_event_plan_date').on(table.planId, table.scheduledDate)],
+);
+
+// Retain the receipt identity even if its ledger row is later deleted. A second plan
+// cannot allocate that same income again; restoring a backup preserves this guard.
+export const paydayFundingReceipts = sqliteTable('payday_funding_receipts', {
+  transactionId: text('transaction_id').primaryKey(),
+  eventId: text('event_id')
+    .notNull()
+    .references(() => paydayFundingEvents.id, { onDelete: 'cascade' }),
+});
 
 export const rules = sqliteTable('rules', {
   id: text('id').primaryKey(),
@@ -248,6 +289,40 @@ export const transferMatchDismissals = sqliteTable('transfer_match_dismissals', 
     .default(sql`(datetime('now'))`),
 });
 
+// Phase 9 tags: on register rows (unsplit transactions and split parents); parts inherit
+export const tags = sqliteTable('tags', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  color: text('color').notNull().default('#6366f1'),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+export const transactionTags = sqliteTable(
+  'transaction_tags',
+  {
+    transactionId: text('transaction_id')
+      .notNull()
+      .references(() => transactions.id, { onDelete: 'cascade' }),
+    tagId: text('tag_id')
+      .notNull()
+      .references(() => tags.id, { onDelete: 'cascade' }),
+  },
+  (table) => [primaryKey({ columns: [table.transactionId, table.tagId] })],
+);
+
+/** An All Transactions URL query saved under a name (phase 9) */
+export const savedViews = sqliteTable('saved_views', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  query: text('query').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
 export const customReports = sqliteTable('custom_reports', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -298,11 +373,19 @@ export const goals = sqliteTable('goals', {
   name: text('name').notNull(),
   targetAmount: integer('target_amount').notNull(),
   currentAmount: integer('current_amount').notNull().default(0),
+  categoryId: text('category_id')
+    .references(() => categories.id, { onDelete: 'set null' })
+    .unique(),
   targetDate: text('target_date'),
   accountId: text('account_id').references(() => accounts.id, { onDelete: 'set null' }),
   icon: text('icon').notNull().default('🎯'),
   color: text('color').notNull().default('#2563EB'),
   sortOrder: integer('sort_order').notNull().default(0),
+  /** active | paused | completed | retired (phase 7D); only active goals get suggestions */
+  status: text('status').notNull().default('active'),
+  statusReason: text('status_reason'),
+  replacedByGoalId: text('replaced_by_goal_id'),
+  statusChangedAt: text('status_changed_at'),
   createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -310,6 +393,142 @@ export const goals = sqliteTable('goals', {
     .notNull()
     .default(sql`(datetime('now'))`),
 });
+
+/** Each goal status change, with the money move confirmed in the same action (phase 7D). */
+export const goalStatusEvents = sqliteTable('goal_status_events', {
+  id: text('id').primaryKey(),
+  goalId: text('goal_id')
+    .notNull()
+    .references(() => goals.id, { onDelete: 'cascade' }),
+  fromStatus: text('from_status').notNull(),
+  toStatus: text('to_status').notNull(),
+  reason: text('reason'),
+  replacementGoalId: text('replacement_goal_id').references(() => goals.id, {
+    onDelete: 'set null',
+  }),
+  moveId: text('move_id').references(() => budgetMoves.id, { onDelete: 'set null' }),
+  createdAt: text('created_at').notNull(),
+});
+
+/** The budget's optional priorities profile (phase 7A): one row, id 'default'. */
+export const financialPriorities = sqliteTable('financial_priorities', {
+  id: text('id').primaryKey(),
+  purpose: text('purpose'),
+  /** Replaces the measured essentials average when set, in budget minor units */
+  essentialMonthlyAmount: integer('essential_monthly_amount'),
+  /** amount | months | null */
+  reserveTargetType: text('reserve_target_type'),
+  reserveTargetAmount: integer('reserve_target_amount'),
+  reserveTargetMonths: integer('reserve_target_months'),
+  reserveMinimum: integer('reserve_minimum'),
+  /** payday | monthly | quarterly | off */
+  reviewCadence: text('review_cadence').notNull().default('off'),
+  reminderSnoozedUntil: text('reminder_snoozed_until'),
+  revision: integer('revision').notNull().default(1),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+/** A label on an expense category: essential | enjoyment | flexibility (phase 7A). */
+export const categoryPurposes = sqliteTable('category_purposes', {
+  categoryId: text('category_id')
+    .primaryKey()
+    .references(() => categories.id, { onDelete: 'cascade' }),
+  purpose: text('purpose').notNull(),
+});
+
+/** A completed review and the figures it saw, for the next comparison (phase 7E). */
+export const reviewCompletions = sqliteTable('review_completions', {
+  id: text('id').primaryKey(),
+  completedAt: text('completed_at').notNull(),
+  asOf: text('as_of').notNull(),
+  snapshotJson: text('snapshot_json').notNull(),
+});
+
+/** One applied extra-income split per received deposit (phase 7F). */
+export const incomeReviews = sqliteTable('income_reviews', {
+  id: text('id').primaryKey(),
+  transactionId: text('transaction_id').notNull().unique(),
+  month: text('month').notNull(),
+  categoryId: text('category_id').references(() => categories.id, { onDelete: 'set null' }),
+  received: integer('received').notNull(),
+  baseline: integer('baseline').notNull(),
+  reservePercent: integer('reserve_percent').notNull(),
+  assigned: integer('assigned').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+/** Persistent funding target per expense category (phase 6D). Suggestions only. */
+export const categoryTargets = sqliteTable('category_targets', {
+  categoryId: text('category_id')
+    .primaryKey()
+    .references(() => categories.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(),
+  amount: integer('amount').notNull(),
+  dueDate: text('due_date'),
+  cycleMonths: integer('cycle_months'),
+  /** Month the target was set, for the even rate a by-date target started with. */
+  createdMonth: text('created_month').notNull(),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+// One personal Up token exposes the user's spending, Saver and joint accounts.
+export const upConnections = sqliteTable('up_connections', {
+  id: text('id').primaryKey(),
+  accessToken: encryptedText('access_token').notNull(),
+  syncStatus: text('sync_status').notNull().default('good'),
+  syncError: text('sync_error'),
+  lastSyncedAt: text('last_synced_at'),
+  pollIntervalMinutes: integer('poll_interval_minutes').notNull().default(0),
+  lastAttemptAt: text('last_attempt_at'),
+  lastCompletedAt: text('last_completed_at'),
+  nextSyncAt: text('next_sync_at'),
+  failureCount: integer('failure_count').notNull().default(0),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+export const upAccountMappings = sqliteTable('up_account_mappings', {
+  id: text('id').primaryKey(),
+  connectionId: text('connection_id')
+    .notNull()
+    .references(() => upConnections.id, { onDelete: 'cascade' }),
+  upAccountId: text('up_account_id').notNull(),
+  name: text('name').notNull(),
+  accountType: text('account_type').notNull(),
+  accountId: text('account_id').references(() => accounts.id, { onDelete: 'set null' }),
+  isEnabled: integer('is_enabled').notNull().default(1),
+  initializedAt: text('initialized_at'),
+  /** Up's settled balance at the last complete sync, for the round-up accounting check. */
+  settledBalance: integer('settled_balance'),
+  /** When the owner enabled round-up debits proven missing by that balance; null = off. */
+  roundUpDebitsAt: text('round_up_debits_at'),
+});
+
+// Bank observations are separate from the editable/reconciled ledger. No credentials or raw payloads.
+export const upSourceRecords = sqliteTable(
+  'up_source_records',
+  {
+    importedId: text('imported_id').primaryKey(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    transactionId: text('transaction_id').references(() => transactions.id, {
+      onDelete: 'set null',
+    }),
+    sourceJson: text('source_json').notNull(),
+    previousJson: text('previous_json'),
+    reviewState: text('review_state').notNull().default('reviewed'),
+    revision: integer('revision').notNull().default(1),
+    seenInLatest: integer('seen_in_latest').notNull().default(1),
+    lastSeenAt: text('last_seen_at').notNull(),
+  },
+  (table) => [index('up_source_review').on(table.reviewState, table.lastSeenAt)],
+);
 
 export const simplefinConnections = sqliteTable('simplefin_connections', {
   id: text('id').primaryKey(),
@@ -526,3 +745,96 @@ export const exchangeRates = sqliteTable(
   },
   (table) => [index('exchange_rates_pair_date_idx').on(table.base, table.quote, table.date)],
 );
+
+/** Private household ledger. Amounts are in the group's declared currency. */
+export const householdGroups = sqliteTable('household_groups', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  currency: text('currency').notNull(),
+  accountId: text('account_id')
+    .references(() => accounts.id, { onDelete: 'restrict' })
+    .unique(),
+});
+export const householdPeople = sqliteTable('household_people', {
+  id: text('id').primaryKey(),
+  groupId: text('group_id')
+    .notNull()
+    .references(() => householdGroups.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  isSelf: integer('is_self').notNull().default(0),
+});
+export const householdEvents = sqliteTable('household_events', {
+  id: text('id').primaryKey(),
+  groupId: text('group_id')
+    .notNull()
+    .references(() => householdGroups.id, { onDelete: 'cascade' }),
+  kind: text('kind').notNull(),
+  date: text('date').notNull(),
+  description: text('description').notNull(),
+  amount: integer('amount').notNull(),
+  payerId: text('payer_id').references(() => householdPeople.id, { onDelete: 'restrict' }),
+  recipientId: text('recipient_id').references(() => householdPeople.id, { onDelete: 'restrict' }),
+  transactionId: text('transaction_id')
+    .references(() => transactions.id, { onDelete: 'restrict' })
+    .unique(),
+  reversesId: text('reverses_id').references((): AnySQLiteColumn => householdEvents.id, {
+    onDelete: 'restrict',
+  }),
+  billId: text('bill_id'),
+  reviewReason: text('review_reason'),
+});
+export const householdShares = sqliteTable('household_shares', {
+  id: text('id').primaryKey(),
+  eventId: text('event_id')
+    .notNull()
+    .references(() => householdEvents.id, { onDelete: 'cascade' }),
+  personId: text('person_id')
+    .notNull()
+    .references(() => householdPeople.id, { onDelete: 'restrict' }),
+  amount: integer('amount').notNull(),
+});
+export const householdBills = sqliteTable('household_bills', {
+  id: text('id').primaryKey(),
+  groupId: text('group_id')
+    .notNull()
+    .references(() => householdGroups.id, { onDelete: 'cascade' }),
+  description: text('description').notNull(),
+  dueDate: text('due_date').notNull(),
+  amount: integer('amount').notNull(),
+  personalShare: integer('personal_share').notNull().default(0),
+  reserved: integer('reserved').notNull().default(0),
+  scheduleId: text('schedule_id').references(() => schedules.id, { onDelete: 'set null' }),
+});
+
+export const budgetRevision = sqliteTable('budget_revision', {
+  id: integer('id').primaryKey(),
+  revision: text('revision').notNull(),
+});
+export const budgetMoves = sqliteTable('budget_moves', {
+  id: text('id').primaryKey(),
+  month: text('month').notNull(),
+  sourceId: text('source_id').notNull(),
+  destinationId: text('destination_id').notNull(),
+  amount: integer('amount').notNull(),
+  sourceBefore: integer('source_before').notNull(),
+  destinationBefore: integer('destination_before').notNull(),
+  afterRevision: text('after_revision').notNull(),
+  undone: integer('undone').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+});
+
+/** Reviewed cutover to explicit payment funding; no bank or historical ledger edits. */
+export const cardFunding = sqliteTable('card_funding', {
+  accountId: text('account_id')
+    .primaryKey()
+    .references(() => accounts.id, { onDelete: 'restrict' }),
+  categoryId: text('category_id')
+    .notNull()
+    .unique()
+    .references(() => categories.id, { onDelete: 'restrict' }),
+  startDate: text('start_date').notNull(),
+  baselineIds: text('baseline_ids').notNull(),
+  reviewedBalance: integer('reviewed_balance').notNull(),
+  initialFunding: integer('initial_funding').notNull(),
+  createdAt: text('created_at').notNull(),
+});

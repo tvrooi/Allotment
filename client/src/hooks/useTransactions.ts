@@ -6,7 +6,9 @@ import type { Transaction, TransactionQueryParams } from '../types';
 function findTxInCache(qc: QueryClient, id: string): Transaction | undefined {
   const caches = qc.getQueriesData<Transaction[]>({ queryKey: ['transactions'] });
   for (const [, data] of caches) {
-    const found = data?.find((t) => t.id === id);
+    // Not every answer under 'transactions' is a list (the summary is an object)
+    if (!Array.isArray(data)) continue;
+    const found = data.find((t) => t.id === id);
     if (found) return found;
   }
 }
@@ -18,18 +20,30 @@ export function useTransactions(params: TransactionQueryParams = {}) {
   });
 }
 
+/** Count, money in/out and date span of the register's selection. Under 'transactions', so
+ * every change to transactions refreshes it. */
+export function useTransactionSummary(params: TransactionQueryParams, enabled = true) {
+  return useQuery({
+    queryKey: ['transactions', 'summary', params],
+    queryFn: () => txApi.getTransactionSummary(params),
+    enabled,
+  });
+}
+
 export function useCreateTransaction() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: txApi.createTransaction,
     onSuccess: (created) => {
       qc.invalidateQueries({ queryKey: ['transactions'] });
+      qc.invalidateQueries({ queryKey: ['review'] });
       qc.invalidateQueries({ queryKey: ['accounts'] });
       useUndoStore.getState().push({
         description: `Create transaction`,
         undo: async () => {
           await txApi.deleteTransaction(created.id);
           qc.invalidateQueries({ queryKey: ['transactions'] });
+          qc.invalidateQueries({ queryKey: ['review'] });
           qc.invalidateQueries({ queryKey: ['accounts'] });
         },
         redo: async () => {
@@ -43,6 +57,7 @@ export function useCreateTransaction() {
             notes: created.notes,
           });
           qc.invalidateQueries({ queryKey: ['transactions'] });
+          qc.invalidateQueries({ queryKey: ['review'] });
           qc.invalidateQueries({ queryKey: ['accounts'] });
         },
       });
@@ -65,6 +80,7 @@ export function useUpdateTransaction() {
     },
     onSuccess: (_, { id, data }, ctx) => {
       qc.invalidateQueries({ queryKey: ['transactions'] });
+      qc.invalidateQueries({ queryKey: ['review'] });
       qc.invalidateQueries({ queryKey: ['accounts'] });
       if (!ctx?.old) return;
       const snapshot = ctx.old;
@@ -81,11 +97,13 @@ export function useUpdateTransaction() {
             notes: snapshot.notes,
           });
           qc.invalidateQueries({ queryKey: ['transactions'] });
+          qc.invalidateQueries({ queryKey: ['review'] });
           qc.invalidateQueries({ queryKey: ['accounts'] });
         },
         redo: async () => {
           await txApi.updateTransaction(id, data);
           qc.invalidateQueries({ queryKey: ['transactions'] });
+          qc.invalidateQueries({ queryKey: ['review'] });
           qc.invalidateQueries({ queryKey: ['accounts'] });
         },
       });
@@ -102,6 +120,7 @@ export function useDeleteTransaction() {
     },
     onSuccess: (snapshot) => {
       qc.invalidateQueries({ queryKey: ['transactions'] });
+      qc.invalidateQueries({ queryKey: ['review'] });
       qc.invalidateQueries({ queryKey: ['accounts'] });
       if (!snapshot) return;
       useUndoStore.getState().push({
@@ -117,12 +136,14 @@ export function useDeleteTransaction() {
             notes: snapshot.notes,
           });
           qc.invalidateQueries({ queryKey: ['transactions'] });
+          qc.invalidateQueries({ queryKey: ['review'] });
           qc.invalidateQueries({ queryKey: ['accounts'] });
         },
         redo: async () => {
           // Can't delete same id (new one was created), just re-delete latest
           // For simplicity, redo of delete is not supported after undo
           qc.invalidateQueries({ queryKey: ['transactions'] });
+          qc.invalidateQueries({ queryKey: ['review'] });
         },
       });
     },
@@ -136,6 +157,7 @@ export function useReconcileAccount() {
       txApi.reconcileAccount(accountId, transactionIds),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['transactions'] });
+      qc.invalidateQueries({ queryKey: ['review'] });
       qc.invalidateQueries({ queryKey: ['accounts'] });
     },
   });
@@ -147,6 +169,7 @@ export function useCreateTransfer() {
     mutationFn: txApi.createTransfer,
     onSuccess: (created) => {
       qc.invalidateQueries({ queryKey: ['transactions'] });
+      qc.invalidateQueries({ queryKey: ['review'] });
       qc.invalidateQueries({ queryKey: ['accounts'] });
       const ids = created.map((t) => t.id);
       useUndoStore.getState().push({
@@ -154,6 +177,7 @@ export function useCreateTransfer() {
         undo: async () => {
           for (const id of ids) await txApi.deleteTransaction(id);
           qc.invalidateQueries({ queryKey: ['transactions'] });
+          qc.invalidateQueries({ queryKey: ['review'] });
           qc.invalidateQueries({ queryKey: ['accounts'] });
         },
         redo: async () => {
@@ -167,6 +191,7 @@ export function useCreateTransfer() {
             });
           }
           qc.invalidateQueries({ queryKey: ['transactions'] });
+          qc.invalidateQueries({ queryKey: ['review'] });
           qc.invalidateQueries({ queryKey: ['accounts'] });
         },
       });
@@ -181,6 +206,7 @@ export function useImportConfirm() {
       txApi.importConfirm(accountId, rows),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['transactions'] });
+      qc.invalidateQueries({ queryKey: ['review'] });
       qc.invalidateQueries({ queryKey: ['accounts'] });
     },
   });

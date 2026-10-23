@@ -572,7 +572,9 @@ test.describe('export, backup and restore', () => {
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download CSV' }).click();
     const csv = fs.readFileSync(await (await download).path(), 'utf8');
-    expect(csv.split('\n')[0]).toBe('Date,Account,Payee,Category,Notes,Amount,Reconciled');
+    expect(csv.split('\n')[0]).toBe(
+      'Date,Account,Payee,Category,Notes,Amount,Reconciled,Tags,Reviewed,Hidden from reports',
+    );
     expect(csv).toContain(`"'=HYPERLINK(""http://evil.example"")"`);
     expect(csv).toContain('-10.00');
   });
@@ -593,7 +595,7 @@ test.describe('export, backup and restore', () => {
     await page.getByRole('button', { name: 'Download Backup' }).click();
     const backupFile = await (await download).path();
     const backup = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
-    expect(backup).toMatchObject({ format: 'flybudget-backup', version: 3 });
+    expect(backup).toMatchObject({ format: 'flybudget-backup', version: 12 });
     expect(backup.goals).toHaveLength(1);
     // Never any bank credentials or login data
     expect(Object.keys(backup)).not.toContain('plaidItems');

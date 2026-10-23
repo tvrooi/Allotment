@@ -83,6 +83,7 @@ test('every page fits a phone screen', async ({ page, api }, testInfo) => {
     ['transactions', '/transactions'],
     ['budget', '/budget'],
     ['budget-category', `/budget/category/${groceries.id}`],
+    ['budget-year', '/budget/year'],
     ['recurring', '/recurring'],
     ['reports', '/reports'],
     ['custom-report', '/reports/custom'],
@@ -162,4 +163,26 @@ test('adding a transaction works on a phone', async ({ page, api }) => {
     page.getByTestId('transaction-card').filter({ hasText: 'Corner Grocery' }),
   ).toBeVisible();
   await expect.poll(() => api.balance(account.id)).toBe(150_000 - 1_234);
+});
+
+// Roomier navigation must not squeeze the account list out of short drawers.
+test('account links stay reachable in a short drawer', async ({ page, api }) => {
+  const account = await api.createAccount('Short screen checking', 150_000);
+  await page.setViewportSize({ width: 390, height: 640 });
+  await open(page, '/dashboard');
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  const drawer = page.getByRole('complementary');
+  await expect(drawer.getByRole('link', { name: 'Settings', exact: true })).toBeInViewport();
+  const group = drawer.getByRole('button', { name: /For budget/ });
+  await group.scrollIntoViewIfNeeded();
+  await group.click();
+  const link = drawer.getByRole('link', { name: /Short screen checking/ });
+  await link.scrollIntoViewIfNeeded();
+  await expect(link).toBeInViewport();
+  await link.click();
+  await expect(page).toHaveURL(new RegExp(`#/accounts/${account.id}$`));
+  await expect(page.getByRole('button', { name: 'Open menu' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
 });

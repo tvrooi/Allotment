@@ -1,0 +1,54 @@
+name: Publish tested main
+
+on:
+  workflow_run:
+    workflows: ['CI']
+    branches: [main]
+    types: [completed]
+  # Retry publication after a transient dispatch/build failure; uses the current tested main.
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: publish-tested-main
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      github.repository == 'tvrooi/FlyBudget' &&
+      (github.event_name == 'workflow_dispatch' ||
+        (github.event.workflow_run.conclusion == 'success' &&
+         github.event.workflow_run.event == 'push' &&
+         github.event.workflow_run.head_branch == 'main' &&
+         github.event.workflow_run.head_repository.full_name == github.repository))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      # A late CI completion for an older commit must not check out code predating this tool.
+      - id: current
+        name: Ignore superseded main commits
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          if [ "$CANDIDATE" = "$current" ]; then
+            echo 'eligible=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'eligible=false' >> "$GITHUB_OUTPUT"
+            echo 'Skipped: a newer main commit must finish CI first.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.current.outputs.eligible == 'true'
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+      - name: Publish the prepared version only after successful main CI
+        if: steps.current.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/auto-release.py
