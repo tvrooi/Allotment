@@ -59,6 +59,7 @@ test('a server that says so gets a window without a title bar', async () => {
   assert.equal(result, true);
   assert.equal(asked.url, 'https://budget.example/');
   assert.equal(asked.init.redirect, 'error');
+  assert.equal(asked.init.credentials, 'include');
   assert.ok(asked.init.signal instanceof AbortSignal);
 });
 
@@ -92,4 +93,18 @@ test('reading stops at the body, so a huge page is not downloaded', async () => 
   });
   assert.equal(await serverDrawsMacWindow('https://budget.example/', respond(body)), false);
   assert.ok(pulls < 3);
+});
+
+test('every module the main process loads is packaged', () => {
+  const root = path.resolve(__dirname, '..');
+  const { files } = JSON.parse(fs.readFileSync(path.join(root, 'electron-builder.json'), 'utf8'));
+  const seen = new Set();
+  const visit = (name) => {
+    if (seen.has(name)) return;
+    seen.add(name);
+    const source = fs.readFileSync(path.join(__dirname, `${name}.ts`), 'utf8');
+    for (const [, local] of source.matchAll(/from '\.\/([\w-]+)'/g)) visit(local);
+  };
+  visit('main');
+  for (const name of seen) assert.ok(files.includes(`electron/dist/${name}.js`), `${name}.js`);
 });

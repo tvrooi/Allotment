@@ -24,7 +24,8 @@ export function withMacWindowAgent(userAgent: string): string {
  * Whether the server's page can be shown without a title bar. False whenever that isn't
  * certain: unreachable, slow, an error, a redirect (e.g. a sign-in proxy) or an older client.
  * `request` is the window's own session fetch, so it uses that session's certificates and
- * cookies and never bypasses a TLS error.
+ * cookies (a sign-in proxy's too: the check sees the page the window will load) and never
+ * bypasses a TLS error.
  */
 export async function serverDrawsMacWindow(
   url: string,
@@ -34,6 +35,7 @@ export async function serverDrawsMacWindow(
   try {
     const response = await request(url, {
       headers: { Accept: 'text/html' },
+      credentials: 'include',
       redirect: 'error',
       signal: AbortSignal.timeout(timeoutMs),
     });
