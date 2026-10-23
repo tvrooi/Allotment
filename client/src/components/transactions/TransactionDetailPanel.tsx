@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { X, Lock, Trash2, Repeat, Unlink, Wand2, Split } from 'lucide-react';
 import { useUpdateTransaction, useDeleteTransaction } from '../../hooks/useTransactions';
+import { useOfferCategoryFollowup } from '../../hooks/useCategoryFollowup';
 import { useTransferToAccount, useUnlinkTransfer } from '../../hooks/useTransfers';
 import { useCanSave } from '../../hooks/useConnection';
 import { useSchedules, useUnmatchByTransaction } from '../../hooks/useSchedules';
@@ -56,6 +57,7 @@ export function TransactionDetailPanel({
 }: Props) {
   const navigate = useNavigate();
   const updateTx = useUpdateTransaction();
+  const offerFollowup = useOfferCategoryFollowup();
   const currency = useAccountCurrency()(tx.accountId);
   const updatePayee = useUpdatePayee();
   const deleteTx = useDeleteTransaction();
@@ -150,7 +152,10 @@ export function TransactionDetailPanel({
       // Links the matching transaction in that account, or creates it
       transferTo.mutate({ id: tx.id, accountId: catId.slice('transfer:'.length) });
     } else {
-      updateTx.mutate({ id: tx.id, data: { categoryId: catId } });
+      updateTx
+        .mutateAsync({ id: tx.id, data: { categoryId: catId } })
+        .then(() => offerFollowup(tx, catId))
+        .catch(() => {});
     }
     setShowCategoryPicker(false);
   }

@@ -10,6 +10,7 @@ import { usePayees } from '../../hooks/usePayees';
 import { useCanSave } from '../../hooks/useConnection';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { format } from 'date-fns';
+import type { ScheduleDraft } from '../../utils/nearMiss';
 import {
   RECURRENCE_TYPE_LABELS,
   type Schedule,
@@ -23,6 +24,8 @@ interface Props {
   onClose: () => void;
   onSave: (data: any) => void;
   editItem?: Schedule | null;
+  /** A new item filled in from elsewhere (Find recurring's "Add anyway") */
+  draft?: ScheduleDraft | null;
 }
 
 const AMOUNT_TYPE_OPTIONS: { value: AmountType; label: string }[] = [
@@ -38,7 +41,7 @@ const WEEKEND_ADJUST_OPTIONS: { value: WeekendAdjust; label: string }[] = [
   { value: 'closest', label: 'Closest weekday' },
 ];
 
-export default function RecurringFormModal({ isOpen, onClose, onSave, editItem }: Props) {
+export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, draft }: Props) {
   const { data: accounts = [] } = useAccounts();
   const { data: payees = [] } = usePayees();
   const canSave = useCanSave();
@@ -61,13 +64,16 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem }
   const [notes, setNotes] = useState('');
   const [autoCreate, setAutoCreate] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  // The payee box keeps its own text: a new one for every reset, so nothing carries over
+  const [resets, setResets] = useState(0);
 
   // Set when the form opened before accounts/payees had loaded: filled in once they arrive
   const pendingDefaults = useRef({ account: false, payee: false });
 
   // Filled once per opening: payees and accounts refetch (e.g. after picking or creating a
   // payee) and must not wipe the form
-  useFormReset(isOpen ? (editItem?.id ?? 'new') : null, () => {
+  useFormReset(isOpen ? (editItem?.id ?? (draft ? `draft:${draft.key}` : 'new')) : null, () => {
+    setResets((n) => n + 1);
     if (editItem) {
       setName(editItem.name);
       setAmount(Math.abs(editItem.amount));
@@ -89,6 +95,23 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem }
       setNotes(editItem.notes || '');
       setAutoCreate(Boolean(editItem.autoCreate));
       setShowAdvanced(editItem.weekendAdjust !== 'none' || editItem.dateFlexibility !== 3);
+    } else if (draft) {
+      setName(draft.name);
+      setAmount(Math.abs(draft.amount));
+      setIsExpense(draft.amount < 0);
+      setAmountType(draft.amountType);
+      setRecurrenceType(draft.recurrenceType);
+      setStartDate(draft.startDate);
+      setEndDate('');
+      setWeekendAdjust('none');
+      setDateFlexibility(draft.dateFlexibility);
+      setAccountId(draft.accountId);
+      setCategoryId(draft.categoryId ?? '');
+      setPayeeValue({ id: draft.payeeId, name: draft.payeeName });
+      pendingDefaults.current = { account: false, payee: false };
+      setNotes('');
+      setAutoCreate(false);
+      setShowAdvanced(draft.dateFlexibility !== 3);
     } else {
       setName('');
       setAmount(0);
@@ -297,7 +320,7 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem }
           <label className="block text-sm font-medium text-text-secondary mb-1">
             Payee <span className="text-text-tertiary font-normal">(optional)</span>
           </label>
-          <MerchantSelect value={payeeValue} onChange={setPayeeValue} label="Payee" />
+          <MerchantSelect key={resets} value={payeeValue} onChange={setPayeeValue} label="Payee" />
         </div>
 
         <div>

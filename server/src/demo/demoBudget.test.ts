@@ -156,7 +156,7 @@ describe('the demo budget, loaded', () => {
   });
 
   it('leaves one subscription for "Find recurring" to spot', async () => {
-    const found = await get('/schedules/discover');
+    const { found } = await get('/schedules/discover');
     expect(found.map((f: { payeeId: string }) => f.payeeId)).toContain('demo-payee-tuneful');
   });
 });
