@@ -54,7 +54,10 @@ test('payday funding and validation work in the offline demo', async ({ page }) 
     return {
       invalid: invalid.status,
       preview: preview.status,
-      allocated: preview.body.totalAllocated,
+      // The rule's own allocation: the demo's scheduled bills due before the next payday
+      // add automatic bill rows, so the plan's total depends on today's date
+      allocated: preview.body.rows.find((r: { categoryId: string }) => r.categoryId === food.id)
+        .allocated,
       applied: applied.status,
       repeated: repeated.body.alreadyApplied,
     };
