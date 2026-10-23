@@ -142,7 +142,7 @@ export default function PayeesPage() {
           <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
             Payees
           </h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             {selected.size >= 2 && (
               <button
                 onClick={() => setShowMerge(true)}
@@ -152,7 +152,7 @@ export default function PayeesPage() {
                 Merge {selected.size} payees
               </button>
             )}
-            <div className="relative">
+            <div className="relative min-w-0">
               <Search
                 size={14}
                 className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
@@ -161,7 +161,7 @@ export default function PayeesPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search payees…"
-                className="pl-8 pr-3 py-1.5 text-sm border border-border rounded-full bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
+                className="w-full min-w-0 pl-8 pr-3 py-1.5 text-sm border border-border rounded-full bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
               />
             </div>
           </div>

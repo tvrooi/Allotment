@@ -108,7 +108,7 @@ export function RuleEditorModal({
                 />
               ))}
               {!conditions.length && (
-                <p className="text-xs text-caution bg-surface-alt rounded-lg px-3 py-2">
+                <p className="text-xs text-caution bg-caution-subtle rounded-lg px-3 py-2">
                   No conditions: this rule applies to every transaction.
                 </p>
               )}

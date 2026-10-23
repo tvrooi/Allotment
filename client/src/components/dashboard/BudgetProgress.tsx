@@ -105,7 +105,7 @@ export default function BudgetProgress({ currentMonth }: Props) {
                   </span>
                 </div>
 
-                <div className="h-2.5 w-full bg-surface-alt rounded-full overflow-hidden flex">
+                <div className="h-2 w-full bg-surface-alt rounded-full overflow-hidden flex">
                   {status === 'over' ? (
                     <div className="h-full w-full bg-negative rounded-full" />
                   ) : status === 'warning' ? (

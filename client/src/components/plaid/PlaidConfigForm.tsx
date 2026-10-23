@@ -25,7 +25,7 @@ export function PlaidConfigForm() {
       <div className="bg-brand-50 border border-brand-100 rounded-lg p-5">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-lg bg-brand-600 flex items-center justify-center shrink-0">
-            <KeyRound size={20} className="text-white" />
+            <KeyRound size={20} className="text-brand-contrast" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-text">Set Up Bank Sync</h3>

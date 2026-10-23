@@ -295,7 +295,7 @@ export function TransactionDetailPanel({
             </div>
           ) : isTransfer && !tx.isBudgetBoundary ? (
             <div className="flex items-center gap-2">
-              <div className="flex-1 min-w-0 truncate text-sm text-brand-500 px-3 py-2 border border-border rounded-lg bg-surface-alt">
+              <div className="flex-1 min-w-0 truncate text-sm text-brand-600 px-3 py-2 border border-border rounded-lg bg-surface-alt">
                 {tx.payeeName || 'Transfer'}
               </div>
               {!isReconciled && (

@@ -17,41 +17,41 @@ export const chartColors = {
     return cssVar('--color-chart-brand-fill', '#EFF5F2');
   },
   get positive() {
-    return cssVar('--color-positive', '#387253');
+    return cssVar('--color-positive', '#1E7D55');
   },
   get positiveLight() {
     return cssVar('--color-chart-positive-light', '#699377');
   },
   get positiveFill() {
-    return cssVar('--color-positive-subtle', '#EDF4EE');
+    return cssVar('--color-positive-subtle', '#E6F6EB');
   },
   get negative() {
-    return cssVar('--color-negative', '#B44440');
+    return cssVar('--color-negative', '#CB2B30');
   },
   get negativeLight() {
     return cssVar('--color-chart-negative-light', '#C77C71');
   },
   get negativeFill() {
-    return cssVar('--color-negative-subtle', '#FBEFED');
+    return cssVar('--color-negative-subtle', '#FEEBEC');
   },
   get caution() {
-    return cssVar('--color-caution', '#8E621B');
+    return cssVar('--color-caution', '#A36000');
   },
 
   get grid() {
-    return cssVar('--color-chart-grid', '#EEE8E0');
+    return cssVar('--color-chart-grid', '#EFECE9');
   },
   get axis() {
-    return cssVar('--color-chart-axis', '#756E64');
+    return cssVar('--color-chart-axis', '#696765');
   },
   get tooltipBorder() {
-    return cssVar('--color-chart-tooltip-border', '#E2DBD2');
+    return cssVar('--color-chart-tooltip-border', '#E4E1DE');
   },
   get tooltipBg() {
     return cssVar('--color-chart-tooltip-bg', '#FFFFFF');
   },
   get label() {
-    return cssVar('--color-chart-label', '#655F56');
+    return cssVar('--color-chart-label', '#5F5D5B');
   },
 };
 

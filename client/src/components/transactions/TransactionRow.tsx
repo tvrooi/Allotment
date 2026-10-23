@@ -178,7 +178,7 @@ export function TransactionRow({
               <span className="text-sm">Split ({tx.children!.length})</span>
             </button>
           ) : isTransfer && !tx.isBudgetBoundary ? (
-            <span className="text-sm text-brand-500">Transfer</span>
+            <span className="text-sm text-brand-600">Transfer</span>
           ) : (
             <>
               <button
