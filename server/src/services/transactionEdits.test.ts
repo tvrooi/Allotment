@@ -7,6 +7,7 @@ import {
   accounts,
   categories,
   categoryGroups,
+  payees,
   tags,
   transactions,
   transactionTags,
@@ -24,7 +25,15 @@ beforeAll(() => {
 });
 
 function reset() {
-  for (const table of [transactionTags, tags, transactions, categories, categoryGroups, accounts])
+  for (const table of [
+    transactionTags,
+    tags,
+    transactions,
+    payees,
+    categories,
+    categoryGroups,
+    accounts,
+  ])
     db.delete(table).run();
   db.insert(accounts)
     .values([
@@ -201,6 +210,26 @@ describe('bulkEdit', () => {
       changing: 0,
     });
     expect(bulkEdit(all, { payeeName: 'Cafe', hiddenFromReports: false }, 3).changed).toBe(0);
+  });
+
+  it('creates a new payee only when a row takes it', () => {
+    addTx('t1', -500, { payeeName: 'Transfer: Card', categoryId: null });
+    addTx('t2', 500, { accountId: 'card', payeeName: 'Transfer: Cash', categoryId: null });
+    db.update(transactions)
+      .set({ transferTransactionId: 't2' })
+      .where(eq(transactions.id, 't1'))
+      .run();
+    db.update(transactions)
+      .set({ transferTransactionId: 't1' })
+      .where(eq(transactions.id, 't2'))
+      .run();
+    const named = (name: string) => db.select().from(payees).where(eq(payees.name, name)).all();
+    expect(bulkEdit(all, { payeeName: 'Brand new' }, 2).changed).toBe(0);
+    expect(named('Brand new')).toHaveLength(0);
+    addTx('x', -100);
+    expect(bulkEdit(all, { payeeName: 'Brand new' }, 3).changed).toBe(1);
+    expect(named('Brand new')).toHaveLength(1);
+    expect(row('x').payeeId).toBe(named('Brand new')[0].id);
   });
 
   it('previews exactly what the apply changes', () => {

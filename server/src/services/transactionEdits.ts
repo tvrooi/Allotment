@@ -350,16 +350,18 @@ function plan(target: BulkTarget, changes: BulkChanges) {
   return { items, skipped };
 }
 
+/** The payee a bulk edit would set, without creating it: a new one matches no row's id */
+function plannedPayee(changes: BulkChanges) {
+  if (changes.payeeName === undefined) return null;
+  const name = changes.payeeName.trim();
+  const existing = db.select({ id: payees.id }).from(payees).where(eq(payees.name, name)).get();
+  return { payeeId: existing?.id ?? NEW_PAYEE, payeeName: name };
+}
+
 /** What a bulk edit would do, without changing anything: for the confirmation */
 export function previewBulkEdit(target: BulkTarget, changes: BulkChanges): BulkPreview {
   const { items, skipped } = plan(target, changes);
-  // The payee the apply would use, without creating it: a new one matches no row's id
-  let payee: { payeeId: string | null; payeeName: string | null } | null = null;
-  if (changes.payeeName !== undefined) {
-    const name = changes.payeeName.trim();
-    const existing = db.select({ id: payees.id }).from(payees).where(eq(payees.name, name)).get();
-    payee = { payeeId: existing?.id ?? NEW_PAYEE, payeeName: name };
-  }
+  const payee = plannedPayee(changes);
   const tagsOf = tagsByTransaction(items.map((i) => i.row.id));
   const at = new Date().toISOString();
   const changing = items.filter(
@@ -394,17 +396,25 @@ export function bulkEdit(target: BulkTarget, changes: BulkChanges, expectedCount
       409,
     );
   }
-  const payee =
-    changes.payeeName !== undefined ? resolvePayee(changes.payeeName.trim() || null, null) : null;
   const restore: BulkRestore[] = [];
   const at = new Date().toISOString();
-
   const tagsOf = tagsByTransaction(items.map((i) => i.row.id));
+  const planned = plannedPayee(changes);
+  const diffs = items.map(({ row, ledgerAllowed }) => ({
+    row,
+    diff: rowDiff(row, ledgerAllowed, changes, planned, tagsOf.get(row.id) ?? [], at),
+  }));
+  // A new payee is created only when a row will actually get it (no junk payees)
+  const newPayee =
+    planned?.payeeId === NEW_PAYEE && diffs.some((d) => d.diff.update.payeeId === NEW_PAYEE)
+      ? resolvePayee(planned.payeeName, null).payeeId
+      : null;
+
   db.transaction((tx) => {
-    for (const { row, ledgerAllowed } of items) {
-      const diff = rowDiff(row, ledgerAllowed, changes, payee, tagsOf.get(row.id) ?? [], at);
+    for (const { row, diff } of diffs) {
       if (!diff.changes) continue;
       const { update } = diff;
+      if (update.payeeId === NEW_PAYEE) update.payeeId = newPayee;
       if (Object.keys(update).length) {
         tx.update(transactions).set(update).where(eq(transactions.id, row.id)).run();
         // A split's parts share its payee
