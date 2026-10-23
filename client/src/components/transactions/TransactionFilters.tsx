@@ -65,7 +65,7 @@ function Segmented<T extends string>({
             onClick={() => onChange(o.value)}
             className={`px-2.5 py-1 max-md:min-h-11 text-xs font-medium ${
               value === o.value
-                ? 'bg-brand-600 text-white'
+                ? 'bg-brand-600 text-brand-contrast'
                 : 'bg-surface text-text-secondary hover:text-text'
             }`}
           >

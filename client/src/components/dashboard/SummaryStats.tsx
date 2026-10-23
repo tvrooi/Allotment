@@ -73,13 +73,14 @@ export default function SummaryStats({ currentMonth }: Props) {
         value={formatCurrency(avgExpenses)}
         valueColor={avgExpenses > 0 ? 'text-negative' : undefined}
       />
-      <div className="bg-surface-alt rounded-lg px-4 py-3 border border-border-light">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-text-tertiary">Savings Rate</p>
+      <div className="bg-surface rounded-lg px-5 py-4 border border-border-light shadow-card">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <p className="text-xs font-medium text-text-secondary">Savings Rate</p>
           <select
+            aria-label="Savings rate goal"
             value={savingsGoal}
             onChange={(e) => setSavingsGoal(Number(e.target.value))}
-            className="text-[10px] border border-border rounded px-1 py-0.5 bg-surface text-text-secondary cursor-pointer focus:outline-none"
+            className="text-xs border border-border rounded-md px-2 py-1 bg-surface text-text-secondary cursor-pointer max-md:min-h-11"
           >
             {GOAL_OPTIONS.map((g) => (
               <option key={g} value={g}>
@@ -90,13 +91,13 @@ export default function SummaryStats({ currentMonth }: Props) {
         </div>
         {rate !== null ? (
           <p
-            className={`text-lg font-semibold tabular-nums mt-0.5 ${rate >= savingsGoal ? 'text-positive' : 'text-negative'}`}
+            className={`text-xl font-semibold tabular-nums tracking-tight mt-2 ${rate >= savingsGoal ? 'text-positive' : 'text-negative'}`}
           >
             {rate}%
           </p>
         ) : (
           <>
-            <p className="text-lg font-semibold tabular-nums mt-0.5 text-text">—</p>
+            <p className="text-xl font-semibold tabular-nums mt-2 text-text">—</p>
             <p className="text-xs text-text-tertiary mt-0.5">Shown once you have income</p>
           </>
         )}

@@ -127,9 +127,9 @@ export default function GettingStarted({ currentMonth }: { currentMonth: string 
               <span
                 className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
                   step.done
-                    ? 'bg-positive text-white'
+                    ? 'bg-positive text-semantic-contrast'
                     : isNext
-                      ? 'bg-brand-600 text-white'
+                      ? 'bg-brand-600 text-brand-contrast'
                       : 'bg-surface-alt text-text-tertiary'
                 }`}
               >
@@ -168,7 +168,9 @@ export default function GettingStarted({ currentMonth }: { currentMonth: string 
 
 function StepAction({ step, primary }: { step: Step; primary: boolean }) {
   const className = `shrink-0 inline-flex items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors max-md:min-h-11 ${
-    primary ? 'bg-brand-600 text-white hover:bg-brand-700' : 'text-brand-600 hover:bg-brand-50'
+    primary
+      ? 'bg-brand-600 text-brand-contrast hover:bg-brand-700'
+      : 'text-brand-600 hover:bg-brand-50'
   }`;
   const content = (
     <>

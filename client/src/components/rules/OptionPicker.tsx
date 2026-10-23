@@ -111,7 +111,7 @@ export function OptionPicker(props: Props) {
                 >
                   {props.multiple && (
                     <span
-                      className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center shrink-0 ${isOn ? 'bg-brand-600 border-brand-600 text-white' : 'border-border'}`}
+                      className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center shrink-0 ${isOn ? 'bg-brand-600 border-brand-600 text-brand-contrast' : 'border-border'}`}
                     >
                       {isOn && <Check size={10} />}
                     </span>

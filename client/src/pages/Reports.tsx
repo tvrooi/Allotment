@@ -50,7 +50,9 @@ export default function ReportsPage() {
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 pt-4 border-b border-border shrink-0">
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <h1 className="text-lg font-semibold text-text shrink-0">Reports</h1>
+          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text shrink-0">
+            Reports
+          </h1>
           {active && (
             <div className="flex items-center gap-2 flex-wrap">
               {/* Layout editing is desktop-only; phones get a single stacked column */}
@@ -67,7 +69,7 @@ export default function ReportsPage() {
               <AddWidgetMenu pageId={active.id} reports={reports} />
               <Link
                 to={`/reports/custom?dashboard=${active.id}&range=${encodeRangeParam(dashboardRange)}`}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-brand-600 rounded-md hover:bg-brand-700 shadow-xs transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-brand-contrast bg-brand-600 rounded-md hover:bg-brand-700 shadow-xs transition-colors"
               >
                 <Plus size={13} />
                 Custom Report

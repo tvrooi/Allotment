@@ -87,7 +87,7 @@ export default function Calendar({ month, occurrences, onDateClick }: Props) {
             <span
               className={`text-xs tabular-nums self-start ${
                 isToday
-                  ? 'bg-brand-600 text-white w-5 h-5 rounded-full inline-flex items-center justify-center font-medium'
+                  ? 'bg-brand-600 text-brand-contrast w-5 h-5 rounded-full inline-flex items-center justify-center font-medium'
                   : 'text-text-secondary px-0.5'
               }`}
             >

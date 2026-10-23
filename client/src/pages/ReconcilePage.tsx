@@ -103,7 +103,9 @@ export default function ReconcilePage() {
             <span className="text-text-secondary">Reconcile</span>
           </div>
           <div className="flex items-center gap-2">
-            <h1 className="text-lg font-semibold text-text">Reconcile: {account.name}</h1>
+            <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+              Reconcile: {account.name}
+            </h1>
             <Badge variant={account.type} />
           </div>
         </div>
@@ -165,7 +167,9 @@ export default function ReconcilePage() {
           <span className="text-text-secondary">Reconcile</span>
         </div>
         <div className="flex items-center gap-2">
-          <h1 className="text-lg font-semibold text-text">Reconcile: {account.name}</h1>
+          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+            Reconcile: {account.name}
+          </h1>
           <Badge variant={account.type} />
         </div>
       </div>
@@ -225,7 +229,9 @@ export default function ReconcilePage() {
                       <td className="px-4 py-2 text-center">
                         <div
                           className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mx-auto transition-colors ${
-                            checked ? 'bg-positive border-positive text-white' : 'border-border'
+                            checked
+                              ? 'bg-positive border-positive text-semantic-contrast'
+                              : 'border-border'
                           }`}
                         >
                           {checked && <Check size={10} />}

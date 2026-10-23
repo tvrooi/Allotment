@@ -512,7 +512,9 @@ export default function BudgetPage() {
           <Button variant="secondary" onClick={() => setPaydayView(false)}>
             Monthly budget
           </Button>
-          <h1 className="text-lg font-semibold">Until next payday</h1>
+          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight">
+            Until next payday
+          </h1>
         </div>
         <div className="flex-1 overflow-y-auto">
           <PaydayPlan />

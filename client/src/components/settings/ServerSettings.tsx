@@ -102,7 +102,7 @@ function LocalSettings({ onOpenTab }: { onOpenTab: (tab: 'data') => void }) {
                 href={SELF_HOSTING_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-brand-600 text-white hover:bg-brand-700 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-brand-600 text-brand-contrast hover:bg-brand-700 transition-colors"
               >
                 Read the self-hosting guide <ExternalLink size={12} aria-hidden />
               </a>

@@ -43,7 +43,7 @@ export function EnableBankingConnectionCard({
       <div className="bg-surface border border-border-light rounded-lg p-5 space-y-4 shadow-card">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-lg bg-brand-600 flex items-center justify-center text-white font-semibold text-sm shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-brand-600 flex items-center justify-center text-brand-contrast font-semibold text-sm shrink-0">
               {connection.aspspName.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">

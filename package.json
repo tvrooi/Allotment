@@ -1,13 +1,13 @@
 {
   "name": "flybudget",
-  "version": "0.2.0-up.20",
+  "version": "0.2.0-up.23",
   "license": "AGPL-3.0-only",
   "description": "A fast, open-source budgeting app that gives you complete control over your financial data.",
   "main": "electron/dist/main.js",
   "desktopName": "flybudget.desktop",
   "scripts": {
     "dev": "concurrently --names client,server --prefix-colors cyan,yellow \"npm run dev --prefix client\" \"npm run dev --prefix server\"",
-    "electron:dev": "cross-env ELECTRON_DEV=true concurrently --kill-others-on-fail --names client,server,electron --prefix-colors cyan,yellow,magenta \"npm run dev --prefix client\" \"npm run dev --prefix server\" \"wait-on tcp:3001 tcp:5173 && electron --require tsx/cjs ./electron/main.ts\"",
+    "electron:dev": "cross-env ELECTRON_DEV=true concurrently --kill-others-on-fail --names client,server,electron --prefix-colors cyan,yellow,magenta \"npm run dev --prefix client\" \"npm run dev --prefix server\" \"wait-on tcp:3001 tcp:5173 && npm run compile:electron && electron --require tsx/cjs ./electron/main.ts\"",
     "electron:build": "npm run build:client:electron && npm run build:server:bundle && npm run compile:electron && electron-builder --config electron-builder.release.cjs",
     "build:client:electron": "npm run build --prefix client -- --mode electron",
     "build:server:bundle": "esbuild server/src/index.ts --bundle --platform=node --target=node22 --external:better-sqlite3 --format=cjs --outfile=electron/dist/server.js",

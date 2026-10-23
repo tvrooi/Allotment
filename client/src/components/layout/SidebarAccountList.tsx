@@ -23,16 +23,16 @@ function AccountRow({ account }: { account: Account }) {
     <NavLink
       to={`/accounts/${account.id}`}
       className={({ isActive }) =>
-        `flex items-center justify-between pl-5 pr-3 py-0.5 rounded-md text-[12px] transition-all duration-150 ${
+        `flex items-center justify-between pl-5 pr-3 py-1.5 max-md:min-h-11 rounded-md text-[13px] transition-all duration-150 ${
           isActive
             ? 'bg-sidebar-active text-sidebar-text-hi font-medium'
-            : 'text-sidebar-text/70 hover:bg-sidebar-hover hover:text-sidebar-text-hi'
+            : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi'
         }`
       }
     >
       <span className="truncate">{account.name}</span>
       <span
-        className={`ml-2 tabular-nums text-[11px] shrink-0 ${isNegative ? 'text-negative/80' : 'text-sidebar-text/50'}`}
+        className={`ml-2 tabular-nums text-xs shrink-0 ${isNegative ? 'text-negative' : 'text-sidebar-text'}`}
       >
         {formatMoney(account.balance, account.currency)}
       </span>
@@ -140,7 +140,7 @@ export function SidebarAccountList() {
                 <AccountRow key={a.id} account={a} />
               ))}
               {onBudget.length === 0 && (
-                <p className="pl-5 py-1 text-xs text-sidebar-text/50">No accounts yet</p>
+                <p className="pl-5 py-1 text-xs text-sidebar-text">No accounts yet</p>
               )}
             </div>
           )}

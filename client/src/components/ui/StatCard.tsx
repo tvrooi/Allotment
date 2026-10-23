@@ -17,12 +17,14 @@ const accentBorders: Record<string, string> = {
 export function StatCard({ label, value, sub, accent, valueColor, className = '' }: Props) {
   return (
     <div
-      className={`bg-surface-alt rounded-lg px-4 py-3 border border-border-light ${
+      className={`bg-surface rounded-lg px-5 py-4 border border-border-light shadow-card ${
         accent ? accentBorders[accent] : ''
       } ${className}`}
     >
-      <p className="text-xs font-medium text-text-tertiary">{label}</p>
-      <p className={`text-lg font-semibold tabular-nums mt-0.5 ${valueColor || 'text-text'}`}>
+      <p className="text-xs font-medium text-text-secondary">{label}</p>
+      <p
+        className={`text-xl font-semibold tabular-nums tracking-tight mt-2 break-words ${valueColor || 'text-text'}`}
+      >
         {value}
       </p>
       {sub && <p className="text-xs text-text-tertiary mt-0.5">{sub}</p>}
