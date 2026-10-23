@@ -136,6 +136,10 @@ describe('what a token can reach', () => {
   it('refuses unknown, expired and revoked tokens', async () => {
     expect((await call('GET', '/accounts', { token: 'fbro_nope' })).status).toBe(401);
     expect((await call('GET', '/accounts', { token: 'not-a-token' })).status).toBe(401);
+    // Another bearer token (a sign-in proxy's JWT) doesn't stand in the way of a session
+    expect(
+      (await call('GET', '/accounts', { token: 'eyJhbGciOi.proxy.jwt', session: true })).status,
+    ).toBe(200);
     const old = createAccessToken('Old', 1, new Date(Date.now() - 2 * 86_400_000));
     expect((await call('GET', '/accounts', { token: old.token })).status).toBe(401);
     const { token, id } = await newToken();
@@ -225,6 +229,12 @@ describe('MCP', () => {
       401,
     );
     expect((await call('GET', '/mcp', { token })).status).toBe(405);
+    const many = Array.from({ length: 21 }, (_, i) => ({
+      jsonrpc: '2.0',
+      id: i,
+      method: 'tools/list',
+    }));
+    expect((await rpc(token, many)).status).toBe(400);
   });
 });
 

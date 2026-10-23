@@ -1,4 +1,9 @@
-import { bearerToken, readOnlyAllows, verifyAccessToken } from '../auth/accessTokens.js';
+import {
+  bearerToken,
+  looksLikeAccessToken,
+  readOnlyAllows,
+  verifyAccessToken,
+} from '../auth/accessTokens.js';
 import { Router, type Request, type RequestHandler, type Response } from 'express';
 import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
@@ -195,9 +200,10 @@ authRouter.delete('/sessions/:id', (req, res) => {
 export const requireSession: RequestHandler = (req, res, next) => {
   if (!serverMode || req.path === '/health' || req.path.startsWith('/auth/')) return next();
   // A read-only access token (Settings → Server → Read-only access): reading only, and only
-  // the budget's own data (auth/accessTokens.ts). It never stands in for a login.
+  // the budget's own data (auth/accessTokens.ts). It never stands in for a login. Other
+  // bearer tokens (a JWT forwarded by a sign-in proxy) are left alone: the session decides.
   const bearer = bearerToken(req.headers.authorization);
-  if (bearer !== undefined) {
+  if (looksLikeAccessToken(bearer)) {
     const tokenId = verifyAccessToken(bearer);
     if (!tokenId) return void res.status(401).json({ error: 'Invalid or expired access token' });
     if (!readOnlyAllows(req.method, req.path)) {

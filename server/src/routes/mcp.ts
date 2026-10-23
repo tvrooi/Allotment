@@ -240,6 +240,9 @@ async function handle(req: Request, message: Record<string, unknown>) {
   }
 }
 
+/** Messages in one JSON-RPC batch: each tool call is a request to this server */
+const MAX_BATCH = 20;
+
 // An assistant may call tools in quick succession, but not without limit
 mcpRouter.use(
   rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false }),
@@ -258,6 +261,11 @@ mcpRouter.post('/', async (req, res, next) => {
     const messages = (batch ? body : [body]) as unknown[];
     if (!messages.length || messages.some((m) => !m || typeof m !== 'object')) {
       return res.status(400).json(rpcError(null, -32600, 'Invalid request'));
+    }
+    if (messages.length > MAX_BATCH) {
+      return res
+        .status(400)
+        .json(rpcError(null, -32600, `At most ${MAX_BATCH} messages in one batch`));
     }
     const replies = (
       await Promise.all(messages.map((m) => handle(req, m as Record<string, unknown>)))

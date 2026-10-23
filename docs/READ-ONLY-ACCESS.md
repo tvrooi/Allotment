@@ -55,6 +55,8 @@ claude mcp add --transport http flybudget https://budget.example.com/api/mcp \
   --header "Authorization: Bearer $FLYBUDGET_READONLY_TOKEN"
 ```
 
+It answers at most 300 requests a minute, with at most 20 messages in one JSON-RPC batch.
+
 Its tools are all read-only:
 
 | Tool                                              | What it reads                                                                                |
