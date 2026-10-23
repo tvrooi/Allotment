@@ -37,6 +37,12 @@ import {
   setTransactionTags,
   tagsByTransaction,
 } from '../services/transactionMarks.js';
+import {
+  bulkEdit,
+  previewBulkEdit,
+  restoreBulkEdit,
+  splitTransaction,
+} from '../services/transactionEdits.js';
 import { isBudgetBoundary } from '../services/balances.js';
 import {
   accountCurrency,
@@ -215,6 +221,92 @@ transactionsRouter.post('/review', (req, res) => {
   if (!selection.success) return res.status(400).json({ error: selection.error.flatten() });
   try {
     res.json(reviewSelection(selection.data, parsed.data.reviewed, parsed.data.expectedCount));
+  } catch (error) {
+    sendMarkError(res, error);
+  }
+});
+
+// ─── Splitting after the fact and editing many at once ────────────────────────
+
+const bulkChangesSchema = z
+  .object({
+    categoryId: id.nullable(),
+    payeeName: z.string().trim().min(1).max(500),
+    notes: z.string().max(5_000).nullable(),
+    hiddenFromReports: z.boolean(),
+    reviewed: z.boolean(),
+    addTagIds: z.array(id).max(100),
+    removeTagIds: z.array(id).max(100),
+  })
+  .partial()
+  .strict()
+  .refine((c) => Object.values(c).some((v) => v !== undefined), 'Choose at least one change');
+const bulkIds = z.array(id).max(100_000);
+const bulkTargetSchema = z.object({
+  // The register's selection, as its query parameters
+  selection: z.record(z.string(), z.string().max(20_000)),
+  ids: bulkIds.optional(),
+  excludeIds: bulkIds.optional(),
+});
+const bulkRestoreSchema = z
+  .object({
+    id,
+    categoryId: id.nullable(),
+    payeeId: id.nullable(),
+    payeeName: z.string().max(500).nullable(),
+    notes: z.string().max(5_000).nullable(),
+    hiddenFromReports: z.union([z.literal(0), z.literal(1)]),
+    reviewedAt: z.string().max(40).nullable(),
+    tagIds: z.array(id).max(100),
+  })
+  .partial()
+  .required({ id: true });
+const bulkSchema = z.union([
+  // Preview: what would change, for the confirmation; writes nothing
+  bulkTargetSchema.extend({ changes: bulkChangesSchema, preview: z.literal(true) }),
+  bulkTargetSchema.extend({
+    changes: bulkChangesSchema,
+    expectedCount: z.number().int().min(0).max(1_000_000),
+  }),
+  // Undo: put these rows' previous values back
+  z.object({ restore: z.array(bulkRestoreSchema).max(1_000_000) }),
+]);
+
+// POST /transactions/bulk — preview, apply or undo a change to many transactions at once
+transactionsRouter.post('/bulk', (req, res) => {
+  const parsed = bulkSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  const body = parsed.data;
+  if ('restore' in body) return res.json(restoreBulkEdit(body.restore));
+  const selection = parseSelection(body.selection);
+  if (!selection.success) return res.status(400).json({ error: selection.error.flatten() });
+  const target = { selection: selection.data, ids: body.ids, excludeIds: body.excludeIds };
+  try {
+    if ('preview' in body) return res.json(previewBulkEdit(target, body.changes));
+    res.json(bulkEdit(target, body.changes, body.expectedCount));
+  } catch (error) {
+    sendMarkError(res, error);
+  }
+});
+
+// PUT /transactions/:id/split — split it into parts, change the parts, or (no parts) unsplit
+transactionsRouter.put('/:id/split', (req, res) => {
+  const parsed = z
+    .object({
+      splits: z
+        .array(
+          z.object({
+            categoryId: id.nullable(),
+            amount: cents,
+            notes: z.string().max(5_000).nullable().optional(),
+          }),
+        )
+        .max(100),
+    })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    res.json(splitTransaction(req.params.id, parsed.data.splits));
   } catch (error) {
     sendMarkError(res, error);
   }

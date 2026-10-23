@@ -98,7 +98,7 @@ test.describe('accounts', () => {
       payeeName: 'Rent',
     });
     await open(page, `/accounts/${account.id}`);
-    await page.getByRole('button', { name: 'Edit' }).click();
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Edit Account' });
     await dialog.getByRole('textbox', { name: 'Account name' }).fill('Joint Checking');
     await dialog.getByRole('button', { name: 'Save' }).click();
@@ -111,7 +111,7 @@ test.describe('accounts', () => {
   test('changing the starting balance moves the balance', async ({ page, api }) => {
     const account = await api.createAccount('Checking', 10_000);
     await open(page, `/accounts/${account.id}`);
-    await page.getByRole('button', { name: 'Edit' }).click();
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Edit Account' });
     await typeAmount(dialog.getByRole('textbox', { name: 'Starting balance' }), '500');
     await dialog.getByRole('button', { name: 'Save' }).click();
@@ -124,7 +124,7 @@ test.describe('accounts', () => {
   }) => {
     const account = await api.createAccount('Checking', 10_000);
     await open(page, `/accounts/${account.id}`);
-    await page.getByRole('button', { name: 'Edit' }).click();
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Edit Account' });
     const field = dialog.getByRole('textbox', { name: 'Starting balance' });
     await typeAmount(field, '12.5.0');
@@ -141,7 +141,7 @@ test.describe('accounts', () => {
     await api.createAccount('Keep Me', 100);
     const account = await api.createAccount('Old Card', -500, 'credit');
     await open(page, `/accounts/${account.id}`);
-    await page.getByRole('button', { name: 'Edit' }).click();
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page
       .getByRole('dialog', { name: 'Edit Account' })
       .getByRole('button', { name: 'Close Account' })

@@ -30,6 +30,17 @@ of what matches your filters above the list. Each row shows:
   switches to All Time so nothing is missed). The filter appears above the list; remove it with
   its ×. The same arrow next to a payee searches for all of that payee's transactions.
 
+## Editing many at once
+
+Above the list, **Edit N** changes every transaction the list shows: narrow it first with the
+search, period and filters. Each field starts at **No change**; set only what should change:
+category (or Uncategorized), payee, notes (replace or remove), hide from or show in reports,
+reviewed, and tags to add or remove. **Review changes** shows what will happen and which accounts
+are affected before anything is saved. Reconciled transactions keep their category, payee and
+notes (so do transfers and split transactions for a category), and the summary says how many.
+If the list changes before you apply (a sync brings in more), FlyBudget asks you to check again.
+Every bulk edit can be undone.
+
 ## Adding a transaction
 
 **From Transactions**: choose **Add**. Pick **Debit** (money out) or **Credit** (money in), then
@@ -79,6 +90,15 @@ to the total (**Balanced**) or how much is left.
 
 In the list, a split shows **Split (N)**; click the arrow to see its parts. The detail panel
 shows each part with its category and amount.
+
+Transactions that are already there (synced from your bank, imported or added earlier) can be
+split too: open one and click **Split** next to its category. Give each part a category and an
+amount, or switch to **By percent** (decimals like 33.33% are fine; the cents always add up to
+the total exactly). **Left to split** shows what's missing; click it to give the rest to the next
+empty part. Parts get the transaction's notes unless you type their own. **Edit split** changes
+the parts later, and **Unsplit** puts the transaction back together. The transaction itself
+(amount, date, account, bank details) doesn't change, and you can undo the split. Reconciled
+transactions, transfers and balance adjustments can't be split.
 
 <Screenshot name="transaction-split" alt="A split transaction" />
 

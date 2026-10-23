@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { CheckCheck, Download } from 'lucide-react';
+import { CheckCheck, Download, PencilLine } from 'lucide-react';
 import { useRestoreReview, useReviewSelection } from '../../hooks/useTags';
 import type { ReviewChange } from '../../api/transactions';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { BulkEditModal } from './BulkEditModal';
 import { useTransactionSummary } from '../../hooks/useTransactions';
 import { useBudgetCurrency } from '../../hooks/useCurrency';
 import { transactionsCsvPath } from '../../api/transactions';
@@ -33,6 +34,7 @@ export function SelectionSummary({ params, loadedCount }: Props) {
   const review = useReviewSelection();
   const restore = useRestoreReview();
   const [confirming, setConfirming] = useState(false);
+  const [editing, setEditing] = useState(false);
   // The last Mark reviewed here, offered for undo until the selection changes
   const [marked, setMarked] = useState<ReviewChange[] | null>(null);
   const paramsKey = JSON.stringify(params);
@@ -92,6 +94,22 @@ export function SelectionSummary({ params, loadedCount }: Props) {
           <CheckCheck size={12} /> Mark reviewed
         </button>
       )}
+      {reviewCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-8"
+          title="Change category, payee, notes, tags or visibility on every transaction in this list"
+        >
+          <PencilLine size={12} /> Edit {reviewCount.toLocaleString()}
+        </button>
+      )}
+      <BulkEditModal
+        params={params}
+        count={reviewCount}
+        isOpen={editing}
+        onClose={() => setEditing(false)}
+      />
       {marked && (
         <span role="status" className="text-text-secondary">
           Marked {marked.length.toLocaleString()} reviewed.{' '}
