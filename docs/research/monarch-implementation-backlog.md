@@ -116,7 +116,7 @@
 
 ## Deferred until evidence or a separate product decision
 
-- Investments holdings/performance, benchmarks and security details: connected runtime behavior and an independent valuation methodology are missing.
+- Investments performance, benchmarks, quotes and security details: manual holdings, prices and unrealized gain shipped as P3 ([INVESTMENTS.md](../INVESTMENTS.md)); connected runtime behavior and a returns methodology are still missing.
 - Long-term retirement/tax/superannuation mechanics: labels and controls do not establish calculation rules. Australian models require separate requirements and synthetic validation.
 - Event dragging, comparison alignment, withdrawal/surplus allocation: visible controls do not establish exact persistence or numerical semantics.
 - AI assistant, receipt ingestion, retail sync, bill sync, credit score and household invitations: external services, consent and product scope are unresolved.

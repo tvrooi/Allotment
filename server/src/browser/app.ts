@@ -25,6 +25,7 @@ import { goalsRouter } from '../routes/goals.js';
 import { paydayRouter } from '../routes/payday.js';
 import { forecastRouter } from '../routes/forecast.js';
 import { reviewRouter } from '../routes/review.js';
+import { investmentsRouter } from '../routes/investments.js';
 import { prioritiesRouter } from '../routes/priorities.js';
 import { currencyRouter } from '../routes/currency.js';
 
@@ -75,6 +76,7 @@ app.use('/goals', goalsRouter as unknown as ShimRouter);
 app.use('/payday', paydayRouter as unknown as ShimRouter);
 app.use('/forecast', forecastRouter as unknown as ShimRouter);
 app.use('/review', reviewRouter as unknown as ShimRouter);
+app.use('/investments', investmentsRouter as unknown as ShimRouter);
 app.use('/priorities', prioritiesRouter as unknown as ShimRouter);
 // Rates can be typed in, but not downloaded: the demo never talks to another server
 app.put('/currency/download', (req, res, next) => {

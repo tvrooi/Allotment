@@ -46,6 +46,10 @@ import {
   transactionTags,
   savedViews,
   forecastScenarios,
+  securities,
+  securityPrices,
+  holdings,
+  taxLots,
 } from '../db/schema.js';
 import { paydayConfigSchema, fundingSnapshotSchema } from './paydayConfig.js';
 import { fillMissingMainAmounts, ratesChanged } from './mainAmountService.js';
@@ -56,6 +60,8 @@ import { GOAL_STATUSES } from './goalLifecycle.js';
 import { purposeError } from './resilienceService.js';
 import { validateViewQuery } from './transactionMarks.js';
 import { scenarioSchema } from './forecastConfig.js';
+import { SECURITY_KINDS } from './investmentService.js';
+import { isCurrencyCode } from '../utils/currencies.js';
 
 // Full JSON backup of the user's data, and restoring one.
 //
@@ -66,7 +72,7 @@ import { scenarioSchema } from './forecastConfig.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 13;
+export const BACKUP_VERSION = 14;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -108,6 +114,10 @@ const TABLES = {
   householdEvents,
   householdShares,
   householdBills,
+  securities,
+  securityPrices,
+  holdings,
+  taxLots,
 } satisfies Record<string, SQLiteTable>;
 
 export type BackupTable = keyof typeof TABLES;
@@ -368,6 +378,33 @@ export function parseBackup(input: unknown): ParsedBackup {
     )
       throw new InvalidBackupError('Invalid category target');
   }
+  // P3 investments (format 14). Older backups have none.
+  const kinds: readonly string[] = SECURITY_KINDS;
+  for (const s of result.securities) {
+    const symbol = String(s.symbol).trim();
+    const name = String(s.name).trim();
+    if (
+      !symbol ||
+      symbol.length > 20 ||
+      !name ||
+      name.length > 120 ||
+      !kinds.includes(String(s.kind ?? 'other')) ||
+      !isCurrencyCode(String(s.currency))
+    )
+      throw new InvalidBackupError('Invalid security');
+  }
+  for (const p of result.securityPrices)
+    if (!isoDate.safeParse(p.date).success || Number(p.price) < 0)
+      throw new InvalidBackupError('Invalid security price');
+  for (const h of result.holdings)
+    if (Number(h.quantity) < 0) throw new InvalidBackupError('Invalid holding');
+  for (const l of result.taxLots)
+    if (
+      !isoDate.safeParse(l.acquiredOn).success ||
+      Number(l.quantity) <= 0 ||
+      (l.costBasis != null && Number(l.costBasis) < 0)
+    )
+      throw new InvalidBackupError('Invalid tax lot');
   return result;
 }
 
