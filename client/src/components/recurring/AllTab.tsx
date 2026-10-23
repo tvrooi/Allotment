@@ -65,6 +65,8 @@ function deriveRow(
   if (s.status === 'canceled') return { nextOcc: null, nextDate: null, status: 'cancelled' };
   if (s.status === 'paused')
     return { nextOcc: next, nextDate: next?.expectedDate ?? null, status: 'paused' };
+  if (s.possiblyEnded)
+    return { nextOcc: next, nextDate: next?.expectedDate ?? null, status: 'ended' };
   if (next)
     return {
       nextOcc: next,
@@ -163,6 +165,12 @@ export default function AllTab({
         label: 'Skip next date',
         hidden: !r.nextOcc || isCanceled,
         onClick: () => r.nextOcc && skipOcc.mutate(r.nextOcc.id),
+      },
+      {
+        label: 'Still active',
+        hidden: !s.possiblyEnded || s.status !== 'active',
+        onClick: () =>
+          updateSchedule.mutate({ id: s.id, confirmedActiveAt: format(new Date(), 'yyyy-MM-dd') }),
       },
       {
         label: isPaused ? 'Resume' : 'Pause',

@@ -5,7 +5,7 @@ import { useAccounts } from '../../hooks/useAccounts';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { useUndoKeyboard } from '../../hooks/useUndoKeyboard';
-import { UndoToast } from '../ui/UndoToast';
+import { Toasts } from '../ui/Toasts';
 import { ConnectionBanner } from '../connection/ConnectionBanner';
 import { DemoBanner } from '../demo/DemoBanner';
 import { Sidebar, SidebarDrawer } from './Sidebar';
@@ -49,7 +49,7 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
-      <UndoToast />
+      <Toasts />
     </div>
   );
 }
@@ -121,7 +121,7 @@ function PhoneShell() {
           <Outlet />
         </main>
       </div>
-      <UndoToast />
+      <Toasts />
     </div>
   );
 }

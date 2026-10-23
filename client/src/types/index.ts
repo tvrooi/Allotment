@@ -293,6 +293,8 @@ export interface Payee {
   defaultCategoryId: string | null;
   /** Custom logo image (data URL); null = colored initials */
   logo: string | null;
+  /** 1 = don't offer to recategorize this payee's other transactions after a change */
+  skipCategoryFollowup: number;
   createdAt: string;
 }
 
@@ -735,6 +737,10 @@ export interface Schedule {
   autoCreateFrom: string | null;
   source: ScheduleSource;
   occurrenceHorizon: string | null;
+  /** "Still active": misses up to this date don't make it look ended */
+  confirmedActiveAt: string | null;
+  /** The last two occurrences went by unpaid (GET /schedules only) */
+  possiblyEnded?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -787,6 +793,25 @@ export interface DiscoveredSchedule {
   exactDate: boolean;
   categoryId: string | null;
   transactionIds: string[];
+}
+
+export type NearMissReason = 'amounts_vary' | 'too_few' | 'dates_drift' | 'mixed_signs';
+
+/** A payee that looks recurring but didn't qualify, and why */
+export interface NearMiss {
+  id: string;
+  accountId: string;
+  accountName: string;
+  payeeId: string | null;
+  payeeName: string;
+  reason: NearMissReason;
+  recurrenceType: 'weekly' | 'biweekly' | 'monthly';
+  count: number;
+  lastDate: string;
+  amount: number;
+  minAmount: number;
+  maxAmount: number;
+  categoryId: string | null;
 }
 
 export interface MatchSuggestion {

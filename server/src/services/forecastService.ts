@@ -23,6 +23,7 @@ import { convertAmount, currencyContext, todayIso } from './mainAmountService.js
 import { loadPlan, paydays, paydaysInYear } from './paydayService.js';
 import type { PaydayConfig } from './paydayConfig.js';
 import { computeOccurrenceDates, type RecurrenceDefinition } from '../utils/recurrence.js';
+import { possiblyEndedIds } from './scheduleActivity.js';
 import type { ForecastRequest, ForecastScenario } from './forecastConfig.js';
 
 // Read-only projection. Every input comes from the same definitions as the budget and
@@ -136,7 +137,14 @@ function scheduledEvents(
   const accountRows = db.select().from(accounts).all();
   const events: ForecastEvent[] = [];
   let overdue = 0;
+  const ended = possiblyEndedIds(today);
+  const endedNames: string[] = [];
   for (const schedule of db.select().from(schedules).where(eq(schedules.status, 'active')).all()) {
+    // Two payments in a row didn't arrive: a stopped subscription isn't projected
+    if (ended.has(schedule.id)) {
+      endedNames.push(schedule.name);
+      continue;
+    }
     // Same scope as bill coverage: a schedule without an account belongs to the budget.
     const fromPersonal = !schedule.accountId || personal.has(schedule.accountId);
     const toPersonal = !!schedule.transferAccountId && personal.has(schedule.transferAccountId);
@@ -207,6 +215,10 @@ function scheduledEvents(
       });
     }
   }
+  if (endedNames.length)
+    notes.add(
+      `Left out because the last two payments didn't arrive: ${endedNames.join(', ')}. Mark ${endedNames.length === 1 ? 'it' : 'them'} Still active in Recurring to forecast ${endedNames.length === 1 ? 'it' : 'them'} again.`,
+    );
   if (overdue)
     warnings.push(
       `${overdue} scheduled occurrence${overdue === 1 ? ' is' : 's are'} overdue and unmatched. Match or skip ${overdue === 1 ? 'it' : 'them'} in Recurring; overdue items are not forecast.`,

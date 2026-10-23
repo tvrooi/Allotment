@@ -14,7 +14,8 @@ import {
   todayIso,
   valueToday,
 } from '../services/mainAmountService.js';
-import { findSchedules, createDiscoveredSchedules } from '../services/scheduleDiscovery.js';
+import { discoverSchedules, createDiscoveredSchedules } from '../services/scheduleDiscovery.js';
+import { endSchedule, possiblyEndedIds, reopenSchedule } from '../services/scheduleActivity.js';
 import {
   ensureOccurrences,
   regenerateFutureOccurrences,
@@ -89,6 +90,8 @@ const scheduleFields = {
   notes: z.string().max(5_000).nullable().optional(),
   status: statusEnum,
   autoCreate: z.number().int().min(0).max(1),
+  /** "Still active": misses up to this date don't make it look ended */
+  confirmedActiveAt: isoDate.nullable().optional(),
 };
 
 const ruleMatchesType = (s: { recurrenceType?: string; recurrenceRule?: { type: string } }) =>
@@ -120,9 +123,9 @@ function deriveDisplayStatus(dbStatus: string, expectedDate: string): string {
 
 // --- Static routes FIRST (before /:id) ---
 
-// GET /discover — find likely recurring transactions not yet covered by a schedule
+// GET /discover — likely recurring transactions not yet covered by a schedule, and near misses
 schedulesRouter.get('/discover', (_req, res) => {
-  res.json(findSchedules());
+  res.json(discoverSchedules());
 });
 
 const discoveredItemSchema = z
@@ -293,7 +296,8 @@ schedulesRouter.get('/', (req, res) => {
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(schedules.name)
     .all();
-  res.json(rows);
+  const ended = possiblyEndedIds();
+  res.json(rows.map((s) => ({ ...s, possiblyEnded: ended.has(s.id) })));
 });
 
 // POST / — create schedule
@@ -471,6 +475,25 @@ schedulesRouter.delete('/:id', (req, res) => {
   }
 
   res.status(204).end();
+});
+
+// POST /:id/end — cancel an item that ended; the payments that never came are skipped
+schedulesRouter.post('/:id/end', (req, res) => {
+  const existing = db.select().from(schedules).where(eq(schedules.id, req.params.id)).get();
+  if (!existing) return res.status(404).json({ error: 'Not found' });
+  res.json(endSchedule(existing.id));
+});
+
+// POST /:id/reopen — undo /end with what it returned
+schedulesRouter.post('/:id/reopen', (req, res) => {
+  const parsed = z
+    .object({ skipped: z.array(id).max(10_000), cancelled: z.array(id).max(10_000) })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  const existing = db.select().from(schedules).where(eq(schedules.id, req.params.id)).get();
+  if (!existing) return res.status(404).json({ error: 'Not found' });
+  reopenSchedule(existing.id, parsed.data);
+  res.json({ ok: true });
 });
 
 // POST /:id/mark-paid — create a real transaction for an occurrence

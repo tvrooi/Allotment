@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { X, Lock, Trash2, Repeat, Unlink, Wand2, Split } from 'lucide-react';
 import { useUpdateTransaction, useDeleteTransaction } from '../../hooks/useTransactions';
+import { useOfferCategoryFollowup } from '../../hooks/useCategoryFollowup';
 import { useTransferToAccount, useUnlinkTransfer } from '../../hooks/useTransfers';
 import { useCanSave } from '../../hooks/useConnection';
 import { useSchedules, useUnmatchByTransaction } from '../../hooks/useSchedules';
@@ -56,6 +57,7 @@ export function TransactionDetailPanel({
 }: Props) {
   const navigate = useNavigate();
   const updateTx = useUpdateTransaction();
+  const offerFollowup = useOfferCategoryFollowup();
   const currency = useAccountCurrency()(tx.accountId);
   const updatePayee = useUpdatePayee();
   const deleteTx = useDeleteTransaction();
@@ -76,12 +78,15 @@ export function TransactionDetailPanel({
   const [splitting, setSplitting] = useState(false);
   const ruleModal = useModalValue(ruleDraft);
 
-  useEffect(() => {
-    setLocalDate(tx.date);
-    setLocalNotes(tx.notes ?? '');
-    setLocalPayee({ id: tx.payeeId, name: tx.payeeName ?? '' });
-    setShowCategoryPicker(false);
-  }, [tx.id, tx.date, tx.notes, tx.payeeId, tx.payeeName]);
+  // Each field follows only its own saved value: a refetch after one edit must not wipe
+  // another field that's being typed but not saved yet
+  useEffect(() => setLocalDate(tx.date), [tx.id, tx.date]);
+  useEffect(() => setLocalNotes(tx.notes ?? ''), [tx.id, tx.notes]);
+  useEffect(
+    () => setLocalPayee({ id: tx.payeeId, name: tx.payeeName ?? '' }),
+    [tx.id, tx.payeeId, tx.payeeName],
+  );
+  useEffect(() => setShowCategoryPicker(false), [tx.id]);
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -150,7 +155,10 @@ export function TransactionDetailPanel({
       // Links the matching transaction in that account, or creates it
       transferTo.mutate({ id: tx.id, accountId: catId.slice('transfer:'.length) });
     } else {
-      updateTx.mutate({ id: tx.id, data: { categoryId: catId } });
+      updateTx
+        .mutateAsync({ id: tx.id, data: { categoryId: catId } })
+        .then(() => offerFollowup(tx, catId))
+        .catch(() => {});
     }
     setShowCategoryPicker(false);
   }

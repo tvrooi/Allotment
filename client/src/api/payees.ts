@@ -9,7 +9,12 @@ export const createPayee = (name: string, defaultCategoryId?: string | null) =>
   });
 export const updatePayee = (
   id: string,
-  data: { name?: string; defaultCategoryId?: string | null; logo?: string | null },
+  data: {
+    name?: string;
+    defaultCategoryId?: string | null;
+    logo?: string | null;
+    skipCategoryFollowup?: 0 | 1;
+  },
 ) => apiFetch<PayeeWithCount>(`/payees/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const deletePayee = (id: string) => apiFetch<void>(`/payees/${id}`, { method: 'DELETE' });
 export const mergePayees = (keepId: string, mergeIds: string[]) =>

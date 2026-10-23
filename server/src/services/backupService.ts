@@ -45,6 +45,7 @@ import {
   tags,
   transactionTags,
   savedViews,
+  forecastScenarios,
 } from '../db/schema.js';
 import { paydayConfigSchema, fundingSnapshotSchema } from './paydayConfig.js';
 import { fillMissingMainAmounts, ratesChanged } from './mainAmountService.js';
@@ -54,6 +55,7 @@ import { CADENCES, PURPOSES, reviewSnapshotSchema } from './resilienceConfig.js'
 import { GOAL_STATUSES } from './goalLifecycle.js';
 import { purposeError } from './resilienceService.js';
 import { validateViewQuery } from './transactionMarks.js';
+import { scenarioSchema } from './forecastConfig.js';
 
 // Full JSON backup of the user's data, and restoring one.
 //
@@ -64,7 +66,7 @@ import { validateViewQuery } from './transactionMarks.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 12;
+export const BACKUP_VERSION = 13;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -88,6 +90,7 @@ const TABLES = {
   tags,
   transactionTags,
   savedViews,
+  forecastScenarios,
   customReports,
   dashboardPages,
   dashboardWidgets,
@@ -249,6 +252,19 @@ export function parseBackup(input: unknown): ParsedBackup {
         } catch {
           throw new InvalidBackupError('Invalid saved view');
         }
+      }
+      if (name === 'forecastScenarios') {
+        try {
+          const assumptions = JSON.parse(String(row.assumptions));
+          scenarioSchema.parse({ ...assumptions, name: row.name });
+          if (row.version !== undefined && Number(row.version) < 1) throw new Error();
+        } catch {
+          throw new InvalidBackupError('Invalid forecast scenario');
+        }
+      }
+      if (name === 'payees' && row.skipCategoryFollowup !== undefined) {
+        if (![0, 1].includes(Number(row.skipCategoryFollowup)))
+          throw new InvalidBackupError('Invalid payee setting');
       }
       if (name === 'transactions' && row.hiddenFromReports !== undefined) {
         if (![0, 1].includes(Number(row.hiddenFromReports)))

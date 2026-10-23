@@ -77,3 +77,33 @@ export interface Forecast {
 /** Read-only projection: the request only carries assumptions; nothing is saved. */
 export const getForecast = (request: ForecastRequest) =>
   apiFetch<Forecast>('/forecast', { method: 'POST', body: JSON.stringify(request) });
+
+/** A saved scenario: its assumptions and the version a save or delete must name */
+export interface SavedScenario {
+  id: string;
+  version: number;
+  sortOrder: number;
+  updatedAt: string;
+  scenario: ForecastScenarioInput;
+}
+
+export const getSavedScenarios = () => apiFetch<SavedScenario[]>('/forecast/scenarios');
+export const createSavedScenario = (scenario: ForecastScenarioInput) =>
+  apiFetch<SavedScenario>('/forecast/scenarios', {
+    method: 'POST',
+    body: JSON.stringify({ scenario }),
+  });
+/** 409 with the current copy when another device saved or deleted it since */
+export const updateSavedScenario = (
+  id: string,
+  scenario: ForecastScenarioInput,
+  expectedVersion: number,
+) =>
+  apiFetch<SavedScenario>(`/forecast/scenarios/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ scenario, expectedVersion }),
+  });
+export const deleteSavedScenario = (id: string, expectedVersion: number) =>
+  apiFetch<void>(`/forecast/scenarios/${id}?expectedVersion=${expectedVersion}`, {
+    method: 'DELETE',
+  });

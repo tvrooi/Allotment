@@ -109,6 +109,7 @@ export function useUpdateSchedule() {
             notes: snapshot.notes,
             autoCreate: snapshot.autoCreate,
             status: snapshot.status,
+            confirmedActiveAt: snapshot.confirmedActiveAt,
           });
           invalidateAll(qc);
         },
@@ -145,6 +146,29 @@ export function useDeleteSchedule() {
           },
         });
       }
+    },
+  });
+}
+
+/** Cancel an item that looks ended; undo reopens it and puts back exactly what changed */
+export function useEndSchedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (schedule: Schedule) => api.endSchedule(schedule.id),
+    onSuccess: (changes, schedule) => {
+      invalidateAll(qc);
+      let current = changes;
+      useUndoStore.getState().push({
+        description: `Cancel recurring "${schedule.name}"`,
+        undo: async () => {
+          await api.reopenSchedule(schedule.id, current);
+          invalidateAll(qc);
+        },
+        redo: async () => {
+          current = await api.endSchedule(schedule.id);
+          invalidateAll(qc);
+        },
+      });
     },
   });
 }

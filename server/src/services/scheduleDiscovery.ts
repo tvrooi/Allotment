@@ -11,6 +11,9 @@
  *
  * Transactions already linked to a schedule, transfers, and split children are ignored,
  * as are payees that already have a non-canceled schedule.
+ *
+ * Payees whose recent transactions look regular but don't qualify are returned as near
+ * misses, with the reason, so "why wasn't my gym found?" has an answer.
  */
 import {
   addDays,
@@ -74,6 +77,26 @@ export interface DiscoveredSchedule {
   exactDate: boolean;
   categoryId: string | null;
   transactionIds: string[];
+}
+
+export type NearMissReason = 'amounts_vary' | 'too_few' | 'dates_drift' | 'mixed_signs';
+
+/** A payee that looks recurring but didn't qualify, and why */
+export interface NearMiss {
+  id: string;
+  accountId: string;
+  accountName: string;
+  payeeId: string | null;
+  payeeName: string;
+  reason: NearMissReason;
+  recurrenceType: 'weekly' | 'biweekly' | 'monthly';
+  count: number;
+  lastDate: string;
+  /** The latest amount, and the range of the recent ones */
+  amount: number;
+  minAmount: number;
+  maxAmount: number;
+  categoryId: string | null;
 }
 
 /** Actual's getApproxNumberThreshold: 7.5% of the amount. */
@@ -270,7 +293,58 @@ function loadTransactions(accountId: string, claimed: Set<string>): Tx[] {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-export function findSchedules(): DiscoveredSchedule[] {
+/**
+ * Gaps (in days) that read as this frequency: `loose` to recognise the intent, `strict` for
+ * what the ±2-day occurrence match above can accept.
+ */
+const FREQUENCIES = [
+  { type: 'weekly', loose: [4, 10], strict: [5, 9] },
+  { type: 'biweekly', loose: [10, 18], strict: [12, 16] },
+  { type: 'monthly', loose: [22, 40], strict: [26, 35] },
+] as const;
+
+/**
+ * Why one payee's transactions in one account (oldest first) look regular yet weren't found,
+ * or null when they don't look regular at all (or would qualify). Only the last few count, and
+ * only while the series is still going at `asOf`.
+ */
+export function nearMissReason(
+  txs: { date: string; amount: number }[],
+  asOf: string,
+): { reason: NearMissReason; recurrenceType: NearMiss['recurrenceType'] } | null {
+  if (txs.length < 2 || txs.length > 24) return null;
+  const latest = txs[txs.length - 1];
+  const same = txs.filter((t) => Math.sign(t.amount) === Math.sign(latest.amount));
+  // Money in and out mixed (a refund between payments) only explains a miss when one sign
+  // alone isn't enough
+  const series = same.length < OCCURRENCES_TO_MATCH && txs.length > same.length ? txs : same;
+  const recent = series.slice(-(OCCURRENCES_TO_MATCH + 1));
+  const gaps = recent.slice(1).map((t, i) => dayDiff(t.date, recent[i].date));
+  if (!gaps.length) return null;
+  const median = [...gaps].sort((a, b) => a - b)[Math.floor(gaps.length / 2)];
+  const freq = FREQUENCIES.find((f) => median >= f.loose[0] && median <= f.loose[1]);
+  if (!freq || gaps.some((g) => g < freq.loose[0] || g > freq.loose[1])) return null;
+  if (dayDiff(asOf, latest.date) > freq.loose[1] * 1.5) return null;
+  const recurrenceType = freq.type;
+  if (series !== same) return { reason: 'mixed_signs', recurrenceType };
+  if (same.length < OCCURRENCES_TO_MATCH) return { reason: 'too_few', recurrenceType };
+  if (gaps.some((g) => g < freq.strict[0] || g > freq.strict[1]))
+    return { reason: 'dates_drift', recurrenceType };
+  const th = threshold(latest.amount);
+  if (recent.some((t) => Math.abs(t.amount - latest.amount) > th))
+    return { reason: 'amounts_vary', recurrenceType };
+  return null;
+}
+
+/** Most common category among some transactions */
+function commonCategory(txs: Tx[]): string | null {
+  const counts = new Map<string, number>();
+  for (const t of txs)
+    if (t.categoryId) counts.set(t.categoryId, (counts.get(t.categoryId) ?? 0) + 1);
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+}
+
+export function discoverSchedules(): { found: DiscoveredSchedule[]; nearMisses: NearMiss[] } {
   const openAccounts = db.select().from(accounts).where(isNull(accounts.closedAt)).all();
   const accountName = new Map(openAccounts.map((a) => [a.id, a.name]));
 
@@ -303,7 +377,7 @@ export function findSchedules(): DiscoveredSchedule[] {
   }
 
   const today = fmt(new Date());
-  const results: DiscoveredSchedule[] = [];
+  const found: DiscoveredSchedule[] = [];
   for (const c of best.values()) {
     const txs = txsByAccount.get(c.accountId) ?? [];
     const startDate = findStartDate(c, txs);
@@ -318,13 +392,7 @@ export function findSchedules(): DiscoveredSchedule[] {
     const matched = matchingTxs(c, txs, dates);
     const sample = matched[matched.length - 1] ?? txs.find((t) => t.payeeKey === c.payeeKey);
 
-    // Most common category among the matched transactions
-    const catCounts = new Map<string, number>();
-    for (const t of matched)
-      if (t.categoryId) catCounts.set(t.categoryId, (catCounts.get(t.categoryId) ?? 0) + 1);
-    const categoryId = [...catCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-
-    results.push({
+    found.push({
       id: `${c.payeeKey}|${c.accountId}`,
       accountId: c.accountId,
       accountName: accountName.get(c.accountId) ?? '',
@@ -336,13 +404,53 @@ export function findSchedules(): DiscoveredSchedule[] {
       recurrenceRule: c.pattern.rule,
       startDate,
       exactDate: c.exactDate,
-      categoryId,
+      categoryId: commonCategory(matched),
       transactionIds: matched.map((t) => t.id),
     });
   }
 
-  return results.sort((a, b) => a.payeeName.localeCompare(b.payeeName));
+  // Same window as the scan: the last 4 months of each account
+  const nearMisses: NearMiss[] = [];
+  for (const [accountId, txs] of txsByAccount) {
+    const asOf = txs[txs.length - 1].date;
+    const from = fmt(subMonths(parseISO(asOf), 4));
+    const byPayee = new Map<string, Tx[]>();
+    for (const t of txs) {
+      if (!t.payeeKey || t.date < from || best.has(t.payeeKey) || scheduledPayees.has(t.payeeKey))
+        continue;
+      const list = byPayee.get(t.payeeKey) ?? [];
+      list.push(t);
+      byPayee.set(t.payeeKey, list);
+    }
+    for (const [payeeKey, list] of byPayee) {
+      const why = nearMissReason(list, asOf);
+      if (!why) continue;
+      const latest = list[list.length - 1];
+      const amounts = list.slice(-(OCCURRENCES_TO_MATCH + 1)).map((t) => t.amount);
+      nearMisses.push({
+        id: `${payeeKey}|${accountId}`,
+        accountId,
+        accountName: accountName.get(accountId) ?? '',
+        payeeId: latest.payeeId,
+        payeeName: latest.payeeName ?? 'Unknown payee',
+        ...why,
+        count: list.length,
+        lastDate: latest.date,
+        amount: latest.amount,
+        minAmount: Math.min(...amounts),
+        maxAmount: Math.max(...amounts),
+        categoryId: commonCategory(list),
+      });
+    }
+  }
+
+  return {
+    found: found.sort((a, b) => a.payeeName.localeCompare(b.payeeName)),
+    nearMisses: nearMisses.sort((a, b) => a.payeeName.localeCompare(b.payeeName)).slice(0, 30),
+  };
 }
+
+export const findSchedules = (): DiscoveredSchedule[] => discoverSchedules().found;
 
 /**
  * Create schedules from discovered items and link their existing transactions,

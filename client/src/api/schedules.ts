@@ -4,6 +4,7 @@ import type {
   ScheduleOccurrence,
   MatchSuggestion,
   DiscoveredSchedule,
+  NearMiss,
   Transaction,
   RecurrenceType,
   AmountType,
@@ -28,6 +29,7 @@ export interface CreateScheduleData {
   notes?: string | null;
   status?: string;
   autoCreate?: number;
+  confirmedActiveAt?: string | null;
 }
 
 export const getSchedules = (status?: string) => {
@@ -91,10 +93,23 @@ export const dismissMatch = (occurrenceId: string, transactionId: string) =>
 export const getMatchSuggestions = () =>
   apiFetch<MatchSuggestion[]>('/schedules/match-suggestions');
 
-export const discoverSchedules = () => apiFetch<DiscoveredSchedule[]>('/schedules/discover');
+export const discoverSchedules = () =>
+  apiFetch<{ found: DiscoveredSchedule[]; nearMisses: NearMiss[] }>('/schedules/discover');
 
 export const createDiscoveredSchedules = (items: DiscoveredSchedule[]) =>
   apiFetch<{ created: number; ids: string[] }>('/schedules/discover/create', {
     method: 'POST',
     body: JSON.stringify({ items }),
+  });
+
+/** Cancel an item that ended: missed payments become skipped, upcoming ones cancelled */
+export const endSchedule = (id: string) =>
+  apiFetch<{ skipped: string[]; cancelled: string[] }>(`/schedules/${id}/end`, {
+    method: 'POST',
+  });
+/** Undo endSchedule with what it returned */
+export const reopenSchedule = (id: string, changes: { skipped: string[]; cancelled: string[] }) =>
+  apiFetch<{ ok: true }>(`/schedules/${id}/reopen`, {
+    method: 'POST',
+    body: JSON.stringify(changes),
   });
