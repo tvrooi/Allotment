@@ -42,7 +42,11 @@ export function ReadOnlyAccess() {
   const [copied, setCopied] = useState(false);
   const [revoking, setRevoking] = useState<AccessToken | null>(null);
   const mcpUrl = `${window.location.origin}/api/mcp`;
-  const shown = tokens.filter((t) => t.active || !t.revokedAt).slice(0, 20);
+  // Every active token (at most 10) stays listed so it can be revoked; then recent expired ones
+  const shown = [
+    ...tokens.filter((t) => t.active),
+    ...tokens.filter((t) => !t.active && !t.revokedAt).slice(0, 10),
+  ];
 
   return (
     <section className="pt-6 border-t border-border-light">

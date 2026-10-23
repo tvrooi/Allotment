@@ -108,7 +108,9 @@ describe('managing tokens', () => {
 describe('what a token can reach', () => {
   it('reads the budget and nothing else', async () => {
     const { token } = await newToken();
-    expect((await call('GET', '/accounts', { token })).status).toBe(200);
+    const list = await call('GET', '/accounts', { token });
+    expect(list.status).toBe(200);
+    expect(list.body[0]).not.toHaveProperty('importSettings');
     expect((await call('GET', '/transactions/summary', { token })).status).toBe(200);
     expect((await call('GET', '/reports/spending-by-category', { token })).status).toBe(200);
     // Never a write, never backups, settings, logins or layouts
@@ -121,6 +123,7 @@ describe('what a token can reach', () => {
       ['POST', '/export/restore'],
       ['GET', '/server/info'],
       ['GET', '/up/status'],
+      ['GET', '/accounts/mock/import-settings'],
       ['GET', '/dashboards'],
     ];
     for (const [method, path] of denied) {
@@ -241,7 +244,9 @@ describe('MCP', () => {
 describe('changing the password', () => {
   it('revokes every token', async () => {
     const { token } = await newToken();
-    expect((await call('GET', '/accounts', { token })).status).toBe(200);
+    const list = await call('GET', '/accounts', { token });
+    expect(list.status).toBe(200);
+    expect(list.body[0]).not.toHaveProperty('importSettings');
     await changePassword('another long passphrase here');
     expect((await call('GET', '/accounts', { token })).status).toBe(401);
   });

@@ -134,6 +134,8 @@ const READABLE = [
   '/currency',
   '/export/transactions/csv',
 ];
+/** Under a readable path, but bank-connection data: never for a token */
+const UNREADABLE = [/^\/accounts\/[^/]+\/import-settings$/];
 export const MCP_PATH = '/mcp';
 
 /** Whether a read-only token may make this request (path relative to /api) */
@@ -141,5 +143,6 @@ export function readOnlyAllows(method: string, path: string): boolean {
   // POST carries MCP messages; GET is answered 405 (no server-sent stream), as MCP expects
   if (path === MCP_PATH) return method === 'POST' || method === 'GET';
   if (method !== 'GET' && method !== 'HEAD') return false;
+  if (UNREADABLE.some((p) => p.test(path))) return false;
   return READABLE.some((p) => path === p || path.startsWith(`${p}/`));
 }
