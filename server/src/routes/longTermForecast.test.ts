@@ -279,6 +279,81 @@ describe('plans over the API', () => {
   });
 });
 
+describe('simulation', () => {
+  it('is a seeded read: the same seed gives the same answer, and nothing is written', async () => {
+    const a = await save('Base', { events: [retire] });
+    const url = `${LT}/plans/${a.id}/simulation`;
+    const one = await call('GET', `${url}?paths=200&seed=5`);
+    expect(one.status).toBe(200);
+    expect(one.body).toMatchObject({ seed: 5, paths: 200, name: 'Base' });
+    expect(one.body.successBps).toBeGreaterThanOrEqual(0);
+    expect(one.body.successBps).toBeLessThanOrEqual(10_000);
+    expect(one.body.percentiles).toEqual([5, 25, 50, 75, 95]);
+    expect(one.body.volatilityBps).toMatchObject({ investments: 1600, property: 1000, cash: 0 });
+    expect(one.body.bands.length).toBeGreaterThan(40);
+    expect(one.body.bands[0].net).toHaveLength(5);
+    expect(one.body.bands[1].inflationIndexPpb).toBeGreaterThan(1_000_000_000);
+    const again = await call('GET', `${url}?paths=200&seed=5`);
+    expect(again.body).toEqual(one.body);
+    expect((await call('GET', `${url}?paths=200&seed=6`)).body.bands.at(-1).net).not.toEqual(
+      one.body.bands.at(-1).net,
+    );
+    // Defaults, and refusals
+    expect((await call('GET', url)).body).toMatchObject({ seed: 1, paths: 1000 });
+    for (const q of ['paths=99', 'paths=2001', 'paths=x', 'seed=-1', 'seed=1.5'])
+      expect((await call('GET', `${url}?${q}`)).status, q).toBe(400);
+    expect((await call('GET', `${LT}/plans/nope/simulation`)).status).toBe(404);
+    expect(db.select().from(longTermPlans).all()).toHaveLength(1);
+  });
+
+  it('is readable by a token and offered as a read-only MCP tool', async () => {
+    const a = await save('Base', { events: [retire] });
+    const t = await token();
+    expect(
+      (await call('GET', `${LT}/plans/${a.id}/simulation?paths=100`, { token: t })).status,
+    ).toBe(200);
+    const rpc = (body: unknown) => call('POST', '/mcp', { token: t }, body);
+    const tools = (await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/list' })).body.result.tools;
+    expect(tools.map((x: { name: string }) => x.name)).toContain('long_term_simulation');
+    const res = await rpc({
+      jsonrpc: '2.0',
+      id: 2,
+      method: 'tools/call',
+      params: { name: 'long_term_simulation', arguments: { plan_id: a.id, paths: 100, seed: 9 } },
+    });
+    expect(res.body.result.isError).toBe(false);
+    const out = JSON.parse(res.body.result.content[0].text);
+    expect(out).toMatchObject({ seed: 9, paths: 100 });
+    expect(res.body.result.content[0].text.length).toBeLessThan(60_000);
+  });
+
+  it('keeps volatility in the plan, with a default for older plans', async () => {
+    const a = await save('Base');
+    const got = await call('GET', `${LT}/plans/${a.id}`);
+    expect(got.body.plan.settings.volatilityBps).toMatchObject({
+      investments: 1600,
+      super: 1600,
+      property: 1000,
+    });
+    const changed = {
+      ...got.body.plan,
+      settings: {
+        ...got.body.plan.settings,
+        volatilityBps: { ...got.body.plan.settings.volatilityBps, investments: 2000 },
+      },
+    };
+    const put = await call(
+      'PUT',
+      `${LT}/plans/${a.id}`,
+      { session: true },
+      { plan: changed, expectedVersion: 1 },
+    );
+    expect(put.body.plan.settings.volatilityBps.investments).toBe(2000);
+    const sim = await call('GET', `${LT}/plans/${a.id}/simulation?paths=100`);
+    expect(sim.body.volatilityBps.investments).toBe(2000);
+  });
+});
+
 describe('loan details', () => {
   it('stores rate and repayment on a debt account, and only there', async () => {
     const put = await call(

@@ -47,6 +47,17 @@ export const DEFAULT_CLASS_GROWTH_BPS: Record<(typeof ACCOUNT_CLASSES)[number], 
   other: 0,
 };
 
+/** How much each kind of account's yearly return swings (a standard deviation), in basis points:
+ * assumptions for the simulation only. Shared by investments and super (one market), then property. */
+export const DEFAULT_CLASS_VOLATILITY_BPS: Record<(typeof ACCOUNT_CLASSES)[number], number> = {
+  cash: 0,
+  investments: 1600,
+  super: 1600,
+  property: 1000,
+  vehicles: 0,
+  other: 0,
+};
+
 const escalation = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('none') }).strict(),
   z.object({ mode: z.literal('inflation') }).strict(),
@@ -196,6 +207,17 @@ export const settingsSchema = z
       })
       .strict()
       .default(DEFAULT_CLASS_GROWTH_BPS),
+    volatilityBps: z
+      .object({
+        cash: bps(0, 5000),
+        investments: bps(0, 5000),
+        super: bps(0, 5000),
+        property: bps(0, 5000),
+        vehicles: bps(0, 5000),
+        other: bps(0, 5000),
+      })
+      .strict()
+      .default(DEFAULT_CLASS_VOLATILITY_BPS),
     extraSavingsGrowthBps: bps(-5000, 1500).default(200),
     /** Account ids drawn first when money runs short; the rest follow in the default order */
     withdrawalOrder: z

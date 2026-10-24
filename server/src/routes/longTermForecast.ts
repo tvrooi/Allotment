@@ -11,7 +11,8 @@ import {
   planSchema,
 } from '../services/longTermConfig.js';
 import { LongTermForecastError } from '../services/longTermForecast.js';
-import { runPlan, startingPoint } from '../services/longTermInputs.js';
+import { runPlan, simulatePlan, startingPoint } from '../services/longTermInputs.js';
+import { DEFAULT_PATHS, MAX_PATHS } from '../services/longTermSimulation.js';
 import {
   createPlan,
   deletePlan,
@@ -137,6 +138,27 @@ longTermRouter.get(
         growthTotal: y.growthTotal,
         unfundedBalance: y.unfundedBalance,
       })),
+    });
+  }),
+);
+
+// Monte Carlo: the plan run many times with random yearly returns. A read-only GET, seeded, so
+// the same plan, seed and path count always give the same answer.
+longTermRouter.get(
+  '/plans/:id/simulation',
+  action((req, res) => {
+    const { paths, seed } = z
+      .object({
+        paths: z.coerce.number().int().min(100).max(MAX_PATHS).default(DEFAULT_PATHS),
+        seed: z.coerce.number().int().min(0).max(2_147_483_647).default(1),
+      })
+      .parse(req.query);
+    const saved = getPlan(String(req.params.id));
+    res.json({
+      id: saved.id,
+      version: saved.version,
+      name: saved.plan.name,
+      ...simulatePlan(saved.plan, { paths, seed }),
     });
   }),
 );

@@ -30,6 +30,7 @@ import {
   type ForecastResult,
   type LifeEvent,
 } from './longTermForecast.js';
+import { simulate } from './longTermSimulation.js';
 
 const day = (date: string, count: number) => format(addDays(parseISO(date), count), 'yyyy-MM-dd');
 
@@ -344,6 +345,23 @@ export function runPlan(plan: PlanInput, point: StartingPoint = startingPoint())
     endAge: enginePlan.endAge,
     preservationAge: enginePlan.super.preservationAge,
     retirementAge: retirementAgeOf(plan),
+  };
+}
+
+/** Run a saved plan many times with random yearly returns (read-only; same seed, same answer) */
+export function simulatePlan(
+  plan: PlanInput,
+  options: { seed: number; paths: number },
+  point: StartingPoint = startingPoint(),
+) {
+  const { plan: enginePlan, warnings } = buildEnginePlan(plan, point);
+  const result = simulate(enginePlan, { ...options, volatilityBps: plan.settings.volatilityBps });
+  return {
+    ...result,
+    warnings,
+    startYear: enginePlan.startYear,
+    startAge: enginePlan.startAge,
+    endAge: enginePlan.endAge,
   };
 }
 

@@ -297,3 +297,63 @@ test('plans: a taken name is not a conflict, and unsaved edits are not dropped s
     'Second',
   );
 });
+
+test('the simulation shows a chance of success, and the same seed shows the same picture', async ({
+  page,
+  api,
+}) => {
+  await api.createAccount('Everyday', 4_000_000);
+  await api.createAccount('Shares', 30_000_000, 'investment');
+  const before = await ledger(api);
+  const { startYear } = await api.call('GET', `${LT}/starting-point`);
+  await api.call('POST', `${LT}/plans`, {
+    plan: {
+      name: 'Tight plan',
+      settings: {
+        birthYear: startYear - 60,
+        endAge: 95,
+        income: { takeHome: 0, grossForSuper: 0, escalation: { mode: 'inflation' } },
+        spending: { annual: 1_800_000, escalation: { mode: 'inflation' } },
+      },
+    },
+  });
+  await open(page, '/forecast');
+  await expect(page.getByText('Net worth today', { exact: true })).toBeVisible();
+
+  // Volatility is an assumption with its default shown
+  await page.getByRole('tab', { name: 'Assumptions' }).click();
+  await expect(page.getByLabel('Investments volatility')).toHaveValue('16');
+  await expect(page.getByText('Assumption, default 16%').first()).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Simulation' }).click();
+  await expect(page.getByRole('region', { name: 'Simulation' })).toContainText('not a promise');
+  await expect(page.getByLabel('Chance of success')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Run simulation' }).click();
+  const chance = page.getByLabel('Chance of success');
+  await expect(chance).toBeVisible();
+  const first = await chance.innerText();
+  expect(first).toMatch(/^\d+(\.\d)?%$/);
+  await expect(
+    page.getByRole('img', { name: /Range of net worth across 1000 simulated paths/ }),
+  ).toBeVisible();
+  await expect(page.getByText('Seed 1, 1,000 paths')).toBeVisible();
+
+  // Same seed, same answer; the server agrees
+  await page.getByRole('button', { name: 'Run again' }).click();
+  await expect(chance).toHaveText(first);
+  const [{ id }] = await api.call('GET', `${LT}/plans`);
+  const one = await api.call('GET', `${LT}/plans/${id}/simulation?paths=1000&seed=1`);
+  expect(`${one.successBps / 100}%`).toBe(first);
+  const other = await api.call('GET', `${LT}/plans/${id}/simulation?paths=1000&seed=2`);
+  expect(other.bands.at(-1).net).not.toEqual(one.bands.at(-1).net);
+
+  // Changing the seed in the page shows the other run
+  await page.getByLabel('Random seed').fill('2');
+  await page.getByRole('button', { name: 'Run again' }).click();
+  await expect(page.getByText('Seed 2, 1,000 paths')).toBeVisible();
+  await expect(chance).toHaveText(`${other.successBps / 100}%`);
+
+  // It reads only
+  expect(await ledger(api)).toEqual(before);
+  expect(await api.call('GET', `${LT}/plans`)).toHaveLength(1);
+});

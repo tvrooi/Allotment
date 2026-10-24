@@ -23,6 +23,10 @@ test('the long-term forecast works in the offline demo', async ({ page }) => {
   await page.getByLabel('Year', { exact: true }).selectOption({ index: 2 });
   await expect(page.getByText('The parts add up to the change, to the cent')).toBeVisible();
 
+  await page.getByRole('tab', { name: 'Simulation' }).click();
+  await page.getByRole('button', { name: 'Run simulation' }).click();
+  await expect(page.getByLabel('Chance of success')).toBeVisible();
+
   const result = await page.evaluate(async () => {
     const plans = await (await fetch('/api/forecast/long-term/plans')).json();
     const run = await fetch(`/api/forecast/long-term/plans/${plans[0].id}/result?view=summary`);

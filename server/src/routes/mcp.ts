@@ -197,6 +197,19 @@ const TOOLS: Tool[] = [
       `/forecast/long-term/plans/${seg(a.plan_id)}/result?view=${a.detail === 'full' ? 'full' : 'summary'}`,
   },
   {
+    name: 'long_term_simulation',
+    description:
+      'A Monte Carlo run of a long-term plan: the chance of success (never running out of money and ending above zero) and, for each year, the 5th, 25th, 50th, 75th and 95th percentile of net worth in future dollars. Returns are random but seeded, so the same seed gives the same answer. Volatility is an assumption.',
+    properties: {
+      plan_id: { type: 'string', description: 'A plan id from long_term_plans' },
+      paths: { type: 'integer', minimum: 100, maximum: 2000, description: 'Default 1000' },
+      seed: { type: 'integer', minimum: 0, description: 'Default 1' },
+    },
+    required: ['plan_id'],
+    path: (a) =>
+      `/forecast/long-term/plans/${seg(a.plan_id)}/simulation${query(a, ['paths', 'seed'])}`,
+  },
+  {
     name: 'long_term_compare',
     description:
       'Two long-term plans side by side: paired key figures, the difference in money and as a percent of the reference plan, and a net worth line for each.',

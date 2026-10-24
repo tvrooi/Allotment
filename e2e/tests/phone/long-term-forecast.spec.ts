@@ -127,6 +127,10 @@ test('the long-term forecast fits a phone screen', async ({ page, api }, testInf
   await page.getByLabel('Compare with').selectOption({ label: 'Retire later' });
   await expect(page.getByRole('region', { name: 'Comparison' })).toBeVisible();
   await check('long-term-compare');
+  await page.getByRole('tab', { name: 'Simulation' }).click();
+  await page.getByRole('button', { name: 'Run simulation' }).click();
+  await expect(page.getByLabel('Chance of success')).toBeVisible();
+  await check('long-term-simulation');
   await page.getByRole('tab', { name: 'Life events' }).click();
   await page.getByRole('button', { name: 'Add an event' }).click();
   await page.getByRole('button', { name: /^Buy a home/ }).click();
