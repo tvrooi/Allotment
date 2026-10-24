@@ -955,3 +955,21 @@ export const taxLots = sqliteTable(
   },
   (table) => [index('tax_lots_holding_idx').on(table.holdingId)],
 );
+
+/** What a loan or mortgage account costs and how it is repaid, for the long-term forecast.
+ * Rate in basis points, repayment in minor units a month; the account's balance stays the
+ * ledger's. */
+export const accountLoanDetails = sqliteTable('account_loan_details', {
+  accountId: text('account_id')
+    .primaryKey()
+    .references(() => accounts.id, { onDelete: 'cascade' }),
+  rateBps: integer('rate_bps').notNull(),
+  monthlyRepayment: integer('monthly_repayment').notNull().default(0),
+  termMonths: integer('term_months'),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
