@@ -30,6 +30,7 @@ for (const phone of [false, true])
     };
     await open(page, '/forecast');
     await expect(page.getByRole('heading', { name: 'Forecast' })).toBeVisible();
+    await page.getByRole('tab', { name: 'Cash runway' }).click();
     const cash = page.getByText('Cash today', { exact: true }).locator('..');
     await expect(cash).toContainText('$1,000');
     await expect(page.getByRole('cell', { name: 'Fortnightly pay pay' }).first()).toBeVisible();

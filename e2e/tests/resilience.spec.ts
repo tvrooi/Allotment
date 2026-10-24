@@ -88,6 +88,7 @@ test('a life-event template shows the first dated shortfall without writing', as
   await api.createAccount('Thin cash', 100_000);
   const before = await api.call('GET', '/review');
   await open(page, '/forecast');
+  await page.getByRole('tab', { name: 'Cash runway' }).click();
   await expect(page.getByLabel('Shortfall')).toContainText('No shortfall within this horizon');
   await page.getByText('Life events').first().click();
   await page.getByRole('button', { name: 'Emergency cost' }).first().click();

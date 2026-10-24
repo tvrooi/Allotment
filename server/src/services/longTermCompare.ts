@@ -2,7 +2,7 @@
 // active − reference in cents (or years). The percentage is the difference divided by the
 // REFERENCE plan's value, in basis points, and is null when that value is zero or below: the
 // UI says so in words beside every percentage, unlike Monarch's unexplained convention.
-import { mulDiv, SUPER_NEW_ID, type ForecastResult } from './longTermForecast.js';
+import { mulDiv, PPB, SUPER_NEW_ID, type ForecastResult } from './longTermForecast.js';
 
 export interface PlanFacts {
   result: ForecastResult;
@@ -46,6 +46,29 @@ export interface Comparison {
   series: SeriesPoint[];
   /** Printed beside every percentage */
   percentDefinition: string;
+}
+
+/**
+ * A plan's facts with every closing net worth and balance in today's dollars, each year
+ * deflated by that year's own inflation index (so two plans with different inflation are each
+ * deflated by their own). Comparing the result gives today's-dollar figures, differences and
+ * percentages.
+ */
+export function inTodaysDollars(facts: PlanFacts): PlanFacts {
+  const deflate = (cents: number, index: number) => mulDiv(cents, PPB, index);
+  return {
+    ...facts,
+    result: {
+      ...facts.result,
+      years: facts.result.years.map((y) => ({
+        ...y,
+        closingNetWorth: deflate(y.closingNetWorth, y.inflationIndexPpb),
+        balances: Object.fromEntries(
+          Object.entries(y.balances).map(([id, v]) => [id, deflate(v, y.inflationIndexPpb)]),
+        ),
+      })),
+    },
+  };
 }
 
 export const PERCENT_DEFINITION =

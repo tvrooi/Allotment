@@ -2,7 +2,7 @@
 
 Implementation: `0.2.0-up.13` feature branch. Release publication and live installation are separate delivery gates.
 
-Open **Forecast** in the sidebar. The forecast is read-only: it never creates transactions,
+Open **Forecast** in the sidebar. It opens on the [long-term forecast](LONG-TERM-FORECAST.md); the **Cash runway** tab described here is its second tab. The forecast is read-only: it never creates transactions,
 schedules, goal values or budget assignments. A scenario's assumptions are stored only when you
 choose **Save** (see [Saved scenarios](#saved-scenarios)); everything else resets on refresh.
 
