@@ -22,6 +22,24 @@ accounts, transactions, the budget, reports, goals and reviews. It cannot change
 - Tokens are never part of a backup.
 - Desktop-only installs have no tokens: their API is private to the app.
 
+## Read and categorise tokens
+
+When you want an assistant to sort transactions into categories, create a token with **Access:
+Read and categorise** (prefix `fbcat_`). It can do everything a read-only token can, and also:
+
+- create and edit categories and category groups (name, group, icon, budget type);
+- set, clear or undo the **category** of transactions, and mark them reviewed, through the same
+  bulk edit the app uses. Reconciled rows, transfers, splits and household entries are skipped.
+
+It still cannot change any other transaction field (amount, date, payee, notes, tags, hidden),
+delete or reorder categories, edit rules or budgets, reach settings, backups, sign-in, tokens or
+bank connections; those return 403 even if sent directly. Its MCP tools are `create_category`,
+`update_category`, `create_category_group`, `update_category_group`, `preview_categorise`,
+`categorise_transactions` and `undo_categorise`. A categorise run is: find transactions, preview,
+apply with the previewed count (nothing is written if the count differs), and keep the returned
+`restore` list to undo. Tools never target every transaction: give ids or at least one filter.
+Take a backup before a large run. A read-only token never sees these tools.
+
 ## Creating a token
 
 1. Open **Settings → Server → Read-only access**.
@@ -32,6 +50,8 @@ accounts, transactions, the budget, reports, goals and reviews. It cannot change
    repository.
 
 ## Using it
+
+The examples use a read-only token; a read and categorise token is used the same way.
 
 ### REST
 
@@ -82,7 +102,8 @@ settings, never to a prompt or the repository:
 
 - `FLYBUDGET_URL`: the server's address, without a trailing slash, for example
   `https://budget.example.com`
-- `FLYBUDGET_READONLY_TOKEN`: the read-only token
+- `FLYBUDGET_READONLY_TOKEN`: the token. Despite the name, give it a read and categorise token
+  to let the session categorise; the tools offered follow the token's access
 
 The server is read when a session starts, so start a new session after adding them; `/mcp`
 shows whether it connected. A claude.ai custom connector can't use this endpoint: connectors

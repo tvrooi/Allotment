@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.29
+
+- Add **read and categorise** access tokens (Settings → Server → Read-only access) for an MCP assistant that sorts a large backlog of transactions. Besides reading, its MCP tools can create and edit categories and groups, and preview, apply and undo a transaction category change in bulk (reconciled rows, transfers and splits are skipped; applying refuses if the matched count changed). It cannot change any other transaction field, delete or reorder categories, or reach settings, backups, sign-in or bank connections. Read-only tokens are unchanged and still see only the read tools.
+
 ## 0.2.0-up.28
 
 - New look from the FlyBudget design system: warm neutral surfaces, an orange accent, Inter headings, 12px cards and a refreshed dark theme. Text and button colours were tuned for AA contrast, and budget progress bars are slimmer. Charts keep their teal colours.

@@ -1,7 +1,7 @@
 import {
   bearerToken,
   looksLikeAccessToken,
-  readOnlyAllows,
+  tokenAllows,
   verifyAccessToken,
 } from '../auth/accessTokens.js';
 import { Router, type Request, type RequestHandler, type Response } from 'express';
@@ -204,12 +204,18 @@ export const requireSession: RequestHandler = (req, res, next) => {
   // bearer tokens (a JWT forwarded by a sign-in proxy) are left alone: the session decides.
   const bearer = bearerToken(req.headers.authorization);
   if (looksLikeAccessToken(bearer)) {
-    const tokenId = verifyAccessToken(bearer);
-    if (!tokenId) return void res.status(401).json({ error: 'Invalid or expired access token' });
-    if (!readOnlyAllows(req.method, req.path)) {
-      return void res.status(403).json({ error: 'A read-only access token cannot do this' });
+    const verified = verifyAccessToken(bearer);
+    if (!verified) return void res.status(401).json({ error: 'Invalid or expired access token' });
+    if (!tokenAllows(verified.scope, req.method, req.path, req.body)) {
+      return void res.status(403).json({
+        error:
+          verified.scope === 'categorise'
+            ? 'A categorise access token cannot do this'
+            : 'A read-only access token cannot do this',
+      });
     }
-    res.locals.accessTokenId = tokenId;
+    res.locals.accessTokenId = verified.id;
+    res.locals.accessTokenScope = verified.scope;
     return next();
   }
   const token = sessionToken(req);
