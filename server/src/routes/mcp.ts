@@ -203,7 +203,7 @@ const TOOLS: Tool[] = [
     properties: {
       plan_id: { type: 'string', description: 'A plan id from long_term_plans' },
       paths: { type: 'integer', minimum: 100, maximum: 2000, description: 'Default 1000' },
-      seed: { type: 'integer', minimum: 0, description: 'Default 1' },
+      seed: { type: 'integer', minimum: 0, maximum: 2147483647, description: 'Default 1' },
     },
     required: ['plan_id'],
     path: (a) =>

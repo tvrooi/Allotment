@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_CLASS_VOLATILITY_BPS } from './longTermConfig.js';
 import {
   forecastLongTerm,
+  LongTermForecastError,
   mulDiv,
   type ForecastPlan,
   type PlanAccount,
@@ -210,7 +211,37 @@ describe('simulate', () => {
     expect(tight.unfundedPaths).toBeGreaterThan(0);
   });
 
-  it('more volatility cannot raise the median above the no-volatility forecast by much, and widens the band', () => {
+  it('keeps going when one lucky path outgrows exact arithmetic', () => {
+    const rich = plan({
+      startAge: 20,
+      endAge: 120,
+      events: [],
+      accounts: [acct('inv', 'investments', 1_000_000_000, 1500)],
+    });
+    const sim = simulate(rich, {
+      seed: 1,
+      paths: 300,
+      volatilityBps: { ...vol, investments: 5000, super: 5000 },
+    });
+    expect(sim.successBps).toBe(10_000);
+    expect(sim.overflowPaths).toBeGreaterThanOrEqual(0);
+    expect(sim.overflowPaths).toBeLessThan(sim.paths);
+    expect(sim.bands.length).toBe(101);
+  });
+
+  it('refuses a plan where every path overflows, with a typed error', () => {
+    const absurd = plan({
+      startAge: 20,
+      endAge: 120,
+      events: [],
+      accounts: [acct('inv', 'investments', 9_000_000_000_000_000 - 1, 1500)],
+    });
+    expect(() => simulate(absurd, { seed: 1, paths: 100, volatilityBps: vol })).toThrow(
+      LongTermForecastError,
+    );
+  });
+
+  it('does not let more volatility raise the median far above the forecast, and widens the band', () => {
     const calm = simulate(plan(), { seed: 1, paths: 300, volatilityBps: noVol });
     const wild = simulate(plan(), {
       seed: 1,
@@ -218,11 +249,16 @@ describe('simulate', () => {
       volatilityBps: { ...vol, investments: 3000, super: 3000 },
     });
     const last = (s: typeof calm) => s.bands.at(-1)!.net;
+    // The middle of the outcomes is close to the steady forecast, not far above it
+    expect(last(wild)[2]).toBeLessThan(last(calm)[2] * 1.2);
     expect(last(wild)[4] - last(wild)[0]).toBeGreaterThan(last(calm)[4] - last(calm)[0]);
   });
 
   it('refuses bad input', () => {
     expect(() => simulate(plan(), { seed: -1, paths: 100, volatilityBps: vol })).toThrow(
+      RangeError,
+    );
+    expect(() => simulate(plan(), { seed: 2 ** 31, paths: 100, volatilityBps: vol })).toThrow(
       RangeError,
     );
     expect(() => simulate(plan(), { seed: 1, paths: 0, volatilityBps: vol })).toThrow(RangeError);

@@ -543,3 +543,10 @@ Built as §15 designed it, with these details.
 - **Not built:** stochastic inflation, sequence-of-returns by account beyond the two shared shocks, and a
   worker (a 1,000-path run of a long plan takes about a second on the server, and the demo runs the same code
   in its own worker).
+- **After review:** a path whose balances outgrow exact arithmetic is counted as a success and left out of the
+  bands (the response says how many), instead of failing the whole run; a plan where every path overflows is
+  refused. Runs are remembered (the last 16, keyed by the plan, today's figures, seed and path count), so
+  asking again costs nothing. The chance is shown as "100%" or "0%" only when every path agrees, otherwise
+  "over 99.9%" or "under 0.1%". The seed is echoed in the response, not stored with the plan. Results are
+  reproducible wherever the JavaScript engine's `log`, `exp` and `cos` agree; returns are rounded to whole
+  basis points, so a different engine could differ in a rare path by a basis point.

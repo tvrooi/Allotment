@@ -588,7 +588,9 @@ function Editor({
             <SavingsPanel plan={working} setPlan={ed.setWorking} point={point.data} result={r} />
           )}
         </AmountFields>
-        {panel === 'simulation' && <SimulationPanel saved={saved} result={r} mode={mode} />}
+        {panel === 'simulation' && (
+          <SimulationPanel saved={saved} result={r} mode={mode} dirty={ed.dirty} />
+        )}
         {panel === 'compare' && (
           <div className="space-y-4">
             {others.length === 0 ? (

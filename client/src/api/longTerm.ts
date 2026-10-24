@@ -260,6 +260,8 @@ export interface Simulation {
   /** Share of paths that never ran out of money and ended above zero, in basis points */
   successBps: number;
   unfundedPaths: number;
+  /** Paths too large to count, left out of the bands (they count as successes) */
+  overflowPaths: number;
   medianFirstUnfundedYear: number | null;
   bands: {
     index: number;

@@ -4,6 +4,7 @@
 // each year, so a simulation can only disagree with the forecast about the returns.
 import {
   forecastLongTerm,
+  LongTermForecastError,
   validatePlan,
   type AccountClass,
   type ForecastPlan,
@@ -89,6 +90,11 @@ export interface SimulationResult {
   successBps: number;
   /** Paths that had unfunded spending at some point, and the year it first happened (median) */
   unfundedPaths: number;
+  /**
+   * Paths whose balances grew past what can be counted exactly. They are successes, but left out of
+   * the bands, which then describe the remaining paths.
+   */
+  overflowPaths: number;
   medianFirstUnfundedYear: number | null;
   bands: Band[];
 }
@@ -107,13 +113,14 @@ export function simulate(
   options: { seed: number; paths: number; volatilityBps: Volatility },
 ): SimulationResult {
   const { seed, paths, volatilityBps } = options;
-  if (!Number.isSafeInteger(seed) || seed < 0 || seed > 2 ** 31) throw new RangeError('Bad seed');
+  if (!Number.isSafeInteger(seed) || seed < 0 || seed >= 2 ** 31) throw new RangeError('Bad seed');
   if (!Number.isInteger(paths) || paths < 1 || paths > MAX_PATHS)
     throw new RangeError('Bad path count');
   validatePlan(plan);
   const years = plan.endAge - plan.startAge;
   const finals: number[][] = Array.from({ length: years + 1 }, () => []);
   let successes = 0;
+  let overflowPaths = 0;
   const firstYears: number[] = [];
   let template: ReturnType<typeof forecastLongTerm> | null = null;
 
@@ -127,15 +134,24 @@ export function simulate(
       market.push(random.normal());
       property.push(random.normal());
     }
-    const result = forecastLongTerm(plan, {
-      validated: true,
-      growthBps: (k, a) => {
-        const vol = volatilityBps[a.cls];
-        if (vol <= 0) return a.growthBps;
-        const z = a.cls === 'property' ? property[k] : market[k];
-        return yearReturnBps(a.growthBps, vol, z);
-      },
-    });
+    let result: ReturnType<typeof forecastLongTerm>;
+    try {
+      result = forecastLongTerm(plan, {
+        validated: true,
+        growthBps: (k, a) => {
+          const vol = volatilityBps[a.cls];
+          if (vol <= 0) return a.growthBps;
+          const z = a.cls === 'property' ? property[k] : market[k];
+          return yearReturnBps(a.growthBps, vol, z);
+        },
+      });
+    } catch (error) {
+      // One lucky path whose balances outgrow exact arithmetic must not sink the whole run
+      if (!(error instanceof LongTermForecastError)) throw error;
+      overflowPaths++;
+      successes++;
+      continue;
+    }
     template ??= result;
     result.years.forEach((y, i) => finals[i].push(y.closingNetWorth));
     const last = result.years[result.years.length - 1];
@@ -143,7 +159,8 @@ export function simulate(
     if (result.firstUnfunded) firstYears.push(result.firstUnfunded.calendarYear);
   }
 
-  const shape = template!.years;
+  if (!template) throw new LongTermForecastError('Amounts are too large to simulate');
+  const shape = template.years;
   const bands: Band[] = shape.map((y, i) => {
     const sorted = finals[i].sort((a, b) => a - b);
     return {
@@ -162,6 +179,7 @@ export function simulate(
     percentiles: PERCENTILES,
     successBps: Math.round((successes * 10_000) / paths),
     unfundedPaths: firstYears.length,
+    overflowPaths,
     medianFirstUnfundedYear: firstYears.length
       ? firstYears[Math.floor((firstYears.length - 1) / 2)]
       : null,

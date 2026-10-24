@@ -15,7 +15,7 @@ import { Button } from '../ui/Button';
 import { Select } from '../ui/Input';
 import { chartColors } from '../../utils/chartColors';
 import { formatCentsAxis, formatCurrency } from '../../utils/currency';
-import { CLASS_LABEL, inDollars, type Dollars } from '../../utils/longTerm';
+import { CLASS_LABEL, chanceLabel, inDollars, type Dollars } from '../../utils/longTerm';
 import { Field, WholeNumberField } from './fields';
 import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 
@@ -30,20 +30,25 @@ export function SimulationPanel({
   saved,
   result,
   mode,
+  dirty,
 }: {
   saved: api.SavedPlan;
   result: api.PlanResult | undefined;
   mode: Dollars;
+  /** The working copy has changes that are not saved, and the simulation does not see them */
+  dirty: boolean;
 }) {
   const [paths, setPaths] = useState(1000);
   const [seed, setSeed] = useState(1);
   const [run, setRun] = useState<{ paths: number; seed: number } | null>(null);
   const { allValid, report } = useAmountValidity();
+  // Today's net worth is in the key: after a sync the starting figures change, and an old run
+  // must not be shown against a fresh forecast
+  const start = result?.years[0]?.closingNetWorth;
   const sim = useQuery({
-    queryKey: ['lt-sim', saved.id, saved.version, run?.paths, run?.seed],
+    queryKey: ['lt-sim', saved.id, saved.version, run?.paths, run?.seed, start],
     queryFn: () => api.getSimulation(saved.id, run!.paths, run!.seed),
     enabled: run !== null,
-    staleTime: Infinity,
   });
   const s = sim.data;
 
@@ -64,6 +69,9 @@ export function SimulationPanel({
   }, [s, mode, result]);
 
   const successPercent = s ? s.successBps / 100 : 0;
+  const otherSwing = s
+    ? s.volatilityBps.cash + s.volatilityBps.vehicles + s.volatilityBps.other > 0
+    : false;
   return (
     <section aria-label="Simulation" className="space-y-4">
       <p className="text-sm text-text-secondary">
@@ -76,7 +84,10 @@ export function SimulationPanel({
         className="flex flex-wrap items-end gap-3"
         onSubmit={(e) => {
           e.preventDefault();
-          if (allValid) setRun({ paths, seed });
+          if (!allValid) return;
+          // The same settings again run again, rather than showing what was fetched before
+          if (run?.paths === paths && run.seed === seed) void sim.refetch();
+          else setRun({ paths, seed });
         }}
       >
         <AmountFields report={report}>
@@ -106,6 +117,12 @@ export function SimulationPanel({
           {s ? 'Run again' : 'Run simulation'}
         </Button>
       </form>
+      {dirty && (
+        <p role="status" className="text-sm text-caution">
+          The simulation runs the saved plan, and you have unsaved changes. Save them first to
+          include them.
+        </p>
+      )}
       {sim.isFetching && (
         <p role="status" className="text-sm text-text-secondary">
           Running {run?.paths.toLocaleString()} paths…
@@ -120,12 +137,12 @@ export function SimulationPanel({
       {s && !sim.isFetching && (
         <div className="space-y-4">
           <div className="rounded-xl bg-surface border border-border-light shadow-card px-4 py-5 text-center">
-            <p
-              className={`text-3xl font-semibold tabular-nums ${successPercent < 50 ? 'text-negative' : successPercent < 80 ? 'text-caution' : 'text-positive'}`}
+            <output
+              className={`block text-3xl font-semibold tabular-nums ${successPercent < 50 ? 'text-negative' : successPercent < 80 ? 'text-caution' : 'text-positive'}`}
               aria-label="Chance of success"
             >
-              {successPercent.toFixed(successPercent % 1 === 0 ? 0 : 1)}%
-            </p>
+              {chanceLabel(s.successBps)}
+            </output>
             <p className="text-sm text-text-secondary mt-1">Chance of success</p>
             <p className="text-xs text-text-tertiary mt-1 max-w-xl mx-auto">
               The share of {s.paths.toLocaleString()} simulated paths in which your accounts always
@@ -133,6 +150,8 @@ export function SimulationPanel({
               {s.unfundedPaths > 0
                 ? `${s.unfundedPaths.toLocaleString()} paths ran out of money, typically from ${s.medianFirstUnfundedYear}.`
                 : 'No path ran out of money.'}
+              {s.overflowPaths > 0 &&
+                ` ${s.overflowPaths.toLocaleString()} paths grew too large to count; they count as successes and are left out of the bands.`}
             </p>
           </div>
 
@@ -164,6 +183,9 @@ export function SimulationPanel({
                         <p>Best 5%: {formatCurrency(row.wide[1])} or more</p>
                         <p>Middle: {formatCurrency(row.median)}</p>
                         <p>Worst 5%: {formatCurrency(row.wide[0])} or less</p>
+                        {row.forecast !== undefined && (
+                          <p>Steady-return forecast: {formatCurrency(row.forecast)}</p>
+                        )}
                       </div>
                     );
                   }}
@@ -206,8 +228,8 @@ export function SimulationPanel({
           </div>
           <p className="text-xs text-text-tertiary">
             The darker band holds the middle half of outcomes (25th to 75th percentile) and the
-            lighter band the middle 90% (5th to 95th). The thick line is the median path; the thin
-            line is the forecast above. Seed {s.seed}, {s.paths.toLocaleString()} paths, in{' '}
+            lighter band the middle 90% (5th to 95th). The thick line is the median of each year;
+            the thin line is the forecast above. Seed {s.seed}, {s.paths.toLocaleString()} paths, in{' '}
             {mode === 'today' ? "today's dollars" : 'future dollars'}.
           </p>
           <p className="text-xs text-text-tertiary">
@@ -215,8 +237,11 @@ export function SimulationPanel({
             {(['investments', 'super', 'property'] as const)
               .map((c) => `${CLASS_LABEL[c]} ${s.volatilityBps[c] / 100}%`)
               .join(', ')}
-            . Cash and other accounts do not swing. Investments and super move together, as one
-            market.
+            .{' '}
+            {otherSwing
+              ? `Other accounts with a volatility swing too. `
+              : 'Cash and other accounts do not swing. '}
+            Investments and super move together, as one market.
           </p>
         </div>
       )}
