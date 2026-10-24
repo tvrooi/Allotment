@@ -200,7 +200,8 @@ authRouter.delete('/sessions/:id', (req, res) => {
 export const requireSession: RequestHandler = (req, res, next) => {
   if (!serverMode || req.path === '/health' || req.path.startsWith('/auth/')) return next();
   // An access token (Settings → Server → Read-only access): reading the budget's own data,
-  // plus, for a categorise token, setting past transactions' categories (auth/accessTokens.ts). It never stands in for a login. Other
+  // plus, for a categorise token, setting past transactions' categories and editing categories
+  // (auth/accessTokens.ts). It never stands in for a login. Other
   // bearer tokens (a JWT forwarded by a sign-in proxy) are left alone: the session decides.
   const bearer = bearerToken(req.headers.authorization);
   if (looksLikeAccessToken(bearer)) {
@@ -210,7 +211,7 @@ export const requireSession: RequestHandler = (req, res, next) => {
       return void res.status(403).json({
         error:
           token.scope === 'categorise'
-            ? 'This access token can only read, and set the category of past transactions'
+            ? 'This access token can only read, set the category of past transactions, and create or edit categories'
             : 'A read-only access token cannot do this',
       });
     }

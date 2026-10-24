@@ -21,6 +21,7 @@ const { accessTokensRouter } = await import('./accessTokens.js');
 const { mcpRouter } = await import('./mcp.js');
 const { accountsRouter } = await import('./accounts.js');
 const { transactionsRouter } = await import('./transactions.js');
+const { categoriesRouter } = await import('./categories.js');
 const { exportRouter } = await import('./export.js');
 const { reportsRouter } = await import('./reports.js');
 const { dashboardsRouter } = await import('./dashboards.js');
@@ -40,6 +41,7 @@ beforeAll(async () => {
   app.use('/api', requireSession);
   app.use('/api/accounts', accountsRouter);
   app.use('/api/transactions', transactionsRouter);
+  app.use('/api/categories', categoriesRouter);
   app.use('/api/export', exportRouter);
   app.use('/api/reports', reportsRouter);
   app.use('/api/dashboards', dashboardsRouter);
@@ -375,5 +377,74 @@ describe('changing the password', () => {
     expect(list.body[0]).not.toHaveProperty('importSettings');
     await changePassword('another long passphrase here');
     expect((await call('GET', '/accounts', { token })).status).toBe(401);
+  });
+});
+
+describe('categorise tokens and categories', () => {
+  // Earlier tests change the password, which signs the shared session out
+  beforeAll(() => {
+    cookie = `${SESSION_COOKIE}=${createSession('categories').token}`;
+  });
+  const rpc = (token: string, body: unknown) => call('POST', '/mcp', { token }, body);
+  const tool = (token: string, name: string, args: unknown) =>
+    rpc(token, {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name, arguments: args },
+    });
+
+  it('create and edit categories and groups through MCP, and nothing more', async () => {
+    const created = await call(
+      'POST',
+      '/access-tokens',
+      { session: true },
+      { name: 'Sorter', days: 7, scope: 'categorise' },
+    );
+    const { token } = created.body as { token: string };
+    const read = await newToken();
+    const group = await tool(token, 'create_category_group', { name: 'Fun', isIncome: 0 });
+    const groupId = JSON.parse(group.body.result.content[0].text).id as string;
+    const made = await tool(token, 'create_category', { groupId, name: 'Coffee' });
+    const coffee = JSON.parse(made.body.result.content[0].text);
+    expect(coffee).toMatchObject({ name: 'Coffee', groupId });
+    const edited = await tool(token, 'update_category', { id: coffee.id, name: 'Cafes' });
+    expect(JSON.parse(edited.body.result.content[0].text).name).toBe('Cafes');
+    const renamed = await tool(token, 'rename_category_group', { id: groupId, name: 'Fun 2' });
+    expect(JSON.parse(renamed.body.result.content[0].text).name).toBe('Fun 2');
+    // A read token isn't offered them and can't call them
+    expect(
+      (await tool(read.token, 'create_category', { groupId, name: 'X' })).body.error.code,
+    ).toBe(-32602);
+    expect(
+      (await call('POST', '/categories', { token: read.token }, { groupId, name: 'X' })).status,
+    ).toBe(403);
+
+    // Direct requests: no deleting, reordering, flipping a group's income flag or extra fields,
+    // whatever the letter case of the path
+    const refused: [string, string, unknown][] = [
+      ['DELETE', `/categories/${coffee.id}`, undefined],
+      ['DELETE', `/categories/groups/${groupId}`, undefined],
+      ['PUT', '/categories/reorder', { ids: [] }],
+      ['PUT', '/categories/REORDER', { ids: [] }],
+      ['PUT', '/categories/groups/reorder', { ids: [] }],
+      ['PUT', '/categories/Groups/Reorder', { ids: [] }],
+      ['PUT', `/categories/groups/${groupId}`, { name: 'x', isIncome: 1 }],
+      ['PUT', `/categories/${coffee.id}`, { name: 'x', sortOrder: 9 }],
+      ['POST', '/categories', { groupId, name: 'x', id: 'chosen' }],
+    ];
+    for (const [method, path, body] of refused)
+      expect((await call(method, path, { token }, body)).status).toBe(403);
+  });
+
+  it('cannot read bank import settings in any letter case', async () => {
+    const { token } = await newToken();
+    for (const path of [
+      '/accounts/mock/import-settings',
+      '/accounts/mock/Import-Settings',
+      '/accounts/mock/import-settings/',
+    ]) {
+      expect((await call('GET', path, { token })).status).toBe(403);
+    }
   });
 });

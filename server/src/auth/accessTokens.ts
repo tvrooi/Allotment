@@ -8,7 +8,8 @@ import { todayIso } from '../services/mainAmountService.js';
 
 // Read-only access tokens (docs/READ-ONLY-ACCESS.md). A token is 256 random bits with a
 // recognisable prefix. Its scope is 'read', or 'categorise': read, plus setting the category of
-// past transactions and nothing else (categoriseAllows); only its SHA-256 is stored, like login sessions, so a leaked database
+// past transactions and creating and editing categories, nothing else (categoriseAllows,
+// categoryManageAllows); only its SHA-256 is stored, like login sessions, so a leaked database
 // doesn't leak usable tokens. Tokens expire, can be revoked, and changing the password
 // revokes them all.
 
@@ -149,11 +150,14 @@ const READABLE = [
   '/export/transactions/csv',
 ];
 /** Under a readable path, but bank-connection data: never for a token */
-const UNREADABLE = [/^\/accounts\/[^/]+\/import-settings$/];
+const UNREADABLE = [/^\/accounts\/[^/]+\/import-settings$/i];
 export const MCP_PATH = '/mcp';
 
 /** Whether a read-only token may make this request (path relative to /api) */
-export function readOnlyAllows(method: string, path: string): boolean {
+export function readOnlyAllows(method: string, rawPath: string): boolean {
+  // The router ignores letter case and a trailing slash, so the allowlist must too
+  // ('/accounts/x/Import-Settings/')
+  const path = rawPath.toLowerCase().replace(/\/+$/, '');
   // POST carries MCP messages; GET is answered 405 (no server-sent stream), as MCP expects
   if (path === MCP_PATH) return method === 'POST' || method === 'GET';
   if (method !== 'GET' && method !== 'HEAD') return false;
@@ -163,7 +167,7 @@ export function readOnlyAllows(method: string, path: string): boolean {
 
 // ─── What a categorise token may change ───────────────────────────────────────
 
-const TRANSACTION_PATH = /^\/transactions\/([^/]+)$/;
+const TRANSACTION_PATH = /^\/transactions\/([^/]+)$/i;
 /** Exactly a category, never clearing it or anything else */
 const categoriseBody = z.object({ categoryId: z.string().min(1).max(64) }).strict();
 
@@ -190,9 +194,38 @@ export function categoriseAllows(method: string, path: string, body: unknown): b
   return !row || row.date <= todayIso();
 }
 
+const CATEGORY_FIELDS = ['groupId', 'name', 'icon', 'budgetType'];
+const hasOnly = (body: unknown, allowed: string[]) =>
+  !!body &&
+  typeof body === 'object' &&
+  !Array.isArray(body) &&
+  Object.keys(body).every((k) => allowed.includes(k));
+
+/**
+ * Whether a categorise token may create or edit categories and groups: create a category or
+ * group, edit a category's name, group, icon or budget type, rename a group. Never delete or
+ * reorder them, and a group's income flag is set only when it is created. The route still
+ * validates the values and refuses payment envelopes.
+ */
+export function categoryManageAllows(method: string, rawPath: string, body: unknown): boolean {
+  const path = rawPath.toLowerCase(); // the router ignores case, and 'reorder' must stay out
+  if (method === 'POST' && path === '/categories') return hasOnly(body, CATEGORY_FIELDS);
+  if (method === 'POST' && path === '/categories/groups')
+    return hasOnly(body, ['name', 'isIncome']);
+  if (method !== 'PUT') return false;
+  const group = /^\/categories\/groups\/([^/]+)$/.exec(path);
+  if (group) return group[1] !== 'reorder' && hasOnly(body, ['name']);
+  const category = /^\/categories\/([^/]+)$/.exec(path);
+  return (
+    !!category && !['reorder', 'groups'].includes(category[1]) && hasOnly(body, CATEGORY_FIELDS)
+  );
+}
+
 /** Whether a token with this scope may make this request (path relative to /api) */
 export function tokenAllows(scope: TokenScope, method: string, path: string, body: unknown) {
   return (
-    readOnlyAllows(method, path) || (scope === 'categorise' && categoriseAllows(method, path, body))
+    readOnlyAllows(method, path) ||
+    (scope === 'categorise' &&
+      (categoriseAllows(method, path, body) || categoryManageAllows(method, path, body)))
   );
 }

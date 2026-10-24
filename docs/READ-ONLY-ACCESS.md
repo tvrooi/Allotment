@@ -21,7 +21,9 @@ except that a read and categorise token can set the category of past transaction
   change any other field, clear a category, touch a future transaction, edit many at once, or
   reach anything else a read-only token can't. The register's own rules still apply: reconciled
   rows, split parents, transfers inside the budget, household-linked entries and payment
-  envelopes are refused. Choose **Read and categorise** under **Access** when creating the token.
+  envelopes are refused. They can also create and edit **categories and groups** (name, group,
+  icon, budget type; a group's income flag is set only when it is created), but never delete or
+  reorder them. Choose **Read and categorise** under **Access** when creating the token.
 - Tokens are 256-bit random values starting with `fbro_`. The server stores only their
   SHA-256, as it does for login sessions. A token is shown once when it is created.
 - Every token expires (7, 30 or 90 days), can be revoked in **Settings → Server → Read-only
@@ -81,7 +83,10 @@ Its read tools:
 
 With a **read and categorise** token the server also lists `categorise_transactions`: up to 100
 transaction ids and one category id. It changes them one at a time through the same API, and
-returns each one's result and previous category, so a change can be put back.
+returns each one's result and previous category, so a change can be put back. It also lists
+`create_category`, `update_category`, `create_category_group` and `rename_category_group`, so an
+assistant can set up the categories it needs before sorting. Paths are matched ignoring letter
+case, as the server's router does.
 
 Each read tool call is a `GET` of the server's own API made with the caller's token, so a tool can
 never reach more than the token itself, and the app's validation applies. Results longer than
