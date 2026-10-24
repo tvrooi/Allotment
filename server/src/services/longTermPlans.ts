@@ -9,6 +9,7 @@
  */
 import { asc, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { ZodError } from 'zod';
 import { db } from '../db/index.js';
 import {
   accounts,
@@ -59,6 +60,16 @@ export class PlanConflict extends ForecastError {
 type PlanRow = typeof longTermPlans.$inferSelect;
 
 function load(row: PlanRow): SavedPlan {
+  try {
+    return loadPlan(row);
+  } catch (error) {
+    if (error instanceof ZodError || error instanceof SyntaxError)
+      throw new ForecastError('This saved plan could not be read and needs updating', 500);
+    throw error;
+  }
+}
+
+function loadPlan(row: PlanRow): SavedPlan {
   const events = db
     .select()
     .from(longTermEvents)
@@ -129,8 +140,10 @@ function assertReferences(plan: PlanInput) {
     ...plan.accounts.map((a) => a.accountId),
     ...plan.splits.map((s) => s.accountId),
   ]);
-  const loans = plan.events.flatMap((e) => (e.kind === 'payOff' ? [e.loanId] : []));
-  const ids = [...new Set([...wanted, ...loans])];
+  // A disabled pay-off may name a debt that has since gone: it never runs
+  const loans = plan.events.flatMap((e) => (e.kind === 'payOff' && e.enabled ? [e.loanId] : []));
+  const eventIds = plan.events.map((e) => e.id);
+  const ids = [...new Set([...wanted, ...loans, ...eventIds])];
   const found = ids.length
     ? db
         .select({ id: accounts.id, type: accounts.type })
@@ -139,6 +152,9 @@ function assertReferences(plan: PlanInput) {
         .all()
     : [];
   const byId = new Map(found.map((a) => [a.id, a.type]));
+  // The engine keeps account and event ids apart; a clash would fail every run
+  if (eventIds.some((id) => byId.has(id)))
+    throw new ForecastError('An event id matches an account id; choose another', 400);
   for (const id of wanted) {
     if (!byId.has(id)) throw new ForecastError('A plan names an account that does not exist', 400);
   }
@@ -214,8 +230,8 @@ export function getPlan(id: string): SavedPlan {
 }
 
 export function createPlan(plan: PlanInput): SavedPlan {
-  assertReferences(plan);
   return db.transaction((tx) => {
+    assertReferences(plan);
     const { count, last } = tx
       .select({
         count: sql<number>`count(*)`,
@@ -243,10 +259,11 @@ export function createPlan(plan: PlanInput): SavedPlan {
 }
 
 export function updatePlan(id: string, plan: PlanInput, expectedVersion: number): SavedPlan {
-  assertReferences(plan);
   return db.transaction((tx) => {
     const row = rowById(id);
+    // Version first: a stale client is told what changed, not that its references are stale
     if (!row || row.version !== expectedVersion) throw new PlanConflict(row ? load(row) : null);
+    assertReferences(plan);
     assertNameFree(plan.name, id);
     tx.update(longTermPlans)
       .set({

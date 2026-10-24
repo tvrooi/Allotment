@@ -123,7 +123,7 @@ function trailingSpending(today: string) {
   return { from: coveredFrom, days, total: Math.max(0, -net) };
 }
 
-/** Today's figures. Read-only. */
+/** Today's figures: balances count rows dated today or earlier. Read-only. */
 export function startingPoint(today = todayIso()): StartingPoint {
   const warnings: string[] = [];
   const ctx = currencyContext();
@@ -135,7 +135,7 @@ export function startingPoint(today = todayIso()): StartingPoint {
         total: sql<number>`coalesce(sum(${transactions.amount}), 0)`,
       })
       .from(transactions)
-      .where(and(inAccountBalance))
+      .where(and(inAccountBalance, lte(transactions.date, today)))
       .groupBy(transactions.accountId)
       .all()
       .map((r) => [r.accountId, r.total]),
@@ -183,12 +183,17 @@ export function startingPoint(today = todayIso()): StartingPoint {
   }
 
   // Income: expected take-home on each payday in the next 12 months, over active plans
-  const to = day(today, 364);
+  // 364 days hold exactly 26 fortnights, whatever today's date; 365 would give 27 on a payday
+  const to = day(today, 363);
   let annualTakeHome = 0;
   let planCount = 0;
   for (const row of db.select().from(paydayPlans).where(eq(paydayPlans.archived, 0)).all()) {
-    const config = paydayConfigSchema.parse(JSON.parse(row.configJson));
-    annualTakeHome += config.expectedIncome * paydays(config, today, to).length;
+    const parsed = paydayConfigSchema.safeParse(JSON.parse(row.configJson));
+    if (!parsed.success) {
+      warnings.push('A payday plan could not be read, so its income was left out');
+      continue;
+    }
+    annualTakeHome += parsed.data.expectedIncome * paydays(parsed.data, today, to).length;
     planCount += 1;
   }
   if (planCount === 0)
@@ -263,7 +268,10 @@ export function buildEnginePlan(plan: PlanInput, point: StartingPoint) {
   const events: LifeEvent[] = [];
   plan.events.forEach((event: PlanEvent, position) => {
     if (event.kind === 'payOff' && !loanIds.has(event.loanId)) {
-      warnings.push(`${event.name} names a debt that is closed or left out, and was skipped`);
+      if (event.enabled)
+        warnings.push(
+          `${event.name} names a debt that is closed, left out or paid off, and was skipped`,
+        );
       return;
     }
     events.push({ ...event, position } as unknown as LifeEvent);

@@ -119,4 +119,39 @@ describe('compareResults', () => {
       reference: 6_000_000,
     });
   });
+
+  it('gives no retirement figure for a retirement at or past the end age, and no percent that overflows', () => {
+    // Ten plan years from age 40: retiring at 49 happens (in the last year), at 50 it never does
+    const at = (age: number) =>
+      compareResults(facts(plan(), age), facts(plan(), age)).figures.find(
+        (f) => f.key === 'retirementNetWorth',
+      )!;
+    expect(at(49).active).not.toBeNull();
+    expect(at(50).active).toBeNull();
+    const tiny = facts(
+      plan({
+        accounts: [{ id: 'cash', name: 'Cash', cls: 'cash', balance: 1, growthBps: 0 }],
+        salary: { takeHome: 0, grossForSuper: 0, escalation: { mode: 'none' } },
+        spending: { annual: 0, escalation: { mode: 'none' } },
+      }),
+    );
+    const huge = facts(
+      plan({
+        accounts: [
+          {
+            id: 'cash',
+            name: 'Cash',
+            cls: 'cash',
+            balance: 9_000_000_000_000_000 / 10,
+            growthBps: 0,
+          },
+        ],
+        salary: { takeHome: 0, grossForSuper: 0, escalation: { mode: 'none' } },
+        spending: { annual: 0, escalation: { mode: 'none' } },
+      }),
+    );
+    const figure = compareResults(huge, tiny).figures.find((f) => f.key === 'endNetWorth')!;
+    expect(figure.difference).toBeGreaterThan(0);
+    expect(figure.percentBps).toBeNull();
+  });
 });

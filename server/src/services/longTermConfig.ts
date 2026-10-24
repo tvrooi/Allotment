@@ -3,7 +3,14 @@
 // file only describes and validates the stored shape. Every rate and age here is an
 // assumption the owner can change, and the UI shows the default beside it.
 import { z } from 'zod';
-import { EXTRA_SAVINGS_ID, type AccountClass } from './longTermForecast.js';
+import {
+  EXTRA_SAVINGS_ID,
+  SALARY_SOURCE_ID,
+  SUPER_NEW_ID,
+  type AccountClass,
+} from './longTermForecast.js';
+
+const RESERVED_IDS = [EXTRA_SAVINGS_ID, SALARY_SOURCE_ID, SUPER_NEW_ID];
 
 const MONEY_MAX = 10_000_000_000_000;
 const money = z.number().int().min(0).max(MONEY_MAX);
@@ -11,7 +18,10 @@ const signedMoney = z.number().int().min(-MONEY_MAX).max(MONEY_MAX);
 const bps = (min = 0, max = 10_000) => z.number().int().min(min).max(max);
 const name = z.string().trim().min(1).max(100);
 /** Event ids are chosen by the client so events can refer to each other; ':' is reserved */
-export const eventId = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/, 'Use letters, digits, - and _');
+export const eventId = z
+  .string()
+  .regex(/^[A-Za-z0-9_-]{1,40}$/, 'Use letters, digits, - and _')
+  .refine((id) => !RESERVED_IDS.includes(id), 'That id is reserved');
 
 export const MAX_PLANS = 20;
 export const MAX_EVENTS = 50;

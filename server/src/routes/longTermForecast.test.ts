@@ -393,10 +393,16 @@ describe('read-only access', () => {
     expect(
       JSON.parse((await run('long_term_plan', { plan_id: a.id })).content[0].text).plan.name,
     ).toBe('Base');
-    const forecast = JSON.parse(
-      (await run('long_term_forecast', { plan_id: a.id })).content[0].text,
-    );
+    const summary = (await run('long_term_forecast', { plan_id: a.id })).content[0].text;
+    const forecast = JSON.parse(summary);
     expect(forecast.years.length).toBeGreaterThan(40);
+    expect(forecast.years[1]).toHaveProperty('closingNetWorth');
+    expect(forecast.years[1]).not.toHaveProperty('balances');
+    expect(summary.length).toBeLessThan(40_000);
+    const full = JSON.parse(
+      (await run('long_term_forecast', { plan_id: a.id, detail: 'full' })).content[0].text,
+    );
+    expect(full.years[1]).toHaveProperty('balances');
     const cmp = JSON.parse(
       (await run('long_term_compare', { plan_id: a.id, reference_id: b.id })).content[0].text,
     );
@@ -518,6 +524,46 @@ describe('backups', () => {
         d.accountLoanDetails.push({ accountId: 'mort', rateBps: 99999, monthlyRepayment: 1 }),
       ),
     ];
+    // Each of these passes a row-by-row check but is not a plan the API would have saved or could read
+    const ev = (d: any, over: Record<string, unknown>) => ({ ...d.longTermEvents[0], ...over });
+    cases.push(
+      bad(
+        (d) =>
+          (d.longTermEvents[0].paramsJson =
+            '{"spendingMultiplierBps":7000,"reductions":{"ghost":5000},"start":{"age":60}}'),
+      ),
+      bad((d) => d.longTermEvents.push(ev(d, { id: 'ret2', position: 1 }))),
+      bad((d) => d.longTermEvents.push(ev(d, { enabled: 1, position: 1 }))),
+      bad((d) => (d.longTermEvents[0].enabled = 2)),
+      bad((d) => (d.longTermEvents[0].position = -1)),
+      bad((d) => (d.longTermEvents[0].name = 'Retire\t')),
+      bad((d) => (d.longTermPlans[0].name = 'Keep me ')),
+      bad((d) =>
+        d.longTermAccountAssumptions.push({
+          planId: d.longTermPlans[0].id,
+          accountId: 'cash',
+          included: 3,
+        }),
+      ),
+      bad((d) => {
+        const split = {
+          planId: d.longTermPlans[0].id,
+          position: 0,
+          accountId: 'cash',
+          mode: 'percent',
+          bps: 1,
+        };
+        d.longTermSplits.push(split, { ...split });
+      }),
+      bad((d) => {
+        for (let i = 0; i < 51; i++)
+          d.longTermEvents.push(ev(d, { id: `x${i}`, enabled: 0, position: i + 1 }));
+      }),
+      bad((d) => {
+        for (let i = 0; i < 21; i++)
+          d.longTermPlans.push({ ...d.longTermPlans[0], id: `p${i}`, name: `Plan ${i}` });
+      }),
+    );
     for (const data of cases) expect((await restore(data)).status).toBe(400);
     expect(db.select().from(longTermPlans).all()).toHaveLength(1);
     expect(

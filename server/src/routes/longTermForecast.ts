@@ -114,12 +114,29 @@ longTermRouter.post(
 longTermRouter.get(
   '/plans/:id/result',
   action((req, res) => {
+    const view = z.enum(['full', 'summary']).default('full').parse(req.query.view);
     const saved = getPlan(String(req.params.id));
+    const result = runPlan(saved.plan);
+    const head = { id: saved.id, version: saved.version, name: saved.plan.name };
+    if (view === 'full') return res.json({ ...head, ...result });
+    // A compact series for readers with limited room (the MCP tool): one row per year
+    const { years, ...rest } = result;
     res.json({
-      id: saved.id,
-      version: saved.version,
-      name: saved.plan.name,
-      ...runPlan(saved.plan),
+      ...head,
+      ...rest,
+      years: years.map((y) => ({
+        index: y.index,
+        calendarYear: y.calendarYear,
+        age: y.age,
+        closingNetWorth: y.closingNetWorth,
+        income: y.income.reduce((sum, r) => sum + r.amount, 0) + y.agePension,
+        spending: y.spending,
+        netCashFlow: y.netCashFlow,
+        loanPayments: y.loanPayments,
+        superNet: y.superNet,
+        growthTotal: y.growthTotal,
+        unfundedBalance: y.unfundedBalance,
+      })),
     });
   }),
 );

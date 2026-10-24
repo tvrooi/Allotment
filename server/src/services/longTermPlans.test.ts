@@ -165,7 +165,7 @@ describe('starting point', () => {
   it('starts income from active payday plans and spending from the trailing year', () => {
     const point = startingPoint(TODAY);
     const count = paydays(payday, TODAY, '2027-10-23').length;
-    expect(count).toBeGreaterThan(24);
+    expect(count).toBe(26);
     expect(point.income).toEqual({
       annualTakeHome: 400_000 * count,
       source: 'payday',
@@ -175,6 +175,34 @@ describe('starting point', () => {
     // transfer and the salary are not spending
     expect(point.spending).toMatchObject({ days: 85, from: '2026-08-01' });
     expect(point.spending.annual).toBe(mulDiv(65_000, 365, 85));
+  });
+
+  it('counts exactly 26 paydays a year, whether or not today is a payday', () => {
+    // 2026-10-30 is a payday on this plan (2026-10-02 plus two fortnights); the day after is not
+    for (const today of ['2026-10-30', '2026-10-31', '2026-10-24']) {
+      expect(startingPoint(today).income.annualTakeHome, today).toBe(400_000 * 26);
+    }
+  });
+
+  it('leaves out rows dated after today, as spending does', () => {
+    const before = startingPoint(TODAY).accounts.find((a) => a.id === 'cash')!.balance;
+    db.insert(transactions)
+      .values({
+        id: 'future',
+        accountId: 'cash',
+        date: '2027-03-01',
+        amount: -5_000,
+        categoryId: 'food',
+      })
+      .run();
+    expect(startingPoint(TODAY).accounts.find((a) => a.id === 'cash')!.balance).toBe(before);
+  });
+
+  it('leaves out a payday plan it cannot read, and says so', () => {
+    db.insert(paydayPlans).values({ id: 'broken', configJson: '{"name":"x"}' }).run();
+    const point = startingPoint(TODAY);
+    expect(point.warnings.join(' ')).toMatch(/payday plan could not be read/);
+    expect(point.income.paydayPlans).toBe(1);
   });
 
   it('says so when there is no payday plan or little history', () => {
@@ -323,11 +351,14 @@ describe('saved plans', () => {
     expect(listPlans()).toEqual([]);
     expect(db.select().from(longTermEvents).all()).toEqual([]);
     // Updating something deleted elsewhere is a conflict with nothing to show
+    let gone: unknown;
     try {
       updatePlan(saved.id, plan(), 2);
     } catch (e) {
-      expect((e as PlanConflict).current).toBeNull();
+      gone = e;
     }
+    expect(gone).toBeInstanceOf(PlanConflict);
+    expect((gone as PlanConflict).current).toBeNull();
     expect(listPlans()).toEqual([]);
   });
 
@@ -398,6 +429,72 @@ describe('saved plans', () => {
     expect(db.select().from(longTermSplits).all()).toEqual([]);
     expect(listPlans()).toHaveLength(1);
     expect(getPlan(saved.id).plan.splits).toEqual([]);
+  });
+});
+
+describe('stale references and stored data', () => {
+  beforeEach(seedLedger);
+  const payOff = (enabled: boolean) =>
+    plan({
+      events: [
+        {
+          id: 'po',
+          kind: 'payOff',
+          name: 'Pay off',
+          start: { year: 2030 },
+          loanId: 'mort',
+          amount: null,
+          enabled,
+        },
+      ],
+    });
+
+  it('tells a stale client what changed before checking its references', () => {
+    const saved = createPlan(payOff(true));
+    updatePlan(saved.id, plan({ name: 'Other' }), 1);
+    db.update(accounts).set({ type: 'checking' }).where(eq(accounts.id, 'mort')).run();
+    expect(() => updatePlan(saved.id, payOff(true), 1)).toThrow(PlanConflict);
+  });
+
+  it('lets a plan whose pay-off debt is gone be saved and copied when that event is off', () => {
+    const saved = createPlan(payOff(true));
+    db.update(accounts).set({ type: 'checking' }).where(eq(accounts.id, 'mort')).run();
+    expect(() => updatePlan(saved.id, payOff(true), 1)).toThrow(/debt/);
+    const off = updatePlan(saved.id, payOff(false), 1);
+    expect(off.version).toBe(2);
+    expect(() => duplicatePlan(saved.id, 'Copy')).not.toThrow();
+    // Running skips it without a warning about a disabled event
+    const result = runPlan(getPlan(saved.id).plan, startingPoint(TODAY));
+    expect(result.warnings.filter((w) => /skipped/.test(w))).toEqual([]);
+  });
+
+  it('rejects reserved event ids and ids that match an account', () => {
+    expect(planSchema.safeParse({ ...plan(), events: [{ ...retire, id: 'salary' }] }).success).toBe(
+      false,
+    );
+    expect(
+      planSchema.safeParse({ ...plan(), events: [{ ...retire, id: 'extra-savings' }] }).success,
+    ).toBe(false);
+    expect(() => createPlan(plan({ events: [{ ...retire, id: 'cash', reductions: {} }] }))).toThrow(
+      /event id/,
+    );
+  });
+
+  it('reports a saved plan that no longer parses as needing an update, not as a bad request', () => {
+    const saved = createPlan(plan());
+    db.update(longTermPlans)
+      .set({ settingsJson: '{"birthYear":"x"}' })
+      .where(eq(longTermPlans.id, saved.id))
+      .run();
+    let error: unknown;
+    try {
+      getPlan(saved.id);
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(ForecastError);
+    expect((error as ForecastError).status).toBe(500);
+    expect((error as ForecastError).message).toMatch(/needs updating/);
   });
 });
 

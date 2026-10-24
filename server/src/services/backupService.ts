@@ -68,6 +68,8 @@ import { scenarioSchema } from './forecastConfig.js';
 import {
   accountAssumptionSchema,
   eventSchema,
+  MAX_PLANS,
+  planSchema,
   settingsSchema,
   splitSchema,
 } from './longTermConfig.js';
@@ -493,6 +495,74 @@ export function parseBackup(input: unknown): ParsedBackup {
       }).success
     )
       throw new InvalidBackupError('Invalid long-term split');
+  // Whole-plan checks, so a restored plan is one the API would have saved and can still read
+  const bit = (v: unknown) => v === undefined || v === 0 || v === 1;
+  const plain = (v: unknown, max: number) =>
+    typeof v === 'string' && v === v.trim() && v.length >= 1 && v.length <= max;
+  if (result.longTermPlans.length > MAX_PLANS)
+    throw new InvalidBackupError('Too many long-term plans');
+  for (const p of result.longTermPlans)
+    if (!plain(p.name, 100)) throw new InvalidBackupError('Invalid long-term plan');
+  const eventKeys = new Set<string>();
+  for (const e of result.longTermEvents) {
+    const key = `${e.planId}/${e.id}`;
+    if (
+      eventKeys.has(key) ||
+      !bit(e.enabled) ||
+      !plain(e.name, 100) ||
+      !Number.isInteger(e.position) ||
+      Number(e.position) < 0
+    )
+      throw new InvalidBackupError('Invalid long-term event');
+    eventKeys.add(key);
+  }
+  for (const a of result.longTermAccountAssumptions)
+    if (!bit(a.included)) throw new InvalidBackupError('Invalid long-term account choice');
+  const splitKeys = new Set<string>();
+  for (const sp of result.longTermSplits) {
+    const key = `${sp.planId}/${sp.position}`;
+    if (splitKeys.has(key) || !Number.isInteger(sp.position) || Number(sp.position) < 0)
+      throw new InvalidBackupError('Invalid long-term split');
+    splitKeys.add(key);
+  }
+  for (const p of result.longTermPlans) {
+    try {
+      const own = (r: Row) => r.planId === p.id;
+      planSchema.parse({
+        name: p.name,
+        settings: settingsSchema.parse(JSON.parse(String(p.settingsJson))),
+        accounts: result.longTermAccountAssumptions.filter(own).map((a) => ({
+          accountId: a.accountId,
+          included: Number(a.included ?? 1) === 1,
+          cls: a.cls ?? null,
+          growthBps: a.growthBps ?? null,
+        })),
+        splits: result.longTermSplits
+          .filter(own)
+          .sort((x, y) => Number(x.position) - Number(y.position))
+          .map((sp) => ({
+            accountId: sp.accountId,
+            mode: sp.mode,
+            ...(sp.bps != null ? { bps: sp.bps } : {}),
+            ...(sp.amount != null ? { amount: sp.amount } : {}),
+          })),
+        events: result.longTermEvents
+          .filter(own)
+          .sort((x, y) => Number(x.position) - Number(y.position))
+          .map((e) =>
+            eventSchema.parse({
+              ...JSON.parse(String(e.paramsJson)),
+              id: e.id,
+              kind: e.kind,
+              name: e.name,
+              enabled: Number(e.enabled ?? 1) === 1,
+            }),
+          ),
+      });
+    } catch {
+      throw new InvalidBackupError('Invalid long-term plan');
+    }
+  }
   return result;
 }
 

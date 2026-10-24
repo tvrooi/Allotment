@@ -69,6 +69,15 @@ function superAtAge(facts: PlanFacts, age: number): number | null {
 const lowest = (facts: PlanFacts) =>
   facts.result.years.reduce((min, y) => Math.min(min, y.closingNetWorth), Infinity);
 
+/** The difference as basis points of the reference; null if it is too large to state */
+function percentBps(difference: number, reference: number): number | null {
+  try {
+    return mulDiv(difference, 10_000, reference);
+  } catch {
+    return null;
+  }
+}
+
 function figure(
   key: Figure['key'],
   label: string,
@@ -86,14 +95,18 @@ function figure(
     difference,
     percentBps:
       unit === 'money' && difference !== null && reference !== null && reference > 0
-        ? mulDiv(difference, 10_000, reference)
+        ? percentBps(difference, reference)
         : null,
   };
 }
 
 export function compareResults(active: PlanFacts, reference: PlanFacts): Comparison {
+  // Retirement takes effect in the plan year after this closing balance, so a retirement at or
+  // past the end age never happens and has no figure
   const retirement = (f: PlanFacts) =>
-    f.retirementAge === null ? null : netWorthAtAge(f, f.retirementAge);
+    f.retirementAge === null || f.retirementAge - f.startAge >= f.result.years.length - 1
+      ? null
+      : netWorthAtAge(f, f.retirementAge);
   const unfunded = (f: PlanFacts) => f.result.firstUnfunded?.calendarYear ?? null;
   const points = Math.min(active.result.years.length, reference.result.years.length);
   const series: SeriesPoint[] = [];

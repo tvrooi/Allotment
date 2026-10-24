@@ -457,3 +457,21 @@ Built as designed in §14, with these details.
   single `GET`.
 - **Not yet:** the today's-dollars transform and Monte Carlo (steps 4 and 5). Results are in future
   dollars.
+- **Decisions from review:**
+  - Income counts exactly 26 paydays a year (a 364-day window), never 27 on a payday.
+  - With no payday plan, income starts at 0 with a warning. The scheduled-income fallback in §4 is not built; type your
+    take-home pay instead.
+  - Balances count rows dated today or earlier, as the spending average does, so a future bill is
+    not counted twice. (The account list still shows every row.)
+  - Uncategorised credits are not netted against uncategorised debits in the spending average.
+  - Event ids may not be `salary`, `extra-savings` or an account's id.
+  - A saved plan that no longer parses is reported as needing an update (500), not as a bad request.
+  - A stale save is told what changed (409) before its references are checked. A disabled pay-off may name a
+    debt that has since gone.
+  - Restore applies the same whole-plan checks as a save: at most 20 plans and 50 events a plan, one
+    retirement, known income sources, unique ids and positions, names with no stray whitespace.
+  - `GET …/result` takes `?view=summary` (one compact row per year; the MCP tool's default) or
+    `full` (the default, with every balance and breakdown row). A percent too large to state is null.
+  - A series point's age is the age at the **start** of its plan year, so net worth "at retirement" (the
+    closing balance of the year before retirement takes effect) sits on the point labelled one year younger.
+    A retirement at or past the end age gives no figure.
