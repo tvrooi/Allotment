@@ -83,3 +83,15 @@ it('validates months and category identities', async () => {
   );
   expect((await put(`/${month}/missing`, { budgeted: 1 })).status).toBe(404);
 });
+it('sets, validates and clears the budget start', async () => {
+  const start = async () => (await (await fetch(`${base}/start`)).json()).month;
+  expect(await start()).toBeNull();
+  for (const bad of ['2026-13', '26-01', 202601, addMonthsTo(month, 1)])
+    expect((await put('/start', { month: bad })).status).toBe(400);
+  expect((await put('/start', { month })).status).toBe(200);
+  expect(await start()).toBe(month);
+  const summary = await (await fetch(`${base}/${month}/summary`)).json();
+  expect(summary.budgetStartMonth).toBe(month);
+  expect((await put('/start', { month: null })).status).toBe(200);
+  expect(await start()).toBeNull();
+});

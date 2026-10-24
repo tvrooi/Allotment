@@ -758,6 +758,11 @@ export const budgetSettings = sqliteTable('budget_settings', {
   ratesUrl: text('rates_url'),
   ratesLastFetchedAt: text('rates_last_fetched_at'),
   ratesLastError: text('rates_last_error'),
+  /**
+   * First month the envelope budget counts (YYYY-MM); null = all history. Earlier activity and
+   * assignments stay in the register and reports but don't carry into envelopes.
+   */
+  budgetStartMonth: text('budget_start_month'),
   updatedAt: text('updated_at')
     .notNull()
     .default(sql`(datetime('now'))`),

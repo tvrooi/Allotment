@@ -12,7 +12,12 @@ import {
   categories,
   categoryGroups,
 } from '../db/schema.js';
-import { LIQUID_ACCOUNT_TYPES, fundingState, receivedActivity } from './budgetService.js';
+import {
+  LIQUID_ACCOUNT_TYPES,
+  fundingState,
+  receivedActivity,
+  receivedSpending,
+} from './budgetService.js';
 import { budgetActivity, mainAmount, personalBudgetAccount } from './balances.js';
 import { budgetWithTargets, pausedStatus, targetStatus } from './targetService.js';
 import { inactiveGoalCategories } from './goalLifecycle.js';
@@ -290,7 +295,8 @@ export function measureSpending(
       source: transactions.mainAmountSource,
     })
     .from(transactions)
-    .where(and(receivedActivity, lte(transactions.date, to)))
+    // Spending history, not envelopes: the budget start doesn't shorten it
+    .where(and(receivedSpending, lte(transactions.date, to)))
     .all();
   const inWindow = rows.filter((r) => r.date >= from);
   const window = inWindow.filter(counts);

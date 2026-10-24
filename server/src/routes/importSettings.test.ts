@@ -62,12 +62,15 @@ describe('account import settings', () => {
     });
   });
 
-  it('gives back whatever was saved', async () => {
-    const id = await newAccount();
+  it('gives back whatever was saved last', async () => {
+    // Each run has its own account, so a failure reports its own input and never what an
+    // earlier run (or an earlier shrinking step) left behind
     await fc.assert(
-      fc.asyncProperty(settings, async (s) => {
-        expect((await send('PUT', `/accounts/${id}/import-settings`, s)).status).toBe(200);
-        expect((await send('GET', `/accounts/${id}/import-settings`)).body.settings).toEqual(s);
+      fc.asyncProperty(settings, settings, async (first, last) => {
+        const id = await newAccount();
+        for (const s of [first, last])
+          expect((await send('PUT', `/accounts/${id}/import-settings`, s)).status).toBe(200);
+        expect((await send('GET', `/accounts/${id}/import-settings`)).body.settings).toEqual(last);
       }),
       { numRuns: 30 },
     );

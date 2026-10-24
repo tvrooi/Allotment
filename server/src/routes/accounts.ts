@@ -68,9 +68,24 @@ function shown(
     const booked = bookedValue(account, ctx);
     currencyDifference = booked === null ? null : value.mainBalance - booked;
   }
+  // A household pool sits outside the personal budget even though it isn't off budget
+  const householdPool =
+    db
+      .select({ name: householdGroups.name })
+      .from(householdGroups)
+      .where(eq(householdGroups.accountId, account.id))
+      .get()?.name ?? null;
   // Bank import settings (an IBAN, for one) have their own route: GET /:id/import-settings
   const { importSettings: _importSettings, ...rest } = account;
-  return { ...rest, currency, balance, hasTransactions, ...value, currencyDifference };
+  return {
+    ...rest,
+    currency,
+    balance,
+    hasTransactions,
+    householdPool,
+    ...value,
+    currencyDifference,
+  };
 }
 
 function withBalance(account: typeof accounts.$inferSelect) {

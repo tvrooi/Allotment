@@ -179,3 +179,11 @@ export interface AnnualOverview {
 }
 
 export const getAnnualOverview = (year: number) => apiFetch<AnnualOverview>(`/budget/year/${year}`);
+
+/** First month the envelopes count (YYYY-MM); null = all history (Settings → Budget) */
+export const getBudgetStart = () => apiFetch<{ month: string | null }>('/budget/start');
+export const setBudgetStart = (month: string | null) =>
+  apiFetch<{ month: string | null }>('/budget/start', {
+    method: 'PUT',
+    body: JSON.stringify({ month }),
+  });

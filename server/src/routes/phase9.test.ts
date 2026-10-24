@@ -442,7 +442,7 @@ describe('backups', () => {
     await send('POST', '/saved-views', { name: 'Reno', query: `range=all&tag_ids=${tag.id}` });
 
     const backup = (await send('GET', '/export/backup')).body;
-    expect(backup.version).toBe(14);
+    expect(backup.version).toBe(15);
     expect(backup.tags).toHaveLength(1);
     expect(backup.transactionTags).toEqual([{ transactionId: 'laptop', tagId: tag.id }]);
     expect(backup.savedViews).toHaveLength(1);

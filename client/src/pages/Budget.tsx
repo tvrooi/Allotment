@@ -584,6 +584,15 @@ export default function BudgetPage() {
         </p>
       )}
       <MissingRatesBanner className="mx-6 mt-3 shrink-0" />
+      {summary?.budgetStartMonth && selectedMonth < summary.budgetStartMonth && (
+        <p role="status" className="mx-6 mt-3 shrink-0 text-sm text-text-secondary">
+          This month is before your budget start, so its envelopes are empty. Its transactions are
+          still in your accounts and reports.{' '}
+          <Link to="/settings?tab=budget" className="text-brand-700 underline">
+            Budget start
+          </Link>
+        </p>
+      )}
 
       {/* Phones: the summary (with To Be Budgeted) goes above the table instead of beside it */}
       {/* While the next month loads, the previous one stays (faded) so nothing jumps */}

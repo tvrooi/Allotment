@@ -72,7 +72,7 @@ import { isCurrencyCode } from '../utils/currencies.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 14;
+export const BACKUP_VERSION = 15;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -194,6 +194,16 @@ export function parseBackup(input: unknown): ParsedBackup {
             : typeof value === 'string' && value.length <= 1_000_000;
         if (!ok) throw new InvalidBackupError(`Row ${i + 1} of "${name}" has an invalid "${key}"`);
         row[key] = value;
+      }
+      // Budget start (format 15). Older backups have none: every month counts.
+      if (
+        name === 'budgetSettings' &&
+        row.budgetStartMonth != null &&
+        !/^\d{4}-(0[1-9]|1[0-2])$/.test(String(row.budgetStartMonth))
+      ) {
+        throw new InvalidBackupError(
+          `Row ${i + 1} of "budgetSettings" has an invalid budget start`,
+        );
       }
       if (name === 'cardFunding') {
         try {
