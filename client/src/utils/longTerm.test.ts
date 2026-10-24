@@ -103,6 +103,10 @@ describe('bridge', () => {
     expect(b.closing).toBe(mulDiv(y.closingNetWorth, PPB, y.inflationIndexPpb));
     const inflation = b.rows.find((r) => r.key === 'inflation')!;
     expect(inflation.amount).toBeLessThan(0);
+    // It is what the year's price rise did to the opening balance: O × (1/I_k − 1/I_k−1),
+    // give or take the cents the other rows were apportioned
+    const expected = (y.openingNetWorth * PPB) / y.inflationIndexPpb - b.opening;
+    expect(Math.abs(inflation.amount - expected)).toBeLessThan(10);
     // The other rows are the year's flows at this year's prices
     const flows = b.rows.filter((r) => r.key !== 'inflation').reduce((s, r) => s + r.amount, 0);
     expect(flows).toBe(mulDiv(y.closingNetWorth - y.openingNetWorth, PPB, y.inflationIndexPpb));
@@ -126,6 +130,12 @@ describe('bridge', () => {
       });
       expect(bridge(y, index - 7_919_113, 'today').difference, `year ${k}`).toBe(0);
     }
+  });
+
+  it("fails when the engine's own parts do not add up, even in today's dollars", () => {
+    const broken = year({ closingNetWorth: year().closingNetWorth + 1 });
+    expect(bridge(broken, 1_030_000_000, 'future').difference).toBe(-1);
+    expect(bridge(broken, 1_030_000_000, 'today').difference).not.toBe(0);
   });
 
   it('treats today and future as the same at zero inflation', () => {
@@ -214,5 +224,9 @@ describe('rates as typed', () => {
     expect(inputToBps('2.75')).toBe(275);
     expect(inputToBps('')).toBeNull();
     expect(inputToBps('abc')).toBeNull();
+    expect(inputToBps('3x')).toBeNull();
+    expect(inputToBps('0x10')).toBeNull();
+    expect(inputToBps('1e3')).toBeNull();
+    expect(inputToBps('-1.5')).toBe(-150);
   });
 });

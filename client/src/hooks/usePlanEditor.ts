@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import * as api from '../api/longTerm';
 import { ApiError } from '../api/client';
@@ -28,6 +28,12 @@ export function usePlanEditor(initial: api.SavedPlan) {
   /** Another device's copy after a refused save: null when it was deleted there */
   const [theirs, setTheirs] = useState<api.SavedPlan | null | undefined>(undefined);
   const dirty = !samePlan(working, saved.plan);
+  /** The latest refusal's message, readable straight after an await (state would be stale) */
+  const lastError = useRef<string | null>(null);
+  const fail = (message: string | null) => {
+    lastError.current = message;
+    setError(message);
+  };
 
   const refresh = (plan: api.SavedPlan) => {
     qc.setQueryData(['lt-plan', plan.id], plan);
@@ -39,7 +45,7 @@ export function usePlanEditor(initial: api.SavedPlan) {
   /** Save `next` on top of `base`. Returns the saved plan, or null if it was refused. */
   async function persist(next: api.Plan, base: api.SavedPlan = saved) {
     setBusy(true);
-    setError(null);
+    fail(null);
     try {
       const result = await api.updatePlan(base.id, next, base.version);
       setSaved(result);
@@ -55,14 +61,15 @@ export function usePlanEditor(initial: api.SavedPlan) {
             queryFn: () => api.getPlan(base.id),
             staleTime: 0,
           });
-          setTheirs(current);
+          // The same version: nothing changed elsewhere, so this refusal is about the plan's
+          // own content (a name already taken), not a conflict
+          if (current.version === base.version) fail(e.message);
+          else setTheirs(current);
         } catch (gone) {
           if (gone instanceof ApiError && gone.status === 404) setTheirs(null);
-          else setError((gone as Error).message);
+          else fail((gone as Error).message);
         }
-        if (!/changed on another device|deleted on another device/.test(e.message))
-          setError(e.message);
-      } else setError((e as Error).message);
+      } else fail((e as Error).message);
       return null;
     } finally {
       setBusy(false);
@@ -76,7 +83,9 @@ export function usePlanEditor(initial: api.SavedPlan) {
     dirty,
     busy,
     error,
-    setError,
+    setError: fail,
+    /** The latest refusal's message, or null */
+    lastError: () => lastError.current,
     theirs,
     /** Save the working copy */
     async save() {
@@ -87,8 +96,19 @@ export function usePlanEditor(initial: api.SavedPlan) {
     revert: () => setWorking(saved.plan),
     /** Save one change (an event added, edited, switched or deleted) without the other edits */
     async commit(change: (plan: api.Plan) => api.Plan) {
-      const result = await persist(change(saved.plan));
-      if (result) setWorking((w) => change(w));
+      const next = change(saved.plan);
+      const result = await persist(next);
+      // Events (and a new name) are taken as the server stored them, so a trimmed name does not
+      // leave the page claiming there are unsaved changes
+      if (result)
+        setWorking((w) => {
+          const mine = change(w);
+          return {
+            ...mine,
+            events: result.plan.events,
+            name: next.name !== saved.plan.name ? result.plan.name : mine.name,
+          };
+        });
       return result;
     },
     /** Take the other device's copy and drop my unsaved changes */
@@ -115,7 +135,7 @@ export function usePlanEditor(initial: api.SavedPlan) {
         refresh(copy);
         return copy;
       } catch (e) {
-        setError((e as Error).message);
+        fail((e as Error).message);
         return null;
       } finally {
         setBusy(false);

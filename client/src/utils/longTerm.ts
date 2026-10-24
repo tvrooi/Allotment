@@ -132,13 +132,15 @@ export function nominalRows(y: YearResult): BridgeRow[] {
  */
 export function bridge(y: YearResult, previousIndexPpb: number, mode: Dollars): Bridge {
   const rows = nominalRows(y);
+  const nominalSum = rows.reduce((s, r) => s + r.amount, 0);
+  // The engine's own parts must add up in future dollars before any conversion
+  const nominalDifference = y.openingNetWorth + nominalSum - y.closingNetWorth;
   if (mode === 'future') {
-    const sum = rows.reduce((s, r) => s + r.amount, 0);
     return {
       opening: y.openingNetWorth,
       rows,
       closing: y.closingNetWorth,
-      difference: y.openingNetWorth + sum - y.closingNetWorth,
+      difference: nominalDifference,
     };
   }
   const real = apportion(
@@ -157,7 +159,12 @@ export function bridge(y: YearResult, previousIndexPpb: number, mode: Dollars): 
     group: 'inflation',
   });
   const sum = scaled.reduce((s, r) => s + r.amount, 0);
-  return { opening, rows: scaled, closing, difference: opening + sum - closing };
+  return {
+    opening,
+    rows: scaled,
+    closing,
+    difference: opening + sum - closing + nominalDifference,
+  };
 }
 
 // ─── Savings splits ──────────────────────────────────────────────────────────
@@ -371,7 +378,8 @@ export const CLASS_LABEL: Record<AccountClass, string> = {
 /** 650 → "6.5" for an input; "6.5" → 650. NaN-safe: returns null for text that isn't a rate. */
 export const bpsToInput = (bps: number) => String(Math.round(bps) / 100);
 export function inputToBps(text: string): number | null {
-  const n = Number(text.trim());
-  return text.trim() !== '' && Number.isFinite(n) ? Math.round(n * 100) : null;
+  const t = text.trim();
+  // Plain decimal numbers only: "3x", "0x10" and "1e3" are not rates
+  return /^-?\d+(\.\d+)?$/.test(t) ? Math.round(Number(t) * 100) : null;
 }
 export const percentLabel = (bps: number) => `${Math.round(bps) / 100}%`;

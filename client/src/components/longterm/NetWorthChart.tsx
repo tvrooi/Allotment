@@ -16,9 +16,8 @@ import { chartColors } from '../../utils/chartColors';
 import { formatCentsAxis, formatCurrency } from '../../utils/currency';
 import { eventYear, inDollars, kindLabel, type Dollars } from '../../utils/longTerm';
 
-/** Where a plan year's closing balance sits on the x axis: today is the year before the first */
-export const pointYear = (y: YearResult, startYear: number) =>
-  y.index === 0 ? startYear - 1 : y.calendarYear;
+/** Where a plan year's closing balance sits on the x axis: today, then one year further on each */
+export const pointYear = (y: YearResult, startYear: number) => startYear + y.index;
 
 interface Row {
   year: number;
@@ -76,9 +75,13 @@ export function NetWorthChart({
           year: pointYear(y, startYear),
           age: y.age + (y.index === 0 ? 0 : 1),
           index: y.index,
-          label: y.index === 0 ? 'Today' : `End of ${y.calendarYear}`,
+          label:
+            y.index === 0
+              ? 'Today'
+              : `In ${y.index} year${y.index === 1 ? '' : 's'} (${startYear + y.index})`,
           active: inDollars(y.closingNetWorth, y.inflationIndexPpb, mode),
-          reference: ref ? inDollars(ref.reference, y.inflationIndexPpb, mode) : undefined,
+          // Already in the chosen dollars: the server deflated each plan at its own inflation
+          reference: ref?.reference,
         };
       }),
     [years, startYear, mode, comparison],

@@ -222,7 +222,7 @@ export function SavingsPanel({
               <td className="text-right tabular-nums">{formatCurrency(example)}</td>
             </tr>
             {steps.map((s) => (
-              <tr key={s.name} className="border-t border-border-light">
+              <tr key={`${s.name}:${steps.indexOf(s)}`} className="border-t border-border-light">
                 <td className="py-1">{s.name}</td>
                 <td className="text-text-secondary">{s.rule}</td>
                 <td className="text-right tabular-nums">{formatCurrency(s.amount)}</td>

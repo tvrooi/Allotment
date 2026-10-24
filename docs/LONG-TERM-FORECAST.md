@@ -501,3 +501,13 @@ Built as designed in §14, with these details.
   by its own inflation before the figures, differences and percentages are worked out.
 - **Phone:** one column; tables scroll inside their own box; the page never scrolls sideways (a browser test
   checks every section and an event editor at 390 px).
+- **Chart labels:** a point is your net worth that many years from today (today, then one year further on
+  each), on a calendar axis that starts at this year. A "year" is the 12 months from today's date and is
+  named in lists after the calendar year it starts in, with the ages at its start and end.
+- **Typing:** whole-number and percentage fields keep what is typed (a year can be typed key by key),
+  mark text that is not valid, and keep Create and Save changes disabled until it is fixed. An amount is
+  handed over when its field is left, so Enter and the first click on Create or Save use what is on
+  screen.
+- **Leaving with edits waiting:** choosing another plan, New, Duplicate or Delete asks first, and closing
+  the tab warns. Duplicate copies the saved plan. A name another plan already has is reported as that,
+  not as a conflict, and a real conflict shows inside the dialog you are in.

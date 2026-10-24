@@ -2,6 +2,7 @@ import { useId, useState, type ReactNode } from 'react';
 import { CurrencyInput } from '../ui/CurrencyInput';
 import { Input, Select } from '../ui/Input';
 import { bpsToInput, inputToBps } from '../../utils/longTerm';
+import { useReportAmountValidity } from '../ui/amountValidity';
 import type { Escalation, When } from '../../api/longTerm';
 
 /** A labelled input, with an optional hint (for an assumption: the default beside it) */
@@ -83,6 +84,7 @@ export function RateField({
   }
   const parsed = inputToBps(text);
   const invalid = parsed === null || parsed < min * 100 || parsed > max * 100;
+  useReportAmountValidity(!invalid);
   const id = useId();
   return (
     <Field
@@ -161,20 +163,46 @@ export function WholeNumberField({
   hint?: ReactNode;
   className?: string;
 }) {
+  // What is typed stays as typed; only a whole number in range reaches the plan, and while the
+  // text is anything else the dialog or panel around it cannot be saved
+  const [text, setText] = useState(String(value));
+  const [last, setLast] = useState(value);
+  if (value !== last) {
+    setLast(value);
+    if (Number(text) !== value) setText(String(value));
+  }
+  const n = text.trim() === '' ? NaN : Number(text);
+  const valid = Number.isInteger(n) && n >= min && n <= max;
+  useReportAmountValidity(valid);
+  const id = useId();
   return (
-    <Field label={label} hint={hint} className={className}>
+    <Field
+      label={label}
+      className={className}
+      hint={
+        <>
+          {!valid && (
+            <span id={id} role="alert" className="text-negative">
+              Enter a whole number from {min} to {max}.{' '}
+            </span>
+          )}
+          {hint}
+        </>
+      }
+    >
       <Input
         aria-label={label}
-        type="number"
+        aria-invalid={!valid}
+        aria-describedby={valid ? undefined : id}
         inputMode="numeric"
-        min={min}
-        max={max}
-        step={1}
-        value={Number.isFinite(value) ? value : ''}
+        value={text}
         onChange={(e) => {
-          const n = Math.trunc(Number(e.target.value));
-          if (e.target.value !== '' && Number.isFinite(n))
-            onChange(Math.min(max, Math.max(min, n)));
+          setText(e.target.value);
+          const next = e.target.value.trim() === '' ? NaN : Number(e.target.value);
+          if (Number.isInteger(next) && next >= min && next <= max) {
+            setLast(next);
+            onChange(next);
+          }
         }}
       />
     </Field>
@@ -263,6 +291,7 @@ export function EscalationField({
           bps={value.rateBps}
           min={-50}
           max={15}
+          defaultBps={200}
           onChange={(rateBps) => onChange({ mode: 'rate', rateBps })}
         />
       )}

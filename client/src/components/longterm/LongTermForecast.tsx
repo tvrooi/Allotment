@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Copy, Pencil, Plus, Trash2 } from 'lucide-react';
 import * as api from '../../api/longTerm';
 import { usePlanEditor } from '../../hooks/usePlanEditor';
 import { Button } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 import { Input, Select } from '../ui/Input';
 import { Modal } from '../ui/Modal';
 import { StatCardRow } from '../reports/ChartHelpers';
@@ -53,6 +54,7 @@ function NewPlanForm({
   const [birthYear, setBirthYear] = useState(new Date().getFullYear() - 40);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const { allValid, report } = useAmountValidity();
   async function create() {
     setBusy(true);
     setError(null);
@@ -78,7 +80,7 @@ function NewPlanForm({
       className="space-y-4 max-w-md"
       onSubmit={(e) => {
         e.preventDefault();
-        if (name.trim() && !busy) void create();
+        if (name.trim() && !busy && allValid) void create();
       }}
     >
       {first && (
@@ -96,13 +98,15 @@ function NewPlanForm({
           onChange={(e) => setName(e.target.value)}
         />
       </Field>
-      <WholeNumberField
-        label="Birth year"
-        value={birthYear}
-        min={1900}
-        max={2100}
-        onChange={setBirthYear}
-      />
+      <AmountFields report={report}>
+        <WholeNumberField
+          label="Birth year"
+          value={birthYear}
+          min={1900}
+          max={2100}
+          onChange={setBirthYear}
+        />
+      </AmountFields>
       {error && (
         <p role="alert" className="text-sm text-negative">
           {error}
@@ -114,7 +118,7 @@ function NewPlanForm({
             Cancel
           </Button>
         )}
-        <Button type="submit" disabled={!name.trim() || busy}>
+        <Button type="submit" disabled={!name.trim() || busy || !allValid}>
           Create plan
         </Button>
       </div>
@@ -197,6 +201,19 @@ function Editor({
   const [modal, setModal] = useState<'new' | 'rename' | 'duplicate' | 'delete' | null>(null);
   const [text, setText] = useState('');
   const [planError, setPlanError] = useState<string | null>(null);
+  const { allValid, report } = useAmountValidity();
+  /** Something to do once the owner agrees to leave unsaved changes behind */
+  const [pending, setPending] = useState<(() => void) | null>(null);
+  const edRef = useRef(ed);
+  edRef.current = ed;
+  const guard = (go: () => void) => (ed.dirty ? setPending(() => go) : go());
+  // Closing the tab or reloading with edits waiting
+  useEffect(() => {
+    if (!ed.dirty) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [ed.dirty]);
 
   const point = useQuery({ queryKey: ['lt-start'], queryFn: api.getStartingPoint });
   const defaults = useQuery({
@@ -210,14 +227,17 @@ function Editor({
   });
   const others = plans.filter((p) => p.id !== saved.id);
   const refSummary = others.find((p) => p.id === reference);
+  // A reference that has since been deleted is no reference
   const comparison = useQuery({
     queryKey: ['lt-compare', saved.id, saved.version, reference, refSummary?.version, mode],
-    queryFn: () => api.getComparison(saved.id, reference, mode),
+    queryFn: () => api.getComparison(saved.id, refSummary!.id, mode),
     enabled: !!refSummary,
   });
   const r = result.data;
   const years = r?.years ?? [];
-  const selectedYear = year !== null ? years[year] : undefined;
+  // A year chosen before the plan got shorter no longer exists
+  const yearIndex = year !== null && year >= 1 && year < years.length ? year : null;
+  const selectedYear = yearIndex !== null ? years[yearIndex] : undefined;
 
   function chooseMode(m: Dollars) {
     setMode(m);
@@ -249,7 +269,8 @@ function Editor({
       {
         label: 'Lowest net worth',
         value: show(lowest.closingNetWorth, lowest.index),
-        sub: lowest.index === 0 ? 'Today' : `End of ${lowest.calendarYear}`,
+        sub:
+          lowest.index === 0 ? 'Today' : `In ${lowest.index} year${lowest.index === 1 ? '' : 's'}`,
         tone: lowest.closingNetWorth < 0 ? ('negative' as const) : undefined,
       },
       {
@@ -268,10 +289,10 @@ function Editor({
     setPlanError(null);
     try {
       await api.deletePlan(saved.id, saved.version);
-      qc.removeQueries({ queryKey: ['lt-plan', saved.id] });
       await qc.invalidateQueries({ queryKey: ['lt-plans'] });
       const next = plans.find((p) => p.id !== saved.id);
       if (next) onSelect(next.id);
+      qc.removeQueries({ queryKey: ['lt-plan', saved.id] });
     } catch (e) {
       setPlanError((e as Error).message);
     }
@@ -283,7 +304,7 @@ function Editor({
     if (modal === 'rename') {
       const ok = await ed.commit((p) => ({ ...p, name }));
       if (ok) setModal(null);
-      else setPlanError(ed.error ?? 'Could not rename');
+      else setPlanError(ed.lastError());
     } else if (modal === 'duplicate') {
       try {
         const copy = await api.duplicatePlan(saved.id, name);
@@ -295,6 +316,36 @@ function Editor({
       }
     }
   }
+
+  const conflictBox = ed.theirs !== undefined && (
+    <div
+      role="alert"
+      className="rounded-md border border-caution p-3 text-sm text-caution space-y-2"
+    >
+      <p>
+        {ed.theirs
+          ? `"${ed.theirs.plan.name}" was changed on another device since you opened it.`
+          : 'This plan was deleted on another device.'}
+      </p>
+      <div className="flex gap-2">
+        {ed.theirs && (
+          <Button size="sm" variant="secondary" onClick={ed.useTheirs}>
+            Use theirs
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={async () => {
+            const copy = await ed.keepMine();
+            if (copy && copy.id !== saved.id) onSelect(copy.id);
+          }}
+        >
+          {ed.theirs ? 'Keep mine' : 'Save as new'}
+        </Button>
+      </div>
+    </div>
+  );
 
   const startYear = r?.startYear ?? new Date().getFullYear();
   const prevIndex = selectedYear ? (years[selectedYear.index - 1]?.inflationIndexPpb ?? PPB) : PPB;
@@ -308,7 +359,14 @@ function Editor({
     <div className="space-y-5">
       <div className="flex flex-wrap items-end gap-3">
         <Field label="Plan" className="min-w-48">
-          <Select aria-label="Plan" value={saved.id} onChange={(e) => onSelect(e.target.value)}>
+          <Select
+            aria-label="Plan"
+            value={saved.id}
+            onChange={(e) => {
+              const id = e.target.value;
+              guard(() => onSelect(id));
+            }}
+          >
             {plans.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.id === saved.id ? working.name : p.name}
@@ -319,22 +377,26 @@ function Editor({
         <Button
           size="sm"
           variant="secondary"
-          onClick={() => {
-            setText('');
-            setPlanError(null);
-            setModal('new');
-          }}
+          onClick={() =>
+            guard(() => {
+              setText('');
+              setPlanError(null);
+              setModal('new');
+            })
+          }
         >
           <Plus size={14} /> New plan
         </Button>
         <Button
           size="sm"
           variant="secondary"
-          onClick={() => {
-            setText(`${saved.plan.name} copy`);
-            setPlanError(null);
-            setModal('duplicate');
-          }}
+          onClick={() =>
+            guard(() => {
+              setText(`${saved.plan.name} copy`);
+              setPlanError(null);
+              setModal('duplicate');
+            })
+          }
         >
           <Copy size={14} /> Duplicate
         </Button>
@@ -349,7 +411,7 @@ function Editor({
         >
           <Pencil size={14} /> Rename
         </Button>
-        <Button size="sm" variant="secondary" onClick={() => setModal('delete')}>
+        <Button size="sm" variant="secondary" onClick={() => guard(() => setModal('delete'))}>
           <Trash2 size={14} /> Delete
         </Button>
         <div className="flex gap-1 ml-auto" role="group" aria-label="Dollars">
@@ -374,28 +436,7 @@ function Editor({
         Nothing here changes your budget.
       </p>
 
-      {ed.theirs !== undefined && (
-        <div
-          role="alert"
-          className="rounded-md border border-caution p-3 text-sm text-caution space-y-2"
-        >
-          <p>
-            {ed.theirs
-              ? `"${ed.theirs.plan.name}" was changed on another device since you opened it.`
-              : 'This plan was deleted on another device.'}
-          </p>
-          <div className="flex gap-2">
-            {ed.theirs && (
-              <Button size="sm" variant="secondary" onClick={ed.useTheirs}>
-                Use theirs
-              </Button>
-            )}
-            <Button size="sm" variant="secondary" onClick={() => void ed.keepMine()}>
-              {ed.theirs ? 'Keep mine' : 'Save as new'}
-            </Button>
-          </div>
-        </div>
-      )}
+      {!editing && modal === null && conflictBox}
       {r?.warnings.length ? (
         <ul className="text-sm text-caution list-disc pl-5" aria-label="Forecast warnings">
           {r.warnings.map((w) => (
@@ -428,26 +469,27 @@ function Editor({
             comparison={comparison.data}
             activeName={saved.plan.name}
             referenceName={comparison.data?.reference.name}
-            selected={year}
+            selected={yearIndex}
             onSelect={setYear}
           />
           <div className="flex flex-wrap items-end gap-3">
             <Field label="See what made up a year">
               <Select
                 aria-label="Year"
-                value={year ?? ''}
+                value={yearIndex ?? ''}
                 onChange={(e) => setYear(e.target.value === '' ? null : Number(e.target.value))}
               >
                 <option value="">Choose a year</option>
                 {years.slice(1).map((y) => (
                   <option key={y.index} value={y.index}>
-                    {y.calendarYear} (age {y.age})
+                    {y.calendarYear} (age {y.age} to {y.age + 1})
                   </option>
                 ))}
               </Select>
             </Field>
             <p className="text-xs text-text-tertiary pb-3">
-              Each point is net worth at the end of that year. The first year starts today.
+              Each point is your net worth that many years from today. A year here is the 12 months
+              from today's date, named after the calendar year it starts in.
             </p>
           </div>
           {selectedYear && (
@@ -478,7 +520,17 @@ function Editor({
 
         {panel !== 'events' && panel !== 'compare' && (
           <div className="flex flex-wrap items-center gap-3">
-            <Button size="sm" onClick={() => void ed.save()} disabled={!ed.dirty || ed.busy}>
+            <Button
+              size="sm"
+              disabled={ed.busy || !allValid}
+              onClick={() => {
+                // An amount being typed is handed over when its field is left
+                (document.activeElement as HTMLElement | null)?.blur();
+                setTimeout(() => {
+                  if (edRef.current.dirty) void edRef.current.save();
+                }, 0);
+              }}
+            >
               Save changes
             </Button>
             <Button size="sm" variant="secondary" onClick={ed.revert} disabled={!ed.dirty}>
@@ -518,20 +570,22 @@ function Editor({
             }
           />
         )}
-        {panel === 'assumptions' && (
-          <AssumptionsPanel
-            plan={working}
-            setPlan={ed.setWorking}
-            point={point.data}
-            defaults={defaults.data}
-          />
-        )}
-        {panel === 'accounts' && (
-          <AccountsPanel plan={working} setPlan={ed.setWorking} point={point.data} />
-        )}
-        {panel === 'savings' && (
-          <SavingsPanel plan={working} setPlan={ed.setWorking} point={point.data} result={r} />
-        )}
+        <AmountFields report={report}>
+          {panel === 'assumptions' && (
+            <AssumptionsPanel
+              plan={working}
+              setPlan={ed.setWorking}
+              point={point.data}
+              defaults={defaults.data}
+            />
+          )}
+          {panel === 'accounts' && (
+            <AccountsPanel plan={working} setPlan={ed.setWorking} point={point.data} />
+          )}
+          {panel === 'savings' && (
+            <SavingsPanel plan={working} setPlan={ed.setWorking} point={point.data} result={r} />
+          )}
+        </AmountFields>
         {panel === 'compare' && (
           <div className="space-y-4">
             {others.length === 0 ? (
@@ -543,7 +597,7 @@ function Editor({
                 <Field label="Compare with" className="max-w-xs">
                   <Select
                     aria-label="Compare with"
-                    value={reference}
+                    value={refSummary ? reference : ''}
                     onChange={(e) => setReference(e.target.value)}
                   >
                     <option value="">No comparison</option>
@@ -575,6 +629,7 @@ function Editor({
           point={point.data}
           busy={ed.busy}
           error={ed.error}
+          banner={conflictBox}
           onClose={() => setEditing(null)}
           onSave={async (event) => {
             const done = await ed.commit((p) => ({
@@ -609,6 +664,7 @@ function Editor({
               onChange={(e) => setText(e.target.value)}
             />
           </Field>
+          {modal === 'rename' && conflictBox}
           {planError && (
             <p role="alert" className="text-sm text-negative">
               {planError}
@@ -618,7 +674,7 @@ function Editor({
             <Button variant="secondary" onClick={() => setModal(null)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!text.trim()}>
+            <Button type="submit" disabled={!text.trim() || ed.busy}>
               {modal === 'rename' ? 'Rename' : 'Duplicate'}
             </Button>
           </div>
@@ -634,6 +690,15 @@ function Editor({
           }}
         />
       </Modal>
+      <ConfirmModal
+        isOpen={pending !== null}
+        onClose={() => setPending(null)}
+        onConfirm={() => pending?.()}
+        title="Leave without saving?"
+        message="You have unsaved changes to this plan. They are lost if you go on."
+        confirmLabel="Discard changes"
+        danger
+      />
       <ConfirmModal
         isOpen={modal === 'delete'}
         onClose={() => setModal(null)}

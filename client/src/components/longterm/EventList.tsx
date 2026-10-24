@@ -85,7 +85,7 @@ export function EventList({
                     {e.enabled ? '' : ' · left out'}
                   </p>
                 </div>
-                <label className="relative flex items-center gap-1 text-xs text-text-secondary">
+                <label className="relative flex items-center gap-1 text-xs text-text-secondary max-md:min-h-11">
                   <input
                     type="checkbox"
                     aria-label={`Include ${e.name}`}
@@ -98,6 +98,7 @@ export function EventList({
                 <Button
                   size="sm"
                   variant="ghost"
+                  disabled={busy}
                   aria-label={`Edit ${e.name}`}
                   onClick={() => onEdit(e)}
                 >
@@ -106,6 +107,7 @@ export function EventList({
                 <Button
                   size="sm"
                   variant="ghost"
+                  disabled={busy}
                   aria-label={`Delete ${e.name}`}
                   onClick={() => setDeleting(e)}
                 >

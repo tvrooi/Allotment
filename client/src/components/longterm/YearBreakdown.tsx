@@ -73,7 +73,8 @@ export function YearBreakdown({
         <h3 className="font-display text-xl text-text">
           What changed in {year.calendarYear}
           <span className="ml-2 text-sm font-sans text-text-tertiary">
-            age {year.age} · {mode === 'today' ? "today's dollars" : 'future dollars'}
+            age {year.age} to {year.age + 1} ·{' '}
+            {mode === 'today' ? "today's dollars" : 'future dollars'}
           </span>
         </h3>
         <p

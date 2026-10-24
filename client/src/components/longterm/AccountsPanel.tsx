@@ -22,7 +22,10 @@ function LoanRow({ loan }: { loan: api.StartingPoint['loans'][number] }) {
   const initial = loan.details ?? { rateBps: 600, monthlyRepayment: 0, termMonths: null };
   const [d, setD] = useState(initial);
   const [status, setStatus] = useState<string | null>(null);
-  const dirty = JSON.stringify(d) !== JSON.stringify(initial);
+  const dirty =
+    d.rateBps !== initial.rateBps ||
+    d.monthlyRepayment !== initial.monthlyRepayment ||
+    d.termMonths !== initial.termMonths;
 
   async function save() {
     setStatus(null);
