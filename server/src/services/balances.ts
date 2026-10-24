@@ -45,6 +45,15 @@ export const reportActivity: SQL = and(
 )!;
 export const budgetActivity: SQL = and(onBudget, reportActivity)!;
 
+/** Day the envelope budget starts counting ('' = all history): Settings → Budget start */
+const budgetStartDay = sql`coalesce((select min(bs.budget_start_month) from budget_settings bs) || '-01', '')`;
+/** Rows on or after the budget start. Reports ignore it; envelopes and funding use it. */
+export const sinceBudgetStart: SQL = sql`${transactions.date} >= ${budgetStartDay}`;
+/** The budget start as YYYY-MM-01, or '' when every month counts */
+export function budgetStartDate(): string {
+  return db.get<{ day: string }>(sql`select ${budgetStartDay} as day`)?.day ?? '';
+}
+
 /**
  * Rows the user has not hidden from reports (phase 9). A split part follows its parent. Only
  * income/spending reports use this: balances, the envelope budget, forecasts and

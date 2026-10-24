@@ -258,7 +258,7 @@ describe('funding targets', () => {
       cycleMonths: 3,
     });
     const backup = createBackup() as Record<string, unknown>;
-    expect(backup.version).toBe(14);
+    expect(backup.version).toBe(16);
     db.delete(categoryTargets).run();
     restoreBackup(parseBackup(backup));
     expect(db.select().from(categoryTargets).all()).toMatchObject([

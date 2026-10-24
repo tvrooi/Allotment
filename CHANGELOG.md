@@ -1,8 +1,35 @@
 # Changes
 
+## 0.2.0-up.33
+
+- Add a **Simulation** tab to the long-term forecast: it runs your saved plan many times with random yearly returns and shows the **chance of success** (the share of simulated paths that never ran out of money and ended above zero) and a band of outcomes (the middle half and the middle 90% of paths, with the median and the steady-return forecast for comparison). Only returns vary, and they are seeded, so the same seed always gives the same answer. Works in today's or future dollars, on a phone and in the offline demo.
+- How much returns swing is an assumption with its default shown (investments and super 16%, property 10%, cash and other accounts none), under **Assumptions**. Read-only access can run it too (`long_term_simulation`).
+- See [the long-term forecast](docs/LONG-TERM-FORECAST.md).
+
+## 0.2.0-up.32
+
+- **Forecast** now opens on a **Long term** view: your net worth year by year, from today's real balances to an age you choose, with a marker on the line for each life event. The 30-day to 2-year **Cash runway** is its second tab, unchanged. See [the long-term forecast](docs/LONG-TERM-FORECAST.md).
+- Make plans with life events (buy a home, new job, career break, child, windfall or expense, recurring income or expense, retirement, pay off a loan). Opening an editor saves nothing: an event is saved when you choose **Create**. Plans are saved with versions, so a change on another device is never overwritten.
+- Every rate and age (inflation, growth by kind of account, super guarantee, contributions tax, preservation age, Age Pension) is an assumption with its default shown beside it. Super is drawn only after you retire and reach the preservation age. If money runs out, an **unfunded spending** warning names the first year.
+- Click a year to see what made up its change; the parts add up to the cent, in today's or future dollars (toggle at the top). Choose where surplus money goes, as a percentage of what is left or a fixed amount, with a worked example, and the order money is taken out when it runs short.
+- Duplicate, rename and delete plans, and compare one with another: two lines, paired key figures and the difference in money and in percent of the plan you compare against. Works on a phone and in the offline demo.
+
+## 0.2.0-up.31
+
+- Add storage and an API for long-term forecast plans (see [the design note](docs/LONG-TERM-FORECAST.md)): named plans with life events, per-account assumptions and savings splits, saved with versions so a change on another device is never overwritten. They read your real balances, income and spending, compare two plans, and never write to your budget. There is no screen for them yet.
+- Record a loan or mortgage's rate, repayment and term beside its account (`account_loan_details`).
+- Read-only and categorise tokens can read plans and results, and the read-only MCP endpoint gains `long_term_plans`, `long_term_plan`, `long_term_forecast` and `long_term_compare`. Backup format 16 includes plans and loan details; format 15 backups restore unchanged.
+
+## 0.2.0-up.30
+
+- Groundwork for a long-term forecast (see [the design note](docs/LONG-TERM-FORECAST.md)): a pure year-by-year engine for net worth over decades, with life events, super, loans and savings splits, and a table for a loan or mortgage's rate and repayment. Nothing in the app uses it yet and it never touches your budget; the forecast page and its storage arrive in later releases.
+
 ## 0.2.0-up.29
 
-- Add **read and categorise** access tokens (Settings → Server → Read-only access) for an MCP assistant that sorts a large backlog of transactions. Besides reading, its MCP tools can create and edit categories, create and rename groups, and preview, apply and undo a transaction category change in bulk (reconciled rows, transfers and splits are skipped; applying refuses if the matched count changed). It cannot change any other transaction field, delete or reorder categories, or reach settings, backups, sign-in or bank connections. Read-only tokens are unchanged and still see only the read tools.
+- Add a **budget start** (**Settings → Budget**): the first month your envelopes count. Bank history from before you started budgeting stays in your accounts and reports, and balances don't change, but its spending no longer carries into envelopes as overspending or uncategorised spending. Card payment reserves start there too. Clearing it counts all history again. Backup format 15 includes it; format 14 backups restore unchanged.
+- The sidebar lists household pool accounts under their own **Household** heading instead of **For budget**, so the For budget total matches the money your budget counts.
+- Add **read and categorise** access tokens (**Settings → Server → Read-only access**). Besides reading, they can set the category of past transactions and nothing else: no other field, no clearing a category, no future transactions, and the register's rules still apply. Over MCP they get a `categorise_transactions` tool that reports each transaction's previous category. Read-only tokens are unchanged. See [Read-only access](docs/READ-ONLY-ACCESS.md).
+- Make the import settings round-trip test independent between its random runs.
 
 ## 0.2.0-up.28
 

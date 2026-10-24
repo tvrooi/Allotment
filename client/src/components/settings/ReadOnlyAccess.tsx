@@ -10,13 +10,14 @@ import {
   getAccessTokens,
   revokeAccessToken,
   type AccessToken,
+  type AccessTokenScope,
   type CreatedAccessToken,
 } from '../../api/accessTokens';
 
 // Settings → Server → Read-only access: tokens that let another tool, such as an AI assistant
-// or an MCP client, read this budget. A read token can't change anything. A categorise token can
-// also create and edit categories and set transactions' category, nothing else. Neither can sign
-// in, download backups or see bank connections (docs/READ-ONLY-ACCESS.md).
+// or an MCP client, read this budget. They can't sign in, download backups or see bank
+// connections. A categorise token can also set past transactions' categories, and nothing else
+// (docs/READ-ONLY-ACCESS.md).
 
 const DAYS = [7, 30, 90];
 const inputClass =
@@ -28,7 +29,8 @@ function status(t: AccessToken) {
   const used = t.lastUsedAt
     ? `used ${formatDistanceToNow(new Date(t.lastUsedAt), { addSuffix: true })}`
     : 'not used yet';
-  return `Expires ${formatDay(t.expiresAt.slice(0, 10))} · ${used}`;
+  const scope = t.scope === 'categorise' ? 'Read and categorise · ' : '';
+  return `${scope}Expires ${formatDay(t.expiresAt.slice(0, 10))} · ${used}`;
 }
 
 export function ReadOnlyAccess() {
@@ -39,7 +41,7 @@ export function ReadOnlyAccess() {
   const revoke = useMutation({ mutationFn: revokeAccessToken, onSuccess: refresh });
   const [name, setName] = useState('');
   const [days, setDays] = useState(30);
-  const [scope, setScope] = useState<'read' | 'categorise'>('read');
+  const [scope, setScope] = useState<AccessTokenScope>('read');
   const [created, setCreated] = useState<CreatedAccessToken | null>(null);
   const [copied, setCopied] = useState(false);
   const [revoking, setRevoking] = useState<AccessToken | null>(null);
@@ -54,11 +56,11 @@ export function ReadOnlyAccess() {
     <section className="pt-6 border-t border-border-light">
       <h2 className="text-sm font-semibold text-text">Read-only access</h2>
       <p className="text-xs text-text-tertiary mt-1">
-        Let another tool, such as an AI assistant, use this budget with a token. A read-only token
-        can't change anything. A read and categorise token can also create and edit categories and
-        set the category of transactions, and nothing else. Neither can sign in, download backups or
-        see bank connections. A token expires, you can revoke it here, and changing the password
-        revokes them all.
+        Let another tool, such as an AI assistant, read this budget with a token. A token can only
+        read: it can't change anything, sign in, download backups or see bank connections. A{' '}
+        <em>read and categorise</em> token can also set the category of past transactions, and
+        nothing else. A token expires, you can revoke it here, and changing the password revokes
+        them all.
       </p>
 
       <form
@@ -89,17 +91,6 @@ export function ReadOnlyAccess() {
           />
         </label>
         <label>
-          <span className="block text-xs font-medium text-text-secondary mb-1">Access</span>
-          <select
-            value={scope}
-            onChange={(e) => setScope(e.target.value as 'read' | 'categorise')}
-            className={inputClass}
-          >
-            <option value="read">Read only</option>
-            <option value="categorise">Read and categorise</option>
-          </select>
-        </label>
-        <label>
           <span className="block text-xs font-medium text-text-secondary mb-1">Expires after</span>
           <select
             value={days}
@@ -111,6 +102,17 @@ export function ReadOnlyAccess() {
                 {d} days
               </option>
             ))}
+          </select>
+        </label>
+        <label>
+          <span className="block text-xs font-medium text-text-secondary mb-1">Access</span>
+          <select
+            value={scope}
+            onChange={(e) => setScope(e.target.value as AccessTokenScope)}
+            className={inputClass}
+          >
+            <option value="read">Read only</option>
+            <option value="categorise">Read and categorise</option>
           </select>
         </label>
         <Button type="submit" disabled={!name.trim() || create.isPending}>
@@ -157,12 +159,7 @@ export function ReadOnlyAccess() {
           {shown.map((t) => (
             <li key={t.id} className="flex items-center gap-3 py-2.5">
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-text truncate">
-                  {t.name}
-                  {t.scope === 'categorise' && (
-                    <span className="ml-2 text-xs text-text-tertiary">Read and categorise</span>
-                  )}
-                </p>
+                <p className="text-sm text-text truncate">{t.name}</p>
                 <p className="text-xs text-text-tertiary">{status(t)}</p>
               </div>
               {t.active && (

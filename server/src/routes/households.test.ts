@@ -9,6 +9,7 @@ import { db } from '../db/index.js';
 import { accounts, transactions, categories, categoryGroups } from '../db/schema.js';
 import { transactionsRouter } from './transactions.js';
 import { householdsRouter } from './households.js';
+import { accountsRouter } from './accounts.js';
 import { allocateShares } from '../services/householdLedger.js';
 import { createBackup, parseBackup, restoreBackup } from '../services/backupService.js';
 import { eq } from 'drizzle-orm';
@@ -21,6 +22,7 @@ beforeAll(async () => {
   app.use(express.json());
   app.use('/api/transactions', transactionsRouter);
   app.use('/api/households', householdsRouter);
+  app.use('/api/accounts', accountsRouter);
   server = await new Promise<Server>((resolve) => {
     const s = app.listen(0, '127.0.0.1', () => resolve(s));
   });
@@ -61,6 +63,13 @@ describe('household attribution', () => {
   });
   it('keeps the gross reconciled debit, consumes advances and protects pool cash from budgeting', async () => {
     const g = await group('pool');
+    // The account list names the pool's group, so the sidebar keeps it out of "For budget"
+    const listed = await (await fetch(base.replace('/households', '/accounts'))).json();
+    expect(
+      Object.fromEntries(
+        listed.map((a: { id: string; householdPool: string | null }) => [a.id, a.householdPool]),
+      ),
+    ).toEqual({ pool: 'Home', mine: null });
     const [me, alex, sam] = g.people;
     db.insert(transactions)
       .values([

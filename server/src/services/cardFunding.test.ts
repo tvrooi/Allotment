@@ -297,7 +297,7 @@ describe('card payment reserves', () => {
     entry('purchase', -8000, 'food', { importedId: 'bank:immutable', reconciled: 1 });
     const before = state(),
       backup = createBackup();
-    expect(backup.version).toBe(14);
+    expect(backup.version).toBe(16);
     restoreBackup(parseBackup(backup));
     expect(position()).toMatchObject(before.cards[0]);
     expect(db.select().from(transactions).all()[0]).toMatchObject({
@@ -512,4 +512,20 @@ it('previews actual refund effects instead of assuming payment availability grow
   expect(preview).toMatchObject({ budgeted: 10000, available: 0, shortfall: 20000 });
   expect(position().available).toBe(0);
   expect(cat().balance).toBe(0);
+});
+
+describe('budget start', () => {
+  it('ignores card purchases and assignments before the budget start', () => {
+    setup();
+    db.update(cardFunding).set({ startDate: '2026-09-01' }).run();
+    assign('food', 10000, '2026-09');
+    entry('september', -8000, 'food', { date: '2026-09-15' });
+    expect(cat()).toMatchObject({ carryOver: 2000 });
+    expect(position()).toMatchObject({ debt: 8000, available: 8000, shortfall: 0 });
+
+    db.insert(budgetSettings).values({ id: 'budget', budgetStartMonth: '2026-10' }).run();
+    // September's assignment and purchase no longer fund or reserve anything; the debt stays
+    expect(cat()).toMatchObject({ carryOver: 0, balance: 0 });
+    expect(position()).toMatchObject({ debt: 8000, available: 0, shortfall: 8000 });
+  });
 });

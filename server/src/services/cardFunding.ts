@@ -1,7 +1,12 @@
-import { and, lte } from 'drizzle-orm';
+import { and, gte, lte } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { accounts, budgetMonths, cardFunding, transactions } from '../db/schema.js';
-import { budgetActivity, personalBudgetAccount } from './balances.js';
+import {
+  budgetActivity,
+  budgetStartDate,
+  personalBudgetAccount,
+  sinceBudgetStart,
+} from './balances.js';
 import { convertAmount, currencyContext } from './mainAmountService.js';
 
 type Category = { id: string; balance: number };
@@ -33,6 +38,8 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
   const positions: CardPosition[] = [];
   if (!mappings.length) return { adjustments, positions, complete: true };
   const ctx = currencyContext();
+  // Nothing before the budget start funds or reserves anything (Settings → Budget start)
+  const budgetStart = budgetStartDate();
   const accountRows = db.select().from(accounts).where(personalBudgetAccount).all();
   const personalIds = new Set(accountRows.map((a) => a.id));
   const all = db
@@ -46,7 +53,7 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
     db
       .select({ id: transactions.id })
       .from(transactions)
-      .where(and(budgetActivity, lte(transactions.date, asOf)))
+      .where(and(budgetActivity, sinceBudgetStart, lte(transactions.date, asOf)))
       .all()
       .map((t) => t.id),
   );
@@ -57,7 +64,12 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
   const assignments = db
     .select()
     .from(budgetMonths)
-    .where(lte(budgetMonths.month, asOf.slice(0, 7)))
+    .where(
+      and(
+        lte(budgetMonths.month, asOf.slice(0, 7)),
+        gte(budgetMonths.month, budgetStart.slice(0, 7)),
+      ),
+    )
     .all();
   let complete = true;
   const amount = (t: typeof transactions.$inferSelect) => {
@@ -82,7 +94,13 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
   const eligible = (t: typeof transactions.$inferSelect) => {
     const s = stateByAccount.get(t.accountId);
     const parent = t.parentTransactionId ? byId.get(t.parentTransactionId) : t;
-    return s && parent && parent.date >= s.mapping.startDate && !s.baseline.has(parent.id);
+    return (
+      s &&
+      parent &&
+      parent.date >= s.mapping.startDate &&
+      parent.date >= budgetStart &&
+      !s.baseline.has(parent.id)
+    );
   };
   // Assignments and cash activity take priority as of the requested date. Retrospective
   // funding changes how much of a purchase is cash-backed, without generating ledger rows.

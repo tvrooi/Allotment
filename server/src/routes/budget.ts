@@ -1,4 +1,8 @@
-import { todayIso } from '../services/mainAmountService.js';
+import {
+  getBudgetSettings,
+  todayIso,
+  updateBudgetSettings,
+} from '../services/mainAmountService.js';
 import {
   cardAccounts,
   previewCardSetup,
@@ -94,6 +98,21 @@ budgetRouter.get('/year/:year', (req, res) => {
   if (!/^\d{4}$/.test(req.params.year) || year < 1900 || year > 2200)
     return res.status(400).json({ error: 'Expected a year as YYYY' });
   res.json(annualOverview(year));
+});
+
+// Budget start (Settings → Budget start): the first month envelopes count. Earlier activity
+// and assignments stay in the register and reports. Moving it changes balances, not the ledger.
+budgetRouter.get('/start', (_req, res) =>
+  res.json({ month: getBudgetSettings().budgetStartMonth }),
+);
+budgetRouter.put('/start', (req, res) => {
+  const month = req.body?.month;
+  if (month !== null && !isMonth(month))
+    return res.status(400).json({ error: 'Expected a month as YYYY-MM, or null for all history' });
+  if (month && month > todayIso().slice(0, 7))
+    return res.status(400).json({ error: 'The budget start cannot be a future month' });
+  updateBudgetSettings({ budgetStartMonth: month });
+  res.json({ month });
 });
 
 budgetRouter.get('/:month', (req, res) => res.json(budgetWithTargets(req.params.month)));

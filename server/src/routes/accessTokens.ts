@@ -4,13 +4,14 @@ import { serverMode } from '../config.js';
 import {
   AccessTokenError,
   MAX_TOKEN_DAYS,
+  TOKEN_SCOPES,
   createAccessToken,
   listAccessTokens,
   revokeAccessToken,
 } from '../auth/accessTokens.js';
 
 // Settings → Server → Read-only access. Managing tokens needs a signed-in session: a read-only
-// token can't reach these routes (auth/accessTokens.ts tokenAllows).
+// token can't reach these routes (auth/accessTokens.ts readOnlyAllows).
 
 export const accessTokensRouter = Router();
 
@@ -27,7 +28,7 @@ accessTokensRouter.post('/', (req, res) => {
     .object({
       name: z.string().trim().min(1).max(60),
       days: z.number().int().min(1).max(MAX_TOKEN_DAYS),
-      scope: z.enum(['read', 'categorise']).default('read'),
+      scope: z.enum(TOKEN_SCOPES).default('read'),
     })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
@@ -35,7 +36,7 @@ accessTokensRouter.post('/', (req, res) => {
     // The token is in this response only; the server keeps its hash
     res
       .status(201)
-      .json(createAccessToken(parsed.data.name, parsed.data.days, new Date(), parsed.data.scope));
+      .json(createAccessToken(parsed.data.name, parsed.data.days, undefined, parsed.data.scope));
   } catch (error) {
     if (error instanceof AccessTokenError) return res.status(409).json({ error: error.message });
     throw error;

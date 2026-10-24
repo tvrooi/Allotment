@@ -1,32 +1,30 @@
 import { createHash, randomBytes } from 'crypto';
 import { and, eq, gt, isNull } from 'drizzle-orm';
+import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
-import { accessTokens } from '../db/schema.js';
+import { accessTokens, transactions } from '../db/schema.js';
+import { todayIso } from '../services/mainAmountService.js';
 
-// Access tokens (docs/READ-ONLY-ACCESS.md). A `read` token only reads. A `categorise` token
-// reads and may also change categories and the category of transactions, nothing else. A
-// token is 256 random bits with a recognisable prefix; only its SHA-256 is stored, like login sessions, so a leaked database
+// Read-only access tokens (docs/READ-ONLY-ACCESS.md). A token is 256 random bits with a
+// recognisable prefix. Its scope is 'read', or 'categorise': read, plus setting the category of
+// past transactions and nothing else (categoriseAllows); only its SHA-256 is stored, like login sessions, so a leaked database
 // doesn't leak usable tokens. Tokens expire, can be revoked, and changing the password
 // revokes them all.
 
-export type TokenScope = 'read' | 'categorise';
 export const TOKEN_PREFIX = 'fbro_';
-export const CATEGORISE_PREFIX = 'fbcat_';
-const PREFIXES: Record<TokenScope, string> = { read: TOKEN_PREFIX, categorise: CATEGORISE_PREFIX };
 export const MAX_ACTIVE_TOKENS = 10;
 export const MAX_TOKEN_DAYS = 90;
 /** last_used_at is updated at most this often, so reading doesn't mean a write per request */
 const TOUCH_MS = 5 * 60 * 1000;
 
+export const TOKEN_SCOPES = ['read', 'categorise'] as const;
+export type TokenScope = (typeof TOKEN_SCOPES)[number];
+
 const digest = (token: string) => createHash('sha256').update(token).digest('hex');
 
 export function looksLikeAccessToken(value: string | undefined): value is string {
-  return (
-    !!value &&
-    (value.startsWith(TOKEN_PREFIX) || value.startsWith(CATEGORISE_PREFIX)) &&
-    value.length < 200
-  );
+  return !!value && value.startsWith(TOKEN_PREFIX) && value.length < 200;
 }
 
 /** The bearer token in an Authorization header, if any */
@@ -67,7 +65,7 @@ export function createAccessToken(
       `At most ${MAX_ACTIVE_TOKENS} tokens can be active; revoke one first`,
     );
   }
-  const token = `${PREFIXES[scope]}${randomBytes(32).toString('base64url')}`;
+  const token = `${TOKEN_PREFIX}${randomBytes(32).toString('base64url')}`;
   const row = {
     id: nanoid(),
     tokenHash: digest(token),
@@ -122,7 +120,7 @@ export function verifyAccessToken(
   return { id: row.id, scope: row.scope === 'categorise' ? 'categorise' : 'read' };
 }
 
-// ─── What a token may reach ─────────────────────────────────────────
+// ─── What a read-only token may reach ─────────────────────────────────────────
 
 /**
  * API paths (under /api) a read-only token may GET. Everything else — login, server
@@ -155,8 +153,7 @@ const UNREADABLE = [/^\/accounts\/[^/]+\/import-settings$/];
 export const MCP_PATH = '/mcp';
 
 /** Whether a read-only token may make this request (path relative to /api) */
-export function readOnlyAllows(method: string, rawPath: string): boolean {
-  const path = rawPath.toLowerCase(); // the router ignores case, so the allowlist must too
+export function readOnlyAllows(method: string, path: string): boolean {
   // POST carries MCP messages; GET is answered 405 (no server-sent stream), as MCP expects
   if (path === MCP_PATH) return method === 'POST' || method === 'GET';
   if (method !== 'GET' && method !== 'HEAD') return false;
@@ -164,68 +161,38 @@ export function readOnlyAllows(method: string, rawPath: string): boolean {
   return READABLE.some((p) => path === p || path.startsWith(`${p}/`));
 }
 
-// ─── What a categorise token may also change ──────────────────────────────────
+// ─── What a categorise token may change ───────────────────────────────────────
 
-const CATEGORY_WRITES = [
-  /^\/categories$/, // create a category
-  /^\/categories\/groups$/, // create a group
-  /^\/categories\/groups\/(?!reorder$)[^/]+$/, // rename a group
-  /^\/categories\/(?!reorder$)(?!groups$)[^/]+$/, // edit a category
-];
-const GROUP_RENAME = /^\/categories\/groups\/[^/]+$/;
-const BULK_PATH = '/transactions/bulk';
-/** The only top-level keys of a bulk edit, and of an undo; nothing else may ride along */
-const BULK_KEYS = new Set([
-  'selection',
-  'ids',
-  'excludeIds',
-  'changes',
-  'preview',
-  'expectedCount',
-]);
-const RESTORE_FIELDS = new Set(['id', 'categoryId']);
-const MAX_RESTORE = 1000;
-
-const isObject = (v: unknown): v is Record<string, unknown> =>
-  !!v && typeof v === 'object' && !Array.isArray(v);
-const onlyKeys = (v: Record<string, unknown>, allowed: Iterable<string>) => {
-  const ok = new Set(allowed);
-  return Object.keys(v).every((k) => ok.has(k));
-};
+const TRANSACTION_PATH = /^\/transactions\/([^/]+)$/;
+/** Exactly a category, never clearing it or anything else */
+const categoriseBody = z.object({ categoryId: z.string().min(1).max(64) }).strict();
 
 /**
- * Whether a token with this scope may make this request (path relative to /api). A categorise
- * token reads like a read token and may also create and edit categories and groups (never
- * delete or reorder them, and a group only renames) and change transactions' category through
- * the bulk edit, including its preview and undo. Any other field of a transaction, or any
- * other write, is refused. Paths are compared in lower case because the router ignores case.
+ * Whether a categorise token may make this write: PUT /transactions/:id whose body sets only
+ * the category, for a transaction dated today or earlier. The transactions route still applies
+ * its own rules (reconciled rows, split parents, transfers, household links, payment envelopes).
  */
-export function tokenAllows(scope: TokenScope, method: string, rawPath: string, body?: unknown) {
-  const path = rawPath.toLowerCase();
-  if (readOnlyAllows(method, path)) return true;
-  if (scope !== 'categorise') return false;
-  if ((method === 'POST' || method === 'PUT') && CATEGORY_WRITES.some((p) => p.test(path))) {
-    // A group's income flag isn't a rename; it is set only when the group is created
-    return (
-      method === 'POST' || !GROUP_RENAME.test(path) || (isObject(body) && onlyKeys(body, ['name']))
-    );
+export function categoriseAllows(method: string, path: string, body: unknown): boolean {
+  const match = TRANSACTION_PATH.exec(path);
+  if (method !== 'PUT' || !match || !categoriseBody.safeParse(body).success) return false;
+  let id: string;
+  try {
+    id = decodeURIComponent(match[1]);
+  } catch {
+    return false;
   }
-  if (method === 'POST' && path === BULK_PATH && isObject(body)) {
-    if ('restore' in body) {
-      return (
-        onlyKeys(body, ['restore']) &&
-        Array.isArray(body.restore) &&
-        body.restore.length > 0 &&
-        body.restore.length <= MAX_RESTORE &&
-        body.restore.every((r) => isObject(r) && onlyKeys(r, RESTORE_FIELDS))
-      );
-    }
-    return (
-      onlyKeys(body, BULK_KEYS) &&
-      isObject(body.changes) &&
-      Object.keys(body.changes).length > 0 &&
-      onlyKeys(body.changes, ['categoryId'])
-    );
-  }
-  return false;
+  const row = db
+    .select({ date: transactions.date })
+    .from(transactions)
+    .where(eq(transactions.id, id))
+    .get();
+  // A missing transaction is the route's 404, not a refusal
+  return !row || row.date <= todayIso();
+}
+
+/** Whether a token with this scope may make this request (path relative to /api) */
+export function tokenAllows(scope: TokenScope, method: string, path: string, body: unknown) {
+  return (
+    readOnlyAllows(method, path) || (scope === 'categorise' && categoriseAllows(method, path, body))
+  );
 }

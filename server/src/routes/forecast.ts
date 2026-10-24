@@ -2,6 +2,7 @@ import { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
 import { forecastRequestSchema, scenarioSchema } from '../services/forecastConfig.js';
 import { buildForecast, ForecastError } from '../services/forecastService.js';
+import { longTermRouter } from './longTermForecast.js';
 import {
   createSavedScenario,
   deleteSavedScenario,
@@ -11,6 +12,8 @@ import {
 } from '../services/forecastScenarios.js';
 
 export const forecastRouter = Router();
+// The long-term, decades-long forecast (docs/LONG-TERM-FORECAST.md)
+forecastRouter.use('/long-term', longTermRouter);
 // Read-only: POST only carries the scenario assumptions. Nothing is stored or allocated.
 forecastRouter.post(
   '/',

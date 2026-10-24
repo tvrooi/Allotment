@@ -279,7 +279,28 @@
       "idx": 39,
       "version": "6",
       "when": 1792600000000,
-      "tag": "0039_categorise_tokens",
+      "tag": "0039_budget_start",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "6",
+      "when": 1792700000000,
+      "tag": "0040_categorise_tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "6",
+      "when": 1792800000000,
+      "tag": "0041_loan_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "6",
+      "when": 1792900000000,
+      "tag": "0042_long_term_plans",
       "breakpoints": true
     }
   ]
