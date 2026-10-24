@@ -248,6 +248,15 @@ describe('plans over the API', () => {
     expect(cmp.body.percentDefinition).toMatch(/reference plan/);
     expect(cmp.body.figures.map((f: { key: string }) => f.key)).toContain('endNetWorth');
     expect(cmp.body.series[0].difference).toBe(0);
+    // The same comparison in today's dollars: smaller, with the dollars named
+    const real = await call('GET', `${LT}/plans/${a.id}/compare?reference=${b.id}&dollars=today`);
+    expect(real.body.dollars).toBe('today');
+    const endOf = (c: any) => c.figures.find((f: any) => f.key === 'endNetWorth');
+    expect(Math.abs(endOf(real.body).active)).toBeLessThan(Math.abs(endOf(cmp.body).active));
+    expect(cmp.body.dollars).toBe('future');
+    expect(
+      (await call('GET', `${LT}/plans/${a.id}/compare?reference=${b.id}&dollars=x`)).status,
+    ).toBe(400);
     expect((await call('GET', `${LT}/plans/${a.id}/compare`)).status).toBe(400);
     expect((await call('GET', `${LT}/plans/${a.id}/compare?reference=nope`)).status).toBe(404);
   });

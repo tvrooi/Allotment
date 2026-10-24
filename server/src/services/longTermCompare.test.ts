@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { compareResults, PERCENT_DEFINITION, type PlanFacts } from './longTermCompare.js';
+import {
+  compareResults,
+  inTodaysDollars,
+  PERCENT_DEFINITION,
+  type PlanFacts,
+} from './longTermCompare.js';
 import { forecastLongTerm, type ForecastPlan } from './longTermForecast.js';
 
 // Comparing two plans (docs/LONG-TERM-FORECAST.md §13). Mock numbers only.
@@ -153,5 +158,23 @@ describe('compareResults', () => {
     const figure = compareResults(huge, tiny).figures.find((f) => f.key === 'endNetWorth')!;
     expect(figure.difference).toBeGreaterThan(0);
     expect(figure.percentBps).toBeNull();
+  });
+
+  it("compares in today's dollars, deflating each plan by its own inflation", () => {
+    const withInflation = (bps: number) =>
+      facts(plan({ inflationBps: bps, spending: { annual: 0, escalation: { mode: 'none' } } }));
+    const low = withInflation(0);
+    const high = withInflation(1000);
+    const future = compareResults(high, low).figures.find((f) => f.key === 'endNetWorth')!;
+    const today = compareResults(inTodaysDollars(high), inTodaysDollars(low)).figures.find(
+      (f) => f.key === 'endNetWorth',
+    )!;
+    // Zero inflation changes nothing; 10% a year for 10 years shrinks the same cents by 2.59×
+    expect(inTodaysDollars(low).result.years.at(-1)!.closingNetWorth).toBe(
+      low.result.years.at(-1)!.closingNetWorth,
+    );
+    expect(today.reference).toBe(future.reference);
+    expect(today.active).toBe(Math.round(future.active! / 1.1 ** 10));
+    expect(today.difference).toBe(today.active! - today.reference!);
   });
 });

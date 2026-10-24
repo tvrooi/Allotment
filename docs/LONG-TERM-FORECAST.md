@@ -475,3 +475,29 @@ Built as designed in §14, with these details.
   - A series point's age is the age at the **start** of its plan year, so net worth "at retirement" (the
     closing balance of the year before retirement takes effect) sits on the point labelled one year younger.
     A retirement at or past the end age gives no figure.
+
+## 20. The screen (step 4)
+
+- **Where:** Forecast opens on **Long term**; **Cash runway** is the second tab (`?tab=cash`). The runway is
+  unchanged. Neither writes to the budget.
+- **First visit:** a name and a birth year; everything else starts at its default.
+- **Top of the page:** the plan picker (New, Duplicate, Rename, Delete) and a **Today's dollars / Future
+  dollars** switch, remembered per browser. Today's dollars is the default, because decades of future
+  dollars are hard to read. Each plan's own inflation is used to deflate it.
+- **Chart:** net worth at the end of each plan year (the first year starts today), with a marker per event
+  and, when comparing, the reference plan as a dashed line. Pick a year on the chart or in the **Year**
+  list, and a table shows what made it up (§11) with a check that the parts add up to the cent.
+- **Events:** each kind has its own editor. **Opening one saves nothing**; **Create** saves that event on its
+  own, on top of the last saved plan, so other unsaved edits are not swept along. Edit, switch off and delete
+  save the same way.
+- **Everything else** (assumptions, per-account choices, savings and shortfall order) waits for **Save
+  changes**, with **Discard changes**. The forecast shows the _saved_ plan and says so while edits are
+  waiting: there is no preview of unsaved changes.
+- **Saving safely:** a save names its version. If another device changed the plan, nothing is overwritten and
+  you choose **Use theirs** or **Keep mine** (**Save as new** if it was deleted).
+- **Loans:** a loan's rate, repayment and months left are saved on the account itself, immediately (they
+  belong to the account, not to a plan).
+- **Comparison:** `GET …/compare?reference=…&dollars=today|future`. In today's dollars each plan is deflated
+  by its own inflation before the figures, differences and percentages are worked out.
+- **Phone:** one column; tables scroll inside their own box; the page never scrolls sideways (a browser test
+  checks every section and an event editor at 390 px).

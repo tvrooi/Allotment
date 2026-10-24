@@ -1,5 +1,13 @@
 # Changes
 
+## 0.2.0-up.32
+
+- **Forecast** now opens on a **Long term** view: your net worth year by year, from today's real balances to an age you choose, with a marker on the line for each life event. The 30-day to 2-year **Cash runway** is its second tab, unchanged. See [the long-term forecast](docs/LONG-TERM-FORECAST.md).
+- Make plans with life events (buy a home, new job, career break, child, windfall or expense, recurring income or expense, retirement, pay off a loan). Opening an editor saves nothing: an event is saved when you choose **Create**. Plans are saved with versions, so a change on another device is never overwritten.
+- Every rate and age (inflation, growth by kind of account, super guarantee, contributions tax, preservation age, Age Pension) is an assumption with its default shown beside it. Super is drawn only after you retire and reach the preservation age. If money runs out, an **unfunded spending** warning names the first year.
+- Click a year to see what made up its change; the parts add up to the cent, in today's or future dollars (toggle at the top). Choose where surplus money goes, as a percentage of what is left or a fixed amount, with a worked example, and the order money is taken out when it runs short.
+- Duplicate, rename and delete plans, and compare one with another: two lines, paired key figures and the difference in money and in percent of the plan you compare against. Works on a phone and in the offline demo.
+
 ## 0.2.0-up.31
 
 - Add storage and an API for long-term forecast plans (see [the design note](docs/LONG-TERM-FORECAST.md)): named plans with life events, per-account assumptions and savings splits, saved with versions so a change on another device is never overwritten. They read your real balances, income and spending, compare two plans, and never write to your budget. There is no screen for them yet.

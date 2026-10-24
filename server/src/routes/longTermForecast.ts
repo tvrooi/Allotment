@@ -1,7 +1,7 @@
 import { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
 import { ForecastError } from '../services/forecastService.js';
-import { compareResults } from '../services/longTermCompare.js';
+import { compareResults, inTodaysDollars } from '../services/longTermCompare.js';
 import {
   ACCOUNT_CLASSES,
   DEFAULT_CLASS_GROWTH_BPS,
@@ -146,6 +146,7 @@ longTermRouter.get(
   '/plans/:id/compare',
   action((req, res) => {
     const referenceId = z.string().min(1).max(64).parse(req.query.reference);
+    const dollars = z.enum(['future', 'today']).default('future').parse(req.query.dollars);
     const active = getPlan(String(req.params.id));
     const reference = getPlan(referenceId);
     const point = startingPoint();
@@ -154,7 +155,11 @@ longTermRouter.get(
     res.json({
       active: { id: active.id, version: active.version, name: active.plan.name },
       reference: { id: reference.id, version: reference.version, name: reference.plan.name },
-      ...compareResults({ ...a, result: a }, { ...r, result: r }),
+      dollars,
+      ...compareResults(
+        dollars === 'today' ? inTodaysDollars({ ...a, result: a }) : { ...a, result: a },
+        dollars === 'today' ? inTodaysDollars({ ...r, result: r }) : { ...r, result: r },
+      ),
     });
   }),
 );
