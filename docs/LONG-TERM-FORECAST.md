@@ -379,3 +379,34 @@ documentation-only PR does not need a release.
 8. **Gross salary for super** is entered by you since income is take-home. Prefill it from payday plans if
    those store gross pay? (Not checked here.)
 9. Percentile band set for step 5.
+
+## 18. Clarifications settled in step 2
+
+Decisions made while building the engine. They refine the sections above; where they differ, this section wins.
+
+- **Escalation.** Amounts are entered in today's dollars and first inflated to their start year. Then
+  `inflation` keeps them level in real terms, `none` holds that start-year amount flat in nominal terms, and
+  `rate` compounds it yearly from the start year (negative allowed). The salary and baseline spending start in
+  plan year 1. Year 1 is inflated by one year, as in §5.
+- **Income sources** are the salary, each new job, and each recurring event with a positive amount. A
+  recurring source pays only in its occurrence years. A recurring amount below zero is an expense and cannot
+  be reduced. Signing bonuses are event cash flows and cannot be reduced.
+- **Super follows income** by running the §6.1 rule on a notional 10,000 (basis points), so the fraction of
+  salary that remains is exact even when take-home is zero. Employer super is
+  `mulDiv(mulDiv(gross, remainingBps, 10000), guaranteeBps, 10000)`, tax is its own `mulDiv`, and net is
+  contribution − tax. Contributions go to the first super account, or to a system "Super (new contributions)"
+  account when you have none.
+- **No "repayments in spending" flag.** Repayments on modelled loans are not in baseline spending (§4), and the
+  UI warns on categories that look like repayments. A pay-off just clears the loan.
+- **Loans:** a pay-off lump is paid in step 1 and counted in both "Loan payments" and "Principal repaid". A new
+  mortgage makes no payments in its opening year, and its term counts from the next year. A loan with a term
+  pays the whole balance in its last month.
+- **Events dated before today:** a home, one-off or pay-off is ignored with a warning. Ongoing events
+  (a retirement, job, child or break already under way) still apply.
+- **Withdrawal order:** accounts you list come first, then the default order (Extra savings, cash,
+  investments, unlocked super). Overdrawn accounts give nothing.
+- **Horizon:** `endAge − startAge` plan years; year 0 is today's snapshot. At most 100 years.
+- **Backups:** the format is now 15 (up.29), so the long-term tables arrive as **format 16** in step 3.
+  `account_loan_details` was added in step 2 with no way to write to it yet, so no backup is affected.
+- **Read-only access:** `main` now also has "read and categorise" tokens. Step 3 must prove those tokens
+  cannot write plans either.
