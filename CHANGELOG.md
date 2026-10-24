@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.34
+
+- A **read and categorise** token's MCP tools can now also **create and edit categories** and category groups (create, rename, move a category to another group, change its icon or budget type) so an assistant can set up categories before sorting transactions. They still can't delete or reorder categories or change anything else.
+- Fix: a token could read an account's bank import settings by capitalising the path (`/Import-Settings`). Token paths are now matched ignoring letter case.
+
 ## 0.2.0-up.33
 
 - Add a **Simulation** tab to the long-term forecast: it runs your saved plan many times with random yearly returns and shows the **chance of success** (the share of simulated paths that never ran out of money and ended above zero) and a band of outcomes (the middle half and the middle 90% of paths, with the median and the steady-return forecast for comparison). Only returns vary, and they are seeded, so the same seed always gives the same answer. Works in today's or future dollars, on a phone and in the offline demo.

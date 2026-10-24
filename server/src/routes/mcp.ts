@@ -223,6 +223,66 @@ const TOOLS: Tool[] = [
   },
 ];
 
+const budgetType = {
+  type: ['string', 'null'],
+  enum: ['fixed', 'flexible', 'non_monthly', 'savings', null],
+};
+const noId = ({ id: _id, ...rest }: Args) => rest;
+/** Tools that create and edit categories, offered only to a categorise token */
+const CATEGORY_TOOLS: (Tool & { write: { method: 'POST' | 'PUT'; body: (a: Args) => unknown } })[] =
+  [
+    {
+      name: 'create_category',
+      description: 'Creates a category in a group (group ids from list_categories).',
+      properties: {
+        groupId: { type: 'string', minLength: 1, maxLength: 64 },
+        name: { type: 'string', minLength: 1, maxLength: 200 },
+        icon: { type: 'string', maxLength: 32 },
+        budgetType,
+      },
+      required: ['groupId', 'name'],
+      path: () => '/categories',
+      write: { method: 'POST', body: (a) => a },
+    },
+    {
+      name: 'update_category',
+      description:
+        "Renames a category, moves it to another group, or changes its icon or budget type. Its transactions keep it. Categories can't be deleted or reordered here.",
+      properties: {
+        id: { type: 'string', minLength: 1, maxLength: 64 },
+        groupId: { type: 'string', minLength: 1, maxLength: 64 },
+        name: { type: 'string', minLength: 1, maxLength: 200 },
+        icon: { type: 'string', maxLength: 32 },
+        budgetType,
+      },
+      required: ['id'],
+      path: (a) => `/categories/${seg(a.id)}`,
+      write: { method: 'PUT', body: noId },
+    },
+    {
+      name: 'create_category_group',
+      description: 'Creates a category group; isIncome is 1 for an income group, otherwise 0.',
+      properties: {
+        name: { type: 'string', minLength: 1, maxLength: 200 },
+        isIncome: { type: 'integer', minimum: 0, maximum: 1 },
+      },
+      required: ['name', 'isIncome'],
+      path: () => '/categories/groups',
+      write: { method: 'POST', body: (a) => a },
+    },
+    {
+      name: 'rename_category_group',
+      description: 'Renames a category group.',
+      properties: {
+        id: { type: 'string', minLength: 1, maxLength: 64 },
+        name: { type: 'string', minLength: 1, maxLength: 200 },
+      },
+      required: ['id', 'name'],
+      path: (a) => `/categories/groups/${seg(a.id)}`,
+      write: { method: 'PUT', body: noId },
+    },
+  ];
+
 /** Most transactions one categorise call changes */
 const MAX_CATEGORISE = 100;
 const CATEGORISE_TOOL = {
@@ -334,7 +394,7 @@ async function handle(req: Request, scope: TokenScope, message: Record<string, u
         },
         instructions:
           scope === 'categorise'
-            ? 'Read access to a FlyBudget budget, plus categorise_transactions to set the category of past transactions; nothing else can change. Amounts are integer minor units (cents); negative transaction amounts are money out. Use list_* tools for ids, then filter transactions and reports with them. Confirm a plan with the user before categorising.'
+            ? 'Read access to a FlyBudget budget, plus categorise_transactions to set the category of past transactions and tools to create and edit categories and groups; nothing else can change. Amounts are integer minor units (cents); negative transaction amounts are money out. Use list_* tools for ids, then filter transactions and reports with them. Confirm a plan with the user before categorising.'
             : 'Read-only access to a FlyBudget budget. Amounts are integer minor units (cents); negative transaction amounts are money out. Use list_* tools for ids, then filter transactions and reports with them.',
       });
     }
@@ -352,28 +412,49 @@ async function handle(req: Request, scope: TokenScope, message: Record<string, u
             additionalProperties: false,
           },
           annotations: { readOnlyHint: true, openWorldHint: false },
-        })).concat(
-          scope === 'categorise'
-            ? [
-                {
-                  name: CATEGORISE_TOOL.name,
-                  description: CATEGORISE_TOOL.description,
+        }))
+          .concat(
+            scope === 'categorise'
+              ? (CATEGORY_TOOLS.map((t) => ({
+                  name: t.name,
+                  description: t.description,
                   inputSchema: {
                     type: 'object',
-                    properties: CATEGORISE_TOOL.properties,
-                    required: CATEGORISE_TOOL.required,
+                    properties: t.properties ?? {},
+                    required: t.required,
                     additionalProperties: false,
                   },
                   annotations: {
                     readOnlyHint: false,
                     destructiveHint: false,
-                    idempotentHint: true,
+                    idempotentHint: t.write.method === 'PUT',
                     openWorldHint: false,
                   },
-                } as never,
-              ]
-            : [],
-        ),
+                })) as never[])
+              : [],
+          )
+          .concat(
+            scope === 'categorise'
+              ? [
+                  {
+                    name: CATEGORISE_TOOL.name,
+                    description: CATEGORISE_TOOL.description,
+                    inputSchema: {
+                      type: 'object',
+                      properties: CATEGORISE_TOOL.properties,
+                      required: CATEGORISE_TOOL.required,
+                      additionalProperties: false,
+                    },
+                    annotations: {
+                      readOnlyHint: false,
+                      destructiveHint: false,
+                      idempotentHint: true,
+                      openWorldHint: false,
+                    },
+                  } as never,
+                ]
+              : [],
+          ),
       });
     case 'tools/call': {
       if (scope === 'categorise' && params?.name === CATEGORISE_TOOL.name) {
@@ -389,7 +470,9 @@ async function handle(req: Request, scope: TokenScope, message: Record<string, u
           isError: 'error' in outcome,
         });
       }
-      const tool = TOOLS.find((t) => t.name === params?.name);
+      const tool = [...TOOLS, ...(scope === 'categorise' ? CATEGORY_TOOLS : [])].find(
+        (t) => t.name === params?.name,
+      );
       if (!tool) return rpcError(id, -32602, `Unknown tool: ${String(params?.name)}`);
       const args = (params?.arguments ?? {}) as Args;
       if (typeof args !== 'object' || Array.isArray(args)) {
@@ -399,7 +482,11 @@ async function handle(req: Request, scope: TokenScope, message: Record<string, u
       if (unknown.length) return rpcError(id, -32602, `Unknown arguments: ${unknown.join(', ')}`);
       const missing = (tool.required ?? []).filter((k) => args[k] === undefined);
       if (missing.length) return rpcError(id, -32602, `Missing arguments: ${missing.join(', ')}`);
-      const { status, text } = await callApi(req, tool.path(args));
+      const write =
+        'write' in tool ? (tool.write as (typeof CATEGORY_TOOLS)[number]['write']) : null;
+      const { status, text } = write
+        ? await callApi(req, tool.path(args), write.method, write.body(args))
+        : await callApi(req, tool.path(args));
       const body =
         text.length > MAX_RESULT_CHARS
           ? `${text.slice(0, MAX_RESULT_CHARS)}\n… cut at ${MAX_RESULT_CHARS} characters; narrow the request (dates, filters or limit).`
