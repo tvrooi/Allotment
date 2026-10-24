@@ -34,11 +34,16 @@ Security, Roth/Traditional, HSA).
 - Money is **integer cents**. Rates are **integer basis points** (1 bp = 0.01%; 6.5% = 650). Inflation
   indexes are integers in parts per billion.
 - **One rounding function**, `mulDiv(a, b, c)`: computes `a × b ÷ c` with `BigInt` (no float, no overflow)
-  and rounds **half away from zero**. Every rate application goes through it, once per quantity. Nothing
-  else rounds.
+  and rounds **half away from zero**. Every rate application goes through it, once per quantity. These are
+  the **only** places that round: `mulDiv` itself; the level-payment formula (§7), done exactly in `BigInt`
+  and rounded once; and the today's-dollars display apportionment (§5), which is display-only. No floats
+  touch money. Chained quantities are separate exact rows (for example super: contribution, then tax as
+  `mulDiv(contribution, taxBps, 10000)`, then net = contribution − tax). A zero denominator is guarded.
+- **Sign convention:** assets are positive and loans are stored as negative balances (as in
+  `accountTypes.ts`). Net worth = Σ asset balances + Σ loan balances (negative) − unfunded spending.
 - Because each flow is rounded once where it is created and every balance is the integer sum of flows,
   **the parts of a year add up to the cent by construction**. A test asserts
-  `closing = opening + Σ parts` for every year of generated plans.
+  `closing = opening + Σ parts` for every year of generated plans, including home purchases, pay-offs, Age Pension and deficits.
 
 ## 3. Time
 
@@ -49,7 +54,9 @@ Security, Roth/Traditional, HSA).
   year whose starting age equals it. An interval of _n_ years covers plan years `start … start + n − 1`
   (start inclusive, end exclusive).
 - All flows within a plan year are treated as **end-of-year** (no intra-year timing), except loan repayments,
-  which are simulated monthly (§7).
+  which are simulated monthly (§7), and growth, whose base is the balance after the year's withdrawals but
+  before its deposits (§6 step 6). That is a stated simplification: it lets money earn a full year on the
+  opening balance minus withdrawals, but never grows money that was withdrawn.
 - End age default **95** (assumption).
 
 ## 4. Starting point
@@ -89,8 +96,9 @@ Inflation is one plan assumption, default **2.5%** (assumption; midpoint of the 
 Index<sub>k</sub> is computed iteratively as `mulDiv(index<sub>k−1</sub>, 10000 + bps, 10000)` from 10⁹.
 
 The engine **always computes in future (nominal) dollars**. "Today's dollars" is a display transform that
-divides by the year's index. To keep the cent-exact promise there, the breakdown in today's dollars deflates
-each part with largest-remainder rounding so the parts equal the deflated total, plus an explicit row
+divides by the year's index. Year 1 deflates by one year of inflation. In the breakdown, the opening balance is
+deflated by index _k−1_ and parts and closing by index _k_, so year _k_'s opening equals year _k−1_'s
+closing. To keep the cent-exact promise there, each part is deflated with largest-remainder rounding so the parts equal the deflated total, plus an explicit row
 **"Inflation on opening balance"** that carries the rest. The toggle never changes the maths.
 
 Amounts you enter "in today's dollars" are inflated to their event year; fixed-dollar split caps likewise.
@@ -127,8 +135,9 @@ Written before coding, as asked.
 sources_, each with an annual amount for the year. Events that reduce income (new job, career break,
 retirement) carry a **per-source reduction percentage**, 0–100%.
 
-For each source, take the active reducing events in **start order** (start year, then start age, then
-creation order). For each:
+For each source, take the active reducing events in **start order**: each event's start is converted
+to a plan-year index (an age becomes the plan year in which that age is reached), ties broken by the
+event's stored `position`. For each:
 
 ```
 reduction_i = min(remaining, mulDiv(source_income, pct_i, 10000))
@@ -142,7 +151,11 @@ total 100,000, income 0.
 
 **Spending.** Events carry a **spending multiplier** (retirement, career break; 100% = same). Each is a
 reduction of the _baseline_ spending: `mulDiv(baseline, 10000 − m_i, 10000)`, applied in start order and
-capped at the remaining positive spending. A multiplier above 100% is an addition and is uncapped. Paid-off
+capped at the remaining positive spending. The base is the escalated baseline spending only, not event
+expenses. A multiplier above 100% is an addition, uncapped, and does not raise the cap for later
+reductions. Example: baseline 100,000; career break 50% then retirement 80% → reductions 50,000 and
+min(50,000, 20,000) = 20,000; spending 30,000 (not 40,000). A fixed-amount reduction such as replaced rent
+sits in the same start-ordered list. A new-job event cannot reduce its own income source. Paid-off
 or replaced items (rent replaced by a home, a loan's repayments after it ends when you flagged them as in
 spending) are reductions in the same list, with the same cap.
 
@@ -157,23 +170,26 @@ months), not as columns on `accounts`. A liability account with no details stays
 the plan shows a warning ("no repayment data").
 
 - Monthly step: `interest = mulDiv(balance, rate_bps, 12 × 10000)`; `payment = min(repayment,
-balance + interest)`; `balance = balance + interest − payment`. The final payment shrinks to clear the
-  loan.
+balance + interest)`; `balance = balance + interest − payment`. When a term is set, **month _n_ pays the whole balance plus
+  interest** (the final payment absorbs rounding drift); otherwise the final payment shrinks when the
+  balance is smaller than the repayment.
 - The standard formula, for tests and for setting a new loan's repayment: `P = L·r / (1 − (1 + r)⁻ⁿ)`,
-  `r` = annual rate ÷ 12, `n` = months, rounded once to cents. Monarch's sample (400,000 − 80,000 at 6.5%,
-  360 months → 2,022.62) is a test. A level payment over `n` months must clear the loan to within one cent
-  of rounding, which the tests check.
+  `r` = annual rate ÷ 12, `n` = months, computed exactly with integers as `L·bps·(120000+bps)ⁿ ÷ (120000·((120000+bps)ⁿ − 120000ⁿ))` and rounded
+  once to cents. Monarch's sample (400,000 − 80,000 at 6.5%,
+  360 months → 2,022.62) is a test. A test checks the balance is zero at month _n_ and that the final payment differs from the level
+  payment only by accumulated rounding (a few dollars at most, never a stray month 361).
 - A yearly row records: payments (cash out), interest, principal (liability falls).
 
 ## 8. Super (its own class)
 
-| Assumption                      | Default            | Note                                                                                   |
-| ------------------------------- | ------------------ | -------------------------------------------------------------------------------------- |
-| Super guarantee rate            | 12%                | ATO rate from 1 July 2025. Editable.                                                   |
-| Salary super is paid on (gross) | none, you enter it | Income is take-home; we do not gross it up. No figure means no employer contributions. |
-| Contributions tax               | 15%                | One editable rate. Net into fund = contribution × (1 − rate).                          |
-| Preservation age                | 60                 | Entered by you; 60 applies from birth on 1 July 1964.                                  |
-| Super earnings tax              | not modelled       | Use a lower growth rate if you want it reflected.                                      |
+| Assumption                      | Default            | Note                                                                                                                                  |
+| ------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Super guarantee rate            | 12%                | ATO rate from 1 July 2025. Editable.                                                                                                  |
+| Salary super is paid on (gross) | none, you enter it | Income is take-home; we do not gross it up. No figure means no employer contributions.                                                |
+| Contributions tax               | 15%                | One editable rate. Net into fund = contribution × (1 − rate).                                                                         |
+| Preservation age                | 60                 | Entered by you; 60 applies from birth on 1 July 1964.                                                                                 |
+| Super caps                      | not modelled       | SG applies to ordinary time earnings up to the maximum contribution base; the concessional cap and Division 293 tax are not modelled. |
+| Super earnings tax              | not modelled       | Use a lower growth rate if you want it reflected.                                                                                     |
 
 - Contributions go into the super class and are **not spendable income**. They stop with the salary (§6.1).
 - **Locked until the retirement event, and at or after the preservation age.** Before either, super is
@@ -210,7 +226,7 @@ stays locked by §8 regardless of its position):
 
 1. Extra Savings → 2. cash → 3. investments → 4. super (if unlocked).
 
-Each account gives `min(need remaining, balance)`. Property, vehicles and other assets never fund spending.
+Each account gives `min(need remaining, max(0, balance))`; an overdrawn account gives nothing. Property, vehicles and other assets never fund spending.
 There is no gross-up (no tax). If need remains after every unlocked account is empty, it is added to the
 **unfunded spending** balance, which counts against net worth, carries no interest, and is repaid first
 from later surplus. The result reports the **first year** unfunded spending appears, and the UI shows an
@@ -224,23 +240,35 @@ to the change in net worth.
 ```
 Opening net worth
  + Income (each source)
- + Event cash flows (one row per event)
+ + Age Pension
+ + Event cash flows (one row per event, signed; a home purchase's deposit, duty, costs and running costs)
  − Spending
- − Loan payments
- + Principal repaid (the debt falls by this; net effect of payments on net worth is −interest)
+ − Loan payments (cash out; a pay-off lump appears here)
+ + Principal repaid (the debt falls by this, including a pay-off; net effect of payments is −interest)
+ + Assets and loans opened by events (property +price, mortgage −loan: nets to +deposit, which
+   offsets the deposit counted in event cash flows, so a purchase's net effect is −(duty + costs))
  + Super employer contributions (after contributions tax)
  + Growth (by class)
- − Increase in unfunded spending
 = Closing net worth
 ```
 
-Withdrawals and savings allocation are shown as moves between accounts (they change the account mix, not
-net worth), with the amount per account.
+There is **no unfunded-spending row**: in a deficit year, withdrawals and new unfunded spending together
+equal the deficit, and net worth already falls by that cash flow; repaying unfunded spending from surplus
+is a move. Withdrawals, savings allocation, unfunded drawn and unfunded repaid are shown as **moves**
+between accounts (they change the account mix, not net worth), with amounts per account. A generated test
+asserts the table total equals the change in net worth.
 
 ## 12. Life events
 
+**Timing of balance-creating events:** the event creates its balances in step 1 (a property at the inflated
+price, a mortgage at price − deposit). Its cash (deposit, duty, costs, a pay-off lump) is a step-2 event
+cash flow and is funded through step 5, so shortfalls are honest. A new mortgage makes **no payments and
+accrues no interest in its opening year** (the property also starts growing next year); repayments begin
+the following year. A pay-off's default amount is the loan's **opening balance for that year**, and the loan
+accrues no interest that year.
+
 Each event has its own editor, a name and an include/exclude switch. Dates are a year or an age.
-Escalation, where offered, is one of: none, inflation, or a fixed rate (default 2%), compounding yearly
+Escalation, where offered, is one of: none, inflation, or a fixed rate (default 2%, may be negative), compounding yearly
 from the start year.
 
 | Event                           | Fields                                                                                                                                                                                                                                                                                                                               | Effect                                                                                                                                                                                                                                                                                                                                                                                                                         |
@@ -262,9 +290,10 @@ scenario (**active**) against another (**reference**):
 - Two lines on one chart, event markers for both, paired key figures: net worth at retirement age, at end
   age, lowest net worth, super at preservation age, first unfunded year.
 - **Difference in money** = active − reference.
-- **Percent difference** = `(active − reference) ÷ |reference|`, as **"change relative to the reference
+- **Percent difference** = `(active − reference) ÷ reference`, as **"change relative to the reference
   plan"**. The UI labels the denominator in words next to the number. It is shown as "n/a" when the
-  reference value is 0 or less. This deliberately differs from Monarch, which divides by the active value
+  reference value is 0 or less, and only for money figures (not for "first unfunded year", where the
+  difference is in years). This deliberately differs from Monarch, which divides by the active value
   without saying so.
 - Today's/future dollars toggle applies to both.
 
@@ -281,14 +310,14 @@ scenario (**active**) against another (**reference**):
 | `account_loan_details`          | account id, rate bps, monthly repayment, optional term                                                                           |
 
 A plan saves as **one unit** in a single transaction with `expectedVersion`; a stale version returns 409
-with the current copy (as `docs/FORECASTS.md` describes), and the client offers Use theirs / Keep mine / Save
-as new. One version per plan (not per section as in Monarch) avoids partial saves. Limits: 20 plans, 50
+with the current copy (as `docs/FORECASTS.md` describes), and the client offers Use theirs / Keep mine (and Save as new when the plan was deleted). One version per plan (not per section as in Monarch) avoids partial saves. Limits: 20 plans, 50
 events per plan.
 
 **Drafts.** Opening an event editor creates nothing and saves nothing. The event lives in client state until
 **Create**; editing an existing event is also a draft until Save. (This deliberately differs from
-Monarch, whose templates save on open.) A draft that is incomplete shows what is missing and does not
-affect the chart.
+Monarch, whose templates save on open.) The chart does **not** preview an unsaved draft. An incomplete draft shows what is missing and Create stays
+disabled; a complete one can show a preview line only if the pure module runs on the client, which the
+read-only GET cannot do for an unsaved draft. Preview is a step-4 decision.
 
 **Ledger safety.** The plan routes import no write helpers for transactions, schedules, goals, assignments
 or balances; a test asserts the ledger tables are unchanged after plan create, edit, run and delete.
