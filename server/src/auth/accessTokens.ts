@@ -155,7 +155,8 @@ const UNREADABLE = [/^\/accounts\/[^/]+\/import-settings$/];
 export const MCP_PATH = '/mcp';
 
 /** Whether a read-only token may make this request (path relative to /api) */
-export function readOnlyAllows(method: string, path: string): boolean {
+export function readOnlyAllows(method: string, rawPath: string): boolean {
+  const path = rawPath.toLowerCase(); // the router ignores case, so the allowlist must too
   // POST carries MCP messages; GET is answered 405 (no server-sent stream), as MCP expects
   if (path === MCP_PATH) return method === 'POST' || method === 'GET';
   if (method !== 'GET' && method !== 'HEAD') return false;
@@ -171,34 +172,60 @@ const CATEGORY_WRITES = [
   /^\/categories\/groups\/(?!reorder$)[^/]+$/, // rename a group
   /^\/categories\/(?!reorder$)(?!groups$)[^/]+$/, // edit a category
 ];
+const GROUP_RENAME = /^\/categories\/groups\/[^/]+$/;
 const BULK_PATH = '/transactions/bulk';
-/** What a token may change on transactions: their category, and marking them reviewed */
-const BULK_CHANGES = new Set(['categoryId', 'reviewed']);
-const RESTORE_FIELDS = new Set(['id', 'categoryId', 'reviewedAt']);
+/** The only top-level keys of a bulk edit, and of an undo; nothing else may ride along */
+const BULK_KEYS = new Set([
+  'selection',
+  'ids',
+  'excludeIds',
+  'changes',
+  'preview',
+  'expectedCount',
+]);
+const RESTORE_FIELDS = new Set(['id', 'categoryId']);
+const MAX_RESTORE = 1000;
 
 const isObject = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === 'object' && !Array.isArray(v);
+const onlyKeys = (v: Record<string, unknown>, allowed: Iterable<string>) => {
+  const ok = new Set(allowed);
+  return Object.keys(v).every((k) => ok.has(k));
+};
 
 /**
  * Whether a token with this scope may make this request (path relative to /api). A categorise
  * token reads like a read token and may also create and edit categories and groups (never
- * delete or reorder them) and change transactions' category through the bulk edit, including
- * its preview and undo. Any other field of a transaction, or any other write, is refused.
+ * delete or reorder them, and a group only renames) and change transactions' category through
+ * the bulk edit, including its preview and undo. Any other field of a transaction, or any
+ * other write, is refused. Paths are compared in lower case because the router ignores case.
  */
-export function tokenAllows(scope: TokenScope, method: string, path: string, body?: unknown) {
+export function tokenAllows(scope: TokenScope, method: string, rawPath: string, body?: unknown) {
+  const path = rawPath.toLowerCase();
   if (readOnlyAllows(method, path)) return true;
   if (scope !== 'categorise') return false;
   if ((method === 'POST' || method === 'PUT') && CATEGORY_WRITES.some((p) => p.test(path))) {
-    return true;
+    // A group's income flag isn't a rename; it is set only when the group is created
+    return (
+      method === 'POST' || !GROUP_RENAME.test(path) || (isObject(body) && onlyKeys(body, ['name']))
+    );
   }
   if (method === 'POST' && path === BULK_PATH && isObject(body)) {
     if ('restore' in body) {
       return (
+        onlyKeys(body, ['restore']) &&
         Array.isArray(body.restore) &&
-        body.restore.every((r) => isObject(r) && Object.keys(r).every((k) => RESTORE_FIELDS.has(k)))
+        body.restore.length > 0 &&
+        body.restore.length <= MAX_RESTORE &&
+        body.restore.every((r) => isObject(r) && onlyKeys(r, RESTORE_FIELDS))
       );
     }
-    return isObject(body.changes) && Object.keys(body.changes).every((k) => BULK_CHANGES.has(k));
+    return (
+      onlyKeys(body, BULK_KEYS) &&
+      isObject(body.changes) &&
+      Object.keys(body.changes).length > 0 &&
+      onlyKeys(body.changes, ['categoryId'])
+    );
   }
   return false;
 }

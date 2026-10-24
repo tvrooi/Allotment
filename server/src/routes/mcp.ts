@@ -302,10 +302,11 @@ const WRITE_TOOLS: Tool[] = [
   {
     name: 'undo_categorise',
     description:
-      "Put transactions' categories back using the `restore` list from categorise_transactions.",
+      "Put transactions' categories back using the `restore` list from categorise_transactions (at most 1000 per call).",
     properties: {
       restore: {
         type: 'array',
+        minItems: 1,
         maxItems: 1000,
         items: {
           type: 'object',

@@ -27,9 +27,10 @@ accounts, transactions, the budget, reports, goals and reviews. It cannot change
 When you want an assistant to sort transactions into categories, create a token with **Access:
 Read and categorise** (prefix `fbcat_`). It can do everything a read-only token can, and also:
 
-- create and edit categories and category groups (name, group, icon, budget type);
-- set, clear or undo the **category** of transactions, and mark them reviewed, through the same
-  bulk edit the app uses. Reconciled rows, transfers, splits and household entries are skipped.
+- create and edit categories (name, group, icon, budget type), create category groups and
+  rename them;
+- set, clear or undo the **category** of transactions through the same bulk edit the app uses
+  (undo takes at most 1,000 rows per call). Reconciled rows, transfers, splits and household entries are skipped.
 
 It still cannot change any other transaction field (amount, date, payee, notes, tags, hidden),
 delete or reorder categories, edit rules or budgets, reach settings, backups, sign-in, tokens or

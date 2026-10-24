@@ -250,4 +250,73 @@ describe('categorise tokens', () => {
         .some((c) => c.id === 'dining'),
     ).toBe(true);
   });
+
+  it('cannot smuggle other changes past the check', async () => {
+    const { token } = await newToken('categorise');
+    const post = (body: unknown) => call('POST', '/transactions/bulk', { token }, body);
+    // An empty restore alongside an apply must not hide the apply's other changes
+    expect(
+      (
+        await post({
+          restore: [],
+          selection: {},
+          ids: ['t1'],
+          changes: { notes: 'x' },
+          expectedCount: 1,
+        })
+      ).status,
+    ).toBe(403);
+    // Non-preview applies, extra keys, empty changes and empty or oversized restores
+    expect(
+      (await post({ selection: {}, ids: ['t1'], changes: { notes: 'x' }, expectedCount: 1 }))
+        .status,
+    ).toBe(403);
+    expect((await post({ selection: {}, ids: ['t1'], changes: {}, expectedCount: 1 })).status).toBe(
+      403,
+    );
+    expect(
+      (
+        await post({
+          selection: {},
+          ids: ['t1'],
+          changes: { categoryId: 'dining' },
+          expectedCount: 1,
+          extra: 1,
+        })
+      ).status,
+    ).toBe(403);
+    expect((await post({ restore: [] })).status).toBe(403);
+    expect(
+      (await post({ restore: [{ id: 't1', categoryId: null, reviewedAt: 'x' }] })).status,
+    ).toBe(403);
+    expect(
+      (await post({ restore: [{ id: 't1', categoryId: null }], changes: { notes: 'x' } })).status,
+    ).toBe(403);
+    expect(
+      db
+        .select()
+        .from(transactions)
+        .all()
+        .every((t) => t.notes == null),
+    ).toBe(true);
+  });
+
+  it('ignores letter case in paths, so reorder and import settings stay out of reach', async () => {
+    const { token } = await newToken('categorise');
+    const read = await newToken('read');
+    for (const path of ['/categories/REORDER', '/categories/Groups/Reorder']) {
+      expect((await call('PUT', path, { token }, { ids: [] })).status).toBe(403);
+    }
+    for (const t of [token, read.token]) {
+      expect((await call('GET', '/accounts/mock/Import-Settings', { token: t })).status).toBe(403);
+    }
+    // A group can be renamed but its income flag can't be flipped
+    expect(
+      (await call('PUT', '/categories/groups/g1', { token }, { name: 'Daily', isIncome: 1 }))
+        .status,
+    ).toBe(403);
+    expect((await call('PUT', '/categories/groups/g1', { token }, { name: 'Daily' })).status).toBe(
+      200,
+    );
+  });
 });
