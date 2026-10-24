@@ -170,6 +170,15 @@ describe('plain sums', () => {
       ],
     });
     const years = 10;
+    // Every year's closing worth is the opening plus that year's flows
+    const all = forecastLongTerm(plan).years;
+    all.slice(1).forEach((y, i) => {
+      const flowsSoFar =
+        y.income.reduce((s, r) => s + r.amount, 0) -
+        y.spending +
+        y.eventFlows.reduce((s, r) => s + r.amount, 0);
+      expect(y.closingNetWorth - y.openingNetWorth, `year ${i + 1}`).toBe(flowsSoFar);
+    });
     const flows = years * (8_000_000 - 6_000_000) + 5_000_000 - 2_000_000 + 4 * 100_000;
     const last = closing(plan);
     expect(last.closingNetWorth).toBe(1_000_000 + flows);
@@ -383,8 +392,11 @@ describe('shortfalls', () => {
     expect(result.firstUnfunded).toEqual({ index: 2, calendarYear: 2028, age: 41 });
     const y4 = result.years[4];
     expect(result.years[3].unfundedBalance).toBe(1_500_000);
-    expect(y4.unfundedRepaid).toBeGreaterThan(0);
+    expect(y4.unfundedRepaid).toBe(1_500_000);
     expect(y4.unfundedBalance).toBe(0);
+    expect(y4.allocations).toEqual([
+      { id: EXTRA_SAVINGS_ID, name: 'Extra savings', amount: 2_500_000 },
+    ]);
   });
 
   it('counts unfunded spending against net worth', () => {
@@ -684,6 +696,19 @@ describe('invariants', () => {
         else expect(out + y.unfundedAdded).toBe(-y.netCashFlow);
         expect(y.growth.reduce((s, r) => s + r.amount, 0)).toBe(y.growthTotal);
         expect(y.superContribution - y.superTax).toBe(y.superNet);
+        const rowsNet =
+          y.income.reduce((s, r) => s + r.amount, 0) +
+          y.agePension +
+          y.eventFlows.reduce((s, r) => s + r.amount, 0) -
+          y.spending -
+          y.loanPayments;
+        expect(rowsNet).toBe(y.netCashFlow);
+        expect(y.spendingBase + y.spendingChanges.reduce((s, r) => s + r.amount, 0)).toBe(
+          y.spending,
+        );
+        for (const row of y.income) {
+          expect(row.gross - row.reductions.reduce((s, r) => s + r.amount, 0)).toBe(row.amount);
+        }
       }
     }
   });
@@ -858,4 +883,351 @@ function busyPlan(seed: number): ForecastPlan {
     withdrawalOrder: [],
     events,
   };
+}
+
+describe('more behaviours', () => {
+  it('treats a blank split entry as 0', () => {
+    const plan = basePlan({
+      endAge: 41,
+      accounts: [acct('a', 'cash', 0)],
+      splits: [
+        { accountId: 'a', mode: 'percent' },
+        { accountId: 'a', mode: 'fixed' },
+      ],
+    });
+    const y = forecastLongTerm(plan).years[1];
+    expect(y.allocations).toEqual([
+      { id: EXTRA_SAVINGS_ID, name: 'Extra savings', amount: 2_000_000 },
+    ]);
+  });
+
+  it('rejects bad event fields with a typed error, not a crash', () => {
+    const oneOff = (over: Record<string, unknown>) =>
+      basePlan({
+        events: [
+          ev({
+            id: 'x',
+            name: 'X',
+            kind: 'oneOff',
+            start: { year: 2030 },
+            amount: 100,
+            todaysDollars: true,
+            ...over,
+          }),
+        ],
+      });
+    expect(() => forecastLongTerm(oneOff({ amount: 1.5 }))).toThrow(LongTermForecastError);
+    expect(() => forecastLongTerm(oneOff({ start: { year: 2028.5 } }))).toThrow(
+      LongTermForecastError,
+    );
+    expect(() => forecastLongTerm(oneOff({ start: { year: NaN } }))).toThrow(LongTermForecastError);
+    expect(() => forecastLongTerm(oneOff({ kind: 'mystery' }))).toThrow(/Unknown event kind/);
+    const home = (over: Record<string, unknown>) =>
+      basePlan({ events: [{ ...homeEvent(), ...over } as LifeEvent] });
+    expect(() => forecastLongTerm(home({ price: -1 }))).toThrow(/price/);
+    expect(() => forecastLongTerm(home({ repaymentOverride: -5 }))).toThrow(/repayment/);
+    const payOff = basePlan({
+      loans: [
+        { id: 'l', name: 'L', balance: -1000, rateBps: 0, monthlyRepayment: 0, termMonths: null },
+      ],
+      events: [
+        ev({ id: 'p', name: 'P', kind: 'payOff', start: { year: 2030 }, loanId: 'l', amount: -5 }),
+      ],
+    });
+    expect(() => forecastLongTerm(payOff)).toThrow(/non-negative/);
+  });
+
+  it('reserves ids it generates', () => {
+    const plan = basePlan({
+      accounts: [acct('home:property', 'cash', 0)],
+      events: [homeEvent()],
+    });
+    expect(() => forecastLongTerm(plan)).toThrow(/twice/);
+  });
+
+  it('turns arithmetic overflow into a typed error', () => {
+    const plan = basePlan({
+      endAge: 140,
+      startAge: 40,
+      accounts: [acct('inv', 'investments', 9_000_000_000_000_000 - 1, 1500)],
+    });
+    expect(() => forecastLongTerm(plan)).toThrow(LongTermForecastError);
+    expect(() => forecastLongTerm(basePlan({ inflationBps: 100_000 }))).toThrow(
+      LongTermForecastError,
+    );
+  });
+
+  it('adds a spending addition without raising the cap, mixed with replaced rent, in start order', () => {
+    const plan = basePlan({
+      endAge: 41,
+      spending: { annual: 6_000_000, escalation: { mode: 'none' } },
+      accounts: [acct('cash', 'cash', 50_000_000)],
+      events: [
+        ev({
+          id: 'up',
+          name: 'Higher costs',
+          kind: 'careerBreak',
+          start: { year: 2027 },
+          durationYears: 3,
+          spendingMultiplierBps: 15000,
+          reductions: {},
+        }),
+        { ...homeEvent(), start: { year: 2027 }, rentMonthly: 400_000, replaceRent: true },
+        ev({
+          id: 'ret',
+          name: 'Retire',
+          kind: 'retirement',
+          start: { year: 2027 },
+          spendingMultiplierBps: 0,
+          reductions: {},
+        }),
+      ],
+    });
+    const y = forecastLongTerm(plan).years[1];
+    // +50% (3,000,000), then rent -4,800,000, then retirement takes the remaining 1,200,000 of 6,000,000
+    expect(y.spendingChanges.map((c) => c.amount)).toEqual([3_000_000, -4_800_000, -1_200_000]);
+    expect(y.spending).toBe(3_000_000);
+  });
+
+  it('withdraws Extra savings first, skips locked super and non-liquid assets, and ignores overdrawn accounts', () => {
+    const plan = basePlan({
+      endAge: 42,
+      salary: { takeHome: 5_000_000, grossForSuper: 0, escalation: { mode: 'none' } },
+      spending: { annual: 3_000_000, escalation: { mode: 'none' } },
+      accounts: [
+        acct('cash', 'cash', 100_000),
+        acct('over', 'cash', -500_000),
+        acct('sup', 'super', 9_000_000),
+        acct('house', 'property', 90_000_000),
+        acct('car', 'vehicles', 9_000_000),
+      ],
+      splits: [],
+      withdrawalOrder: ['sup', 'house'],
+    });
+    const years = forecastLongTerm(plan).years;
+    // Surplus years build Extra savings
+    expect(years[1].allocations[0].id).toBe(EXTRA_SAVINGS_ID);
+    const lean = forecastLongTerm({
+      ...plan,
+      salary: { ...plan.salary, takeHome: 0 },
+      spending: { annual: 2_100_000, escalation: { mode: 'none' } },
+    }).years;
+    expect(lean[1].withdrawals.map((w) => [w.id, w.amount])).toEqual([['cash', 100_000]]);
+    expect(lean[1].unfundedAdded).toBe(2_000_000);
+    expect(lean[1].balances).toMatchObject({
+      sup: 9_000_000,
+      house: 90_000_000,
+      car: 9_000_000,
+    });
+  });
+
+  it('puts Extra savings ahead of cash by default', () => {
+    const plan = basePlan({
+      endAge: 43,
+      accounts: [acct('cash', 'cash', 100_000_000)],
+      salary: { takeHome: 3_000_000, grossForSuper: 0, escalation: { mode: 'none' } },
+      spending: { annual: 1_000_000, escalation: { mode: 'none' } },
+      events: [
+        ev({
+          id: 'x',
+          name: 'Big bill',
+          kind: 'oneOff',
+          start: { year: 2028 },
+          amount: -4_000_000,
+          todaysDollars: false,
+        }),
+      ],
+    });
+    const y2 = forecastLongTerm(plan).years[2];
+    expect(y2.withdrawals.map((w) => [w.id, w.amount])).toEqual([[EXTRA_SAVINGS_ID, 2_000_000]]);
+    const y2b = forecastLongTerm({
+      ...plan,
+      events: [
+        ev({
+          id: 'x',
+          name: 'Big bill',
+          kind: 'oneOff',
+          start: { year: 2028 },
+          amount: -6_000_000,
+          todaysDollars: false,
+        }),
+      ],
+    }).years[2];
+    expect(y2b.withdrawals.map((w) => [w.id, w.amount])).toEqual([
+      [EXTRA_SAVINGS_ID, 2_000_000],
+      ['cash', 2_000_000],
+    ]);
+  });
+
+  it('clears a home mortgage exactly at its last month, paying nothing in the opening year', () => {
+    const plan = basePlan({
+      endAge: 40 + 34,
+      salary: { takeHome: 90_000_000, grossForSuper: 0, escalation: { mode: 'none' } },
+      accounts: [acct('cash', 'cash', 60_000_000)],
+      events: [{ ...homeEvent(), start: { year: 2028 } }],
+    });
+    const years = forecastLongTerm(plan).years;
+    const open = 2; // 2028
+    const level = standardLoanPayment(32_000_000, 650, 360);
+    expect(years[open].loanPayments).toBe(0);
+    expect(years[open + 29].balances['home:mortgage']).not.toBe(0);
+    expect(years[open + 30].balances['home:mortgage']).toBe(0);
+    expect(years[open + 31].loanPayments).toBe(0);
+    const finalYear = years[open + 30];
+    const normalYear = years[open + 29];
+    expect(Math.abs(finalYear.loanPayments - 12 * level)).toBeLessThan(5_000);
+    expect(normalYear.loanPayments).toBe(12 * level);
+  });
+
+  it('handles recurring events: every two years, an end year, and expenses', () => {
+    const plan = basePlan({
+      endAge: 48,
+      events: [
+        ev({
+          id: 'inc',
+          name: 'Rent',
+          kind: 'recurring',
+          start: { year: 2028 },
+          amount: 500_000,
+          endYear: 2032,
+          everyYears: 2,
+          escalation: { mode: 'none' },
+        }),
+        ev({
+          id: 'exp',
+          name: 'Service',
+          kind: 'recurring',
+          start: { year: 2027 },
+          amount: -100_000,
+          endYear: null,
+          everyYears: 3,
+          escalation: { mode: 'none' },
+        }),
+      ],
+    });
+    const years = forecastLongTerm(plan).years;
+    const incomeOf = (i: number) => years[i].income.find((r) => r.sourceId === 'inc')?.amount ?? 0;
+    // 2028, 2030, 2032 are plan years 2, 4, 6; 2034 is past the end year
+    expect([1, 2, 3, 4, 5, 6, 7, 8].map(incomeOf)).toEqual([
+      0, 500_000, 0, 500_000, 0, 500_000, 0, 0,
+    ]);
+    const expenseOf = (i: number) => years[i].eventFlows.find((r) => r.id === 'exp')?.amount ?? 0;
+    expect([1, 2, 3, 4, 5, 6, 7].map(expenseOf)).toEqual([
+      -100_000, 0, 0, -100_000, 0, 0, -100_000,
+    ]);
+  });
+
+  it('pins escalation with inflation: level in real terms, flat in nominal, or compounding from the start year', () => {
+    const plan = (escalation: ForecastPlan['salary']['escalation']) =>
+      basePlan({
+        endAge: 43,
+        inflationBps: 1000,
+        salary: { takeHome: 1_000_000, grossForSuper: 0, escalation },
+        spending: { annual: 0, escalation: { mode: 'none' } },
+      });
+    const amounts = (e: ForecastPlan['salary']['escalation']) =>
+      forecastLongTerm(plan(e))
+        .years.slice(1)
+        .map((y) => y.income[0].amount);
+    expect(amounts({ mode: 'inflation' })).toEqual([1_100_000, 1_210_000, 1_331_000]);
+    expect(amounts({ mode: 'none' })).toEqual([1_100_000, 1_100_000, 1_100_000]);
+    expect(amounts({ mode: 'rate', rateBps: 300 })).toEqual([1_100_000, 1_133_000, 1_166_990]);
+  });
+
+  it('warns about events after the plan ends, and about loans that never shrink', () => {
+    const result = forecastLongTerm(
+      basePlan({
+        loans: [
+          {
+            id: 'card',
+            name: 'Card',
+            balance: -1_000_000,
+            rateBps: 2000,
+            monthlyRepayment: 10_000,
+            termMonths: null,
+          },
+          {
+            id: 'bal',
+            name: 'Balloon',
+            balance: -1_000_000,
+            rateBps: 500,
+            monthlyRepayment: 0,
+            termMonths: 24,
+          },
+        ],
+        events: [
+          ev({
+            id: 'late',
+            name: 'Late',
+            kind: 'oneOff',
+            start: { year: 2099 },
+            amount: 1,
+            todaysDollars: false,
+          }),
+        ],
+      }),
+    );
+    expect(result.warnings).toEqual([
+      'Late is dated after the end of the plan and never happens',
+      "Card's repayment does not cover its interest, so the balance grows",
+      'Balloon has no repayment, so its whole balance falls due in its last month',
+    ]);
+  });
+
+  it('ignores a one-off or pay-off dated before today, not only a home', () => {
+    const result = forecastLongTerm(
+      basePlan({
+        loans: [
+          {
+            id: 'l',
+            name: 'L',
+            balance: -1_000_000,
+            rateBps: 0,
+            monthlyRepayment: 10_000,
+            termMonths: null,
+          },
+        ],
+        events: [
+          ev({
+            id: 'o',
+            name: 'Old windfall',
+            kind: 'oneOff',
+            start: { year: 2020 },
+            amount: 5_000_000,
+            todaysDollars: false,
+          }),
+          ev({
+            id: 'p',
+            name: 'Old payoff',
+            kind: 'payOff',
+            start: { age: 20 },
+            loanId: 'l',
+            amount: null,
+          }),
+        ],
+      }),
+    );
+    expect(result.warnings.filter((w) => w.includes('dated before today'))).toHaveLength(2);
+    expect(result.years[1].eventFlows).toEqual([]);
+    expect(result.years[1].balances.l).toBe(-1_000_000 + 120_000);
+  });
+});
+
+function homeEvent() {
+  return ev({
+    id: 'home',
+    name: 'Home',
+    kind: 'home',
+    start: { year: 2029 },
+    price: 40_000_000,
+    deposit: { kind: 'percent', bps: 2000 },
+    loanRateBps: 650,
+    termYears: 30,
+    purchaseCosts: 1_500_000,
+    annualRates: 300_000,
+    annualInsurance: 200_000,
+    rentMonthly: 200_000,
+    replaceRent: true,
+    propertyGrowthBps: 0,
+  });
 }

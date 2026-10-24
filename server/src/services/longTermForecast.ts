@@ -12,6 +12,8 @@ const SUPER_NEW_ID = 'super-new-contributions';
 const BPS = 10_000;
 const MONTHLY_BPS = 120_000;
 export const MAX_YEARS = 100;
+/** Highest yearly rate accepted, so a century of compounding stays inside safe integers */
+const MAX_RATE_BPS = 1500;
 
 export class LongTermForecastError extends Error {}
 
@@ -38,6 +40,13 @@ export function mulDiv(a: number, b: number, c: number): number {
     throw new RangeError('mulDiv takes integers');
   }
   return divRound(BigInt(a) * BigInt(b), BigInt(c));
+}
+
+/** a × b1 × b2 ÷ (c1 × c2), rounded once, for quantities that would otherwise round twice. */
+export function mulDiv2(a: number, b1: number, b2: number, c1: number, c2: number): number {
+  for (const v of [a, b1, b2, c1, c2])
+    if (!Number.isSafeInteger(v)) throw new RangeError('mulDiv2 takes integers');
+  return divRound(BigInt(a) * BigInt(b1) * BigInt(b2), BigInt(c1) * BigInt(c2));
 }
 
 /** Level monthly payment for a loan, exactly: L·r / (1 − (1 + r)^−n) with r = bps ÷ 120000. */
@@ -96,9 +105,7 @@ export interface PlanLoan {
 }
 
 export type Escalation =
-  | { mode: 'none' }
-  | { mode: 'inflation' }
-  | { mode: 'rate'; rateBps: number };
+  { mode: 'none' } | { mode: 'inflation' } | { mode: 'rate'; rateBps: number };
 
 /** A date for an event: a calendar year or the age reached in that plan year */
 export type When = { year: number } | { age: number };
@@ -307,7 +314,7 @@ function checkBps(value: number, label: string, min = 0, max = BPS) {
 }
 
 function checkEscalation(e: Escalation, label: string) {
-  if (e.mode === 'rate') checkBps(e.rateBps, `${label} rate`, -5000, 100_000);
+  if (e.mode === 'rate') checkBps(e.rateBps, `${label} rate`, -5000, MAX_RATE_BPS);
 }
 
 function checkReductions(r: Reductions, label: string) {
@@ -321,8 +328,8 @@ export function validatePlan(plan: ForecastPlan): void {
   if (!isInt(plan.endAge) || plan.endAge <= plan.startAge)
     fail('End age must be after the start age');
   if (plan.endAge - plan.startAge > MAX_YEARS) fail(`A plan covers at most ${MAX_YEARS} years`);
-  checkBps(plan.inflationBps, 'Inflation', -2000, 100_000);
-  checkBps(plan.extraSavingsGrowthBps, 'Extra savings growth', -5000, 100_000);
+  checkBps(plan.inflationBps, 'Inflation', -2000, MAX_RATE_BPS);
+  checkBps(plan.extraSavingsGrowthBps, 'Extra savings growth', -5000, MAX_RATE_BPS);
   checkBps(plan.super.guaranteeBps, 'Super guarantee rate');
   checkBps(plan.super.contributionsTaxBps, 'Contributions tax');
   if (!isInt(plan.super.preservationAge)) fail('Preservation age must be a whole number');
@@ -344,7 +351,7 @@ export function validatePlan(plan: ForecastPlan): void {
     claim(a.id, 'Account');
     accountIds.add(a.id);
     if (!isInt(a.balance)) fail(`Account ${a.name} balance must be whole cents`);
-    checkBps(a.growthBps, `${a.name} growth`, -5000, 100_000);
+    checkBps(a.growthBps, `${a.name} growth`, -5000, MAX_RATE_BPS);
   }
   const loanIds = new Set<string>();
   for (const l of plan.loans) {
@@ -352,7 +359,7 @@ export function validatePlan(plan: ForecastPlan): void {
     loanIds.add(l.id);
     if (!isInt(l.balance) || l.balance > 0)
       fail(`Loan ${l.name} balance must be zero or negative cents`);
-    checkBps(l.rateBps, `${l.name} rate`, 0, 100_000);
+    checkBps(l.rateBps, `${l.name} rate`, 0, BPS);
     if (!isInt(l.monthlyRepayment) || l.monthlyRepayment < 0)
       fail(`Loan ${l.name} repayment is invalid`);
     if (l.termMonths !== null && (!isInt(l.termMonths) || l.termMonths < 1)) {
@@ -363,9 +370,26 @@ export function validatePlan(plan: ForecastPlan): void {
   const sources = new Set<string>([SALARY_SOURCE_ID]);
   for (const e of plan.events) {
     claim(e.id, 'Event');
+    if (e.kind === 'home') {
+      claim(`${e.id}:property`, 'Generated');
+      claim(`${e.id}:mortgage`, 'Generated');
+    }
+    if (e.kind === 'newJob') claim(`${e.id}:bonus`, 'Generated');
     if (e.kind === 'newJob' || (e.kind === 'recurring' && e.amount > 0)) sources.add(e.id);
   }
+  const cents = (v: unknown, label: string) => {
+    if (typeof v !== 'number' || !isInt(v) || v < 0)
+      fail(`${label} must be non-negative whole cents`);
+  };
+  const whole = (v: unknown, label: string, min = 0) => {
+    if (typeof v !== 'number' || !isInt(v) || v < min)
+      fail(`${label} must be a whole number of at least ${min}`);
+  };
   for (const e of plan.events) {
+    if (!isInt(e.position)) fail(`${e.name} position is invalid`);
+    if (!e.start || !('year' in e.start ? isInt(e.start.year) : isInt(e.start.age))) {
+      fail(`${e.name} needs a whole-number start year or age`);
+    }
     if ('reductions' in e) {
       checkReductions(e.reductions, e.name);
       for (const key of Object.keys(e.reductions)) {
@@ -374,43 +398,74 @@ export function validatePlan(plan: ForecastPlan): void {
       }
     }
     if ('spendingMultiplierBps' in e)
-      checkBps(e.spendingMultiplierBps, `${e.name} spending`, 0, 100_000);
+      checkBps(e.spendingMultiplierBps, `${e.name} spending`, 0, 50_000);
     if ('escalation' in e) checkEscalation(e.escalation, e.name);
     switch (e.kind) {
       case 'home':
+        cents(e.price, `${e.name} price`);
+        cents(e.purchaseCosts, `${e.name} costs`);
+        cents(e.annualRates, `${e.name} rates`);
+        cents(e.annualInsurance, `${e.name} insurance`);
+        cents(e.rentMonthly, `${e.name} rent`);
+        if (e.repaymentOverride !== undefined) cents(e.repaymentOverride, `${e.name} repayment`);
         if (e.deposit.kind === 'percent') checkBps(e.deposit.bps, `${e.name} deposit`);
-        checkBps(e.loanRateBps, `${e.name} loan rate`, 0, 100_000);
-        checkBps(e.propertyGrowthBps, `${e.name} property growth`, -5000, 100_000);
-        if (!isInt(e.termYears) || e.termYears < 1 || e.termYears > 50)
-          fail(`${e.name} term is invalid`);
+        else cents(e.deposit.cents, `${e.name} deposit`);
+        checkBps(e.loanRateBps, `${e.name} loan rate`, 0, BPS);
+        checkBps(e.propertyGrowthBps, `${e.name} property growth`, -5000, MAX_RATE_BPS);
+        whole(e.termYears, `${e.name} term`, 1);
+        if (e.termYears > 50) fail(`${e.name} term is invalid`);
+        break;
+      case 'newJob':
+        cents(e.takeHome, `${e.name} take-home`);
+        cents(e.signingBonus, `${e.name} signing bonus`);
+        cents(e.grossSalary, `${e.name} gross salary`);
         break;
       case 'careerBreak':
-        if (!isInt(e.durationYears) || e.durationYears < 1) fail(`${e.name} duration is invalid`);
+        whole(e.durationYears, `${e.name} duration`, 1);
         break;
       case 'child':
-        if (!isInt(e.years) || e.years < 1) fail(`${e.name} years is invalid`);
+        whole(e.years, `${e.name} years`, 1);
+        cents(e.annualCost, `${e.name} yearly cost`);
+        cents(e.upfrontCost, `${e.name} upfront cost`);
+        break;
+      case 'oneOff':
+        if (!isInt(e.amount)) fail(`${e.name} amount must be whole cents`);
         break;
       case 'recurring':
-        if (!isInt(e.everyYears) || e.everyYears < 1) fail(`${e.name} repeat is invalid`);
+        if (!isInt(e.amount)) fail(`${e.name} amount must be whole cents`);
+        whole(e.everyYears, `${e.name} repeat`, 1);
+        if (e.endYear !== null) whole(e.endYear, `${e.name} end year`, -10_000);
+        break;
+      case 'retirement':
         break;
       case 'payOff':
         if (!loanIds.has(e.loanId)) fail(`${e.name} pays off an unknown loan`);
+        if (e.amount !== null) cents(e.amount, `${e.name} amount`);
         break;
       default:
-        break;
+        fail(`Unknown event kind on ${(e as { name?: string }).name ?? 'an event'}`);
     }
   }
   if (plan.events.filter((e) => e.kind === 'retirement' && e.enabled).length > 1) {
     fail('A plan has at most one retirement');
   }
+  if (!isInt(plan.agePension.startAge)) fail('Age Pension age must be a whole number');
+  for (const a of plan.accounts) {
+    if (!['cash', 'investments', 'super', 'property', 'vehicles', 'other'].includes(a.cls)) {
+      fail(`Account ${a.name} has an unknown class`);
+    }
+  }
+  // A blank split entry gets 0
   for (const s of plan.splits) {
     const target = plan.accounts.find((a) => a.id === s.accountId);
     if (!target || (target.cls !== 'cash' && target.cls !== 'investments')) {
       fail('Savings go to cash or investment accounts only');
     }
-    if (s.mode === 'percent') checkBps(s.bps ?? -1, 'Split percentage');
-    else if (!isInt(s.amount ?? -1) || (s.amount as number) < 0)
-      fail('Split amount must be whole cents');
+    if (s.mode === 'percent') {
+      if (s.bps !== undefined) checkBps(s.bps, 'Split percentage');
+    } else if (s.mode === 'fixed') {
+      if (s.amount !== undefined) cents(s.amount, 'Split amount');
+    } else fail('Unknown split mode');
   }
 }
 
@@ -479,6 +534,16 @@ function runLoanYear(loan: LoanState) {
 }
 
 export function forecastLongTerm(plan: ForecastPlan): ForecastResult {
+  try {
+    return runForecast(plan);
+  } catch (error) {
+    if (error instanceof RangeError)
+      throw new LongTermForecastError('Amounts are too large to forecast');
+    throw error;
+  }
+}
+
+function runForecast(plan: ForecastPlan): ForecastResult {
   validatePlan(plan);
   const warnings: string[] = [];
   const years = plan.endAge - plan.startAge;
@@ -490,10 +555,10 @@ export function forecastLongTerm(plan: ForecastPlan): ForecastResult {
 
   /** An amount in today's dollars at plan year k, escalated from its start year s */
   const escalate = (amount: number, esc: Escalation, s: number, k: number): number => {
-    const atStart = mulDiv(amount, inflation[Math.min(Math.max(s, 0), years)], PPB);
+    const startIndex = inflation[Math.min(Math.max(s, 0), years)];
     if (esc.mode === 'inflation') return mulDiv(amount, inflation[k], PPB);
-    if (esc.mode === 'none') return atStart;
-    return mulDiv(atStart, rateIndexPpb(esc.rateBps, Math.max(0, k - s)), PPB);
+    if (esc.mode === 'none') return mulDiv(amount, startIndex, PPB);
+    return mulDiv2(amount, startIndex, rateIndexPpb(esc.rateBps, Math.max(0, k - s)), PPB, PPB);
   };
 
   const accounts: Acct[] = [];
@@ -533,6 +598,9 @@ export function forecastLongTerm(plan: ForecastPlan): ForecastResult {
     .filter((e) => e.enabled)
     .map((e) => ({ e, s: startIndexOf(e.start, plan) }))
     .sort((a, b) => a.s - b.s || a.e.position - b.e.position);
+  for (const { e, s } of events) {
+    if (s > years) warnings.push(`${e.name} is dated after the end of the plan and never happens`);
+  }
   for (const { e, s } of events) {
     if (s < 1 && (e.kind === 'home' || e.kind === 'oneOff' || e.kind === 'payOff')) {
       warnings.push(`${e.name} is dated before today and was ignored`);
@@ -585,7 +653,11 @@ export function forecastLongTerm(plan: ForecastPlan): ForecastResult {
   const retirement = events.find(({ e }) => e.kind === 'retirement');
   const nominalWorth = () => {
     const assets = accounts.reduce((sum, a) => sum + a.balance, 0);
-    return assets - loans.reduce((sum, l) => sum + l.owed, 0) - unfunded;
+    const worth = assets - loans.reduce((sum, l) => sum + l.owed, 0) - unfunded;
+    if (!Number.isSafeInteger(worth) || accounts.some((a) => !Number.isSafeInteger(a.balance))) {
+      throw new RangeError('Amount out of range');
+    }
+    return worth;
   };
   const snapshotBalances = () => {
     const out: Record<string, number> = {};
@@ -597,7 +669,7 @@ export function forecastLongTerm(plan: ForecastPlan): ForecastResult {
   const results: YearResult[] = [
     {
       index: 0,
-      calendarYear: plan.startYear - 1,
+      calendarYear: plan.startYear,
       age: plan.startAge,
       inflationIndexPpb: PPB,
       income: [],
@@ -812,8 +884,13 @@ export function forecastLongTerm(plan: ForecastPlan): ForecastResult {
     // 4. Super: employer contributions on the salary that remains, after contributions tax
     let superContribution = 0;
     for (const base of superBase) {
-      const effective = mulDiv(base.gross, base.remainingBps, BPS);
-      superContribution += mulDiv(effective, plan.super.guaranteeBps, BPS);
+      superContribution += mulDiv2(
+        base.gross,
+        base.remainingBps,
+        plan.super.guaranteeBps,
+        BPS,
+        BPS,
+      );
     }
     const superTax = mulDiv(superContribution, plan.super.contributionsTaxBps, BPS);
     const superNet = superContribution - superTax;
@@ -835,8 +912,8 @@ export function forecastLongTerm(plan: ForecastPlan): ForecastResult {
         const target = accounts.find((a) => a.id === split.accountId) as Acct;
         const portion =
           split.mode === 'percent'
-            ? mulDiv(remaining, split.bps as number, BPS)
-            : Math.min(mulDiv(split.amount as number, inflation[k], PPB), remaining);
+            ? mulDiv(remaining, split.bps ?? 0, BPS)
+            : Math.min(mulDiv(split.amount ?? 0, inflation[k], PPB), remaining);
         if (portion <= 0) continue;
         target.balance += portion;
         remaining -= portion;
@@ -938,8 +1015,16 @@ export function forecastLongTerm(plan: ForecastPlan): ForecastResult {
   }
 
   for (const loan of plan.loans) {
-    if (loan.balance < 0 && loan.monthlyRepayment === 0 && loan.rateBps === 0) {
+    if (loan.balance === 0) continue;
+    const firstInterest = mulDiv(-loan.balance, loan.rateBps, MONTHLY_BPS);
+    if (loan.monthlyRepayment === 0 && loan.rateBps === 0) {
       warnings.push(`${loan.name} has no repayment data and stays flat`);
+    } else if (loan.monthlyRepayment === 0 && loan.termMonths !== null) {
+      warnings.push(
+        `${loan.name} has no repayment, so its whole balance falls due in its last month`,
+      );
+    } else if (loan.monthlyRepayment <= firstInterest && loan.rateBps > 0) {
+      warnings.push(`${loan.name}'s repayment does not cover its interest, so the balance grows`);
     }
   }
   return { years: results, firstUnfunded, warnings };

@@ -46,8 +46,12 @@ describe('account_loan_details', () => {
         .insert(accountLoanDetails)
         .values({ accountId: 'mock-loan', rateBps: 100, ...v })
         .run();
+    // A valid row goes in, so the refusals below are the CHECKs and nothing else
+    expect(() => insert({})).not.toThrow();
+    db.delete(accountLoanDetails).run();
     expect(() => insert({ monthlyRepayment: -1 })).toThrow();
+    expect(() => insert({ rateBps: -1 })).toThrow();
     expect(() => insert({ termMonths: 0 })).toThrow();
-    expect(() => insert({ rateBps: 100_001 })).toThrow();
+    expect(() => insert({ rateBps: 10_001 })).toThrow();
   });
 });

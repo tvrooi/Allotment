@@ -322,7 +322,7 @@ read-only GET cannot do for an unsaved draft. Preview is a step-4 decision.
 **Ledger safety.** The plan routes import no write helpers for transactions, schedules, goals, assignments
 or balances; a test asserts the ledger tables are unchanged after plan create, edit, run and delete.
 
-**Backups.** Backup format 14 becomes 15 with the five tables. Restoring a format ≤ 14 backup leaves the new
+**Backups.** Backup format 15 becomes 16 with the long-term tables (see §18). Restoring a format ≤ 15 backup leaves the new
 tables empty and everything else unchanged (tested), as format 13 → 14 did.
 
 **Read-only access.** `/forecast` is already on the read-only allowlist as a GET prefix. Plans and results
@@ -393,11 +393,20 @@ Decisions made while building the engine. They refine the sections above; where 
   be reduced. Signing bonuses are event cash flows and cannot be reduced.
 - **Super follows income** by running the §6.1 rule on a notional 10,000 (basis points), so the fraction of
   salary that remains is exact even when take-home is zero. Employer super is
-  `mulDiv(mulDiv(gross, remainingBps, 10000), guaranteeBps, 10000)`, tax is its own `mulDiv`, and net is
-  contribution − tax. Contributions go to the first super account, or to a system "Super (new contributions)"
+  `gross × remainingBps × guaranteeBps ÷ 10000²` rounded once (`mulDiv2`), tax is its own `mulDiv`, and net is
+  contribution − tax. Rate escalation likewise rounds once. Contributions go to the first super account, or to a system "Super (new contributions)"
   account when you have none.
-- **No "repayments in spending" flag.** Repayments on modelled loans are not in baseline spending (§4), and the
-  UI warns on categories that look like repayments. A pay-off just clears the loan.
+- **No "repayments in spending" flag (deferred).** Repayments on modelled loans are not in baseline spending
+  (§4), and the UI warns on categories that look like repayments. A pay-off just clears the loan; it does
+  not shrink spending afterwards. This replaces the sentence in the pay-off row of §12.
+- **Partial pay-offs** reduce the balance in step 1, and the rest accrues interest that year as normal.
+- **Limits** keep a century of compounding inside safe integers: yearly rates at most 15%, loan rates at most
+  100%, spending multipliers at most 500%. Anything larger, or an overflow, is a clear error, never a crash.
+  Generated ids (`<event>:property`, `:mortgage`, `:bonus`) are reserved. A blank split entry gets 0.
+- **Warnings** also cover events dated after the plan ends, and loans whose repayment does not cover their
+  interest or that have a term but no repayment (a balloon).
+- **Escalation, to confirm:** `none` means flat at the start-year amount, which is the entered figure inflated
+  to that year, not the entered figure itself. If you would rather `none` mean "my figure, flat", say so.
 - **Loans:** a pay-off lump is paid in step 1 and counted in both "Loan payments" and "Principal repaid". A new
   mortgage makes no payments in its opening year, and its term counts from the next year. A loan with a term
   pays the whole balance in its last month.
