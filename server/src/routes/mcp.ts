@@ -1,12 +1,17 @@
 import { Router, type Request } from 'express';
 import { rateLimit } from 'express-rate-limit';
+import { inArray } from 'drizzle-orm';
 import { appVersion } from '../utils/version.js';
+import { db } from '../db/index.js';
+import { transactions } from '../db/schema.js';
+import type { TokenScope } from '../auth/accessTokens.js';
 
-// A read-only MCP server (Model Context Protocol, Streamable HTTP with JSON responses) so an
-// AI assistant can read the budget with a read-only access token (docs/READ-ONLY-ACCESS.md).
-// Every tool is one GET of this server's own API, made over loopback with the caller's token,
-// so a tool can never reach more than the token itself: the same allowlist, validation and
-// accounting as the app. Nothing here writes.
+// An MCP server (Model Context Protocol, Streamable HTTP with JSON responses) so an AI
+// assistant can read the budget with an access token (docs/READ-ONLY-ACCESS.md). Every read
+// tool is one GET of this server's own API, made over loopback with the caller's token, so a
+// tool can never reach more than the token itself: the same allowlist, validation and
+// accounting as the app. The one writing tool, categorise_transactions, is listed only for a
+// categorise token and makes the same PUT the register does, one transaction at a time.
 
 export const mcpRouter = Router();
 
@@ -167,6 +172,28 @@ const TOOLS: Tool[] = [
   },
 ];
 
+/** Most transactions one categorise call changes */
+const MAX_CATEGORISE = 100;
+const CATEGORISE_TOOL = {
+  name: 'categorise_transactions',
+  description: `Sets the category of past transactions (dated today or earlier), up to ${MAX_CATEGORISE} at once. Nothing else changes, and a category can't be cleared. The app's rules still apply: reconciled rows, split transactions (categorise their parts), transfers inside the budget and payment envelopes are refused. Returns each transaction's previous category, so a change can be put back.`,
+  properties: {
+    transaction_ids: {
+      type: 'array',
+      items: { type: 'string', minLength: 1, maxLength: 64 },
+      minItems: 1,
+      maxItems: MAX_CATEGORISE,
+    },
+    category_id: {
+      type: 'string',
+      minLength: 1,
+      maxLength: 64,
+      description: 'From list_categories',
+    },
+  },
+  required: ['transaction_ids', 'category_id'],
+};
+
 function rpcResult(id: unknown, result: unknown) {
   return { jsonrpc: '2.0', id, result };
 }
@@ -174,16 +201,72 @@ function rpcError(id: unknown, code: number, message: string) {
   return { jsonrpc: '2.0', id: id ?? null, error: { code, message } };
 }
 
-/** One GET of this server's API, as the caller (same token, same checks) */
-async function callApi(req: Request, path: string) {
+/** One request to this server's API, as the caller (same token, same checks) */
+async function callApi(req: Request, path: string, method = 'GET', body?: unknown) {
   const apiRoot = req.baseUrl.replace(/\/mcp$/, '');
   const res = await fetch(`http://127.0.0.1:${req.socket.localPort}${apiRoot}${path}`, {
-    headers: { authorization: req.headers.authorization ?? '', accept: 'application/json' },
+    method,
+    headers: {
+      authorization: req.headers.authorization ?? '',
+      accept: 'application/json',
+      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
   return { status: res.status, text: await res.text() };
 }
 
-async function handle(req: Request, message: Record<string, unknown>) {
+/** Sets one category on each transaction in turn; each result says what it was before */
+async function categorise(req: Request, args: Args) {
+  const ids = args.transaction_ids;
+  const categoryId = args.category_id;
+  if (
+    !Array.isArray(ids) ||
+    !ids.length ||
+    ids.length > MAX_CATEGORISE ||
+    ids.some((id) => typeof id !== 'string' || !id || id.length > 64) ||
+    new Set(ids).size !== ids.length ||
+    typeof categoryId !== 'string' ||
+    !categoryId ||
+    categoryId.length > 64
+  ) {
+    return {
+      error: `Give 1 to ${MAX_CATEGORISE} distinct transaction ids and one category id`,
+    };
+  }
+  const before = new Map(
+    db
+      .select({ id: transactions.id, categoryId: transactions.categoryId })
+      .from(transactions)
+      .where(inArray(transactions.id, ids as string[]))
+      .all()
+      .map((t) => [t.id, t.categoryId]),
+  );
+  const results = [];
+  for (const id of ids as string[]) {
+    if (!before.has(id)) {
+      results.push({ id, ok: false, error: 'Not found' });
+      continue;
+    }
+    const { status, text } = await callApi(req, `/transactions/${seg(id)}`, 'PUT', {
+      categoryId,
+    });
+    let error: string | undefined;
+    if (status >= 400) {
+      try {
+        const parsed = JSON.parse(text) as { error?: unknown };
+        error = typeof parsed.error === 'string' ? parsed.error : `Refused (${status})`;
+      } catch {
+        error = `Refused (${status})`;
+      }
+    }
+    results.push({ id, ok: status < 400, previousCategoryId: before.get(id) ?? null, error });
+  }
+  const changed = results.filter((r) => r.ok).length;
+  return { changed, refused: results.length - changed, results };
+}
+
+async function handle(req: Request, scope: TokenScope, message: Record<string, unknown>) {
   const { id, method, params } = message as { id?: unknown; method?: string; params?: Args };
   const isNotification = id === undefined;
   switch (method) {
@@ -192,9 +275,16 @@ async function handle(req: Request, message: Record<string, unknown>) {
       return rpcResult(id, {
         protocolVersion: PROTOCOL_VERSIONS.includes(asked) ? asked : PROTOCOL_VERSIONS[0],
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: 'flybudget', title: 'FlyBudget (read-only)', version: appVersion },
+        serverInfo: {
+          name: 'flybudget',
+          title:
+            scope === 'categorise' ? 'FlyBudget (read and categorise)' : 'FlyBudget (read-only)',
+          version: appVersion,
+        },
         instructions:
-          'Read-only access to a FlyBudget budget. Amounts are integer minor units (cents); negative transaction amounts are money out. Use list_* tools for ids, then filter transactions and reports with them.',
+          scope === 'categorise'
+            ? 'Read access to a FlyBudget budget, plus categorise_transactions to set the category of past transactions; nothing else can change. Amounts are integer minor units (cents); negative transaction amounts are money out. Use list_* tools for ids, then filter transactions and reports with them. Confirm a plan with the user before categorising.'
+            : 'Read-only access to a FlyBudget budget. Amounts are integer minor units (cents); negative transaction amounts are money out. Use list_* tools for ids, then filter transactions and reports with them.',
       });
     }
     case 'ping':
@@ -211,9 +301,43 @@ async function handle(req: Request, message: Record<string, unknown>) {
             additionalProperties: false,
           },
           annotations: { readOnlyHint: true, openWorldHint: false },
-        })),
+        })).concat(
+          scope === 'categorise'
+            ? [
+                {
+                  name: CATEGORISE_TOOL.name,
+                  description: CATEGORISE_TOOL.description,
+                  inputSchema: {
+                    type: 'object',
+                    properties: CATEGORISE_TOOL.properties,
+                    required: CATEGORISE_TOOL.required,
+                    additionalProperties: false,
+                  },
+                  annotations: {
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: true,
+                    openWorldHint: false,
+                  },
+                } as never,
+              ]
+            : [],
+        ),
       });
     case 'tools/call': {
+      if (scope === 'categorise' && params?.name === CATEGORISE_TOOL.name) {
+        const args = (params?.arguments ?? {}) as Args;
+        const unknown =
+          typeof args === 'object' && !Array.isArray(args)
+            ? Object.keys(args).filter((k) => !(k in CATEGORISE_TOOL.properties))
+            : ['(not an object)'];
+        if (unknown.length) return rpcError(id, -32602, `Unknown arguments: ${unknown.join(', ')}`);
+        const outcome = await categorise(req, args);
+        return rpcResult(id, {
+          content: [{ type: 'text', text: JSON.stringify(outcome) }],
+          isError: 'error' in outcome,
+        });
+      }
       const tool = TOOLS.find((t) => t.name === params?.name);
       if (!tool) return rpcError(id, -32602, `Unknown tool: ${String(params?.name)}`);
       const args = (params?.arguments ?? {}) as Args;
@@ -249,12 +373,13 @@ mcpRouter.use(
 );
 
 mcpRouter.post('/', async (req, res, next) => {
-  // Only for read-only access tokens: each tool call is made with the caller's token
+  // Only for access tokens: each tool call is made with the caller's token
   if (!res.locals.accessTokenId) {
     return void res
       .status(401)
       .json(rpcError(null, -32001, 'A read-only access token is required'));
   }
+  const scope: TokenScope = res.locals.accessTokenScope === 'categorise' ? 'categorise' : 'read';
   try {
     const body = req.body as unknown;
     const batch = Array.isArray(body);
@@ -268,7 +393,7 @@ mcpRouter.post('/', async (req, res, next) => {
         .json(rpcError(null, -32600, `At most ${MAX_BATCH} messages in one batch`));
     }
     const replies = (
-      await Promise.all(messages.map((m) => handle(req, m as Record<string, unknown>)))
+      await Promise.all(messages.map((m) => handle(req, scope, m as Record<string, unknown>)))
     ).filter((r) => r !== null);
     if (!replies.length) return res.status(202).end();
     res.json(batch ? replies : replies[0]);

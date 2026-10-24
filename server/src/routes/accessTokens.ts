@@ -4,6 +4,7 @@ import { serverMode } from '../config.js';
 import {
   AccessTokenError,
   MAX_TOKEN_DAYS,
+  TOKEN_SCOPES,
   createAccessToken,
   listAccessTokens,
   revokeAccessToken,
@@ -27,12 +28,15 @@ accessTokensRouter.post('/', (req, res) => {
     .object({
       name: z.string().trim().min(1).max(60),
       days: z.number().int().min(1).max(MAX_TOKEN_DAYS),
+      scope: z.enum(TOKEN_SCOPES).default('read'),
     })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
     // The token is in this response only; the server keeps its hash
-    res.status(201).json(createAccessToken(parsed.data.name, parsed.data.days));
+    res
+      .status(201)
+      .json(createAccessToken(parsed.data.name, parsed.data.days, undefined, parsed.data.scope));
   } catch (error) {
     if (error instanceof AccessTokenError) return res.status(409).json({ error: error.message });
     throw error;

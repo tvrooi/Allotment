@@ -403,6 +403,8 @@ export interface BudgetSummary {
   totalBudgeted: number;
   carryOver: number;
   toBeBudgeted: number;
+  /** First month the envelopes count (YYYY-MM); null = all history */
+  budgetStartMonth?: string | null;
 }
 
 export interface Account {
@@ -426,6 +428,11 @@ export interface Account {
   rateDate: string | null;
   /** Its currency can only change while it has none */
   hasTransactions: boolean;
+  /**
+   * The household group whose pool this account is, or null. A pool is outside the personal
+   * budget even when it isn't marked off budget (docs/HOUSEHOLDS.md).
+   */
+  householdPool?: string | null;
   /**
    * In another currency: how much more (or less) it's worth today in the budget's currency
    * than it was counted as when its money came in (the rate moved). Null when not known.

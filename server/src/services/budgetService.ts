@@ -10,26 +10,40 @@ import {
   budgetRevision,
   cardFunding,
 } from '../db/schema.js';
-import { budgetActivity, inAccountBalance, mainAmount, personalBudgetAccount } from './balances.js';
+import {
+  budgetActivity,
+  budgetStartDate,
+  inAccountBalance,
+  mainAmount,
+  personalBudgetAccount,
+  sinceBudgetStart,
+} from './balances.js';
 import { currencyContext, convertAmount, todayIso } from './mainAmountService.js';
 import { monthBounds } from '../utils/date.js';
 
 // Generated income remains an expectation until reconciled. Spending is recognised
 // when dated, including generated bills, to avoid offering committed cash again.
-export const receivedActivity = and(
+export const receivedSpending = and(
   budgetActivity,
   sql`not (${transactions.amount} > 0 and coalesce(${transactions.importedId}, '') like 'schedule:%' and ${transactions.reconciled} = 0)`,
 )!;
+/** What the envelopes count: received activity from the budget start on */
+export const receivedActivity = and(receivedSpending, sinceBudgetStart)!;
 export const fundingRevision = () =>
   `${todayIso()}:${db.select().from(budgetRevision).get()?.revision ?? 'initial'}`;
 
 function rawBudgetGroups(month: string, today = todayIso()) {
   const { from, to: end } = monthBounds(month);
   const to = end < today ? end : today;
+  const startMonth = budgetStartDate().slice(0, 7);
 
   const groups = db.select().from(categoryGroups).orderBy(categoryGroups.sortOrder).all();
   const cats = db.select().from(categories).orderBy(categories.sortOrder).all();
-  const budgeted = db.select().from(budgetMonths).where(eq(budgetMonths.month, month)).all();
+  // Before the budget start a month shows no assignments, like its activity
+  const budgeted =
+    month < startMonth
+      ? []
+      : db.select().from(budgetMonths).where(eq(budgetMonths.month, month)).all();
 
   const spentRows = db
     .select({
@@ -47,7 +61,7 @@ function rawBudgetGroups(month: string, today = todayIso()) {
       total: sql<number>`coalesce(sum(${budgetMonths.budgeted}), 0)`,
     })
     .from(budgetMonths)
-    .where(lt(budgetMonths.month, month))
+    .where(and(lt(budgetMonths.month, month), gte(budgetMonths.month, startMonth)))
     .groupBy(budgetMonths.categoryId)
     .all();
 
@@ -271,5 +285,6 @@ export function budgetSummary(month: string, today = todayIso()) {
     totalBudgeted,
     carryOver: state.openingFunds,
     toBeBudgeted: state.unassigned,
+    budgetStartMonth: budgetStartDate().slice(0, 7) || null,
   };
 }

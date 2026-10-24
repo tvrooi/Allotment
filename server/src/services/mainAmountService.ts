@@ -32,6 +32,7 @@ export function getBudgetSettings(): BudgetSettings {
       ratesUrl: null,
       ratesLastFetchedAt: null,
       ratesLastError: null,
+      budgetStartMonth: null,
       updatedAt: new Date(0).toISOString(),
     }
   );

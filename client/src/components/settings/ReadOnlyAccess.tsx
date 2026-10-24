@@ -10,12 +10,14 @@ import {
   getAccessTokens,
   revokeAccessToken,
   type AccessToken,
+  type AccessTokenScope,
   type CreatedAccessToken,
 } from '../../api/accessTokens';
 
 // Settings → Server → Read-only access: tokens that let another tool, such as an AI assistant
-// or an MCP client, read this budget. They can't change anything, sign in, download backups or
-// see bank connections (docs/READ-ONLY-ACCESS.md).
+// or an MCP client, read this budget. They can't sign in, download backups or see bank
+// connections. A categorise token can also set past transactions' categories, and nothing else
+// (docs/READ-ONLY-ACCESS.md).
 
 const DAYS = [7, 30, 90];
 const inputClass =
@@ -27,7 +29,8 @@ function status(t: AccessToken) {
   const used = t.lastUsedAt
     ? `used ${formatDistanceToNow(new Date(t.lastUsedAt), { addSuffix: true })}`
     : 'not used yet';
-  return `Expires ${formatDay(t.expiresAt.slice(0, 10))} · ${used}`;
+  const scope = t.scope === 'categorise' ? 'Read and categorise · ' : '';
+  return `${scope}Expires ${formatDay(t.expiresAt.slice(0, 10))} · ${used}`;
 }
 
 export function ReadOnlyAccess() {
@@ -38,6 +41,7 @@ export function ReadOnlyAccess() {
   const revoke = useMutation({ mutationFn: revokeAccessToken, onSuccess: refresh });
   const [name, setName] = useState('');
   const [days, setDays] = useState(30);
+  const [scope, setScope] = useState<AccessTokenScope>('read');
   const [created, setCreated] = useState<CreatedAccessToken | null>(null);
   const [copied, setCopied] = useState(false);
   const [revoking, setRevoking] = useState<AccessToken | null>(null);
@@ -53,8 +57,10 @@ export function ReadOnlyAccess() {
       <h2 className="text-sm font-semibold text-text">Read-only access</h2>
       <p className="text-xs text-text-tertiary mt-1">
         Let another tool, such as an AI assistant, read this budget with a token. A token can only
-        read: it can't change anything, sign in, download backups or see bank connections. It
-        expires, you can revoke it here, and changing the password revokes them all.
+        read: it can't change anything, sign in, download backups or see bank connections. A{' '}
+        <em>read and categorise</em> token can also set the category of past transactions, and
+        nothing else. A token expires, you can revoke it here, and changing the password revokes
+        them all.
       </p>
 
       <form
@@ -64,7 +70,7 @@ export function ReadOnlyAccess() {
           if (!name.trim()) return;
           setCopied(false);
           create.mutate(
-            { name: name.trim(), days },
+            { name: name.trim(), days, scope },
             {
               onSuccess: (t) => {
                 setCreated(t);
@@ -96,6 +102,17 @@ export function ReadOnlyAccess() {
                 {d} days
               </option>
             ))}
+          </select>
+        </label>
+        <label>
+          <span className="block text-xs font-medium text-text-secondary mb-1">Access</span>
+          <select
+            value={scope}
+            onChange={(e) => setScope(e.target.value as AccessTokenScope)}
+            className={inputClass}
+          >
+            <option value="read">Read only</option>
+            <option value="categorise">Read and categorise</option>
           </select>
         </label>
         <Button type="submit" disabled={!name.trim() || create.isPending}>

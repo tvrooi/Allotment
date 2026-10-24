@@ -225,3 +225,43 @@ it('counts split children once and excludes internal cash transfers', () => {
     reserved: 6000,
   });
 });
+it('starts envelopes at the budget start, keeping earlier history out of carry-over', () => {
+  // Ten months of rent nobody budgeted for, then October budgeted properly
+  for (let m = 1; m <= 9; m++) activity(`old${m}`, -478000, 'rent', `2026-0${m}-05`);
+  activity('lunch', -1500, null, '2026-09-20');
+  assign('rent', 100, '2026-09');
+  activity('oct', -478000, 'rent', '2026-10-05');
+  assign('rent', 478000);
+  const rent = () =>
+    budgetGroups('2026-10')
+      .flatMap((g) => g.categories)
+      .find((c) => c.id === 'rent')!;
+  expect(rent()).toMatchObject({ carryOver: -4302000 + 100, balance: -4302000 + 100 });
+  expect(fundingState().uncategorized).toBe(1500);
+
+  db.insert(budgetSettings).values({ id: 'budget', budgetStartMonth: '2026-10' }).run();
+  expect(rent()).toMatchObject({ carryOver: 0, activity: -478000, balance: 0 });
+  expect(fundingState()).toMatchObject({ uncategorized: 0, overspent: 0 });
+  expect(budgetSummary('2026-10').budgetStartMonth).toBe('2026-10');
+  // Earlier months show nothing assigned or spent; cash is still what the accounts hold
+  const september = budgetGroups('2026-09')
+    .flatMap((g) => g.categories)
+    .find((c) => c.id === 'rent')!;
+  expect(september).toMatchObject({ budgeted: 0, activity: 0, balance: 0 });
+  expect(fundingState().resources).toBe(100000 - 9 * 478000 - 1500 - 478000);
+
+  // Clearing it counts all history again
+  db.update(budgetSettings).set({ budgetStartMonth: null }).run();
+  expect(rent().carryOver).toBe(-4302000 + 100);
+});
+it('keeps an invalid budget start out of the database and backups', () => {
+  expect(() =>
+    db.insert(budgetSettings).values({ id: 'budget', budgetStartMonth: 'soon' }).run(),
+  ).toThrow(/CHECK/);
+  const backup = createBackup() as Record<string, unknown>;
+  backup.budgetSettings = [{ id: 'budget', budgetStartMonth: '2026-13' }];
+  expect(() => parseBackup(backup)).toThrow(/budget start/);
+  backup.budgetSettings = [{ id: 'budget', budgetStartMonth: '2026-10' }];
+  restoreBackup(parseBackup(backup));
+  expect(budgetSummary('2026-10').budgetStartMonth).toBe('2026-10');
+});

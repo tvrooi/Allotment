@@ -1,11 +1,14 @@
 import { createHash, randomBytes } from 'crypto';
 import { and, eq, gt, isNull } from 'drizzle-orm';
+import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
-import { accessTokens } from '../db/schema.js';
+import { accessTokens, transactions } from '../db/schema.js';
+import { todayIso } from '../services/mainAmountService.js';
 
 // Read-only access tokens (docs/READ-ONLY-ACCESS.md). A token is 256 random bits with a
-// recognisable prefix; only its SHA-256 is stored, like login sessions, so a leaked database
+// recognisable prefix. Its scope is 'read', or 'categorise': read, plus setting the category of
+// past transactions and nothing else (categoriseAllows); only its SHA-256 is stored, like login sessions, so a leaked database
 // doesn't leak usable tokens. Tokens expire, can be revoked, and changing the password
 // revokes them all.
 
@@ -14,6 +17,9 @@ export const MAX_ACTIVE_TOKENS = 10;
 export const MAX_TOKEN_DAYS = 90;
 /** last_used_at is updated at most this often, so reading doesn't mean a write per request */
 const TOUCH_MS = 5 * 60 * 1000;
+
+export const TOKEN_SCOPES = ['read', 'categorise'] as const;
+export type TokenScope = (typeof TOKEN_SCOPES)[number];
 
 const digest = (token: string) => createHash('sha256').update(token).digest('hex');
 
@@ -47,7 +53,12 @@ export function listAccessTokens(now = new Date()) {
 export class AccessTokenError extends Error {}
 
 /** Creates a token and returns it once; afterwards only its hash exists */
-export function createAccessToken(name: string, days: number, now = new Date()) {
+export function createAccessToken(
+  name: string,
+  days: number,
+  now = new Date(),
+  scope: TokenScope = 'read',
+) {
   const active = listAccessTokens(now).filter((t) => t.active).length;
   if (active >= MAX_ACTIVE_TOKENS) {
     throw new AccessTokenError(
@@ -59,12 +70,12 @@ export function createAccessToken(name: string, days: number, now = new Date()) 
     id: nanoid(),
     tokenHash: digest(token),
     name: name.trim(),
-    scope: 'read',
+    scope,
     createdAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + days * 24 * 60 * 60 * 1000).toISOString(),
   };
   db.insert(accessTokens).values(row).run();
-  return { token, id: row.id, name: row.name, expiresAt: row.expiresAt };
+  return { token, id: row.id, name: row.name, scope, expiresAt: row.expiresAt };
 }
 
 export function revokeAccessToken(id: string, now = new Date()) {
@@ -82,8 +93,11 @@ export function revokeAllAccessTokens(now = new Date()) {
     .run();
 }
 
-/** The token's id if it is valid now (not expired or revoked), else null */
-export function verifyAccessToken(token: string, now = new Date()): string | null {
+/** The token's id and scope if it is valid now (not expired or revoked), else null */
+export function verifyAccessToken(
+  token: string,
+  now = new Date(),
+): { id: string; scope: TokenScope } | null {
   if (!looksLikeAccessToken(token)) return null;
   const row = db
     .select()
@@ -103,7 +117,7 @@ export function verifyAccessToken(token: string, now = new Date()): string | nul
       .where(eq(accessTokens.id, row.id))
       .run();
   }
-  return row.id;
+  return { id: row.id, scope: row.scope === 'categorise' ? 'categorise' : 'read' };
 }
 
 // ─── What a read-only token may reach ─────────────────────────────────────────
@@ -145,4 +159,40 @@ export function readOnlyAllows(method: string, path: string): boolean {
   if (method !== 'GET' && method !== 'HEAD') return false;
   if (UNREADABLE.some((p) => p.test(path))) return false;
   return READABLE.some((p) => path === p || path.startsWith(`${p}/`));
+}
+
+// ─── What a categorise token may change ───────────────────────────────────────
+
+const TRANSACTION_PATH = /^\/transactions\/([^/]+)$/;
+/** Exactly a category, never clearing it or anything else */
+const categoriseBody = z.object({ categoryId: z.string().min(1).max(64) }).strict();
+
+/**
+ * Whether a categorise token may make this write: PUT /transactions/:id whose body sets only
+ * the category, for a transaction dated today or earlier. The transactions route still applies
+ * its own rules (reconciled rows, split parents, transfers, household links, payment envelopes).
+ */
+export function categoriseAllows(method: string, path: string, body: unknown): boolean {
+  const match = TRANSACTION_PATH.exec(path);
+  if (method !== 'PUT' || !match || !categoriseBody.safeParse(body).success) return false;
+  let id: string;
+  try {
+    id = decodeURIComponent(match[1]);
+  } catch {
+    return false;
+  }
+  const row = db
+    .select({ date: transactions.date })
+    .from(transactions)
+    .where(eq(transactions.id, id))
+    .get();
+  // A missing transaction is the route's 404, not a refusal
+  return !row || row.date <= todayIso();
+}
+
+/** Whether a token with this scope may make this request (path relative to /api) */
+export function tokenAllows(scope: TokenScope, method: string, path: string, body: unknown) {
+  return (
+    readOnlyAllows(method, path) || (scope === 'categorise' && categoriseAllows(method, path, body))
+  );
 }

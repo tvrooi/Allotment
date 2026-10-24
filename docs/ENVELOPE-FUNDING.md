@@ -88,3 +88,14 @@ availability agreement, category detail, coverage, history/undo and payday integ
 Implemented and locally verified on the phase 6A branch; see the PR for exact check
 results. Publication and live installation are separate states. No production budget
 has been opened, migrated or replaced by these checks.
+
+## Budget start
+
+**Settings → Budget** can set the first month envelopes count (`budget_settings.budget_start_month`,
+null = all history). Activity dated before it and assignments for earlier months don't carry into
+envelope Available, uncategorised spending, overspending or card payment reserves
+(`sinceBudgetStart` in `services/balances.ts`). Account balances, and therefore resources, still
+include everything, so cash spent before the start simply isn't there to assign. Reports, the
+register and the spending history used by the runway ignore the start. A month before the start
+shows no assignments or activity. Moving the start changes the funding revision; it never
+rewrites transactions or stored assignments.

@@ -2,7 +2,8 @@
 
 A self-hosted FlyBudget server (including the Home Assistant app) can give another tool,
 such as an AI assistant, **read-only** access to the budget with a token. The tool can read
-accounts, transactions, the budget, reports, goals and reviews. It cannot change anything.
+accounts, transactions, the budget, reports, goals and reviews. It cannot change anything,
+except that a read and categorise token can set the category of past transactions.
 
 ## What a token can and cannot do
 
@@ -10,11 +11,17 @@ accounts, transactions, the budget, reports, goals and reviews. It cannot change
   transactions, budget (monthly and yearly), payees, rules, reports and custom reports,
   schedules, goals, payday plans, review, priorities, households, tags, saved views, currency
   and the filtered CSV export. Plus the MCP endpoint, which only reads.
-- **Never:** any write (`POST`, `PUT`, `PATCH`, `DELETE`); sign-in or session routes; server
+- **Never:** any other write (`POST`, `PUT`, `PATCH`, `DELETE`); sign-in or session routes; server
   settings; full backups or restores; bank connections (Up, Plaid, SimpleFIN, Enable
   Banking); dashboard layouts; or managing tokens. These return 403.
 - A token is not a login. It doesn't open the app in a browser, and a browser never sends it
   by itself.
+- **Read and categorise** tokens can also set the category of a past transaction (dated today or
+  earlier): a `PUT /api/transactions/:id` whose body is exactly `{"categoryId": "…"}`. They can't
+  change any other field, clear a category, touch a future transaction, edit many at once, or
+  reach anything else a read-only token can't. The register's own rules still apply: reconciled
+  rows, split parents, transfers inside the budget, household-linked entries and payment
+  envelopes are refused. Choose **Read and categorise** under **Access** when creating the token.
 - Tokens are 256-bit random values starting with `fbro_`. The server stores only their
   SHA-256, as it does for login sessions. A token is shown once when it is created.
 - Every token expires (7, 30 or 90 days), can be revoked in **Settings → Server → Read-only
@@ -57,7 +64,7 @@ claude mcp add --transport http flybudget https://budget.example.com/api/mcp \
 
 It answers at most 300 requests a minute, with at most 20 messages in one JSON-RPC batch.
 
-Its tools are all read-only:
+Its read tools:
 
 | Tool                                              | What it reads                                                                                |
 | ------------------------------------------------- | -------------------------------------------------------------------------------------------- |
@@ -70,7 +77,11 @@ Its tools are all read-only:
 | `spending_by_merchant`                            | Spending per payee                                                                           |
 | `budget_review`, `financial_resilience`           | The budget review's open items; reserve and months of essentials                             |
 
-Each tool call is a `GET` of the server's own API made with the caller's token, so a tool can
+With a **read and categorise** token the server also lists `categorise_transactions`: up to 100
+transaction ids and one category id. It changes them one at a time through the same API, and
+returns each one's result and previous category, so a change can be put back.
+
+Each read tool call is a `GET` of the server's own API made with the caller's token, so a tool can
 never reach more than the token itself, and the app's validation applies. Results longer than
 200,000 characters are cut, with a note to narrow the request.
 

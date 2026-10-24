@@ -284,3 +284,33 @@ test.describe('amounts on a German device', () => {
     await expect(page.getByRole('main')).toContainText('$1,234.56');
   });
 });
+
+test('the budget start keeps older history out of the envelopes', async ({ page, api }) => {
+  const account = await api.createAccount('Checking', 500_000);
+  const rent = await api.category('Rent / Mortgage');
+  const thisMonth = isoDay().slice(0, 7);
+  const [y, m] = thisMonth.split('-').map(Number);
+  const earlier = new Date(Date.UTC(y, m - 3, 5)).toISOString().slice(0, 10);
+  await api.createTransaction({
+    accountId: account.id,
+    date: earlier,
+    amount: -478_000,
+    payeeName: 'Old rent',
+    categoryId: rent.id,
+  });
+  const summary = () => api.call('GET', `/budget/${thisMonth}/summary`);
+  expect((await summary()).overspent).toBe(478_000);
+
+  await open(page, '/settings?tab=budget');
+  await expect(page.getByText('Envelopes count all history.')).toBeVisible();
+  await page.getByLabel('Start month').fill(thisMonth);
+  await page.getByRole('button', { name: 'Start budget here' }).click();
+  await expect(page.getByText(/^Envelopes start in /)).toBeVisible();
+  expect(await summary()).toMatchObject({ overspent: 0, budgetStartMonth: thisMonth });
+  // The transaction itself is untouched
+  expect(await api.balance(account.id)).toBe(500_000 - 478_000);
+
+  await page.getByRole('button', { name: 'Count all history' }).click();
+  await expect(page.getByText('Envelopes count all history.')).toBeVisible();
+  expect((await summary()).overspent).toBe(478_000);
+});

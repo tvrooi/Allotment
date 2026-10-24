@@ -39,7 +39,8 @@ Keep this file and CLAUDE.md identical.
   marker, and learns it through its user agent (`electron/macWindow.ts`), never a bridge.
   HTTPS away from home; never bypass TLS errors.
 - Read-only access tokens (`server/src/auth/accessTokens.ts`) reach only an allowlist of side-effect-free
-  GET routes plus the read-only MCP endpoint. Never add a writing, settings, backup, auth or bank route.
+  GET routes plus the MCP endpoint. Never add a writing, settings, backup, auth or bank route. The one
+  owner-approved exception: a `categorise` token may set `categoryId` alone on past transactions.
 - HA `/data/options.json` stays root-only; root opens it before dropping to uid 1000. Never regenerate
   an existing key. Supervisor watchdog must be TCP because strict hosts reject its IP-based HTTP probe.
 - Prebuilt HA images need `io.hass.type=app`, version and architecture labels. BuildKit says `arm64`;
