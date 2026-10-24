@@ -50,6 +50,11 @@ import {
   securityPrices,
   holdings,
   taxLots,
+  accountLoanDetails,
+  longTermPlans,
+  longTermEvents,
+  longTermAccountAssumptions,
+  longTermSplits,
 } from '../db/schema.js';
 import { paydayConfigSchema, fundingSnapshotSchema } from './paydayConfig.js';
 import { fillMissingMainAmounts, ratesChanged } from './mainAmountService.js';
@@ -60,6 +65,13 @@ import { GOAL_STATUSES } from './goalLifecycle.js';
 import { purposeError } from './resilienceService.js';
 import { validateViewQuery } from './transactionMarks.js';
 import { scenarioSchema } from './forecastConfig.js';
+import {
+  accountAssumptionSchema,
+  eventSchema,
+  settingsSchema,
+  splitSchema,
+} from './longTermConfig.js';
+import { loanDetailsSchema } from './loanDetails.js';
 import { SECURITY_KINDS } from './investmentService.js';
 import { isCurrencyCode } from '../utils/currencies.js';
 
@@ -72,13 +84,14 @@ import { isCurrencyCode } from '../utils/currencies.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 15;
+export const BACKUP_VERSION = 16;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
   budgetSettings,
   exchangeRates,
   accounts,
+  accountLoanDetails,
   categoryGroups,
   categories,
   cardFunding,
@@ -97,6 +110,10 @@ const TABLES = {
   transactionTags,
   savedViews,
   forecastScenarios,
+  longTermPlans,
+  longTermEvents,
+  longTermAccountAssumptions,
+  longTermSplits,
   customReports,
   dashboardPages,
   dashboardWidgets,
@@ -415,6 +432,67 @@ export function parseBackup(input: unknown): ParsedBackup {
       (l.costBasis != null && Number(l.costBasis) < 0)
     )
       throw new InvalidBackupError('Invalid tax lot');
+  // Long-term forecast (format 16). Older backups have none: no plans, no loan details.
+  const accountIds = new Set(result.accounts.map((a) => String(a.id)));
+  const planIds = new Set(result.longTermPlans.map((p) => String(p.id)));
+  for (const d of result.accountLoanDetails)
+    if (
+      !accountIds.has(String(d.accountId)) ||
+      !loanDetailsSchema.safeParse({
+        rateBps: d.rateBps,
+        monthlyRepayment: d.monthlyRepayment ?? 0,
+        termMonths: d.termMonths ?? null,
+      }).success
+    )
+      throw new InvalidBackupError('Invalid loan details');
+  for (const p of result.longTermPlans)
+    try {
+      settingsSchema.parse(JSON.parse(String(p.settingsJson)));
+      const name = String(p.name).trim();
+      if (!name || name.length > 100) throw new Error();
+      if (p.version !== undefined && Number(p.version) < 1) throw new Error();
+    } catch {
+      throw new InvalidBackupError('Invalid long-term plan');
+    }
+  if (new Set(result.longTermPlans.map((p) => String(p.name).toLowerCase())).size !== planIds.size)
+    throw new InvalidBackupError('Invalid long-term plan');
+  for (const e of result.longTermEvents)
+    try {
+      if (!planIds.has(String(e.planId))) throw new Error();
+      eventSchema.parse({
+        ...JSON.parse(String(e.paramsJson)),
+        id: e.id,
+        kind: e.kind,
+        name: e.name,
+        enabled: Number(e.enabled ?? 1) === 1,
+      });
+    } catch {
+      throw new InvalidBackupError('Invalid long-term event');
+    }
+  for (const a of result.longTermAccountAssumptions)
+    if (
+      !planIds.has(String(a.planId)) ||
+      !accountIds.has(String(a.accountId)) ||
+      !accountAssumptionSchema.safeParse({
+        accountId: a.accountId,
+        included: Number(a.included ?? 1) === 1,
+        cls: a.cls ?? null,
+        growthBps: a.growthBps ?? null,
+      }).success
+    )
+      throw new InvalidBackupError('Invalid long-term account choice');
+  for (const sp of result.longTermSplits)
+    if (
+      !planIds.has(String(sp.planId)) ||
+      !accountIds.has(String(sp.accountId)) ||
+      !splitSchema.safeParse({
+        accountId: sp.accountId,
+        mode: sp.mode,
+        ...(sp.bps != null ? { bps: sp.bps } : {}),
+        ...(sp.amount != null ? { amount: sp.amount } : {}),
+      }).success
+    )
+      throw new InvalidBackupError('Invalid long-term split');
   return result;
 }
 

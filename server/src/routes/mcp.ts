@@ -170,6 +170,40 @@ const TOOLS: Tool[] = [
     description: 'Cash after debts by purpose, the flexibility reserve and months of essentials.',
     path: () => '/review/resilience',
   },
+  {
+    name: 'long_term_plans',
+    description:
+      'Saved long-term forecast plans (decades of net worth): each one with its name, version and number of life events.',
+    path: () => '/forecast/long-term/plans',
+  },
+  {
+    name: 'long_term_plan',
+    description:
+      'One long-term forecast plan in full: its settings (every rate and age is an assumption), life events, per-account choices and savings splits.',
+    properties: { plan_id: { type: 'string', description: 'A plan id from long_term_plans' } },
+    required: ['plan_id'],
+    path: (a) => `/forecast/long-term/plans/${seg(a.plan_id)}`,
+  },
+  {
+    name: 'long_term_forecast',
+    description:
+      "A long-term forecast plan's year-by-year result in future dollars (integer minor units): net worth, income, spending, loan payments, super, growth, withdrawals and the first year money runs out. A projection, not a promise.",
+    properties: { plan_id: { type: 'string', description: 'A plan id from long_term_plans' } },
+    required: ['plan_id'],
+    path: (a) => `/forecast/long-term/plans/${seg(a.plan_id)}/result`,
+  },
+  {
+    name: 'long_term_compare',
+    description:
+      'Two long-term plans side by side: paired key figures, the difference in money and as a percent of the reference plan, and a net worth line for each.',
+    properties: {
+      plan_id: { type: 'string', description: 'The active plan' },
+      reference_id: { type: 'string', description: 'The plan compared against' },
+    },
+    required: ['plan_id', 'reference_id'],
+    path: (a) =>
+      `/forecast/long-term/plans/${seg(a.plan_id)}/compare?reference=${seg(a.reference_id)}`,
+  },
 ];
 
 /** Most transactions one categorise call changes */

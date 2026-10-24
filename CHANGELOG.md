@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.31
+
+- Add storage and an API for long-term forecast plans (see [the design note](docs/LONG-TERM-FORECAST.md)): named plans with life events, per-account assumptions and savings splits, saved with versions so a change on another device is never overwritten. They read your real balances, income and spending, compare two plans, and never write to your budget. There is no screen for them yet.
+- Record a loan or mortgage's rate, repayment and term beside its account (`account_loan_details`).
+- Read-only and categorise tokens can read plans and results, and the read-only MCP endpoint gains `long_term_plans`, `long_term_plan`, `long_term_forecast` and `long_term_compare`. Backup format 16 includes plans and loan details; format 15 backups restore unchanged.
+
 ## 0.2.0-up.30
 
 - Groundwork for a long-term forecast (see [the design note](docs/LONG-TERM-FORECAST.md)): a pure year-by-year engine for net worth over decades, with life events, super, loans and savings splits, and a table for a loan or mortgage's rate and repayment. Nothing in the app uses it yet and it never touches your budget; the forecast page and its storage arrive in later releases.
