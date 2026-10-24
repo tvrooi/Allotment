@@ -17,7 +17,7 @@ import {
 import { ForecastError } from './forecastService.js';
 import { defaultSettings, MAX_PLANS, planSchema, type PlanInput } from './longTermConfig.js';
 import { LongTermForecastError, mulDiv } from './longTermForecast.js';
-import { buildEnginePlan, runPlan, startingPoint } from './longTermInputs.js';
+import { buildEnginePlan, runPlan, simulatePlan, startingPoint } from './longTermInputs.js';
 import {
   createPlan,
   deletePlan,
@@ -495,6 +495,55 @@ describe('stale references and stored data', () => {
     expect(error).toBeInstanceOf(ForecastError);
     expect((error as ForecastError).status).toBe(500);
     expect((error as ForecastError).message).toMatch(/needs updating/);
+  });
+});
+
+describe('simulation runs', () => {
+  beforeEach(seedLedger);
+
+  it('are remembered for the same plan, figures and seed, and never reused when any of them change', () => {
+    const input = plan({ events: [retire] });
+    const point = startingPoint(TODAY);
+    const first = simulatePlan(input, { seed: 1, paths: 100 }, point);
+    expect(simulatePlan(input, { seed: 1, paths: 100 }, point)).toBe(first);
+    expect(simulatePlan(input, { seed: 2, paths: 100 }, point)).not.toBe(first);
+    expect(simulatePlan(input, { seed: 1, paths: 200 }, point)).not.toBe(first);
+    const richer = {
+      ...point,
+      accounts: point.accounts.map((a) => ({ ...a, balance: a.balance + 1_000_000 })),
+    };
+    expect(simulatePlan(input, { seed: 1, paths: 100 }, richer)).not.toBe(first);
+    const volatility = defaultSettings(1985).volatilityBps;
+    const calmer = plan({
+      events: [retire],
+      settings: {
+        ...defaultSettings(1985),
+        volatilityBps: { ...volatility, investments: 0, super: 0, property: 0 },
+      },
+    });
+    const flat = simulatePlan(calmer, { seed: 1, paths: 100 }, point);
+    expect(flat).not.toBe(first);
+    expect(flat.bands.at(-1)!.net[0]).toBe(flat.bands.at(-1)!.net[4]);
+  });
+
+  it('give a plan saved before volatility existed the default volatility', () => {
+    const saved = createPlan(plan());
+    const stored = JSON.parse(
+      db.select().from(longTermPlans).where(eq(longTermPlans.id, saved.id)).get()!.settingsJson,
+    );
+    delete stored.volatilityBps;
+    db.update(longTermPlans)
+      .set({ settingsJson: JSON.stringify(stored) })
+      .where(eq(longTermPlans.id, saved.id))
+      .run();
+    expect(getPlan(saved.id).plan.settings.volatilityBps).toEqual({
+      cash: 0,
+      investments: 1600,
+      super: 1600,
+      property: 1000,
+      vehicles: 0,
+      other: 0,
+    });
   });
 });
 

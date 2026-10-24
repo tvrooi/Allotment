@@ -224,6 +224,29 @@ export function AssumptionsPanel({
           />
         </div>
       </section>
+
+      <section aria-label="Simulation" className="space-y-3">
+        <h3 className="text-sm font-semibold text-text">
+          How much returns swing (for the simulation)
+        </h3>
+        <p className="text-xs text-text-tertiary">
+          The typical size of a year's swing around the growth rate. It only affects the Simulation
+          tab, never the forecast. Investments and super move together as one market.
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {(['investments', 'super', 'property'] as AccountClass[]).map((c) => (
+            <RateField
+              key={c}
+              label={`${CLASS_LABEL[c]} volatility`}
+              bps={s.volatilityBps[c]}
+              min={0}
+              max={50}
+              defaultBps={d?.volatilityBps[c]}
+              onChange={(bps) => set({ volatilityBps: { ...s.volatilityBps, [c]: bps } })}
+            />
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

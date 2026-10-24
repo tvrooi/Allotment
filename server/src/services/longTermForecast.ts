@@ -39,6 +39,18 @@ export function mulDiv(a: number, b: number, c: number): number {
   if (!Number.isSafeInteger(a) || !Number.isSafeInteger(b) || !Number.isSafeInteger(c)) {
     throw new RangeError('mulDiv takes integers');
   }
+  const product = a * b;
+  // Small products stay in plain integers, which is exact and much faster than BigInt; the
+  // result is the same either way (a simulation runs this millions of times)
+  if (Number.isSafeInteger(product) && c !== 0) {
+    const negative = product < 0 !== c < 0;
+    const n = Math.abs(product);
+    const d = Math.abs(c);
+    const rest = n % d;
+    let q = (n - rest) / d;
+    if (rest >= d - rest) q += 1;
+    return q === 0 ? 0 : negative ? -q : q;
+  }
   return divRound(BigInt(a) * BigInt(b), BigInt(c));
 }
 
@@ -533,9 +545,25 @@ function runLoanYear(loan: LoanState) {
   return { payments, interest, principal: payments - interest };
 }
 
-export function forecastLongTerm(plan: ForecastPlan): ForecastResult {
+export interface ForecastOptions {
+  /**
+   * Replaces an account's yearly growth for one plan year, in whole basis points. The
+   * deterministic forecast leaves it out; a simulation gives each year its own return.
+   */
+  growthBps?: (
+    index: number,
+    account: { id: string; cls: AccountClass; growthBps: number },
+  ) => number;
+  /** The plan has already been validated (a simulation runs one plan many times) */
+  validated?: boolean;
+}
+
+export function forecastLongTerm(
+  plan: ForecastPlan,
+  options: ForecastOptions = {},
+): ForecastResult {
   try {
-    return runForecast(plan);
+    return runForecast(plan, options);
   } catch (error) {
     if (error instanceof RangeError)
       throw new LongTermForecastError('Amounts are too large to forecast');
@@ -543,8 +571,8 @@ export function forecastLongTerm(plan: ForecastPlan): ForecastResult {
   }
 }
 
-function runForecast(plan: ForecastPlan): ForecastResult {
-  validatePlan(plan);
+function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResult {
+  if (!options.validated) validatePlan(plan);
   const warnings: string[] = [];
   const years = plan.endAge - plan.startAge;
 
@@ -957,7 +985,8 @@ function runForecast(plan: ForecastPlan): ForecastResult {
     let growthTotal = 0;
     for (const a of accounts) {
       const base = Math.max(0, a.opening - (withdrawn.get(a.id) ?? 0));
-      const g = mulDiv(base, a.growthBps, BPS);
+      const rate = options.growthBps ? options.growthBps(k, a) : a.growthBps;
+      const g = mulDiv(base, rate, BPS);
       if (g !== 0) {
         a.balance += g;
         growth.push({ id: a.id, name: a.name, amount: g });

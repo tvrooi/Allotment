@@ -511,3 +511,42 @@ Built as designed in §14, with these details.
 - **Leaving with edits waiting:** choosing another plan, New, Duplicate or Delete asks first, and closing
   the tab warns. Duplicate copies the saved plan. A name another plan already has is reported as that,
   not as a conflict, and a real conflict shows inside the dialog you are in.
+
+## 21. Monte Carlo (step 5)
+
+Built as §15 designed it, with these details.
+
+- **Same engine.** Each path is the deterministic forecast run with a different return for each year, through
+  an optional growth hook on `forecastLongTerm`. With no volatility every path equals the forecast (tested).
+  `mulDiv` gained an exact fast path for small products, because a simulation calls it millions of times.
+- **Seeded.** SplitMix64 (checked against its published output) with Box-Muller normals; a path's generator
+  depends only on the run's seed and the path's index. `GET …/plans/:id/simulation?paths=&seed=` is a read-only
+  `GET` (100 to 2,000 paths, default 1,000; seed default 1). The same plan, seed and path count give the same
+  answer, byte for byte.
+- **Returns.** Lognormal with exactly the stated mean (the account's growth rate) and standard deviation
+  (its volatility): σ² = ln(1 + (vol ÷ (1 + mean))²) and the log has mean ln(1 + mean) − σ²/2. A balance can
+  never fall below zero. Monarch's own σ formula differs and is not copied. Returns are rounded to whole basis
+  points.
+- **Shared shocks.** One draw a year for everything that moves with the share market (investments and
+  super), another for property. Other kinds of account only swing if you give them a volatility, and then
+  they use the market draw.
+- **Volatility** is an assumption stored with the plan (`volatilityBps`, older plans get the defaults):
+  investments 16%, super 16%, property 10%, cash and the rest 0%. It affects only the simulation.
+- **Inflation, income, spending and events are as in the forecast**; only returns vary.
+- **Chance of success** = share of paths with no unfunded spending that end above zero. Bands are the 5th, 25th,
+  50th, 75th and 95th percentiles of closing net worth each year (interpolated), returned in future dollars
+  with each year's inflation index so the page can show either dollars. The response also counts the paths
+  that ran out and the median first year it happened.
+- **Screen:** a **Simulation** tab with a path count, a seed and **Run simulation**. It runs the _saved_ plan.
+  It shows the chance of success with its definition, the two bands with the median, and the forecast line.
+- **Read-only access:** `long_term_simulation` joins the MCP tools.
+- **Not built:** stochastic inflation, sequence-of-returns by account beyond the two shared shocks, and a
+  worker (a 1,000-path run of a long plan takes about a second on the server, and the demo runs the same code
+  in its own worker).
+- **After review:** a path whose balances outgrow exact arithmetic is counted as a success and left out of the
+  bands (the response says how many), instead of failing the whole run; a plan where every path overflows is
+  refused. Runs are remembered (the last 16, keyed by the plan, today's figures, seed and path count), so
+  asking again costs nothing. The chance is shown as "100%" or "0%" only when every path agrees, otherwise
+  "over 99.9%" or "under 0.1%". The seed is echoed in the response, not stored with the plan. Results are
+  reproducible wherever the JavaScript engine's `log`, `exp` and `cos` agree; returns are rounded to whole
+  basis points, so a different engine could differ in a rare path by a basis point.

@@ -382,4 +382,17 @@ export function inputToBps(text: string): number | null {
   // Plain decimal numbers only: "3x", "0x10" and "1e3" are not rates
   return /^-?\d+(\.\d+)?$/.test(t) ? Math.round(Number(t) * 100) : null;
 }
+/**
+ * A chance of success for display. 0% and 100% are shown only when every path agrees, so a
+ * rounded 99.95% never reads as certainty.
+ */
+export function chanceLabel(successBps: number): string {
+  if (successBps >= 10_000) return '100%';
+  if (successBps <= 0) return '0%';
+  if (successBps > 9_990) return 'over 99.9%';
+  if (successBps < 10) return 'under 0.1%';
+  const percent = successBps / 100;
+  return `${Number.isInteger(percent) ? percent : percent.toFixed(1)}%`;
+}
+
 export const percentLabel = (bps: number) => `${Math.round(bps) / 100}%`;

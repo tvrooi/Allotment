@@ -30,6 +30,7 @@ import {
   type ForecastResult,
   type LifeEvent,
 } from './longTermForecast.js';
+import { simulate } from './longTermSimulation.js';
 
 const day = (date: string, count: number) => format(addDays(parseISO(date), count), 'yyyy-MM-dd');
 
@@ -344,6 +345,46 @@ export function runPlan(plan: PlanInput, point: StartingPoint = startingPoint())
     endAge: enginePlan.endAge,
     preservationAge: enginePlan.super.preservationAge,
     retirementAge: retirementAgeOf(plan),
+  };
+}
+
+/** Recent runs, so asking again for the same plan, figures and seed costs nothing */
+const RECENT = new Map<string, ReturnType<typeof runSimulation>>();
+const RECENT_MAX = 16;
+
+/** Run a saved plan many times with random yearly returns (read-only; same seed, same answer) */
+export function simulatePlan(
+  plan: PlanInput,
+  options: { seed: number; paths: number },
+  point: StartingPoint = startingPoint(),
+) {
+  // Everything the answer depends on, so a changed balance or plan never returns an old run
+  const key = JSON.stringify([plan, point, options.seed, options.paths]);
+  const hit = RECENT.get(key);
+  if (hit) {
+    RECENT.delete(key);
+    RECENT.set(key, hit);
+    return hit;
+  }
+  const fresh = runSimulation(plan, options, point);
+  RECENT.set(key, fresh);
+  if (RECENT.size > RECENT_MAX) RECENT.delete(RECENT.keys().next().value as string);
+  return fresh;
+}
+
+function runSimulation(
+  plan: PlanInput,
+  options: { seed: number; paths: number },
+  point: StartingPoint,
+) {
+  const { plan: enginePlan, warnings } = buildEnginePlan(plan, point);
+  const result = simulate(enginePlan, { ...options, volatilityBps: plan.settings.volatilityBps });
+  return {
+    ...result,
+    warnings,
+    startYear: enginePlan.startYear,
+    startAge: enginePlan.startAge,
+    endAge: enginePlan.endAge,
   };
 }
 

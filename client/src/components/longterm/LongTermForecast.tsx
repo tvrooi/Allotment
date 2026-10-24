@@ -19,6 +19,7 @@ import { EventList } from './EventList';
 import { Field, WholeNumberField } from './fields';
 import { NetWorthChart } from './NetWorthChart';
 import { SavingsPanel } from './SavingsPanel';
+import { SimulationPanel } from './SimulationPanel';
 import { YearBreakdown } from './YearBreakdown';
 
 const remember = (key: string, value?: string): string | null => {
@@ -30,13 +31,14 @@ const remember = (key: string, value?: string): string | null => {
   }
 };
 
-type Panel = 'events' | 'assumptions' | 'accounts' | 'savings' | 'compare';
+type Panel = 'events' | 'assumptions' | 'accounts' | 'savings' | 'compare' | 'simulation';
 const PANELS: { id: Panel; label: string }[] = [
   { id: 'events', label: 'Life events' },
   { id: 'assumptions', label: 'Assumptions' },
   { id: 'accounts', label: 'Accounts' },
   { id: 'savings', label: 'Savings' },
   { id: 'compare', label: 'Compare' },
+  { id: 'simulation', label: 'Simulation' },
 ];
 
 /** Name and birth year: everything else starts at its default */
@@ -518,7 +520,7 @@ function Editor({
           ))}
         </div>
 
-        {panel !== 'events' && panel !== 'compare' && (
+        {panel !== 'events' && panel !== 'compare' && panel !== 'simulation' && (
           <div className="flex flex-wrap items-center gap-3">
             <Button
               size="sm"
@@ -586,6 +588,9 @@ function Editor({
             <SavingsPanel plan={working} setPlan={ed.setWorking} point={point.data} result={r} />
           )}
         </AmountFields>
+        {panel === 'simulation' && (
+          <SimulationPanel saved={saved} result={r} mode={mode} dirty={ed.dirty} />
+        )}
         {panel === 'compare' && (
           <div className="space-y-4">
             {others.length === 0 ? (

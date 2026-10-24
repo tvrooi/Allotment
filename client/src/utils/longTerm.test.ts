@@ -4,6 +4,7 @@ import {
   apportion,
   bpsToInput,
   bridge,
+  chanceLabel,
   draftIssues,
   EVENT_KINDS,
   eventYear,
@@ -228,5 +229,23 @@ describe('rates as typed', () => {
     expect(inputToBps('0x10')).toBeNull();
     expect(inputToBps('1e3')).toBeNull();
     expect(inputToBps('-1.5')).toBe(-150);
+  });
+});
+
+describe('chanceLabel', () => {
+  it('shows certainty only when every path agrees', () => {
+    expect(chanceLabel(10_000)).toBe('100%');
+    expect(chanceLabel(9_995)).toBe('over 99.9%');
+    expect(chanceLabel(9_991)).toBe('over 99.9%');
+    expect(chanceLabel(9_990)).toBe('99.9%');
+    expect(chanceLabel(0)).toBe('0%');
+    expect(chanceLabel(5)).toBe('under 0.1%');
+    expect(chanceLabel(10)).toBe('0.1%');
+  });
+
+  it('writes whole percents plainly and the rest with one decimal', () => {
+    expect(chanceLabel(3_150)).toBe('31.5%');
+    expect(chanceLabel(5_000)).toBe('50%');
+    expect(chanceLabel(8_735)).toBe('87.3%');
   });
 });

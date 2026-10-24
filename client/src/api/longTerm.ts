@@ -95,6 +95,8 @@ export interface PlanSettings {
   income: { takeHome: number | null; grossForSuper: number; escalation: Escalation };
   spending: { annual: number | null; escalation: Escalation };
   classGrowthBps: Record<AccountClass, number>;
+  /** How much each kind of account's yearly return swings, for the simulation only */
+  volatilityBps: Record<AccountClass, number>;
   extraSavingsGrowthBps: number;
   withdrawalOrder: string[];
 }
@@ -247,6 +249,34 @@ export interface Comparison {
   percentDefinition: string;
 }
 
+export interface Simulation {
+  id: string;
+  version: number;
+  name: string;
+  seed: number;
+  paths: number;
+  volatilityBps: Record<AccountClass, number>;
+  percentiles: number[];
+  /** Share of paths that never ran out of money and ended above zero, in basis points */
+  successBps: number;
+  unfundedPaths: number;
+  /** Paths too large to count, left out of the bands (they count as successes) */
+  overflowPaths: number;
+  medianFirstUnfundedYear: number | null;
+  bands: {
+    index: number;
+    calendarYear: number;
+    age: number;
+    inflationIndexPpb: number;
+    /** Net worth at each percentile, in future dollars */
+    net: number[];
+  }[];
+  warnings: string[];
+  startYear: number;
+  startAge: number;
+  endAge: number;
+}
+
 const base = '/forecast/long-term';
 const json = (body: unknown) => JSON.stringify(body);
 
@@ -268,6 +298,8 @@ export const deletePlan = (id: string, expectedVersion: number) =>
 export const duplicatePlan = (id: string, name: string) =>
   apiFetch<SavedPlan>(`${base}/plans/${id}/duplicate`, { method: 'POST', body: json({ name }) });
 export const getResult = (id: string) => apiFetch<PlanResult>(`${base}/plans/${id}/result`);
+export const getSimulation = (id: string, paths: number, seed: number) =>
+  apiFetch<Simulation>(`${base}/plans/${id}/simulation?paths=${paths}&seed=${seed}`);
 export const getComparison = (id: string, reference: string, dollars: 'today' | 'future') =>
   apiFetch<Comparison>(
     `${base}/plans/${id}/compare?reference=${encodeURIComponent(reference)}&dollars=${dollars}`,
