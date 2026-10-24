@@ -415,7 +415,63 @@ Decisions made while building the engine. They refine the sections above; where 
 - **Withdrawal order:** accounts you list come first, then the default order (Extra savings, cash,
   investments, unlocked super). Overdrawn accounts give nothing.
 - **Horizon:** `endAge − startAge` plan years; year 0 is today's snapshot. At most 100 years.
-- **Backups:** the format is now 15 (up.29), so the long-term tables arrive as **format 16** in step 3.
-  `account_loan_details` was added in step 2 with no way to write to it yet, so no backup is affected.
-- **Read-only access:** `main` now also has "read and categorise" tokens. Step 3 must prove those tokens
-  cannot write plans either.
+- **Backups:** the format was 15 (up.29), so the long-term tables arrive as **format 16** (step 3, §19).
+- **Read-only access:** `main` also has "read and categorise" tokens. Step 3 proves they cannot write plans
+  either (§19).
+
+## 19. Storage, API and access (step 3)
+
+Built as designed in §14, with these details.
+
+- **Tables** (migration `0042_long_term_plans`): `long_term_plans`, `long_term_events` (keyed by plan and event
+  id, with the kind's fields as JSON), `long_term_account_assumptions` and `long_term_splits`. Account
+  references cascade, so deleting an account removes its choices from plans, never the other way round.
+  A plan is saved whole, in one transaction, with its version. Event ids are chosen by the client so events
+  can name each other; `:` is reserved for ids the engine generates.
+- **Birth year, not age:** a plan stores `birthYear`; age is this year minus it, and the server's date
+  supplies the year. The engine itself still takes `startYear` and `startAge` and never reads a clock.
+- **Starting point** (`GET /api/forecast/long-term/starting-point`): open accounts' real balances in the
+  budget currency (an account with no exchange rate is left out with a warning); class by account type;
+  income from active payday plans over the next 12 months; spending as the trailing year's net
+  expense-category and uncategorised-debit activity, annualised. Unlike the cash runway it **keeps** payments
+  matched to schedules (bills are spending). It leaves out all transfers, including repayments to an
+  off-budget loan, which the loan model covers. Both can be overridden per plan.
+- **Routes** (all under `/api/forecast/long-term`): `GET /defaults`, `GET /starting-point`,
+  `GET|POST /plans`, `GET|PUT|DELETE /plans/:id` (PUT takes `expectedVersion`, DELETE takes
+  `?expectedVersion=`; a stale one is 409 with `current`), `POST /plans/:id/duplicate`,
+  `GET /plans/:id/result`, `GET /plans/:id/compare?reference=:id`, and `GET|PUT|DELETE /loans[/:accountId]`
+  for loan details. A plan that cannot run (for example an end age below your age) is 422 with the reason.
+- **Comparison** (`compareResults`): paired net worth at the end, lowest net worth, net worth at retirement,
+  super at the preservation age and first year money runs out, each with the money difference
+  (active − reference). The percentage is the difference ÷ the reference plan's value in basis points,
+  money figures only, null when the reference is zero or below, and the response carries the sentence the UI
+  prints beside it. Both plans run on one starting point, so a difference is only the plans' own. A series
+  gives each plan's closing net worth and the difference per year (a point's age is the age at the start of
+  that plan year).
+- **Backups:** format 16 adds `accountLoanDetails` and the four plan tables. Older backups restore with none of
+  them, leaving everything else unchanged. Restore validates every plan, event, choice, split and loan row
+  with the same schemas as the API, and refuses references to missing plans or accounts.
+- **Read-only access:** the routes sit under the already-readable `/forecast` prefix, so a token's `GET`s work
+  and every `POST`, `PUT` and `DELETE` is refused, for both read and categorise tokens (tested). The MCP
+  endpoint gains `long_term_plans`, `long_term_plan`, `long_term_forecast` and `long_term_compare`, each a
+  single `GET`.
+- **Not yet:** the today's-dollars transform and Monte Carlo (steps 4 and 5). Results are in future
+  dollars.
+- **Decisions from review:**
+  - Income counts exactly 26 paydays a year (a 364-day window), never 27 on a payday.
+  - With no payday plan, income starts at 0 with a warning. The scheduled-income fallback in §4 is not built; type your
+    take-home pay instead.
+  - Balances count rows dated today or earlier, as the spending average does, so a future bill is
+    not counted twice. (The account list still shows every row.)
+  - Uncategorised credits are not netted against uncategorised debits in the spending average.
+  - Event ids may not be `salary`, `extra-savings` or an account's id.
+  - A saved plan that no longer parses is reported as needing an update (500), not as a bad request.
+  - A stale save is told what changed (409) before its references are checked. A disabled pay-off may name a
+    debt that has since gone.
+  - Restore applies the same whole-plan checks as a save: at most 20 plans and 50 events a plan, one
+    retirement, known income sources, unique ids and positions, names with no stray whitespace.
+  - `GET …/result` takes `?view=summary` (one compact row per year; the MCP tool's default) or
+    `full` (the default, with every balance and breakdown row). A percent too large to state is null.
+  - A series point's age is the age at the **start** of its plan year, so net worth "at retirement" (the
+    closing balance of the year before retirement takes effect) sits on the point labelled one year younger.
+    A retirement at or past the end age gives no figure.

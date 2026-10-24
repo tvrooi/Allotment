@@ -8,7 +8,7 @@
 export const PPB = 1_000_000_000;
 export const EXTRA_SAVINGS_ID = 'extra-savings';
 export const SALARY_SOURCE_ID = 'salary';
-const SUPER_NEW_ID = 'super-new-contributions';
+export const SUPER_NEW_ID = 'super-new-contributions';
 const BPS = 10_000;
 const MONTHLY_BPS = 120_000;
 export const MAX_YEARS = 100;

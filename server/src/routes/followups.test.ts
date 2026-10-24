@@ -234,7 +234,7 @@ describe('saved forecast scenarios', () => {
   it('round-trips in backups and restores a format 12 backup without them', async () => {
     await send('POST', '/forecast/scenarios', { scenario: tuned });
     const backup = (await send('GET', '/export/backup')).body;
-    expect(backup.version).toBe(15);
+    expect(backup.version).toBe(16);
     expect(backup.forecastScenarios).toHaveLength(1);
     const restore = (body: unknown) =>
       fetch(`${base}/export/restore`, {

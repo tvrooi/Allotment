@@ -76,6 +76,8 @@ Its read tools:
 | `income_vs_expenses`, `spending_by_category`      | Monthly income and spending; spending per category                                           |
 | `spending_by_merchant`                            | Spending per payee                                                                           |
 | `budget_review`, `financial_resilience`           | The budget review's open items; reserve and months of essentials                             |
+| `long_term_plans`, `long_term_plan`               | Saved long-term forecast plans; one plan's settings, life events and savings splits          |
+| `long_term_forecast`, `long_term_compare`         | A plan's year-by-year result; two plans side by side                                         |
 
 With a **read and categorise** token the server also lists `categorise_transactions`: up to 100
 transaction ids and one category id. It changes them one at a time through the same API, and

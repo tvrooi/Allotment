@@ -973,3 +973,71 @@ export const accountLoanDetails = sqliteTable('account_loan_details', {
     .notNull()
     .default(sql`(datetime('now'))`),
 });
+
+/** A saved long-term forecast plan: its settings as JSON plus a version, so two devices can't
+ * silently overwrite each other. Children are replaced together with a save. */
+export const longTermPlans = sqliteTable('long_term_plans', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  settingsJson: text('settings_json').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  version: integer('version').notNull().default(1),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+/** A life event in a plan; `paramsJson` holds the kind's fields */
+export const longTermEvents = sqliteTable(
+  'long_term_events',
+  {
+    planId: text('plan_id')
+      .notNull()
+      .references(() => longTermPlans.id, { onDelete: 'cascade' }),
+    id: text('id').notNull(),
+    kind: text('kind').notNull(),
+    name: text('name').notNull(),
+    position: integer('position').notNull(),
+    enabled: integer('enabled').notNull().default(1),
+    paramsJson: text('params_json').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.planId, t.id] })],
+);
+
+/** A plan's per-account choices: left out, or a class or growth rate other than the default */
+export const longTermAccountAssumptions = sqliteTable(
+  'long_term_account_assumptions',
+  {
+    planId: text('plan_id')
+      .notNull()
+      .references(() => longTermPlans.id, { onDelete: 'cascade' }),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    included: integer('included').notNull().default(1),
+    cls: text('cls'),
+    growthBps: integer('growth_bps'),
+  },
+  (t) => [primaryKey({ columns: [t.planId, t.accountId] })],
+);
+
+/** A plan's ordered savings allocation (percent of what is left, or a fixed amount) */
+export const longTermSplits = sqliteTable(
+  'long_term_splits',
+  {
+    planId: text('plan_id')
+      .notNull()
+      .references(() => longTermPlans.id, { onDelete: 'cascade' }),
+    position: integer('position').notNull(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    mode: text('mode').notNull(),
+    bps: integer('bps'),
+    amount: integer('amount'),
+  },
+  (t) => [primaryKey({ columns: [t.planId, t.position] })],
+);
