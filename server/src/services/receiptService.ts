@@ -12,6 +12,7 @@ import { extensionOf } from './receiptMeta.js';
 import {
   attachReceipt,
   detachReceipt,
+  enrichFromReceipt,
   findAutoMatch,
   lineItems,
   setLineItems,
@@ -247,6 +248,7 @@ export function updateReceipt(
   if (items) setLineItems(id, items);
   // Matching goes through one path, so a match by hand is enriched like an automatic one
   let outcome = null;
+  const detailsChanged = Object.keys(fields).length > 0 || items !== undefined;
   if (transactionId === null && before.transactionId) detachReceipt(id);
   else if (transactionId && transactionId !== before.transactionId)
     outcome = attachReceipt(id, transactionId, 'manual');
@@ -254,6 +256,9 @@ export function updateReceipt(
     // Its details may now match a transaction: try at once, so the page can say so
     const match = findAutoMatch(id);
     if (match) outcome = attachReceipt(id, match, 'auto');
+  } else if (before.transactionId && transactionId === undefined && detailsChanged) {
+    // Details typed after the match (a receipt added straight to a transaction) enrich it now
+    outcome = enrichFromReceipt(id);
   }
   return { ...getReceipt(id), outcome };
 }

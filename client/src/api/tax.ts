@@ -160,6 +160,8 @@ export const createTransactionFromReceipt = (
     `/receipts/${encodeURIComponent(id)}/transaction`,
     { method: 'POST', body: JSON.stringify(body) },
   );
+export const splitReceiptByItems = (id: string) =>
+  apiFetch<AttachOutcome>(`/receipts/${encodeURIComponent(id)}/split`, { method: 'POST' });
 export const matchReceiptsNow = () =>
   apiFetch<{ matched: number }>('/receipts/match', { method: 'POST' });
 export const getReceiptSettings = () => apiFetch<ReceiptSettings>('/receipts/settings');

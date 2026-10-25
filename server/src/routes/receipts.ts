@@ -18,6 +18,7 @@ import {
   ReceiptMatchError,
   matchPendingReceipts,
   receiptSettings,
+  splitByItems,
   updateReceiptSettings,
 } from '../services/receiptMatching.js';
 import { disposition } from '../utils/contentDisposition.js';
@@ -154,6 +155,11 @@ receiptsRouter.post(
       .parse(req.body);
     res.status(201).json(createTransactionFromReceipt(String(req.params.id), body));
   }),
+);
+
+receiptsRouter.post(
+  '/:id/split',
+  action((req, res) => res.json(splitByItems(String(req.params.id)))),
 );
 
 receiptsRouter.delete(

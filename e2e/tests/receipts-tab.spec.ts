@@ -124,3 +124,49 @@ test('receipt settings turn autosplit, notes and the tag off', async ({ page, ap
   await settings.getByLabel(/Tag "Receipt"/).uncheck();
   await expect.poll(async () => (await api.call('GET', '/receipts/settings')).addTag).toBe(false);
 });
+
+test('a categorised transaction is split only when asked, with Split by items', async ({
+  page,
+  api,
+}) => {
+  const card = await api.createAccount('Card', 0, 'credit');
+  const groceries = await api.category('Groceries');
+  const home = await api.category('Home Maintenance');
+  const shop = await api.createTransaction({
+    accountId: card.id,
+    date: isoDay(),
+    amount: -3_000,
+    payeeName: 'Woolworths',
+    categoryId: groceries.id,
+  });
+  await open(page, '/transactions?view=receipts');
+  await page.getByLabel('Upload receipts: choose files').setInputFiles(pdf('woolies.pdf'));
+  const dialog = page.getByRole('dialog', { name: 'Receipt' });
+  await expect(dialog.getByText('woolies.pdf', { exact: true })).toBeVisible();
+  await dialog.getByLabel('Merchant').fill('Woolworths');
+  await dialog.getByLabel('Date', { exact: true }).fill(isoDay());
+  await dialog.getByLabel('Amount', { exact: true }).fill('30.00');
+  for (const [i, [name, amount, category]] of (
+    [
+      ['Fruit', '10.00', groceries.id],
+      ['Light globes', '20.00', home.id],
+    ] as const
+  ).entries()) {
+    await dialog.getByRole('button', { name: 'Add item' }).click();
+    await dialog.getByLabel(`Item ${i + 1}`, { exact: true }).fill(name);
+    await dialog.getByLabel(`Item ${i + 1} amount`).fill(amount);
+    await dialog.getByLabel(`Item ${i + 1} category`).selectOption(category);
+  }
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog.getByRole('status')).toContainText('already has a category');
+  expect((await api.transactions()).find((t) => t.id === shop.id)).toMatchObject({
+    isParent: 0,
+    categoryId: groceries.id,
+  });
+  await dialog.getByRole('button', { name: 'Split by items' }).click();
+  await expect(dialog.getByRole('status')).toHaveText('Split into 2 categories.');
+  const parent = (await api.transactions()).find((t) => t.id === shop.id);
+  expect(
+    (parent.children as { amount: number }[]).map((c) => c.amount).sort((a, b) => a - b),
+  ).toEqual([-2_000, -1_000]);
+});

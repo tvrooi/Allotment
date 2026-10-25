@@ -226,7 +226,7 @@ function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         {toggle(
           'autoSplit',
           'Autosplit by category',
-          "When a receipt's items have two or more categories, split the matched transaction by them.",
+          "When a receipt's items have two or more categories, split a matched transaction that has no category or tax claim yet. Otherwise use Split by items on the receipt.",
         )}
         {toggle(
           'addNotes',

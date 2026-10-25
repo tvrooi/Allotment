@@ -116,7 +116,12 @@ records, not only tax evidence.
     weight is its items, plus tax in proportion to those items, plus tip and fees shared evenly
     per item, apportioned exactly to the transaction's own amount (largest remainder, BigInt);
   - with one category, set it only when the transaction has none.
-  - A reconciled, already split or transfer transaction is not split, and the outcome says why.
+  - Automatic autosplit only touches a transaction with no category and no tax claim ("preserve
+    user-edited rows"); a categorised one is split only by **Split by items** (`POST
+/receipts/:id/split`), on request. A reconciled, already split, transfer or claimed
+    transaction is never split (a split parent is no longer a deduction), and the outcome says why.
+  - Saving details on a receipt that is already matched (one added straight to a transaction)
+    enriches the transaction again; every step is safe to repeat.
   - The amount is never changed. Settings live in `budget_settings` (`receipt_auto_split`,
     `receipt_add_notes`, `receipt_add_tag`, all on by default).
 - **Unmatched:** **Find match** searches top-level money out by payee, bank description or notes,

@@ -144,3 +144,8 @@ export function useCreateTransactionFromReceipt() {
     onSuccess: refresh,
   });
 }
+
+export function useSplitByItems() {
+  const refresh = useRefreshAll();
+  return useMutation({ mutationFn: api.splitReceiptByItems, onSuccess: refresh });
+}

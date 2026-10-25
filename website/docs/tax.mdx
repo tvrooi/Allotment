@@ -30,8 +30,7 @@ fees, and its **line items**, each with a category. Then it is **matched** to it
   receipt. Don't do this if your bank will send it, or you'll have it twice.
 
 A matched transaction keeps its amount. It is tagged **Receipt**, gets the receipt's notes and
-items in its notes, and, with **autosplit**, is split by its items' categories: tax in proportion
-to each category's items, tip and fees shared evenly per item. A receipt with one category sets an
+items in its notes, and, with **autosplit**, is split by its items' categories when it has no category yet: tax in proportion to each category's items, tip and fees shared evenly per item. A transaction that already has a category or a tax claim is not split by itself: open the receipt and choose **Split by items** (a claimed one can't be split, or its claim would be lost). A receipt with one category sets an
 uncategorised transaction's category, but never changes one you chose. Turn each of these on or off
 in the Receipts tab's **settings**. **Unmatch** puts the receipt back; deleting a receipt never
 deletes its transaction.

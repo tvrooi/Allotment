@@ -16,6 +16,7 @@ const {
   receiptLineItems,
   receipts,
   tags,
+  taxClaims,
   transactions,
   transactionTags,
 } = await import('../db/schema.js');
@@ -26,6 +27,7 @@ const {
   findAutoMatch,
   matchPendingReceipts,
   sameMerchant,
+  splitByItems,
   splitPlan,
   updateReceiptSettings,
 } = await import('./receiptMatching.js');
@@ -38,7 +40,15 @@ const jpeg = (fill: string) =>
   Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from(fill.repeat(32))]);
 
 beforeEach(() => {
-  for (const t of [receiptLineItems, receipts, receiptFiles, transactionTags, tags, transactions])
+  for (const t of [
+    receiptLineItems,
+    receipts,
+    receiptFiles,
+    taxClaims,
+    transactionTags,
+    tags,
+    transactions,
+  ])
     db.delete(t).run();
   db.delete(categories).run();
   db.delete(categoryGroups).run();
@@ -238,6 +248,42 @@ describe('autosplit and categories', () => {
       split: 0,
       skipped: 'The transaction is reconciled, so it was not split',
     });
+  });
+
+  it('never splits a categorised or claimed transaction by itself; Split by items does on request', () => {
+    tx('chosen', '2026-08-01', -5_800, 'Coles', { categoryId: 'groceries' });
+    const id = receipt(groceriesAndHousehold);
+    expect(db.select().from(receipts).where(eq(receipts.id, id)).get()!.transactionId).toBe(
+      'chosen',
+    );
+    expect(row('chosen')).toMatchObject({ isParent: 0, categoryId: 'groceries' });
+    expect(splitByItems(id).split).toBe(2);
+    expect(parts('chosen').map((p) => p.amount)).toEqual([-3_500, -2_300]);
+
+    tx('claimed', '2026-09-01', -5_800, 'Coles');
+    db.insert(taxClaims)
+      .values({ transactionId: 'claimed', label: 'D5', createdAt: 'x', updatedAt: 'x' })
+      .run();
+    const other = receipt({ ...groceriesAndHousehold, receiptDate: '2026-09-01' }, 'q');
+    expect(row('claimed').isParent).toBe(0);
+    expect(updateReceipt(other, { notes: 'again' }).outcome?.skipped).toBe(
+      'The transaction is claimed as a tax deduction, so it was not split',
+    );
+    expect(() => splitByItems(other)).toThrow('The transaction is claimed as a tax deduction');
+  });
+
+  it('enriches a transaction when details are typed after the receipt was added to it', () => {
+    tx('shop', '2026-08-01', -5_800, 'Coles');
+    const r = addReceipt({ bytes: jpeg('later'), fileName: 'r.jpg', transactionId: 'shop' });
+    expect(row('shop').isParent).toBe(0);
+    const out = updateReceipt(r.id, {
+      notes: 'Weekly shop',
+      tax: 500,
+      tip: 300,
+      lineItems: groceriesAndHousehold.lineItems,
+    });
+    expect(out.outcome).toMatchObject({ split: 2, notesAdded: true });
+    expect(parts('shop').map((p) => p.amount)).toEqual([-3_500, -2_300]);
   });
 
   it('apportions any amount exactly by weight', () => {

@@ -6,7 +6,14 @@ import { and, asc, eq, gte, isNotNull, isNull, lte, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { addDays, format, parseISO } from 'date-fns';
 import { db } from '../db/index.js';
-import { categories, receiptLineItems, receipts, tags, transactions } from '../db/schema.js';
+import {
+  categories,
+  receiptLineItems,
+  receipts,
+  tags,
+  taxClaims,
+  transactions,
+} from '../db/schema.js';
 import { getBudgetSettings, updateBudgetSettings } from './mainAmountService.js';
 import { splitTransaction } from './transactionEdits.js';
 import { addTransactionTag, createTag } from './transactionMarks.js';
@@ -263,29 +270,48 @@ export interface AttachOutcome {
   skipped: string | null;
 }
 
-/**
- * Attach a receipt to a transaction and enrich it, per the receipt settings. The amount is never
- * changed. A step the transaction can't take (it is reconciled, already split, a transfer) is
- * skipped and said, never failing the match.
- */
+/** Attach a receipt to a transaction, then enrich the transaction from it */
 export function attachReceipt(
   receiptId: string,
   transactionId: string,
   how: 'auto' | 'manual' | 'created',
 ): AttachOutcome {
-  const r = db.select().from(receipts).where(eq(receipts.id, receiptId)).get();
-  if (!r) throw new ReceiptMatchError('Receipt not found', 404);
+  if (!db.select({ id: receipts.id }).from(receipts).where(eq(receipts.id, receiptId)).get())
+    throw new ReceiptMatchError('Receipt not found', 404);
   const tx = db.select().from(transactions).where(eq(transactions.id, transactionId)).get();
   if (!tx) throw new ReceiptMatchError('Transaction not found', 404);
   // A receipt belongs to the whole transaction, never one part of a split
-  const target = tx.parentTransactionId
-    ? db.select().from(transactions).where(eq(transactions.id, tx.parentTransactionId)).get()!
-    : tx;
+  const targetId = tx.parentTransactionId ?? tx.id;
   db.update(receipts)
-    .set({ transactionId: target.id, matchedBy: how, updatedAt: new Date().toISOString() })
+    .set({ transactionId: targetId, matchedBy: how, updatedAt: new Date().toISOString() })
     .where(eq(receipts.id, receiptId))
     .run();
+  return enrichFromReceipt(receiptId);
+}
 
+/** Why a transaction can't be split from its receipt, or null when it can */
+function splitBlocker(target: typeof transactions.$inferSelect): string | null {
+  if (target.reconciled === 1) return 'The transaction is reconciled, so it was not split';
+  if (target.isParent === 1) return 'The transaction is already split';
+  if (target.transferTransactionId) return 'A transfer cannot be split';
+  // A split's parent is no longer a deduction, so splitting would lose the claim
+  if (db.select().from(taxClaims).where(eq(taxClaims.transactionId, target.id)).get())
+    return 'The transaction is claimed as a tax deduction, so it was not split';
+  return null;
+}
+
+/**
+ * Enrich a receipt's transaction from it, per the receipt settings: tag it, add the receipt's
+ * notes, and split it by its items' categories, or use their one category. Run when a receipt is
+ * matched and again when a matched receipt's details change; every step is safe to repeat. The
+ * amount is never changed, and an owner's choices are kept: a transaction that already has a
+ * category, a tax claim, or is reconciled or split, is not split automatically (Split by items
+ * does it on request), and a chosen category is never replaced.
+ */
+export function enrichFromReceipt(receiptId: string): AttachOutcome {
+  const r = db.select().from(receipts).where(eq(receipts.id, receiptId)).get();
+  if (!r?.transactionId) throw new ReceiptMatchError('The receipt is not matched');
+  const target = db.select().from(transactions).where(eq(transactions.id, r.transactionId)).get()!;
   const settings = receiptSettings();
   const outcome: AttachOutcome = {
     transactionId: target.id,
@@ -316,20 +342,13 @@ export function attachReceipt(
   }
   const categoryIds = [...new Set(items.map((i) => i.categoryId))];
   if (settings.autoSplit && categoryIds.filter((c) => c !== null).length >= 2) {
-    if (reconciled) outcome.skipped = 'The transaction is reconciled, so it was not split';
-    else if (target.isParent === 1) outcome.skipped = 'The transaction is already split';
-    else if (target.transferTransactionId) outcome.skipped = 'A transfer cannot be split';
-    else {
-      const parts = splitPlan(target.amount, items, r.tax, r.tip);
-      if (parts && parts.length >= 2) {
-        try {
-          splitTransaction(target.id, parts);
-          outcome.split = parts.length;
-        } catch (error) {
-          outcome.skipped = error instanceof Error ? error.message : String(error);
-        }
-      }
-    }
+    const blocked =
+      splitBlocker(target) ??
+      (target.categoryId !== null
+        ? 'The transaction already has a category, so it was not split: use Split by items to split it'
+        : null);
+    if (blocked) outcome.skipped = blocked;
+    else outcome.split = applySplit(target, r, items, outcome);
   } else if (
     categoryIds.length === 1 &&
     categoryIds[0] !== null &&
@@ -345,6 +364,51 @@ export function attachReceipt(
       .run();
     outcome.categorised = true;
   }
+  return outcome;
+}
+
+function applySplit(
+  target: typeof transactions.$inferSelect,
+  r: typeof receipts.$inferSelect,
+  items: ReturnType<typeof lineItems>,
+  outcome: AttachOutcome,
+): number {
+  const parts = splitPlan(target.amount, items, r.tax, r.tip);
+  if (!parts || parts.length < 2) return 0;
+  try {
+    splitTransaction(target.id, parts);
+    return parts.length;
+  } catch (error) {
+    outcome.skipped = error instanceof Error ? error.message : String(error);
+    return 0;
+  }
+}
+
+/**
+ * Split by items, on request: split a matched transaction by its receipt's item categories even
+ * though it already has a category (the owner chose to). Still never a reconciled, already split,
+ * transfer or claimed one.
+ */
+export function splitByItems(receiptId: string): AttachOutcome {
+  const r = db.select().from(receipts).where(eq(receipts.id, receiptId)).get();
+  if (!r?.transactionId) throw new ReceiptMatchError('Match the receipt to a transaction first');
+  const target = db.select().from(transactions).where(eq(transactions.id, r.transactionId)).get()!;
+  const blocked = splitBlocker(target);
+  if (blocked) throw new ReceiptMatchError(blocked.replace(', so it was not split', ''), 409);
+  const items = lineItems(receiptId);
+  if (new Set(items.map((i) => i.categoryId).filter((c) => c !== null)).size < 2)
+    throw new ReceiptMatchError('Give the items at least two categories first');
+  const outcome: AttachOutcome = {
+    transactionId: target.id,
+    tagged: false,
+    notesAdded: false,
+    split: 0,
+    categorised: false,
+    skipped: null,
+  };
+  outcome.split = applySplit(target, r, items, outcome);
+  if (!outcome.split)
+    throw new ReceiptMatchError(outcome.skipped ?? 'The items could not split it');
   return outcome;
 }
 

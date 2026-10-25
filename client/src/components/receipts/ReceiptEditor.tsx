@@ -11,6 +11,7 @@ import {
   useDeleteReceipt,
   useReceipt,
   useReceiptSearch,
+  useSplitByItems,
   useUpdateReceipt,
 } from '../../hooks/useTax';
 import { useAccounts } from '../../hooks/useAccounts';
@@ -246,8 +247,9 @@ function Editor({
             <Plus size={13} /> Add item
           </Button>
           <p className="text-xs text-text-tertiary">
-            Give items categories and, with autosplit on, a matched transaction is split by them:
-            tax in proportion, tip and fees evenly per item.
+            Give items categories and, with autosplit on, a matched transaction with no category yet
+            is split by them: tax in proportion, tip and fees evenly per item. Split by items does
+            it for one that has a category.
           </p>
         </section>
 
@@ -304,6 +306,9 @@ function MatchSection({
   onMessage: (m: string | null) => void;
 }) {
   const [mode, setMode] = useState<'find' | 'add' | null>(null);
+  const split = useSplitByItems();
+  const [splitError, setSplitError] = useState<string | null>(null);
+  const categories = new Set(receipt.lineItems.map((i) => i.categoryId).filter(Boolean));
   if (receipt.transactionId) {
     return (
       <section
@@ -321,9 +326,34 @@ function MatchSection({
             <span className="tabular-nums">{formatCurrency(-receipt.transaction.amount)}</span>
           </p>
         )}
-        <Button size="sm" variant="secondary" onClick={() => onSave({ transactionId: null })}>
-          Unmatch
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {categories.size >= 2 && (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={split.isPending}
+              onClick={async () => {
+                setSplitError(null);
+                try {
+                  const out = await split.mutateAsync(receipt.id);
+                  onMessage(`Split into ${out.split} categories.`);
+                } catch (e) {
+                  setSplitError((e as Error).message);
+                }
+              }}
+            >
+              Split by items
+            </Button>
+          )}
+          <Button size="sm" variant="secondary" onClick={() => onSave({ transactionId: null })}>
+            Unmatch
+          </Button>
+        </div>
+        {splitError && (
+          <p role="alert" className="text-xs text-negative">
+            {splitError}
+          </p>
+        )}
         <p className="text-xs text-text-tertiary">
           Unmatching keeps what was added to the transaction (its tag, notes or split).
         </p>
