@@ -51,8 +51,8 @@ const HOW: Record<string, string> = {
 export function ReceiptEditor({ id, onClose }: { id: string | null; onClose: () => void }) {
   const { data: receipt } = useReceipt(id);
   // Outside the form, so a newer copy of the receipt (after a save, or from another device)
-  // replaces what is shown without losing what the last save said
-  const [message, setMessage] = useState<{ id: string; text: string } | null>(null);
+  // replaces what is shown without losing what the last save, split or create said
+  const [message, setMessage] = useState<{ id: string; text: string; alert: boolean } | null>(null);
   return (
     <Modal isOpen={!!id} onClose={onClose} title="Receipt" size="xl">
       {receipt ? (
@@ -60,8 +60,10 @@ export function ReceiptEditor({ id, onClose }: { id: string | null; onClose: () 
           key={`${receipt.id}:${receipt.updatedAt}`}
           receipt={receipt}
           onClose={onClose}
-          message={message?.id === receipt.id ? message.text : null}
-          setMessage={(text) => setMessage(text === null ? null : { id: receipt.id, text })}
+          message={message?.id === receipt.id ? message : null}
+          setMessage={(text, alert = false) =>
+            setMessage(text === null ? null : { id: receipt.id, text, alert })
+          }
         />
       ) : (
         <div className="h-40 bg-surface-alt rounded animate-pulse" />
@@ -78,8 +80,8 @@ function Editor({
 }: {
   receipt: ReceiptDetail;
   onClose: () => void;
-  message: string | null;
-  setMessage: (text: string | null) => void;
+  message: { text: string; alert: boolean } | null;
+  setMessage: (text: string | null, alert?: boolean) => void;
 }) {
   const update = useUpdateReceipt();
   const remove = useDeleteReceipt();
@@ -280,8 +282,11 @@ function Editor({
           Deleting a receipt never deletes its transaction.
         </p>
         {message && (
-          <p role="status" className="text-sm text-text-secondary">
-            {message}
+          <p
+            role={message.alert ? 'alert' : 'status'}
+            className={`text-sm ${message.alert ? 'text-negative' : 'text-text-secondary'}`}
+          >
+            {message.text}
           </p>
         )}
         {error && (
@@ -305,11 +310,10 @@ function MatchSection({
   onSave: (extra: {
     transactionId?: string | null;
   }) => Promise<{ outcome: AttachOutcome | null } | undefined>;
-  onMessage: (m: string | null) => void;
+  onMessage: (m: string | null, alert?: boolean) => void;
 }) {
   const [mode, setMode] = useState<'find' | 'add' | null>(null);
   const split = useSplitByItems();
-  const [splitError, setSplitError] = useState<string | null>(null);
   const categories = new Set(receipt.lineItems.map((i) => i.categoryId).filter(Boolean));
   if (receipt.transactionId) {
     return (
@@ -335,7 +339,7 @@ function MatchSection({
               variant="secondary"
               disabled={split.isPending}
               onClick={async () => {
-                setSplitError(null);
+                onMessage(null);
                 try {
                   // Split what is on screen, not what was last saved
                   const saved = await onSave({});
@@ -344,7 +348,8 @@ function MatchSection({
                   const out = await split.mutateAsync(receipt.id);
                   onMessage(`Split into ${out.split} categories.`);
                 } catch (e) {
-                  setSplitError((e as Error).message);
+                  // Saving remounts the editor, so the refusal is shown above it
+                  onMessage((e as Error).message, true);
                 }
               }}
             >
@@ -355,11 +360,6 @@ function MatchSection({
             Unmatch
           </Button>
         </div>
-        {splitError && (
-          <p role="alert" className="text-xs text-negative">
-            {splitError}
-          </p>
-        )}
         <p className="text-xs text-text-tertiary">
           Unmatching keeps what was added to the transaction (its tag, notes or split).
         </p>
@@ -446,7 +446,7 @@ function AddFromReceipt({
   onSaveFirst,
 }: {
   receipt: ReceiptDetail;
-  onMessage: (m: string | null) => void;
+  onMessage: (m: string | null, alert?: boolean) => void;
   /** Saves what has been typed, so the transaction is made from it */
   onSaveFirst: () => Promise<unknown>;
 }) {
@@ -454,7 +454,6 @@ function AddFromReceipt({
   const open = accounts.filter((a) => !a.closedAt);
   const [accountId, setAccountId] = useState('');
   const create = useCreateTransactionFromReceipt();
-  const [error, setError] = useState<string | null>(null);
   return (
     <div className="space-y-2">
       <p className="text-xs text-text-tertiary">
@@ -479,25 +478,21 @@ function AddFromReceipt({
           size="sm"
           disabled={!accountId || create.isPending}
           onClick={async () => {
-            setError(null);
+            onMessage(null);
             try {
               const saved = await onSaveFirst();
               if (!saved) return;
               const out = await create.mutateAsync({ id: receipt.id, body: { accountId } });
               onMessage(`Transaction added. ${outcomeText(out.outcome) ?? ''}`.trim());
             } catch (e) {
-              setError((e as Error).message);
+              // Saving remounts the editor, so the error is shown above it
+              onMessage((e as Error).message, true);
             }
           }}
         >
           Create transaction
         </Button>
       </div>
-      {error && (
-        <p role="alert" className="text-xs text-negative">
-          {error}
-        </p>
-      )}
     </div>
   );
 }

@@ -163,6 +163,11 @@ test('a categorised transaction is split only when asked, with Split by items', 
     isParent: 0,
     categoryId: groceries.id,
   });
+  // A claimed transaction is never split, and the reason shows after the save first
+  await api.call('PUT', `/tax/claims/${shop.id}`, { label: 'D5' });
+  await dialog.getByRole('button', { name: 'Split by items' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('claimed as a tax deduction');
+  await api.call('DELETE', `/tax/claims/${shop.id}`);
   // Typed but not saved: the split uses what is on screen
   await dialog.getByLabel('Item 1 amount').clear();
   await dialog.getByLabel('Item 1 amount').fill('5.00');

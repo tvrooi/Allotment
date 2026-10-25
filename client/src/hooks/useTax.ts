@@ -29,7 +29,8 @@ function useRefresh() {
 }
 
 export function useUploadReceipt() {
-  const refresh = useRefresh();
+  // Uploaded onto a transaction, it tags and enriches that transaction too
+  const refresh = useRefreshAll();
   return useMutation({
     mutationFn: async ({ file, transactionId }: { file: File; transactionId?: string }) => {
       const { blob, name } = await api.prepareReceipt(file);
