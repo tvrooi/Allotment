@@ -18,6 +18,13 @@ by Up to your token. Accounts are created with their appropriate type and AUD cu
 This is a settled-transaction import: pending holds are excluded. The settled register balance
 therefore differs from Up's available balance while holds exist. Cashback is separate income.
 
+Sync works like YNAB's direct import: the connection reports whether Up could be reached and its
+transactions imported, and **Last synced** moves on with every successful import. A register
+that differs from Up's settled balance doesn't fail the sync. The account shows "Up says $X"
+beside its balance, and **Settings → Connected Banks → Up → Round-up accounting check** explains
+the difference (for example round-ups Up doesn't list) or links to **Reconcile**. FlyBudget never
+adjusts the balance by itself.
+
 ## Desktop build
 
 Prerequisites: Node.js 22 or newer, npm, and the tools required by Electron Builder on your OS.

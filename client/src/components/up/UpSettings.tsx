@@ -128,9 +128,10 @@ export function UpSettings() {
       {result && (
         <p
           role="status"
-          className={`text-sm ${result.errors.length ? 'text-negative' : 'text-positive'}`}
+          className={`text-sm ${result.errors.length ? 'text-negative' : result.notices?.length ? 'text-caution' : 'text-positive'}`}
         >
-          Imported {result.added} new transactions. {result.errors.join(' ')}
+          Imported {result.added} new transactions.{' '}
+          {[...result.errors, ...(result.notices ?? [])].join(' ')}
         </p>
       )}
       {(error || loadError) && (
