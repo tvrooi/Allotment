@@ -31,7 +31,7 @@ function getHeroStyle(tbb: number, incomePlanned: number) {
   const threshold = Math.max(incomePlanned * 0.02, 500);
   if (tbb <= threshold)
     return { bg: 'bg-caution-subtle', text: 'text-caution', label: 'Almost budgeted' };
-  return { bg: 'bg-positive-subtle', text: 'text-positive', label: 'Left to budget' };
+  return { bg: 'bg-positive-subtle', text: 'text-positive', label: 'Ready to assign' };
 }
 
 function getBarColor(actual: number, planned: number, type: 'income' | 'expenses' | 'savings') {

@@ -56,7 +56,10 @@ export function CategoryPicker({
   const filtered = groups
     .map((g) => ({
       ...g,
-      categories: g.categories.filter((c) => c.name.toLowerCase().includes(query.toLowerCase())),
+      // Hidden categories stay out of the list, except the one already chosen
+      categories: g.categories.filter(
+        (c) => (!c.hidden || c.id === value) && c.name.toLowerCase().includes(query.toLowerCase()),
+      ),
     }))
     .filter((g) => g.categories.length > 0);
   const filteredTransfers = transferAccounts.filter((a) =>

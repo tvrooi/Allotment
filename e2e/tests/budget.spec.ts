@@ -36,7 +36,7 @@ test.describe('budget', () => {
 
     await open(page, '/budget');
     await expect(toBeBudgeted(page)).toContainText('$3,000');
-    await expect(toBeBudgeted(page)).toContainText('Left to budget');
+    await expect(toBeBudgeted(page)).toContainText('Ready to assign');
 
     await plan(page, 'Groceries', '400');
     await expect(toBeBudgeted(page)).toContainText('$2,600');

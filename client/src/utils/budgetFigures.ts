@@ -80,8 +80,10 @@ export function splitCategories(
 ) {
   const inactive = categories.filter((c) => !isActiveCategory(c, isIncome));
   const fill = Math.max(min - (categories.length - inactive.length), 0);
+  // A hidden category is only listed while it holds money or activity
   const topUp = new Set(
     inactive
+      .filter((c) => !c.hidden)
       .map((cat, index) => ({ cat, index }))
       .sort((a, b) => commonRank(a.cat) - commonRank(b.cat) || a.index - b.index)
       .slice(0, fill)
