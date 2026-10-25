@@ -9,6 +9,7 @@ import {
   transactions,
 } from '../db/schema.js';
 import { shareTransaction } from './householdService.js';
+import { claimByRule, claimedIds } from './taxService.js';
 import { and, desc, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import {
@@ -139,6 +140,7 @@ export function insertNewTransaction(input: NewTransactionInput, opts: InsertOpt
     split,
     tags: ruleTags,
     share,
+    taxLabel,
   } = runRules({ ...input, payeeId }, opts.rules ?? loadRules(), opts.ctx ?? buildRuleContext(), {
     category: !!opts.keepUserCategory && !!input.categoryId,
     notes: !!opts.keepUserNotes && !!input.notes,
@@ -179,6 +181,7 @@ export function insertNewTransaction(input: NewTransactionInput, opts: InsertOpt
     db.insert(transactions).values(row).run();
     for (const tagId of ruleTags) addTransactionTag(row.id, tagId);
     if (share) shareByRule(share, row.id);
+    if (taxLabel) claimByRule(row.id, taxLabel);
     return { transaction: row, children: [] };
   }
 
@@ -262,6 +265,8 @@ export type PlannedChange = {
     tags?: string[];
     /** The household group the payment would be shared with */
     share?: string;
+    /** The tax return label the payment would be claimed under */
+    taxLabel?: string;
   };
   next: {
     payeeId: string | null;
@@ -331,8 +336,9 @@ export function planRules(opts: PlanOptions): PlannedChange[] {
       .all()
       .map((e) => e.id),
   );
+  const claimed = new Set(claimedIds());
   return candidates(opts).flatMap((t): PlannedChange[] => {
-    const { tx, split, tags: ruleTags, share } = runRules(txState(t), selected, ctx);
+    const { tx, split, tags: ruleTags, share, taxLabel } = runRules(txState(t), selected, ctx);
     if (defaults && !tx.categoryId && !split && tx.payeeId)
       tx.categoryId = defaults.get(tx.payeeId) ?? null;
 
@@ -346,6 +352,7 @@ export function planRules(opts: PlanOptions): PlannedChange[] {
     const newTags = ruleTags.filter((id) => !existingTags.get(t.id)?.includes(id));
     if (newTags.length) changes.tags = newTags;
     if (share && !split && !shared.has(t.id)) changes.share = share;
+    if (taxLabel && !split && !claimed.has(t.id)) changes.taxLabel = taxLabel;
     if (!Object.keys(changes).length) return [];
 
     return [
@@ -405,6 +412,7 @@ export function applyRules(opts: PlanOptions & { transactionIds: string[] }): nu
       }
       for (const tagId of p.changes.tags ?? []) addTransactionTag(t.id, tagId);
       if (p.changes.share) shareByRule(p.changes.share, t.id);
+      if (p.changes.taxLabel) claimByRule(t.id, p.changes.taxLabel);
       // The parts share the whole's budget-currency value
       if (split) refreshMainAmounts([t.id]);
     }

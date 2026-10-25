@@ -23,6 +23,8 @@ import { MainAmountField } from '../currency/MainAmountField';
 import { RECURRENCE_TYPE_LABELS } from '../../types';
 import { GoalLink } from '../goals/GoalLink';
 import { TransactionMarks } from './TransactionMarks';
+import { ReceiptsSection } from '../tax/ReceiptsSection';
+import { TaxClaimSection } from '../tax/TaxClaimSection';
 import { SplitTransactionModal } from './SplitTransactionModal';
 import type {
   Transaction,
@@ -389,6 +391,9 @@ export function TransactionDetailPanel({
             className={`${inputCls} resize-none`}
           />
         </div>
+
+        {!tx.parentTransactionId && <ReceiptsSection transactionId={tx.id} />}
+        {!tx.isAdjustment && <TaxClaimSection tx={tx} currency={currency} />}
 
         {linkedSchedule && (
           <div>

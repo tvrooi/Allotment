@@ -670,6 +670,43 @@ describe('Australian super rules', () => {
     expect(years[2].superFees).toBe(0);
   });
 
+  it('never grows or shrinks money the fees took', () => {
+    const closing = (growthBps: number) =>
+      forecastLongTerm(
+        basePlan({
+          endAge: 42,
+          salary: noPay,
+          spending: { annual: 0, escalation: { mode: 'none' } },
+          accounts: [acct('sup', 'super', 30_000, growthBps)],
+          super: {
+            guaranteeBps: 1200,
+            contributionsTaxBps: 1500,
+            preservationAge: 60,
+            feesAnnual: 50_000,
+          },
+        }),
+      ).years.map((y) => y.balances.sup);
+    expect(closing(-1000)).toEqual([30_000, 0, 0]);
+    expect(closing(1000)).toEqual([30_000, 0, 0]);
+    // Fees smaller than the fund: growth on what is left
+    expect(
+      forecastLongTerm(
+        basePlan({
+          endAge: 41,
+          salary: noPay,
+          spending: { annual: 0, escalation: { mode: 'none' } },
+          accounts: [acct('sup', 'super', 1_000_000, 1000)],
+          super: {
+            guaranteeBps: 1200,
+            contributionsTaxBps: 1500,
+            preservationAge: 60,
+            feesAnnual: 100_000,
+          },
+        }),
+      ).years[1].balances.sup,
+    ).toBe(1_000_000 - 100_000 + 90_000);
+  });
+
   it('warns when contributions or a pension pass the caps', () => {
     const caps = {
       concessionalCap: 3_250_000,

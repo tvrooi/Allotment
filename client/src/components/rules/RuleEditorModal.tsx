@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { TAX_LABEL_NAMES } from '../../utils/taxLabels';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Trash2, X } from 'lucide-react';
 import { Modal } from '../ui/Modal';
@@ -475,6 +476,26 @@ function ActionRow({
             ) : (
               <p className="text-xs text-text-tertiary pt-2">Create a household first.</p>
             ))}
+          {a.type === 'claim_tax_deduction' && (
+            <>
+              <select
+                value={a.value}
+                onChange={(e) => onChange({ ...a, value: e.target.value })}
+                className={`${fieldClass} w-full`}
+                aria-label="Tax return label"
+              >
+                {Object.entries(TAX_LABEL_NAMES).map(([label, name]) => (
+                  <option key={label} value={label}>
+                    {label} {name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-text-tertiary pt-1">
+                Money out is claimed in full under this label; change the work-use share on the
+                transaction. A claim you made yourself is never replaced.
+              </p>
+            </>
+          )}
           {a.type === 'split' && (
             <p className="text-xs text-text-tertiary pt-2">
               Splits the transaction into parts, each with its own category.

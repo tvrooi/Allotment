@@ -677,7 +677,8 @@ export type RuleAction =
   | { type: 'split'; parts: RuleSplitPart[] }
   | { type: 'add_tag'; value: string }
   /** Shares money out with a household group, with its default split */
-  | { type: 'share_with_household'; value: string };
+  | { type: 'share_with_household'; value: string }
+  | { type: 'claim_tax_deduction'; value: string };
 
 export interface Rule {
   id: string;
