@@ -5,6 +5,7 @@ import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { databasePath, db, sqlite } from '../db/index.js';
 import {
   householdGroups,
+  householdPoolAccounts,
   householdPeople,
   householdEvents,
   householdShares,
@@ -86,7 +87,7 @@ import { isCurrencyCode } from '../utils/currencies.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 16;
+export const BACKUP_VERSION = 17;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -129,6 +130,7 @@ const TABLES = {
   reviewCompletions,
   incomeReviews,
   householdGroups,
+  householdPoolAccounts,
   householdPeople,
   householdEvents,
   householdShares,

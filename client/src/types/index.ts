@@ -673,7 +673,9 @@ export type RuleAction =
   | { type: 'set_category' | 'set_payee'; value: string }
   | { type: 'set_notes' | 'prepend_notes' | 'append_notes'; value: string }
   | { type: 'split'; parts: RuleSplitPart[] }
-  | { type: 'add_tag'; value: string };
+  | { type: 'add_tag'; value: string }
+  /** Shares money out with a household group, with its default split */
+  | { type: 'share_with_household'; value: string };
 
 export interface Rule {
   id: string;

@@ -11,8 +11,17 @@ import { Input, Select } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { formatMoney } from '../utils/currency';
 import { formatDay } from '../utils/dates';
+import { HouseholdSharing } from '../components/household/HouseholdSharing';
+import type { HouseholdSplit } from '../api/households';
 
-type Group = { id: string; name: string; currency: string; accountId: string | null };
+type Group = {
+  id: string;
+  name: string;
+  currency: string;
+  accountId: string | null;
+  poolAccountIds: string[];
+  defaultSplit: HouseholdSplit | null;
+};
 type Person = { id: string; name: string; isSelf: number };
 type Entry = {
   id: string;
@@ -352,6 +361,8 @@ export default function HouseholdPage() {
                   </p>
                 </div>
               </section>
+
+              <HouseholdSharing key={state.group.id} group={state.group} people={state.people} />
 
               <div className="grid gap-4 lg:grid-cols-2 items-start">
                 <section className={card}>

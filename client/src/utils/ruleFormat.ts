@@ -89,6 +89,7 @@ export const ACTION_TYPES: Array<{ value: RuleAction['type']; label: string }> =
   { value: 'append_notes', label: 'Add text after notes' },
   { value: 'split', label: 'Split transaction' },
   { value: 'add_tag', label: 'Add tag' },
+  { value: 'share_with_household', label: 'Share with household' },
 ];
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -186,6 +187,8 @@ export type RuleLookups = {
   category: (id: string) => string | undefined;
   /** Phase 9 tags (optional: older callers show "(deleted)") */
   tag?: (id: string) => string | undefined;
+  /** Household groups (optional: older callers show "(deleted)") */
+  household?: (id: string) => string | undefined;
 };
 
 const quote = (s: string) => `"${s}"`;
@@ -248,6 +251,8 @@ export function actionText(a: RuleAction, l: RuleLookups): string {
       return `Split: ${a.parts.map((p) => splitPartText(p, l)).join(', ')}`;
     case 'add_tag':
       return `Add tag ${l.tag?.(a.value) ?? '(deleted)'}`;
+    case 'share_with_household':
+      return `Share with ${l.household?.(a.value) ?? '(deleted household)'}`;
   }
 }
 

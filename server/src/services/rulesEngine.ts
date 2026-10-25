@@ -56,7 +56,9 @@ export type Action =
   | { type: 'set_notes' | 'prepend_notes' | 'append_notes'; value: string }
   | { type: 'split'; parts: SplitPart[] }
   /** Phase 9: adds a tag; never removes one */
-  | { type: 'add_tag'; value: string };
+  | { type: 'add_tag'; value: string }
+  /** Shares a payment with a household group, with the group's default split */
+  | { type: 'share_with_household'; value: string };
 
 export type ConditionsOp = 'and' | 'or';
 
@@ -87,6 +89,8 @@ export type RuleContext = {
   categoryExists: (id: string) => boolean;
   /** Optional: contexts built before tags existed simply skip add_tag */
   tagExists?: (id: string) => boolean;
+  /** Optional: without it, share_with_household is skipped */
+  householdExists?: (id: string) => boolean;
 };
 
 export type Locks = { category?: boolean; payee?: boolean; notes?: boolean };
@@ -97,6 +101,8 @@ export type RuleOutcome = {
   matchedRuleIds: string[];
   /** Tags to add (phase 9) */
   tags: string[];
+  /** The household group to share a payment with, when a rule says so */
+  share?: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -231,6 +237,7 @@ export function runRules(
   let split: SplitPart[] | null = null;
   const matchedRuleIds: string[] = [];
   const tags: string[] = [];
+  let share: string | undefined;
 
   for (const rule of rules) {
     if (!rule.enabled || !matchesRule(rule, tx)) continue;
@@ -279,12 +286,18 @@ export function runRules(
           if (!tags.includes(a.value)) tags.push(a.value);
           applied = true;
           break;
+        case 'share_with_household':
+          // Only money out is shared, and the first rule to choose a household wins
+          if (share || tx.amount >= 0 || !ctx.householdExists?.(a.value)) break;
+          share = a.value;
+          applied = true;
+          break;
       }
     }
     if (applied) matchedRuleIds.push(rule.id);
   }
 
-  return { tx, split, matchedRuleIds, tags };
+  return { tx, split, matchedRuleIds, tags, ...(share ? { share } : {}) };
 }
 
 /**

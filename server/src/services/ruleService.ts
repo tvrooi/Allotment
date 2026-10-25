@@ -1,5 +1,14 @@
 import { db } from '../db/index.js';
-import { categories, payees, rules, tags, transactions } from '../db/schema.js';
+import {
+  categories,
+  householdEvents,
+  householdGroups,
+  payees,
+  rules,
+  tags,
+  transactions,
+} from '../db/schema.js';
+import { shareTransaction } from './householdService.js';
 import { and, desc, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import {
@@ -67,10 +76,18 @@ export function buildRuleContext(): RuleContext {
       .all()
       .map((t) => t.id),
   );
+  const householdIds = new Set(
+    db
+      .select({ id: householdGroups.id })
+      .from(householdGroups)
+      .all()
+      .map((h) => h.id),
+  );
   return {
     payeeName: (id) => payeeNames.get(id),
     categoryExists: (id) => categoryIds.has(id),
     tagExists: (id) => tagIds.has(id),
+    householdExists: (id) => householdIds.has(id),
   };
 }
 
@@ -121,6 +138,7 @@ export function insertNewTransaction(input: NewTransactionInput, opts: InsertOpt
     tx,
     split,
     tags: ruleTags,
+    share,
   } = runRules({ ...input, payeeId }, opts.rules ?? loadRules(), opts.ctx ?? buildRuleContext(), {
     category: !!opts.keepUserCategory && !!input.categoryId,
     notes: !!opts.keepUserNotes && !!input.notes,
@@ -160,6 +178,7 @@ export function insertNewTransaction(input: NewTransactionInput, opts: InsertOpt
     // database can't open a second inside it
     db.insert(transactions).values(row).run();
     for (const tagId of ruleTags) addTransactionTag(row.id, tagId);
+    if (share) shareByRule(share, row.id);
     return { transaction: row, children: [] };
   }
 
@@ -241,6 +260,8 @@ export type PlannedChange = {
     split?: Array<{ amount: number; categoryId: string | null; notes: string | null }>;
     /** Tags the rules would add (phase 9) */
     tags?: string[];
+    /** The household group the payment would be shared with */
+    share?: string;
   };
   next: {
     payeeId: string | null;
@@ -303,8 +324,15 @@ export function planRules(opts: PlanOptions): PlannedChange[] {
       );
 
   const existingTags = tagsByTransaction(candidates(opts).map((t) => t.id));
+  const shared = new Set(
+    db
+      .select({ id: householdEvents.transactionId })
+      .from(householdEvents)
+      .all()
+      .map((e) => e.id),
+  );
   return candidates(opts).flatMap((t): PlannedChange[] => {
-    const { tx, split, tags: ruleTags } = runRules(txState(t), selected, ctx);
+    const { tx, split, tags: ruleTags, share } = runRules(txState(t), selected, ctx);
     if (defaults && !tx.categoryId && !split && tx.payeeId)
       tx.categoryId = defaults.get(tx.payeeId) ?? null;
 
@@ -317,6 +345,7 @@ export function planRules(opts: PlanOptions): PlannedChange[] {
     if ((tx.notes ?? null) !== (t.notes ?? null)) changes.notes = { from: t.notes, to: tx.notes };
     const newTags = ruleTags.filter((id) => !existingTags.get(t.id)?.includes(id));
     if (newTags.length) changes.tags = newTags;
+    if (share && !split && !shared.has(t.id)) changes.share = share;
     if (!Object.keys(changes).length) return [];
 
     return [
@@ -375,11 +404,27 @@ export function applyRules(opts: PlanOptions & { transactionIds: string[] }): nu
           .run();
       }
       for (const tagId of p.changes.tags ?? []) addTransactionTag(t.id, tagId);
+      if (p.changes.share) shareByRule(p.changes.share, t.id);
       // The parts share the whole's budget-currency value
       if (split) refreshMainAmounts([t.id]);
     }
   });
   return plan.length;
+}
+
+/**
+ * A rule's "share with household": records the payment as a household expense with the group's
+ * default split. A payment the household checks refuse (a pool rule, a currency or an existing
+ * link) simply isn't shared, so an import never fails because of it.
+ */
+function shareByRule(groupId: string, transactionId: string) {
+  try {
+    shareTransaction(groupId, transactionId);
+  } catch (error) {
+    console.warn(
+      `Rule could not share a transaction with the household: ${error instanceof Error ? error.message : error}`,
+    );
+  }
 }
 
 /** Transactions a set of conditions matches (for the rule editor's live preview) */

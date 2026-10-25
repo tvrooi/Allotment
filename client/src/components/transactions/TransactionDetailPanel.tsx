@@ -1,3 +1,4 @@
+import { ShareWithHousehold } from '../household/ShareWithHousehold';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { X, Lock, Trash2, Repeat, Unlink, Wand2, Split } from 'lucide-react';
@@ -428,6 +429,9 @@ export function TransactionDetailPanel({
           >
             Split with people
           </Button>
+        )}
+        {!tx.isParent && !tx.parentTransactionId && !tx.isAdjustment && tx.amount < 0 && (
+          <ShareWithHousehold transactionId={tx.id} />
         )}
         {!isTransfer && (
           <Button variant="secondary" onClick={startRule} className="w-full">

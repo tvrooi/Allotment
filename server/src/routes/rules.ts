@@ -81,6 +81,7 @@ const actionSchema = z.union([
   }),
   z.object({ type: z.literal('split'), parts: z.array(splitPartSchema).min(1).max(20) }),
   z.object({ type: z.literal('add_tag'), value: id }),
+  z.object({ type: z.literal('share_with_household'), value: id }),
 ]);
 
 const conditionsOp = z.enum(['and', 'or']);

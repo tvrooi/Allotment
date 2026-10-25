@@ -4,11 +4,11 @@ import {
   cardFunding,
   accounts,
   transactions,
-  householdGroups,
   upAccountMappings,
   upConnections,
 } from '../db/schema.js';
 import { roundUpCheck } from '../services/upReviewService.js';
+import { poolGroupOf } from '../services/householdService.js';
 import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -77,12 +77,7 @@ function shown(
     currencyDifference = booked === null ? null : value.mainBalance - booked;
   }
   // A household pool sits outside the personal budget even though it isn't off budget
-  const householdPool =
-    db
-      .select({ name: householdGroups.name })
-      .from(householdGroups)
-      .where(eq(householdGroups.accountId, account.id))
-      .get()?.name ?? null;
+  const householdPool = poolGroupOf(account.id)?.name ?? null;
   // Bank import settings (an IBAN, for one) have their own route: GET /:id/import-settings
   const { importSettings: _importSettings, ...rest } = account;
   return {
@@ -323,11 +318,7 @@ accountsRouter.put('/:id', (req, res) => {
       error: 'An account with payment funding must keep its credit type, budget scope and currency',
     });
   const data = { ...parsed.data };
-  const household = db
-    .select()
-    .from(householdGroups)
-    .where(eq(householdGroups.accountId, existing.id))
-    .get();
+  const household = poolGroupOf(existing.id);
   if (
     household &&
     data.currency !== undefined &&
