@@ -29,6 +29,7 @@ import {
   type ForecastPlan,
   type ForecastResult,
   type LifeEvent,
+  type StudyLoanKind,
 } from './longTermForecast.js';
 import { simulate } from './longTermSimulation.js';
 
@@ -50,6 +51,17 @@ export interface StartingLoan {
   /** Negative, as in the ledger */
   balance: number;
   details: { rateBps: number; monthlyRepayment: number; termMonths: number | null } | null;
+  /** A student loan's kind when the plan names none, guessed from its name */
+  studyKind?: StudyLoanKind;
+}
+
+/** A student loan account's likely kind: HECS-HELP unless its name says otherwise */
+export function guessStudyKind(name: string): StudyLoanKind {
+  if (/abstudy/i.test(name)) return 'abstudy_ssl';
+  if (/start[\s-]?up|\bssl\b/i.test(name)) return 'ssl';
+  if (/apprentice|\baasl\b|\btsl\b|trade support/i.test(name)) return 'aasl';
+  if (/\bvsl\b|vet student/i.test(name)) return 'vsl';
+  return 'help';
 }
 
 export interface StartingPoint {
@@ -170,6 +182,7 @@ export function startingPoint(today = todayIso()): StartingPoint {
         details: d
           ? { rateBps: d.rateBps, monthlyRepayment: d.monthlyRepayment, termMonths: d.termMonths }
           : null,
+        ...(account.type === 'student_loan' ? { studyKind: guessStudyKind(account.name) } : {}),
       });
     } else {
       // An overpaid card or loan is treated as cash; a balance of zero changes nothing
@@ -244,16 +257,22 @@ export function buildEnginePlan(plan: PlanInput, point: StartingPoint) {
         growthBps: c?.growthBps ?? s.classGrowthBps[cls],
       };
     });
+  const studyChoice = new Map(s.studyLoans.loans.map((l) => [l.accountId, l]));
   const planLoans = point.loans
     .filter((l) => included(l.id))
-    .map((l) => ({
-      id: l.id,
-      name: l.name,
-      balance: l.balance,
-      rateBps: l.details?.rateBps ?? 0,
-      monthlyRepayment: l.details?.monthlyRepayment ?? 0,
-      termMonths: l.details?.termMonths ?? null,
-    }));
+    .map((l) => {
+      const c = studyChoice.get(l.id);
+      const kind = l.type === 'student_loan' ? (c?.kind ?? l.studyKind ?? 'help') : 'other';
+      return {
+        id: l.id,
+        name: l.name,
+        balance: l.balance,
+        rateBps: l.details?.rateBps ?? 0,
+        monthlyRepayment: l.details?.monthlyRepayment ?? 0,
+        termMonths: l.details?.termMonths ?? null,
+        ...(kind === 'other' ? {} : { study: { kind, extraAnnual: c?.extraAnnual ?? 0 } }),
+      };
+    });
 
   const eligible = new Set(
     planAccounts.filter((a) => a.cls === 'cash' || a.cls === 'investments').map((a) => a.id),
@@ -303,6 +322,12 @@ export function buildEnginePlan(plan: PlanInput, point: StartingPoint) {
     },
     agePension: s.agePension,
     extraSavingsGrowthBps: s.extraSavingsGrowthBps,
+    studyLoans: {
+      withheldFromPay: s.studyLoans.withheldFromPay,
+      otherRepaymentIncome: s.studyLoans.otherRepaymentIncome,
+      indexationBps: s.studyLoans.indexationBps,
+      bands: s.studyLoans.bands,
+    },
     splits,
     withdrawalOrder: s.withdrawalOrder.filter((id) => known.has(id)),
     events,

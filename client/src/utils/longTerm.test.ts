@@ -45,6 +45,11 @@ const year = (over: Partial<YearResult> = {}): YearResult => ({
   superEarningsTax: 0,
   superDrawdown: 0,
   superPhase: 'preserved',
+  studyRepaymentIncome: 0,
+  studyIndexation: 0,
+  studyCompulsory: 0,
+  studyWithheld: 0,
+  studyVoluntary: 0,
   netCashFlow: 0,
   withdrawals: [],
   allocations: [],
@@ -75,6 +80,29 @@ describe('super rows in the breakdown', () => {
     expect(rows.find((r) => r.key === 'super')!.label).toContain('salary sacrifice');
     expect(rows.find((r) => r.key === 'superFees')!.amount).toBe(-30_000);
     expect(rows.find((r) => r.key === 'superEarningsTax')!.amount).toBe(-116_667);
+    expect(bridge(y, 1_030_000_000, 'future').difference).toBe(0);
+    expect(bridge(y, 1_030_000_000, 'today').difference).toBe(0);
+  });
+});
+
+describe('study loan rows in the breakdown', () => {
+  it('adds the withheld pay, the repayment and indexation, still adding up', () => {
+    const base = year();
+    const y = year({
+      studyWithheld: 457_080,
+      studyCompulsory: 400_000,
+      studyIndexation: 12_345,
+      closingNetWorth: base.closingNetWorth + 457_080 - 12_345,
+    });
+    const keys = nominalRows(y).map((r) => r.key);
+    expect(keys).toEqual(
+      expect.arrayContaining([
+        'studyWithheld',
+        'studyCompulsory',
+        'studyReduced',
+        'studyIndexation',
+      ]),
+    );
     expect(bridge(y, 1_030_000_000, 'future').difference).toBe(0);
     expect(bridge(y, 1_030_000_000, 'today').difference).toBe(0);
   });

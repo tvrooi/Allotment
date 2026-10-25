@@ -604,3 +604,59 @@ under the table, with the year's phase.
 **Not modelled:** Division 293 tax, carry-forward concessional contributions, bring-forward of
 non-concessional contributions, excess contributions tax, the transfer balance cap's effect, the
 Age Pension means test (still an amount you type), and Payday Super's timing (contributions are yearly).
+
+## 23. Study loans: HECS-HELP, Student Start-up Loans and the rest
+
+Every open `student_loan` account is an **income-contingent study loan** unless the plan says it is an
+ordinary loan (`settings.studyLoans.loans[].kind = 'other'`, which then uses §7's rate and repayment).
+Its kind is guessed from the account name (HECS-HELP by default; "Start-up" means a Student Start-up
+Loan) and can be changed per plan. Kinds, in the order the ATO applies one compulsory repayment across
+several loans: HELP (HECS-HELP, FEE-HELP and the rest), VET Student Loan, Student Start-up Loan, ABSTUDY
+Student Start-up Loan, Australian Apprenticeship Support Loan.
+
+**Structure (2026–27).** No interest. The debt is **indexed each 1 June** by the lower of CPI and the wage
+price index (2.8% on 1 June 2026). Repayments are made through the tax system on **repayment income**
+(taxable income plus reportable super contributions, reportable fringe benefits and net investment
+losses), at marginal rates since 2025–26:
+
+| Repayment income    | Compulsory repayment                      |
+| ------------------- | ----------------------------------------- |
+| up to $69,528       | nil                                       |
+| $69,529 – $129,717  | 15c for each $1 over $69,528              |
+| $129,718 – $186,050 | $9,028 plus 17c for each $1 over $129,717 |
+| $186,051 and over   | 10% of all repayment income               |
+
+Employers withhold towards it from pay, so take-home pay is already lower; the ATO settles the year's
+amount on assessment. Voluntary payments can be made at any time and have no bonus.
+
+**Engine.**
+
+- **Repayment income** each year = each income source's gross salary for super × its remaining share
+  (§6.1) + "other repayment income" (today's dollars, inflated). Gross salary is the salary before
+  salary sacrifice, so reportable super contributions are already in it. With no gross salary there are
+  no repayments, and a warning says so.
+- **Bands** are stored with the plan (2026–27 defaults) in today's dollars and rise with the plan's
+  inflation. The middle band's base is worked out from the bands (so $9,028.35, not the ATO's rounded
+  $9,028).
+- **Order in a year** (step 4b, after super): the compulsory repayment is applied in kind order, then the
+  loan's remaining balance is indexed (repayments for a year are credited before the next 1 June).
+  Indexation uses its own rate, or the plan's inflation; it is never negative.
+- **Withheld from pay (default on).** Take-home already has the withholding taken out. That withheld
+  amount is counted back as income ("Pay withheld for study loans") and the compulsory repayment is
+  paid from it, so while the debt lasts the cash flow does not change. Once the debt is gone the
+  withholding stops and that pay arrives as cash. With the switch off, take-home is before withholding
+  and the repayment is a cash outflow.
+- **Voluntary payments:** an extra amount a year per loan (today's dollars, inflated), paid from surplus
+  after repaying unfunded spending and before personal super contributions and savings splits. It is a
+  move (an allocation to the loan). A **Pay off a loan** event can clear a study loan as a lump sum.
+- **Minimum-only shadow:** the engine also runs the study loans with compulsory repayments only, so the
+  result reports the year they are repaid, total indexation and voluntary payments for both. The page
+  shows "Study loans are repaid in …" and what extra payments bring forward and save. Comparisons add
+  **Year study loans are repaid**.
+- **Breakdown:** "Pay withheld for study loans", "Compulsory study loan repayment", "Study debt reduced
+  by it" and "Study loan indexation" rows; the bridge adds up exactly (tested over generated plans).
+
+**Not modelled:** the 11-month rule for new borrowing (no new study debt is added), overseas-debtor
+obligations, the difference between withholding and the assessed amount (refunds or bills), indexation
+on a June debt before an assessment credited later, and the one-off 20% reduction (already reflected in
+balances from 2025).

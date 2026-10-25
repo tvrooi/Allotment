@@ -77,6 +77,13 @@ export function AssumptionsPanel({
       ...p,
       settings: { ...p.settings, super: { ...p.settings.super, ...change } },
     }));
+  const study = s.studyLoans;
+  const setStudy = (change: Partial<PlanSettings['studyLoans']>) =>
+    setPlan((p) => ({
+      ...p,
+      settings: { ...p.settings, studyLoans: { ...p.settings.studyLoans, ...change } },
+    }));
+  const hasStudyLoans = !!point?.loans.some((l) => l.type === 'student_loan');
   const capHint = (cents: number | undefined) =>
     `Default ${formatCurrency(cents ?? 0)} (2026–27), in today's dollars. Only warned about.`;
   return (
@@ -288,6 +295,67 @@ export function AssumptionsPanel({
           </div>
         )}
       </section>
+
+      {hasStudyLoans && (
+        <section aria-label="Study loans" className="space-y-3">
+          <h3 className="text-sm font-semibold text-text">Study loans (HECS-HELP and SSL)</h3>
+          <p className="text-xs text-text-tertiary">
+            No interest is charged. The debt is indexed each 1 June by the lower of CPI and wage
+            growth, and repaid through the tax system: nothing below{' '}
+            {formatCurrency(study.bands.threshold)} of repayment income, then{' '}
+            {study.bands.firstBps / 100}c of each dollar above it, {study.bands.secondBps / 100}c
+            above {formatCurrency(study.bands.second)}, and {study.bands.topBps / 100}% of all of it
+            above {formatCurrency(study.bands.third)} (2026–27 bands, rising with inflation here).
+            HELP is repaid before a Student Start-up Loan. Repayment income here is your gross
+            salary (super above) plus the figure below.
+          </p>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={study.withheldFromPay}
+              onChange={(e) => setStudy({ withheldFromPay: e.target.checked })}
+            />
+            <span>
+              My take-home pay already has study loan repayments withheld
+              <span className="block text-xs text-text-tertiary">
+                Usual when your employer knows about the debt. Once it is repaid, that pay is no
+                longer withheld, so your take-home rises.
+              </span>
+            </span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MoneyField
+              label="Other repayment income per year (today's dollars)"
+              value={study.otherRepaymentIncome}
+              onChange={(otherRepaymentIncome) => setStudy({ otherRepaymentIncome })}
+              hint="Taxable income beyond your salary: interest, dividends, rent, reportable fringe benefits."
+            />
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={study.indexationBps === null}
+                  onChange={(e) =>
+                    setStudy({ indexationBps: e.target.checked ? null : s.inflationBps })
+                  }
+                />
+                Index study debts with inflation
+              </label>
+              {study.indexationBps !== null && (
+                <RateField
+                  label="Study loan indexation"
+                  bps={study.indexationBps}
+                  min={0}
+                  max={15}
+                  onChange={(indexationBps) => setStudy({ indexationBps })}
+                  hint="1 June 2026 was 2.8%. Never below 0."
+                />
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section aria-label="Growth" className="space-y-3">
         <h3 className="text-sm font-semibold text-text">Yearly growth by kind of account</h3>

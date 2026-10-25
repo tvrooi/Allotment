@@ -180,6 +180,17 @@ export function YearBreakdown({
         <p className="text-xs text-text-tertiary sm:col-span-2">
           {SUPER_PHASE_TEXT[year.superPhase]}
         </p>
+        {(year.studyCompulsory > 0 || year.studyIndexation > 0) && (
+          <p className="text-xs text-text-tertiary sm:col-span-2">
+            Study loans: a compulsory repayment of {formatCurrency(real(year.studyCompulsory))} on
+            repayment income of {formatCurrency(real(year.studyRepaymentIncome))}
+            {year.studyIndexation > 0 &&
+              `, then ${formatCurrency(real(year.studyIndexation))} of indexation on what was left`}
+            {year.studyVoluntary > 0 &&
+              `, and ${formatCurrency(real(year.studyVoluntary))} paid voluntarily from surplus`}
+            .
+          </p>
+        )}
       </div>
       <p className="text-xs text-text-tertiary">
         Money moved between your accounts changes what you hold where, not your net worth.

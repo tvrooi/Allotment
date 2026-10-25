@@ -6,6 +6,8 @@ import { z } from 'zod';
 import {
   EXTRA_SAVINGS_ID,
   SALARY_SOURCE_ID,
+  STUDY_LOAN_KINDS,
+  STUDY_REPAYMENT_BANDS,
   SUPER_NEW_ID,
   type AccountClass,
 } from './longTermForecast.js';
@@ -72,6 +74,19 @@ export const DEFAULT_SUPER = {
   concessionalCap: 3_250_000,
   nonConcessionalCap: 13_000_000,
   transferBalanceCap: 210_000_000,
+};
+
+/**
+ * Study loans (HECS-HELP, SSL and the rest). Every student loan account is a HELP debt unless
+ * the plan says otherwise; 'other' makes it an ordinary loan with its own rate and repayment.
+ */
+export const STUDY_LOAN_CHOICES = [...STUDY_LOAN_KINDS, 'other'] as const;
+export const DEFAULT_STUDY_LOANS = {
+  withheldFromPay: true,
+  otherRepaymentIncome: 0,
+  indexationBps: null,
+  bands: STUDY_REPAYMENT_BANDS,
+  loans: [],
 };
 
 const escalation = z.discriminatedUnion('mode', [
@@ -201,6 +216,42 @@ export const settingsSchema = z
       })
       .strict()
       .default(DEFAULT_SUPER),
+    studyLoans: z
+      .object({
+        withheldFromPay: z.boolean().default(true),
+        otherRepaymentIncome: money.default(0),
+        indexationBps: bps(-2000, 1500).nullable().default(null),
+        bands: z
+          .object({
+            threshold: money,
+            second: money,
+            third: money,
+            firstBps: bps(),
+            secondBps: bps(),
+            topBps: bps(),
+          })
+          .strict()
+          .refine((b) => b.threshold <= b.second && b.second <= b.third, 'Thresholds must rise')
+          .default(STUDY_REPAYMENT_BANDS),
+        loans: z
+          .array(
+            z
+              .object({
+                accountId: z.string().min(1).max(64),
+                kind: z.enum(STUDY_LOAN_CHOICES),
+                extraAnnual: money.default(0),
+              })
+              .strict(),
+          )
+          .max(MAX_ACCOUNTS)
+          .default([])
+          .refine(
+            (l) => new Set(l.map((x) => x.accountId)).size === l.length,
+            'List each loan once',
+          ),
+      })
+      .strict()
+      .default(DEFAULT_STUDY_LOANS),
     agePension: z
       .object({
         enabled: z.boolean().default(false),

@@ -22,7 +22,8 @@ export interface Figure {
     | 'retirementNetWorth'
     | 'retirementAccessible'
     | 'superAtPreservation'
-    | 'firstUnfundedYear';
+    | 'firstUnfundedYear'
+    | 'studyRepaidYear';
   label: string;
   unit: 'money' | 'year';
   active: number | null;
@@ -195,6 +196,17 @@ export function compareResults(active: PlanFacts, reference: PlanFacts): Compari
         unfunded(active),
         unfunded(reference),
       ),
+      ...(active.result.studyLoans || reference.result.studyLoans
+        ? [
+            figure(
+              'studyRepaidYear',
+              'Year study loans are repaid',
+              'year',
+              active.result.studyLoans?.repaid?.calendarYear ?? null,
+              reference.result.studyLoans?.repaid?.calendarYear ?? null,
+            ),
+          ]
+        : []),
     ],
     series,
     percentDefinition: PERCENT_DEFINITION,

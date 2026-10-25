@@ -354,6 +354,56 @@ describe('simulation', () => {
   });
 });
 
+describe('study loans', () => {
+  it('guesses the kind of a student loan account from its name', async () => {
+    const { guessStudyKind } = await import('../services/longTermInputs.js');
+    expect(
+      [
+        'HECS',
+        'FEE-HELP',
+        'Student Start-up Loan',
+        'SSL',
+        'ABSTUDY SSL',
+        'Trade Support Loan',
+        'VET Student Loan',
+      ].map(guessStudyKind),
+    ).toEqual(['help', 'help', 'ssl', 'ssl', 'abstudy_ssl', 'aasl', 'vsl']);
+  });
+
+  it('treats a student loan account as HECS-HELP unless the plan says otherwise', async () => {
+    db.insert(accounts)
+      .values({
+        id: 'hecs',
+        name: 'HECS',
+        type: 'student_loan',
+        startingBalance: -2_500_000,
+        isOffBudget: 1,
+      })
+      .run();
+    const plan = await save('Study');
+    const run = await call('GET', `${LT}/plans/${plan.id}/result`);
+    expect(run.status).toBe(200);
+    expect(run.body.studyLoans).not.toBeNull();
+    expect(run.body.years[1].studyCompulsory).toBeGreaterThan(0);
+    expect(run.body.years[1].studyIndexation).toBeGreaterThan(0);
+    expect(run.body.warnings.some((w: string) => w.startsWith('HECS has no repayment'))).toBe(
+      false,
+    );
+    // Older plans read the defaults; 'other' makes it an ordinary loan with no repayment data
+    const saved = await call('GET', `${LT}/plans/${plan.id}`);
+    expect(saved.body.plan.settings.studyLoans).toMatchObject({ withheldFromPay: true, loans: [] });
+    const other = await save('Private', {
+      settings: {
+        ...newPlan().settings,
+        studyLoans: { loans: [{ accountId: 'hecs', kind: 'other' }] },
+      },
+    });
+    const otherRun = await call('GET', `${LT}/plans/${other.id}/result`);
+    expect(otherRun.body.studyLoans).toBeNull();
+    expect(otherRun.body.warnings).toContain('HECS has no repayment data and stays flat');
+  });
+});
+
 describe('loan details', () => {
   it('stores rate and repayment on a debt account, and only there', async () => {
     const put = await call(

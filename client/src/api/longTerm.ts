@@ -112,6 +112,32 @@ export interface WealthSplit {
   debts: number;
 }
 
+/** Income-contingent government study loans; 'other' is an ordinary loan with its own rate */
+export type StudyLoanKind = 'help' | 'vsl' | 'ssl' | 'abstudy_ssl' | 'aasl' | 'other';
+export interface StudyLoanSettings {
+  /** Take-home pay already has compulsory repayments withheld */
+  withheldFromPay: boolean;
+  /** Repayment income beyond gross salary, today's dollars */
+  otherRepaymentIncome: number;
+  /** Null follows inflation */
+  indexationBps: number | null;
+  bands: {
+    threshold: number;
+    second: number;
+    third: number;
+    firstBps: number;
+    secondBps: number;
+    topBps: number;
+  };
+  /** Only loans that differ from HECS-HELP with no extra payments */
+  loans: { accountId: string; kind: StudyLoanKind; extraAnnual: number }[];
+}
+export interface PlanMoment {
+  index: number;
+  calendarYear: number;
+  age: number;
+}
+
 export interface PlanSettings {
   birthYear: number;
   endAge: number;
@@ -121,6 +147,7 @@ export interface PlanSettings {
   preservationAge: number;
   /** Super beyond the guarantee; caps are in today's dollars and only warned about */
   super: SuperSettings;
+  studyLoans: StudyLoanSettings;
   agePension: { enabled: boolean; annual: number; startAge: number };
   income: { takeHome: number | null; grossForSuper: number; escalation: Escalation };
   spending: { annual: number | null; escalation: Escalation };
@@ -203,6 +230,13 @@ export interface YearResult {
   /** Minimum pension payments moved from super into the year's cash flow */
   superDrawdown: number;
   superPhase: SuperPhase;
+  studyRepaymentIncome: number;
+  /** Added to study debts instead of interest */
+  studyIndexation: number;
+  studyCompulsory: number;
+  /** Pay withheld for study loans before take-home, counted back as income */
+  studyWithheld: number;
+  studyVoluntary: number;
   netCashFlow: number;
   withdrawals: Row[];
   allocations: Row[];
@@ -224,6 +258,13 @@ export interface PlanResult {
   name: string;
   years: YearResult[];
   firstUnfunded: { index: number; calendarYear: number; age: number } | null;
+  /** Null without study loans */
+  studyLoans: {
+    repaid: PlanMoment | null;
+    indexationTotal: number;
+    voluntaryTotal: number;
+    minimumOnly: { repaid: PlanMoment | null; indexationTotal: number };
+  } | null;
   warnings: string[];
   startYear: number;
   startAge: number;
@@ -248,6 +289,8 @@ export interface StartingPoint {
     name: string;
     type: string;
     balance: number;
+    /** A student loan's kind when the plan names none */
+    studyKind?: StudyLoanKind;
     details: LoanDetails | null;
   }[];
   income: { annualTakeHome: number; source: 'payday' | 'none'; paydayPlans: number };
