@@ -260,6 +260,95 @@ reportsRouter.get('/spending-by-payee', (req, res) => {
   res.json(rows.filter((r) => r.net !== 0).sort((a, b) => a.net - b.net));
 });
 
+// Uncategorised transactions grouped by payee: what to sort first and how (an assistant's or a
+// person's worklist). Every account, transfers and split parents aside; `from`/`to` are days.
+reportsRouter.get('/uncategorised-payees', (req, res) => {
+  const { from, to } = req.query;
+  const badDay = (v: unknown) => v !== undefined && (typeof v !== 'string' || !isRealDate(v));
+  if (badDay(from) || badDay(to))
+    return res.status(400).json({ error: 'Expected `from` and `to` as YYYY-MM-DD' });
+  const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 1000);
+  const conditions = [
+    isNull(transactions.categoryId),
+    isNull(transactions.transferTransactionId),
+    eq(transactions.isParent, 0),
+    eq(transactions.isAdjustment, 0),
+  ];
+  if (typeof from === 'string') conditions.push(gte(transactions.date, from));
+  if (typeof to === 'string') conditions.push(lte(transactions.date, to));
+  const accountNames = new Map(
+    db
+      .select({ id: accounts.id, name: accounts.name })
+      .from(accounts)
+      .all()
+      .map((a) => [a.id, a.name]),
+  );
+  const groups = new Map<
+    string,
+    {
+      payeeId: string | null;
+      payeeName: string;
+      count: number;
+      moneyIn: number;
+      moneyOut: number;
+      firstDate: string;
+      lastDate: string;
+      accounts: Set<string>;
+      notes: Set<string>;
+    }
+  >();
+  for (const t of db
+    .select({
+      payeeId: transactions.payeeId,
+      payeeName: sql<string>`coalesce(${payees.name}, nullif(${transactions.payeeName}, ''), '')`,
+      amount: transactions.amount,
+      date: transactions.date,
+      accountId: transactions.accountId,
+      notes: transactions.notes,
+    })
+    .from(transactions)
+    .leftJoin(payees, eq(transactions.payeeId, payees.id))
+    .where(and(...conditions))
+    .all()) {
+    const key = t.payeeId ?? `name:${t.payeeName}`;
+    let g = groups.get(key);
+    if (!g) {
+      g = {
+        payeeId: t.payeeId,
+        payeeName: t.payeeName,
+        count: 0,
+        moneyIn: 0,
+        moneyOut: 0,
+        firstDate: t.date,
+        lastDate: t.date,
+        accounts: new Set(),
+        notes: new Set(),
+      };
+      groups.set(key, g);
+    }
+    g.count++;
+    if (t.amount > 0) g.moneyIn += t.amount;
+    else g.moneyOut += t.amount;
+    if (t.date < g.firstDate) g.firstDate = t.date;
+    if (t.date > g.lastDate) g.lastDate = t.date;
+    g.accounts.add(accountNames.get(t.accountId) ?? t.accountId);
+    if (t.notes && g.notes.size < 3) g.notes.add(t.notes.slice(0, 80));
+  }
+  const all = [...groups.values()].sort(
+    (a, b) => b.count - a.count || a.moneyIn + a.moneyOut - (b.moneyIn + b.moneyOut),
+  );
+  res.json({
+    payeeCount: all.length,
+    transactionCount: all.reduce((s, g) => s + g.count, 0),
+    payees: all.slice(0, limit).map(({ accounts: accts, notes, ...g }) => ({
+      ...g,
+      net: g.moneyIn + g.moneyOut,
+      accounts: [...accts],
+      sampleNotes: [...notes],
+    })),
+  });
+});
+
 reportsRouter.get('/income-vs-expenses', (req, res) => {
   const range = monthRangeParams(req, res);
   if (!range) return;

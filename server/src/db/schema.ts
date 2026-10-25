@@ -186,6 +186,8 @@ export const rules = sqliteTable('rules', {
   createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`),
+  /** The access token name that proposed it (created disabled for the owner to review); null = the owner */
+  proposedBy: text('proposed_by'),
 });
 
 export const schedules = sqliteTable(
@@ -746,6 +748,32 @@ export const accessTokens = sqliteTable('access_tokens', {
   lastUsedAt: text('last_used_at'),
   revokedAt: text('revoked_at'),
 });
+
+/** Category changes an access token made, one set per tool call, so the owner (or the token) can undo them */
+export const assistantChangeSets = sqliteTable('assistant_change_sets', {
+  id: text('id').primaryKey(),
+  tokenId: text('token_id'),
+  tokenName: text('token_name').notNull(),
+  tool: text('tool').notNull(),
+  summary: text('summary').notNull(),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  undoneAt: text('undone_at'),
+});
+
+export const assistantChangeEntries = sqliteTable(
+  'assistant_change_entries',
+  {
+    changeSetId: text('change_set_id')
+      .notNull()
+      .references(() => assistantChangeSets.id, { onDelete: 'cascade' }),
+    transactionId: text('transaction_id').notNull(),
+    previousCategoryId: text('previous_category_id'),
+    newCategoryId: text('new_category_id').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.changeSetId, t.transactionId] })],
+);
 
 /** The budget's own settings: one row, id 'budget' */
 export const budgetSettings = sqliteTable('budget_settings', {

@@ -8,7 +8,9 @@ import { formatDay } from '../../utils/dates';
 import {
   createAccessToken,
   getAccessTokens,
+  getChangeSets,
   revokeAccessToken,
+  undoChangeSet,
   type AccessToken,
   type AccessTokenScope,
   type CreatedAccessToken,
@@ -16,8 +18,10 @@ import {
 
 // Settings → Server → Read-only access: tokens that let another tool, such as an AI assistant
 // or an MCP client, read this budget. They can't sign in, download backups or see bank
-// connections. A categorise token can also set past transactions' categories, and nothing else
-// (docs/READ-ONLY-ACCESS.md).
+// connections. A categorise token can also set past transactions' categories and edit
+// categories; an organise token can also propose rules (disabled until enabled here, in Rules),
+// set payee default categories and link suggested transfers (docs/READ-ONLY-ACCESS.md). Their
+// category changes are listed below, each one undoable.
 
 const DAYS = [7, 30, 90];
 const inputClass =
@@ -29,7 +33,12 @@ function status(t: AccessToken) {
   const used = t.lastUsedAt
     ? `used ${formatDistanceToNow(new Date(t.lastUsedAt), { addSuffix: true })}`
     : 'not used yet';
-  const scope = t.scope === 'categorise' ? 'Read and categorise · ' : '';
+  const scope =
+    t.scope === 'organise'
+      ? 'Read, categorise and organise · '
+      : t.scope === 'categorise'
+        ? 'Read and categorise · '
+        : '';
   return `${scope}Expires ${formatDay(t.expiresAt.slice(0, 10))} · ${used}`;
 }
 
@@ -58,9 +67,11 @@ export function ReadOnlyAccess() {
       <p className="text-xs text-text-tertiary mt-1">
         Let another tool, such as an AI assistant, read this budget with a token. A token can only
         read: it can't change anything, sign in, download backups or see bank connections. A{' '}
-        <em>read and categorise</em> token can also set the category of past transactions, and
-        nothing else. A token expires, you can revoke it here, and changing the password revokes
-        them all.
+        <em>read and categorise</em> token can also set the category of past transactions and create
+        or edit categories. A <em>read, categorise and organise</em> token can also propose rules
+        (they stay off until you turn them on in Rules), set payee default categories and link
+        transfers the app suggests. A token expires, you can revoke it here, and changing the
+        password revokes them all.
       </p>
 
       <form
@@ -113,6 +124,7 @@ export function ReadOnlyAccess() {
           >
             <option value="read">Read only</option>
             <option value="categorise">Read and categorise</option>
+            <option value="organise">Read, categorise and organise</option>
           </select>
         </label>
         <Button type="submit" disabled={!name.trim() || create.isPending}>
@@ -176,6 +188,7 @@ export function ReadOnlyAccess() {
           ))}
         </ul>
       )}
+      <AssistantChanges />
       <ConfirmModal
         isOpen={revoking !== null}
         onClose={() => setRevoking(null)}
@@ -189,5 +202,56 @@ export function ReadOnlyAccess() {
         danger
       />
     </section>
+  );
+}
+
+/** Category changes made with tokens, newest first, each one undoable */
+function AssistantChanges() {
+  const qc = useQueryClient();
+  const { data: sets = [] } = useQuery({ queryKey: ['change-sets'], queryFn: getChangeSets });
+  const undo = useMutation({
+    mutationFn: undoChangeSet,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['change-sets'] });
+      void qc.invalidateQueries({ queryKey: ['transactions'] });
+      void qc.invalidateQueries({ queryKey: ['budget'] });
+    },
+  });
+  if (!sets.length) return null;
+  return (
+    <div className="mt-4">
+      <h3 className="text-xs font-semibold text-text-secondary">Changes made with tokens</h3>
+      <p className="text-xs text-text-tertiary mt-0.5">
+        Undo puts back the previous categories. A transaction you edited since keeps your change.
+      </p>
+      <ul aria-label="Changes made with tokens" className="mt-2 divide-y divide-border-light">
+        {sets.slice(0, 20).map((c) => (
+          <li key={c.id} className="flex items-center gap-3 py-2">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-text truncate">
+                {c.tokenName}: {c.transactionCount} transaction
+                {c.transactionCount === 1 ? '' : 's'} ({c.tool.replaceAll('_', ' ')})
+              </p>
+              <p className="text-xs text-text-tertiary">
+                {formatDistanceToNow(new Date(c.createdAt), { addSuffix: true })}
+                {c.undoneAt ? ' · undone' : ''}
+              </p>
+            </div>
+            {!c.undoneAt && (
+              <Button
+                variant="secondary"
+                size="sm"
+                aria-label={`Undo ${c.tokenName}'s change`}
+                disabled={undo.isPending}
+                onClick={() => undo.mutate(c.id)}
+              >
+                Undo
+              </Button>
+            )}
+          </li>
+        ))}
+      </ul>
+      {undo.error && <p className="text-xs text-negative mt-2">{undo.error.message}</p>}
+    </div>
   );
 }

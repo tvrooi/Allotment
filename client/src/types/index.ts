@@ -676,9 +676,13 @@ export interface Rule {
   enabled: boolean;
   sortOrder: number;
   createdAt: string;
+  /** The access token that proposed it, until the owner enables it */
+  proposedBy?: string | null;
 }
 
-export type RuleInput = Omit<Rule, 'id' | 'createdAt' | 'sortOrder'> & { sortOrder?: number };
+export type RuleInput = Omit<Rule, 'id' | 'createdAt' | 'sortOrder' | 'proposedBy'> & {
+  sortOrder?: number;
+};
 
 export interface PayeeWithCount extends Payee {
   transactionCount: number;

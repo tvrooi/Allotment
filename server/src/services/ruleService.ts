@@ -37,6 +37,7 @@ export function parseRuleRow(r: RuleRow) {
     enabled: r.enabled === 1,
     sortOrder: r.sortOrder,
     createdAt: r.createdAt,
+    proposedBy: r.proposedBy ?? null,
   };
 }
 
