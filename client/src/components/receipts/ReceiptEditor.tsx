@@ -302,7 +302,9 @@ function MatchSection({
   onMessage,
 }: {
   receipt: ReceiptDetail;
-  onSave: (extra: { transactionId?: string | null }) => Promise<unknown>;
+  onSave: (extra: {
+    transactionId?: string | null;
+  }) => Promise<{ outcome: AttachOutcome | null } | undefined>;
   onMessage: (m: string | null) => void;
 }) {
   const [mode, setMode] = useState<'find' | 'add' | null>(null);
@@ -335,6 +337,10 @@ function MatchSection({
               onClick={async () => {
                 setSplitError(null);
                 try {
+                  // Split what is on screen, not what was last saved
+                  const saved = await onSave({});
+                  // Saving may have split it already (autosplit, when it had no category)
+                  if (!saved || saved.outcome?.split) return;
                   const out = await split.mutateAsync(receipt.id);
                   onMessage(`Split into ${out.split} categories.`);
                 } catch (e) {

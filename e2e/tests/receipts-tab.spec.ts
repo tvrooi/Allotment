@@ -163,10 +163,15 @@ test('a categorised transaction is split only when asked, with Split by items', 
     isParent: 0,
     categoryId: groceries.id,
   });
+  // Typed but not saved: the split uses what is on screen
+  await dialog.getByLabel('Item 1 amount').clear();
+  await dialog.getByLabel('Item 1 amount').fill('5.00');
+  await dialog.getByLabel('Item 2 amount').clear();
+  await dialog.getByLabel('Item 2 amount').fill('25.00');
   await dialog.getByRole('button', { name: 'Split by items' }).click();
   await expect(dialog.getByRole('status')).toHaveText('Split into 2 categories.');
   const parent = (await api.transactions()).find((t) => t.id === shop.id);
   expect(
     (parent.children as { amount: number }[]).map((c) => c.amount).sort((a, b) => a - b),
-  ).toEqual([-2_000, -1_000]);
+  ).toEqual([-2_500, -500]);
 });

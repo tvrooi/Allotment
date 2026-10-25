@@ -1,6 +1,6 @@
 # Receipts and tax deductions
 
-Status: built (0.2.0-up.42). Record keeping for an Australian individual tax return, not tax advice.
+Status: built (0.2.0-up.42; the Receipts tab in 0.2.0-up.43). Record keeping for an Australian individual tax return, not tax advice.
 
 ## 1. What Monarch does, and what we take from it
 
@@ -17,14 +17,13 @@ From `docs/research/monarch-action-catalog.md`, `monarch-live-audit-continued.md
   attachments**.
 - Monarch has no tax-deduction feature.
 
-FlyBudget takes the upload, paste, inbox, matching and attachment ideas. It leaves out three:
+FlyBudget takes the upload, paste, inbox, matching and attachment ideas, and (since 0.2.0-up.43) splitting by line items. It leaves out two:
 
 - **Email forwarding** would need an inbound mail service exposed to the internet, which a private,
   self-hosted budget should not run.
 - **Server-side AI parsing** would send receipts to a third party.
-- **Automatic splitting from line items** depends on that parsing.
 
-The owner types a receipt's date and total, and matching uses those.
+The owner types a receipt's details and line items, and matching and splitting use those.
 
 ## 2. Storage
 
@@ -38,7 +37,7 @@ The owner types a receipt's date and total, and matching uses those.
   folder) holds every receipt, and a restore's safety copy keeps them too. Photos are shrunk in the
   browser to at most 2,000 px as JPEG before upload. A PDF or a HEIC photo the browser can't read is
   kept as it is. The limit is 10 MB a file and 20,000 receipts.
-- **JSON backups** (format 18) carry receipt details and claims, but not files, so they stay small.
+- **JSON backups** (format 19) carry receipt details, line items and claims, but not files, so they stay small.
   Restoring on the same installation finds every file by its hash. Elsewhere, a receipt says its
   file is not on this installation (`hasFile: false`) instead of failing. Format 17 and older backups
   restore with no receipts or claims.
@@ -87,7 +86,7 @@ The owner types a receipt's date and total, and matching uses those.
   - The ZIP writer is dependency-free (stored entries, CRC-32, UTF-8 names), and is checked with
     `unzip -t` and in tests.
 
-## 6. The Receipts tab (Monarch parity)
+## 5. The Receipts tab (Monarch parity)
 
 From Monarch's "Importing Receipts into Monarch" help article: receipts are general purchase
 records, not only tax evidence.
@@ -122,6 +121,7 @@ records, not only tax evidence.
     transaction is never split (a split parent is no longer a deduction), and the outcome says why.
   - Saving details on a receipt that is already matched (one added straight to a transaction)
     enriches the transaction again; every step is safe to repeat.
+  - **Split by items** saves what is typed first, so it splits by what is on screen.
   - The amount is never changed. Settings live in `budget_settings` (`receipt_auto_split`,
     `receipt_add_notes`, `receipt_add_tag`, all on by default).
 - **Unmatched:** **Find match** searches top-level money out by payee, bank description or notes,
@@ -133,9 +133,9 @@ records, not only tax evidence.
 - **Not built:** email forwarding (it needs an inbound mail service exposed to the internet), AI
   reading of receipts, and a "pending" state (FlyBudget imports settled transactions only).
 
-## 5. Not built
+## 6. Not built
 
-- Email forwarding, OCR or AI reading of receipts, and line-item splits.
+- Email forwarding, and OCR or AI reading of receipts.
 - Working-from-home hours (the fixed rate per hour), car logbooks and cents per kilometre.
 - Depreciation schedules and the low-value pool calculation.
 - Income, tax withheld, tax offsets and an estimated refund.
