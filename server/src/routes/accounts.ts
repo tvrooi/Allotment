@@ -1,6 +1,14 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
-import { cardFunding, accounts, transactions, householdGroups } from '../db/schema.js';
+import {
+  cardFunding,
+  accounts,
+  transactions,
+  householdGroups,
+  upAccountMappings,
+  upConnections,
+} from '../db/schema.js';
+import { roundUpCheck } from '../services/upReviewService.js';
 import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -122,6 +130,48 @@ accountsRouter.get('/', (_req, res) => {
   const ctx = currencyContext();
   res.json(
     rows.map((a) => shown(a, a.startingBalance + (sumMap.get(a.id) ?? 0), sumMap.has(a.id), ctx)),
+  );
+});
+
+// Bank sync health without any connection data (no tokens, bank ids or errors): when each Up
+// account last synced, the bank's settled balance against the register, and whether missing
+// round-up debits explain the difference. Readable by access tokens, for an assistant.
+accountsRouter.get('/sync-status', (_req, res) => {
+  const connections = db
+    .select({
+      id: upConnections.id,
+      syncStatus: upConnections.syncStatus,
+      lastSyncedAt: upConnections.lastSyncedAt,
+    })
+    .from(upConnections)
+    .all();
+  const mappings = new Map(
+    db
+      .select({
+        accountId: upAccountMappings.accountId,
+        connectionId: upAccountMappings.connectionId,
+      })
+      .from(upAccountMappings)
+      .all()
+      .map((m) => [m.accountId, m.connectionId]),
+  );
+  res.json(
+    roundUpCheck().map((c) => {
+      const connection = connections.find((x) => x.id === mappings.get(c.accountId));
+      return {
+        accountId: c.accountId,
+        accountName: c.accountName,
+        provider: 'up',
+        syncStatus: connection?.syncStatus ?? null,
+        lastSyncedAt: connection?.lastSyncedAt ?? null,
+        bankBalance: c.settledBalance,
+        registerBalance: c.register,
+        difference: c.difference,
+        verdict: c.verdict,
+        missingRoundUps: c.missing,
+        roundUpDebitsEnabled: !!c.enabledAt,
+      };
+    }),
   );
 });
 
