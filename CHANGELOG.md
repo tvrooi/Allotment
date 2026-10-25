@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.39
+
+- The Budget summary is now always titled **Ready to assign**, with the amount below and a status line ("Give every dollar a job", "Fully budgeted", "Assigned more than you have", or "Resolve overspending and uncategorised spending"). The title was previously replaced whenever anything was unresolved, so a budget with old deficits never showed it.
+- **Transfers out of the budget remember their category:** linking a transfer into a household pool or an off-budget account (your rent share, a loan repayment) gives it the category of the last transfer between the same two accounts, or into the same account. A monthly transfer is categorised once. An existing category is never replaced, and transfers inside the budget still need none.
+- Fix: **Review → Tidy up** listed Up savers as "not in FlyBudget" when their FlyBudget names had an emoji ("🐈 Cat Vet"). Names are now compared by their letters and numbers.
+
 ## 0.2.0-up.38
 
 - Fix: Up's settled balance left out the round-ups of **pending** purchases, which Up has already moved to your Saver. A Spending account with pending card purchases looked a few cents short of its register, the round-up check called the difference "unexplained", and the round-up repair stayed locked.

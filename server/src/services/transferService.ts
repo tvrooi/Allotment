@@ -1,8 +1,9 @@
 import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { db } from '../db/index.js';
+import { db, sqlite } from '../db/index.js';
 import { accounts, transactions, transferMatchDismissals, householdEvents } from '../db/schema.js';
 import { restoreBankPayee } from './transactionHelpers.js';
+import { personalBudgetAccount } from './balances.js';
 import {
   accountCurrency,
   budgetCurrency,
@@ -194,6 +195,46 @@ function markTransfer(row: TransactionRow, otherId: string, otherAccountName: st
     .run();
 }
 
+/**
+ * A transfer that leaves the budget (into a household pool or an off-budget account) needs a
+ * category on its budget side: your rent share, a loan repayment. When it has none, it takes
+ * the category of the latest such transfer between the same two accounts, else into the same
+ * account in the same direction, so a monthly transfer is categorised once. Never replaces a
+ * category, and never applies to transfers inside the budget.
+ */
+function rememberBoundaryCategory(a: TransactionRow, b: TransactionRow) {
+  const sides = db
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(and(inArray(accounts.id, [a.accountId, b.accountId]), personalBudgetAccount))
+    .all()
+    .map((r) => r.id);
+  if (sides.length !== 1) return;
+  const [inside, outside] = sides[0] === a.accountId ? [a, b] : [b, a];
+  if (inside.categoryId || inside.reconciled === 1) return;
+  const previous = (sameAccount: boolean) =>
+    sqlite
+      .prepare(
+        `select t.category_id as categoryId from transactions t
+         join transactions o on o.id = t.transfer_transaction_id
+         where o.account_id = ? and t.category_id is not null and t.id != ?
+           and ((t.amount < 0) = (? < 0)) ${sameAccount ? 'and t.account_id = ?' : ''}
+           and t.category_id in (select id from categories)
+         order by t.date desc, t.created_at desc limit 1`,
+      )
+      .get(
+        ...[
+          outside.accountId,
+          inside.id,
+          inside.amount,
+          ...(sameAccount ? [inside.accountId] : []),
+        ],
+      ) as { categoryId: string } | undefined;
+  const categoryId = (previous(true) ?? previous(false))?.categoryId;
+  if (!categoryId) return;
+  db.update(transactions).set({ categoryId }).where(eq(transactions.id, inside.id)).run();
+}
+
 function linkRows(id: string, otherId: string): LinkResult {
   const a = getRow(id);
   const b = getRow(otherId);
@@ -217,6 +258,7 @@ function linkRows(id: string, otherId: string): LinkResult {
 
   markTransfer(a, b.id, accountB.name);
   markTransfer(b, a.id, accountA.name);
+  rememberBoundaryCategory(a, b);
   // Linked on purpose: forget an earlier "not a transfer"
   db.delete(transferMatchDismissals)
     .where(eq(transferMatchDismissals.id, pairKey(a.id, b.id)))

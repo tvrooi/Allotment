@@ -3,7 +3,7 @@ import { test, expect, open, isoDay, thisMonth } from './fixtures';
 
 // The zero-based budget: To Be Budgeted = income + carry-over − planned.
 
-const toBeBudgeted = (page: Page) => page.getByRole('status', { name: 'To be budgeted' });
+const toBeBudgeted = (page: Page) => page.getByRole('status', { name: 'Ready to assign' });
 
 async function plan(page: Page, category: string, amount: string) {
   const button = page.getByRole('button', { name: new RegExp(`^Planned for ${category}:`) });
@@ -36,7 +36,7 @@ test.describe('budget', () => {
 
     await open(page, '/budget');
     await expect(toBeBudgeted(page)).toContainText('$3,000');
-    await expect(toBeBudgeted(page)).toContainText('Ready to assign');
+    await expect(toBeBudgeted(page)).toContainText('Give every dollar a job');
 
     await plan(page, 'Groceries', '400');
     await expect(toBeBudgeted(page)).toContainText('$2,600');

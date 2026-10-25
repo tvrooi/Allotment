@@ -43,7 +43,7 @@ for (const phone of [false, true])
     await page.getByText('Funding history (1)', { exact: true }).click();
     await expect(page.getByText(/applied.*\$400/)).toBeVisible();
     await page.getByRole('button', { name: 'Monthly budget' }).click();
-    await expect(page.getByRole('status', { name: 'To be budgeted' })).toContainText('$600');
+    await expect(page.getByRole('status', { name: 'Ready to assign' })).toContainText('$600');
   });
 
 test('a changed budget requires a refreshed preview', async ({ page, api }) => {

@@ -20,6 +20,9 @@ const HISTORY_MONTHS = 3;
 /** Ids listed per saver, for one bulk categorise */
 const MAX_IDS = 5000;
 
+/** A name as letters and digits only: Up savers are "Cat Vet", FlyBudget's "🐈 Cat Vet" */
+const plainName = (name: string) => name.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+
 const monthsBetween = (a: string, b: string) =>
   (Number(b.slice(0, 4)) - Number(a.slice(0, 4))) * 12 +
   Number(b.slice(5, 7)) -
@@ -55,7 +58,7 @@ function unlinkedSavers() {
       .select({ name: accounts.name })
       .from(accounts)
       .all()
-      .map((a) => a.name.trim().toLowerCase()),
+      .map((a) => plainName(a.name)),
   );
   const groups = new Map<string, { name: string; count: number; net: number; ids: string[] }>();
   for (const t of db
@@ -73,7 +76,7 @@ function unlinkedSavers() {
     if (!match) continue;
     const saver = match[1].trim();
     // A saver with an account here is a transfer to link (Review → transfer suggestions)
-    if (names.has(saver.toLowerCase())) continue;
+    if (names.has(plainName(saver))) continue;
     const g = groups.get(saver.toLowerCase()) ?? { name: saver, count: 0, net: 0, ids: [] };
     g.count++;
     g.net += t.amount;
