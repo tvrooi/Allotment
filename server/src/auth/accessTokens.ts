@@ -157,6 +157,7 @@ const READABLE = [
   '/currency',
   '/export/transactions/csv',
   '/change-sets',
+  '/budget-proposals',
 ];
 /** Under a readable path, but bank-connection data: never for a token */
 const UNREADABLE = [/^\/accounts\/[^/]+\/import-settings$/i];
@@ -203,7 +204,7 @@ export function categoriseAllows(method: string, path: string, body: unknown): b
   return !row || row.date <= todayIso();
 }
 
-const CATEGORY_FIELDS = ['groupId', 'name', 'icon', 'budgetType'];
+const CATEGORY_FIELDS = ['groupId', 'name', 'icon', 'budgetType', 'hidden'];
 const hasOnly = (body: unknown, allowed: string[]) =>
   !!body &&
   typeof body === 'object' &&
@@ -212,7 +213,7 @@ const hasOnly = (body: unknown, allowed: string[]) =>
 
 /**
  * Whether a categorise token may create or edit categories and groups: create a category or
- * group, edit a category's name, group, icon or budget type, rename a group. Never delete or
+ * group, edit a category's name, group, icon, budget type or hidden flag, rename a group. Never delete or
  * reorder them, and a group's income flag is set only when it is created. The route still
  * validates the values and refuses payment envelopes.
  */
@@ -259,12 +260,15 @@ function categoryOnlyRule(ruleId: unknown) {
  *   is still disabled, without enabling it. Never delete, reorder or enable a rule;
  * - apply one category-only rule to uncategorised past transactions (POST /rules/apply);
  * - set a payee's default category, and nothing else about the payee;
- * - link a pair of transactions the server itself suggests as a transfer.
+ * - link a pair of transactions the server itself suggests as a transfer;
+ * - suggest assignments for the owner to apply (POST /budget-proposals).
  */
 export function organiseAllows(method: string, rawPath: string, body: unknown): boolean {
   const path = rawPath.toLowerCase();
   if (method !== 'POST' && method !== 'PUT') return false;
   if (method === 'POST' && (path === '/rules/test' || path === '/rules/preview')) return true;
+  // Suggest assignments; applying one is the owner's (routes/budgetProposals.ts)
+  if (method === 'POST' && path === '/budget-proposals') return true;
   if (method === 'POST' && path === '/rules') return isObject(body) && body.enabled === false;
   if (method === 'POST' && path === '/rules/apply') {
     if (!isObject(body) || body.scope !== 'uncategorized') return false;

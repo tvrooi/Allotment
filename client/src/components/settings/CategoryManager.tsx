@@ -35,6 +35,7 @@ import { ConfirmModal } from '../ui/ConfirmModal';
 import { DeleteCategoryModal } from './DeleteCategoryModal';
 import { useModalValue } from '../ui/Modal';
 import { EditCategoryModal } from './EditCategoryModal';
+import { UnusedCategories } from './UnusedCategories';
 import type { Category, CategoryGroup } from '../../types';
 
 function InlineEdit({
@@ -641,6 +642,7 @@ export function CategoryManager() {
 
   return (
     <div className="space-y-10">
+      <UnusedCategories />
       <Section
         title="Income"
         groups={incomeGroups}

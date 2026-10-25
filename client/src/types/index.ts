@@ -276,6 +276,12 @@ export interface Category {
   budgetType: BudgetType | null;
   sortOrder: number;
   createdAt: string;
+  /** 1 = tucked away from pickers and the budget while it holds no money */
+  hidden?: number;
+  /** With `?usage=1` (getCategoriesWithUsage) */
+  transactionCount?: number;
+  lastUsedDate?: string | null;
+  everAssigned?: boolean;
 }
 
 export interface CategoryGroup {
@@ -368,6 +374,7 @@ export interface BudgetCategory {
   budgetType: BudgetType | null;
   sortOrder: number;
   createdAt: string;
+  hidden?: number;
   target?: TargetStatus | null;
   paymentAccountId?: string | null;
   budgeted: number;

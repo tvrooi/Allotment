@@ -1,3 +1,4 @@
+import { housekeeping } from '../services/housekeeping.js';
 import { Router, type NextFunction, type Response } from 'express';
 import { z } from 'zod';
 import { bufferState, guideState, reviewState } from '../services/reviewService.js';
@@ -21,6 +22,7 @@ reviewRouter.get('/guide', (_req, res) => res.json(guideState()));
 
 // Phase 7. The resilience and resume views are read-only. Completing a review stores only
 // what it saw; snoozing stores a date; the income split is previewed and applied once.
+reviewRouter.get('/housekeeping', (_req, res) => res.json(housekeeping()));
 reviewRouter.get('/resilience', (_req, res) => res.json(resilienceState()));
 reviewRouter.get('/resume', (_req, res) => res.json(resumeState()));
 reviewRouter.post('/complete', (_req, res) => res.json(completeReview()));

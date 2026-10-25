@@ -80,7 +80,7 @@ const SHOTS: Shot[] = [
   { name: 'accounts', route: '/accounts', waitFor: 'Harbor Checking' },
   { name: 'account-register', route: '/accounts/demo-acct-checking', waitFor: 'Reconcile' },
   { name: 'transactions', route: '/transactions', waitFor: 'Fresh Fields Market' },
-  { name: 'budget', route: '/budget', waitFor: 'Left to budget' },
+  { name: 'budget', route: '/budget', waitFor: 'Ready to assign' },
   { name: 'category-detail', route: '/budget/category/demo-cat-groceries', waitFor: 'Groceries' },
   { name: 'recurring', route: '/recurring', waitFor: "Riley's paycheck" },
   {
@@ -206,13 +206,13 @@ const SHOTS: Shot[] = [
   {
     name: 'budget-edit',
     route: '/budget',
-    waitFor: 'Left to budget',
+    waitFor: 'Ready to assign',
     prepare: (page) => page.getByRole('button', { name: /^Planned for Rent:/ }).click(),
   },
   {
     name: 'budget-overspent',
     route: '/budget',
-    waitFor: 'Left to budget',
+    waitFor: 'Ready to assign',
     prepare: async (page) => {
       // Plan less than was spent on groceries and restaurants, so they show red
       for (const [category, amount] of [
@@ -262,7 +262,7 @@ const SHOTS: Shot[] = [
 
   // --- Phones ---
   { name: 'phone-dashboard', route: '/dashboard', phone: true, waitFor: 'Left to Spend' },
-  { name: 'phone-budget', route: '/budget', phone: true, waitFor: 'Left to budget' },
+  { name: 'phone-budget', route: '/budget', phone: true, waitFor: 'Ready to assign' },
   {
     name: 'phone-transactions',
     route: '/transactions',

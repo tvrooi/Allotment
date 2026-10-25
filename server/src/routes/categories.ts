@@ -23,9 +23,41 @@ const categorySchema = z.object({
   name: z.string().trim().min(1).max(200),
   icon: z.string().max(32).optional(),
   budgetType: z.enum(['fixed', 'flexible', 'non_monthly', 'savings']).nullable().optional(),
+  /** 1 tucks it away from pickers and the budget while it holds no money */
+  hidden: z.union([z.literal(0), z.literal(1)]).optional(),
 });
 
-categoriesRouter.get('/', (_req, res) => {
+/** Per category: transactions (split parts included), the latest one, and whether money was ever assigned */
+function categoryUsage() {
+  const used = new Map(
+    db
+      .select({
+        id: transactions.categoryId,
+        count: sql<number>`count(*)`,
+        lastDate: sql<string>`max(${transactions.date})`,
+      })
+      .from(transactions)
+      .where(sql`${transactions.categoryId} is not null`)
+      .groupBy(transactions.categoryId)
+      .all()
+      .map((r) => [r.id!, r]),
+  );
+  const assigned = new Set(
+    db
+      .select({ id: budgetMonths.categoryId })
+      .from(budgetMonths)
+      .where(sql`${budgetMonths.budgeted} != 0`)
+      .all()
+      .map((r) => r.id),
+  );
+  return (id: string) => ({
+    transactionCount: used.get(id)?.count ?? 0,
+    lastUsedDate: used.get(id)?.lastDate ?? null,
+    everAssigned: assigned.has(id),
+  });
+}
+
+categoriesRouter.get('/', (req, res) => {
   const groups = db.select().from(categoryGroups).orderBy(categoryGroups.sortOrder).all();
   const paymentIds = new Set(
     db
@@ -40,9 +72,13 @@ categoriesRouter.get('/', (_req, res) => {
     .orderBy(categories.sortOrder)
     .all()
     .filter((c) => !paymentIds.has(c.id));
+  // ?usage=1 adds how much each category is used (for cleaning up, and for assistants)
+  const usage = req.query.usage === '1' ? categoryUsage() : null;
   const result = groups.map((g) => ({
     ...g,
-    categories: cats.filter((c) => c.groupId === g.id),
+    categories: cats
+      .filter((c) => c.groupId === g.id)
+      .map((c) => (usage ? { ...c, ...usage(c.id) } : c)),
   }));
   res.json(result);
 });

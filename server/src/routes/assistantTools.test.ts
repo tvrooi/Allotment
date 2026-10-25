@@ -24,6 +24,7 @@ const { reportsRouter } = await import('./reports.js');
 const { rulesRouter } = await import('./rules.js');
 const { payeesRouter } = await import('./payees.js');
 const { changeSetsRouter } = await import('./changeSets.js');
+const { budgetProposalsRouter } = await import('./budgetProposals.js');
 
 let server: Server;
 let base: string;
@@ -67,6 +68,7 @@ beforeAll(async () => {
   app.use('/api/rules', rulesRouter);
   app.use('/api/payees', payeesRouter);
   app.use('/api/change-sets', changeSetsRouter);
+  app.use('/api/budget-proposals', budgetProposalsRouter);
   app.use('/api/access-tokens', accessTokensRouter);
   app.use('/api/mcp', mcpRouter);
   app.use(errorHandler);
@@ -292,6 +294,45 @@ describe('organise tokens', () => {
     expect(
       db.select().from(transactions).where(eq(transactions.id, 'out')).get()!.transferTransactionId,
     ).toBe('in');
+  });
+
+  it('suggest assignments that only the owner applies', async () => {
+    const token = await newToken('organise');
+    db.insert(transactions)
+      .values({ id: 'pay', accountId: 'saver', date: PAST, amount: 100000, payeeName: 'Employer' })
+      .run();
+    const month = new Date().toISOString().slice(0, 7);
+    const { data } = await tool(token, 'propose_assignments', {
+      month,
+      rows: [{ categoryId: 'groceries', amount: 2000, reason: 'Weekly shop' }],
+    });
+    expect(data.proposal).toMatchObject({
+      status: 'open',
+      total: 2000,
+      tokenName: 'Assistant organise',
+    });
+    const id = data.proposal.id;
+    expect((await call('POST', `/budget-proposals/${id}/apply`, { token })).status).toBe(403);
+    expect((await call('POST', `/budget-proposals/${id}/dismiss`, { token })).status).toBe(403);
+    expect((await tool(token, 'list_budget_proposals')).data[0].id).toBe(id);
+    expect((await call('POST', `/budget-proposals/${id}/dismiss`)).body).toEqual({ ok: true });
+  });
+
+  it('a categorise token hides categories and lists their usage', async () => {
+    const token = await newToken('categorise');
+    expect((await tool(token, 'hide_category', { id: 'coffee', hidden: true })).isError).toBe(
+      false,
+    );
+    const groups = (await tool(token, 'list_categories')).data;
+    const coffee = groups
+      .flatMap((g: { categories: unknown[] }) => g.categories)
+      .find((c: { id: string }) => c.id === 'coffee');
+    expect(coffee).toMatchObject({ hidden: 1, everAssigned: false });
+    expect(typeof coffee.transactionCount).toBe('number');
+    await tool(token, 'hide_category', { id: 'coffee', hidden: false });
+    expect(
+      (await call('POST', '/budget-proposals', { token }, { month: '2026-10', rows: [] })).status,
+    ).toBe(403);
   });
 
   it('a categorise token reaches none of the organise writes', async () => {

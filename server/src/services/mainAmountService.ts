@@ -7,7 +7,13 @@
 // included automatically). In a budget with one currency that finds nothing to do.
 import { and, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { accounts, budgetSettings, exchangeRates, transactions } from '../db/schema.js';
+import {
+  accounts,
+  budgetMonths,
+  budgetSettings,
+  exchangeRates,
+  transactions,
+} from '../db/schema.js';
 import { isCurrencyCode, isForeign, minorUnits } from '../utils/currencies.js';
 import { allocate, convertMinor } from '../utils/money.js';
 import { buildRateBook, type RateBook } from './exchangeRates.js';
@@ -464,4 +470,21 @@ export function missingRateSummary(): { count: number; currencies: string[] } {
       .filter((c): c is string => !!c)
       .sort(),
   };
+}
+
+/**
+ * Sets the budget start to this month when there is none and nothing was ever assigned (a new
+ * budget connecting its first bank), and returns it; otherwise changes nothing and returns null.
+ */
+export function startBudgetIfNew(today = todayIso()): string | null {
+  if (getBudgetSettings().budgetStartMonth) return null;
+  const assigned = db
+    .select({ id: budgetMonths.id })
+    .from(budgetMonths)
+    .where(ne(budgetMonths.budgeted, 0))
+    .get();
+  if (assigned) return null;
+  const month = today.slice(0, 7);
+  updateBudgetSettings({ budgetStartMonth: month });
+  return month;
 }

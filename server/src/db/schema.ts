@@ -59,6 +59,8 @@ export const categories = sqliteTable('categories', {
   createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`),
+  /** 1 = tucked away from pickers and the budget while it holds no money (never deleted) */
+  hidden: integer('hidden').notNull().default(0),
 });
 
 export const payees = sqliteTable('payees', {
@@ -747,6 +749,20 @@ export const accessTokens = sqliteTable('access_tokens', {
   expiresAt: text('expires_at').notNull(),
   lastUsedAt: text('last_used_at'),
   revokedAt: text('revoked_at'),
+});
+
+/** Assignments an organise token suggests for a month; only the owner applies them */
+export const budgetProposals = sqliteTable('budget_proposals', {
+  id: text('id').primaryKey(),
+  month: text('month').notNull(),
+  tokenId: text('token_id'),
+  tokenName: text('token_name').notNull(),
+  note: text('note'),
+  /** [{ categoryId, amount, reason }]: amounts added to the month's assignments */
+  rowsJson: text('rows_json').notNull(),
+  status: text('status').notNull().default('open'),
+  createdAt: text('created_at').notNull(),
+  decidedAt: text('decided_at'),
 });
 
 /** Category changes an access token made, one set per tool call, so the owner (or the token) can undo them */

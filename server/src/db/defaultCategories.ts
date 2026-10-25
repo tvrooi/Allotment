@@ -164,6 +164,142 @@ const defaultGroups: {
   },
 ];
 
+/** Australian households: rent and strata, rego and CTP, Medicare gaps, BNPL, super */
+const australianGroups: typeof defaultGroups = [
+  {
+    name: 'Income',
+    isIncome: 1,
+    categories: [
+      { name: 'Pay', icon: '💵' },
+      { name: 'Interest', icon: '💹' },
+      { name: 'Shared Cost Contributions', icon: '👥' },
+      { name: 'Government Payments', icon: '🏛️' },
+      { name: 'Other Income', icon: '💰' },
+    ],
+  },
+  {
+    name: 'Housing',
+    isIncome: 0,
+    categories: [
+      { name: 'Rent', icon: '🏠', budgetType: 'fixed' },
+      { name: 'Mortgage', icon: '🏦', budgetType: 'fixed' },
+      { name: 'Contents & Home Insurance', icon: '🛡️', budgetType: 'non_monthly' },
+      { name: 'Council Rates', icon: '🏛️', budgetType: 'non_monthly' },
+      { name: 'Strata / Body Corporate', icon: '🏢', budgetType: 'non_monthly' },
+      { name: 'Home Maintenance', icon: '🔨', budgetType: 'flexible' },
+      { name: 'Garden & Plants', icon: '🌱', budgetType: 'flexible' },
+    ],
+  },
+  {
+    name: 'Bills',
+    isIncome: 0,
+    categories: [
+      { name: 'Electricity', icon: '⚡', budgetType: 'fixed' },
+      { name: 'Gas', icon: '🔥', budgetType: 'fixed' },
+      { name: 'Water', icon: '💧', budgetType: 'non_monthly' },
+      { name: 'Internet', icon: '🌐', budgetType: 'fixed' },
+      { name: 'Mobile', icon: '📱', budgetType: 'fixed' },
+      { name: 'Streaming & Subscriptions', icon: '📺', budgetType: 'fixed' },
+      { name: 'Software & AI', icon: '🤖', budgetType: 'fixed' },
+    ],
+  },
+  {
+    name: 'Food & Drink',
+    isIncome: 0,
+    categories: [
+      { name: 'Groceries', icon: '🛒', budgetType: 'flexible' },
+      { name: 'Eating Out', icon: '🍽️', budgetType: 'flexible' },
+      { name: 'Takeaway & Delivery', icon: '🍔', budgetType: 'flexible' },
+      { name: 'Coffee', icon: '☕', budgetType: 'flexible' },
+      { name: 'Alcohol', icon: '🍷', budgetType: 'flexible' },
+    ],
+  },
+  {
+    name: 'Transport',
+    isIncome: 0,
+    categories: [
+      { name: 'Fuel', icon: '⛽', budgetType: 'flexible' },
+      { name: 'Rego & CTP', icon: '🚗', budgetType: 'non_monthly' },
+      { name: 'Car Insurance', icon: '🛡️', budgetType: 'non_monthly' },
+      { name: 'Car Servicing', icon: '🔧', budgetType: 'non_monthly' },
+      { name: 'Tolls & Parking', icon: '🅿️', budgetType: 'flexible' },
+      { name: 'Public Transport', icon: '🚆', budgetType: 'flexible' },
+      { name: 'Rideshare & Taxis', icon: '🚕', budgetType: 'flexible' },
+    ],
+  },
+  {
+    name: 'Health',
+    isIncome: 0,
+    categories: [
+      { name: 'GP & Specialists', icon: '🩺', budgetType: 'non_monthly' },
+      { name: 'Private Health Insurance', icon: '🏥', budgetType: 'fixed' },
+      { name: 'Dental', icon: '🦷', budgetType: 'non_monthly' },
+      { name: 'Pharmacy', icon: '💊', budgetType: 'flexible' },
+      { name: 'Optical', icon: '👓', budgetType: 'non_monthly' },
+      { name: 'Fitness', icon: '🏋️', budgetType: 'flexible' },
+      { name: 'Mental Health', icon: '🧠', budgetType: 'non_monthly' },
+    ],
+  },
+  {
+    name: 'Lifestyle',
+    isIncome: 0,
+    categories: [
+      { name: 'Clothing', icon: '👕', budgetType: 'flexible' },
+      { name: 'Personal Care', icon: '✨', budgetType: 'flexible' },
+      { name: 'Entertainment', icon: '🎬', budgetType: 'flexible' },
+      { name: 'Hobbies', icon: '🎨', budgetType: 'flexible' },
+      { name: 'Gifts', icon: '🎁', budgetType: 'non_monthly' },
+      { name: 'Charity', icon: '❤️', budgetType: 'flexible' },
+      { name: 'Holidays', icon: '🏖️', budgetType: 'non_monthly' },
+    ],
+  },
+  {
+    name: 'Pets',
+    isIncome: 0,
+    categories: [
+      { name: 'Pet Food & Supplies', icon: '🐾', budgetType: 'flexible' },
+      { name: 'Vet', icon: '🐈', budgetType: 'non_monthly' },
+      { name: 'Pet Insurance', icon: '🛡️', budgetType: 'fixed' },
+    ],
+  },
+  {
+    name: 'Financial',
+    isIncome: 0,
+    categories: [
+      { name: 'Emergency Fund', icon: '🛟', budgetType: 'savings' },
+      { name: 'Savings Goals', icon: '🐷', budgetType: 'savings' },
+      { name: 'Investments', icon: '📈', budgetType: 'savings' },
+      { name: 'Extra Super Contributions', icon: '🦘', budgetType: 'savings' },
+      { name: 'Loan Repayments', icon: '🏦', budgetType: 'fixed' },
+      { name: 'Afterpay / Zip', icon: '🧾', budgetType: 'fixed' },
+      { name: 'Bank Fees', icon: '💸', budgetType: 'flexible' },
+      { name: 'Tax', icon: '🧮', budgetType: 'non_monthly' },
+    ],
+  },
+  {
+    name: 'Other',
+    isIncome: 0,
+    categories: [
+      { name: 'Miscellaneous', icon: '📁', budgetType: 'flexible' },
+      { name: 'Cash', icon: '💵', budgetType: 'flexible' },
+    ],
+  },
+];
+
+/**
+ * The template for a new budget: FLYBUDGET_CATEGORY_TEMPLATE (`au` or `default`), else the
+ * Australian one when the server's time zone is in Australia (as the Home Assistant app's is
+ * there), else the general one.
+ */
+export function categoryTemplate(
+  env = process.env.FLYBUDGET_CATEGORY_TEMPLATE,
+  timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+) {
+  if (env === 'au') return australianGroups;
+  if (env === 'default') return defaultGroups;
+  return timeZone?.startsWith('Australia/') ? australianGroups : defaultGroups;
+}
+
 /**
  * Adds the default category groups to a new budget. Skips any budget that already
  * has categories or transactions, so a user who deleted the defaults and started
@@ -178,7 +314,7 @@ export function seedDefaultCategories(): number {
   let created = 0;
   db.transaction((tx) => {
     const now = new Date().toISOString();
-    defaultGroups.forEach((group, groupIdx) => {
+    categoryTemplate().forEach((group, groupIdx) => {
       const groupId = nanoid();
       tx.insert(categoryGroups)
         .values({

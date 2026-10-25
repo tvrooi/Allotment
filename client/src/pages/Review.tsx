@@ -21,6 +21,7 @@ import {
   ResilienceCard,
   ResumeCard,
 } from '../components/review/Resilience';
+import { Housekeeping } from '../components/review/Housekeeping';
 
 // Phases 6F–6G: a read-only review of everything the budget has not resolved, a guided
 // setup, and next month's commitments with an optional runway. Every figure comes from the
@@ -581,6 +582,7 @@ export default function ReviewPage() {
               </Card>
             )}
             {resilience.data && <ExtraIncome resilience={resilience.data} />}
+            <Housekeeping />
           </div>
         </div>
       </div>

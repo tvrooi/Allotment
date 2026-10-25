@@ -24,7 +24,7 @@ default categories and link suggested transfers.
   reach anything else a read-only token can't. The register's own rules still apply: reconciled
   rows, split parents, transfers inside the budget, household-linked entries and payment
   envelopes are refused. They can also create and edit **categories and groups** (name, group,
-  icon, budget type; a group's income flag is set only when it is created), but never delete or
+  icon, budget type, hidden; a group's income flag is set only when it is created), but never delete or
   reorder them. Choose **Read and categorise** under **Access** when creating the token.
 - **Read, categorise and organise** tokens (owner-approved) can do everything a categorise
   token can, plus:
@@ -38,7 +38,9 @@ default categories and link suggested transfers.
   - set a payee's default category, and nothing else about the payee
     (`PUT /api/payees/:id` with exactly `{"defaultCategoryId": …}`);
   - link two transactions as a transfer, only when the app itself suggests that pair
-    (`POST /api/transactions/transfers/link`).
+    (`POST /api/transactions/transfers/link`);
+  - suggest assignments (`POST /api/budget-proposals`): this month or next, expense
+    categories only, within money ready to assign. Only the owner applies or dismisses one.
 - **Change sets:** every category change made over MCP is saved as a change set, listed in
   **Settings → Server → Read-only access** with **Undo** (`GET /api/change-sets`,
   `POST /api/change-sets/:id/undo`). Undo puts back the previous category (even none) only
@@ -88,22 +90,23 @@ It answers at most 300 requests a minute, with at most 20 messages in one JSON-R
 
 Its read tools:
 
-| Tool                                                  | What it reads                                                                                |
-| ----------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `list_accounts`, `list_categories`, `list_payees`     | Accounts and balances; the category tree; payees, with the ids other tools take              |
-| `list_tags`, `list_rules`, `list_goals`               | Tags with usage counts; categorisation rules; goals and their funding                        |
-| `budget_month`, `budget_summary`                      | One month of the envelope budget; available, reserved, overspent and card payment figures    |
-| `annual_overview`                                     | A calendar year of assignments and activity, with planned months                             |
-| `find_transactions`, `transaction_summary`            | Transactions matching the phase 8/9 filters (up to 500); count, money in/out, net, date span |
-| `income_vs_expenses`, `spending_by_category`          | Monthly income and spending; spending per category                                           |
-| `spending_by_merchant`                                | Spending per payee                                                                           |
-| `budget_review`, `financial_resilience`               | The budget review's open items; reserve and months of essentials                             |
-| `long_term_plans`, `long_term_plan`                   | Saved long-term forecast plans; one plan's settings, life events and savings splits          |
-| `long_term_forecast`, `long_term_compare`             | A plan's year-by-year result; two plans side by side                                         |
-| `uncategorised_payees`, `transfer_suggestions`        | Uncategorised transactions grouped by payee; unlinked pairs that look like transfers         |
-| `budget_start`, `bank_sync_status`                    | The first budget month; each synced account's bank against register balance and round-ups    |
-| `list_households`, `household`, `household_statement` | Household groups and pool accounts; one group's people, events and balances; your share      |
-| `list_change_sets`                                    | This token's category changes, each undoable                                                 |
+| Tool                                                  | What it reads                                                                                               |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `list_accounts`, `list_categories`, `list_payees`     | Accounts and balances; the category tree; payees, with the ids other tools take                             |
+| `list_tags`, `list_rules`, `list_goals`               | Tags with usage counts; categorisation rules; goals and their funding                                       |
+| `budget_month`, `budget_summary`                      | One month of the envelope budget; available, reserved, overspent and card payment figures                   |
+| `annual_overview`                                     | A calendar year of assignments and activity, with planned months                                            |
+| `find_transactions`, `transaction_summary`            | Transactions matching the phase 8/9 filters (up to 500); count, money in/out, net, date span                |
+| `income_vs_expenses`, `spending_by_category`          | Monthly income and spending; spending per category                                                          |
+| `spending_by_merchant`                                | Spending per payee                                                                                          |
+| `budget_review`, `financial_resilience`               | The budget review's open items; reserve and months of essentials                                            |
+| `long_term_plans`, `long_term_plan`                   | Saved long-term forecast plans; one plan's settings, life events and savings splits                         |
+| `long_term_forecast`, `long_term_compare`             | A plan's year-by-year result; two plans side by side                                                        |
+| `uncategorised_payees`, `transfer_suggestions`        | Uncategorised transactions grouped by payee; unlinked pairs that look like transfers                        |
+| `budget_start`, `bank_sync_status`                    | The first budget month; each synced account's bank against register balance and round-ups                   |
+| `list_households`, `household`, `household_statement` | Household groups and pool accounts; one group's people, events and balances; your share                     |
+| `list_change_sets`                                    | This token's category changes, each undoable                                                                |
+| `budget_housekeeping`, `list_budget_proposals`        | Setup problems (budget start, missing round-ups, unknown savers, unused categories); assignment suggestions |
 
 `find_transactions` pages with `limit` and `offset`, and `fields` (for example
 `id,date,amount,payeeName,categoryId`) keeps each result short. `bank_sync_status` has no
@@ -120,7 +123,8 @@ case, as the server's router does.
 
 With a **read, categorise and organise** token it also lists `test_rule_conditions`,
 `propose_rule`, `update_proposed_rule`, `preview_rule`, `apply_rule`,
-`set_payee_default_category` and `link_transfer`. `categorise_by_payee` with
+`set_payee_default_category`, `link_transfer` and `propose_assignments` (suggested amounts
+for expense envelopes, which the owner applies or dismisses on the Budget page). `categorise_by_payee` with
 `set_default: true` also makes the category the payee's default, so later imports get it.
 
 Each read tool call is a `GET` of the server's own API made with the caller's token, so a tool can

@@ -84,8 +84,9 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'list_categories',
-    description: 'Category groups and categories, with ids for other tools.',
-    path: () => '/categories',
+    description:
+      'Category groups and categories, with ids for other tools, and how much each is used: transactionCount, lastUsedDate, everAssigned and hidden (1 = tucked away).',
+    path: () => '/categories?usage=1',
   },
   {
     name: 'list_payees',
@@ -213,6 +214,12 @@ const TOOLS: Tool[] = [
     path: () => '/review',
   },
   {
+    name: 'budget_housekeeping',
+    description:
+      "Setup problems that make the budget less useful: no budget start with years of history (suggestion = a month to start from), Up accounts missing round-up debits, uncategorised movements to or from savers that aren't in FlyBudget (grouped by saver, with ids), and how many categories were never used.",
+    path: () => '/review/housekeeping',
+  },
+  {
     name: 'financial_resilience',
     description: 'Cash after debts by purpose, the flexibility reserve and months of essentials.',
     path: () => '/review/resilience',
@@ -254,6 +261,13 @@ const TOOLS: Tool[] = [
     description:
       "Each bank-synced account: when it last synced, the bank's settled balance against the register, the difference, and whether missing round-up debits explain it (verdict round-ups) or not (unexplained). No connection details.",
     path: () => '/accounts/sync-status',
+  },
+  {
+    name: 'list_budget_proposals',
+    description:
+      'Assignment suggestions waiting for the owner (status=all also lists applied and dismissed ones).',
+    properties: { status: { type: 'string', enum: ['open', 'all'] } },
+    path: (a) => `/budget-proposals${query(a, ['status'])}`,
   },
   {
     name: 'list_change_sets',
@@ -349,6 +363,18 @@ const CATEGORY_TOOLS: (Tool & { write: { method: 'POST' | 'PUT'; body: (a: Args)
       required: ['id'],
       path: (a) => `/categories/${seg(a.id)}`,
       write: { method: 'PUT', body: noId },
+    },
+    {
+      name: 'hide_category',
+      description:
+        "Hides a category (hidden true) from pickers and the budget while it holds no money, or shows it again. Its transactions and history stay; it isn't deleted.",
+      properties: {
+        id: { type: 'string', minLength: 1, maxLength: 64 },
+        hidden: { type: 'boolean' },
+      },
+      required: ['id', 'hidden'],
+      path: (a) => `/categories/${seg(a.id)}`,
+      write: { method: 'PUT', body: (a) => ({ hidden: a.hidden ? 1 : 0 }) },
     },
     {
       name: 'create_category_group',
@@ -721,6 +747,40 @@ const ACTION_TOOLS: ActionTool[] = [
     },
   },
   {
+    name: 'propose_assignments',
+    scope: 'organise',
+    description:
+      'Suggests amounts to add to expense envelopes for this month or next, from money ready to assign today (budget_summary). Nothing is assigned: the owner reviews the suggestion on the Budget page and applies or dismisses it. Give a short reason per row.',
+    properties: {
+      month,
+      note: { type: 'string', maxLength: 1000, description: 'Shown to the owner' },
+      rows: {
+        type: 'array',
+        minItems: 1,
+        maxItems: 100,
+        items: {
+          type: 'object',
+          properties: {
+            categoryId: idString,
+            amount: { type: 'integer', minimum: 1, description: 'Minor units to add' },
+            reason: { type: 'string', maxLength: 300 },
+          },
+          required: ['categoryId', 'amount'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['month', 'rows'],
+    run: async (ctx, a) => {
+      const r = await api(ctx, '/budget-proposals', 'POST', {
+        month: a.month,
+        note: a.note,
+        rows: a.rows,
+      });
+      return r.ok ? { proposal: r.data } : { error: r.error };
+    },
+  },
+  {
     name: 'link_transfer',
     scope: 'organise',
     description:
@@ -774,7 +834,7 @@ const BASICS =
 const INSTRUCTIONS: Record<TokenScope, string> = {
   read: `Read-only access to a FlyBudget budget. ${BASICS}`,
   categorise: `Read access to a FlyBudget budget, plus setting the category of past transactions (categorise_transactions, categorise_by_payee) and creating and editing categories and groups; nothing else can change. ${BASICS} Start from uncategorised_payees. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before categorising.`,
-  organise: `Read access to a FlyBudget budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories and linking suggested transfers. ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
+  organise: `Read access to a FlyBudget budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers and suggesting assignments the owner applies. ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
 };
 
 const schemaOf = (t: { properties?: Record<string, unknown>; required?: string[] }) => ({

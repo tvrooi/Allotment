@@ -35,6 +35,7 @@ import {
   accountCurrency,
   currencyContext,
   currencyToStore,
+  startBudgetIfNew,
 } from '../services/mainAmountService.js';
 import { accountTypeSchema, defaultOffBudget } from '../utils/accountTypes.js';
 
@@ -279,7 +280,10 @@ upRouter.post('/map-accounts', (req, res) => {
         .run();
     }
   });
-  res.json({ mapped: parsed.data.mappings.length });
+  // A new budget starts this month: imported bank history stays in accounts and reports
+  // instead of turning every past purchase into overspending (Settings → Budget start)
+  const budgetStartMonth = startBudgetIfNew();
+  res.json({ mapped: parsed.data.mappings.length, budgetStartMonth });
 });
 
 upRouter.post('/sync', async (_req, res) => {
