@@ -35,6 +35,7 @@ import {
   enableBankingAccountMappings,
   transactions,
   receipts,
+  receiptLineItems,
   taxClaims,
   transferMatchDismissals,
   paydayPlans,
@@ -89,7 +90,7 @@ import { isCurrencyCode } from '../utils/currencies.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 18;
+export const BACKUP_VERSION = 19;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -106,6 +107,7 @@ const TABLES = {
   transactions,
   // Receipts' details and claims; the files themselves stay in this installation's database
   receipts,
+  receiptLineItems,
   taxClaims,
   upSourceRecords,
   scheduleOccurrences,

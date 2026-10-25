@@ -1,6 +1,6 @@
 # Receipts and tax deductions
 
-Status: built (0.2.0-up.42). Record keeping for an Australian individual tax return, not tax advice.
+Status: built (0.2.0-up.42; the Receipts tab in 0.2.0-up.43). Record keeping for an Australian individual tax return, not tax advice.
 
 ## 1. What Monarch does, and what we take from it
 
@@ -17,14 +17,13 @@ From `docs/research/monarch-action-catalog.md`, `monarch-live-audit-continued.md
   attachments**.
 - Monarch has no tax-deduction feature.
 
-FlyBudget takes the upload, paste, inbox, matching and attachment ideas. It leaves out three:
+FlyBudget takes the upload, paste, inbox, matching and attachment ideas, and (since 0.2.0-up.43) splitting by line items. It leaves out two:
 
 - **Email forwarding** would need an inbound mail service exposed to the internet, which a private,
   self-hosted budget should not run.
 - **Server-side AI parsing** would send receipts to a third party.
-- **Automatic splitting from line items** depends on that parsing.
 
-The owner types a receipt's date and total, and matching uses those.
+The owner types a receipt's details and line items, and matching and splitting use those.
 
 ## 2. Storage
 
@@ -38,7 +37,7 @@ The owner types a receipt's date and total, and matching uses those.
   folder) holds every receipt, and a restore's safety copy keeps them too. Photos are shrunk in the
   browser to at most 2,000 px as JPEG before upload. A PDF or a HEIC photo the browser can't read is
   kept as it is. The limit is 10 MB a file and 20,000 receipts.
-- **JSON backups** (format 18) carry receipt details and claims, but not files, so they stay small.
+- **JSON backups** (format 19) carry receipt details, line items and claims, but not files, so they stay small.
   Restoring on the same installation finds every file by its hash. Elsewhere, a receipt says its
   file is not on this installation (`hasFile: false`) instead of failing. Format 17 and older backups
   restore with no receipts or claims.
@@ -87,9 +86,56 @@ The owner types a receipt's date and total, and matching uses those.
   - The ZIP writer is dependency-free (stored entries, CRC-32, UTF-8 names), and is checked with
     `unzip -t` and in tests.
 
-## 5. Not built
+## 5. The Receipts tab (Monarch parity)
 
-- Email forwarding, OCR or AI reading of receipts, and line-item splits.
+From Monarch's "Importing Receipts into Monarch" help article: receipts are general purchase
+records, not only tax evidence.
+
+- **Where:** **Transactions → Receipts** (`?view=receipts`, with `&receipt=<id>` for the one open),
+  beside All. Filters are All, Unmatched and Matched. There are **Upload** (several files, drop or
+  paste), **Scan receipt** (`capture="environment"`, the camera on a phone; also in the All tab's
+  header, like Monarch's Add → Scan receipt), **Match now** and **Settings**.
+- **What a receipt says** (typed, not read by AI): merchant, date, amount (total), subtotal, tax,
+  tip and fees, notes, and line items (description, amount, category) in `receipt_line_items`.
+- **Automatic matching** (`receiptMatching.findAutoMatch`), on Monarch's rules:
+  - money out of exactly the receipt's total, top-level, not a transfer, with no receipt yet;
+  - the same merchant (letters and digits, either name containing the other, at least 3
+    characters) from 2 days before to 7 days after the receipt's date;
+  - otherwise any merchant within a day;
+  - more than one candidate means no match (never guess).
+- **When it runs:** when a receipt's details are saved (at once, so the page can say what
+  happened), and after each new transaction once the import is done (`scheduleReceiptMatching`,
+  because a split can't start inside an import's own database transaction). **Match now** retries
+  every unmatched receipt.
+- **One attach path** (`attachReceipt`) for automatic, Find match, inbox Attach, upload onto a
+  transaction and Add transaction:
+  - tag **Receipt**;
+  - append the receipt's notes and item names to the transaction's notes (unless reconciled);
+  - **autosplit**, when items name two or more categories, by `splitTransaction`. Each category's
+    weight is its items, plus tax in proportion to those items, plus tip and fees shared evenly
+    per item, apportioned exactly to the transaction's own amount (largest remainder, BigInt);
+  - with one category, set it only when the transaction has none.
+  - Automatic autosplit only touches a transaction with no category and no tax claim ("preserve
+    user-edited rows"); a categorised one is split only by **Split by items** (`POST
+/receipts/:id/split`), on request. A reconciled, already split, transfer or claimed
+    transaction is never split (a split parent is no longer a deduction), and the outcome says why.
+  - Saving details on a receipt that is already matched (one added straight to a transaction)
+    enriches the transaction again; every step is safe to repeat.
+  - **Split by items** saves what is typed first, so it splits by what is on screen.
+  - The amount is never changed. Settings live in `budget_settings` (`receipt_auto_split`,
+    `receipt_add_notes`, `receipt_add_tag`, all on by default).
+- **Unmatched:** **Find match** searches top-level money out by payee, bank description or notes,
+  60 days either side. **Add transaction** makes one through `insertNewTransaction` (rules run),
+  from the merchant, date and amount, in an account you choose.
+- **Unmatch** keeps what was added to the transaction. Deleting a receipt never deletes a
+  transaction; deleting a transaction makes its receipts unmatched.
+- **Backups:** format 19 adds `receiptLineItems`; format 18 backups restore with no line items.
+- **Not built:** email forwarding (it needs an inbound mail service exposed to the internet), AI
+  reading of receipts, and a "pending" state (FlyBudget imports settled transactions only).
+
+## 6. Not built
+
+- Email forwarding, and OCR or AI reading of receipts.
 - Working-from-home hours (the fixed rate per hour), car logbooks and cents per kilometre.
 - Depreciation schedules and the low-value pool calculation.
 - Income, tax withheld, tax offsets and an estimated refund.

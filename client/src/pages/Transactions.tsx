@@ -6,6 +6,7 @@ import { AddTransactionModal } from '../components/transactions/AddTransactionMo
 import { Button } from '../components/ui/Button';
 import { SavedViewsMenu } from '../components/transactions/SavedViews';
 import { useOpenFromLink } from '../hooks/useOpenFromLink';
+import { ReceiptsTab, ScanReceiptButton, useAddReceipts } from '../components/receipts/ReceiptsTab';
 import {
   FILTER_KEYS,
   filtersFromSearch,
@@ -25,6 +26,23 @@ export default function TransactionsPage() {
   if (search !== own.current.search) {
     own.current = { search, generation: own.current.generation + 1 };
   }
+  // The Receipts tab, and the receipt open on it, live in the URL too
+  const view = params.get('view') === 'receipts' ? 'receipts' : 'all';
+  const openReceipt = params.get('receipt');
+  const setPageParam = (changes: Record<string, string | null>) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        for (const [k, v] of Object.entries(changes)) {
+          if (v === null) next.delete(k);
+          else next.set(k, v);
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  // Like Monarch's Add > Scan receipt: upload, then open it on the Receipts tab
+  const scan = useAddReceipts((r) => setPageParam({ view: 'receipts', receipt: r.id }));
   const onFiltersChange = useCallback(
     (filters: FilterState) => {
       setParams(
@@ -43,24 +61,59 @@ export default function TransactionsPage() {
 
   return (
     <div className="flex flex-col h-full bg-surface">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-        <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
-          All Transactions
-        </h1>
-        <div className="flex items-center gap-2">
-          <SavedViewsMenu />
-          <Button size="sm" onClick={() => setShowAdd(true)}>
-            <Plus size={13} /> Add
-          </Button>
+      <div className="px-6 pt-4 max-md:px-4 border-b border-border shrink-0">
+        <div className="flex items-center justify-between">
+          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+            {view === 'receipts' ? 'Receipts' : 'All Transactions'}
+          </h1>
+          <div className="flex items-center gap-2">
+            {view === 'all' && <SavedViewsMenu />}
+            {view === 'all' && <ScanReceiptButton onFiles={scan.add} />}
+            <Button size="sm" onClick={() => setShowAdd(true)}>
+              <Plus size={13} /> Add
+            </Button>
+          </div>
+        </div>
+        <div className="flex gap-1 mt-2 -mb-px" role="tablist" aria-label="Transactions view">
+          {(
+            [
+              ['all', 'All'],
+              ['receipts', 'Receipts'],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={view === id}
+              onClick={() => setPageParam({ view: id === 'all' ? null : id, receipt: null })}
+              className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 max-md:min-h-11 ${
+                view === id
+                  ? 'border-brand-600 text-text'
+                  : 'border-transparent text-text-secondary hover:text-text'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
-      <TransactionTable
-        key={own.current.generation}
-        initialFilters={filtersFromSearch(params)}
-        onFiltersChange={onFiltersChange}
-        canSaveView
-        onAddTransaction={() => setShowAdd(true)}
-      />
+      {scan.error && (
+        <p role="alert" className="px-6 py-2 text-sm text-negative">
+          {scan.error}
+        </p>
+      )}
+      {view === 'receipts' ? (
+        <ReceiptsTab openId={openReceipt} onOpen={(id) => setPageParam({ receipt: id })} />
+      ) : (
+        <TransactionTable
+          key={own.current.generation}
+          initialFilters={filtersFromSearch(params)}
+          onFiltersChange={onFiltersChange}
+          canSaveView
+          onAddTransaction={() => setShowAdd(true)}
+        />
+      )}
       <AddTransactionModal isOpen={showAdd} onClose={() => setShowAdd(false)} />
     </div>
   );

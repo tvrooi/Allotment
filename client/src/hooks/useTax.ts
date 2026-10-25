@@ -6,7 +6,7 @@ import * as api from '../api/tax';
 const RECEIPTS = ['receipts'];
 const TAX = ['tax'];
 
-export const useReceipts = (filter: { transactionId?: string; inbox?: boolean }) =>
+export const useReceipts = (filter: Parameters<typeof api.listReceipts>[0]) =>
   useQuery({ queryKey: [...RECEIPTS, filter], queryFn: () => api.listReceipts(filter) });
 
 /** Which transactions have receipts and claims, for the register's markers */
@@ -29,7 +29,8 @@ function useRefresh() {
 }
 
 export function useUploadReceipt() {
-  const refresh = useRefresh();
+  // Uploaded onto a transaction, it tags and enriches that transaction too
+  const refresh = useRefreshAll();
   return useMutation({
     mutationFn: async ({ file, transactionId }: { file: File; transactionId?: string }) => {
       const { blob, name } = await api.prepareReceipt(file);
@@ -40,7 +41,7 @@ export function useUploadReceipt() {
 }
 
 export function useUpdateReceipt() {
-  const refresh = useRefresh();
+  const refresh = useRefreshAll();
   return useMutation({
     mutationFn: ({ id, change }: { id: string; change: Parameters<typeof api.updateReceipt>[1] }) =>
       api.updateReceipt(id, change),
@@ -92,3 +93,63 @@ export const useTaxYear = (fy: number | null) =>
     queryFn: () => api.taxYear(fy!),
     enabled: fy !== null,
   });
+
+export const useReceipt = (id: string | null) =>
+  useQuery({
+    queryKey: [...RECEIPTS, 'one', id],
+    queryFn: () => api.getReceipt(id!),
+    enabled: !!id,
+  });
+
+export const useReceiptSearch = (id: string, q: string) =>
+  useQuery({
+    queryKey: [...RECEIPTS, 'matches', id, q],
+    queryFn: () => api.receiptMatches(id, q || undefined),
+  });
+
+export const useReceiptSettings = () =>
+  useQuery({ queryKey: [...RECEIPTS, 'settings'], queryFn: api.getReceiptSettings });
+
+/** Matching or creating changes transactions (tags, notes, splits): refresh those too */
+function useRefreshAll() {
+  const qc = useQueryClient();
+  return () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: RECEIPTS }),
+      qc.invalidateQueries({ queryKey: TAX }),
+      qc.invalidateQueries({ queryKey: ['transactions'] }),
+      qc.invalidateQueries({ queryKey: ['tags'] }),
+      // A transaction made from a receipt changes its account's balance and the budget
+      qc.invalidateQueries({ queryKey: ['accounts'] }),
+      qc.invalidateQueries({ queryKey: ['review'] }),
+    ]);
+}
+
+export function useSetReceiptSettings() {
+  const refresh = useRefresh();
+  return useMutation({ mutationFn: api.setReceiptSettings, onSuccess: refresh });
+}
+
+export function useMatchReceiptsNow() {
+  const refresh = useRefreshAll();
+  return useMutation({ mutationFn: api.matchReceiptsNow, onSuccess: refresh });
+}
+
+export function useCreateTransactionFromReceipt() {
+  const refresh = useRefreshAll();
+  return useMutation({
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: Parameters<typeof api.createTransactionFromReceipt>[1];
+    }) => api.createTransactionFromReceipt(id, body),
+    onSuccess: refresh,
+  });
+}
+
+export function useSplitByItems() {
+  const refresh = useRefreshAll();
+  return useMutation({ mutationFn: api.splitReceiptByItems, onSuccess: refresh });
+}

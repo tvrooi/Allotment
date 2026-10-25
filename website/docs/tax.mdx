@@ -13,13 +13,30 @@ agent.
 
 ## Receipts
 
-Open a transaction and use **Receipts** to add a photo or PDF: choose a file (on a phone this offers
-the camera), drop one on the box, or paste a screenshot. Photos are shrunk to a sensible size before
-they are saved. A paperclip in the register shows which transactions have one.
+Receipts work for any purchase, not just tax. **Transactions → Receipts** lists every receipt,
+matched or not. Upload photos or PDFs (several at once), drop or paste them, or use **Scan
+receipt**, which opens the camera on a phone. Photos are shrunk to a sensible size before they are
+saved.
 
-Got the receipt before the bank transaction? Add it to **Tax time → Receipt inbox**. Type its date
-and total, and the inbox suggests the transaction it belongs to (an exact total first). Choose
-**Attach** when it arrives. Deleting a transaction moves its receipts back to the inbox.
+Open a receipt to type what it says: merchant, date, amount, and optionally subtotal, tax, tip and
+fees, and its **line items**, each with a category. Then it is **matched** to its transaction:
+
+- **Automatically**, to money out of exactly its amount: from the same merchant up to 2 days before
+  or 7 days after the receipt's date (card purchases often post late), or any merchant within a
+  day. When two transactions could fit, FlyBudget doesn't guess: you choose. A receipt that arrives
+  before its transaction is matched when the transaction arrives from your bank.
+- **Find match:** search your transactions by payee or notes, and match it yourself.
+- **Add transaction:** for cash, or an account without bank sync, make the transaction from the
+  receipt. Don't do this if your bank will send it, or you'll have it twice.
+
+A matched transaction keeps its amount. It is tagged **Receipt**, gets the receipt's notes and
+items in its notes, and, with **autosplit**, is split by its items' categories when it has no category yet: tax in proportion to each category's items, tip and fees shared evenly per item. A transaction that already has a category or a tax claim is not split by itself: open the receipt and choose **Split by items** (a claimed one can't be split, or its claim would be lost). A receipt with one category sets an
+uncategorised transaction's category, but never changes one you chose. Turn each of these on or off
+in the Receipts tab's **settings**. **Unmatch** puts the receipt back; deleting a receipt never
+deletes its transaction.
+
+You can also add a receipt straight from a transaction's details. A paperclip in the register shows
+which transactions have one. **Tax time → Receipt inbox** shows the unmatched ones too.
 
 Receipts are stored in your budget's database. Backups made from **Settings** carry each receipt's
 details but not the file itself, so they stay small; restoring on the same computer keeps every

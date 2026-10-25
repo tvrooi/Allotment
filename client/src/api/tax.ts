@@ -17,11 +17,51 @@ export interface Receipt {
   merchant: string | null;
   receiptDate: string | null;
   total: number | null;
+  subtotal: number | null;
+  tax: number | null;
+  /** Tip, delivery and other fees */
+  tip: number | null;
+  /** auto | manual | created (a transaction made from it); null = unmatched */
+  matchedBy: 'auto' | 'manual' | 'created' | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
   /** False after restoring a backup on another installation: backups carry no files */
   hasFile: boolean;
+  /** The matched transaction, in lists */
+  transaction?: {
+    id: string;
+    date: string;
+    amount: number;
+    payeeName: string | null;
+    accountName: string;
+  } | null;
+}
+
+export interface LineItem {
+  description: string;
+  amount: number;
+  categoryId: string | null;
+}
+
+export interface ReceiptDetail extends Receipt {
+  lineItems: (LineItem & { id: string; position: number })[];
+}
+
+/** What matching added to the transaction */
+export interface AttachOutcome {
+  transactionId: string;
+  tagged: boolean;
+  notesAdded: boolean;
+  split: number;
+  categorised: boolean;
+  skipped: string | null;
+}
+
+export interface ReceiptSettings {
+  autoSplit: boolean;
+  addNotes: boolean;
+  addTag: boolean;
 }
 
 export interface ReceiptMatch {
@@ -68,10 +108,15 @@ export interface TaxYear {
 
 export const receiptFileUrl = (id: string) => `${API_BASE}/receipts/${encodeURIComponent(id)}/file`;
 
-export const listReceipts = (filter: { transactionId?: string; inbox?: boolean }) => {
+export const listReceipts = (filter: {
+  transactionId?: string;
+  inbox?: boolean;
+  status?: 'matched' | 'unmatched';
+}) => {
   const q = new URLSearchParams();
   if (filter.transactionId) q.set('transactionId', filter.transactionId);
   if (filter.inbox) q.set('inbox', '1');
+  if (filter.status) q.set('status', filter.status);
   return apiFetch<Receipt[]>(`/receipts?${q}`);
 };
 export const receiptCounts = () =>
@@ -85,18 +130,46 @@ export const uploadReceipt = (file: Blob, fileName: string, transactionId?: stri
     body: file,
   });
 };
-export const updateReceipt = (
-  id: string,
-  change: Partial<Pick<Receipt, 'transactionId' | 'merchant' | 'receiptDate' | 'total' | 'notes'>>,
-) =>
-  apiFetch<Receipt>(`/receipts/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(change),
-  });
+export type ReceiptChange = Partial<
+  Pick<
+    Receipt,
+    'transactionId' | 'merchant' | 'receiptDate' | 'total' | 'subtotal' | 'tax' | 'tip' | 'notes'
+  > & { lineItems: LineItem[] }
+>;
+export const getReceipt = (id: string) =>
+  apiFetch<ReceiptDetail>(`/receipts/${encodeURIComponent(id)}`);
+export const updateReceipt = (id: string, change: ReceiptChange) =>
+  apiFetch<ReceiptDetail & { outcome: AttachOutcome | null }>(
+    `/receipts/${encodeURIComponent(id)}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(change),
+    },
+  );
 export const deleteReceipt = (id: string) =>
   apiFetch<void>(`/receipts/${encodeURIComponent(id)}`, { method: 'DELETE' });
-export const receiptMatches = (id: string) =>
-  apiFetch<ReceiptMatch[]>(`/receipts/${encodeURIComponent(id)}/matches`);
+export const receiptMatches = (id: string, q?: string) =>
+  apiFetch<ReceiptMatch[]>(
+    `/receipts/${encodeURIComponent(id)}/matches${q ? `?q=${encodeURIComponent(q)}` : ''}`,
+  );
+export const createTransactionFromReceipt = (
+  id: string,
+  body: { accountId: string; categoryId?: string | null },
+) =>
+  apiFetch<ReceiptDetail & { outcome: AttachOutcome }>(
+    `/receipts/${encodeURIComponent(id)}/transaction`,
+    { method: 'POST', body: JSON.stringify(body) },
+  );
+export const splitReceiptByItems = (id: string) =>
+  apiFetch<AttachOutcome>(`/receipts/${encodeURIComponent(id)}/split`, { method: 'POST' });
+export const matchReceiptsNow = () =>
+  apiFetch<{ matched: number }>('/receipts/match', { method: 'POST' });
+export const getReceiptSettings = () => apiFetch<ReceiptSettings>('/receipts/settings');
+export const setReceiptSettings = (change: Partial<ReceiptSettings>) =>
+  apiFetch<ReceiptSettings>('/receipts/settings', {
+    method: 'PUT',
+    body: JSON.stringify(change),
+  });
 
 export const taxYears = () => apiFetch<{ financialYear: number; name: string }[]>('/tax/years');
 export const taxYear = (fy: number) => apiFetch<TaxYear>(`/tax/years/${fy}`);
