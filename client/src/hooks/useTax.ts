@@ -118,6 +118,9 @@ function useRefreshAll() {
       qc.invalidateQueries({ queryKey: TAX }),
       qc.invalidateQueries({ queryKey: ['transactions'] }),
       qc.invalidateQueries({ queryKey: ['tags'] }),
+      // A transaction made from a receipt changes its account's balance and the budget
+      qc.invalidateQueries({ queryKey: ['accounts'] }),
+      qc.invalidateQueries({ queryKey: ['review'] }),
     ]);
 }
 

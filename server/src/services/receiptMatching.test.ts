@@ -169,6 +169,22 @@ describe('automatic matching', () => {
     );
   });
 
+  it('never matches or categorises a balance adjustment', () => {
+    tx('fix', '2026-08-01', -1_000, 'Reconciliation', { isAdjustment: 1 });
+    const id = receipt({
+      merchant: 'Corner Shop',
+      receiptDate: '2026-08-01',
+      total: 1_000,
+      lineItems: [{ description: 'Snacks', amount: 1_000, categoryId: 'groceries' }],
+    });
+    expect(findAutoMatch(id)).toBeNull();
+    // Matched by hand: attached, but left uncategorised
+    expect(updateReceipt(id, { transactionId: 'fix' }).outcome?.skipped).toBe(
+      'A balance adjustment is not categorised or split from a receipt',
+    );
+    expect(row('fix').categoryId).toBeNull();
+  });
+
   it('compares merchant names by their letters and numbers', () => {
     expect(sameMerchant("McDonald's", 'MCDONALDS 123')).toBe(true);
     expect(sameMerchant('Coles', 'Woolworths')).toBe(false);

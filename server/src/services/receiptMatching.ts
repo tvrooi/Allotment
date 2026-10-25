@@ -125,6 +125,8 @@ export function findAutoMatch(receiptId: string): string | null {
         lte(transactions.date, shift(r.receiptDate, 7)),
         isNull(transactions.parentTransactionId),
         isNull(transactions.transferTransactionId),
+        // A balance correction is not a purchase, and categorising it would make it spending
+        eq(transactions.isAdjustment, 0),
         sql`not exists (select 1 from receipts x where x.transaction_id = ${transactions.id})`,
       ),
     )
@@ -294,6 +296,7 @@ function splitBlocker(target: typeof transactions.$inferSelect): string | null {
   if (target.reconciled === 1) return 'The transaction is reconciled, so it was not split';
   if (target.isParent === 1) return 'The transaction is already split';
   if (target.transferTransactionId) return 'A transfer cannot be split';
+  if (target.isAdjustment === 1) return 'A balance adjustment cannot be split';
   // A split's parent is no longer a deduction, so splitting would lose the claim
   if (db.select().from(taxClaims).where(eq(taxClaims.transactionId, target.id)).get())
     return 'The transaction is claimed as a tax deduction, so it was not split';
@@ -313,6 +316,8 @@ export function enrichFromReceipt(receiptId: string): AttachOutcome {
   if (!r?.transactionId) throw new ReceiptMatchError('The receipt is not matched');
   const target = db.select().from(transactions).where(eq(transactions.id, r.transactionId)).get()!;
   const settings = receiptSettings();
+  // Matched by hand to a balance correction: attach and tag only, never categorise or split it
+  const adjustment = target.isAdjustment === 1;
   const outcome: AttachOutcome = {
     transactionId: target.id,
     tagged: false,
@@ -341,7 +346,10 @@ export function enrichFromReceipt(receiptId: string): AttachOutcome {
     }
   }
   const categoryIds = [...new Set(items.map((i) => i.categoryId))];
-  if (settings.autoSplit && categoryIds.filter((c) => c !== null).length >= 2) {
+  if (adjustment) {
+    if (categoryIds.some((c) => c !== null))
+      outcome.skipped = 'A balance adjustment is not categorised or split from a receipt';
+  } else if (settings.autoSplit && categoryIds.filter((c) => c !== null).length >= 2) {
     const blocked =
       splitBlocker(target) ??
       (target.categoryId !== null

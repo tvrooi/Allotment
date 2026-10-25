@@ -345,6 +345,7 @@ export function suggestMatches(id: string, opts: { q?: string; limit?: number } 
         lte(transactions.date, shift(reach)),
         isNull(transactions.parentTransactionId),
         isNull(transactions.transferTransactionId),
+        eq(transactions.isAdjustment, 0),
         sql`${transactions.amount} < 0`,
         q
           ? sql`lower(coalesce(${transactions.payeeName}, '') || ' ' || coalesce(${transactions.importedPayee}, '') || ' ' || coalesce(${transactions.notes}, '')) like ${`%${q}%`}`
