@@ -11,6 +11,7 @@ import {
   householdBills,
   householdEvents,
   householdGroups,
+  householdPoolAccounts,
   paydayPlans,
   scheduleOccurrences,
   schedules,
@@ -256,14 +257,19 @@ function paydayEvents(
 
 /** Pool accounts receiving scheduled personal transfers already forecast as outflows. */
 function scheduledHouseholdContributions() {
-  const pools = new Set(
-    db
+  const pools = new Set([
+    ...db
       .select({ accountId: householdGroups.accountId })
       .from(householdGroups)
       .where(isNotNull(householdGroups.accountId))
       .all()
       .map((g) => g.accountId!),
-  );
+    ...db
+      .select({ accountId: householdPoolAccounts.accountId })
+      .from(householdPoolAccounts)
+      .all()
+      .map((p) => p.accountId),
+  ]);
   const personal = personalAccountIds();
   return db
     .select()

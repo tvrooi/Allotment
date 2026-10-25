@@ -390,7 +390,7 @@ function ActionRow({
   onChange: (a: RuleAction) => void;
   onRemove: () => void;
 }) {
-  const { lookups, tagOptions } = useRuleLookups();
+  const { lookups, tagOptions, householdOptions } = useRuleLookups();
   return (
     <div className="rounded-lg">
       <div className="flex flex-wrap items-start gap-2">
@@ -451,6 +451,29 @@ function ActionRow({
               <p className="text-xs text-text-tertiary pt-2">
                 Create a tag first in Settings → Tags or a transaction's details.
               </p>
+            ))}
+          {a.type === 'share_with_household' &&
+            (householdOptions.length ? (
+              <>
+                <select
+                  value={a.value}
+                  onChange={(e) => onChange({ ...a, value: e.target.value })}
+                  className={`${fieldClass} w-full`}
+                  aria-label="Household"
+                >
+                  <option value="">Choose a household…</option>
+                  {householdOptions.map((h) => (
+                    <option key={h.id} value={h.id}>
+                      {h.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-text-tertiary pt-1">
+                  Money out becomes a shared household expense, with the household's default split.
+                </p>
+              </>
+            ) : (
+              <p className="text-xs text-text-tertiary pt-2">Create a household first.</p>
             ))}
           {a.type === 'split' && (
             <p className="text-xs text-text-tertiary pt-2">

@@ -841,7 +841,23 @@ export const householdGroups = sqliteTable('household_groups', {
   accountId: text('account_id')
     .references(() => accounts.id, { onDelete: 'restrict' })
     .unique(),
+  /** How a quick-shared expense splits: { mode, shares: [{ personId, value }] }; null = equal */
+  defaultSplitJson: text('default_split_json'),
 });
+/** More pool accounts for a group (an Up 2Up spending account and its savers, say) */
+export const householdPoolAccounts = sqliteTable(
+  'household_pool_accounts',
+  {
+    groupId: text('group_id')
+      .notNull()
+      .references(() => householdGroups.id, { onDelete: 'cascade' }),
+    accountId: text('account_id')
+      .notNull()
+      .unique()
+      .references(() => accounts.id, { onDelete: 'restrict' }),
+  },
+  (t) => [primaryKey({ columns: [t.groupId, t.accountId] })],
+);
 export const householdPeople = sqliteTable('household_people', {
   id: text('id').primaryKey(),
   groupId: text('group_id')

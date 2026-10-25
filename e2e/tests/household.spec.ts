@@ -76,3 +76,41 @@ test('prepaid pool expenses do not create a second reimbursement claim', async (
   await expect(page.getByRole('heading', { name: 'People & balances' })).toBeVisible();
   await expect(page.getByText(/Received pool funding remaining:/)).toContainText('$0');
 });
+
+test('shares a payment with the household in one step, with the default split', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Everyday', 20000);
+  const payment = await api.createTransaction({
+    accountId: account.id,
+    date: '2026-10-21',
+    amount: -9000,
+    payeeName: 'Groceries run',
+  });
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Juno', 'Zephyr'],
+    selfIndex: 0,
+  });
+  await open(page, '/household');
+  const sharing = page.getByRole('region', { name: 'Sharing' });
+  await sharing.getByLabel('Split').selectOption('percentage');
+  await sharing.getByLabel("Me's percentage").fill('40');
+  await sharing.getByLabel("Juno's percentage").fill('30');
+  await sharing.getByLabel("Zephyr's percentage").fill('30');
+  await sharing.getByRole('button', { name: 'Save split' }).click();
+  await expect(sharing).toContainText('Now Me 40%, Juno 30%, Zephyr 30%');
+
+  await open(page, `/accounts/${account.id}`);
+  await page.getByText('Groceries run').first().click();
+  await page.getByRole('button', { name: 'Share with household' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Share with household' });
+  await dialog.getByRole('button', { name: 'Share', exact: true }).click();
+  await expect(dialog.getByRole('status')).toHaveText('Shared 1.');
+  const state = await api.call('GET', `/households/${group.group.id}`);
+  const event = state.events.find((e: { transactionId: string }) => e.transactionId === payment.id);
+  expect(event.shares.map((s: { amount: number }) => s.amount)).toEqual([3600, 2700, 2700]);
+});

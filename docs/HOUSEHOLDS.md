@@ -23,6 +23,28 @@ Two accounting policies work together:
   another expense or salary. Do not add this report's shares to your personal
   contribution-based budget totals; these answer different questions.
 
+## More pool accounts, default splits and sharing in one step
+
+A household can have **several pool accounts** (**Household → Sharing → Household accounts**),
+for example an Up 2Up spending account and the 2Up saver its bills come from. Each one leaves
+the personal budget exactly as the first does, and pool expenses and contributions may use any
+of them. An account belongs to at most one household. The first pool account stays; others can
+be removed while no household entry links one of their transactions.
+
+The **default split** (equal, percentages in basis points, or weights) is what quick sharing
+uses. **Share with household** records a payment as an expense with that split: paid by you
+when it left a personal account, or by the pool when it left a pool account (which needs
+received contributions, as before). From the register it shares every payment in the current
+list, each checked on its own, so one refusal doesn't stop the rest; **Undo** removes the
+entries it made. A rule action, **Share with household**, does the same for matching payments
+as they import (or when the rule is applied to existing transactions), and never fails an
+import: a payment the household checks refuse is left unshared.
+
+**Repayment suggestions** list money received in your personal accounts within the last 120
+days whose payee contains the name of someone who owes the household, up to what they owe and
+what is owed to you, and not yet linked. **Record repayment** saves it as their settlement to
+you. Nothing is recorded without that click.
+
 ## Expenses and people
 
 Record a shared expense with a date, total, payer and participants. Choose equal,

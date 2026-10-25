@@ -125,7 +125,8 @@ export function minorToDecimal(amount: number, minor: number): string {
  * `total` split in proportion to `weights` (signed, like split parts), adding up to exactly
  * `total`: each part is rounded down and the leftover units go to the largest remainders.
  * For the main-currency value of a transaction's split parts. Weights adding up to zero
- * split it evenly.
+ * split it evenly. Opposite-signed weights can make parts larger than the total; a part too
+ * large to be an exact number throws a RangeError, as convertMinor does.
  */
 export function allocate(total: number, weights: number[]): number[] {
   if (weights.length === 0) return [];
@@ -154,5 +155,8 @@ export function allocate(total: number, weights: number[]): number[] {
     shares[i] += 1n;
     left -= 1n;
   }
+  const safe = BigInt(Number.MAX_SAFE_INTEGER);
+  if (shares.some((s) => s > safe || s < -safe))
+    throw new RangeError('Allocated part is out of range');
   return shares.map((s) => Number(s));
 }
