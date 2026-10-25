@@ -12,6 +12,7 @@
   - Files are checked by their contents and served so they can never run as a page.
   - Assistant (read-only) tokens cannot see receipts or claims.
 - See [receipts and tax](docs/RECEIPTS-AND-TAX.md).
+- Fix: in the long-term forecast, super fees that emptied a small fund still left its old balance earning (or losing) returns, so the balance could go below zero. Fees now leave the fund before growth.
 
 ## 0.2.0-up.41
 

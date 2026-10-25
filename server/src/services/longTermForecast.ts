@@ -1375,7 +1375,9 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
     let growthTotal = 0;
     let superEarningsTax = 0;
     for (const a of accounts) {
-      const out = (withdrawn.get(a.id) ?? 0) + (drawn.get(a.id) ?? 0);
+      // Fees left the fund this year too, so they earn nothing and lose nothing
+      const out =
+        (withdrawn.get(a.id) ?? 0) + (drawn.get(a.id) ?? 0) + (a === superTarget ? superFees : 0);
       const base = Math.max(0, a.opening - out);
       const rate = options.growthBps ? options.growthBps(k, a) : a.growthBps;
       const g = mulDiv(base, rate, BPS);
