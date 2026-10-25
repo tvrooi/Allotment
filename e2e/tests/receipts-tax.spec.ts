@@ -60,8 +60,7 @@ test('a receipt is attached, claimed and listed for tax time; the inbox matches 
   await item.getByLabel('Receipt date').fill(isoDay());
   await item.getByLabel('Receipt total').fill('6.50');
   await item.getByLabel('Receipt total').blur();
-  await expect(item).toContainText('same total');
-  await item.getByRole('button', { name: 'Attach' }).first().click();
+  // Same amount and day: matched as soon as its details are saved, so it leaves the inbox
   await expect(page.getByText('The inbox is empty.')).toBeVisible();
   const attached = await api.call('GET', `/receipts?transactionId=${coffee.id}`);
   expect(attached).toHaveLength(1);

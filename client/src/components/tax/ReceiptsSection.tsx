@@ -1,5 +1,6 @@
 import { useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
 import { FileText, Paperclip, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { receiptFileUrl, type Receipt } from '../../api/tax';
 import { useDeleteReceipt, useReceipts, useUploadReceipt } from '../../hooks/useTax';
 
@@ -117,7 +118,13 @@ export function ReceiptsSection({ transactionId }: { transactionId: string }) {
           {receipts.map((r) => (
             <li key={r.id} className="flex items-center gap-3">
               <ReceiptThumb receipt={r} size={44} />
-              <span className="flex-1 min-w-0 text-sm text-text truncate">{r.fileName}</span>
+              <Link
+                to={`/transactions?view=receipts&receipt=${encodeURIComponent(r.id)}`}
+                className="flex-1 min-w-0 text-sm text-text truncate hover:text-brand-600"
+                title="Open the receipt's details"
+              >
+                {r.merchant ?? r.fileName}
+              </Link>
               {!r.hasFile && <span className="text-xs text-caution">File not here</span>}
               <button
                 type="button"

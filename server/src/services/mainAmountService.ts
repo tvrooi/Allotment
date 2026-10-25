@@ -39,6 +39,9 @@ export function getBudgetSettings(): BudgetSettings {
       ratesLastFetchedAt: null,
       ratesLastError: null,
       budgetStartMonth: null,
+      receiptAutoSplit: 1,
+      receiptAddNotes: 1,
+      receiptAddTag: 1,
       updatedAt: new Date(0).toISOString(),
     }
   );

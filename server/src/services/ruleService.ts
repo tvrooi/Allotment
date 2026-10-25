@@ -10,6 +10,7 @@ import {
 } from '../db/schema.js';
 import { shareTransaction } from './householdService.js';
 import { claimByRule, claimedIds } from './taxService.js';
+import { scheduleReceiptMatching } from './receiptMatching.js';
 import { and, desc, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import {
@@ -182,6 +183,8 @@ export function insertNewTransaction(input: NewTransactionInput, opts: InsertOpt
     for (const tagId of ruleTags) addTransactionTag(row.id, tagId);
     if (share) shareByRule(share, row.id);
     if (taxLabel) claimByRule(row.id, taxLabel);
+    // A receipt waiting for this transaction is matched once the import is done
+    scheduleReceiptMatching();
     return { transaction: row, children: [] };
   }
 
@@ -205,6 +208,7 @@ export function insertNewTransaction(input: NewTransactionInput, opts: InsertOpt
     for (const c of children) db.insert(transactions).values(c).run();
     for (const tagId of ruleTags) addTransactionTag(parent.id, tagId);
   });
+  scheduleReceiptMatching();
   return { transaction: parent, children };
 }
 

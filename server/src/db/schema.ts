@@ -321,7 +321,7 @@ export const receiptFiles = sqliteTable('receipt_files', {
   createdAt: text('created_at').notNull(),
 });
 
-/** A receipt: a file, what it says, and the transaction it belongs to (null = in the inbox) */
+/** A receipt: a file, what it says, and the transaction it belongs to (null = unmatched) */
 export const receipts = sqliteTable(
   'receipts',
   {
@@ -337,6 +337,12 @@ export const receipts = sqliteTable(
     receiptDate: text('receipt_date'),
     /** What the receipt says was paid, in cents of the transaction's currency */
     total: integer('total'),
+    subtotal: integer('subtotal'),
+    tax: integer('tax'),
+    /** Tip, delivery and other fees */
+    tip: integer('tip'),
+    /** How it was matched: auto | manual | created (a transaction made from it); null = unmatched */
+    matchedBy: text('matched_by'),
     notes: text('notes'),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
@@ -348,6 +354,23 @@ export const receipts = sqliteTable(
  * A transaction claimed as a tax deduction: its ATO return label (D1 car … D10 tax affairs,
  * D15 other) and the share of it that is for work. Australian financial years only.
  */
+/** What a receipt lists, each with the category it belongs to (for autosplit) */
+export const receiptLineItems = sqliteTable(
+  'receipt_line_items',
+  {
+    id: text('id').primaryKey(),
+    receiptId: text('receipt_id')
+      .notNull()
+      .references(() => receipts.id, { onDelete: 'cascade' }),
+    position: integer('position').notNull(),
+    description: text('description').notNull(),
+    /** Cents, positive for something bought */
+    amount: integer('amount').notNull(),
+    categoryId: text('category_id').references(() => categories.id, { onDelete: 'set null' }),
+  },
+  (table) => [index('receipt_line_items_receipt_idx').on(table.receiptId)],
+);
+
 export const taxClaims = sqliteTable('tax_claims', {
   transactionId: text('transaction_id')
     .primaryKey()
@@ -859,6 +882,12 @@ export const budgetSettings = sqliteTable('budget_settings', {
    * assignments stay in the register and reports but don't carry into envelopes.
    */
   budgetStartMonth: text('budget_start_month'),
+  /** Receipts: split a matched transaction by its line items' categories (1 = on) */
+  receiptAutoSplit: integer('receipt_auto_split').notNull().default(1),
+  /** Receipts: add the receipt's notes and items to a matched transaction's notes */
+  receiptAddNotes: integer('receipt_add_notes').notNull().default(1),
+  /** Receipts: tag a matched transaction "Receipt" */
+  receiptAddTag: integer('receipt_add_tag').notNull().default(1),
   updatedAt: text('updated_at')
     .notNull()
     .default(sql`(datetime('now'))`),

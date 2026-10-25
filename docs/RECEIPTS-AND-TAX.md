@@ -87,6 +87,47 @@ The owner types a receipt's date and total, and matching uses those.
   - The ZIP writer is dependency-free (stored entries, CRC-32, UTF-8 names), and is checked with
     `unzip -t` and in tests.
 
+## 6. The Receipts tab (Monarch parity)
+
+From Monarch's "Importing Receipts into Monarch" help article: receipts are general purchase
+records, not only tax evidence.
+
+- **Where:** **Transactions → Receipts** (`?view=receipts`, with `&receipt=<id>` for the one open),
+  beside All. Filters are All, Unmatched and Matched. There are **Upload** (several files, drop or
+  paste), **Scan receipt** (`capture="environment"`, the camera on a phone; also in the All tab's
+  header, like Monarch's Add → Scan receipt), **Match now** and **Settings**.
+- **What a receipt says** (typed, not read by AI): merchant, date, amount (total), subtotal, tax,
+  tip and fees, notes, and line items (description, amount, category) in `receipt_line_items`.
+- **Automatic matching** (`receiptMatching.findAutoMatch`), on Monarch's rules:
+  - money out of exactly the receipt's total, top-level, not a transfer, with no receipt yet;
+  - the same merchant (letters and digits, either name containing the other, at least 3
+    characters) from 2 days before to 7 days after the receipt's date;
+  - otherwise any merchant within a day;
+  - more than one candidate means no match (never guess).
+- **When it runs:** when a receipt's details are saved (at once, so the page can say what
+  happened), and after each new transaction once the import is done (`scheduleReceiptMatching`,
+  because a split can't start inside an import's own database transaction). **Match now** retries
+  every unmatched receipt.
+- **One attach path** (`attachReceipt`) for automatic, Find match, inbox Attach, upload onto a
+  transaction and Add transaction:
+  - tag **Receipt**;
+  - append the receipt's notes and item names to the transaction's notes (unless reconciled);
+  - **autosplit**, when items name two or more categories, by `splitTransaction`. Each category's
+    weight is its items, plus tax in proportion to those items, plus tip and fees shared evenly
+    per item, apportioned exactly to the transaction's own amount (largest remainder, BigInt);
+  - with one category, set it only when the transaction has none.
+  - A reconciled, already split or transfer transaction is not split, and the outcome says why.
+  - The amount is never changed. Settings live in `budget_settings` (`receipt_auto_split`,
+    `receipt_add_notes`, `receipt_add_tag`, all on by default).
+- **Unmatched:** **Find match** searches top-level money out by payee, bank description or notes,
+  60 days either side. **Add transaction** makes one through `insertNewTransaction` (rules run),
+  from the merchant, date and amount, in an account you choose.
+- **Unmatch** keeps what was added to the transaction. Deleting a receipt never deletes a
+  transaction; deleting a transaction makes its receipts unmatched.
+- **Backups:** format 19 adds `receiptLineItems`; format 18 backups restore with no line items.
+- **Not built:** email forwarding (it needs an inbound mail service exposed to the internet), AI
+  reading of receipts, and a "pending" state (FlyBudget imports settled transactions only).
+
 ## 5. Not built
 
 - Email forwarding, OCR or AI reading of receipts, and line-item splits.

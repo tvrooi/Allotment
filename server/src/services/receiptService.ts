@@ -1,6 +1,7 @@
 // Receipts (docs/RECEIPTS-AND-TAX.md): files kept with the budget, matched to the transaction
 // they prove. A file is stored once per content in receipt_files; a receipt row says what it
-// is and which transaction it belongs to. Receipts never change a transaction.
+// is and which transaction it belongs to. Matching and what it adds to a transaction (a tag,
+// notes, a split by category; never a new amount) are in receiptMatching.ts.
 import { createHash } from 'node:crypto';
 import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -8,6 +9,15 @@ import { addDays, format, parseISO } from 'date-fns';
 import { db } from '../db/index.js';
 import { accounts, receiptFiles, receipts, transactions } from '../db/schema.js';
 import { extensionOf } from './receiptMeta.js';
+import {
+  attachReceipt,
+  detachReceipt,
+  findAutoMatch,
+  lineItems,
+  setLineItems,
+  type LineItemInput,
+} from './receiptMatching.js';
+import { insertNewTransaction } from './ruleService.js';
 
 export class ReceiptError extends Error {
   constructor(
@@ -97,6 +107,10 @@ export function addReceipt(input: {
     merchant: null,
     receiptDate: null,
     total: null,
+    subtotal: null,
+    tax: null,
+    tip: null,
+    matchedBy: input.transactionId ? 'manual' : null,
     notes: null,
     createdAt: stamp,
     updatedAt: stamp,
@@ -114,7 +128,9 @@ export function addReceipt(input: {
       .run();
     tx.insert(receipts).values(row).run();
   });
-  return withFile(row);
+  // Added to a transaction: attached the same way as any match (its tag; no details yet)
+  if (input.transactionId) attachReceipt(row.id, input.transactionId, 'manual');
+  return withFile(receiptRow(row.id));
 }
 
 /** A receipt with whether its file is on this installation (a backup carries no files) */
@@ -129,13 +145,36 @@ function withFile<T extends { fileId: string }>(row: T) {
   };
 }
 
-export function listReceipts(filter: { transactionId?: string; inbox?: boolean } = {}) {
+export function listReceipts(
+  filter: { transactionId?: string; inbox?: boolean; matched?: boolean } = {},
+) {
   const where = filter.transactionId
     ? eq(receipts.transactionId, filter.transactionId)
-    : filter.inbox
+    : filter.inbox || filter.matched === false
       ? isNull(receipts.transactionId)
-      : undefined;
+      : filter.matched
+        ? isNotNull(receipts.transactionId)
+        : undefined;
   const rows = db.select().from(receipts).where(where).orderBy(desc(receipts.createdAt)).all();
+  // The transaction each matched receipt belongs to, for the Receipts tab
+  const txIds = [...new Set(rows.map((r) => r.transactionId).filter((t): t is string => !!t))];
+  const matched = new Map(
+    txIds.length
+      ? db
+          .select({
+            id: transactions.id,
+            date: transactions.date,
+            amount: transactions.amount,
+            payeeName: transactions.payeeName,
+            accountName: accounts.name,
+          })
+          .from(transactions)
+          .innerJoin(accounts, eq(accounts.id, transactions.accountId))
+          .where(inArray(transactions.id, txIds))
+          .all()
+          .map((t) => [t.id, t])
+      : [],
+  );
   const present = new Set(
     rows.length
       ? db
@@ -146,7 +185,31 @@ export function listReceipts(filter: { transactionId?: string; inbox?: boolean }
           .map((f) => f.id)
       : [],
   );
-  return rows.map((r) => ({ ...r, hasFile: present.has(r.fileId) }));
+  return rows.map((r) => ({
+    ...r,
+    hasFile: present.has(r.fileId),
+    transaction: r.transactionId ? (matched.get(r.transactionId) ?? null) : null,
+  }));
+}
+
+/** One receipt with its line items and the transaction it is matched to */
+export function getReceipt(id: string) {
+  const row = withFile(receiptRow(id));
+  const transaction = row.transactionId
+    ? (db
+        .select({
+          id: transactions.id,
+          date: transactions.date,
+          amount: transactions.amount,
+          payeeName: transactions.payeeName,
+          accountName: accounts.name,
+        })
+        .from(transactions)
+        .innerJoin(accounts, eq(accounts.id, transactions.accountId))
+        .where(eq(transactions.id, row.transactionId))
+        .get() ?? null)
+    : null;
+  return { ...row, transaction, lineItems: lineItems(id) };
 }
 
 /** How many receipts each transaction has, for the register's paperclips */
@@ -166,16 +229,62 @@ export function updateReceipt(
     merchant?: string | null;
     receiptDate?: string | null;
     total?: number | null;
+    subtotal?: number | null;
+    tax?: number | null;
+    tip?: number | null;
     notes?: string | null;
+    lineItems?: LineItemInput[];
   },
 ) {
-  receiptRow(id);
-  if (change.transactionId) assertTransaction(change.transactionId);
-  db.update(receipts)
-    .set({ ...change, updatedAt: now() })
-    .where(eq(receipts.id, id))
-    .run();
-  return withFile(receiptRow(id));
+  const before = receiptRow(id);
+  const { transactionId, lineItems: items, ...fields } = change;
+  if (transactionId) assertTransaction(transactionId);
+  if (Object.keys(fields).length)
+    db.update(receipts)
+      .set({ ...fields, updatedAt: now() })
+      .where(eq(receipts.id, id))
+      .run();
+  if (items) setLineItems(id, items);
+  // Matching goes through one path, so a match by hand is enriched like an automatic one
+  let outcome = null;
+  if (transactionId === null && before.transactionId) detachReceipt(id);
+  else if (transactionId && transactionId !== before.transactionId)
+    outcome = attachReceipt(id, transactionId, 'manual');
+  else if (!before.transactionId && transactionId === undefined) {
+    // Its details may now match a transaction: try at once, so the page can say so
+    const match = findAutoMatch(id);
+    if (match) outcome = attachReceipt(id, match, 'auto');
+  }
+  return { ...getReceipt(id), outcome };
+}
+
+/**
+ * Make the transaction a receipt is for, when it will never arrive from a bank (cash, or an
+ * account without bank sync), and attach the receipt. Rules run on it as on any new transaction.
+ */
+export function createTransactionFromReceipt(
+  id: string,
+  input: { accountId: string; categoryId?: string | null },
+) {
+  const r = receiptRow(id);
+  if (r.transactionId) throw new ReceiptError('This receipt is already matched');
+  if (r.total === null || r.total <= 0 || !r.receiptDate || !r.merchant)
+    throw new ReceiptError('Add the merchant, date and amount first');
+  if (!db.select({ id: accounts.id }).from(accounts).where(eq(accounts.id, input.accountId)).get())
+    throw new ReceiptError('Account not found', 404);
+  const { transaction } = insertNewTransaction({
+    accountId: input.accountId,
+    date: r.receiptDate,
+    amount: -r.total,
+    payeeId: null,
+    payeeName: r.merchant,
+    importedPayee: null,
+    notes: null,
+    categoryId: input.categoryId ?? null,
+    importedId: null,
+  });
+  const outcome = attachReceipt(id, transaction.id, 'created');
+  return { ...getReceipt(id), outcome };
 }
 
 /** Delete a receipt, and its file once no receipt uses it */
@@ -207,9 +316,13 @@ export function receiptFile(id: string) {
  * Transactions a receipt probably belongs to: money out within 10 days of its date (or of when
  * it was added), closest first, and an exact match on its total first of all.
  */
-export function suggestMatches(id: string, limit = 5) {
+export function suggestMatches(id: string, opts: { q?: string; limit?: number } = {}) {
   const row = receiptRow(id);
+  const limit = opts.limit ?? 5;
+  const q = opts.q?.trim().toLowerCase();
   const day = row.receiptDate ?? row.createdAt.slice(0, 10);
+  // Searching by name looks further: 60 days either side
+  const reach = q ? 60 : 10;
   const shift = (n: number) => format(addDays(parseISO(day), n), 'yyyy-MM-dd');
   const candidates = db
     .select({
@@ -223,11 +336,14 @@ export function suggestMatches(id: string, limit = 5) {
     .innerJoin(accounts, eq(accounts.id, transactions.accountId))
     .where(
       and(
-        gte(transactions.date, shift(-10)),
-        lte(transactions.date, shift(10)),
-        eq(transactions.isParent, 0),
+        gte(transactions.date, shift(-reach)),
+        lte(transactions.date, shift(reach)),
+        isNull(transactions.parentTransactionId),
         isNull(transactions.transferTransactionId),
         sql`${transactions.amount} < 0`,
+        q
+          ? sql`lower(coalesce(${transactions.payeeName}, '') || ' ' || coalesce(${transactions.importedPayee}, '') || ' ' || coalesce(${transactions.notes}, '')) like ${`%${q}%`}`
+          : undefined,
       ),
     )
     .all();
@@ -236,7 +352,10 @@ export function suggestMatches(id: string, limit = 5) {
   const exact = (amount: number) => row.total !== null && -amount === row.total;
   return candidates
     .filter(
-      (c) => row.total === null || Math.abs(-c.amount - row.total) <= Math.max(100, row.total / 5),
+      (c) =>
+        !!q ||
+        row.total === null ||
+        Math.abs(-c.amount - row.total) <= Math.max(100, row.total / 5),
     )
     .map((c) => ({ ...c, exactAmount: exact(c.amount), daysApart: Math.round(days(c.date)) }))
     .sort(

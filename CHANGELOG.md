@@ -1,5 +1,14 @@
 # Changes
 
+## 0.2.0-up.43
+
+- **Receipts tab** on Transactions, like Monarch's: every receipt, matched or not, for any purchase (not only tax). Upload several at once, drop or paste them, or **Scan receipt** with a phone's camera (also from the All tab).
+- **Receipt details:** merchant, date, amount, subtotal, tax, tip and fees, and line items with categories.
+- **Automatic matching** to money out of exactly the receipt's amount: from the same merchant up to 2 days before or 7 days after its date, or any merchant within a day. When two transactions could fit, you choose. Receipts that arrive first are matched when their transaction arrives from the bank.
+- Matched transactions are tagged **Receipt**, get the receipt's notes and items, and are **split by their items' categories** (tax in proportion, tip and fees evenly per item). The amount is never changed, and a category you chose is never replaced. Each step can be turned off in the tab's settings.
+- **Find match** searches your transactions; **Add transaction** makes one from a cash receipt; **Unmatch** puts a receipt back. Deleting a receipt never deletes its transaction.
+- Backup format 19 includes receipts' line items; format 18 backups restore unchanged.
+
 ## 0.2.0-up.42
 
 - **Receipts:** attach photos or PDFs to a transaction from its details: choose a file (the camera on a phone), drop one, or paste a screenshot. Photos are shrunk before they are saved. A paperclip in the register marks transactions with a receipt.

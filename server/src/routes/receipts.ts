@@ -4,7 +4,9 @@ import {
   MAX_RECEIPT_BYTES,
   ReceiptError,
   addReceipt,
+  createTransactionFromReceipt,
   deleteReceipt,
+  getReceipt,
   listReceipts,
   receiptCounts,
   receiptFile,
@@ -12,6 +14,12 @@ import {
   updateReceipt,
 } from '../services/receiptService.js';
 import { isoDate } from '../utils/validation.js';
+import {
+  ReceiptMatchError,
+  matchPendingReceipts,
+  receiptSettings,
+  updateReceiptSettings,
+} from '../services/receiptMatching.js';
 import { disposition } from '../utils/contentDisposition.js';
 
 // Receipts (docs/RECEIPTS-AND-TAX.md). Not on the read-only token allowlist: a token never
@@ -29,7 +37,7 @@ function action(handler: RequestHandler): RequestHandler {
     } catch (error) {
       if (error instanceof z.ZodError)
         return res.status(400).json({ error: error.issues.map((i) => i.message).join('; ') });
-      if (error instanceof ReceiptError)
+      if (error instanceof ReceiptError || error instanceof ReceiptMatchError)
         return res.status(error.status).json({ error: error.message });
       next(error);
     }
@@ -40,15 +48,50 @@ receiptsRouter.get(
   '/',
   action((req, res) => {
     const q = z
-      .object({ transactionId: id.optional(), inbox: z.enum(['1', 'true']).optional() })
+      .object({
+        transactionId: id.optional(),
+        inbox: z.enum(['1', 'true']).optional(),
+        status: z.enum(['matched', 'unmatched']).optional(),
+      })
       .parse(req.query);
-    res.json(listReceipts({ transactionId: q.transactionId, inbox: !!q.inbox }));
+    res.json(
+      listReceipts({
+        transactionId: q.transactionId,
+        inbox: !!q.inbox,
+        matched: q.status === undefined ? undefined : q.status === 'matched',
+      }),
+    );
   }),
 );
 
 receiptsRouter.get(
   '/counts',
   action((_req, res) => res.json(receiptCounts())),
+);
+
+receiptsRouter.get(
+  '/settings',
+  action((_req, res) => res.json(receiptSettings())),
+);
+receiptsRouter.put(
+  '/settings',
+  action((req, res) =>
+    res.json(
+      updateReceiptSettings(
+        z
+          .object({ autoSplit: z.boolean(), addNotes: z.boolean(), addTag: z.boolean() })
+          .partial()
+          .strict()
+          .parse(req.body),
+      ),
+    ),
+  ),
+);
+
+// Try every unmatched receipt now (matching also runs as new transactions arrive)
+receiptsRouter.post(
+  '/match',
+  action((_req, res) => res.json({ matched: matchPendingReceipts() })),
 );
 
 // The file is the body, as sent by the browser; its type is read from its first bytes
@@ -66,13 +109,28 @@ receiptsRouter.post(
   }),
 );
 
+const cents = z.number().int().min(0).max(1_000_000_000_00);
 const edit = z
   .object({
     transactionId: id.nullable(),
     merchant: z.string().trim().max(200).nullable(),
     receiptDate: isoDate.nullable(),
-    total: z.number().int().min(0).max(1_000_000_000_00).nullable(),
+    total: cents.nullable(),
+    subtotal: cents.nullable(),
+    tax: cents.nullable(),
+    tip: cents.nullable(),
     notes: z.string().max(5_000).nullable(),
+    lineItems: z
+      .array(
+        z
+          .object({
+            description: z.string().trim().min(1).max(200),
+            amount: cents,
+            categoryId: id.nullable(),
+          })
+          .strict(),
+      )
+      .max(200),
   })
   .partial()
   .strict();
@@ -80,6 +138,22 @@ const edit = z
 receiptsRouter.patch(
   '/:id',
   action((req, res) => res.json(updateReceipt(String(req.params.id), edit.parse(req.body)))),
+);
+
+receiptsRouter.get(
+  '/:id',
+  action((req, res) => res.json(getReceipt(String(req.params.id)))),
+);
+
+receiptsRouter.post(
+  '/:id/transaction',
+  action((req, res) => {
+    const body = z
+      .object({ accountId: id, categoryId: id.nullable().optional() })
+      .strict()
+      .parse(req.body);
+    res.status(201).json(createTransactionFromReceipt(String(req.params.id), body));
+  }),
 );
 
 receiptsRouter.delete(
@@ -92,7 +166,10 @@ receiptsRouter.delete(
 
 receiptsRouter.get(
   '/:id/matches',
-  action((req, res) => res.json(suggestMatches(String(req.params.id)))),
+  action((req, res) => {
+    const { q } = z.object({ q: z.string().max(100).optional() }).parse(req.query);
+    res.json(suggestMatches(String(req.params.id), q ? { q, limit: 20 } : {}));
+  }),
 );
 
 receiptsRouter.get(
