@@ -60,6 +60,27 @@ describe('Up transaction mapping', () => {
       ),
     );
   });
+  it('also removes a pending purchase’s round-up, which Up has already taken from the balance', () => {
+    const account = upAccountSchema.parse({
+      id: 'spending',
+      attributes: {
+        displayName: 'Up',
+        accountType: 'TRANSACTIONAL',
+        ownershipType: 'INDIVIDUAL',
+        balance: { currencyCode: 'AUD', valueInBaseUnits: 533 },
+      },
+    });
+    // A $164.96 pending purchase rounded up 4c: the settled balance is $170.33, not $170.29
+    const raw = upMockTransaction('pending-coles', -16496, 'HELD');
+    const held = upTransactionSchema.parse({
+      ...raw,
+      attributes: {
+        ...raw.attributes,
+        roundUp: { amount: { currencyCode: 'AUD', valueInBaseUnits: -4 }, boostPortion: null },
+      },
+    });
+    expect(upSettledBalance(account, [held])).toBe(17033);
+  });
   it.each([
     [-40, null], // ordinary change
     [-240, -200], // total already includes the boost

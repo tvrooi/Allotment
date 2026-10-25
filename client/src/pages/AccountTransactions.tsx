@@ -12,6 +12,7 @@ import { EditAccountModal } from '../components/accounts/EditAccountModal';
 import { UpdateValueModal } from '../components/accounts/UpdateValueModal';
 import { accountTypeInfo } from '../utils/accountTypes';
 import { CurrencyDifference } from '../components/currency/CurrencyDifference';
+import { BankBalanceHint } from '../components/accounts/BankBalanceHint';
 
 export default function AccountTransactionsPage() {
   const { id } = useParams<{ id: string }>();
@@ -62,6 +63,7 @@ export default function AccountTransactionsPage() {
               </span>
             )}
             <CurrencyDifference account={account} />
+            <BankBalanceHint accountId={account.id} />
           </div>
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>

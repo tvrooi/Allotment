@@ -103,7 +103,9 @@ export function upSettledBalance(account: UpAccount, history: UpTransaction[]): 
       (sum, t) =>
         sum +
         t.attributes.amount.valueInBaseUnits +
-        (t.attributes.cashback?.amount.valueInBaseUnits ?? 0),
+        (t.attributes.cashback?.amount.valueInBaseUnits ?? 0) +
+        // Up takes a pending purchase's round-up out of the balance too (to the Saver)
+        (t.attributes.roundUp?.amount.valueInBaseUnits ?? 0),
       0,
     );
   const balance = account.attributes.balance.valueInBaseUnits - held;

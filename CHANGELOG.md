@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.38
+
+- Fix: Up's settled balance left out the round-ups of **pending** purchases, which Up has already moved to your Saver. A Spending account with pending card purchases looked a few cents short of its register, the round-up check called the difference "unexplained", and the round-up repair stayed locked.
+- **Sync works like YNAB's:** a sync that reached Up and imported everything is a successful sync, and **Last synced** moves on. A register that differs from Up's balance no longer marks the connection as failed. It's a note to review: the account shows "Up says $X" beside its balance, linking to the round-up check or **Reconcile**. Connection, token and data problems are still errors.
+
 ## 0.2.0-up.37
 
 - **Several household accounts:** **Household → Sharing** adds more accounts to a household's pool, for example an Up 2Up spending account beside its bills saver. Each one leaves your personal budget like the first: rent paid from the joint account is the household's expense, and only your own transfers into it count, as your share, in the category you give them. Backup format 17 includes them; format 16 backups restore unchanged.
