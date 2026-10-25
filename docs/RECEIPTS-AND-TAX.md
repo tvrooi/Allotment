@@ -67,6 +67,8 @@ The owner types a receipt's date and total, and matching uses those.
   - D15 other deductions (for example income protection insurance).
 - **What can be claimed:** any non-split, non-transfer transaction. A split is claimed part by part,
   so the work part of a mixed purchase can be claimed on its own.
+- A transaction split or made a transfer after it was claimed keeps its claim row but drops out of
+  the year, the markers and the exports, so a split is never counted twice; undoing the split brings it back.
 - **Claim** = cost (the expense in the budget's currency) × work-use share, rounded half away from
   zero. A refund that is claimed reduces the claim.
 - **Financial year** runs 1 July to 30 June and is named by its start: 2026 is 2026–27.

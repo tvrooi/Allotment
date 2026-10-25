@@ -289,6 +289,65 @@ describe('tax deductions', () => {
     expect(entries[1].data.equals(jpeg())).toBe(true);
   });
 
+  it('leaves out a claim whose transaction was later split or made a transfer', async () => {
+    await call('PUT', '/tax/claims/laptop', { body: { label: 'D5' } });
+    await call('PUT', '/tax/claims/uniform', { body: { label: 'D3' } });
+    db.update(transactions)
+      .set({ isParent: 1 })
+      .where(sql`id = 'laptop'`)
+      .run();
+    db.update(transactions)
+      .set({ transferTransactionId: 'coffee' })
+      .where(sql`id = 'uniform'`)
+      .run();
+    expect(taxYear(2026).claims).toEqual([]);
+    expect((await call('GET', '/tax/claims')).body).toEqual([]);
+    // The claim row is kept: undo the split and it counts again
+    db.update(transactions)
+      .set({ isParent: 0 })
+      .where(sql`id = 'laptop'`)
+      .run();
+    expect(taxYear(2026).claims.map((c) => c.transactionId)).toEqual(['laptop']);
+  });
+
+  it('names every receipt in the archive uniquely, and neutralises formulas that look like numbers', async () => {
+    db.insert(transactions)
+      .values([
+        {
+          id: 'ow2',
+          accountId: 'card',
+          date: '2026-08-03',
+          amount: -2_000,
+          payeeName: 'Officeworks',
+          createdAt: 'x',
+        },
+        {
+          id: 'sum',
+          accountId: 'card',
+          date: '2026-08-04',
+          amount: -500,
+          payeeName: '-1+2',
+          createdAt: 'x',
+        },
+      ])
+      .run();
+    for (const id of ['laptop', 'ow2', 'sum'])
+      await call('PUT', `/tax/claims/${id}`, { body: { label: 'D5' } });
+    await call('POST', '/receipts?transactionId=laptop', { raw: jpeg('a') });
+    await call('POST', '/receipts?transactionId=ow2', { raw: jpeg('b') });
+    const names = readZip((await call('GET', '/tax/years/2026/archive')).bytes).map((e) => e.name);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'receipts/2026-08-03 D5 Officeworks.jpg',
+        'receipts/2026-08-03 D5 Officeworks 2.jpg',
+      ]),
+    );
+    expect(new Set(names).size).toBe(names.length);
+    const csv = (await call('GET', '/tax/years/2026/csv')).bytes.toString('utf8');
+    expect(csv).toContain(",'-1+2,");
+    expect(csv).not.toContain(',-1+2,');
+  });
+
   it('is claimed by a rule as a payment imports, never replacing a claim', () => {
     const rule = {
       id: 'r',

@@ -2,7 +2,7 @@
 // return, by return label, for one financial year (1 July to 30 June), with the receipts that
 // prove them. Claims never change a transaction or the budget. This is record keeping, not tax
 // advice: what is deductible is the owner's (or their tax agent's) call.
-import { and, asc, eq, gte, inArray, isNotNull, lte } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lte } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import {
   accounts,
@@ -117,11 +117,20 @@ export function removeClaim(transactionId: string) {
   db.delete(taxClaims).where(eq(taxClaims.transactionId, transactionId)).run();
 }
 
-/** Transaction ids with a claim, for the register's markers */
+/**
+ * A claim counts only while its transaction can still be claimed: one split or made a transfer
+ * after it was claimed keeps its claim row (undo the split and it is back) but is left out, so
+ * a split's parts are never counted twice.
+ */
+const claimable = and(eq(transactions.isParent, 0), isNull(transactions.transferTransactionId));
+
+/** Transaction ids with a claim that counts, for the register's markers */
 export function claimedIds(): string[] {
   return db
     .select({ id: taxClaims.transactionId })
     .from(taxClaims)
+    .innerJoin(transactions, eq(transactions.id, taxClaims.transactionId))
+    .where(claimable)
     .all()
     .map((r) => r.id);
 }
@@ -150,7 +159,7 @@ export function taxYear(fy: number) {
     .innerJoin(transactions, eq(transactions.id, taxClaims.transactionId))
     .innerJoin(accounts, eq(accounts.id, transactions.accountId))
     .leftJoin(categories, eq(categories.id, transactions.categoryId))
-    .where(and(gte(transactions.date, from), lte(transactions.date, to)))
+    .where(and(gte(transactions.date, from), lte(transactions.date, to), claimable))
     .orderBy(asc(transactions.date))
     .all();
 
@@ -249,7 +258,8 @@ export function taxYears(today: string) {
 const csvCell = (v: string | number | null | undefined) => {
   const s = v === null || v === undefined ? '' : String(v);
   // A leading = + - @ would run as a formula in a spreadsheet
-  const safe = /^[=+\-@\t\r]/.test(s) && !/^-?\d/.test(s) ? `'${s}` : s;
+  // Only a whole number (an amount) may start with a minus sign as it is
+  const safe = /^[=+\-@\t\r]/.test(s) && !/^-?\d+(\.\d+)?$/.test(s) ? `'${s}` : s;
   return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 };
 const dollars = (cents: number) => (cents / 100).toFixed(2);
@@ -312,8 +322,9 @@ export function taxYearArchive(fy: number) {
     : [];
   const byId = new Map(rows.map((r) => [r.id, r]));
   const used = new Set<string>();
+  const names = new Set<string>();
   for (const c of year.claims) {
-    c.receipts.forEach((r, i) => {
+    c.receipts.forEach((r) => {
       const file = byId.get(r.id);
       if (!file || used.has(r.id)) return;
       used.add(r.id);
@@ -322,8 +333,14 @@ export function taxYearArchive(fy: number) {
           .replace(/[^A-Za-z0-9 ._-]+/g, '')
           .trim()
           .slice(0, 40) || 'receipt';
+      // Unique across the whole archive, so unzipping never overwrites one receipt with another
+      const stem = `receipts/${c.date} ${c.label} ${payee}`;
+      const ext = extensionOf(file.mimeType);
+      let name = `${stem}.${ext}`;
+      for (let n = 2; names.has(name); n++) name = `${stem} ${n}.${ext}`;
+      names.add(name);
       files.push({
-        name: `receipts/${c.date} ${c.label} ${payee}${i ? ` ${i + 1}` : ''}.${extensionOf(file.mimeType)}`,
+        name,
         data: file.data as Buffer,
       });
     });
