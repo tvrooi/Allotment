@@ -71,6 +71,13 @@ export function AssetLiabilitySummary({ accounts }: Props) {
           until you retire from your preservation age.
         </p>
       )}
+      {accounts.some((a) => a.type === 'student_loan' && a.balance < 0) && (
+        <p className="mt-3 text-xs text-text-tertiary">
+          Study loans such as HECS-HELP charge no interest: they rise with indexation each 1 June
+          and are repaid from your pay once your income passes the threshold. The long-term forecast
+          shows when they are repaid.
+        </p>
+      )}
       <UnconvertedNote currencies={unconvertedCurrencies(accounts)} className="mt-3" />
     </div>
   );

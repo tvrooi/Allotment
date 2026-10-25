@@ -8,6 +8,7 @@ import type {
   Plan,
   PlanEvent,
   Split,
+  StudyLoanKind,
   When,
   YearResult,
 } from '../api/longTerm';
@@ -92,6 +93,14 @@ export function nominalRows(y: YearResult): BridgeRow[] {
   for (const e of y.eventFlows) {
     rows.push({ key: `event:${e.id}`, label: e.name, amount: e.amount, group: 'events' });
   }
+  if (y.studyWithheld) {
+    rows.push({
+      key: 'studyWithheld',
+      label: 'Pay withheld for study loans (not in take-home)',
+      amount: y.studyWithheld,
+      group: 'income',
+    });
+  }
   rows.push({ key: 'spending', label: 'Spending', amount: -y.spending, group: 'spending' });
   rows.push({
     key: 'loanPayments',
@@ -105,6 +114,28 @@ export function nominalRows(y: YearResult): BridgeRow[] {
     amount: y.loanPrincipal,
     group: 'loans',
   });
+  if (y.studyCompulsory) {
+    rows.push({
+      key: 'studyCompulsory',
+      label: 'Compulsory study loan repayment',
+      amount: -y.studyCompulsory,
+      group: 'loans',
+    });
+    rows.push({
+      key: 'studyReduced',
+      label: 'Study debt reduced by it',
+      amount: y.studyCompulsory,
+      group: 'loans',
+    });
+  }
+  if (y.studyIndexation) {
+    rows.push({
+      key: 'studyIndexation',
+      label: 'Study loan indexation',
+      amount: -y.studyIndexation,
+      group: 'loans',
+    });
+  }
   if (y.openedByEvents) {
     rows.push({
       key: 'opened',
@@ -230,6 +261,16 @@ export function worked(
 }
 
 // ─── Event drafts ────────────────────────────────────────────────────────────
+
+/** Study loan kinds, in the order the ATO applies compulsory repayments */
+export const STUDY_KIND_LABEL: Record<StudyLoanKind, string> = {
+  help: 'HECS-HELP or FEE-HELP',
+  vsl: 'VET Student Loan',
+  ssl: 'Student Start-up Loan',
+  abstudy_ssl: 'ABSTUDY Student Start-up Loan',
+  aasl: 'Australian Apprenticeship Support Loan',
+  other: 'Not a government study loan (ordinary loan)',
+};
 
 export const EVENT_KINDS: { kind: EventKind; label: string; help: string }[] = [
   { kind: 'home', label: 'Buy a home', help: 'Deposit, loan, rates and insurance, replacing rent' },

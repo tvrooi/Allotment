@@ -128,6 +128,44 @@ function NewPlanForm({
   );
 }
 
+/** When study debt is repaid, with and without the plan's extra payments */
+function StudySummary({ study }: { study: NonNullable<api.PlanResult['studyLoans']> }) {
+  const state = (m: api.PlanMoment | null) =>
+    m === null
+      ? 'not repaid within the plan'
+      : m.index === 0
+        ? 'already repaid'
+        : `repaid in ${m.calendarYear}, at ${m.age}`;
+  const saved = study.minimumOnly.indexationTotal - study.indexationTotal;
+  return (
+    <section
+      aria-label="Study loans"
+      className="rounded-md border border-border-light p-3 mb-6 text-sm space-y-1"
+    >
+      <p className="font-medium text-text">Study loans are {state(study.repaid)}.</p>
+      {study.voluntaryTotal > 0 ? (
+        <p className="text-text-secondary">
+          With compulsory repayments only they would be {state(study.minimumOnly.repaid)}. Extra
+          payments of {formatCurrency(study.voluntaryTotal)} save{' '}
+          {formatCurrency(Math.max(0, saved))} of indexation.
+        </p>
+      ) : (
+        <p className="text-text-secondary">
+          By compulsory repayments alone, with {formatCurrency(study.indexationTotal)} of indexation
+          added along the way. Add an extra yearly payment under Accounts to compare.
+        </p>
+      )}
+      {study.repaid === null && (
+        <p className="text-xs text-text-tertiary">
+          Repayments depend on income above a threshold that rises each year. If your pay does not
+          keep up, or stops, the indexed debt can outlast your working life.
+        </p>
+      )}
+      <p className="text-xs text-text-tertiary">Totals are in future dollars.</p>
+    </section>
+  );
+}
+
 export function LongTermForecast() {
   const plans = useQuery({ queryKey: ['lt-plans'], queryFn: api.listPlans });
   const [chosen, setChosen] = useState<string | null>(() => remember('lt-plan'));
@@ -489,6 +527,7 @@ function Editor({
       {r && (
         <>
           <StatCardRow variant="hero" cards={cards} />
+          {r.studyLoans && <StudySummary study={r.studyLoans} />}
           <NetWorthChart
             years={years}
             startYear={startYear}

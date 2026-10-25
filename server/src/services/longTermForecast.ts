@@ -33,6 +33,46 @@ export const MINIMUM_DRAWDOWN: { fromAge: number; bps: number }[] = [
   { fromAge: 95, bps: 1400 },
 ];
 
+/**
+ * Income-contingent study and training loans (HECS-HELP and the rest), in the order the ATO
+ * applies one compulsory repayment across several of them.
+ */
+export const STUDY_LOAN_KINDS = ['help', 'vsl', 'ssl', 'abstudy_ssl', 'aasl'] as const;
+export type StudyLoanKind = (typeof STUDY_LOAN_KINDS)[number];
+
+/**
+ * Compulsory repayment bands in today's dollars (2026–27): nothing up to the threshold, 15c of
+ * each dollar above it, 17c above the second, and 10% of all repayment income above the third.
+ * The thresholds rise with inflation in the forecast.
+ */
+export interface StudyRepaymentBands {
+  threshold: number;
+  second: number;
+  third: number;
+  firstBps: number;
+  secondBps: number;
+  topBps: number;
+}
+export const STUDY_REPAYMENT_BANDS: StudyRepaymentBands = {
+  threshold: 6_952_800,
+  second: 12_971_700,
+  third: 18_605_000,
+  firstBps: 1500,
+  secondBps: 1700,
+  topBps: 1000,
+};
+
+/** The year's compulsory repayment on a repayment income, with the bands as given */
+export function compulsoryStudyRepayment(income: number, b: StudyRepaymentBands): number {
+  if (income <= b.threshold) return 0;
+  if (income <= b.second) return mulDiv(income - b.threshold, b.firstBps, BPS);
+  if (income <= b.third)
+    return (
+      mulDiv(b.second - b.threshold, b.firstBps, BPS) + mulDiv(income - b.second, b.secondBps, BPS)
+    );
+  return mulDiv(income, b.topBps, BPS);
+}
+
 export function minimumDrawdownBps(age: number): number {
   let bps = MINIMUM_DRAWDOWN[0].bps;
   for (const step of MINIMUM_DRAWDOWN) if (age >= step.fromAge) bps = step.bps;
@@ -138,6 +178,12 @@ export interface PlanLoan {
   monthlyRepayment: number;
   /** Months left, or null for open-ended */
   termMonths: number | null;
+  /**
+   * An income-contingent study loan: no interest, indexed each year, repaid by the compulsory
+   * repayment on repayment income and by voluntary payments from surplus. Rate, repayment and
+   * term are ignored.
+   */
+  study?: { kind: StudyLoanKind; extraAnnual: number };
 }
 
 export type Escalation =
@@ -293,6 +339,16 @@ export interface WealthSplit {
   debts: number;
 }
 
+export interface StudyLoanRules {
+  /** Take-home pay already has compulsory repayments withheld, as an employer does */
+  withheldFromPay: boolean;
+  /** Repayment income beyond the gross salaries, today's dollars (investment income, fringe benefits) */
+  otherRepaymentIncome: number;
+  /** Yearly indexation; null follows inflation. Never below 0 (debts are not reduced by deflation) */
+  indexationBps: number | null;
+  bands: StudyRepaymentBands;
+}
+
 export interface ForecastPlan {
   startYear: number;
   startAge: number;
@@ -308,6 +364,8 @@ export interface ForecastPlan {
   /** Optional Age Pension: yearly amount in today's dollars from an age; no means test */
   agePension: { enabled: boolean; annual: number; startAge: number };
   extraSavingsGrowthBps: number;
+  /** How study loans are repaid; needed only when a loan is a study loan */
+  studyLoans?: StudyLoanRules;
   splits: SplitRule[];
   /** Account ids first in the withdrawal order; others follow in the default order */
   withdrawalOrder: string[];
@@ -367,6 +425,16 @@ export interface YearResult {
   superDrawdown: number;
   /** What super could do during this year */
   superPhase: SuperPhase;
+  /** Repayment income the compulsory study loan repayment was worked out on */
+  studyRepaymentIncome: number;
+  /** Indexation added to study debts (no interest is charged) */
+  studyIndexation: number;
+  /** Compulsory repayments applied to study debts (cash out, debt down) */
+  studyCompulsory: number;
+  /** Pay already withheld for study loans in the take-home figure, counted back as income */
+  studyWithheld: number;
+  /** Voluntary study loan payments from surplus (also an allocation) */
+  studyVoluntary: number;
   /** Net cash flow after loan payments (pension payments included) */
   netCashFlow: number;
   /** Moves between accounts: they change the mix, not net worth */
@@ -387,10 +455,27 @@ export interface YearResult {
   bridgeDifference: number;
 }
 
+export interface PlanMoment {
+  index: number;
+  calendarYear: number;
+  age: number;
+}
+
+export interface StudyLoanSummary {
+  /** Plan year every study debt is repaid in, or null if it never is */
+  repaid: PlanMoment | null;
+  indexationTotal: number;
+  voluntaryTotal: number;
+  /** The same loans with compulsory repayments only: no voluntary payments or pay-offs */
+  minimumOnly: { repaid: PlanMoment | null; indexationTotal: number };
+}
+
 export interface ForecastResult {
   /** Index 0 is today's snapshot (only balances and net worth are meaningful) */
   years: YearResult[];
   firstUnfunded: { index: number; calendarYear: number; age: number } | null;
+  /** Null when the plan has no study loans */
+  studyLoans: StudyLoanSummary | null;
   warnings: string[];
 }
 
@@ -472,6 +557,26 @@ export function validatePlan(plan: ForecastPlan): void {
     if (l.termMonths !== null && (!isInt(l.termMonths) || l.termMonths < 1)) {
       fail(`Loan ${l.name} term is invalid`);
     }
+    if (l.study) {
+      if (!STUDY_LOAN_KINDS.includes(l.study.kind)) fail(`Loan ${l.name} has an unknown kind`);
+      if (!isInt(l.study.extraAnnual) || l.study.extraAnnual < 0)
+        fail(`Loan ${l.name} extra payment must be non-negative whole cents`);
+      if (!plan.studyLoans) fail('A study loan needs the study loan rules');
+    }
+  }
+  if (plan.studyLoans) {
+    const r = plan.studyLoans;
+    if (!isInt(r.otherRepaymentIncome) || r.otherRepaymentIncome < 0)
+      fail('Other repayment income must be non-negative whole cents');
+    if (r.indexationBps !== null)
+      checkBps(r.indexationBps, 'Study loan indexation', -2000, MAX_RATE_BPS);
+    const b = r.bands;
+    for (const v of [b.threshold, b.second, b.third])
+      if (!isInt(v) || v < 0) fail('Study loan thresholds must be whole cents');
+    if (!(b.threshold <= b.second && b.second <= b.third)) fail('Study loan thresholds must rise');
+    checkBps(b.firstBps, 'Study loan rate');
+    checkBps(b.secondBps, 'Study loan rate');
+    checkBps(b.topBps, 'Study loan rate');
   }
 
   const sources = new Set<string>([SALARY_SOURCE_ID]);
@@ -596,6 +701,7 @@ interface LoanState {
   monthsLeft: number | null;
   /** Plan year the loan opened in; it makes no payments that year */
   openedIndex: number;
+  study?: { kind: StudyLoanKind; extraAnnual: number; order: number };
 }
 
 interface IncomeSource {
@@ -706,7 +812,7 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
   }
   const superTarget = accounts.find((a) => a.cls === 'super') as Acct;
 
-  const loans: LoanState[] = plan.loans.map((l) => ({
+  const loans: LoanState[] = plan.loans.map((l, i) => ({
     id: l.id,
     name: l.name,
     owed: 0 - l.balance,
@@ -714,7 +820,23 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
     repayment: l.monthlyRepayment,
     monthsLeft: l.termMonths,
     openedIndex: 0,
+    study: l.study
+      ? { ...l.study, order: STUDY_LOAN_KINDS.indexOf(l.study.kind) * 1000 + i }
+      : undefined,
   }));
+  // Compulsory repayments go to study loans in the ATO's order, then their order in the plan
+  const studyLoans = loans
+    .filter((l) => l.study)
+    .sort((a, b) => (a.study as { order: number }).order - (b.study as { order: number }).order);
+  const studyRules = plan.studyLoans;
+  const hasStudyDebt = studyLoans.some((l) => l.owed > 0);
+  /** The minimum-only shadow: the same loans with compulsory repayments and nothing else */
+  const shadow = new Map(studyLoans.map((l) => [l.id, l.owed]));
+  let shadowRepaid: PlanMoment | null = null;
+  let shadowIndexation = 0;
+  let studyRepaid: PlanMoment | null = null;
+  let studyIndexationTotal = 0;
+  let studyVoluntaryTotal = 0;
   let unfunded = 0;
 
   const events = plan.events
@@ -846,6 +968,11 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
       superEarningsTax: 0,
       superDrawdown: 0,
       superPhase: phaseOf(1),
+      studyRepaymentIncome: 0,
+      studyIndexation: 0,
+      studyCompulsory: 0,
+      studyWithheld: 0,
+      studyVoluntary: 0,
       netCashFlow: 0,
       withdrawals: [],
       allocations: [],
@@ -1040,7 +1167,7 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
     let loanInterest = 0;
     let loanPrincipal = lumpPrincipal;
     for (const loan of loans) {
-      if (loan.openedIndex === k) continue;
+      if (loan.openedIndex === k || loan.study) continue;
       const run = runLoanYear(loan);
       loanPayments += run.payments;
       loanInterest += run.interest;
@@ -1113,19 +1240,82 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
       }
     }
 
+    // 4b. Study loans: the compulsory repayment on this year's repayment income, applied in the
+    // ATO's order, then indexation on what is left (repayments are credited before 1 June)
+    let studyRepaymentIncome = 0;
+    let studyIndexation = 0;
+    let studyCompulsory = 0;
+    let studyWithheld = 0;
+    if (studyRules && studyLoans.length) {
+      for (const base of superBase)
+        studyRepaymentIncome += mulDiv(base.gross, base.remainingBps, BPS);
+      studyRepaymentIncome += mulDiv(studyRules.otherRepaymentIncome, inflation[k], PPB);
+      const b = studyRules.bands;
+      const scaled: StudyRepaymentBands = {
+        ...b,
+        threshold: mulDiv(b.threshold, inflation[k], PPB),
+        second: mulDiv(b.second, inflation[k], PPB),
+        third: mulDiv(b.third, inflation[k], PPB),
+      };
+      const due = compulsoryStudyRepayment(studyRepaymentIncome, scaled);
+      // Today's take-home has the withholding taken out, so it is income the plan never saw;
+      // once the debt is gone that pay is no longer withheld and arrives as cash
+      if (studyRules.withheldFromPay && hasStudyDebt) studyWithheld = due;
+      const rate = Math.max(0, studyRules.indexationBps ?? plan.inflationBps);
+      let left = due;
+      let shadowLeft = due;
+      for (const loan of studyLoans) {
+        const pay = Math.min(left, loan.owed);
+        loan.owed -= pay;
+        left -= pay;
+        studyCompulsory += pay;
+        const idx = mulDiv(loan.owed, rate, BPS);
+        loan.owed += idx;
+        studyIndexation += idx;
+        const s0 = shadow.get(loan.id) as number;
+        const sp = Math.min(shadowLeft, s0);
+        shadowLeft -= sp;
+        const sIdx = mulDiv(s0 - sp, rate, BPS);
+        shadow.set(loan.id, s0 - sp + sIdx);
+        shadowIndexation += sIdx;
+      }
+      studyIndexationTotal += studyIndexation;
+      if (!shadowRepaid && [...shadow.values()].every((v) => v <= 0))
+        shadowRepaid = { index: k, calendarYear, age };
+    }
+
     // 5. Surplus or deficit
     const eventTotal = [...eventFlows.values()].reduce((sum, r) => sum + r.amount, 0);
     const netCashFlow =
-      incomeTotal + pension + eventTotal - spending - loanPayments + superDrawdown;
+      incomeTotal +
+      pension +
+      eventTotal -
+      spending -
+      loanPayments +
+      superDrawdown +
+      studyWithheld -
+      studyCompulsory;
     const withdrawn = new Map<string, number>();
     const allocations: Row[] = [];
     let unfundedAdded = 0;
     let unfundedRepaid = 0;
     let superPersonal = 0;
+    let studyVoluntary = 0;
     if (netCashFlow >= 0) {
       unfundedRepaid = Math.min(unfunded, netCashFlow);
       unfunded -= unfundedRepaid;
       let remaining = netCashFlow - unfundedRepaid;
+      // Voluntary study loan payments next, never more than the debt or what is left
+      for (const loan of studyLoans) {
+        const extra = (loan.study as { extraAnnual: number }).extraAnnual;
+        if (!extra || remaining <= 0 || loan.owed <= 0) continue;
+        const pay = Math.min(remaining, loan.owed, mulDiv(extra, inflation[k], PPB));
+        loan.owed -= pay;
+        remaining -= pay;
+        studyVoluntary += pay;
+        allocations.push({ id: loan.id, name: loan.name, amount: pay });
+      }
+      studyVoluntaryTotal += studyVoluntary;
       // Personal contributions come first from what is left, while working and under 75
       if (rules.personalContribution && !retired && age < SUPER_PERSONAL_CONTRIBUTION_AGE) {
         superPersonal = Math.min(remaining, mulDiv(rules.personalContribution, inflation[k], PPB));
@@ -1202,6 +1392,8 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
     }
 
     // 7. Snapshot
+    if (hasStudyDebt && !studyRepaid && studyLoans.every((l) => l.owed <= 0))
+      studyRepaid = { index: k, calendarYear, age };
     const closingNetWorth = nominalWorth();
     const parts =
       incomeTotal +
@@ -1214,7 +1406,9 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
       superNet -
       superFees +
       growthTotal -
-      superEarningsTax;
+      superEarningsTax +
+      studyWithheld -
+      studyIndexation;
     results.push({
       index: k,
       calendarYear,
@@ -1239,6 +1433,11 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
       superEarningsTax,
       superDrawdown,
       superPhase: phase,
+      studyRepaymentIncome,
+      studyIndexation,
+      studyCompulsory,
+      studyWithheld,
+      studyVoluntary,
       netCashFlow,
       withdrawals: [...withdrawn].map(([id, amount]) => ({
         id,
@@ -1259,8 +1458,17 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
     });
   }
 
+  if (studyLoans.length && !studyRepaid && studyLoans.every((l) => l.owed <= 0)) {
+    // Repaid at the very start (a zero balance) is reported as plan year 0
+    studyRepaid = { index: 0, calendarYear: plan.startYear, age: plan.startAge };
+  }
+  if (hasStudyDebt && results.slice(1).every((y) => y.studyRepaymentIncome === 0)) {
+    warnings.push(
+      'Study loans have no repayment income, so no compulsory repayments are made: enter your gross salary',
+    );
+  }
   for (const loan of plan.loans) {
-    if (loan.balance === 0) continue;
+    if (loan.balance === 0 || loan.study) continue;
     const firstInterest = mulDiv(-loan.balance, loan.rateBps, MONTHLY_BPS);
     if (loan.monthlyRepayment === 0 && loan.rateBps === 0) {
       warnings.push(`${loan.name} has no repayment data and stays flat`);
@@ -1272,5 +1480,16 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
       warnings.push(`${loan.name}'s repayment does not cover its interest, so the balance grows`);
     }
   }
-  return { years: results, firstUnfunded, warnings };
+  const studySummary: StudyLoanSummary | null = studyLoans.length
+    ? {
+        repaid: studyRepaid,
+        indexationTotal: studyIndexationTotal,
+        voluntaryTotal: studyVoluntaryTotal,
+        minimumOnly: {
+          repaid: hasStudyDebt ? shadowRepaid : studyRepaid,
+          indexationTotal: shadowIndexation,
+        },
+      }
+    : null;
+  return { years: results, firstUnfunded, studyLoans: studySummary, warnings };
 }

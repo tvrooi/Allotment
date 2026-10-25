@@ -1,10 +1,10 @@
-import { useState, type Dispatch, type SetStateAction } from 'react';
+import { Fragment, useState, type Dispatch, type SetStateAction } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import * as api from '../../api/longTerm';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Input';
 import { formatCurrency } from '../../utils/currency';
-import { CLASS_LABEL } from '../../utils/longTerm';
+import { CLASS_LABEL, STUDY_KIND_LABEL } from '../../utils/longTerm';
 import { MoneyField, RateField, WholeNumberField } from './fields';
 
 const CLASSES: api.AccountClass[] = [
@@ -84,6 +84,82 @@ function LoanRow({ loan }: { loan: api.StartingPoint['loans'][number] }) {
           </span>
         )}
       </div>
+    </li>
+  );
+}
+
+const STUDY_KINDS = Object.keys(STUDY_KIND_LABEL) as api.StudyLoanKind[];
+
+/**
+ * A study loan's kind and voluntary payments. These belong to the plan, so they wait for Save
+ * like any other plan change. A HECS-HELP debt with no extra payments is the default.
+ */
+function StudyLoanRow({
+  loan,
+  plan,
+  setPlan,
+}: {
+  loan: api.StartingPoint['loans'][number];
+  plan: api.Plan;
+  setPlan: Dispatch<SetStateAction<api.Plan>>;
+}) {
+  const own = plan.settings.studyLoans.loans.find((l) => l.accountId === loan.id);
+  const guessed: api.StudyLoanKind = loan.studyKind ?? 'help';
+  const current = own ?? { accountId: loan.id, kind: guessed, extraAnnual: 0 };
+  const update = (change: Partial<typeof current>) =>
+    setPlan((p) => {
+      const next = { ...current, ...change };
+      const rest = p.settings.studyLoans.loans.filter((l) => l.accountId !== loan.id);
+      const isDefault = next.kind === guessed && next.extraAnnual === 0;
+      return {
+        ...p,
+        settings: {
+          ...p.settings,
+          studyLoans: { ...p.settings.studyLoans, loans: isDefault ? rest : [...rest, next] },
+        },
+      };
+    });
+  return (
+    <li
+      className="rounded-md border border-border-light p-3 space-y-3"
+      aria-label={`Study loan: ${loan.name}`}
+    >
+      <div className="flex justify-between gap-3 text-sm">
+        <span className="font-medium">{loan.name}</span>
+        <span className="tabular-nums text-negative">{formatCurrency(loan.balance)}</span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label className="block text-xs font-medium text-text-secondary space-y-1">
+          <span>{loan.name}: kind of loan</span>
+          <Select
+            aria-label={`${loan.name}: kind of loan`}
+            value={current.kind}
+            onChange={(e) => update({ kind: e.target.value as api.StudyLoanKind })}
+          >
+            {STUDY_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {STUDY_KIND_LABEL[k]}
+              </option>
+            ))}
+          </Select>
+        </label>
+        {current.kind !== 'other' && (
+          <MoneyField
+            label={`${loan.name}: extra payment per year (today's dollars)`}
+            value={current.extraAnnual}
+            onChange={(extraAnnual) => update({ extraAnnual })}
+            hint="Voluntary, paid from surplus before savings. 0 repays by the compulsory amount alone."
+          />
+        )}
+      </div>
+      {current.kind !== 'other' && (
+        <p className="text-xs text-text-tertiary">
+          No interest: the balance is indexed each 1 June, so in today's dollars it stays about the
+          same until repaid. Compulsory repayments depend on your income, not on this balance. Extra
+          payments save indexation, which is usually lower than a mortgage rate or investment
+          returns.
+        </p>
+      )}
     </li>
   );
 }
@@ -205,12 +281,23 @@ export function AccountsPanel({
           <>
             <p className="text-xs text-text-tertiary">
               A loan's rate, repayment and months left are saved on the account straight away, not
-              with the plan.
+              with the plan. A study loan's kind and extra payments are part of the plan and wait
+              for Save.
             </p>
             <ul className="space-y-3">
-              {point.loans.map((l) => (
-                <LoanRow key={l.id} loan={l} />
-              ))}
+              {point.loans.map((l) => {
+                const kind =
+                  plan.settings.studyLoans.loans.find((x) => x.accountId === l.id)?.kind ??
+                  l.studyKind ??
+                  'help';
+                if (l.type !== 'student_loan') return <LoanRow key={l.id} loan={l} />;
+                return (
+                  <Fragment key={l.id}>
+                    <StudyLoanRow loan={l} plan={plan} setPlan={setPlan} />
+                    {kind === 'other' && <LoanRow loan={l} />}
+                  </Fragment>
+                );
+              })}
             </ul>
           </>
         )}

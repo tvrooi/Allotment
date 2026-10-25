@@ -144,7 +144,7 @@ export const ACCOUNT_TYPES: AccountTypeInfo[] = [
     group: 'loans',
     liability: true,
     onBudget: false,
-    hint: 'HECS-HELP or another study loan',
+    hint: 'HECS-HELP, Student Start-up Loan or another study loan',
   },
   {
     value: 'loan',

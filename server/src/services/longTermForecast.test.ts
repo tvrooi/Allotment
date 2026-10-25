@@ -4,13 +4,17 @@ import {
   applyCappedReductions,
   EXTRA_SAVINGS_ID,
   forecastLongTerm,
+  compulsoryStudyRepayment,
   LongTermForecastError,
   minimumDrawdownBps,
+  STUDY_REPAYMENT_BANDS,
   mulDiv,
   standardLoanPayment,
   type ForecastPlan,
   type LifeEvent,
   type PlanAccount,
+  type PlanLoan,
+  type StudyLoanKind,
 } from './longTermForecast.js';
 
 // Long-term forecast engine (docs/LONG-TERM-FORECAST.md). Mock numbers only.
@@ -708,6 +712,140 @@ describe('Australian super rules', () => {
   });
 });
 
+describe('study loans (HECS-HELP and SSL)', () => {
+  const study = (
+    id: string,
+    balance: number,
+    kind: StudyLoanKind = 'help',
+    extraAnnual = 0,
+  ): PlanLoan => ({
+    id,
+    name: id,
+    balance,
+    rateBps: 0,
+    monthlyRepayment: 0,
+    termMonths: null,
+    study: { kind, extraAnnual },
+  });
+  const rules = (over: Partial<NonNullable<ForecastPlan['studyLoans']>> = {}) => ({
+    withheldFromPay: true,
+    otherRepaymentIncome: 0,
+    indexationBps: 300,
+    bands: STUDY_REPAYMENT_BANDS,
+    ...over,
+  });
+  const paid = (over: Partial<ForecastPlan> = {}) =>
+    basePlan({
+      endAge: 45,
+      salary: { takeHome: 8_000_000, grossForSuper: 10_000_000, escalation: { mode: 'none' } },
+      super: { guaranteeBps: 0, contributionsTaxBps: 1500, preservationAge: 60 },
+      studyLoans: rules(),
+      ...over,
+    });
+
+  it('works out the compulsory repayment with the 2026–27 marginal bands', () => {
+    const due = (dollars: number) => compulsoryStudyRepayment(dollars * 100, STUDY_REPAYMENT_BANDS);
+    expect(due(69_528)).toBe(0);
+    expect(due(80_000)).toBe(157_080);
+    expect(due(150_000)).toBe(902_835 + 344_811);
+    expect(due(200_000)).toBe(2_000_000);
+    // The top band starts where the marginal bands reach 10% of income, within a few cents
+    expect(Math.abs(due(186_050) - due(186_051))).toBeLessThan(100);
+  });
+
+  it('repays from withheld pay, indexes what is left, and frees the pay once repaid', () => {
+    const result = forecastLongTerm(paid({ loans: [study('hecs', -1_000_000)] }));
+    const [, y1, y2, y3, y4] = result.years;
+    expect(y1).toMatchObject({
+      studyRepaymentIncome: 10_000_000,
+      studyCompulsory: 457_080,
+      studyWithheld: 457_080,
+      studyIndexation: 16_288,
+      netCashFlow: 2_000_000,
+    });
+    expect(y1.balances.hecs).toBe(-559_208);
+    expect(y2.balances.hecs).toBe(-105_192);
+    expect(y3).toMatchObject({ studyCompulsory: 105_192, studyIndexation: 0 });
+    expect(y3.netCashFlow).toBe(2_000_000 + 457_080 - 105_192);
+    // Repaid: the withholding stops, so all of it is cash
+    expect(y4.netCashFlow).toBe(2_457_080);
+    expect(result.studyLoans).toMatchObject({
+      repaid: { index: 3, calendarYear: 2029, age: 42 },
+      minimumOnly: { repaid: { index: 3 }, indexationTotal: 16_288 + 3_064 },
+    });
+    for (const y of result.years) expect(y.bridgeDifference).toBe(0);
+  });
+
+  it('takes voluntary payments from surplus and compares them with the minimum', () => {
+    const result = forecastLongTerm(paid({ loans: [study('hecs', -1_000_000, 'help', 500_000)] }));
+    expect(result.years[1].studyVoluntary).toBe(500_000);
+    expect(result.years[1].allocations[0]).toEqual({ id: 'hecs', name: 'hecs', amount: 500_000 });
+    expect(result.years[1].balances.hecs).toBe(-59_208);
+    expect(result.studyLoans).toMatchObject({
+      repaid: { index: 2 },
+      indexationTotal: 16_288,
+      voluntaryTotal: 500_000,
+      minimumOnly: { repaid: { index: 3 }, indexationTotal: 19_352 },
+    });
+  });
+
+  it('repays HELP before a Student Start-up Loan, whatever their order', () => {
+    const y = forecastLongTerm(
+      paid({
+        studyLoans: rules({ indexationBps: 0 }),
+        loans: [study('ssl', -300_000, 'ssl'), study('help', -300_000)],
+      }),
+    ).years[1];
+    expect(y.balances.help).toBe(0);
+    expect(y.balances.ssl).toBe(-(300_000 - 157_080));
+  });
+
+  it('pays from cash flow when take-home is before withholding', () => {
+    const y = forecastLongTerm(
+      paid({ studyLoans: rules({ withheldFromPay: false }), loans: [study('hecs', -1_000_000)] }),
+    ).years[1];
+    expect(y).toMatchObject({ studyWithheld: 0, netCashFlow: 2_000_000 - 457_080 });
+  });
+
+  it('never indexes down, and warns when there is no repayment income', () => {
+    const result = forecastLongTerm(
+      paid({
+        inflationBps: -100,
+        salary: { takeHome: 8_000_000, grossForSuper: 0, escalation: { mode: 'none' } },
+        studyLoans: rules({ indexationBps: null }),
+        loans: [study('hecs', -1_000_000)],
+      }),
+    );
+    expect(result.years[1]).toMatchObject({ studyCompulsory: 0, studyIndexation: 0 });
+    expect(result.years.at(-1)!.balances.hecs).toBe(-1_000_000);
+    expect(result.studyLoans!.repaid).toBeNull();
+    expect(result.warnings.some((w) => w.startsWith('Study loans have no repayment income'))).toBe(
+      true,
+    );
+  });
+
+  it('can be paid off with a lump sum event', () => {
+    const result = forecastLongTerm(
+      paid({
+        accounts: [acct('cash', 'cash', 5_000_000)],
+        loans: [study('hecs', -1_000_000)],
+        events: [
+          ev({
+            id: 'po',
+            name: 'Clear HECS',
+            kind: 'payOff',
+            start: { year: 2027 },
+            loanId: 'hecs',
+            amount: null,
+          }),
+        ],
+      }),
+    );
+    expect(result.years[1]).toMatchObject({ loanPayments: 1_000_000, studyCompulsory: 0 });
+    expect(result.studyLoans!.repaid).toMatchObject({ index: 1 });
+  });
+});
+
 describe('growth and inflation', () => {
   it('grows the balance after withdrawals but before deposits', () => {
     const plan = basePlan({
@@ -930,8 +1068,14 @@ describe('invariants', () => {
           y.eventFlows.reduce((s, r) => s + r.amount, 0) -
           y.spending -
           y.loanPayments +
-          y.superDrawdown;
+          y.superDrawdown +
+          y.studyWithheld -
+          y.studyCompulsory;
         expect(rowsNet).toBe(y.netCashFlow);
+        expect(y.studyCompulsory).toBeLessThanOrEqual(
+          compulsoryStudyRepayment(y.studyRepaymentIncome + 1_000_000_000, STUDY_REPAYMENT_BANDS),
+        );
+        if (y.studyWithheld) expect(y.studyWithheld).toBeGreaterThanOrEqual(y.studyCompulsory);
         expect(y.superSalarySacrifice).toBeLessThanOrEqual(y.superContribution);
         if (y.superPhase === 'pension') expect(y.superEarningsTax).toBe(0);
         if (y.superPhase !== 'pension') expect(y.superDrawdown).toBe(0);
@@ -1102,7 +1246,22 @@ function busyPlan(seed: number): ForecastPlan {
         monthlyRepayment: 40_000 + rnd(40_000),
         termMonths: null,
       },
+      {
+        id: 'hecs',
+        name: 'HECS',
+        balance: -rnd(6_000_000),
+        rateBps: 0,
+        monthlyRepayment: 0,
+        termMonths: null,
+        study: { kind: rnd(2) ? 'help' : 'ssl', extraAnnual: rnd(2) * rnd(800_000) },
+      },
     ],
+    studyLoans: {
+      withheldFromPay: rnd(2) === 1,
+      otherRepaymentIncome: rnd(2) * rnd(2_000_000),
+      indexationBps: rnd(2) ? null : rnd(500),
+      bands: STUDY_REPAYMENT_BANDS,
+    },
     salary: {
       takeHome: 6_000_000 + rnd(6_000_000),
       grossForSuper: 8_000_000 + rnd(4_000_000),

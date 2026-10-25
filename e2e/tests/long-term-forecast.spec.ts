@@ -371,3 +371,44 @@ test('the simulation shows a chance of success, and the same seed shows the same
   expect(await ledger(api)).toEqual(before);
   expect(await api.call('GET', `${LT}/plans`)).toHaveLength(1);
 });
+
+test('a HECS-HELP debt is repaid from pay, and extra payments bring it forward', async ({
+  page,
+  api,
+}) => {
+  await api.createAccount('Everyday', 8_000_000);
+  const hecs = await api.createAccount('HECS', -3_000_000, 'student_loan');
+  const year = new Date().getFullYear();
+  const created = await api.call('POST', `${LT}/plans`, {
+    plan: {
+      name: 'Study plan',
+      settings: {
+        birthYear: year - 30,
+        income: {
+          takeHome: 7_000_000,
+          grossForSuper: 9_500_000,
+          escalation: { mode: 'rate', rateBps: 350 },
+        },
+        spending: { annual: 5_000_000, escalation: { mode: 'none' } },
+      },
+    },
+  });
+  await open(page, '/forecast');
+  const summary = page.getByRole('region', { name: 'Study loans' });
+  await expect(summary).toContainText('Study loans are repaid in');
+  await expect(summary).toContainText('By compulsory repayments alone');
+
+  await page.getByRole('tab', { name: 'Accounts' }).click();
+  const row = page.getByRole('listitem', { name: 'Study loan: HECS' });
+  await expect(row.getByLabel('HECS: kind of loan')).toHaveValue('help');
+  await row.getByLabel("HECS: extra payment per year (today's dollars)").fill('5000');
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect
+    .poll(
+      async () =>
+        (await api.call('GET', `${LT}/plans/${created.id}`)).plan.settings.studyLoans.loans,
+    )
+    .toEqual([{ accountId: hecs.id, kind: 'help', extraAnnual: 500_000 }]);
+  await expect(summary).toContainText('With compulsory repayments only they would be repaid in');
+  await expect(summary).toContainText('of indexation');
+});
