@@ -45,7 +45,7 @@ beforeEach(() => {
     .values({ id: 'spend', name: 'Spending', type: 'checking', startingBalance: 0 })
     .run();
   db.insert(accounts)
-    .values({ id: 'mojo', name: 'Mojo', type: 'savings', startingBalance: 0 })
+    .values({ id: 'mojo', name: '🌞 Mojo', type: 'savings', startingBalance: 0 })
     .run();
   db.insert(categoryGroups).values({ id: 'inc', name: 'Income', isIncome: 1 }).run();
   db.insert(categoryGroups).values({ id: 'exp', name: 'Spending', isIncome: 0 }).run();

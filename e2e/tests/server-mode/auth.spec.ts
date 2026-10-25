@@ -64,9 +64,9 @@ test('the signed-in owner uses the app, with real page URLs', async ({ baseURL }
 
   // Server mode uses normal URLs: deep links and reloads work
   await owner.goto(`${baseURL}/budget`);
-  await expect(owner.getByRole('status', { name: 'To be budgeted' })).toBeVisible();
+  await expect(owner.getByRole('status', { name: 'Ready to assign' })).toBeVisible();
   await owner.reload();
-  await expect(owner.getByRole('status', { name: 'To be budgeted' })).toBeVisible();
+  await expect(owner.getByRole('status', { name: 'Ready to assign' })).toBeVisible();
 });
 
 test('another browser sees only the login screen', async ({ page, baseURL }) => {
@@ -310,7 +310,7 @@ test('with the server unreachable, the app opens with the offline copy and keeps
   await expect(banner).toContainText('New transactions are saved on this device');
   // Other pages open from the copy too
   await owner.getByRole('complementary').getByRole('link', { name: 'Budget', exact: true }).click();
-  await expect(owner.getByRole('status', { name: 'To be budgeted' })).toBeVisible();
+  await expect(owner.getByRole('status', { name: 'Ready to assign' })).toBeVisible();
   await owner.goBack();
 
   // A new transaction waits on the device, even across a reload
@@ -345,7 +345,7 @@ test('the offline copy can be turned off, and signing out deletes it', async ({ 
   await expect.poll(() => offlineCopy(owner)).toBeNull();
   // Nothing is saved while it's off, even as data loads
   await owner.goto(`${baseURL}/budget`);
-  await expect(owner.getByRole('status', { name: 'To be budgeted' })).toBeVisible();
+  await expect(owner.getByRole('status', { name: 'Ready to assign' })).toBeVisible();
   await owner.waitForTimeout(2_500);
   expect(await offlineCopy(owner)).toBeNull();
 
