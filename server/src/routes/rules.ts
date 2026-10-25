@@ -82,6 +82,10 @@ const actionSchema = z.union([
   z.object({ type: z.literal('split'), parts: z.array(splitPartSchema).min(1).max(20) }),
   z.object({ type: z.literal('add_tag'), value: id }),
   z.object({ type: z.literal('share_with_household'), value: id }),
+  z.object({
+    type: z.literal('claim_tax_deduction'),
+    value: z.enum(['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D15']),
+  }),
 ]);
 
 const conditionsOp = z.enum(['and', 'or']);

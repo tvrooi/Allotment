@@ -5,6 +5,7 @@ import {
   uniqueIndex,
   index,
   primaryKey,
+  blob,
   customType,
   type AnySQLiteColumn,
 } from 'drizzle-orm/sqlite-core';
@@ -305,6 +306,57 @@ export const tags = sqliteTable('tags', {
   createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`),
+});
+
+/**
+ * A receipt's bytes, stored once per content (id is the SHA-256). Not in JSON backups and not
+ * tied to any row, so a restore on the same installation keeps every receipt's file; the
+ * database file itself (a cold backup) holds them all.
+ */
+export const receiptFiles = sqliteTable('receipt_files', {
+  id: text('id').primaryKey(),
+  mimeType: text('mime_type').notNull(),
+  size: integer('size').notNull(),
+  data: blob('data', { mode: 'buffer' }).notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+/** A receipt: a file, what it says, and the transaction it belongs to (null = in the inbox) */
+export const receipts = sqliteTable(
+  'receipts',
+  {
+    id: text('id').primaryKey(),
+    transactionId: text('transaction_id').references(() => transactions.id, {
+      onDelete: 'set null',
+    }),
+    fileId: text('file_id').notNull(),
+    fileName: text('file_name').notNull(),
+    mimeType: text('mime_type').notNull(),
+    size: integer('size').notNull(),
+    merchant: text('merchant'),
+    receiptDate: text('receipt_date'),
+    /** What the receipt says was paid, in cents of the transaction's currency */
+    total: integer('total'),
+    notes: text('notes'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => [index('receipts_transaction_idx').on(table.transactionId)],
+);
+
+/**
+ * A transaction claimed as a tax deduction: its ATO return label (D1 car … D10 tax affairs,
+ * D15 other) and the share of it that is for work. Australian financial years only.
+ */
+export const taxClaims = sqliteTable('tax_claims', {
+  transactionId: text('transaction_id')
+    .primaryKey()
+    .references(() => transactions.id, { onDelete: 'cascade' }),
+  label: text('label').notNull(),
+  workUseBps: integer('work_use_bps').notNull().default(10000),
+  notes: text('notes'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
 });
 
 export const transactionTags = sqliteTable(

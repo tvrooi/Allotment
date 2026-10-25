@@ -1,5 +1,18 @@
 # Changes
 
+## 0.2.0-up.42
+
+- **Receipts:** attach photos or PDFs to a transaction from its details: choose a file (the camera on a phone), drop one, or paste a screenshot. Photos are shrunk before they are saved. A paperclip in the register marks transactions with a receipt.
+- **Receipt inbox** (**Tax time → Receipt inbox**): keep a receipt before its bank transaction arrives. Type its date and total, and the inbox suggests the matching transaction, exact totals first, for **Attach**. Deleting a transaction moves its receipts back to the inbox.
+- **Tax deductions:** tick **Claim as a tax deduction** on a transaction, then choose its return label (D1 car to D10 cost of managing tax affairs, and D15) and its work-use share. Claim split transactions part by part.
+- **Rules can claim deductions:** the new **Claim as tax deduction** action claims matching payments as they import, and never replaces a claim you made.
+- **Tax time** shows a financial year's deductions (1 July to 30 June) by label, with each claim's receipts. It flags receipts missing once work expenses pass $300, and items over $300 that are usually depreciated. Download the year as **CSV**, or as **CSV and receipts (ZIP)** for your tax agent. Record keeping, not tax advice.
+- **Backups and security:**
+  - Backup format 18 carries receipt details and claims. Receipt files stay in the database, which full backups (Home Assistant) include, and restoring on the same installation keeps them. Format 17 backups restore unchanged.
+  - Files are checked by their contents and served so they can never run as a page.
+  - Assistant (read-only) tokens cannot see receipts or claims.
+- See [receipts and tax](docs/RECEIPTS-AND-TAX.md).
+
 ## 0.2.0-up.41
 
 - **HECS-HELP and other study loans in the long-term forecast:** a student loan account is now an income-contingent study loan (HECS-HELP, VET Student Loan, Student Start-up Loan, ABSTUDY SSL or Apprenticeship Support Loan, guessed from its name and changeable per plan) instead of a loan with no repayment data.

@@ -21,6 +21,7 @@ import SettingsPage from './pages/Settings';
 import GoalsPage from './pages/Goals';
 import ForecastPage from './pages/Forecast';
 import InvestmentsPage from './pages/Investments';
+import TaxPage from './pages/Tax';
 import ReviewPage from './pages/Review';
 import CashFlowPage from './pages/CashFlow';
 import CategoryDetailPage from './pages/CategoryDetail';
@@ -60,6 +61,7 @@ export default function App() {
             <Route path="/goals" element={<GoalsPage />} />
             <Route path="/forecast" element={<ForecastPage />} />
             <Route path="/investments" element={<InvestmentsPage />} />
+            <Route path="/tax" element={<TaxPage />} />
             <Route path="/review" element={<ReviewPage />} />
           </Route>
         </Routes>

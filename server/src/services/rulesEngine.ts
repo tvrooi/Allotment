@@ -58,7 +58,9 @@ export type Action =
   /** Phase 9: adds a tag; never removes one */
   | { type: 'add_tag'; value: string }
   /** Shares a payment with a household group, with the group's default split */
-  | { type: 'share_with_household'; value: string };
+  | { type: 'share_with_household'; value: string }
+  /** Claims a payment as a tax deduction under a return label (D1–D10, D15); never replaces a claim */
+  | { type: 'claim_tax_deduction'; value: string };
 
 export type ConditionsOp = 'and' | 'or';
 
@@ -103,6 +105,8 @@ export type RuleOutcome = {
   tags: string[];
   /** The household group to share a payment with, when a rule says so */
   share?: string;
+  /** The tax return label to claim a payment under, when a rule says so */
+  taxLabel?: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -238,6 +242,7 @@ export function runRules(
   const matchedRuleIds: string[] = [];
   const tags: string[] = [];
   let share: string | undefined;
+  let taxLabel: string | undefined;
 
   for (const rule of rules) {
     if (!rule.enabled || !matchesRule(rule, tx)) continue;
@@ -292,12 +297,25 @@ export function runRules(
           share = a.value;
           applied = true;
           break;
+        case 'claim_tax_deduction':
+          // Only money out is claimed, and the first rule to choose a label wins
+          if (taxLabel || tx.amount >= 0 || !/^D(?:[1-9]|10|15)$/.test(a.value)) break;
+          taxLabel = a.value;
+          applied = true;
+          break;
       }
     }
     if (applied) matchedRuleIds.push(rule.id);
   }
 
-  return { tx, split, matchedRuleIds, tags, ...(share ? { share } : {}) };
+  return {
+    tx,
+    split,
+    matchedRuleIds,
+    tags,
+    ...(share ? { share } : {}),
+    ...(taxLabel ? { taxLabel } : {}),
+  };
 }
 
 /**

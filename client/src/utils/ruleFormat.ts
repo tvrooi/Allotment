@@ -1,4 +1,5 @@
 import { formatCurrency } from './currency';
+import { TAX_LABEL_NAMES } from './taxLabels';
 import type {
   Rule,
   RuleAction,
@@ -90,6 +91,7 @@ export const ACTION_TYPES: Array<{ value: RuleAction['type']; label: string }> =
   { value: 'split', label: 'Split transaction' },
   { value: 'add_tag', label: 'Add tag' },
   { value: 'share_with_household', label: 'Share with household' },
+  { value: 'claim_tax_deduction', label: 'Claim as tax deduction' },
 ];
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -149,6 +151,7 @@ export const newSplitPart = (kind: RuleSplitPart['kind'] = 'remainder'): RuleSpl
 export function makeAction(type: RuleAction['type'], prev?: RuleAction): RuleAction {
   if (type === 'split')
     return { type, parts: [newSplitPart('percent'), newSplitPart('remainder')] };
+  if (type === 'claim_tax_deduction') return { type, value: 'D5' };
   const keepText =
     prev && prev.type !== 'split' && prev.type.endsWith('notes') && type.endsWith('notes');
   return { type, value: keepText ? (prev as { value: string }).value : '' } as RuleAction;
@@ -253,6 +256,11 @@ export function actionText(a: RuleAction, l: RuleLookups): string {
       return `Add tag ${l.tag?.(a.value) ?? '(deleted)'}`;
     case 'share_with_household':
       return `Share with ${l.household?.(a.value) ?? '(deleted household)'}`;
+    case 'claim_tax_deduction':
+      return `Claim as tax deduction (${a.value} ${TAX_LABEL_NAMES[a.value] ?? ''})`.replace(
+        ' )',
+        ')',
+      );
   }
 }
 

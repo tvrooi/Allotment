@@ -494,7 +494,7 @@ function outcome(
 const conditionsHelp =
   'Conditions: [{field, op, value}]. Text fields payee_name, imported_payee, notes with is, is_not, contains, not_contains, starts_with, ends_with, regex (or one_of / not_one_of with a list); id fields payee, account, category with is, is_not, one_of, not_one_of; is_empty / is_not_empty (no value); amount (positive minor units) with is, is_not, gt, gte, lt, lte, approx or between [min, max]; direction is inflow or outflow; date is, before, after or between.';
 const actionsHelp =
-  'Actions: [{type: "set_category", value: categoryId}], or set_payee (payee id), set_notes / prepend_notes / append_notes (text), add_tag (tag id), share_with_household (household id: shares money out with its default split), split {type: "split", parts: [{kind: fixed|percent|remainder, value, categoryId, notes}]}. Only a rule whose actions all set a category can be applied with apply_rule.';
+  'Actions: [{type: "set_category", value: categoryId}], or set_payee (payee id), set_notes / prepend_notes / append_notes (text), add_tag (tag id), share_with_household (household id: shares money out with its default split), claim_tax_deduction (a tax return label D1–D10 or D15: claims money out as a deduction, never replacing a claim), split {type: "split", parts: [{kind: fixed|percent|remainder, value, categoryId, notes}]}. Only a rule whose actions all set a category can be applied with apply_rule.';
 const ruleProps = {
   conditionsOp: { type: 'string', enum: ['and', 'or'], description: 'and = all, or = any' },
   conditions: {
