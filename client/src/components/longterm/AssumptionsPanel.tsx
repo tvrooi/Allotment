@@ -1,5 +1,12 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { AccountClass, Defaults, Plan, PlanSettings, StartingPoint } from '../../api/longTerm';
+import type {
+  AccountClass,
+  Defaults,
+  Plan,
+  PlanSettings,
+  StartingPoint,
+  SuperSettings,
+} from '../../api/longTerm';
 import { formatCurrency } from '../../utils/currency';
 import { CLASS_LABEL } from '../../utils/longTerm';
 import { EscalationField, MoneyField, RateField, WholeNumberField } from './fields';
@@ -64,6 +71,14 @@ export function AssumptionsPanel({
   const d = defaults?.settings;
   const set = (change: Partial<PlanSettings>) =>
     setPlan((p) => ({ ...p, settings: { ...p.settings, ...change } }));
+  const sup = s.super;
+  const setSuper = (change: Partial<SuperSettings>) =>
+    setPlan((p) => ({
+      ...p,
+      settings: { ...p.settings, super: { ...p.settings.super, ...change } },
+    }));
+  const capHint = (cents: number | undefined) =>
+    `Default ${formatCurrency(cents ?? 0)} (2026–27), in today's dollars. Only warned about.`;
   return (
     <div className="space-y-6">
       <p className="text-sm text-text-secondary">
@@ -135,8 +150,13 @@ export function AssumptionsPanel({
       </section>
 
       <section aria-label="Super" className="space-y-3">
-        <h3 className="text-sm font-semibold text-text">Super and the Age Pension</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <h3 className="text-sm font-semibold text-text">Superannuation and the Age Pension</h3>
+        <p className="text-xs text-text-tertiary">
+          Super is preserved: it counts towards net worth but cannot pay for anything until a
+          condition of release. Here that is turning 65, or retiring at or after your preservation
+          age. The chart shows accessible wealth and preserved super separately.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <MoneyField
             label="Gross salary super is paid on"
             value={s.income.grossForSuper}
@@ -165,9 +185,82 @@ export function AssumptionsPanel({
             min={40}
             max={75}
             onChange={(preservationAge) => set({ preservationAge })}
-            hint={`Assumption, default ${d?.preservationAge ?? 60}. Super is drawn only after retirement and this age.`}
+            hint={`Default ${d?.preservationAge ?? 60}, which applies to anyone born after 30 June 1964. Super opens at 65, or on retiring from this age.`}
           />
         </div>
+        <h4 className="text-xs font-semibold text-text-secondary">Your own contributions</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <MoneyField
+            label="Salary sacrifice per year (today's dollars)"
+            value={sup.salarySacrifice}
+            onChange={(salarySacrifice) => setSuper({ salarySacrifice })}
+            hint="Before tax, so it is already out of your take-home pay. Taxed as a concessional contribution, and it stops with your salary."
+          />
+          <MoneyField
+            label="Personal contributions per year (today's dollars)"
+            value={sup.personalContribution}
+            onChange={(personalContribution) => setSuper({ personalContribution })}
+            hint="After tax, paid first from each year's surplus while you work and are under 75. Not taxed going in."
+          />
+        </div>
+        <h4 className="text-xs font-semibold text-text-secondary">Fund costs, tax and pension</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <MoneyField
+            label="Fees and insurance per year (today's dollars)"
+            value={sup.feesAnnual}
+            onChange={(feesAnnual) => setSuper({ feesAnnual })}
+            hint="Insurance premiums and fixed admin fees. Leave 0 if the super growth rate is already after them."
+          />
+          <RateField
+            label="Tax on super earnings before the pension"
+            bps={sup.earningsTaxBps}
+            min={0}
+            max={45}
+            defaultBps={d?.super.earningsTaxBps ?? 0}
+            onChange={(earningsTaxBps) => setSuper({ earningsTaxBps })}
+            hint="Up to 15%, often 7–10% after franking credits and discounts. Leave 0 when the growth rate is already after tax. A pension's earnings are tax-free."
+          />
+        </div>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={sup.minimumDrawdown}
+            onChange={(e) => setSuper({ minimumDrawdown: e.target.checked })}
+          />
+          <span>
+            Pay the minimum pension once retired and released
+            <span className="block text-xs text-text-tertiary">
+              Each year at least 4% of the balance (5% from 65, rising to 14% from 95) moves from
+              super into spendable cash. That money becomes accessible and pays for spending first.
+            </span>
+          </span>
+        </label>
+        <details className="text-sm">
+          <summary className="cursor-pointer text-text-secondary">
+            Contribution and pension caps
+          </summary>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+            <MoneyField
+              label="Concessional cap"
+              value={sup.concessionalCap}
+              onChange={(concessionalCap) => setSuper({ concessionalCap })}
+              hint={capHint(d?.super.concessionalCap)}
+            />
+            <MoneyField
+              label="Non-concessional cap"
+              value={sup.nonConcessionalCap}
+              onChange={(nonConcessionalCap) => setSuper({ nonConcessionalCap })}
+              hint={capHint(d?.super.nonConcessionalCap)}
+            />
+            <MoneyField
+              label="Transfer balance cap"
+              value={sup.transferBalanceCap}
+              onChange={(transferBalanceCap) => setSuper({ transferBalanceCap })}
+              hint={capHint(d?.super.transferBalanceCap)}
+            />
+          </div>
+        </details>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"

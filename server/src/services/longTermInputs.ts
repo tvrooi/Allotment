@@ -299,6 +299,7 @@ export function buildEnginePlan(plan: PlanInput, point: StartingPoint) {
       guaranteeBps: s.superGuaranteeBps,
       contributionsTaxBps: s.contributionsTaxBps,
       preservationAge: s.preservationAge,
+      ...s.super,
     },
     agePension: s.agePension,
     extraSavingsGrowthBps: s.extraSavingsGrowthBps,

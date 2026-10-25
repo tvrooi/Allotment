@@ -12,7 +12,7 @@ import {
   YAxis,
 } from 'recharts';
 import type { Comparison, PlanEvent, YearResult } from '../../api/longTerm';
-import { chartColors } from '../../utils/chartColors';
+import { ACCESSIBLE_COLOR, chartColors, SUPER_COLOR } from '../../utils/chartColors';
 import { formatCentsAxis, formatCurrency } from '../../utils/currency';
 import { eventYear, inDollars, kindLabel, type Dollars } from '../../utils/longTerm';
 
@@ -25,6 +25,10 @@ interface Row {
   index: number;
   label: string;
   active: number;
+  /** Cash, investments and released super, less unfunded spending */
+  accessible: number;
+  /** Super still locked by preservation */
+  preserved: number;
   reference?: number;
 }
 
@@ -80,6 +84,8 @@ export function NetWorthChart({
               ? 'Today'
               : `In ${y.index} year${y.index === 1 ? '' : 's'} (${startYear + y.index})`,
           active: inDollars(y.closingNetWorth, y.inflationIndexPpb, mode),
+          accessible: inDollars(y.wealth.accessible, y.inflationIndexPpb, mode),
+          preserved: inDollars(y.wealth.preserved, y.inflationIndexPpb, mode),
           // Already in the chosen dollars: the server deflated each plan at its own inflation
           reference: ref?.reference,
         };
@@ -92,6 +98,8 @@ export function NetWorthChart({
     .map(({ e, year }) => ({ e, row: rows.find((r) => r.year === year) }))
     .filter((m): m is { e: PlanEvent; row: Row } => m.row !== undefined);
   const selectedRow = rows.find((r) => r.index === selected);
+  // Without a comparison, show when the money can be spent: accessible now beside preserved super
+  const split = !comparison && rows.some((r) => r.preserved !== 0);
 
   return (
     <div className="h-72 max-md:h-60" role="img" aria-label={`Net worth by year, ${activeName}`}>
@@ -143,6 +151,29 @@ export function NetWorthChart({
             dot={false}
             isAnimationActive={false}
           />
+          {split && (
+            <Line
+              type="monotone"
+              dataKey="accessible"
+              name="Accessible (cash, investments, released super)"
+              stroke={ACCESSIBLE_COLOR}
+              strokeWidth={1.5}
+              dot={false}
+              isAnimationActive={false}
+            />
+          )}
+          {split && (
+            <Line
+              type="monotone"
+              dataKey="preserved"
+              name="Preserved super"
+              stroke={SUPER_COLOR}
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
+              dot={false}
+              isAnimationActive={false}
+            />
+          )}
           {comparison && (
             <Line
               type="monotone"
@@ -169,7 +200,7 @@ export function NetWorthChart({
               aria-label={`${kindLabel(e.kind)}: ${e.name}, ${row.year}`}
             />
           ))}
-          {comparison && <Legend />}
+          {(comparison || split) && <Legend wrapperStyle={{ fontSize: 11 }} />}
         </LineChart>
       </ResponsiveContainer>
     </div>

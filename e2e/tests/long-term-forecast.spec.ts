@@ -53,6 +53,14 @@ test('the long-term forecast: plans, drafts, years, dollars and comparison', asy
   await expect(page.getByText('Net worth today', { exact: true }).locator('..')).toContainText(
     '$880,000',
   );
+  // Super is preserved: today's figure says how much can be spent now, and the chart splits them
+  await expect(page.getByText('Net worth today', { exact: true }).locator('..')).toContainText(
+    '$280,000 accessible · $600,000 preserved super',
+  );
+  await expect(page.getByText('Preserved super', { exact: true })).toBeVisible();
+  await expect(page.getByText('Super opens', { exact: true }).locator('..')).toContainText(
+    'At 65Super opensReached 65, while still working',
+  );
   const plans = await api.call('GET', `${LT}/plans`);
   expect(plans).toHaveLength(1);
   const planId = plans[0].id;
@@ -105,12 +113,18 @@ test('the long-term forecast: plans, drafts, years, dollars and comparison', asy
   await expect(page.getByText('Assumption, default 2.5%').first()).toBeVisible();
   await expect(page.getByText('Assumption, default 12%').first()).toBeVisible();
   await page.getByLabel('Inflation', { exact: true }).fill('3');
+  await page.getByLabel("Salary sacrifice per year (today's dollars)").fill('10000');
   await expect(page.getByText('You have unsaved changes')).toBeVisible();
   expect((await api.call('GET', `${LT}/plans/${planId}`)).plan.settings.inflationBps).toBe(250);
   await page.getByRole('button', { name: 'Save changes' }).click();
   await expect
     .poll(async () => (await api.call('GET', `${LT}/plans/${planId}`)).plan.settings.inflationBps)
     .toBe(300);
+  expect((await api.call('GET', `${LT}/plans/${planId}`)).plan.settings.super).toMatchObject({
+    salarySacrifice: 1_000_000,
+    minimumDrawdown: true,
+    concessionalCap: 3_250_000,
+  });
 
   // Savings order, with a worked example
   await page.getByRole('tab', { name: 'Savings' }).click();

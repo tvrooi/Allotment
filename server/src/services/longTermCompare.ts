@@ -20,6 +20,7 @@ export interface Figure {
     | 'endNetWorth'
     | 'lowestNetWorth'
     | 'retirementNetWorth'
+    | 'retirementAccessible'
     | 'superAtPreservation'
     | 'firstUnfundedYear';
   label: string;
@@ -63,6 +64,13 @@ export function inTodaysDollars(facts: PlanFacts): PlanFacts {
       years: facts.result.years.map((y) => ({
         ...y,
         closingNetWorth: deflate(y.closingNetWorth, y.inflationIndexPpb),
+        // Deflated part by part, so the parts may differ from the deflated total by a cent each
+        wealth: {
+          accessible: deflate(y.wealth.accessible, y.inflationIndexPpb),
+          preserved: deflate(y.wealth.preserved, y.inflationIndexPpb),
+          illiquid: deflate(y.wealth.illiquid, y.inflationIndexPpb),
+          debts: deflate(y.wealth.debts, y.inflationIndexPpb),
+        },
         balances: Object.fromEntries(
           Object.entries(y.balances).map(([id, v]) => [id, deflate(v, y.inflationIndexPpb)]),
         ),
@@ -130,6 +138,10 @@ export function compareResults(active: PlanFacts, reference: PlanFacts): Compari
     f.retirementAge === null || f.retirementAge - f.startAge >= f.result.years.length - 1
       ? null
       : netWorthAtAge(f, f.retirementAge);
+  const accessibleAtRetirement = (f: PlanFacts) =>
+    retirement(f) === null
+      ? null
+      : f.result.years[(f.retirementAge as number) - f.startAge].wealth.accessible;
   const unfunded = (f: PlanFacts) => f.result.firstUnfunded?.calendarYear ?? null;
   const points = Math.min(active.result.years.length, reference.result.years.length);
   const series: SeriesPoint[] = [];
@@ -161,6 +173,13 @@ export function compareResults(active: PlanFacts, reference: PlanFacts): Compari
         'money',
         retirement(active),
         retirement(reference),
+      ),
+      figure(
+        'retirementAccessible',
+        'Accessible wealth at retirement (cash, investments and released super)',
+        'money',
+        accessibleAtRetirement(active),
+        accessibleAtRetirement(reference),
       ),
       figure(
         'superAtPreservation',

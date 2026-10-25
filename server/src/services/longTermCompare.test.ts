@@ -97,6 +97,29 @@ describe('compareResults', () => {
     expect(retired).toMatchObject({ active: 6_000_000 + 10_000_000, difference: 0, percentBps: 0 });
   });
 
+  it('counts super as accessible at retirement only once it is released', () => {
+    const retiring = plan({
+      events: [
+        {
+          id: 'ret',
+          name: 'Retire',
+          kind: 'retirement',
+          position: 0,
+          enabled: true,
+          start: { year: 2032 },
+          spendingMultiplierBps: 10000,
+          reductions: {},
+        },
+      ],
+    });
+    const accessible = (f: PlanFacts) =>
+      compareResults(f, f).figures.find((x) => x.key === 'retirementAccessible')!.active;
+    // Retiring at the preservation age releases the 5,000,000 of super
+    expect(accessible(facts(retiring, 45))).toBe(6_000_000 + 10_000_000);
+    // The same balances without a retirement event leave super preserved
+    expect(accessible(facts(plan(), 45))).toBe(1_000_000 + 10_000_000);
+  });
+
   it('gives a difference line, year by year, that is active minus reference', () => {
     const { series } = compareResults(active, reference);
     expect(series).toHaveLength(11);

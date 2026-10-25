@@ -115,11 +115,29 @@ export function nominalRows(y: YearResult): BridgeRow[] {
   }
   rows.push({
     key: 'super',
-    label: 'Employer super, after contributions tax',
+    label: y.superSalarySacrifice
+      ? 'Employer super and salary sacrifice, after contributions tax'
+      : 'Employer super, after contributions tax',
     amount: y.superNet,
     group: 'super',
   });
+  if (y.superFees) {
+    rows.push({
+      key: 'superFees',
+      label: 'Super fees and insurance',
+      amount: -y.superFees,
+      group: 'super',
+    });
+  }
   rows.push({ key: 'growth', label: 'Growth', amount: y.growthTotal, group: 'growth' });
+  if (y.superEarningsTax) {
+    rows.push({
+      key: 'superEarningsTax',
+      label: 'Tax on super earnings',
+      amount: -y.superEarningsTax,
+      group: 'super',
+    });
+  }
   return rows;
 }
 
@@ -232,7 +250,11 @@ export const EVENT_KINDS: { kind: EventKind; label: string; help: string }[] = [
     label: 'Recurring income or expense',
     help: 'Every year, or every few years',
   },
-  { kind: 'retirement', label: 'Retirement', help: 'Work pay stops, super opens up' },
+  {
+    kind: 'retirement',
+    label: 'Retirement',
+    help: 'Work pay stops; super opens up from your preservation age',
+  },
   { kind: 'payOff', label: 'Pay off a loan', help: 'A lump sum against a loan or mortgage' },
 ];
 

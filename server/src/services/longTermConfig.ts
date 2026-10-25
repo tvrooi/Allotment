@@ -58,6 +58,22 @@ export const DEFAULT_CLASS_VOLATILITY_BPS: Record<(typeof ACCOUNT_CLASSES)[numbe
   other: 0,
 };
 
+/**
+ * Super beyond the guarantee, with Australian defaults for 2026–27: caps are in today's
+ * dollars and only warned about. Earnings tax defaults to 0 because fund returns are usually
+ * quoted after tax; enter a rate when the growth assumption is before tax.
+ */
+export const DEFAULT_SUPER = {
+  salarySacrifice: 0,
+  personalContribution: 0,
+  feesAnnual: 0,
+  earningsTaxBps: 0,
+  minimumDrawdown: true,
+  concessionalCap: 3_250_000,
+  nonConcessionalCap: 13_000_000,
+  transferBalanceCap: 210_000_000,
+};
+
 const escalation = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('none') }).strict(),
   z.object({ mode: z.literal('inflation') }).strict(),
@@ -172,6 +188,19 @@ export const settingsSchema = z
     superGuaranteeBps: bps().default(1200),
     contributionsTaxBps: bps().default(1500),
     preservationAge: z.number().int().min(40).max(75).default(60),
+    super: z
+      .object({
+        salarySacrifice: money.default(0),
+        personalContribution: money.default(0),
+        feesAnnual: money.default(0),
+        earningsTaxBps: bps(0, 4500).default(0),
+        minimumDrawdown: z.boolean().default(true),
+        concessionalCap: money.default(DEFAULT_SUPER.concessionalCap),
+        nonConcessionalCap: money.default(DEFAULT_SUPER.nonConcessionalCap),
+        transferBalanceCap: money.default(DEFAULT_SUPER.transferBalanceCap),
+      })
+      .strict()
+      .default(DEFAULT_SUPER),
     agePension: z
       .object({
         enabled: z.boolean().default(false),

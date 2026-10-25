@@ -18,7 +18,8 @@ export type AccountType =
   | 'other_asset'
   | 'other_liability';
 
-export type AccountGroup = 'cash' | 'credit' | 'investments' | 'property' | 'loans' | 'other';
+export type AccountGroup =
+  'cash' | 'credit' | 'investments' | 'super' | 'property' | 'loans' | 'other';
 
 export interface AccountTypeInfo {
   value: AccountType;
@@ -47,7 +48,7 @@ export const ACCOUNT_TYPES: AccountTypeInfo[] = [
     group: 'cash',
     liability: false,
     onBudget: true,
-    hint: 'Savings, money market, CDs',
+    hint: 'Savings, high-interest or term deposit',
   },
   {
     value: 'cash',
@@ -75,19 +76,19 @@ export const ACCOUNT_TYPES: AccountTypeInfo[] = [
   },
   {
     value: 'investment',
-    label: 'Brokerage',
+    label: 'Shares & Funds',
     group: 'investments',
     liability: false,
     onBudget: false,
-    hint: 'Taxable investment account',
+    hint: 'Share trading account, ETFs or managed funds you can sell any time',
   },
   {
     value: 'retirement',
-    label: 'Retirement',
-    group: 'investments',
+    label: 'Superannuation',
+    group: 'super',
     liability: false,
     onBudget: false,
-    hint: '401(k), IRA, Roth, pension',
+    hint: 'Super fund, SMSF or account-based pension: preserved until a condition of release',
   },
   {
     value: 'crypto',
@@ -143,7 +144,7 @@ export const ACCOUNT_TYPES: AccountTypeInfo[] = [
     group: 'loans',
     liability: true,
     onBudget: false,
-    hint: 'Federal or private student loan',
+    hint: 'HECS-HELP or another study loan',
   },
   {
     value: 'loan',
@@ -175,6 +176,7 @@ export const ACCOUNT_GROUPS: { value: AccountGroup; label: string }[] = [
   { value: 'cash', label: 'Cash' },
   { value: 'credit', label: 'Credit' },
   { value: 'investments', label: 'Investments' },
+  { value: 'super', label: 'Superannuation' },
   { value: 'property', label: 'Property' },
   { value: 'loans', label: 'Loans' },
   { value: 'other', label: 'Other' },

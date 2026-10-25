@@ -14,6 +14,30 @@ const MONTHLY_BPS = 120_000;
 export const MAX_YEARS = 100;
 /** Highest yearly rate accepted, so a century of compounding stays inside safe integers */
 const MAX_RATE_BPS = 1500;
+/** Reaching 65 is a condition of release on its own, working or not (SIS Regulations sch 1) */
+export const SUPER_RELEASE_AGE = 65;
+/** Personal (non-concessional) contributions are accepted up to this age */
+export const SUPER_PERSONAL_CONTRIBUTION_AGE = 75;
+
+/**
+ * Standard minimum yearly payment from an account-based pension, by age on 1 July: a share of
+ * the balance that must leave super each year once it pays a pension.
+ */
+export const MINIMUM_DRAWDOWN: { fromAge: number; bps: number }[] = [
+  { fromAge: 0, bps: 400 },
+  { fromAge: 65, bps: 500 },
+  { fromAge: 75, bps: 600 },
+  { fromAge: 80, bps: 700 },
+  { fromAge: 85, bps: 900 },
+  { fromAge: 90, bps: 1100 },
+  { fromAge: 95, bps: 1400 },
+];
+
+export function minimumDrawdownBps(age: number): number {
+  let bps = MINIMUM_DRAWDOWN[0].bps;
+  for (const step of MINIMUM_DRAWDOWN) if (age >= step.fromAge) bps = step.bps;
+  return bps;
+}
 
 export class LongTermForecastError extends Error {}
 
@@ -226,6 +250,49 @@ export interface SplitRule {
   amount?: number;
 }
 
+/**
+ * How super is paid in, taxed and released. Fields after the first three are optional and
+ * off when left out, so a plan written before them runs exactly as it did.
+ */
+export interface SuperRules {
+  guaranteeBps: number;
+  contributionsTaxBps: number;
+  preservationAge: number;
+  /** Salary sacrifice a year, today's dollars: concessional, already out of take-home pay */
+  salarySacrifice?: number;
+  /** Personal after-tax contributions a year, today's dollars, paid from surplus while working */
+  personalContribution?: number;
+  /** Fund admin fees and insurance premiums a year, today's dollars, taken from super */
+  feesAnnual?: number;
+  /** Tax on earnings while super is in the accumulation phase; none once it pays a pension */
+  earningsTaxBps?: number;
+  /** Pay the legislated minimum pension each year once retired and released */
+  minimumDrawdown?: boolean;
+  /** Caps in today's dollars; only warned about, never enforced */
+  concessionalCap?: number;
+  nonConcessionalCap?: number;
+  transferBalanceCap?: number;
+}
+
+/**
+ * What super can do in a plan year. Preserved: locked. Accessible: a condition of release is
+ * met (65, or retired at or past the preservation age) and it can fund shortfalls. Pension:
+ * retired and released, so its earnings are tax-free and the minimum payment applies.
+ */
+export type SuperPhase = 'preserved' | 'accessible' | 'pension';
+
+/** Closing net worth split by when it can be spent; the four parts add up to net worth */
+export interface WealthSplit {
+  /** Cash, investments and released super, less unfunded spending */
+  accessible: number;
+  /** Super still locked by preservation */
+  preserved: number;
+  /** Property, vehicles and other assets the plan never sells */
+  illiquid: number;
+  /** Loans, as a negative number */
+  debts: number;
+}
+
 export interface ForecastPlan {
   startYear: number;
   startAge: number;
@@ -237,7 +304,7 @@ export interface ForecastPlan {
   salary: { takeHome: number; grossForSuper: number; escalation: Escalation };
   /** Annual spending in today's dollars */
   spending: { annual: number; escalation: Escalation };
-  super: { guaranteeBps: number; contributionsTaxBps: number; preservationAge: number };
+  super: SuperRules;
   /** Optional Age Pension: yearly amount in today's dollars from an age; no means test */
   agePension: { enabled: boolean; annual: number; startAge: number };
   extraSavingsGrowthBps: number;
@@ -284,10 +351,23 @@ export interface YearResult {
   loanPrincipal: number;
   /** Net effect on net worth of balances events open: property + mortgage */
   openedByEvents: number;
+  /** Concessional contributions (employer and salary sacrifice), before contributions tax */
   superContribution: number;
+  /** The salary sacrifice part of superContribution */
+  superSalarySacrifice: number;
   superTax: number;
   superNet: number;
-  /** Net cash flow after loan payments */
+  /** Personal after-tax contributions moved from this year's surplus (also an allocation) */
+  superPersonal: number;
+  /** Fund fees and insurance premiums taken from super */
+  superFees: number;
+  /** Tax on super earnings in the accumulation phase */
+  superEarningsTax: number;
+  /** Minimum pension payments moved out of super into this year's cash flow */
+  superDrawdown: number;
+  /** What super could do during this year */
+  superPhase: SuperPhase;
+  /** Net cash flow after loan payments (pension payments included) */
   netCashFlow: number;
   /** Moves between accounts: they change the mix, not net worth */
   withdrawals: Row[];
@@ -301,6 +381,8 @@ export interface YearResult {
   /** Closing balances; loans are negative */
   balances: Record<string, number>;
   unfundedBalance: number;
+  /** Closing net worth by when it can be spent, with super as it stands at the next year's start */
+  wealth: WealthSplit;
   /** opening + Σ parts − closing; always 0 */
   bridgeDifference: number;
 }
@@ -345,6 +427,19 @@ export function validatePlan(plan: ForecastPlan): void {
   checkBps(plan.super.guaranteeBps, 'Super guarantee rate');
   checkBps(plan.super.contributionsTaxBps, 'Contributions tax');
   if (!isInt(plan.super.preservationAge)) fail('Preservation age must be a whole number');
+  for (const [key, label] of [
+    ['salarySacrifice', 'Salary sacrifice'],
+    ['personalContribution', 'Personal super contributions'],
+    ['feesAnnual', 'Super fees'],
+    ['concessionalCap', 'Concessional cap'],
+    ['nonConcessionalCap', 'Non-concessional cap'],
+    ['transferBalanceCap', 'Transfer balance cap'],
+  ] as const) {
+    const v = plan.super[key];
+    if (v !== undefined && (!isInt(v) || v < 0)) fail(`${label} must be non-negative whole cents`);
+  }
+  if (plan.super.earningsTaxBps !== undefined)
+    checkBps(plan.super.earningsTaxBps, 'Super earnings tax');
   for (const v of [plan.salary.takeHome, plan.salary.grossForSuper, plan.spending.annual]) {
     if (!isInt(v) || v < 0) fail('Income and spending must be non-negative whole cents');
   }
@@ -679,6 +774,38 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
     ({ e, s }) => !(s < 1 && (e.kind === 'home' || e.kind === 'oneOff' || e.kind === 'payOff')),
   );
   const retirement = events.find(({ e }) => e.kind === 'retirement');
+  const rules = plan.super;
+  /** What super can do in plan year k (k may run one past the end, for the closing split) */
+  const phaseOf = (k: number): SuperPhase => {
+    const age = plan.startAge + k - 1;
+    const retiredBy = retirement !== undefined && retirement.s <= k;
+    const released = (retiredBy && age >= rules.preservationAge) || age >= SUPER_RELEASE_AGE;
+    if (!released) return 'preserved';
+    return retiredBy ? 'pension' : 'accessible';
+  };
+  const wealthOf = (phase: SuperPhase): WealthSplit => {
+    const split = { accessible: 0 - unfunded, preserved: 0, illiquid: 0, debts: 0 };
+    for (const a of accounts) {
+      if (a.cls === 'cash' || a.cls === 'investments') split.accessible += a.balance;
+      else if (a.cls === 'super') {
+        if (phase === 'preserved') split.preserved += a.balance;
+        else split.accessible += a.balance;
+      } else split.illiquid += a.balance;
+    }
+    for (const l of loans) split.debts -= l.owed;
+    return split;
+  };
+  let warnedConcessional = false;
+  let warnedTransferCap = false;
+  if (
+    rules.personalContribution &&
+    rules.nonConcessionalCap !== undefined &&
+    rules.personalContribution > rules.nonConcessionalCap
+  ) {
+    warnings.push(
+      'Personal super contributions are above the non-concessional cap; tax on the excess is not modelled',
+    );
+  }
   const nominalWorth = () => {
     const assets = accounts.reduce((sum, a) => sum + a.balance, 0);
     const worth = assets - loans.reduce((sum, l) => sum + l.owed, 0) - unfunded;
@@ -711,8 +838,14 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
       loanPrincipal: 0,
       openedByEvents: 0,
       superContribution: 0,
+      superSalarySacrifice: 0,
       superTax: 0,
       superNet: 0,
+      superPersonal: 0,
+      superFees: 0,
+      superEarningsTax: 0,
+      superDrawdown: 0,
+      superPhase: phaseOf(1),
       netCashFlow: 0,
       withdrawals: [],
       allocations: [],
@@ -724,6 +857,7 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
       closingNetWorth: nominalWorth(),
       balances: snapshotBalances(),
       unfundedBalance: 0,
+      wealth: wealthOf(phaseOf(1)),
       bridgeDifference: 0,
     },
   ];
@@ -735,6 +869,7 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
     for (const a of accounts) a.opening = a.balance;
     const openingNetWorth = nominalWorth();
     const retired = retirement !== undefined && retirement.s <= k;
+    const phase = phaseOf(k);
 
     // 1. Events: balances they open or change
     let openedByEvents = 0;
@@ -794,6 +929,7 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
     const incomeRows: IncomeRow[] = [];
     let incomeTotal = 0;
     const superBase: { gross: number; remainingBps: number }[] = [];
+    let salaryRemainingBps = BPS;
     for (const src of sources) {
       const occurs =
         k >= src.startIndex && k <= src.lastIndex && (k - src.startIndex) % src.every === 0;
@@ -808,6 +944,8 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
       const pcts = reducers.map(({ e }) => e.reductions[src.id]);
       const capped = applyCappedReductions(gross, pcts);
       const amount = gross - capped.total;
+      if (src.id === SALARY_SOURCE_ID)
+        salaryRemainingBps = applyCappedReductions(BPS, pcts).remaining;
       incomeTotal += amount;
       if (gross !== 0 || amount !== 0) {
         incomeRows.push({
@@ -909,7 +1047,8 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
       loanPrincipal += run.principal;
     }
 
-    // 4. Super: employer contributions on the salary that remains, after contributions tax
+    // 4. Super: employer contributions and salary sacrifice on the salary that remains, after
+    // contributions tax; then fees, then the minimum payment out of a pension
     let superContribution = 0;
     for (const base of superBase) {
       superContribution += mulDiv2(
@@ -920,21 +1059,82 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
         BPS,
       );
     }
+    const superSalarySacrifice = rules.salarySacrifice
+      ? mulDiv(
+          escalate(rules.salarySacrifice, plan.salary.escalation, 1, k),
+          salaryRemainingBps,
+          BPS,
+        )
+      : 0;
+    superContribution += superSalarySacrifice;
     const superTax = mulDiv(superContribution, plan.super.contributionsTaxBps, BPS);
     const superNet = superContribution - superTax;
     superTarget.balance += superNet;
+    if (
+      !warnedConcessional &&
+      rules.concessionalCap !== undefined &&
+      superContribution > mulDiv(rules.concessionalCap, inflation[k], PPB)
+    ) {
+      warnedConcessional = true;
+      warnings.push(
+        `Concessional super contributions pass the cap in ${calendarYear}; tax on the excess is not modelled`,
+      );
+    }
+    const superFees = rules.feesAnnual
+      ? Math.min(Math.max(0, superTarget.balance), mulDiv(rules.feesAnnual, inflation[k], PPB))
+      : 0;
+    superTarget.balance -= superFees;
+    const drawn = new Map<string, number>();
+    let superDrawdown = 0;
+    if (phase === 'pension') {
+      const superOpening = accounts
+        .filter((a) => a.cls === 'super')
+        .reduce((sum, a) => sum + Math.max(0, a.opening), 0);
+      if (
+        !warnedTransferCap &&
+        rules.transferBalanceCap !== undefined &&
+        superOpening > mulDiv(rules.transferBalanceCap, inflation[k], PPB)
+      ) {
+        warnedTransferCap = true;
+        warnings.push(
+          `Super is above the transfer balance cap when its pension starts in ${calendarYear}; the excess would stay in accumulation and pay earnings tax, which is not modelled`,
+        );
+      }
+      if (rules.minimumDrawdown) {
+        const rate = minimumDrawdownBps(age);
+        for (const a of accounts) {
+          if (a.cls !== 'super') continue;
+          const d = Math.min(Math.max(0, a.balance), mulDiv(Math.max(0, a.opening), rate, BPS));
+          if (d <= 0) continue;
+          a.balance -= d;
+          drawn.set(a.id, d);
+          superDrawdown += d;
+        }
+      }
+    }
 
     // 5. Surplus or deficit
     const eventTotal = [...eventFlows.values()].reduce((sum, r) => sum + r.amount, 0);
-    const netCashFlow = incomeTotal + pension + eventTotal - spending - loanPayments;
+    const netCashFlow =
+      incomeTotal + pension + eventTotal - spending - loanPayments + superDrawdown;
     const withdrawn = new Map<string, number>();
     const allocations: Row[] = [];
     let unfundedAdded = 0;
     let unfundedRepaid = 0;
+    let superPersonal = 0;
     if (netCashFlow >= 0) {
       unfundedRepaid = Math.min(unfunded, netCashFlow);
       unfunded -= unfundedRepaid;
       let remaining = netCashFlow - unfundedRepaid;
+      // Personal contributions come first from what is left, while working and under 75
+      if (rules.personalContribution && !retired && age < SUPER_PERSONAL_CONTRIBUTION_AGE) {
+        superPersonal = Math.min(remaining, mulDiv(rules.personalContribution, inflation[k], PPB));
+        if (superPersonal > 0) {
+          superTarget.balance += superPersonal;
+          remaining -= superPersonal;
+          allocations.push({ id: superTarget.id, name: superTarget.name, amount: superPersonal });
+        }
+      }
       for (const split of plan.splits) {
         if (remaining <= 0) break;
         const target = accounts.find((a) => a.id === split.accountId) as Acct;
@@ -953,7 +1153,7 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
       }
     } else {
       let need = -netCashFlow;
-      const superOpen = retired && age >= plan.super.preservationAge;
+      const superOpen = phase !== 'preserved';
       const eligible = accounts.filter(
         (a) => a.cls === 'cash' || a.cls === 'investments' || (a.cls === 'super' && superOpen),
       );
@@ -983,14 +1183,21 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
     // 6. Growth on the balance after withdrawals, before this year's deposits
     const growth: Row[] = [];
     let growthTotal = 0;
+    let superEarningsTax = 0;
     for (const a of accounts) {
-      const base = Math.max(0, a.opening - (withdrawn.get(a.id) ?? 0));
+      const out = (withdrawn.get(a.id) ?? 0) + (drawn.get(a.id) ?? 0);
+      const base = Math.max(0, a.opening - out);
       const rate = options.growthBps ? options.growthBps(k, a) : a.growthBps;
       const g = mulDiv(base, rate, BPS);
       if (g !== 0) {
         a.balance += g;
         growth.push({ id: a.id, name: a.name, amount: g });
         growthTotal += g;
+      }
+      if (a.cls === 'super' && g > 0 && phase !== 'pension' && rules.earningsTaxBps) {
+        const t = mulDiv(g, rules.earningsTaxBps, BPS);
+        a.balance -= t;
+        superEarningsTax += t;
       }
     }
 
@@ -1004,8 +1211,10 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
       loanPayments +
       loanPrincipal +
       openedByEvents +
-      superNet +
-      growthTotal;
+      superNet -
+      superFees +
+      growthTotal -
+      superEarningsTax;
     results.push({
       index: k,
       calendarYear,
@@ -1022,8 +1231,14 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
       loanPrincipal,
       openedByEvents,
       superContribution,
+      superSalarySacrifice,
       superTax,
       superNet,
+      superPersonal,
+      superFees,
+      superEarningsTax,
+      superDrawdown,
+      superPhase: phase,
       netCashFlow,
       withdrawals: [...withdrawn].map(([id, amount]) => ({
         id,
@@ -1039,6 +1254,7 @@ function runForecast(plan: ForecastPlan, options: ForecastOptions): ForecastResu
       closingNetWorth,
       balances: snapshotBalances(),
       unfundedBalance: unfunded,
+      wealth: wealthOf(phaseOf(k + 1)),
       bridgeDifference: openingNetWorth + parts - closingNetWorth,
     });
   }

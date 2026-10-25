@@ -84,6 +84,34 @@ export type PlanEvent =
   | PayOffEvent;
 export type EventKind = PlanEvent['kind'];
 
+export interface SuperSettings {
+  /** Before-tax salary sacrifice a year, already out of take-home pay */
+  salarySacrifice: number;
+  /** After-tax personal contributions a year, paid from surplus while working */
+  personalContribution: number;
+  /** Insurance premiums and fixed admin fees a year */
+  feesAnnual: number;
+  /** Tax on earnings before the pension starts (0 when growth is already after tax) */
+  earningsTaxBps: number;
+  /** Pay the legislated minimum pension each year once retired and released */
+  minimumDrawdown: boolean;
+  concessionalCap: number;
+  nonConcessionalCap: number;
+  transferBalanceCap: number;
+}
+/** Preserved: locked. Accessible: released (65, or retired past the preservation age). Pension: retired and released. */
+export type SuperPhase = 'preserved' | 'accessible' | 'pension';
+export interface WealthSplit {
+  /** Cash, investments and released super, less unfunded spending */
+  accessible: number;
+  /** Super still locked by preservation */
+  preserved: number;
+  /** Property, vehicles and other assets */
+  illiquid: number;
+  /** Loans, negative */
+  debts: number;
+}
+
 export interface PlanSettings {
   birthYear: number;
   endAge: number;
@@ -91,6 +119,8 @@ export interface PlanSettings {
   superGuaranteeBps: number;
   contributionsTaxBps: number;
   preservationAge: number;
+  /** Super beyond the guarantee; caps are in today's dollars and only warned about */
+  super: SuperSettings;
   agePension: { enabled: boolean; annual: number; startAge: number };
   income: { takeHome: number | null; grossForSuper: number; escalation: Escalation };
   spending: { annual: number | null; escalation: Escalation };
@@ -162,9 +192,17 @@ export interface YearResult {
   loanInterest: number;
   loanPrincipal: number;
   openedByEvents: number;
+  /** Concessional contributions (employer and salary sacrifice), before contributions tax */
   superContribution: number;
+  superSalarySacrifice: number;
   superTax: number;
   superNet: number;
+  superPersonal: number;
+  superFees: number;
+  superEarningsTax: number;
+  /** Minimum pension payments moved from super into the year's cash flow */
+  superDrawdown: number;
+  superPhase: SuperPhase;
   netCashFlow: number;
   withdrawals: Row[];
   allocations: Row[];
@@ -176,6 +214,8 @@ export interface YearResult {
   closingNetWorth: number;
   balances: Record<string, number>;
   unfundedBalance: number;
+  /** Closing net worth by when it can be spent; the parts add up to closingNetWorth */
+  wealth: WealthSplit;
   bridgeDifference: number;
 }
 export interface PlanResult {
