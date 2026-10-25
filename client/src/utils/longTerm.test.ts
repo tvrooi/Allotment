@@ -12,6 +12,7 @@ import {
   inputToBps,
   mulDiv,
   newDraft,
+  nominalRows,
   PPB,
   worked,
 } from './longTerm';
@@ -36,8 +37,14 @@ const year = (over: Partial<YearResult> = {}): YearResult => ({
   loanPrincipal: 411_110,
   openedByEvents: 0,
   superContribution: 1_000_000,
+  superSalarySacrifice: 0,
   superTax: 150_000,
   superNet: 850_000,
+  superPersonal: 0,
+  superFees: 0,
+  superEarningsTax: 0,
+  superDrawdown: 0,
+  superPhase: 'preserved',
   netCashFlow: 0,
   withdrawals: [],
   allocations: [],
@@ -50,8 +57,27 @@ const year = (over: Partial<YearResult> = {}): YearResult => ({
     50_000_000 + 9_000_000 - 1_234_567 - 6_123_457 - 1_111_111 + 411_110 + 850_000 + 777_777,
   balances: {},
   unfundedBalance: 0,
+  wealth: { accessible: 0, preserved: 0, illiquid: 0, debts: 0 },
   bridgeDifference: 0,
   ...over,
+});
+
+describe('super rows in the breakdown', () => {
+  it('shows fees and earnings tax as their own rows, still adding up', () => {
+    const base = year();
+    const y = year({
+      superSalarySacrifice: 400_000,
+      superFees: 30_000,
+      superEarningsTax: 116_667,
+      closingNetWorth: base.closingNetWorth - 30_000 - 116_667,
+    });
+    const rows = nominalRows(y);
+    expect(rows.find((r) => r.key === 'super')!.label).toContain('salary sacrifice');
+    expect(rows.find((r) => r.key === 'superFees')!.amount).toBe(-30_000);
+    expect(rows.find((r) => r.key === 'superEarningsTax')!.amount).toBe(-116_667);
+    expect(bridge(y, 1_030_000_000, 'future').difference).toBe(0);
+    expect(bridge(y, 1_030_000_000, 'today').difference).toBe(0);
+  });
 });
 
 describe('mulDiv', () => {

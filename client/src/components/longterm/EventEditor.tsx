@@ -414,9 +414,10 @@ export function EventEditor({
                 onChange={(reductions) => patch({ reductions })}
               />
               <p className="text-xs text-text-tertiary">
-                Employer super stops with your pay. Your super opens up once you have retired and
-                reached the preservation age ({plan.settings.preservationAge}). Set an Age Pension
-                in Assumptions.
+                Employer super and salary sacrifice stop with your pay. Your super opens up once you
+                have retired and reached the preservation age ({plan.settings.preservationAge}), or
+                at 65 regardless, and then pays at least the minimum pension each year. Set an Age
+                Pension in Assumptions.
               </p>
             </div>
           )}

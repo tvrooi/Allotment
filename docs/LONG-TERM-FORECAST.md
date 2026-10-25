@@ -550,3 +550,57 @@ Built as §15 designed it, with these details.
   "over 99.9%" or "under 0.1%". The seed is echoed in the response, not stored with the plan. Results are
   reproducible wherever the JavaScript engine's `log`, `exp` and `cos` agree; returns are rounded to whole
   basis points, so a different engine could differ in a rare path by a basis point.
+
+## 22. Australian super: preserved and accessible wealth
+
+Where this section differs from §4, §8, §11 or §17, this section wins. It answers §17's questions 5
+(every `retirement` account is super, now labelled **Superannuation** in its own account group) and 6
+(super now opens at 65 without retiring, as the real rules allow).
+
+**Phases.** Each plan year super is in one of three phases, reported as `superPhase`:
+
+| Phase      | When                                                                  | Effect                                                                   |
+| ---------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Preserved  | Before a condition of release                                         | Grows; never funds a shortfall                                           |
+| Accessible | Age 65 while still working                                            | Funds shortfalls after cash and investments; earnings still taxed        |
+| Pension    | Retired at or after the preservation age (or retired and 65 or older) | Tax-free earnings; the minimum pension moves out of super into cash flow |
+
+Transition to retirement, the "retire after 60 from one job" release and early release on hardship
+or illness are not modelled.
+
+**Accessible and preserved wealth.** Every year carries `wealth = { accessible, preserved,
+illiquid, debts }`, which adds up to the closing net worth to the cent (tested over generated plans).
+Accessible is cash, investments and released super, less unfunded spending. Preserved is super still
+locked. Illiquid is property, vehicles and other assets the plan never sells. A closing balance is
+labelled by what super can do at the **next** year's start, because that is when the money would be
+spent. The chart draws accessible and preserved as two extra lines when no comparison is shown. The
+key figures add accessible versus preserved today, **accessible wealth at retirement** and the age
+super opens. Comparisons add **Accessible wealth at retirement**. The Accounts page shows super as
+its own "Super (preserved)" bucket with an "Accessible now" figure for cash and investments.
+
+**New assumptions** (`settings.super`, JSON in the plan; older plans read the defaults, no migration):
+
+| Assumption                         | Default      | Rule                                                                                                                        |
+| ---------------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| Salary sacrifice a year            | 0            | Concessional, already out of take-home; escalates with the salary and follows its remaining share (§6.1); contributions tax |
+| Personal contributions a year      | 0            | After tax, inflation-indexed; paid first from each surplus year (before splits) while working and under 75; never borrowed  |
+| Fees and insurance a year          | 0            | Inflation-indexed; taken from the first super account, never below zero; a net-worth row                                    |
+| Tax on earnings before the pension | 0%           | On positive growth of super in the preserved and accessible phases; a net-worth row. 0 because returns are quoted after tax |
+| Minimum pension once retired       | on           | 4% under 65, 5% 65–74, 6% 75–79, 7% 80–84, 9% 85–89, 11% 90–94, 14% from 95, of the year's opening balance                  |
+| Concessional cap                   | $32,500      | 2026–27, today's dollars, indexed with inflation as an approximation. Warned about, never enforced                          |
+| Non-concessional cap               | $130,000     | 2026–27. Warned about                                                                                                       |
+| Transfer balance cap               | $2.1 million | 2026–27. Warned about when the pension starts; the excess staying in accumulation is not modelled                           |
+
+**Yearly order (§6).** Step 4 adds salary sacrifice to the employer contribution before contributions
+tax, then takes fees, then (in the pension phase) pays the minimum pension, which joins the year's net
+cash flow as a move. Step 5 pays personal contributions first from what is left after repaying
+unfunded spending. Step 6 grows each account on its opening balance less withdrawals and pension
+payments, then taxes super's positive growth outside the pension phase.
+
+**Breakdown (§11)** adds "Super fees and insurance" and "Tax on super earnings". Personal
+contributions appear as a move into super; pension payments are in the net cash flow and explained
+under the table, with the year's phase.
+
+**Not modelled:** Division 293 tax, carry-forward concessional contributions, bring-forward of
+non-concessional contributions, excess contributions tax, the transfer balance cap's effect, the
+Age Pension means test (still an amount you type), and Payday Super's timing (contributions are yearly).

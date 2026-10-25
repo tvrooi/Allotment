@@ -237,7 +237,7 @@ export function SavingsPanel({
         <h3 className="text-sm font-semibold text-text">When money runs short</h3>
         <p className="text-sm text-text-secondary">
           A shortfall is taken from the top of this list first. Super is on the list but stays
-          locked until you have retired and reached the preservation age (
+          preserved until 65, or until you retire at or after the preservation age (
           {plan.settings.preservationAge}). If everything unlocked runs out, the rest is shown as{' '}
           <em>unfunded spending</em>, with the first year it happens.
         </p>
@@ -255,8 +255,8 @@ export function SavingsPanel({
                   {orderNames(id)}
                   {locked && (
                     <span className="ml-2 text-xs text-text-tertiary">
-                      ({CLASS_LABEL.super}, locked until retired and {plan.settings.preservationAge}
-                      )
+                      ({CLASS_LABEL.super}, preserved until 65 or retired from{' '}
+                      {plan.settings.preservationAge})
                     </span>
                   )}
                 </span>

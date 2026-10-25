@@ -5,6 +5,7 @@ import {
   EXTRA_SAVINGS_ID,
   forecastLongTerm,
   LongTermForecastError,
+  minimumDrawdownBps,
   mulDiv,
   standardLoanPayment,
   type ForecastPlan,
@@ -482,6 +483,231 @@ describe('super contributions', () => {
   });
 });
 
+describe('Australian super rules', () => {
+  const retire = (year: number) =>
+    ev({
+      id: 'ret',
+      name: 'Retire',
+      kind: 'retirement',
+      start: { year },
+      spendingMultiplierBps: 10000,
+      reductions: { salary: 10000 },
+    });
+  const noPay = { takeHome: 0, grossForSuper: 0, escalation: { mode: 'none' } } as const;
+
+  it('releases super at 65 without retiring, and splits wealth by what can be spent', () => {
+    const plan = basePlan({
+      startAge: 63,
+      endAge: 67,
+      salary: noPay,
+      spending: { annual: 1_000_000, escalation: { mode: 'none' } },
+      accounts: [acct('sup', 'super', 5_000_000)],
+    });
+    const years = forecastLongTerm(plan).years;
+    expect(years.map((y) => y.superPhase)).toEqual([
+      'preserved',
+      'preserved',
+      'preserved',
+      'accessible',
+      'accessible',
+    ]);
+    expect(years[2].unfundedAdded).toBe(1_000_000);
+    expect(years[3].withdrawals).toEqual([{ id: 'sup', name: 'sup', amount: 1_000_000 }]);
+    expect(years[3].superDrawdown).toBe(0);
+    // Closing balances are labelled by what super can do at the next year's start
+    expect(years[1].wealth).toEqual({
+      accessible: -1_000_000,
+      preserved: 5_000_000,
+      illiquid: 0,
+      debts: 0,
+    });
+    expect(years[2].wealth).toMatchObject({ accessible: 3_000_000, preserved: 0 });
+  });
+
+  it('pays the minimum pension once retired and released, with tax-free earnings', () => {
+    const plan = basePlan({
+      startAge: 60,
+      endAge: 67,
+      salary: noPay,
+      spending: { annual: 0, escalation: { mode: 'none' } },
+      accounts: [acct('sup', 'super', 10_000_000, 1000)],
+      super: {
+        guaranteeBps: 1200,
+        contributionsTaxBps: 1500,
+        preservationAge: 60,
+        earningsTaxBps: 1500,
+        minimumDrawdown: true,
+      },
+      events: [retire(2027)],
+    });
+    const years = forecastLongTerm(plan).years;
+    expect(years[1]).toMatchObject({
+      superPhase: 'pension',
+      superDrawdown: 400_000,
+      netCashFlow: 400_000,
+      superEarningsTax: 0,
+      allocations: [{ id: EXTRA_SAVINGS_ID, name: 'Extra savings', amount: 400_000 }],
+    });
+    // Growth on the balance after the payment left
+    expect(years[1].balances.sup).toBe(10_000_000 - 400_000 + 960_000);
+    // The rate steps up to 5% from 65
+    const at65 = years[6];
+    expect(at65.age).toBe(65);
+    expect(at65.superDrawdown).toBe(mulDiv(years[5].balances.sup, 500, 10_000));
+  });
+
+  it('leaves super alone when the minimum payment is turned off', () => {
+    const plan = basePlan({
+      startAge: 60,
+      endAge: 62,
+      salary: noPay,
+      spending: { annual: 0, escalation: { mode: 'none' } },
+      accounts: [acct('sup', 'super', 10_000_000)],
+      events: [retire(2027)],
+    });
+    expect(forecastLongTerm(plan).years[1].superDrawdown).toBe(0);
+  });
+
+  it('taxes earnings in the accumulation phase', () => {
+    const plan = basePlan({
+      endAge: 41,
+      salary: noPay,
+      spending: { annual: 0, escalation: { mode: 'none' } },
+      accounts: [acct('sup', 'super', 10_000_000, 1000)],
+      super: {
+        guaranteeBps: 1200,
+        contributionsTaxBps: 1500,
+        preservationAge: 60,
+        earningsTaxBps: 1500,
+      },
+    });
+    const y = forecastLongTerm(plan).years[1];
+    expect(y).toMatchObject({
+      superPhase: 'preserved',
+      growthTotal: 1_000_000,
+      superEarningsTax: 150_000,
+    });
+    expect(y.balances.sup).toBe(10_850_000);
+    expect(y.bridgeDifference).toBe(0);
+  });
+
+  it('adds salary sacrifice to concessional contributions, following the salary', () => {
+    const plan = basePlan({
+      endAge: 43,
+      salary: { takeHome: 8_000_000, grossForSuper: 10_000_000, escalation: { mode: 'none' } },
+      accounts: [acct('sup', 'super', 0)],
+      super: {
+        guaranteeBps: 1200,
+        contributionsTaxBps: 1500,
+        preservationAge: 60,
+        salarySacrifice: 1_000_000,
+      },
+      events: [
+        ev({
+          id: 'brk',
+          name: 'Break',
+          kind: 'careerBreak',
+          start: { year: 2028 },
+          durationYears: 1,
+          spendingMultiplierBps: 10000,
+          reductions: { salary: 5000 },
+        }),
+      ],
+    });
+    const years = forecastLongTerm(plan).years;
+    expect(years[1]).toMatchObject({
+      superContribution: 2_200_000,
+      superSalarySacrifice: 1_000_000,
+      superTax: 330_000,
+      superNet: 1_870_000,
+    });
+    expect(years[2]).toMatchObject({ superContribution: 1_100_000, superSalarySacrifice: 500_000 });
+  });
+
+  it('pays personal contributions from surplus while working, never more than the surplus', () => {
+    const plan = (personalContribution: number) =>
+      basePlan({
+        endAge: 43,
+        accounts: [acct('sup', 'super', 0)],
+        super: {
+          guaranteeBps: 1200,
+          contributionsTaxBps: 1500,
+          preservationAge: 60,
+          personalContribution,
+        },
+        events: [retire(2028)],
+      });
+    const some = forecastLongTerm(plan(500_000)).years;
+    expect(some[1].superPersonal).toBe(500_000);
+    expect(some[1].allocations).toEqual([
+      { id: 'sup', name: 'sup', amount: 500_000 },
+      { id: EXTRA_SAVINGS_ID, name: 'Extra savings', amount: 1_500_000 },
+    ]);
+    expect(some[2].superPersonal).toBe(0);
+    // Surplus is 2,000,000: a larger target takes only that
+    expect(forecastLongTerm(plan(3_000_000)).years[1].superPersonal).toBe(2_000_000);
+  });
+
+  it('takes fees from super, never below zero', () => {
+    const plan = basePlan({
+      endAge: 42,
+      salary: noPay,
+      spending: { annual: 0, escalation: { mode: 'none' } },
+      accounts: [acct('sup', 'super', 30_000)],
+      super: {
+        guaranteeBps: 1200,
+        contributionsTaxBps: 1500,
+        preservationAge: 60,
+        feesAnnual: 50_000,
+      },
+    });
+    const years = forecastLongTerm(plan).years;
+    expect(years[1]).toMatchObject({ superFees: 30_000, closingNetWorth: 0, bridgeDifference: 0 });
+    expect(years[2].superFees).toBe(0);
+  });
+
+  it('warns when contributions or a pension pass the caps', () => {
+    const caps = {
+      concessionalCap: 3_250_000,
+      nonConcessionalCap: 13_000_000,
+      transferBalanceCap: 210_000_000,
+    };
+    const over = forecastLongTerm(
+      basePlan({
+        salary: { takeHome: 20_000_000, grossForSuper: 30_000_000, escalation: { mode: 'none' } },
+        super: {
+          guaranteeBps: 1200,
+          contributionsTaxBps: 1500,
+          preservationAge: 60,
+          personalContribution: 14_000_000,
+          ...caps,
+        },
+      }),
+    ).warnings;
+    expect(
+      over.some((w) => w.startsWith('Concessional super contributions pass the cap in 2027')),
+    ).toBe(true);
+    expect(over.some((w) => w.includes('non-concessional cap'))).toBe(true);
+    const rich = forecastLongTerm(
+      basePlan({
+        startAge: 60,
+        endAge: 62,
+        salary: noPay,
+        accounts: [acct('sup', 'super', 300_000_000)],
+        super: { guaranteeBps: 1200, contributionsTaxBps: 1500, preservationAge: 60, ...caps },
+        events: [retire(2027)],
+      }),
+    ).warnings;
+    expect(rich.some((w) => w.includes('transfer balance cap'))).toBe(true);
+  });
+
+  it('uses the standard minimum drawdown rates', () => {
+    expect([60, 64, 65, 74, 75, 80, 85, 90, 95, 100].map(minimumDrawdownBps)).toEqual([
+      400, 400, 500, 500, 600, 700, 900, 1100, 1400, 1400,
+    ]);
+  });
+});
+
 describe('growth and inflation', () => {
   it('grows the balance after withdrawals but before deposits', () => {
     const plan = basePlan({
@@ -682,6 +908,8 @@ describe('invariants', () => {
       const result = forecastLongTerm(busyPlan(seed));
       for (const y of result.years) {
         expect(y.bridgeDifference, `seed ${seed} year ${y.index}`).toBe(0);
+        const w = y.wealth;
+        expect(w.accessible + w.preserved + w.illiquid + w.debts).toBe(y.closingNetWorth);
         if (y.index > 0) expect(y.openingNetWorth).toBe(result.years[y.index - 1].closingNetWorth);
       }
     }
@@ -701,8 +929,16 @@ describe('invariants', () => {
           y.agePension +
           y.eventFlows.reduce((s, r) => s + r.amount, 0) -
           y.spending -
-          y.loanPayments;
+          y.loanPayments +
+          y.superDrawdown;
         expect(rowsNet).toBe(y.netCashFlow);
+        expect(y.superSalarySacrifice).toBeLessThanOrEqual(y.superContribution);
+        if (y.superPhase === 'pension') expect(y.superEarningsTax).toBe(0);
+        if (y.superPhase !== 'pension') expect(y.superDrawdown).toBe(0);
+        if (y.superPersonal > 0)
+          expect(y.allocations.find((r) => r.id === 'sup')?.amount).toBeGreaterThanOrEqual(
+            y.superPersonal,
+          );
         expect(y.spendingBase + y.spendingChanges.reduce((s, r) => s + r.amount, 0)).toBe(
           y.spending,
         );
@@ -873,7 +1109,19 @@ function busyPlan(seed: number): ForecastPlan {
       escalation: { mode: 'inflation' },
     },
     spending: { annual: 4_000_000 + rnd(4_000_000), escalation: { mode: 'inflation' } },
-    super: { guaranteeBps: 1200, contributionsTaxBps: 1500, preservationAge: 60 },
+    super: {
+      guaranteeBps: 1200,
+      contributionsTaxBps: 1500,
+      preservationAge: 60,
+      salarySacrifice: rnd(2) * rnd(1_500_000),
+      personalContribution: rnd(2) * rnd(1_000_000),
+      feesAnnual: rnd(60_000),
+      earningsTaxBps: rnd(2) * rnd(1500),
+      minimumDrawdown: rnd(4) > 0,
+      concessionalCap: 3_250_000,
+      nonConcessionalCap: 13_000_000,
+      transferBalanceCap: 210_000_000,
+    },
     agePension: { enabled: rnd(2) === 1, annual: 2_400_000, startAge: 67 },
     extraSavingsGrowthBps: 200,
     splits: [

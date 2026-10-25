@@ -261,8 +261,17 @@ function Editor({
           .filter(([id]) => r.superAccountIds.includes(id) || id === 'super-new-contributions')
           .reduce((s, [, v]) => s + v, 0)
       : null;
+    // Retirement takes effect after this closing balance, so its split shows super as released
+    const retiredIndex = r.retirementAge === null ? -1 : r.retirementAge - r.startAge;
+    const opens = years.slice(1).find((y) => y.superPhase !== 'preserved');
+    const atRetirement =
+      retiredIndex >= 0 && retiredIndex < years.length - 1 ? years[retiredIndex] : undefined;
     return [
-      { label: 'Net worth today', value: show(years[0].closingNetWorth, 0) },
+      {
+        label: 'Net worth today',
+        value: show(years[0].closingNetWorth, 0),
+        sub: `${show(years[0].wealth.accessible, 0)} accessible · ${show(years[0].wealth.preserved, 0)} preserved super`,
+      },
       {
         label: `Net worth at ${r.endAge}`,
         value: show(years[last].closingNetWorth, last),
@@ -276,6 +285,15 @@ function Editor({
         tone: lowest.closingNetWorth < 0 ? ('negative' as const) : undefined,
       },
       {
+        label: 'Accessible at retirement',
+        value: atRetirement ? show(atRetirement.wealth.accessible, atRetirement.index) : '—',
+        sub: atRetirement
+          ? `Cash, investments and released super at ${r.retirementAge}`
+          : 'No retirement event yet',
+        tone:
+          atRetirement && atRetirement.wealth.accessible < 0 ? ('negative' as const) : undefined,
+      },
+      {
         label: `Super at ${r.preservationAge}`,
         value:
           superNow === null || !atPreservation
@@ -283,6 +301,15 @@ function Editor({
             : formatCurrency(inDollars(superNow, atPreservation.inflationIndexPpb, mode)),
         sub:
           r.retirementAge === null ? 'No retirement event yet' : `Retiring at ${r.retirementAge}`,
+      },
+      {
+        label: 'Super opens',
+        value: opens ? (opens.index === 1 ? 'Now' : `At ${opens.age}`) : 'Not in this plan',
+        sub: !opens
+          ? `Preserved until 65, or retiring from ${r.preservationAge}`
+          : opens.superPhase === 'pension'
+            ? 'Retired, so it pays a pension'
+            : 'Reached 65, while still working',
       },
     ];
   }, [r, years, mode]);

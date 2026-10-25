@@ -51,6 +51,13 @@ function Moves({
  * cent. Money moved between accounts (withdrawals, savings) changes the mix, not the total, so
  * it is listed apart.
  */
+const SUPER_PHASE_TEXT: Record<YearResult['superPhase'], string> = {
+  preserved: 'Super was preserved this year: it grew but could not pay for anything.',
+  accessible:
+    'Super was released this year (you had reached 65), so it could cover a shortfall after cash and investments.',
+  pension: 'Super was paying a pension this year: released, with tax-free earnings.',
+};
+
 export function YearBreakdown({
   year,
   previousIndexPpb,
@@ -151,10 +158,28 @@ export function YearBreakdown({
         )}
         {year.superContribution > 0 && (
           <p className="text-xs text-text-tertiary sm:col-span-2">
-            Employer super of {formatCurrency(year.superContribution)}, less{' '}
-            {formatCurrency(year.superTax)} contributions tax, went into your super.
+            {year.superSalarySacrifice > 0
+              ? `Employer super and ${formatCurrency(real(year.superSalarySacrifice))} of salary sacrifice`
+              : 'Employer super'}{' '}
+            of {formatCurrency(real(year.superContribution))}, less{' '}
+            {formatCurrency(real(year.superTax))} contributions tax, went into your super.
           </p>
         )}
+        {year.superPersonal > 0 && (
+          <p className="text-xs text-text-tertiary sm:col-span-2">
+            {formatCurrency(real(year.superPersonal))} of personal contributions moved from your
+            surplus into super, where it is preserved.
+          </p>
+        )}
+        {year.superDrawdown > 0 && (
+          <p className="text-xs text-text-tertiary sm:col-span-2">
+            Your super pension paid its minimum of {formatCurrency(real(year.superDrawdown))} into
+            spendable cash.
+          </p>
+        )}
+        <p className="text-xs text-text-tertiary sm:col-span-2">
+          {SUPER_PHASE_TEXT[year.superPhase]}
+        </p>
       </div>
       <p className="text-xs text-text-tertiary">
         Money moved between your accounts changes what you hold where, not your net worth.
