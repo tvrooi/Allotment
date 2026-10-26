@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from '../api/tax';
 
@@ -6,13 +7,29 @@ import * as api from '../api/tax';
 const RECEIPTS = ['receipts'];
 const TAX = ['tax'];
 
-export const useReceipts = (filter: Parameters<typeof api.listReceipts>[0]) =>
-  useQuery({
+export function useReceipts(filter: Parameters<typeof api.listReceipts>[0]) {
+  const query = useQuery({
     queryKey: [...RECEIPTS, filter],
     queryFn: () => api.listReceipts(filter),
     // Receipts being read by the local model change when it finishes
     refetchInterval: (q) => (q.state.data?.some((r) => r.readStatus === 'pending') ? 5000 : false),
   });
+  // A finished read may have matched, categorised or split a transaction: wherever receipts
+  // are listed (a transaction's details too), what shows them refreshes
+  const refreshAll = useRefreshAll();
+  const reading = useRef(new Set<string>());
+  useEffect(() => {
+    const now = new Set(
+      (query.data ?? []).filter((r) => r.readStatus === 'pending').map((r) => r.id),
+    );
+    const finished = [...reading.current].some((id) => !now.has(id));
+    reading.current = now;
+    if (finished) void refreshAll();
+    // refreshAll is a new function each render; the data decides when this acts
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query.data]);
+  return query;
+}
 
 /** Which transactions have receipts and claims, for the register's markers */
 export function useReceiptMarks() {

@@ -9,6 +9,8 @@ import { SAMPLE_RECEIPT_PNG } from '../../server/src/services/receiptSample';
 let ollama: Server;
 let base = '';
 const chats: { model: string; images: string[]; think: boolean }[] = [];
+/** How long the mock model takes to answer a chat */
+let chatDelay = 0;
 
 test.beforeAll(async () => {
   ollama = createServer((req, res) => {
@@ -25,31 +27,30 @@ test.beforeAll(async () => {
             ],
           }),
         );
-      if (req.url === '/api/chat') {
-        const sent = JSON.parse(body);
-        chats.push({ model: sent.model, images: sent.messages[0].images, think: sent.think });
-        return res.end(
-          JSON.stringify({
-            message: {
-              content: JSON.stringify({
-                merchant: 'Coles',
-                date: isoDay(),
-                total: 58,
-                subtotal: null,
-                tax: 5.27,
-                // The sample, then the photo; reading it again finds the fees too
-                tip: chats.length > 2 ? 2 : null,
-                items: [
-                  { description: 'Milk', amount: 30, category: 'Groceries' },
-                  { description: 'Light globes', amount: 28, category: 'Home Maintenance' },
-                ],
-              }),
-            },
-          }),
-        );
+      if (req.url !== '/api/chat') {
+        res.statusCode = 404;
+        return res.end(JSON.stringify({ error: 'not found' }));
       }
-      res.statusCode = 404;
-      res.end(JSON.stringify({ error: 'not found' }));
+      const sent = JSON.parse(body);
+      chats.push({ model: sent.model, images: sent.messages[0].images, think: sent.think });
+      const reply = JSON.stringify({
+        message: {
+          content: JSON.stringify({
+            merchant: 'Coles',
+            date: isoDay(),
+            total: 58,
+            subtotal: null,
+            tax: 5.27,
+            // The sample, then the photo; reading it again finds the fees too
+            tip: chats.length > 2 ? 2 : null,
+            items: [
+              { description: 'Milk', amount: 30, category: 'Groceries' },
+              { description: 'Light globes', amount: 28, category: 'Home Maintenance' },
+            ],
+          }),
+        },
+      });
+      setTimeout(() => res.end(reply), chatDelay);
     });
   });
   await new Promise<void>((resolve) => ollama.listen(0, '127.0.0.1', resolve));
@@ -118,4 +119,38 @@ test('a photo is read by the local model, filled in and matched', async ({ page,
   expect(last.images).toHaveLength(1);
   const parent = (await api.transactions()).find((t) => t.id === shop.id);
   expect((parent.children as unknown[]).length).toBe(2);
+});
+
+test("a photo added from a transaction's details is read, and the transaction shows it", async ({
+  page,
+  api,
+}) => {
+  const card = await api.createAccount('Card', 0, 'credit');
+  await api.category('Groceries');
+  await api.category('Home Maintenance');
+  await api.createTransaction({
+    accountId: card.id,
+    date: isoDay(),
+    amount: -5_800,
+    payeeName: 'Bunnings',
+  });
+  // Like a real model on a small server: the read finishes after the upload has refreshed
+  chatDelay = 3_000;
+  await api.call('PUT', '/receipts/reader', {
+    url: base,
+    model: 'qwen3-vl:4b-instruct',
+    enabled: true,
+  });
+
+  await open(page, `/accounts/${card.id}`);
+  await page.getByTestId('transaction-row').filter({ hasText: 'Bunnings' }).focus();
+  await page.keyboard.press('Enter');
+  const panel = page.getByRole('complementary', { name: 'Transaction details' });
+  await panel.getByLabel('Add a receipt: choose files').setInputFiles({
+    name: 'bunnings.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(SAMPLE_RECEIPT_PNG, 'base64'),
+  });
+  // The read adds the items to the transaction's notes; the open panel shows them
+  await expect(panel.getByText('Milk, Light globes')).toBeVisible({ timeout: 20_000 });
 });
