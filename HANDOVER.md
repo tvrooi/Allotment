@@ -9,15 +9,13 @@ Last updated: 26 October 2026.
 
 ## State
 
-- **Released:** `v0.2.0-up.43` (Receipts tab, PR #55). Releases are listed on the
-  [GitHub Releases](https://github.com/tvrooi/FlyBudget/releases) page.
-- **Merged, release pending:** PR #57, version `0.2.0-up.45`: overspending resets at each month
-  boundary, like YNAB (`rollOver` in `budgetService.ts`), and reviewed card funding follows the
-  same reset month by month (`calculateCardFunding`); see docs/ENVELOPE-FUNDING.md and
+- **Released:** `v0.2.0-up.45` (PR #57, with the e2e race fix in PR #58): overspending resets at
+  each month boundary, like YNAB (`rollOver` in `budgetService.ts`), and reviewed card funding
+  follows the same reset month by month (`calculateCardFunding`); see docs/ENVELOPE-FUNDING.md and
   docs/CARD-PAYMENTS.md. The owner asked for it after paying out the GSB loan and a $3,000
-  settlement in October 2026. Main CI then failed on a race in `envelope-funding.spec.ts`; the
-  follow-up PR fixes the test, after which **Publish tested main** tags and releases up.45.
-- **Live Home Assistant app:** installed from the catalog repository (not the old `local_flybudget_up`), with **Auto update on**. It was already on `0.2.0-up.43` on 26 October.
+  settlement in October 2026. Releases are listed on the
+  [GitHub Releases](https://github.com/tvrooi/FlyBudget/releases) page.
+- **Live Home Assistant app:** installed from the catalog repository (not the old `local_flybudget_up`), with **Auto update on**. It was on `0.2.0-up.43` on 26 October; confirm it reached `0.2.0-up.45`.
   A completed release reaches it through the catalog sync (MAINTENANCE.md, step 5) and then its
   auto-update. Before relying on that, verify the installed version afterwards, and take a cold
   backup first when you update it by hand.
@@ -31,6 +29,7 @@ Last updated: 26 October 2026.
 | Receipts, receipt inbox, tax deductions (ATO labels, FY exports)                                | #54 / up.42  | `docs/RECEIPTS-AND-TAX.md` §1–4                                    | `receiptService.ts`, `taxService.ts`, `routes/receipts.ts`, `routes/tax.ts` |
 | Receipts tab (Monarch parity): matching, autosplit, Split by items                              | #55 / up.43  | `docs/RECEIPTS-AND-TAX.md` §5                                      | `receiptMatching.ts`, `client/src/components/receipts/`                     |
 | Reading receipts with local Ollama                                                              | #56 / up.44  | `docs/RECEIPTS-AND-TAX.md` §5, "Reading photos with a local model" | `receiptReader.ts`, `receiptSample.ts`                                      |
+| Overspending resets each month (YNAB), card funding month by month                              | #57 / up.45  | `docs/ENVELOPE-FUNDING.md`, `docs/CARD-PAYMENTS.md`                | `budgetService.ts` (`rollOver`), `cardFunding.ts`                           |
 
 The user guide for receipts and tax is in `website/docs/tax.mdx`.
 
@@ -71,10 +70,10 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
 
 ## Open items (pick up here)
 
-1. **Finish PR #56:** green CI and a clean Codex review on its head, then merge and confirm the
-   `v0.2.0-up.44` release. Then confirm the live app updated: version, health, and that the budget
-   opens. Ask the owner to press **Try a sample receipt** with `qwen3-vl:4b-instruct` and report what
-   it got right and how long it took.
+1. **Confirm the live app reached `0.2.0-up.45`:** version, health, and that the budget opens
+   (up.44 with Ollama receipts and up.45 with the monthly overspending reset are both released).
+   Ask the owner to press **Try a sample receipt** with `qwen3-vl:4b-instruct` and report what it
+   got right and how long it took. In November, check the October deficits no longer carry over.
 2. **Security, waiting on the owner's decision:** the Ollama app publishes port 11434 on the host.
    Its log showed requests from public internet addresses, and Ollama has no authentication. The fix
    is to clear the app's 11434 port mapping, since FlyBudget uses the internal address. Do that only
