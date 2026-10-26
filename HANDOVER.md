@@ -11,10 +11,12 @@ Last updated: 26 October 2026.
 
 - **Released:** `v0.2.0-up.43` (Receipts tab, PR #55). Releases are listed on the
   [GitHub Releases](https://github.com/tvrooi/FlyBudget/releases) page.
-- **In flight:** `claude/upbeat-lovelace-qbemhm`, version `0.2.0-up.45`: overspending resets at
-  each month boundary, like YNAB (`rollOver` in `budgetService.ts`, docs/ENVELOPE-FUNDING.md).
-  The owner asked for it after paying out the GSB loan and a $3,000 settlement in October 2026,
-  which otherwise stayed as deficits. Merge when green, under the standing authorization.
+- **Merged, release pending:** PR #57, version `0.2.0-up.45`: overspending resets at each month
+  boundary, like YNAB (`rollOver` in `budgetService.ts`), and reviewed card funding follows the
+  same reset month by month (`calculateCardFunding`); see docs/ENVELOPE-FUNDING.md and
+  docs/CARD-PAYMENTS.md. The owner asked for it after paying out the GSB loan and a $3,000
+  settlement in October 2026. Main CI then failed on a race in `envelope-funding.spec.ts`; the
+  follow-up PR fixes the test, after which **Publish tested main** tags and releases up.45.
 - **Live Home Assistant app:** installed from the catalog repository (not the old `local_flybudget_up`), with **Auto update on**. It was already on `0.2.0-up.43` on 26 October.
   A completed release reaches it through the catalog sync (MAINTENANCE.md, step 5) and then its
   auto-update. Before relying on that, verify the installed version afterwards, and take a cold
