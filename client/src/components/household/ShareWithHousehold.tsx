@@ -9,6 +9,7 @@ import {
 } from '../../api/households';
 import { getTransactions } from '../../api/transactions';
 import { useUndoStore } from '../../store/undoStore';
+import { inBatches } from '../../utils/batches';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { Select } from '../ui/Input';
@@ -18,6 +19,16 @@ import type { TransactionQueryParams } from '../../types';
 // default split (Household → Sharing), in one step instead of a form per payment. For one
 // transaction, the payments picked in the register, or every payment in its current list.
 // Undo removes the entries.
+
+/** The share endpoint takes at most this many ids, so a larger selection goes in batches */
+const SHARE_BATCH = 500;
+async function shareAll(groupId: string, ids: string[]) {
+  const parts = await inBatches(ids, SHARE_BATCH, (batch) => shareTransactions(groupId, batch));
+  return {
+    shared: parts.reduce((n, p) => n + p.shared, 0),
+    results: parts.flatMap((p) => p.results),
+  };
+}
 
 const splitText = (g: HouseholdSummary) =>
   !g.defaultSplit || g.defaultSplit.mode === 'equal'
@@ -54,13 +65,11 @@ export function ShareWithHousehold({
     mutationFn: async (id: string) => {
       const ids = transactionId
         ? [transactionId]
-        : transactionIds
-          ? transactionIds.slice(0, 500)
-          : (await getTransactions(params ?? {}))
-              .filter((t) => t.amount < 0 && !t.isParent && !t.transferTransactionId)
-              .map((t) => t.id)
-              .slice(0, 500);
-      return { id, result: await shareTransactions(id, ids) };
+        : (transactionIds ??
+          (await getTransactions(params ?? {}))
+            .filter((t) => t.amount < 0 && !t.isParent && !t.transferTransactionId)
+            .map((t) => t.id));
+      return { id, result: await shareAll(id, ids) };
     },
     onSuccess: ({ id, result }) => {
       void qc.invalidateQueries({ queryKey: ['households'] });
@@ -81,7 +90,7 @@ export function ShareWithHousehold({
             void qc.invalidateQueries({ queryKey: ['households'] });
           },
           redo: async () => {
-            await shareTransactions(
+            await shareAll(
               id,
               result.results.filter((r) => r.ok).map((r) => r.transactionId),
             );
