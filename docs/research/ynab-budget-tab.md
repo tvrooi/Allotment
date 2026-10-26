@@ -13,7 +13,7 @@ Temporary overassignment, multi-category funding and the $10 move to RTA were un
 
 The principal finding is a workflow gap around an existing accounting foundation: FlyBudget already has envelopes, atomic moves, targets, funding guards and reviewed card reserves.
 YNAB integrates these tasks into row selection, a contextual inspector and immediate scoped assignment actions.
-Two verified accounting differences must stay explicit: YNAB resets overspent category availability at month rollover and accepts manual overassignment; FlyBudget retains deficits and guards new reservations.
+Two verified accounting differences were explicit at the time: YNAB resets overspent category availability at month rollover and accepts manual overassignment; FlyBudget retained deficits and guards new reservations. **Update (`0.2.0-up.45`, PR #57):** at the owner's request FlyBudget now resets overspent envelopes at month rollover like YNAB (`rollOver` in `budgetService.ts`); the overassignment guard is unchanged.
 Neither difference should be changed as a cosmetic parity fix.
 
 ## Evidence and limits
@@ -186,9 +186,9 @@ A synthetic $30 cash overspend showed −$30 in October; November's category ava
 A $40 credit overspend also reset to zero in November but caused no additional $40 RTA deduction and did not create extra payment reserve.
 Covering overspending back in October changed the funding position. These observations are separate from a general claim about all historical edits or mixed-source spending.
 
-**FlyBudget — positive carry matches, negative carry intentionally differs:** [Carry](../../server/src/services/budgetService.ts#L79) sums prior assignments plus signed activity, retaining negative envelopes across months.
+**FlyBudget at the investigated baseline — positive carry matched, negative carry differed** (since `0.2.0-up.45` it resets like YNAB; card debt left unfunded stays a payment shortfall): [Carry](../../server/src/services/budgetService.ts#L79) sums prior assignments plus signed activity, retaining negative envelopes across months.
 [Active-category logic](../../client/src/utils/budgetFigures.ts#L19) keeps carry-only and deficit categories visible.
-This policy is documented in [Envelope funding](../ENVELOPE-FUNDING.md). Copying YNAB's reset behavior would require an accounting design and compatibility review, not a row-rendering change.
+This policy is documented in [Envelope funding](../ENVELOPE-FUNDING.md). Copying YNAB's reset behavior required an accounting design and compatibility review, not a row-rendering change; PR #57 did that, including month-by-month card funding.
 Existing ledger rows must not be rewritten to make screenshots match.
 
 ## 7. Ready to Assign, future commitments and overassignment

@@ -1,7 +1,7 @@
 # YNAB Budget comparison: FlyBudget gaps and implementation candidates
 
 Investigation date: 24 October 2026. FlyBudget source baseline: `5bb4b652b931212b6883d126472dbc1f410bed80` (`SRC`).
-This is a proposed backlog, not authorization to implement it. No FlyBudget application code or budget data was changed. YNAB tests changed only the user-confirmed synthetic test budget.
+This is a proposed backlog, not authorization to implement it. Status as of 26 October 2026 (`0.2.0-up.46`) is noted on each ticket. No FlyBudget application code or budget data was changed. YNAB tests changed only the user-confirmed synthetic test budget.
 
 The [companion findings](ynab-budget-tab.md) distinguish YNAB documentation, reference UI and live-test evidence.
 The tickets below establish FlyBudget behavior from source and cite the companion report's `LIVE-*` evidence for verified YNAB interactions.
@@ -26,6 +26,8 @@ The task is to improve access, explanation and consistency around them, with exp
 
 ## P1 · BUD-01: bind editing and saving to a loaded month
 
+**Status: fixed in `0.2.0-up.46`.** While the next month loads the table is `inert`, saves are ignored, and an open editor closes when the month changes (`budget.spec.ts`, "an open editor never saves into the month that is still loading"). Stale-write revisions for two clients remain open.
+
 - **Evidence / status:** Source-confirmed risk; actual race reproduction remains a test task.
   [Budget queries](../../client/src/hooks/useBudget.ts#L5) retain previous-month data while loading.
   [Save](../../client/src/pages/Budget.tsx#L487) uses `selectedMonth`; normal rows gate editing only on connectivity at line 107.
@@ -41,6 +43,8 @@ The task is to improve access, explanation and consistency around them, with exp
 
 ## P1 · BUD-02: show save progress and failed undo clearly
 
+**Status: open.**
+
 - **Evidence / status:** Source-confirmed feedback gap; latency and animation quality have not been measured against YNAB.
   [Manual save](../../client/src/pages/Budget.tsx#L487) closes immediately, refetches on success and renders errors at line 581.
   [Undo store](../../client/src/store/undoStore.ts#L38) restores a failed command to its stack without surfacing its error.
@@ -54,6 +58,8 @@ The task is to improve access, explanation and consistency around them, with exp
 
 ## P1 · BUD-03: make availability states explain their meaning
 
+**Status: open.**
+
 - **Evidence / status:** Source-confirmed simplified state model; `LIVE-03` verified target progress/shortfall and `LIVE-05`/`LIVE-06` verified overspending and overassignment states. Remaining color combinations need the companion test matrix.
   [Available pills](../../client/src/pages/Budget.tsx#L112) use only positive, negative and zero balance.
   [Progress bars](../../client/src/components/budget/SpentBar.tsx#L13) use monthly spending/assignment ratio; target underfunding is separate text at Budget line 134.
@@ -66,6 +72,8 @@ The task is to improve access, explanation and consistency around them, with exp
 - **Smallest checks:** C plus semantic-state unit cases; E(`envelope-funding.spec.ts`), adding the carried-funds/progress case.
 
 ## P2 · BUD-04: category groups, visibility and responsive layout
+
+**Status: partly done.** Persistent hidden categories shipped in PR #48 (`categories.hidden`); saved group layout and narrow-width inspector remain open.
 
 - **Evidence / status:** Comparable monthly columns/collapsible sections exist; `LIVE-01` verified YNAB category-group and inspector layout. FlyBudget grouping differs; `LIVE-08` verifies hiding a zero-balance row, the Hidden Categories section, and Undo restoration; group collapse retains totals.
   [Budget types](../../client/src/pages/Budget.tsx#L410) regroup expense categories into four fixed types at line 442.
@@ -81,6 +89,8 @@ The task is to improve access, explanation and consistency around them, with exp
 - **Smallest checks:** C and E(`budget.spec.ts`); only add server/backup checks if persistent metadata is introduced.
 
 ## P2 · BUD-05: predictable keyboard, expression and multi-category assignment
+
+**Status: open.**
 
 - **Evidence / status:** Basic inline editing and undo exist; no budget-grid navigation, arithmetic evaluator or selected-category batch flow is implemented in the reviewed page.
   `LIVE-02` verified YNAB `100+50` → 150, `150*2` → 300, ArrowDown selecting/opening the next category, and undo/redo 300 ↔ 150. Literal replacement of $350 with `+50` saved $50; replacement with `*2` saved $2. The original $350 was restored. Tab left the editor; its exact destination was not established.
@@ -98,6 +108,8 @@ The task is to improve access, explanation and consistency around them, with exp
 
 ## P2 · BUD-06: row-anchored moves and unassigned-money entry points
 
+**Status: open.**
+
 - **Evidence / status:** Atomic move/cover/undo already exists; row-anchored entry and Ready-to-Assign endpoints are missing from this workflow.
   `LIVE-04` verified YNAB moving $50 from groceries $400 → $350 to transport $0 → $50 without changing RTA, then a separate $10 move to RTA that reduced category assignment/Available and increased RTA $10; Undo restored it. Recent Moves has All/Moved/Assigned tabs and dated descriptions. `LIVE-06` verified assignment covering a credit overspend.
   [Available](../../client/src/pages/Budget.tsx#L183) is a noninteractive span; [MoneyMoves](../../client/src/components/budget/MoneyMoves.tsx#L97) is a separate sidebar form.
@@ -111,6 +123,8 @@ The task is to improve access, explanation and consistency around them, with exp
 - **Smallest checks:** S(`src/services/budgetService.test.ts`), C and E(`envelope-funding.spec.ts`).
 
 ## P2 · BUD-07: target cadence and selected-category assignment shortcuts
+
+**Status: open.**
 
 - **Evidence / status:** Four target types and reviewed capped funding exist. `LIVE-03` verified a $400 monthly YNAB target with $300 assigned showing 75% and $100 needed; sidebar Underfunded immediately assigned the $100 without a confirmation step.
   `LIVE-03` also verified Weekly $100 Saturday requiring $200 in this October fixture; Yearly $1,200 due 1 November needing $250 beyond $350 assigned; and an undated $1,200 balance target with no Underfunded shortcut.
@@ -129,6 +143,8 @@ The task is to improve access, explanation and consistency around them, with exp
 
 ## P2 · BUD-08: explain rollover and unassigned funds without changing policy
 
+**Status: superseded in part.** The owner chose YNAB's policy: since `0.2.0-up.45` cash overspending resets at month rollover (PR #57, docs/ENVELOPE-FUNDING.md) and card debt left unfunded stays a payment shortfall. The overassignment guard is kept. The explanation of the month transition in the UI remains open. The text below describes the investigated baseline.
+
 - **Evidence / status:** Positive carry, future reservations and resource caps exist. Negative envelope carry is an intentional FlyBudget policy, not an unimplemented YNAB feature.
   `LIVE-05`/`LIVE-06` verified YNAB cash overspending $30 resetting to zero next month with RTA reduced $30; credit overspending $40 reset without that RTA deduction or extra payment reserve. A $100 future assignment lowered current RTA $100.
   YNAB accepted manual overassignment and displayed a red Fix This state; FlyBudget guards reject new reservations beyond resources.
@@ -146,6 +162,8 @@ The task is to improve access, explanation and consistency around them, with exp
 
 ## P2 · BUD-09: integrate card-payment presentation with the budget table
 
+**Status: open.**
+
 - **Evidence / status:** Payment reserves and reviewed setup already exist; presentation differs. `LIVE-06` verified a funded $10 card purchase reducing groceries $10 and increasing payment reserve $10; assigning $40 to cover credit overspending added $40 to that reserve.
   [Budget](../../client/src/pages/Budget.tsx#L438) excludes payment categories from ordinary expense rows; [CardPayments](../../client/src/components/budget/CardPayments.tsx#L64) shows them in the sidebar.
   [Shared assessment](../../server/src/services/budgetService.ts#L99) consumes the card calculator.
@@ -158,6 +176,8 @@ The task is to improve access, explanation and consistency around them, with exp
 - **Smallest checks:** S(`src/services/cardFunding.test.ts`), C and E(`card-payments.spec.ts`); do not rebuild working calculation coverage for a presentation-only change.
 
 ## P2 · BUD-10: contextual inspector and scoped notes
+
+**Status: open.**
 
 - **Evidence / status:** Summary/history/target information exists in separate surfaces; a selected-category inspector and category/month notes are missing from the reviewed Budget flow.
   `LIVE-01` verified YNAB single-category, multiple-category and no-selection inspector states. `LIVE-08` verified month-note save with OK and category-note blur save after deselection; both survived reload and were restored afterward.
@@ -174,7 +194,7 @@ The task is to improve access, explanation and consistency around them, with exp
 
 No further live tests are planned for this pass. Remaining cases for a later confirmed synthetic-budget investigation are operator keystrokes with existing text selected, exact Tab destination, target cycle boundaries, confirmation of header auto-assign, move-from-RTA and funded-category hiding/explicit unhide.
 Do not downgrade already verified full-expression editing, inspector states, money movement, future funding and cash/card rollover to documentation-only evidence.
-Keep policy choices explicit: retaining deficits and forbidding new overcommitment are not accidental UI omissions.
+Keep policy choices explicit: forbidding new overcommitment is not an accidental UI omission. (Retaining deficits was the other such choice until the owner adopted YNAB's month reset in `0.2.0-up.45`.)
 Start with BUD-01/BUD-02 regression cases, then shared selection/status work; build row moves, target shortcuts and inspector on those seams.
 The synthetic fixture is not fully reset: three test transactions ($30 cash, $40 card, $10 funded card), assignments and the monthly refill target remain; temporary overassignment, selected funding and the $10 RTA move were undone, and notes restored.
 No application release, version bump, installation or live-budget migration follows from this documentation-only investigation.
