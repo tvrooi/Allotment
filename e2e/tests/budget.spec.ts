@@ -177,4 +177,40 @@ test.describe('budget', () => {
       page.getByRole('button', { name: /^Planned for Groceries: \$0(\.00)?$/ }),
     ).toBeVisible();
   });
+
+  test('an open editor never saves into the month that is still loading', async ({ page, api }) => {
+    await api.createAccount('Checking', 100_000);
+    await open(page, '/budget');
+    const groceries = page.getByRole('button', { name: /^Planned for Groceries:/ });
+    const showInactive = page.getByRole('button', { name: /^Show \d+ inactive/ });
+    await expect(page.getByRole('button', { name: /^Planned for / }).first()).toBeVisible();
+    while (!(await groceries.isVisible()) && (await showInactive.count()) > 0)
+      await showInactive.first().click();
+    await groceries.click();
+    await page.getByRole('textbox', { name: 'Planned for Groceries' }).fill('75');
+
+    // Hold the next month back, as a slow connection would
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    const writes: string[] = [];
+    page.on('request', (r) => {
+      if (r.method() === 'PUT' && /\/api\/budget\/\d{4}-\d{2}\//.test(r.url()))
+        writes.push(r.url());
+    });
+    await page.route(/\/api\/budget\/\d{4}-\d{2}(\/summary)?$/, async (route) => {
+      await held;
+      await route.fallback();
+    });
+    await page.getByRole('button', { name: 'Next month' }).click({ force: true });
+    // The editor closed with the month change (blur may save October: that's its own month)
+    await expect(page.getByRole('textbox', { name: 'Planned for Groceries' })).toHaveCount(0);
+    const loading = page.locator('[aria-busy="true"]');
+    await expect(loading).toHaveAttribute('inert', '');
+    release();
+    await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
+    const next = new Date(`${thisMonth()}-01T12:00:00`);
+    next.setMonth(next.getMonth() + 1);
+    const nextMonth = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`;
+    expect(writes.filter((u) => u.includes(`/budget/${nextMonth}/`))).toEqual([]);
+  });
 });
