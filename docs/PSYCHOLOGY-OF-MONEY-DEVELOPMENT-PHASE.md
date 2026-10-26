@@ -299,6 +299,6 @@ evidence. Do not claim behavioural improvement from arithmetic tests alone.
 
 ## Delivery status
 
-| Subphase | Status                                                           |
-| -------- | ---------------------------------------------------------------- |
-| 7A–7F    | Implemented on the `0.2.0-up.18` feature branch; release pending |
+| Subphase | Status                                   |
+| -------- | ---------------------------------------- |
+| 7A–7F    | Implemented and released (`0.2.0-up.18`) |

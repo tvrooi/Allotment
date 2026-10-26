@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.46
+
+- **Pick payments to share with a household.** **Pick to share** above the transaction list puts a checkbox beside each payment; tick the ones you split (or **Pick all shown**), then **Share _N_ picked with household**. Each becomes a shared expense with the household's default split, equal (50/50 for two people) when none is set. Payments already shared are skipped, and **Undo** removes them.
+- **Receipt reading checks what it read.** The model is told how Australian receipts work (day-first dates, prices that include GST, the printed GST amount, card surcharges). Items that don't add up to the total aren't kept, so a matched payment isn't split by wrong amounts; the receipt says what was left out. A card terminal (EFTPOS, Tyro, Square) is never taken for the shop.
+- Fix: an assignment being typed when you switch months could be saved into the month that was still loading. The budget now waits for the new month before it can be edited.
+
 ## 0.2.0-up.45
 
 - **Overspending resets each month, like YNAB.** An overspent category is red for the month it happened and starts the next month at zero, instead of carrying the deficit forward until you cover it. The money had already left your accounts, so **Ready to assign** doesn't change. A one-off like paying out a loan or a settlement no longer follows you from month to month. Positive balances still roll over, and credit card payment categories keep their running total. With card payment funding, each month's card purchases are funded from that month's envelope, so an old deficit doesn't block them; card debt left unfunded in an earlier month stays a payment shortfall until you fund it.

@@ -70,20 +70,33 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
 
 ## Open items (pick up here)
 
-1. **Confirm the live app reached `0.2.0-up.45`:** version, health, and that the budget opens
-   (up.44 with Ollama receipts and up.45 with the monthly overspending reset are both released).
+1. **Confirm the live app reached the latest release** (`0.2.0-up.46` once released): version,
+   health, and that the budget opens. In November, check the October deficits no longer carry.
    Ask the owner to press **Try a sample receipt** with `qwen3-vl:4b-instruct` and report what it
-   got right and how long it took. In November, check the October deficits no longer carry over.
+   got right and how long it took.
 2. **Security, waiting on the owner's decision:** the Ollama app publishes port 11434 on the host.
    Its log showed requests from public internet addresses, and Ollama has no authentication. The fix
    is to clear the app's 11434 port mapping, since FlyBudget uses the internal address. Do that only
    after checking that Home Assistant's Ollama integration uses the internal address too.
-3. **Optional, the owner's call:** remove the unused `qwen3-vl:4b` thinking model. Trying Ollama's
-   Vulkan / integrated-GPU options might speed up reading; they are experimental, and Frigate may
-   use the same GPU.
-4. **Not built (see `docs/RECEIPTS-AND-TAX.md` §6):** email forwarding, reading PDFs, an assistant
-   reading receipts through read-only tokens (needs an owner-approved allowlist exception), and
-   work-from-home hours, car logbooks and depreciation schedules.
+3. **Multi-user (separate budgets per person):** proposed in `docs/MULTI-USER-PLAN.md`, awaiting the
+   owner's decisions (gateway with one process per budget; password reset by Home Assistant
+   notification, SMTP or administrator code). Migrating the existing budget needs explicit approval
+   and a verified cold backup with the key.
+4. **Gaps found in the 26 October audit** (not built or not documented):
+   - User guide pages missing for shipped features: households, payday plans, resilience/budget
+     review, card payments, the long-term forecast (super, HECS-HELP) and Move money.
+   - YNAB budget backlog in `docs/research/ynab-flybudget-budget-gaps.md` (PR #41): BUD-02 save
+     and undo feedback, BUD-03 availability states, BUD-05 keyboard/expressions, BUD-06 row moves
+     and returning money to unassigned, BUD-07 selected-category funding, BUD-09 card rows in the
+     table, BUD-10 inspector and notes. BUD-01 fixed in up.46.
+   - Transaction detail has no previous/next (Monarch backlog P1).
+   - A budget start on a specific day (YNAB's "fresh start" mid-month); today it is a month.
+   - Future-month money moves; money age (deliberately not built, see BUDGET-REVIEW.md).
+   - Investments deferrals (sales, dividends, franking); receipts §6 (PDF reading, email
+     forwarding, logbooks, depreciation, WFH hours).
+   - `docs/DEVELOPMENT.md`'s pending legacy cleanup of `recurring_transactions`.
+5. **Optional, the owner's call:** remove the unused `qwen3-vl:4b` thinking model; try a larger
+   receipt model (`qwen2.5vl:7b`) with **Try a sample receipt** if accuracy matters more than speed.
 
 ## Gotchas learned the hard way
 

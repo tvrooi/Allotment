@@ -147,7 +147,7 @@ records, not only tax evidence.
     Australian receipts (day-first dates, GST-inclusive prices, the printed GST amount, card
     surcharges as fees). A merchant that looks like a card terminal or payment provider is left
     empty; tax, tip or a subtotal not below the total is dropped. Items must add up, within
-    max(10c, 2%), to the total less tip, the total less tip and tax, or the printed subtotal;
+    max(10c, 2%), to the total, the total less tip, the total less tip and tax, or the printed subtotal;
     otherwise they are not kept, because a matched payment would be split by them. What was
     dropped is stored in `read_error` with status `read` and shown on the receipt.
   - **Never replaces what was typed:** only empty fields are filled, and line items only when

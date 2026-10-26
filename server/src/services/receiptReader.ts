@@ -250,8 +250,8 @@ const dollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
 /**
  * Keep only what is consistent: a merchant that isn't the card terminal, tax, tip and subtotal
- * below the total, and items that add up to the total (with or without tax added, less any tip,
- * or the printed subtotal). Items that don't add up aren't kept, because a matched transaction
+ * below the total, and items that add up to the total (or the total less any tip, with or
+ * without tax, or the printed subtotal). Items that don't add up aren't kept, because a matched transaction
  * would be split by them; what was dropped is said in plain words for the receipt to show.
  */
 export function checkRead(read: ReturnType<typeof parseReply>) {
@@ -278,7 +278,8 @@ export function checkRead(read: ReturnType<typeof parseReply>) {
     if (items.length) {
       const sum = items.reduce((s, i) => s + i.amount, 0);
       const paid = total - (tip ?? 0);
-      const fits = [paid, paid - (tax ?? 0), subtotal].some(
+      // A surcharge may be both an item and the tip, so the whole total counts too
+      const fits = [total, paid, paid - (tax ?? 0), subtotal].some(
         (x) => x !== null && Math.abs(sum - x) <= itemsTolerance(total),
       );
       if (!fits) {

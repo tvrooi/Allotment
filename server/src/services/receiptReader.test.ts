@@ -214,6 +214,8 @@ describe('checking what was read', () => {
     const exclusive = read({ items: [{ description: 'Beans', amount: 2100, categoryId: null }] });
     expect(checkRead(exclusive).notes).toEqual([]);
     expect(checkRead(read({ total: 2350, tip: 40 })).notes).toEqual([]);
+    // A surcharge read both as an item and as the fee: the items still come to the total
+    expect(checkRead(read({ tip: 40 })).notes).toEqual([]);
   });
 
   it("drops items that don't add up, so a matched payment isn't split by them", () => {
