@@ -143,6 +143,13 @@ records, not only tax evidence.
     photo off), so the model leaves memory a few minutes after the last receipt.
   - **What is kept:** a sensible positive amount in cents, a real date from 2000 to tomorrow, a
     category only if it matches a spending category by name; anything else is null.
+  - **Checked before it is kept** (`checkRead`, since 0.2.0-up.46): the prompt describes
+    Australian receipts (day-first dates, GST-inclusive prices, the printed GST amount, card
+    surcharges as fees). A merchant that looks like a card terminal or payment provider is left
+    empty; tax, tip or a subtotal not below the total is dropped. Items must add up, within
+    max(10c, 2%), to the total, the total less tip, the total less tip and tax, or the printed subtotal;
+    otherwise they are not kept, because a matched payment would be split by them. What was
+    dropped is stored in `read_error` with status `read` and shown on the receipt.
   - **Never replaces what was typed:** only empty fields are filled, and line items only when
     there are none. The receipt is then saved through `updateReceipt`, so it is matched and
     enriched exactly like typed details.

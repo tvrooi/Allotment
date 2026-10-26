@@ -485,7 +485,15 @@ export default function BudgetPage() {
     return { fixed: calc('fixed'), flexible: calc('flexible'), nonMonthly: calc('non_monthly') };
   }, [allExpenseCats]);
 
+  // An editor open on one month never saves into another: close it when the month changes, and
+  // ignore saves while the rows on screen are still the previous month's
+  const [editingMonth, setEditingMonth] = useState(selectedMonth);
+  if (editingMonth !== selectedMonth) {
+    setEditingMonth(selectedMonth);
+    setEditingId(null);
+  }
   function handleSave(categoryId: string, budgeted: number) {
+    if (switchingMonth) return;
     setBudgetMutation.mutate({ month: selectedMonth, categoryId, budgeted });
     setEditingId(null);
   }
@@ -600,7 +608,8 @@ export default function BudgetPage() {
       {/* While the next month loads, the previous one stays (faded) so nothing jumps */}
       <div
         aria-busy={switchingMonth}
-        className={`flex max-md:flex-col flex-1 overflow-y-auto transition-opacity ${switchingMonth ? 'opacity-60' : ''}`}
+        inert={switchingMonth}
+        className={`flex max-md:flex-col flex-1 overflow-y-auto transition-opacity ${switchingMonth ? 'opacity-60 pointer-events-none' : ''}`}
       >
         <div className="flex-1 max-md:flex-none max-md:order-last max-md:overflow-x-auto">
           {isPhone ? (

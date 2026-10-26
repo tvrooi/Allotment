@@ -1,6 +1,9 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Receipt, SearchX, Upload, Link2 } from 'lucide-react';
+import { Plus, Receipt, SearchX, Upload, Link2, ListChecks } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { getHouseholds } from '../../api/households';
+import { ShareWithHousehold } from '../household/ShareWithHousehold';
 import { useTransactions } from '../../hooks/useTransactions';
 import { SelectionSummary } from './SelectionSummary';
 import { SaveViewModal } from './SavedViews';
@@ -102,6 +105,9 @@ export function TransactionTable({
   const [savingView, setSavingView] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
+  // Picking payments to share with a household: null when not picking
+  const [picked, setPicked] = useState<Set<string> | null>(null);
+  const { data: households = [] } = useQuery({ queryKey: ['households'], queryFn: getHouseholds });
 
   const showAccountCol = !accountId;
 
@@ -273,6 +279,35 @@ export function TransactionTable({
     return result;
   }, [groupedByDate, shownRows]);
   const hiddenRows = transactions.length - visibleGroups.reduce((sum, g) => sum + g.txs.length, 0);
+  // What sharing accepts: money out that isn't a transfer or a split's parent
+  const shareable = (t: (typeof transactions)[number]) =>
+    t.amount < 0 && !t.isParent && !t.transferTransactionId;
+  const togglePick = (id: string) =>
+    setPicked((p) => {
+      const next = new Set(p);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const pickedIds = picked ? transactions.filter((t) => picked.has(t.id)).map((t) => t.id) : [];
+  const withPick = (tx: (typeof transactions)[number], row: React.ReactNode) =>
+    picked ? (
+      <div key={tx.id} className="flex items-stretch">
+        <label className="flex items-center pl-3 border-b border-border-light bg-surface">
+          <input
+            type="checkbox"
+            className="h-4 w-4"
+            aria-label={`Pick ${tx.payeeName ?? 'payment'} ${formatCurrency(Math.abs(tx.amount))}`}
+            disabled={!shareable(tx)}
+            checked={picked.has(tx.id)}
+            onChange={() => togglePick(tx.id)}
+          />
+        </label>
+        <div className="flex-1 min-w-0">{row}</div>
+      </div>
+    ) : (
+      row
+    );
 
   function handleCreate(data: CreateTransactionData) {
     if (data.categoryId?.startsWith('transfer:') && accountId) {
@@ -317,6 +352,11 @@ export function TransactionTable({
           loadedCount={transactions.length}
           fixedAccount={Boolean(accountId)}
         />
+        {households.length > 0 && transactions.length > 0 && !picked && (
+          <Button variant="secondary" size="sm" onClick={() => setPicked(new Set())}>
+            <ListChecks size={13} /> Pick to share
+          </Button>
+        )}
         {accountId && (
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={() => setShowImport(true)}>
@@ -340,6 +380,45 @@ export function TransactionTable({
         )}
       </div>
 
+      {picked && (
+        <div
+          role="region"
+          aria-label="Picked payments"
+          className="px-4 py-2 border-b border-border-light bg-brand-50 flex flex-wrap gap-2 items-center text-sm"
+        >
+          <span className="text-text-secondary">
+            Tick the payments you share, then share them all at once.
+          </span>
+          <span className="font-medium text-text">{pickedIds.length.toLocaleString()} picked</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              setPicked(
+                new Set(visibleGroups.flatMap((g) => g.txs.filter(shareable).map((t) => t.id))),
+              )
+            }
+          >
+            Pick all shown
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setPicked(new Set())}>
+            Clear
+          </Button>
+          <div className="flex-1" />
+          <ShareWithHousehold
+            transactionIds={pickedIds}
+            variant="compact"
+            onShared={(sent) => {
+              // What was sent is done; anything a failed batch didn't reach stays picked
+              const done = new Set(sent);
+              setPicked((p) => new Set([...(p ?? [])].filter((id) => !done.has(id))));
+            }}
+          />
+          <Button variant="ghost" size="sm" onClick={() => setPicked(null)}>
+            Done
+          </Button>
+        </div>
+      )}
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 overflow-y-auto">
           {/* Not in a category or month view: they may not belong there */}
@@ -452,55 +531,58 @@ export function TransactionTable({
                   </div>
 
                   {group.txs.map((tx) =>
-                    isPhone ? (
-                      <TransactionCard
-                        key={tx.id}
-                        tx={tx}
-                        categoryEntry={
-                          tx.categoryId ? (categoryMap.get(tx.categoryId) ?? null) : null
-                        }
-                        payees={payees}
-                        accountName={
-                          showAccountCol ? accountInfoMap.get(tx.accountId)?.name : undefined
-                        }
-                        isSelected={detailId === tx.id}
-                        onOpenDetail={setDetailId}
-                      />
-                    ) : (
-                      <TransactionRow
-                        key={tx.id}
-                        tx={tx}
-                        categoryEntry={
-                          tx.categoryId ? (categoryMap.get(tx.categoryId) ?? null) : null
-                        }
-                        categoryMap={categoryMap}
-                        groups={groups as CategoryGroup[]}
-                        payees={payees}
-                        accountName={
-                          showAccountCol ? accountInfoMap.get(tx.accountId)?.name : undefined
-                        }
-                        accountType={
-                          showAccountCol ? accountInfoMap.get(tx.accountId)?.type : undefined
-                        }
-                        accountLogo={
-                          showAccountCol ? accountInfoMap.get(tx.accountId)?.logo : undefined
-                        }
-                        showAccountCol={showAccountCol}
-                        isSelected={detailId === tx.id}
-                        onOpenDetail={setDetailId}
-                        onFilterCategory={(catId) =>
-                          setFilters((f) => ({
-                            ...f,
-                            categoryIds: [catId],
-                            uncategorized: false,
-                            datePreset: 'all',
-                          }))
-                        }
-                        onFilterSearch={(search) =>
-                          setFilters((f) => ({ ...f, search, datePreset: 'all' }))
-                        }
-                        transferAccounts={transferAccounts}
-                      />
+                    withPick(
+                      tx,
+                      isPhone ? (
+                        <TransactionCard
+                          key={tx.id}
+                          tx={tx}
+                          categoryEntry={
+                            tx.categoryId ? (categoryMap.get(tx.categoryId) ?? null) : null
+                          }
+                          payees={payees}
+                          accountName={
+                            showAccountCol ? accountInfoMap.get(tx.accountId)?.name : undefined
+                          }
+                          isSelected={detailId === tx.id}
+                          onOpenDetail={setDetailId}
+                        />
+                      ) : (
+                        <TransactionRow
+                          key={tx.id}
+                          tx={tx}
+                          categoryEntry={
+                            tx.categoryId ? (categoryMap.get(tx.categoryId) ?? null) : null
+                          }
+                          categoryMap={categoryMap}
+                          groups={groups as CategoryGroup[]}
+                          payees={payees}
+                          accountName={
+                            showAccountCol ? accountInfoMap.get(tx.accountId)?.name : undefined
+                          }
+                          accountType={
+                            showAccountCol ? accountInfoMap.get(tx.accountId)?.type : undefined
+                          }
+                          accountLogo={
+                            showAccountCol ? accountInfoMap.get(tx.accountId)?.logo : undefined
+                          }
+                          showAccountCol={showAccountCol}
+                          isSelected={detailId === tx.id}
+                          onOpenDetail={setDetailId}
+                          onFilterCategory={(catId) =>
+                            setFilters((f) => ({
+                              ...f,
+                              categoryIds: [catId],
+                              uncategorized: false,
+                              datePreset: 'all',
+                            }))
+                          }
+                          onFilterSearch={(search) =>
+                            setFilters((f) => ({ ...f, search, datePreset: 'all' }))
+                          }
+                          transferAccounts={transferAccounts}
+                        />
+                      ),
                     ),
                   )}
                 </div>

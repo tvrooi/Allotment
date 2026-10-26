@@ -36,7 +36,10 @@ uses. **Share with household** records a payment as an expense with that split: 
 when it left a personal account, or by the pool when it left a pool account (which needs
 received contributions, as before). From the register it shares every payment in the current
 list, each checked on its own, so one refusal doesn't stop the rest; **Undo** removes the
-entries it made. A rule action, **Share with household**, does the same for matching payments
+entries it made. **Pick to share** in the register puts a checkbox on each payment
+(money out that isn't a transfer); tick the ones you share, or **Pick all shown**, then
+**Share _N_ picked with household**. Without a default split, sharing splits equally, so a
+two-person household is 50/50. A rule action, **Share with household**, does the same for matching payments
 as they import (or when the rule is applied to existing transactions), and never fails an
 import: a payment the household checks refuse is left unshared.
 

@@ -165,11 +165,16 @@ const REPLY_SCHEMA = {
 function prompt(categoryNames: string[]) {
   return [
     'Read this shop receipt and reply with JSON only.',
-    'merchant: the shop or business name as printed (not the payment provider).',
-    'date: the purchase date as YYYY-MM-DD. Receipts may write dates day first (31/12/2026).',
-    'total: the amount paid, in dollars (e.g. 23.45). subtotal: before tax, if printed.',
-    'tax: the tax or GST printed, if any. tip: tips, delivery or service fees, if any.',
-    'items: each purchased line with its price in dollars. Leave out discounts, totals and payments.',
+    'merchant: the shop or business name printed at the top, not the card terminal or payment',
+    'provider (EFTPOS, Tyro, Square, Visa and the like are not the merchant).',
+    'date: the purchase date as YYYY-MM-DD. Australian receipts write dates day first:',
+    '03/04/2026 is 3 April 2026, so it is 2026-04-03.',
+    'total: the amount paid, in dollars (e.g. 23.45), including GST and any surcharge.',
+    'subtotal: only if a subtotal is printed. Prices on Australian receipts already include GST.',
+    'tax: the GST amount printed (often "Total includes GST $2.10"), if any; never add it to the total.',
+    'tip: tips, delivery, service fees or card surcharges, if any.',
+    'items: each purchased line with its price in dollars as printed, after any quantity',
+    '(2 x 1.50 is 3.00). Leave out discounts, subtotals, totals, GST, change and payments.',
     categoryNames.length
       ? `For each item, category is the best fit from this list, exactly as written, or null: ${categoryNames.join('; ')}.`
       : 'category is always null.',
@@ -232,6 +237,65 @@ export function parseReply(raw: unknown, categoryIds: Map<string, string>) {
     tip: toCents(r.tip),
     items,
   };
+}
+
+// ─── Checking what was read ──────────────────────────────────────────────────
+
+/** Card terminals and payment providers a model may report instead of the shop */
+const PAYMENT_PROVIDER =
+  /^(eftpos|tyro|square|squareup|stripe|zeller|smartpay|windcave|linkly|adyen|paypal|afterpay|zip pay|visa|mastercard|amex|american express|apple pay|google pay|debit|credit card)\b/i;
+/** Items within this much of the total add up (rounding, or rounding cash to 5c) */
+const itemsTolerance = (total: number) => Math.max(10, Math.round(total * 0.02));
+const dollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
+/**
+ * Keep only what is consistent: a merchant that isn't the card terminal, tax, tip and subtotal
+ * below the total, and items that add up to the total (or the total less any tip, with or
+ * without tax, or the printed subtotal). Items that don't add up aren't kept, because a matched transaction
+ * would be split by them; what was dropped is said in plain words for the receipt to show.
+ */
+export function checkRead(read: ReturnType<typeof parseReply>) {
+  const notes: string[] = [];
+  let { merchant, tax, tip, subtotal, items } = read;
+  const { total } = read;
+  if (merchant && PAYMENT_PROVIDER.test(merchant)) {
+    notes.push(`The merchant was left empty: "${merchant}" looks like the card terminal.`);
+    merchant = null;
+  }
+  if (total !== null) {
+    if (tax !== null && tax >= total) {
+      notes.push(`The tax (${dollars(tax)}) wasn't kept: it isn't less than the total.`);
+      tax = null;
+    }
+    if (tip !== null && tip >= total) {
+      notes.push(`The tip or fees (${dollars(tip)}) weren't kept: not less than the total.`);
+      tip = null;
+    }
+    if (subtotal !== null && subtotal > total) {
+      notes.push(`The subtotal (${dollars(subtotal)}) wasn't kept: it is more than the total.`);
+      subtotal = null;
+    }
+    if (items.length) {
+      const sum = items.reduce((s, i) => s + i.amount, 0);
+      const paid = total - (tip ?? 0);
+      // A surcharge may be both an item and the tip, so the whole total counts too
+      const fits = [total, paid, paid - (tax ?? 0), subtotal].some(
+        (x) => x !== null && Math.abs(sum - x) <= itemsTolerance(total),
+      );
+      if (!fits) {
+        notes.push(
+          (items.length === 1
+            ? `The item wasn't kept: it comes to ${dollars(sum)}`
+            : `The ${items.length} items weren't kept: they add up to ${dollars(sum)}`) +
+            `, not the ${dollars(total)} total. ` +
+            (items.length === 1 ? 'Add it' : 'Add them') +
+            ' by hand, or read it again.',
+        );
+        items = [];
+      }
+    }
+  }
+  return { read: { ...read, merchant, tax, tip, subtotal, items }, notes };
 }
 
 /** Spending categories by name (lower case), for the model to choose from */
@@ -300,10 +364,8 @@ export async function readReceiptNow(id: string) {
   if (!READABLE.has(file.mimeType))
     throw new ReceiptError('Only photos (JPEG, PNG, WebP) can be read, not PDFs or HEIC');
 
-  const parsed = await askModel(
-    s.url,
-    s.model,
-    Buffer.from(file.data as Buffer).toString('base64'),
+  const { read: parsed, notes } = checkRead(
+    await askModel(s.url, s.model, Buffer.from(file.data as Buffer).toString('base64')),
   );
 
   // The owner's typed details win; a receipt edited while it was being read keeps its edits
@@ -315,9 +377,10 @@ export async function readReceiptNow(id: string) {
     if (now[key] === null && value !== null) (change as Record<string, unknown>)[key] = value;
   }
   if (parsed.items.length && lineItems(id).length === 0) change.lineItems = parsed.items;
-  setStatus(id, 'read');
+  // Saved with the receipt: what reading left out, for the page to show
+  setStatus(id, 'read', notes.length ? notes.join(' ').slice(0, 1000) : null);
   const found = Object.keys(change).length;
-  return { ...updateReceipt(id, change), filled: found };
+  return { ...updateReceipt(id, change), filled: found, notes };
 }
 
 // One at a time: a small home server runs one model, and photos queue behind each other

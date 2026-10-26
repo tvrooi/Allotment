@@ -114,3 +114,59 @@ test('shares a payment with the household in one step, with the default split', 
   const event = state.events.find((e: { transactionId: string }) => e.transactionId === payment.id);
   expect(event.shares.map((s: { amount: number }) => s.amount)).toEqual([3600, 2700, 2700]);
 });
+
+test('picks payments in the register and shares just those, split equally', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Everyday', 50000);
+  const dinner = await api.createTransaction({
+    accountId: account.id,
+    date: '2026-10-20',
+    amount: -6001,
+    payeeName: 'Dinner for two',
+  });
+  const solo = await api.createTransaction({
+    accountId: account.id,
+    date: '2026-10-21',
+    amount: -1500,
+    payeeName: 'Solo coffee',
+  });
+  const fuel = await api.createTransaction({
+    accountId: account.id,
+    date: '2026-10-22',
+    amount: -8000,
+    payeeName: 'Road trip fuel',
+  });
+  const group = await api.call('POST', '/households', {
+    name: 'King-Grey',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Edward'],
+    selfIndex: 0,
+  });
+
+  await open(page, `/accounts/${account.id}`);
+  await page.getByRole('button', { name: 'Pick to share' }).click();
+  const bar = page.getByRole('region', { name: 'Picked payments' });
+  await page.getByLabel(/^Pick Dinner for two/).check();
+  await page.getByLabel(/^Pick Road trip fuel/).check();
+  await expect(bar).toContainText('2 picked');
+  await bar.getByRole('button', { name: 'Share 2 picked with household' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Share with household' });
+  await expect(dialog).toContainText('split equally');
+  await dialog.getByRole('button', { name: 'Share', exact: true }).click();
+  await expect(dialog.getByRole('status')).toHaveText('Shared 2.');
+  await dialog.getByRole('button', { name: 'Close', exact: true }).last().click();
+  await expect(bar).toContainText('0 picked');
+
+  const state = await api.call('GET', `/households/${group.group.id}`);
+  const shared = state.events.map((e: { transactionId: string }) => e.transactionId).sort();
+  expect(shared).toEqual([dinner.id, fuel.id].sort());
+  expect(shared).not.toContain(solo.id);
+  const dinnerEvent = state.events.find(
+    (e: { transactionId: string }) => e.transactionId === dinner.id,
+  );
+  // Equal split, largest remainder: the odd cent goes to the first person
+  expect(dinnerEvent.shares.map((s: { amount: number }) => s.amount)).toEqual([3001, 3000]);
+});

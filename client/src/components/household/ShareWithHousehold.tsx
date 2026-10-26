@@ -9,6 +9,7 @@ import {
 } from '../../api/households';
 import { getTransactions } from '../../api/transactions';
 import { useUndoStore } from '../../store/undoStore';
+import { inBatches } from '../../utils/batches';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { Select } from '../ui/Input';
@@ -16,7 +17,25 @@ import type { TransactionQueryParams } from '../../types';
 
 // "Share with household": records payments as shared household expenses with the household's
 // default split (Household → Sharing), in one step instead of a form per payment. For one
-// transaction, or every payment in the register's current list. Undo removes the entries.
+// transaction, the payments picked in the register, or every payment in its current list.
+// Undo removes the entries.
+
+/** The share endpoint takes at most this many ids, so a larger selection goes in batches */
+const SHARE_BATCH = 500;
+/**
+ * Share in batches. If a batch fails after others succeeded, what was shared is still reported
+ * (and can be undone), with why it stopped and what wasn't sent; if none succeeded, it throws.
+ */
+async function shareAll(groupId: string, ids: string[]) {
+  const out = await inBatches(ids, SHARE_BATCH, (batch) => shareTransactions(groupId, batch));
+  if (out.error && out.sent === 0) throw out.error;
+  return {
+    shared: out.results.reduce((n, p) => n + p.shared, 0),
+    results: out.results.flatMap((p) => p.results),
+    sentIds: ids.slice(0, out.sent),
+    stopped: out.error ? { error: out.error.message, unsent: ids.length - out.sent } : null,
+  };
+}
 
 const splitText = (g: HouseholdSummary) =>
   !g.defaultSplit || g.defaultSplit.mode === 'equal'
@@ -26,14 +45,24 @@ const splitText = (g: HouseholdSummary) =>
       : 'split by weight';
 
 interface Props {
-  /** One transaction, or the register's list (its payments are shared) */
+  /** One transaction, the payments picked in the register, or the register's list */
   transactionId?: string;
+  transactionIds?: string[];
   params?: TransactionQueryParams;
   count?: number;
-  variant?: 'button' | 'link';
+  variant?: 'button' | 'link' | 'compact';
+  /** After sharing, with the ids that were sent (e.g. to clear those picks) */
+  onShared?: (sentIds: string[]) => void;
 }
 
-export function ShareWithHousehold({ transactionId, params, count, variant = 'button' }: Props) {
+export function ShareWithHousehold({
+  transactionId,
+  transactionIds,
+  params,
+  count,
+  variant = 'button',
+  onShared,
+}: Props) {
   const qc = useQueryClient();
   const { data: groups = [] } = useQuery({ queryKey: ['households'], queryFn: getHouseholds });
   const [open, setOpen] = useState(false);
@@ -43,11 +72,11 @@ export function ShareWithHousehold({ transactionId, params, count, variant = 'bu
     mutationFn: async (id: string) => {
       const ids = transactionId
         ? [transactionId]
-        : (await getTransactions(params ?? {}))
+        : (transactionIds ??
+          (await getTransactions(params ?? {}))
             .filter((t) => t.amount < 0 && !t.isParent && !t.transferTransactionId)
-            .map((t) => t.id)
-            .slice(0, 500);
-      return { id, result: await shareTransactions(id, ids) };
+            .map((t) => t.id));
+      return { id, result: await shareAll(id, ids) };
     },
     onSuccess: ({ id, result }) => {
       void qc.invalidateQueries({ queryKey: ['households'] });
@@ -56,8 +85,13 @@ export function ShareWithHousehold({ transactionId, params, count, variant = 'bu
       const reasons = [...new Set(skipped.map((r) => r.error))].slice(0, 2).join('; ');
       setOutcome(
         `Shared ${result.shared}.` +
-          (skipped.length ? ` ${skipped.length} not shared: ${reasons}` : ''),
+          (skipped.length ? ` ${skipped.length} not shared: ${reasons}` : '') +
+          (result.stopped
+            ? ` Then it stopped (${result.stopped.error}): ${result.stopped.unsent} weren't ` +
+              'sent. Share again to send them; payments already shared are skipped.'
+            : ''),
       );
+      onShared?.(result.sentIds);
       const events = result.results.filter((r) => r.ok && r.eventId).map((r) => r.eventId!);
       if (events.length)
         useUndoStore.getState().push({
@@ -67,7 +101,7 @@ export function ShareWithHousehold({ transactionId, params, count, variant = 'bu
             void qc.invalidateQueries({ queryKey: ['households'] });
           },
           redo: async () => {
-            await shareTransactions(
+            await shareAll(
               id,
               result.results.filter((r) => r.ok).map((r) => r.transactionId),
             );
@@ -81,7 +115,9 @@ export function ShareWithHousehold({ transactionId, params, count, variant = 'bu
   const chosen = groups.find((g) => g.id === (groupId || groups[0].id))!;
   const label = transactionId
     ? 'Share with household'
-    : `Share ${count === undefined ? '' : `${count.toLocaleString()} `}with household`;
+    : transactionIds
+      ? `Share ${transactionIds.length.toLocaleString()} picked with household`
+      : `Share ${count === undefined ? '' : `${count.toLocaleString()} `}with household`;
 
   return (
     <>
@@ -97,6 +133,17 @@ export function ShareWithHousehold({ transactionId, params, count, variant = 'bu
         >
           <Users size={12} /> {label}
         </button>
+      ) : variant === 'compact' ? (
+        <Button
+          size="sm"
+          disabled={transactionIds?.length === 0}
+          onClick={() => {
+            setOutcome(null);
+            setOpen(true);
+          }}
+        >
+          <Users size={13} /> {label}
+        </Button>
       ) : (
         <Button
           variant="secondary"
@@ -125,9 +172,13 @@ export function ShareWithHousehold({ transactionId, params, count, variant = 'bu
             </Select>
           )}
           <p className="text-text-secondary">
-            {transactionId ? 'This payment' : 'Each payment (money out) in this list'} becomes a
-            shared {chosen.name} expense, {splitText(chosen)}. Change the split in Household →
-            Sharing. Payments already shared are skipped.
+            {transactionId
+              ? 'This payment'
+              : transactionIds
+                ? `Each of the ${transactionIds.length.toLocaleString()} picked payments`
+                : 'Each payment (money out) in this list'}{' '}
+            becomes a shared {chosen.name} expense, {splitText(chosen)}. Change the split in
+            Household → Sharing. Payments already shared are skipped.
           </p>
           {outcome && <p role="status">{outcome}</p>}
           <div className="flex justify-end gap-2">

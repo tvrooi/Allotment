@@ -55,6 +55,19 @@ this takes a minute or more each. Only empty fields are filled, and line items o
 none, so anything you typed is kept. Then the receipt is matched as usual. Open it to check what
 was read. **Read again** asks once more. PDFs aren't read.
 
+What was read is checked before it's kept. If the items don't add up to the total, they aren't
+saved, so a matched payment isn't split by wrong amounts; the receipt says so and you can add
+them by hand or **Read again**. A card terminal (EFTPOS, Tyro, Square) is never taken for the
+shop, and tax or fees above the total are left out.
+
+If a model keeps getting receipts wrong:
+
+- Photograph the receipt flat, in good light, filling the frame, with no other paper in view.
+  Long receipts read better in two photos than one tiny one.
+- Use **Try a sample receipt** to compare models. A larger model, such as `qwen2.5vl:7b`, reads
+  more accurately but takes about twice as long and needs about 6 to 8 GB of memory.
+- Typing the total and date yourself is enough for matching; reading then only fills the rest.
+
 You can also add a receipt straight from a transaction's details. A paperclip in the register shows
 which transactions have one. **Tax time → Receipt inbox** shows the unmatched ones too.
 

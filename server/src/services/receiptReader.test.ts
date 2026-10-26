@@ -20,6 +20,7 @@ const {
 } = await import('../db/schema.js');
 const { addReceipt, updateReceipt } = await import('./receiptService.js');
 const {
+  checkRead,
   cleanOllamaUrl,
   listOllamaModels,
   parseReply,
@@ -192,7 +193,63 @@ describe('what a reply may say', () => {
   });
 });
 
+describe('checking what was read', () => {
+  const read = (over: Partial<ReturnType<typeof parseReply>> = {}) => ({
+    merchant: 'Corner Store',
+    receiptDate: '2026-08-01',
+    total: 2310,
+    subtotal: null,
+    tax: 210,
+    tip: null,
+    items: [
+      { description: 'Coffee beans', amount: 1810, categoryId: 'groceries' },
+      { description: 'Filter papers', amount: 500, categoryId: 'household' },
+    ],
+    ...over,
+  });
+
+  it('keeps an Australian receipt whose GST-inclusive items add up to the total', () => {
+    expect(checkRead(read())).toEqual({ read: read(), notes: [] });
+    // Tax-exclusive pricing (items + tax = total) and a card surcharge also add up
+    const exclusive = read({ items: [{ description: 'Beans', amount: 2100, categoryId: null }] });
+    expect(checkRead(exclusive).notes).toEqual([]);
+    expect(checkRead(read({ total: 2350, tip: 40 })).notes).toEqual([]);
+    // A surcharge read both as an item and as the fee: the items still come to the total
+    expect(checkRead(read({ tip: 40 })).notes).toEqual([]);
+  });
+
+  it("drops items that don't add up, so a matched payment isn't split by them", () => {
+    const out = checkRead(
+      read({ items: [{ description: 'Coffee beans', amount: 1810, categoryId: null }] }),
+    );
+    expect(out.read.items).toEqual([]);
+    expect(out.read.total).toBe(2310);
+    expect(out.notes).toEqual([
+      "The item wasn't kept: it comes to $18.10, not the $23.10 total. Add it by hand, or read it again.",
+    ]);
+  });
+
+  it('never takes the card terminal for the merchant, or tax above the total', () => {
+    const out = checkRead(read({ merchant: 'EFTPOS Purchase', tax: 2310, subtotal: 9999 }));
+    expect(out.read).toMatchObject({ merchant: null, tax: null, subtotal: null });
+    expect(out.notes).toHaveLength(3);
+    expect(checkRead(read({ merchant: 'Squareview Cafe' })).read.merchant).toBe('Squareview Cafe');
+  });
+});
+
 describe('reading a receipt', () => {
+  it("keeps the total but not items that don't add up, and says so on the receipt", async () => {
+    turnOn();
+    ollamaSays({ ...coles, total: 80 });
+    const r = addReceipt({ bytes: jpeg('m'), fileName: 'mismatch.jpg' });
+    const out = await readReceiptNow(r.id);
+    expect(out).toMatchObject({ total: 8_000, lineItems: [] });
+    expect(out.notes[0]).toContain('add up to $53.00, not the $80.00 total');
+    const row = db.select().from(receipts).where(eq(receipts.id, r.id)).get()!;
+    expect(row.readStatus).toBe('read');
+    expect(row.readError).toContain("The 4 items weren't kept");
+  });
+
   it('sends the photo to the chosen model and fills the empty fields, then matches', async () => {
     turnOn();
     db.insert(transactions)
