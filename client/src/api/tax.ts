@@ -24,6 +24,10 @@ export interface Receipt {
   /** auto | manual | created (a transaction made from it); null = unmatched */
   matchedBy: 'auto' | 'manual' | 'created' | null;
   notes: string | null;
+  /** Reading by the local model: pending | read | failed; null = never asked */
+  readStatus: 'pending' | 'read' | 'failed' | null;
+  readError: string | null;
+  readAt: string | null;
   createdAt: string;
   updatedAt: string;
   /** False after restoring a backup on another installation: backups carry no files */
@@ -62,6 +66,21 @@ export interface ReceiptSettings {
   autoSplit: boolean;
   addNotes: boolean;
   addTag: boolean;
+}
+
+/** Reading receipts with a local Ollama model */
+export interface ReaderSettings {
+  enabled: boolean;
+  url: string | null;
+  model: string | null;
+}
+
+export interface OllamaModel {
+  name: string;
+  size: number | null;
+  parameters: string | null;
+  /** Whether it can read images; null when Ollama doesn't say */
+  vision: boolean | null;
 }
 
 export interface ReceiptMatch {
@@ -170,6 +189,39 @@ export const setReceiptSettings = (change: Partial<ReceiptSettings>) =>
     method: 'PUT',
     body: JSON.stringify(change),
   });
+
+export const getReaderSettings = () => apiFetch<ReaderSettings>('/receipts/reader');
+export const setReaderSettings = (change: Partial<ReaderSettings>) =>
+  apiFetch<ReaderSettings>('/receipts/reader', { method: 'PUT', body: JSON.stringify(change) });
+export const readerModels = (url: string) =>
+  apiFetch<{ url: string; models: OllamaModel[] }>('/receipts/reader/models', {
+    method: 'POST',
+    body: JSON.stringify({ url }),
+  });
+export type SampleRead =
+  | { status: 'running'; model: string; startedAt: string }
+  | {
+      status: 'done';
+      model: string;
+      startedAt: string;
+      seconds: number;
+      read: {
+        merchant: string | null;
+        receiptDate: string | null;
+        total: number | null;
+        tax: number | null;
+        items: { description: string; amount: number }[];
+      };
+      expected: { items: unknown[] };
+      correct: { merchant: boolean; date: boolean; total: boolean; tax: boolean; items: number };
+    }
+  | { status: 'failed'; model: string; startedAt: string; seconds: number; error: string };
+
+export const startSampleRead = () =>
+  apiFetch<SampleRead>('/receipts/reader/sample', { method: 'POST' });
+export const getSampleRead = () => apiFetch<SampleRead | null>('/receipts/reader/sample');
+export const readReceipt = (id: string) =>
+  apiFetch<ReceiptDetail>(`/receipts/${encodeURIComponent(id)}/read`, { method: 'POST' });
 
 export const taxYears = () => apiFetch<{ financialYear: number; name: string }[]>('/tax/years');
 export const taxYear = (fy: number) => apiFetch<TaxYear>(`/tax/years/${fy}`);

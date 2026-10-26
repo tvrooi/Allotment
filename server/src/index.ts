@@ -56,6 +56,7 @@ import { currencyRouter, setRateDownloader } from './routes/currency.js';
 import { DEFAULT_RATES_URL, fetchRates, fetchRatesIfDue } from './services/rateFetchService.js';
 import { assertSafeUrl } from './services/safeFetch.js';
 import { fillMissingMainAmounts } from './services/mainAmountService.js';
+import { resumePendingReads } from './services/receiptReader.js';
 import { syncAllItems } from './services/plaidSyncService.js';
 import { encryptStoredCredentials } from './services/credentialEncryption.js';
 import { seedDefaultCategories } from './db/defaultCategories.js';
@@ -225,6 +226,12 @@ function runStartupTasks() {
 
     const legacyOccs = migrateOccurrencesFromLegacy();
     if (legacyOccs > 0) console.log(`Created ${legacyOccs} legacy occurrence(s)`);
+  });
+
+  // Receipts still waiting to be read by the local model when the server stopped
+  runStartupTask('Receipt reading', () => {
+    const waiting = resumePendingReads();
+    if (waiting > 0) console.log(`Resumed reading ${waiting} receipt(s)`);
   });
 
   // Transactions in another currency still waiting for a rate, or saved by an older version

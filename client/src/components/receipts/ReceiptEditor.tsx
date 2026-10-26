@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { FileText, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { FileText, Plus, ScanText, Trash2 } from 'lucide-react';
 import {
   receiptFileUrl,
   type AttachOutcome,
@@ -9,6 +9,9 @@ import {
 import {
   useCreateTransactionFromReceipt,
   useDeleteReceipt,
+  useReadReceipt,
+  useReaderSettings,
+  useRefreshAll,
   useReceipt,
   useReceiptSearch,
   useSplitByItems,
@@ -53,6 +56,30 @@ export function ReceiptEditor({ id, onClose }: { id: string | null; onClose: () 
   // Outside the form, so a newer copy of the receipt (after a save, or from another device)
   // replaces what is shown without losing what the last save, split or create said
   const [message, setMessage] = useState<{ id: string; text: string; alert: boolean } | null>(null);
+  // When the local model finishes reading, what it changed shows everywhere (a match, a split)
+  const refreshAll = useRefreshAll();
+  const was = useRef<{ id: string; status: string | null } | null>(null);
+  useEffect(() => {
+    if (!receipt) return;
+    const before = was.current;
+    was.current = { id: receipt.id, status: receipt.readStatus };
+    if (before?.id !== receipt.id || before.status !== 'pending') return;
+    if (receipt.readStatus === 'read') {
+      void refreshAll();
+      setMessage({
+        id: receipt.id,
+        text: 'Read automatically. Check the details, then save any corrections.',
+        alert: false,
+      });
+    } else if (receipt.readStatus === 'failed')
+      setMessage({
+        id: receipt.id,
+        text: `It couldn't be read: ${receipt.readError ?? 'unknown error'}`,
+        alert: true,
+      });
+    // refreshAll is a new function each render; the ref decides when this acts
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [receipt]);
   return (
     <Modal isOpen={!!id} onClose={onClose} title="Receipt" size="xl">
       {receipt ? (
@@ -127,6 +154,7 @@ function Editor({
 
   const photo =
     receipt.hasFile && receipt.mimeType.startsWith('image/') && receipt.mimeType !== 'image/heic';
+  const reading = receipt.readStatus === 'pending';
 
   return (
     <div className="grid gap-5 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
@@ -154,133 +182,137 @@ function Editor({
       </div>
 
       <div className="space-y-4 min-w-0">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className="text-xs font-medium text-text-secondary space-y-1">
-            <span className="block">Merchant</span>
-            <Input
-              aria-label="Merchant"
-              value={merchant}
-              onChange={(e) => setMerchant(e.target.value)}
-            />
-          </label>
-          <label className="text-xs font-medium text-text-secondary space-y-1">
-            <span className="block">Date</span>
-            <Input
-              aria-label="Date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </label>
-          <label className="text-xs font-medium text-text-secondary space-y-1">
-            <span className="block">Amount (total paid)</span>
-            <CurrencyInput aria-label="Amount" value={total} onChange={setTotal} />
-          </label>
-          <label className="text-xs font-medium text-text-secondary space-y-1">
-            <span className="block">Subtotal</span>
-            <CurrencyInput aria-label="Subtotal" value={subtotal} onChange={setSubtotal} />
-          </label>
-          <label className="text-xs font-medium text-text-secondary space-y-1">
-            <span className="block">Tax (GST)</span>
-            <CurrencyInput aria-label="Tax" value={tax} onChange={setTax} />
-          </label>
-          <label className="text-xs font-medium text-text-secondary space-y-1">
-            <span className="block">Tip and fees</span>
-            <CurrencyInput aria-label="Tip and fees" value={tip} onChange={setTip} />
-          </label>
-        </div>
-
-        <section aria-label="Line items" className="space-y-2">
-          <div className="flex items-baseline justify-between">
-            <p className="text-xs font-medium text-text-secondary">Line items</p>
-            {items.length > 0 && (
-              <p className="text-xs text-text-tertiary tabular-nums">
-                Items {formatCurrency(itemsTotal)}
-              </p>
-            )}
-          </div>
-          {items.map((item, i) => (
-            <div
-              key={i}
-              className="grid grid-cols-[minmax(0,2fr)_7rem_minmax(0,2fr)_auto] gap-2 items-center"
-            >
+        <ReadBar receipt={receipt} onMessage={setMessage} onSave={() => save()} />
+        {/* While the model reads it, typing would be lost when its details arrive */}
+        <fieldset disabled={reading} className="space-y-4 min-w-0 disabled:opacity-60">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="text-xs font-medium text-text-secondary space-y-1">
+              <span className="block">Merchant</span>
               <Input
-                aria-label={`Item ${i + 1}`}
-                placeholder="Item"
-                value={item.description}
-                onChange={(e) =>
-                  setItems(
-                    items.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)),
-                  )
-                }
+                aria-label="Merchant"
+                value={merchant}
+                onChange={(e) => setMerchant(e.target.value)}
               />
-              <CurrencyInput
-                aria-label={`Item ${i + 1} amount`}
-                value={item.amount}
-                onChange={(amount) =>
-                  setItems(items.map((x, j) => (j === i ? { ...x, amount } : x)))
-                }
+            </label>
+            <label className="text-xs font-medium text-text-secondary space-y-1">
+              <span className="block">Date</span>
+              <Input
+                aria-label="Date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
               />
-              <div className="rounded-lg border border-border px-2 py-2">
-                <CategorySelect
-                  label={`Item ${i + 1} category`}
-                  value={item.categoryId}
-                  groups={groups}
-                  onChange={(categoryId) =>
-                    setItems(items.map((x, j) => (j === i ? { ...x, categoryId } : x)))
+            </label>
+            <label className="text-xs font-medium text-text-secondary space-y-1">
+              <span className="block">Amount (total paid)</span>
+              <CurrencyInput aria-label="Amount" value={total} onChange={setTotal} />
+            </label>
+            <label className="text-xs font-medium text-text-secondary space-y-1">
+              <span className="block">Subtotal</span>
+              <CurrencyInput aria-label="Subtotal" value={subtotal} onChange={setSubtotal} />
+            </label>
+            <label className="text-xs font-medium text-text-secondary space-y-1">
+              <span className="block">Tax (GST)</span>
+              <CurrencyInput aria-label="Tax" value={tax} onChange={setTax} />
+            </label>
+            <label className="text-xs font-medium text-text-secondary space-y-1">
+              <span className="block">Tip and fees</span>
+              <CurrencyInput aria-label="Tip and fees" value={tip} onChange={setTip} />
+            </label>
+          </div>
+
+          <section aria-label="Line items" className="space-y-2">
+            <div className="flex items-baseline justify-between">
+              <p className="text-xs font-medium text-text-secondary">Line items</p>
+              {items.length > 0 && (
+                <p className="text-xs text-text-tertiary tabular-nums">
+                  Items {formatCurrency(itemsTotal)}
+                </p>
+              )}
+            </div>
+            {items.map((item, i) => (
+              <div
+                key={i}
+                className="grid grid-cols-[minmax(0,2fr)_7rem_minmax(0,2fr)_auto] gap-2 items-center"
+              >
+                <Input
+                  aria-label={`Item ${i + 1}`}
+                  placeholder="Item"
+                  value={item.description}
+                  onChange={(e) =>
+                    setItems(
+                      items.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)),
+                    )
                   }
                 />
+                <CurrencyInput
+                  aria-label={`Item ${i + 1} amount`}
+                  value={item.amount}
+                  onChange={(amount) =>
+                    setItems(items.map((x, j) => (j === i ? { ...x, amount } : x)))
+                  }
+                />
+                <div className="rounded-lg border border-border px-2 py-2">
+                  <CategorySelect
+                    label={`Item ${i + 1} category`}
+                    value={item.categoryId}
+                    groups={groups}
+                    onChange={(categoryId) =>
+                      setItems(items.map((x, j) => (j === i ? { ...x, categoryId } : x)))
+                    }
+                  />
+                </div>
+                <button
+                  type="button"
+                  aria-label={`Remove item ${i + 1}`}
+                  className="p-1 rounded text-text-tertiary hover:text-negative"
+                  onClick={() => setItems(items.filter((_, j) => j !== i))}
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
-              <button
-                type="button"
-                aria-label={`Remove item ${i + 1}`}
-                className="p-1 rounded text-text-tertiary hover:text-negative"
-                onClick={() => setItems(items.filter((_, j) => j !== i))}
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          ))}
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => setItems([...items, { description: '', amount: 0, categoryId: null }])}
-          >
-            <Plus size={13} /> Add item
-          </Button>
+            ))}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setItems([...items, { description: '', amount: 0, categoryId: null }])}
+            >
+              <Plus size={13} /> Add item
+            </Button>
+            <p className="text-xs text-text-tertiary">
+              Give items categories and, with autosplit on, a matched transaction with no category
+              yet is split by them: tax in proportion, tip and fees evenly per item. Split by items
+              does it for one that has a category.
+            </p>
+          </section>
+
+          <label className="block text-xs font-medium text-text-secondary space-y-1">
+            <span className="block">Notes</span>
+            <Input
+              aria-label="Receipt notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </label>
+
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => save()} disabled={update.isPending}>
+              Save
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={async () => {
+                await remove.mutateAsync(receipt.id);
+                onClose();
+              }}
+            >
+              <Trash2 size={13} /> Delete receipt
+            </Button>
+          </div>
           <p className="text-xs text-text-tertiary">
-            Give items categories and, with autosplit on, a matched transaction with no category yet
-            is split by them: tax in proportion, tip and fees evenly per item. Split by items does
-            it for one that has a category.
+            Deleting a receipt never deletes its transaction.
           </p>
-        </section>
-
-        <label className="block text-xs font-medium text-text-secondary space-y-1">
-          <span className="block">Notes</span>
-          <Input
-            aria-label="Receipt notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-        </label>
-
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={() => save()} disabled={update.isPending}>
-            Save
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={async () => {
-              await remove.mutateAsync(receipt.id);
-              onClose();
-            }}
-          >
-            <Trash2 size={13} /> Delete receipt
-          </Button>
-        </div>
-        <p className="text-xs text-text-tertiary">
-          Deleting a receipt never deletes its transaction.
-        </p>
+        </fieldset>
         {message && (
           <p
             role={message.alert ? 'alert' : 'status'}
@@ -297,6 +329,58 @@ function Editor({
 
         <MatchSection receipt={receipt} onSave={save} onMessage={setMessage} />
       </div>
+    </div>
+  );
+}
+
+const READABLE = ['image/jpeg', 'image/png', 'image/webp'];
+
+/** Reading by the local model: its state, and Read receipt when reading is on */
+function ReadBar({
+  receipt,
+  onMessage,
+  onSave,
+}: {
+  receipt: ReceiptDetail;
+  onMessage: (m: string | null, alert?: boolean) => void;
+  /** Saves what has been typed, so the read keeps it (it fills only empty fields) */
+  onSave: () => Promise<unknown>;
+}) {
+  const { data: reader } = useReaderSettings();
+  const read = useReadReceipt();
+  if (receipt.readStatus === 'pending')
+    return (
+      <p role="status" className="text-sm text-text-secondary flex items-center gap-2">
+        <ScanText size={14} className="animate-pulse" /> Reading the receipt with{' '}
+        {reader?.model ?? 'the local model'}… This can take a minute or two.
+      </p>
+    );
+  if (!reader?.enabled || !receipt.hasFile || !READABLE.includes(receipt.mimeType)) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button
+        size="sm"
+        variant="secondary"
+        disabled={read.isPending}
+        onClick={async () => {
+          onMessage(null);
+          try {
+            if (!(await onSave())) return;
+            await read.mutateAsync(receipt.id);
+          } catch (e) {
+            onMessage((e as Error).message, true);
+          }
+        }}
+      >
+        <ScanText size={13} /> {receipt.readStatus ? 'Read again' : 'Read receipt'}
+      </Button>
+      <span className="text-xs text-text-tertiary">
+        {receipt.readStatus === 'read'
+          ? 'Read automatically: fields you had typed were kept.'
+          : receipt.readStatus === 'failed'
+            ? `Last try failed: ${receipt.readError ?? 'unknown error'}`
+            : 'Fills the empty fields from the photo, on your own server.'}
+      </span>
     </div>
   );
 }

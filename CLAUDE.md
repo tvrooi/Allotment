@@ -4,6 +4,7 @@ This repository is `tvrooi/FlyBudget`, an AGPL-3.0-only fork of `dtymoszenko/Fly
 Read only the files relevant to the request. Do not read the entire repository or long conversation history.
 Detailed upstream architecture: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md), on demand.
 Release process and known limitations: [MAINTENANCE.md](MAINTENANCE.md).
+Current state, live setup and where to pick up: [HANDOVER.md](HANDOVER.md). Update it as work lands.
 Keep this file and CLAUDE.md identical.
 
 ## Where to work

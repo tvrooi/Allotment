@@ -30,9 +30,9 @@ once the live update has been verified; a published image or catalog update alon
 If access or backup verification is unavailable, finish the independent release work and report that
 specific installation blocker.
 
-The currently exposed Home Assistant device-control connector does not provide app management or
-backup operations. Establish an appropriate administrative access path once before promising unattended
-installation. Never add credentials or deployment hostnames to these instructions or to GitHub.
+The owner's Home Assistant MCP connector (ha-mcp) provides app management, app logs and backup
+operations, but it stops every request after 30 seconds; see HANDOVER.md for what it can and can't do.
+Never add credentials or deployment hostnames to these instructions or to GitHub.
 
 The standing permission covers routine updates of the same app. It does not authorise moving a budget
 between app IDs, replacing/deleting a budget, changing credentials, or bypassing security protections.
@@ -84,7 +84,9 @@ can pull it without storing registry credentials.
 
 ## First release and migration
 
-The currently installed local HA preview is a separate app (`local_flybudget_up`). Repository apps
+The live app is now the catalog-installed app (with auto-update on; see HANDOVER.md). The section
+below records how the earlier local preview (`local_flybudget_up`) differs, for any further move.
+The local HA preview is a separate app (`local_flybudget_up`). Repository apps
 have a different identifier and private data directory. Adding this catalog does **not** migrate it.
 Keep the working local app until a checked cold backup and restore has been performed. Back up the
 entire private app data, including `credentials.key` and database/WAL files, while the app is stopped.

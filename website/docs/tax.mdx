@@ -35,6 +35,26 @@ uncategorised transaction's category, but never changes one you chose. Turn each
 in the Receipts tab's **settings**. **Unmatch** puts the receipt back; deleting a receipt never
 deletes its transaction.
 
+### Reading receipts automatically
+
+FlyBudget can fill in a photo's details for you with a vision model running on your own
+[Ollama](https://ollama.com) server, such as the Ollama app on Home Assistant. Receipts never leave
+your network.
+
+1. In Ollama, add a model that can read images. On a small server, `qwen3-vl:4b-instruct` is a
+   good start. It needs about 4 to 5 GB of memory while it reads, and frees it a few minutes later.
+   Avoid "thinking" variants, which are much slower on a CPU.
+2. In the Receipts tab's **settings**, enter the Ollama address (on Home Assistant, the address on
+   its internal network from the Ollama app's documentation) and choose **Check**.
+3. Choose the model, then **Try a sample receipt** to see how well and how fast it reads a
+   made-up receipt. Nothing in your budget changes.
+4. Tick **Read new photos when they are added**.
+
+New photos are then read in the background, one at a time. On a mini PC without a graphics card
+this takes a minute or more each. Only empty fields are filled, and line items only when there are
+none, so anything you typed is kept. Then the receipt is matched as usual. Open it to check what
+was read. **Read again** asks once more. PDFs aren't read.
+
 You can also add a receipt straight from a transaction's details. A paperclip in the register shows
 which transactions have one. **Tax time → Receipt inbox** shows the unmatched ones too.
 

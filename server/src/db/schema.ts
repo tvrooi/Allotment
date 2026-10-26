@@ -344,6 +344,10 @@ export const receipts = sqliteTable(
     /** How it was matched: auto | manual | created (a transaction made from it); null = unmatched */
     matchedBy: text('matched_by'),
     notes: text('notes'),
+    /** Reading by a local model (receiptReader.ts): pending | read | failed; null = never asked */
+    readStatus: text('read_status'),
+    readError: text('read_error'),
+    readAt: text('read_at'),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
   },
@@ -888,6 +892,10 @@ export const budgetSettings = sqliteTable('budget_settings', {
   receiptAddNotes: integer('receipt_add_notes').notNull().default(1),
   /** Receipts: tag a matched transaction "Receipt" */
   receiptAddTag: integer('receipt_add_tag').notNull().default(1),
+  /** Read receipts with a local Ollama model (off until the owner turns it on) */
+  receiptReaderEnabled: integer('receipt_reader_enabled').notNull().default(0),
+  receiptReaderUrl: text('receipt_reader_url'),
+  receiptReaderModel: text('receipt_reader_model'),
   updatedAt: text('updated_at')
     .notNull()
     .default(sql`(datetime('now'))`),

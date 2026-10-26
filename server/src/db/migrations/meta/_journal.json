@@ -337,6 +337,13 @@
       "when": 1793400000000,
       "tag": "0047_receipts_tab",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "6",
+      "when": 1793500000000,
+      "tag": "0048_receipt_reader",
+      "breakpoints": true
     }
   ]
 }
