@@ -142,6 +142,17 @@ describe('card payment reserves', () => {
     expect(cat().activity).toBe(-8000);
     expect(state()).toMatchObject({ resources: 92000, reserved: 2000, unassigned: 90000 });
   });
+  it('keeps an unfunded card purchase from last month unfunded after the envelope resets', () => {
+    setup();
+    db.update(cardFunding).set({ startDate: '2026-09-01' }).run();
+    entry('september', -8000, 'food', { date: '2026-09-15' });
+    // The envelope starts October at zero, like YNAB, but the card debt stays unfunded
+    expect(cat()).toMatchObject({ carryOver: 0, balance: 0 });
+    expect(position()).toMatchObject({ debt: 8000, available: 0, shortfall: 8000 });
+    expect(state()).toMatchObject({ resources: 100000, reserved: 0, unassigned: 100000 });
+    assign('food', 5000);
+    expect(cat().balance).toBe(5000);
+  });
   it('exposes partial and unfunded purchases, and retroactively reserves a reviewed category assignment', () => {
     setup();
     assign('food', 5000);
