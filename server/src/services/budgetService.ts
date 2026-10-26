@@ -116,8 +116,6 @@ function rawBudgetGroups(month: string, today = todayIso()) {
           balance: carryOver + budgetedAmt + activity,
           history: months,
           resets,
-          // Without the monthly reset: what card funding replays purchases against
-          running: rollOver(months, false) + budgetedAmt + activity,
         };
       }),
   }));
@@ -148,11 +146,15 @@ function assessment(month: string, today = todayIso()) {
   const current = month === asOf.slice(0, 7) ? raw : rawBudgetGroups(asOf.slice(0, 7), asOf);
   const card = calculateCardFunding(
     asOf,
-    // A deficit the reset drops must not turn into funding for an earlier card purchase
+    // Month by month, so funding follows the same monthly reset as the envelopes
     current
       .filter((g) => !g.isIncome)
       .flatMap((g) => g.categories)
-      .map((c) => ({ id: c.id, balance: c.running })),
+      .map((c) => ({
+        id: c.id,
+        balance: c.balance,
+        months: new Map(c.history).set(asOf.slice(0, 7), c.budgeted + c.activity),
+      })),
   );
   const paymentAccounts = new Map(
     db
@@ -164,7 +166,7 @@ function assessment(month: string, today = todayIso()) {
   const groups = raw.map((g) => ({
     ...g,
     categories: g.categories.map((c) => {
-      const { history, resets, running, ...category } = c;
+      const { history, resets, ...category } = c;
       const changes = card.adjustments.filter((a) => a.categoryId === c.id);
       const months = new Map(history);
       for (const a of changes.filter((a) => a.date.slice(0, 7) < month))

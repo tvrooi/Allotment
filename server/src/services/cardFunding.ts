@@ -9,7 +9,8 @@ import {
 } from './balances.js';
 import { convertAmount, currencyContext } from './mainAmountService.js';
 
-type Category = { id: string; balance: number };
+/** An expense category's balance, and optionally its net change (assigned + activity) by month */
+type Category = { id: string; balance: number; months?: Map<string, number> };
 export interface CardPosition {
   accountId: string;
   categoryId: string;
@@ -104,12 +105,36 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
   };
   // Assignments and cash activity take priority as of the requested date. Retrospective
   // funding changes how much of a purchase is cash-backed, without generating ledger rows.
-  const pool = new Map(
-    expenseCategories.filter((c) => !paymentIds.has(c.id)).map((c) => [c.id, c.balance]),
+  // Within a month, all of its assignments and cash activity back its card purchases. Like the
+  // envelopes, a category that ends a month overspent starts the next at zero, so an old cash
+  // deficit doesn't block new purchases and a later assignment doesn't fund an earlier month's.
+  const base = new Map(
+    expenseCategories
+      .filter((c) => !paymentIds.has(c.id))
+      .map((c) => [c.id, new Map(c.months ?? [[asOf.slice(0, 7), c.balance]])]),
   );
   for (const t of all)
-    if (activityIds.has(t.id) && t.categoryId && expenseIds.has(t.categoryId) && eligible(t))
-      pool.set(t.categoryId, (pool.get(t.categoryId) ?? 0) - amount(t));
+    if (activityIds.has(t.id) && t.categoryId && expenseIds.has(t.categoryId) && eligible(t)) {
+      const months = base.get(t.categoryId)!;
+      const m = t.date.slice(0, 7);
+      months.set(m, (months.get(m) ?? 0) - amount(t));
+    }
+  const pool = new Map<string, { month: string; value: number }>();
+  const poolAt = (id: string, month: string) => {
+    const s = pool.get(id) ?? { month: '', value: 0 };
+    pool.set(id, s);
+    const months = base.get(id) ?? new Map<string, number>();
+    const due = [...months.keys()].filter((m) => m > s.month && m <= month).sort();
+    for (const m of due) {
+      s.value = Math.max(0, s.value) + months.get(m)!;
+      s.month = m;
+    }
+    if (s.month < month) {
+      s.value = Math.max(0, s.value);
+      s.month = month;
+    }
+    return s;
+  };
   for (const s of states) s.native = s.account?.startingBalance ?? 0;
   const add = (categoryId: string, date: string, value: number) => {
     if (value) adjustments.push({ categoryId, date, amount: value });
@@ -191,8 +216,9 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
         const spending = -value;
         const prepaid = Math.min(spending, Math.max(0, leafBefore));
         if (!id || !expenseIds.has(id)) continue;
-        const backed = Math.min(spending, Math.max(0, pool.get(id) ?? 0));
-        pool.set(id, (pool.get(id) ?? 0) - spending);
+        const available = poolAt(id, leaf.date.slice(0, 7));
+        const backed = Math.min(spending, Math.max(0, available.value));
+        available.value -= spending;
         const funded = Math.max(0, backed - prepaid);
         reserve(s, leaf.date, funded);
         s.funded += funded;
@@ -209,7 +235,7 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
         if (id && expenseIds.has(id)) {
           const backedRefund = unfunded + released + prepaid;
           add(id, leaf.date, backedRefund - value);
-          pool.set(id, (pool.get(id) ?? 0) + backedRefund);
+          poolAt(id, leaf.date.slice(0, 7)).value += backedRefund;
         }
       }
     }

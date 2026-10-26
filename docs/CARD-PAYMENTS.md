@@ -32,7 +32,7 @@ groceries and no payment reserve. Unassigned remains $900 throughout.
 
 Unfunded purchases create a payment shortfall. Existing debt needs an explicit
 assignment to the payment category; use Fund debt or Move money. Covering a purchase
-category deficit also increases purchase funding. Moving cash out of a payment
+category deficit in the same month also increases purchase funding. Moving cash out of a payment
 reserve exposes the resulting payment shortfall. Payments beyond their reserve
 show Payments without funding. These review items prevent a fully resolved state.
 
@@ -44,7 +44,12 @@ cash activity take priority; remaining category resources fund reviewed-card
 purchases in date, record-creation-time and ID order. Record creation time breaks
 same-day ties; imported rows without distinct times use stable IDs. This is an as-of assessment, not a reconstruction of the
 user's assignment timing, which the original ledger does not retain. A later
-assignment can fund earlier purchases; future assignments and expected income cannot.
+assignment in the same month can fund earlier purchases; future assignments and expected
+income cannot. Funding follows the envelopes' monthly reset ([envelope funding](ENVELOPE-FUNDING.md)):
+each month's purchases are backed by what the category carries in plus that month's
+assignments and cash activity, and a category that ends a month overspent starts the next
+at zero. An old cash deficit therefore doesn't block a new purchase, and a later month's
+assignment doesn't fund an earlier month's purchase; that debt needs Fund debt or Move money.
 
 Split parents affect balances once and their leaf parts affect purposes once.
 Interest and fees use ordinary expense categories and follow the same purchase
