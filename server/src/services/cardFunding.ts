@@ -90,6 +90,8 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
       .reduce((s, a) => s + a.budgeted, 0),
     funded: 0,
     unfunded: new Map<string, number>(),
+    // The part of `unfunded` whose envelope deficit a month-end reset dropped: card debt only
+    discarded: new Map<string, number>(),
   }));
   const stateByAccount = new Map(states.map((s) => [s.mapping.accountId, s]));
   const eligible = (t: typeof transactions.$inferSelect) => {
@@ -120,20 +122,35 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
       months.set(m, (months.get(m) ?? 0) - amount(t));
     }
   const pool = new Map<string, { month: string; value: number }>();
+  // A dropped deficit first comes from the category's unfunded card purchases. A later refund
+  // of those reduces the debt (and its shortfall) but must not refill the envelope as well.
+  const discard = (id: string, deficit: number) => {
+    for (const st of states) {
+      const open = (st.unfunded.get(id) ?? 0) - (st.discarded.get(id) ?? 0);
+      const dropped = Math.min(deficit, Math.max(0, open));
+      if (dropped) st.discarded.set(id, (st.discarded.get(id) ?? 0) + dropped);
+      deficit -= dropped;
+    }
+  };
   const poolAt = (id: string, month: string) => {
-    const s = pool.get(id) ?? { month: '', value: 0 };
-    pool.set(id, s);
+    const p = pool.get(id) ?? { month: '', value: 0 };
+    pool.set(id, p);
+    const reset = () => {
+      if (p.value < 0) discard(id, -p.value);
+      p.value = Math.max(0, p.value);
+    };
     const months = base.get(id) ?? new Map<string, number>();
-    const due = [...months.keys()].filter((m) => m > s.month && m <= month).sort();
+    const due = [...months.keys()].filter((m) => m > p.month && m <= month).sort();
     for (const m of due) {
-      s.value = Math.max(0, s.value) + months.get(m)!;
-      s.month = m;
+      reset();
+      p.value += months.get(m)!;
+      p.month = m;
     }
-    if (s.month < month) {
-      s.value = Math.max(0, s.value);
-      s.month = month;
+    if (p.month < month) {
+      reset();
+      p.month = month;
     }
-    return s;
+    return p;
   };
   for (const s of states) s.native = s.account?.startingBalance ?? 0;
   const add = (categoryId: string, date: string, value: number) => {
@@ -195,6 +212,7 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
         for (const [id, owed] of s.unfunded) {
           const paid = Math.min(unfundedPayment, owed);
           s.unfunded.set(id, owed - paid);
+          s.discarded.set(id, Math.min(s.discarded.get(id) ?? 0, owed - paid));
           unfundedPayment -= paid;
         }
       }
@@ -224,16 +242,20 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
         s.funded += funded;
         s.unfunded.set(id, (s.unfunded.get(id) ?? 0) + Math.max(0, spending - prepaid - funded));
       } else if (value > 0) {
+        // Settle earlier months' resets before deciding what this refund reverses
+        if (id && expenseIds.has(id)) poolAt(id, leaf.date.slice(0, 7));
         const debtPart = Math.min(value, Math.max(0, -leafBefore));
         const prepaid = value - debtPart;
         const deficitRecovery = Math.min(prepaid, Math.max(0, -s.reserve));
         reserve(s, leaf.date, deficitRecovery);
         const unfunded = id ? Math.min(debtPart, s.unfunded.get(id) ?? 0) : 0;
         if (id) s.unfunded.set(id, (s.unfunded.get(id) ?? 0) - unfunded);
+        const dropped = id ? Math.min(unfunded, s.discarded.get(id) ?? 0) : 0;
+        if (id && dropped) s.discarded.set(id, (s.discarded.get(id) ?? 0) - dropped);
         const released = Math.min(debtPart - unfunded, Math.max(0, s.reserve));
         reserve(s, leaf.date, -released);
         if (id && expenseIds.has(id)) {
-          const backedRefund = unfunded + released + prepaid;
+          const backedRefund = unfunded - dropped + released + prepaid;
           add(id, leaf.date, backedRefund - value);
           poolAt(id, leaf.date.slice(0, 7)).value += backedRefund;
         }
