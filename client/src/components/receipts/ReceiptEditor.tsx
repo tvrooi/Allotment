@@ -182,7 +182,7 @@ function Editor({
       </div>
 
       <div className="space-y-4 min-w-0">
-        <ReadBar receipt={receipt} onMessage={setMessage} />
+        <ReadBar receipt={receipt} onMessage={setMessage} onSave={() => save()} />
         {/* While the model reads it, typing would be lost when its details arrive */}
         <fieldset disabled={reading} className="space-y-4 min-w-0 disabled:opacity-60">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -339,9 +339,12 @@ const READABLE = ['image/jpeg', 'image/png', 'image/webp'];
 function ReadBar({
   receipt,
   onMessage,
+  onSave,
 }: {
   receipt: ReceiptDetail;
   onMessage: (m: string | null, alert?: boolean) => void;
+  /** Saves what has been typed, so the read keeps it (it fills only empty fields) */
+  onSave: () => Promise<unknown>;
 }) {
   const { data: reader } = useReaderSettings();
   const read = useReadReceipt();
@@ -362,6 +365,7 @@ function ReadBar({
         onClick={async () => {
           onMessage(null);
           try {
+            if (!(await onSave())) return;
             await read.mutateAsync(receipt.id);
           } catch (e) {
             onMessage((e as Error).message, true);

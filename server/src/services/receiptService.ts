@@ -240,7 +240,8 @@ export function updateReceipt(
   const before = receiptRow(id);
   const { transactionId, lineItems: items, ...fields } = change;
   if (transactionId) assertTransaction(transactionId);
-  if (Object.keys(fields).length)
+  // Line items are part of the receipt too: a new revision, so an open editor reloads them
+  if (Object.keys(fields).length || items)
     db.update(receipts)
       .set({ ...fields, updatedAt: now() })
       .where(eq(receipts.id, id))

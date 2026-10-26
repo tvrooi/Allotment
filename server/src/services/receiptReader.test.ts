@@ -245,6 +245,17 @@ describe('reading a receipt', () => {
     expect(out.outcome?.split).toBe(3);
   });
 
+  it('a read that adds only line items is a new revision, so an open editor reloads', async () => {
+    turnOn();
+    ollamaSays({ ...coles, merchant: null, date: null, total: null, tax: null });
+    const r = addReceipt({ bytes: jpeg('g') });
+    const before = updateReceipt(r.id, { merchant: 'Coles', total: 5_800 }).updatedAt;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const out = await readReceiptNow(r.id);
+    expect(out.lineItems).toHaveLength(4);
+    expect(out.updatedAt).not.toBe(before);
+  });
+
   it('never replaces line items the owner already typed', async () => {
     turnOn();
     ollamaSays(coles);

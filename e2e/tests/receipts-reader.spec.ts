@@ -37,7 +37,8 @@ test.beforeAll(async () => {
                 total: 58,
                 subtotal: null,
                 tax: 5.27,
-                tip: null,
+                // The sample, then the photo; reading it again finds the fees too
+                tip: chats.length > 2 ? 2 : null,
                 items: [
                   { description: 'Milk', amount: 30, category: 'Groceries' },
                   { description: 'Light globes', amount: 28, category: 'Home Maintenance' },
@@ -104,6 +105,12 @@ test('a photo is read by the local model, filled in and matched', async ({ page,
   await expect(
     dialog.getByText('Read automatically: fields you had typed were kept.'),
   ).toBeVisible();
+
+  // Typed but not saved, then Read again: what was typed is saved first, so it is kept
+  await dialog.getByLabel('Merchant').fill('Coles Local');
+  await dialog.getByRole('button', { name: 'Read again' }).click();
+  await expect(dialog.getByLabel('Tip and fees')).toHaveValue('$2', { timeout: 15_000 });
+  await expect(dialog.getByLabel('Merchant')).toHaveValue('Coles Local');
 
   // Sent to the chosen model, as a photo, without "thinking"
   const last = chats.at(-1)!;
