@@ -21,7 +21,8 @@ FlyBudget takes the upload, paste, inbox, matching and attachment ideas, and (si
 
 - **Email forwarding** would need an inbound mail service exposed to the internet, which a private,
   self-hosted budget should not run.
-- **Server-side AI parsing** would send receipts to a third party.
+- **Server-side AI parsing** would send receipts to a third party. FlyBudget can instead read
+  photos with a model on the owner's own Ollama server (§5, since 0.2.0-up.44).
 
 The owner types a receipt's details and line items, and matching and splitting use those.
 
@@ -95,7 +96,7 @@ records, not only tax evidence.
   beside All. Filters are All, Unmatched and Matched. There are **Upload** (several files, drop or
   paste), **Scan receipt** (`capture="environment"`, the camera on a phone; also in the All tab's
   header, like Monarch's Add → Scan receipt), **Match now** and **Settings**.
-- **What a receipt says** (typed, not read by AI): merchant, date, amount (total), subtotal, tax,
+- **What a receipt says** (typed, or read by a local model, below): merchant, date, amount (total), subtotal, tax,
   tip and fees, notes, and line items (description, amount, category) in `receipt_line_items`.
 - **Automatic matching** (`receiptMatching.findAutoMatch`), on Monarch's rules:
   - money out of exactly the receipt's total, top-level, not a transfer, with no receipt yet;
@@ -130,12 +131,35 @@ records, not only tax evidence.
 - **Unmatch** keeps what was added to the transaction. Deleting a receipt never deletes a
   transaction; deleting a transaction makes its receipts unmatched.
 - **Backups:** format 19 adds `receiptLineItems`; format 18 backups restore with no line items.
-- **Not built:** email forwarding (it needs an inbound mail service exposed to the internet), AI
-  reading of receipts, and a "pending" state (FlyBudget imports settled transactions only).
+- **Reading photos with a local model** (`receiptReader.ts`, since 0.2.0-up.44):
+  - **Off by default.** Settings → _Read receipts automatically_: an Ollama address (http or
+    https, no path or credentials; redirects are refused) and a model. On Home Assistant, the
+    Ollama app's address on the internal network is shown in its documentation (for the
+    community app, `http://76e18fb5-ollama:11434`), so no port needs opening. **Check** lists
+    the server's models and which can read images (`vision`).
+  - **What is sent:** the photo (JPEG, PNG, WebP; not PDF or HEIC), only to that address, with a
+    prompt naming the spending categories. The request asks for JSON in a fixed schema
+    (`format`), `temperature: 0`, `think: false` (a thinking model is slow on a CPU) and
+    `keep_alive: 5m`, so the model leaves memory a few minutes after the last receipt.
+  - **What is kept:** a sensible positive amount in cents, a real date from 2000 to tomorrow, a
+    category only if it matches a spending category by name; anything else is null.
+  - **Never replaces what was typed:** only empty fields are filled, and line items only when
+    there are none. The receipt is then saved through `updateReceipt`, so it is matched and
+    enriched exactly like typed details.
+  - **In the background, one at a time** (`read_status` pending → read or failed, with the
+    reason). The editor's fields are locked while it is read, so nothing typed is lost. Reads
+    left waiting are resumed at startup. **Read receipt** / **Read again** in the editor.
+  - **Try a sample receipt** reads a built-in made-up receipt (`receiptSample.ts`) and reports
+    what was right and how long it took, without touching the budget.
+  - Measured on an Intel N100-class mini PC sharing its CPU with Frigate (`qwen3-vl:4b-instruct`):
+    about 75 s to take in even a small image, so allow 2 to 4 minutes a photo.
+  - Read-only tokens reach none of it (`/receipts` is not on the allowlist).
+- **Not built:** email forwarding (it needs an inbound mail service exposed to the internet) and a
+  "pending" state (FlyBudget imports settled transactions only).
 
 ## 6. Not built
 
-- Email forwarding, and OCR or AI reading of receipts.
+- Email forwarding, and reading PDFs (only photos are read).
 - Working-from-home hours (the fixed rate per hour), car logbooks and cents per kilometre.
 - Depreciation schedules and the low-value pool calculation.
 - Income, tax withheld, tax offsets and an estimated refund.
@@ -143,6 +167,5 @@ records, not only tax evidence.
 - A "Has receipt" filter in the register (markers show instead).
 - Uploading receipts from the read-only assistant.
 
-If the owner wants receipts read automatically later, the private route is a local OCR step on the
-server. The assistant route needs an owner-approved exception to the token allowlist, which this
-change does not make.
+Receipts are read only by a model on the owner's own Ollama server (§5). The assistant route
+would need an owner-approved exception to the token allowlist, which has not been made.

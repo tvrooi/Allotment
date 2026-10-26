@@ -414,12 +414,21 @@ describe('backups and access', () => {
     for (const path of [
       '/receipts',
       '/receipts/counts',
+      '/receipts/reader',
+      '/receipts/reader/sample',
       '/tax/years',
       '/tax/years/2026',
       '/tax/claims',
     ]) {
       expect((await call('GET', path, { token })).status, path).toBe(403);
     }
+    // Nor point the server at an address, or send a photo to a model
+    for (const [method, path] of [
+      ['PUT', '/receipts/reader'],
+      ['POST', '/receipts/reader/models'],
+      ['POST', '/receipts/reader/sample'],
+    ] as const)
+      expect((await call(method, path, { token, body: {} })).status, path).toBe(403);
   });
 });
 

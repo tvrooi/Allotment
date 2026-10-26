@@ -22,6 +22,15 @@ import {
   updateReceiptSettings,
 } from '../services/receiptMatching.js';
 import { disposition } from '../utils/contentDisposition.js';
+import {
+  listOllamaModels,
+  queueRead,
+  readIfEnabled,
+  readerSettings,
+  sampleRead,
+  startSampleRead,
+  updateReaderSettings,
+} from '../services/receiptReader.js';
 
 // Receipts (docs/RECEIPTS-AND-TAX.md). Not on the read-only token allowlist: a token never
 // sees a receipt.
@@ -89,6 +98,61 @@ receiptsRouter.put(
   ),
 );
 
+// Reading receipts with a local Ollama model: its address, model and whether it is on
+receiptsRouter.get(
+  '/reader',
+  action((_req, res) => res.json(readerSettings())),
+);
+receiptsRouter.put(
+  '/reader',
+  action((req, res) =>
+    res.json(
+      updateReaderSettings(
+        z
+          .object({
+            enabled: z.boolean(),
+            url: z.string().trim().max(300).nullable(),
+            model: z
+              .string()
+              .trim()
+              .max(120)
+              .regex(/^[\w.\-:/]+$/, 'That is not an Ollama model name')
+              .nullable(),
+          })
+          .partial()
+          .strict()
+          .parse(req.body),
+      ),
+    ),
+  ),
+);
+// The models on an Ollama server, to check the address and choose one
+receiptsRouter.post('/reader/models', async (req, res, next) => {
+  try {
+    const { url } = z
+      .object({ url: z.string().trim().min(1).max(300) })
+      .strict()
+      .parse(req.body);
+    res.json(await listOllamaModels(url));
+  } catch (error) {
+    if (error instanceof z.ZodError)
+      return res.status(400).json({ error: error.issues.map((i) => i.message).join('; ') });
+    if (error instanceof ReceiptError)
+      return res.status(error.status).json({ error: error.message });
+    next(error);
+  }
+});
+
+// Try the chosen model on a made-up receipt, in the background; the budget is not touched
+receiptsRouter.post(
+  '/reader/sample',
+  action((_req, res) => res.status(202).json(startSampleRead())),
+);
+receiptsRouter.get(
+  '/reader/sample',
+  action((_req, res) => res.json(sampleRead())),
+);
+
 // Try every unmatched receipt now (matching also runs as new transactions arrive)
 receiptsRouter.post(
   '/match',
@@ -104,9 +168,10 @@ receiptsRouter.post(
       .object({ transactionId: id.optional(), fileName: z.string().max(200).optional() })
       .parse(req.query);
     const bytes = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
-    res
-      .status(201)
-      .json(addReceipt({ bytes, fileName: q.fileName, transactionId: q.transactionId }));
+    const added = addReceipt({ bytes, fileName: q.fileName, transactionId: q.transactionId });
+    // Read in the background when reading is on; the page shows it as being read
+    readIfEnabled(added.id, added.mimeType);
+    res.status(201).json(getReceipt(added.id));
   }),
 );
 
@@ -154,6 +219,21 @@ receiptsRouter.post(
       .strict()
       .parse(req.body);
     res.status(201).json(createTransactionFromReceipt(String(req.params.id), body));
+  }),
+);
+
+// Read (or read again) this receipt in the background
+receiptsRouter.post(
+  '/:id/read',
+  action((req, res) => {
+    const receiptId = String(req.params.id);
+    const r = getReceipt(receiptId);
+    if (!readerSettings().enabled)
+      throw new ReceiptError('Turn on reading receipts in the settings');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(r.mimeType))
+      throw new ReceiptError('Only photos (JPEG, PNG, WebP) can be read, not PDFs or HEIC');
+    queueRead(receiptId);
+    res.status(202).json(getReceipt(receiptId));
   }),
 );
 

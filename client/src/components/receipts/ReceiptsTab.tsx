@@ -3,8 +3,13 @@ import { Camera, RefreshCw, Settings } from 'lucide-react';
 import type { Receipt } from '../../api/tax';
 import {
   useMatchReceiptsNow,
+  useReaderModels,
+  useReaderSettings,
   useReceiptSettings,
+  useSampleRead,
+  useStartSampleRead,
   useReceipts,
+  useSetReaderSettings,
   useSetReceiptSettings,
   useUploadReceipt,
 } from '../../hooks/useTax';
@@ -12,6 +17,7 @@ import { formatCurrency } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { ReceiptDrop, ReceiptThumb, receiptFiles } from '../tax/ReceiptsSection';
 import { Button } from '../ui/Button';
+import { Input, Select } from '../ui/Input';
 import { Modal } from '../ui/Modal';
 import { ReceiptEditor } from './ReceiptEditor';
 
@@ -176,9 +182,13 @@ export function ReceiptsTab({
                     {r.total !== null ? formatCurrency(r.total) : '—'}
                   </span>
                   <span
-                    className={`text-xs font-medium w-20 text-right ${r.transactionId ? 'text-positive' : 'text-caution'}`}
+                    className={`text-xs font-medium w-20 text-right ${r.transactionId ? 'text-positive' : r.readStatus === 'pending' ? 'text-text-secondary' : 'text-caution'}`}
                   >
-                    {r.transactionId ? 'Matched' : 'Unmatched'}
+                    {r.transactionId
+                      ? 'Matched'
+                      : r.readStatus === 'pending'
+                        ? 'Reading…'
+                        : 'Unmatched'}
                   </span>
                 </button>
               </li>
@@ -237,7 +247,178 @@ function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         <p className="text-xs text-text-tertiary">
           A receipt never changes a transaction's amount, and never changes a category you chose.
         </p>
+        <ReaderSettingsSection />
       </div>
     </Modal>
+  );
+}
+
+/**
+ * Reading receipts with a local Ollama model, e.g. the Ollama app on Home Assistant. The photo
+ * goes only to this address. Off until an address and a model that can read images are chosen.
+ */
+function ReaderSettingsSection() {
+  const { data } = useReaderSettings();
+  const save = useSetReaderSettings();
+  const models = useReaderModels();
+  const [url, setUrl] = useState('');
+  const [model, setModel] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  // Ticks at once; the saved setting follows (or it goes back, with the reason)
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (!data) return;
+    setUrl(data.url ?? '');
+    setModel(data.model ?? '');
+    setOn(data.enabled);
+  }, [data]);
+  const found = models.data?.models ?? [];
+  const choices = [...found].sort((a, b) => Number(b.vision === true) - Number(a.vision === true));
+  async function apply(change: Parameters<typeof save.mutateAsync>[0]) {
+    setError(null);
+    try {
+      await save.mutateAsync(change);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  return (
+    <section
+      aria-label="Read receipts automatically"
+      className="border-t border-border-light pt-4 space-y-3"
+    >
+      <div>
+        <p className="text-sm font-medium">Read receipts automatically</p>
+        <p className="text-xs text-text-tertiary">
+          A vision model on your own Ollama server fills in a photo's merchant, date, amounts and
+          items, then the receipt is matched as usual. Fields you typed are never replaced. The
+          photo goes only to this address. Photos only, not PDFs.
+        </p>
+      </div>
+      <label className="block text-xs font-medium text-text-secondary space-y-1">
+        <span className="block">Ollama address</span>
+        <div className="flex gap-2">
+          <Input
+            aria-label="Ollama address"
+            placeholder="http://ollama-host:11434"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+          />
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={!url.trim() || models.isPending}
+            onClick={async () => {
+              setError(null);
+              try {
+                const out = await models.mutateAsync(url);
+                setUrl(out.url);
+                await save.mutateAsync({ url: out.url });
+              } catch (e) {
+                setError((e as Error).message);
+              }
+            }}
+          >
+            {models.isPending ? 'Checking…' : 'Check'}
+          </Button>
+        </div>
+      </label>
+      {found.length > 0 && (
+        <label className="block text-xs font-medium text-text-secondary space-y-1">
+          <span className="block">Model</span>
+          <Select
+            aria-label="Model"
+            value={model}
+            onChange={(e) => {
+              setModel(e.target.value);
+              void apply({ model: e.target.value || null });
+            }}
+          >
+            <option value="">Choose a model…</option>
+            {choices.map((m) => (
+              <option key={m.name} value={m.name}>
+                {m.name}
+                {m.vision === true ? ' (reads images)' : m.vision === false ? ' (text only)' : ''}
+              </option>
+            ))}
+          </Select>
+        </label>
+      )}
+      {models.isSuccess && !found.some((m) => m.vision) && (
+        <p className="text-xs text-caution">
+          No model here can read images. Add one in Ollama first, for example qwen3-vl:4b-instruct.
+        </p>
+      )}
+      {data?.model && !found.length && (
+        <p className="text-xs text-text-tertiary">Model: {data.model}</p>
+      )}
+      {data?.url && data?.model && <SampleCheck onError={setError} />}
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-1"
+          checked={on}
+          disabled={!on && (!data?.url || !data?.model)}
+          onChange={async (e) => {
+            const enabled = e.target.checked;
+            setOn(enabled);
+            setError(null);
+            try {
+              await save.mutateAsync({ enabled });
+            } catch (err) {
+              setOn(!enabled);
+              setError((err as Error).message);
+            }
+          }}
+        />
+        <span>
+          Read new photos when they are added
+          <span className="block text-xs text-text-tertiary">
+            One at a time in the background; on a small server each can take a minute or two.
+          </span>
+        </span>
+      </label>
+      {error && (
+        <p role="alert" className="text-xs text-negative">
+          {error}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** Try the chosen model on a made-up receipt, to see how well and how fast it reads */
+function SampleCheck({ onError }: { onError: (e: string | null) => void }) {
+  const { data: sample } = useSampleRead();
+  const start = useStartSampleRead();
+  const running = sample?.status === 'running';
+  const tick = (ok: boolean) => (ok ? '✓' : '✗');
+  return (
+    <div className="space-y-1">
+      <Button
+        size="sm"
+        variant="secondary"
+        disabled={running || start.isPending}
+        onClick={async () => {
+          onError(null);
+          try {
+            await start.mutateAsync();
+          } catch (e) {
+            onError((e as Error).message);
+          }
+        }}
+      >
+        {running ? 'Reading the sample…' : 'Try a sample receipt'}
+      </Button>
+      <p role="status" className="text-xs text-text-tertiary">
+        {running
+          ? `${sample.model} is reading a made-up receipt. On a small server this can take a few minutes.`
+          : sample?.status === 'done'
+            ? `${sample.model} took ${sample.seconds} s: merchant ${tick(sample.correct.merchant)}, date ${tick(sample.correct.date)}, total ${tick(sample.correct.total)}, GST ${tick(sample.correct.tax)}, items ${sample.correct.items} of ${sample.expected.items.length}.`
+            : sample?.status === 'failed'
+              ? `${sample.model} failed after ${sample.seconds} s: ${sample.error}`
+              : 'Reads a made-up receipt; nothing in your budget changes.'}
+      </p>
+    </div>
   );
 }

@@ -7,7 +7,12 @@ const RECEIPTS = ['receipts'];
 const TAX = ['tax'];
 
 export const useReceipts = (filter: Parameters<typeof api.listReceipts>[0]) =>
-  useQuery({ queryKey: [...RECEIPTS, filter], queryFn: () => api.listReceipts(filter) });
+  useQuery({
+    queryKey: [...RECEIPTS, filter],
+    queryFn: () => api.listReceipts(filter),
+    // Receipts being read by the local model change when it finishes
+    refetchInterval: (q) => (q.state.data?.some((r) => r.readStatus === 'pending') ? 5000 : false),
+  });
 
 /** Which transactions have receipts and claims, for the register's markers */
 export function useReceiptMarks() {
@@ -99,6 +104,8 @@ export const useReceipt = (id: string | null) =>
     queryKey: [...RECEIPTS, 'one', id],
     queryFn: () => api.getReceipt(id!),
     enabled: !!id,
+    // While the local model reads it, look again every few seconds
+    refetchInterval: (q) => (q.state.data?.readStatus === 'pending' ? 3000 : false),
   });
 
 export const useReceiptSearch = (id: string, q: string) =>
@@ -111,7 +118,7 @@ export const useReceiptSettings = () =>
   useQuery({ queryKey: [...RECEIPTS, 'settings'], queryFn: api.getReceiptSettings });
 
 /** Matching or creating changes transactions (tags, notes, splits): refresh those too */
-function useRefreshAll() {
+export function useRefreshAll() {
   const qc = useQueryClient();
   return () =>
     Promise.all([
@@ -152,4 +159,39 @@ export function useCreateTransactionFromReceipt() {
 export function useSplitByItems() {
   const refresh = useRefreshAll();
   return useMutation({ mutationFn: api.splitReceiptByItems, onSuccess: refresh });
+}
+
+export const useReaderSettings = () =>
+  useQuery({ queryKey: [...RECEIPTS, 'reader'], queryFn: api.getReaderSettings });
+
+export function useSetReaderSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.setReaderSettings,
+    onSuccess: (data) => qc.setQueryData([...RECEIPTS, 'reader'], data),
+  });
+}
+
+/** The models on an Ollama server (checks the address too) */
+export const useReaderModels = () => useMutation({ mutationFn: api.readerModels });
+
+export function useReadReceipt() {
+  const refresh = useRefresh();
+  return useMutation({ mutationFn: api.readReceipt, onSuccess: refresh });
+}
+
+/** The last try of the model on the sample receipt; looked at every few seconds while it runs */
+export const useSampleRead = () =>
+  useQuery({
+    queryKey: [...RECEIPTS, 'reader', 'sample'],
+    queryFn: api.getSampleRead,
+    refetchInterval: (q) => (q.state.data?.status === 'running' ? 3000 : false),
+  });
+
+export function useStartSampleRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.startSampleRead,
+    onSuccess: (data) => qc.setQueryData([...RECEIPTS, 'reader', 'sample'], data),
+  });
 }

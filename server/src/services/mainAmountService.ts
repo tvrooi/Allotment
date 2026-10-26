@@ -42,6 +42,9 @@ export function getBudgetSettings(): BudgetSettings {
       receiptAutoSplit: 1,
       receiptAddNotes: 1,
       receiptAddTag: 1,
+      receiptReaderEnabled: 0,
+      receiptReaderUrl: null,
+      receiptReaderModel: null,
       updatedAt: new Date(0).toISOString(),
     }
   );

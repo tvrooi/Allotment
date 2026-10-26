@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.44
+
+- **Read receipts automatically** with a vision model on your own Ollama server (for example the Ollama app on Home Assistant). Photos are read in the background and fill in the merchant, date, amounts and line items with categories, then the receipt is matched as usual. Only empty fields are filled, so anything you typed is kept. Off until you choose an Ollama address and model in the Receipts tab's settings.
+- **Try a sample receipt** checks a model's accuracy and speed on a made-up receipt without touching your budget.
+- Receipts never leave your network: they go only to the Ollama address you choose. Read-only tokens can't reach any of it.
+
 ## 0.2.0-up.43
 
 - **Receipts tab** on Transactions, like Monarch's: every receipt, matched or not, for any purchase (not only tax). Upload several at once, drop or paste them, or **Scan receipt** with a phone's camera (also from the All tab).
