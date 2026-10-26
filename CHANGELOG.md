@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.45
+
+- **Overspending resets each month, like YNAB.** An overspent category is red for the month it happened and starts the next month at zero, instead of carrying the deficit forward until you cover it. The money had already left your accounts, so **Ready to assign** doesn't change. A one-off like paying out a loan or a settlement no longer follows you from month to month. Positive balances still roll over, and credit card payment categories keep their running total.
+
 ## 0.2.0-up.44
 
 - **Read receipts automatically** with a vision model on your own Ollama server (for example the Ollama app on Home Assistant). Photos are read in the background and fill in the merchant, date, amounts and line items with categories, then the receipt is matched as usual. Only empty fields are filled, so anything you typed is kept. Off until you choose an Ollama address and model in the Receipts tab's settings.

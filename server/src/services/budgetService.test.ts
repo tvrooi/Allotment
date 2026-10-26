@@ -104,8 +104,8 @@ it('excludes future and generated salary, includes refunds and retains rollover-
   });
   expect(fundingState()).toMatchObject({ resources: 55000, reserved: 25000, unassigned: 30000 });
 });
-it('discloses prior deficits and uncategorised activity even with zero unassigned', () => {
-  activity('debit', -20000, 'food', '2026-09-10');
+it('discloses deficits and uncategorised activity even with zero unassigned', () => {
+  activity('debit', -20000, 'food', '2026-10-10');
   activity('unknown', -10000, null);
   assign('rent', 70000);
   expect(budgetSummary('2026-10')).toMatchObject({
@@ -114,6 +114,41 @@ it('discloses prior deficits and uncategorised activity even with zero unassigne
     uncategorized: 10000,
     resolved: false,
   });
+});
+it('resets overspending at the month boundary, like YNAB, without changing what is assignable', () => {
+  // September: a $3,000 settlement and a loan payout nobody budgeted for; food rolls $50 over
+  assign('food', 10000, '2026-09');
+  activity('food-sep', -5000, 'food', '2026-09-05');
+  activity('settlement', -300000, 'rent', '2026-09-26');
+  const september = fundingState('2026-09-30');
+  expect(september).toMatchObject({ overspent: 300000 });
+  const rentIn = (month: string) =>
+    budgetGroups(month)
+      .flatMap((g) => g.categories)
+      .find((c) => c.id === 'rent')!;
+  const foodIn = (month: string) =>
+    budgetGroups(month)
+      .flatMap((g) => g.categories)
+      .find((c) => c.id === 'food')!;
+  expect(rentIn('2026-09')).toMatchObject({ carryOver: 0, balance: -300000 });
+
+  // October starts clean; the spent cash is already out of the accounts
+  expect(rentIn('2026-10')).toMatchObject({ carryOver: 0, balance: 0 });
+  expect(foodIn('2026-10')).toMatchObject({ carryOver: 5000, balance: 5000 });
+  expect(fundingState()).toMatchObject({
+    overspent: 0,
+    resources: 100000 - 305000,
+    unassigned: 100000 - 305000 - 5000,
+  });
+
+  // A refund after the reset is available money in the envelope again
+  activity('refund', 2000, 'rent', '2026-10-12');
+  expect(rentIn('2026-10')).toMatchObject({ carryOver: 0, balance: 2000 });
+  // October overspending stays visible within October, then resets in November
+  activity('oct', -9000, 'food', '2026-10-13');
+  expect(foodIn('2026-10').balance).toBe(-4000);
+  expect(fundingState().overspent).toBe(4000);
+  expect(foodIn('2026-11')).toMatchObject({ carryOver: 0 });
 });
 it('does not count off-budget assets or borrowing as free funding', () => {
   // Dated explicitly: the default is the real clock, which can be after the faked today.
@@ -236,7 +271,8 @@ it('starts envelopes at the budget start, keeping earlier history out of carry-o
     budgetGroups('2026-10')
       .flatMap((g) => g.categories)
       .find((c) => c.id === 'rent')!;
-  expect(rent()).toMatchObject({ carryOver: -4302000 + 100, balance: -4302000 + 100 });
+  // Each unbudgeted month resets, like YNAB; September's $1 doesn't survive its own rent
+  expect(rent()).toMatchObject({ carryOver: 0, balance: 0 });
   expect(fundingState().uncategorized).toBe(1500);
 
   db.insert(budgetSettings).values({ id: 'budget', budgetStartMonth: '2026-10' }).run();
@@ -252,7 +288,7 @@ it('starts envelopes at the budget start, keeping earlier history out of carry-o
 
   // Clearing it counts all history again
   db.update(budgetSettings).set({ budgetStartMonth: null }).run();
-  expect(rent().carryOver).toBe(-4302000 + 100);
+  expect(fundingState().uncategorized).toBe(1500);
 });
 it('keeps an invalid budget start out of the database and backups', () => {
   expect(() =>
