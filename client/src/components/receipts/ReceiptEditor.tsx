@@ -68,8 +68,11 @@ export function ReceiptEditor({ id, onClose }: { id: string | null; onClose: () 
       void refreshAll();
       setMessage({
         id: receipt.id,
-        text: 'Read automatically. Check the details, then save any corrections.',
-        alert: false,
+        // A read's notes (in readError) say what didn't add up and wasn't kept
+        text: receipt.readError
+          ? `Read automatically, with something to check: ${receipt.readError}`
+          : 'Read automatically. Check the details, then save any corrections.',
+        alert: Boolean(receipt.readError),
       });
     } else if (receipt.readStatus === 'failed')
       setMessage({
@@ -376,7 +379,9 @@ function ReadBar({
       </Button>
       <span className="text-xs text-text-tertiary">
         {receipt.readStatus === 'read'
-          ? 'Read automatically: fields you had typed were kept.'
+          ? receipt.readError
+            ? `Read automatically. To check: ${receipt.readError}`
+            : 'Read automatically: fields you had typed were kept.'
           : receipt.readStatus === 'failed'
             ? `Last try failed: ${receipt.readError ?? 'unknown error'}`
             : 'Fills the empty fields from the photo, on your own server.'}
