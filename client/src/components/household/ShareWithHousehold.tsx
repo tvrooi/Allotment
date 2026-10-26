@@ -22,11 +22,18 @@ import type { TransactionQueryParams } from '../../types';
 
 /** The share endpoint takes at most this many ids, so a larger selection goes in batches */
 const SHARE_BATCH = 500;
+/**
+ * Share in batches. If a batch fails after others succeeded, what was shared is still reported
+ * (and can be undone), with why it stopped and what wasn't sent; if none succeeded, it throws.
+ */
 async function shareAll(groupId: string, ids: string[]) {
-  const parts = await inBatches(ids, SHARE_BATCH, (batch) => shareTransactions(groupId, batch));
+  const out = await inBatches(ids, SHARE_BATCH, (batch) => shareTransactions(groupId, batch));
+  if (out.error && out.sent === 0) throw out.error;
   return {
-    shared: parts.reduce((n, p) => n + p.shared, 0),
-    results: parts.flatMap((p) => p.results),
+    shared: out.results.reduce((n, p) => n + p.shared, 0),
+    results: out.results.flatMap((p) => p.results),
+    sentIds: ids.slice(0, out.sent),
+    stopped: out.error ? { error: out.error.message, unsent: ids.length - out.sent } : null,
   };
 }
 
@@ -44,8 +51,8 @@ interface Props {
   params?: TransactionQueryParams;
   count?: number;
   variant?: 'button' | 'link' | 'compact';
-  /** After sharing, e.g. to clear the register's picks */
-  onShared?: () => void;
+  /** After sharing, with the ids that were sent (e.g. to clear those picks) */
+  onShared?: (sentIds: string[]) => void;
 }
 
 export function ShareWithHousehold({
@@ -78,9 +85,13 @@ export function ShareWithHousehold({
       const reasons = [...new Set(skipped.map((r) => r.error))].slice(0, 2).join('; ');
       setOutcome(
         `Shared ${result.shared}.` +
-          (skipped.length ? ` ${skipped.length} not shared: ${reasons}` : ''),
+          (skipped.length ? ` ${skipped.length} not shared: ${reasons}` : '') +
+          (result.stopped
+            ? ` Then it stopped (${result.stopped.error}): ${result.stopped.unsent} weren't ` +
+              'sent. Share again to send them; payments already shared are skipped.'
+            : ''),
       );
-      onShared?.();
+      onShared?.(result.sentIds);
       const events = result.results.filter((r) => r.ok && r.eventId).map((r) => r.eventId!);
       if (events.length)
         useUndoStore.getState().push({

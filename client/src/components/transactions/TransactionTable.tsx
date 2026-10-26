@@ -408,7 +408,11 @@ export function TransactionTable({
           <ShareWithHousehold
             transactionIds={pickedIds}
             variant="compact"
-            onShared={() => setPicked(new Set())}
+            onShared={(sent) => {
+              // What was sent is done; anything a failed batch didn't reach stays picked
+              const done = new Set(sent);
+              setPicked((p) => new Set([...(p ?? [])].filter((id) => !done.has(id))));
+            }}
           />
           <Button variant="ghost" size="sm" onClick={() => setPicked(null)}>
             Done
