@@ -293,8 +293,15 @@ describe('native Up integration', () => {
       upMockTransaction('coffee', -1200),
       upMockTransaction('held', -500, 'HELD'),
     ]);
-    expect((await syncUp()).errors.join(' ')).toContain('opening balance was preserved');
+    const result = await syncUp();
+    expect(result.errors).toEqual([]);
+    expect(result.notices?.join(' ')).toContain('opening balance was preserved');
     expect(db.select().from(accounts).where(eq(accounts.id, id)).get()!.startingBalance).toBe(0);
+    // Like YNAB: the import succeeded, so the connection is good and its sync time moves on;
+    // the difference is for the owner to reconcile
+    const connection = await (await request('/connection', undefined, 'GET')).json();
+    expect(connection).toMatchObject({ syncStatus: 'good', syncError: null });
+    expect(Date.now() - Date.parse(connection.lastSyncedAt)).toBeLessThan(60_000);
   });
   it('polls only when opted in and due, pauses during setup, and backs off errors', async () => {
     await mapSpending();
@@ -398,7 +405,7 @@ describe('native Up integration', () => {
     mock.setMode('round-ups-mismatch');
     const mismatch = await syncUp();
     expect(mismatch).toMatchObject({ added: 0, skipped: 4 });
-    expect(mismatch.errors.join(' ')).toContain('opening balance was preserved');
+    expect(mismatch.notices?.join(' ')).toContain('opening balance was preserved');
     expect(opening()).toEqual(initial);
     expect(db.select().from(transactions).all()).toEqual(snapshot);
   });
@@ -422,7 +429,7 @@ describe('native Up integration', () => {
     expect(await syncUp()).toMatchObject({ added: 1, errors: [] });
     mock.setMode('implicit-round-ups-odd');
     const odd = await syncUp();
-    expect(odd.errors.join(' ')).toContain('opening balance was preserved');
+    expect(odd.notices?.join(' ')).toContain('opening balance was preserved');
     const check = async () =>
       (await (await request('/round-up-check', undefined, 'GET')).json())[0];
     // $79.99 at the bank vs $82.40 in the register: $2.40 of round-ups explains only part of it.
@@ -514,7 +521,7 @@ describe('native Up integration', () => {
       .where(eq(transactions.id, coffee.id))
       .run();
     const edited = db.select().from(transactions).where(eq(transactions.id, coffee.id)).get();
-    expect((await syncUp()).errors.join(' ')).toContain('Review transactions and reconcile');
+    expect((await syncUp()).notices?.join(' ')).toContain('Review transactions and reconcile');
     expect(db.select().from(transactions).where(eq(transactions.id, coffee.id)).get()).toEqual(
       edited,
     );

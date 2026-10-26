@@ -353,3 +353,44 @@ describe('when one side of a transfer changes on its own', () => {
     expect(row(otherId).date).toBe('2096-09-03');
   });
 });
+
+describe('transfers that leave the budget', () => {
+  it('take the category of the last transfer between the same accounts when linked', async () => {
+    db.insert(categories).values({ id: 'c-rent', groupId: 'g-bills', name: 'Rent' }).run();
+    const saver = await account('Rent saver', 'savings');
+    const loan = await account('Car loan', 'loan'); // off budget by default
+    const link = async (date: string) => {
+      const out = await imported(saver, date, -165100, 'Transfer to Car loan');
+      const inn = await imported(loan, date, 165100, 'Transfer from Rent saver');
+      expect(
+        (
+          await call('POST', '/transactions/transfers/link', {
+            transactionId: out.id,
+            otherTransactionId: inn.id,
+          })
+        ).status,
+      ).toBe(200);
+      return out.id;
+    };
+    // The first one has nothing to follow; categorise it once
+    const first = await link('2026-09-20');
+    expect(row(first).categoryId).toBeNull();
+    await call('PUT', `/transactions/${first}`, { categoryId: 'c-rent' });
+    // The next month follows it, and never overwrites a category already chosen
+    const second = await link('2026-10-20');
+    expect(row(second).categoryId).toBe('c-rent');
+  });
+
+  it('leaves transfers inside the budget without a category', async () => {
+    const a = await account('Everyday');
+    const b = await account('Holiday saver', 'savings');
+    const out = await imported(a, '2026-10-05', -5000, 'To holiday');
+    const inn = await imported(b, '2026-10-05', 5000, 'From everyday');
+    await call('POST', '/transactions/transfers/link', {
+      transactionId: out.id,
+      otherTransactionId: inn.id,
+    });
+    expect(row(out.id).categoryId).toBeNull();
+    expect(row(inn.id).categoryId).toBeNull();
+  });
+});

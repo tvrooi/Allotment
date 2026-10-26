@@ -104,8 +104,8 @@ it('excludes future and generated salary, includes refunds and retains rollover-
   });
   expect(fundingState()).toMatchObject({ resources: 55000, reserved: 25000, unassigned: 30000 });
 });
-it('discloses prior deficits and uncategorised activity even with zero unassigned', () => {
-  activity('debit', -20000, 'food', '2026-09-10');
+it('discloses deficits and uncategorised activity even with zero unassigned', () => {
+  activity('debit', -20000, 'food', '2026-10-10');
   activity('unknown', -10000, null);
   assign('rent', 70000);
   expect(budgetSummary('2026-10')).toMatchObject({
@@ -114,6 +114,41 @@ it('discloses prior deficits and uncategorised activity even with zero unassigne
     uncategorized: 10000,
     resolved: false,
   });
+});
+it('resets overspending at the month boundary, like YNAB, without changing what is assignable', () => {
+  // September: a $3,000 settlement and a loan payout nobody budgeted for; food rolls $50 over
+  assign('food', 10000, '2026-09');
+  activity('food-sep', -5000, 'food', '2026-09-05');
+  activity('settlement', -300000, 'rent', '2026-09-26');
+  const september = fundingState('2026-09-30');
+  expect(september).toMatchObject({ overspent: 300000 });
+  const rentIn = (month: string) =>
+    budgetGroups(month)
+      .flatMap((g) => g.categories)
+      .find((c) => c.id === 'rent')!;
+  const foodIn = (month: string) =>
+    budgetGroups(month)
+      .flatMap((g) => g.categories)
+      .find((c) => c.id === 'food')!;
+  expect(rentIn('2026-09')).toMatchObject({ carryOver: 0, balance: -300000 });
+
+  // October starts clean; the spent cash is already out of the accounts
+  expect(rentIn('2026-10')).toMatchObject({ carryOver: 0, balance: 0 });
+  expect(foodIn('2026-10')).toMatchObject({ carryOver: 5000, balance: 5000 });
+  expect(fundingState()).toMatchObject({
+    overspent: 0,
+    resources: 100000 - 305000,
+    unassigned: 100000 - 305000 - 5000,
+  });
+
+  // A refund after the reset is available money in the envelope again
+  activity('refund', 2000, 'rent', '2026-10-12');
+  expect(rentIn('2026-10')).toMatchObject({ carryOver: 0, balance: 2000 });
+  // October overspending stays visible within October, then resets in November
+  activity('oct', -9000, 'food', '2026-10-13');
+  expect(foodIn('2026-10').balance).toBe(-4000);
+  expect(fundingState().overspent).toBe(4000);
+  expect(foodIn('2026-11')).toMatchObject({ carryOver: 0 });
 });
 it('does not count off-budget assets or borrowing as free funding', () => {
   // Dated explicitly: the default is the real clock, which can be after the faked today.
@@ -224,4 +259,45 @@ it('counts split children once and excludes internal cash transfers', () => {
     overspent: 2000,
     reserved: 6000,
   });
+});
+it('starts envelopes at the budget start, keeping earlier history out of carry-over', () => {
+  // Ten months of rent nobody budgeted for, then October budgeted properly
+  for (let m = 1; m <= 9; m++) activity(`old${m}`, -478000, 'rent', `2026-0${m}-05`);
+  activity('lunch', -1500, null, '2026-09-20');
+  assign('rent', 100, '2026-09');
+  activity('oct', -478000, 'rent', '2026-10-05');
+  assign('rent', 478000);
+  const rent = () =>
+    budgetGroups('2026-10')
+      .flatMap((g) => g.categories)
+      .find((c) => c.id === 'rent')!;
+  // Each unbudgeted month resets, like YNAB; September's $1 doesn't survive its own rent
+  expect(rent()).toMatchObject({ carryOver: 0, balance: 0 });
+  expect(fundingState().uncategorized).toBe(1500);
+
+  db.insert(budgetSettings).values({ id: 'budget', budgetStartMonth: '2026-10' }).run();
+  expect(rent()).toMatchObject({ carryOver: 0, activity: -478000, balance: 0 });
+  expect(fundingState()).toMatchObject({ uncategorized: 0, overspent: 0 });
+  expect(budgetSummary('2026-10').budgetStartMonth).toBe('2026-10');
+  // Earlier months show nothing assigned or spent; cash is still what the accounts hold
+  const september = budgetGroups('2026-09')
+    .flatMap((g) => g.categories)
+    .find((c) => c.id === 'rent')!;
+  expect(september).toMatchObject({ budgeted: 0, activity: 0, balance: 0 });
+  expect(fundingState().resources).toBe(100000 - 9 * 478000 - 1500 - 478000);
+
+  // Clearing it counts all history again
+  db.update(budgetSettings).set({ budgetStartMonth: null }).run();
+  expect(fundingState().uncategorized).toBe(1500);
+});
+it('keeps an invalid budget start out of the database and backups', () => {
+  expect(() =>
+    db.insert(budgetSettings).values({ id: 'budget', budgetStartMonth: 'soon' }).run(),
+  ).toThrow(/CHECK/);
+  const backup = createBackup() as Record<string, unknown>;
+  backup.budgetSettings = [{ id: 'budget', budgetStartMonth: '2026-13' }];
+  expect(() => parseBackup(backup)).toThrow(/budget start/);
+  backup.budgetSettings = [{ id: 'budget', budgetStartMonth: '2026-10' }];
+  restoreBackup(parseBackup(backup));
+  expect(budgetSummary('2026-10').budgetStartMonth).toBe('2026-10');
 });

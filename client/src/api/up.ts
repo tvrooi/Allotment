@@ -28,7 +28,10 @@ export interface UpMappingChoice {
 export interface UpSyncResult {
   added: number;
   skipped: number;
+  /** Why the sync failed */
   errors: string[];
+  /** To review, though the import succeeded (a register that differs from Up's balance) */
+  notices?: string[];
 }
 export const getUpConnection = () => apiFetch<UpConnection | null>('/up/connection');
 export const setupUp = (accessToken: string) =>

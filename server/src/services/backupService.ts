@@ -5,6 +5,7 @@ import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { databasePath, db, sqlite } from '../db/index.js';
 import {
   householdGroups,
+  householdPoolAccounts,
   householdPeople,
   householdEvents,
   householdShares,
@@ -33,6 +34,9 @@ import {
   upSourceRecords,
   enableBankingAccountMappings,
   transactions,
+  receipts,
+  receiptLineItems,
+  taxClaims,
   transferMatchDismissals,
   paydayPlans,
   paydayFundingEvents,
@@ -50,6 +54,11 @@ import {
   securityPrices,
   holdings,
   taxLots,
+  accountLoanDetails,
+  longTermPlans,
+  longTermEvents,
+  longTermAccountAssumptions,
+  longTermSplits,
 } from '../db/schema.js';
 import { paydayConfigSchema, fundingSnapshotSchema } from './paydayConfig.js';
 import { fillMissingMainAmounts, ratesChanged } from './mainAmountService.js';
@@ -60,6 +69,15 @@ import { GOAL_STATUSES } from './goalLifecycle.js';
 import { purposeError } from './resilienceService.js';
 import { validateViewQuery } from './transactionMarks.js';
 import { scenarioSchema } from './forecastConfig.js';
+import {
+  accountAssumptionSchema,
+  eventSchema,
+  MAX_PLANS,
+  planSchema,
+  settingsSchema,
+  splitSchema,
+} from './longTermConfig.js';
+import { loanDetailsSchema } from './loanDetails.js';
 import { SECURITY_KINDS } from './investmentService.js';
 import { isCurrencyCode } from '../utils/currencies.js';
 
@@ -72,13 +90,14 @@ import { isCurrencyCode } from '../utils/currencies.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 14;
+export const BACKUP_VERSION = 19;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
   budgetSettings,
   exchangeRates,
   accounts,
+  accountLoanDetails,
   categoryGroups,
   categories,
   cardFunding,
@@ -86,6 +105,10 @@ const TABLES = {
   payees,
   schedules,
   transactions,
+  // Receipts' details and claims; the files themselves stay in this installation's database
+  receipts,
+  receiptLineItems,
+  taxClaims,
   upSourceRecords,
   scheduleOccurrences,
   scheduleMatchDismissals,
@@ -97,6 +120,10 @@ const TABLES = {
   transactionTags,
   savedViews,
   forecastScenarios,
+  longTermPlans,
+  longTermEvents,
+  longTermAccountAssumptions,
+  longTermSplits,
   customReports,
   dashboardPages,
   dashboardWidgets,
@@ -110,6 +137,7 @@ const TABLES = {
   reviewCompletions,
   incomeReviews,
   householdGroups,
+  householdPoolAccounts,
   householdPeople,
   householdEvents,
   householdShares,
@@ -194,6 +222,16 @@ export function parseBackup(input: unknown): ParsedBackup {
             : typeof value === 'string' && value.length <= 1_000_000;
         if (!ok) throw new InvalidBackupError(`Row ${i + 1} of "${name}" has an invalid "${key}"`);
         row[key] = value;
+      }
+      // Budget start (format 15). Older backups have none: every month counts.
+      if (
+        name === 'budgetSettings' &&
+        row.budgetStartMonth != null &&
+        !/^\d{4}-(0[1-9]|1[0-2])$/.test(String(row.budgetStartMonth))
+      ) {
+        throw new InvalidBackupError(
+          `Row ${i + 1} of "budgetSettings" has an invalid budget start`,
+        );
       }
       if (name === 'cardFunding') {
         try {
@@ -405,6 +443,135 @@ export function parseBackup(input: unknown): ParsedBackup {
       (l.costBasis != null && Number(l.costBasis) < 0)
     )
       throw new InvalidBackupError('Invalid tax lot');
+  // Long-term forecast (format 16). Older backups have none: no plans, no loan details.
+  const accountIds = new Set(result.accounts.map((a) => String(a.id)));
+  const planIds = new Set(result.longTermPlans.map((p) => String(p.id)));
+  for (const d of result.accountLoanDetails)
+    if (
+      !accountIds.has(String(d.accountId)) ||
+      !loanDetailsSchema.safeParse({
+        rateBps: d.rateBps,
+        monthlyRepayment: d.monthlyRepayment ?? 0,
+        termMonths: d.termMonths ?? null,
+      }).success
+    )
+      throw new InvalidBackupError('Invalid loan details');
+  for (const p of result.longTermPlans)
+    try {
+      settingsSchema.parse(JSON.parse(String(p.settingsJson)));
+      const name = String(p.name).trim();
+      if (!name || name.length > 100) throw new Error();
+      if (p.version !== undefined && Number(p.version) < 1) throw new Error();
+    } catch {
+      throw new InvalidBackupError('Invalid long-term plan');
+    }
+  if (new Set(result.longTermPlans.map((p) => String(p.name).toLowerCase())).size !== planIds.size)
+    throw new InvalidBackupError('Invalid long-term plan');
+  for (const e of result.longTermEvents)
+    try {
+      if (!planIds.has(String(e.planId))) throw new Error();
+      eventSchema.parse({
+        ...JSON.parse(String(e.paramsJson)),
+        id: e.id,
+        kind: e.kind,
+        name: e.name,
+        enabled: Number(e.enabled ?? 1) === 1,
+      });
+    } catch {
+      throw new InvalidBackupError('Invalid long-term event');
+    }
+  for (const a of result.longTermAccountAssumptions)
+    if (
+      !planIds.has(String(a.planId)) ||
+      !accountIds.has(String(a.accountId)) ||
+      !accountAssumptionSchema.safeParse({
+        accountId: a.accountId,
+        included: Number(a.included ?? 1) === 1,
+        cls: a.cls ?? null,
+        growthBps: a.growthBps ?? null,
+      }).success
+    )
+      throw new InvalidBackupError('Invalid long-term account choice');
+  for (const sp of result.longTermSplits)
+    if (
+      !planIds.has(String(sp.planId)) ||
+      !accountIds.has(String(sp.accountId)) ||
+      !splitSchema.safeParse({
+        accountId: sp.accountId,
+        mode: sp.mode,
+        ...(sp.bps != null ? { bps: sp.bps } : {}),
+        ...(sp.amount != null ? { amount: sp.amount } : {}),
+      }).success
+    )
+      throw new InvalidBackupError('Invalid long-term split');
+  // Whole-plan checks, so a restored plan is one the API would have saved and can still read
+  const bit = (v: unknown) => v === undefined || v === 0 || v === 1;
+  const plain = (v: unknown, max: number) =>
+    typeof v === 'string' && v === v.trim() && v.length >= 1 && v.length <= max;
+  if (result.longTermPlans.length > MAX_PLANS)
+    throw new InvalidBackupError('Too many long-term plans');
+  for (const p of result.longTermPlans)
+    if (!plain(p.name, 100)) throw new InvalidBackupError('Invalid long-term plan');
+  const eventKeys = new Set<string>();
+  for (const e of result.longTermEvents) {
+    const key = `${e.planId}/${e.id}`;
+    if (
+      eventKeys.has(key) ||
+      !bit(e.enabled) ||
+      !plain(e.name, 100) ||
+      !Number.isInteger(e.position) ||
+      Number(e.position) < 0
+    )
+      throw new InvalidBackupError('Invalid long-term event');
+    eventKeys.add(key);
+  }
+  for (const a of result.longTermAccountAssumptions)
+    if (!bit(a.included)) throw new InvalidBackupError('Invalid long-term account choice');
+  const splitKeys = new Set<string>();
+  for (const sp of result.longTermSplits) {
+    const key = `${sp.planId}/${sp.position}`;
+    if (splitKeys.has(key) || !Number.isInteger(sp.position) || Number(sp.position) < 0)
+      throw new InvalidBackupError('Invalid long-term split');
+    splitKeys.add(key);
+  }
+  for (const p of result.longTermPlans) {
+    try {
+      const own = (r: Row) => r.planId === p.id;
+      planSchema.parse({
+        name: p.name,
+        settings: settingsSchema.parse(JSON.parse(String(p.settingsJson))),
+        accounts: result.longTermAccountAssumptions.filter(own).map((a) => ({
+          accountId: a.accountId,
+          included: Number(a.included ?? 1) === 1,
+          cls: a.cls ?? null,
+          growthBps: a.growthBps ?? null,
+        })),
+        splits: result.longTermSplits
+          .filter(own)
+          .sort((x, y) => Number(x.position) - Number(y.position))
+          .map((sp) => ({
+            accountId: sp.accountId,
+            mode: sp.mode,
+            ...(sp.bps != null ? { bps: sp.bps } : {}),
+            ...(sp.amount != null ? { amount: sp.amount } : {}),
+          })),
+        events: result.longTermEvents
+          .filter(own)
+          .sort((x, y) => Number(x.position) - Number(y.position))
+          .map((e) =>
+            eventSchema.parse({
+              ...JSON.parse(String(e.paramsJson)),
+              id: e.id,
+              kind: e.kind,
+              name: e.name,
+              enabled: Number(e.enabled ?? 1) === 1,
+            }),
+          ),
+      });
+    } catch {
+      throw new InvalidBackupError('Invalid long-term plan');
+    }
+  }
   return result;
 }
 

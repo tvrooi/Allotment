@@ -53,3 +53,13 @@ export const saveStatementAccount = (id: string, account: string) =>
     method: 'PUT',
     body: JSON.stringify({ account }),
   });
+
+/** Bank-synced accounts: the bank's settled balance against the register (server: GET /accounts/sync-status) */
+export interface AccountSyncStatus {
+  accountId: string;
+  bankBalance: number | null;
+  registerBalance: number;
+  difference: number | null;
+  verdict: 'unknown' | 'matches' | 'round-ups' | 'unexplained';
+}
+export const getAccountSyncStatus = () => apiFetch<AccountSyncStatus[]>('/accounts/sync-status');

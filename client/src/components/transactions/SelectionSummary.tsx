@@ -4,6 +4,7 @@ import { useRestoreReview, useReviewSelection } from '../../hooks/useTags';
 import type { ReviewChange } from '../../api/transactions';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { BulkEditModal } from './BulkEditModal';
+import { ShareWithHousehold } from '../household/ShareWithHousehold';
 import { useTransactionSummary } from '../../hooks/useTransactions';
 import { useBudgetCurrency } from '../../hooks/useCurrency';
 import { transactionsCsvPath } from '../../api/transactions';
@@ -104,6 +105,7 @@ export function SelectionSummary({ params, loadedCount }: Props) {
           <PencilLine size={12} /> Edit {reviewCount.toLocaleString()}
         </button>
       )}
+      {reviewCount > 0 && <ShareWithHousehold params={params} variant="link" />}
       <BulkEditModal
         params={params}
         count={reviewCount}

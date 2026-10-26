@@ -10,26 +10,40 @@ import {
   budgetRevision,
   cardFunding,
 } from '../db/schema.js';
-import { budgetActivity, inAccountBalance, mainAmount, personalBudgetAccount } from './balances.js';
+import {
+  budgetActivity,
+  budgetStartDate,
+  inAccountBalance,
+  mainAmount,
+  personalBudgetAccount,
+  sinceBudgetStart,
+} from './balances.js';
 import { currencyContext, convertAmount, todayIso } from './mainAmountService.js';
 import { monthBounds } from '../utils/date.js';
 
 // Generated income remains an expectation until reconciled. Spending is recognised
 // when dated, including generated bills, to avoid offering committed cash again.
-export const receivedActivity = and(
+export const receivedSpending = and(
   budgetActivity,
   sql`not (${transactions.amount} > 0 and coalesce(${transactions.importedId}, '') like 'schedule:%' and ${transactions.reconciled} = 0)`,
 )!;
+/** What the envelopes count: received activity from the budget start on */
+export const receivedActivity = and(receivedSpending, sinceBudgetStart)!;
 export const fundingRevision = () =>
   `${todayIso()}:${db.select().from(budgetRevision).get()?.revision ?? 'initial'}`;
 
 function rawBudgetGroups(month: string, today = todayIso()) {
   const { from, to: end } = monthBounds(month);
   const to = end < today ? end : today;
+  const startMonth = budgetStartDate().slice(0, 7);
 
   const groups = db.select().from(categoryGroups).orderBy(categoryGroups.sortOrder).all();
   const cats = db.select().from(categories).orderBy(categories.sortOrder).all();
-  const budgeted = db.select().from(budgetMonths).where(eq(budgetMonths.month, month)).all();
+  // Before the budget start a month shows no assignments, like its activity
+  const budgeted =
+    month < startMonth
+      ? []
+      : db.select().from(budgetMonths).where(eq(budgetMonths.month, month)).all();
 
   const spentRows = db
     .select({
@@ -41,31 +55,45 @@ function rawBudgetGroups(month: string, today = todayIso()) {
     .groupBy(transactions.categoryId)
     .all();
 
+  // Earlier months, one net change (assigned + activity) per category and month
   const priorBudgetedRows = db
     .select({
       categoryId: budgetMonths.categoryId,
+      month: budgetMonths.month,
       total: sql<number>`coalesce(sum(${budgetMonths.budgeted}), 0)`,
     })
     .from(budgetMonths)
-    .where(lt(budgetMonths.month, month))
-    .groupBy(budgetMonths.categoryId)
+    .where(and(lt(budgetMonths.month, month), gte(budgetMonths.month, startMonth)))
+    .groupBy(budgetMonths.categoryId, budgetMonths.month)
     .all();
 
   const priorActivityRows = db
     .select({
       categoryId: transactions.categoryId,
+      month: sql<string>`substr(${transactions.date}, 1, 7)`,
       total: sql<number>`coalesce(sum(${mainAmount}), 0)`,
     })
     .from(transactions)
     .where(and(lt(transactions.date, from), lte(transactions.date, today), receivedActivity))
-    .groupBy(transactions.categoryId)
+    .groupBy(transactions.categoryId, sql`substr(${transactions.date}, 1, 7)`)
     .all();
 
   const spentMap = Object.fromEntries(spentRows.map((r) => [r.categoryId, r.spent]));
   const budgetMap = Object.fromEntries(budgeted.map((b) => [b.categoryId, b]));
-  const priorBudgetMap = Object.fromEntries(priorBudgetedRows.map((r) => [r.categoryId, r.total]));
-  const priorActivityMap = Object.fromEntries(
-    priorActivityRows.map((r) => [r.categoryId, r.total]),
+  const history = new Map<string, Map<string, number>>();
+  for (const r of [...priorBudgetedRows, ...priorActivityRows]) {
+    if (!r.categoryId) continue;
+    const months = history.get(r.categoryId) ?? new Map<string, number>();
+    months.set(r.month, (months.get(r.month) ?? 0) + r.total);
+    history.set(r.categoryId, months);
+  }
+  const incomeGroups = new Set(groups.filter((g) => g.isIncome).map((g) => g.id));
+  const paymentIds = new Set(
+    db
+      .select()
+      .from(cardFunding)
+      .all()
+      .map((m) => m.categoryId),
   );
 
   const result = groups.map((g) => ({
@@ -76,7 +104,9 @@ function rawBudgetGroups(month: string, today = todayIso()) {
         const bm = budgetMap[c.id];
         const budgetedAmt = bm?.budgeted ?? 0;
         const activity = spentMap[c.id] ?? 0;
-        const carryOver = (priorBudgetMap[c.id] ?? 0) + (priorActivityMap[c.id] ?? 0);
+        const months = history.get(c.id) ?? new Map<string, number>();
+        const resets = !incomeGroups.has(c.groupId) && !paymentIds.has(c.id);
+        const carryOver = rollOver(months, resets);
         return {
           ...c,
           budgeted: budgetedAmt,
@@ -84,11 +114,29 @@ function rawBudgetGroups(month: string, today = todayIso()) {
           spent: Math.abs(Math.min(activity, 0)),
           carryOver,
           balance: carryOver + budgetedAmt + activity,
+          history: months,
+          resets,
         };
       }),
   }));
 
   return result;
+}
+
+/**
+ * What a category carries into a month from its earlier months' net changes. Like YNAB, an
+ * expense envelope that ends a month overspent starts the next month at zero: the money was
+ * already spent from the accounts, so resources (and therefore what's left to assign) already
+ * show it, and the deficit isn't carried forward forever. Positive balances roll over. Card
+ * payment categories and income categories keep a running total.
+ */
+export function rollOver(months: Map<string, number>, resets: boolean): number {
+  let carry = 0;
+  for (const month of [...months.keys()].sort()) {
+    carry += months.get(month)!;
+    if (resets && carry < 0) carry = 0;
+  }
+  return carry;
 }
 
 function assessment(month: string, today = todayIso()) {
@@ -98,7 +146,15 @@ function assessment(month: string, today = todayIso()) {
   const current = month === asOf.slice(0, 7) ? raw : rawBudgetGroups(asOf.slice(0, 7), asOf);
   const card = calculateCardFunding(
     asOf,
-    current.filter((g) => !g.isIncome).flatMap((g) => g.categories),
+    // Month by month, so funding follows the same monthly reset as the envelopes
+    current
+      .filter((g) => !g.isIncome)
+      .flatMap((g) => g.categories)
+      .map((c) => ({
+        id: c.id,
+        balance: c.balance,
+        months: new Map(c.history).set(asOf.slice(0, 7), c.budgeted + c.activity),
+      })),
   );
   const paymentAccounts = new Map(
     db
@@ -110,18 +166,22 @@ function assessment(month: string, today = todayIso()) {
   const groups = raw.map((g) => ({
     ...g,
     categories: g.categories.map((c) => {
+      const { history, resets, ...category } = c;
       const changes = card.adjustments.filter((a) => a.categoryId === c.id);
-      const carry = changes
-        .filter((a) => a.date.slice(0, 7) < month)
-        .reduce((s, a) => s + a.amount, 0);
+      const months = new Map(history);
+      for (const a of changes.filter((a) => a.date.slice(0, 7) < month))
+        months.set(a.date.slice(0, 7), (months.get(a.date.slice(0, 7)) ?? 0) + a.amount);
+      const carryOver = changes.some((a) => a.date.slice(0, 7) < month)
+        ? rollOver(months, resets)
+        : c.carryOver;
       const activity = changes
         .filter((a) => a.date.slice(0, 7) === month)
         .reduce((s, a) => s + a.amount, 0);
       return {
-        ...c,
-        carryOver: c.carryOver + carry,
+        ...category,
+        carryOver,
         activity: c.activity + activity,
-        balance: c.balance + carry + activity,
+        balance: carryOver + c.budgeted + c.activity + activity,
         paymentAccountId: paymentAccounts.get(c.id) ?? null,
       };
     }),
@@ -271,5 +331,6 @@ export function budgetSummary(month: string, today = todayIso()) {
     totalBudgeted,
     carryOver: state.openingFunds,
     toBeBudgeted: state.unassigned,
+    budgetStartMonth: budgetStartDate().slice(0, 7) || null,
   };
 }

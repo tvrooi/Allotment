@@ -133,7 +133,9 @@ export function StatCardRow({
   if (!cards.length) return null;
   if (variant === 'hero') {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div
+        className={`grid grid-cols-2 ${cards.length % 3 === 0 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-4 mb-6`}
+      >
         {cards.map((c) => (
           <div
             key={c.label}

@@ -5,6 +5,7 @@ import {
   uniqueIndex,
   index,
   primaryKey,
+  blob,
   customType,
   type AnySQLiteColumn,
 } from 'drizzle-orm/sqlite-core';
@@ -59,6 +60,8 @@ export const categories = sqliteTable('categories', {
   createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`),
+  /** 1 = tucked away from pickers and the budget while it holds no money (never deleted) */
+  hidden: integer('hidden').notNull().default(0),
 });
 
 export const payees = sqliteTable('payees', {
@@ -186,6 +189,8 @@ export const rules = sqliteTable('rules', {
   createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`),
+  /** The access token name that proposed it (created disabled for the owner to review); null = the owner */
+  proposedBy: text('proposed_by'),
 });
 
 export const schedules = sqliteTable(
@@ -301,6 +306,84 @@ export const tags = sqliteTable('tags', {
   createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`),
+});
+
+/**
+ * A receipt's bytes, stored once per content (id is the SHA-256). Not in JSON backups and not
+ * tied to any row, so a restore on the same installation keeps every receipt's file; the
+ * database file itself (a cold backup) holds them all.
+ */
+export const receiptFiles = sqliteTable('receipt_files', {
+  id: text('id').primaryKey(),
+  mimeType: text('mime_type').notNull(),
+  size: integer('size').notNull(),
+  data: blob('data', { mode: 'buffer' }).notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+/** A receipt: a file, what it says, and the transaction it belongs to (null = unmatched) */
+export const receipts = sqliteTable(
+  'receipts',
+  {
+    id: text('id').primaryKey(),
+    transactionId: text('transaction_id').references(() => transactions.id, {
+      onDelete: 'set null',
+    }),
+    fileId: text('file_id').notNull(),
+    fileName: text('file_name').notNull(),
+    mimeType: text('mime_type').notNull(),
+    size: integer('size').notNull(),
+    merchant: text('merchant'),
+    receiptDate: text('receipt_date'),
+    /** What the receipt says was paid, in cents of the transaction's currency */
+    total: integer('total'),
+    subtotal: integer('subtotal'),
+    tax: integer('tax'),
+    /** Tip, delivery and other fees */
+    tip: integer('tip'),
+    /** How it was matched: auto | manual | created (a transaction made from it); null = unmatched */
+    matchedBy: text('matched_by'),
+    notes: text('notes'),
+    /** Reading by a local model (receiptReader.ts): pending | read | failed; null = never asked */
+    readStatus: text('read_status'),
+    readError: text('read_error'),
+    readAt: text('read_at'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => [index('receipts_transaction_idx').on(table.transactionId)],
+);
+
+/**
+ * A transaction claimed as a tax deduction: its ATO return label (D1 car … D10 tax affairs,
+ * D15 other) and the share of it that is for work. Australian financial years only.
+ */
+/** What a receipt lists, each with the category it belongs to (for autosplit) */
+export const receiptLineItems = sqliteTable(
+  'receipt_line_items',
+  {
+    id: text('id').primaryKey(),
+    receiptId: text('receipt_id')
+      .notNull()
+      .references(() => receipts.id, { onDelete: 'cascade' }),
+    position: integer('position').notNull(),
+    description: text('description').notNull(),
+    /** Cents, positive for something bought */
+    amount: integer('amount').notNull(),
+    categoryId: text('category_id').references(() => categories.id, { onDelete: 'set null' }),
+  },
+  (table) => [index('receipt_line_items_receipt_idx').on(table.receiptId)],
+);
+
+export const taxClaims = sqliteTable('tax_claims', {
+  transactionId: text('transaction_id')
+    .primaryKey()
+    .references(() => transactions.id, { onDelete: 'cascade' }),
+  label: text('label').notNull(),
+  workUseBps: integer('work_use_bps').notNull().default(10000),
+  notes: text('notes'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
 });
 
 export const transactionTags = sqliteTable(
@@ -747,6 +830,46 @@ export const accessTokens = sqliteTable('access_tokens', {
   revokedAt: text('revoked_at'),
 });
 
+/** Assignments an organise token suggests for a month; only the owner applies them */
+export const budgetProposals = sqliteTable('budget_proposals', {
+  id: text('id').primaryKey(),
+  month: text('month').notNull(),
+  tokenId: text('token_id'),
+  tokenName: text('token_name').notNull(),
+  note: text('note'),
+  /** [{ categoryId, amount, reason }]: amounts added to the month's assignments */
+  rowsJson: text('rows_json').notNull(),
+  status: text('status').notNull().default('open'),
+  createdAt: text('created_at').notNull(),
+  decidedAt: text('decided_at'),
+});
+
+/** Category changes an access token made, one set per tool call, so the owner (or the token) can undo them */
+export const assistantChangeSets = sqliteTable('assistant_change_sets', {
+  id: text('id').primaryKey(),
+  tokenId: text('token_id'),
+  tokenName: text('token_name').notNull(),
+  tool: text('tool').notNull(),
+  summary: text('summary').notNull(),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  undoneAt: text('undone_at'),
+});
+
+export const assistantChangeEntries = sqliteTable(
+  'assistant_change_entries',
+  {
+    changeSetId: text('change_set_id')
+      .notNull()
+      .references(() => assistantChangeSets.id, { onDelete: 'cascade' }),
+    transactionId: text('transaction_id').notNull(),
+    previousCategoryId: text('previous_category_id'),
+    newCategoryId: text('new_category_id').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.changeSetId, t.transactionId] })],
+);
+
 /** The budget's own settings: one row, id 'budget' */
 export const budgetSettings = sqliteTable('budget_settings', {
   id: text('id').primaryKey(),
@@ -758,6 +881,21 @@ export const budgetSettings = sqliteTable('budget_settings', {
   ratesUrl: text('rates_url'),
   ratesLastFetchedAt: text('rates_last_fetched_at'),
   ratesLastError: text('rates_last_error'),
+  /**
+   * First month the envelope budget counts (YYYY-MM); null = all history. Earlier activity and
+   * assignments stay in the register and reports but don't carry into envelopes.
+   */
+  budgetStartMonth: text('budget_start_month'),
+  /** Receipts: split a matched transaction by its line items' categories (1 = on) */
+  receiptAutoSplit: integer('receipt_auto_split').notNull().default(1),
+  /** Receipts: add the receipt's notes and items to a matched transaction's notes */
+  receiptAddNotes: integer('receipt_add_notes').notNull().default(1),
+  /** Receipts: tag a matched transaction "Receipt" */
+  receiptAddTag: integer('receipt_add_tag').notNull().default(1),
+  /** Read receipts with a local Ollama model (off until the owner turns it on) */
+  receiptReaderEnabled: integer('receipt_reader_enabled').notNull().default(0),
+  receiptReaderUrl: text('receipt_reader_url'),
+  receiptReaderModel: text('receipt_reader_model'),
   updatedAt: text('updated_at')
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -792,7 +930,23 @@ export const householdGroups = sqliteTable('household_groups', {
   accountId: text('account_id')
     .references(() => accounts.id, { onDelete: 'restrict' })
     .unique(),
+  /** How a quick-shared expense splits: { mode, shares: [{ personId, value }] }; null = equal */
+  defaultSplitJson: text('default_split_json'),
 });
+/** More pool accounts for a group (an Up 2Up spending account and its savers, say) */
+export const householdPoolAccounts = sqliteTable(
+  'household_pool_accounts',
+  {
+    groupId: text('group_id')
+      .notNull()
+      .references(() => householdGroups.id, { onDelete: 'cascade' }),
+    accountId: text('account_id')
+      .notNull()
+      .unique()
+      .references(() => accounts.id, { onDelete: 'restrict' }),
+  },
+  (t) => [primaryKey({ columns: [t.groupId, t.accountId] })],
+);
 export const householdPeople = sqliteTable('household_people', {
   id: text('id').primaryKey(),
   groupId: text('group_id')
@@ -949,4 +1103,90 @@ export const taxLots = sqliteTable(
       .default(sql`(datetime('now'))`),
   },
   (table) => [index('tax_lots_holding_idx').on(table.holdingId)],
+);
+
+/** What a loan or mortgage account costs and how it is repaid, for the long-term forecast.
+ * Rate in basis points, repayment in minor units a month; the account's balance stays the
+ * ledger's. */
+export const accountLoanDetails = sqliteTable('account_loan_details', {
+  accountId: text('account_id')
+    .primaryKey()
+    .references(() => accounts.id, { onDelete: 'cascade' }),
+  rateBps: integer('rate_bps').notNull(),
+  monthlyRepayment: integer('monthly_repayment').notNull().default(0),
+  termMonths: integer('term_months'),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+/** A saved long-term forecast plan: its settings as JSON plus a version, so two devices can't
+ * silently overwrite each other. Children are replaced together with a save. */
+export const longTermPlans = sqliteTable('long_term_plans', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  settingsJson: text('settings_json').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  version: integer('version').notNull().default(1),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+/** A life event in a plan; `paramsJson` holds the kind's fields */
+export const longTermEvents = sqliteTable(
+  'long_term_events',
+  {
+    planId: text('plan_id')
+      .notNull()
+      .references(() => longTermPlans.id, { onDelete: 'cascade' }),
+    id: text('id').notNull(),
+    kind: text('kind').notNull(),
+    name: text('name').notNull(),
+    position: integer('position').notNull(),
+    enabled: integer('enabled').notNull().default(1),
+    paramsJson: text('params_json').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.planId, t.id] })],
+);
+
+/** A plan's per-account choices: left out, or a class or growth rate other than the default */
+export const longTermAccountAssumptions = sqliteTable(
+  'long_term_account_assumptions',
+  {
+    planId: text('plan_id')
+      .notNull()
+      .references(() => longTermPlans.id, { onDelete: 'cascade' }),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    included: integer('included').notNull().default(1),
+    cls: text('cls'),
+    growthBps: integer('growth_bps'),
+  },
+  (t) => [primaryKey({ columns: [t.planId, t.accountId] })],
+);
+
+/** A plan's ordered savings allocation (percent of what is left, or a fixed amount) */
+export const longTermSplits = sqliteTable(
+  'long_term_splits',
+  {
+    planId: text('plan_id')
+      .notNull()
+      .references(() => longTermPlans.id, { onDelete: 'cascade' }),
+    position: integer('position').notNull(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    mode: text('mode').notNull(),
+    bps: integer('bps'),
+    amount: integer('amount'),
+  },
+  (t) => [primaryKey({ columns: [t.planId, t.position] })],
 );

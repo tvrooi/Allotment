@@ -1,8 +1,12 @@
 # Envelope funding (phase 6A)
 
 One calculation service supplies the monthly summary and payday planner. Expense
-Available is previous Available + Assigned + signed Activity. Refunds increase it;
-negative balances remain visible across months. Income expectations remain separate
+Available is previous Available + Assigned + signed Activity. Refunds increase it.
+Like YNAB, an envelope that ends a month overspent starts the next month at zero
+(`rollOver` in `budgetService.ts`): the money already left the accounts, so resources and
+unassigned already show it, and a one-off such as a loan payout or settlement isn't
+carried as a deficit forever. Overspending stays visible, and in Review, for the
+month it happened. Card payment categories keep a running total. Income expectations remain separate
 from actual received income. Ordinary transactions and stored assignments are never
 rewritten during upgrade.
 
@@ -88,3 +92,14 @@ availability agreement, category detail, coverage, history/undo and payday integ
 Implemented and locally verified on the phase 6A branch; see the PR for exact check
 results. Publication and live installation are separate states. No production budget
 has been opened, migrated or replaced by these checks.
+
+## Budget start
+
+**Settings → Budget** can set the first month envelopes count (`budget_settings.budget_start_month`,
+null = all history). Activity dated before it and assignments for earlier months don't carry into
+envelope Available, uncategorised spending, overspending or card payment reserves
+(`sinceBudgetStart` in `services/balances.ts`). Account balances, and therefore resources, still
+include everything, so cash spent before the start simply isn't there to assign. Reports, the
+register and the spending history used by the runway ignore the start. A month before the start
+shows no assignments or activity. Moving the start changes the funding revision; it never
+rewrites transactions or stored assignments.

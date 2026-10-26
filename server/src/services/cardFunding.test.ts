@@ -142,6 +142,50 @@ describe('card payment reserves', () => {
     expect(cat().activity).toBe(-8000);
     expect(state()).toMatchObject({ resources: 92000, reserved: 2000, unassigned: 90000 });
   });
+  it('keeps an unfunded card purchase from last month unfunded after the envelope resets', () => {
+    setup();
+    db.update(cardFunding).set({ startDate: '2026-09-01' }).run();
+    entry('september', -8000, 'food', { date: '2026-09-15' });
+    // The envelope starts October at zero, like YNAB, but the card debt stays unfunded
+    expect(cat()).toMatchObject({ carryOver: 0, balance: 0 });
+    expect(position()).toMatchObject({ debt: 8000, available: 0, shortfall: 8000 });
+    expect(state()).toMatchObject({ resources: 100000, reserved: 0, unassigned: 100000 });
+    // October's assignment backs October's envelope only, not September's card debt
+    assign('food', 5000);
+    expect(cat().balance).toBe(5000);
+    expect(position()).toMatchObject({ available: 0, shortfall: 8000 });
+    expect(state()).toMatchObject({ reserved: 5000, unassigned: 95000 });
+  });
+  it('lets a refund of an unfunded purchase from last month reduce the debt without refilling the envelope', () => {
+    setup();
+    db.update(cardFunding).set({ startDate: '2026-09-01' }).run();
+    entry('september', -8000, 'food', { date: '2026-09-15' });
+    entry('refund', 8000);
+    expect(cat()).toMatchObject({ carryOver: 0, balance: 0 });
+    expect(position()).toMatchObject({ debt: 0, available: 0, shortfall: 0 });
+    expect(state()).toMatchObject({ reserved: 0, unassigned: 100000 });
+    // So a new purchase this month has nothing behind it
+    entry('october', -3000);
+    expect(position()).toMatchObject({ debt: 3000, available: 0, shortfall: 3000 });
+  });
+  it('funds a new card purchase from this month, whatever cash overspending came before', () => {
+    setup();
+    db.update(cardFunding).set({ startDate: '2026-09-01' }).run();
+    db.insert(transactions)
+      .values({
+        id: 'cash-sep',
+        accountId: 'cash',
+        date: '2026-09-15',
+        amount: -8000,
+        categoryId: 'food',
+      })
+      .run();
+    assign('food', 8000);
+    entry('october', -8000);
+    expect(cat()).toMatchObject({ carryOver: 0, balance: 0 });
+    expect(position()).toMatchObject({ debt: 8000, available: 8000, shortfall: 0 });
+    expect(state()).toMatchObject({ resources: 92000, reserved: 8000, unassigned: 84000 });
+  });
   it('exposes partial and unfunded purchases, and retroactively reserves a reviewed category assignment', () => {
     setup();
     assign('food', 5000);
@@ -297,7 +341,7 @@ describe('card payment reserves', () => {
     entry('purchase', -8000, 'food', { importedId: 'bank:immutable', reconciled: 1 });
     const before = state(),
       backup = createBackup();
-    expect(backup.version).toBe(14);
+    expect(backup.version).toBe(19);
     restoreBackup(parseBackup(backup));
     expect(position()).toMatchObject(before.cards[0]);
     expect(db.select().from(transactions).all()[0]).toMatchObject({
@@ -512,4 +556,20 @@ it('previews actual refund effects instead of assuming payment availability grow
   expect(preview).toMatchObject({ budgeted: 10000, available: 0, shortfall: 20000 });
   expect(position().available).toBe(0);
   expect(cat().balance).toBe(0);
+});
+
+describe('budget start', () => {
+  it('ignores card purchases and assignments before the budget start', () => {
+    setup();
+    db.update(cardFunding).set({ startDate: '2026-09-01' }).run();
+    assign('food', 10000, '2026-09');
+    entry('september', -8000, 'food', { date: '2026-09-15' });
+    expect(cat()).toMatchObject({ carryOver: 2000 });
+    expect(position()).toMatchObject({ debt: 8000, available: 8000, shortfall: 0 });
+
+    db.insert(budgetSettings).values({ id: 'budget', budgetStartMonth: '2026-10' }).run();
+    // September's assignment and purchase no longer fund or reserve anything; the debt stays
+    expect(cat()).toMatchObject({ carryOver: 0, balance: 0 });
+    expect(position()).toMatchObject({ debt: 8000, available: 0, shortfall: 8000 });
+  });
 });

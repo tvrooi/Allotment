@@ -1,3 +1,4 @@
+import { ShareWithHousehold } from '../household/ShareWithHousehold';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { X, Lock, Trash2, Repeat, Unlink, Wand2, Split } from 'lucide-react';
@@ -22,6 +23,8 @@ import { MainAmountField } from '../currency/MainAmountField';
 import { RECURRENCE_TYPE_LABELS } from '../../types';
 import { GoalLink } from '../goals/GoalLink';
 import { TransactionMarks } from './TransactionMarks';
+import { ReceiptsSection } from '../tax/ReceiptsSection';
+import { TaxClaimSection } from '../tax/TaxClaimSection';
 import { SplitTransactionModal } from './SplitTransactionModal';
 import type {
   Transaction,
@@ -389,6 +392,9 @@ export function TransactionDetailPanel({
           />
         </div>
 
+        {!tx.parentTransactionId && <ReceiptsSection transactionId={tx.id} />}
+        {!tx.isAdjustment && <TaxClaimSection tx={tx} currency={currency} />}
+
         {linkedSchedule && (
           <div>
             <label className="text-xs font-medium text-text-secondary mb-1.5 block">
@@ -428,6 +434,9 @@ export function TransactionDetailPanel({
           >
             Split with people
           </Button>
+        )}
+        {!tx.isParent && !tx.parentTransactionId && !tx.isAdjustment && tx.amount < 0 && (
+          <ShareWithHousehold transactionId={tx.id} />
         )}
         {!isTransfer && (
           <Button variant="secondary" onClick={startRule} className="w-full">

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { formatCurrency } from '../../utils/currency';
 import { balanceValue, unconvertedCurrencies } from '../../utils/accountMoney';
 import { UnconvertedNote } from '../currency/UnconvertedNote';
-import { chartColors } from '../../utils/chartColors';
+import { chartColors, SUPER_COLOR } from '../../utils/chartColors';
 import { accountTypeInfo } from '../../utils/accountTypes';
 import type { Account, AccountGroup } from '../../types';
 
@@ -15,6 +15,7 @@ interface Bucket {
 
 const ASSET_BUCKETS: Bucket[] = [
   { group: 'investments', label: 'Investments', color: '#7C3AED' },
+  { group: 'super', label: 'Super (preserved)', color: SUPER_COLOR },
   { group: 'cash', label: 'Cash', color: chartColors.positive },
   { group: 'property', label: 'Property', color: '#0891B2' },
   { group: 'other', label: 'Other', color: '#78716C' },
@@ -60,6 +61,23 @@ export function AssetLiabilitySummary({ accounts }: Props) {
         emptyText="No credit cards or loans yet."
         owed
       />
+      {assets.has('super') && (
+        <p className="mt-3 text-xs text-text-tertiary">
+          Accessible now:{' '}
+          <span className="tabular-nums text-text-secondary">
+            {formatCurrency((assets.get('cash') ?? 0) + (assets.get('investments') ?? 0))}
+          </span>{' '}
+          in cash and investments. Super counts towards net worth but stays preserved until 65, or
+          until you retire from your preservation age.
+        </p>
+      )}
+      {accounts.some((a) => a.type === 'student_loan' && a.balance < 0) && (
+        <p className="mt-3 text-xs text-text-tertiary">
+          Study loans such as HECS-HELP charge no interest: they rise with indexation each 1 June
+          and are repaid from your pay once your income passes the threshold. The long-term forecast
+          shows when they are repaid.
+        </p>
+      )}
       <UnconvertedNote currencies={unconvertedCurrencies(accounts)} className="mt-3" />
     </div>
   );

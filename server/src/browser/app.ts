@@ -26,6 +26,7 @@ import { paydayRouter } from '../routes/payday.js';
 import { forecastRouter } from '../routes/forecast.js';
 import { reviewRouter } from '../routes/review.js';
 import { investmentsRouter } from '../routes/investments.js';
+import { taxRouter } from '../routes/tax.js';
 import { prioritiesRouter } from '../routes/priorities.js';
 import { currencyRouter } from '../routes/currency.js';
 
@@ -77,6 +78,12 @@ app.use('/payday', paydayRouter as unknown as ShimRouter);
 app.use('/forecast', forecastRouter as unknown as ShimRouter);
 app.use('/review', reviewRouter as unknown as ShimRouter);
 app.use('/investments', investmentsRouter as unknown as ShimRouter);
+// Receipts are files, which the demo's in-page server does not take; tax claims work
+app.get('/receipts', (_req, res) => res.json([]));
+app.get('/receipts/counts', (_req, res) => res.json([]));
+app.use('/receipts', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
+app.get('/tax/years/:fy/archive', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
+app.use('/tax', taxRouter as unknown as ShimRouter);
 app.use('/priorities', prioritiesRouter as unknown as ShimRouter);
 // Rates can be typed in, but not downloaded: the demo never talks to another server
 app.put('/currency/download', (req, res, next) => {

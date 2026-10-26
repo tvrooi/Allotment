@@ -1,7 +1,7 @@
 # Investments (P3)
 
 P3 of the [Monarch adaptation map](research/monarch-flybudget-gap-map.md#recommended-implementation-order):
-a dedicated Investments page for positions held in investment, retirement and crypto
+a dedicated Investments page for positions held in investment, retirement (superannuation) and crypto
 accounts. It is a separate feature, not derived from net-worth charts or account balances.
 Observations that informed it are in
 [monarch-investments-tested.md](research/monarch-investments-tested.md); nothing here claims

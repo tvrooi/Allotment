@@ -1,5 +1,6 @@
 import { CardPayments } from '../components/budget/CardPayments';
 import { MoneyMoves } from '../components/budget/MoneyMoves';
+import { AssistantSuggestions } from '../components/budget/AssistantSuggestions';
 import { useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { format, parseISO, addMonths, subMonths } from 'date-fns';
@@ -145,7 +146,7 @@ function CategoryRow({
             <>
               <AmountInput
                 cents={cat.budgeted}
-                label={`Planned for ${cat.name}`}
+                label={isIncome ? `Expected from ${cat.name}` : `Planned for ${cat.name}`}
                 onSave={onSave}
                 onCancel={onCancel}
               />
@@ -162,7 +163,7 @@ function CategoryRow({
               onClick={() => onStartEdit(cat.id)}
               disabled={!canSave}
               title={canSave ? undefined : 'Saving is paused until FlyBudget reconnects'}
-              aria-label={`Planned for ${cat.name}: ${formatCurrency(cat.budgeted)}`}
+              aria-label={`${isIncome ? 'Expected from' : 'Planned for'} ${cat.name}: ${formatCurrency(cat.budgeted)}`}
               className="tabular-nums text-sm rounded px-2 py-0.5 min-w-[5.5rem] text-right border border-border bg-surface transition-colors hover:border-text-tertiary cursor-text disabled:cursor-not-allowed disabled:opacity-60"
             >
               <span className="text-text-secondary">{formatCurrency(cat.budgeted)}</span>
@@ -565,9 +566,9 @@ export default function BudgetPage() {
           <Lightbulb size={16} className="text-brand-600 shrink-0 mt-0.5" aria-hidden />
           <p>
             No assignments for {format(monthDate, 'MMMM')} yet. {isPhone ? 'Tap' : 'Click'} an
-            amount in the <strong className="font-medium text-text">Assigned</strong> column to set
-            income expectations and assignments from existing money. Expense balances carry forward.
-            Categories you leave empty are tucked away once you've planned something.{' '}
+            amount to assign money you already have to an envelope. Income you receive is ready to
+            assign straight away; amounts beside income are only what you expect. Expense balances
+            carry forward. Categories you leave empty are tucked away once you've planned something.{' '}
             <ExternalLink
               href={docsUrl('budgeting')}
               className="font-medium text-brand-600 hover:text-brand-700"
@@ -584,6 +585,16 @@ export default function BudgetPage() {
         </p>
       )}
       <MissingRatesBanner className="mx-6 mt-3 shrink-0" />
+      <AssistantSuggestions />
+      {summary?.budgetStartMonth && selectedMonth < summary.budgetStartMonth && (
+        <p role="status" className="mx-6 mt-3 shrink-0 text-sm text-text-secondary">
+          This month is before your budget start, so its envelopes are empty. Its transactions are
+          still in your accounts and reports.{' '}
+          <Link to="/settings?tab=budget" className="text-brand-700 underline">
+            Budget start
+          </Link>
+        </p>
+      )}
 
       {/* Phones: the summary (with To Be Budgeted) goes above the table instead of beside it */}
       {/* While the next month loads, the previous one stays (faded) so nothing jumps */}
@@ -637,14 +648,17 @@ export default function BudgetPage() {
                       </span>
                     </div>
                   </td>
-                  <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
-                    Planned
+                  <td
+                    className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary"
+                    title="What you expect to earn. It's a plan, not money: only income you've received is ready to assign."
+                  >
+                    Expected
                   </td>
                   <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
-                    Actual
+                    Received
                   </td>
                   <td className="py-2 pl-3 pr-6 text-right text-xs font-bold text-text">
-                    Remaining
+                    Still to come
                   </td>
                 </tr>
 

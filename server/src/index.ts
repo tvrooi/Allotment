@@ -29,6 +29,8 @@ import { budgetRouter } from './routes/budget.js';
 import { payeesRouter } from './routes/payees.js';
 import { tagsRouter, savedViewsRouter } from './routes/tags.js';
 import { accessTokensRouter } from './routes/accessTokens.js';
+import { changeSetsRouter } from './routes/changeSets.js';
+import { budgetProposalsRouter } from './routes/budgetProposals.js';
 import { mcpRouter } from './routes/mcp.js';
 import { rulesRouter } from './routes/rules.js';
 import { reportsRouter } from './routes/reports.js';
@@ -41,6 +43,8 @@ import { paydayRouter } from './routes/payday.js';
 import { forecastRouter } from './routes/forecast.js';
 import { reviewRouter } from './routes/review.js';
 import { investmentsRouter } from './routes/investments.js';
+import { receiptsRouter } from './routes/receipts.js';
+import { taxRouter } from './routes/tax.js';
 import { prioritiesRouter } from './routes/priorities.js';
 import { plaidRouter } from './routes/plaid.js';
 import { simplefinRouter } from './routes/simplefin.js';
@@ -52,6 +56,7 @@ import { currencyRouter, setRateDownloader } from './routes/currency.js';
 import { DEFAULT_RATES_URL, fetchRates, fetchRatesIfDue } from './services/rateFetchService.js';
 import { assertSafeUrl } from './services/safeFetch.js';
 import { fillMissingMainAmounts } from './services/mainAmountService.js';
+import { resumePendingReads } from './services/receiptReader.js';
 import { syncAllItems } from './services/plaidSyncService.js';
 import { encryptStoredCredentials } from './services/credentialEncryption.js';
 import { seedDefaultCategories } from './db/defaultCategories.js';
@@ -112,6 +117,8 @@ app.use('/api/rules', rulesRouter);
 app.use('/api/tags', tagsRouter);
 app.use('/api/access-tokens', accessTokensRouter);
 app.use('/api/mcp', mcpRouter);
+app.use('/api/change-sets', changeSetsRouter);
+app.use('/api/budget-proposals', budgetProposalsRouter);
 app.use('/api/saved-views', savedViewsRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/export', exportRouter);
@@ -124,6 +131,8 @@ app.use('/api/payday', paydayRouter);
 app.use('/api/forecast', forecastRouter);
 app.use('/api/review', reviewRouter);
 app.use('/api/investments', investmentsRouter);
+app.use('/api/receipts', receiptsRouter);
+app.use('/api/tax', taxRouter);
 app.use('/api/priorities', prioritiesRouter);
 setRateDownloader({ download: fetchRates, checkUrl: assertSafeUrl, defaultUrl: DEFAULT_RATES_URL });
 app.use('/api/currency', currencyRouter);
@@ -217,6 +226,12 @@ function runStartupTasks() {
 
     const legacyOccs = migrateOccurrencesFromLegacy();
     if (legacyOccs > 0) console.log(`Created ${legacyOccs} legacy occurrence(s)`);
+  });
+
+  // Receipts still waiting to be read by the local model when the server stopped
+  runStartupTask('Receipt reading', () => {
+    const waiting = resumePendingReads();
+    if (waiting > 0) console.log(`Resumed reading ${waiting} receipt(s)`);
   });
 
   // Transactions in another currency still waiting for a rate, or saved by an older version

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { TAX_LABEL_NAMES } from '../../utils/taxLabels';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Trash2, X } from 'lucide-react';
 import { Modal } from '../ui/Modal';
@@ -390,7 +391,7 @@ function ActionRow({
   onChange: (a: RuleAction) => void;
   onRemove: () => void;
 }) {
-  const { lookups, tagOptions } = useRuleLookups();
+  const { lookups, tagOptions, householdOptions } = useRuleLookups();
   return (
     <div className="rounded-lg">
       <div className="flex flex-wrap items-start gap-2">
@@ -452,6 +453,49 @@ function ActionRow({
                 Create a tag first in Settings → Tags or a transaction's details.
               </p>
             ))}
+          {a.type === 'share_with_household' &&
+            (householdOptions.length ? (
+              <>
+                <select
+                  value={a.value}
+                  onChange={(e) => onChange({ ...a, value: e.target.value })}
+                  className={`${fieldClass} w-full`}
+                  aria-label="Household"
+                >
+                  <option value="">Choose a household…</option>
+                  {householdOptions.map((h) => (
+                    <option key={h.id} value={h.id}>
+                      {h.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-text-tertiary pt-1">
+                  Money out becomes a shared household expense, with the household's default split.
+                </p>
+              </>
+            ) : (
+              <p className="text-xs text-text-tertiary pt-2">Create a household first.</p>
+            ))}
+          {a.type === 'claim_tax_deduction' && (
+            <>
+              <select
+                value={a.value}
+                onChange={(e) => onChange({ ...a, value: e.target.value })}
+                className={`${fieldClass} w-full`}
+                aria-label="Tax return label"
+              >
+                {Object.entries(TAX_LABEL_NAMES).map(([label, name]) => (
+                  <option key={label} value={label}>
+                    {label} {name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-text-tertiary pt-1">
+                Money out is claimed in full under this label; change the work-use share on the
+                transaction. A claim you made yourself is never replaced.
+              </p>
+            </>
+          )}
           {a.type === 'split' && (
             <p className="text-xs text-text-tertiary pt-2">
               Splits the transaction into parts, each with its own category.

@@ -105,10 +105,9 @@ describe('budget boundary and report account scopes', () => {
     expect(budget.find((g: { id: string }) => g.id === 'expenses').categories[0].spent).toBe(1000);
     const history = await get('/budget/category/saving/history?months=1&currentMonth=2026-05');
     expect(history.history).toEqual([{ month: '2026-05', amount: 1000 }]);
+    // Overspending resets at the month boundary, like YNAB: the cash is already gone
     const june = await get('/budget/2026-06');
-    expect(june.find((g: { id: string }) => g.id === 'expenses').categories[0].carryOver).toBe(
-      -1000,
-    );
+    expect(june.find((g: { id: string }) => g.id === 'expenses').categories[0].carryOver).toBe(0);
     unlinkTransfer('out');
     expect(row('out')).toMatchObject({
       categoryId: 'saving',
@@ -157,7 +156,7 @@ describe('budget boundary and report account scopes', () => {
     expect(await get('/budget/2026-06/summary')).toMatchObject({
       income: 0,
       toBeBudgeted: -500,
-      overspent: 800,
+      overspent: 0,
     });
   });
 

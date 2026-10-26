@@ -230,3 +230,16 @@ export const applyIncome = (split: IncomeSplit, preview: IncomePreview) =>
     revision: preview.revision,
     proposed: preview.proposed,
   });
+
+/** Setup problems that make the budget less useful (server: services/housekeeping.ts) */
+export interface Housekeeping {
+  budgetStart: {
+    current: string | null;
+    historyStartMonth: string | null;
+    suggestion: string | null;
+  };
+  missingRoundUps: { accountId: string; accountName: string; count: number; total: number }[];
+  unlinkedSavers: { name: string; count: number; net: number; ids: string[] }[];
+  unusedCategories: number;
+}
+export const getHousekeeping = () => apiFetch<Housekeeping>('/review/housekeeping');

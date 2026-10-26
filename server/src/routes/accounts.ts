@@ -1,6 +1,14 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
-import { cardFunding, accounts, transactions, householdGroups } from '../db/schema.js';
+import {
+  cardFunding,
+  accounts,
+  transactions,
+  upAccountMappings,
+  upConnections,
+} from '../db/schema.js';
+import { roundUpCheck } from '../services/upReviewService.js';
+import { poolGroupOf } from '../services/householdService.js';
 import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -68,9 +76,19 @@ function shown(
     const booked = bookedValue(account, ctx);
     currencyDifference = booked === null ? null : value.mainBalance - booked;
   }
+  // A household pool sits outside the personal budget even though it isn't off budget
+  const householdPool = poolGroupOf(account.id)?.name ?? null;
   // Bank import settings (an IBAN, for one) have their own route: GET /:id/import-settings
   const { importSettings: _importSettings, ...rest } = account;
-  return { ...rest, currency, balance, hasTransactions, ...value, currencyDifference };
+  return {
+    ...rest,
+    currency,
+    balance,
+    hasTransactions,
+    householdPool,
+    ...value,
+    currencyDifference,
+  };
 }
 
 function withBalance(account: typeof accounts.$inferSelect) {
@@ -107,6 +125,48 @@ accountsRouter.get('/', (_req, res) => {
   const ctx = currencyContext();
   res.json(
     rows.map((a) => shown(a, a.startingBalance + (sumMap.get(a.id) ?? 0), sumMap.has(a.id), ctx)),
+  );
+});
+
+// Bank sync health without any connection data (no tokens, bank ids or errors): when each Up
+// account last synced, the bank's settled balance against the register, and whether missing
+// round-up debits explain the difference. Readable by access tokens, for an assistant.
+accountsRouter.get('/sync-status', (_req, res) => {
+  const connections = db
+    .select({
+      id: upConnections.id,
+      syncStatus: upConnections.syncStatus,
+      lastSyncedAt: upConnections.lastSyncedAt,
+    })
+    .from(upConnections)
+    .all();
+  const mappings = new Map(
+    db
+      .select({
+        accountId: upAccountMappings.accountId,
+        connectionId: upAccountMappings.connectionId,
+      })
+      .from(upAccountMappings)
+      .all()
+      .map((m) => [m.accountId, m.connectionId]),
+  );
+  res.json(
+    roundUpCheck().map((c) => {
+      const connection = connections.find((x) => x.id === mappings.get(c.accountId));
+      return {
+        accountId: c.accountId,
+        accountName: c.accountName,
+        provider: 'up',
+        syncStatus: connection?.syncStatus ?? null,
+        lastSyncedAt: connection?.lastSyncedAt ?? null,
+        bankBalance: c.settledBalance,
+        registerBalance: c.register,
+        difference: c.difference,
+        verdict: c.verdict,
+        missingRoundUps: c.missing,
+        roundUpDebitsEnabled: !!c.enabledAt,
+      };
+    }),
   );
 });
 
@@ -258,11 +318,7 @@ accountsRouter.put('/:id', (req, res) => {
       error: 'An account with payment funding must keep its credit type, budget scope and currency',
     });
   const data = { ...parsed.data };
-  const household = db
-    .select()
-    .from(householdGroups)
-    .where(eq(householdGroups.accountId, existing.id))
-    .get();
+  const household = poolGroupOf(existing.id);
   if (
     household &&
     data.currency !== undefined &&

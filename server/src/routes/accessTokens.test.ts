@@ -9,7 +9,8 @@ process.env.FLYBUDGET_ALLOWED_HOSTS = 'budget.example.com';
 const express = (await import('express')).default;
 const { migrate } = await import('drizzle-orm/better-sqlite3/migrator');
 const { db } = await import('../db/index.js');
-const { accessTokens, accounts } = await import('../db/schema.js');
+const { accessTokens, accounts, categories, categoryGroups, transactions } =
+  await import('../db/schema.js');
 const { hostGuard, originGuard, errorHandler } = await import('../middleware/security.js');
 const { authRouter, requireSession } = await import('./auth.js');
 const { createSession, setInitialPassword, changePassword, SESSION_COOKIE } =
@@ -20,6 +21,7 @@ const { accessTokensRouter } = await import('./accessTokens.js');
 const { mcpRouter } = await import('./mcp.js');
 const { accountsRouter } = await import('./accounts.js');
 const { transactionsRouter } = await import('./transactions.js');
+const { categoriesRouter } = await import('./categories.js');
 const { exportRouter } = await import('./export.js');
 const { reportsRouter } = await import('./reports.js');
 const { dashboardsRouter } = await import('./dashboards.js');
@@ -39,6 +41,7 @@ beforeAll(async () => {
   app.use('/api', requireSession);
   app.use('/api/accounts', accountsRouter);
   app.use('/api/transactions', transactionsRouter);
+  app.use('/api/categories', categoriesRouter);
   app.use('/api/export', exportRouter);
   app.use('/api/reports', reportsRouter);
   app.use('/api/dashboards', dashboardsRouter);
@@ -241,6 +244,131 @@ describe('MCP', () => {
   });
 });
 
+describe('categorise tokens', () => {
+  const rpc = (token: string, body: unknown) => call('POST', '/mcp', { token }, body);
+  const categoryOf = (id: string) =>
+    db
+      .select()
+      .from(transactions)
+      .all()
+      .find((t) => t.id === id)?.categoryId ?? null;
+
+  it('set the category of past transactions and change nothing else', async () => {
+    db.insert(categoryGroups).values({ id: 'g', name: 'Expenses' }).run();
+    db.insert(categories)
+      .values([
+        { id: 'rent', name: 'Rent', groupId: 'g' },
+        { id: 'food', name: 'Food', groupId: 'g' },
+      ])
+      .run();
+    const today = new Date().toISOString().slice(0, 10);
+    db.insert(transactions)
+      .values([
+        { id: 'past', accountId: 'mock', date: '2025-01-05', amount: -478000 },
+        { id: 'done', accountId: 'mock', date: '2025-01-06', amount: -100, reconciled: 1 },
+        { id: 'later', accountId: 'mock', date: '2999-01-01', amount: -100 },
+        { id: 'now', accountId: 'mock', date: today, amount: -100, categoryId: 'food' },
+      ])
+      .run();
+    const created = await call(
+      'POST',
+      '/access-tokens',
+      { session: true },
+      { name: 'Categoriser', days: 7, scope: 'categorise' },
+    );
+    expect(created.status).toBe(201);
+    expect(created.body.scope).toBe('categorise');
+    const { token, id } = created.body as { token: string; id: string };
+    const read = await newToken();
+
+    // REST: exactly a category on a past transaction
+    expect(
+      (await call('PUT', '/transactions/past', { token }, { categoryId: 'rent' })).status,
+    ).toBe(200);
+    expect(categoryOf('past')).toBe('rent');
+    const refused: [string, string, unknown][] = [
+      ['PUT', '/transactions/past', { categoryId: 'rent', notes: 'x' }],
+      ['PUT', '/transactions/past', { amount: 1 }],
+      ['PUT', '/transactions/past', { categoryId: null }],
+      ['PUT', '/transactions/later', { categoryId: 'rent' }],
+      ['POST', '/transactions', { accountId: 'mock', date: today, amount: 1 }],
+      ['POST', '/transactions/bulk', { selection: {}, changes: { categoryId: 'rent' } }],
+      ['DELETE', '/transactions/past', undefined],
+      ['PUT', '/accounts/mock', { name: 'x' }],
+      ['PUT', '/transactions/%E0%A4%A', { categoryId: 'rent' }],
+    ];
+    for (const [method, path, body] of refused)
+      expect((await call(method, path, { token }, body)).status).toBe(403);
+    // A read token still can't categorise
+    expect(
+      (await call('PUT', '/transactions/past', { token: read.token }, { categoryId: 'food' }))
+        .status,
+    ).toBe(403);
+    expect(categoryOf('past')).toBe('rent');
+
+    // MCP: the tool is only listed for a categorise token
+    const names = async (t: string) =>
+      (await rpc(t, { jsonrpc: '2.0', id: 1, method: 'tools/list' })).body.result.tools.map(
+        (tool: { name: string }) => tool.name,
+      );
+    expect(await names(read.token)).not.toContain('categorise_transactions');
+    expect(await names(token)).toContain('categorise_transactions');
+    const denied = await rpc(read.token, {
+      jsonrpc: '2.0',
+      id: 2,
+      method: 'tools/call',
+      params: {
+        name: 'categorise_transactions',
+        arguments: { transaction_ids: ['past'], category_id: 'food' },
+      },
+    });
+    expect(denied.body.error.code).toBe(-32602);
+
+    const result = await rpc(token, {
+      jsonrpc: '2.0',
+      id: 3,
+      method: 'tools/call',
+      params: {
+        name: 'categorise_transactions',
+        arguments: {
+          transaction_ids: ['past', 'now', 'later', 'done', 'gone'],
+          category_id: 'food',
+        },
+      },
+    });
+    const outcome = JSON.parse(result.body.result.content[0].text);
+    expect(outcome).toMatchObject({ changed: 2, refused: 3 });
+    expect(outcome.results).toEqual([
+      { id: 'past', ok: true, previousCategoryId: 'rent' },
+      { id: 'now', ok: true, previousCategoryId: 'food' },
+      expect.objectContaining({ id: 'later', ok: false }),
+      expect.objectContaining({
+        id: 'done',
+        ok: false,
+        error: 'Cannot modify a reconciled transaction',
+      }),
+      { id: 'gone', ok: false, error: 'Not found' },
+    ]);
+    expect([categoryOf('past'), categoryOf('later'), categoryOf('done')]).toEqual([
+      'food',
+      null,
+      null,
+    ]);
+    const bad = await rpc(token, {
+      jsonrpc: '2.0',
+      id: 4,
+      method: 'tools/call',
+      params: {
+        name: 'categorise_transactions',
+        arguments: { transaction_ids: [], category_id: 'food', notes: 'x' },
+      },
+    });
+    expect(bad.body.error.message).toContain('Unknown arguments: notes');
+
+    for (const t of [id, read.id]) await call('DELETE', `/access-tokens/${t}`, { session: true });
+  });
+});
+
 describe('changing the password', () => {
   it('revokes every token', async () => {
     const { token } = await newToken();
@@ -249,5 +377,74 @@ describe('changing the password', () => {
     expect(list.body[0]).not.toHaveProperty('importSettings');
     await changePassword('another long passphrase here');
     expect((await call('GET', '/accounts', { token })).status).toBe(401);
+  });
+});
+
+describe('categorise tokens and categories', () => {
+  // Earlier tests change the password, which signs the shared session out
+  beforeAll(() => {
+    cookie = `${SESSION_COOKIE}=${createSession('categories').token}`;
+  });
+  const rpc = (token: string, body: unknown) => call('POST', '/mcp', { token }, body);
+  const tool = (token: string, name: string, args: unknown) =>
+    rpc(token, {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name, arguments: args },
+    });
+
+  it('create and edit categories and groups through MCP, and nothing more', async () => {
+    const created = await call(
+      'POST',
+      '/access-tokens',
+      { session: true },
+      { name: 'Sorter', days: 7, scope: 'categorise' },
+    );
+    const { token } = created.body as { token: string };
+    const read = await newToken();
+    const group = await tool(token, 'create_category_group', { name: 'Fun', isIncome: 0 });
+    const groupId = JSON.parse(group.body.result.content[0].text).id as string;
+    const made = await tool(token, 'create_category', { groupId, name: 'Coffee' });
+    const coffee = JSON.parse(made.body.result.content[0].text);
+    expect(coffee).toMatchObject({ name: 'Coffee', groupId });
+    const edited = await tool(token, 'update_category', { id: coffee.id, name: 'Cafes' });
+    expect(JSON.parse(edited.body.result.content[0].text).name).toBe('Cafes');
+    const renamed = await tool(token, 'rename_category_group', { id: groupId, name: 'Fun 2' });
+    expect(JSON.parse(renamed.body.result.content[0].text).name).toBe('Fun 2');
+    // A read token isn't offered them and can't call them
+    expect(
+      (await tool(read.token, 'create_category', { groupId, name: 'X' })).body.error.code,
+    ).toBe(-32602);
+    expect(
+      (await call('POST', '/categories', { token: read.token }, { groupId, name: 'X' })).status,
+    ).toBe(403);
+
+    // Direct requests: no deleting, reordering, flipping a group's income flag or extra fields,
+    // whatever the letter case of the path
+    const refused: [string, string, unknown][] = [
+      ['DELETE', `/categories/${coffee.id}`, undefined],
+      ['DELETE', `/categories/groups/${groupId}`, undefined],
+      ['PUT', '/categories/reorder', { ids: [] }],
+      ['PUT', '/categories/REORDER', { ids: [] }],
+      ['PUT', '/categories/groups/reorder', { ids: [] }],
+      ['PUT', '/categories/Groups/Reorder', { ids: [] }],
+      ['PUT', `/categories/groups/${groupId}`, { name: 'x', isIncome: 1 }],
+      ['PUT', `/categories/${coffee.id}`, { name: 'x', sortOrder: 9 }],
+      ['POST', '/categories', { groupId, name: 'x', id: 'chosen' }],
+    ];
+    for (const [method, path, body] of refused)
+      expect((await call(method, path, { token }, body)).status).toBe(403);
+  });
+
+  it('cannot read bank import settings in any letter case', async () => {
+    const { token } = await newToken();
+    for (const path of [
+      '/accounts/mock/import-settings',
+      '/accounts/mock/Import-Settings',
+      '/accounts/mock/import-settings/',
+    ]) {
+      expect((await call('GET', path, { token })).status).toBe(403);
+    }
   });
 });

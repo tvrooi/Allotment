@@ -70,3 +70,8 @@ export const CATEGORY_COLORS = [
   '#82728E', // mauve
   '#9C7060', // cocoa
 ] as const;
+
+/** Preserved super: the forecast's line and the accounts summary's bucket */
+export const SUPER_COLOR = '#C026D3';
+/** Wealth that can be spent now, beside net worth on the forecast */
+export const ACCESSIBLE_COLOR = '#2563EB';

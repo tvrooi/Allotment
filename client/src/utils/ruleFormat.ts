@@ -1,4 +1,5 @@
 import { formatCurrency } from './currency';
+import { TAX_LABEL_NAMES } from './taxLabels';
 import type {
   Rule,
   RuleAction,
@@ -89,6 +90,8 @@ export const ACTION_TYPES: Array<{ value: RuleAction['type']; label: string }> =
   { value: 'append_notes', label: 'Add text after notes' },
   { value: 'split', label: 'Split transaction' },
   { value: 'add_tag', label: 'Add tag' },
+  { value: 'share_with_household', label: 'Share with household' },
+  { value: 'claim_tax_deduction', label: 'Claim as tax deduction' },
 ];
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -148,6 +151,7 @@ export const newSplitPart = (kind: RuleSplitPart['kind'] = 'remainder'): RuleSpl
 export function makeAction(type: RuleAction['type'], prev?: RuleAction): RuleAction {
   if (type === 'split')
     return { type, parts: [newSplitPart('percent'), newSplitPart('remainder')] };
+  if (type === 'claim_tax_deduction') return { type, value: 'D5' };
   const keepText =
     prev && prev.type !== 'split' && prev.type.endsWith('notes') && type.endsWith('notes');
   return { type, value: keepText ? (prev as { value: string }).value : '' } as RuleAction;
@@ -186,6 +190,8 @@ export type RuleLookups = {
   category: (id: string) => string | undefined;
   /** Phase 9 tags (optional: older callers show "(deleted)") */
   tag?: (id: string) => string | undefined;
+  /** Household groups (optional: older callers show "(deleted)") */
+  household?: (id: string) => string | undefined;
 };
 
 const quote = (s: string) => `"${s}"`;
@@ -248,6 +254,13 @@ export function actionText(a: RuleAction, l: RuleLookups): string {
       return `Split: ${a.parts.map((p) => splitPartText(p, l)).join(', ')}`;
     case 'add_tag':
       return `Add tag ${l.tag?.(a.value) ?? '(deleted)'}`;
+    case 'share_with_household':
+      return `Share with ${l.household?.(a.value) ?? '(deleted household)'}`;
+    case 'claim_tax_deduction':
+      return `Claim as tax deduction (${a.value} ${TAX_LABEL_NAMES[a.value] ?? ''})`.replace(
+        ' )',
+        ')',
+      );
   }
 }
 

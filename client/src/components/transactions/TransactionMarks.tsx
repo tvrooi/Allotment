@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, EyeOff, Plus, Tag as TagIcon, X } from 'lucide-react';
+import { Check, EyeOff, Paperclip, Plus, ReceiptText, Tag as TagIcon, X } from 'lucide-react';
+import { useReceiptMarks } from '../../hooks/useTax';
 import {
   useCreateTag,
   useSetTransactionFlags,
@@ -38,10 +39,17 @@ export function TagChip({ tag, onRemove }: { tag: Tag; onRemove?: () => void }) 
 /** Compact marks for a register row or phone card: tags, hidden from reports, reviewed */
 export function RowMarks({ tx }: { tx: Transaction }) {
   const { data: tags = [] } = useTags();
+  const marks = useReceiptMarks();
   const shown = (tx.tagIds ?? [])
     .map((id) => tags.find((t) => t.id === id))
     .filter((t): t is Tag => Boolean(t));
-  if (!shown.length && !tx.hiddenFromReports && !tx.reviewedAt) return null;
+  const hasReceipt = marks.receipts.has(tx.id);
+  // A split's claims are on its parts
+  const claimed = [tx.id, ...(tx.children ?? []).map((c) => c.id)].some((id) =>
+    marks.claims.has(id),
+  );
+  if (!shown.length && !tx.hiddenFromReports && !tx.reviewedAt && !hasReceipt && !claimed)
+    return null;
   return (
     <span className="inline-flex items-center gap-1 shrink-0">
       {shown.slice(0, 2).map((t) => (
@@ -55,6 +63,16 @@ export function RowMarks({ tx }: { tx: Transaction }) {
           <title>Hidden from reports</title>
         </EyeOff>
       ) : null}
+      {hasReceipt && (
+        <Paperclip size={12} className="text-text-tertiary" aria-label="Has a receipt" role="img">
+          <title>Has a receipt</title>
+        </Paperclip>
+      )}
+      {claimed && (
+        <ReceiptText size={12} className="text-brand-600" aria-label="Tax deduction" role="img">
+          <title>Claimed as a tax deduction</title>
+        </ReceiptText>
+      )}
       {tx.reviewedAt ? (
         <Check size={12} className="text-text-disabled" aria-label="Reviewed" role="img">
           <title>Reviewed</title>

@@ -47,6 +47,7 @@ export function SidebarAccountList() {
 
   const [forBudgetOpen, setForBudgetOpen] = useState(false);
   const [offBudgetOpen, setOffBudgetOpen] = useState(false);
+  const [householdOpen, setHouseholdOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   // Fixed-position menu anchor; null = closed
   const [menuPos, setMenuPos] = useState<{ left: number; top?: number; bottom?: number } | null>(
@@ -104,12 +105,15 @@ export function SidebarAccountList() {
     };
   }, [menuOpen]);
 
-  const onBudget = accounts.filter((a) => a.isOffBudget === 0);
-  const offBudget = accounts.filter((a) => a.isOffBudget === 1);
+  // A household pool's money isn't in the personal budget, off budget or not
+  const household = accounts.filter((a) => a.householdPool);
+  const onBudget = accounts.filter((a) => a.isOffBudget === 0 && !a.householdPool);
+  const offBudget = accounts.filter((a) => a.isOffBudget === 1 && !a.householdPool);
   // In the budget's currency; accounts without a rate are left out (named in the tooltip)
   const allTotal = totalValue(accounts);
   const onBudgetTotal = totalValue(onBudget);
   const offBudgetTotal = totalValue(offBudget);
+  const householdTotal = totalValue(household);
   const missing = unconvertedCurrencies(accounts);
   const missingTitle = missing.length
     ? `Without ${missing.join(', ')}: no exchange rate yet`
@@ -171,6 +175,30 @@ export function SidebarAccountList() {
             {offBudgetOpen && (
               <div className="mt-0.5 space-y-0">
                 {offBudget.map((a) => (
+                  <AccountRow key={a.id} account={a} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Household pools section */}
+        {household.length > 0 && (
+          <div className="mt-2">
+            <button
+              onClick={() => setHouseholdOpen((o) => !o)}
+              title="Household pool accounts: outside your personal budget"
+              className="flex items-center justify-between w-full py-1.5 text-[13px] font-semibold text-sidebar-text-hi border-b border-sidebar-text/20 hover:text-sidebar-text-hi transition-colors"
+            >
+              <span>Household</span>
+              <span className="flex items-center gap-1">
+                <span className="tabular-nums text-[12px]">{formatCurrency(householdTotal)}</span>
+                {householdOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+              </span>
+            </button>
+            {householdOpen && (
+              <div className="mt-0.5 space-y-0">
+                {household.map((a) => (
                   <AccountRow key={a.id} account={a} />
                 ))}
               </div>

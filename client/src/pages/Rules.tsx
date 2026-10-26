@@ -119,8 +119,13 @@ function RuleRow({
       <button
         type="button"
         onClick={onEdit}
-        className={`flex-1 min-w-0 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5 text-left cursor-pointer ${rule.enabled ? '' : 'opacity-50'}`}
+        className={`flex-1 min-w-0 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5 text-left cursor-pointer ${rule.enabled || rule.proposedBy ? '' : 'opacity-50'}`}
       >
+        {rule.proposedBy && !rule.enabled && (
+          <p className="md:col-span-2 text-xs text-caution">
+            Proposed by {rule.proposedBy}: review it, then turn it on to accept it.
+          </p>
+        )}
         <div className="min-w-0">
           <p className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary mb-1">
             If

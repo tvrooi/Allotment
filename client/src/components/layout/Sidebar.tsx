@@ -19,6 +19,7 @@ import {
   CircleHelp,
   ClipboardCheck,
   CandlestickChart,
+  Receipt,
 } from 'lucide-react';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { SidebarAccountList } from './SidebarAccountList';
@@ -259,6 +260,12 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
             to="/investments"
             icon={<CandlestickChart size={18} />}
             label="Investments"
+            collapsed={!isExpanded}
+          />
+          <NavItem
+            to="/tax"
+            icon={<Receipt size={18} />}
+            label="Tax time"
             collapsed={!isExpanded}
           />
         </nav>

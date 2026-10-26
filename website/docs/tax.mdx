@@ -1,0 +1,104 @@
+---
+sidebar_position: 12
+---
+
+# Receipts and tax time
+
+FlyBudget keeps your receipts with the transactions they prove, and lets you mark transactions as
+**tax deductions** for your Australian tax return. At tax time, **Tax time** lists the financial
+year's deductions by return label, with their receipts, ready to download for you or your tax agent.
+
+This is record keeping, not tax advice. Whether something is deductible is up to you and your tax
+agent.
+
+## Receipts
+
+Receipts work for any purchase, not just tax. **Transactions → Receipts** lists every receipt,
+matched or not. Upload photos or PDFs (several at once), drop or paste them, or use **Scan
+receipt**, which opens the camera on a phone. Photos are shrunk to a sensible size before they are
+saved.
+
+Open a receipt to type what it says: merchant, date, amount, and optionally subtotal, tax, tip and
+fees, and its **line items**, each with a category. Then it is **matched** to its transaction:
+
+- **Automatically**, to money out of exactly its amount: from the same merchant up to 2 days before
+  or 7 days after the receipt's date (card purchases often post late), or any merchant within a
+  day. When two transactions could fit, FlyBudget doesn't guess: you choose. A receipt that arrives
+  before its transaction is matched when the transaction arrives from your bank.
+- **Find match:** search your transactions by payee or notes, and match it yourself.
+- **Add transaction:** for cash, or an account without bank sync, make the transaction from the
+  receipt. Don't do this if your bank will send it, or you'll have it twice.
+
+A matched transaction keeps its amount. It is tagged **Receipt**, gets the receipt's notes and
+items in its notes, and, with **autosplit**, is split by its items' categories when it has no category yet: tax in proportion to each category's items, tip and fees shared evenly per item. A transaction that already has a category or a tax claim is not split by itself: open the receipt and choose **Split by items** (a claimed one can't be split, or its claim would be lost). A receipt with one category sets an
+uncategorised transaction's category, but never changes one you chose. Turn each of these on or off
+in the Receipts tab's **settings**. **Unmatch** puts the receipt back; deleting a receipt never
+deletes its transaction.
+
+### Reading receipts automatically
+
+FlyBudget can fill in a photo's details for you with a vision model running on your own
+[Ollama](https://ollama.com) server, such as the Ollama app on Home Assistant. Receipts never leave
+your network.
+
+1. In Ollama, add a model that can read images. On a small server, `qwen3-vl:4b-instruct` is a
+   good start. It needs about 4 to 5 GB of memory while it reads, and frees it a few minutes later.
+   Avoid "thinking" variants, which are much slower on a CPU.
+2. In the Receipts tab's **settings**, enter the Ollama address (on Home Assistant, the address on
+   its internal network from the Ollama app's documentation) and choose **Check**.
+3. Choose the model, then **Try a sample receipt** to see how well and how fast it reads a
+   made-up receipt. Nothing in your budget changes.
+4. Tick **Read new photos when they are added**.
+
+New photos are then read in the background, one at a time. On a mini PC without a graphics card
+this takes a minute or more each. Only empty fields are filled, and line items only when there are
+none, so anything you typed is kept. Then the receipt is matched as usual. Open it to check what
+was read. **Read again** asks once more. PDFs aren't read.
+
+You can also add a receipt straight from a transaction's details. A paperclip in the register shows
+which transactions have one. **Tax time → Receipt inbox** shows the unmatched ones too.
+
+Receipts are stored in your budget's database. Backups made from **Settings** carry each receipt's
+details but not the file itself, so they stay small; restoring on the same computer keeps every
+file. To keep the files elsewhere, download a year's **CSV and receipts (ZIP)**. A full copy of
+the database (the Home Assistant backup, for example) includes them.
+
+## Tax deductions
+
+In a transaction's details, tick **Claim as a tax deduction**, then choose its label and how much
+of it was for work:
+
+| Label | Covers                                                      |
+| ----- | ----------------------------------------------------------- |
+| D1    | Work-related car expenses                                   |
+| D2    | Work-related travel expenses                                |
+| D3    | Work-related clothing, laundry and dry-cleaning             |
+| D4    | Work-related self-education expenses                        |
+| D5    | Other work-related expenses (tools, phone, home office)     |
+| D6    | Low-value pool deduction                                    |
+| D7    | Interest deductions                                         |
+| D8    | Dividend deductions                                         |
+| D9    | Gifts or donations                                          |
+| D10   | Cost of managing tax affairs                                |
+| D15   | Other deductions (income protection insurance, for example) |
+
+A phone used 60% for work is claimed at 60%. A split transaction is claimed part by part, so the
+work half of a shop can be claimed on its own.
+
+**Rules can claim for you:** add the action **Claim as tax deduction** to a rule (for example, payee
+contains "Officeworks") and matching payments are claimed as they import. A rule never replaces a
+claim you made yourself.
+
+## Tax time
+
+**Tax time** shows one financial year (1 July to 30 June) at a time: the total claimed, the total
+by label, and every claim with its cost, work-use share and receipts. It points out what a tax
+agent would ask about:
+
+- **No receipt:** once your work-related expenses pass $300 for the year, the ATO expects written
+  evidence for each of them.
+- **Over $300:** an item costing more than $300 is usually claimed as decline in value over several
+  years rather than all at once.
+
+**Deductions (CSV)** downloads the list; **CSV and receipts (ZIP)** adds every receipt file, named
+by date, label and payee. Keep receipts for five years from when you lodge your return.

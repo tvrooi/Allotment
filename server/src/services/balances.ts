@@ -20,6 +20,7 @@ export const isIncomeOrSpending: SQL = sql`not (${transactions.isAdjustment} = 1
 export const personalBudgetAccount: SQL = and(
   eq(accounts.isOffBudget, 0),
   sql`not exists (select 1 from household_groups hg where hg.account_id = ${accounts.id})`,
+  sql`not exists (select 1 from household_pool_accounts hp where hp.account_id = ${accounts.id})`,
 )!;
 export const onBudget: SQL = inArray(
   transactions.accountId,
@@ -34,7 +35,7 @@ export const isBudgetBoundary: SQL = sql`(${onBudget} and exists (
   select 1 from transactions counterpart
   inner join accounts other_account on other_account.id = counterpart.account_id
   where counterpart.id = "transactions"."transfer_transaction_id"
-    and (other_account.is_off_budget = 1 or exists (select 1 from household_groups hg where hg.account_id = other_account.id))
+    and (other_account.is_off_budget = 1 or exists (select 1 from household_groups hg where hg.account_id = other_account.id) or exists (select 1 from household_pool_accounts hp where hp.account_id = other_account.id))
 ))`;
 
 /** Leaf activity, excluding internal transfers and uncategorized balance corrections. */
@@ -44,6 +45,15 @@ export const reportActivity: SQL = and(
   or(isNull(transactions.transferTransactionId), isBudgetBoundary),
 )!;
 export const budgetActivity: SQL = and(onBudget, reportActivity)!;
+
+/** Day the envelope budget starts counting ('' = all history): Settings → Budget start */
+const budgetStartDay = sql`coalesce((select min(bs.budget_start_month) from budget_settings bs) || '-01', '')`;
+/** Rows on or after the budget start. Reports ignore it; envelopes and funding use it. */
+export const sinceBudgetStart: SQL = sql`${transactions.date} >= ${budgetStartDay}`;
+/** The budget start as YYYY-MM-01, or '' when every month counts */
+export function budgetStartDate(): string {
+  return db.get<{ day: string }>(sql`select ${budgetStartDay} as day`)?.day ?? '';
+}
 
 /**
  * Rows the user has not hidden from reports (phase 9). A split part follows its parent. Only

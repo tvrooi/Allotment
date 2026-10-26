@@ -18,7 +18,8 @@ export type AccountType =
   | 'other_asset'
   | 'other_liability';
 
-export type AccountGroup = 'cash' | 'credit' | 'investments' | 'property' | 'loans' | 'other';
+export type AccountGroup =
+  'cash' | 'credit' | 'investments' | 'super' | 'property' | 'loans' | 'other';
 
 export interface AccountTypeInfo {
   value: AccountType;
@@ -47,7 +48,7 @@ export const ACCOUNT_TYPES: AccountTypeInfo[] = [
     group: 'cash',
     liability: false,
     onBudget: true,
-    hint: 'Savings, money market, CDs',
+    hint: 'Savings, high-interest or term deposit',
   },
   {
     value: 'cash',
@@ -75,19 +76,19 @@ export const ACCOUNT_TYPES: AccountTypeInfo[] = [
   },
   {
     value: 'investment',
-    label: 'Brokerage',
+    label: 'Shares & Funds',
     group: 'investments',
     liability: false,
     onBudget: false,
-    hint: 'Taxable investment account',
+    hint: 'Share trading account, ETFs or managed funds you can sell any time',
   },
   {
     value: 'retirement',
-    label: 'Retirement',
-    group: 'investments',
+    label: 'Superannuation',
+    group: 'super',
     liability: false,
     onBudget: false,
-    hint: '401(k), IRA, Roth, pension',
+    hint: 'Super fund, SMSF or account-based pension: preserved until a condition of release',
   },
   {
     value: 'crypto',
@@ -143,7 +144,7 @@ export const ACCOUNT_TYPES: AccountTypeInfo[] = [
     group: 'loans',
     liability: true,
     onBudget: false,
-    hint: 'Federal or private student loan',
+    hint: 'HECS-HELP, Student Start-up Loan or another study loan',
   },
   {
     value: 'loan',
@@ -175,6 +176,7 @@ export const ACCOUNT_GROUPS: { value: AccountGroup; label: string }[] = [
   { value: 'cash', label: 'Cash' },
   { value: 'credit', label: 'Credit' },
   { value: 'investments', label: 'Investments' },
+  { value: 'super', label: 'Superannuation' },
   { value: 'property', label: 'Property' },
   { value: 'loans', label: 'Loans' },
   { value: 'other', label: 'Other' },
@@ -276,6 +278,12 @@ export interface Category {
   budgetType: BudgetType | null;
   sortOrder: number;
   createdAt: string;
+  /** 1 = tucked away from pickers and the budget while it holds no money */
+  hidden?: number;
+  /** With `?usage=1` (getCategoriesWithUsage) */
+  transactionCount?: number;
+  lastUsedDate?: string | null;
+  everAssigned?: boolean;
 }
 
 export interface CategoryGroup {
@@ -368,6 +376,7 @@ export interface BudgetCategory {
   budgetType: BudgetType | null;
   sortOrder: number;
   createdAt: string;
+  hidden?: number;
   target?: TargetStatus | null;
   paymentAccountId?: string | null;
   budgeted: number;
@@ -403,6 +412,8 @@ export interface BudgetSummary {
   totalBudgeted: number;
   carryOver: number;
   toBeBudgeted: number;
+  /** First month the envelopes count (YYYY-MM); null = all history */
+  budgetStartMonth?: string | null;
 }
 
 export interface Account {
@@ -426,6 +437,11 @@ export interface Account {
   rateDate: string | null;
   /** Its currency can only change while it has none */
   hasTransactions: boolean;
+  /**
+   * The household group whose pool this account is, or null. A pool is outside the personal
+   * budget even when it isn't marked off budget (docs/HOUSEHOLDS.md).
+   */
+  householdPool?: string | null;
   /**
    * In another currency: how much more (or less) it's worth today in the budget's currency
    * than it was counted as when its money came in (the rate moved). Null when not known.
@@ -659,7 +675,10 @@ export type RuleAction =
   | { type: 'set_category' | 'set_payee'; value: string }
   | { type: 'set_notes' | 'prepend_notes' | 'append_notes'; value: string }
   | { type: 'split'; parts: RuleSplitPart[] }
-  | { type: 'add_tag'; value: string };
+  | { type: 'add_tag'; value: string }
+  /** Shares money out with a household group, with its default split */
+  | { type: 'share_with_household'; value: string }
+  | { type: 'claim_tax_deduction'; value: string };
 
 export interface Rule {
   id: string;
@@ -669,9 +688,13 @@ export interface Rule {
   enabled: boolean;
   sortOrder: number;
   createdAt: string;
+  /** The access token that proposed it, until the owner enables it */
+  proposedBy?: string | null;
 }
 
-export type RuleInput = Omit<Rule, 'id' | 'createdAt' | 'sortOrder'> & { sortOrder?: number };
+export type RuleInput = Omit<Rule, 'id' | 'createdAt' | 'sortOrder' | 'proposedBy'> & {
+  sortOrder?: number;
+};
 
 export interface PayeeWithCount extends Payee {
   transactionCount: number;

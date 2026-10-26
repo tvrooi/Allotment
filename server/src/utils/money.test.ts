@@ -154,13 +154,29 @@ describe('decimalToMinor and minorToDecimal', () => {
 });
 
 describe('allocate', () => {
+  it('refuses parts too large to be exact rather than returning a wrong total', () => {
+    // fast-check's counterexample: weights of opposite sign summing to 11
+    expect(() => allocate(99217704424, [-998593, 998604])).toThrow(RangeError);
+    expect(allocate(1000, [-1, 2])).toEqual([-1000, 2000]);
+  });
+
   it('always adds up to the total, each part within a unit of its share', () => {
     fc.assert(
       fc.property(
         arbAmount,
         fc.array(fc.integer({ min: -1_000_000, max: 1_000_000 }), { minLength: 1, maxLength: 8 }),
         (total, weights) => {
-          const parts = allocate(total, weights);
+          let parts: number[];
+          try {
+            parts = allocate(total, weights);
+          } catch (error) {
+            // Only when opposite-signed weights make a part too large to be an exact number
+            expect(error).toBeInstanceOf(RangeError);
+            const sum = weights.reduce((a, b) => a + b, 0);
+            const largest = Math.max(...weights.map((w) => Math.abs((total * w) / sum)));
+            expect(largest).toBeGreaterThan(Number.MAX_SAFE_INTEGER / 2);
+            return;
+          }
           expect(parts).toHaveLength(weights.length);
           expect(parts.reduce((a, b) => a + b, 0)).toBe(total);
           const sum = weights.reduce((a, b) => a + b, 0);

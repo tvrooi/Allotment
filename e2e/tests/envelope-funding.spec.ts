@@ -57,7 +57,10 @@ for (const phone of [false, true]) {
     await expect(row).toContainText('$250');
     await row.getByRole('link').first().click();
     await expect(page).toHaveURL(new RegExp(`#/budget/category/${food.id}$`));
-    await expect(page.getByText('Available', { exact: true })).toBeVisible();
+    // The budget page has its own "Available" labels; wait for it to give way to the category page
+    const available = page.getByText('Available', { exact: true });
+    await expect(available).toHaveCount(1);
+    await expect(available).toBeVisible();
     await expect(page.getByText('$250', { exact: true }).first()).toBeVisible();
   });
 }

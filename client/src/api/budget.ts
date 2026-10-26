@@ -179,3 +179,31 @@ export interface AnnualOverview {
 }
 
 export const getAnnualOverview = (year: number) => apiFetch<AnnualOverview>(`/budget/year/${year}`);
+
+/** First month the envelopes count (YYYY-MM); null = all history (Settings → Budget) */
+export const getBudgetStart = () => apiFetch<{ month: string | null }>('/budget/start');
+export const setBudgetStart = (month: string | null) =>
+  apiFetch<{ month: string | null }>('/budget/start', {
+    method: 'PUT',
+    body: JSON.stringify({ month }),
+  });
+
+/** An assistant's suggested assignments, waiting for the owner (server: routes/budgetProposals.ts) */
+export interface BudgetProposal {
+  id: string;
+  month: string;
+  tokenName: string;
+  note: string | null;
+  status: 'open' | 'applied' | 'dismissed';
+  createdAt: string;
+  total: number;
+  rows: { categoryId: string; categoryName: string | null; amount: number; reason?: string }[];
+}
+
+export const getBudgetProposals = () => apiFetch<BudgetProposal[]>('/budget-proposals');
+export const applyBudgetProposal = (id: string) =>
+  apiFetch<{ applied: number; month: string }>(`/budget-proposals/${id}/apply`, {
+    method: 'POST',
+  });
+export const dismissBudgetProposal = (id: string) =>
+  apiFetch<{ ok: true }>(`/budget-proposals/${id}/dismiss`, { method: 'POST' });

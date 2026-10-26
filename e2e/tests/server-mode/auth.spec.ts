@@ -64,9 +64,9 @@ test('the signed-in owner uses the app, with real page URLs', async ({ baseURL }
 
   // Server mode uses normal URLs: deep links and reloads work
   await owner.goto(`${baseURL}/budget`);
-  await expect(owner.getByRole('status', { name: 'To be budgeted' })).toBeVisible();
+  await expect(owner.getByRole('status', { name: 'Ready to assign' })).toBeVisible();
   await owner.reload();
-  await expect(owner.getByRole('status', { name: 'To be budgeted' })).toBeVisible();
+  await expect(owner.getByRole('status', { name: 'Ready to assign' })).toBeVisible();
 });
 
 test('another browser sees only the login screen', async ({ page, baseURL }) => {
@@ -202,6 +202,48 @@ test('a read-only access token reads the budget, over the API and MCP, until rev
   await api.dispose();
 });
 
+test('an organise token proposes a rule that waits for the owner to turn it on', async ({
+  playwright,
+  baseURL,
+}) => {
+  await owner.goto(`${baseURL}/settings?tab=server`);
+  const section = owner.getByRole('heading', { name: 'Read-only access' }).locator('..');
+  await section.getByPlaceholder('e.g. Claude').fill('Organiser');
+  await section.getByLabel('Access').selectOption('organise');
+  await section.getByRole('button', { name: 'Create token' }).click();
+  const token = (await section.getByRole('status').locator('code').first().textContent())!;
+  const api = await playwright.request.newContext({
+    baseURL,
+    extraHTTPHeaders: { authorization: `Bearer ${token}` },
+  });
+  const proposed = await (
+    await api.post('/api/mcp', {
+      data: {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+          name: 'propose_rule',
+          arguments: {
+            conditions: [{ field: 'payee_name', op: 'contains', value: 'Mock Grocer' }],
+            actions: [{ type: 'set_notes', value: 'Groceries' }],
+          },
+        },
+      },
+    })
+  ).json();
+  expect(proposed.result.isError).toBe(false);
+  // Enabling is the owner's
+  const ruleId = JSON.parse(proposed.result.content[0].text).rule.id;
+  expect((await api.put(`/api/rules/${ruleId}`, { data: { enabled: true } })).status()).toBe(403);
+
+  await owner.goto(`${baseURL}/rules`);
+  await expect(owner.getByText('Proposed by Organiser')).toBeVisible();
+  await owner.getByRole('switch', { name: 'Enable rule' }).click();
+  await expect(owner.getByText('Proposed by Organiser')).toBeHidden();
+  await api.dispose();
+});
+
 test('the sidebar shows the server and can sign out', async ({ baseURL }) => {
   await owner.goto(`${baseURL}/budget`);
   const status = owner.getByRole('button', {
@@ -268,7 +310,7 @@ test('with the server unreachable, the app opens with the offline copy and keeps
   await expect(banner).toContainText('New transactions are saved on this device');
   // Other pages open from the copy too
   await owner.getByRole('complementary').getByRole('link', { name: 'Budget', exact: true }).click();
-  await expect(owner.getByRole('status', { name: 'To be budgeted' })).toBeVisible();
+  await expect(owner.getByRole('status', { name: 'Ready to assign' })).toBeVisible();
   await owner.goBack();
 
   // A new transaction waits on the device, even across a reload
@@ -303,7 +345,7 @@ test('the offline copy can be turned off, and signing out deletes it', async ({ 
   await expect.poll(() => offlineCopy(owner)).toBeNull();
   // Nothing is saved while it's off, even as data loads
   await owner.goto(`${baseURL}/budget`);
-  await expect(owner.getByRole('status', { name: 'To be budgeted' })).toBeVisible();
+  await expect(owner.getByRole('status', { name: 'Ready to assign' })).toBeVisible();
   await owner.waitForTimeout(2_500);
   expect(await offlineCopy(owner)).toBeNull();
 

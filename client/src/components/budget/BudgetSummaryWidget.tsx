@@ -25,13 +25,18 @@ interface BudgetSummaryWidgetProps {
 }
 
 function getHeroStyle(tbb: number, incomePlanned: number) {
-  if (tbb < 0) return { bg: 'bg-negative-subtle', text: 'text-negative', label: 'Over budget' };
+  if (tbb < 0)
+    return {
+      bg: 'bg-negative-subtle',
+      text: 'text-negative',
+      label: 'Assigned more than you have',
+    };
   if (tbb === 0)
     return { bg: 'bg-positive-subtle', text: 'text-positive', label: 'Fully budgeted' };
   const threshold = Math.max(incomePlanned * 0.02, 500);
   if (tbb <= threshold)
     return { bg: 'bg-caution-subtle', text: 'text-caution', label: 'Almost budgeted' };
-  return { bg: 'bg-positive-subtle', text: 'text-positive', label: 'Left to budget' };
+  return { bg: 'bg-positive-subtle', text: 'text-positive', label: 'Give every dollar a job' };
 }
 
 function getBarColor(actual: number, planned: number, type: 'income' | 'expenses' | 'savings') {
@@ -142,7 +147,7 @@ export function BudgetSummaryWidget({
           bg: 'bg-caution-subtle',
           text: 'text-caution',
           label: funding.complete
-            ? 'Review funding and unresolved spending'
+            ? 'Resolve overspending and uncategorised spending'
             : 'Incomplete: missing exchange rates',
         }
       : getHeroStyle(toBeBudgeted, incomePlanned);
@@ -152,9 +157,12 @@ export function BudgetSummaryWidget({
       <div className="p-3">
         <div
           role="status"
-          aria-label="To be budgeted"
+          aria-label="Ready to assign"
           className={`${hero.bg} rounded-lg px-4 py-3 text-center`}
         >
+          <p className={`text-xs font-medium uppercase tracking-wide ${hero.text}`}>
+            Ready to assign
+          </p>
           <p className={`text-lg font-semibold tabular-nums ${hero.text}`}>
             {funding?.complete === false ? 'Incomplete' : formatCurrency(toBeBudgeted)}
           </p>

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
-import { rules } from '../db/schema.js';
+import { accessTokens, rules } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -81,6 +81,11 @@ const actionSchema = z.union([
   }),
   z.object({ type: z.literal('split'), parts: z.array(splitPartSchema).min(1).max(20) }),
   z.object({ type: z.literal('add_tag'), value: id }),
+  z.object({ type: z.literal('share_with_household'), value: id }),
+  z.object({
+    type: z.literal('claim_tax_deduction'),
+    value: z.enum(['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D15']),
+  }),
 ]);
 
 const conditionsOp = z.enum(['and', 'or']);
@@ -118,6 +123,18 @@ function serialize(data: z.infer<typeof ruleUpdateSchema>) {
   if (data.enabled !== undefined) row.enabled = data.enabled ? 1 : 0;
   if (data.sortOrder !== undefined) row.sortOrder = data.sortOrder;
   return row;
+}
+
+/** The access token's name when an access token makes the request, else null (the owner) */
+function proposer(locals: Record<string, unknown>): string | null {
+  if (typeof locals.accessTokenId !== 'string') return null;
+  return (
+    db
+      .select({ name: accessTokens.name })
+      .from(accessTokens)
+      .where(eq(accessTokens.id, locals.accessTokenId))
+      .get()?.name ?? 'Assistant'
+  );
 }
 
 rulesRouter.get('/', (_req, res) => {
@@ -165,14 +182,17 @@ rulesRouter.post('/', (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const { conditionsOp, conditions, actions, enabled, sortOrder } = parsed.data;
+  // An organise token only proposes: the rule waits, disabled, for the owner to enable it
+  const proposedBy = proposer(res.locals);
   const row = {
     id: nanoid(),
     conditionsOp,
     conditions: JSON.stringify(conditions),
     actions: JSON.stringify(actions),
-    enabled: enabled ? 1 : 0,
+    enabled: enabled && !proposedBy ? 1 : 0,
     sortOrder,
     createdAt: new Date().toISOString(),
+    proposedBy,
   };
   db.insert(rules).values(row).run();
   res.status(201).json(parseRuleRow(row));
@@ -183,6 +203,9 @@ rulesRouter.put('/:id', (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const update = serialize(parsed.data);
+  // A token never enables a rule (auth/accessTokens.ts); the owner enabling one accepts it
+  if (proposer(res.locals)) delete update.enabled;
+  else if (parsed.data.enabled) update.proposedBy = null;
   if (Object.keys(update).length) {
     db.update(rules).set(update).where(eq(rules.id, req.params.id)).run();
   }

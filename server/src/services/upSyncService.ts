@@ -23,7 +23,13 @@ export const UP_CONNECTION_ID = 'default';
 export interface UpSyncResult {
   added: number;
   skipped: number;
+  /** Why the sync failed: the connection, an account or Up's data */
   errors: string[];
+  /**
+   * Things to review that didn't stop the import, as YNAB treats them: a register that differs
+   * from Up's balance is reconciled by the owner, not a failed sync.
+   */
+  notices?: string[];
 }
 let inFlight: Promise<UpSyncResult> | null = null;
 let connecting = false;
@@ -80,7 +86,7 @@ export function syncUp(): Promise<UpSyncResult> {
 }
 
 async function runSync(): Promise<UpSyncResult> {
-  const result: UpSyncResult = { added: 0, skipped: 0, errors: [] };
+  const result: UpSyncResult = { added: 0, skipped: 0, errors: [], notices: [] };
   const connection = db
     .select()
     .from(upConnections)
@@ -216,8 +222,8 @@ async function runSync(): Promise<UpSyncResult> {
           result.skipped += skipped;
         });
         if (balanceMismatch)
-          result.errors.push(
-            'An Up account balance differs from its imported register. Review transactions and reconcile; the opening balance was preserved.',
+          result.notices!.push(
+            `${local.name}'s register differs from Up's balance. Review transactions and reconcile; the opening balance was preserved.`,
           );
       } catch (err) {
         result.errors.push(upErrorMessage(err));

@@ -1,5 +1,136 @@
 # Changes
 
+## 0.2.0-up.45
+
+- **Overspending resets each month, like YNAB.** An overspent category is red for the month it happened and starts the next month at zero, instead of carrying the deficit forward until you cover it. The money had already left your accounts, so **Ready to assign** doesn't change. A one-off like paying out a loan or a settlement no longer follows you from month to month. Positive balances still roll over, and credit card payment categories keep their running total. With card payment funding, each month's card purchases are funded from that month's envelope, so an old deficit doesn't block them; card debt left unfunded in an earlier month stays a payment shortfall until you fund it.
+
+## 0.2.0-up.44
+
+- **Read receipts automatically** with a vision model on your own Ollama server (for example the Ollama app on Home Assistant). Photos are read in the background and fill in the merchant, date, amounts and line items with categories, then the receipt is matched as usual. Only empty fields are filled, so anything you typed is kept. Off until you choose an Ollama address and model in the Receipts tab's settings.
+- **Try a sample receipt** checks a model's accuracy and speed on a made-up receipt without touching your budget.
+- Receipts never leave your network: they go only to the Ollama address you choose. Read-only tokens can't reach any of it.
+
+## 0.2.0-up.43
+
+- **Receipts tab** on Transactions, like Monarch's: every receipt, matched or not, for any purchase (not only tax). Upload several at once, drop or paste them, or **Scan receipt** with a phone's camera (also from the All tab).
+- **Receipt details:** merchant, date, amount, subtotal, tax, tip and fees, and line items with categories.
+- **Automatic matching** to money out of exactly the receipt's amount: from the same merchant up to 2 days before or 7 days after its date, or any merchant within a day. When two transactions could fit, you choose. Receipts that arrive first are matched when their transaction arrives from the bank.
+- Matched transactions are tagged **Receipt** and get the receipt's notes and items. One with no category yet is **split by the items' categories** (tax in proportion, tip and fees evenly per item). One that already has a category is left as it is unless you choose **Split by items**. A transaction claimed as a tax deduction is never split, so its claim isn't lost. The amount is never changed. Each step can be turned off in the tab's settings.
+- **Find match** searches your transactions; **Add transaction** makes one from a cash receipt; **Unmatch** puts a receipt back. Deleting a receipt never deletes its transaction.
+- Backup format 19 includes receipts' line items; format 18 backups restore unchanged.
+
+## 0.2.0-up.42
+
+- **Receipts:** attach photos or PDFs to a transaction from its details: choose a file (the camera on a phone), drop one, or paste a screenshot. Photos are shrunk before they are saved. A paperclip in the register marks transactions with a receipt.
+- **Receipt inbox** (**Tax time → Receipt inbox**): keep a receipt before its bank transaction arrives. Type its date and total, and the inbox suggests the matching transaction, exact totals first, for **Attach**. Deleting a transaction moves its receipts back to the inbox.
+- **Tax deductions:** tick **Claim as a tax deduction** on a transaction, then choose its return label (D1 car to D10 cost of managing tax affairs, and D15) and its work-use share. Claim split transactions part by part.
+- **Rules can claim deductions:** the new **Claim as tax deduction** action claims matching payments as they import, and never replaces a claim you made.
+- **Tax time** shows a financial year's deductions (1 July to 30 June) by label, with each claim's receipts. It flags receipts missing once work expenses pass $300, and items over $300 that are usually depreciated. Download the year as **CSV**, or as **CSV and receipts (ZIP)** for your tax agent. Record keeping, not tax advice.
+- **Backups and security:**
+  - Backup format 18 carries receipt details and claims. Receipt files stay in the database, which full backups (Home Assistant) include, and restoring on the same installation keeps them. Format 17 backups restore unchanged.
+  - Files are checked by their contents and served so they can never run as a page.
+  - Assistant (read-only) tokens cannot see receipts or claims.
+- See [receipts and tax](docs/RECEIPTS-AND-TAX.md).
+- Fix: in the long-term forecast, super fees that emptied a small fund still left its old balance earning (or losing) returns, so the balance could go below zero. Fees now leave the fund before growth.
+
+## 0.2.0-up.41
+
+- **HECS-HELP and other study loans in the long-term forecast:** a student loan account is now an income-contingent study loan (HECS-HELP, VET Student Loan, Student Start-up Loan, ABSTUDY SSL or Apprenticeship Support Loan, guessed from its name and changeable per plan) instead of a loan with no repayment data.
+  - No interest: the debt is **indexed each year** (with inflation by default, or a rate you set; 2.8% on 1 June 2026) and repaid by the **compulsory repayment** on your repayment income with the 2026–27 marginal bands (nothing up to $69,528, then 15c and 17c per dollar, 10% of all income from $186,051). HELP is repaid before a Start-up Loan.
+  - Take-home pay is assumed to already have the repayment withheld, so once the debt is repaid your take-home rises. You can turn this off.
+  - **Extra yearly payments** per loan, paid from surplus, and **Pay off a loan** events. The forecast shows when study loans are repaid, and what extra payments bring forward and save in indexation compared with compulsory repayments alone. Comparisons add the year they are repaid.
+  - The Accounts summary explains that study loans are indexed rather than charged interest.
+- See [the forecast design note, §23](docs/LONG-TERM-FORECAST.md).
+
+## 0.2.0-up.40
+
+- **Superannuation replaces the US retirement account:** the **Retirement** account type (hinted "401(k), IRA, Roth") is now **Superannuation** ("Super fund, SMSF or account-based pension"), in its own **Superannuation** group. **Brokerage** is now **Shares & Funds**. Existing accounts keep their data; only labels and grouping change.
+- **Accessible and preserved wealth:** the Accounts summary shows super as **Super (preserved)** with an **Accessible now** figure for cash and investments. The long-term forecast splits every year into accessible wealth (cash, investments and released super) and preserved super, draws both on the chart, and adds **Accessible at retirement** and **Super opens** to the key figures and **Accessible wealth at retirement** to comparisons.
+- **Super follows the Australian rules more closely** in the long-term forecast:
+  - super opens at **65 even while still working**, as well as on retiring from the preservation age (previously only on retiring);
+  - once retired and released it pays at least the **minimum pension** (4% under 65, rising to 14% from 95) into spendable cash, with **tax-free earnings**; this can be turned off;
+  - new assumptions for **salary sacrifice**, **personal (after-tax) contributions**, **fees and insurance** and **tax on earnings before the pension**, all 0 by default so existing plans are unchanged until you set them;
+  - warnings when contributions pass the **concessional** ($32,500) or **non-concessional** ($130,000) cap, or super passes the **transfer balance cap** ($2.1 million) when its pension starts (2026–27 figures, editable).
+- See [the forecast design note, §22](docs/LONG-TERM-FORECAST.md).
+
+## 0.2.0-up.39
+
+- The Budget summary is now always titled **Ready to assign**, with the amount below and a status line ("Give every dollar a job", "Fully budgeted", "Assigned more than you have", or "Resolve overspending and uncategorised spending"). The title was previously replaced whenever anything was unresolved, so a budget with old deficits never showed it.
+- **Transfers out of the budget remember their category:** linking a transfer into a household pool or an off-budget account (your rent share, a loan repayment) gives it the category of the last transfer between the same two accounts, or into the same account. A monthly transfer is categorised once. An existing category is never replaced, and transfers inside the budget still need none.
+- Fix: **Review → Tidy up** listed Up savers as "not in FlyBudget" when their FlyBudget names had an emoji ("🐈 Cat Vet"). Names are now compared by their letters and numbers.
+
+## 0.2.0-up.38
+
+- Fix: Up's settled balance left out the round-ups of **pending** purchases, which Up has already moved to your Saver. A Spending account with pending card purchases looked a few cents short of its register, the round-up check called the difference "unexplained", and the round-up repair stayed locked.
+- **Sync works like YNAB's:** a sync that reached Up and imported everything is a successful sync, and **Last synced** moves on. A register that differs from Up's balance no longer marks the connection as failed. It's a note to review: the account shows "Up says $X" beside its balance, linking to the round-up check or **Reconcile**. Connection, token and data problems are still errors.
+
+## 0.2.0-up.37
+
+- **Several household accounts:** **Household → Sharing** adds more accounts to a household's pool, for example an Up 2Up spending account beside its bills saver. Each one leaves your personal budget like the first: rent paid from the joint account is the household's expense, and only your own transfers into it count, as your share, in the category you give them. Backup format 17 includes them; format 16 backups restore unchanged.
+- **Default split:** set how a household usually splits costs (equal, percentages or weights).
+- **Share with household** in one step: from a transaction's details, or for every payment in the current transaction list. Each payment becomes a shared expense with the default split, without filling in a form per payment, and **Undo** removes the entries. Payments already shared are skipped.
+- **Repayment suggestions:** money received from someone who owes the household (their name in the payee, no more than they owe) is listed under **Household → Sharing** with **Record repayment**.
+- **Rules can share:** a new rule action, **Share with household**, records matching payments as shared expenses with the default split as they import. If a payment can't be shared, the import still succeeds.
+- See [households](docs/HOUSEHOLDS.md).
+- Fix: splitting a foreign-currency value between parts with opposite signs could, for amounts in the quadrillions, come out a cent off. Such an impossible split is now refused instead (found by the property tests).
+
+## 0.2.0-up.36
+
+- **Ready to assign:** the Budget summary now says **Ready to assign** for money you have without a job. Income rows read **Expected**, **Received** and **Still to come**: an expected amount is only a plan, and income counts as ready to assign as soon as it arrives, whatever its category.
+- **Assistant suggestions:** a read, categorise and organise token can suggest amounts for expense envelopes (`propose_assignments`). The Budget page shows a banner; **Review suggestion** lists each amount and reason, and **Apply** adds them all from money ready to assign, or nothing if there isn't enough. Nothing is assigned until you apply it.
+- **Review → Tidy up** finds setup problems:
+  - a budget that counts years of imported history, with a one-click budget start;
+  - Up accounts whose balance proves round-up debits are missing;
+  - movements to or from Up savers that aren't in FlyBudget (closed or never connected), grouped by saver, to categorise in one step with undo;
+  - categories that were never used.
+- **Hide categories:** **Settings → Categories → Tidy up categories** hides never-used categories one at a time or all at once. Hidden categories leave pickers and the budget while they hold no money, keep their history, and can be shown again. Tokens with categorise access can hide them too (`hide_category`), and `list_categories` now shows how much each category is used.
+- Connecting Up to a new budget (nothing ever assigned, no budget start) now starts the budget in the current month, so imported history doesn't become overspending.
+- New budgets on a server in an Australian time zone (as the Home Assistant app is in Australia), or with `FLYBUDGET_CATEGORY_TEMPLATE=au`, start with Australian categories: rent and strata, rego and CTP, private health, Afterpay / Zip, super contributions, pets and more. Existing budgets don't change.
+- New MCP tools: `budget_housekeeping` and `list_budget_proposals`.
+
+## 0.2.0-up.35
+
+- Add **read, categorise and organise** access tokens (**Settings → Server → Read-only access**). Besides everything a categorise token can do, an assistant can **propose rules** (saved switched off and marked "Proposed by" in **Rules** until you turn them on), apply a rule that only sets a category to uncategorised past transactions, set **payee default categories** so future imports are categorised, and **link transfers the app suggests**. It still can't enable, reorder or delete rules, or change anything else.
+- Every category change a token makes is saved as a **change set**: **Settings → Server → Read-only access** lists them with **Undo**, and the assistant can undo its own (`undo_change_set`). A transaction you edited since keeps your change.
+- New MCP tools for every token: `uncategorised_payees` (the categorising worklist), `transfer_suggestions`, `budget_start`, `list_households`, `household`, `household_statement`, `bank_sync_status` (last sync, bank against register balance, and whether missing round-ups explain a difference, with no connection details) and `list_change_sets`. `find_transactions` pages with `offset` and keeps results short with `fields`. Categorise tokens also get `categorise_by_payee`. The server's MCP instructions now explain how the budget counts money.
+- See [Read-only access](docs/READ-ONLY-ACCESS.md).
+
+## 0.2.0-up.34
+
+- A **read and categorise** token's MCP tools can now also **create and edit categories** and category groups (create, rename, move a category to another group, change its icon or budget type) so an assistant can set up categories before sorting transactions. They still can't delete or reorder categories or change anything else.
+- Fix: a token could read an account's bank import settings by capitalising the path (`/Import-Settings`). Token paths are now matched ignoring letter case.
+
+## 0.2.0-up.33
+
+- Add a **Simulation** tab to the long-term forecast: it runs your saved plan many times with random yearly returns and shows the **chance of success** (the share of simulated paths that never ran out of money and ended above zero) and a band of outcomes (the middle half and the middle 90% of paths, with the median and the steady-return forecast for comparison). Only returns vary, and they are seeded, so the same seed always gives the same answer. Works in today's or future dollars, on a phone and in the offline demo.
+- How much returns swing is an assumption with its default shown (investments and super 16%, property 10%, cash and other accounts none), under **Assumptions**. Read-only access can run it too (`long_term_simulation`).
+- See [the long-term forecast](docs/LONG-TERM-FORECAST.md).
+
+## 0.2.0-up.32
+
+- **Forecast** now opens on a **Long term** view: your net worth year by year, from today's real balances to an age you choose, with a marker on the line for each life event. The 30-day to 2-year **Cash runway** is its second tab, unchanged. See [the long-term forecast](docs/LONG-TERM-FORECAST.md).
+- Make plans with life events (buy a home, new job, career break, child, windfall or expense, recurring income or expense, retirement, pay off a loan). Opening an editor saves nothing: an event is saved when you choose **Create**. Plans are saved with versions, so a change on another device is never overwritten.
+- Every rate and age (inflation, growth by kind of account, super guarantee, contributions tax, preservation age, Age Pension) is an assumption with its default shown beside it. Super is drawn only after you retire and reach the preservation age. If money runs out, an **unfunded spending** warning names the first year.
+- Click a year to see what made up its change; the parts add up to the cent, in today's or future dollars (toggle at the top). Choose where surplus money goes, as a percentage of what is left or a fixed amount, with a worked example, and the order money is taken out when it runs short.
+- Duplicate, rename and delete plans, and compare one with another: two lines, paired key figures and the difference in money and in percent of the plan you compare against. Works on a phone and in the offline demo.
+
+## 0.2.0-up.31
+
+- Add storage and an API for long-term forecast plans (see [the design note](docs/LONG-TERM-FORECAST.md)): named plans with life events, per-account assumptions and savings splits, saved with versions so a change on another device is never overwritten. They read your real balances, income and spending, compare two plans, and never write to your budget. There is no screen for them yet.
+- Record a loan or mortgage's rate, repayment and term beside its account (`account_loan_details`).
+- Read-only and categorise tokens can read plans and results, and the read-only MCP endpoint gains `long_term_plans`, `long_term_plan`, `long_term_forecast` and `long_term_compare`. Backup format 16 includes plans and loan details; format 15 backups restore unchanged.
+
+## 0.2.0-up.30
+
+- Groundwork for a long-term forecast (see [the design note](docs/LONG-TERM-FORECAST.md)): a pure year-by-year engine for net worth over decades, with life events, super, loans and savings splits, and a table for a loan or mortgage's rate and repayment. Nothing in the app uses it yet and it never touches your budget; the forecast page and its storage arrive in later releases.
+
+## 0.2.0-up.29
+
+- Add a **budget start** (**Settings → Budget**): the first month your envelopes count. Bank history from before you started budgeting stays in your accounts and reports, and balances don't change, but its spending no longer carries into envelopes as overspending or uncategorised spending. Card payment reserves start there too. Clearing it counts all history again. Backup format 15 includes it; format 14 backups restore unchanged.
+- The sidebar lists household pool accounts under their own **Household** heading instead of **For budget**, so the For budget total matches the money your budget counts.
+- Add **read and categorise** access tokens (**Settings → Server → Read-only access**). Besides reading, they can set the category of past transactions and nothing else: no other field, no clearing a category, no future transactions, and the register's rules still apply. Over MCP they get a `categorise_transactions` tool that reports each transaction's previous category. Read-only tokens are unchanged. See [Read-only access](docs/READ-ONLY-ACCESS.md).
+- Make the import settings round-trip test independent between its random runs.
+
 ## 0.2.0-up.28
 
 - New look from the FlyBudget design system: warm neutral surfaces, an orange accent, Inter headings, 12px cards and a refreshed dark theme. Text and button colours were tuned for AA contrast, and budget progress bars are slimmer. Charts keep their teal colours.

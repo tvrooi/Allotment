@@ -3,6 +3,16 @@ import type { Category, CategoryGroup } from '../types';
 
 export const getCategories = () => apiFetch<CategoryGroup[]>('/categories');
 
+/** Categories with how much each is used (transactions, last date, ever assigned) */
+export const getCategoriesWithUsage = () => apiFetch<CategoryGroup[]>('/categories?usage=1');
+
+/** Hides a category from pickers and the budget while it holds no money, or shows it again */
+export const setCategoryHidden = (id: string, hidden: boolean) =>
+  apiFetch<Category>(`/categories/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ hidden: hidden ? 1 : 0 }),
+  });
+
 export const createGroup = (data: { name: string; isIncome?: number }) =>
   apiFetch<CategoryGroup>('/categories/groups', { method: 'POST', body: JSON.stringify(data) });
 

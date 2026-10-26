@@ -3,6 +3,8 @@ import { useAccounts } from '../../hooks/useAccounts';
 import { useCategories } from '../../hooks/useCategories';
 import { usePayees } from '../../hooks/usePayees';
 import { useTags } from '../../hooks/useTags';
+import { useQuery } from '@tanstack/react-query';
+import { getHouseholds } from '../../api/households';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import type { RuleLookups } from '../../utils/ruleFormat';
 import type { CategoryGroup } from '../../types';
@@ -14,6 +16,7 @@ export function useRuleLookups() {
   const { data: accounts = [] } = useAccounts();
   const { data: groups = [] } = useCategories();
   const { data: tags = [] } = useTags();
+  const { data: households = [] } = useQuery({ queryKey: ['households'], queryFn: getHouseholds });
   const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
 
   return useMemo(() => {
@@ -40,7 +43,9 @@ export function useRuleLookups() {
       account: (id) => accountNames.get(id),
       category: (id) => categoryNames.get(id),
       tag: (id) => tagNames.get(id),
+      household: (id) => households.find((h) => h.id === id)?.name,
     };
-    return { lookups, payeeOptions, accountOptions, categoryOptions, tagOptions };
-  }, [payees, accounts, groups, tags, showCategoryIcons]);
+    const householdOptions = households.map((h) => ({ id: h.id, label: h.name }));
+    return { lookups, payeeOptions, accountOptions, categoryOptions, tagOptions, householdOptions };
+  }, [payees, accounts, groups, tags, households, showCategoryIcons]);
 }

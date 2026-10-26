@@ -9,6 +9,7 @@ import {
   Server,
   Compass,
   Tag,
+  CalendarRange,
 } from 'lucide-react';
 import { ServerSettings } from '../components/settings/ServerSettings';
 import { CategoryManager } from '../components/settings/CategoryManager';
@@ -19,11 +20,14 @@ import { CurrencySettings } from '../components/settings/CurrencySettings';
 import { ConnectedAccounts } from '../components/settings/ConnectedAccounts';
 import { PrioritiesSettings } from '../components/settings/PrioritiesSettings';
 import { TagManager } from '../components/settings/TagManager';
+import { BudgetStartSettings } from '../components/settings/BudgetStartSettings';
 import { LICENSE_URL, SOURCE_CODE_URL } from '../utils/project';
 
 const tabs = [
   { id: 'categories', label: 'Categories', icon: Layers },
   { id: 'accounts', label: 'Accounts', icon: ArrowUpDown },
+  // When the envelope budget starts counting
+  { id: 'budget', label: 'Budget', icon: CalendarRange },
   // Phase 9 transaction tags
   { id: 'tags', label: 'Tags', icon: Tag },
   { id: 'connections', label: 'Connected Banks', icon: Link2 },
@@ -82,6 +86,7 @@ export default function SettingsPage() {
           {activeTab === 'categories' && <CategoryManager />}
           {activeTab === 'accounts' && <AccountReorder />}
           {activeTab === 'tags' && <TagManager />}
+          {activeTab === 'budget' && <BudgetStartSettings />}
           {activeTab === 'connections' && <ConnectedAccounts />}
           {activeTab === 'currencies' && <CurrencySettings />}
           {activeTab === 'priorities' && <PrioritiesSettings />}
