@@ -98,7 +98,7 @@ this month's assignment minus spending. Label monthly spending progress separate
 Keep income expectations distinct from receipts. Treat categories with carried
 balances, deficits, assignments or current activity as active.
 
-Show deficits across month boundaries. A zero unassigned total alone must not trigger
+Show deficits in the month they happen; the next month starts the envelope at zero, as YNAB does. A zero unassigned total alone must not trigger
 an unqualified "Fully budgeted" state while spending or deficits remain unresolved.
 Distinguish cash overspending from credit-funded spending.
 
@@ -118,7 +118,7 @@ for history and safe undo; undo must detect intervening changes rather than over
 - A $200 uncategorised debit prevents an unqualified fully resolved state.
 - $600 carried + $100 assigned − $500 spending shows $200 available without overspending.
 - A $600 rollover-only category stays visible; a $50 refund increases availability by $50.
-- A $200 prior-month deficit stays visible until resolved, including when current income equals current assignments.
+- A $200 deficit stays visible for its month, including when current income equals current assignments; like YNAB, the envelope starts the next month at zero because the cash is already gone (owner decision, October 2026).
 - A $50 category move preserves resources and total assignments; failure changes neither side.
 - Competing clients cannot both use the same source availability. Undo restores both sides or reports a conflict.
 - Desktop, phone, detail and summary agree, including refunds, splits and missing rates.

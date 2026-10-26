@@ -1,8 +1,12 @@
 # Envelope funding (phase 6A)
 
 One calculation service supplies the monthly summary and payday planner. Expense
-Available is previous Available + Assigned + signed Activity. Refunds increase it;
-negative balances remain visible across months. Income expectations remain separate
+Available is previous Available + Assigned + signed Activity. Refunds increase it.
+Like YNAB, an envelope that ends a month overspent starts the next month at zero
+(`rollOver` in `budgetService.ts`): the money already left the accounts, so resources and
+unassigned already show it, and a one-off such as a loan payout or settlement isn't
+carried as a deficit forever. Overspending stays visible, and in Review, for the
+month it happened. Card payment categories keep a running total. Income expectations remain separate
 from actual received income. Ordinary transactions and stored assignments are never
 rewritten during upgrade.
 

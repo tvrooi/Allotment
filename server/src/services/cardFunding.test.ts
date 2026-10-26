@@ -142,6 +142,50 @@ describe('card payment reserves', () => {
     expect(cat().activity).toBe(-8000);
     expect(state()).toMatchObject({ resources: 92000, reserved: 2000, unassigned: 90000 });
   });
+  it('keeps an unfunded card purchase from last month unfunded after the envelope resets', () => {
+    setup();
+    db.update(cardFunding).set({ startDate: '2026-09-01' }).run();
+    entry('september', -8000, 'food', { date: '2026-09-15' });
+    // The envelope starts October at zero, like YNAB, but the card debt stays unfunded
+    expect(cat()).toMatchObject({ carryOver: 0, balance: 0 });
+    expect(position()).toMatchObject({ debt: 8000, available: 0, shortfall: 8000 });
+    expect(state()).toMatchObject({ resources: 100000, reserved: 0, unassigned: 100000 });
+    // October's assignment backs October's envelope only, not September's card debt
+    assign('food', 5000);
+    expect(cat().balance).toBe(5000);
+    expect(position()).toMatchObject({ available: 0, shortfall: 8000 });
+    expect(state()).toMatchObject({ reserved: 5000, unassigned: 95000 });
+  });
+  it('lets a refund of an unfunded purchase from last month reduce the debt without refilling the envelope', () => {
+    setup();
+    db.update(cardFunding).set({ startDate: '2026-09-01' }).run();
+    entry('september', -8000, 'food', { date: '2026-09-15' });
+    entry('refund', 8000);
+    expect(cat()).toMatchObject({ carryOver: 0, balance: 0 });
+    expect(position()).toMatchObject({ debt: 0, available: 0, shortfall: 0 });
+    expect(state()).toMatchObject({ reserved: 0, unassigned: 100000 });
+    // So a new purchase this month has nothing behind it
+    entry('october', -3000);
+    expect(position()).toMatchObject({ debt: 3000, available: 0, shortfall: 3000 });
+  });
+  it('funds a new card purchase from this month, whatever cash overspending came before', () => {
+    setup();
+    db.update(cardFunding).set({ startDate: '2026-09-01' }).run();
+    db.insert(transactions)
+      .values({
+        id: 'cash-sep',
+        accountId: 'cash',
+        date: '2026-09-15',
+        amount: -8000,
+        categoryId: 'food',
+      })
+      .run();
+    assign('food', 8000);
+    entry('october', -8000);
+    expect(cat()).toMatchObject({ carryOver: 0, balance: 0 });
+    expect(position()).toMatchObject({ debt: 8000, available: 8000, shortfall: 0 });
+    expect(state()).toMatchObject({ resources: 92000, reserved: 8000, unassigned: 84000 });
+  });
   it('exposes partial and unfunded purchases, and retroactively reserves a reviewed category assignment', () => {
     setup();
     assign('food', 5000);
