@@ -134,8 +134,7 @@ records, not only tax evidence.
 - **Reading photos with a local model** (`receiptReader.ts`, since 0.2.0-up.44):
   - **Off by default.** Settings → _Read receipts automatically_: an Ollama address (http or
     https, no path or credentials; redirects are refused) and a model. On Home Assistant, the
-    Ollama app's address on the internal network is shown in its documentation (for the
-    community app, `http://76e18fb5-ollama:11434`), so no port needs opening. **Check** lists
+    Ollama app's address on the internal network is shown in its documentation (`http://<app-hostname>:11434`), so no port needs opening. **Check** lists
     the server's models and which can read images (`vision`).
   - **What is sent:** the photo (JPEG, PNG, WebP; not PDF or HEIC), only to that address, with a
     prompt naming the spending categories. The request asks for JSON in a fixed schema

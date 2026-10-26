@@ -15,8 +15,7 @@ Last updated: 26 October 2026.
   with a local Ollama vision model. CI and the Codex review were being worked to green, and every
   finding so far is fixed and resolved. When it is green and clean, merge it (squash) under the
   standing authorization. **Publish tested main** then tags and releases it.
-- **Live Home Assistant app:** installed from the catalog repository (slug prefix `24ff2149`, not the
-  old `local_flybudget_up`), with **Auto update on**. It was already on `0.2.0-up.43` on 26 October.
+- **Live Home Assistant app:** installed from the catalog repository (not the old `local_flybudget_up`), with **Auto update on**. It was already on `0.2.0-up.43` on 26 October.
   A completed release reaches it through the catalog sync (MAINTENANCE.md, step 5) and then its
   auto-update. Before relying on that, verify the installed version afterwards, and take a cold
   backup first when you update it by hand.
@@ -37,8 +36,9 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
 
 - **Hardware:** Home Assistant OS on an x86-64 mini PC with an Intel Alder Lake-N (N100-class) CPU
   and 16 GB RAM. About 4.6 GiB is in normal use; Frigate is the largest user and takes a lot of CPU.
-- **Ollama app** (community repository, slug `76e18fb5_ollama`): FlyBudget reaches it on the internal
-  network at `http://76e18fb5-ollama:11434`. The model for receipts is `qwen3-vl:4b-instruct`. The
+- **Ollama app** (community repository): FlyBudget reaches it on Home Assistant's internal network
+  at the hostname shown in the Ollama app's documentation, `http://<app-hostname>:11434`. Keep the
+  actual address out of the repository. The model for receipts is `qwen3-vl:4b-instruct`. The
   plain `qwen3-vl:4b` tag is a thinking variant, slower on a CPU; it is also installed, using about
   3.3 GB, and can be removed if the owner agrees.
   - `OLLAMA_KV_CACHE_TYPE` was changed from `q8_0` to `f16`: `q8_0` with flash attention off stopped
