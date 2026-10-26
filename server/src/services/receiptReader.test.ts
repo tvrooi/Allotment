@@ -218,6 +218,7 @@ describe('reading a receipt', () => {
     const sent = JSON.parse(String(init.body));
     expect(sent).toMatchObject({ model: 'qwen3-vl:4b', stream: false, think: false });
     expect(sent.keep_alive).toBe('5m');
+    expect(sent.options).toEqual({ temperature: 0, num_ctx: 8192 });
     expect(sent.format.required).toContain('total');
     expect(sent.messages[0].images).toEqual([jpeg('a').toString('base64')]);
     // Spending categories only are offered

@@ -15,6 +15,11 @@ import { SAMPLE_RECEIPT, SAMPLE_RECEIPT_PNG } from './receiptSample.js';
 const READ_TIMEOUT_MS = 10 * 60 * 1000;
 /** Free the model's memory a few minutes after the last receipt (the Ollama app keeps it forever) */
 const KEEP_ALIVE = '5m';
+/**
+ * Room for a photo (a receipt can be a few thousand image tokens), the prompt and the answer.
+ * Ollama's default is 4096 (2048 in older versions), which can cut an image off.
+ */
+const CONTEXT_TOKENS = 8192;
 /** Largest reply accepted from Ollama */
 const MAX_REPLY_BYTES = 256 * 1024;
 const READABLE = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -258,7 +263,7 @@ async function askModel(url: string, model: string, image: string) {
       think: false,
       keep_alive: KEEP_ALIVE,
       format: REPLY_SCHEMA,
-      options: { temperature: 0 },
+      options: { temperature: 0, num_ctx: CONTEXT_TOKENS },
       messages: [{ role: 'user', content: prompt(choices.names), images: [image] }],
     }),
   })) as { message?: { content?: unknown } };

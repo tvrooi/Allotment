@@ -140,7 +140,8 @@ records, not only tax evidence.
   - **What is sent:** the photo (JPEG, PNG, WebP; not PDF or HEIC), only to that address, with a
     prompt naming the spending categories. The request asks for JSON in a fixed schema
     (`format`), `temperature: 0`, `think: false` (a thinking model is slow on a CPU) and
-    `keep_alive: 5m`, so the model leaves memory a few minutes after the last receipt.
+    `keep_alive: 5m`, and an 8192-token context (`num_ctx`; Ollama's 4096 default can cut a
+    photo off), so the model leaves memory a few minutes after the last receipt.
   - **What is kept:** a sensible positive amount in cents, a real date from 2000 to tomorrow, a
     category only if it matches a spending category by name; anything else is null.
   - **Never replaces what was typed:** only empty fields are filled, and line items only when
