@@ -71,6 +71,12 @@ never an earlier one. An existing shortfall may stay, and reductions are always 
 but no write may deepen a shortfall. Missing exchange rates block any write that takes
 money.
 
+Overspending is the one exception, as in YNAB: you can always assign what Ready to Assign
+shows. If a category is overspent, assigning that money elsewhere leaves next month's Ready
+to Assign negative until you cover the overspending (Move money). Target funding, the
+income review and manual edits therefore never offer an amount the guard refuses; payday
+plans still hold back enough to cover this month's overspending.
+
 ## Resources
 
 Resources are the dated balances of personal on-budget checking, savings, cash,

@@ -158,6 +158,19 @@ it('cash overspending is red in its month and comes out of the next month only',
   expect(rta('2026-12')).toBe(-10000); // deducted once, not every month
 });
 
+it('overspending never blocks assigning what Ready to Assign shows; next month absorbs it', () => {
+  account('cash', '2026-10-01');
+  txn('cash', '2026-10-05', 100000, 'salary');
+  assign('food', '2026-10', 70000);
+  txn('cash', '2026-10-12', -80000, 'food'); // Food overspent by $100
+  expect(rta('2026-10')).toBe(30000);
+  assign('rent', '2026-10', 30000); // the whole figure shown, as YNAB allows
+  expect(rta('2026-10')).toBe(0);
+  expect(rta('2026-11')).toBe(-10000);
+  // Money that isn't there is still refused
+  expect(() => assign('fun', '2026-10', 1)).toThrow(/Insufficient/);
+});
+
 // --- From-scratch recompute ---------------------------------------------------------------
 
 /** A small deterministic generator, so a failure names a reproducible seed */

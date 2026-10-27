@@ -150,22 +150,28 @@ const monthAfter = (m: string) => {
   const i = Number(m.slice(0, 4)) * 12 + Number(m.slice(5, 7));
   return `${Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, '0')}`;
 };
-/** What each month in `months` can still assign. A past month needs the money by its own
- * end; the current and later months also keep every later month's assignments funded. */
+/** What each month in `months` (consecutive up to next month, then sparse) can still assign.
+ * A past month needs the money by its own end; the current and later months also keep every
+ * later month's assignments funded. Like YNAB, overspending from the first checked month on
+ * doesn't block assigning what Ready to Assign shows: its deduction in the following month is
+ * added back, so that month starts negative until the overspending is covered. */
 function assignable(months: string[], today: string) {
   const current = today.slice(0, 7);
   const result: { month: string; value: number; complete: boolean }[] = [];
+  let deferred = 0;
   for (const m of months) {
     const end = monthBounds(m).to;
     const state = fundingState(end < today ? end : today, m);
     result.push({
       month: m,
       value:
-        m < current
+        deferred +
+        (m < current
           ? state.unassignedBeforeLater
-          : state.unassignedBeforeLater - state.futureAssigned,
+          : state.unassignedBeforeLater - state.futureAssigned),
       complete: state.complete,
     });
+    deferred += state.cashOverspent;
   }
   return result;
 }
@@ -173,7 +179,8 @@ function assignable(months: string[], today: string) {
 /** Runs an assignment change in one transaction, refusing it if any month it affects would
  * assign money that month doesn't have (or rates are missing): an inflow funds its own month
  * and later ones, never an earlier one. A shortfall that already existed may stay, but no
- * write may deepen it. Shared by manual, target and income writes. */
+ * write may deepen it, except through overspending (see `assignable`). Shared by manual,
+ * target and income writes. */
 export function fundedWrite(action: () => void) {
   return db.transaction(() => {
     const before = assignmentRows();
