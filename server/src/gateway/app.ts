@@ -44,11 +44,13 @@ export const SESSION_COOKIE = 'flybudget_session';
 const GATEWAY_HEADER = 'x-flybudget-gateway';
 /** How long an invitation code stays valid */
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-/** Reading-only access tokens name their budget: fbro_<person id>_<random> */
 /** Sent by the app: whose budget the page shows (client/src/api/person.ts) */
 const PERSON_HEADER = 'x-flybudget-person';
 const PERSON_CHANGED_CODE = 'person-changed';
-const ROUTED_TOKEN = /^Bearer\s+fbro_([0-9a-f]{12})_[A-Za-z0-9_-]{20,}$/;
+/** Any case of "Bearer", as bearerToken() in auth/accessTokens.ts (which opens a budget database) */
+const BEARER = /^Bearer\s+(\S+)$/i;
+/** Reading-only access tokens name their budget: fbro_<person id>_<random> */
+const ROUTED_TOKEN = /^fbro_([0-9a-f]{12})_[A-Za-z0-9_-]{20,}$/;
 
 export interface GatewayOptions {
   store: GatewayStore;
@@ -497,7 +499,7 @@ export function createGateway(o: GatewayOptions) {
   app.use('/api', (req, res) => {
     // An access token (Settings → Server → Read-only access) goes to the budget that issued it,
     // which checks it. The gateway's secret is never added to these requests.
-    const routed = ROUTED_TOKEN.exec(req.headers.authorization ?? '');
+    const routed = ROUTED_TOKEN.exec(BEARER.exec(req.headers.authorization ?? '')?.[1] ?? '');
     if (routed) {
       const owner = store.person(routed[1]);
       const port = owner && !owner.disabled ? budgets.port(owner.id) : undefined;

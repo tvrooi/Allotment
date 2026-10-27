@@ -146,6 +146,7 @@ test("another person signing in on the same browser takes over every tab's budge
   await other.goto(`${baseURL}/`);
   await expect(partner.getByText('Sign in to FlyBudget')).toBeVisible();
   // The page started again: nothing of Edward's stays in its memory (undo history, toasts...)
+  await partner.waitForLoadState();
   expect(await partner.evaluate(() => 'edwardWasHere' in window)).toBe(false);
   await other.getByLabel('Name').fill('Tristan');
   await other.getByLabel('Password', { exact: true }).fill('a brand new phrase');

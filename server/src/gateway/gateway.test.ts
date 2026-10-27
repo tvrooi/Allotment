@@ -242,6 +242,13 @@ describe('multi-user gateway', () => {
       Authorization: `Bearer ${ownerToken}`,
     });
     expect(read.body.map((a: { name: string }) => a.name)).toEqual(['Everyday']);
+    // Any case of the scheme, as the budget itself accepts
+    for (const scheme of ['bearer', 'BEARER']) {
+      const res = await stranger('GET', '/api/accounts', undefined, {
+        Authorization: `${scheme} ${ownerToken}`,
+      });
+      expect(res.status).toBe(200);
+    }
     // The same token pointed at the partner's id is just an invalid token there
     const moved = ownerToken.replace(owners.id, partnerId);
     expect(

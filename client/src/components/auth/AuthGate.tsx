@@ -127,7 +127,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   // Can't reach the server (or still asking) but this device has a copy: open with it.
   // Saving waits for the connection, except new transactions (they wait on the device).
   if ((isLoading || isError || !status) && hasOfflineCopy) return app;
-  if (isLoading) {
+  // Multi-user mode: a page that showed someone reloads before the sign-in screen (restart)
+  if (isLoading || (loginRequired && shownPerson)) {
     return (
       <div className="h-screen flex items-center justify-center bg-surface-alt">
         <Loader2 size={24} className="animate-spin text-text-tertiary" />
