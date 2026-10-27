@@ -21,6 +21,20 @@ import { Button } from '../ui/Button';
 import { AuthScreen } from './AuthScreen';
 import { MIN_PASSWORD_LENGTH } from './passwordRules';
 
+/** Multi-user mode: the person whose budget this page has shown since it loaded */
+let shownPerson: string | null = null;
+let restarting = false;
+
+/**
+ * Loads this page again from nothing, dropping everything it held for the last person.
+ * Their offline copy is deleted first.
+ */
+function restart() {
+  if (restarting) return;
+  restarting = true;
+  void clearOfflineCopy().finally(() => window.location.reload());
+}
+
 /**
  * Shows the login (or first-run setup) screen when FlyBudget runs as a server and
  * this browser isn't signed in. In the desktop app and dev mode login is disabled,
@@ -54,8 +68,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   // Signed out (expired, signed out elsewhere, password changed): forget this device's copy
   useEffect(() => {
     if (!loginRequired) return;
-    void clearOfflineCopy();
     setSignedInPerson(null);
+    // Multi-user mode: someone used this page, and the next person may sign in on it. Start
+    // again, so nothing of theirs stays in memory (undo history, toasts, stores, cache).
+    if (shownPerson) restart();
+    else void clearOfflineCopy();
   }, [loginRequired]);
 
   // Multi-user mode: remember who signed in, so requests, the offline copy and waiting
@@ -65,24 +82,16 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     if (!personId) return;
     const before = signedInPerson();
     setSignedInPerson(personId);
+    shownPerson = personId;
     if (before === personId) return;
+    // The page opened with someone else's offline copy (their session ended elsewhere)
+    if (before) return restart();
     void loadOutbox();
-    // Signing in on this page already dropped the cache; a page that showed someone else
-    // (their offline copy, a session ended elsewhere) loads everything again as this person
-    if (!before) return;
-    void clearOfflineCopy();
-    void qc.resetQueries({ predicate: (q) => q.queryKey[0] !== 'auth-status' });
-  }, [personId, qc]);
+  }, [personId]);
 
   // Multi-user mode: another person signed in on this browser (in another tab, which shares
   // the session cookie), so this page's data is someone else's. Start again as them.
   useEffect(() => {
-    let restarting = false;
-    const restart = () => {
-      if (restarting) return;
-      restarting = true;
-      void clearOfflineCopy().finally(() => window.location.reload());
-    };
     const onStorage = (e: StorageEvent) => {
       if (e.key !== PERSON_STORAGE_KEY || e.newValue === signedInPerson()) return;
       if (e.newValue && signedInPerson()) restart();

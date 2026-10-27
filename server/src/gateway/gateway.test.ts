@@ -9,7 +9,7 @@ import type { Server } from 'http';
 // FlyBudget server runs from source on loopback, with its own made-up empty database.
 
 process.env.FLYBUDGET_SERVER_MODE = 'true';
-const { createGateway } = await import('./app.js');
+const { bankCallbackPerson, createGateway } = await import('./app.js');
 const { Budgets, processLauncher } = await import('./budgets.js');
 const { GatewayStore } = await import('./store.js');
 const { setupCode } = await import('../auth/setupCode.js');
@@ -214,6 +214,22 @@ describe('multi-user gateway', () => {
       'x-flybudget-person': partnerId,
     });
     expect(own.status).toBe(200);
+  });
+
+  it("sends a bank's redirect back to the budget that started the login", async () => {
+    const { makeState } = await import('../services/enableBankingTransactions.js');
+    const people = store.people();
+    const portOf = (id: string) => budgets.port(id);
+    const random = 'r'.repeat(43);
+    const partnerPort = budgets.port(partnerId)!;
+    expect(bankCallbackPerson(people, portOf, makeState(partnerPort, random))?.id).toBe(partnerId);
+    const admin = people.find((p) => p.isAdmin)!;
+    expect(bankCallbackPerson(people, portOf, makeState(budgets.port(admin.id)!, random))?.id).toBe(
+      admin.id,
+    );
+    // An old or unreadable state: the administrator's budget, which refuses an unknown one
+    expect(bankCallbackPerson(people, portOf, 'nonsense')?.id).toBe(admin.id);
+    expect(bankCallbackPerson(people, portOf, undefined)?.id).toBe(admin.id);
   });
 
   it('routes an access token to the budget that issued it, and only there', async () => {

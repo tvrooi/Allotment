@@ -23,6 +23,7 @@ import {
   verifyPassword,
 } from '../auth/password.js';
 import { checkSetupCode, clearSetupCode, setupCode } from '../auth/setupCode.js';
+import { parseState } from '../services/enableBankingTransactions.js';
 import { Budgets, ensureKey } from './budgets.js';
 import { NOTIFY_SERVICE, type Notify } from './notify.js';
 import {
@@ -484,10 +485,11 @@ export function createGateway(o: GatewayOptions) {
   // ─── Everything else: the signed-in person's own budget ────────────────────
 
   // The bank's redirect after an Enable Banking login carries no session (it comes from the
-  // bank's site), so it can only go to the administrator's budget
+  // bank's site). Its `state` names the port of the budget that started the login
+  // (makeState), so it goes back there; that budget checks the state's random part.
   app.get(BANK_CALLBACK_PATH, (req, res) => {
-    const admin = store.people().find((p) => p.isAdmin && !p.disabled);
-    const port = admin && budgets.port(admin.id);
+    const person = bankCallbackPerson(store.people(), (id) => budgets.port(id), req.query.state);
+    const port = person && budgets.port(person.id);
     if (!port) return res.status(503).json({ error: 'Not available' });
     forward(req, res, port, false);
   });
@@ -571,6 +573,22 @@ export function createGateway(o: GatewayOptions) {
   }
   app.use(errorHandler);
   return app;
+}
+
+/**
+ * Whose budget an Enable Banking redirect belongs to: the one whose port is in its `state`
+ * (the budget that started the login), else the administrator's (an old or unreadable state).
+ */
+export function bankCallbackPerson(
+  people: Person[],
+  portOf: (personId: string) => number | undefined,
+  state: unknown,
+): Person | undefined {
+  const parsed = typeof state === 'string' ? parseState(state) : null;
+  const active = people.filter((p) => !p.disabled);
+  return (
+    (parsed && active.find((p) => portOf(p.id) === parsed.port)) ?? active.find((p) => p.isAdmin)
+  );
 }
 
 const HOP_BY_HOP = new Set([

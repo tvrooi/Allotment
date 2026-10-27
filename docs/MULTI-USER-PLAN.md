@@ -21,7 +21,11 @@ turning the option off returns to it and its old password. That replaced step 4 
 - One browser, two people: tabs share the session cookie, so each page sends whose budget it
   shows (`x-flybudget-person`, `client/src/api/person.ts`) and the gateway refuses it with 409
   once someone else has signed in there. The offline copy and waiting transactions are tagged
-  with their person, and other tabs follow a sign-in or sign-out straight away.
+  with their person, and other tabs follow a sign-in or sign-out straight away. A page that
+  showed one person reloads before anyone else can use it, so nothing of theirs (undo history,
+  toasts) stays in memory.
+- Enable Banking's redirect goes back to the budget that started the bank login: its `state`
+  names that budget's loopback port (`bankCallbackPerson`).
 - Tests: `server/src/gateway/*.test.ts` (real budget processes from source) and
   `e2e/tests/multi-user/people.spec.ts` (project `multi-user`).
 
