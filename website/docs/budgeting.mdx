@@ -48,17 +48,18 @@ month, your monthly average and a small history chart. Tick
 
 ## To Be Budgeted
 
-The panel on the right starts with how much money still needs a job:
+The panel on the right starts with how much money still needs a job. Like YNAB, every dollar
+in your on-budget accounts is either in a category or ready to assign:
 
 ```text
-To Be Budgeted = income received this month + left over from earlier months − planned this month
+Ready to assign = money in your accounts − what your categories hold − what later months have assigned
 ```
 
-"Left over from earlier months" is all the income you've received before this month, minus
-everything you planned for earlier months.
-
-The box is always titled **Ready to assign**: money you have that isn't in an envelope yet.
-Income counts as soon as it arrives. Below the amount it says:
+The box is always titled **Ready to assign**. Income counts from the day it arrives, in that
+month and every later one, never in an earlier month. Assigning moves money out of it into a
+category; **Move money** between categories leaves it unchanged. Looking back at a month before
+your income shows $0: later months' assignments only take what that month had left. Below the
+amount it says:
 
 | It says                                             | Which means                                                                                                                              |
 | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
@@ -71,10 +72,20 @@ Income counts as soon as it arrives. Below the amount it says:
 ### When you overspend
 
 Like YNAB, an overspent category shows in red for the month it happened, and starts the next
-month at zero. The money has already left your accounts, so **Ready to assign** already shows
-it. A one-off you couldn't plan for, such as paying out a loan or a settlement, doesn't follow
-you into later months. Cover it this month with **Move money** if you can; otherwise let it go
-and budget the next month from what you have.
+month at zero. How that reaches **Ready to assign** depends on how you paid:
+
+- **Cash** (a bank account, or a card you haven't set up under Card payments): Ready to assign
+  doesn't change this month. When the next month starts, the overspent amount comes out of its
+  Ready to assign, once. For example: $1,000 arrives, you assign $700 to Groceries and $300 to
+  Rent, then spend $800 on groceries. This month shows Ready to assign $0 and Groceries −$100;
+  next month shows Ready to assign −$100 and Groceries $0.
+- **A credit card set up under Card payments:** the overspending is card debt. It never comes
+  out of Ready to assign; the card shows a payment shortfall until you fund it.
+
+A one-off you couldn't plan for, such as paying out a loan or a settlement, is taken out once and
+doesn't follow you into later months. Cover it this month with **Move money** if you can;
+otherwise let it go and budget the next month from what you have. Spending you haven't
+categorised yet leaves Ready to assign straight away.
 
 Below it, **Summary**, **Income** and **Expenses** tabs compare what you planned with what's
 actually happened this month.

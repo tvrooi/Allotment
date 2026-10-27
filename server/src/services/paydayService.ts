@@ -253,7 +253,10 @@ export function previewPayday(planId: string, request: PaydayRequest) {
   const state = fundingState(today);
   if (!state.complete) throw new PaydayError('Add missing account exchange rates before funding');
   const future = request.actualPayDate > today;
-  const available = future || existing ? 0 : Math.min(state.available, received);
+  // Ready to Assign doesn't count this month's overspending until next month (like YNAB);
+  // an automatic allocation leaves enough to cover it rather than spend it twice
+  const available =
+    future || existing ? 0 : Math.min(Math.max(0, state.available - state.cashOverspent), received);
   const bills = billCoverage(
     request.actualPayDate < occurrence.expectedDate
       ? request.actualPayDate

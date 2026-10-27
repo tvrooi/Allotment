@@ -180,7 +180,7 @@ export function BudgetSummaryWidget({
               [
                 ['Envelope deficits', funding.overspent],
                 ['Uncategorised spending', funding.uncategorized],
-                ['Future assignments reserved', funding.futureAssigned],
+                ['Assigned in later months', funding.laterDeduction ?? funding.futureAssigned],
                 ['Card payment shortfall', funding.paymentShortfall ?? 0],
                 ['Payments without funding', funding.uncoveredCardPayments ?? 0],
               ] as const
@@ -188,7 +188,7 @@ export function BudgetSummaryWidget({
               <div key={label} className="flex justify-between gap-2">
                 <dt className="text-text-secondary">{label}</dt>
                 <dd
-                  className={`tabular-nums ${value > 0 && label !== 'Future assignments reserved' ? 'text-negative font-medium' : 'text-text'}`}
+                  className={`tabular-nums ${value > 0 && label !== 'Assigned in later months' ? 'text-negative font-medium' : 'text-text'}`}
                 >
                   {formatCurrency(value)}
                 </dd>
@@ -196,6 +196,9 @@ export function BudgetSummaryWidget({
             ))}
           </dl>
           <p className="text-text-tertiary mt-1.5">
+            {(funding.cashOverspent ?? 0) > 0
+              ? `${formatCurrency(funding.cashOverspent ?? 0)} overspent from cash comes out of next month's Ready to assign. `
+              : ''}
             Unreviewed card accounts retain net-debt funding.
           </p>
         </div>

@@ -2,13 +2,20 @@ import { test, expect, open, isoDay, thisMonth } from './fixtures';
 for (const phone of [false, true]) {
   test(`rollover, refunds, cover and undo${phone ? ' on phone' : ''}`, async ({ page, api }) => {
     if (phone) await page.setViewportSize({ width: 390, height: 844 });
-    const account = await api.createAccount('Opening cash', 100000);
+    const account = await api.createAccount('Cash', 0);
     const food = await api.category('Groceries');
     const rent = await api.category('Rent / Mortgage');
     const month = thisMonth();
     const d = new Date(`${month}-01T12:00:00`);
     d.setMonth(d.getMonth() - 1);
     const prior = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    // Last month's assignment needs money that had arrived by then
+    await api.createTransaction({
+      accountId: account.id,
+      date: `${prior}-15`,
+      amount: 100000,
+      categoryId: (await api.category('Paychecks')).id,
+    });
     await api.call('PUT', `/budget/${prior}/${food.id}`, { budgeted: 60000 });
     await api.call('PUT', `/budget/${month}/${food.id}`, { budgeted: 10000 });
     await api.createTransaction({
@@ -29,11 +36,16 @@ for (const phone of [false, true]) {
       amount: -5000,
       categoryId: rent.id,
     });
+    // Rent's $50 deficit is red this month and leaves next month's Ready to Assign
     expect(await api.call('GET', `/budget/${month}/summary`)).toMatchObject({
-      toBeBudgeted: 25000,
+      toBeBudgeted: 30000,
       overspent: 5000,
       resolved: false,
     });
+    const n = new Date(`${month}-01T12:00:00`);
+    n.setMonth(n.getMonth() + 1);
+    const next = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
+    expect((await api.call('GET', `/budget/${next}/summary`)).toBeBudgeted).toBe(25000);
     await open(page, '/budget');
     const row = phone
       ? page.getByTestId('budget-card').filter({ hasText: 'Groceries' })

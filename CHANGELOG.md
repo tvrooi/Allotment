@@ -5,7 +5,16 @@
 - **Separate budgets for more than one person** (Home Assistant option **multi_user**, off by default). Each person signs in by name to a budget only they can open, with its own password, database and encryption key, run as its own process behind a new sign-in gateway. The budget already on the server stays in place and becomes the first person's; turning the option off goes back to it.
 - **Settings → Server → People** (administrator): add a person with an invitation code, issue a password reset code (written to the app's Log), or stop someone signing in. The administrator can't open anyone else's budget.
 - **Forgot password?** sends a code to the person's phone as a Home Assistant notification (Settings → Server → Password codes to your phone): six digits, for 10 minutes. The administrator's code, valid for 24 hours, is also written to the Log.
-- Read-only access tokens and the assistant (MCP) connection reach only the budget that created them. A new password revokes that person's tokens.
+- Read-only access tokens and the assistant (MCP) connection reach only the budget that created them. A new password revokes that person's tokens. Bank connections (Enable Banking) return to the budget that started them.
+- On a shared browser, a page never keeps one person's budget, offline copy, waiting transactions or undo history after someone else signs in.
+
+## 0.2.0-up.47
+
+- **Ready to assign works like YNAB.** Every dollar in your accounts is either in a category or ready to assign, so the figure is always your accounts minus what your categories hold. Assigning $700 and $300 from a $1,000 paycheck leaves exactly $0, in every month you look at.
+- **Earlier months no longer go negative.** A month before your income now shows $0, instead of next month's assignments as a negative number. Money can only be assigned in the month it arrived or later; assigning it in an earlier month is refused with the reason.
+- **Overspending follows one rule.** Overspending with cash is red in its category for that month and comes out of next month's Ready to assign, once. Before, it was taken off Ready to assign straight away _and_ shown in the category, so it was counted twice. Overspending on a reviewed credit card is card debt: it never comes out of Ready to assign and stays a card payment shortfall until you fund it.
+- **Moving money only changes the two categories.** Covering an overspent category no longer changes Ready to assign.
+- The budget summary's breakdown shows what later months' assignments take from the month you're viewing and how much overspending will come out of next month. A payday plan still leaves enough to cover this month's overspending. Review → "Where today's money is" lists spending beyond your categories, so its rows add up to your cash.
 
 ## 0.2.0-up.46
 

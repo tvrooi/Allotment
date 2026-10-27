@@ -133,11 +133,14 @@ describe('the demo budget, loaded', () => {
 
   const get = async (path: string) => (await fetch(base + path)).json();
 
-  it('reconciles historical resources and reservations, disclosing overcommitments', async () => {
+  it('reconciles historical resources and envelopes, disclosing overcommitments', async () => {
     for (let i = 0; i < 18; i++) {
       const month = format(subMonths(today, i), 'yyyy-MM');
       const summary = await get(`/budget/${month}/summary`);
-      expect(summary.toBeBudgeted + summary.reserved, month).toBe(summary.resources);
+      // Every dollar is in an envelope, taken by a later month, or ready to assign
+      expect(summary.toBeBudgeted + summary.envelopes + summary.laterDeduction, month).toBe(
+        summary.resources,
+      );
       if (summary.toBeBudgeted < 0) expect(summary.resolved, month).toBe(false);
     }
   });

@@ -129,8 +129,9 @@ a budget only they can open, each with their own password.
   chooses **Reset password**, and the code appears in the **Log** for them to pass on.
 - **Read-only access tokens** and the assistant (MCP) connection work per person: each token
   reaches only the budget that created it.
-- **Limits:** Enable Banking's bank redirect only reaches the administrator's budget. Each budget
-  uses roughly 100 to 150 MB of memory while the app runs.
+- **Bank connections** (Enable Banking) work per person: the bank sends you back to the budget
+  that started the login.
+- **Memory:** each budget uses roughly 100 to 150 MB while the app runs.
 - **Backups** of the app include every person's budget, keys and `people.db`. Restore the whole
   app; restoring one person's budget on its own isn't offered.
 
