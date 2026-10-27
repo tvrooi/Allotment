@@ -8,6 +8,7 @@ import {
   createAccessToken,
   listAccessTokens,
   revokeAccessToken,
+  revokeAllAccessTokens,
 } from '../auth/accessTokens.js';
 
 // Settings → Server → Read-only access. Managing tokens needs a signed-in session: a read-only
@@ -41,6 +42,13 @@ accessTokensRouter.post('/', (req, res) => {
     if (error instanceof AccessTokenError) return res.status(409).json({ error: error.message });
     throw error;
   }
+});
+
+// Every token at once: the multi-user gateway calls this when a person's password changes,
+// as changing the single password does (auth/sessions.ts)
+accessTokensRouter.post('/revoke-all', (_req, res) => {
+  revokeAllAccessTokens();
+  res.status(204).end();
 });
 
 accessTokensRouter.delete('/:id', (req, res) => {

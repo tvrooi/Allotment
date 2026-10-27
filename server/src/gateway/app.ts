@@ -95,6 +95,27 @@ export function createGateway(o: GatewayOptions) {
     });
   }
 
+  /**
+   * A new password revokes the person's read-only access tokens, as it does without the
+   * gateway: their budget is asked to, with the secret. Logged if it can't be reached.
+   */
+  function revokeTokens(person: Person) {
+    const port = budgets.port(person.id);
+    if (!port) return;
+    const call = http.request(
+      {
+        host: '127.0.0.1',
+        port,
+        method: 'POST',
+        path: '/api/access-tokens/revoke-all',
+        headers: { [GATEWAY_HEADER]: budgets.secret, 'content-length': 0 },
+      },
+      (answer) => answer.resume(),
+    );
+    call.on('error', () => console.error(`Access tokens could not be revoked (${person.id})`));
+    call.end();
+  }
+
   /** Spends the hashing time even when there's no one to check, so timing reveals nothing */
   async function checkPassword(person: Person | undefined, password: string) {
     const hash = person && !person.disabled ? store.passwordHash(person.id) : null;
@@ -205,6 +226,7 @@ export function createGateway(o: GatewayOptions) {
     if (!(await checkPassword(person, parsed.data.currentPassword)))
       return res.status(401).json({ error: 'Current password is incorrect' });
     store.setPassword(person.id, await hashPassword(parsed.data.newPassword), sessionToken(req));
+    revokeTokens(person);
     res.status(204).send();
   });
 
@@ -270,6 +292,7 @@ export function createGateway(o: GatewayOptions) {
       return res.status(401).json({ error: 'That name and code do not match' });
     store.setPassword(person.id, await hashPassword(parsed.data.password));
     if (!budgets.isRunning(person.id)) await budgets.start(person);
+    revokeTokens(person);
     startSession(req, res, person);
     res.status(204).send();
   });

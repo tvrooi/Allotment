@@ -286,4 +286,25 @@ describe('multi-user gateway', () => {
       running: true,
     });
   }, 120_000);
+
+  it("changing a password signs out other devices and revokes that person's access tokens", async () => {
+    const other = browser();
+    await other('POST', '/api/auth/login', { name: 'Tristan', password: 'owner-pass-1' });
+    expect(
+      (
+        await owner('POST', '/api/auth/change-password', {
+          currentPassword: 'owner-pass-1',
+          newPassword: 'owner-pass-2',
+        })
+      ).status,
+    ).toBe(204);
+    expect((await owner('GET', '/api/accounts')).status).toBe(200);
+    expect((await other('GET', '/api/accounts')).status).toBe(401);
+    // Revoked by the budget, asked by the gateway
+    await new Promise((r) => setTimeout(r, 300));
+    const read = await stranger('GET', '/api/accounts', undefined, {
+      Authorization: `Bearer ${ownerToken}`,
+    });
+    expect(read.status).toBe(401);
+  });
 });
