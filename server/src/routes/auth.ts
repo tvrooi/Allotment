@@ -7,7 +7,8 @@ import {
 import { Router, type Request, type RequestHandler, type Response } from 'express';
 import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
-import { serverMode } from '../config.js';
+import { timingSafeEqual } from 'crypto';
+import { gatewaySecret, serverMode } from '../config.js';
 import { readCookie } from '../middleware/security.js';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '../auth/password.js';
 import {
@@ -196,6 +197,17 @@ authRouter.delete('/sessions/:id', (req, res) => {
   res.status(204).send();
 });
 
+/** Header the multi-user gateway adds to requests it forwards for a signed-in person */
+export const GATEWAY_HEADER = 'x-flybudget-gateway';
+
+/** Whether the request carries the gateway's secret (multi-user mode only) */
+function fromGateway(req: Request) {
+  if (!gatewaySecret) return false;
+  const given = Buffer.from(String(req.headers[GATEWAY_HEADER] ?? ''));
+  const expected = Buffer.from(gatewaySecret);
+  return given.length === expected.length && timingSafeEqual(given, expected);
+}
+
 /** In server mode, every API request except health and login needs a valid session. */
 export const requireSession: RequestHandler = (req, res, next) => {
   if (!serverMode || req.path === '/health' || req.path.startsWith('/auth/')) return next();
@@ -218,6 +230,10 @@ export const requireSession: RequestHandler = (req, res, next) => {
     res.locals.accessTokenId = token.id;
     res.locals.accessTokenScope = token.scope;
     return next();
+  }
+  if (gatewaySecret) {
+    if (fromGateway(req)) return next();
+    return void res.status(401).json({ error: 'Login required' });
   }
   const token = sessionToken(req);
   if (isValidSession(token)) {

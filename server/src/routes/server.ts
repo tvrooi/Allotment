@@ -1,5 +1,5 @@
 import { Router, type Request } from 'express';
-import { allowedHosts, appMode, trustProxy, type AppMode } from '../config.js';
+import { allowedHosts, appMode, gatewaySecret, trustProxy, type AppMode } from '../config.js';
 import { secretCipher } from '../db/secretCrypto.js';
 import { isPasswordSet } from '../auth/sessions.js';
 import { appVersion } from '../utils/version.js';
@@ -72,11 +72,16 @@ function checksFor(req: Request): SecurityCheck[] {
   return securityChecks({
     secure: req.secure,
     hostname: req.hostname ?? '',
-    forwarded: req.headers['x-forwarded-for'] !== undefined || req.headers.forwarded !== undefined,
-    trustProxyConfigured: Boolean(trustProxy),
+    // Behind the multi-user gateway: how the browser reached the gateway, and its sign-in
+    forwarded: gatewaySecret
+      ? req.headers['x-flybudget-outer-forwarded'] === '1'
+      : req.headers['x-forwarded-for'] !== undefined || req.headers.forwarded !== undefined,
+    trustProxyConfigured: gatewaySecret
+      ? Boolean(process.env.FLYBUDGET_OUTER_TRUST_PROXY)
+      : Boolean(trustProxy),
     allowedHostsConfigured: allowedHosts.length > 0,
     encryptionKey: secretCipher.enabled,
-    passwordSet: isPasswordSet(),
+    passwordSet: gatewaySecret ? true : isPasswordSet(),
   });
 }
 

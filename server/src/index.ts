@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { listenHost, serverMode, trustProxy } from './config.js';
+import { gatewaySecret, listenHost, serverMode, trustProxy } from './config.js';
 import { secretCipher } from './db/secretCrypto.js';
 import { deleteExpiredSessions, isPasswordSet } from './auth/sessions.js';
 import { setupCode } from './auth/setupCode.js';
@@ -102,7 +102,8 @@ app.use((req, res, next) => (req.path === RESTORE_PATH ? next() : jsonBody(req, 
 app.get(BANK_CALLBACK_PATH, bankCallbackRateLimit, enableBankingCallback);
 
 // Server mode: login routes, then a valid session is required for the rest of the API
-app.use('/api/auth', authRouter);
+// Behind the multi-user gateway, it signs people in; this budget's own login stays closed
+if (!gatewaySecret) app.use('/api/auth', authRouter);
 app.use('/api', requireSession);
 
 // Kept minimal: anyone who can reach the server may call it (health checks, reconnecting)
@@ -149,6 +150,9 @@ export async function startServer(port: number | string): Promise<void> {
         '(or FLYBUDGET_DATA_KEY) to a 32-byte base64 key, e.g. from `openssl rand -base64 32`.',
     );
   }
+  if (gatewaySecret && (!serverMode || listenHost !== '127.0.0.1')) {
+    throw new Error('Behind the multi-user gateway a budget must run in server mode on 127.0.0.1');
+  }
   // Apply pending migrations on startup. The packaged app (Electron) and Docker ship them at
   // MIGRATIONS_PATH; `npm run dev` uses the source folder, so a new budget.db gets its tables.
   {
@@ -180,7 +184,9 @@ export async function startServer(port: number | string): Promise<void> {
       console.log(
         `Server running on http://${listenHost === '0.0.0.0' ? 'localhost' : listenHost}:${port}`,
       );
-      if (serverMode) {
+      if (serverMode && gatewaySecret) {
+        console.log('Behind the multi-user gateway: it signs people in.');
+      } else if (serverMode) {
         console.log('Server mode: login required.');
         if (!isPasswordSet()) setupCode();
         deleteExpiredSessions();
