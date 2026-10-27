@@ -257,24 +257,23 @@ export function createGateway(o: GatewayOptions) {
     const parsed = z.object({ name: z.string().max(200) }).safeParse(req.body);
     const person = parsed.success ? store.personByName(parsed.data.name) : undefined;
     if (person && !person.disabled && person.hasPassword) {
-      let sent = false;
-      if (person.notifyService && o.canNotify()) {
-        const code = store.issueCode(person.id, 'reset', NOTIFIED_CODE_TTL_MS, true);
-        try {
-          await o.notify(
+      // One code: for the administrator a longer one that also goes to the Log
+      const code = person.isAdmin
+        ? store.issueCode(person.id, 'reset', HANDED_CODE_TTL_MS)
+        : person.notifyService && o.canNotify()
+          ? store.issueCode(person.id, 'reset', NOTIFIED_CODE_TTL_MS, true)
+          : null;
+      if (code && person.notifyService && o.canNotify())
+        // Not awaited: the answer must take as long for anyone, so it reveals nobody
+        void o
+          .notify(
             person.notifyService,
             'FlyBudget password reset',
-            `Your FlyBudget code is ${code}. It works once, for 10 minutes. If you didn't ask for it, ignore this message.`,
-          );
-          sent = true;
-        } catch (e) {
-          console.error('A password code could not be sent:', (e as Error).message);
-        }
-      }
-      if (!sent && person.isAdmin) {
-        const code = store.issueCode(person.id, 'reset', HANDED_CODE_TTL_MS);
+            `Your FlyBudget code is ${code}. It works once, for ${person.isAdmin ? '24 hours' : '10 minutes'}. If you didn't ask for it, ignore this message.`,
+          )
+          .catch((e) => console.error('A password code could not be sent:', (e as Error).message));
+      if (code && person.isAdmin)
         log(`\nPassword reset code for ${person.name}: ${code} (works once, for 24 hours)\n`);
-      }
     }
     res.status(202).json({
       message:

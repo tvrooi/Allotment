@@ -124,8 +124,8 @@ a budget only they can open, each with their own password.
   and backups, as for any app.
 - **Forgotten passwords:** each person can choose a phone in **Settings → Server → Password codes
   to your phone** (a notify service such as `notify.mobile_app_my_phone`). **Forgot password?**
-  then sends a six-digit code there through the Home Assistant Companion app. The
-  administrator's code is also written to the app's **Log**. For anyone else, the administrator
+  then sends a code there through the Home Assistant Companion app (six digits, for 10
+  minutes). The administrator's code, valid for 24 hours, is also written to the app's **Log**. For anyone else, the administrator
   chooses **Reset password**, and the code appears in the **Log** for them to pass on.
 - **Read-only access tokens** and the assistant (MCP) connection work per person: each token
   reaches only the budget that created it.
