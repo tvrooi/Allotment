@@ -194,6 +194,28 @@ describe('multi-user gateway', () => {
     expect((await fetch(`http://127.0.0.1:${port}/api/auth/status`)).status).toBe(404);
   });
 
+  it("refuses a page's request when someone else has signed in on its browser since", async () => {
+    const ownerId = (await owner('GET', '/api/auth/status')).body.person.id;
+    // The partner's session, from a tab that still shows the owner's budget
+    const stale = { 'x-flybudget-person': ownerId };
+    for (const [method, url] of [
+      ['GET', '/api/accounts'],
+      ['POST', '/api/accounts'],
+      ['GET', '/api/people'],
+    ]) {
+      const res = await partner(method, url, method === 'POST' ? { name: 'x' } : undefined, stale);
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe('person-changed');
+    }
+    expect(
+      (await partner('GET', '/api/accounts')).body.map((a: { name: string }) => a.name),
+    ).toEqual(['Edward savings']);
+    const own = await partner('GET', '/api/accounts', undefined, {
+      'x-flybudget-person': partnerId,
+    });
+    expect(own.status).toBe(200);
+  });
+
   it('routes an access token to the budget that issued it, and only there', async () => {
     const made = await owner('POST', '/api/access-tokens', { name: 'Assistant', days: 7 });
     expect(made.status).toBe(201);

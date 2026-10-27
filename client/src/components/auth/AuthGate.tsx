@@ -3,7 +3,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Loader2, Lock } from 'lucide-react';
 import { AUTH_REQUIRED_EVENT, NetworkError } from '../../api/client';
 import * as authApi from '../../api/auth';
+import {
+  PERSON_CHANGED_EVENT,
+  PERSON_STORAGE_KEY,
+  setSignedInPerson,
+  signedInPerson,
+} from '../../api/person';
 import { appModeFrom } from '../../hooks/useServer';
+import { loadOutbox } from '../../offline/outbox';
 import { OutboxSender } from '../../offline/OutboxSender';
 import { useBudgetCurrencySync } from '../../hooks/useCurrency';
 import { clearOfflineCopy, useOfflineCopy } from '../../offline/snapshot';
@@ -46,8 +53,49 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const loginRequired = !!status && status.enabled && !status.authenticated;
   // Signed out (expired, signed out elsewhere, password changed): forget this device's copy
   useEffect(() => {
-    if (loginRequired) void clearOfflineCopy();
+    if (!loginRequired) return;
+    void clearOfflineCopy();
+    setSignedInPerson(null);
   }, [loginRequired]);
+
+  // Multi-user mode: remember who signed in, so requests, the offline copy and waiting
+  // transactions belong to them (api/person.ts). Someone else's data never stays on screen.
+  const personId = status?.authenticated ? status.person?.id : undefined;
+  useEffect(() => {
+    if (!personId) return;
+    const before = signedInPerson();
+    setSignedInPerson(personId);
+    if (before === personId) return;
+    void loadOutbox();
+    // Signing in on this page already dropped the cache; a page that showed someone else
+    // (their offline copy, a session ended elsewhere) loads everything again as this person
+    if (!before) return;
+    void clearOfflineCopy();
+    void qc.resetQueries({ predicate: (q) => q.queryKey[0] !== 'auth-status' });
+  }, [personId, qc]);
+
+  // Multi-user mode: another person signed in on this browser (in another tab, which shares
+  // the session cookie), so this page's data is someone else's. Start again as them.
+  useEffect(() => {
+    let restarting = false;
+    const restart = () => {
+      if (restarting) return;
+      restarting = true;
+      void clearOfflineCopy().finally(() => window.location.reload());
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== PERSON_STORAGE_KEY || e.newValue === signedInPerson()) return;
+      if (e.newValue && signedInPerson()) restart();
+      // Signed out, or signed in from this page's sign-in screen: ask who it is now
+      else void qc.invalidateQueries({ queryKey: ['auth-status'] });
+    };
+    window.addEventListener(PERSON_CHANGED_EVENT, restart);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(PERSON_CHANGED_EVENT, restart);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [qc]);
 
   // A request came back "login required" (session expired or signed out elsewhere)
   useEffect(() => {

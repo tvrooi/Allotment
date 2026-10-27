@@ -78,6 +78,10 @@ test('the invited person signs up and sees only their own, empty budget', async 
   await expect(partner.getByRole('heading', { name: 'Welcome to FlyBudget' })).toBeVisible();
   const accounts = await partner.request.get('/api/accounts');
   expect(await accounts.json()).toEqual([]);
+  const made = await partner.request.post('/api/accounts', {
+    data: { name: 'Edward savings', type: 'savings', startingBalance: 1_000 },
+  });
+  expect(made.status()).toBe(201);
   // People are the administrator's to manage
   expect((await partner.request.get('/api/people')).status()).toBe(403);
   // A new budget opens on the welcome page until it's set up or skipped
@@ -125,4 +129,26 @@ test("the administrator's forgotten password is reset with a code from the log",
   // The old password's other session was signed out
   expect((await owner.request.get('/api/accounts')).status()).toBe(401);
   await page.context().close();
+});
+
+test("another person signing in on the same browser takes over every tab's budget", async ({
+  baseURL,
+}) => {
+  // Edward's budget in one tab...
+  await partner.goto(`${baseURL}/accounts`);
+  await expect(partner.getByText('Edward savings').first()).toBeVisible();
+  // ...while a second tab signs out and Tristan signs in there (tabs share the session)
+  const other = await partner.context().newPage();
+  await other.request.post('/api/auth/logout');
+  await other.goto(`${baseURL}/`);
+  await expect(partner.getByText('Sign in to FlyBudget')).toBeVisible();
+  await other.getByLabel('Name').fill('Tristan');
+  await other.getByLabel('Password', { exact: true }).fill('a brand new phrase');
+  await other.getByRole('button', { name: 'Sign in' }).click();
+  await expect(other.getByRole('navigation').first()).toBeVisible();
+  // The first tab follows: Tristan's budget, nothing of Edward's left on screen
+  await partner.goto(`${baseURL}/accounts`);
+  await expect(partner.getByText('Owner everyday').first()).toBeVisible();
+  await expect(partner.getByText('Edward savings')).toHaveCount(0);
+  await other.close();
 });

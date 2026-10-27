@@ -18,6 +18,10 @@ turning the option off returns to it and its old password. That replaced step 4 
   their budget without adding the secret; that budget checks the token as usual.
 - A new or reset password revokes that person's access tokens (`POST /api/access-tokens/revoke-all`
   on their budget), as changing the single password does.
+- One browser, two people: tabs share the session cookie, so each page sends whose budget it
+  shows (`x-flybudget-person`, `client/src/api/person.ts`) and the gateway refuses it with 409
+  once someone else has signed in there. The offline copy and waiting transactions are tagged
+  with their person, and other tabs follow a sign-in or sign-out straight away.
 - Tests: `server/src/gateway/*.test.ts` (real budget processes from source) and
   `e2e/tests/multi-user/people.spec.ts` (project `multi-user`).
 

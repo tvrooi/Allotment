@@ -44,6 +44,9 @@ const GATEWAY_HEADER = 'x-flybudget-gateway';
 /** How long an invitation code stays valid */
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 /** Reading-only access tokens name their budget: fbro_<person id>_<random> */
+/** Sent by the app: whose budget the page shows (client/src/api/person.ts) */
+const PERSON_HEADER = 'x-flybudget-person';
+const PERSON_CHANGED_CODE = 'person-changed';
 const ROUTED_TOKEN = /^Bearer\s+fbro_([0-9a-f]{12})_[A-Za-z0-9_-]{20,}$/;
 
 export interface GatewayOptions {
@@ -83,6 +86,18 @@ export function createGateway(o: GatewayOptions) {
 
   const sessionToken = (req: Request) => readCookie(req.headers.cookie, SESSION_COOKIE);
   const signedIn = (req: Request) => store.personForSession(sessionToken(req));
+  /**
+   * The page expected someone else: another person has signed in on this browser since it
+   * loaded (all tabs share the session cookie). Its requests must not reach their budget.
+   */
+  function personChanged(req: Request, res: Response, person: Person) {
+    const expected = req.headers[PERSON_HEADER];
+    if (typeof expected !== 'string' || expected === person.id) return false;
+    res
+      .status(409)
+      .json({ error: 'Someone else signed in on this browser', code: PERSON_CHANGED_CODE });
+    return true;
+  }
 
   function startSession(req: Request, res: Response, person: Person) {
     const token = store.createSession(person.id, req.headers['user-agent']);
@@ -343,6 +358,7 @@ export function createGateway(o: GatewayOptions) {
   const requirePerson: RequestHandler = (req, res, next) => {
     const person = signedIn(req);
     if (!person) return void res.status(401).json({ error: 'Login required' });
+    if (personChanged(req, res, person)) return;
     res.locals.person = person;
     next();
   };
@@ -495,6 +511,7 @@ export function createGateway(o: GatewayOptions) {
     }
     const person = signedIn(req);
     if (!person) return void res.status(401).json({ error: 'Login required' });
+    if (personChanged(req, res, person)) return;
     const port = budgets.port(person.id);
     if (!port) {
       void budgets.start(person).catch(() => {});
