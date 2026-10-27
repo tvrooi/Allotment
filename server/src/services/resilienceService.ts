@@ -185,8 +185,9 @@ function essentials(today: string, estimate: number | null) {
 }
 
 /** Partitions today's resources by purpose. Each category's positive availability plus its
- * later assignments lands in exactly one bucket, so the buckets and unassigned money add up
- * to fundingState.resources and nothing is counted twice. */
+ * later assignments lands in exactly one bucket, so the buckets, cash already spent beyond
+ * envelopes this month (negative) and unassigned money add up to fundingState.resources
+ * and nothing is counted twice. */
 export function resilienceState(today = todayIso()) {
   const state = fundingState(today);
   const profile = prioritiesState();
@@ -239,8 +240,8 @@ export function resilienceState(today = todayIso()) {
     overspent: state.overspent,
     cardWithoutReserve: state.paymentShortfall + state.uncoveredCardPayments,
     committedShortfall,
-    // Overspending already lowers unassigned money; only assignments beyond it count again.
-    overAssigned: Math.max(0, -state.unassigned - state.overspent),
+    // This month's overspending is negative Available, not yet out of unassigned money
+    overAssigned: Math.max(0, -state.unassigned),
   };
   const unfundedTotal = sum(Object.values(unfunded));
 
@@ -273,7 +274,13 @@ export function resilienceState(today = todayIso()) {
     status,
     healthy: status === 'on-target' && unfundedTotal === 0,
     resources: state.complete ? state.resources : null,
-    partition: state.complete ? { ...buckets, unassigned: state.unassigned } : null,
+    partition: state.complete
+      ? {
+          ...buckets,
+          overspent: state.cashOverspent ? -state.cashOverspent : 0,
+          unassigned: state.unassigned,
+        }
+      : null,
     flexibility: {
       categories: flexCats.map((c) => ({
         categoryId: c.id,

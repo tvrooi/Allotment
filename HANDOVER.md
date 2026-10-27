@@ -5,7 +5,7 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 26 October 2026.
+Last updated: 27 October 2026.
 
 ## State
 
@@ -22,14 +22,15 @@ Last updated: 26 October 2026.
 
 ## Recent features, and where they are documented
 
-| Feature                                                                                         | PR / version | Design doc                                                         | Main code                                                                   |
-| ----------------------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------ | --------------------------------------------------------------------------- |
-| Australian super: preserved vs accessible wealth, preservation age                              | #52 / up.40  | `docs/INVESTMENTS.md`, `docs/LONG-TERM-FORECAST.md`                | `server/src/services/` forecast and investment services                     |
-| HECS-HELP and Student Start-up Loan: CPI indexation, compulsory repayment bands, extra payments | #53 / up.41  | `docs/LONG-TERM-FORECAST.md`, `docs/FORECASTS.md`                  | forecast services and the debt UI                                           |
-| Receipts, receipt inbox, tax deductions (ATO labels, FY exports)                                | #54 / up.42  | `docs/RECEIPTS-AND-TAX.md` §1–4                                    | `receiptService.ts`, `taxService.ts`, `routes/receipts.ts`, `routes/tax.ts` |
-| Receipts tab (Monarch parity): matching, autosplit, Split by items                              | #55 / up.43  | `docs/RECEIPTS-AND-TAX.md` §5                                      | `receiptMatching.ts`, `client/src/components/receipts/`                     |
-| Reading receipts with local Ollama                                                              | #56 / up.44  | `docs/RECEIPTS-AND-TAX.md` §5, "Reading photos with a local model" | `receiptReader.ts`, `receiptSample.ts`                                      |
-| Overspending resets each month (YNAB), card funding month by month                              | #57 / up.45  | `docs/ENVELOPE-FUNDING.md`, `docs/CARD-PAYMENTS.md`                | `budgetService.ts` (`rollOver`), `cardFunding.ts`                           |
+| Feature                                                                                         | PR / version | Design doc                                                         | Main code                                                                                      |
+| ----------------------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| Australian super: preserved vs accessible wealth, preservation age                              | #52 / up.40  | `docs/INVESTMENTS.md`, `docs/LONG-TERM-FORECAST.md`                | `server/src/services/` forecast and investment services                                        |
+| HECS-HELP and Student Start-up Loan: CPI indexation, compulsory repayment bands, extra payments | #53 / up.41  | `docs/LONG-TERM-FORECAST.md`, `docs/FORECASTS.md`                  | forecast services and the debt UI                                                              |
+| Receipts, receipt inbox, tax deductions (ATO labels, FY exports)                                | #54 / up.42  | `docs/RECEIPTS-AND-TAX.md` §1–4                                    | `receiptService.ts`, `taxService.ts`, `routes/receipts.ts`, `routes/tax.ts`                    |
+| Receipts tab (Monarch parity): matching, autosplit, Split by items                              | #55 / up.43  | `docs/RECEIPTS-AND-TAX.md` §5                                      | `receiptMatching.ts`, `client/src/components/receipts/`                                        |
+| Reading receipts with local Ollama                                                              | #56 / up.44  | `docs/RECEIPTS-AND-TAX.md` §5, "Reading photos with a local model" | `receiptReader.ts`, `receiptSample.ts`                                                         |
+| Overspending resets each month (YNAB), card funding month by month                              | #57 / up.45  | `docs/ENVELOPE-FUNDING.md`, `docs/CARD-PAYMENTS.md`                | `budgetService.ts` (`rollOver`), `cardFunding.ts`                                              |
+| Ready to assign follows YNAB: signed envelopes, cash vs credit overspending, month-aware guard  | #61 / up.47  | `docs/ENVELOPE-FUNDING.md` (Ready to Assign)                       | `budgetService.ts` (`fundingState`), `budgetMoves.ts` (`fundedWrite`), `readyToAssign.test.ts` |
 
 The user guide for receipts and tax is in `website/docs/tax.mdx`.
 

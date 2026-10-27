@@ -405,6 +405,13 @@ export interface BudgetSummary {
   overspent: number;
   uncategorized: number;
   futureAssigned: number;
+  /** What later months' assignments take from this month's Ready to Assign (a past month
+   * gives them only what it had left) */
+  laterDeduction?: number;
+  /** Envelope Available counted against resources: signed, less credit overspending */
+  envelopes?: number;
+  /** This month's cash overspending, which leaves next month's Ready to Assign */
+  cashOverspent?: number;
   resources: number;
   reserved: number;
   month: string;

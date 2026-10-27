@@ -111,16 +111,23 @@ test('debt funding waits for the selected month before reading its existing assi
   page,
   api,
 }) => {
-  await api.createAccount('Cash', 100000);
+  const current = thisMonth(),
+    d = new Date(`${current}-01T12:00:00`);
+  d.setMonth(d.getMonth() - 1);
+  const prior = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  // Last month's assignment needs money that had arrived by then
+  const cash = await api.createAccount('Cash', 0);
+  await api.createTransaction({
+    accountId: cash.id,
+    date: `${prior}-15`,
+    amount: 100000,
+    categoryId: (await api.category('Paychecks')).id,
+  });
   const card = await api.createAccount('Existing card', -50000, 'credit');
   const preview = await api.call('POST', `/budget/card-funding/${card.id}/preview`, {
     initialFunding: 10000,
   });
   await api.call('POST', `/budget/card-funding/${card.id}/apply`, preview);
-  const current = thisMonth(),
-    d = new Date(`${current}-01T12:00:00`);
-  d.setMonth(d.getMonth() - 1);
-  const prior = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   const position = (await api.call('GET', `/budget/${current}/summary`)).cards[0];
   await api.call('PUT', `/budget/${prior}/${position.categoryId}`, { budgeted: 20000 });
   let release!: () => void;

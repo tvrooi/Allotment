@@ -19,7 +19,11 @@ Resources comprise personal cash and savings, positive prepaid card balances, an
 the existing net-debt treatment of unreviewed accounts. Off-budget and household
 accounts remain outside personal funding.
 
-`resources = unassigned + positive expense envelopes + positive payment reserves + future assignments`
+`resources = unassigned + expense envelopes (signed, less credit overspending) + positive payment reserves + later assignments`
+
+Credit overspending, the part of an envelope deficit that unfunded card purchases explain, is
+card debt rather than spent cash, so it never comes out of Ready to Assign
+([envelope funding](ENVELOPE-FUNDING.md#the-overspending-rule)).
 
 A funded card purchase consumes its expense envelope and moves the cash backing
 that purchase into the card's payment envelope. The purchase remains the only

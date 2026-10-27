@@ -122,8 +122,9 @@ test.describe('budget', () => {
     await expect(toBeBudgeted(page)).toContainText('$600');
     await page.getByRole('button', { name: 'Previous month' }).click();
     await page.getByRole('button', { name: 'Previous month' }).click();
-    // Future commitments remain visible even before their income was received.
-    await expect(toBeBudgeted(page)).toContainText('-$400');
+    // Before the income arrived there was nothing to assign, and later months' assignments
+    // don't make an earlier month negative
+    await expect(toBeBudgeted(page)).toContainText('$0');
     await page.getByRole('button', { name: 'Today' }).click();
     await expect(toBeBudgeted(page)).toContainText('$600');
   });

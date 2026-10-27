@@ -192,31 +192,62 @@ export function budgetGroups(month: string, today = todayIso()) {
   return assessment(month, today).groups;
 }
 
-/** Net liquid resources = unassigned + positive current envelopes + positive future
- * assignments. Negative envelopes are disclosed, never used to offset reservations.
- * Cash and savings count; reviewed cards use explicit payment reserves and only
- * positive card balances count as resources. Unreviewed debt retains 6A net-debt
- * treatment. Assets never unlock assignments. See docs/CARD-PAYMENTS.md. Opening funds take effect on the earlier
- * of account creation and its first transaction, matching bookedValue's date policy.
- * Month views stop at min(month end, today); today's position reserves every future
- * positive assignment, including legacy commitments, without forecasting wages.
+/**
+ * Ready to Assign, like YNAB (docs/ENVELOPE-FUNDING.md). Every dollar in the budget's
+ * accounts is in an envelope or ready to assign:
+ *
+ *   unassigned = resources − Σ envelope Available (signed) − later positive assignments
+ *
+ * So an inflow counts from its own date, assigning moves money out of Ready to Assign, and
+ * moving money between envelopes leaves it unchanged. Overspending is negative Available, so
+ * it doesn't lower Ready to Assign in its own month. When the month ends the envelope resets
+ * to zero (rollOver) and the spent cash, still missing from resources, comes out of the next
+ * month's Ready to Assign: the one rule for cash overspending. Credit overspending (unfunded
+ * purchases on a reviewed card) is card debt, which resources leave out, so it is never
+ * deducted; it stays a payment shortfall. Payment envelopes count only a positive reserve.
+ *
+ * Resources: cash and savings count; reviewed cards count only a positive balance; unreviewed
+ * debt keeps 6A net-debt treatment. Assets never unlock assignments. See docs/CARD-PAYMENTS.md.
+ * Opening funds take effect on the earlier of account creation and its first transaction,
+ * matching bookedValue's date policy. Resources stop at `asOf`, never forecasting wages.
+ *
+ * `month` is the month being viewed (default: asOf's). A later month counts its own envelopes,
+ * whose carry has already reset, so this month's cash overspending shows up there. A past
+ * month shows what it closed with: later months' assignments take only what it had left.
  */
 /** Account types whose balance is spendable cash (or card debt) in the envelope budget. */
 export const LIQUID_ACCOUNT_TYPES = ['checking', 'savings', 'cash', 'credit', 'line_of_credit'];
 
-export function fundingState(asOf = todayIso()) {
-  const { groups, card } = assessment(asOf.slice(0, 7), asOf);
+export function fundingState(asOf = todayIso(), month = asOf.slice(0, 7)) {
+  const asOfMonth = asOf.slice(0, 7);
+  const { groups, card } = assessment(asOfMonth, asOf);
   const enrolledCards = new Set(card.positions.map((p) => p.accountId));
   const cats = groups.filter((g) => !g.isIncome).flatMap((g) => g.categories);
   const balances = new Map(cats.map((c) => [c.id, c.balance]));
   const expenseIds = new Set(cats.map((c) => c.id));
+  const viewMonth = month > asOfMonth ? month : asOfMonth;
+  const viewed =
+    viewMonth === asOfMonth
+      ? cats
+      : assessment(viewMonth, asOf)
+          .groups.filter((g) => !g.isIncome)
+          .flatMap((g) => g.categories);
   const futureAssigned = db
     .select()
     .from(budgetMonths)
     .all()
-    .filter((r) => r.month > asOf.slice(0, 7) && expenseIds.has(r.categoryId))
+    .filter((r) => r.month > viewMonth && expenseIds.has(r.categoryId))
     .reduce((s, r) => s + Math.max(0, r.budgeted), 0);
-  const reserved = cats.reduce((s, c) => s + Math.max(0, c.balance), 0) + futureAssigned;
+  const reserved = viewed.reduce((s, c) => s + Math.max(0, c.balance), 0) + futureAssigned;
+  // What each envelope holds of the accounts' money. A deficit is cash already spent, except
+  // the part unfunded card purchases explain: that is card debt, outside resources. In a later
+  // month only a negative assignment can leave a deficit, and a release is not received cash.
+  const credit = (c: (typeof cats)[number]) =>
+    Math.min(Math.max(0, -c.balance), card.unfunded.get(c.id) ?? 0);
+  const held = (c: (typeof cats)[number]) =>
+    c.paymentAccountId || viewMonth > asOfMonth ? Math.max(0, c.balance) : c.balance + credit(c);
+  const envelopes = viewed.reduce((s, c) => s + held(c), 0);
+  const cashOverspent = viewed.reduce((s, c) => s + Math.max(0, -held(c)), 0);
   const ctx = currencyContext();
   let resources = 0;
   let openingFunds = 0;
@@ -284,7 +315,14 @@ export function fundingState(asOf = todayIso()) {
   const overspent = cats
     .filter((c) => !c.paymentAccountId)
     .reduce((s, c) => s + Math.max(0, -c.balance), 0);
-  const unassigned = resources - reserved;
+  // Before later months' assignments: a past month's own closing position, which the
+  // assignment guard checks (budgetMoves.ts fundedWrite)
+  const unassignedBeforeLater = resources - envelopes;
+  const past = asOfMonth < todayIso().slice(0, 7);
+  const laterDeduction = past
+    ? Math.min(futureAssigned, Math.max(0, unassignedBeforeLater))
+    : futureAssigned;
+  const unassigned = unassignedBeforeLater - laterDeduction;
   return {
     balances,
     cards: card.positions,
@@ -294,10 +332,14 @@ export function fundingState(asOf = todayIso()) {
     resources,
     openingFunds,
     reserved,
+    envelopes,
+    cashOverspent,
     futureAssigned,
+    laterDeduction,
     uncategorized,
     overspent,
     complete,
+    unassignedBeforeLater,
     unassigned,
     available: complete ? Math.max(0, unassigned) : 0,
     revision: fundingRevision(),
@@ -313,7 +355,7 @@ export function fundingState(asOf = todayIso()) {
 export function budgetSummary(month: string, today = todayIso()) {
   const end = monthBounds(month).to;
   const asOf = end < today ? end : today;
-  const state = fundingState(asOf);
+  const state = fundingState(asOf, month);
   const groups = budgetGroups(month, today);
   const income = groups
     .filter((g) => g.isIncome)
