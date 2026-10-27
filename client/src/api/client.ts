@@ -1,6 +1,7 @@
 import { API_BASE } from './base';
 import { reportNetworkFailure, reportServerReachable } from '../store/connectionStore';
 import { isUnreachableResponse } from '../utils/connection';
+import { PERSON_CHANGED_CODE, PERSON_CHANGED_EVENT, PERSON_HEADER, signedInPerson } from './person';
 
 export const AUTH_REQUIRED_EVENT = 'flybudget:auth-required';
 
@@ -26,9 +27,15 @@ export class ApiError extends Error {
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   let res: Response;
   try {
+    const person = signedInPerson();
     res = await fetch(`${API_BASE}${path}`, {
-      headers: { 'Content-Type': 'application/json' },
       ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        // Multi-user mode: whose budget this page shows (see api/person.ts)
+        ...(person && { [PERSON_HEADER]: person }),
+        ...(options?.headers as Record<string, string> | undefined),
+      },
     });
   } catch (err) {
     // Cancelled on purpose (e.g. a query that's no longer needed): not a connection problem
@@ -47,6 +54,10 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
     // Server mode: the session expired or was signed out elsewhere — show the login screen
     if (res.status === 401 && !path.startsWith('/auth/')) {
       window.dispatchEvent(new Event(AUTH_REQUIRED_EVENT));
+    }
+    // Multi-user mode: someone else signed in on this browser since this page loaded
+    if (res.status === 409 && body.code === PERSON_CHANGED_CODE) {
+      window.dispatchEvent(new Event(PERSON_CHANGED_EVENT));
     }
     // Validation failures send an object of field errors, not a message
     const message =

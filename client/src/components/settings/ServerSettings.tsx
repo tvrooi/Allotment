@@ -1,4 +1,5 @@
 import { ReadOnlyAccess } from './ReadOnlyAccess';
+import { PeopleSettings } from './PeopleSettings';
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -18,6 +19,7 @@ import type { SecurityCheck, SignedInDevice } from '../../api/server';
 import { useCanSave } from '../../hooks/useConnection';
 import {
   useAppMode,
+  useAuthStatus,
   useServerInfo,
   useSessions,
   useSignOut,
@@ -356,6 +358,7 @@ function SignedInDevices() {
 }
 
 function SelfHostedSettings() {
+  const { data: auth } = useAuthStatus();
   const signOut = useSignOut();
   const canSave = useCanSave();
   const [current, setCurrent] = useState('');
@@ -391,6 +394,7 @@ function SelfHostedSettings() {
   return (
     <div className="max-w-xl space-y-8">
       <SecurityChecks />
+      {auth?.multiUser && <PeopleSettings status={auth} />}
       <SignedInDevices />
       <ReadOnlyAccess />
       <OfflineCopySettings />

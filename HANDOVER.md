@@ -79,10 +79,11 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
    Its log showed requests from public internet addresses, and Ollama has no authentication. The fix
    is to clear the app's 11434 port mapping, since FlyBudget uses the internal address. Do that only
    after checking that Home Assistant's Ollama integration uses the internal address too.
-3. **Multi-user (separate budgets per person):** proposed in `docs/MULTI-USER-PLAN.md`, awaiting the
-   owner's decisions (gateway with one process per budget; password reset by Home Assistant
-   notification, SMTP or administrator code). Migrating the existing budget needs explicit approval
-   and a verified cold backup with the key.
+3. **Multi-user (separate budgets per person):** built in `0.2.0-up.48` (`server/src/gateway/`,
+   `docs/MULTI-USER-PLAN.md`, `homeassistant/DOCS.md`). Opt-in with the HA option `multi_user`;
+   the existing budget stays in place as the administrator's. Not built yet: SMTP email codes,
+   shared households across budgets. Before the owner turns it on live: take a cold backup with
+   the key, then check the app restarts healthy and the owner can set up with the Log's code.
 4. **Gaps found in the 26 October audit** (not built or not documented):
    - User guide pages missing for shipped features: households, payday plans, resilience/budget
      review, card payments, the long-term forecast (super, HECS-HELP) and Move money.

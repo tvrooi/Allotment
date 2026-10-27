@@ -1,5 +1,5 @@
 name: FlyBudget Up Preview
-version: '0.2.0-up.47'
+version: '0.2.0-up.48'
 slug: flybudget_up
 description: A private, password-protected budget with native Up Bank transaction imports.
 arch:
@@ -21,9 +21,14 @@ webui: 'http://[HOST]:[PORT:3001]'
 watchdog: 'tcp://[HOST]:[PORT:3001]'
 ingress: false
 backup: cold
+# Multi-user mode only: sends password codes as notifications through Home Assistant's
+# notify services (docs/MULTI-USER-PLAN.md). The app never reads entities.
+homeassistant_api: true
 options:
   allowed_hosts: ''
   trust_proxy: false
+  multi_user: false
 schema:
   allowed_hosts: str
   trust_proxy: bool
+  multi_user: bool?

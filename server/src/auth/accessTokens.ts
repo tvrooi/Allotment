@@ -6,6 +6,7 @@ import { db } from '../db/index.js';
 import { accessTokens, rules, transactions } from '../db/schema.js';
 import { listTransferSuggestions } from '../services/transferService.js';
 import { todayIso } from '../services/mainAmountService.js';
+import { gatewayPersonId } from '../config.js';
 
 // Read-only access tokens (docs/READ-ONLY-ACCESS.md). A token is 256 random bits with a
 // recognisable prefix. Its scope is 'read'; 'categorise': read, plus setting the category of
@@ -74,7 +75,9 @@ export function createAccessToken(
       `At most ${MAX_ACTIVE_TOKENS} tokens can be active; revoke one first`,
     );
   }
-  const token = `${TOKEN_PREFIX}${randomBytes(32).toString('base64url')}`;
+  // Behind the multi-user gateway, the token names its budget so the gateway can route it
+  const owner = gatewayPersonId ? `${gatewayPersonId}_` : '';
+  const token = `${TOKEN_PREFIX}${owner}${randomBytes(32).toString('base64url')}`;
   const row = {
     id: nanoid(),
     tokenHash: digest(token),

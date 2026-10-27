@@ -1,6 +1,7 @@
 import { dehydrate, hydrate, type DehydratedState, type QueryClient } from '@tanstack/react-query';
 import { create } from 'zustand';
 import type { AuthStatus } from '../api/auth';
+import { signedInPerson } from '../api/person';
 import { useConnectionStore } from '../store/connectionStore';
 import { usePreferencesStore } from '../store/preferencesStore';
 import {
@@ -29,8 +30,13 @@ const RESTORE_TIMEOUT_MS = 1_500;
 interface Snapshot {
   version: number;
   savedAt: number;
+  /** Multi-user mode: whose budget it is (api/person.ts); absent on a single-user server */
+  person?: string | null;
   state: DehydratedState;
 }
+
+/** Only the person signed in on this page may see a copy (multi-user: one browser, two people) */
+const ownCopy = (snapshot: Snapshot) => (snapshot.person ?? null) === signedInPerson();
 
 interface OfflineCopyState {
   /** A copy was restored at startup (the app can open without the server) */
@@ -49,7 +55,7 @@ export async function restoreOfflineCopy(qc: QueryClient): Promise<void> {
   if (!enabled()) return;
   const timeout = new Promise<undefined>((r) => setTimeout(() => r(undefined), RESTORE_TIMEOUT_MS));
   const snapshot = await Promise.race([readValue<Snapshot>(KEY), timeout]);
-  if (!snapshot || !snapshotUsable(snapshot, Date.now())) return;
+  if (!snapshot || !snapshotUsable(snapshot, Date.now()) || !ownCopy(snapshot)) return;
   try {
     hydrate(qc, snapshot.state);
     useOfflineCopy.setState({ restored: true, dataAsOf: snapshot.savedAt });
@@ -91,10 +97,15 @@ async function save(qc: QueryClient) {
   // Signed out or turned off while reading: don't bring the copy back
   if (!canSave(qc)) return;
   const now = Date.now();
-  if (previous && snapshotUsable(previous, now)) {
+  if (previous && snapshotUsable(previous, now) && ownCopy(previous)) {
     state.queries = mergeSavedQueries(state.queries, previous.state.queries, now);
   }
-  await writeValue(KEY, { version: SNAPSHOT_VERSION, savedAt: now, state } satisfies Snapshot);
+  await writeValue(KEY, {
+    version: SNAPSHOT_VERSION,
+    savedAt: now,
+    person: signedInPerson(),
+    state,
+  } satisfies Snapshot);
 }
 
 /** Keeps the copy up to date as data loads. Call once, after restoreOfflineCopy. */

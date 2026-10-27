@@ -6,6 +6,17 @@
 // - server mode (Docker / self-hosted): reachable from other devices, so every
 //   request needs a logged-in session (see routes/auth.ts)
 
+/**
+ * Multi-user mode (docs/MULTI-USER-PLAN.md): this budget runs behind the gateway, which signs
+ * people in and adds this secret to every request it forwards for a signed-in person. The
+ * budget then listens on loopback only and accepts the secret instead of its own password.
+ */
+export const gatewaySecret = process.env.FLYBUDGET_GATEWAY_SECRET || undefined;
+/** The person this budget belongs to (behind the gateway): it routes access tokens by it */
+export const gatewayPersonId = /^[0-9a-f]{12}$/.test(process.env.FLYBUDGET_PERSON_ID ?? '')
+  ? process.env.FLYBUDGET_PERSON_ID
+  : undefined;
+
 /** Self-hosted server: require a password login for everything. */
 export const serverMode = process.env.FLYBUDGET_SERVER_MODE === 'true';
 

@@ -1,8 +1,9 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { create } from 'zustand';
 import { ApiError, NetworkError } from '../api/client';
+import { signedInPerson } from '../api/person';
 import * as txApi from '../api/transactions';
-import { sendable, type OutboxItem } from '../utils/offline';
+import { ownItems, sendable, type OutboxItem } from '../utils/offline';
 import { deleteValue, readValue, storageWorks, updateValue } from './storage';
 
 // New transactions saved while FlyBudget can't reach its server wait here, on this device,
@@ -34,24 +35,26 @@ const channel =
 if (channel) channel.onmessage = () => void loadOutbox();
 
 const asList = (v: unknown): OutboxItem[] => (Array.isArray(v) ? v : []);
+// Multi-user mode: one browser can hold items saved by two people; each sees and sends only theirs
+const own = (items: OutboxItem[]) => ownItems(items, signedInPerson());
 
 async function stored(): Promise<OutboxItem[]> {
   const items = await readValue<OutboxItem[]>(KEY);
-  return Array.isArray(items) ? items : useOutbox.getState().items;
+  return Array.isArray(items) ? own(items) : useOutbox.getState().items;
 }
 
 /** Changes the stored list in one step, so a change from another tab is never lost. */
 async function change(fn: (items: OutboxItem[]) => OutboxItem[]) {
   const items = await updateValue<OutboxItem[]>(KEY, (current) => fn(asList(current)));
-  useOutbox.setState({ items: items ?? fn(useOutbox.getState().items) });
+  useOutbox.setState({ items: own(items ?? fn(useOutbox.getState().items)) });
   channel?.postMessage('changed');
 }
 
-/** Loads the waiting list. Call before the first render. */
+/** Loads the waiting list. Call before the first render (and after someone signs in). */
 export async function loadOutbox() {
   const available = await storageWorks();
   const items = available ? await readValue<OutboxItem[]>(KEY) : undefined;
-  useOutbox.setState({ available, items: asList(items) });
+  useOutbox.setState({ available, items: own(asList(items)) });
 }
 
 type NewItem =
@@ -64,7 +67,10 @@ export function queueOnDevice(id: string, item: NewItem) {
   return change((items) =>
     items.some((i) => i.id === id)
       ? items
-      : [...items, { ...item, data, id, savedAt: Date.now() } as OutboxItem],
+      : [
+          ...items,
+          { ...item, data, id, savedAt: Date.now(), person: signedInPerson() } as OutboxItem,
+        ],
   );
 }
 
@@ -74,10 +80,15 @@ export const discardWaiting = (id: string) => change((items) => items.filter((i)
 export const retryWaiting = (id: string) =>
   change((items) => items.map((i) => (i.id === id ? { ...i, error: undefined } : i)));
 
-/** Deletes every waiting transaction (sign-out). */
+/** Deletes the signed-in person's waiting transactions (sign-out). */
 export async function clearOutbox() {
+  const mine = signedInPerson();
   useOutbox.setState({ items: [] });
-  await deleteValue(KEY);
+  // Multi-user mode: another person's waiting transactions on this browser stay theirs
+  const left = await updateValue<OutboxItem[]>(KEY, (current) =>
+    asList(current).filter((i) => (i.person ?? null) !== mine),
+  );
+  if (!left?.length) await deleteValue(KEY);
   channel?.postMessage('changed');
 }
 

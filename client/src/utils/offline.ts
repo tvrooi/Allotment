@@ -119,6 +119,8 @@ export type OutboxItem = {
   savedAt: number;
   /** Why the server refused it (it stays until tried again or discarded) */
   error?: string;
+  /** Multi-user mode: who saved it (api/person.ts). Only they see it or send it. */
+  person?: string | null;
 } & (
   | { kind: 'transaction'; data: CreateTransactionData }
   | { kind: 'transfer'; data: CreateTransferData }
@@ -143,6 +145,10 @@ export function outboxEntryFor(
 }
 
 /** Items to send, oldest first (refused ones wait for the user) */
+/** The waiting items of `person` (null: a single-user server) */
+export const ownItems = (items: readonly OutboxItem[], person: string | null) =>
+  items.filter((i) => (i.person ?? null) === person);
+
 export function sendable(items: readonly OutboxItem[]): OutboxItem[] {
   return items.filter((i) => !i.error).sort((a, b) => a.savedAt - b.savedAt);
 }

@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as authApi from '../api/auth';
+import { setSignedInPerson } from '../api/person';
 import * as serverApi from '../api/server';
 import { clearOutbox } from '../offline/outbox';
 import { clearOfflineCopy } from '../offline/snapshot';
 
 /** Login status (server mode). Shared with AuthGate, which fetched it on startup. */
-const useAuthStatus = () =>
+export const useAuthStatus = () =>
   useQuery({ queryKey: ['auth-status'], queryFn: authApi.getAuthStatus, staleTime: Infinity });
 
 export const useServerInfo = () =>
@@ -33,6 +34,7 @@ export function useSignOut() {
     await authApi.logout().catch(() => {});
     // Nothing of this budget stays on the device after signing out
     await Promise.all([clearOfflineCopy(), clearOutbox()]);
+    setSignedInPerson(null);
     // Drop the signed-in data, then re-check the status so the login screen shows. Not
     // qc.clear(): it detaches the auth-status query the app is watching, so nothing changed.
     qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'auth-status' });
