@@ -307,4 +307,35 @@ describe('multi-user gateway', () => {
     });
     expect(read.status).toBe(401);
   });
+
+  it('revokes tokens even when the budget was down while the password changed', async () => {
+    const made = await owner('POST', '/api/access-tokens', { name: 'Again', days: 7 });
+    const token = made.body.token as string;
+    const auth = { Authorization: `Bearer ${token}` };
+    expect((await stranger('GET', '/api/accounts', undefined, auth)).status).toBe(200);
+    const admin = store.people().find((p) => p.isAdmin)!;
+    budgets.stop(admin.id);
+    expect(
+      (
+        await owner('POST', '/api/auth/change-password', {
+          currentPassword: 'owner-pass-2',
+          newPassword: 'owner-pass-3',
+        })
+      ).status,
+    ).toBe(204);
+    expect(store.revocationPending(admin.id)).toBe(true);
+    await budgets.start(store.person(admin.id)!);
+    // The gateway finishes the revocation before letting the old token through
+    expect((await stranger('GET', '/api/accounts', undefined, auth)).status).toBe(401);
+    expect(store.revocationPending(admin.id)).toBe(false);
+    // A token made afterwards works
+    const fresh = await owner('POST', '/api/access-tokens', { name: 'New', days: 7 });
+    expect(
+      (
+        await stranger('GET', '/api/accounts', undefined, {
+          Authorization: `Bearer ${fresh.body.token}`,
+        })
+      ).status,
+    ).toBe(200);
+  }, 120_000);
 });

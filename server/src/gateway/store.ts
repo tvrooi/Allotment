@@ -79,6 +79,8 @@ export class GatewayStore {
         db_path text not null unique,
         key_path text not null,
         disabled integer not null default 0,
+        -- A new password must revoke the person's access tokens; set until their budget confirms
+        revoke_tokens integer not null default 0,
         created_at text not null default (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
       );
       create table if not exists sessions (
@@ -150,14 +152,36 @@ export class GatewayStore {
     return this.person(id)!;
   }
 
-  /** Sets the password and signs the person out everywhere except `keepToken`'s session */
+  /**
+   * Sets the password and signs the person out everywhere except `keepToken`'s session. Their
+   * access tokens are marked for revocation until their budget confirms it (tokensRevoked).
+   */
   setPassword(id: string, hash: string, keepToken?: string) {
     const keep = keepToken ? digest(keepToken) : '';
     this.db.transaction(() => {
-      this.db.prepare('update people set password_hash = ? where id = ?').run(hash, id);
+      this.db
+        .prepare('update people set password_hash = ?, revoke_tokens = 1 where id = ?')
+        .run(hash, id);
       this.db.prepare('delete from sessions where person_id = ? and id != ?').run(id, keep);
       this.db.prepare('delete from codes where person_id = ?').run(id);
     })();
+  }
+
+  /** People whose access tokens must still be revoked */
+  pendingRevocations(): string[] {
+    return (
+      this.db.prepare('select id from people where revoke_tokens = 1').all() as { id: string }[]
+    ).map((r) => r.id);
+  }
+
+  revocationPending(id: string): boolean {
+    const row = this.db.prepare('select revoke_tokens from people where id = ?').get(id) as
+      { revoke_tokens: number } | undefined;
+    return row?.revoke_tokens === 1;
+  }
+
+  tokensRevoked(id: string) {
+    this.db.prepare('update people set revoke_tokens = 0 where id = ?').run(id);
   }
 
   setNotifyService(id: string, service: string | null) {

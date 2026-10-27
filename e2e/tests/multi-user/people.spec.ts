@@ -51,7 +51,10 @@ test('the first person sets up with a name and keeps the budget already there', 
 });
 
 test('the administrator adds a person, who gets an invitation code', async () => {
-  await owner.goto('/settings?tab=server');
+  // Straight after signing in, without reloading: the app knows who signed in
+  await owner.getByRole('button', { name: /^Skip for now/ }).click();
+  await owner.getByRole('link', { name: 'Settings' }).first().click();
+  await owner.getByRole('button', { name: 'Server', exact: true }).click();
   const people = owner.getByRole('list', { name: 'People' });
   await expect(people).toContainText('Tristan');
   await expect(people).toContainText('administrator');

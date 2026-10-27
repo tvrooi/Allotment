@@ -88,6 +88,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     // never reach it (the sign-in screen stayed up until a reload).
     qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'auth-status' });
     qc.setQueryData(['auth-status'], { ...status, needsSetup: false, authenticated: true });
+    // Then who signed in (multi-user mode: their name and whether they administer people)
+    void qc.invalidateQueries({ queryKey: ['auth-status'] });
   };
   return (
     <PasswordForm

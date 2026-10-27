@@ -97,24 +97,39 @@ export function createGateway(o: GatewayOptions) {
 
   /**
    * A new password revokes the person's read-only access tokens, as it does without the
-   * gateway: their budget is asked to, with the secret. Logged if it can't be reached.
+   * gateway. The store marks it pending (setPassword); their budget is asked to, with the
+   * secret, and only its answer clears the mark. Until then the gateway itself refuses their
+   * tokens, and keeps asking: before each token request and every 30 seconds.
    */
-  function revokeTokens(person: Person) {
-    const port = budgets.port(person.id);
-    if (!port) return;
-    const call = http.request(
-      {
-        host: '127.0.0.1',
-        port,
-        method: 'POST',
-        path: '/api/access-tokens/revoke-all',
-        headers: { [GATEWAY_HEADER]: budgets.secret, 'content-length': 0 },
-      },
-      (answer) => answer.resume(),
-    );
-    call.on('error', () => console.error(`Access tokens could not be revoked (${person.id})`));
-    call.end();
+  function revokeTokens(personId: string): Promise<boolean> {
+    const port = budgets.port(personId);
+    if (!port) return Promise.resolve(false);
+    return new Promise((resolve) => {
+      const call = http.request(
+        {
+          host: '127.0.0.1',
+          port,
+          method: 'POST',
+          path: '/api/access-tokens/revoke-all',
+          headers: { [GATEWAY_HEADER]: budgets.secret, 'content-length': 0 },
+          timeout: 10_000,
+        },
+        (answer) => {
+          answer.resume();
+          const ok = answer.statusCode === 204;
+          if (ok) store.tokensRevoked(personId);
+          resolve(ok);
+        },
+      );
+      call.on('error', () => resolve(false));
+      call.on('timeout', () => call.destroy());
+      call.end();
+    });
   }
+  const retry = setInterval(() => {
+    for (const id of store.pendingRevocations()) void revokeTokens(id);
+  }, 30_000);
+  retry.unref();
 
   /** Spends the hashing time even when there's no one to check, so timing reveals nothing */
   async function checkPassword(person: Person | undefined, password: string) {
@@ -226,7 +241,7 @@ export function createGateway(o: GatewayOptions) {
     if (!(await checkPassword(person, parsed.data.currentPassword)))
       return res.status(401).json({ error: 'Current password is incorrect' });
     store.setPassword(person.id, await hashPassword(parsed.data.newPassword), sessionToken(req));
-    revokeTokens(person);
+    await revokeTokens(person.id);
     res.status(204).send();
   });
 
@@ -291,7 +306,7 @@ export function createGateway(o: GatewayOptions) {
       return res.status(401).json({ error: 'That name and code do not match' });
     store.setPassword(person.id, await hashPassword(parsed.data.password));
     if (!budgets.isRunning(person.id)) await budgets.start(person);
-    revokeTokens(person);
+    await revokeTokens(person.id);
     startSession(req, res, person);
     res.status(204).send();
   });
@@ -468,7 +483,14 @@ export function createGateway(o: GatewayOptions) {
     if (routed) {
       const owner = store.person(routed[1]);
       const port = owner && !owner.disabled ? budgets.port(owner.id) : undefined;
-      if (!port) return void res.status(401).json({ error: 'Invalid or expired access token' });
+      const refused = () => void res.status(401).json({ error: 'Invalid or expired access token' });
+      if (!owner || !port) return refused();
+      // A password changed since: the tokens must be revoked before any is let through
+      if (store.revocationPending(owner.id)) {
+        return void revokeTokens(owner.id).then((done) =>
+          done ? forward(req, res, port, false) : refused(),
+        );
+      }
       return forward(req, res, port, false);
     }
     const person = signedIn(req);
@@ -480,6 +502,9 @@ export function createGateway(o: GatewayOptions) {
         .status(503)
         .json({ error: 'Your budget is starting. Try again in a moment.' });
     }
+    // Finish a pending revocation first, so a token made now isn't caught by it
+    if (store.revocationPending(person.id))
+      return void revokeTokens(person.id).then(() => forward(req, res, port, true));
     forward(req, res, port, true);
   });
 
