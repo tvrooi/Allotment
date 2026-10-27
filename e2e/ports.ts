@@ -11,3 +11,6 @@ export const ENABLE_BANKING_MOCK_PORT = 3175;
 export const FRANKFURTER_MOCK_PORT = 3176;
 /** Stand-in for Up's personal API. */
 export const UP_MOCK_PORT = 3177;
+/** The multi-user gateway (docs/MULTI-USER-PLAN.md); its budgets use 3180 and up */
+export const MULTI_USER_PORT = 3178;
+export const MULTI_USER_BUDGET_PORT = 3180;

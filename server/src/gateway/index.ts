@@ -81,12 +81,14 @@ export async function startGateway({ port, serverScript, serverArgs = [] }: Gate
   return { server, budgets, store };
 }
 
-// Run directly (`node gateway.js`) unless imported by a launcher
+// Run directly (`node gateway.js`) unless imported by a launcher. In development and tests the
+// budgets run from source: FLYBUDGET_SERVER_SCRIPT=src/index.ts FLYBUDGET_SERVER_NODE_ARGS="--import tsx"
 if (process.env.FLYBUDGET_GATEWAY_AUTOSTART === 'true') {
   startGateway({
     port: Number(process.env.PORT ?? 3001),
     serverScript:
       process.env.FLYBUDGET_SERVER_SCRIPT ?? path.join(path.dirname(process.argv[1]), 'server.js'),
+    serverArgs: (process.env.FLYBUDGET_SERVER_NODE_ARGS ?? '').split(' ').filter(Boolean),
   }).catch((err) => {
     console.error('FlyBudget gateway could not start:', err.message);
     process.exit(1);

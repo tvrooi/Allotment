@@ -89,31 +89,82 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'auth-status' });
     qc.setQueryData(['auth-status'], { ...status, needsSetup: false, authenticated: true });
   };
-  return status.needsSetup ? (
-    <PasswordForm mode="setup" onDone={onSignedIn} />
-  ) : (
-    <PasswordForm mode="login" onDone={onSignedIn} />
+  return (
+    <PasswordForm
+      mode={status.needsSetup ? 'setup' : 'login'}
+      multiUser={Boolean(status.multiUser)}
+      onDone={onSignedIn}
+    />
   );
 }
 
-function PasswordForm({ mode, onDone }: { mode: 'setup' | 'login'; onDone: () => void }) {
+type FormMode = 'setup' | 'login' | 'invite' | 'forgot' | 'reset';
+
+const TITLES: Record<FormMode, string> = {
+  setup: 'Set up your FlyBudget server',
+  login: 'Sign in to FlyBudget',
+  invite: 'Join this FlyBudget server',
+  forgot: 'Forgot your password?',
+  reset: 'Choose a new password',
+};
+
+/**
+ * Sign-in, first-run setup and, in multi-user mode (the gateway), signing in by name,
+ * accepting an invitation and resetting a forgotten password with a code.
+ */
+function PasswordForm({
+  mode: startMode,
+  multiUser,
+  onDone,
+}: {
+  mode: 'setup' | 'login';
+  multiUser: boolean;
+  onDone: () => void;
+}) {
+  const [mode, setMode] = useState<FormMode>(startMode);
+  const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const isSetup = mode === 'setup';
+  // Choosing a new password: first-run setup, an invitation or a reset code
+  const choosing = mode === 'setup' || mode === 'invite' || mode === 'reset';
+  const needsCode = mode === 'setup' || mode === 'invite' || mode === 'reset';
+  const needsName = multiUser;
+
+  function go(next: FormMode) {
+    setMode(next);
+    setError(null);
+    setNotice(null);
+    setCode('');
+    setPassword('');
+    setConfirm('');
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (isSetup && password.length < MIN_PASSWORD_LENGTH) {
+    if (choosing && password.length < MIN_PASSWORD_LENGTH) {
       return setError(`Use at least ${MIN_PASSWORD_LENGTH} characters.`);
     }
-    if (isSetup && password !== confirm) return setError("The passwords don't match.");
+    if (choosing && password !== confirm) return setError("The passwords don't match.");
     setBusy(true);
     try {
-      await (isSetup ? authApi.setupPassword(password, code) : authApi.login(password));
+      if (mode === 'forgot') {
+        const { message } = await authApi.forgotPassword(name);
+        setBusy(false);
+        setMode('reset');
+        setNotice(message);
+        return;
+      }
+      if (mode === 'setup')
+        await authApi.setupPassword(password, code, multiUser ? name : undefined);
+      else if (mode === 'login') await authApi.login(password, multiUser ? name : undefined);
+      else if (mode === 'invite') await authApi.acceptInvite(name, code, password);
+      else await authApi.resetPassword(name, code, password);
       onDone();
     } catch (err) {
       setError((err as Error).message);
@@ -123,12 +174,21 @@ function PasswordForm({ mode, onDone }: { mode: 'setup' | 'login'; onDone: () =>
 
   const inputClass =
     'w-full px-3 py-2 text-sm border border-border rounded-md bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600';
+  const labelClass = 'block text-sm font-medium text-text-secondary mb-1';
+  const linkClass = 'text-xs text-brand-600 hover:text-brand-700 font-medium';
   const { host, hostname, protocol } = window.location;
   const unencrypted = connectionSecurity(protocol, hostname) === 'unencrypted';
+  const submitLabel = {
+    setup: 'Create password',
+    login: 'Sign in',
+    invite: 'Set password and sign in',
+    forgot: 'Send me a code',
+    reset: 'Set password and sign in',
+  }[mode];
 
   return (
     <AuthScreen
-      title={isSetup ? 'Set up your FlyBudget server' : 'Sign in to FlyBudget'}
+      title={TITLES[mode]}
       subtitle={
         <>
           <span className="block font-mono text-xs break-all" aria-label="Server address">
@@ -136,8 +196,20 @@ function PasswordForm({ mode, onDone }: { mode: 'setup' | 'login'; onDone: () =>
           </span>
           {isSetup && (
             <span className="block mt-2">
-              Create the password that protects this server. Anyone who can reach it will need this
-              password.
+              {multiUser
+                ? 'You become the administrator, and the budget already on this server becomes yours. You can add other people afterwards; each gets a budget only they can open.'
+                : 'Create the password that protects this server. Anyone who can reach it will need this password.'}
+            </span>
+          )}
+          {mode === 'invite' && (
+            <span className="block mt-2">
+              Enter your name as the administrator added it, and the invitation code they gave you.
+            </span>
+          )}
+          {mode === 'forgot' && (
+            <span className="block mt-2">
+              A code goes to the phone you chose in Settings. The administrator's code is also
+              written to the server's log (the app's Log in Home Assistant).
             </span>
           )}
         </>
@@ -155,48 +227,71 @@ function PasswordForm({ mode, onDone }: { mode: 'setup' | 'login'; onDone: () =>
           </p>
         </div>
       )}
+      {notice && (
+        <p role="status" className="mb-4 text-xs text-text-secondary leading-relaxed">
+          {notice}
+        </p>
+      )}
       <form onSubmit={submit} className="space-y-4">
-        {isSetup && (
+        {needsName && (
           <div>
-            <label
-              htmlFor="setup-code"
-              className="block text-sm font-medium text-text-secondary mb-1"
-            >
-              Setup code
+            <label htmlFor="name" className={labelClass}>
+              {isSetup ? 'Your name' : 'Name'}
+            </label>
+            <input
+              id="name"
+              autoComplete="username"
+              autoFocus={!isSetup}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+        )}
+        {needsCode && (
+          <div>
+            <label htmlFor="setup-code" className={labelClass}>
+              {isSetup ? 'Setup code' : mode === 'invite' ? 'Invitation code' : 'Code'}
             </label>
             <input
               id="setup-code"
-              autoComplete="off"
+              autoComplete="one-time-code"
               spellCheck={false}
-              autoFocus
-              placeholder="XXXX-XXXX-XXXX-XXXX"
+              autoFocus={isSetup}
+              placeholder={
+                mode === 'reset' ? '123456 or XXXX-XXXX-XXXX-XXXX' : 'XXXX-XXXX-XXXX-XXXX'
+              }
               value={code}
               onChange={(e) => setCode(e.target.value)}
               className={`${inputClass} font-mono uppercase`}
             />
-            <p className="text-xs text-text-tertiary mt-1">
-              Printed in the server log. With Docker, run{' '}
-              <code className="font-mono">docker logs flybudget</code>.
-            </p>
+            {isSetup && (
+              <p className="text-xs text-text-tertiary mt-1">
+                Printed in the server log. With Docker, run{' '}
+                <code className="font-mono">docker logs flybudget</code>.
+              </p>
+            )}
           </div>
         )}
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-text-secondary mb-1">
-            {isSetup ? 'New password' : 'Password'}
-          </label>
-          <input
-            id="password"
-            type="password"
-            autoComplete={isSetup ? 'new-password' : 'current-password'}
-            autoFocus={!isSetup}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className={inputClass}
-          />
-        </div>
-        {isSetup && (
+        {mode !== 'forgot' && (
           <div>
-            <label htmlFor="confirm" className="block text-sm font-medium text-text-secondary mb-1">
+            <label htmlFor="password" className={labelClass}>
+              {choosing ? 'New password' : 'Password'}
+            </label>
+            <input
+              id="password"
+              type="password"
+              autoComplete={choosing ? 'new-password' : 'current-password'}
+              autoFocus={!isSetup && !needsName}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+        )}
+        {choosing && (
+          <div>
+            <label htmlFor="confirm" className={labelClass}>
               Confirm password
             </label>
             <input
@@ -210,11 +305,44 @@ function PasswordForm({ mode, onDone }: { mode: 'setup' | 'login'; onDone: () =>
           </div>
         )}
         {error && <p className="text-xs text-negative">{error}</p>}
-        <Button type="submit" className="w-full" disabled={busy || !password || (isSetup && !code)}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={
+            busy ||
+            (needsName && !name.trim()) ||
+            (mode !== 'forgot' && !password) ||
+            (needsCode && !code)
+          }
+        >
           {busy ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
-          {isSetup ? 'Create password' : 'Sign in'}
+          {submitLabel}
         </Button>
       </form>
+      {multiUser && !isSetup && (
+        <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1">
+          {mode !== 'login' && (
+            <button type="button" className={linkClass} onClick={() => go('login')}>
+              Back to sign in
+            </button>
+          )}
+          {mode === 'login' && (
+            <>
+              <button type="button" className={linkClass} onClick={() => go('forgot')}>
+                Forgot password?
+              </button>
+              <button type="button" className={linkClass} onClick={() => go('invite')}>
+                I have an invitation
+              </button>
+            </>
+          )}
+          {mode === 'forgot' && (
+            <button type="button" className={linkClass} onClick={() => go('reset')}>
+              I already have a code
+            </button>
+          )}
+        </div>
+      )}
     </AuthScreen>
   );
 }

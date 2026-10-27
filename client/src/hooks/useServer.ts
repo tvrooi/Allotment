@@ -5,7 +5,7 @@ import { clearOutbox } from '../offline/outbox';
 import { clearOfflineCopy } from '../offline/snapshot';
 
 /** Login status (server mode). Shared with AuthGate, which fetched it on startup. */
-const useAuthStatus = () =>
+export const useAuthStatus = () =>
   useQuery({ queryKey: ['auth-status'], queryFn: authApi.getAuthStatus, staleTime: Infinity });
 
 export const useServerInfo = () =>

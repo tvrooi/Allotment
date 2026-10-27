@@ -12,6 +12,8 @@ import {
   DESKTOP_PORT,
   ENABLE_BANKING_MOCK_PORT,
   FRANKFURTER_MOCK_PORT,
+  MULTI_USER_BUDGET_PORT,
+  MULTI_USER_PORT,
   SERVER_PORT,
   UP_MOCK_PORT,
 } from './ports';
@@ -45,9 +47,14 @@ function buildClient(outDir: string, mode?: string) {
   execFileSync(process.execPath, args, { cwd: path.join(root, 'client'), stdio: 'inherit' });
 }
 
-function startServer(name: string, env: Record<string, string>, log: string[]): ChildProcess {
+function startServer(
+  name: string,
+  env: Record<string, string>,
+  log: string[],
+  script = 'src/index.ts',
+): ChildProcess {
   const tsx = path.join(root, 'server/node_modules/tsx/dist/cli.mjs');
-  const child = spawn(process.execPath, [tsx, 'src/index.ts'], {
+  const child = spawn(process.execPath, [tsx, script], {
     cwd: path.join(root, 'server'),
     env: { ...process.env, NODE_ENV: 'test', FLYBUDGET_CATEGORY_TEMPLATE: 'default', ...env },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -274,14 +281,41 @@ export default async function globalSetup() {
     serverLog,
   );
 
+  // The multi-user gateway, with its budgets run from source. Its log goes to a file the
+  // tests read (setup and reset codes are printed there, as in Home Assistant's Log).
+  const multiUserLogFile = path.join(dir, 'multi-user.log');
+  const multiUserLog: string[] = [];
+  fs.mkdirSync(path.join(dir, 'multi-user'), { recursive: true });
+  const multiUser = startServer(
+    'multi-user',
+    {
+      PORT: String(MULTI_USER_PORT),
+      DB_PATH: path.join(dir, 'multi-user', 'budget.db'),
+      FLYBUDGET_DATA_KEY_FILE: path.join(dir, 'multi-user', 'credentials.key'),
+      CLIENT_DIST: path.join(dir, 'client-web'),
+      FLYBUDGET_SERVER_MODE: 'true',
+      FLYBUDGET_HOST: '127.0.0.1',
+      FLYBUDGET_GATEWAY_AUTOSTART: 'true',
+      FLYBUDGET_SERVER_SCRIPT: path.join(root, 'server/src/index.ts'),
+      FLYBUDGET_SERVER_NODE_ARGS: '--import tsx',
+      FLYBUDGET_BUDGET_PORT: String(MULTI_USER_BUDGET_PORT),
+    },
+    multiUserLog,
+    'src/gateway/index.ts',
+  );
+  multiUser.stdout!.on('data', (chunk: Buffer) => fs.appendFileSync(multiUserLogFile, chunk));
+  multiUser.stderr!.on('data', (chunk: Buffer) => fs.appendFileSync(multiUserLogFile, chunk));
+
   try {
     await Promise.all([
       waitForHealth(DESKTOP_PORT, desktop, desktopLog),
       waitForHealth(SERVER_PORT, server, serverLog),
+      waitForHealth(MULTI_USER_PORT, multiUser, multiUserLog),
     ]);
   } catch (err) {
     stop(desktop);
     stop(server);
+    stop(multiUser);
     throw err;
   }
 
@@ -314,6 +348,7 @@ export default async function globalSetup() {
   process.env.E2E_SETUP_CODE = setupCode;
   process.env.E2E_SNAPSHOT = snapshotData;
   process.env.E2E_DIR = dir;
+  process.env.E2E_MULTI_USER_LOG = multiUserLogFile;
 
   return async () => {
     control.close();
@@ -323,6 +358,7 @@ export default async function globalSetup() {
     frankfurter.close();
     stop(desktop);
     stop(server);
+    stop(multiUser);
     // SQLite may hold the files for a moment after the process ends on Windows
     for (let i = 0; i < 10; i++) {
       try {

@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import { DEMO_PORT, DESKTOP_PORT, SERVER_PORT } from './ports';
+import { DEMO_PORT, DESKTOP_PORT, MULTI_USER_PORT, SERVER_PORT } from './ports';
 
 // End-to-end tests: real browser, real server, throwaway databases (see global-setup.ts).
 //   npm test                      run everything
@@ -31,7 +31,7 @@ export default defineConfig({
   projects: [
     {
       name: 'desktop',
-      testIgnore: /\/tests\/(server-mode|phone|demo)\//,
+      testIgnore: /\/tests\/(server-mode|phone|demo|multi-user)\//,
       use: { baseURL: `http://localhost:${DESKTOP_PORT}` },
     },
     // The desktop app's pages on a phone-sized screen (iPhone 13/14: 390×844)
@@ -56,6 +56,13 @@ export default defineConfig({
       name: 'server-mode',
       testMatch: /\/tests\/server-mode\/.*\.spec\.ts$/,
       use: { baseURL: `http://localhost:${SERVER_PORT}` },
+    },
+    // Separate budgets per person behind the gateway, each its own server process
+    {
+      name: 'multi-user',
+      testMatch: /\/tests\/multi-user\/.*\.spec\.ts$/,
+      timeout: 90_000,
+      use: { baseURL: `http://localhost:${MULTI_USER_PORT}` },
     },
   ],
 });
