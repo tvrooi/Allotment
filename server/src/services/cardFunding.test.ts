@@ -515,7 +515,10 @@ for (const creditFirst of [false, true])
     });
     expect(position()).toMatchObject({ debt: 0, available: 0 });
     expect(position('second')).toMatchObject({ debt: 5000, available: 5000, excessFunding: 0 });
-    expect(state()).toMatchObject({ resources: 100000, unassigned: 95000 });
+    // The prepaid balance paid the unfunded $20 too, so it is now cash overspending: red in
+    // Food this month, out of Ready to Assign when November starts
+    expect(state()).toMatchObject({ resources: 100000, unassigned: 97000, cashOverspent: 2000 });
+    expect(fundingState(date, '2026-11').unassigned).toBe(95000);
   });
 
 it('keeps payment envelopes managed in historical views before setup without replaying funding', () => {

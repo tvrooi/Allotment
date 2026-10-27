@@ -4,6 +4,7 @@ import { db } from '../db/index.js';
 import { budgetMonths, budgetMoves, categoryPurposes, financialPriorities } from '../db/schema.js';
 import { budgetGroups, fundingRevision, fundingState } from './budgetService.js';
 import { todayIso } from './mainAmountService.js';
+import { monthBounds } from '../utils/date.js';
 
 export class BudgetError extends Error {
   constructor(
@@ -123,17 +124,89 @@ export function moveWithinTransaction(month: string, request: MoveRequest) {
   return operation;
 }
 
-/** Runs an assignment change in one transaction, refusing it if it reserves more money
- * than the budget has (or rates are missing). Shared by manual, target and income writes. */
+type Assignment = typeof budgetMonths.$inferSelect;
+const assignmentKey = (r: Assignment) => `${r.month}|${r.categoryId}`;
+function assignmentRows() {
+  return new Map(
+    db
+      .select()
+      .from(budgetMonths)
+      .all()
+      .map((r) => [assignmentKey(r), r]),
+  );
+}
+/** Puts these assignment rows back exactly as given (absent = no row) */
+function restoreRows(keys: string[], rows: Map<string, Assignment>) {
+  for (const key of keys) {
+    const [month, categoryId] = key.split('|');
+    db.delete(budgetMonths)
+      .where(and(eq(budgetMonths.month, month), eq(budgetMonths.categoryId, categoryId)))
+      .run();
+    const row = rows.get(key);
+    if (row) db.insert(budgetMonths).values(row).run();
+  }
+}
+const monthAfter = (m: string) => {
+  const i = Number(m.slice(0, 4)) * 12 + Number(m.slice(5, 7));
+  return `${Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, '0')}`;
+};
+/** What each month in `months` can still assign. A past month needs the money by its own
+ * end; the current and later months also keep every later month's assignments funded. */
+function assignable(months: string[], today: string) {
+  const current = today.slice(0, 7);
+  const result: { month: string; value: number; complete: boolean }[] = [];
+  for (const m of months) {
+    const end = monthBounds(m).to;
+    const state = fundingState(end < today ? end : today, m);
+    result.push({
+      month: m,
+      value:
+        m < current
+          ? state.unassignedBeforeLater
+          : state.unassignedBeforeLater - state.futureAssigned,
+      complete: state.complete,
+    });
+  }
+  return result;
+}
+
+/** Runs an assignment change in one transaction, refusing it if any month it affects would
+ * assign money that month doesn't have (or rates are missing): an inflow funds its own month
+ * and later ones, never an earlier one. A shortfall that already existed may stay, but no
+ * write may deepen it. Shared by manual, target and income writes. */
 export function fundedWrite(action: () => void) {
   return db.transaction(() => {
-    const before = fundingState();
+    const before = assignmentRows();
     action();
-    const after = fundingState();
-    if (after.reserved > before.reserved && (!after.complete || after.unassigned < 0))
+    const after = assignmentRows();
+    const changed = [...new Set([...before.keys(), ...after.keys()])].filter(
+      (k) => before.get(k)?.budgeted !== after.get(k)?.budgeted,
+    );
+    if (!changed.length) return;
+    const today = todayIso();
+    const current = today.slice(0, 7);
+    // Every past month from the earliest change (activity differs each month), this month and
+    // next (when this month's deficits reset), then only months holding assignments: with no
+    // activity and nothing assigned, a later month's figure equals the month before it.
+    const first = changed.map((k) => k.slice(0, 7)).reduce((a, b) => (b < a ? b : a));
+    const months = new Set<string>();
+    for (let m = first; m < current; m = monthAfter(m)) months.add(m);
+    months.add(current).add(monthAfter(current));
+    for (const k of [...before.keys(), ...after.keys()])
+      if (k.slice(0, 7) > current) months.add(k.slice(0, 7));
+    const checked = [...months].sort();
+    const now = assignable(checked, today);
+    if (now.every((p) => p.complete && p.value >= 0)) return;
+    restoreRows(changed, before);
+    const was = assignable(checked, today);
+    restoreRows(changed, after);
+    const worse = now.find((p, i) => p.value < was[i].value && (!p.complete || p.value < 0));
+    if (worse)
       throw new BudgetError(
-        after.complete
-          ? 'Insufficient unassigned money. Reduce an assignment or move existing money.'
+        worse.complete
+          ? worse.month < current
+            ? `Not enough money had arrived by the end of ${worse.month}. Assign it in a later month, or move existing money.`
+            : 'Insufficient unassigned money. Reduce an assignment or move existing money.'
           : 'Add missing exchange rates before assigning money.',
       );
   });

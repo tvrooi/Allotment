@@ -2,17 +2,76 @@
 
 One calculation service supplies the monthly summary and payday planner. Expense
 Available is previous Available + Assigned + signed Activity. Refunds increase it.
-Like YNAB, an envelope that ends a month overspent starts the next month at zero
-(`rollOver` in `budgetService.ts`): the money already left the accounts, so resources and
-unassigned already show it, and a one-off such as a loan payout or settlement isn't
-carried as a deficit forever. Overspending stays visible, and in Review, for the
-month it happened. Card payment categories keep a running total. Income expectations remain separate
+Card payment categories keep a running total. Income expectations remain separate
 from actual received income. Ordinary transactions and stored assignments are never
 rewritten during upgrade.
 
-## Resource invariant
+## Ready to Assign (the YNAB model)
 
-`resources = unassigned + reserved`
+Every dollar in the budget's accounts is in an envelope or ready to assign
+(`fundingState` in `budgetService.ts`):
+
+`ready to assign = resources − Σ envelope Available (signed) − later positive assignments`
+
+Nothing stores a running total: resources come from account opening balances and
+transactions, Available from assignments and transactions, so a refresh or a full
+recompute gives the same figure. `readyToAssign.test.ts` checks every displayed figure
+against an independent ledger recompute (inflows − assignments − earlier months'
+overspending) and that no money figure is ever fractional.
+
+- **Inflows** count from their own date and month. An earlier month never sees them,
+  and a transaction dated after today isn't received yet.
+- **Assigning** moves money from Ready to Assign into one envelope for one month.
+- **Moving money** between envelopes changes those two envelopes only. Ready to Assign
+  is unchanged, because the signed sum is.
+- **Uncategorised** money comes and goes from Ready to Assign directly: an uncategorised
+  inflow is ready to assign; uncategorised spending leaves it at once and is listed for
+  review.
+
+### The overspending rule
+
+An envelope that ends a month below zero starts the next month at zero (`rollOver`).
+
+- **Cash overspending** (spending more than an envelope held, from cash, savings or an
+  unreviewed card) is red in its own month and does not lower that month's Ready to
+  Assign. When the next month starts, the envelope resets and the deficit comes out of
+  that month's Ready to Assign, once. Example: $1,000 received, $700 Food and $300 Rent
+  assigned, $800 spent on Food. October shows Ready to Assign $0 and Food −$100;
+  November shows Ready to Assign −$100 and Food $0.
+- **Credit overspending** (purchases on a reviewed card that no envelope money backed) is
+  card debt, which resources leave out. It is never deducted from Ready to Assign; it
+  remains a card payment shortfall until funded ([card payments](CARD-PAYMENTS.md)).
+- Card payment envelopes count only a positive reserve; payments beyond it are listed as
+  Payments without funding and leave Ready to Assign straight away.
+
+A one-off such as a loan payout or settlement is therefore deducted once, not carried as a
+deficit forever. The summary reports `cashOverspent` (this month's cash deficits) next
+to `overspent` (all deficits, including credit). An automatic payday allocation leaves
+enough to cover this month's cash overspending rather than assigning it again.
+
+### Month views
+
+- **The current month and later months** deduct every positive assignment in later
+  months. A later month counts its own envelopes, whose carry has already reset, so this
+  month's cash overspending shows there. A negative assignment in a later month releases
+  nothing today.
+- **A past month** shows what it closed with: later months' assignments take only what it
+  had left (`laterDeduction`), so a month before your income shows $0, not the later
+  commitments as a negative figure.
+
+The summary's `envelopes` and `laterDeduction` make the identity visible:
+`toBeBudgeted + envelopes + laterDeduction = resources`.
+
+### Assignment guard
+
+`fundedWrite` (`budgetMoves.ts`) checks every month an assignment affects. A past month
+must have had the money by its own end; the current and later months must also keep
+every later month's assignment funded. So an inflow funds its own month and later ones,
+never an earlier one. An existing shortfall may stay, and reductions are always allowed,
+but no write may deepen a shortfall. Missing exchange rates block any write that takes
+money.
+
+## Resources
 
 Resources are the dated balances of personal on-budget checking, savings, cash,
 credit and line-of-credit accounts, converted using the existing currency policy.
@@ -23,19 +82,10 @@ Internal transfers do not create resources. Boundary transfers retain the existi
 personal contribution/category policy. Uncategorised adjustments affect actual cash
 without being invented as income.
 
-Reserved is the sum of positive expense-envelope balances through the as-of month,
-plus every positive assignment after that month. Future negative assignments do not
-release today's money. Negative envelopes cannot offset another purpose's reserve.
-Uncategorised debits reduce cash and appear separately as unresolved spending.
-New edits, including the existing 12-month bulk action, may not increase reservations
-past resources. Unfunded legacy assignments survive and produce a visible funding
-shortfall; users can reduce them or move existing money. Income expectations do not
-reserve cash.
-
-This is an **interim net-debt model**: outstanding on-budget debt reduces assignable
-resources immediately. It does not create dedicated credit-card payment reserves or
-claim to distinguish funded purchases from new card debt. Reviewed payment reserves are added in [phase 6B](CARD-PAYMENTS.md) through this
-same service. The interim net-debt treatment remains for unreviewed cards.
+`reserved` (positive envelopes plus later positive assignments) is still reported, for the
+Review partition. This is an **interim net-debt model** for unreviewed cards: their
+outstanding debt reduces resources, and their purchases overspend like cash. Reviewed
+payment reserves are added in [phase 6B](CARD-PAYMENTS.md) through this same service.
 
 ## Dates and currency
 
@@ -43,9 +93,7 @@ Today's funding uses the server's local calendar date (`todayIso`). Payday fundi
 uses the plan's configured time zone and supplies that explicit date to the same
 service. A historical summary uses the earlier of month end and today. Future month
 views show existing assignments and carry, but funding remains capped at today.
-The response includes `asOf`; it is not a forecast. All stored later commitments
-are reserved even in historical assessments, so those assessments can show negative
-funding for commitments made with later receipts. Assignment creation dates are not
+The response includes `asOf`; it is not a forecast. Assignment creation dates are not
 available and are not reconstructed.
 
 Opening funds become effective on the earlier of account creation and its first
@@ -55,8 +103,8 @@ earned income. Future-dated transactions and unreconciled generated salary recei
 are excluded. Reconciliation confirms a generated receipt. Missing account or activity
 exchange rates mark the assessment incomplete and block new funding and moves.
 The service uses account balances valued as of the assessment date and stored
-transaction conversions for category activity. Currency movements therefore change
-unassigned resources; they are not earned salary.
+transaction conversions for category activity. A foreign account's revaluation therefore
+lands in Ready to Assign, the one place currency movements change; it is not earned salary.
 
 ## Moves, coverage and undo
 

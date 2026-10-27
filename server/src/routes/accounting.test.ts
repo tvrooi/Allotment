@@ -148,9 +148,10 @@ describe('budget boundary and report account scopes', () => {
     expect(
       (await get('/reports/income-by-category?from=2026-05&to=2026-05'))[0].totalReceived,
     ).toBe(300);
+    // May's overspending is red in May and comes out of June's Ready to Assign
     expect(await get('/budget/2026-05/summary')).toMatchObject({
       income: 300,
-      toBeBudgeted: -500,
+      toBeBudgeted: 300,
       overspent: 800,
     });
     expect(await get('/budget/2026-06/summary')).toMatchObject({

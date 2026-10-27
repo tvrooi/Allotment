@@ -248,6 +248,7 @@ describe('7B resilience', () => {
       goals: 0,
       flexibility: 600_000,
       other: 0,
+      overspent: 0,
       unassigned: 0,
     });
     const { unassigned, ...buckets } = r.partition!;

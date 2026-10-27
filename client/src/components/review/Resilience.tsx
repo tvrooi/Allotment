@@ -159,14 +159,17 @@ export function ResilienceCard({ data }: { data: api.ResilienceState }) {
                     ['Goals', p.goals],
                     ['Flexibility reserve', p.flexibility],
                     ['Other envelopes', p.other],
+                    ['Spent beyond envelopes', p.overspent],
                     ['Unassigned', p.unassigned],
                   ] as const
-                ).map(([name, value]) => (
-                  <tr key={name}>
-                    <td className="py-0.5">{name}</td>
-                    <td className="py-0.5 text-right">{formatCurrency(value)}</td>
-                  </tr>
-                ))}
+                )
+                  .filter(([name, value]) => value !== 0 || name !== 'Spent beyond envelopes')
+                  .map(([name, value]) => (
+                    <tr key={name}>
+                      <td className="py-0.5">{name}</td>
+                      <td className="py-0.5 text-right">{formatCurrency(value)}</td>
+                    </tr>
+                  ))}
                 <tr className="font-medium text-text border-t border-border-light">
                   <td className="py-0.5">Cash after debts</td>
                   <td className="py-0.5 text-right">{formatCurrency(data.resources ?? 0)}</td>

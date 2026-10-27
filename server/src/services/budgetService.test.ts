@@ -104,16 +104,19 @@ it('excludes future and generated salary, includes refunds and retains rollover-
   });
   expect(fundingState()).toMatchObject({ resources: 55000, reserved: 25000, unassigned: 30000 });
 });
-it('discloses deficits and uncategorised activity even with zero unassigned', () => {
+it('discloses deficits and uncategorised activity; overspending leaves next month', () => {
   activity('debit', -20000, 'food', '2026-10-10');
   activity('unknown', -10000, null);
   assign('rent', 70000);
+  // Uncategorised spending leaves Ready to Assign at once; Food's deficit is red this month
   expect(budgetSummary('2026-10')).toMatchObject({
-    toBeBudgeted: 0,
+    toBeBudgeted: 20000,
+    cashOverspent: 20000,
     overspent: 20000,
     uncategorized: 10000,
     resolved: false,
   });
+  expect(budgetSummary('2026-11')).toMatchObject({ toBeBudgeted: 0, cashOverspent: 0 });
 });
 it('resets overspending at the month boundary, like YNAB, without changing what is assignable', () => {
   // September: a $3,000 settlement and a loan payout nobody budgeted for; food rolls $50 over

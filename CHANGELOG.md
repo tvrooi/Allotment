@@ -1,5 +1,13 @@
 # Changes
 
+## 0.2.0-up.47
+
+- **Ready to assign works like YNAB.** Every dollar in your accounts is either in a category or ready to assign, so the figure is always your accounts minus what your categories hold. Assigning $700 and $300 from a $1,000 paycheck leaves exactly $0, in every month you look at.
+- **Earlier months no longer go negative.** A month before your income now shows $0, instead of next month's assignments as a negative number. Money can only be assigned in the month it arrived or later; assigning it in an earlier month is refused with the reason.
+- **Overspending follows one rule.** Overspending with cash is red in its category for that month and comes out of next month's Ready to assign, once. Before, it was taken off Ready to assign straight away _and_ shown in the category, so it was counted twice. Overspending on a reviewed credit card is card debt: it never comes out of Ready to assign and stays a card payment shortfall until you fund it.
+- **Moving money only changes the two categories.** Covering an overspent category no longer changes Ready to assign.
+- The budget summary's breakdown shows what later months' assignments take from the month you're viewing and how much overspending will come out of next month. A payday plan still leaves enough to cover this month's overspending. Review → "Where today's money is" lists spending beyond your categories, so its rows add up to your cash.
+
 ## 0.2.0-up.46
 
 - **Pick payments to share with a household.** **Pick to share** above the transaction list puts a checkbox beside each payment; tick the ones you split (or **Pick all shown**), then **Share _N_ picked with household**. Each becomes a shared expense with the household's default split, equal (50/50 for two people) when none is set. Payments already shared are skipped, and **Undo** removes them.

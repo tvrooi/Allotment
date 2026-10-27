@@ -133,6 +133,8 @@ export interface ResilienceState {
     goals: number;
     flexibility: number;
     other: number;
+    /** Cash spent beyond envelopes this month, as a negative amount */
+    overspent: number;
     unassigned: number;
   } | null;
   flexibility: {

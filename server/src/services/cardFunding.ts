@@ -37,7 +37,10 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
   const mappings = db.select().from(cardFunding).where(lte(cardFunding.startDate, asOf)).all();
   const adjustments: FundingAdjustment[] = [];
   const positions: CardPosition[] = [];
-  if (!mappings.length) return { adjustments, positions, complete: true };
+  // Per expense category: card purchases no envelope money backed and no reset has yet
+  // written off as card debt. The part of a current deficit they explain is credit overspending.
+  const unfunded = new Map<string, number>();
+  if (!mappings.length) return { adjustments, positions, unfunded, complete: true };
   const ctx = currencyContext();
   // Nothing before the budget start funds or reserves anything (Settings → Budget start)
   const budgetStart = budgetStartDate();
@@ -262,6 +265,13 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
       }
     }
   }
+  // Settle every earlier month's reset, so only this month's unfunded purchases stay open
+  for (const id of expenseIds) poolAt(id, asOf.slice(0, 7));
+  for (const s of states)
+    for (const [id, owed] of s.unfunded) {
+      const open = Math.max(0, owed - (s.discarded.get(id) ?? 0));
+      if (open) unfunded.set(id, (unfunded.get(id) ?? 0) + open);
+    }
   for (const s of states) {
     const balance = money(s.native, s, asOf),
       debt = Math.max(0, -balance);
@@ -279,5 +289,5 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
       fundedPurchases: s.funded,
     });
   }
-  return { adjustments, positions, complete };
+  return { adjustments, positions, unfunded, complete };
 }
