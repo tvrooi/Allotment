@@ -1,8 +1,25 @@
-# Plan: separate budgets for more than one person on one server
+# Separate budgets for more than one person on one server
 
-Status: proposal (26 October 2026). Nothing here is built. It answers the owner's question: host
-the owner's and a partner's budgets on the same Home Assistant app, where neither can see the
-other's, each with their own password and a way to reset it.
+Status: **built in `0.2.0-up.48`** (steps 1 to 3 below, without SMTP). The owner approved the
+gateway design on 27 October 2026. It hosts the owner's and a partner's budgets on the same Home
+Assistant app, where neither can see the other's, each with their own password and a way to reset
+it. User guide: `homeassistant/DOCS.md`, "Separate budgets for more than one person".
+
+**As built:** multi-user mode is opt-in (Home Assistant option `multi_user`). The budget that was
+already there stays in place and becomes the first person's: no migration, no moved files, and
+turning the option off returns to it and its old password. That replaced step 4 below.
+
+- Code: `server/src/gateway/` (`store.ts` people, sessions and codes; `budgets.ts` child
+  processes; `app.ts` sign-in, people and forwarding; `notify.ts` Home Assistant notifications;
+  `index.ts` the entry, bundled as `gateway.js`). A budget behind the gateway (`gatewaySecret`
+  in `config.ts`) closes its own login routes and accepts only the gateway's secret header
+  (`requireSession` in `routes/auth.ts`).
+- Access tokens behind the gateway are `fbro_<person id>_<random>`, so the gateway routes them to
+  their budget without adding the secret; that budget checks the token as usual.
+- A new or reset password revokes that person's access tokens (`POST /api/access-tokens/revoke-all`
+  on their budget), as changing the single password does.
+- Tests: `server/src/gateway/*.test.ts` (real budget processes from source) and
+  `e2e/tests/multi-user/people.spec.ts` (project `multi-user`).
 
 ## What "can't see each other's" can and can't mean
 
@@ -102,12 +119,12 @@ attributing changes to a person.
 
 ## Delivery in steps
 
-1. **Gateway and budget mode** (no behaviour change for one person): the gateway proxies to a single
-   budget. Container smoke test and e2e through the gateway.
-2. **People:** add a person, invitation code, per-person sign-in, administrator page, disable and
-   delete.
-3. **Password resets:** Home Assistant notify codes, then SMTP, then administrator reset codes.
-4. **Migration of the existing install**, only with the owner's go-ahead and a verified cold backup.
+1. **Gateway and budget mode:** done.
+2. **People:** add a person, invitation code, per-person sign-in, administrator page, stop and
+   allow sign-in: done. Deleting a person's budget is left to the files (deliberately not a button).
+3. **Password resets:** Home Assistant notify codes and administrator reset codes: done. **SMTP
+   email is not built yet.**
+4. **Migration of the existing install:** not needed; the existing budget stays in place.
 5. **Later:** shared households across budgets.
 
 ## Verification

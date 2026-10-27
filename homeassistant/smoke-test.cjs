@@ -220,8 +220,67 @@ async function run() {
       'EACCES',
       'The web server should not gain direct access to the Supervisor file.',
     );
+    // Multi-user mode (docs/MULTI-USER-PLAN.md): the budget already here becomes the first
+    // person's, a new person's is empty, and turning it off goes back to the old password.
+    const writeOptions = (options) =>
+      docker(
+        'exec',
+        '--user',
+        '0:0',
+        name,
+        'node',
+        '-e',
+        `require('fs').writeFileSync('/data/options.json',${JSON.stringify(JSON.stringify(options))},{mode:0o600})`,
+      );
+    writeOptions({ allowed_hosts: 'budget.example.com', trust_proxy: false, multi_user: true });
+    docker('restart', name);
+    await ready();
+    const multiStatus = await (await fetch(base + '/api/auth/status')).json();
+    assert.equal(multiStatus.multiUser, true);
+    assert.equal(multiStatus.needsSetup, true);
+    const gatewayCode = [
+      ...docker('logs', '--since', '2m', name).matchAll(/[A-Z2-9]{4}(?:-[A-Z2-9]{4}){3}/g),
+    ].at(-1)?.[0];
+    assert.ok(gatewayCode, 'Multi-user setup needs a logged setup code.');
+    const owner = await post('/auth/setup', { name: 'Owner', password, setupCode: gatewayCode });
+    assert.equal(owner.status, 204);
+    const ownerCookie = owner.headers
+      .getSetCookie()
+      .find((s) => s.startsWith('flybudget_session='))
+      .split(';')[0];
+    const kept = await (
+      await fetch(base + '/api/accounts', { headers: { cookie: ownerCookie } })
+    ).json();
+    assert.equal(
+      kept[0].name,
+      'HA test account',
+      'The existing budget must become the first person’s.',
+    );
+    const added = await (await post('/people', { name: 'Partner' }, ownerCookie)).json();
+    const partnerPassword = randomBytes(18).toString('base64url');
+    const joined = await post('/auth/accept-invite', {
+      name: 'Partner',
+      code: added.inviteCode,
+      password: partnerPassword,
+    });
+    assert.equal(joined.status, 204);
+    const partnerCookie = joined.headers
+      .getSetCookie()
+      .find((s) => s.startsWith('flybudget_session='))
+      .split(';')[0];
+    assert.deepEqual(
+      await (await fetch(base + '/api/accounts', { headers: { cookie: partnerCookie } })).json(),
+      [],
+      'A new person’s budget must be their own.',
+    );
+    assert.equal(keyHash(), initialKey, 'Multi-user mode must keep the existing key.');
+    writeOptions({ allowed_hosts: 'budget.example.com', trust_proxy: false, multi_user: false });
+    docker('restart', name);
+    await ready();
+    const back = await post('/auth/login', { password });
+    assert.equal(back.status, 204, 'Turning multi-user off goes back to the old password.');
     console.log(
-      'PASS: root-only Supervisor options; strict-host TCP watchdog; login/setup and native Up endpoint; persistent budget/password/key; uid 1000 server; Supervisor file stays private.',
+      'PASS: root-only Supervisor options; strict-host TCP watchdog; login/setup and native Up endpoint; persistent budget/password/key; uid 1000 server; Supervisor file stays private; multi-user keeps the existing budget and isolates a new one, and turns off cleanly.',
     );
   } finally {
     try {

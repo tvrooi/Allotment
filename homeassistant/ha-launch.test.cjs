@@ -40,3 +40,15 @@ test('server mode, persistent storage and reverse proxy settings are explicit', 
   assert.equal(settings({ allowed_hosts: '', trust_proxy: false }).FLYBUDGET_TRUST_PROXY, '');
   assert.throws(() => settings({ allowed_hosts: '', trust_proxy: 'false' }), /Invalid/);
 });
+
+test('multi-user mode is optional, and only a real yes or no', () => {
+  // Installs from before the option keep working
+  assert.doesNotThrow(() => settings({ allowed_hosts: '', trust_proxy: false }));
+  const env = settings({ allowed_hosts: '', trust_proxy: false, multi_user: true });
+  // The budget stays where it was, whichever mode starts it
+  assert.equal(env.DB_PATH, '/data/flybudget/budget.db');
+  assert.throws(
+    () => settings({ allowed_hosts: '', trust_proxy: false, multi_user: 'yes' }),
+    /multi_user/,
+  );
+});

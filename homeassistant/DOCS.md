@@ -34,9 +34,11 @@ These are app container paths, not the host filesystem. The app ID is `local_fly
    `http://homeassistant.local:3001` (or `http://<home-assistant-LAN-IP>:3001`). For HTTP on a
    trusted home network, select its confirmation. Alternatively, choose **Open Web UI**.
 7. Enter the setup code and create your FlyBudget password. Use this same password from each
-   device. This is one budget with one owner password, rather than separate user accounts.
+   device. This is one budget with one owner password, unless you turn on separate budgets
+   (below).
 
-Keep protection mode enabled. This app does not require Home Assistant/Supervisor API access,
+Keep protection mode enabled. The app asks for Home Assistant API access only to send password
+codes as notifications in multi-user mode; it never reads your entities. It doesn't need
 Docker socket access, host networking or elevated Linux capabilities. Its startup script prepares
 only its private data directory, then starts FlyBudget as the unprivileged Node user.
 
@@ -102,6 +104,35 @@ separated by commas. Leave `trust_proxy: false` for a direct connection without 
 
 If you already have a Tailscale subnet router, you can instead reach the LAN URL over your VPN
 using its existing routing; no additional Tailscale service is needed.
+
+## Separate budgets for more than one person
+
+Turn on **multi_user** in the app's **Configuration** tab and restart the app to give each person
+a budget only they can open, each with their own password.
+
+- **Your existing budget stays where it is.** The first person to sign in after turning it on
+  becomes the administrator, and the budget that was already here becomes theirs. Enter your
+  name, the setup code from the app's **Log**, and a password. Nothing is moved or rewritten:
+  turning **multi_user** off again goes back to that budget and its old password.
+- **Adding someone:** **Settings → Server → People → Add person** creates an empty budget for
+  them and shows an invitation code. Give them the code; on the sign-in page they choose
+  **I have an invitation**, enter their name and the code, and choose their password.
+- **Nobody sees anyone else's budget** through FlyBudget: each budget runs as its own process with
+  its own database and encryption key, and every request goes to the signed-in person's budget
+  only. The administrator can add people, stop someone signing in, or issue a reset code, but
+  can't open their budget. Whoever administers Home Assistant can still read the app's files
+  and backups, as for any app.
+- **Forgotten passwords:** each person can choose a phone in **Settings → Server → Password codes
+  to your phone** (a notify service such as `notify.mobile_app_my_phone`). **Forgot password?**
+  then sends a six-digit code there through the Home Assistant Companion app. The
+  administrator's code is also written to the app's **Log**. For anyone else, the administrator
+  chooses **Reset password**, and the code appears in the **Log** for them to pass on.
+- **Read-only access tokens** and the assistant (MCP) connection work per person: each token
+  reaches only the budget that created it.
+- **Limits:** Enable Banking's bank redirect only reaches the administrator's budget. Each budget
+  uses roughly 100 to 150 MB of memory while the app runs.
+- **Backups** of the app include every person's budget, keys and `people.db`. Restore the whole
+  app; restoring one person's budget on its own isn't offered.
 
 ## Storage, backups and updates
 

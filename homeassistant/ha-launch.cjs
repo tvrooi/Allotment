@@ -25,10 +25,11 @@ function settings(options, directory = '/data/flybudget') {
   if (
     !options ||
     typeof options.allowed_hosts !== 'string' ||
-    typeof options.trust_proxy !== 'boolean'
+    typeof options.trust_proxy !== 'boolean' ||
+    (options.multi_user !== undefined && typeof options.multi_user !== 'boolean')
   ) {
     throw new Error(
-      'Invalid Home Assistant app configuration. Check allowed_hosts and trust_proxy.',
+      'Invalid Home Assistant app configuration. Check allowed_hosts, trust_proxy and multi_user.',
     );
   }
   return {
@@ -54,6 +55,13 @@ async function start() {
   ensureCredentialKey(path.dirname(env.DB_PATH));
   Object.assign(process.env, env);
   delete process.env.FLYBUDGET_API_TOKEN;
+  if (options.multi_user === true) {
+    // Separate budgets per person (docs/MULTI-USER-PLAN.md). The budget already here stays in
+    // place and becomes the first person's; turning the option off goes back to it alone.
+    const { startGateway } = require('/app/gateway.js');
+    await startGateway({ port: 3001, serverScript: '/app/server.js' });
+    return;
+  }
   const { startServer } = require('/app/server.js');
   await startServer(3001);
 }

@@ -29,6 +29,9 @@ RUN VERSION=$(node -p "require('./package.json').version") \
  && npm run build --prefix client \
  && server/node_modules/.bin/esbuild server/src/index.ts --bundle --platform=node --target=node24 \
       --external:better-sqlite3 --format=cjs --outfile=dist/server.js \
+      --define:process.env.FLYBUDGET_VERSION="\"$VERSION\"" \
+ && server/node_modules/.bin/esbuild server/src/gateway/index.ts --bundle --platform=node --target=node24 \
+      --external:better-sqlite3 --format=cjs --outfile=dist/gateway.js \
       --define:process.env.FLYBUDGET_VERSION="\"$VERSION\""
 
 # The only runtime dependency: better-sqlite3, which ships prebuilt binaries for
