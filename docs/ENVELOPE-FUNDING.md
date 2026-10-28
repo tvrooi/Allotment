@@ -77,6 +77,18 @@ to Assign negative until you cover the overspending (Move money). Target funding
 income review and manual edits therefore never offer an amount the guard refuses; payday
 plans still hold back enough to cover this month's overspending.
 
+### One pass, cached
+
+Every figure above reads one ledger (`budgetLedger.ts`): each category's months walked
+once with the carry after each, accounts' running sums by date, and activity by date.
+A month or an as-of date is then a lookup, so the guard's checks over many months cost
+one pass over history instead of one per month. The ledger is kept until
+`fundingRevision()` changes (today's date plus a revision that SQLite triggers bump on
+every write to transactions, accounts, assignments, categories and groups, rates, budget
+settings, card funding and the household tables), and when the rate book is reloaded.
+It is read-only: a changed input needs a trigger (a migration), or must stay out of the
+engine. `budgetEngine.test.ts` holds it to the previous per-month engine, figure for figure.
+
 ## Resources
 
 Resources are the dated balances of personal on-budget checking, savings, cash,

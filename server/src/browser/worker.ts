@@ -6,6 +6,7 @@ import wasmUrl from 'sql.js/dist/sql-wasm-browser.wasm?url';
 import { useDatabase } from './db.js';
 import { handleRequest, type DemoRequest } from './app.js';
 import { loadDemoBudget } from '../demo/loadDemoBudget.js';
+import { clearLedger } from '../services/budgetLedger.js';
 
 // Every migration in order (the file names start with their number)
 const migrationFiles = import.meta.glob<string>('../db/migrations/*.sql', {
@@ -34,6 +35,8 @@ async function openDemo(): Promise<void> {
     }
   }
   useDatabase(database);
+  // Figures kept for the previous budget (services/budgetLedger.ts) are not this one's
+  clearLedger();
   loadDemoBudget(new Date());
   // "Start over": free the previous budget's memory (every query now uses the new one)
   current?.close();
