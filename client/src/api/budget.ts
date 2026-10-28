@@ -94,11 +94,7 @@ export const applyTargetFunding = (preview: TargetFundingPreview) =>
   });
 
 export type AutoAssignStrategy =
-  | 'underfunded'
-  | 'overspent'
-  | 'assigned_last_month'
-  | 'spent_last_month'
-  | 'average_spent';
+  'underfunded' | 'overspent' | 'assigned_last_month' | 'spent_last_month' | 'average_spent';
 
 export interface AutoAssignPreview {
   month: string;
