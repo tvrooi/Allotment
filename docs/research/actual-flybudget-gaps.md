@@ -47,9 +47,12 @@ so this is not a case for copying Actual wholesale.
   ([categories.ts](../../server/src/routes/categories.ts#L206), line 220). The target inherits every
   past month's spending without the money that funded it.
 - **Consequence under the ledger engine:** a fully funded, fully spent category (say $500 assigned and
-  $500 spent in September) becomes a $500 deficit in the target for September. That is cash
-  overspending, so October's Ready to Assign drops by $500 and every later month after it. A routine
-  tidy-up silently rewrites history.
+  $500 spent in September) becomes a $500 deficit in the target for September, and September's Ready
+  to Assign rises by $500: money already spent is shown as available. The deficit resets at the month
+  boundary, so October is unaffected in this example; any positive balance the deleted category
+  carried simply returns to Ready to Assign. The harm is that history is rewritten, and most when the
+  affected month is the current one: Ready to Assign offers spent money, the target shows red, and
+  the next month takes it back. (Corrected after review: an earlier draft said October dropped.)
 - **Actual:** `deleteCategory(category, transferId)` first adds the deleted category's budgeted amount
   into the target for every month (`doTransfer`, `ACT packages/loot-core/src/server/budget/base.ts`
   line 345), then records a `category_mapping` so references to the old id resolve to the new one
