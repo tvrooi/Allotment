@@ -11,6 +11,8 @@ interface Props {
   categoryName: string;
   categoryId: string;
   transactionCount: number;
+  /** Money is assigned to the category in some month; it moves with the transactions */
+  hasAssignments: boolean;
   groups: CategoryGroup[];
 }
 
@@ -21,10 +23,14 @@ export function DeleteCategoryModal({
   categoryName,
   categoryId,
   transactionCount,
+  hasAssignments,
   groups,
 }: Props) {
   const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
   const [reassignTo, setReassignTo] = useState('');
+  // Income and expense categories only merge within their own kind
+  const sourceIsIncome =
+    groups.find((g) => g.categories.some((c) => c.id === categoryId))?.isIncome ?? 0;
 
   function handleConfirm() {
     if (!reassignTo) return;
@@ -38,12 +44,21 @@ export function DeleteCategoryModal({
         <p className="text-sm text-text-secondary">
           <span className="font-medium text-text">{categoryName}</span> has{' '}
           <span className="font-medium text-text">{transactionCount}</span> transaction
-          {transactionCount !== 1 ? 's' : ''}. Choose a category to reassign them to before
-          deleting.
+          {transactionCount !== 1 ? 's' : ''}
+          {hasAssignments ? ' and assigned money' : ''}. Choose a category to move{' '}
+          {transactionCount > 0 && hasAssignments
+            ? 'them'
+            : transactionCount > 0
+              ? 'the transactions'
+              : 'the money'}{' '}
+          into before deleting.
         </p>
-        <p className="text-xs text-caution">
-          Budget allocations for this category will be removed.
-        </p>
+        {hasAssignments && (
+          <p className="text-xs text-caution">
+            The money assigned to this category in every month moves into the chosen category too,
+            so your budget totals and Ready to Assign stay the same.
+          </p>
+        )}
         <select
           aria-label="Move transactions to"
           value={reassignTo}
@@ -51,18 +66,20 @@ export function DeleteCategoryModal({
           className="block w-full text-sm border border-border rounded-md px-3 py-2 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
         >
           <option value="">Select a category...</option>
-          {groups.map((g) => (
-            <optgroup key={g.id} label={g.name}>
-              {g.categories
-                .filter((c) => c.id !== categoryId)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {showCategoryIcons && c.icon ? `${c.icon} ` : ''}
-                    {c.name}
-                  </option>
-                ))}
-            </optgroup>
-          ))}
+          {groups
+            .filter((g) => g.isIncome === sourceIsIncome)
+            .map((g) => (
+              <optgroup key={g.id} label={g.name}>
+                {g.categories
+                  .filter((c) => c.id !== categoryId)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {showCategoryIcons && c.icon ? `${c.icon} ` : ''}
+                      {c.name}
+                    </option>
+                  ))}
+              </optgroup>
+            ))}
         </select>
       </div>
       <div className="flex justify-end gap-3 mt-6">
