@@ -9,13 +9,12 @@ Last updated: 28 October 2026.
 
 ## State
 
-- **Released:** `v0.2.0-up.45` (PR #57, with the e2e race fix in PR #58): overspending resets at
-  each month boundary, like YNAB (`rollOver` in `budgetService.ts`), and reviewed card funding
-  follows the same reset month by month (`calculateCardFunding`); see docs/ENVELOPE-FUNDING.md and
-  docs/CARD-PAYMENTS.md. The owner asked for it after paying out the GSB loan and a $3,000
-  settlement in October 2026. Releases are listed on the
-  [GitHub Releases](https://github.com/tvrooi/FlyBudget/releases) page.
-- **Live Home Assistant app:** installed from the catalog repository (not the old `local_flybudget_up`), with **Auto update on**. It was on `0.2.0-up.43` on 26 October; confirm it reached `0.2.0-up.45`.
+- **Balance integrity (up.53):** reconciliation is atomic and rejects adjustments from partial or stale selections. Known bank mismatches and residual balances in closed budget accounts block new funding; Settings exposes closed balances for explicit reconciliation. Bank-fed income is never auto-created a second time. Existing ledger rows are preserved. See docs/ENVELOPE-FUNDING.md, “Balance checks and reconciliation”.
+- The connected budget server reported **up.51 on 28 October**. Publication of up.53 and a verified live update are separate steps. Before installation, verify app identity and obtain a cold backup with the encryption key; a JSON export alone is insufficient.
+
+- **Last verified published release at preparation:** `v0.2.0-up.51`. The balance-integrity fix targets `v0.2.0-up.53`; verify completion on the [GitHub Releases](https://github.com/tvrooi/FlyBudget/releases) page before installation. Overspending resets and signed-envelope Ready to Assign from earlier releases remain unchanged.
+
+- **Live Home Assistant app:** installed from the catalog repository (not the old `local_flybudget_up`), with **Auto update on**. The connected server reported `0.2.0-up.51` on 28 October; confirm the installed app identity and version before updating.
   A completed release reaches it through the catalog sync (MAINTENANCE.md, step 5) and then its
   auto-update. Before relying on that, verify the installed version afterwards, and take a cold
   backup first when you update it by hand.

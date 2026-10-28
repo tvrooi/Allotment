@@ -119,7 +119,7 @@ const TOOLS: Tool[] = [
   {
     name: 'budget_summary',
     description:
-      'Money available to assign, reserved, overspent, uncategorised and card payment position for a month.',
+      'Money available to assign, reserved, overspent, uncategorised and card payment position for a month. accountIssues lists known bank or closed-account discrepancies; available is zero until they are reconciled. Raw unassigned is unverified while issues remain.',
     properties: { month },
     required: ['month'],
     path: (a) => `/budget/${seg(a.month)}/summary`,

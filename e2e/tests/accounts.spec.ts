@@ -139,7 +139,7 @@ test.describe('accounts', () => {
 
   test('closing an account hides it', async ({ page, api }) => {
     await api.createAccount('Keep Me', 100);
-    const account = await api.createAccount('Old Card', -500, 'credit');
+    const account = await api.createAccount('Old Card', 0, 'credit');
     await open(page, `/accounts/${account.id}`);
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page

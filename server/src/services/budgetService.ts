@@ -1,5 +1,6 @@
 import { calculateCardFunding, loadCardData } from './cardFunding.js';
-import { budgetStartDate } from './balances.js';
+import { budgetStartDate, LIQUID_ACCOUNT_TYPES } from './balances.js';
+import { accountIssues as checkAccounts } from './accountIntegrity.js';
 import {
   activityAt,
   assignedAfter,
@@ -15,6 +16,7 @@ import {
 import { todayIso } from './mainAmountService.js';
 import { monthBounds } from '../utils/date.js';
 
+export { LIQUID_ACCOUNT_TYPES } from './balances.js';
 export { clearLedger as clearBudgetCache } from './budgetLedger.js';
 export { fundingRevision, receivedActivity, receivedSpending, rollOver };
 
@@ -117,9 +119,6 @@ export function budgetGroups(month: string, today = todayIso()) {
  * whose carry has already reset, so this month's cash overspending shows up there. A past
  * month shows what it closed with: later months' assignments take only what it had left.
  */
-/** Account types whose balance is spendable cash (or card debt) in the envelope budget. */
-export const LIQUID_ACCOUNT_TYPES = ['checking', 'savings', 'cash', 'credit', 'line_of_credit'];
-
 export function fundingState(asOf = todayIso(), month = asOf.slice(0, 7)) {
   const asOfMonth = asOf.slice(0, 7);
   const { groups, card, ledger: l } = assessment(asOfMonth, asOf);
@@ -151,6 +150,7 @@ export function fundingState(asOf = todayIso(), month = asOf.slice(0, 7)) {
   } = resourcesAt(l, asOf, enrolledCards, LIQUID_ACCOUNT_TYPES);
   const { uncategorized, missing } = activityAt(l, asOf);
   const complete = card.complete && accountsComplete && !missing;
+  const accountIssues = checkAccounts(asOf);
   const overspent = cats
     .filter((c) => !c.paymentAccountId)
     .reduce((s, c) => s + Math.max(0, -c.balance), 0);
@@ -180,10 +180,12 @@ export function fundingState(asOf = todayIso(), month = asOf.slice(0, 7)) {
     complete,
     unassignedBeforeLater,
     unassigned,
-    available: complete ? Math.max(0, unassigned) : 0,
+    accountIssues,
+    available: complete && accountIssues.length === 0 ? Math.max(0, unassigned) : 0,
     revision: fundingRevision(),
     resolved:
       complete &&
+      accountIssues.length === 0 &&
       uncategorized === 0 &&
       overspent === 0 &&
       unassigned >= 0 &&

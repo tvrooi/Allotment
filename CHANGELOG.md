@@ -1,5 +1,13 @@
 # Changes
 
+## 0.2.0-up.53
+
+- **Check balances before assigning money.** A known mismatch with Up's settled balance, an uninitialised bank balance or money still recorded in a closed budget account marks Ready to Assign as unverified and blocks new funding. The budget lists each discrepancy; Review and resilience show the same warning. Existing cash and assignments are preserved for review.
+- **Safer reconciliation.** The first screen shows the dated register balance and selects all current transactions. An adjustment cannot be created from unchecked entries, future transactions or duplicate generated bank income. The server checks for stale data and saves the correction and reconciliation together, so a failed save cannot leave half a correction. Negative statement balances stay negative.
+- **Closed accounts keep their history without hiding money.** Accounts must reach zero before closing. Older closed accounts remain visible in Settings with their balances and a route to reconcile residuals explicitly.
+- **Prevent duplicate generated salaries.** Connected bank accounts wait for the imported income receipt instead of auto-creating another salary. Closed accounts never auto-create scheduled transactions. Existing entries are not deleted or rewritten.
+- Payday funding cannot consume a received deposit while account balances need reconciliation; card payment reserves and manual assignments have the same protection.
+
 ## 0.2.0-up.52
 
 - **Fund a category from its own account.** Edit a category and choose an account under **Funded by transfers to** (for example Rent → your Rent saver). A transfer into that account from another budget account now goes straight into the category, as if you'd assigned it, and comes out of Ready to assign; moving money back out takes it out of the category. The category shows **+$X moved to …** for the month, and the transfer counts toward its target. Only linked (confirmed) transfers count, and each account funds one expense category.

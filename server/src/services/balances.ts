@@ -6,6 +6,9 @@ import { accounts, transactions } from '../db/schema.js';
 // the parts, all in the same account. Account balances count the parent only;
 // category totals count the children only (the parent has no category).
 
+/** Account types whose balances can contribute spendable cash or budget debt. */
+export const LIQUID_ACCOUNT_TYPES = ['checking', 'savings', 'cash', 'credit', 'line_of_credit'];
+
 /** Rows that make up an account's balance: everything except split children. */
 export const inAccountBalance: SQL = isNull(transactions.parentTransactionId);
 

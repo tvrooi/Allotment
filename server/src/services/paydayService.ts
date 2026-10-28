@@ -252,6 +252,8 @@ export function previewPayday(planId: string, request: PaydayRequest) {
   const received = selected.reduce((sum, r) => sum + r.amount, 0);
   const state = fundingState(today);
   if (!state.complete) throw new PaydayError('Add missing account exchange rates before funding');
+  if (state.accountIssues.length)
+    throw new PaydayError('Reconcile account balance discrepancies before payday funding.', 409);
   const future = request.actualPayDate > today;
   // Ready to Assign doesn't count this month's overspending until next month (like YNAB);
   // an automatic allocation leaves enough to cover it rather than spend it twice

@@ -1,4 +1,5 @@
 import { and, eq } from 'drizzle-orm';
+import { accountIssues } from './accountIntegrity.js';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import { budgetMonths, budgetMoves, categoryPurposes, financialPriorities } from '../db/schema.js';
@@ -183,6 +184,7 @@ function assignable(months: string[], today: string) {
  * target and income writes. */
 export function fundedWrite(action: () => void) {
   return db.transaction(() => {
+    const issues = accountIssues();
     const before = assignmentRows();
     action();
     const after = assignmentRows();
@@ -203,18 +205,22 @@ export function fundedWrite(action: () => void) {
       if (k.slice(0, 7) > current) months.add(k.slice(0, 7));
     const checked = [...months].sort();
     const now = assignable(checked, today);
-    if (now.every((p) => p.complete && p.value >= 0)) return;
+    if (!issues.length && now.every((p) => p.complete && p.value >= 0)) return;
     restoreRows(changed, before);
     const was = assignable(checked, today);
     restoreRows(changed, after);
-    const worse = now.find((p, i) => p.value < was[i].value && (!p.complete || p.value < 0));
+    const worse = now.find(
+      (p, i) => p.value < was[i].value && (issues.length > 0 || !p.complete || p.value < 0),
+    );
     if (worse)
       throw new BudgetError(
-        worse.complete
-          ? worse.month < current
-            ? `Not enough money had arrived by the end of ${worse.month}. Assign it in a later month, or move existing money.`
-            : 'Insufficient unassigned money. Reduce an assignment or move existing money.'
-          : 'Add missing exchange rates before assigning money.',
+        issues.length
+          ? 'Reconcile account balance discrepancies before assigning more money.'
+          : worse.complete
+            ? worse.month < current
+              ? `Not enough money had arrived by the end of ${worse.month}. Assign it in a later month, or move existing money.`
+              : 'Insufficient unassigned money. Reduce an assignment or move existing money.'
+            : 'Add missing exchange rates before assigning money.',
       );
   });
 }

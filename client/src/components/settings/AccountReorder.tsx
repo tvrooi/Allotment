@@ -1,3 +1,6 @@
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { getAllAccounts } from '../../api/accounts';
 import { useState, useEffect } from 'react';
 import { GripVertical } from 'lucide-react';
 import {
@@ -111,6 +114,11 @@ function AccountSection({
 export function AccountReorder() {
   const { data: accounts = [], isLoading } = useAccounts();
   const reorderAccounts = useReorderAccounts();
+  const { data: allAccounts = [] } = useQuery({
+    queryKey: ['accounts', 'including-closed'],
+    queryFn: getAllAccounts,
+  });
+  const closed = allAccounts.filter((a) => a.closedAt);
 
   const onBudget = accounts.filter((a) => !a.isOffBudget);
   const offBudget = accounts.filter((a) => a.isOffBudget);
@@ -123,7 +131,7 @@ export function AccountReorder() {
     );
   }
 
-  if (accounts.length === 0) {
+  if (accounts.length === 0 && closed.length === 0) {
     return (
       <p className="text-sm text-text-tertiary text-center py-8">
         No accounts yet. Add one from the Accounts page.
@@ -139,6 +147,26 @@ export function AccountReorder() {
           Drag to reorder accounts in the sidebar.
         </p>
       </div>
+      {!!closed.length && (
+        <section aria-label="Closed accounts" className="space-y-2">
+          <h3 className="text-sm font-semibold">Closed accounts</h3>
+          <p className="text-xs text-text-secondary">
+            Closing an account keeps its history. Any remaining balance must be reviewed and
+            reconciled to zero.
+          </p>
+          {closed.map((a) => (
+            <div key={a.id} className="flex items-center gap-3 border rounded-md p-3 text-sm">
+              <span className="flex-1">{a.name}</span>
+              <span>{formatMoney(a.balance, a.currency)}</span>
+              {a.balance !== 0 && (
+                <Link className="underline text-caution" to={`/accounts/${a.id}/reconcile`}>
+                  Reconcile to zero
+                </Link>
+              )}
+            </div>
+          ))}
+        </section>
+      )}
       <AccountSection
         title="On Budget"
         accounts={onBudget}

@@ -1,3 +1,4 @@
+import { accountIssues as checkAccountIssues } from './accountIntegrity.js';
 import { beforeAll, beforeEach, afterAll, describe, expect, it, vi } from 'vitest';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { and, eq, gte, lte, lt, sql } from 'drizzle-orm';
@@ -292,6 +293,9 @@ export function legacyFundingState(asOf = todayIso(), month = asOf.slice(0, 7)) 
     ? Math.min(futureAssigned, Math.max(0, unassignedBeforeLater))
     : futureAssigned;
   const unassigned = unassignedBeforeLater - laterDeduction;
+  // Balance validation wraps both engines; the oracle below still independently computes
+  // every monetary figure. The new guard has dedicated reconciliation regressions.
+  const accountIssues = checkAccountIssues(asOf);
   return {
     balances,
     cards: card.positions,
@@ -310,10 +314,12 @@ export function legacyFundingState(asOf = todayIso(), month = asOf.slice(0, 7)) 
     complete,
     unassignedBeforeLater,
     unassigned,
-    available: complete ? Math.max(0, unassigned) : 0,
+    accountIssues,
+    available: complete && accountIssues.length === 0 ? Math.max(0, unassigned) : 0,
     revision: fundingRevision(),
     resolved:
       complete &&
+      accountIssues.length === 0 &&
       uncategorized === 0 &&
       overspent === 0 &&
       unassigned >= 0 &&

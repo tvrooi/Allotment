@@ -3,6 +3,30 @@ import type { Account, AccountType } from '../types';
 import type { ImportSettings } from '../utils/csv';
 
 export const getAccounts = () => apiFetch<Account[]>('/accounts');
+export const getAllAccounts = () => apiFetch<Account[]>('/accounts?include_closed=1');
+export interface ReconciliationSnapshot {
+  account: Account;
+  transactions: import('../types').Transaction[];
+  reconciledBase: number;
+  revision: string;
+  date: string;
+}
+export const getReconciliation = (id: string) =>
+  apiFetch<ReconciliationSnapshot>(`/accounts/${id}/reconcile`);
+export const saveReconciliation = (
+  id: string,
+  data: {
+    transactionIds: string[];
+    statementBalance: number;
+    expectedBalance: number;
+    revision: string;
+    createAdjustment: boolean;
+  },
+) =>
+  apiFetch<{ reconciled: number; adjustment: number }>(`/accounts/${id}/reconcile`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 
 export const createAccount = (data: {
   name: string;
