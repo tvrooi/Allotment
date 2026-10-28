@@ -90,6 +90,8 @@ function install(accountId: string, initialFunding: number) {
   const card = after.cards.find((c) => c.accountId === accountId)!;
   if (!after.complete)
     throw new BudgetError('Add missing account and transaction exchange rates before setup');
+  if (initialFunding > 0 && after.accountIssues.length)
+    throw new BudgetError('Reconcile account balance discrepancies before funding a card payment.');
   if (initialFunding > card.debt)
     throw new BudgetError('Initial funding cannot exceed existing card debt', 400);
   if (after.unassigned < 0)
@@ -180,6 +182,10 @@ export function previewCardAssignment(
         .run();
       const after = fundingState(),
         card = after.cards.find((c) => c.accountId === accountId)!;
+      if (after.reserved > before.reserved && after.accountIssues.length)
+        throw new BudgetError(
+          'Reconcile account balance discrepancies before funding a card payment.',
+        );
       if (after.reserved > before.reserved && after.unassigned < 0)
         throw new BudgetError('Insufficient unassigned money for this payment funding');
       throw new FundingPreviewRollback({

@@ -1,5 +1,6 @@
 import { db } from '../db/index.js';
-import { schedules, scheduleOccurrences, transactions, payees } from '../db/schema.js';
+import { bankLinked } from './accountIntegrity.js';
+import { schedules, scheduleOccurrences, transactions, payees, accounts } from '../db/schema.js';
 import { eq, and, isNull } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { format, parseISO, addDays } from 'date-fns';
@@ -118,6 +119,9 @@ export function autoCreateDueScheduled(): number {
 
   for (const schedule of activeSchedules) {
     if (!schedule.accountId) continue;
+    const account = db.select().from(accounts).where(eq(accounts.id, schedule.accountId)).get();
+    if (!account || account.closedAt) continue;
+    const importedIncome = bankLinked(schedule.accountId);
 
     const pendingOccs = db
       .select()
@@ -136,6 +140,8 @@ export function autoCreateDueScheduled(): number {
       });
 
     for (const occ of pendingOccs) {
+      // Wait for the bank receipt; keep the occurrence available for matching.
+      if (importedIncome && occ.expectedAmount > 0) continue;
       let payeeName = schedule.name;
       if (schedule.payeeId) {
         const p = db.select().from(payees).where(eq(payees.id, schedule.payeeId)).get();

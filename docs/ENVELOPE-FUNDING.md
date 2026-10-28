@@ -193,3 +193,37 @@ include everything, so cash spent before the start simply isn't there to assign.
 register and the spending history used by the runway ignore the start. A month before the start
 shows no assignments or activity. Moving the start changes the funding revision; it never
 rewrites transactions or stored assignments.
+
+## Balance checks and reconciliation
+
+Ready to Assign still follows the signed-envelope calculation above. Before using it for
+new funding, the service checks personal budget accounts for known discrepancies: Up's
+current settled balance must match dated received register activity, and a closed cash or
+debt account must not hold a residual balance. A bank account awaiting its first balance
+also needs sync. Current bank snapshots are never compared with historical month ends.
+
+The response includes `accountIssues`. While it is nonempty, `available` is zero, `resolved`
+is false, and new manual, payday and card reserve funding is refused. Automatic assignment
+previews have no available money. The raw resource/envelope arithmetic remains visible for
+review; no bank record, starting balance or assignment is silently rewritten. Review and
+resilience disclose the same incomplete balance check. Bank accounts describe where money
+sits; category availability describes what is reserved for each purpose.
+
+Closing requires a zero register balance, checked in the same transaction as the close.
+Settings lists older closed accounts too, with a link to reconcile a residual explicitly.
+Closing an account cannot erase cash or debt from the funding model. The owner should check
+the actual closing statement before reconciling it to zero.
+
+Reconciliation loads one complete dated snapshot, selects all current unreconciled parent
+rows initially and excludes future entries and split children. A matching partial selection
+may be confirmed, but an adjustment requires every current entry to be checked. A revision
+and register-balance check reject stale saves. A correction and its reconciliation commit
+in one database transaction; retries of a stale request cannot duplicate it. Corrections
+remain distinct from earned income and spending. Only the owner session can use these
+writing routes; MCP token scopes are unchanged.
+
+On a bank-connected account, an income schedule remains an expectation for matching to the
+actual receipt; it does not auto-create another deposit. A legacy generated income entry
+must be reviewed against its bank receipt before reconciliation can make it received cash.
+Schedules never auto-create entries in closed accounts. Existing transactions survive the
+upgrade unchanged; these safeguards do not perform a live budget repair automatically.

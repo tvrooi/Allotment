@@ -28,6 +28,7 @@ export function EditAccountModal({ account, onClose }: Props) {
   const budgetCurrency = useBudgetCurrency();
   const { data: currencySettings } = useCurrencySettings();
   const [confirmClose, setConfirmClose] = useState(false);
+  const [closeError, setCloseError] = useState('');
   const canSave = useCanSave();
   const [logo, setLogo] = useState<string | null>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
@@ -80,8 +81,13 @@ export function EditAccountModal({ account, onClose }: Props) {
 
   async function handleCloseAccount() {
     if (!account) return;
-    await closeAccount.mutateAsync(account.id);
-    onClose();
+    try {
+      await closeAccount.mutateAsync(account.id);
+      onClose();
+    } catch (error) {
+      setCloseError(error instanceof Error ? error.message : 'Could not close account');
+      setConfirmClose(false);
+    }
   }
 
   return (
@@ -201,11 +207,25 @@ export function EditAccountModal({ account, onClose }: Props) {
             </span>
           </label>
 
+          {closeError && (
+            <p role="alert" className="text-sm text-negative">
+              {closeError}
+            </p>
+          )}
+          {account && account.balance !== 0 && (
+            <p className="text-xs text-caution">
+              Reconcile this account to zero before closing it. Closing cannot remove money or debt.
+            </p>
+          )}
           <SavingPausedHint className="text-right" />
           <div className="flex items-center justify-between pt-2 border-t border-border-light">
             <button
               type="button"
-              onClick={() => setConfirmClose(true)}
+              onClick={() => {
+                setCloseError('');
+                setConfirmClose(true);
+              }}
+              disabled={account?.balance !== 0}
               className="text-sm text-negative hover:underline font-medium transition-colors"
             >
               Close Account

@@ -1,13 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getReconciliation, saveReconciliation } from '../api/accounts';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ChevronRight, Check } from 'lucide-react';
-import { format } from 'date-fns';
-import { useAccounts } from '../hooks/useAccounts';
-import {
-  useTransactions,
-  useReconcileAccount,
-  useCreateTransaction,
-} from '../hooks/useTransactions';
+import { ChevronRight } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
@@ -20,15 +15,39 @@ export default function ReconcilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { data: accounts = [] } = useAccounts();
-  const account = accounts.find((a) => a.id === id);
-
-  const { data: unreconciledTxns = [], isLoading } = useTransactions(
-    id ? { accountId: id, reconciled: 0 } : {},
-  );
-
-  const reconcileAccount = useReconcileAccount();
-  const createTransaction = useCreateTransaction();
+  const qc = useQueryClient();
+  const { data: snapshot, isLoading } = useQuery({
+    queryKey: ['reconciliation', id],
+    queryFn: () => getReconciliation(id!),
+    enabled: !!id,
+  });
+  const account = snapshot?.account;
+  const unreconciledTxns = snapshot?.transactions ?? [];
+  const [error, setError] = useState('');
+  const save = useMutation({
+    mutationFn: (createAdjustment: boolean) =>
+      saveReconciliation(id!, {
+        transactionIds: [...checkedIds],
+        statementBalance,
+        expectedBalance: account!.balance,
+        revision: snapshot!.revision,
+        createAdjustment,
+      }),
+    onSuccess: () => {
+      for (const key of [
+        'accounts',
+        'transactions',
+        'budget',
+        'budget-summary',
+        'reconciliation',
+        'review',
+        'reports',
+      ])
+        qc.invalidateQueries({ queryKey: [key] });
+      navigate(account?.closedAt ? '/settings?tab=accounts' : `/accounts/${id}`);
+    },
+    onError: (err: Error) => setError(err.message),
+  });
 
   const [step, setStep] = useState<1 | 2>(1);
   const [statementBalance, setStatementBalance] = useState(0);
@@ -38,19 +57,17 @@ export default function ReconcilePage() {
 
   function startStep2() {
     if (!statementValid) return;
-    setCheckedIds(new Set());
+    setCheckedIds(new Set(unreconciledTxns.map((t) => t.id)));
+    setError('');
     setStep(2);
   }
 
-  const reconciledBase = useMemo(() => {
-    if (!account) return 0;
-    const unreconciledSum = unreconciledTxns.reduce((s, t) => s + t.amount, 0);
-    return account.balance - unreconciledSum;
-  }, [account, unreconciledTxns]);
-
-  const checkedSum = useMemo(() => {
-    return unreconciledTxns.filter((t) => checkedIds.has(t.id)).reduce((s, t) => s + t.amount, 0);
-  }, [unreconciledTxns, checkedIds]);
+  const reconciledBase = snapshot?.reconciledBase ?? 0;
+  const checkedSum = unreconciledTxns
+    .filter((t) => checkedIds.has(t.id))
+    .reduce((sum, t) => sum + t.amount, 0);
+  const allChecked = checkedIds.size === unreconciledTxns.length;
+  const registerToday = reconciledBase + unreconciledTxns.reduce((sum, t) => sum + t.amount, 0);
 
   const selectedBalance = reconciledBase + checkedSum;
   const difference = selectedBalance - statementBalance;
@@ -62,27 +79,6 @@ export default function ReconcilePage() {
       next.has(tx.id) ? next.delete(tx.id) : next.add(tx.id);
       return next;
     });
-  }
-
-  async function handleFinish() {
-    if (!id || checkedIds.size === 0) return;
-    await reconcileAccount.mutateAsync({ accountId: id, transactionIds: [...checkedIds] });
-    navigate(`/accounts/${id}`);
-  }
-
-  async function handleCreateAdjustment() {
-    if (!id || !account) return;
-    const adjustmentAmount = statementBalance - selectedBalance;
-    const created = await createTransaction.mutateAsync({
-      accountId: id,
-      date: format(new Date(), 'yyyy-MM-dd'),
-      amount: adjustmentAmount,
-      notes: 'Reconciliation adjustment',
-      adjustment: true,
-    });
-    const idsToReconcile = [...checkedIds, created.id];
-    await reconcileAccount.mutateAsync({ accountId: id, transactionIds: idsToReconcile });
-    navigate(`/accounts/${id}`);
   }
 
   if (!account) return null;
@@ -126,6 +122,7 @@ export default function ReconcilePage() {
               <AmountFields report={report}>
                 <CurrencyInput
                   currency={account.currency}
+                  allowNegative
                   value={statementBalance}
                   onChange={setStatementBalance}
                   aria-label="Statement balance"
@@ -135,9 +132,9 @@ export default function ReconcilePage() {
             </div>
 
             <div className="rounded-lg border border-border-light bg-surface-alt px-4 py-3">
-              <p className="text-xs text-text-tertiary">Current selected balance in app</p>
+              <p className="text-xs text-text-tertiary">Current register balance</p>
               <p className="text-lg font-semibold text-text mt-0.5 tabular-nums">
-                {formatMoney(selectedBalance, account.currency)}
+                {formatMoney(registerToday, account.currency)}
               </p>
             </div>
 
@@ -189,7 +186,16 @@ export default function ReconcilePage() {
                   Amount
                 </th>
                 <th className="px-4 py-2 text-center text-xs font-medium text-text-tertiary w-12">
-                  C
+                  <input
+                    type="checkbox"
+                    aria-label="Select all current transactions"
+                    checked={allChecked}
+                    onChange={() =>
+                      setCheckedIds(
+                        allChecked ? new Set() : new Set(unreconciledTxns.map((t) => t.id)),
+                      )
+                    }
+                  />
                 </th>
               </tr>
             </thead>
@@ -227,15 +233,13 @@ export default function ReconcilePage() {
                         {formatMoney(tx.amount, account.currency)}
                       </td>
                       <td className="px-4 py-2 text-center">
-                        <div
-                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mx-auto transition-colors ${
-                            checked
-                              ? 'bg-positive border-positive text-semantic-contrast'
-                              : 'border-border'
-                          }`}
-                        >
-                          {checked && <Check size={10} />}
-                        </div>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          aria-label={`Select transaction ${tx.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={() => toggleRow(tx)}
+                        />
                       </td>
                     </tr>
                   );
@@ -271,18 +275,42 @@ export default function ReconcilePage() {
           </div>
 
           <div className="px-5 py-5 space-y-2 border-t border-border">
+            {error && (
+              <p role="alert" className="text-xs text-negative">
+                {error}
+              </p>
+            )}
+            {!allChecked && (
+              <p className="text-xs text-caution">
+                Check every current transaction before creating an adjustment. Unchecked entries are
+                not missing money.
+              </p>
+            )}
+            {!isBalanced && allChecked && (
+              <p className="text-xs text-text-secondary">
+                Adds a {formatMoney(-difference, account.currency)} balance correction. Review your
+                statement first; income and spending stay unchanged.
+              </p>
+            )}
+
             <Button
-              onClick={handleFinish}
-              disabled={!isBalanced || reconcileAccount.isPending || checkedIds.size === 0}
+              onClick={() => {
+                setError('');
+                save.mutate(false);
+              }}
+              disabled={!isBalanced || save.isPending || checkedIds.size === 0}
               className="w-full"
             >
-              {reconcileAccount.isPending ? 'Saving...' : 'Finish'}
+              {save.isPending ? 'Saving...' : 'Finish'}
             </Button>
             {!isBalanced && (
               <Button
                 variant="secondary"
-                onClick={handleCreateAdjustment}
-                disabled={reconcileAccount.isPending || createTransaction.isPending}
+                onClick={() => {
+                  setError('');
+                  save.mutate(true);
+                }}
+                disabled={!allChecked || save.isPending}
                 className="w-full"
               >
                 Create Adjustment

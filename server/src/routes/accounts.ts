@@ -1,4 +1,10 @@
+import { bankLinked } from '../services/accountIntegrity.js';
 import { Router } from 'express';
+import {
+  reconcile,
+  reconciliationSnapshot,
+  ReconciliationError,
+} from '../services/reconciliationService.js';
 import { db } from '../db/index.js';
 import {
   cardFunding,
@@ -103,11 +109,11 @@ function withBalance(account: typeof accounts.$inferSelect) {
 
 const storedCurrency = currencyToStore;
 
-accountsRouter.get('/', (_req, res) => {
+accountsRouter.get('/', (req, res) => {
   const rows = db
     .select()
     .from(accounts)
-    .where(isNull(accounts.closedAt))
+    .where(req.query.include_closed === '1' ? undefined : isNull(accounts.closedAt))
     .orderBy(accounts.sortOrder)
     .all();
   if (!rows.length) return res.json([]);
@@ -224,11 +230,61 @@ accountsRouter.put('/reorder', (req, res) => {
   res.json({ ok: true });
 });
 
+accountsRouter.get('/:id/reconcile', (req, res) => {
+  try {
+    res.json(reconciliationSnapshot(req.params.id));
+  } catch (error) {
+    if (error instanceof ReconciliationError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
+});
+
+accountsRouter.post('/:id/reconcile', (req, res) => {
+  const parsed = z
+    .object({
+      transactionIds: z.array(z.string().min(1).max(64)).max(100_000),
+      statementBalance: z.number().int().min(-1e13).max(1e13),
+      expectedBalance: z.number().int().min(-1e13).max(1e13),
+      revision: z.string().min(1).max(200),
+      createAdjustment: z.boolean(),
+    })
+    .strict()
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    res.json(reconcile(req.params.id, parsed.data));
+  } catch (error) {
+    if (error instanceof ReconciliationError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
+});
+
 accountsRouter.put('/:id/reconcile', (req, res) => {
   const parsed = z
     .object({ transactionIds: z.array(z.string().max(64)).min(1).max(100_000) })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  if (bankLinked(req.params.id)) {
+    const selected = db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.accountId, req.params.id),
+          inArray(transactions.id, parsed.data.transactionIds),
+        ),
+      )
+      .all();
+    if (
+      selected.some((t) => t.amount > 0 && !t.reconciled && t.importedId?.startsWith('schedule:'))
+    )
+      return res
+        .status(409)
+        .json({ error: 'Review generated income against its bank receipt before reconciling.' });
+  }
 
   // Only this account's transactions
   const result = db
@@ -354,9 +410,21 @@ accountsRouter.put('/:id', (req, res) => {
 });
 
 accountsRouter.delete('/:id', (req, res) => {
-  db.update(accounts)
-    .set({ closedAt: new Date().toISOString() })
-    .where(eq(accounts.id, req.params.id))
-    .run();
+  const result = db.transaction(() => {
+    const account = db.select().from(accounts).where(eq(accounts.id, req.params.id)).get();
+    if (!account) return 'missing';
+    if (account.startingBalance + accountTransactionSum(account.id) !== 0) return 'nonzero';
+    db.update(accounts)
+      .set({ closedAt: new Date().toISOString() })
+      .where(eq(accounts.id, account.id))
+      .run();
+    return null;
+  });
+  if (result === 'missing') return res.status(404).json({ error: 'Account not found' });
+  if (result === 'nonzero')
+    return res.status(409).json({
+      error:
+        'Reconcile this account to zero before closing it. Closing does not remove its money or debt.',
+    });
   res.status(204).send();
 });

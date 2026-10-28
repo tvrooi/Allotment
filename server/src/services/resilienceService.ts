@@ -190,6 +190,7 @@ function essentials(today: string, estimate: number | null) {
  * and nothing is counted twice. */
 export function resilienceState(today = todayIso()) {
   const state = fundingState(today);
+  const complete = state.complete && state.accountIssues.length === 0;
   const profile = prioritiesState();
   const month = today.slice(0, 7);
   const cats = budgetWithTargets(month, today)
@@ -253,6 +254,10 @@ export function resilienceState(today = todayIso()) {
         : null;
   const incomplete: string[] = [];
   if (!state.complete) incomplete.push('Some account or transaction exchange rates are missing.');
+  for (const issue of state.accountIssues)
+    incomplete.push(
+      `${issue.accountName}: reconcile the account balance before relying on funding figures.`,
+    );
   if (profile.reserveTarget?.type === 'months' && essential.monthly === null)
     incomplete.push('A months-based target needs monthly essentials.');
 
@@ -270,11 +275,11 @@ export function resilienceState(today = todayIso()) {
   return {
     asOf: today,
     month,
-    complete: state.complete,
+    complete: complete,
     status,
     healthy: status === 'on-target' && unfundedTotal === 0,
-    resources: state.complete ? state.resources : null,
-    partition: state.complete
+    resources: complete ? state.resources : null,
+    partition: complete
       ? {
           ...buckets,
           overspent: state.cashOverspent ? -state.cashOverspent : 0,
@@ -288,7 +293,7 @@ export function resilienceState(today = todayIso()) {
         available: Math.max(0, c.balance),
         later: later.get(c.id) ?? 0,
       })),
-      available: state.complete ? available : null,
+      available: complete ? available : null,
       later: future,
       minimum: profile.reserveMinimum,
       minimumGap: profile.reserveMinimum ? Math.max(0, profile.reserveMinimum - available) : null,
@@ -299,7 +304,7 @@ export function resilienceState(today = todayIso()) {
     essentials: essential,
     /** Months of essentials in tenths (20 = 2.0 months); null when it cannot be measured. */
     coverageTenths:
-      state.complete && essential.monthly ? Math.floor((available * 10) / essential.monthly) : null,
+      complete && essential.monthly ? Math.floor((available * 10) / essential.monthly) : null,
     unfunded,
     unfundedTotal,
     incomplete,

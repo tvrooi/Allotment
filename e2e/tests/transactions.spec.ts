@@ -588,10 +588,8 @@ test.describe('long histories', () => {
     const { checking } = await setup(api);
     await seedDaily(api, checking.id, 250);
     await open(page, `/accounts/${checking.id}/reconcile`);
-    // Nothing reconciled yet, so the reconciled part is just the starting balance
-    await expect(page.getByText('Current selected balance in app').locator('..')).toContainText(
-      '$1,000',
-    );
+    // The opening screen shows the full dated register, rather than the unselected base.
+    await expect(page.getByText('Current register balance').locator('..')).toContainText('$750');
     await page.getByRole('button', { name: 'Start Reconciliation' }).click();
     await expect(page.getByText('Shop 249')).toBeVisible();
   });

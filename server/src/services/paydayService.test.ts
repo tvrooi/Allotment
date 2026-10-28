@@ -560,3 +560,25 @@ describe('payday funding with category targets (6E)', () => {
     });
   });
 });
+
+it('does not consume a payday or its receipts while account balances need reconciliation', () => {
+  plan();
+  income();
+  const preview = previewPayday('plan', request);
+  db.insert(accounts)
+    .values({
+      id: 'closed-residual',
+      name: 'Old saver',
+      type: 'savings',
+      startingBalance: 1000,
+      createdAt: '2026-10-01',
+      closedAt: '2026-10-20',
+    })
+    .run();
+  expect(() => applyPayday('plan', request, JSON.stringify(preview))).toThrow(
+    /Reconcile account balance/,
+  );
+  expect(db.select().from(paydayFundingEvents).all()).toEqual([]);
+  expect(db.select().from(paydayFundingReceipts).all()).toEqual([]);
+  expect(db.select().from(budgetMonths).all()).toEqual([]);
+});

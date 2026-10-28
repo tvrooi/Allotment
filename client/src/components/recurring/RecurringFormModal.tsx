@@ -357,6 +357,11 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
           </label>
         </div>
 
+        <p className="text-xs text-text-tertiary">
+          On bank-connected accounts, income waits for the imported receipt even when auto-create is
+          enabled. Closed accounts never auto-create transactions.
+        </p>
+
         {/* Advanced settings */}
         <div>
           <button

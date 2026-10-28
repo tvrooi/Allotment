@@ -130,6 +130,7 @@ export function reviewState(today = todayIso()) {
     complete: state.complete,
     resolved: state.resolved,
     unassigned: state.unassigned,
+    accountIssues: state.accountIssues,
     totals: {
       uncategorised: state.uncategorized,
       deficits: state.overspent,
@@ -470,20 +471,23 @@ export function guideState(today = todayIso()) {
     },
     {
       id: 'assign',
-      status: !state.complete
-        ? 'attention'
-        : state.unassigned > 0
-          ? 'todo'
-          : state.unassigned < 0
-            ? 'attention'
-            : 'done',
-      summary: !state.complete
-        ? 'Add missing exchange rates before assigning money.'
-        : state.unassigned > 0
-          ? 'Some money you already have is not assigned yet.'
-          : state.unassigned < 0
-            ? 'More is assigned than you have; reduce an assignment.'
-            : 'Every dollar you have is assigned.',
+      status:
+        !state.complete || state.accountIssues.length > 0
+          ? 'attention'
+          : state.unassigned > 0
+            ? 'todo'
+            : state.unassigned < 0
+              ? 'attention'
+              : 'done',
+      summary: state.accountIssues.length
+        ? 'Reconcile account balance discrepancies before assigning money.'
+        : !state.complete
+          ? 'Add missing exchange rates before assigning money.'
+          : state.unassigned > 0
+            ? 'Some money you already have is not assigned yet.'
+            : state.unassigned < 0
+              ? 'More is assigned than you have; reduce an assignment.'
+              : 'Every dollar you have is assigned.',
     },
     {
       id: 'irregular',
@@ -512,6 +516,7 @@ export function guideState(today = todayIso()) {
     asOf: today,
     month,
     unassigned: state.unassigned,
+    accountIssues: state.accountIssues,
     complete: state.complete,
     steps,
     balances,

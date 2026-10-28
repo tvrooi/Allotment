@@ -1,6 +1,7 @@
 import type { BudgetSummary } from '../../types';
 import { useState } from 'react';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, formatMoney } from '../../utils/currency';
+import { Link } from 'react-router-dom';
 import { formatAsOfDay } from '../../utils/dates';
 
 interface ExpenseBreakdown {
@@ -146,9 +147,11 @@ export function BudgetSummaryWidget({
       ? {
           bg: 'bg-caution-subtle',
           text: 'text-caution',
-          label: funding.complete
-            ? 'Resolve overspending and uncategorised spending'
-            : 'Incomplete: missing exchange rates',
+          label: funding.accountIssues?.length
+            ? 'Reconcile account balances before assigning money'
+            : funding.complete
+              ? 'Resolve overspending and uncategorised spending'
+              : 'Incomplete: missing exchange rates',
         }
       : getHeroStyle(toBeBudgeted, incomePlanned);
 
@@ -164,16 +167,57 @@ export function BudgetSummaryWidget({
             Ready to assign
           </p>
           <p className={`text-lg font-semibold tabular-nums ${hero.text}`}>
-            {funding?.complete === false ? 'Incomplete' : formatCurrency(toBeBudgeted)}
+            {funding?.accountIssues?.length
+              ? 'Check balances'
+              : funding?.complete === false
+                ? 'Incomplete'
+                : formatCurrency(toBeBudgeted)}
           </p>
           <p className={`text-xs ${hero.text} mt-0.5 opacity-75`}>{hero.label}</p>
         </div>
       </div>
 
+      {!!funding?.accountIssues?.length && (
+        <div role="alert" className="px-4 pb-3 text-xs text-caution">
+          <p>Ready to assign is unverified. Resolve these balances before funding categories.</p>
+          <ul className="mt-2 space-y-2">
+            {funding.accountIssues.map((issue) => (
+              <li key={issue.accountId}>
+                <Link className="underline" to={`/accounts/${issue.accountId}/reconcile`}>
+                  {issue.accountName}
+                </Link>
+                {issue.reason === 'closed-balance'
+                  ? `: closed with ${formatMoney(issue.registerBalance, issue.currency)} still recorded. Reconcile it to zero.`
+                  : issue.bankBalance === null
+                    ? ': sync the bank to check its settled balance.'
+                    : `: register ${formatMoney(issue.registerBalance, issue.currency)}, bank ${formatMoney(issue.bankBalance, issue.currency)}.`}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {funding && (
         <div className="px-4 pb-3 text-xs">
           <p className="text-text-tertiary mb-1.5">
             Unassigned as of {formatAsOfDay(funding.asOf)}
+          </p>
+          <dl className="grid gap-1 mb-2 border-b border-border-light pb-2">
+            {(
+              [
+                ['Cash and budget debt', funding.resources],
+                ['Held in envelopes', funding.envelopes ?? funding.reserved],
+                ['Calculated unassigned', toBeBudgeted],
+              ] as const
+            ).map(([label, value]) => (
+              <div key={label} className="flex justify-between gap-2">
+                <dt>{label}</dt>
+                <dd className="tabular-nums">{formatCurrency(value)}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="text-text-tertiary mb-2">
+            Moving money to a saver changes where it sits. Assign it to a category to reserve it for
+            rent or another purpose.
           </p>
           <dl className="grid gap-1">
             {(

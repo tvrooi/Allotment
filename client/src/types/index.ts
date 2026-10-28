@@ -401,6 +401,15 @@ export interface BudgetGroup {
 }
 
 export interface BudgetSummary {
+  accountIssues?: {
+    accountId: string;
+    accountName: string;
+    currency: string | null;
+    reason: 'closed-balance' | 'bank-mismatch' | 'bank-balance-unavailable';
+    registerBalance: number;
+    bankBalance: number | null;
+    difference: number | null;
+  }[];
   revision?: string;
   cards?: import('../api/budget').CardPosition[];
   paymentShortfall?: number;

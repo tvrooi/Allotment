@@ -173,9 +173,11 @@ function StepDetail({ id, guide }: { id: api.GuideStepId; guide: api.GuideState 
     return (
       <>
         <p>
-          {guide.complete
-            ? `${formatCurrency(guide.unassigned)} is unassigned today. Give every dollar you already have a job; money you expect later is assigned when it arrives.`
-            : 'Some exchange rates are missing, so unassigned money is unknown.'}
+          {guide.accountIssues?.length
+            ? 'Account balances need reconciliation before unassigned money can be relied on.'
+            : guide.complete
+              ? `${formatCurrency(guide.unassigned)} is unassigned today. Give every dollar you already have a job; money you expect later is assigned when it arrives.`
+              : 'Some exchange rates are missing, so unassigned money is unknown.'}
         </p>
         <ButtonLink size="sm" variant="secondary" to="/budget">
           Open the budget
@@ -298,6 +300,7 @@ function NeedsAttention({ review, group }: { review: api.BudgetReview; group: st
     .map((c) => ({ ...c, categories: inGroup(c.categories) }))
     .filter((c) => c.categories.length);
   const nothing =
+    !review.accountIssues?.length &&
     !review.uncategorisedCount &&
     !deficits.length &&
     !shortfalls.length &&
@@ -307,6 +310,15 @@ function NeedsAttention({ review, group }: { review: api.BudgetReview; group: st
     <Card>
       <div id="needs-attention" className="space-y-4">
         <h2 className="text-base font-semibold text-text">Needs attention</h2>
+        {!!review.accountIssues?.length && (
+          <p role="alert" className="text-sm text-caution">
+            Account balances need reconciliation.{' '}
+            <Link to="/budget" className="underline">
+              Review the balance discrepancies
+            </Link>{' '}
+            before assigning more money.
+          </p>
+        )}
         <div className="grid grid-cols-2 max-md:grid-cols-1 gap-x-6">
           <Row label="Uncategorised spending" value={formatCurrency(review.totals.uncategorised)} />
           <Row label="Overspent" value={formatCurrency(review.totals.deficits)} />
@@ -317,7 +329,13 @@ function NeedsAttention({ review, group }: { review: api.BudgetReview; group: st
           />
           <Row
             label="Unassigned"
-            value={review.complete ? formatCurrency(review.unassigned) : 'Unknown'}
+            value={
+              review.accountIssues?.length
+                ? 'Check account balances'
+                : review.complete
+                  ? formatCurrency(review.unassigned)
+                  : 'Unknown'
+            }
             tone={review.unassigned < 0 ? 'neg' : undefined}
           />
           {(review.totals.cardShortfall > 0 || review.totals.uncoveredCardPayments > 0) && (
