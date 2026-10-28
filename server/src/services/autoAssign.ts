@@ -37,20 +37,23 @@ function needs(month: string, strategy: AutoAssignStrategy, today: string) {
   const current = expense(budgetWithTargets(month, today));
   const previous = (n: number) =>
     new Map(expense(budgetGroups(addMonthsTo(month, -n), today)).map((c) => [c.id, c]));
+  // What a month already put in: assignments plus transfers into a linked account
+  const funded = (c?: { budgeted: number; transferred: number }) =>
+    (c?.budgeted ?? 0) + (c?.transferred ?? 0);
   let need: (c: (typeof current)[number]) => number;
   if (strategy === 'underfunded') need = (c) => c.target?.underfunded ?? 0;
   else if (strategy === 'overspent') need = (c) => -c.balance;
   else if (strategy === 'assigned_last_month') {
     const last = previous(1);
-    need = (c) => (last.get(c.id)?.budgeted ?? 0) - c.budgeted;
+    need = (c) => funded(last.get(c.id)) - funded(c);
   } else if (strategy === 'spent_last_month') {
     const last = previous(1);
-    need = (c) => (last.get(c.id)?.spent ?? 0) - c.budgeted;
+    need = (c) => (last.get(c.id)?.spent ?? 0) - funded(c);
   } else {
     const months = Array.from({ length: AVERAGE_MONTHS }, (_, i) => previous(i + 1));
     need = (c) =>
       Math.round(months.reduce((s, m) => s + (m.get(c.id)?.spent ?? 0), 0) / AVERAGE_MONTHS) -
-      c.budgeted;
+      funded(c);
   }
   return current
     .map((c) => ({ categoryId: c.id, name: c.name, assigned: c.budgeted, need: need(c) }))

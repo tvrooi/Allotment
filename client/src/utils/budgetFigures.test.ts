@@ -22,6 +22,17 @@ const category = fc
   }));
 
 describe('categoryFigures (property-based)', () => {
+  it('a transfer into a linked account funds the envelope without being activity', () => {
+    fc.assert(
+      fc.property(category, fc.nat(10_000_000), (cat, transferred) => {
+        const linked = { ...cat, transferred, balance: cat.balance + transferred };
+        const { actual, remaining } = categoryFigures(linked, false);
+        expect(actual).toBe(categoryFigures(cat, false).actual);
+        expect(remaining).toBe(linked.balance);
+      }),
+    );
+  });
+
   it('expenses: activity is signed and availability includes rollover', () => {
     fc.assert(
       fc.property(category, (cat) => {

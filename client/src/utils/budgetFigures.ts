@@ -5,12 +5,11 @@ import type { BudgetCategory } from '../types';
 /**
  * `actual`: what was spent (expenses) or received (income) this month. `remaining`:
  * planned minus actual; income never shows a negative remainder (earning more than
- * planned isn't a shortfall).
+ * planned isn't a shortfall). Transfers into a linked account fund the envelope like an
+ * assignment, so they are not activity.
  */
 export function categoryFigures(cat: BudgetCategory, isIncome: boolean) {
-  const actual = isIncome
-    ? cat.balance - cat.carryOver - cat.budgeted
-    : cat.balance - cat.carryOver - cat.budgeted;
+  const actual = cat.balance - cat.carryOver - cat.budgeted - (cat.transferred ?? 0);
   const raw = cat.budgeted - actual;
   return { actual, remaining: isIncome ? Math.max(raw, 0) : cat.balance };
 }
@@ -21,6 +20,7 @@ export function isActiveCategory(cat: BudgetCategory, isIncome: boolean) {
     cat.balance !== 0 ||
     cat.carryOver !== 0 ||
     cat.budgeted !== 0 ||
+    (cat.transferred ?? 0) !== 0 ||
     categoryFigures(cat, isIncome).actual !== 0
   );
 }

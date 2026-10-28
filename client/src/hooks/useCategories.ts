@@ -154,7 +154,13 @@ export function useUpdateCategory() {
       data,
     }: {
       id: string;
-      data: { name?: string; groupId?: string; icon?: string; budgetType?: string | null };
+      data: {
+        name?: string;
+        groupId?: string;
+        icon?: string;
+        budgetType?: string | null;
+        linkedAccountId?: string | null;
+      };
     }) => categoriesApi.updateCategory(id, data),
     onMutate: async ({ id }) => {
       const groups = qc.getQueryData<CategoryGroup[]>(['categories']);
@@ -162,6 +168,8 @@ export function useUpdateCategory() {
     },
     onSuccess: (_, { id, data }, ctx) => {
       qc.invalidateQueries({ queryKey: ['categories'] });
+      // A linked account changes what the envelope holds
+      if ('linkedAccountId' in data) qc.invalidateQueries({ queryKey: ['budget'] });
       if (!ctx?.old) return;
       const snapshot = ctx.old;
       useUndoStore.getState().push({
@@ -172,11 +180,16 @@ export function useUpdateCategory() {
             groupId: snapshot.groupId,
             icon: snapshot.icon ?? undefined,
             budgetType: snapshot.budgetType,
+            ...('linkedAccountId' in data
+              ? { linkedAccountId: snapshot.linkedAccountId ?? null }
+              : {}),
           });
           qc.invalidateQueries({ queryKey: ['categories'] });
+          qc.invalidateQueries({ queryKey: ['budget'] });
         },
         redo: async () => {
           await categoriesApi.updateCategory(id, data);
+          qc.invalidateQueries({ queryKey: ['budget'] });
           qc.invalidateQueries({ queryKey: ['categories'] });
         },
       });

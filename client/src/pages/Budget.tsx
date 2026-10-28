@@ -30,6 +30,7 @@ import { useCanSave } from '../hooks/useConnection';
 import { ExternalLink } from '../components/ui/ExternalLink';
 import { docsUrl } from '../utils/project';
 import { categoryFigures, splitCategories } from '../utils/budgetFigures';
+import { TransferredNote } from '../components/budget/TransferredNote';
 import type { BudgetCategory, BudgetGroup, BudgetType } from '../types';
 
 function AmountInput({
@@ -168,9 +169,10 @@ function CategoryRow({
         </div>
         <SpentBar
           spent={isIncome ? actual : cat.spent}
-          budgeted={cat.budgeted}
+          budgeted={cat.budgeted + (cat.transferred ?? 0)}
           isIncome={isIncome}
         />
+        <TransferredNote cat={cat} className="mt-0.5" />
         {cat.target && (
           <p
             className={`text-xs mt-0.5 ${cat.target.underfunded ? 'text-caution' : 'text-text-tertiary'}`}

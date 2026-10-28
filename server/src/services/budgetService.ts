@@ -35,7 +35,10 @@ function cardAt(l: Ledger, asOf: string) {
           balance: c.balance,
           // Month by month, so funding follows the same monthly reset as the envelopes
           get months() {
-            return new Map(c.history()).set(asOf.slice(0, 7), c.budgeted + c.activity);
+            return new Map(c.history()).set(
+              asOf.slice(0, 7),
+              c.budgeted + c.transferred + c.activity,
+            );
           },
         })),
       (l.cardData ??= loadCardData()),
@@ -80,7 +83,7 @@ function assessment(month: string, today = todayIso()) {
         ...category,
         carryOver,
         activity: c.activity + activity,
-        balance: carryOver + c.budgeted + c.activity + activity,
+        balance: carryOver + c.budgeted + c.transferred + c.activity + activity,
         paymentAccountId: l.paymentAccounts.get(c.id) ?? null,
       };
     }),

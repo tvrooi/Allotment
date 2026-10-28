@@ -431,6 +431,8 @@ describe('categorise tokens and categories', () => {
       ['PUT', '/categories/Groups/Reorder', { ids: [] }],
       ['PUT', `/categories/groups/${groupId}`, { name: 'x', isIncome: 1 }],
       ['PUT', `/categories/${coffee.id}`, { name: 'x', sortOrder: 9 }],
+      // Linking an envelope to an account changes what it holds: owner only
+      ['PUT', `/categories/${coffee.id}`, { linkedAccountId: 'mock' }],
       ['POST', '/categories', { groupId, name: 'x', id: 'chosen' }],
     ];
     for (const [method, path, body] of refused)

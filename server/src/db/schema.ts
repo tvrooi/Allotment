@@ -62,6 +62,11 @@ export const categories = sqliteTable('categories', {
     .default(sql`(datetime('now'))`),
   /** 1 = tucked away from pickers and the budget while it holds no money (never deleted) */
   hidden: integer('hidden').notNull().default(0),
+  /** An expense envelope that follows a budget account: confirmed transfers into the account
+   * add to it, transfers back out take from it (budgetLedger.ts). One envelope per account. */
+  linkedAccountId: text('linked_account_id').references(() => accounts.id, {
+    onDelete: 'set null',
+  }),
 });
 
 export const payees = sqliteTable('payees', {

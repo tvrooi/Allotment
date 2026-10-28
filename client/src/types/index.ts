@@ -280,6 +280,8 @@ export interface Category {
   createdAt: string;
   /** 1 = tucked away from pickers and the budget while it holds no money */
   hidden?: number;
+  /** The account this envelope follows: transfers into it fund the envelope */
+  linkedAccountId?: string | null;
   /** With `?usage=1` (getCategoriesWithUsage) */
   transactionCount?: number;
   lastUsedDate?: string | null;
@@ -379,7 +381,11 @@ export interface BudgetCategory {
   hidden?: number;
   target?: TargetStatus | null;
   paymentAccountId?: string | null;
+  /** The account this envelope follows (linked envelopes) */
+  linkedAccountId?: string | null;
   budgeted: number;
+  /** Net transfers into the linked account this month: in the envelope like an assignment */
+  transferred?: number;
   spent: number;
   carryOver: number;
   balance: number;
