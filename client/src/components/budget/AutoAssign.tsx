@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   applyAutoAssign,
@@ -30,14 +30,21 @@ export function AutoAssign({ month }: { month: string }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Only the latest request may set the preview, so an earlier strategy's slower answer can't
+  // replace the one on screen
+  const latest = useRef(0);
+
   async function load(next: AutoAssignStrategy) {
+    const request = ++latest.current;
     setStrategy(next);
     setError(null);
     setPreview(null);
     try {
-      setPreview(await previewAutoAssign(month, next));
+      const result = await previewAutoAssign(month, next);
+      if (request === latest.current) setPreview(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not preview auto-assign.');
+      if (request === latest.current)
+        setError(err instanceof Error ? err.message : 'Could not preview auto-assign.');
     }
   }
   function show() {

@@ -95,7 +95,9 @@ export function BudgetEditPopover({
             type="button"
             title={`${isIncome ? 'Expect' : 'Assign'} ${formatCurrency(t.cents)}`}
             onClick={() => onPick(t.cents)}
-            className="bg-surface-alt hover:bg-hover rounded-lg p-2.5 text-left transition-colors"
+            // Unloaded history is not a real $0: picking it would clear the assignment
+            disabled={!data}
+            className="bg-surface-alt hover:bg-hover rounded-lg p-2.5 text-left transition-colors disabled:cursor-wait disabled:hover:bg-surface-alt"
           >
             <span className="block text-sm font-semibold tabular-nums text-text">
               {formatCurrency(t.cents)}
