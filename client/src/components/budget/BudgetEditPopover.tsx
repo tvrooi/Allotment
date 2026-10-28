@@ -11,7 +11,12 @@ interface BudgetEditPopoverProps {
   categoryId: string;
   isIncome: boolean;
   currentAmount: number;
+  /** What is typed in the field right now (null while it isn't an amount) */
+  draftAmount: number | null;
+  /** One-click amounts, such as covering overspending, saved straight away */
+  quickAmounts: { label: string; cents: number }[];
   month: string;
+  onPick: (cents: number) => void;
   onApplyBulk: (cents: number, expected: Record<string, number>) => void;
 }
 
@@ -19,11 +24,16 @@ export function BudgetEditPopover({
   categoryId,
   isIncome,
   currentAmount,
+  draftAmount,
+  quickAmounts,
   month,
+  onPick,
   onApplyBulk,
 }: BudgetEditPopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const [planning, setPlanning] = useState(false);
+  // The amount being planned for 12 months, fixed once its preview opens
+  const [planning, setPlanning] = useState<number | null>(null);
+  const bulkAmount = draftAmount ?? currentAmount;
   const { data } = useCategoryHistory(categoryId, month);
 
   useEffect(() => {
@@ -58,21 +68,43 @@ export function BudgetEditPopover({
       className="absolute right-0 top-full mt-1 z-50 w-72 rounded-lg shadow-card border border-border-light bg-surface p-4 origin-top-right animate-menu-in"
       onMouseDown={(e) => e.preventDefault()}
     >
+      {quickAmounts.length > 0 && (
+        <div className="grid gap-1.5 mb-3">
+          {quickAmounts.map((q) => (
+            <button
+              key={q.label}
+              type="button"
+              onClick={() => onPick(q.cents)}
+              className="w-full rounded-md bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-3 py-1.5 text-left"
+            >
+              {q.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <p className="text-sm font-semibold text-text mb-2">History</p>
 
       <div className="grid grid-cols-2 gap-2 mb-3">
-        <div className="bg-surface-alt rounded-lg p-2.5">
-          <p className="text-sm font-semibold tabular-nums text-text">
-            {formatCurrency(data?.lastMonth ?? 0)}
-          </p>
-          <p className="text-xs text-text-tertiary">{isIncome ? 'Earned' : 'Spent'} last month</p>
-        </div>
-        <div className="bg-surface-alt rounded-lg p-2.5">
-          <p className="text-sm font-semibold tabular-nums text-text">
-            {formatCurrency(data?.average ?? 0)}
-          </p>
-          <p className="text-xs text-text-tertiary">Monthly average</p>
-        </div>
+        {[
+          { label: `${isIncome ? 'Earned' : 'Spent'} last month`, cents: data?.lastMonth ?? 0 },
+          { label: 'Monthly average', cents: data?.average ?? 0 },
+        ].map((t) => (
+          <button
+            key={t.label}
+            type="button"
+            title={`${isIncome ? 'Expect' : 'Assign'} ${formatCurrency(t.cents)}`}
+            onClick={() => onPick(t.cents)}
+            // Unloaded history is not a real $0: picking it would clear the assignment
+            disabled={!data}
+            className="bg-surface-alt hover:bg-hover rounded-lg p-2.5 text-left transition-colors disabled:cursor-wait disabled:hover:bg-surface-alt"
+          >
+            <span className="block text-sm font-semibold tabular-nums text-text">
+              {formatCurrency(t.cents)}
+            </span>
+            <span className="block text-xs text-text-tertiary">{t.label}</span>
+          </button>
+        ))}
       </div>
 
       <div className="bg-surface-alt rounded-lg p-3 mb-3">
@@ -107,25 +139,30 @@ export function BudgetEditPopover({
         )}
       </div>
 
-      {planning ? (
+      {planning !== null ? (
         <BulkPreview
           categoryId={categoryId}
-          cents={currentAmount}
+          cents={planning}
           month={month}
-          onCancel={() => setPlanning(false)}
+          onCancel={() => setPlanning(null)}
           onConfirm={(expected) => {
-            onApplyBulk(currentAmount, expected);
-            setPlanning(false);
+            onApplyBulk(planning, expected);
+            setPlanning(null);
           }}
         />
       ) : (
-        <button
-          type="button"
-          className="text-sm text-brand-600 hover:text-brand-700 w-full text-left"
-          onClick={() => setPlanning(true)}
-        >
-          Use {formatCurrency(currentAmount)} for the next 12 months…
-        </button>
+        // Type an amount first; with nothing typed there is nothing to repeat
+        (bulkAmount !== 0 || currentAmount !== 0) && (
+          <button
+            type="button"
+            className="text-sm text-brand-600 hover:text-brand-700 w-full text-left"
+            onClick={() => setPlanning(bulkAmount)}
+          >
+            {bulkAmount === 0
+              ? 'Clear the next 12 months…'
+              : `Use ${formatCurrency(bulkAmount)} for the next 12 months…`}
+          </button>
+        )
       )}
     </div>
   );

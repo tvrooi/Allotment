@@ -215,3 +215,38 @@ test.describe('budget', () => {
     expect(writes.filter((u) => u.includes(`/budget/${nextMonth}/`))).toEqual([]);
   });
 });
+
+test('overspending is covered from the amount editor or by auto-assign', async ({ page, api }) => {
+  const checking = await api.createAccount('Checking', 100_000);
+  for (const [name, amount] of [
+    ['Groceries', -12_000],
+    ['Electric', -8_000],
+  ] as const) {
+    const category = await api.category(name);
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount,
+      payeeName: name,
+      categoryId: category.id,
+    });
+  }
+  await open(page, '/budget');
+  await page.getByRole('button', { name: /^Planned for Groceries:/ }).click();
+  // Nothing typed yet: no "Use $0 for the next 12 months"
+  await expect(page.getByRole('button', { name: /next 12 months/ })).toHaveCount(0);
+  await page.getByRole('textbox', { name: 'Planned for Groceries' }).fill('50');
+  await expect(page.getByRole('button', { name: /Use \$50 for the next 12 months/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Cover $120 overspent' }).click();
+  await expect(page.getByRole('button', { name: /^Planned for Groceries: \$120/ })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Auto-assign' }).click();
+  const preview = page.getByRole('region', { name: 'Auto-assign preview' });
+  await expect(preview).toContainText('Electric');
+  await expect(preview).not.toContainText('Groceries');
+  await page.getByRole('button', { name: 'Assign $80' }).click();
+  await expect(preview).toBeHidden();
+  await expect
+    .poll(async () => (await api.call('GET', `/budget/${thisMonth()}/summary`)).totalBudgeted)
+    .toBe(20_000);
+});

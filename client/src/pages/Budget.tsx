@@ -20,6 +20,7 @@ import { BudgetEditPopover } from '../components/budget/BudgetEditPopover';
 import { Button, ButtonLink } from '../components/ui/Button';
 import { targetLabel } from '../utils/targets';
 import { FundTargets } from '../components/budget/FundTargets';
+import { AutoAssign } from '../components/budget/AutoAssign';
 import { SpentBar } from '../components/budget/SpentBar';
 import { PhoneBudget } from '../components/budget/PhoneBudget';
 import { PaydayPlan } from '../components/budget/PaydayPlan';
@@ -34,17 +35,22 @@ import type { BudgetCategory, BudgetGroup, BudgetType } from '../types';
 function AmountInput({
   cents,
   label,
+  closed,
+  onDraft,
   onSave,
   onCancel,
 }: {
   cents: number;
   label: string;
+  /** Set once the editor has already saved or cancelled, so leaving the field does nothing */
+  closed: { current: boolean };
+  /** The amount typed so far, or null while it isn't readable */
+  onDraft: (c: number | null) => void;
   onSave: (c: number) => void;
   onCancel: () => void;
 }) {
   const [raw, setRaw] = useState(centsToInput(cents));
   const [invalid, setInvalid] = useState(false);
-  const cancelled = useRef(false);
 
   return (
     <input
@@ -56,6 +62,7 @@ function AmountInput({
       onChange={(e) => {
         setRaw(e.target.value);
         setInvalid(false);
+        onDraft(isUnreadableAmount(e.target.value) ? null : parseCents(e.target.value));
       }}
       aria-invalid={invalid || undefined}
       title={invalid ? UNREADABLE_AMOUNT : undefined}
@@ -68,12 +75,12 @@ function AmountInput({
           else (e.target as HTMLInputElement).blur();
         }
         if (e.key === 'Escape') {
-          cancelled.current = true;
+          closed.current = true;
           onCancel();
         }
       }}
       onBlur={() => {
-        if (cancelled.current) return;
+        if (closed.current) return;
         // Left with text that isn't an amount: keep the planned amount it had
         if (isUnreadableAmount(raw)) onCancel();
         else onSave(parseCents(raw));
@@ -109,6 +116,38 @@ function CategoryRow({
   const canSave = useCanSave();
   const isEditing = editingId === cat.id && canSave;
   const { actual, remaining } = categoryFigures(cat, isIncome);
+  const [draft, setDraft] = useState<number | null>(cat.budgeted);
+  const closed = useRef(false);
+  function startEdit() {
+    closed.current = false;
+    setDraft(cat.budgeted);
+    onStartEdit(cat.id);
+  }
+  // A quick amount saves straight away and closes the editor
+  function pick(cents: number) {
+    closed.current = true;
+    onSave(cents);
+  }
+  const quickAmounts = isIncome
+    ? []
+    : [
+        ...(remaining < 0
+          ? [
+              {
+                label: `Cover ${formatCurrency(-remaining)} overspent`,
+                cents: cat.budgeted - remaining,
+              },
+            ]
+          : []),
+        ...(cat.target && cat.target.underfunded > 0
+          ? [
+              {
+                label: `Fund target (+${formatCurrency(cat.target.underfunded)})`,
+                cents: cat.budgeted + cat.target.underfunded,
+              },
+            ]
+          : []),
+      ];
 
   let remainingClass: string;
   const pillBase = 'font-medium rounded-full px-2.5 py-0.5 text-text';
@@ -147,6 +186,8 @@ function CategoryRow({
               <AmountInput
                 cents={cat.budgeted}
                 label={isIncome ? `Expected from ${cat.name}` : `Planned for ${cat.name}`}
+                closed={closed}
+                onDraft={setDraft}
                 onSave={onSave}
                 onCancel={onCancel}
               />
@@ -154,13 +195,16 @@ function CategoryRow({
                 categoryId={cat.id}
                 isIncome={isIncome}
                 currentAmount={cat.budgeted}
+                draftAmount={draft}
+                quickAmounts={quickAmounts}
                 month={month}
+                onPick={pick}
                 onApplyBulk={(cents, expected) => onApplyBulk(cat.id, cents, expected)}
               />
             </>
           ) : (
             <button
-              onClick={() => onStartEdit(cat.id)}
+              onClick={startEdit}
               disabled={!canSave}
               title={canSave ? undefined : 'Saving is paused until FlyBudget reconnects'}
               aria-label={`${isIncome ? 'Expected from' : 'Planned for'} ${cat.name}: ${formatCurrency(cat.budgeted)}`}
@@ -544,6 +588,7 @@ export default function BudgetPage() {
             <ButtonLink variant="ghost" size="sm" to={`/budget/year/${selectedMonth.slice(0, 4)}`}>
               Year
             </ButtonLink>
+            <AutoAssign month={selectedMonth} />
             <FundTargets month={selectedMonth} groups={groups} />
             <Button variant="secondary" size="sm" onClick={() => setPaydayView(true)}>
               Until next payday

@@ -324,3 +324,49 @@ describe('history and bulk planning', () => {
     ).toBe(true);
   });
 });
+
+describe('auto-assign', () => {
+  const spend = (id: string, categoryId: string, date: string, amount: number) =>
+    db.insert(transactions).values({ id, accountId: 'cash', date, amount, categoryId }).run();
+
+  it('tops envelopes up by strategy, never lowers one, and applies the preview once', async () => {
+    assign('food', '2026-09', 30000);
+    assign('gifts', '2026-09', 5000);
+    assign('gifts', '2026-10', 8000);
+    spend('f9', 'food', '2026-09-10', -25000);
+    spend('f8', 'food', '2026-08-10', -11000);
+    spend('i10', 'insurance', '2026-10-05', -12000);
+    const preview = async (strategy: string) =>
+      (await call('POST', '/2026-10/auto-assign/preview', { strategy })).body;
+
+    // Insurance is overspent by $120 this month; nothing else is.
+    expect((await preview('overspent')).rows).toEqual([
+      expect.objectContaining({ categoryId: 'insurance', need: 12000, proposed: 12000 }),
+    ]);
+    // Gifts already has more than last month's $50, so only food is topped up.
+    expect((await preview('assigned_last_month')).rows).toEqual([
+      expect.objectContaining({ categoryId: 'food', need: 30000 }),
+    ]);
+    expect((await preview('spent_last_month')).rows).toEqual([
+      expect.objectContaining({ categoryId: 'food', need: 25000 }),
+    ]);
+    // ($250 + $110 + $0) / 3 months
+    expect((await preview('average_spent')).rows).toEqual([
+      expect.objectContaining({ categoryId: 'food', need: 12000 }),
+    ]);
+    expect((await call('POST', '/2026-10/auto-assign/preview', { strategy: 'x' })).status).toBe(
+      400,
+    );
+
+    const reviewed = await preview('overspent');
+    const apply = () =>
+      call('POST', '/2026-10/auto-assign/apply', {
+        strategy: 'overspent',
+        revision: reviewed.revision,
+        rows: reviewed.rows,
+      });
+    expect((await apply()).body).toMatchObject({ applied: 12000 });
+    expect((await apply()).status).toBe(409);
+    expect((await preview('overspent')).rows).toEqual([]);
+  });
+});
