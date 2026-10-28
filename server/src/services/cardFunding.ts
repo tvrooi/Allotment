@@ -1,4 +1,4 @@
-import { and, gte, lte } from 'drizzle-orm';
+import { and, inArray, or, sql } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { accounts, budgetMonths, cardFunding, transactions } from '../db/schema.js';
 import {
@@ -7,7 +7,7 @@ import {
   personalBudgetAccount,
   sinceBudgetStart,
 } from './balances.js';
-import { convertAmount, currencyContext } from './mainAmountService.js';
+import { convertAmount, currencyContext, type CurrencyContext } from './mainAmountService.js';
 
 /** An expense category's balance, and optionally its net change (assigned + activity) by month */
 type Category = { id: string; balance: number; months?: Map<string, number> };
@@ -30,51 +30,129 @@ export interface FundingAdjustment {
   amount: number;
 }
 
+type Row = typeof transactions.$inferSelect;
+
+/**
+ * What the replay reads from the database, independent of the date it replays to: the card
+ * accounts' rows (a split's parts included) and the rows they point at. Load it once and pass
+ * it to every as-of date (see budgetLedger.ts) instead of reading all transactions each time.
+ */
+export interface CardData {
+  mappings: (typeof cardFunding.$inferSelect)[];
+  ctx: CurrencyContext;
+  budgetStart: string;
+  accounts: (typeof accounts.$inferSelect)[];
+  assignments: (typeof budgetMonths.$inferSelect)[];
+  /** The card accounts' rows, without generated income not yet received (nothing counts it) */
+  rows: Row[];
+  /** `rows`, and any row they refer to by transfer or parent */
+  byId: Map<string, Row>;
+  /** Top-level rows of the card accounts, in the order the replay takes them */
+  parents: Row[];
+  /** A split's parts by parent, ordered by id */
+  children: Map<string, Row[]>;
+  /** Rows the envelopes count as activity (card accounts only) */
+  activityIds: Set<string>;
+}
+
+export function loadCardData(): CardData {
+  const mappings = db.select().from(cardFunding).all();
+  const budgetStart = budgetStartDate();
+  const data: CardData = {
+    mappings,
+    ctx: currencyContext(),
+    budgetStart,
+    accounts: db.select().from(accounts).where(personalBudgetAccount).all(),
+    assignments: db.select().from(budgetMonths).all(),
+    rows: [],
+    byId: new Map(),
+    parents: [],
+    children: new Map(),
+    activityIds: new Set(),
+  };
+  if (!mappings.length) return data;
+  const accountIds = mappings.map((m) => m.accountId);
+  const ofCards = or(
+    inArray(transactions.accountId, accountIds),
+    sql`${transactions.parentTransactionId} in (select id from transactions where account_id in (${sql.join(
+      accountIds.map((id) => sql`${id}`),
+      sql`, `,
+    )}))`,
+  )!;
+  // A generated income row counts only once reconciled
+  const received = (t: Row) =>
+    !(t.amount > 0 && t.importedId?.startsWith('schedule:') && !t.reconciled);
+  data.rows = db.select().from(transactions).where(ofCards).all().filter(received);
+  data.byId = new Map(data.rows.map((t) => [t.id, t]));
+  const referred = [
+    ...new Set(
+      data.rows.flatMap((t) => [t.transferTransactionId, t.parentTransactionId]).filter((id) => id),
+    ),
+  ].filter((id): id is string => !!id && !data.byId.has(id));
+  for (let i = 0; i < referred.length; i += 500)
+    for (const t of db
+      .select()
+      .from(transactions)
+      .where(inArray(transactions.id, referred.slice(i, i + 500)))
+      .all()
+      .filter(received))
+      data.byId.set(t.id, t);
+  data.parents = data.rows
+    .filter((t) => !t.parentTransactionId)
+    .sort(
+      (a, b) =>
+        a.date.localeCompare(b.date) ||
+        a.createdAt.replace(' ', 'T').localeCompare(b.createdAt.replace(' ', 'T')) ||
+        a.id.localeCompare(b.id),
+    );
+  for (const t of [...data.rows].sort((a, b) => a.id.localeCompare(b.id)))
+    if (t.parentTransactionId)
+      data.children.set(t.parentTransactionId, [
+        ...(data.children.get(t.parentTransactionId) ?? []),
+        t,
+      ]);
+  data.activityIds = new Set(
+    db
+      .select({ id: transactions.id })
+      .from(transactions)
+      .where(and(budgetActivity, sinceBudgetStart, ofCards))
+      .all()
+      .map((t) => t.id),
+  );
+  return data;
+}
+
 /** As-of cash-first funding. Replayed from reviewed cutovers, never written to the ledger.
  * See docs/CARD-PAYMENTS.md for funding order, refunds, repayments and transition rules.
  */
-export function calculateCardFunding(asOf: string, expenseCategories: Category[]) {
-  const mappings = db.select().from(cardFunding).where(lte(cardFunding.startDate, asOf)).all();
+export function calculateCardFunding(
+  asOf: string,
+  expenseCategories: Category[],
+  data: CardData = loadCardData(),
+) {
+  const mappings = data.mappings.filter((m) => m.startDate <= asOf);
   const adjustments: FundingAdjustment[] = [];
   const positions: CardPosition[] = [];
   // Per expense category: card purchases no envelope money backed and no reset has yet
   // written off as card debt. The part of a current deficit they explain is credit overspending.
   const unfunded = new Map<string, number>();
   if (!mappings.length) return { adjustments, positions, unfunded, complete: true };
-  const ctx = currencyContext();
+  const ctx = data.ctx;
   // Nothing before the budget start funds or reserves anything (Settings → Budget start)
-  const budgetStart = budgetStartDate();
-  const accountRows = db.select().from(accounts).where(personalBudgetAccount).all();
+  const budgetStart = data.budgetStart;
+  const accountRows = data.accounts;
   const personalIds = new Set(accountRows.map((a) => a.id));
-  const all = db
-    .select()
-    .from(transactions)
-    .where(lte(transactions.date, asOf))
-    .all()
-    .filter((t) => !(t.amount > 0 && t.importedId?.startsWith('schedule:') && !t.reconciled));
-  const byId = new Map(all.map((t) => [t.id, t]));
-  const activityIds = new Set(
-    db
-      .select({ id: transactions.id })
-      .from(transactions)
-      .where(and(budgetActivity, sinceBudgetStart, lte(transactions.date, asOf)))
-      .all()
-      .map((t) => t.id),
-  );
+  // Rows up to the date being replayed
+  const known = (t: Row | undefined) => (t && t.date <= asOf ? t : undefined);
+  const byId = { get: (id: string) => known(data.byId.get(id)) };
+  const activityIds = data.activityIds;
   const paymentIds = new Set(mappings.map((m) => m.categoryId));
   const expenseIds = new Set(
     expenseCategories.map((c) => c.id).filter((id) => !paymentIds.has(id)),
   );
-  const assignments = db
-    .select()
-    .from(budgetMonths)
-    .where(
-      and(
-        lte(budgetMonths.month, asOf.slice(0, 7)),
-        gte(budgetMonths.month, budgetStart.slice(0, 7)),
-      ),
-    )
-    .all();
+  const assignments = data.assignments.filter(
+    (a) => a.month <= asOf.slice(0, 7) && a.month >= budgetStart.slice(0, 7),
+  );
   let complete = true;
   const amount = (t: typeof transactions.$inferSelect) => {
     if (t.mainAmountSource === 'missing') {
@@ -118,8 +196,14 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
       .filter((c) => !paymentIds.has(c.id))
       .map((c) => [c.id, new Map(c.months ?? [[asOf.slice(0, 7), c.balance]])]),
   );
-  for (const t of all)
-    if (activityIds.has(t.id) && t.categoryId && expenseIds.has(t.categoryId) && eligible(t)) {
+  for (const t of data.rows)
+    if (
+      t.date <= asOf &&
+      activityIds.has(t.id) &&
+      t.categoryId &&
+      expenseIds.has(t.categoryId) &&
+      eligible(t)
+    ) {
       const months = base.get(t.categoryId)!;
       const m = t.date.slice(0, 7);
       months.set(m, (months.get(m) ?? 0) - amount(t));
@@ -171,14 +255,7 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
     }
     return value;
   };
-  const parents = all
-    .filter((t) => !t.parentTransactionId)
-    .sort(
-      (a, b) =>
-        a.date.localeCompare(b.date) ||
-        a.createdAt.replace(' ', 'T').localeCompare(b.createdAt.replace(' ', 'T')) ||
-        a.id.localeCompare(b.id),
-    );
+  const parents = data.parents.filter((t) => t.date <= asOf);
   const processed = new Set<string>();
   for (const t of parents) {
     const s = stateByAccount.get(t.accountId);
@@ -221,9 +298,7 @@ export function calculateCardFunding(asOf: string, expenseCategories: Category[]
       }
       continue;
     }
-    const leaves = t.isParent
-      ? all.filter((c) => c.parentTransactionId === t.id).sort((a, b) => a.id.localeCompare(b.id))
-      : [t];
+    const leaves = t.isParent ? (data.children.get(t.id) ?? []).filter((c) => c.date <= asOf) : [t];
     // Follow each split leaf through the card balance. Mixed debit/refund splits
     // must not reserve the gross debit while discarding their offsetting credit.
     let leafBalance = money(before, s, t.date);
