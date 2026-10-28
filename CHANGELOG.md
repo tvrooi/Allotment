@@ -1,5 +1,14 @@
 # Changes
 
+## 0.2.0-up.50
+
+- **The budget is much faster on long histories.** Every month's envelopes are now worked out in one pass and kept until something changes, instead of being rebuilt from your whole history for each month. On a five-year test budget, changing last year's assignment went from about 6 seconds to under a tenth of a second, and opening a month from about a quarter of a second to almost nothing. Every figure is exactly the same as before.
+
+## 0.2.0-up.49
+
+- Fix: **deleting a category into another keeps its money.** The money assigned to it in every month now moves into the category you choose, along with its transactions, so past months no longer turn overspent and Ready to Assign no longer drops. Its schedules, payee defaults, rules and receipt lines move too. A category with transactions or assigned money can no longer be deleted without choosing where they go, and income only merges into income.
+- Fix: **a group can't be deleted while its categories hold history.** Deleting a group used to delete its categories' assignments and leave their transactions uncategorised. The dialog now lists the categories to delete and move first.
+
 ## 0.2.0-up.48
 
 - **Separate budgets for more than one person** (Home Assistant option **multi_user**, off by default). Each person signs in by name to a budget only they can open, with its own password, database and encryption key, run as its own process behind a new sign-in gateway. The budget already on the server stays in place and becomes the first person's; turning the option off goes back to it.

@@ -6,8 +6,13 @@ import {
   transactions,
   budgetMonths,
   cardFunding,
+  payees,
+  receiptLineItems,
+  rules,
+  schedules,
+  incomeReviews,
 } from '../db/schema.js';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -148,6 +153,21 @@ categoriesRouter.put('/groups/:id', (req, res) => {
 
 categoriesRouter.delete('/groups/:id', (req, res) => {
   if (paymentGroup(req.params.id)) return res.status(409).json(managedError);
+  // Deleting a group deletes its categories, which would drop their assignments and leave their
+  // transactions uncategorised, rewriting every past month: those must be moved first.
+  const usage = categoryUsage();
+  const inUse = db
+    .select()
+    .from(categories)
+    .where(eq(categories.groupId, req.params.id))
+    .all()
+    .filter((c) => usage(c.id).transactionCount > 0 || usage(c.id).everAssigned)
+    .map((c) => c.name);
+  if (inUse.length)
+    return res.status(409).json({
+      error: `Move or delete these categories first: ${inUse.join(', ')}.`,
+      inUse,
+    });
   db.delete(categoryGroups).where(eq(categoryGroups.id, req.params.id)).run();
   res.status(204).send();
 });
@@ -194,32 +214,141 @@ categoriesRouter.put('/:id', (req, res) => {
   res.json(updated);
 });
 
+/** Whether any month holds a non-zero assignment for the category */
+function hasAssignments(id: string) {
+  return !!db
+    .select({ id: budgetMonths.id })
+    .from(budgetMonths)
+    .where(and(eq(budgetMonths.categoryId, id), sql`${budgetMonths.budgeted} != 0`))
+    .get();
+}
+
 categoriesRouter.get('/:id/transaction-count', (req, res) => {
   const row = db
     .select({ count: sql<number>`count(*)` })
     .from(transactions)
     .where(eq(transactions.categoryId, req.params.id))
     .get();
-  res.json({ count: row?.count ?? 0 });
+  // `count` is kept for older clients; `hasAssignments` says assigned money would move too
+  res.json({ count: row?.count ?? 0, hasAssignments: hasAssignments(req.params.id) });
 });
+
+const isIncomeCategory = (id: string) =>
+  db
+    .select({ isIncome: categoryGroups.isIncome })
+    .from(categories)
+    .innerJoin(categoryGroups, eq(categories.groupId, categoryGroups.id))
+    .where(eq(categories.id, id))
+    .get()?.isIncome === 1;
+
+/** Re-point a rule's stored JSON from one category to another; null when nothing changed */
+function repointRule(conditionsJson: string, actionsJson: string, from: string, to: string) {
+  let changed = false;
+  const swap = (v: unknown) => {
+    if (v === from) {
+      changed = true;
+      return to;
+    }
+    return v;
+  };
+  const conditions = (JSON.parse(conditionsJson) as Record<string, unknown>[]).map((c) => {
+    if (c.field !== 'category') return c;
+    if (Array.isArray(c.value)) return { ...c, value: [...new Set(c.value.map(swap))] };
+    return { ...c, value: swap(c.value) };
+  });
+  const actions = (JSON.parse(actionsJson) as Record<string, unknown>[]).map((a) => {
+    if (a.type === 'set_category' || a.field === 'category_id')
+      return { ...a, value: swap(a.value) };
+    if (a.type === 'split' && Array.isArray(a.parts))
+      return {
+        ...a,
+        parts: (a.parts as Record<string, unknown>[]).map((p) => ({
+          ...p,
+          categoryId: swap(p.categoryId),
+        })),
+      };
+    return a;
+  });
+  return changed
+    ? { conditions: JSON.stringify(conditions), actions: JSON.stringify(actions) }
+    : null;
+}
+
+/**
+ * Folds a category into another. Budget figures are a ledger (docs/ENVELOPE-FUNDING.md), so the
+ * deleted category's assignments are added to the target for every month: the target then carries
+ * the spending it inherits together with the money that funded it, and Ready to Assign in every
+ * month is unchanged.
+ */
+function mergeCategory(from: string, to: string) {
+  db.transaction(() => {
+    for (const row of db
+      .select()
+      .from(budgetMonths)
+      .where(eq(budgetMonths.categoryId, from))
+      .all()) {
+      if (row.budgeted === 0) continue;
+      db.insert(budgetMonths)
+        .values({ id: nanoid(), month: row.month, categoryId: to, budgeted: row.budgeted })
+        .onConflictDoUpdate({
+          target: [budgetMonths.month, budgetMonths.categoryId],
+          set: { budgeted: sql`${budgetMonths.budgeted} + ${row.budgeted}` },
+        })
+        .run();
+    }
+    db.delete(budgetMonths).where(eq(budgetMonths.categoryId, from)).run();
+
+    db.update(transactions).set({ categoryId: to }).where(eq(transactions.categoryId, from)).run();
+    db.update(receiptLineItems)
+      .set({ categoryId: to })
+      .where(eq(receiptLineItems.categoryId, from))
+      .run();
+    db.update(schedules).set({ categoryId: to }).where(eq(schedules.categoryId, from)).run();
+    db.update(payees)
+      .set({ defaultCategoryId: to })
+      .where(eq(payees.defaultCategoryId, from))
+      .run();
+    db.update(incomeReviews)
+      .set({ categoryId: to })
+      .where(eq(incomeReviews.categoryId, from))
+      .run();
+    for (const rule of db.select().from(rules).all()) {
+      const next = repointRule(rule.conditions, rule.actions, from, to);
+      if (next) db.update(rules).set(next).where(eq(rules.id, rule.id)).run();
+    }
+
+    db.delete(categories).where(eq(categories.id, from)).run();
+  });
+}
 
 categoriesRouter.delete('/:id', (req, res) => {
   if (paymentCategory(req.params.id)) return res.status(409).json(managedError);
   const reassignTo = typeof req.query.reassignTo === 'string' ? req.query.reassignTo : undefined;
 
   if (reassignTo === req.params.id) return res.status(400).json({ error: 'Pick another category' });
-  if (reassignTo && !db.select().from(categories).where(eq(categories.id, reassignTo)).get()) {
-    return res.status(400).json({ error: 'Unknown category' });
-  }
-
   if (reassignTo) {
-    db.update(transactions)
-      .set({ categoryId: reassignTo })
-      .where(eq(transactions.categoryId, req.params.id))
-      .run();
-    db.delete(budgetMonths).where(eq(budgetMonths.categoryId, req.params.id)).run();
+    if (!db.select().from(categories).where(eq(categories.id, reassignTo)).get())
+      return res.status(400).json({ error: 'Unknown category' });
+    if (paymentCategory(reassignTo))
+      return res.status(400).json({ error: 'Pick a category that is not a card payment envelope' });
+    if (isIncomeCategory(reassignTo) !== isIncomeCategory(req.params.id))
+      return res.status(400).json({
+        error: 'Move income categories into income, and expense categories into expenses',
+      });
+    mergeCategory(req.params.id, reassignTo);
+    return res.status(204).send();
   }
 
+  const used = db
+    .select({ id: transactions.id })
+    .from(transactions)
+    .where(eq(transactions.categoryId, req.params.id))
+    .get();
+  if (used || hasAssignments(req.params.id))
+    return res.status(409).json({
+      error:
+        'This category has transactions or assigned money. Choose a category to move them into (reassignTo).',
+    });
   db.delete(categories).where(eq(categories.id, req.params.id)).run();
   res.status(204).send();
 });

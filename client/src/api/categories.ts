@@ -55,4 +55,4 @@ export const reorderCategories = (ids: string[]) =>
   });
 
 export const getCategoryTransactionCount = (id: string) =>
-  apiFetch<{ count: number }>(`/categories/${id}/transaction-count`);
+  apiFetch<{ count: number; hasAssignments: boolean }>(`/categories/${id}/transaction-count`);

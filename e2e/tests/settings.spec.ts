@@ -107,6 +107,32 @@ test.describe('categories', () => {
     const [tx] = await api.transactions();
     expect(tx.categoryId).toBe(transit.id);
   });
+
+  test('a group with history is not deleted until its categories are moved', async ({
+    page,
+    api,
+  }) => {
+    const [checking] = await api.accounts();
+    const group = await api.call('POST', '/categories/groups', { name: 'Pets', isIncome: 0 });
+    const vet = await api.call('POST', '/categories', { name: 'Vet', groupId: group.id });
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: -4_500,
+      payeeName: 'Vet Clinic',
+      categoryId: vet.id,
+    });
+    await page.reload();
+
+    await page.getByRole('button', { name: 'Delete group Pets' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Delete Group' });
+    await expect(dialog).toContainText(
+      'still has categories with transactions or assigned money: Vet',
+    );
+    await dialog.getByRole('button', { name: 'OK' }).click();
+    await expect(page.getByRole('button', { name: 'Edit Vet' })).toBeVisible();
+    expect((await api.transactions())[0].categoryId).toBe(vet.id);
+  });
 });
 
 test.describe('preferences', () => {

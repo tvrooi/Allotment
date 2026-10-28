@@ -67,11 +67,15 @@ export const budgetCurrency = (): string | null => getBudgetSettings().currency;
 // Stored rates change only through this module (manual rates, downloads, restores), so the
 // lookup index is kept until they do
 let rateBook: RateBook | null = null;
+let rateBookVersion = 0;
 
 /** Call after changing exchange_rates */
 export function ratesChanged() {
   rateBook = null;
+  rateBookVersion++;
 }
+/** Changes whenever the stored rates were reloaded: figures built from an older book are stale */
+export const ratesVersion = () => rateBookVersion;
 
 export function loadRateBook(): RateBook {
   return (rateBook ??= buildRateBook(db.select().from(exchangeRates).all()));
