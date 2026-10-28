@@ -93,6 +93,46 @@ export const applyTargetFunding = (preview: TargetFundingPreview) =>
     }),
   });
 
+export type AutoAssignStrategy =
+  | 'underfunded'
+  | 'overspent'
+  | 'assigned_last_month'
+  | 'spent_last_month'
+  | 'average_spent';
+
+export interface AutoAssignPreview {
+  month: string;
+  strategy: AutoAssignStrategy;
+  complete: boolean;
+  available: number;
+  total: number;
+  shortfall: number;
+  revision: string;
+  rows: {
+    categoryId: string;
+    name: string;
+    assigned: number;
+    need: number;
+    proposed: number;
+    shortfall: number;
+  }[];
+}
+
+export const previewAutoAssign = (month: string, strategy: AutoAssignStrategy) =>
+  apiFetch<AutoAssignPreview>(`/budget/${month}/auto-assign/preview`, {
+    method: 'POST',
+    body: JSON.stringify({ strategy }),
+  });
+export const applyAutoAssign = (preview: AutoAssignPreview) =>
+  apiFetch<{ applied: number }>(`/budget/${preview.month}/auto-assign/apply`, {
+    method: 'POST',
+    body: JSON.stringify({
+      strategy: preview.strategy,
+      revision: preview.revision,
+      rows: preview.rows.map((r) => ({ categoryId: r.categoryId, proposed: r.proposed })),
+    }),
+  });
+
 export interface CardPosition {
   accountId: string;
   categoryId: string;
