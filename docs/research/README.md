@@ -1,4 +1,11 @@
-# Monarch investigation
+# Research
+
+- [Actual Budget comparison](actual-flybudget-gaps.md) (28 October 2026): source-level feature, UI and code comparison with `actualbudget/actual`, with prioritised gaps (`ACT-*`) and a measured engine benchmark.
+- [Securo comparison](securo-flybudget-gaps.md) (28 October 2026): `SEC-*` gaps, including file-import duplicates (P1), backup encryption, sign-in hardening and a route-inventory test for tokens.
+- [FinX comparison](finx-flybudget-gaps.md) (28 October 2026): `FINX-*` gaps, including schedules that only auto-create at server start, bill reminders and phone installability.
+- [YNAB Budget comparison](ynab-flybudget-budget-gaps.md) and [findings](ynab-budget-tab.md).
+
+## Monarch investigation
 
 Start with the [master action catalog](monarch-action-catalog.md) for consolidated actions, tested mutation boundaries, current synthetic inventory and remaining gaps.
 

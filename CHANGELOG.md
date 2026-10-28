@@ -6,7 +6,7 @@
 
 ## 0.2.0-up.49
 
-- Fix: **deleting a category into another keeps its money.** The money assigned to it in every month now moves into the category you choose, along with its transactions, so past months no longer turn overspent and Ready to Assign no longer drops. Its schedules, payee defaults, rules and receipt lines move too. A category with transactions or assigned money can no longer be deleted without choosing where they go, and income only merges into income.
+- Fix: **deleting a category into another keeps its money.** The money assigned to it in every month now moves into the category you choose, along with its transactions, so the months it covered no longer turn overspent, and Ready to Assign no longer shows that spent money as available. Its schedules, payee defaults, rules and receipt lines move too. A category with transactions or assigned money can no longer be deleted without choosing where they go, and income only merges into income.
 - Fix: **a group can't be deleted while its categories hold history.** Deleting a group used to delete its categories' assignments and leave their transactions uncategorised. The dialog now lists the categories to delete and move first.
 
 ## 0.2.0-up.48
