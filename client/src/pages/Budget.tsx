@@ -51,7 +51,6 @@ function AmountInput({
 }) {
   const [raw, setRaw] = useState(centsToInput(cents));
   const [invalid, setInvalid] = useState(false);
-  const cancelled = closed;
 
   return (
     <input
@@ -76,12 +75,12 @@ function AmountInput({
           else (e.target as HTMLInputElement).blur();
         }
         if (e.key === 'Escape') {
-          cancelled.current = true;
+          closed.current = true;
           onCancel();
         }
       }}
       onBlur={() => {
-        if (cancelled.current) return;
+        if (closed.current) return;
         // Left with text that isn't an amount: keep the planned amount it had
         if (isUnreadableAmount(raw)) onCancel();
         else onSave(parseCents(raw));
