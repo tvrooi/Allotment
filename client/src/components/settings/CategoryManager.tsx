@@ -30,7 +30,8 @@ import {
   useDeleteCategory,
   useReorderCategories,
 } from '../../hooks/useCategories';
-import { getCategoryTransactionCount } from '../../api/categories';
+import { getCategoriesWithUsage, getCategoryTransactionCount } from '../../api/categories';
+import { useQuery } from '@tanstack/react-query';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { DeleteCategoryModal } from './DeleteCategoryModal';
 import { useModalValue } from '../ui/Modal';
@@ -242,6 +243,7 @@ function GroupCard({
           )}
           <button
             onClick={() => onDeleteGroup(group.id)}
+            aria-label={`Delete group ${group.name}`}
             className="text-xs text-text-tertiary hover:text-negative transition-colors"
           >
             Delete
@@ -530,10 +532,11 @@ export function CategoryManager() {
     id: string;
     name: string;
     count: number;
+    hasAssignments: boolean;
   } | null>(null);
-  // Categories with transactions ask where to move them; empty ones use the plain confirm
+  // Categories with transactions or assigned money ask where to move them; empty ones use the plain confirm
   const deleteCatModal = useModalValue(
-    deleteCatState && deleteCatState.count > 0 && deleteCatState,
+    deleteCatState && (deleteCatState.count > 0 || deleteCatState.hasAssignments) && deleteCatState,
   );
   const [editModalCategory, setEditModalCategory] = useState<Category | null>(null);
 
@@ -584,8 +587,8 @@ export function CategoryManager() {
   async function handleDeleteCategoryClick(id: string) {
     const cat = localGroups.flatMap((g) => g.categories).find((c) => c.id === id);
     if (!cat) return;
-    const { count } = await getCategoryTransactionCount(id);
-    setDeleteCatState({ id, name: cat.name, count });
+    const { count, hasAssignments } = await getCategoryTransactionCount(id);
+    setDeleteCatState({ id, name: cat.name, count, hasAssignments });
   }
 
   function handleConfirmDeleteCategory(reassignTo?: string) {
@@ -601,6 +604,17 @@ export function CategoryManager() {
   }
 
   const deleteGroupTarget = localGroups.find((g) => g.id === deleteGroupId);
+  // Which of the group's categories hold history (null while checking)
+  const groupUsage = useQuery({
+    queryKey: ['categories', 'usage'],
+    queryFn: getCategoriesWithUsage,
+    enabled: deleteGroupId !== null,
+  });
+  const groupInUse = groupUsage.data
+    ? (groupUsage.data.find((g) => g.id === deleteGroupId)?.categories ?? [])
+        .filter((c) => (c.transactionCount ?? 0) > 0 || c.everAssigned)
+        .map((c) => c.name)
+    : null;
 
   if (isLoading) {
     return (
@@ -662,16 +676,20 @@ export function CategoryManager() {
       />
 
       <ConfirmModal
-        isOpen={deleteGroupId !== null}
+        isOpen={deleteGroupId !== null && groupInUse !== null}
         onClose={() => setDeleteGroupId(null)}
         onConfirm={() => {
-          if (deleteGroupId) deleteGroup.mutate(deleteGroupId);
+          if (deleteGroupId && !groupInUse?.length) deleteGroup.mutate(deleteGroupId);
           setDeleteGroupId(null);
         }}
         title="Delete Group"
-        message={`Delete "${deleteGroupTarget?.name ?? ''}" and all its categories? This cannot be undone.`}
-        confirmLabel="Delete"
-        danger
+        message={
+          groupInUse?.length
+            ? `"${deleteGroupTarget?.name ?? ''}" still has categories with transactions or assigned money: ${groupInUse.join(', ')}. Delete each of those first and move its history into another category, so your past months stay the same.`
+            : `Delete "${deleteGroupTarget?.name ?? ''}" and all its categories? This cannot be undone.`
+        }
+        confirmLabel={groupInUse?.length ? 'OK' : 'Delete'}
+        danger={!groupInUse?.length}
       />
 
       {deleteCatModal.value && (
@@ -683,12 +701,15 @@ export function CategoryManager() {
           categoryName={deleteCatModal.value.name}
           categoryId={deleteCatModal.value.id}
           transactionCount={deleteCatModal.value.count}
+          hasAssignments={deleteCatModal.value.hasAssignments}
           groups={groups}
         />
       )}
 
       <ConfirmModal
-        isOpen={deleteCatState !== null && deleteCatState.count === 0}
+        isOpen={
+          deleteCatState !== null && deleteCatState.count === 0 && !deleteCatState.hasAssignments
+        }
         onClose={() => setDeleteCatState(null)}
         onConfirm={() => handleConfirmDeleteCategory()}
         title="Delete Category"
