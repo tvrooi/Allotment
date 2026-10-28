@@ -89,6 +89,30 @@ settings, card funding and the household tables), and when the rate book is relo
 It is read-only: a changed input needs a trigger (a migration), or must stay out of the
 engine. `budgetEngine.test.ts` holds it to the previous per-month engine, figure for figure.
 
+## Envelopes linked to an account
+
+An expense envelope can follow one account (`categories.linked_account_id`, set in **Settings →
+Categories → Edit**). The linked account's side of a confirmed transfer with another personal
+budget account counts in the envelope as `transferred`: into the account adds, back out takes
+away (`linkedTransfers` in `budgetLedger.ts`). It sits next to `budgeted`, so:
+
+`Available = carry + budgeted + transferred + activity`
+
+Resources don't change (an internal transfer), so the envelope's larger Available comes out of
+Ready to Assign, exactly like an assignment. Nothing is stored: the figure is read from
+transactions, from the budget start on and up to the assessment date, with the same rule as
+income for generated, unreconciled rows. Unlinking or deleting the account (`ON DELETE SET
+NULL`) stops it without rewriting a transaction or an assignment.
+
+- Only confirmed transfers count; an unpaired inflow stays ready to assign, and a transfer from
+  an off-budget or household account is new money, not a contribution.
+- One envelope per account (a unique index), only expense envelopes (not income or card
+  payment), and only open checking, savings or cash accounts in the personal budget.
+- Targets, auto-assign, goals and the annual overview count `transferred` with `budgeted`.
+  The assignment guard and Move money are unchanged: `budgeted` is still only stored assignments.
+- Read-only tokens can't set the link (`categoryManageAllows` lists the fields they may edit).
+- Reports still leave internal transfers out.
+
 ## Resources
 
 Resources are the dated balances of personal on-budget checking, savings, cash,

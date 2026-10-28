@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.52
+
+- **Fund a category from its own account.** Edit a category and choose an account under **Funded by transfers to** (for example Rent → your Rent saver). A transfer into that account from another budget account now goes straight into the category, as if you'd assigned it, and comes out of Ready to assign; moving money back out takes it out of the category. The category shows **+$X moved to …** for the month, and the transfer counts toward its target. Only linked (confirmed) transfers count, and each account funds one expense category.
+
 ## 0.2.0-up.51
 
 - **Auto-assign**, like YNAB's. A new **Auto-assign** button on the budget previews what it would add to each category, then assigns exactly that once you confirm: **Cover overspending** (bring every negative category back to $0), **Underfunded** (what targets still need), **Assigned last month**, **Spent last month** or **Average spent** (last 3 months). It only uses money that is ready to assign today, never counts expected income and never lowers an amount you already assigned.

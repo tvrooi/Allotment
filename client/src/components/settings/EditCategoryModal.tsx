@@ -4,6 +4,7 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { EmojiPickerPopover } from '../ui/EmojiPickerPopover';
 import { useUpdateCategory } from '../../hooks/useCategories';
+import { useAccounts } from '../../hooks/useAccounts';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import type { BudgetType, Category, CategoryGroup } from '../../types';
 
@@ -37,6 +38,9 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
   const [icon, setIcon] = useState('');
   const [groupId, setGroupId] = useState('');
   const [budgetType, setBudgetType] = useState<BudgetType>('flexible');
+  const [linkedAccountId, setLinkedAccountId] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const { data: accounts } = useAccounts();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -47,6 +51,8 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
     setIcon(category.icon ?? '');
     setGroupId(category.groupId);
     setBudgetType((category.budgetType as BudgetType) ?? 'flexible');
+    setLinkedAccountId(category.linkedAccountId ?? '');
+    setError(null);
     setShowEmojiPicker(false);
   });
 
@@ -54,6 +60,13 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
 
   const applicableGroups = groups.filter((g) => (isIncome ? g.isIncome === 1 : g.isIncome === 0));
   const groupLocked = isIncome && applicableGroups.length <= 1;
+  // Accounts an envelope can follow: open cash accounts in the budget (the server checks the rest)
+  const linkable = (accounts ?? []).filter(
+    (a) =>
+      !a.isOffBudget &&
+      (!a.closedAt || a.id === category.linkedAccountId) &&
+      ['checking', 'savings', 'cash'].includes(a.type),
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -65,9 +78,16 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
     if (groupId !== category.groupId) data.groupId = groupId;
     if (!isIncome && budgetType !== (category.budgetType ?? 'flexible'))
       data.budgetType = budgetType;
+    if (!isIncome && (linkedAccountId || null) !== (category.linkedAccountId ?? null))
+      data.linkedAccountId = linkedAccountId || null;
 
     if (Object.keys(data).length > 0) {
-      await updateCategory.mutateAsync({ id: category.id, data });
+      try {
+        await updateCategory.mutateAsync({ id: category.id, data });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Could not save the category');
+        return;
+      }
     }
     onClose();
   }
@@ -156,6 +176,37 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
               ))}
             </div>
           </div>
+        )}
+
+        {!isIncome && (
+          <div>
+            <label htmlFor="linked-account" className="block text-sm font-medium text-text mb-1.5">
+              Funded by transfers to
+            </label>
+            <select
+              id="linked-account"
+              value={linkedAccountId}
+              onChange={(e) => setLinkedAccountId(e.target.value)}
+              className="block w-full rounded-lg border border-border px-3 py-2 text-sm bg-surface text-text focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            >
+              <option value="">No account</option>
+              {linkable.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-text-tertiary">
+              Money you transfer into this account from another budget account goes into this
+              envelope, as if you had assigned it. Moving money back out takes it out again.
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <p role="alert" className="text-sm text-negative">
+            {error}
+          </p>
         )}
 
         <div className="flex items-center justify-between pt-2">

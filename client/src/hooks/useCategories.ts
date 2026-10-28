@@ -146,6 +146,11 @@ export function useCreateCategory() {
   });
 }
 
+/** The envelopes and Ready to Assign: what a linked account changes */
+function refreshFunding(qc: ReturnType<typeof useQueryClient>) {
+  for (const key of ['budget', 'budget-summary']) qc.invalidateQueries({ queryKey: [key] });
+}
+
 export function useUpdateCategory() {
   const qc = useQueryClient();
   return useMutation({
@@ -154,7 +159,13 @@ export function useUpdateCategory() {
       data,
     }: {
       id: string;
-      data: { name?: string; groupId?: string; icon?: string; budgetType?: string | null };
+      data: {
+        name?: string;
+        groupId?: string;
+        icon?: string;
+        budgetType?: string | null;
+        linkedAccountId?: string | null;
+      };
     }) => categoriesApi.updateCategory(id, data),
     onMutate: async ({ id }) => {
       const groups = qc.getQueryData<CategoryGroup[]>(['categories']);
@@ -162,6 +173,8 @@ export function useUpdateCategory() {
     },
     onSuccess: (_, { id, data }, ctx) => {
       qc.invalidateQueries({ queryKey: ['categories'] });
+      // A linked account changes what the envelope holds
+      if ('linkedAccountId' in data) refreshFunding(qc);
       if (!ctx?.old) return;
       const snapshot = ctx.old;
       useUndoStore.getState().push({
@@ -172,11 +185,16 @@ export function useUpdateCategory() {
             groupId: snapshot.groupId,
             icon: snapshot.icon ?? undefined,
             budgetType: snapshot.budgetType,
+            ...('linkedAccountId' in data
+              ? { linkedAccountId: snapshot.linkedAccountId ?? null }
+              : {}),
           });
           qc.invalidateQueries({ queryKey: ['categories'] });
+          refreshFunding(qc);
         },
         redo: async () => {
           await categoriesApi.updateCategory(id, data);
+          refreshFunding(qc);
           qc.invalidateQueries({ queryKey: ['categories'] });
         },
       });

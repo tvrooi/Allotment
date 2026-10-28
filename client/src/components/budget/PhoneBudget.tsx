@@ -7,6 +7,7 @@ import { usePreferencesStore } from '../../store/preferencesStore';
 import { useCanSave } from '../../hooks/useConnection';
 import { formatCurrency } from '../../utils/currency';
 import { categoryFigures, splitCategories } from '../../utils/budgetFigures';
+import { TransferredNote } from './TransferredNote';
 import type { BudgetCategory } from '../../types';
 import { targetLabel } from '../../utils/targets';
 
@@ -151,10 +152,11 @@ function CategoryCard({
       </div>
       <SpentBar
         spent={isIncome ? actual : cat.spent}
-        budgeted={cat.budgeted}
+        budgeted={cat.budgeted + (cat.transferred ?? 0)}
         isIncome={isIncome}
         className="h-1.5 w-full mt-2"
       />
+      <TransferredNote cat={cat} className="mt-1" />
       {cat.target && (
         <p
           className={`text-xs mt-1 ${cat.target.underfunded ? 'text-caution' : 'text-text-tertiary'}`}

@@ -120,6 +120,8 @@ function rawBudgetGroups(month: string, today = todayIso()) {
         return {
           ...c,
           budgeted: budgetedAmt,
+          // The previous engine had no linked accounts (linkedEnvelope.test.ts covers them)
+          transferred: 0,
           activity,
           spent: Math.abs(Math.min(activity, 0)),
           carryOver,
