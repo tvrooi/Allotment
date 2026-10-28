@@ -5,17 +5,18 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 27 October 2026.
+Last updated: 28 October 2026.
 
 ## State
 
-- **Released:** `v0.2.0-up.45` (PR #57, with the e2e race fix in PR #58): overspending resets at
-  each month boundary, like YNAB (`rollOver` in `budgetService.ts`), and reviewed card funding
-  follows the same reset month by month (`calculateCardFunding`); see docs/ENVELOPE-FUNDING.md and
-  docs/CARD-PAYMENTS.md. The owner asked for it after paying out the GSB loan and a $3,000
-  settlement in October 2026. Releases are listed on the
+- **Released:** `v0.2.0-up.50` (PR #65): the envelope ledger is computed in one pass and cached per
+  funding revision (`budgetLedger.ts`); a past-month assignment on a 5-year budget dropped from about
+  6 s to under 0.1 s with identical figures (`budgetEngine.test.ts` keeps the old engine as an oracle).
+  It includes `v0.2.0-up.49` (PR #64): deleting a category into another moves its assignments too, and
+  a group whose categories hold history can't be deleted. Ready to Assign follows YNAB's ledger since
+  `up.47` (PR #61). Releases are listed on the
   [GitHub Releases](https://github.com/tvrooi/FlyBudget/releases) page.
-- **Live Home Assistant app:** installed from the catalog repository (not the old `local_flybudget_up`), with **Auto update on**. It was on `0.2.0-up.43` on 26 October; confirm it reached `0.2.0-up.45`.
+- **Live Home Assistant app:** installed from the catalog repository (not the old `local_flybudget_up`), with **Auto update on**. Updated in place to `0.2.0-up.50` on 28 October after cold backup `d30a20bd`; it started cleanly. Budget access after the update still needs the owner to open the app (the FlyBudget connector was disconnected).
   A completed release reaches it through the catalog sync (MAINTENANCE.md, step 5) and then its
   auto-update. Before relying on that, verify the installed version afterwards, and take a cold
   backup first when you update it by hand.
@@ -31,6 +32,8 @@ Last updated: 27 October 2026.
 | Reading receipts with local Ollama                                                              | #56 / up.44  | `docs/RECEIPTS-AND-TAX.md` §5, "Reading photos with a local model" | `receiptReader.ts`, `receiptSample.ts`                                                         |
 | Overspending resets each month (YNAB), card funding month by month                              | #57 / up.45  | `docs/ENVELOPE-FUNDING.md`, `docs/CARD-PAYMENTS.md`                | `budgetService.ts` (`rollOver`), `cardFunding.ts`                                              |
 | Ready to assign follows YNAB: signed envelopes, cash vs credit overspending, month-aware guard  | #61 / up.47  | `docs/ENVELOPE-FUNDING.md` (Ready to Assign)                       | `budgetService.ts` (`fundingState`), `budgetMoves.ts` (`fundedWrite`), `readyToAssign.test.ts` |
+| Category merge keeps assignments; groups with history can't be deleted                          | #64 / up.49  | `docs/research/actual-flybudget-gaps.md` (ACT-01)                  | `routes/categories.ts` (`mergeCategory`), `categoryMerge.test.ts`                              |
+| One-pass, cached envelope ledger                                                                | #65 / up.50  | `docs/ENVELOPE-FUNDING.md` ("One pass, cached")                    | `budgetLedger.ts`, `budgetEngine.test.ts`                                                      |
 
 The user guide for receipts and tax is in `website/docs/tax.mdx`.
 
@@ -71,8 +74,14 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
 
 ## Open items (pick up here)
 
-1. **Confirm the live app reached the latest release** (`0.2.0-up.46` once released): version,
-   health, and that the budget opens. In November, check the October deficits no longer carry.
+0. **Next fixes from the competitor comparisons** (`docs/research/`, PR #63): SEC-01 file-import
+   duplicates against manual and synced rows (P1), FINX-01 schedule occurrences and auto-create only
+   at server start (run them on a timer), then ACT-03 hold for next month, ACT-04 per-category
+   overspending rollover and ACT-05 month quick fills. The owner also asked for October's
+   allocations to be made sensible: cover the ~$9,562 cash overspending so October's Ready to Assign
+   reflects real money; needs the FlyBudget connector (it can only propose assignments).
+1. **Confirm the budget opens on `0.2.0-up.50`** (version and clean start verified 28 October). In
+   November, check October's cash overspending came out of November's Ready to Assign once.
    Ask the owner to press **Try a sample receipt** with `qwen3-vl:4b-instruct` and report what it
    got right and how long it took.
 2. **Security, waiting on the owner's decision:** the Ollama app publishes port 11434 on the host.
