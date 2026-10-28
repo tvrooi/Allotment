@@ -153,6 +153,21 @@ categoriesRouter.put('/groups/:id', (req, res) => {
 
 categoriesRouter.delete('/groups/:id', (req, res) => {
   if (paymentGroup(req.params.id)) return res.status(409).json(managedError);
+  // Deleting a group deletes its categories, which would drop their assignments and leave their
+  // transactions uncategorised, rewriting every past month: those must be moved first.
+  const usage = categoryUsage();
+  const inUse = db
+    .select()
+    .from(categories)
+    .where(eq(categories.groupId, req.params.id))
+    .all()
+    .filter((c) => usage(c.id).transactionCount > 0 || usage(c.id).everAssigned)
+    .map((c) => c.name);
+  if (inUse.length)
+    return res.status(409).json({
+      error: `Move or delete these categories first: ${inUse.join(', ')}.`,
+      inUse,
+    });
   db.delete(categoryGroups).where(eq(categoryGroups.id, req.params.id)).run();
   res.status(204).send();
 });

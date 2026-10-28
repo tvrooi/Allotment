@@ -56,7 +56,7 @@ export function DeleteCategoryModal({
         {hasAssignments && (
           <p className="text-xs text-caution">
             The money assigned to this category in every month moves into the chosen category too,
-            so your budget totals and Ready to Assign stay the same.
+            so none of it is lost.
           </p>
         )}
         <select

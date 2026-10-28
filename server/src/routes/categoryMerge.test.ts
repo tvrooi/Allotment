@@ -340,3 +340,44 @@ describe('deleting a category into another', () => {
     expect(rule('r3').actions[0].value).toBe('empty');
   });
 });
+
+it('refuses to delete a group whose categories hold transactions or assigned money', async () => {
+  db.insert(categoryGroups).values({ id: 'side', name: 'Side' }).run();
+  db.insert(categories)
+    .values([
+      { id: 'used', name: 'Used', groupId: 'side' },
+      { id: 'funded', name: 'Funded', groupId: 'side' },
+      { id: 'unused', name: 'Unused', groupId: 'side' },
+    ])
+    .run();
+  txn('2026-09-03', 100000, 'salary');
+  txn('2026-09-10', -2000, 'used');
+  assign('funded', '2026-09', 5000);
+  // Every dollar is in a category or ready to assign; merging moves money, never creates it
+  const total = (month: string) =>
+    rta(month) +
+    budgetGroups(month)
+      .filter((g) => !g.isIncome)
+      .flatMap((g) => g.categories)
+      .reduce((sum, c) => sum + c.balance, 0);
+  const before = MONTHS.map(rta);
+  const totals = MONTHS.map(total);
+  const refused = await send('DELETE', '/categories/groups/side');
+  expect(refused.status).toBe(409);
+  expect(refused.body.inUse).toEqual(['Used', 'Funded']);
+  expect(
+    db
+      .select()
+      .from(categories)
+      .all()
+      .filter((c) => c.groupId === 'side'),
+  ).toHaveLength(3);
+  expect(MONTHS.map(rta)).toEqual(before);
+
+  // Once their history has moved into another category, the group can go
+  expect((await send('DELETE', '/categories/used?reassignTo=groceries')).status).toBe(204);
+  expect((await send('DELETE', '/categories/funded?reassignTo=groceries')).status).toBe(204);
+  expect((await send('DELETE', '/categories/groups/side')).status).toBe(204);
+  // Used's $20 deficit and Funded's $50 now share Groceries, so no deficit leaves October
+  expect(MONTHS.map(total)).toEqual(totals);
+});
