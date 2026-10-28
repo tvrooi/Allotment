@@ -45,11 +45,19 @@ const LINKABLE_TYPES = ['checking', 'savings', 'cash'];
 /**
  * Why `categoryId`, in group `groupId`, can't follow `accountId` (null: it can). Only an expense
  * envelope follows an account, only an open personal budget account, and each account only one
- * envelope, so a transfer is never counted twice (docs/ENVELOPE-FUNDING.md).
+ * envelope, so a transfer is never counted twice (docs/ENVELOPE-FUNDING.md). The account is
+ * checked only when the link is new: an existing link to an account closed since keeps its
+ * history, and other edits to the category still save.
  */
-function linkError(categoryId: string, groupId: string, accountId: string): string | null {
+function linkError(
+  categoryId: string,
+  groupId: string,
+  accountId: string,
+  newLink: boolean,
+): string | null {
   const group = db.select().from(categoryGroups).where(eq(categoryGroups.id, groupId)).get();
   if (group?.isIncome) return 'Only an expense envelope can follow an account';
+  if (!newLink) return null;
   const account = db
     .select()
     .from(accounts)
@@ -247,7 +255,12 @@ categoriesRouter.put('/:id', (req, res) => {
       ? current.linkedAccountId
       : parsed.data.linkedAccountId;
   if (linked) {
-    const error = linkError(current.id, parsed.data.groupId ?? current.groupId, linked);
+    const error = linkError(
+      current.id,
+      parsed.data.groupId ?? current.groupId,
+      linked,
+      linked !== current.linkedAccountId,
+    );
     if (error) return res.status(409).json({ error });
   }
   if (Object.keys(parsed.data).length) {

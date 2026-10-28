@@ -253,6 +253,18 @@ describe('linking a category to an account', () => {
     expect((await put('/categories/rent', { groupId: 'income' })).status).toBe(409);
   });
 
+  it('keeps a link to an account closed since, and still saves other edits', async () => {
+    expect((await put('/categories/rent', { linkedAccountId: 'rentSaver' })).status).toBe(200);
+    db.update(accounts).set({ closedAt: '2026-10-20' }).where(eq(accounts.id, 'rentSaver')).run();
+    const renamed = await put('/categories/rent', { name: 'Home', hidden: 1 });
+    expect(renamed.status).toBe(200);
+    expect(renamed.body).toMatchObject({ name: 'Home', linkedAccountId: 'rentSaver' });
+    // Re-sending the same link is not a new one
+    expect((await put('/categories/rent', { linkedAccountId: 'rentSaver' })).status).toBe(200);
+    // Still never an income envelope
+    expect((await put('/categories/rent', { groupId: 'income' })).status).toBe(409);
+  });
+
   it('clears the link when the account is deleted', () => {
     link('rent', 'rentSaver');
     db.delete(accounts).where(eq(accounts.id, 'rentSaver')).run();

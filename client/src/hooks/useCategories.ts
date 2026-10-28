@@ -146,6 +146,11 @@ export function useCreateCategory() {
   });
 }
 
+/** The envelopes and Ready to Assign: what a linked account changes */
+function refreshFunding(qc: ReturnType<typeof useQueryClient>) {
+  for (const key of ['budget', 'budget-summary']) qc.invalidateQueries({ queryKey: [key] });
+}
+
 export function useUpdateCategory() {
   const qc = useQueryClient();
   return useMutation({
@@ -169,7 +174,7 @@ export function useUpdateCategory() {
     onSuccess: (_, { id, data }, ctx) => {
       qc.invalidateQueries({ queryKey: ['categories'] });
       // A linked account changes what the envelope holds
-      if ('linkedAccountId' in data) qc.invalidateQueries({ queryKey: ['budget'] });
+      if ('linkedAccountId' in data) refreshFunding(qc);
       if (!ctx?.old) return;
       const snapshot = ctx.old;
       useUndoStore.getState().push({
@@ -185,11 +190,11 @@ export function useUpdateCategory() {
               : {}),
           });
           qc.invalidateQueries({ queryKey: ['categories'] });
-          qc.invalidateQueries({ queryKey: ['budget'] });
+          refreshFunding(qc);
         },
         redo: async () => {
           await categoriesApi.updateCategory(id, data);
-          qc.invalidateQueries({ queryKey: ['budget'] });
+          refreshFunding(qc);
           qc.invalidateQueries({ queryKey: ['categories'] });
         },
       });
