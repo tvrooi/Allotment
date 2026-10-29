@@ -4,7 +4,8 @@ import type { Page } from '@playwright/test';
 // Safe mode hides balances and totals while someone helps with the budget. The figures must
 // not be on the page at all, not just blurred.
 
-const FIGURES = ['4,321', '87,654', '12,345', '16,666', '104,321'];
+// Balances, then a budget assignment and a transaction: Safe mode starts on "All amounts"
+const FIGURES = ['4,321', '87,654', '12,345', '16,666', '104,321', '103,808', '512.34', '55.55'];
 
 async function expectNoBalances(page: Page) {
   // Wait for the page to draw before reading it
@@ -25,7 +26,7 @@ test.describe('Safe mode', () => {
     // Ready to assign is a budget figure and stays visible: assigning some keeps it from
     // matching the cash total
     const rent = await api.category('Rent / Mortgage');
-    await api.call('PUT', `/budget/${thisMonth()}/${rent.id}`, { budgeted: 50_000 });
+    await api.call('PUT', `/budget/${thisMonth()}/${rent.id}`, { budgeted: 51_234 });
   });
 
   test('hides balances and totals on every page that shows them', async ({ page, api }) => {
@@ -59,15 +60,25 @@ test.describe('Safe mode', () => {
       await expectNoBalances(page);
     }
 
-    // Transactions and the budget stay visible, so someone can still help with them
+    // By default Safe mode hides every amount, so a friend sees none on the pages that matter
     await api.createTransaction({
       accountId: everyday.id,
       date: isoDay(0),
       amount: -5_555,
       payeeName: 'Groceries',
     });
-    await open(page, '/transactions');
-    await expect(page.getByText('-$55.55').first()).toBeVisible();
+    for (const [route, loaded] of [
+      ['/transactions', page.getByText('Groceries').first()],
+      ['/budget', page.getByRole('status', { name: 'Ready to assign' })],
+      ['/dashboard', hiddenAmount],
+      [`/accounts/${everyday.id}`, page.getByText('Groceries').first()],
+    ] as const) {
+      await open(page, route);
+      // The transaction was added after these pages were last drawn
+      await page.reload();
+      await expect(loaded).toBeVisible();
+      await expectNoBalances(page);
+    }
   });
 
   test('stays on after a reload and is off again in a new session', async ({ page }) => {
@@ -85,6 +96,23 @@ test.describe('Safe mode', () => {
     await open(fresh, '/accounts');
     await expect(fresh.getByRole('complementary').getByText('$104,321.08')).toBeVisible();
     await fresh.close();
+  });
+
+  test('keeps a level the owner chose, and shows the rest again without it', async ({ page }) => {
+    await open(page, '/settings?tab=preferences');
+    const section = page.getByRole('region', { name: 'Safe mode' });
+    // Nobody chose: every amount is hidden
+    await expect(section.getByRole('radio', { name: /All amounts/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    await section.getByRole('radio', { name: /Balances and totals/ }).click();
+    await page.reload();
+    await expect(
+      page
+        .getByRole('region', { name: 'Safe mode' })
+        .getByRole('radio', { name: /Balances and totals/ }),
+    ).toHaveAttribute('aria-checked', 'true');
   });
 
   test('can hide every amount, transactions included', async ({ page, api }) => {

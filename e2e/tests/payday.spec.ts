@@ -18,7 +18,13 @@ for (const phone of [false, true])
     });
     const original = await api.transactions();
     await open(page, '/budget');
-    await page.getByRole('button', { name: 'Until next payday' }).click();
+    if (phone) {
+      // On a phone the Budget header keeps its extra actions in one menu
+      await page.getByRole('button', { name: 'More budget actions' }).click();
+      await page.getByRole('menuitem', { name: 'Until next payday' }).click();
+    } else {
+      await page.getByRole('button', { name: 'Until next payday' }).click();
+    }
     await page.getByRole('button', { name: 'New payday plan' }).click();
     await page.getByLabel('Plan name').fill('Fortnightly essentials');
     await page.getByLabel('Anchor payday').fill(isoDay());
