@@ -51,6 +51,11 @@ test('the first Up import arrives categorised, and the rest is sorted a payee at
   expect(await rows.count()).toBeGreaterThan(0);
   expect(await rows.count()).toBeLessThanOrEqual(25);
 
+  // The transfer note counts pairs, the same number as the Transactions banner
+  const pairs = (await api.call<unknown[]>('GET', '/transactions/transfers/suggestions')).length;
+  expect(pairs).toBeGreaterThan(0);
+  await expect(sort).toContainText(`${pairs} possible transfer${pairs === 1 ? '' : 's'} between`);
+
   // Pay: found, offered, one tap, undoable
   const offer = sort.getByRole('group', { name: 'Pay detected' });
   await expect(offer).toContainText('ACME LOGISTICS PTY LTD SALARY every 14 days');

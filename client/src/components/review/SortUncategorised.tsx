@@ -7,6 +7,7 @@ import { useCategories } from '../../hooks/useCategories';
 import { useCategorisePayee, type PayeeTarget } from '../../hooks/useCategorisePayee';
 import { useSalaryGuess, useUncategorisedPayees } from '../../hooks/useReports';
 import { useCanSave } from '../../hooks/useConnection';
+import { useTransferSuggestions } from '../../hooks/useTransfers';
 import { useUndoStore } from '../../store/undoStore';
 import { formatCurrency } from '../../utils/currency';
 import { transactionsLink } from '../../utils/transactionFilters';
@@ -110,6 +111,8 @@ export function SortUncategorised({ onDone }: { onDone?: () => void }) {
   const salary = useSalaryGuess();
   const list = useUncategorisedPayees();
   const sort = useCategorisePayee();
+  // The same count as the Transactions banner: suggested pairs, not their two rows each
+  const pairs = useTransferSuggestions().data?.length ?? 0;
   const undo = useUndoStore((s) => s.undo);
   const top = useUndoStore((s) => s.undoStack.at(-1)?.description);
   const [future, setFuture] = useState(true);
@@ -123,10 +126,7 @@ export function SortUncategorised({ onDone }: { onDone?: () => void }) {
     // Up's own transfers between accounts are linked in the register, never given a category
     const isTransfer = (p: (typeof all)[number]) =>
       p.sampleNotes.some((n) => n.includes(TRANSFER_NOTE));
-    return {
-      sortable: all.filter((p) => !isTransfer(p)),
-      transfers: all.filter(isTransfer).reduce((s, p) => s + p.count, 0),
-    };
+    return { sortable: all.filter((p) => !isTransfer(p)) };
   }, [list.data]);
   const salaryPayeeId =
     salary.data?.categoryId && salary.data.uncategorisedCount ? salary.data.payeeId : null;
@@ -243,10 +243,10 @@ export function SortUncategorised({ onDone }: { onDone?: () => void }) {
           )}
         </p>
       )}
-      {payees.transfers > 0 && (
+      {pairs > 0 && (
         <p className="text-xs text-text-secondary">
-          {payees.transfers} possible transfer{payees.transfers === 1 ? '' : 's'} between your Up
-          accounts {payees.transfers === 1 ? 'is' : 'are'} left for you to review as{' '}
+          {pairs} possible transfer{pairs === 1 ? '' : 's'} between your accounts{' '}
+          {pairs === 1 ? 'is' : 'are'} left for you to review as{' '}
           <Link to="/transactions" className="underline">
             transfers
           </Link>

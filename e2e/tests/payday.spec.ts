@@ -93,3 +93,51 @@ test('a changed budget requires a refreshed preview', async ({ page, api }) => {
   await expect(page.getByText('Funding applied to your monthly budget.')).toBeVisible();
   expect((await api.call('GET', `/budget/${thisMonth()}/summary`)).totalBudgeted).toBe(100000);
 });
+
+test('the newest pay is ticked, a preview needs a deposit, and an empty preview says why', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Checking');
+  const salary = await api.category('Paychecks');
+  await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(-14),
+    amount: 90000,
+    categoryId: salary.id,
+    payeeName: 'Older pay',
+  });
+  await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: 100000,
+    categoryId: salary.id,
+    payeeName: 'Newest pay',
+  });
+  await open(page, '/budget');
+  await page.getByRole('button', { name: 'Until next payday' }).click();
+  await page.getByRole('button', { name: 'New payday plan' }).click();
+  await page.getByLabel('Anchor payday').fill(isoDay());
+  await page.getByLabel('Expected take-home pay').fill('1000');
+  await page.getByRole('button', { name: 'Save payday plan' }).click();
+
+  // The newest deposit starts ticked; the older one does not
+  const newest = page.getByRole('checkbox', { name: /Newest pay/ });
+  await expect(newest).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: /Older pay/ })).not.toBeChecked();
+
+  // Unticking is allowed, and previewing with nothing ticked says so instead of showing $0
+  await newest.uncheck();
+  await page.getByRole('button', { name: 'Preview funding' }).click();
+  await expect(page.getByRole('alert')).toContainText('Tick the pay you received');
+  await expect(page.getByRole('region', { name: 'Funding preview' })).toHaveCount(0);
+
+  // With no bills or rules there is nothing to fund: the screen says why Apply is off
+  await newest.check();
+  await page.getByRole('button', { name: 'Preview funding' }).click();
+  const preview = page.getByRole('region', { name: 'Funding preview' });
+  await expect(preview).toContainText('Nothing to fund before your next payday on');
+  await expect(preview).toContainText('add a funding rule or a bill');
+  await expect(preview).toContainText('Apply is off because there is nothing to add');
+  await expect(page.getByRole('button', { name: 'Apply funding' })).toBeDisabled();
+});

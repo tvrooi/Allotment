@@ -372,10 +372,17 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
   });
   const [chosenDate, setChosenDate] = useState('');
   const [actualDate, setActualDate] = useState('');
-  const [incomeIds, setIncomeIds] = useState<string[]>([]);
+  // null = untouched: the newest unused deposit is ticked until the person chooses
+  const [picked, setPicked] = useState<string[] | null>(null);
   const [preview, setPreview] = useState<api.PaydayPreview | null>(null);
   const [message, setMessage] = useState('');
+  const [needDeposit, setNeedDeposit] = useState(false);
   const data = context.data;
+  const incomeIds = picked ?? (data?.income[0] ? [data.income[0].id] : []);
+  const setIncomeIds = (ids: string[]) => {
+    setPicked(ids);
+    setNeedDeposit(false);
+  };
   const defaultPay =
     data?.paydays.filter((p) => p.expectedDate <= data.today).at(-1) ?? data?.paydays[0];
   const pay = data?.paydays.find((p) => p.scheduledDate === chosenDate) ?? defaultPay;
@@ -443,7 +450,7 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
               setChosenDate(e.target.value);
               setActualDate('');
               setPreview(null);
-              setIncomeIds([]);
+              setPicked(null);
               setMessage('');
             }}
           >
@@ -484,7 +491,7 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
             {data!.income.length === 0 && (
               <PayCandidates
                 onPay={(id) => {
-                  setIncomeIds((ids) => (ids.includes(id) ? ids : [...ids, id]));
+                  setIncomeIds(incomeIds.includes(id) ? incomeIds : [...incomeIds, id]);
                   setPreview(null);
                 }}
               />
@@ -516,11 +523,17 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
             disabled={!canSave || !pay || refresh.isPending || apply.isPending}
             onClick={() => {
               setPreview(null);
+              if (!incomeIds.length) return setNeedDeposit(true);
               refresh.mutate();
             }}
           >
             Preview funding
           </Button>
+          {needDeposit && (
+            <p role="alert" className="text-sm text-negative">
+              Tick the pay you received above first, then preview.
+            </p>
+          )}
         </>
       )}
       {preview && (
@@ -598,6 +611,12 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
               </p>
             ))}
           </details>
+          {preview.totalAllocated <= 0 && !preview.future && !preview.existingEventId && (
+            <p role="status" className="text-sm">
+              Nothing to fund before your next payday on {formatDay(preview.nextPayday)} — add a
+              funding rule or a bill to put this pay to work.
+            </p>
+          )}
           <Button
             disabled={
               !canSave ||
@@ -610,6 +629,11 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
           >
             Apply funding
           </Button>
+          {!preview.future && !preview.existingEventId && preview.totalAllocated <= 0 && (
+            <p className="text-xs text-text-secondary">
+              Apply is off because there is nothing to add.
+            </p>
+          )}
         </section>
       )}
       {(refresh.error || apply.error || archive.error) && (
