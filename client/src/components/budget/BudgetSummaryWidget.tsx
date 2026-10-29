@@ -190,7 +190,7 @@ export function BudgetSummaryWidget({
           <p className={`text-xs ${hero.text} mt-0.5 opacity-75`}>{hero.label}</p>
           <p className={`text-xs ${hero.text} mt-1 opacity-75`}>
             Money you have that isn't in a category yet.
-            <HelpTip label="What is Ready to assign?">
+            <HelpTip label="What is Ready to assign?" inline>
               Ready to assign is the money in your accounts that you haven't given a job yet. Give
               it to categories (envelopes) until this reaches $0, so every dollar is planned.
               Spending takes money out of its envelope, not out of here.

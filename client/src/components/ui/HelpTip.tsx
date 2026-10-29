@@ -9,11 +9,14 @@ export function HelpTip({
   label,
   children,
   className = '',
+  inline = false,
 }: {
   /** The button's accessible name, e.g. "What is a funding rule?" */
   label: string;
   children: ReactNode;
   className?: string;
+  /** Show the words in the flow of the page (pushing what follows down) instead of floating over it */
+  inline?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLSpanElement>(null);
@@ -41,7 +44,10 @@ export function HelpTip({
   }, [open]);
 
   return (
-    <span ref={box} className={`relative inline-block align-middle ${className}`}>
+    <span
+      ref={box}
+      className={`relative ${inline ? 'inline' : 'inline-block'} align-middle ${className}`}
+    >
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -56,7 +62,7 @@ export function HelpTip({
         <span
           id={id}
           role="note"
-          className="absolute z-40 left-1/2 top-full mt-1 w-60 max-w-[75vw] -translate-x-1/2 rounded-lg border border-border bg-surface px-3 py-2 text-left text-xs font-normal normal-case tracking-normal leading-relaxed text-text shadow-lg"
+          className={`${inline ? 'block mt-1.5 w-full' : 'absolute z-40 left-1/2 top-full mt-1 w-60 max-w-[75vw] -translate-x-1/2'} rounded-lg border border-border bg-surface px-3 py-2 text-left text-xs font-normal normal-case tracking-normal leading-relaxed text-text shadow-lg`}
         >
           {children}
         </span>

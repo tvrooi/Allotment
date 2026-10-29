@@ -210,6 +210,11 @@ test.describe('the budget page', () => {
     await expect(readyToAssign(page)).toContainText("Money you have that isn't in a category yet.");
     await page.getByRole('button', { name: 'What is Ready to assign?' }).click();
     await expect(page.getByRole('note')).toContainText('haven’t given a job yet'.replace('’', "'"));
+    // The words sit in the page and never cover the controls below them
+    const put = page.getByRole('button', { name: 'Put the rest in…' });
+    const note = await page.getByRole('note').boundingBox();
+    const putBox = await put.boundingBox();
+    expect(note!.y + note!.height).toBeLessThanOrEqual(putBox!.y + 1);
     await page.keyboard.press('Escape');
     await expect(page.getByRole('note')).toHaveCount(0);
 
@@ -281,6 +286,32 @@ test.describe('category picker from the keyboard', () => {
           ?.name;
       })
       .toBe(second);
+  });
+
+  test('typing a filter then Enter alone picks the first match', async ({ page, api }) => {
+    const acct = await api.createAccount('Everyday', 100_000);
+    const groceries = await api.category('Groceries');
+    await api.createTransaction({
+      accountId: acct.id,
+      date: isoDay(0),
+      amount: -1_000,
+      payeeName: 'Mystery C',
+    });
+    await open(page, `/accounts/${acct.id}`);
+    await page
+      .getByTestId('transaction-row')
+      .filter({ hasText: 'Mystery C' })
+      .getByRole('button', { name: '—' })
+      .click();
+    await expect(page.getByRole('textbox', { name: 'Search categories' })).toBeFocused();
+    // No arrow key and no waiting for the highlight
+    await page.keyboard.type('Groceries');
+    await page.keyboard.press('Enter');
+    await expect
+      .poll(
+        async () => (await api.transactions()).find((t) => t.payeeName === 'Mystery C').categoryId,
+      )
+      .toBe(groceries.id);
   });
 
   test('Escape closes the list and changes nothing', async ({ page, api }) => {

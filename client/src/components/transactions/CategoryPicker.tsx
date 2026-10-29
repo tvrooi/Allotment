@@ -113,14 +113,18 @@ export function CategoryPicker({
   ];
   const optionIndex = (id: string | null) => options.indexOf(id);
 
+  // Typing a filter highlights its first match without any arrow key, so Enter alone picks it.
+  // (Derived, not set from an effect, so it is right on the very render the filter changes.)
+  const activeIndex = Math.min(active >= 0 ? active : query ? 0 : -1, options.length - 1);
+
   useEffect(() => {
-    setActive(query ? 0 : -1);
+    setActive(-1);
   }, [query]);
   useEffect(() => {
     containerRef.current
       ?.querySelector('[data-active="true"]')
       ?.scrollIntoView?.({ block: 'nearest' });
-  }, [active]);
+  }, [activeIndex]);
 
   function handleSearchKey(e: React.KeyboardEvent) {
     if (e.key === 'Escape') {
@@ -129,17 +133,17 @@ export function CategoryPicker({
       onClose();
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setActive((a) => Math.min(options.length - 1, a + 1));
+      setActive(Math.min(options.length - 1, activeIndex + 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setActive((a) => Math.max(0, a - 1));
-    } else if (e.key === 'Enter' && active >= 0 && active < options.length) {
+      setActive(Math.max(0, activeIndex - 1));
+    } else if (e.key === 'Enter' && activeIndex >= 0) {
       e.preventDefault();
-      onChange(options[active]);
+      onChange(options[activeIndex]);
     }
   }
   const rowCls = (id: string | null) =>
-    `${optionIndex(id) === active ? 'bg-hover ' : ''}${value === id ? 'bg-brand-50 text-brand-700' : 'text-text'}`;
+    `${optionIndex(id) === activeIndex ? 'bg-hover ' : ''}${value === id ? 'bg-brand-50 text-brand-700' : 'text-text'}`;
 
   const selectedGroup = groups.find((g) => g.id === newGroupId);
   const isIncomeGroup = selectedGroup?.isIncome === 1;
@@ -196,8 +200,8 @@ export function CategoryPicker({
           <button
             type="button"
             onClick={() => onChange(null)}
-            data-active={optionIndex(null) === active}
-            className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between hover:bg-hover ${optionIndex(null) === active ? 'bg-hover ' : ''}${value === null ? 'bg-brand-50 text-brand-700' : 'text-text-secondary'}`}
+            data-active={optionIndex(null) === activeIndex}
+            className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between hover:bg-hover ${optionIndex(null) === activeIndex ? 'bg-hover ' : ''}${value === null ? 'bg-brand-50 text-brand-700' : 'text-text-secondary'}`}
           >
             <span className="italic">Uncategorized</span>
             {value === null && <Check size={14} className="text-brand-600 shrink-0" />}
@@ -214,7 +218,7 @@ export function CategoryPicker({
                 type="button"
                 key={cat.id}
                 onClick={() => onChange(cat.id)}
-                data-active={optionIndex(cat.id) === active}
+                data-active={optionIndex(cat.id) === activeIndex}
                 className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-hover ${rowCls(cat.id)}`}
               >
                 {showCategoryIcons && cat.icon && (
@@ -239,7 +243,7 @@ export function CategoryPicker({
                   type="button"
                   key={a.id}
                   onClick={() => onChange(id)}
-                  data-active={optionIndex(id) === active}
+                  data-active={optionIndex(id) === activeIndex}
                   className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-hover ${rowCls(id)}`}
                 >
                   <span className="truncate flex-1">Transfer: {a.name}</span>
