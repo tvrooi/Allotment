@@ -34,6 +34,7 @@ test('a damaged key is never silently replaced', () => {
 test('server mode, persistent storage and reverse proxy settings are explicit', () => {
   const env = settings({ allowed_hosts: 'budget.example.com', trust_proxy: true });
   assert.equal(env.FLYBUDGET_SERVER_MODE, 'true');
+  assert.equal(env.FLYBUDGET_HOST_KIND, 'home-assistant');
   assert.equal(env.DB_PATH, '/data/flybudget/budget.db');
   assert.equal(env.FLYBUDGET_DATA_KEY_FILE, '/data/flybudget/credentials.key');
   assert.equal(env.FLYBUDGET_TRUST_PROXY, '1');

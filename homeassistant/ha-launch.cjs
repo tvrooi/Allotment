@@ -36,6 +36,7 @@ function settings(options, directory = '/data/flybudget') {
     NODE_ENV: 'production',
     ELECTRON_PROD: 'true',
     FLYBUDGET_SERVER_MODE: 'true',
+    FLYBUDGET_HOST_KIND: 'home-assistant',
     FLYBUDGET_HOST: '0.0.0.0',
     PORT: '3001',
     DB_PATH: path.join(directory, 'budget.db'),

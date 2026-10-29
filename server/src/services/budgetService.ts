@@ -215,5 +215,9 @@ export function budgetSummary(month: string, today = todayIso()) {
     carryOver: state.openingFunds,
     toBeBudgeted: state.unassigned,
     budgetStartMonth: budgetStartDate().slice(0, 7) || null,
+    // False until some money has been assigned in any month: a brand-new budget
+    anythingAssigned: [...ledger().envelopes.values()].some((h) =>
+      [...h.assigned.values()].some((v) => v !== 0),
+    ),
   };
 }

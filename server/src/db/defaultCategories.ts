@@ -159,7 +159,7 @@ const defaultGroups: {
     categories: [
       { name: 'Miscellaneous', icon: '📁', budgetType: 'flexible' },
       { name: 'Cash / ATM', icon: '💵', budgetType: 'flexible' },
-      { name: 'Uncategorized', icon: '❓', budgetType: 'flexible' },
+      { name: 'Other', icon: '❓', budgetType: 'flexible' },
     ],
   },
 ];
