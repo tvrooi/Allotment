@@ -37,9 +37,9 @@ default categories and logos and link suggested transfers.
     (`POST /api/rules/apply` with `"scope": "uncategorized"`);
   - set a payee's default category, and nothing else about the payee
     (`PUT /api/payees/:id` with exactly `{"defaultCategoryId": …}`);
-  - give a payee that has no logo one, such as a brand icon (`PUT /api/payees/:id` with exactly
-    `{"logo": "data:image/png;base64,…"}`, PNG, JPEG or WebP). It never replaces or removes a
-    logo: remove a wrong one on the Payees page and the token can set another;
+  - set or replace a payee's logo, such as a brand icon (`PUT /api/payees/:id` with exactly
+    `{"logo": "data:image/png;base64,…"}`, PNG, JPEG or WebP). It can replace a logo you
+    uploaded, but never removes one;
   - link two transactions as a transfer, only when the app itself suggests that pair
     (`POST /api/transactions/transfers/link`);
   - suggest assignments (`POST /api/budget-proposals`): this month or next, expense

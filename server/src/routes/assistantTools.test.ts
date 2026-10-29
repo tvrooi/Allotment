@@ -335,21 +335,22 @@ describe('organise tokens', () => {
     ).toBe(403);
   });
 
-  it('an organise token gives a payee without a logo one, and never replaces or removes it', async () => {
+  it('an organise token sets and replaces payee logos, and never removes one', async () => {
     const token = await newToken('organise');
     const logo = 'data:image/png;base64,iVBORw0KGgo=';
     const other = 'data:image/png;base64,AAAA';
+    const saved = () => db.select().from(payees).where(eq(payees.id, 'shop')).get()?.logo;
     expect((await call('PUT', '/payees/shop', { token }, { logo })).status).toBe(200);
-    expect(db.select().from(payees).where(eq(payees.id, 'shop')).get()?.logo).toBe(logo);
-    expect((await call('PUT', '/payees/shop', { token }, { logo: other })).status).toBe(403);
+    expect(saved()).toBe(logo);
+    expect((await call('PUT', '/payees/shop', { token }, { logo: other })).status).toBe(200);
+    expect(saved()).toBe(other);
     expect((await call('PUT', '/payees/shop', { token }, { logo: null })).status).toBe(403);
-    expect((await call('PUT', '/payees/cafe', { token }, { logo, name: 'X' })).status).toBe(403);
+    expect((await call('PUT', '/payees/shop', { token }, { logo, name: 'X' })).status).toBe(403);
     expect(
-      (await call('PUT', '/payees/cafe', { token }, { logo: 'data:image/svg+xml;base64,AAAA' }))
+      (await call('PUT', '/payees/shop', { token }, { logo: 'data:image/svg+xml;base64,AAAA' }))
         .status,
     ).toBe(403);
-    expect((await call('PUT', '/payees/missing', { token }, { logo })).status).toBe(403);
-    expect(db.select().from(payees).where(eq(payees.id, 'shop')).get()?.logo).toBe(logo);
+    expect(saved()).toBe(other);
     db.update(payees).set({ logo: null }).where(eq(payees.id, 'shop')).run();
   });
 
