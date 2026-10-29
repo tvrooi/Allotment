@@ -9,10 +9,14 @@ import {
   categoryGroups,
   payees,
   tags,
+  householdEvents,
+  householdGroups,
   transactions,
   transactionTags,
 } from '../db/schema.js';
 import {
+  bulkDelete,
+  previewBulkDelete,
   bulkEdit,
   previewBulkEdit,
   restoreBulkEdit,
@@ -26,6 +30,8 @@ beforeAll(() => {
 
 function reset() {
   for (const table of [
+    householdEvents,
+    householdGroups,
     transactionTags,
     tags,
     transactions,
@@ -167,7 +173,7 @@ describe('bulkEdit', () => {
     expect(row('x').categoryId).toBe('food');
   });
 
-  it('skips rows that cannot take a ledger change and reports why', () => {
+  it('skips rows that cannot take a ledger change and reports why; reconciled rows take them', () => {
     addTx('x', -100);
     addTx('rec', -200, { reconciled: 1 });
     addTx('s', -300);
@@ -176,12 +182,13 @@ describe('bulkEdit', () => {
       { categoryId: 'home', amount: -200 },
     ]);
     const preview = previewBulkEdit(all, { categoryId: 'fun' });
-    expect(preview).toMatchObject({ matched: 3, changing: 1 });
-    expect(preview.skipped).toMatchObject({ reconciled: 1, split: 1 });
+    expect(preview).toMatchObject({ matched: 3, changing: 2 });
+    expect(preview.skipped).toMatchObject({ reconciled: 0, split: 1 });
     expect(preview.accounts.map((a) => a.name)).toEqual(['Cash']);
     const result = bulkEdit(all, { categoryId: 'fun', hiddenFromReports: true }, 3);
     expect(row('x').categoryId).toBe('fun');
-    expect(row('rec').categoryId).toBe('food');
+    expect(row('rec').categoryId).toBe('fun');
+    expect(row('rec').reconciled).toBe(1);
     // Report visibility is not a ledger change: every row takes it
     expect([row('x'), row('rec'), row('s')].every((r) => r.hiddenFromReports === 1)).toBe(true);
     expect(result.changed).toBe(3);
@@ -340,5 +347,80 @@ describe('bulkEdit', () => {
       ),
       { numRuns: 150 },
     );
+  });
+});
+
+describe('bulkDelete', () => {
+  const target = { selection: {} };
+  const ids = () =>
+    db
+      .select({ id: transactions.id })
+      .from(transactions)
+      .all()
+      .map((r) => r.id)
+      .sort();
+
+  it('deletes the selection, skips and counts reconciled rows, and a split goes with its parts', () => {
+    addTx('a', -100);
+    addTx('b', -200);
+    addTx('rec', -300, { reconciled: 1 });
+    addTx('s', -400);
+    splitTransaction('s', [
+      { categoryId: 'food', amount: -100 },
+      { categoryId: 'home', amount: -300 },
+    ]);
+    const preview = previewBulkDelete(target);
+    expect(preview).toMatchObject({
+      matched: 4,
+      deletable: 3,
+      skipped: { reconciled: 1, household: 0 },
+    });
+    expect(preview.accounts.map((a) => a.name)).toEqual(['Cash']);
+    expect(bulkDelete(target, 3)).toMatchObject({ deleted: 3, skipped: { reconciled: 1 } });
+    expect(ids()).toEqual(['rec']);
+  });
+
+  it('writes nothing when the count the user confirmed is out of date', () => {
+    addTx('a', -100);
+    addTx('b', -200);
+    expect(() => bulkDelete(target, 1)).toThrow(/now has 2/);
+    expect(ids()).toEqual(['a', 'b']);
+  });
+
+  it('only deletes the hand-picked, unexcluded rows', () => {
+    for (const id of ['a', 'b', 'c']) addTx(id, -100);
+    expect(bulkDelete({ ...target, ids: ['a', 'b', 'c'], excludeIds: ['b'] }, 2).deleted).toBe(2);
+    expect(ids()).toEqual(['b']);
+  });
+
+  it('leaves a transfer whose other side is reconciled, and turns the surviving side ordinary', () => {
+    addTx('t1', -500, { payeeName: 'Transfer: Card', transferTransactionId: 't2' });
+    addTx('t2', 500, { accountId: 'card', transferTransactionId: 't1', reconciled: 1 });
+    addTx('u1', -50, { payeeName: 'Transfer: Card', transferTransactionId: 'u2' });
+    addTx('u2', 50, { accountId: 'card', transferTransactionId: 'u1' });
+    const result = bulkDelete({ ...target, ids: ['t1', 'u1'] }, 1);
+    expect(result).toMatchObject({ deleted: 1, skipped: { reconciled: 1 } });
+    expect(ids()).toEqual(['t1', 't2', 'u2']);
+    expect(row('u2').transferTransactionId).toBeNull();
+  });
+
+  it('skips a payment tied to a household entry', () => {
+    addTx('h', -100);
+    addTx('x', -100);
+    db.insert(householdGroups)
+      .values({ id: 'home', name: 'Home', currency: 'AUD', accountId: 'card' })
+      .run();
+    db.insert(householdEvents)
+      .values({
+        id: 'ev',
+        groupId: 'home',
+        kind: 'expense',
+        date: '2026-10-09',
+        description: 'Power',
+        amount: 100,
+        transactionId: 'h',
+      })
+      .run();
+    expect(previewBulkDelete(target)).toMatchObject({ deletable: 1, skipped: { household: 1 } });
   });
 });

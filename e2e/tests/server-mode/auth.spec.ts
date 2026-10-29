@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { test, expect, type Page } from '@playwright/test';
 import { SERVER_PORT } from '../../ports';
 
@@ -260,6 +261,69 @@ test('the sidebar shows the server and can sign out', async ({ baseURL }) => {
   await expect(owner.getByText('Sign in to FlyBudget')).toBeVisible();
   await signIn(owner, NEW_PASSWORD);
   await expect(owner.getByRole('complementary')).toBeVisible();
+});
+
+test('a forgotten password is reset with a code from the server log', async ({
+  browser,
+  baseURL,
+}) => {
+  // Another browser is signed in; the reset signs it out
+  const other = await (await browser.newContext()).newPage();
+  await other.goto(`${baseURL}/`);
+  await signIn(other, NEW_PASSWORD);
+  await expect(other.getByRole('complementary')).toBeVisible();
+
+  await owner.request.post('/api/auth/logout');
+  await owner.goto(`${baseURL}/`);
+  await expect(owner.getByText('Sign in to FlyBudget')).toBeVisible();
+  await owner.getByRole('button', { name: 'Forgot password?' }).click();
+  await expect(owner.getByText('Forgot your password?')).toBeVisible();
+  // It says where the code will be
+  await expect(owner.getByText(/docker logs flybudget/).first()).toBeVisible();
+  await owner.getByRole('button', { name: 'Make a reset code' }).click();
+  await expect(owner.getByRole('status')).toContainText('A reset code was made');
+  await expect(owner.getByText('Choose a new password')).toBeVisible();
+  // Where to look is said once
+  await expect(owner.getByText(/docker logs flybudget/)).toHaveCount(1);
+
+  const logged = () => {
+    const log = fs.readFileSync(process.env.E2E_SERVER_LOG!, 'utf8');
+    return [...log.matchAll(/password reset[^]*?([A-Z2-9]{4}(?:-[A-Z2-9]{4}){3})/g)].at(-1)?.[1];
+  };
+  await expect.poll(logged).toBeTruthy();
+  const code = logged()!;
+
+  const FORGOTTEN = 'a brand new passphrase';
+  await owner.getByLabel('Code').fill('AAAA-BBBB-CCCC-DDDD');
+  await owner.getByLabel('New password', { exact: true }).fill(FORGOTTEN);
+  await owner.getByLabel('Confirm password').fill(FORGOTTEN);
+  await owner.getByRole('button', { name: 'Set password and sign in' }).click();
+  await expect(owner.getByText('That code is not right or has expired')).toBeVisible();
+
+  await owner.getByLabel('Code').fill(code.toLowerCase());
+  await owner.getByRole('button', { name: 'Set password and sign in' }).click();
+  await expect(owner.getByRole('complementary')).toBeVisible();
+
+  // The code works once, and the other browser is signed out; only the new password signs in
+  const reuse = await owner.request.post('/api/auth/reset', {
+    data: { code, password: 'yet another passphrase' },
+  });
+  expect(reuse.status()).toBe(403);
+  await other.reload();
+  await expect(other.getByText('Sign in to FlyBudget')).toBeVisible();
+  await signIn(other, NEW_PASSWORD);
+  await expect(other.getByText('Incorrect password')).toBeVisible();
+  await signIn(other, FORGOTTEN);
+  await expect(other.getByRole('complementary')).toBeVisible();
+  await other.context().close();
+
+  // Put the shared password back for the tests that follow
+  await owner.goto(`${baseURL}/settings?tab=server`);
+  await owner.getByRole('textbox', { name: 'Current password' }).fill(FORGOTTEN);
+  await owner.getByRole('textbox', { name: 'New password', exact: true }).fill(NEW_PASSWORD);
+  await owner.getByRole('textbox', { name: 'Confirm new password' }).fill(NEW_PASSWORD);
+  await owner.getByRole('button', { name: 'Change password' }).click();
+  await expect(owner.getByText(/Password changed\./)).toBeVisible();
 });
 
 /** This browser's offline copy as JSON text, or null when there is none */

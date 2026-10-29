@@ -129,7 +129,8 @@ describe('budget boundary and report account scopes', () => {
     expect((await update('out', { notes: 'Reviewed' })).status).toBe(200);
     expect((await fetch(`${base}/transactions/out`, { method: 'DELETE' })).status).toBe(403);
     expect(row('in')).toEqual(locked);
-    expect((await update('in', { categoryId: null })).status).toBe(403);
+    // Category doesn't change a balance, so a reconciled row still takes it
+    expect((await update('in', { categoryId: null })).status).toBe(200);
   });
 
   it('nets a return to the expense category and treats a categorized boundary receipt as income', async () => {

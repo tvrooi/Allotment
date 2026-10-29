@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import { accountIssues } from './accountIntegrity.js';
+import { accountIssues, describeIssues } from './accountIntegrity.js';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import { budgetMonths, budgetMoves, categoryPurposes, financialPriorities } from '../db/schema.js';
@@ -11,6 +11,8 @@ export class BudgetError extends Error {
   constructor(
     message: string,
     public status = 409,
+    /** Structured detail the screen can act on (for example the accounts to reconcile) */
+    public details?: Record<string, unknown>,
   ) {
     super(message);
   }
@@ -212,15 +214,19 @@ export function fundedWrite(action: () => void) {
     const worse = now.find(
       (p, i) => p.value < was[i].value && (issues.length > 0 || !p.complete || p.value < 0),
     );
+    if (worse && issues.length)
+      throw new BudgetError(
+        `Reconcile account balance discrepancies before assigning more money. ${describeIssues(issues)}.`,
+        409,
+        { accountIssues: issues },
+      );
     if (worse)
       throw new BudgetError(
-        issues.length
-          ? 'Reconcile account balance discrepancies before assigning more money.'
-          : worse.complete
-            ? worse.month < current
-              ? `Not enough money had arrived by the end of ${worse.month}. Assign it in a later month, or move existing money.`
-              : 'Insufficient unassigned money. Reduce an assignment or move existing money.'
-            : 'Add missing exchange rates before assigning money.',
+        worse.complete
+          ? worse.month < current
+            ? `Not enough money had arrived by the end of ${worse.month}. Assign it in a later month, or move existing money.`
+            : 'Insufficient unassigned money. Reduce an assignment or move existing money.'
+          : 'Add missing exchange rates before assigning money.',
       );
   });
 }

@@ -475,6 +475,8 @@ export interface Account {
    * budget even when it isn't marked off budget (docs/HOUSEHOLDS.md).
    */
   householdPool?: string | null;
+  /** A bank feed (Up or Enable Banking) supplies its transactions */
+  bankLinked?: boolean;
   /**
    * In another currency: how much more (or less) it's worth today in the budget's currency
    * than it was counted as when its money came in (the rate moved). Null when not known.

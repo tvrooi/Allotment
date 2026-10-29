@@ -174,6 +174,48 @@ export const paydayFundingEvents = sqliteTable(
   (table) => [uniqueIndex('payday_event_plan_date').on(table.planId, table.scheduledDate)],
 );
 
+/** One finished reconciliation: the rows it locked and any adjustment it created (for undo) */
+export const accountReconciliations = sqliteTable(
+  'account_reconciliations',
+  {
+    id: text('id').primaryKey(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    /** JSON array of the transaction ids this reconciliation locked (adjustment included) */
+    transactionIds: text('transaction_ids').notNull(),
+    adjustmentTransactionId: text('adjustment_transaction_id'),
+    adjustmentAmount: integer('adjustment_amount').notNull().default(0),
+    statementBalance: integer('statement_balance').notNull(),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    undoneAt: text('undone_at'),
+  },
+  (table) => [index('account_reconciliations_account').on(table.accountId)],
+);
+
+/** A funding that was undone: kept for Funding history while the payday itself is free again */
+export const paydayFundingUndos = sqliteTable(
+  'payday_funding_undos',
+  {
+    id: text('id').primaryKey(),
+    planId: text('plan_id').notNull(),
+    scheduledDate: text('scheduled_date').notNull(),
+    appliedDate: text('applied_date').notNull(),
+    snapshotJson: text('snapshot_json').notNull(),
+    /** { reversed: [{categoryId,name,amount}], skipped: [{categoryId,name,amount,reason}] } */
+    resultJson: text('result_json').notNull(),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    undoneAt: text('undone_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [index('payday_undo_plan').on(table.planId)],
+);
+
 // Retain the receipt identity even if its ledger row is later deleted. A second plan
 // cannot allocate that same income again; restoring a backup preserves this guard.
 export const paydayFundingReceipts = sqliteTable('payday_funding_receipts', {

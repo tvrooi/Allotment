@@ -96,3 +96,25 @@ export function useBulkEdit() {
     },
   });
 }
+
+export function usePreviewBulkDelete() {
+  return useMutation({
+    mutationFn: ({ params }: { params: TransactionQueryParams }) =>
+      txApi.previewBulkDelete({ params }),
+  });
+}
+
+/** Delete the selection. There is no undo: a restored row would lose its links, parts and tags. */
+export function useBulkDelete() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      params,
+      expectedCount,
+    }: {
+      params: TransactionQueryParams;
+      expectedCount: number;
+    }) => txApi.bulkDeleteTransactions({ params }, expectedCount),
+    onSuccess: () => refreshAfterEdit(qc),
+  });
+}

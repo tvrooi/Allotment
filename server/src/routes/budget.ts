@@ -71,7 +71,7 @@ budgetRouter.post('/card-funding/:accountId/funding-preview', (req, res, next) =
     res.json(previewCardAssignment(req.params.accountId, parsed.data.month, parsed.data.amount));
   } catch (error) {
     if (error instanceof BudgetError)
-      return res.status(error.status).json({ error: error.message });
+      return res.status(error.status).json({ error: error.message, details: error.details });
     next(error);
   }
 });
@@ -93,7 +93,7 @@ for (const action of ['preview', 'apply'])
       );
     } catch (error) {
       if (error instanceof BudgetError)
-        return res.status(error.status).json({ error: error.message });
+        return res.status(error.status).json({ error: error.message, details: error.details });
       next(error);
     }
   });
@@ -161,7 +161,7 @@ budgetRouter.put('/:month/:categoryId', (req, res, next) => {
     });
   } catch (error) {
     if (error instanceof BudgetError)
-      return res.status(error.status).json({ error: error.message });
+      return res.status(error.status).json({ error: error.message, details: error.details });
     next(error);
   }
 });
@@ -325,7 +325,7 @@ budgetRouter.put('/category/:categoryId/bulk', (req, res, next) => {
     });
   } catch (error) {
     if (error instanceof BudgetError)
-      return res.status(error.status).json({ error: error.message });
+      return res.status(error.status).json({ error: error.message, details: error.details });
     return next(error);
   }
   res.json({ categoryId, budgeted, months });
@@ -355,7 +355,7 @@ function moveHandler(action: 'preview' | 'apply') {
       );
     } catch (error) {
       if (error instanceof BudgetError)
-        return res.status(error.status).json({ error: error.message });
+        return res.status(error.status).json({ error: error.message, details: error.details });
       next(error);
     }
   };
@@ -377,7 +377,7 @@ budgetRouter.post('/moves/:id/undo', (req, res, next) => {
     res.json(undoMove(req.params.id));
   } catch (error) {
     if (error instanceof BudgetError)
-      return res.status(error.status).json({ error: error.message });
+      return res.status(error.status).json({ error: error.message, details: error.details });
     next(error);
   }
 });
@@ -390,7 +390,7 @@ budgetRouter.put('/category/:categoryId/target', (req, res, next) => {
     res.json(saveTarget(req.params.categoryId, parsed.data));
   } catch (error) {
     if (error instanceof BudgetError)
-      return res.status(error.status).json({ error: error.message });
+      return res.status(error.status).json({ error: error.message, details: error.details });
     next(error);
   }
 });
@@ -429,7 +429,7 @@ budgetRouter.post('/:month/auto-assign/apply', (req, res, next) => {
     );
   } catch (error) {
     if (error instanceof BudgetError)
-      return res.status(error.status).json({ error: error.message });
+      return res.status(error.status).json({ error: error.message, details: error.details });
     next(error);
   }
 });
@@ -452,7 +452,7 @@ budgetRouter.post('/:month/targets/apply', (req, res, next) => {
     );
   } catch (error) {
     if (error instanceof BudgetError)
-      return res.status(error.status).json({ error: error.message });
+      return res.status(error.status).json({ error: error.message, details: error.details });
     next(error);
   }
 });

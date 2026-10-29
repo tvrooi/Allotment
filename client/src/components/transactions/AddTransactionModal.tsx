@@ -7,7 +7,8 @@ import { SavedOnDeviceHint } from '../connection/SavingPausedHint';
 import { CurrencyInput } from '../ui/CurrencyInput';
 import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 import { formatMoney } from '../../utils/currency';
-import { useAccounts } from '../../hooks/useAccounts';
+import { useAccounts, useCreateAccount } from '../../hooks/useAccounts';
+import { useCanSave } from '../../hooks/useConnection';
 import { useAddTransaction } from '../../hooks/useOffline';
 import { useAccountCurrency, useConverted } from '../../hooks/useCurrency';
 import { MerchantSelect } from './MerchantSelect';
@@ -45,6 +46,9 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
 
   const { data: accounts = [] } = useAccounts();
   const newTx = useAddTransaction();
+  const createAccount = useCreateAccount();
+  const canSave = useCanSave();
+  const [accountError, setAccountError] = useState('');
 
   const openAccounts = accounts.filter((a) => !a.closedAt);
   // The category list always ends with a transfer to each other account (issue #89), even
@@ -58,6 +62,9 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
   const onBudgetAccounts = accountChoices.filter((a) => !a.isOffBudget);
   const offBudgetAccounts = accountChoices.filter((a) => a.isOffBudget);
   const selectedAccount = openAccounts.find((a) => a.id === accountId);
+  const cashAccount = openAccounts.find((a) => a.type === 'cash');
+  // A hand-entered row on a bank-fed account makes it disagree with the bank until it is fixed
+  const bankFed = !transferToId && !!selectedAccount?.bankLinked;
   const accountLabel = transferToId
     ? type === 'debit'
       ? 'From account'
@@ -108,6 +115,7 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
       setPayeeId(null);
       setDate(format(new Date(), 'yyyy-MM-dd'));
       setAccountId('');
+      setAccountError('');
       setShowAccountPicker(false);
       setCategoryId(null);
       setNotes('');
@@ -121,6 +129,22 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
     setShowAccountPicker(false);
     // A transfer to the account just chosen would go nowhere
     if (categoryId === `transfer:${id}`) setCategoryId(null);
+  }
+
+  /** Pick the Cash account, making one first when there is none (cash never touches a bank feed) */
+  async function chooseCash() {
+    setAccountError('');
+    if (cashAccount) return chooseAccount(cashAccount.id);
+    try {
+      const created = await createAccount.mutateAsync({
+        name: 'Cash',
+        type: 'cash',
+        startingBalance: 0,
+      });
+      chooseAccount(created.id);
+    } catch (error) {
+      setAccountError(error instanceof Error ? error.message : 'Could not create the Cash account');
+    }
   }
 
   function handleSubmit() {
@@ -343,9 +367,46 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
                       ))}
                     </>
                   )}
+                  {!cashAccount && !transferToId && canSave && (
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setShowAccountPicker(false);
+                        void chooseCash();
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-brand-600 hover:bg-hover cursor-pointer border-t border-border-light"
+                    >
+                      Cash (create)
+                    </button>
+                  )}
                 </div>
               )}
             </div>
+            {bankFed && (
+              <p
+                role="status"
+                className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-caution"
+              >
+                <span>
+                  {selectedAccount!.name} is linked to your bank. A transaction added by hand will
+                  make it disagree with the bank.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void chooseCash()}
+                  disabled={!canSave && !cashAccount}
+                  className="underline font-medium cursor-pointer disabled:opacity-50"
+                >
+                  {cashAccount ? 'Use Cash instead' : 'Use a new Cash account instead'}
+                </button>
+              </p>
+            )}
+            {accountError && (
+              <p role="alert" className="mt-2 text-xs text-negative">
+                {accountError}
+              </p>
+            )}
           </div>
 
           {/* Category */}

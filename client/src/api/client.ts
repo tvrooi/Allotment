@@ -18,6 +18,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    /** Structured detail some refusals carry, for the screen to link to the fix */
+    readonly details?: unknown,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -66,7 +68,7 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
         : body.error
           ? 'Some of the values entered are invalid'
           : res.statusText;
-    throw new ApiError(message, res.status);
+    throw new ApiError(message, res.status, body.details);
   }
   if (res.status === 204) return undefined as T;
   return res.json();

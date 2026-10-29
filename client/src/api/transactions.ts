@@ -157,6 +157,10 @@ export const unlinkTransfer = (id: string, opts: { dismiss?: boolean } = {}) =>
     body: JSON.stringify(opts),
   });
 
+/** Unlocks one reconciled transaction so its amount, date and account can change again */
+export const unlockTransaction = (id: string) =>
+  apiFetch<Transaction>(`/transactions/${id}/unlock`, { method: 'POST', body: '{}' });
+
 export const importPreview = (accountId: string, rows: ImportRow[]) =>
   apiFetch<ImportPreviewRow[]>('/transactions/import/preview', {
     method: 'POST',
@@ -295,3 +299,26 @@ export const restoreBulkEdit = (restore: BulkRestore[]) =>
     method: 'POST',
     body: JSON.stringify({ restore }),
   });
+
+export interface BulkDeletePreview {
+  matched: number;
+  /** Rows that will be deleted */
+  deletable: number;
+  skipped: { reconciled: number; household: number };
+  accounts: { id: string; name: string }[];
+  sample: { id: string; date: string; payeeName: string | null; amount: number }[];
+}
+
+/** What deleting the selection would remove, without deleting anything */
+export const previewBulkDelete = (target: BulkTarget) =>
+  apiFetch<BulkDeletePreview>('/transactions/bulk-delete', {
+    method: 'POST',
+    body: JSON.stringify({ ...bulkBody(target), preview: true }),
+  });
+
+/** Delete the selection's deletable rows; refused (409) if their number is no longer `expectedCount` */
+export const bulkDeleteTransactions = (target: BulkTarget, expectedCount: number) =>
+  apiFetch<{ deleted: number; skipped: BulkDeletePreview['skipped'] }>(
+    '/transactions/bulk-delete',
+    { method: 'POST', body: JSON.stringify({ ...bulkBody(target), expectedCount }) },
+  );

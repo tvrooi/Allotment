@@ -18,6 +18,7 @@ import {
   type FilterState,
 } from '../../utils/transactionFilters';
 import { TransactionFormRow } from './TransactionFormRow';
+import { BankFedNotice } from './BankFedNotice';
 import { TransactionRow } from './TransactionRow';
 import { TransactionCard } from './TransactionCard';
 import { WaitingTransactions } from './WaitingTransactions';
@@ -102,6 +103,9 @@ export function TransactionTable({
     onFiltersChange?.(filters);
   }, [filters, onFiltersChange]);
   const [showAdd, setShowAdd] = useState(false);
+  // The account a new entry goes to: the register's own unless moved to Cash
+  const [addTo, setAddTo] = useState<string | null>(null);
+  const target = addTo ?? accountId;
   const [savingView, setSavingView] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
@@ -170,6 +174,7 @@ export function TransactionTable({
 
   const newTx = useAddTransaction();
   const startAdd = () => {
+    setAddTo(null);
     setShowAdd(true);
     setDetailId(null);
   };
@@ -310,7 +315,7 @@ export function TransactionTable({
     );
 
   function handleCreate(data: CreateTransactionData) {
-    if (data.categoryId?.startsWith('transfer:') && accountId) {
+    if (data.categoryId?.startsWith('transfer:') && target) {
       const otherId = data.categoryId.slice('transfer:'.length);
       // An outflow sends money to the other account, an inflow brings it in from there
       const outflow = data.amount < 0;
@@ -318,8 +323,8 @@ export function TransactionTable({
         {
           kind: 'transfer',
           data: {
-            fromAccountId: outflow ? accountId : otherId,
-            toAccountId: outflow ? otherId : accountId,
+            fromAccountId: outflow ? target! : otherId,
+            toAccountId: outflow ? otherId : target!,
             date: data.date,
             amount: Math.abs(data.amount),
             notes: data.notes,
@@ -436,14 +441,21 @@ export function TransactionTable({
             </>
           )}
           {showAdd && accountId && !isPhone && (
-            <TransactionFormRow
-              accountId={accountId}
-              groups={groups as CategoryGroup[]}
-              payees={payees}
-              accounts={accounts}
-              onSave={handleCreate}
-              onCancel={() => setShowAdd(false)}
-            />
+            <>
+              <BankFedNotice
+                accountId={target!}
+                switched={target !== accountId}
+                onUseAccount={setAddTo}
+              />
+              <TransactionFormRow
+                accountId={target!}
+                groups={groups as CategoryGroup[]}
+                payees={payees}
+                accounts={accounts}
+                onSave={handleCreate}
+                onCancel={() => setShowAdd(false)}
+              />
+            </>
           )}
 
           {isLoading ? (
@@ -630,9 +642,14 @@ export function TransactionTable({
       {/* Phones: the entry form in a sheet (splits and transfers included) */}
       {accountId && isPhone && (
         <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="New transaction">
+          <BankFedNotice
+            accountId={target!}
+            switched={target !== accountId}
+            onUseAccount={setAddTo}
+          />
           <TransactionFormRow
             layout="sheet"
-            accountId={accountId}
+            accountId={target!}
             groups={groups as CategoryGroup[]}
             payees={payees}
             accounts={accounts}

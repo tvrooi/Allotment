@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { CheckCheck, Download, PencilLine } from 'lucide-react';
+import { CheckCheck, Download, PencilLine, Trash2 } from 'lucide-react';
 import { useRestoreReview, useReviewSelection } from '../../hooks/useTags';
 import type { ReviewChange } from '../../api/transactions';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { BulkEditModal } from './BulkEditModal';
+import { BulkDeleteModal } from './BulkDeleteModal';
 import { ShareWithHousehold } from '../household/ShareWithHousehold';
 import { useTransactionSummary } from '../../hooks/useTransactions';
 import { useBudgetCurrency } from '../../hooks/useCurrency';
@@ -36,6 +37,7 @@ export function SelectionSummary({ params, loadedCount }: Props) {
   const restore = useRestoreReview();
   const [confirming, setConfirming] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   // The last Mark reviewed here, offered for undo until the selection changes
   const [marked, setMarked] = useState<ReviewChange[] | null>(null);
   const paramsKey = JSON.stringify(params);
@@ -105,6 +107,16 @@ export function SelectionSummary({ params, loadedCount }: Props) {
           <PencilLine size={12} /> Edit {reviewCount.toLocaleString()}
         </button>
       )}
+      {reviewCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setDeleting(true)}
+          className="inline-flex items-center gap-1 text-text-secondary hover:text-negative max-md:min-h-8"
+          title="Delete every transaction in this list (reconciled ones are kept)"
+        >
+          <Trash2 size={12} /> Delete {reviewCount.toLocaleString()}
+        </button>
+      )}
       {reviewCount > 0 && <ShareWithHousehold params={params} variant="link" />}
       <BulkEditModal
         params={params}
@@ -112,6 +124,7 @@ export function SelectionSummary({ params, loadedCount }: Props) {
         isOpen={editing}
         onClose={() => setEditing(false)}
       />
+      <BulkDeleteModal params={params} isOpen={deleting} onClose={() => setDeleting(false)} />
       {marked && (
         <span role="status" className="text-text-secondary">
           Marked {marked.length.toLocaleString()} reviewed.{' '}

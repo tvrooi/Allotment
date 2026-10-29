@@ -37,8 +37,13 @@ These are app container paths, not the host filesystem. The app ID is `local_fly
    device. This is one budget with one owner password, unless you turn on separate budgets
    (below).
 
+If you forget the password, choose **Forgot password?** on the sign-in screen. FlyBudget makes a
+one-time reset code (it works once, for 24 hours) and shows it in Home Assistant under
+**Notifications** and in the app's **Log** tab. Enter it with a new password; every other device
+is signed out.
+
 Keep protection mode enabled. The app asks for Home Assistant API access only to send password
-codes as notifications in multi-user mode; it never reads your entities. It doesn't need
+codes as notifications; it never reads your entities. It doesn't need
 Docker socket access, host networking or elevated Linux capabilities. Its startup script prepares
 only its private data directory, then starts FlyBudget as the unprivileged Node user.
 

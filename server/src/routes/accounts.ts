@@ -1,7 +1,15 @@
 import { bankLinked } from '../services/accountIntegrity.js';
 import { Router } from 'express';
 import {
+  AccountDeletionError,
+  deleteAccountWithTransactions,
+  previewAccountDeletion,
+} from '../services/accountDeletion.js';
+import {
   reconcile,
+  lastReconciliation,
+  recordReconciliation,
+  undoLastReconciliation,
   reconciliationSnapshot,
   ReconciliationError,
 } from '../services/reconciliationService.js';
@@ -92,6 +100,8 @@ function shown(
     balance,
     hasTransactions,
     householdPool,
+    // A bank feed supplies this account's transactions: a hand-entered row will disagree with the bank
+    bankLinked: bankLinked(account.id),
     ...value,
     currencyDifference,
   };
@@ -240,6 +250,20 @@ accountsRouter.get('/:id/reconcile', (req, res) => {
   }
 });
 
+accountsRouter.get('/:id/reconcile/last', (req, res) => {
+  res.json(lastReconciliation(req.params.id));
+});
+
+accountsRouter.post('/:id/reconcile/undo', (req, res) => {
+  try {
+    res.json(undoLastReconciliation(req.params.id));
+  } catch (error) {
+    if (error instanceof ReconciliationError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
+});
+
 accountsRouter.post('/:id/reconcile', (req, res) => {
   const parsed = z
     .object({
@@ -287,19 +311,27 @@ accountsRouter.put('/:id/reconcile', (req, res) => {
   }
 
   // Only this account's transactions
-  const result = db
-    .update(transactions)
-    .set({ reconciled: 1 })
-    .where(
-      and(
-        eq(transactions.accountId, req.params.id),
-        inArray(transactions.id, parsed.data.transactionIds),
-        ne(transactions.reconciled, 1),
-      ),
-    )
-    .run();
+  const result = db.transaction(() => {
+    const pending = db
+      .select({ id: transactions.id })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.accountId, req.params.id),
+          inArray(transactions.id, parsed.data.transactionIds),
+          ne(transactions.reconciled, 1),
+        ),
+      )
+      .all()
+      .map((t) => t.id);
+    if (pending.length) {
+      db.update(transactions).set({ reconciled: 1 }).where(inArray(transactions.id, pending)).run();
+      recordReconciliation(req.params.id, pending, 0);
+    }
+    return pending.length;
+  });
 
-  res.json({ reconciled: result.changes });
+  res.json({ reconciled: result });
 });
 
 const storedImportSettings = (id: string) =>
@@ -407,6 +439,32 @@ accountsRouter.put('/:id', (req, res) => {
   }
   const updated = db.select().from(accounts).where(eq(accounts.id, req.params.id)).get()!;
   res.json(withBalance(updated));
+});
+
+// Delete an account and all its transactions for good (typed name). Closing stays DELETE /:id.
+accountsRouter.get('/:id/deletion', (req, res) => {
+  try {
+    res.json(previewAccountDeletion(req.params.id));
+  } catch (error) {
+    if (error instanceof AccountDeletionError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
+});
+
+accountsRouter.post('/:id/delete-permanently', (req, res) => {
+  const parsed = z
+    .object({ confirmName: z.string().max(500) })
+    .strict()
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Type the account name to confirm' });
+  try {
+    res.json(deleteAccountWithTransactions(req.params.id, parsed.data.confirmName));
+  } catch (error) {
+    if (error instanceof AccountDeletionError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
 });
 
 accountsRouter.delete('/:id', (req, res) => {

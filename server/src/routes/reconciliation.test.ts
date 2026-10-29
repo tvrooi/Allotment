@@ -290,6 +290,21 @@ it('flags an Up mismatch without changing cash or income and permits reducing an
       db.update(budgetMonths).set({ budgeted: 11000 }).run();
     }),
   ).toThrow(/Reconcile/);
+  // The refusal names the account and the gap, and carries the account for a link to fix it
+  let refusal: any;
+  try {
+    fundedWrite(() => {
+      db.update(budgetMonths).set({ budgeted: 11000 }).run();
+    });
+  } catch (error) {
+    refusal = error;
+  }
+  expect(refusal.message).toMatch(
+    /Checking: register \$1,000\.00, bank \$900\.00 \(\$100\.00 more/,
+  );
+  expect(refusal.details.accountIssues).toMatchObject([
+    { accountId: 'cash', accountName: 'Checking', difference: -10000 },
+  ]);
   fundedWrite(() => {
     db.update(budgetMonths).set({ budgeted: 9000 }).run();
   });

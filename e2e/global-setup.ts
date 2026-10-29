@@ -280,6 +280,11 @@ export default async function globalSetup() {
     },
     serverLog,
   );
+  // The server's log goes to a file too: reset codes are printed there (as in Home Assistant's
+  // Log tab or `docker logs`) and the password recovery test reads them
+  const serverLogFile = path.join(dir, 'server.log');
+  server.stdout!.on('data', (chunk: Buffer) => fs.appendFileSync(serverLogFile, chunk));
+  server.stderr!.on('data', (chunk: Buffer) => fs.appendFileSync(serverLogFile, chunk));
 
   // The multi-user gateway, with its budgets run from source. Its log goes to a file the
   // tests read (setup and reset codes are printed there, as in Home Assistant's Log).
@@ -349,6 +354,7 @@ export default async function globalSetup() {
   process.env.E2E_SNAPSHOT = snapshotData;
   process.env.E2E_DIR = dir;
   process.env.E2E_MULTI_USER_LOG = multiUserLogFile;
+  process.env.E2E_SERVER_LOG = serverLogFile;
 
   return async () => {
     control.close();

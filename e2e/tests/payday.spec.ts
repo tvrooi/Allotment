@@ -141,3 +141,60 @@ test('the newest pay is ticked, a preview needs a deposit, and an empty preview 
   await expect(preview).toContainText('Apply is off because there is nothing to add');
   await expect(page.getByRole('button', { name: 'Apply funding' })).toBeDisabled();
 });
+
+test('an applied payday can be undone, previewed again and applied again', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Undo checking');
+  const salary = await api.category('Paychecks');
+  const food = await api.category('Groceries');
+  await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: 100000,
+    categoryId: salary.id,
+    payeeName: 'Undo employer',
+  });
+  await api.call('POST', '/payday', {
+    name: 'Undo pay',
+    anchorDate: isoDay(),
+    expectedIncome: 100000,
+    weekendAdjust: 'none',
+    timeZone: 'UTC',
+    rules: [{ categoryId: food.id, method: 'fixed', amount: 40000 }],
+  });
+  await open(page, '/budget');
+  await page.getByRole('button', { name: 'Until next payday' }).click();
+  const deposit = page.getByRole('checkbox', { name: /Undo employer/ });
+  const preview = page.getByRole('region', { name: 'Funding preview' });
+  await deposit.check();
+  await page.getByRole('button', { name: 'Preview funding' }).click();
+  const first = await preview.innerText();
+  await page.getByRole('button', { name: 'Apply funding' }).click();
+  await expect(page.getByText('Funding applied to your monthly budget.')).toBeVisible();
+  expect((await api.call('GET', `/budget/${thisMonth()}/summary`)).totalBudgeted).toBe(40000);
+
+  // Undo straight from the confirmation
+  await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+  await expect(page.getByText(/Funding undone: \$400 taken back/)).toBeVisible();
+  expect((await api.call('GET', `/budget/${thisMonth()}/summary`)).totalBudgeted).toBe(0);
+  await expect(page.getByText('This payday has already been funded.')).toHaveCount(0);
+
+  // The same pay previews to the same plan again, and the history keeps the undone entry
+  await page.getByRole('checkbox', { name: /Undo employer/ }).check();
+  await page.getByRole('button', { name: 'Preview funding' }).click();
+  expect(await preview.innerText()).toBe(first);
+  await page.getByText('Funding history (1)', { exact: true }).click();
+  await expect(page.getByText(/Undone on/)).toBeVisible();
+
+  // Apply again, then undo from the history entry
+  await page.getByRole('button', { name: 'Apply funding' }).click();
+  await expect(page.getByText('Funding applied to your monthly budget.')).toBeVisible();
+  // Wait for the refreshed history (the new entry plus the undone one) before opening it
+  await expect(page.getByText('Funding history (2)', { exact: true })).toBeVisible();
+  await page.getByText(/applied .*\$400/).click();
+  await page.getByRole('button', { name: /Undo funding for payday/ }).click();
+  await expect(page.getByText(/Funding undone/)).toBeVisible();
+  expect((await api.call('GET', `/budget/${thisMonth()}/summary`)).totalBudgeted).toBe(0);
+});

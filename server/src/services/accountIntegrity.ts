@@ -101,3 +101,20 @@ export function accountIssues(asOf = todayIso()): AccountIssue[] {
   }
   return issues;
 }
+
+/** "Spending: register $7,824.85, Up $7,810.35 ($14.50 difference)" for each account, for error messages */
+export function describeIssues(issues: AccountIssue[]) {
+  const money = (cents: number, currency: string | null) =>
+    new Intl.NumberFormat('en-AU', { style: 'currency', currency: currency ?? 'AUD' }).format(
+      cents / 100,
+    );
+  return issues
+    .map((i) => {
+      if (i.reason === 'bank-mismatch')
+        return `${i.accountName}: register ${money(i.registerBalance, i.currency)}, bank ${money(i.bankBalance!, i.currency)} (${money(Math.abs(i.difference!), i.currency)} ${i.difference! < 0 ? 'more' : 'less'} in the register than the bank)`;
+      if (i.reason === 'closed-balance')
+        return `${i.accountName}: closed with ${money(i.registerBalance, i.currency)} left`;
+      return `${i.accountName}: sync to get the bank's balance`;
+    })
+    .join('; ');
+}

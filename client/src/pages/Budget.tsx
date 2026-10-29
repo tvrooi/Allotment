@@ -7,6 +7,7 @@ import { format, parseISO, addMonths, subMonths } from 'date-fns';
 import { ChevronLeft, ChevronRight, ChevronDown, Eye, Lightbulb } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { usePreferencesStore } from '../store/preferencesStore';
+import { AssignBlockError } from '../components/budget/AssignBlockError';
 import { useBudget, useBudgetSummary, useSetBudget, useSetBudgetBulk } from '../hooks/useBudget';
 import {
   formatCurrency,
@@ -638,9 +639,7 @@ export default function BudgetPage() {
       )}
 
       {(setBudgetMutation.error || setBulkMutation.error) && (
-        <p role="alert" className="px-6 py-3 text-negative">
-          {(setBudgetMutation.error || setBulkMutation.error)?.message}
-        </p>
+        <AssignBlockError error={(setBudgetMutation.error || setBulkMutation.error)!} />
       )}
       <MissingRatesBanner className="mx-6 mt-3 shrink-0" />
       <AssistantSuggestions />

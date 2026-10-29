@@ -2,7 +2,11 @@ import { ShareWithHousehold } from '../household/ShareWithHousehold';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { X, Lock, Trash2, Repeat, Unlink, Wand2, Split } from 'lucide-react';
-import { useUpdateTransaction, useDeleteTransaction } from '../../hooks/useTransactions';
+import {
+  useUpdateTransaction,
+  useDeleteTransaction,
+  useUnlockTransaction,
+} from '../../hooks/useTransactions';
 import { useOfferCategoryFollowup } from '../../hooks/useCategoryFollowup';
 import { useTransferToAccount, useUnlinkTransfer } from '../../hooks/useTransfers';
 import { useCanSave } from '../../hooks/useConnection';
@@ -77,6 +81,8 @@ export function TransactionDetailPanel({
   const [localPayee, setLocalPayee] = useState({ id: tx.payeeId, name: tx.payeeName ?? '' });
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showUnlockConfirm, setShowUnlockConfirm] = useState(false);
+  const unlock = useUnlockTransaction();
   const [ruleDraft, setRuleDraft] = useState<RuleInput | null>(null);
   const [splitting, setSplitting] = useState(false);
   const ruleModal = useModalValue(ruleDraft);
@@ -97,6 +103,7 @@ export function TransactionDetailPanel({
         e.key === 'Escape' &&
         !showCategoryPicker &&
         !showDeleteConfirm &&
+        !showUnlockConfirm &&
         !ruleDraft &&
         !splitting
       )
@@ -104,12 +111,13 @@ export function TransactionDetailPanel({
     }
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [onClose, showCategoryPicker, showDeleteConfirm, ruleDraft, splitting]);
+  }, [onClose, showCategoryPicker, showDeleteConfirm, showUnlockConfirm, ruleDraft, splitting]);
 
   const isReconciled = tx.reconciled === 1;
   const isTransfer = !!tx.transferTransactionId;
   const isSplitParent = tx.isParent === 1 && tx.children && tx.children.length > 0;
-  const canEditCategory = !isReconciled && (!isTransfer || !!tx.isBudgetBoundary) && !isSplitParent;
+  // A reconciled row keeps its amount, date and account; category, payee and notes change no balance
+  const canEditCategory = (!isTransfer || !!tx.isBudgetBoundary) && !isSplitParent;
   // Synced and earlier transactions can be split into categories here, or have their parts changed
   const canSplit = !isReconciled && !isTransfer && !tx.isAdjustment && !tx.parentTransactionId;
 
@@ -233,10 +241,28 @@ export function TransactionDetailPanel({
         </div>
 
         {isReconciled && (
-          <div className="flex items-center gap-2 px-3 py-2 bg-surface-alt rounded-lg text-text-tertiary text-xs">
-            <Lock size={12} />
-            <span>This transaction is reconciled and cannot be edited.</span>
-          </div>
+          <>
+            <div className="flex items-center gap-2 px-3 py-2 bg-surface-alt rounded-lg text-text-tertiary text-xs">
+              <Lock size={12} className="shrink-0" />
+              <span className="flex-1">
+                Reconciled: the amount, date and account are locked. Category, payee and notes can
+                still change.
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!canSave || unlock.isPending}
+                onClick={() => setShowUnlockConfirm(true)}
+              >
+                Unlock
+              </Button>
+            </div>
+            {unlock.error && (
+              <p role="alert" className="text-xs text-negative">
+                {unlock.error.message}
+              </p>
+            )}
+          </>
         )}
 
         <div>
@@ -318,7 +344,6 @@ export function TransactionDetailPanel({
             <div className="relative">
               <button
                 onClick={() => canEditCategory && setShowCategoryPicker(!showCategoryPicker)}
-                disabled={isReconciled}
                 className={`${inputCls} text-left flex items-center gap-2 ${canEditCategory ? 'cursor-pointer' : ''}`}
               >
                 {showCategoryIcons && categoryEntry?.icon && (
@@ -372,7 +397,7 @@ export function TransactionDetailPanel({
                 value={localPayee}
                 onChange={handlePayeeChange}
                 payees={payees}
-                className={`border border-border rounded-lg px-3 py-2 focus:border-brand-600 focus:ring-1 focus:ring-brand-600 ${isReconciled ? 'opacity-60 pointer-events-none' : ''}`}
+                className={`border border-border rounded-lg px-3 py-2 focus:border-brand-600 focus:ring-1 focus:ring-brand-600`}
               />
             </div>
           </div>
@@ -384,7 +409,6 @@ export function TransactionDetailPanel({
             value={localNotes}
             onChange={(e) => setLocalNotes(e.target.value)}
             onBlur={saveNotes}
-            disabled={isReconciled}
             placeholder="Add notes to this transaction..."
             aria-label="Notes"
             rows={3}
@@ -468,6 +492,18 @@ export function TransactionDetailPanel({
           title="New rule from transaction"
         />
       )}
+
+      <ConfirmModal
+        isOpen={showUnlockConfirm}
+        title="Unlock reconciled transaction"
+        message="Unlocking lets you change this transaction's amount, date or account, or delete it. The account's reconciled balance will no longer match your statement until you reconcile again."
+        confirmLabel="Unlock"
+        onConfirm={() => {
+          setShowUnlockConfirm(false);
+          unlock.mutate(tx.id);
+        }}
+        onClose={() => setShowUnlockConfirm(false)}
+      />
 
       <ConfirmModal
         isOpen={showDeleteConfirm}

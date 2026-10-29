@@ -28,6 +28,26 @@ export const saveReconciliation = (
     body: JSON.stringify(data),
   });
 
+export interface LastReconciliation {
+  id: string;
+  createdAt: string;
+  /** Rows it locked, not counting its adjustment */
+  transactions: number;
+  /** Amount of the adjustment it created (0 = none) */
+  adjustment: number;
+}
+export interface ReconciliationUndo {
+  unlocked: number;
+  /** Rows it locked that were unlocked, moved or deleted since, so were left alone */
+  alreadyChanged: number;
+  adjustment: 'removed' | 'kept' | 'none';
+  adjustmentAmount: number;
+}
+export const getLastReconciliation = (id: string) =>
+  apiFetch<LastReconciliation | null>(`/accounts/${id}/reconcile/last`);
+export const undoLastReconciliation = (id: string) =>
+  apiFetch<ReconciliationUndo>(`/accounts/${id}/reconcile/undo`, { method: 'POST', body: '{}' });
+
 export const createAccount = (data: {
   name: string;
   type: AccountType;
@@ -51,6 +71,22 @@ export const updateAccount = (
 ) => apiFetch<Account>(`/accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 
 export const closeAccount = (id: string) => apiFetch<void>(`/accounts/${id}`, { method: 'DELETE' });
+
+export interface AccountDeletionPreview {
+  name: string;
+  transactions: number;
+  reconciled: number;
+  /** Why it can't be deleted yet, in words that say what to do */
+  blockers: string[];
+}
+export const getAccountDeletion = (id: string) =>
+  apiFetch<AccountDeletionPreview>(`/accounts/${id}/deletion`);
+/** Deletes the account and all its transactions for good; `confirmName` must be its exact name */
+export const deleteAccountPermanently = (id: string, confirmName: string) =>
+  apiFetch<{ deleted: number; name: string }>(`/accounts/${id}/delete-permanently`, {
+    method: 'POST',
+    body: JSON.stringify({ confirmName }),
+  });
 
 export const reorderAccounts = (ids: string[]) =>
   apiFetch<{ ok: boolean }>('/accounts/reorder', { method: 'PUT', body: JSON.stringify({ ids }) });

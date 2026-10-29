@@ -14,10 +14,12 @@ import {
   paydayPlans,
   paydayFundingEvents,
   paydayFundingReceipts,
+  paydayFundingUndos,
   categoryTargets,
 } from '../db/schema.js';
 import {
   applyPayday,
+  undoPayday,
   previewPayday,
   paydays,
   paydaysInYear,
@@ -84,6 +86,7 @@ beforeEach(() => {
     categoryTargets,
     householdGroups,
     paydayFundingReceipts,
+    paydayFundingUndos,
     paydayFundingEvents,
     paydayPlans,
     scheduleOccurrences,
@@ -581,4 +584,99 @@ it('does not consume a payday or its receipts while account balances need reconc
   expect(db.select().from(paydayFundingEvents).all()).toEqual([]);
   expect(db.select().from(paydayFundingReceipts).all()).toEqual([]);
   expect(db.select().from(budgetMonths).all()).toEqual([]);
+});
+
+describe('undoing a payday funding', () => {
+  const budgeted = (categoryId: string, month = '2026-10') =>
+    db
+      .select()
+      .from(budgetMonths)
+      .all()
+      .find((r) => r.categoryId === categoryId && r.month === month)?.budgeted;
+  const apply = () => {
+    const preview = previewPayday('plan', request);
+    return { preview, event: applyPayday('plan', request, JSON.stringify(preview)) };
+  };
+
+  it('reverses exactly what apply added, frees the deposit and gives the same preview again', () => {
+    plan(config([rule('rent', 'fixed', 10000), rule('food', 'fixed', 5000)]));
+    income();
+    assign('rent', 7000, '2026-10');
+    const before = previewPayday('plan', request);
+    const { event } = apply();
+    expect(budgeted('rent')).toBe(17000);
+    expect(budgeted('food')).toBe(5000);
+    const result = undoPayday('plan', event.id);
+    expect(result.reversed.map((r) => [r.categoryId, r.amount]).sort()).toEqual([
+      ['food', 5000],
+      ['rent', 10000],
+    ]);
+    expect(result.skipped).toEqual([]);
+    // The pre-existing assignment is untouched; the row apply created is now zero
+    expect(budgeted('rent')).toBe(7000);
+    expect(budgeted('food')).toBe(0);
+    expect(db.select().from(paydayFundingEvents).all()).toEqual([]);
+    expect(db.select().from(paydayFundingReceipts).all()).toEqual([]);
+    expect(previewPayday('plan', request)).toEqual(before);
+    // and it can be applied again
+    expect(applyPayday('plan', request, JSON.stringify(before)).alreadyApplied).toBe(false);
+  });
+
+  it('keeps the undone funding in history', () => {
+    plan();
+    income();
+    const { event } = apply();
+    undoPayday('plan', event.id);
+    const rows = db.select().from(paydayFundingUndos).all();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ planId: 'plan', scheduledDate: '2026-10-15' });
+    expect(JSON.parse(rows[0].resultJson).reversed).toHaveLength(1);
+  });
+
+  it('never takes back more than the category is still assigned, and reports the rest', () => {
+    plan(config([rule('rent', 'fixed', 10000), rule('food', 'fixed', 5000)]));
+    income();
+    const { event } = apply();
+    // The person lowered rent to 4000 and zeroed food (row deleted) after applying
+    db.update(budgetMonths)
+      .set({ budgeted: 4000 })
+      .where(eq(budgetMonths.categoryId, 'rent'))
+      .run();
+    db.delete(budgetMonths).where(eq(budgetMonths.categoryId, 'food')).run();
+    const result = undoPayday('plan', event.id);
+    expect(result.reversed).toEqual([{ categoryId: 'rent', name: 'rent', amount: 4000 }]);
+    expect(result.skipped.map((s) => [s.categoryId, s.amount])).toEqual([
+      ['rent', 6000],
+      ['food', 5000],
+    ]);
+    expect(budgeted('rent')).toBe(0);
+    expect(
+      db
+        .select()
+        .from(budgetMonths)
+        .all()
+        .every((r) => r.budgeted >= 0),
+    ).toBe(true);
+  });
+
+  it('leaves later manual increases alone', () => {
+    plan();
+    income();
+    const { event } = apply();
+    db.update(budgetMonths)
+      .set({ budgeted: 25000 })
+      .where(eq(budgetMonths.categoryId, 'rent'))
+      .run();
+    undoPayday('plan', event.id);
+    expect(budgeted('rent')).toBe(15000);
+  });
+
+  it('refuses an unknown, foreign or already undone funding', () => {
+    plan();
+    income();
+    const { event } = apply();
+    expect(() => undoPayday('other', event.id)).toThrow(/not found/);
+    undoPayday('plan', event.id);
+    expect(() => undoPayday('plan', event.id)).toThrow(/already undone/);
+  });
 });
