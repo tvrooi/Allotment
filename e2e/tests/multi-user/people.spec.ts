@@ -96,6 +96,93 @@ test('the invited person signs up and sees only their own, empty budget', async 
   ]);
 });
 
+test("two people combine their households and see each other's entries", async () => {
+  // Each keeps a household in their own budget, with one entry
+  const home = await (
+    await owner.request.post('/api/households', {
+      data: { name: 'Home', currency: 'AUD', people: ['Tristan', 'Edward', 'Sam'], selfIndex: 0 },
+    })
+  ).json();
+  const [me, ed, sam] = home.people;
+  await owner.request.post(`/api/households/${home.group.id}/events`, {
+    data: {
+      kind: 'expense',
+      date: '2026-10-01',
+      description: 'Groceries',
+      amount: 9_000,
+      payerId: me.id,
+      mode: 'weight',
+      shares: [me, ed, sam].map((p: { id: string }) => ({ personId: p.id, value: 1 })),
+    },
+  });
+  const ours = await (
+    await partner.request.post('/api/households', {
+      data: { name: 'Our place', currency: 'AUD', people: ['Edward', 'Tristan'], selfIndex: 0 },
+    })
+  ).json();
+  const [edSelf, edTristan] = ours.people;
+  await partner.request.post(`/api/households/${ours.group.id}/events`, {
+    data: {
+      kind: 'expense',
+      date: '2026-10-02',
+      description: 'Electricity',
+      amount: 20_000,
+      payerId: edSelf.id,
+      mode: 'weight',
+      shares: [edSelf, edTristan].map((p: { id: string }) => ({ personId: p.id, value: 1 })),
+    },
+  });
+
+  // Tristan asks, naming who Edward is in his household
+  await owner.goto('/household');
+  const ask = owner.getByRole('region', { name: 'Combine with another FlyBudget user' });
+  await ask.getByLabel('Combine with').selectOption({ label: 'Edward' });
+  await ask.getByLabel('Who they are in this household').selectOption({ label: 'Edward' });
+  await ask.getByRole('button', { name: 'Ask to combine' }).click();
+  await expect(ask.getByText('Waiting for Edward to accept.')).toBeVisible();
+
+  // Edward accepts with his own household
+  await partner.goto('/household');
+  const accept = partner.getByRole('region', { name: 'Combine with another FlyBudget user' });
+  await expect(accept.getByText('Tristan asked to combine')).toBeVisible();
+  await accept.getByLabel('Who Tristan is in Our place').selectOption({ label: 'Tristan' });
+  await accept.getByRole('button', { name: 'Combine with Our place' }).click();
+  await expect(accept.getByText('Combined with Tristan.')).toBeVisible();
+
+  // He sees Tristan's entry, its split and the combined balances
+  await accept.getByRole('button', { name: /Groceries/ }).click();
+  await expect(accept.getByText("Tristan's", { exact: false }).first()).toBeVisible();
+  const split = accept.getByRole('table', { name: 'Split' });
+  await expect(split).toContainText('Sam');
+  await expect(split).toContainText('$30');
+  // His own new budget has no currency yet, so AUD shows as A$
+  await expect(accept.getByRole('listitem').filter({ hasText: 'Sam' }).first()).toContainText(
+    /-A?\$30/,
+  );
+  await accept.screenshot({ path: test.info().outputPath('combined-household.png') });
+  // Nothing else from Tristan's budget
+  expect(await accept.innerText()).not.toContain('Owner everyday');
+
+  // A note either can edit
+  await accept.getByLabel('Shared note').fill('Dinner with Sam');
+  await accept.getByRole('button', { name: 'Save note' }).click();
+  await expect(accept.getByText('Last changed by Edward')).toBeVisible();
+  await owner.reload();
+  await ask.getByRole('button', { name: /Groceries/ }).click();
+  await expect(ask.getByLabel('Shared note')).toHaveValue('Dinner with Sam');
+  await ask.getByLabel('Shared note').fill('Dinner with Sam and friends');
+  await ask.getByRole('button', { name: 'Save note' }).click();
+  await expect(ask.getByText('Last changed by Tristan')).toBeVisible();
+
+  // Either can stop, and then neither sees the other's entries
+  await ask.getByRole('button', { name: 'Stop combining' }).click();
+  await owner.getByRole('dialog').getByRole('button', { name: 'Stop combining' }).click();
+  await expect(ask.getByRole('button', { name: 'Ask to combine' })).toBeVisible();
+  await partner.reload();
+  await expect(accept.getByText('Combined with Tristan.')).toBeHidden();
+  await expect(accept.getByRole('button', { name: /Groceries/ })).toHaveCount(0);
+});
+
 test('signing in needs the right name for the password', async ({ browser, baseURL }) => {
   const page = await (await browser.newContext()).newPage();
   await page.goto(`${baseURL}/`);

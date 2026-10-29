@@ -8,6 +8,7 @@ import {
   accounts,
   budgetSettings,
   transactions,
+  payees,
   householdGroups as groups,
   householdPeople as people,
   householdEvents as events,
@@ -411,3 +412,62 @@ export function repaymentSuggestions(groupId: string, today: string) {
     ];
   });
 }
+
+/**
+ * What a combined household (gateway/sharing.ts) shows the other person: the group's entries,
+ * their splits and each linked payment's merchant. Never an account, category, transaction
+ * note, bank balance or pool cash: only the agreed household record.
+ */
+export function sharedExport(id: string) {
+  const group = db.select().from(groups).where(eq(groups.id, id)).get();
+  if (!group) throw new Error('Household not found');
+  const members = db.select().from(people).where(eq(people.groupId, id)).all();
+  const entries = db.select().from(events).where(eq(events.groupId, id)).all();
+  const allocations = entries.length
+    ? db
+        .select()
+        .from(shares)
+        .where(
+          inArray(
+            shares.eventId,
+            entries.map((e) => e.id),
+          ),
+        )
+        .all()
+    : [];
+  const linked = entries.map((e) => e.transactionId).filter((t): t is string => !!t);
+  const merchants = new Map(
+    (linked.length
+      ? db
+          .select({ id: transactions.id, name: payees.name, logo: payees.logo })
+          .from(transactions)
+          .leftJoin(payees, eq(payees.id, transactions.payeeId))
+          .where(inArray(transactions.id, linked))
+          .all()
+      : []
+    ).map((r) => [r.id, r.name ? { name: r.name, logo: r.logo } : null]),
+  );
+  return {
+    group: { id: group.id, name: group.name, currency: group.currency },
+    people: members.map((p) => ({ id: p.id, name: p.name, isSelf: p.isSelf === 1 })),
+    events: entries
+      .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
+      .map((e) => ({
+        id: e.id,
+        kind: e.kind,
+        date: e.date,
+        description: e.description,
+        amount: e.amount,
+        payerId: e.payerId,
+        recipientId: e.recipientId,
+        reversesId: e.reversesId,
+        reviewReason: e.reviewReason,
+        fromBank: !!e.transactionId,
+        merchant: (e.transactionId && merchants.get(e.transactionId)) || null,
+        shares: allocations
+          .filter((s) => s.eventId === e.id)
+          .map((s) => ({ personId: s.personId, amount: s.amount })),
+      })),
+  };
+}
+export type SharedExport = ReturnType<typeof sharedExport>;

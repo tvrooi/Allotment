@@ -48,6 +48,32 @@ days whose payee contains the name of someone who owes the household, up to what
 what is owed to you, and not yet linked. **Record repayment** saves it as their settlement to
 you. Nothing is recorded without that click.
 
+## Combining with another person
+
+With multi-user mode (separate budgets per person, `docs/MULTI-USER-PLAN.md`), two people who
+each keep a household in their own budget can combine them: **Household → Combine with another
+FlyBudget user**. One asks, choosing which of their household's people is the other person; the
+other accepts with one of their own households, choosing who the first person is in it. Both
+households must use the same currency.
+
+Once combined, each sees one register of both households' entries, newest first: date, amount,
+kind, the merchant and its logo for an entry linked to a bank payment, who paid and the full
+split, whose entry it is, and anything flagged for review. Balances add both ledgers, with the two
+linked people counted once each; other people (housemates) stay separate, as each household
+named them, and a household pool payment moves no one's balance. Each person edits only their own
+entries, in their own budget. One **shared note** per entry is the exception: either can edit it,
+and it shows who changed it last. An expense both recorded on the same day for the same amount is
+flagged as a possible duplicate.
+
+Nothing is copied between budgets. The gateway (`server/src/gateway/sharing.ts`) puts the register
+together each time it's opened from each budget's `GET /api/households/:id/shared-export`, which
+gives only the group's name and currency, its people, and its entries with their shares and
+merchants: never an account, category, transaction note, bank balance or pool cash. The links and
+the shared notes are kept in the gateway's `people.db`. Either person can stop combining at any
+time (**Stop combining**, or declining or cancelling a request); the other's view ends at once and
+the shared notes are deleted. Both households keep their own entries. Read-only access tokens and
+the MCP endpoint belong to one budget and never reach a combined register.
+
 ## Expenses and people
 
 Record a shared expense with a date, total, payer and participants. Choose equal,

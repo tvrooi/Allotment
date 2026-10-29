@@ -61,6 +61,51 @@ function toPerson(r: PersonRow): Person {
   };
 }
 
+/** A combined household: the inviter's group joined with the invitee's once accepted */
+export interface HouseholdLink {
+  id: string;
+  inviterId: string;
+  inviterGroup: string;
+  /** The inviter's household person who is the invitee */
+  inviterPartner: string;
+  inviteeId: string;
+  inviteeGroup: string | null;
+  /** The invitee's household person who is the inviter */
+  inviteePartner: string | null;
+  acceptedAt: string | null;
+}
+
+export interface HouseholdNote {
+  /** Whose entry: a person's id */
+  ownerId: string;
+  eventId: string;
+  text: string;
+  updatedBy: string;
+  updatedAt: string;
+}
+
+interface LinkRow {
+  id: string;
+  inviter_id: string;
+  inviter_group: string;
+  inviter_partner: string;
+  invitee_id: string;
+  invitee_group: string | null;
+  invitee_partner: string | null;
+  accepted_at: string | null;
+}
+
+const toLink = (r: LinkRow): HouseholdLink => ({
+  id: r.id,
+  inviterId: r.inviter_id,
+  inviterGroup: r.inviter_group,
+  inviterPartner: r.inviter_partner,
+  inviteeId: r.invitee_id,
+  inviteeGroup: r.invitee_group,
+  inviteePartner: r.invitee_partner,
+  acceptedAt: r.accepted_at,
+});
+
 export class GatewayStore {
   readonly db: Database.Database;
 
@@ -99,11 +144,117 @@ export class GatewayStore {
         tries integer not null default 0,
         primary key (person_id, kind)
       );
+      -- Combined households (gateway/sharing.ts): one person's household joined with another's.
+      -- Each side names its group and which of its household people stands for the other.
+      create table if not exists household_links (
+        id text primary key,
+        inviter_id text not null references people(id) on delete cascade,
+        inviter_group text not null,
+        inviter_partner text not null,
+        invitee_id text not null references people(id) on delete cascade,
+        invitee_group text,
+        invitee_partner text,
+        accepted_at text,
+        created_at text not null default (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      );
+      -- The one note on a shared entry that both people can edit
+      create table if not exists household_notes (
+        link_id text not null references household_links(id) on delete cascade,
+        owner_id text not null,
+        event_id text not null,
+        text text not null,
+        updated_by text not null,
+        updated_at text not null,
+        primary key (link_id, owner_id, event_id)
+      );
     `);
   }
 
   close() {
     this.db.close();
+  }
+
+  // ─── Combined households ───────────────────────────────────────────────────
+
+  /** Links this person is in, either side */
+  householdLinks(personId: string): HouseholdLink[] {
+    return (
+      this.db
+        .prepare(
+          'select * from household_links where inviter_id = ? or invitee_id = ? order by created_at',
+        )
+        .all(personId, personId) as LinkRow[]
+    ).map(toLink);
+  }
+
+  householdLink(id: string): HouseholdLink | undefined {
+    const row = this.db.prepare('select * from household_links where id = ?').get(id) as
+      LinkRow | undefined;
+    return row && toLink(row);
+  }
+
+  addHouseholdLink(l: {
+    inviterId: string;
+    inviterGroup: string;
+    inviterPartner: string;
+    inviteeId: string;
+  }): HouseholdLink {
+    const id = randomBytes(8).toString('hex');
+    this.db
+      .prepare(
+        'insert into household_links (id, inviter_id, inviter_group, inviter_partner, invitee_id) values (?, ?, ?, ?, ?)',
+      )
+      .run(id, l.inviterId, l.inviterGroup, l.inviterPartner, l.inviteeId);
+    return this.householdLink(id)!;
+  }
+
+  acceptHouseholdLink(id: string, group: string, partner: string) {
+    this.db
+      .prepare(
+        "update household_links set invitee_group = ?, invitee_partner = ?, accepted_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') where id = ? and accepted_at is null",
+      )
+      .run(group, partner, id);
+  }
+
+  /** Ends a link (declined, cancelled or stopped); its notes go with it */
+  removeHouseholdLink(id: string) {
+    this.db.prepare('delete from household_links where id = ?').run(id);
+  }
+
+  householdNotes(linkId: string): HouseholdNote[] {
+    return (
+      this.db.prepare('select * from household_notes where link_id = ?').all(linkId) as {
+        owner_id: string;
+        event_id: string;
+        text: string;
+        updated_by: string;
+        updated_at: string;
+      }[]
+    ).map((r) => ({
+      ownerId: r.owner_id,
+      eventId: r.event_id,
+      text: r.text,
+      updatedBy: r.updated_by,
+      updatedAt: r.updated_at,
+    }));
+  }
+
+  /** Empty text removes the note */
+  setHouseholdNote(linkId: string, ownerId: string, eventId: string, text: string, by: string) {
+    if (!text) {
+      this.db
+        .prepare('delete from household_notes where link_id = ? and owner_id = ? and event_id = ?')
+        .run(linkId, ownerId, eventId);
+      return;
+    }
+    this.db
+      .prepare(
+        `insert into household_notes (link_id, owner_id, event_id, text, updated_by, updated_at)
+         values (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+         on conflict (link_id, owner_id, event_id)
+         do update set text = excluded.text, updated_by = excluded.updated_by, updated_at = excluded.updated_at`,
+      )
+      .run(linkId, ownerId, eventId, text, by);
   }
 
   // ─── People ────────────────────────────────────────────────────────────────
