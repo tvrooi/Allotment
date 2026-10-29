@@ -95,6 +95,8 @@ function shown(
     balance,
     hasTransactions,
     householdPool,
+    // A bank feed supplies this account's transactions: a hand-entered row will disagree with the bank
+    bankLinked: bankLinked(account.id),
     ...value,
     currencyDifference,
   };
