@@ -6,6 +6,9 @@ import { useTransactions } from '../../hooks/useTransactions';
 import { useBudget } from '../../hooks/useBudget';
 import { useSchedules } from '../../hooks/useSchedules';
 import { useRules } from '../../hooks/useRules';
+import { useSalaryGuess } from '../../hooks/useReports';
+import { Modal } from '../ui/Modal';
+import { SortUncategorised, salaryCadence } from '../review/SortUncategorised';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { docsUrl } from '../../utils/project';
 import { AddAccountModal } from '../accounts/AddAccountModal';
@@ -28,12 +31,14 @@ export default function GettingStarted({ currentMonth }: { currentMonth: string 
   const hidden = usePreferencesStore((s) => s.gettingStartedHidden);
   const setHidden = usePreferencesStore((s) => s.setGettingStartedHidden);
   const [addAccountOpen, setAddAccountOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
 
   const accounts = useAccounts();
   const transactions = useTransactions({ limit: 1 });
   const budget = useBudget(currentMonth);
   const schedules = useSchedules();
   const rules = useRules();
+  const salary = useSalaryGuess().data;
 
   const loading = [accounts, transactions, budget, schedules, rules].some((q) => q.isLoading);
   if (hidden || loading) return null;
@@ -56,6 +61,18 @@ export default function GettingStarted({ currentMonth }: { currentMonth: string 
         ? { label: 'Import or add', to: `/accounts/${firstAccount.id}` }
         : { label: 'Connect a bank', to: '/settings?tab=connections' },
     },
+    // Only while there is pay in the register that is not yet income
+    ...(salary?.categoryId && salary.uncategorisedCount
+      ? [
+          {
+            id: 'pay',
+            title: 'Mark your pay as income',
+            description: `Looks like pay from ${salary.payeeName} ${salaryCadence(salary)}. One tap puts it in ${salary.categoryName}.`,
+            done: false,
+            action: { label: 'Review', onClick: () => setSortOpen(true) },
+          } satisfies Step,
+        ]
+      : []),
     {
       id: 'recurring',
       title: 'Add your bills and paychecks',
@@ -162,6 +179,16 @@ export default function GettingStarted({ currentMonth }: { currentMonth: string 
       </div>
 
       <AddAccountModal isOpen={addAccountOpen} onClose={() => setAddAccountOpen(false)} />
+      {sortOpen && (
+        <Modal
+          isOpen
+          onClose={() => setSortOpen(false)}
+          title="Sort your imported transactions"
+          size="lg"
+        >
+          <SortUncategorised onDone={() => setSortOpen(false)} />
+        </Modal>
+      )}
     </Card>
   );
 }

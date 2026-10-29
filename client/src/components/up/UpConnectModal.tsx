@@ -20,6 +20,7 @@ import { formatMoney } from '../../utils/currency';
 import { IS_DEMO } from '../../demo/demoApi';
 import { NotInDemoModal } from '../demo/NotInDemo';
 import { Private } from '../ui/Private';
+import { SortUncategorised } from '../review/SortUncategorised';
 
 interface Props {
   isOpen: boolean;
@@ -246,7 +247,12 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
                 {result.errors.join(' ')} Retry using Sync Now in Connected Banks.
               </p>
             )}
-            <Button onClick={onClose}>Done</Button>
+            {result.added > 0 ? (
+              // Up's own categories are used where they match; sort what is left, a payee at a time
+              <SortUncategorised onDone={onClose} />
+            ) : (
+              <Button onClick={onClose}>Done</Button>
+            )}
           </>
         )}
         {error && (
