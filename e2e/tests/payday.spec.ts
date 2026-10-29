@@ -69,7 +69,7 @@ test('a changed budget requires a refreshed preview', async ({ page, api }) => {
     anchorDate: isoDay(),
     expectedIncome: 100000,
     weekendAdjust: 'none',
-    timeZone: 'UTC',
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, // same day as isoDay()
     rules: [{ categoryId: food.id, method: 'fixed', amount: 40000 }],
   });
   await open(page, '/budget');
@@ -167,7 +167,7 @@ test('an applied payday can be undone, previewed again and applied again', async
     anchorDate: isoDay(),
     expectedIncome: 100000,
     weekendAdjust: 'none',
-    timeZone: 'UTC',
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, // same day as isoDay()
     rules: [{ categoryId: food.id, method: 'fixed', amount: 40000 }],
   });
   await open(page, '/budget');
