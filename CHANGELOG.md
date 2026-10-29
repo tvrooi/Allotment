@@ -2,7 +2,7 @@
 
 ## 0.2.0-up.54
 
-- **An assistant can add brand logos to payees.** A *read, categorise and organise* access token can now give a payee that has no logo one, such as the merchant's brand icon (`PUT /api/payees/:id` with only `logo`). It never replaces or removes a logo you set: remove a wrong one on the Payees page and it can set another. Logos are stored in the budget, so everyone using it sees them.
+- **An assistant can add brand logos to payees.** A _read, categorise and organise_ access token can now give a payee that has no logo one, such as the merchant's brand icon (`PUT /api/payees/:id` with only `logo`). It never replaces or removes a logo you set: remove a wrong one on the Payees page and it can set another. Logos are stored in the budget, so everyone using it sees them.
 
 ## 0.2.0-up.53
 
