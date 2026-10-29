@@ -40,6 +40,8 @@ import {
 import { ReconciliationError, unlockTransaction } from '../services/reconciliationService.js';
 import {
   bulkEdit,
+  bulkDelete,
+  previewBulkDelete,
   previewBulkEdit,
   restoreBulkEdit,
   splitTransaction,
@@ -286,6 +288,28 @@ transactionsRouter.post('/bulk', (req, res) => {
   try {
     if ('preview' in body) return res.json(previewBulkEdit(target, body.changes));
     res.json(bulkEdit(target, body.changes, body.expectedCount));
+  } catch (error) {
+    sendMarkError(res, error);
+  }
+});
+
+const bulkDeleteSchema = z.union([
+  bulkTargetSchema.extend({ preview: z.literal(true) }),
+  bulkTargetSchema.extend({ expectedCount: z.number().int().min(1).max(1_000_000) }),
+]);
+
+// POST /transactions/bulk-delete — preview what a delete would remove, or delete the selection
+// (reconciled and household-linked rows are skipped and counted). The caller confirms the count.
+transactionsRouter.post('/bulk-delete', (req, res) => {
+  const parsed = bulkDeleteSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  const body = parsed.data;
+  const selection = parseSelection(body.selection);
+  if (!selection.success) return res.status(400).json({ error: selection.error.flatten() });
+  const target = { selection: selection.data, ids: body.ids, excludeIds: body.excludeIds };
+  try {
+    if ('preview' in body) return res.json(previewBulkDelete(target));
+    res.json(bulkDelete(target, body.expectedCount));
   } catch (error) {
     sendMarkError(res, error);
   }

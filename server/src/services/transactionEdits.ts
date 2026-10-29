@@ -15,7 +15,7 @@ import {
 } from '../db/schema.js';
 import { unlinkOccurrenceByTransactionId } from './matchingEngine.js';
 import { refreshMainAmounts } from './mainAmountService.js';
-import { resolvePayee } from './transactionHelpers.js';
+import { deleteTransactionRow, resolvePayee } from './transactionHelpers.js';
 import { MarkError, tagsByTransaction } from './transactionMarks.js';
 import { registerCondition, type Selection } from './transactionSelection.js';
 
@@ -483,4 +483,118 @@ export function restoreBulkEdit(changes: BulkRestore[]) {
     }
   });
   return { restored: changes.length };
+}
+
+// ─── Delete many at once ──────────────────────────────────────────────────────
+
+export type DeleteSkipReason = 'reconciled' | 'household';
+
+export interface BulkDeletePreview {
+  matched: number;
+  /** Rows that would be deleted */
+  deletable: number;
+  /** Rows left alone, by reason */
+  skipped: Record<DeleteSkipReason, number>;
+  accounts: { id: string; name: string }[];
+  /** Payee and amount of the first few rows to delete, so the confirmation can show them */
+  sample: { id: string; date: string; payeeName: string | null; amount: number }[];
+}
+
+/** Which of the selection's rows can go: not locked by a reconciliation (their own, a split
+ * part's or a transfer's other side) and not tied to a household entry, as when deleted alone */
+function deletePlan(target: BulkTarget) {
+  const rows = targetRows(target);
+  const ids = rows.map((r) => r.id);
+  const household = new Set(
+    ids.length
+      ? db
+          .select({ id: householdEvents.transactionId })
+          .from(householdEvents)
+          .where(
+            and(
+              isNotNull(householdEvents.transactionId),
+              inArray(householdEvents.transactionId, ids),
+            ),
+          )
+          .all()
+          .map((h) => h.id!)
+      : [],
+  );
+  const related = new Set<string>();
+  // A reconciled split part, or the reconciled other side of a transfer, locks the whole row
+  for (const row of rows) if (row.transferTransactionId) related.add(row.transferTransactionId);
+  const lockedByOthers = new Set<string>();
+  if (related.size)
+    for (const r of db
+      .select({ id: transactions.id })
+      .from(transactions)
+      .where(and(inArray(transactions.id, [...related]), eq(transactions.reconciled, 1)))
+      .all())
+      lockedByOthers.add(r.id);
+  const lockedParents = new Set(
+    ids.length
+      ? db
+          .select({ parent: transactions.parentTransactionId })
+          .from(transactions)
+          .where(
+            and(inArray(transactions.parentTransactionId, ids), eq(transactions.reconciled, 1)),
+          )
+          .all()
+          .map((r) => r.parent!)
+      : [],
+  );
+  const skipped: Record<DeleteSkipReason, number> = { reconciled: 0, household: 0 };
+  const deletable: Row[] = [];
+  for (const row of rows) {
+    if (
+      row.reconciled === 1 ||
+      lockedParents.has(row.id) ||
+      (row.transferTransactionId && lockedByOthers.has(row.transferTransactionId))
+    )
+      skipped.reconciled += 1;
+    else if (household.has(row.id)) skipped.household += 1;
+    else deletable.push(row);
+  }
+  return { rows, deletable, skipped };
+}
+
+/** What a bulk delete would do, without deleting anything: for the confirmation */
+export function previewBulkDelete(target: BulkTarget): BulkDeletePreview {
+  const { rows, deletable, skipped } = deletePlan(target);
+  const accountIds = [...new Set(deletable.map((r) => r.accountId))];
+  return {
+    matched: rows.length,
+    deletable: deletable.length,
+    skipped,
+    accounts: accountIds.length
+      ? db
+          .select({ id: accounts.id, name: accounts.name })
+          .from(accounts)
+          .where(inArray(accounts.id, accountIds))
+          .orderBy(sql`${accounts.name} collate nocase`)
+          .all()
+      : [],
+    sample: deletable
+      .slice(0, 5)
+      .map((r) => ({ id: r.id, date: r.date, payeeName: r.payeeName, amount: r.amount })),
+  };
+}
+
+/**
+ * Deletes the selection's deletable rows (with their split parts; a transfer's other side stays
+ * as an ordinary transaction), in one database transaction. `expectedCount` is the number of
+ * rows the user confirmed: if the selection now has a different number, nothing is deleted.
+ * There is no undo, because a restored row would lose its links, parts and tags.
+ */
+export function bulkDelete(target: BulkTarget, expectedCount: number) {
+  return db.transaction(() => {
+    const { deletable, skipped } = deletePlan(target);
+    if (deletable.length !== expectedCount)
+      throw new MarkError(
+        `The selection now has ${deletable.length} transactions to delete, not ${expectedCount}. Check it and try again.`,
+        409,
+      );
+    for (const row of deletable) deleteTransactionRow(row);
+    return { deleted: deletable.length, skipped };
+  });
 }

@@ -4,6 +4,7 @@ import { Modal } from '../ui/Modal';
 import { useCanSave } from '../../hooks/useConnection';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { DeleteAccountModal } from './DeleteAccountModal';
 import { CurrencyInput } from '../ui/CurrencyInput';
 import { useUpdateAccount, useCloseAccount } from '../../hooks/useAccounts';
 import type { Account, AccountType } from '../../types';
@@ -28,6 +29,7 @@ export function EditAccountModal({ account, onClose }: Props) {
   const budgetCurrency = useBudgetCurrency();
   const { data: currencySettings } = useCurrencySettings();
   const [confirmClose, setConfirmClose] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [closeError, setCloseError] = useState('');
   const canSave = useCanSave();
   const [logo, setLogo] = useState<string | null>(null);
@@ -219,17 +221,26 @@ export function EditAccountModal({ account, onClose }: Props) {
           )}
           <SavingPausedHint className="text-right" />
           <div className="flex items-center justify-between pt-2 border-t border-border-light">
-            <button
-              type="button"
-              onClick={() => {
-                setCloseError('');
-                setConfirmClose(true);
-              }}
-              disabled={account?.balance !== 0}
-              className="text-sm text-negative hover:underline font-medium transition-colors"
-            >
-              Close Account
-            </button>
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setCloseError('');
+                  setConfirmClose(true);
+                }}
+                disabled={account?.balance !== 0}
+                className="text-sm text-negative hover:underline font-medium transition-colors"
+              >
+                Close Account
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleting(true)}
+                className="text-sm text-negative hover:underline font-medium transition-colors"
+              >
+                Delete…
+              </button>
+            </div>
             <div className="flex gap-3">
               <button
                 type="button"
@@ -249,6 +260,15 @@ export function EditAccountModal({ account, onClose }: Props) {
           </div>
         </form>
       </Modal>
+
+      <DeleteAccountModal
+        account={deleting ? account : null}
+        onClose={() => setDeleting(false)}
+        onDeleted={() => {
+          setDeleting(false);
+          onClose();
+        }}
+      />
 
       <ConfirmModal
         isOpen={confirmClose}

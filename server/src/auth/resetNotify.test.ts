@@ -18,7 +18,9 @@ describe('Home Assistant reset notification', () => {
     expect(body.notification_id).toBe('flybudget_password_reset');
     expect(body.message).toContain('AAAA-BBBB-CCCC-DDDD');
     await dismissResetNotification(fetchImpl as unknown as typeof fetch);
-    expect(fetchImpl.mock.calls[1][0]).toMatch(/persistent_notification\/dismiss$/);
+    expect((fetchImpl.mock.calls[1] as unknown as [string])[0]).toMatch(
+      /persistent_notification\/dismiss$/,
+    );
   });
 
   it('reports a Home Assistant refusal and does nothing without a Supervisor token', async () => {
