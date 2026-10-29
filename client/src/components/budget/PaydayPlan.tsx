@@ -377,6 +377,8 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
   const [preview, setPreview] = useState<api.PaydayPreview | null>(null);
   const [message, setMessage] = useState('');
   const [needDeposit, setNeedDeposit] = useState(false);
+  // The funding just applied, so Undo sits next to the confirmation
+  const [justApplied, setJustApplied] = useState<string | null>(null);
   const data = context.data;
   const incomeIds = picked ?? (data?.income[0] ? [data.income[0].id] : []);
   const setIncomeIds = (ids: string[]) => {
@@ -404,6 +406,7 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
     onSuccess: (event) => {
       setPreview(null);
       setIncomeIds([]);
+      setJustApplied(event.alreadyApplied ? null : event.id);
       setMessage(
         event.alreadyApplied
           ? 'This payday was already applied.'
@@ -415,6 +418,27 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
       qc.invalidateQueries({ queryKey: ['review'] });
     },
     onError: () => setPreview(null),
+  });
+  const undo = useMutation({
+    mutationFn: (eventId: string) => api.undoPayday(plan.id, eventId),
+    onSuccess: (result) => {
+      setJustApplied(null);
+      setPreview(null);
+      setPicked(null);
+      const reversed = result.reversed.reduce((sum, r) => sum + r.amount, 0);
+      setMessage(
+        `Funding undone: ${formatCurrency(reversed)} taken back out of the budget. The pay is free to preview again.` +
+          (result.skipped.length
+            ? ` Not taken back, because you changed the assignment since: ${result.skipped
+                .map((s) => `${s.name} ${formatCurrency(s.amount)}`)
+                .join(', ')}.`
+            : ''),
+      );
+      qc.invalidateQueries({ queryKey: ['payday'] });
+      qc.invalidateQueries({ queryKey: ['budget'] });
+      qc.invalidateQueries({ queryKey: ['budget-summary'] });
+      qc.invalidateQueries({ queryKey: ['review'] });
+    },
   });
   const archive = useMutation({
     mutationFn: () => api.archivePlan(plan.id),
@@ -636,19 +660,29 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
           )}
         </section>
       )}
-      {(refresh.error || apply.error || archive.error) && (
+      {(refresh.error || apply.error || archive.error || undo.error) && (
         <p role="alert" className="text-negative">
-          {(refresh.error || apply.error || archive.error)!.message}
+          {(refresh.error || apply.error || archive.error || undo.error)!.message}
         </p>
       )}
       {message && (
-        <p role="status" className="text-positive">
-          {message}
-        </p>
+        <div role="status" className="flex flex-wrap items-center gap-3 text-positive">
+          <span>{message}</span>
+          {justApplied && (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={!canSave || undo.isPending}
+              onClick={() => undo.mutate(justApplied)}
+            >
+              Undo
+            </Button>
+          )}
+        </div>
       )}
       <details>
         <summary className="cursor-pointer select-none text-sm font-medium text-text-secondary hover:text-text">
-          Funding history ({data!.history.length})
+          Funding history ({data!.history.length + (data!.undone ?? []).length})
         </summary>
         {data!.history.map((event) => {
           const saved = JSON.parse(event.snapshotJson) as api.PaydayPreview;
@@ -665,6 +699,41 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
                     {r.name}: {formatCurrency(r.allocated)} → {saved.month}
                   </p>
                 ))}
+              <div className="pl-4 pt-1">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  aria-label={`Undo funding for payday ${formatDay(event.scheduledDate)}`}
+                  disabled={!canSave || undo.isPending}
+                  onClick={() => undo.mutate(event.id)}
+                >
+                  Undo
+                </Button>
+              </div>
+            </details>
+          );
+        })}
+        {(data!.undone ?? []).map((event) => {
+          const saved = JSON.parse(event.snapshotJson) as api.PaydayPreview;
+          const result = JSON.parse(event.resultJson) as Pick<api.UndoResult, 'skipped'>;
+          return (
+            <details key={event.id} className="py-2 text-sm">
+              <summary className="cursor-pointer select-none text-text-secondary hover:text-text">
+                Payday {formatDay(event.scheduledDate)} · {formatCurrency(saved.totalAllocated)} ·
+                Undone on {formatDay(event.undoneAt.slice(0, 10))}
+              </summary>
+              {saved.rows
+                .filter((r) => r.allocated > 0)
+                .map((r) => (
+                  <p key={r.categoryId} className="pl-4 py-1 line-through">
+                    {r.name}: {formatCurrency(r.allocated)} → {saved.month}
+                  </p>
+                ))}
+              {result.skipped.map((s) => (
+                <p key={s.categoryId} className="pl-4 py-1">
+                  Not taken back: {s.name} {formatCurrency(s.amount)}
+                </p>
+              ))}
             </details>
           );
         })}

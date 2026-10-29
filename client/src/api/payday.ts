@@ -32,6 +32,21 @@ export interface PaydayContext {
   paydays: { scheduledDate: string; expectedDate: string }[];
   income: { id: string; date: string; name: string | null; amount: number }[];
   history: FundingEvent[];
+  undone: UndoneFunding[];
+}
+export interface UndoResult {
+  id: string;
+  undone: true;
+  reversed: { categoryId: string; name: string; amount: number }[];
+  skipped: { categoryId: string; name: string; amount: number; reason: string }[];
+}
+export interface UndoneFunding {
+  id: string;
+  scheduledDate: string;
+  appliedDate: string;
+  snapshotJson: string;
+  resultJson: string;
+  undoneAt: string;
 }
 export interface PaydayRequest {
   scheduledDate: string;
@@ -94,3 +109,5 @@ export const applyPayday = (id: string, request: PaydayRequest, previewKey: stri
     `/payday/${id}/apply`,
     json('POST', { ...request, previewKey }),
   );
+export const undoPayday = (id: string, eventId: string) =>
+  apiFetch<UndoResult>(`/payday/${id}/events/${eventId}/undo`, json('POST', {}));

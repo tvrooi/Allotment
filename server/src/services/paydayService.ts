@@ -18,6 +18,7 @@ import {
   paydayPlans,
   paydayFundingEvents,
   paydayFundingReceipts,
+  paydayFundingUndos,
   incomeReviews,
 } from '../db/schema.js';
 import { budgetActivity, mainAmount } from './balances.js';
@@ -419,5 +420,80 @@ export function applyPayday(planId: string, request: PaydayRequest, previewKey: 
     for (const transactionId of request.incomeIds)
       db.insert(paydayFundingReceipts).values({ transactionId, eventId: event.id }).run();
     return { ...event, alreadyApplied: false };
+  });
+}
+
+export interface PaydayUndoResult {
+  /** Allocations taken back out of the month's assigned amounts */
+  reversed: { categoryId: string; name: string; amount: number }[];
+  /** Allocations that could not be taken back because the assignment no longer includes them */
+  skipped: { categoryId: string; name: string; amount: number; reason: string }[];
+}
+
+/**
+ * Reverses one applied payday funding. For every category the apply funded, takes back at most the
+ * amount it added and never more than the category is still assigned that month, so a later manual
+ * edit (a higher assignment, a move, a lower one) is neither clobbered nor driven negative; whatever
+ * is no longer attributable is reported. Frees the selected deposits and the payday so it can be
+ * previewed again, and keeps the event's snapshot and this result in Funding history.
+ */
+export function undoPayday(planId: string, eventId: string) {
+  return db.transaction(() => {
+    const event = db
+      .select()
+      .from(paydayFundingEvents)
+      .where(and(eq(paydayFundingEvents.id, eventId), eq(paydayFundingEvents.planId, planId)))
+      .get();
+    if (!event) throw new PaydayError('That funding was not found or is already undone', 404);
+    const snapshot = JSON.parse(event.snapshotJson) as {
+      month: string;
+      rows: { categoryId: string; name: string; allocated: number }[];
+    };
+    const result: PaydayUndoResult = { reversed: [], skipped: [] };
+    for (const row of snapshot.rows) {
+      if (!row.allocated) continue;
+      const current = db
+        .select()
+        .from(budgetMonths)
+        .where(
+          and(eq(budgetMonths.month, snapshot.month), eq(budgetMonths.categoryId, row.categoryId)),
+        )
+        .get();
+      const category = db
+        .select({ name: categories.name })
+        .from(categories)
+        .where(eq(categories.id, row.categoryId))
+        .get();
+      const name = category?.name ?? row.name;
+      const take = current ? Math.min(row.allocated, Math.max(0, current.budgeted)) : 0;
+      if (current && take > 0)
+        db.update(budgetMonths)
+          .set({ budgeted: current.budgeted - take })
+          .where(eq(budgetMonths.id, current.id))
+          .run();
+      if (take > 0) result.reversed.push({ categoryId: row.categoryId, name, amount: take });
+      if (take < row.allocated)
+        result.skipped.push({
+          categoryId: row.categoryId,
+          name,
+          amount: row.allocated - take,
+          reason: current
+            ? `${name} is now assigned less than this funding added, so only the rest was taken back`
+            : `${name} has no assignment in ${snapshot.month} any more`,
+        });
+    }
+    db.delete(paydayFundingReceipts).where(eq(paydayFundingReceipts.eventId, event.id)).run();
+    db.delete(paydayFundingEvents).where(eq(paydayFundingEvents.id, event.id)).run();
+    db.insert(paydayFundingUndos)
+      .values({
+        id: nanoid(),
+        planId,
+        scheduledDate: event.scheduledDate,
+        appliedDate: event.appliedDate,
+        snapshotJson: event.snapshotJson,
+        resultJson: JSON.stringify(result),
+      })
+      .run();
+    return { id: event.id, undone: true as const, ...result };
   });
 }
