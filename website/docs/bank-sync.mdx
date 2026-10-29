@@ -30,8 +30,10 @@ subscription or separate automation service is needed. Up's personal API is for 
 3. Paste your token. FlyBudget verifies it with Up before saving it. It uses the same credential
    encryption as the other banks and is never included in exported backups.
 4. For each spending, Saver, 2Up or home-loan account Up makes available, create a new FlyBudget
-   account, link an empty account using AUD, or skip it. Linking an account that already has
-   transactions is refused: CSV and manual entries cannot reliably be matched to Up transaction IDs.
+   account, link an account using AUD, or skip it. An account that already has transactions is linked from
+   a cut-over date you choose: its older history stays exactly as it is and Up's transactions from
+   that day on are imported. Rows that look like ones you already have are listed for you to keep
+   or delete; nothing is merged automatically.
 5. Choose **Save & Sync**. The first sync may take a while for an account with years of history.
 
 FlyBudget imports **settled transactions only**, in integer AUD cents, dated on the bank's local

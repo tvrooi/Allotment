@@ -55,6 +55,8 @@ export const createAccount = (data: {
   isOffBudget?: number;
   /** ISO 4217; left out = the budget's */
   currency?: string | null;
+  /** The day `startingBalance` is the account's balance ("as of today"): imports of older rows keep it */
+  balanceAsOf?: string;
 }) => apiFetch<Account>('/accounts', { method: 'POST', body: JSON.stringify(data) });
 
 export const updateAccount = (

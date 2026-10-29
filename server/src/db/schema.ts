@@ -33,6 +33,8 @@ export const accounts = sqliteTable('accounts', {
   importSettings: text('import_settings'),
   /** ISO 4217 code of the account's currency; null = the budget's currency */
   currency: text('currency'),
+  /** Day the starting balance was typed as "balance as of today"; imports of older rows keep it true */
+  balanceAsOf: text('balance_as_of'),
   createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -657,6 +659,10 @@ export const upAccountMappings = sqliteTable('up_account_mappings', {
   settledBalance: integer('settled_balance'),
   /** When the owner enabled round-up debits proven missing by that balance; null = off. */
   roundUpDebitsAt: text('round_up_debits_at'),
+  /** Set when linked to an account that already had history: Up rows before this day are never imported. */
+  cutoverDate: text('cutover_date'),
+  /** Bank balance at the cut-over minus the register's, at the last sync (0 = they agree). */
+  cutoverDifference: integer('cutover_difference'),
 });
 
 // Bank observations are separate from the editable/reconciled ledger. No credentials or raw payloads.
@@ -675,6 +681,8 @@ export const upSourceRecords = sqliteTable(
     reviewState: text('review_state').notNull().default('reviewed'),
     revision: integer('revision').notNull().default(1),
     seenInLatest: integer('seen_in_latest').notNull().default(1),
+    /** Review state 'overlap': the older, non-Up row this import may duplicate. */
+    overlapTransactionId: text('overlap_transaction_id'),
     lastSeenAt: text('last_seen_at').notNull(),
   },
   (table) => [index('up_source_review').on(table.reviewState, table.lastSeenAt)],

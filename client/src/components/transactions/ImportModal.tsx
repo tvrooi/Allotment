@@ -13,6 +13,7 @@ import {
   unknownDirectionWords,
   columnRolesFor,
   columnKeys,
+  fileCategoryKey,
   decodeCsvBytes,
   detectDelimiter,
   detectSkipRows,
@@ -34,9 +35,20 @@ import {
   statementAccountKey,
   type CamtStatement,
 } from '../../utils/camt';
-import { importPreview } from '../../api/transactions';
+import { importPreview, type ImportResult } from '../../api/transactions';
 import { getImportSettings, saveImportSettings, saveStatementAccount } from '../../api/accounts';
 import { useImportConfirm } from '../../hooks/useTransactions';
+import { useCategories } from '../../hooks/useCategories';
+import {
+  ImportCategories,
+  describeChoice,
+  distinctFileCategories,
+  resolveCategoryChoices,
+  suggestChoices,
+  type CategoryChoice,
+} from './ImportCategories';
+import { YnabImportModal } from './YnabImportModal';
+import { formatDay } from '../../utils/dates';
 import { formatMoney } from '../../utils/currency';
 import { minorUnits } from '../../utils/currencies';
 import { useAccountCurrency } from '../../hooks/useCurrency';
@@ -48,9 +60,11 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   accountId: string;
+  /** After an import: the dates it covers, so the register can show them instead of an empty month */
+  onImported?: (range: { from: string; to: string }) => void;
 }
 
-type Step = 'upload' | 'statement' | 'map' | 'preview' | 'done';
+type Step = 'upload' | 'statement' | 'map' | 'categories' | 'preview' | 'done';
 
 const DELIMITERS: { value: Delimiter; label: string }[] = [
   { value: ',', label: 'Comma' },
@@ -72,6 +86,11 @@ const NUMBER_FORMAT_LABELS: Record<NumberFormat, string> = {
 const selectClass = 'w-full text-xs border border-border rounded px-1.5 py-1 bg-surface text-text';
 const optionLabelClass = 'text-xs font-medium text-text-tertiary space-y-1';
 
+const importedSpan = (rows: ImportRow[]) => {
+  const dates = rows.map((r) => r.date).sort();
+  return { from: dates[0], to: dates[dates.length - 1] };
+};
+
 const settingsKey = (accountId: string) => ['import-settings', accountId];
 
 /** Settings still being saved, by account: the next import of a file waits for them */
@@ -80,7 +99,7 @@ const pendingSaves = new Map<string, Promise<void>>();
 /** The most rows one import may send (the server's limit) */
 const MAX_IMPORT_ROWS = 100_000;
 
-export function ImportModal({ isOpen, onClose, accountId }: Props) {
+export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
   const [step, setStep] = useState<Step>('upload');
   // Amounts are read in the account's currency (no decimals for yen)
   const currency = useAccountCurrency()(accountId);
@@ -114,7 +133,15 @@ export function ImportModal({ isOpen, onClose, accountId }: Props) {
   const [previewRows, setPreviewRows] = useState<ImportPreviewRow[]>([]);
   const [excluded, setExcluded] = useState<Set<number>>(new Set());
   const [skippedRows, setSkippedRows] = useState<SkippedRow[]>([]);
-  const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null);
+  const [result, setResult] = useState<ImportResult | null>(null);
+  // The rows as built from the file (with their category labels), and the choices for those
+  const [fileRows, setFileRows] = useState<ImportRow[]>([]);
+  const [pending, setPending] = useState<{ rows: ImportRow[]; skipped: SkippedRow[] } | null>(null);
+  const [choices, setChoices] = useState<Record<string, CategoryChoice>>({});
+  const [resolving, setResolving] = useState(false);
+  const [showYnab, setShowYnab] = useState(false);
+  const { data: groups = [] } = useCategories();
+  const categoryUses = useMemo(() => distinctFileCategories(fileRows), [fileRows]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -149,6 +176,10 @@ export function ImportModal({ isOpen, onClose, accountId }: Props) {
     setExcluded(new Set());
     setSkippedRows([]);
     setResult(null);
+    setFileRows([]);
+    setPending(null);
+    setChoices({});
+    setResolving(false);
     setError(null);
     setLoading(false);
   }
@@ -220,6 +251,7 @@ export function ImportModal({ isOpen, onClose, accountId }: Props) {
       if (load !== loadId.current) return; // closed while checking
       setSkippedRows(skipped);
       setSkippedEntries(camtSkipped);
+      setFileRows(rows);
       setPreviewRows(preview);
       setExcluded(new Set(preview.map((r, i) => (r.isDuplicate ? i : -1)).filter((i) => i >= 0)));
       setStep('preview');
@@ -422,6 +454,15 @@ export function ImportModal({ isOpen, onClose, accountId }: Props) {
       );
       return;
     }
+    const uses = distinctFileCategories(rows);
+    if (uses.length) {
+      // The file names categories: say what each becomes before anything is imported
+      setFileRows(rows);
+      setPending({ rows, skipped });
+      setChoices(suggestChoices(uses, groups));
+      setStep('categories');
+      return;
+    }
     void runPreview(rows, skipped);
   }
 
@@ -472,22 +513,41 @@ export function ImportModal({ isOpen, onClose, accountId }: Props) {
     pendingSaves.set(accountId, save);
   }
 
-  function handleConfirm() {
-    const rows = previewRows
-      .filter((_, i) => !excluded.has(i))
-      .map(({ isDuplicate: _, ...row }) => row as ImportRow);
+  async function handleConfirm() {
+    const chosen = fileRows.filter((_, i) => !excluded.has(i));
 
-    if (!rows.length) {
+    if (!chosen.length) {
       setError('No rows selected');
       return;
     }
 
     const load = loadId.current;
+    // Categories the person chose to create are made now, just before the rows that use them
+    let rows = chosen;
+    if (categoryUses.length) {
+      setResolving(true);
+      try {
+        const made = await resolveCategoryChoices(categoryUses, choices);
+        await queryClient.invalidateQueries({ queryKey: ['categories'] });
+        rows = chosen.map((row) => ({
+          ...row,
+          categoryId: row.fileCategory ? (made[fileCategoryKey(row.fileCategory)] ?? null) : null,
+        }));
+      } catch (e: unknown) {
+        if (load === loadId.current)
+          setError(e instanceof Error ? e.message : 'Could not create the categories');
+        setResolving(false);
+        return;
+      }
+      setResolving(false);
+    }
     confirmMutation.mutate(
       { accountId, rows },
       {
         onSuccess: (data) => {
           rememberSettings(); // the import happened, even if the dialog was closed meanwhile
+          const dates = rows.map((r) => r.date).sort();
+          if (dates.length) onImported?.({ from: dates[0], to: dates[dates.length - 1] });
           if (load !== loadId.current) return; // closed: the next opening starts afresh
           setResult(data);
           setStep('done');
@@ -509,7 +569,7 @@ export function ImportModal({ isOpen, onClose, accountId }: Props) {
   }
 
   function previewBack() {
-    if (source === 'csv') setStep('map');
+    if (source === 'csv') setStep(categoryUses.length ? 'categories' : 'map');
     else setStep(statements.length > 1 ? 'statement' : 'upload');
   }
 
@@ -521,6 +581,8 @@ export function ImportModal({ isOpen, onClose, accountId }: Props) {
     { value: 'outflow', label: 'Outflow' },
     { value: 'direction', label: 'Direction (in/out)' },
     { value: 'notes', label: 'Notes' },
+    { value: 'category', label: 'Category' },
+    { value: 'categoryGroup', label: 'Category group' },
     { value: 'skip', label: 'Skip' },
   ];
 
@@ -538,395 +600,483 @@ export function ImportModal({ isOpen, onClose, accountId }: Props) {
     statementCurrency && currency && statementCurrency !== currency ? statementCurrency : null;
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Import Transactions" size="lg">
-      {error && (
-        <div className="mb-4 flex items-center gap-2 px-3 py-2 text-sm bg-negative-subtle text-negative rounded-lg">
-          <AlertTriangle size={14} /> {error}
-          <button
-            type="button"
-            onClick={() => setError(null)}
-            className="ml-auto flex items-center justify-center max-md:min-h-11 max-md:min-w-11"
-            aria-label="Dismiss"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      )}
-
-      {step === 'upload' && (
-        <div
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={handleDrop}
-          className="flex flex-col items-center justify-center gap-3 py-12 border-2 border-dashed border-border rounded-lg hover:border-brand-400 transition-colors cursor-pointer"
-          onClick={() => document.getElementById('csv-file-input')?.click()}
-        >
-          <Upload size={32} className="text-text-tertiary" />
-          <p className="text-sm text-text-secondary">
-            Drag and drop a file from your bank, or click to browse
-          </p>
-          <p className="text-xs text-text-tertiary">CSV, or a CAMT.053 bank statement (XML)</p>
-          {loading && <p className="text-xs text-text-tertiary">Checking…</p>}
-          {IS_DEMO && (
-            <p className="text-xs text-text-tertiary">
-              Demo: your file stays in this browser tab and isn't saved.
-            </p>
-          )}
-          <input
-            id="csv-file-input"
-            type="file"
-            accept=".csv,.tsv,.txt,.xml"
-            aria-label="Bank file"
-            className="hidden"
-            onChange={handleFileInput}
-          />
-        </div>
-      )}
-
-      {step === 'statement' && (
-        <div className="space-y-4">
-          <p className="text-sm text-text-secondary">
-            This file has statements for {statements.length} accounts. Which one belongs to this
-            account?
-          </p>
-          <label className={optionLabelClass}>
-            <span>Statement</span>
-            <select
-              value={statementIdx}
-              onChange={(e) => setStatementIdx(Number(e.target.value))}
-              className={selectClass}
+    <>
+      <YnabImportModal
+        isOpen={isOpen && showYnab}
+        onClose={() => {
+          setShowYnab(false);
+          handleClose();
+        }}
+      />
+      <Modal
+        isOpen={isOpen && !showYnab}
+        onClose={handleClose}
+        title="Import Transactions"
+        size="lg"
+      >
+        {error && (
+          <div className="mb-4 flex items-center gap-2 px-3 py-2 text-sm bg-negative-subtle text-negative rounded-lg">
+            <AlertTriangle size={14} /> {error}
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              className="ml-auto flex items-center justify-center max-md:min-h-11 max-md:min-w-11"
+              aria-label="Dismiss"
             >
-              {statements.map((s, i) => (
-                <option key={i} value={i}>
-                  {s.account ?? 'Account without a number'} ({s.transactions.length} transactions)
-                  {knownStatementAccount !== null &&
-                    statementAccountKey(s.account) === knownStatementAccount &&
-                    ', imported here before'}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setStep('upload')}>
-              Back
-            </Button>
-            <Button
-              onClick={() => void previewStatement(statements[statementIdx])}
-              disabled={loading}
-            >
-              {loading ? 'Checking...' : 'Preview'}
-            </Button>
+              <X size={14} />
+            </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {step === 'map' && (
-        <div className="space-y-4">
-          <p className="text-sm text-text-secondary">
-            Map each column to a field. Found {rawRows.length} rows.
-            {usingSaved && ' Using the settings from your last import into this account.'}
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {step === 'upload' && (
+          <div
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={handleDrop}
+            className="flex flex-col items-center justify-center gap-3 py-12 border-2 border-dashed border-border rounded-lg hover:border-brand-400 transition-colors cursor-pointer"
+            onClick={() => document.getElementById('csv-file-input')?.click()}
+          >
+            <Upload size={32} className="text-text-tertiary" />
+            <p className="text-sm text-text-secondary">
+              Drag and drop a file from your bank, or click to browse
+            </p>
+            <p className="text-xs text-text-tertiary">CSV, or a CAMT.053 bank statement (XML)</p>
+            {loading && <p className="text-xs text-text-tertiary">Checking…</p>}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowYnab(true);
+              }}
+              className="text-xs font-medium text-brand-600 hover:underline max-md:min-h-11"
+            >
+              Coming from YNAB? Import its register export (all accounts at once)
+            </button>
+            {IS_DEMO && (
+              <p className="text-xs text-text-tertiary">
+                Demo: your file stays in this browser tab and isn't saved.
+              </p>
+            )}
+            <input
+              id="csv-file-input"
+              type="file"
+              accept=".csv,.tsv,.txt,.xml"
+              aria-label="Bank file"
+              className="hidden"
+              onChange={handleFileInput}
+            />
+          </div>
+        )}
+
+        {step === 'statement' && (
+          <div className="space-y-4">
+            <p className="text-sm text-text-secondary">
+              This file has statements for {statements.length} accounts. Which one belongs to this
+              account?
+            </p>
             <label className={optionLabelClass}>
-              <span>Separator</span>
+              <span>Statement</span>
               <select
-                value={delimiter}
-                onChange={(e) => changeDelimiter(e.target.value as Delimiter)}
+                value={statementIdx}
+                onChange={(e) => setStatementIdx(Number(e.target.value))}
                 className={selectClass}
               >
-                {DELIMITERS.map((d) => (
-                  <option key={d.value} value={d.value}>
-                    {d.label}
+                {statements.map((s, i) => (
+                  <option key={i} value={i}>
+                    {s.account ?? 'Account without a number'} ({s.transactions.length} transactions)
+                    {knownStatementAccount !== null &&
+                      statementAccountKey(s.account) === knownStatementAccount &&
+                      ', imported here before'}
                   </option>
                 ))}
               </select>
             </label>
-            <label className={optionLabelClass}>
-              <span>Encoding</span>
-              <select
-                value={encoding}
-                onChange={(e) => changeEncoding(e.target.value as CsvEncoding)}
-                className={selectClass}
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setStep('upload')}>
+                Back
+              </Button>
+              <Button
+                onClick={() => void previewStatement(statements[statementIdx])}
+                disabled={loading}
               >
-                {CSV_ENCODINGS.map((e) => (
-                  <option key={e.value} value={e.value}>
-                    {e.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className={optionLabelClass}>
-              <span>Rows above the header</span>
-              <input
-                type="number"
-                min={0}
-                max={Math.max(records.length - 1, 0)}
-                value={skipRowsDraft ?? skipRows}
-                onChange={(e) => {
-                  // An emptied field is being retyped: keep the table until there's a number
-                  setSkipRowsDraft(e.target.value);
-                  if (e.target.value.trim() === '') return;
-                  const n = Math.trunc(Number(e.target.value));
-                  if (Number.isFinite(n) && n >= 0 && n < records.length) {
-                    showTable(records, n, saved, roles);
-                  }
-                }}
-                onBlur={() => setSkipRowsDraft(null)}
-                className={selectClass}
-              />
-            </label>
-            <label className={optionLabelClass}>
-              <span>Dates</span>
-              <select
-                value={dateFormat ?? ''}
-                onChange={(e) => setDateFormatChoice(e.target.value as DateFormat)}
-                className={selectClass}
-              >
-                {!dateFormat && <option value="">Choose…</option>}
-                {Object.entries(DATE_FORMAT_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className={optionLabelClass}>
-              <span>Amounts</span>
-              <select
-                value={numberFormat ?? ''}
-                onChange={(e) => setNumberFormatChoice(e.target.value as NumberFormat)}
-                className={selectClass}
-              >
-                {!numberFormat && <option value="">Choose…</option>}
-                {Object.entries(NUMBER_FORMAT_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {hasDirection && (
+                {loading ? 'Checking...' : 'Preview'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 'map' && (
+          <div className="space-y-4">
+            <p className="text-sm text-text-secondary">
+              Map each column to a field. Found {rawRows.length} rows.
+              {usingSaved && ' Using the settings from your last import into this account.'}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <label className={optionLabelClass}>
-                <span>Word for money out</span>
+                <span>Separator</span>
+                <select
+                  value={delimiter}
+                  onChange={(e) => changeDelimiter(e.target.value as Delimiter)}
+                  className={selectClass}
+                >
+                  {DELIMITERS.map((d) => (
+                    <option key={d.value} value={d.value}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={optionLabelClass}>
+                <span>Encoding</span>
+                <select
+                  value={encoding}
+                  onChange={(e) => changeEncoding(e.target.value as CsvEncoding)}
+                  className={selectClass}
+                >
+                  {CSV_ENCODINGS.map((e) => (
+                    <option key={e.value} value={e.value}>
+                      {e.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={optionLabelClass}>
+                <span>Rows above the header</span>
                 <input
-                  type="text"
-                  value={outWord}
-                  maxLength={50}
-                  placeholder="Optional, e.g. Af"
-                  onChange={(e) => setOutWord(e.target.value)}
+                  type="number"
+                  min={0}
+                  max={Math.max(records.length - 1, 0)}
+                  value={skipRowsDraft ?? skipRows}
+                  onChange={(e) => {
+                    // An emptied field is being retyped: keep the table until there's a number
+                    setSkipRowsDraft(e.target.value);
+                    if (e.target.value.trim() === '') return;
+                    const n = Math.trunc(Number(e.target.value));
+                    if (Number.isFinite(n) && n >= 0 && n < records.length) {
+                      showTable(records, n, saved, roles);
+                    }
+                  }}
+                  onBlur={() => setSkipRowsDraft(null)}
                   className={selectClass}
                 />
               </label>
-            )}
-          </div>
-          {(!dateFormat || !numberFormat || needsOutWord) && (
-            <div className="flex items-start gap-2 px-3 py-2 text-sm bg-caution-subtle text-caution rounded-lg">
-              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-              <span>
-                {!dateFormat &&
-                  (detected.dateSample
-                    ? `This file doesn't show in which order ${detected.dateSample} is written. `
-                    : 'Rows in this file write dates in different orders. ')}
-                {!numberFormat &&
-                  (detected.amountSample
-                    ? `This file doesn't show whether ${detected.amountSample} uses a decimal point or a decimal comma. `
-                    : 'Rows in this file write amounts in different formats. ')}
-                {(!dateFormat || !numberFormat) && 'Choose the format your bank uses. '}
-                {needsOutWord &&
-                  `FlyBudget doesn't know what ${detected.unknownDirections
-                    .slice(0, 3)
-                    .map((w) => `"${w}"`)
-                    .join(
-                      ', ',
-                    )} means in the direction column. Type the word your bank uses for money going out; other words it doesn't know count as money in.`}
-              </span>
-            </div>
-          )}
-          {fromLastTime.length > 0 && (
-            <p className="text-xs text-text-tertiary">
-              This file doesn't show how it writes {fromLastTime.map((f) => f.what).join(' or ')}:
-              using {fromLastTime.map((f) => f.format).join(' and ')}, as in your last import into
-              this account.
-            </p>
-          )}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr>
-                  {headers.map((h, i) => (
-                    <th key={i} className="px-2 py-1 text-left border-b border-border">
-                      <div className="text-xs font-medium text-text-tertiary mb-1">{h}</div>
-                      <select
-                        value={roles[i]}
-                        aria-label={`Column ${h}`}
-                        onChange={(e) => setRole(i, e.target.value as ColumnRole)}
-                        className={selectClass}
-                      >
-                        {roleOptions.map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    </th>
+              <label className={optionLabelClass}>
+                <span>Dates</span>
+                <select
+                  value={dateFormat ?? ''}
+                  onChange={(e) => setDateFormatChoice(e.target.value as DateFormat)}
+                  className={selectClass}
+                >
+                  {!dateFormat && <option value="">Choose…</option>}
+                  {Object.entries(DATE_FORMAT_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rawRows.slice(0, 3).map((row, ri) => (
-                  <tr key={ri}>
-                    {row.map((cell, ci) => (
-                      <td
-                        key={ci}
-                        className="px-2 py-1 text-xs text-text-secondary border-b border-border-light max-w-[150px] truncate"
-                      >
-                        {cell}
-                      </td>
+                </select>
+              </label>
+              <label className={optionLabelClass}>
+                <span>Amounts</span>
+                <select
+                  value={numberFormat ?? ''}
+                  onChange={(e) => setNumberFormatChoice(e.target.value as NumberFormat)}
+                  className={selectClass}
+                >
+                  {!numberFormat && <option value="">Choose…</option>}
+                  {Object.entries(NUMBER_FORMAT_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {hasDirection && (
+                <label className={optionLabelClass}>
+                  <span>Word for money out</span>
+                  <input
+                    type="text"
+                    value={outWord}
+                    maxLength={50}
+                    placeholder="Optional, e.g. Af"
+                    onChange={(e) => setOutWord(e.target.value)}
+                    className={selectClass}
+                  />
+                </label>
+              )}
+            </div>
+            {(!dateFormat || !numberFormat || needsOutWord) && (
+              <div className="flex items-start gap-2 px-3 py-2 text-sm bg-caution-subtle text-caution rounded-lg">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                <span>
+                  {!dateFormat &&
+                    (detected.dateSample
+                      ? `This file doesn't show in which order ${detected.dateSample} is written. `
+                      : 'Rows in this file write dates in different orders. ')}
+                  {!numberFormat &&
+                    (detected.amountSample
+                      ? `This file doesn't show whether ${detected.amountSample} uses a decimal point or a decimal comma. `
+                      : 'Rows in this file write amounts in different formats. ')}
+                  {(!dateFormat || !numberFormat) && 'Choose the format your bank uses. '}
+                  {needsOutWord &&
+                    `FlyBudget doesn't know what ${detected.unknownDirections
+                      .slice(0, 3)
+                      .map((w) => `"${w}"`)
+                      .join(
+                        ', ',
+                      )} means in the direction column. Type the word your bank uses for money going out; other words it doesn't know count as money in.`}
+                </span>
+              </div>
+            )}
+            {fromLastTime.length > 0 && (
+              <p className="text-xs text-text-tertiary">
+                This file doesn't show how it writes {fromLastTime.map((f) => f.what).join(' or ')}:
+                using {fromLastTime.map((f) => f.format).join(' and ')}, as in your last import into
+                this account.
+              </p>
+            )}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr>
+                    {headers.map((h, i) => (
+                      <th key={i} className="px-2 py-1 text-left border-b border-border">
+                        <div className="text-xs font-medium text-text-tertiary mb-1">{h}</div>
+                        <select
+                          value={roles[i]}
+                          aria-label={`Column ${h}`}
+                          onChange={(e) => setRole(i, e.target.value as ColumnRole)}
+                          className={selectClass}
+                        >
+                          {roleOptions.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {rawRows.slice(0, 3).map((row, ri) => (
+                    <tr key={ri}>
+                      {row.map((cell, ci) => (
+                        <td
+                          key={ci}
+                          className="px-2 py-1 text-xs text-text-secondary border-b border-border-light max-w-[150px] truncate"
+                        >
+                          {cell}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setStep('upload')}>
+                Back
+              </Button>
+              <Button onClick={handlePreview} disabled={loading}>
+                {loading ? 'Checking...' : 'Preview'}
+              </Button>
+            </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setStep('upload')}>
-              Back
-            </Button>
-            <Button onClick={handlePreview} disabled={loading}>
-              {loading ? 'Checking...' : 'Preview'}
-            </Button>
-          </div>
-        </div>
-      )}
+        )}
 
-      {step === 'preview' && (
-        <div className="space-y-4">
-          <p className="text-sm text-text-secondary">
-            {previewRows.length} transactions found.{' '}
-            {previewRows.filter((r) => r.isDuplicate).length} duplicates detected.{' '}
-            {previewRows.length - excluded.size} will be imported.
-            {skippedEntries > 0 && ` ${entriesLeftOut}`}
-          </p>
-          {otherCurrency && (
-            <p
-              role="alert"
-              className="flex items-start gap-2 px-3 py-2 text-sm bg-caution-subtle text-caution rounded-lg"
-            >
-              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-              <span>
-                This statement is in {otherCurrency}, but this account is in {currency}. Import it
-                into an account in {otherCurrency} instead (you can add one with that currency).
-              </span>
+        {step === 'categories' && pending && (
+          <div className="space-y-4">
+            <p className="text-sm text-text-secondary">
+              Your file has {categoryUses.length} categor{categoryUses.length === 1 ? 'y' : 'ies'}.
+              Matching names are picked for you; choose what each other one becomes. Nothing is
+              created until you import.
             </p>
-          )}
-          {otherStatementAccount && (
-            <p
-              role="alert"
-              className="flex items-start gap-2 px-3 py-2 text-sm bg-caution-subtle text-caution rounded-lg"
-            >
-              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-              <span>
-                This statement is for account {otherStatementAccount}, but the last statement
-                imported into this account was for {knownStatementAccount}. Check that you're
-                importing it into the right account.
-              </span>
+            <ImportCategories
+              uses={categoryUses}
+              groups={groups}
+              choices={choices}
+              onChange={setChoices}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setStep('map')}>
+                Back
+              </Button>
+              <Button
+                onClick={() => void runPreview(pending.rows, pending.skipped)}
+                disabled={loading}
+              >
+                {loading ? 'Checking...' : 'Preview'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 'preview' && (
+          <div className="space-y-4">
+            <p className="text-sm text-text-secondary">
+              {previewRows.length} transactions found.{' '}
+              {previewRows.filter((r) => r.isDuplicate).length} duplicates detected.{' '}
+              {previewRows.length - excluded.size} will be imported.
+              {skippedEntries > 0 && ` ${entriesLeftOut}`}
             </p>
-          )}
-          {skippedRows.length > 0 && (
-            <p
-              role="status"
-              className="flex items-start gap-2 px-3 py-2 text-sm bg-caution-subtle text-caution rounded-lg"
-            >
-              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-              <span>
-                {describeSkippedRows(skippedRows)} Fix the file and import it again to include them.
-              </span>
-            </p>
-          )}
-          <div className="max-h-64 overflow-y-auto border border-border rounded-lg">
-            <table className="w-full text-sm border-collapse">
-              <thead className="sticky top-0 bg-surface-alt">
-                <tr>
-                  <th className="px-2 py-1.5 text-left text-xs font-medium text-text-tertiary w-8"></th>
-                  <th className="px-2 py-1.5 text-left text-xs font-medium text-text-tertiary">
-                    Date
-                  </th>
-                  <th className="px-2 py-1.5 text-left text-xs font-medium text-text-tertiary">
-                    Payee
-                  </th>
-                  <th className="px-2 py-1.5 text-right text-xs font-medium text-text-tertiary">
-                    Amount
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {previewRows.map((row, i) => (
-                  <tr
-                    key={i}
-                    className={`border-t border-border-light ${excluded.has(i) ? 'opacity-40' : ''} ${row.isDuplicate ? 'bg-caution-subtle' : ''}`}
-                  >
-                    <td className="px-2 py-1.5">
-                      <input
-                        type="checkbox"
-                        checked={!excluded.has(i)}
-                        onChange={() => toggleExclude(i)}
-                        aria-label={`Import ${row.payeeName ?? 'row'} on ${row.date}`}
-                        className="w-3.5 h-3.5 accent-brand-600"
-                      />
-                    </td>
-                    <td className="px-2 py-1.5 text-xs text-text-secondary">{row.date}</td>
-                    <td className="px-2 py-1.5 text-xs text-text flex items-center gap-1">
-                      {row.payeeName ?? '—'}
-                      {row.isDuplicate && (
-                        <span className="text-[10px] px-1 py-0.5 bg-caution-subtle text-caution rounded">
-                          duplicate
-                        </span>
-                      )}
-                    </td>
-                    <td
-                      className={`px-2 py-1.5 text-xs text-right tabular-nums ${row.amount < 0 ? 'text-text' : 'text-positive'}`}
-                    >
-                      {formatMoney(row.amount, currency)}
-                    </td>
+            {otherCurrency && (
+              <p
+                role="alert"
+                className="flex items-start gap-2 px-3 py-2 text-sm bg-caution-subtle text-caution rounded-lg"
+              >
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                <span>
+                  This statement is in {otherCurrency}, but this account is in {currency}. Import it
+                  into an account in {otherCurrency} instead (you can add one with that currency).
+                </span>
+              </p>
+            )}
+            {otherStatementAccount && (
+              <p
+                role="alert"
+                className="flex items-start gap-2 px-3 py-2 text-sm bg-caution-subtle text-caution rounded-lg"
+              >
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                <span>
+                  This statement is for account {otherStatementAccount}, but the last statement
+                  imported into this account was for {knownStatementAccount}. Check that you're
+                  importing it into the right account.
+                </span>
+              </p>
+            )}
+            {skippedRows.length > 0 && (
+              <p
+                role="status"
+                className="flex items-start gap-2 px-3 py-2 text-sm bg-caution-subtle text-caution rounded-lg"
+              >
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                <span>
+                  {describeSkippedRows(skippedRows)} Fix the file and import it again to include
+                  them.
+                </span>
+              </p>
+            )}
+            <div className="max-h-64 overflow-y-auto border border-border rounded-lg">
+              <table className="w-full text-sm border-collapse">
+                <thead className="sticky top-0 bg-surface-alt">
+                  <tr>
+                    <th className="px-2 py-1.5 text-left text-xs font-medium text-text-tertiary w-8"></th>
+                    <th className="px-2 py-1.5 text-left text-xs font-medium text-text-tertiary">
+                      Date
+                    </th>
+                    <th className="px-2 py-1.5 text-left text-xs font-medium text-text-tertiary">
+                      Payee
+                    </th>
+                    {categoryUses.length > 0 && (
+                      <th className="px-2 py-1.5 text-left text-xs font-medium text-text-tertiary">
+                        Category
+                      </th>
+                    )}
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-text-tertiary">
+                      Amount
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {previewRows.map((row, i) => (
+                    <tr
+                      key={i}
+                      className={`border-t border-border-light ${excluded.has(i) ? 'opacity-40' : ''} ${row.isDuplicate ? 'bg-caution-subtle' : ''}`}
+                    >
+                      <td className="px-2 py-1.5">
+                        <input
+                          type="checkbox"
+                          checked={!excluded.has(i)}
+                          onChange={() => toggleExclude(i)}
+                          aria-label={`Import ${row.payeeName ?? 'row'} on ${row.date}`}
+                          className="w-3.5 h-3.5 accent-brand-600"
+                        />
+                      </td>
+                      <td className="px-2 py-1.5 text-xs text-text-secondary">{row.date}</td>
+                      <td className="px-2 py-1.5 text-xs text-text flex items-center gap-1">
+                        {row.payeeName ?? '—'}
+                        {row.isDuplicate && (
+                          <span className="text-[10px] px-1 py-0.5 bg-caution-subtle text-caution rounded">
+                            duplicate
+                          </span>
+                        )}
+                      </td>
+                      {categoryUses.length > 0 && (
+                        <td className="px-2 py-1.5 text-xs text-text-secondary">
+                          {fileRows[i]?.fileCategory
+                            ? describeChoice(
+                                choices[fileCategoryKey(fileRows[i].fileCategory!)],
+                                groups,
+                              )
+                            : 'Uncategorised'}
+                        </td>
+                      )}
+                      <td
+                        className={`px-2 py-1.5 text-xs text-right tabular-nums ${row.amount < 0 ? 'text-text' : 'text-positive'}`}
+                      >
+                        {formatMoney(row.amount, currency)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <SavingPausedHint className="text-right" />
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={previewBack}>
+                Back
+              </Button>
+              <Button
+                onClick={() => void handleConfirm()}
+                disabled={
+                  confirmMutation.isPending ||
+                  resolving ||
+                  previewRows.length === excluded.size ||
+                  !canSave ||
+                  // A statement in another currency would be read as this account's
+                  !!otherCurrency
+                }
+              >
+                {confirmMutation.isPending || resolving
+                  ? 'Importing...'
+                  : `Import ${previewRows.length - excluded.size} Transactions`}
+              </Button>
+            </div>
           </div>
-          <SavingPausedHint className="text-right" />
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={previewBack}>
-              Back
-            </Button>
-            <Button
-              onClick={handleConfirm}
-              disabled={
-                confirmMutation.isPending ||
-                previewRows.length === excluded.size ||
-                !canSave ||
-                // A statement in another currency would be read as this account's
-                !!otherCurrency
-              }
-            >
-              {confirmMutation.isPending
-                ? 'Importing...'
-                : `Import ${previewRows.length - excluded.size} Transactions`}
-            </Button>
-          </div>
-        </div>
-      )}
+        )}
 
-      {step === 'done' && result && (
-        <div className="flex flex-col items-center gap-4 py-6">
-          <CheckCircle size={40} className="text-positive" />
-          <div className="text-center">
-            <p className="text-sm font-medium text-text">Import complete</p>
-            <p className="text-sm text-text-secondary mt-1">
-              {result.imported} imported, {result.skipped} skipped
-            </p>
+        {step === 'done' && result && (
+          <div className="flex flex-col items-center gap-4 py-6">
+            <CheckCircle size={40} className="text-positive" />
+            <div className="text-center">
+              <p className="text-sm font-medium text-text">Import complete</p>
+              <p className="text-sm text-text-secondary mt-1">
+                {result.imported} imported, {result.skipped} skipped
+              </p>
+              {result.startingBalanceAdjusted ? (
+                <p className="text-xs text-text-secondary mt-2" role="status">
+                  Starting balance adjusted so today's balance stays{' '}
+                  {formatMoney(result.balance, currency)}.
+                </p>
+              ) : (
+                result.balance !== result.balanceBefore && (
+                  <p className="text-xs text-text-secondary mt-2" role="status">
+                    This account's balance is now {formatMoney(result.balance, currency)} (it was{' '}
+                    {formatMoney(result.balanceBefore, currency)}). If that isn't right, check the
+                    starting balance in Edit account, or reconcile.
+                  </p>
+                )
+              )}
+              {onImported && fileRows.length > 0 && (
+                <p className="text-xs text-text-tertiary mt-2">
+                  Showing {formatDay(importedSpan(fileRows).from)} to{' '}
+                  {formatDay(importedSpan(fileRows).to)} in the register.
+                </p>
+              )}
+            </div>
+            <Button onClick={handleClose}>Done</Button>
           </div>
-          <Button onClick={handleClose}>Done</Button>
-        </div>
-      )}
-    </Modal>
+        )}
+      </Modal>
+    </>
   );
 }

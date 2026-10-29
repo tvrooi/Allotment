@@ -2,17 +2,36 @@ import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { useState } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { useUpConnection, useRefreshUp } from '../../hooks/useUp';
-import { syncUp, disconnectUp, setUpPolling, type UpSyncResult } from '../../api/up';
+import {
+  syncUp,
+  disconnectUp,
+  setUpPolling,
+  addUpOpeningBalance,
+  type UpSyncResult,
+} from '../../api/up';
 import { useCanSave } from '../../hooks/useConnection';
 import { Button } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { UpConnectModal } from './UpConnectModal';
+import { formatDay } from '../../utils/dates';
+import { formatMoney } from '../../utils/currency';
 import { UpReview } from './UpReview';
 
+const dayBefore = (day: string) => {
+  const d = new Date(day + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+};
 export function UpSettings() {
   const { data: connection, isLoading, error: loadError } = useUpConnection();
   const [showConnect, setShowConnect] = useState(false);
   const [showDisconnect, setShowDisconnect] = useState(false);
+  const [settle, setSettle] = useState<{
+    accountId: string;
+    name: string;
+    date: string;
+    amount: number;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<UpSyncResult | null>(null);
@@ -47,6 +66,31 @@ export function UpSettings() {
             .map((a) => (
               <p key={a.upAccountId} className="text-xs text-text-secondary">
                 {a.name} → {a.accountName ?? 'Not linked'}
+                {a.cutoverDate && (
+                  <span className="block text-text-tertiary">
+                    Your history before {formatDay(a.cutoverDate)} stays as it is; Up’s starts then.
+                    {!!a.cutoverDifference &&
+                      ` Up’s balance the day before is ${formatMoney(Math.abs(a.cutoverDifference), 'AUD')} ${a.cutoverDifference > 0 ? 'more' : 'less'} than your register’s: check the older transactions, or add the difference as an opening balance.`}
+                    {!!a.cutoverDifference && a.accountId && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="mt-1"
+                        disabled={!canSave || busy}
+                        onClick={() =>
+                          setSettle({
+                            accountId: a.accountId!,
+                            name: a.accountName ?? a.name,
+                            date: dayBefore(a.cutoverDate!),
+                            amount: a.cutoverDifference!,
+                          })
+                        }
+                      >
+                        Add an opening balance dated {formatDay(dayBefore(a.cutoverDate))}
+                      </Button>
+                    )}
+                  </span>
+                )}
               </p>
             ))}
           {connection.syncError && (
@@ -141,6 +185,25 @@ export function UpSettings() {
       )}
       <SavingPausedHint />
       {connection && <UpReview canSave={canSave} />}
+      <ConfirmModal
+        isOpen={!!settle}
+        onClose={() => setSettle(null)}
+        title="Add an opening balance?"
+        message={
+          settle
+            ? `This adds one balance adjustment of ${formatMoney(settle.amount, 'AUD')} to ${settle.name}, dated ${formatDay(settle.date)}, so its balance on that day matches Up's. It is a correction, not income or spending, and nothing else changes. You can delete it from the register.`
+            : ''
+        }
+        confirmLabel="Add opening balance"
+        onConfirm={() => {
+          if (!settle) return;
+          void addUpOpeningBalance(settle.accountId, settle.amount)
+            .then(() => refresh())
+            .catch((err) =>
+              setError(err instanceof Error ? err.message : 'Could not add the opening balance.'),
+            );
+        }}
+      />
       <UpConnectModal
         isOpen={showConnect}
         onClose={() => {

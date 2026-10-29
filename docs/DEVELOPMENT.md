@@ -359,8 +359,9 @@ the existing register review flow; never silently link amount/date matches. New 
 excluded from backups, but restore re-links mappings. Tokens entered without encryption in dev
 are encrypted on startup when a key is supplied. `routes/up.ts` under `/api/up` has connection,
 setup, map-accounts, sync and disconnect endpoints. One personal token per budget; reconnect
-refreshes the list and keeps matching account links. New links require empty AUD accounts to avoid
-CSV duplicates. `components/up/` supplies setup and settings; entry points are Connected Banks,
+refreshes the list and keeps matching account links. A link to an account with history needs a
+cut-over date (`services/upCutover.ts`): Up rows before it are never imported, overlap candidates are
+flagged in review, nothing is merged. `components/up/` supplies setup and settings; entry points are Connected Banks,
 Welcome and the sidebar. The demo refuses Up calls. No timer or webhook: startup and manual sync.
 Disconnect forgets the token locally; revoke it at Up separately. Tests: `upTransactions.test.ts`,
 `routes/up.test.ts`, `e2e/tests/up.spec.ts`, with `server/src/test/upMock.ts`.

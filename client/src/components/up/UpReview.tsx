@@ -1,10 +1,17 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { acknowledgeUpReview, getUpReview, getUpRoundUps, type UpReviewItem } from '../../api/up';
+import {
+  acknowledgeUpReview,
+  deleteUpOverlapOld,
+  getUpReview,
+  getUpRoundUps,
+  type UpReviewItem,
+} from '../../api/up';
 import { formatMoney } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { Button } from '../ui/Button';
+import { ConfirmModal } from '../ui/ConfirmModal';
 import { UpRoundUpCheck } from './UpRoundUpCheck';
 
 function BankDetails({ source }: { source: UpReviewItem['current'] }) {
@@ -33,14 +40,19 @@ export function UpReview({ canSave }: { canSave: boolean }) {
   const [offset, setOffset] = useState(0),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<UpReviewItem | null>(null);
   const qc = useQueryClient();
   const review = useQuery({ queryKey: ['up-review', offset], queryFn: () => getUpReview(offset) });
   const rounds = useQuery({ queryKey: ['up-round-ups'], queryFn: getUpRoundUps });
-  async function acknowledge(id: string, revision: number) {
+  async function acknowledge(id: string, revision: number, deleteOld = false) {
     setBusy(true);
     setError(null);
     try {
-      await acknowledgeUpReview(id, revision);
+      if (deleteOld) {
+        await deleteUpOverlapOld(id, revision);
+        // The older row is gone: balances, registers and reports all change
+        await qc.invalidateQueries();
+      } else await acknowledgeUpReview(id, revision);
       await qc.invalidateQueries({ queryKey: ['up-review'] });
       if (offset > 0 && review.data?.items.length === 1) setOffset(Math.max(0, offset - 50));
     } catch (err) {
@@ -50,8 +62,83 @@ export function UpReview({ canSave }: { canSave: boolean }) {
       setBusy(false);
     }
   }
+  const overlaps = review.data?.items.filter((i) => i.reviewState === 'overlap') ?? [];
   return (
     <div className="space-y-4">
+      {overlaps.length > 0 && (
+        <section
+          aria-label="Possible duplicates from your old history"
+          className="rounded-lg border border-border bg-surface p-4 space-y-3"
+        >
+          <h3 className="text-sm font-semibold text-text">
+            Possible duplicates from your old history ({overlaps.length})
+          </h3>
+          <p className="text-xs text-text-secondary">
+            These Up transactions look like ones you already had. Both are kept until you decide:
+            keep both, or delete the older one (Up’s stays).
+          </p>
+          <ul className="space-y-3">
+            {overlaps.map((item) => (
+              <li
+                key={item.importedId}
+                className="border-t border-border pt-3 space-y-2 break-words"
+              >
+                <p className="text-sm text-text">
+                  Up: {item.current.description} · {formatDay(item.current.createdAt.slice(0, 10))}{' '}
+                  · {formatMoney(item.current.amount, 'AUD')}
+                </p>
+                <p className="text-xs text-text-secondary">
+                  {item.overlap
+                    ? `Older: ${item.overlap.payee ?? 'Unknown'} · ${formatDay(item.overlap.date)} · ${formatMoney(item.overlap.amount, 'AUD')}${item.overlap.reconciled ? ' · reconciled' : ''}`
+                    : 'The older transaction has already been removed.'}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={!canSave || busy}
+                    onClick={() => void acknowledge(item.importedId, item.revision)}
+                  >
+                    Keep both
+                  </Button>
+                  {item.overlap && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={!canSave || busy || item.overlap.reconciled}
+                      onClick={() => setConfirmDelete(item)}
+                    >
+                      Delete the older one
+                    </Button>
+                  )}
+                  <Link
+                    className="text-xs underline text-text-secondary"
+                    to={`/accounts/${item.accountId}`}
+                  >
+                    Open register
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <ConfirmModal
+        isOpen={!!confirmDelete?.overlap}
+        onClose={() => setConfirmDelete(null)}
+        title="Delete the older transaction?"
+        message={
+          confirmDelete?.overlap
+            ? `This deletes ${confirmDelete.overlap.payee ?? 'Unknown'}, ${formatDay(confirmDelete.overlap.date)}, ${formatMoney(confirmDelete.overlap.amount, 'AUD')} from your old history. Up's ${confirmDelete.current.description} (${formatDay(confirmDelete.current.createdAt.slice(0, 10))}) stays. It can't be undone.`
+            : ''
+        }
+        confirmLabel="Delete it"
+        danger
+        onConfirm={() => {
+          if (confirmDelete)
+            void acknowledge(confirmDelete.importedId, confirmDelete.revision, true);
+        }}
+      />
       <section
         aria-label="Up review"
         className="rounded-lg border border-border bg-surface p-4 space-y-3"
@@ -74,62 +161,64 @@ export function UpReview({ canSave }: { canSave: boolean }) {
               <p className="text-xs text-text-secondary">Nothing needs review.</p>
             )}
             <ul className="space-y-3">
-              {review.data.items.map((item) => (
-                <li
-                  key={item.importedId}
-                  className="border-t border-border pt-3 space-y-2 break-words"
-                >
-                  <p className="text-sm text-text">
-                    {item.reviewState === 'new'
-                      ? 'New import'
-                      : item.reviewState === 'missing'
-                        ? 'No longer returned by Up'
-                        : 'Bank record changed'}{' '}
-                    · {item.current.description}
-                  </p>
-                  <p className="text-xs text-text-secondary">
-                    {item.accountName} · {formatDay(item.current.createdAt.slice(0, 10))} ·{' '}
-                    {formatMoney(item.current.amount, 'AUD')}
-                  </p>
-                  {item.reviewState === 'missing' && (
-                    <p className="text-xs text-text-secondary">
-                      The last complete bank response omitted this record. No local transaction was
-                      removed.
+              {review.data.items
+                .filter((i) => i.reviewState !== 'overlap')
+                .map((item) => (
+                  <li
+                    key={item.importedId}
+                    className="border-t border-border pt-3 space-y-2 break-words"
+                  >
+                    <p className="text-sm text-text">
+                      {item.reviewState === 'new'
+                        ? 'New import'
+                        : item.reviewState === 'missing'
+                          ? 'No longer returned by Up'
+                          : 'Bank record changed'}{' '}
+                      · {item.current.description}
                     </p>
-                  )}
-                  {item.reviewState === 'changed' && (
-                    <details className="text-xs text-text-secondary">
-                      <summary className="cursor-pointer select-none text-text-secondary hover:text-text">
-                        Compare bank observations
-                      </summary>
-                      <dl className="space-y-1 mt-2">
-                        <dt>Previously reported</dt>
-                        <dd>{item.previous && <BankDetails source={item.previous} />}</dd>
-                        <dt>Now reported</dt>
-                        <dd>
-                          <BankDetails source={item.current} />
-                        </dd>
-                      </dl>
-                    </details>
-                  )}
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Link
-                      className="text-xs underline text-text-secondary"
-                      to={`/accounts/${item.accountId}`}
-                    >
-                      Open original register
-                    </Link>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={!canSave || busy}
-                      onClick={() => void acknowledge(item.importedId, item.revision)}
-                    >
-                      Acknowledge · keep local record
-                    </Button>
-                  </div>
-                </li>
-              ))}
+                    <p className="text-xs text-text-secondary">
+                      {item.accountName} · {formatDay(item.current.createdAt.slice(0, 10))} ·{' '}
+                      {formatMoney(item.current.amount, 'AUD')}
+                    </p>
+                    {item.reviewState === 'missing' && (
+                      <p className="text-xs text-text-secondary">
+                        The last complete bank response omitted this record. No local transaction
+                        was removed.
+                      </p>
+                    )}
+                    {item.reviewState === 'changed' && (
+                      <details className="text-xs text-text-secondary">
+                        <summary className="cursor-pointer select-none text-text-secondary hover:text-text">
+                          Compare bank observations
+                        </summary>
+                        <dl className="space-y-1 mt-2">
+                          <dt>Previously reported</dt>
+                          <dd>{item.previous && <BankDetails source={item.previous} />}</dd>
+                          <dt>Now reported</dt>
+                          <dd>
+                            <BankDetails source={item.current} />
+                          </dd>
+                        </dl>
+                      </details>
+                    )}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Link
+                        className="text-xs underline text-text-secondary"
+                        to={`/accounts/${item.accountId}`}
+                      >
+                        Open original register
+                      </Link>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={!canSave || busy}
+                        onClick={() => void acknowledge(item.importedId, item.revision)}
+                      >
+                        Acknowledge · keep local record
+                      </Button>
+                    </div>
+                  </li>
+                ))}
             </ul>
             <div className="flex gap-2">
               <Button

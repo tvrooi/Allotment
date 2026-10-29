@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { test, type Page } from '@playwright/test';
 import type { Api } from './fixtures';
 
 /**
@@ -12,6 +12,9 @@ export async function freshUpWindow(page: Page, api: Api, need = 8) {
     const remaining = Number(/r=(\d+)/.exec(limit)?.[1] ?? 20);
     const reset = Number(/t=(\d+)/.exec(limit)?.[1] ?? 0);
     if (res.status() !== 429 && remaining >= need) break;
-    await page.waitForTimeout((reset + 1) * 1000);
+    // Waiting for the window must not eat the test's own time
+    const wait = (reset + 1) * 1000;
+    test.info().setTimeout(test.info().timeout + wait);
+    await page.waitForTimeout(wait);
   }
 }

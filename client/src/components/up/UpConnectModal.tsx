@@ -16,11 +16,45 @@ import {
   type UpMappingChoice,
   type UpSyncResult,
 } from '../../api/up';
+import type { Account } from '../../types';
 import { formatMoney } from '../../utils/currency';
+import { formatDay } from '../../utils/dates';
 import { IS_DEMO } from '../../demo/demoApi';
 import { NotInDemoModal } from '../demo/NotInDemo';
 import { Private } from '../ui/Private';
 import { SortUncategorised } from '../review/SortUncategorised';
+
+/** Why no existing account can be linked to this Up account, in words */
+function linkBlockedReason(
+  up: UpDiscoveredAccount,
+  accounts: Account[],
+  choices: UpMappingChoice[],
+  current?: string,
+) {
+  const open = accounts.filter((x) => !x.closedAt);
+  if (up.accountId) return 'This Up account is already linked to an account.';
+  if (!open.length) return 'You have no accounts to link yet. Create a new one instead.';
+  const aud = open.filter((x) => (x.currency ?? 'AUD') === 'AUD');
+  if (!aud.length)
+    return `Up only syncs AUD accounts, and yours use ${[...new Set(open.map((x) => x.currency))].join(', ')}. Create a new account instead.`;
+  if (
+    aud.every((x) =>
+      choices.some((o) => o.action === 'link' && o.accountId === x.id && x.id !== current),
+    )
+  )
+    return 'Your AUD accounts are already chosen for other Up accounts.';
+  return 'No account can be linked here.';
+}
+
+const todayLocal = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const dayBefore = (day: string) => {
+  const d = new Date(day + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+};
 
 interface Props {
   isOpen: boolean;
@@ -44,6 +78,20 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
   const { data: accounts = [] } = useAccounts();
   const canSave = useCanSave();
   const refresh = useRefreshUp();
+  const dayAfter = (day?: string | null) => {
+    if (!day) return todayLocal();
+    const d = new Date(day + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+  };
+  // A different account chosen: one with history needs a cut-over, starting the day after its newest row
+  const chooseAccount = (upAccountId: string, accountId: string) => {
+    const local = accounts.find((x) => x.id === accountId);
+    update(upAccountId, {
+      accountId,
+      cutoverDate: local?.hasTransactions ? dayAfter(local.lastTransactionDate) : undefined,
+    });
+  };
   const update = (upAccountId: string, fields: Partial<UpMappingChoice>) =>
     setChoices((prev) =>
       prev.map((m) => (m.upAccountId === upAccountId ? { ...m, ...fields } : m)),
@@ -99,7 +147,12 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
     choices.every((m) => m.action === 'skip') ||
     choices.some(
       (m) =>
-        (m.action === 'link' && !m.accountId) || (m.action === 'create' && !m.accountName?.trim()),
+        (m.action === 'link' && !m.accountId) ||
+        (m.action === 'link' &&
+          !!accounts.find((x) => x.id === m.accountId)?.hasTransactions &&
+          !m.cutoverDate &&
+          !discovered?.find((d) => d.upAccountId === m.upAccountId)?.accountId) ||
+        (m.action === 'create' && !m.accountName?.trim()),
     );
   return (
     <Modal
@@ -147,8 +200,8 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
         {discovered && !result && (
           <>
             <p className="text-xs text-text-secondary">
-              Create accounts or link empty AUD accounts. Transactions already imported from CSV
-              cannot be matched to Up’s transaction IDs.
+              Create accounts, or link an existing AUD account. An account that already has history
+              (from a CSV or another app) keeps it: pick the day Up takes over.
             </p>
             <div className="space-y-3 max-h-80 overflow-y-auto">
               {discovered.map((a) => {
@@ -157,8 +210,8 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
                   (local) =>
                     !local.closedAt &&
                     (!a.accountId || local.id === a.accountId) &&
-                    local.currency === 'AUD' &&
-                    (!local.hasTransactions || local.id === choice.accountId) &&
+                    // No currency yet (the budget hasn't picked one) is fine: linking makes it AUD
+                    (local.currency ?? 'AUD') === 'AUD' &&
                     !choices.some(
                       (other) =>
                         other.upAccountId !== a.upAccountId &&
@@ -207,12 +260,17 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
                         />
                       </label>
                     )}
+                    {!eligible.length && choice.action !== 'link' && (
+                      <p className="text-xs text-text-secondary">
+                        {linkBlockedReason(a, accounts, choices, choice.accountId)}
+                      </p>
+                    )}
                     {choice.action === 'link' && (
                       <select
                         aria-label={`Link ${a.name} to account`}
                         value={choice.accountId ?? ''}
                         disabled={busy}
-                        onChange={(e) => update(a.upAccountId, { accountId: e.target.value })}
+                        onChange={(e) => chooseAccount(a.upAccountId, e.target.value)}
                         className="w-full rounded-md border border-border bg-surface px-2 py-2 text-text"
                       >
                         <option value="">Choose an account</option>
@@ -222,6 +280,29 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
                           </option>
                         ))}
                       </select>
+                    )}
+                    {choice.action === 'link' && choice.cutoverDate && (
+                      <div className="space-y-1">
+                        <label className="block text-xs text-text-secondary">
+                          Up takes over from
+                          <input
+                            type="date"
+                            aria-label={`Cut-over date for ${a.name}`}
+                            value={choice.cutoverDate}
+                            disabled={busy}
+                            onChange={(e) =>
+                              update(a.upAccountId, { cutoverDate: e.target.value || undefined })
+                            }
+                            className="mt-1 w-full rounded-md border border-border bg-surface px-2 py-2 text-text"
+                          />
+                        </label>
+                        <p className="text-xs text-text-secondary">
+                          Your existing history up to {formatDay(dayBefore(choice.cutoverDate))}{' '}
+                          stays as it is. Up’s transactions from {formatDay(choice.cutoverDate)}{' '}
+                          onwards are imported. Anything that looks like a repeat is kept and listed
+                          for you to check; FlyBudget never merges or adjusts anything by itself.
+                        </p>
+                      </div>
                     )}
                   </fieldset>
                 );

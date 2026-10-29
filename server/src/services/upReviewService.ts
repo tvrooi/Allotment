@@ -35,6 +35,10 @@ export function observeUpAccount(
   now: string,
   newIds: Set<string>,
   upAccountId: string,
+  /** Up imports that may duplicate an older row (importedId -> that row's id), flagged for review */
+  overlaps: Map<string, string> = new Map(),
+  /** The account's first sync: what arrives then is the starting history, not a change to review */
+  firstSync = false,
 ) {
   const seen = new Set<string>();
   for (const tx of history) {
@@ -63,7 +67,11 @@ export function observeUpAccount(
               : 'changed'
             : old.reviewState
         : newIds.has(importedId)
-          ? 'new'
+          ? overlaps.has(importedId)
+            ? 'overlap'
+            : firstSync
+              ? 'reviewed'
+              : 'new'
           : changed && !wasHeld
             ? 'changed'
             : old?.reviewState === 'pending'
@@ -76,6 +84,7 @@ export function observeUpAccount(
         transactionId: local?.id ?? null,
         sourceJson,
         reviewState,
+        overlapTransactionId: overlaps.get(importedId) ?? null,
         lastSeenAt: now,
       })
       .onConflictDoUpdate({
@@ -111,7 +120,25 @@ export function observeUpAccount(
   }
 }
 
-const needsReview = inArray(upSourceRecords.reviewState, ['new', 'changed', 'missing']);
+const needsReview = inArray(upSourceRecords.reviewState, ['new', 'changed', 'missing', 'overlap']);
+/** The older row a flagged import may duplicate, as it is now (null once it's gone) */
+function overlapOf(r: { reviewState: string; overlapTransactionId: string | null }) {
+  if (r.reviewState !== 'overlap' || !r.overlapTransactionId) return null;
+  const old = db
+    .select()
+    .from(transactions)
+    .where(eq(transactions.id, r.overlapTransactionId))
+    .get();
+  return old
+    ? {
+        id: old.id,
+        date: old.date,
+        amount: old.amount,
+        payee: old.payeeName,
+        reconciled: old.reconciled === 1,
+      }
+    : null;
+}
 export function upReview(offset = 0) {
   const names = new Map(
     db
@@ -156,6 +183,7 @@ export function upReview(offset = 0) {
       accountName,
       reviewState: r.reviewState,
       revision: r.revision,
+      overlap: overlapOf(r),
       current: view(r.sourceJson),
       previous: r.previousJson ? view(r.previousJson) : null,
     })),

@@ -472,6 +472,8 @@ export interface Account {
   rateDate: string | null;
   /** Its currency can only change while it has none */
   hasTransactions: boolean;
+  /** Date of its newest transaction (null when it has none) */
+  lastTransactionDate?: string | null;
   /**
    * The household group whose pool this account is, or null. A pool is outside the personal
    * budget even when it isn't marked off budget (docs/HOUSEHOLDS.md).

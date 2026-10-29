@@ -6,6 +6,7 @@ import { Button } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { restoreBackup } from '../../api/backup';
 import { IS_DEMO, downloadFromApi } from '../../demo/demoApi';
+import { YnabImportModal } from '../transactions/YnabImportModal';
 import { decimalSeparator, useAmountStyle } from '../../utils/currency';
 
 const API_BASE = '/api/export';
@@ -21,6 +22,7 @@ export function DataExport() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<{ name: string; data: unknown } | null>(null);
   const [restoring, setRestoring] = useState(false);
+  const [showYnab, setShowYnab] = useState(false);
   const [restoreMessage, setRestoreMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const queryClient = useQueryClient();
 
@@ -123,6 +125,19 @@ export function DataExport() {
 
       <div className="bg-surface-alt rounded-lg p-5 space-y-4">
         <div>
+          <h3 className="text-sm font-medium text-text">Import from YNAB</h3>
+          <p className="text-xs text-text-tertiary mt-0.5">
+            Bring over a YNAB register export: one account for each YNAB account, with your
+            categories. To import a bank's CSV into one account, open that account and use Import.
+          </p>
+        </div>
+        <Button variant="secondary" size="sm" onClick={() => setShowYnab(true)}>
+          <Upload size={14} /> From YNAB…
+        </Button>
+      </div>
+
+      <div className="bg-surface-alt rounded-lg p-5 space-y-4">
+        <div>
           <h3 className="text-sm font-medium text-text">Full Backup</h3>
           <p className="text-xs text-text-tertiary mt-0.5">
             Download a complete JSON backup of all your data — accounts, transactions, budgets,
@@ -173,6 +188,7 @@ export function DataExport() {
         )}
       </div>
 
+      <YnabImportModal isOpen={showYnab} onClose={() => setShowYnab(false)} />
       <ConfirmModal
         isOpen={pending !== null}
         onClose={() => setPending(null)}
