@@ -84,3 +84,40 @@ test('Cash (create) in the account picker makes the Cash account, and later purc
     page.getByRole('dialog', { name: 'Add transaction' }).getByRole('status'),
   ).toHaveCount(0);
 });
+
+for (const [label, viewport] of [
+  ['desktop', { width: 1280, height: 800 }],
+  ['phone', { width: 390, height: 844 }],
+] as const) {
+  test(`adding from a linked account's own page warns and moves the entry to Cash (${label})`, async ({
+    page,
+    api,
+  }) => {
+    await page.setViewportSize(viewport);
+    await fetch(`http://127.0.0.1:${UP_MOCK_PORT}/__mock/normal`, { method: 'POST' });
+    await freshUpWindow(page, api, 6);
+    await api.call('POST', '/up/setup', { accessToken: UP_TEST_TOKEN });
+    await api.call('POST', '/up/map-accounts', {
+      mappings: [
+        { upAccountId: 'spending', action: 'create' },
+        { upAccountId: 'saver', action: 'create' },
+      ],
+    });
+    const bank = (await api.accounts()).find((a: any) => a.bankLinked)!;
+    expect((await api.accounts()).some((a) => a.name === 'Cash')).toBe(false);
+
+    await open(page, `/accounts/${bank.id}?add=1`);
+    const form = page.getByRole('status').filter({ hasText: 'is linked to your bank' });
+    await expect(form).toContainText(`${bank.name} is linked to your bank`);
+    await form.getByRole('button', { name: 'Use a new Cash account instead' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Adding to Cash' })).toBeVisible();
+    const scope = viewport.width < 600 ? page.getByRole('dialog') : page;
+    await typeAmount(scope.getByLabel('Outflow').first(), '14.50');
+    await scope.getByRole('button', { name: /^Save/ }).first().click();
+    await expect
+      .poll(async () => (await api.accounts()).find((a) => a.name === 'Cash')?.balance)
+      .toBe(-1_450);
+    expect((await api.accounts()).find((a) => a.id === bank.id)!.balance).toBe(bank.balance);
+    await api.call('DELETE', '/up/connection');
+  });
+}

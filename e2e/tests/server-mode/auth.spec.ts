@@ -283,6 +283,8 @@ test('a forgotten password is reset with a code from the server log', async ({
   await owner.getByRole('button', { name: 'Make a reset code' }).click();
   await expect(owner.getByRole('status')).toContainText('A reset code was made');
   await expect(owner.getByText('Choose a new password')).toBeVisible();
+  // Where to look is said once
+  await expect(owner.getByText(/docker logs flybudget/)).toHaveCount(1);
 
   const logged = () => {
     const log = fs.readFileSync(process.env.E2E_SERVER_LOG!, 'utf8');

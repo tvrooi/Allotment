@@ -226,7 +226,7 @@ function PasswordForm({
           setNotice(message);
         } else {
           await authApi.requestResetCode();
-          setNotice(`A reset code was made. ${whereToLook}`);
+          setNotice('A reset code was made.');
         }
         setBusy(false);
         setMode('reset');
