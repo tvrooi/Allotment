@@ -6,7 +6,8 @@ import { categories, categoryGroups } from '../db/schema.js';
  * Up's own category slugs, each mapped to the names it could have in FlyBudget's category
  * templates (Australian first, then the general one). A slug maps to the first name the budget
  * has. Unclear matches are left out: an uncategorised row is better than a confidently wrong one.
- * Up's parent categories (good-life, home, personal, transport) are too broad to map.
+ * Up's parent categories (good-life, home, personal, transport) are too broad to map, and so are
+ * lottery-and-gambling, tobacco-and-vaping, cycling and utilities (water, gas and power together).
  */
 const UP_CATEGORY_NAMES: Record<string, string[]> = {
   groceries: ['Groceries'],
@@ -19,15 +20,12 @@ const UP_CATEGORY_NAMES: Record<string, string[]> = {
   'events-and-gigs': ['Entertainment'],
   hobbies: ['Hobbies'],
   'holidays-and-travel': ['Holidays', 'Vacation'],
-  'lottery-and-gambling': ['Entertainment', 'Miscellaneous'],
-  'tobacco-and-vaping': ['Miscellaneous'],
   'homeware-and-appliances': ['Home Goods', 'Home Maintenance'],
   internet: ['Internet'],
   'maintenance-and-improvements': ['Home Maintenance', 'Home Improvement'],
   pets: ['Pet Food & Supplies'],
   'rates-and-insurance': ['Contents & Home Insurance', 'Home Insurance'],
   'rent-and-mortgage': ['Rent', 'Rent / Mortgage'],
-  utilities: ['Electricity', 'Electric'],
   'hair-and-beauty': ['Personal Care'],
   'health-and-medical': ['GP & Specialists', 'Doctor / Medical'],
   technology: ['Electronics'],
@@ -37,9 +35,8 @@ const UP_CATEGORY_NAMES: Record<string, string[]> = {
   'gifts-and-charity': ['Gifts'],
   investments: ['Investments'],
   'mobile-phone': ['Mobile', 'Phone'],
-  'news-magazines-and-books': ['Books & Supplies', 'Entertainment'],
+  'news-magazines-and-books': ['Books & Supplies'],
   'car-insurance-and-maintenance': ['Car Insurance'],
-  cycling: ['Hobbies'],
   fuel: ['Fuel', 'Gas / Fuel'],
   parking: ['Tolls & Parking', 'Parking'],
   'public-transport': ['Public Transport', 'Public Transit'],

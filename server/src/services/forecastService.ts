@@ -244,17 +244,15 @@ function paydayEvents(
   incomePercent: number,
 ) {
   return plans.flatMap((plan) =>
-    paydays(plan, day(today, 1), end).map(
-      (p): ForecastEvent => ({
-        id: `payday:${plan.id}:${p.scheduledDate}`,
-        date: p.expectedDate,
-        kind: 'income',
-        description: `${plan.name} pay`,
-        amount: Number(floorDiv(BigInt(plan.expectedIncome) * BigInt(incomePercent), 100n)),
-        categoryId: null,
-        estimated: true,
-      }),
-    ),
+    paydays(plan, day(today, 1), end).map((p): ForecastEvent => ({
+      id: `payday:${plan.id}:${p.scheduledDate}`,
+      date: p.expectedDate,
+      kind: 'income',
+      description: `${plan.name} pay`,
+      amount: Number(floorDiv(BigInt(plan.expectedIncome) * BigInt(incomePercent), 100n)),
+      categoryId: null,
+      estimated: true,
+    })),
   );
 }
 
@@ -517,17 +515,15 @@ function projectScenario(
     }
     return events;
   });
-  const oneOffs = scenario.oneOffs.map(
-    (o, i): ForecastEvent => ({
-      id: `one-off:${i}`,
-      date: o.date,
-      kind: 'one-off',
-      description: o.description,
-      amount: o.amount,
-      categoryId: null,
-      estimated: true,
-    }),
-  );
+  const oneOffs = scenario.oneOffs.map((o, i): ForecastEvent => ({
+    id: `one-off:${i}`,
+    date: o.date,
+    kind: 'one-off',
+    description: o.description,
+    amount: o.amount,
+    categoryId: null,
+    estimated: true,
+  }));
   const events = [...ctx.baseEvents, ...income, ...oneOffs, ...costChanges].filter(
     (e) => e.date >= today && e.date <= ctx.end,
   );

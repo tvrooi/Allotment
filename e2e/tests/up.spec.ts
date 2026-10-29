@@ -6,7 +6,7 @@ import { freshUpWindow } from './upWindow';
 test('connects Up, imports settled history, resyncs and disconnects', async ({ page, api }) => {
   await fetch(`http://127.0.0.1:${UP_MOCK_PORT}/__mock/normal`, { method: 'POST' });
   // Banks are intentionally retained by backup restore, so clear this connection explicitly.
-  await api.call('DELETE', '/up/connection');
+  await freshUpWindow(page, api, 8);
   await api.createAccount('Manual account');
   await open(page, '/settings?tab=connections');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
@@ -50,7 +50,7 @@ test('shows an invalid Up token without saving a connection', async ({ page, api
   test
     .info()
     .annotations.push({ type: 'allow-page-errors', description: 'Expected rejected credentials' });
-  await api.call('DELETE', '/up/connection');
+  await freshUpWindow(page, api, 4);
   await api.createAccount('Manual account');
   await open(page, '/settings?tab=connections');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
