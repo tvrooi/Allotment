@@ -20,8 +20,8 @@ import {
 // or an MCP client, read this budget. They can't sign in, download backups or see bank
 // connections. A categorise token can also set past transactions' categories and edit
 // categories; an organise token can also propose rules (disabled until enabled here, in Rules),
-// set payee default categories and link suggested transfers (docs/READ-ONLY-ACCESS.md). Their
-// category changes are listed below, each one undoable.
+// set payee default categories and missing logos and link suggested transfers
+// (docs/READ-ONLY-ACCESS.md). Their category changes are listed below, each one undoable.
 
 const DAYS = [7, 30, 90];
 const inputClass =
@@ -69,9 +69,9 @@ export function ReadOnlyAccess() {
         read: it can't change anything, sign in, download backups or see bank connections. A{' '}
         <em>read and categorise</em> token can also set the category of past transactions and create
         or edit categories. A <em>read, categorise and organise</em> token can also propose rules
-        (they stay off until you turn them on in Rules), set payee default categories and link
-        transfers the app suggests. A token expires, you can revoke it here, and changing the
-        password revokes them all.
+        (they stay off until you turn them on in Rules), set payee default categories, add logos to
+        payees that have none and link transfers the app suggests. A token expires, you can revoke
+        it here, and changing the password revokes them all.
       </p>
 
       <form
