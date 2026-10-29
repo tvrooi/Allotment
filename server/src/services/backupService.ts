@@ -284,7 +284,7 @@ export function parseBackup(input: unknown): ParsedBackup {
           }
         }
         if (
-          !['new', 'changed', 'missing', 'pending', 'reviewed'].includes(
+          !['new', 'changed', 'missing', 'pending', 'reviewed', 'overlap'].includes(
             String(row.reviewState ?? 'reviewed'),
           ) ||
           (row.revision !== undefined && Number(row.revision) < 1) ||

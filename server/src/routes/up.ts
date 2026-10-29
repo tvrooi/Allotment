@@ -13,6 +13,8 @@ import {
   simplefinAccountMappings,
   enableBankingAccountMappings,
 } from '../db/schema.js';
+import { isValidDay } from '../services/upCutover.js';
+import { deleteTransactionRow } from '../services/transactionHelpers.js';
 import { cleanUpText, getUpAccounts, upErrorMessage } from '../services/upService.js';
 import {
   isUpSyncing,
@@ -63,6 +65,8 @@ const mappingSchema = z.object({
         accountId: z.string().min(1).max(64).optional(),
         accountName: z.string().trim().min(1).max(200).optional(),
         accountType: accountTypeSchema.optional(),
+        /** Link to an account that already has history: Up rows from this day on are imported */
+        cutoverDate: z.string().max(10).optional(),
       }),
     )
     .min(1)
@@ -106,6 +110,8 @@ upRouter.get('/connection', (_req, res) => {
         accountId: m.accountId,
         accountName: m.accountId ? (local.get(m.accountId) ?? null) : null,
         isEnabled: m.isEnabled,
+        cutoverDate: m.cutoverDate,
+        cutoverDifference: m.cutoverDifference,
       })),
   });
 });
@@ -230,10 +236,17 @@ upRouter.post('/map-accounts', (req, res) => {
         .from(transactions)
         .where(eq(transactions.accountId, local.id))
         .get();
-      if (hasHistory && mapping.accountId !== local.id)
+      const newLink = mapping.accountId !== local.id;
+      if (choice.cutoverDate !== undefined && !isValidDay(choice.cutoverDate))
+        return res.status(400).json({ error: 'Choose a valid cut-over date.' });
+      if (choice.cutoverDate !== undefined && newLink && !hasHistory)
+        return res
+          .status(400)
+          .json({ error: 'A cut-over date only applies to an account that already has history.' });
+      if (hasHistory && newLink && choice.cutoverDate === undefined)
         return res.status(409).json({
           error:
-            'Choose an empty account or create a new one. Existing CSV history cannot be matched to Up IDs.',
+            'This account already has transactions. Choose the date Up should take over from, or pick an empty account.',
         });
       if (
         targetIds.has(local.id) ||
@@ -274,8 +287,13 @@ upRouter.post('/map-accounts', (req, res) => {
           })
           .run();
       }
+      // The cut-over is set once, when the link is made; later saves keep it
+      const cutoverDate =
+        choice.action === 'link' && mapping.accountId !== accountId
+          ? choice.cutoverDate
+          : undefined;
       db.update(upAccountMappings)
-        .set({ accountId, isEnabled: 1 })
+        .set({ accountId, isEnabled: 1, ...(cutoverDate ? { cutoverDate } : {}) })
         .where(eq(upAccountMappings.id, mapping.id))
         .run();
     }
@@ -347,7 +365,7 @@ upRouter.post('/review/acknowledge', (req, res) => {
       and(
         eq(upSourceRecords.importedId, parsed.data.importedId),
         eq(upSourceRecords.revision, parsed.data.revision),
-        inArray(upSourceRecords.reviewState, ['new', 'changed', 'missing']),
+        inArray(upSourceRecords.reviewState, ['new', 'changed', 'missing', 'overlap']),
       ),
     )
     .run();
@@ -356,6 +374,64 @@ upRouter.post('/review/acknowledge', (req, res) => {
       .status(409)
       .json({ error: 'This item changed or was already reviewed. Refresh before reviewing it.' });
   res.json({ reviewed: true });
+});
+/**
+ * Delete the older row a flagged import may duplicate. The Up row stays. One click, but only
+ * for a row nobody has reconciled, and only while the flag is as the owner saw it.
+ */
+upRouter.post('/review/overlap/delete-old', (req, res) => {
+  if (isUpSyncing()) return res.status(409).json({ error: 'Wait for the Up sync to finish.' });
+  const parsed = z
+    .object({ importedId: z.string().min(1).max(1024), revision: z.number().int().positive() })
+    .strict()
+    .safeParse(req.body);
+  if (!parsed.success)
+    return res.status(400).json({ error: 'Choose a review item and its current revision.' });
+  const record = db
+    .select()
+    .from(upSourceRecords)
+    .where(
+      and(
+        eq(upSourceRecords.importedId, parsed.data.importedId),
+        eq(upSourceRecords.revision, parsed.data.revision),
+        eq(upSourceRecords.reviewState, 'overlap'),
+      ),
+    )
+    .get();
+  if (!record)
+    return res
+      .status(409)
+      .json({ error: 'This item changed or was already reviewed. Refresh before reviewing it.' });
+  const old = record.overlapTransactionId
+    ? db.select().from(transactions).where(eq(transactions.id, record.overlapTransactionId)).get()
+    : undefined;
+  if (old) {
+    if (old.reconciled === 1)
+      return res.status(409).json({
+        error: 'That older transaction is reconciled. Unlock it first, or keep both.',
+      });
+    if (old.importedId?.startsWith('up:'))
+      return res.status(409).json({ error: 'That is an Up import. Keep both.' });
+    if (old.transferTransactionId) {
+      const other = db
+        .select({ reconciled: transactions.reconciled })
+        .from(transactions)
+        .where(eq(transactions.id, old.transferTransactionId))
+        .get();
+      if (other?.reconciled === 1)
+        return res
+          .status(409)
+          .json({ error: 'That older transaction is linked to a reconciled one.' });
+    }
+  }
+  db.transaction(() => {
+    if (old) deleteTransactionRow(old);
+    db.update(upSourceRecords)
+      .set({ reviewState: 'reviewed', previousJson: null })
+      .where(eq(upSourceRecords.importedId, record.importedId))
+      .run();
+  });
+  res.json({ deleted: !!old });
 });
 upRouter.get('/round-ups', (_req, res) => {
   // Bank-local dates can be a day ahead/behind UTC; include an extra day at this boundary.
