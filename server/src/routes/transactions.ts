@@ -742,6 +742,9 @@ transactionsRouter.put('/:id', (req, res) => {
       error:
         'Cannot change the amount, date or account of a reconciled transaction. Unlock it first.',
     });
+  // Access tokens (assistants) keep the old rule: they never touch a reconciled row at all
+  if (existing.reconciled === 1 && /^bearer /i.test(req.headers.authorization ?? ''))
+    return res.status(403).json({ error: 'Cannot modify a reconciled transaction' });
   if (
     existing.parentTransactionId &&
     (changes('accountId') || changes('date') || changes('amount'))
