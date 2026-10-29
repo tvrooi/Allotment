@@ -3,7 +3,7 @@ import { and, eq, gt, inArray, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
-import { accessTokens, payees, rules, transactions } from '../db/schema.js';
+import { accessTokens, rules, transactions } from '../db/schema.js';
 import { listTransferSuggestions } from '../services/transferService.js';
 import { todayIso } from '../services/mainAmountService.js';
 import { gatewayPersonId } from '../config.js';
@@ -13,7 +13,7 @@ import { logoSchema } from '../utils/logo.js';
 // recognisable prefix. Its scope is 'read'; 'categorise': read, plus setting the category of
 // past transactions and creating and editing categories (categoriseAllows,
 // categoryManageAllows); or 'organise': categorise, plus proposing rules the owner enables,
-// payee default categories, payee logos where none is set and linking suggested transfers
+// payee default categories and logos (never removing one) and linking suggested transfers
 // (organiseAllows). Only its SHA-256 is stored, like login sessions, so a leaked database doesn't leak usable tokens. Tokens expire, can be revoked, and changing the password
 // revokes them all.
 
@@ -264,7 +264,7 @@ function categoryOnlyRule(ruleId: unknown) {
  *   is still disabled, without enabling it. Never delete, reorder or enable a rule;
  * - apply one category-only rule to uncategorised past transactions (POST /rules/apply);
  * - set a payee's default category, and nothing else about the payee;
- * - give a payee that has no logo one (a brand icon); never replace or remove a logo;
+ * - set or replace a payee's logo (a brand icon); never remove one;
  * - link a pair of transactions the server itself suggests as a transfer;
  * - suggest assignments for the owner to apply (POST /budget-proposals).
  */
@@ -303,20 +303,12 @@ export function organiseAllows(method: string, rawPath: string, body: unknown): 
       const row = db.select({ enabled: rules.enabled }).from(rules).where(eq(rules.id, id)).get();
       return !!row && row.enabled === 0;
     }
-    const payee = PAYEE_PATH.exec(rawPath);
-    if (payee) {
+    if (PAYEE_PATH.test(path)) {
       if (!isObject(body) || Object.keys(body).length !== 1) return false;
       if (typeof body.defaultCategoryId === 'string' || body.defaultCategoryId === null)
         return true;
-      if (typeof body.logo !== 'string' || !logoSchema.safeParse(body.logo).success) return false;
-      let id: string;
-      try {
-        id = decodeURIComponent(payee[1]);
-      } catch {
-        return false;
-      }
-      const row = db.select({ logo: payees.logo }).from(payees).where(eq(payees.id, id)).get();
-      return !!row && !row.logo;
+      // A logo can be set or replaced, never removed
+      return typeof body.logo === 'string' && logoSchema.safeParse(body.logo).success;
     }
     return false;
   }
