@@ -9,7 +9,8 @@ change based on the upstream repository; the published FlyBudget release does no
 2. Create a personal access token at [Up's developer portal](https://api.up.com.au/).
 3. In FlyBudget, choose **Settings → Connected Banks → Up → Connect Up**.
 4. Paste the token directly into FlyBudget. Do not put it in a GitHub issue or send it in chat.
-5. Create a new account for each Up account you want, link an empty AUD account, or skip it.
+5. Create a new account for each Up account you want, link an AUD account, or skip it. An account that already has transactions is linked from a
+   cut-over date you choose: its older history stays, and Up's transactions from that day on are added.
 6. Choose **Save & Sync**. Later, use **Sync Now** to sync again. A local desktop budget also
    syncs when its app starts; a hosted budget syncs when the server starts.
 

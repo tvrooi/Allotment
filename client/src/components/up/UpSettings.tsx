@@ -7,6 +7,8 @@ import { useCanSave } from '../../hooks/useConnection';
 import { Button } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { UpConnectModal } from './UpConnectModal';
+import { formatDay } from '../../utils/dates';
+import { formatMoney } from '../../utils/currency';
 import { UpReview } from './UpReview';
 
 export function UpSettings() {
@@ -47,6 +49,13 @@ export function UpSettings() {
             .map((a) => (
               <p key={a.upAccountId} className="text-xs text-text-secondary">
                 {a.name} → {a.accountName ?? 'Not linked'}
+                {a.cutoverDate && (
+                  <span className="block text-text-tertiary">
+                    Your history before {formatDay(a.cutoverDate)} stays as it is; Up’s starts then.
+                    {!!a.cutoverDifference &&
+                      ` Up’s balance the day before is ${formatMoney(Math.abs(a.cutoverDifference), 'AUD')} ${a.cutoverDifference > 0 ? 'more' : 'less'} than your register’s: check the older transactions, or reconcile.`}
+                  </span>
+                )}
               </p>
             ))}
           {connection.syncError && (

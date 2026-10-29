@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { createCategory, createGroup } from '../../api/categories';
 import { fileCategoryKey, type FileCategory } from '../../utils/csv';
 import type { ImportRow } from '../../api/transactions';
@@ -51,7 +50,7 @@ export function suggestChoices(
       continue;
     }
     const sameGroup = use.group
-      ? groups.find((g) => !g.isIncome && g.name.toLowerCase() === use.group!.toLowerCase())
+      ? groups.find((g) => g.name.toLowerCase() === use.group!.toLowerCase())
       : undefined;
     choices[use.key] = {
       kind: 'new',
@@ -81,7 +80,7 @@ export async function resolveCategoryChoices(
         const name = groupId.slice(4);
         let made = madeGroups.get(name);
         if (!made) {
-          made = (await createGroup({ name })).id;
+          made = (await createGroup({ name, isIncome: 0 })).id;
           madeGroups.set(name, made);
         }
         groupId = made;
@@ -114,7 +113,7 @@ interface Props {
 
 /** "Your file's categories": map each to an existing category, create it, or leave it out */
 export function ImportCategories({ uses, groups, choices, onChange }: Props) {
-  const expenseGroups = useMemo(() => groups.filter((g) => !g.isIncome), [groups]);
+  const expenseGroups = groups;
   const set = (key: string, choice: CategoryChoice) => onChange({ ...choices, [key]: choice });
   return (
     <div className="overflow-x-auto max-h-72 overflow-y-auto border border-border rounded-lg">

@@ -1,5 +1,14 @@
 # Changes
 
+## 0.2.0-up.62
+
+- **Link Up to an account that already has history.** In **Connect Up**, **Link an existing account** now works for an AUD account with transactions. You pick the day Up takes over (by default the day after the account's newest transaction). Your history before that day stays exactly as it is; Up's transactions from that day on are imported. Up rows close to the cut-over, or that look like one you already have (same amount, within 2 days; 3 just after the cut-over), are imported and listed under **Possible duplicates from your old history** in Settings, Connected Banks, Up, where you choose **Keep both** or **Delete the older one**. Nothing is merged for you, a reconciled row is never deleted, and no opening-balance row is made: if your history disagrees with Up's balance on the day before the cut-over, the difference is shown and the usual "account disagrees with the bank" steps apply. Empty accounts link as before.
+- **Categories come with a CSV.** The column mapper has **Category** and **Category group**. After mapping, each category in the file is matched to yours by name or created in a group you choose, before anything is imported. The file's categories win over rules; blank ones stay uncategorised.
+- **Import from YNAB.** From the Welcome page, **Settings, Data** and an account's Import dialog: pick YNAB's register export, and FlyBudget creates or matches one account for each YNAB account, with categories and memos. "Ready to Assign" income stays uncategorised. YNAB's plan export (assigned amounts) is not imported yet.
+- **A balance you typed stays true.** An account added with "Current balance as of today" keeps that balance when you later import older history: the starting balance moves by what the older rows add, and the import says so. Not for bank-linked accounts or accounts with reconciled rows (it shows the balance change instead), and not after you edit the starting balance yourself.
+- **After an import, the register shows it.** The register jumps to the imported dates instead of an empty This Month.
+- **Welcome page** suggests an order for people coming from another app: connect your bank first and import only older history, or import everything and link Up from a cut-over date.
+
 ## 0.2.0-up.61
 
 - **Phone fixes.** Reconcile shows the summary above a full-width list, and prefills the bank's balance for bank-linked accounts. The Budget header is compact: the extra actions sit in a **...** menu, month buttons look like buttons, and **Find a category** reaches Groceries in two taps. Tab bars show a fade and arrow when they scroll, and the Add transaction category list is full width.

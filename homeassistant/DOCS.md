@@ -51,7 +51,7 @@ only its private data directory, then starts FlyBudget as the unprivileged Node 
 
 In FlyBudget, open **Settings → Connected Banks → Up → Connect Up**. Create a personal access
 token at [Up's developer portal](https://api.up.com.au/) and paste it directly into FlyBudget.
-Choose new accounts or empty AUD accounts and **Save & Sync**. Your other devices use that
+Choose new accounts or AUD accounts (an account with history links from a cut-over date) and **Save & Sync**. Your other devices use that
 server connection; you do not enter a separate token on each device.
 
 Up sync runs on app startup or **Sync Now**. In Settings → Connected Banks → Up, opt in to

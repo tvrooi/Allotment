@@ -86,7 +86,8 @@ export default function WelcomePage() {
     );
   }
 
-  if (accounts.length > 0) {
+  // Not while a YNAB import is running: it makes the first account before it is done
+  if (accounts.length > 0 && !showYnab) {
     return <Navigate to="/dashboard" replace />;
   }
 
