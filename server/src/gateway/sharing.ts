@@ -256,6 +256,9 @@ export function sharingRouter(o: {
         throw new Invalid('Choose someone who uses FlyBudget on this server');
       if (inUse(me.id, body.groupId)) throw new Invalid('That household is already combined');
       await checkGroup(me, body.groupId, body.partnerPersonId);
+      // Again after waiting on the budget, with nothing awaited before the write: two requests
+      // at once can't both combine the same household
+      if (inUse(me.id, body.groupId)) throw new Invalid('That household is already combined');
       const link = store.addHouseholdLink({
         inviterId: me.id,
         inviterGroup: body.groupId,
@@ -282,6 +285,12 @@ export function sharingRouter(o: {
       const theirs = await exportOf(inviter, link.inviterGroup);
       if (theirs.group.currency !== mine.group.currency)
         throw new Invalid(`Both households must use ${theirs.group.currency}`);
+      // Again after waiting on both budgets, right before the write (see above): still asked,
+      // and neither household combined elsewhere in the meantime
+      const now = store.householdLink(link.id);
+      if (!now || now.acceptedAt) throw new Invalid('Nothing to accept');
+      if (inUse(me.id, body.groupId, link.id) || inUse(inviter.id, link.inviterGroup, link.id))
+        throw new Invalid('That household is already combined');
       store.acceptHouseholdLink(link.id, body.groupId, body.partnerPersonId);
       return [200, describe(store.householdLink(link.id)!, me)];
     }),

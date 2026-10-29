@@ -306,6 +306,20 @@ describe('multi-user gateway', () => {
     expect((await partner('DELETE', `/api/shared-households/${linkId}`)).status).toBe(204);
     expect((await owner('GET', `/api/shared-households/${linkId}/register`)).status).toBe(404);
     expect((await owner('GET', '/api/shared-households')).body.links).toEqual([]);
+
+    // Two requests at once for the same household: only one is made
+    const both = await Promise.all(
+      [0, 1].map(() =>
+        owner('POST', '/api/shared-households', {
+          partnerId,
+          groupId: home.group.id,
+          partnerPersonId: ed.id,
+        }),
+      ),
+    );
+    expect(both.map((r) => r.status).sort()).toEqual([201, 400]);
+    expect((await owner('GET', '/api/shared-households')).body.links).toHaveLength(1);
+    await owner('DELETE', `/api/shared-households/${both.find((r) => r.status === 201)!.body.id}`);
   }, 120_000);
 
   it("reports the gateway's sign-in in Settings → Server, not a missing budget password", async () => {

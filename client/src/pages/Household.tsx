@@ -131,6 +131,8 @@ export default function HouseholdPage() {
       setCreating(false);
       setId(data.group.id);
       await cache.invalidateQueries({ queryKey: ['households'] });
+      // A combined household shows this ledger too
+      await cache.invalidateQueries({ queryKey: ['shared-households'] });
       await cache.invalidateQueries({ queryKey: ['budget'] });
       await cache.invalidateQueries({ queryKey: ['budget-summary'] });
       await cache.invalidateQueries({ queryKey: ['review'] });
