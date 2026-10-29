@@ -4,6 +4,7 @@ import { transactions, accounts, categories, categoryGroups, payees } from '../d
 import { eq, and, gte, lte, sql, inArray, lt, isNull } from 'drizzle-orm';
 import type { Request, Response } from 'express';
 import { monthBounds } from '../utils/date.js';
+import { detectSalary, uncategorisedSummary } from '../services/importTidy.js';
 import { isLiabilityType } from '../utils/accountTypes.js';
 import { isMonth, isRealDate } from '../utils/validation.js';
 import {
@@ -347,6 +348,21 @@ reportsRouter.get('/uncategorised-payees', (req, res) => {
       sampleNotes: [...notes],
     })),
   });
+});
+
+// How much of the spending (and money in) in a window has no category, so a chart or forecast
+// built on it can say what it leaves out. `from`/`to` are days.
+reportsRouter.get('/uncategorised-summary', (req, res) => {
+  const { from, to } = req.query;
+  const badDay = (v: unknown) => v !== undefined && (typeof v !== 'string' || !isRealDate(v));
+  if (badDay(from) || badDay(to))
+    return res.status(400).json({ error: 'Expected `from` and `to` as YYYY-MM-DD' });
+  res.json(uncategorisedSummary(from as string | undefined, to as string | undefined));
+});
+
+// A repeating pay deposit (7, 14 or 28-31 days), or null. A guess for the owner to confirm.
+reportsRouter.get('/salary', (_req, res) => {
+  res.json(detectSalary());
 });
 
 reportsRouter.get('/income-vs-expenses', (req, res) => {

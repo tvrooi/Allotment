@@ -1,9 +1,15 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
   TOP_TREND_CATEGORIES,
   useIncomeVsExpenses,
   useTopSpendingCategories,
+  useUncategorisedSummary,
 } from '../../hooks/useReports';
+import { dayBounds } from '../../utils/dateRange';
+import { formatCurrency } from '../../utils/currency';
+import { transactionsLink } from '../../utils/transactionFilters';
+import { Private } from '../ui/Private';
 import { expenseFigure, incomeFigure, monthsToAverage } from '../../utils/reportSummary';
 import {
   NetWorthChart,
@@ -66,6 +72,31 @@ const TONE_CLASS = {
  */
 function SummaryTiles({ from, to }: { from: string; to: string }) {
   const cards = useSummaryCards(from, to);
+  const days = dayBounds(from, to);
+  const { data: left } = useUncategorisedSummary(days.from, days.to);
+  // Without any categorised income, "Income $0" and a green "+$X" of expenses are nonsense:
+  // the money is there, it just has no category yet. Say that instead of the figures.
+  if (
+    left &&
+    left.categorisedIncome === 0 &&
+    (left.uncategorisedIncomeCount > 0 || left.uncategorisedSpendingCount > 0)
+  )
+    return (
+      <div role="status" className="h-full flex flex-col justify-center gap-1 text-sm text-text">
+        <p>
+          These totals need categories.{' '}
+          <Private>{formatCurrency(left.uncategorisedIncome)}</Private> of money in and{' '}
+          <Private>{formatCurrency(left.uncategorisedSpending)}</Private> of spending aren&rsquo;t
+          categorised yet, so income and expenses can&rsquo;t be worked out.
+        </p>
+        <Link
+          to={transactionsLink({ uncategorized: true, datePreset: 'custom', ...days })}
+          className="font-medium text-brand-600 hover:underline"
+        >
+          Sort them
+        </Link>
+      </div>
+    );
   return (
     <div className="h-full grid grid-cols-2 @4xl:grid-cols-4 gap-x-3 gap-y-2 content-center">
       {cards.map((c) => (

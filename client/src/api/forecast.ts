@@ -65,7 +65,15 @@ export interface Forecast {
   includeHousehold: boolean;
   startBalance: number;
   accounts: { id: string; name: string; balance: number }[];
-  spending: { from: string; to: string; days: number; total: number; count: number };
+  spending: {
+    from: string;
+    to: string;
+    days: number;
+    total: number;
+    count: number;
+    /** Spending in the lookback with no category: the average above leaves it out */
+    uncategorised: { total: number; count: number; share: number; significant: boolean };
+  };
   history: { date: string; balance: number }[];
   freshness: { latestTransaction: string | null; upLastSyncedAt: string | null };
   plans: { id: string; name: string; expectedIncome: number }[];

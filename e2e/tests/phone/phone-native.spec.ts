@@ -344,7 +344,15 @@ test('the month picker fits the screen and is easy to tap', async ({ page, api }
 });
 
 test('report summary figures fit their card', async ({ page, api }) => {
-  await seedAccount(api);
+  const { checking } = await seedAccount(api);
+  // The figures only show once some income has a category (otherwise Reports asks to sort it)
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: 250_000,
+    payeeName: 'Employer',
+    categoryId: (await api.category('Paychecks')).id,
+  });
   await open(page, '/reports');
   await expect(page.getByText('Total Expenses')).toBeVisible();
   const clipped = await page.evaluate(() =>

@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { accounts, transactions, upAccountMappings, upConnections } from '../db/schema.js';
+import { upCategoryResolver } from './upCategoryMap.js';
 import { buildRuleContext, insertNewTransaction, loadRules } from './ruleService.js';
 import { accountCurrency, currencyContext } from './mainAmountService.js';
 import { accountTransactionSum } from './balances.js';
@@ -127,6 +128,7 @@ async function runSync(): Promise<UpSyncResult> {
         const unique = [...new Map(history.map((t) => [t.id, t])).values()];
         const rows = unique.flatMap((t) => upImportRows(t, mapping.upAccountId));
         const target = upSettledBalance(bank, unique);
+        const upCategory = upCategoryResolver();
         const ruleOpts = { rules: loadRules(), ctx: buildRuleContext(), currencies: ctx };
         const hadHistory = !!db
           .select({ id: transactions.id })
@@ -138,7 +140,7 @@ async function runSync(): Promise<UpSyncResult> {
           let added = 0;
           let skipped = 0;
           const newIds = new Set<string>();
-          for (const row of rows) {
+          for (const { upCategory: slug, ...row } of rows) {
             const existing = db
               .select({ id: transactions.id })
               .from(transactions)
@@ -162,6 +164,8 @@ async function runSync(): Promise<UpSyncResult> {
                 payeeId: null,
                 importedPayee: row.payeeName,
                 categoryId: null,
+                // After rules and the payee's default; never for rows that already exist
+                fallbackCategoryId: upCategory(slug),
               },
               ruleOpts,
             );

@@ -1,5 +1,13 @@
 # Changes
 
+## 0.2.0-up.59
+
+- **Your first Up import arrives mostly categorised.** FlyBudget now reads Up's own category on each transaction (Groceries, Takeaway, Rent and Mortgage, Public Transport and so on) and puts new transactions in the matching FlyBudget category when you have one. A rule or a payee's default category still wins, transfers and money in are never categorised from Up, and transactions already in your budget are never changed. Where Up's category has no clear match here (for example Life Admin), the transaction stays uncategorised for you to sort.
+- **Sort your first import in a few picks.** After **Save & Sync**, a new step lists what is still uncategorised, a payee at a time with the biggest groups first. One pick sorts all of a payee's transactions and, with **Also apply to future transactions** ticked (the default), makes it the payee's default category. Each pick can be undone, and **Skip for now** leaves everything as it is.
+- **Pay is found for you.** A repeating deposit from the same payee every 7 or 14 days, or monthly, is offered as "Looks like pay from X every 14 days. Mark it as income?". One tap puts its deposits in your pay category and makes that the payee's default; it can be undone. The offer appears when an import finishes and in **Get started** on the dashboard.
+- **Payday plans start from your pay.** A new payday plan is filled in from the latest pay found (its date, amount and the 14-day cycle), so it can be saved without typing. When no deposit is marked as income yet, the plan lists recent uncategorised deposits with a **This is pay** button instead of telling you to leave the screen.
+- **Forecasts and reports say what they leave out.** When more than 5% of spending has no category, the cash runway forecast and Reports show "$X of spending isn't categorised, so this leaves it out" with a link to those transactions. Reports no longer shows "Income $0" and a green expenses figure while none of your income is categorised; it points you to sort it instead.
+
 ## 0.2.0-up.58
 
 - **Combine households with another FlyBudget user.** With separate budgets per person (the Home Assistant app's **multi_user** option), two people who each keep a household can join them: **Household → Combine with another FlyBudget user**. One asks and the other accepts, each choosing who the other is in their own household.
