@@ -389,6 +389,17 @@ export interface BudgetCategory {
   spent: number;
   carryOver: number;
   balance: number;
+  /** Recurring debits still expected this month (positive cents; expense categories only) */
+  expected?: number;
+  expectedItems?: ExpectedDebit[];
+}
+
+export interface ExpectedDebit {
+  scheduleId: string;
+  name: string;
+  date: string;
+  /** Positive cents in the budget's currency */
+  amount: number;
 }
 
 export interface BudgetGroup {

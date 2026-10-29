@@ -130,3 +130,25 @@ describe('splitCategories picks common categories to top up a section', () => {
     expect(shown.map((c) => c.name)).toEqual(['Zoo Trips', 'Alpacas', 'Kayaks']);
   });
 });
+
+describe('expected recurring debits', () => {
+  it('keep an otherwise empty category listed, without changing its figures', () => {
+    const empty: BudgetCategory = {
+      id: 'phone',
+      groupId: 'g',
+      name: 'Phone',
+      icon: null,
+      budgetType: null,
+      sortOrder: 0,
+      createdAt: '',
+      budgeted: 0,
+      spent: 0,
+      carryOver: 0,
+      balance: 0,
+    };
+    expect(isActiveCategory(empty, false)).toBe(false);
+    const expecting = { ...empty, expected: 5000 };
+    expect(isActiveCategory(expecting, false)).toBe(true);
+    expect(categoryFigures(expecting, false)).toEqual(categoryFigures(empty, false));
+  });
+});

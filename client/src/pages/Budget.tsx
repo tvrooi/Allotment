@@ -31,6 +31,7 @@ import { ExternalLink } from '../components/ui/ExternalLink';
 import { docsUrl } from '../utils/project';
 import { categoryFigures, splitCategories } from '../utils/budgetFigures';
 import { TransferredNote } from '../components/budget/TransferredNote';
+import { ExpectedNote } from '../components/budget/ExpectedNote';
 import type { BudgetCategory, BudgetGroup, BudgetType } from '../types';
 
 function AmountInput({
@@ -171,6 +172,7 @@ function CategoryRow({
           spent={isIncome ? actual : cat.spent}
           budgeted={cat.budgeted + (cat.transferred ?? 0)}
           isIncome={isIncome}
+          expected={cat.expected}
         />
         <TransferredNote cat={cat} className="mt-0.5" />
         {cat.target && (
@@ -225,6 +227,7 @@ function CategoryRow({
           >
             {formatCurrency(actual)}
           </Link>
+          <ExpectedNote cat={cat} />
         </div>
       </td>
       <td className="py-1.5 pl-3 pr-6 text-right align-top">

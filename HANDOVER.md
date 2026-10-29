@@ -11,6 +11,7 @@ Last updated: 29 October 2026.
 
 - **Balance integrity (up.53):** reconciliation is atomic and rejects adjustments from partial or stale selections. Known bank mismatches and residual balances in closed budget accounts block new funding; Settings exposes closed balances for explicit reconciliation. Bank-fed income is never auto-created a second time. Existing ledger rows are preserved. See docs/ENVELOPE-FUNDING.md, “Balance checks and reconciliation”.
 - **Payee logos (up.54, up.55):** an organise token may set or replace a payee's logo, never remove one (docs/READ-ONLY-ACCESS.md). On 29 October an assistant added brand icons to 188 business payees and swapped 44 of them for cleaner theSVG brand icons (rendered to PNG); about 270 small or overseas businesses still show initials.
+- **Expected recurring debits (up.56):** the Budget page shows each expense category's unpaid recurring bills for the month in orange (`server/src/services/expectedDebits.ts`, attached by `GET /api/budget/:month`; `client/src/components/budget/ExpectedNote.tsx`). A projection only; it never writes occurrences or ledger rows.
 - **Live:** `0.2.0-up.55` installed on 29 October after a full HA backup ("Before FlyBudget 0.2.0-up.55"); health, budget access and Up sync verified afterwards.
 
 - **Live Home Assistant app:** installed from the catalog repository (not the old `local_flybudget_up`), with **Auto update on**. It ran `0.2.0-up.55` on 29 October; confirm the installed app identity and version before updating.

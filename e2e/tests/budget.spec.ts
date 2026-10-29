@@ -250,3 +250,26 @@ test('overspending is covered from the amount editor or by auto-assign', async (
     .poll(async () => (await api.call('GET', `/budget/${thisMonth()}/summary`)).totalBudgeted)
     .toBe(20_000);
 });
+
+test('a recurring bill shows as expected in its category before it is debited', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Checking', 100_000);
+  const phone = await api.category('Phone');
+  await api.call('POST', '/schedules', {
+    name: 'Mobile plan',
+    amount: -4_500,
+    recurrenceType: 'once',
+    startDate: isoDay(),
+    accountId: checking.id,
+    categoryId: phone.id,
+  });
+
+  await open(page, '/budget');
+  const expected = page.getByTestId('expected-debit');
+  await expect(expected).toContainText(/\$45(\.00)? expected/);
+  await expect(expected).toHaveAttribute('title', /Mobile plan/);
+  // Orange, not the red of overspending
+  await expect(expected).toHaveClass(/text-expected/);
+});

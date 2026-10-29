@@ -17,6 +17,7 @@ import {
   fundedWrite,
 } from '../services/budgetMoves.js';
 import { budgetSummary, fundingRevision, fundingState } from '../services/budgetService.js';
+import { withExpectedDebits } from '../services/expectedDebits.js';
 import { annualOverview } from '../services/annualOverview.js';
 import { Router } from 'express';
 import { db } from '../db/index.js';
@@ -120,7 +121,10 @@ budgetRouter.put('/start', (req, res) => {
   res.json({ month });
 });
 
-budgetRouter.get('/:month', (req, res) => res.json(budgetWithTargets(req.params.month)));
+// Each expense category also lists the recurring debits still expected this month
+budgetRouter.get('/:month', (req, res) =>
+  res.json(withExpectedDebits(budgetWithTargets(req.params.month), req.params.month)),
+);
 
 // Existing overcommitments survive; new reservations require existing resources.
 budgetRouter.put('/:month/:categoryId', (req, res, next) => {

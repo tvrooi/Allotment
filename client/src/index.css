@@ -60,6 +60,8 @@
   --color-negative-subtle: #feebec;
   --color-caution: #9a5a00;
   --color-caution-subtle: #fff7c2;
+  /* A scheduled debit that hasn't left the account yet (budget Activity) */
+  --color-expected: #c2410c;
 
   /* Sidebar */
   --color-sidebar-bg: #f6f5f3;
@@ -180,6 +182,7 @@
   --color-negative-subtle: #44262a;
   --color-caution: #f0b955;
   --color-caution-subtle: #3f3219;
+  --color-expected: #fb923c;
 
   --color-sidebar-bg: #211e1b;
   --color-sidebar-deep: #1c1a17;
