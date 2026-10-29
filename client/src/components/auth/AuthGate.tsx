@@ -153,6 +153,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     <PasswordForm
       mode={status.needsSetup ? 'setup' : 'login'}
       multiUser={Boolean(status.multiUser)}
+      canRecover={Boolean(status.canRecover)}
+      canNotify={Boolean(status.canNotify)}
       onDone={onSignedIn}
     />
   );
@@ -175,10 +177,15 @@ const TITLES: Record<FormMode, string> = {
 function PasswordForm({
   mode: startMode,
   multiUser,
+  canRecover,
+  canNotify,
   onDone,
 }: {
   mode: 'setup' | 'login';
   multiUser: boolean;
+  /** Single-user server: "Forgot password?" makes a reset code in the server log */
+  canRecover: boolean;
+  canNotify: boolean;
   onDone: () => void;
 }) {
   const [mode, setMode] = useState<FormMode>(startMode);
@@ -214,17 +221,23 @@ function PasswordForm({
     setBusy(true);
     try {
       if (mode === 'forgot') {
-        const { message } = await authApi.forgotPassword(name);
+        if (multiUser) {
+          const { message } = await authApi.forgotPassword(name);
+          setNotice(message);
+        } else {
+          await authApi.requestResetCode();
+          setNotice(`A reset code was made. ${whereToLook}`);
+        }
         setBusy(false);
         setMode('reset');
-        setNotice(message);
         return;
       }
       if (mode === 'setup')
         await authApi.setupPassword(password, code, multiUser ? name : undefined);
       else if (mode === 'login') await authApi.login(password, multiUser ? name : undefined);
       else if (mode === 'invite') await authApi.acceptInvite(name, code, password);
-      else await authApi.resetPassword(name, code, password);
+      else if (multiUser) await authApi.resetPassword(name, code, password);
+      else await authApi.resetWithCode(code, password);
       onDone();
     } catch (err) {
       setError((err as Error).message);
@@ -238,11 +251,15 @@ function PasswordForm({
   const linkClass = 'text-xs text-brand-600 hover:text-brand-700 font-medium';
   const { host, hostname, protocol } = window.location;
   const unencrypted = connectionSecurity(protocol, hostname) === 'unencrypted';
+  // Single-user server: where the reset code can be read, which only the person running it can do
+  const whereToLook = canNotify
+    ? 'In Home Assistant: Notifications (the bell in the sidebar), or the FlyBudget app’s Log tab.'
+    : 'Docker: run docker logs flybudget on the server.';
   const submitLabel = {
     setup: 'Create password',
     login: 'Sign in',
     invite: 'Set password and sign in',
-    forgot: 'Send me a code',
+    forgot: multiUser ? 'Send me a code' : 'Make a reset code',
     reset: 'Set password and sign in',
   }[mode];
 
@@ -266,12 +283,19 @@ function PasswordForm({
               Enter your name as the administrator added it, and the invitation code they gave you.
             </span>
           )}
-          {mode === 'forgot' && (
+          {mode === 'forgot' && multiUser && (
             <span className="block mt-2">
               A code goes to the phone you chose in Settings. The administrator's code is also
               written to the server's log (the app's Log in Home Assistant).
             </span>
           )}
+          {mode === 'forgot' && !multiUser && (
+            <span className="block mt-2">
+              FlyBudget makes a one-time reset code and puts it where only someone with access to
+              the server can read it. {whereToLook} Resetting signs every device out.
+            </span>
+          )}
+          {mode === 'reset' && !multiUser && <span className="block mt-2">{whereToLook}</span>}
         </>
       }
     >
@@ -379,7 +403,7 @@ function PasswordForm({
           {submitLabel}
         </Button>
       </form>
-      {multiUser && !isSetup && (
+      {(multiUser || canRecover) && !isSetup && (
         <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1">
           {mode !== 'login' && (
             <button type="button" className={linkClass} onClick={() => go('login')}>
@@ -391,9 +415,11 @@ function PasswordForm({
               <button type="button" className={linkClass} onClick={() => go('forgot')}>
                 Forgot password?
               </button>
-              <button type="button" className={linkClass} onClick={() => go('invite')}>
-                I have an invitation
-              </button>
+              {multiUser && (
+                <button type="button" className={linkClass} onClick={() => go('invite')}>
+                  I have an invitation
+                </button>
+              )}
             </>
           )}
           {mode === 'forgot' && (

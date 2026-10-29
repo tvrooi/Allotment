@@ -31,6 +31,12 @@ import {
   verifyDeviceToken,
 } from '../auth/sessions.js';
 import { checkSetupCode, clearSetupCode, setupCode } from '../auth/setupCode.js';
+import { clearResetCode, consumeResetCode, issueResetCode } from '../auth/resetCode.js';
+import {
+  canNotifyHomeAssistant,
+  dismissResetNotification,
+  notifyResetCode,
+} from '../auth/resetNotify.js';
 
 // Login for server mode (Docker / self-hosted). Modeled on Actual Budget's server:
 // the first visitor creates the server password, and everything else requires a
@@ -96,6 +102,9 @@ authRouter.get('/status', (req, res) => {
     enabled: serverMode,
     needsSetup,
     authenticated: !serverMode || isValidSession(sessionToken(req)),
+    // A password exists, so a forgotten one can be reset with a code from the server log
+    // (and, on Home Assistant, a notification)
+    ...(serverMode && !needsSetup && { canRecover: true, canNotify: canNotifyHomeAssistant() }),
   });
 });
 
@@ -127,6 +136,56 @@ authRouter.post('/login', authRateLimit, async (req, res) => {
   if (!parsed.success || !(await checkPassword(parsed.data.password))) {
     return res.status(401).json({ error: 'Incorrect password' });
   }
+  startSession(req, res);
+  res.status(204).send();
+});
+
+// Every request counts, so the log and Home Assistant can't be flooded with codes
+const forgotRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  keyGenerator: (req) => `ip:${ipKeyGenerator(req.ip ?? '')}`,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Wait 15 minutes and try again.' },
+});
+
+// Forgot password (single-user server mode). The code goes where only the person running the
+// server can read it: the server log, and on Home Assistant a notification. Nothing about it
+// is sent back, so reaching this route proves nothing.
+authRouter.post('/forgot', forgotRateLimit, (_req, res) => {
+  if (!serverMode) return res.status(404).json({ error: 'Not found' });
+  if (!isPasswordSet()) return res.status(409).json({ error: 'No password has been set yet' });
+  const code = issueResetCode();
+  console.log(
+    '\nFlyBudget password reset. Open FlyBudget in your browser and enter this code (it works once, for 24 hours):\n\n' +
+      `    ${code}\n`,
+  );
+  const canNotify = canNotifyHomeAssistant();
+  // Not awaited: a slow Home Assistant must not change how long the answer takes
+  if (canNotify)
+    void notifyResetCode(code).catch((e) =>
+      console.error('The reset code could not be sent to Home Assistant:', (e as Error).message),
+    );
+  res.status(202).json({ canNotify });
+});
+
+authRouter.post('/reset', authRateLimit, async (req, res) => {
+  if (!serverMode) return res.status(404).json({ error: 'Not found' });
+  const parsed = z.object({ code: z.string().max(100), password }).safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: `Password must be ${MIN_PASSWORD_LENGTH}-${MAX_PASSWORD_LENGTH} characters`,
+    });
+  }
+  if (!isPasswordSet()) return res.status(409).json({ error: 'No password has been set yet' });
+  if (!consumeResetCode(parsed.data.code))
+    return res.status(403).json({ error: 'That code is not right or has expired' });
+  // Signs every session out and voids access tokens and trusted-device cookies; this browser
+  // then gets a fresh session
+  await changePassword(parsed.data.password);
+  clearResetCode();
+  if (canNotifyHomeAssistant()) void dismissResetNotification().catch(() => undefined);
   startSession(req, res);
   res.status(204).send();
 });
