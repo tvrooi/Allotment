@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.55
+
+- **An assistant can replace payee logos.** A _read, categorise and organise_ access token can now replace a payee's logo as well as add one, for example to swap in a cleaner brand icon. It still can't remove a logo. This includes images you uploaded yourself, so revoke the token if you don't want an assistant changing them.
+
 ## 0.2.0-up.54
 
 - **An assistant can add brand logos to payees.** A _read, categorise and organise_ access token can now give a payee that has no logo one, such as the merchant's brand icon (`PUT /api/payees/:id` with only `logo`). It never replaces or removes a logo you set: remove a wrong one on the Payees page and it can set another. Logos are stored in the budget, so everyone using it sees them.
