@@ -5,6 +5,7 @@ import fs from 'fs';
 import http from 'http';
 import path from 'path';
 import { z } from 'zod';
+import { hostKind } from '../auth/hostKind.js';
 import { trustProxy } from '../config.js';
 import {
   BANK_CALLBACK_PATH,
@@ -195,6 +196,7 @@ export function createGateway(o: GatewayOptions) {
     res.json({
       enabled: true,
       multiUser: true,
+      hostKind: hostKind(),
       needsSetup,
       authenticated: Boolean(person),
       canNotify: o.canNotify(),

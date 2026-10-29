@@ -22,6 +22,7 @@ import { PrioritiesSettings } from '../components/settings/PrioritiesSettings';
 import { TagManager } from '../components/settings/TagManager';
 import { BudgetStartSettings } from '../components/settings/BudgetStartSettings';
 import { LICENSE_URL, SOURCE_CODE_URL } from '../utils/project';
+import { ScrollCue } from '../components/ui/ScrollCue';
 
 const tabs = [
   { id: 'categories', label: 'Categories', icon: Layers },
@@ -59,7 +60,10 @@ export default function SettingsPage() {
         <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
           Settings
         </h1>
-        <div className="flex gap-0 mt-3 border-b border-border-light -mb-px overflow-x-auto [scrollbar-width:none]">
+        <ScrollCue
+          className="mt-3 border-b border-border-light -mb-px"
+          scrollerClassName="flex gap-0"
+        >
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -78,7 +82,7 @@ export default function SettingsPage() {
               </button>
             );
           })}
-        </div>
+        </ScrollCue>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6">

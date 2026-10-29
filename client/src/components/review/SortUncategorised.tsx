@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
+import { CategoryPicker } from '../transactions/CategoryPicker';
+import type { CategoryGroup } from '../../types';
 import { Button } from '../ui/Button';
 import { Private } from '../ui/Private';
 import { useCategories } from '../../hooks/useCategories';
@@ -101,6 +103,57 @@ export function SalaryOffer({ salary, future = true }: { salary: SalaryGuess; fu
 }
 
 /**
+ * "Choose a category…" for one payee: a searchable list, so the keyboard works (type to narrow,
+ * arrows to move, Enter to pick, Escape to close). A native select would commit on an arrow key.
+ */
+function PayeeCategoryButton({
+  payeeName,
+  groups,
+  disabled,
+  onPick,
+}: {
+  payeeName: string;
+  groups: CategoryGroup[];
+  disabled: boolean;
+  onPick: (categoryId: string) => void;
+}) {
+  const [button, setButton] = useState<HTMLButtonElement | null>(null);
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        ref={setButton}
+        type="button"
+        disabled={disabled}
+        aria-label={`Category for ${payeeName}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="w-48 max-w-full min-h-11 md:min-h-0 border border-border rounded-md px-2 py-1.5 bg-surface text-text-secondary text-sm text-left flex items-center justify-between gap-1 focus:outline-none focus:ring-1 focus:ring-brand-600 disabled:opacity-50"
+      >
+        <span className="truncate">Choose a category…</span>
+        <ChevronDown size={14} className="shrink-0 text-text-tertiary" aria-hidden />
+      </button>
+      {open && (
+        <CategoryPicker
+          anchor={button}
+          groups={groups}
+          allowNone={false}
+          onClose={() => {
+            setOpen(false);
+            button?.focus();
+          }}
+          onChange={(id) => {
+            setOpen(false);
+            if (id) onPick(id);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+/**
  * What is still uncategorised, a payee at a time (the biggest groups first): one category pick
  * sorts all of a payee's transactions and, by default, the ones that arrive later. Every pick
  * can be undone.
@@ -193,26 +246,12 @@ export function SortUncategorised({ onDone }: { onDone?: () => void }) {
                     </Private>
                   </p>
                 </div>
-                <select
-                  aria-label={`Category for ${p.payeeName}`}
-                  value=""
+                <PayeeCategoryButton
+                  payeeName={p.payeeName}
+                  groups={optionGroups(p)}
                   disabled={!canSave || sort.isPending}
-                  onChange={(e) => pick(p, e.target.value)}
-                  className="w-48 max-w-full min-h-11 md:min-h-0 border border-border rounded-md px-2 py-1.5 bg-surface text-text text-sm focus:outline-none focus:ring-1 focus:ring-brand-600"
-                >
-                  <option value="">Choose a category…</option>
-                  {optionGroups(p).map((g) => (
-                    <optgroup key={g.id} label={g.name}>
-                      {g.categories
-                        .filter((c) => !c.hidden)
-                        .map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                    </optgroup>
-                  ))}
-                </select>
+                  onPick={(categoryId) => pick(p, categoryId)}
+                />
               </li>
             ))}
           </ul>

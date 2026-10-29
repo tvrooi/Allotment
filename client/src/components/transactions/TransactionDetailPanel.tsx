@@ -1,7 +1,7 @@
 import { ShareWithHousehold } from '../household/ShareWithHousehold';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { X, Lock, Trash2, Repeat, Unlink, Wand2, Split } from 'lucide-react';
+import { X, Lock, Trash2, Repeat, Unlink, Wand2, Split, ChevronDown } from 'lucide-react';
 import {
   useUpdateTransaction,
   useDeleteTransaction,
@@ -294,7 +294,7 @@ export function TransactionDetailPanel({
                 }
               >
                 <Split size={12} />
-                {isSplitParent ? 'Edit split' : 'Split'}
+                {isSplitParent ? 'Edit split' : 'Split across categories'}
               </button>
             )}
           </div>
@@ -349,15 +349,19 @@ export function TransactionDetailPanel({
                 {showCategoryIcons && categoryEntry?.icon && (
                   <span className="text-base">{categoryEntry.icon}</span>
                 )}
-                <span className={categoryEntry ? '' : 'text-text-tertiary'}>
+                <span className={categoryEntry ? '' : 'text-text-secondary'}>
                   {categoryEntry?.name ?? 'Uncategorized'}
                 </span>
+                {canEditCategory && (
+                  <ChevronDown size={14} className="ml-auto text-text-tertiary" aria-hidden />
+                )}
               </button>
               {showCategoryPicker && (
                 <CategoryPicker
                   value={tx.categoryId}
                   onChange={handleCategoryChange}
                   groups={groups}
+                  fullWidth
                   onClose={() => setShowCategoryPicker(false)}
                   transferAccounts={transferAccounts}
                 />
@@ -456,7 +460,7 @@ export function TransactionDetailPanel({
               navigate(`/household?transaction=${encodeURIComponent(tx.id)}`);
             }}
           >
-            Split with people
+            Share with people
           </Button>
         )}
         {!tx.isParent && !tx.parentTransactionId && !tx.isAdjustment && tx.amount < 0 && (

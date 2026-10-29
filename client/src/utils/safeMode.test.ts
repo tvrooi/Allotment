@@ -17,10 +17,12 @@ describe('safeModeHides', () => {
     expect(safeModeHides(false, 'all')).toEqual({ balances: false, all: false });
   });
 
-  it('hides balances and totals by default', () => {
+  it('hides balances and totals only when that level is chosen', () => {
     expect(safeModeHides(true, 'balances')).toEqual({ balances: true, all: false });
-    // A level saved by a newer version, or none at all, means the default
-    expect(safeModeHides(true, undefined)).toEqual({ balances: true, all: false });
+  });
+
+  it('hides every amount when no level was chosen', () => {
+    expect(safeModeHides(true, undefined)).toEqual({ balances: true, all: true });
   });
 
   it('hides every amount at the all level, balances included', () => {

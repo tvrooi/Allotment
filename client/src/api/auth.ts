@@ -1,10 +1,13 @@
 import { apiFetch } from './client';
+import type { HostKind } from '../utils/hostKind';
 
 // Login for server mode (Docker / self-hosted). The desktop app and `npm run dev`
 // report `enabled: false` and never show a login screen.
 
 export interface AuthStatus {
   enabled: boolean;
+  /** Where the server runs, to say where its log is (utils/hostKind.ts) */
+  hostKind?: HostKind;
   needsSetup: boolean;
   authenticated: boolean;
   /** Multi-user mode (the gateway, docs/MULTI-USER-PLAN.md): people sign in by name */

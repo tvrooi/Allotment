@@ -30,6 +30,8 @@ test('a new server asks for a password and the setup code', async ({ baseURL }) 
   // Which server this is; on this computer (localhost) there's no insecure-connection warning
   await expect(owner.getByLabel('Server address')).toHaveText(`localhost:${SERVER_PORT}`);
   await expect(owner.getByText('Not a secure connection.')).toBeHidden();
+  // Where the setup code is, in words for the host (this server reports Docker)
+  await expect(owner.getByText(/docker logs flybudget/)).toBeVisible();
   // The data is not reachable yet
   const api = await owner.request.get('/api/accounts');
   expect(api.status()).toBe(401);
@@ -324,6 +326,31 @@ test('a forgotten password is reset with a code from the server log', async ({
   await owner.getByRole('textbox', { name: 'Confirm new password' }).fill(NEW_PASSWORD);
   await owner.getByRole('button', { name: 'Change password' }).click();
   await expect(owner.getByText(/Password changed\./)).toBeVisible();
+});
+
+test('Home Assistant users are told to look in the app Log, not in Docker', async ({
+  browser,
+  baseURL,
+}) => {
+  const page = await (await browser.newContext()).newPage();
+  // The same server, reporting that it runs as the Home Assistant app
+  await page.route('**/api/auth/status', async (route) => {
+    const res = await route.fetch();
+    await route.fulfill({
+      response: res,
+      json: { ...(await res.json()), hostKind: 'home-assistant' },
+    });
+  });
+  await page.goto(`${baseURL}/`);
+  await expect(page.getByText('Sign in to FlyBudget')).toBeVisible();
+  await page.getByRole('button', { name: 'Forgot password?' }).click();
+  const where = 'Find it in Home Assistant: Settings → Apps → FlyBudget → Log';
+  await expect(page.getByText(where)).toBeVisible();
+  await expect(page.getByText(/docker logs/)).toHaveCount(0);
+  // The code screen says it too (once), without making a code: "I already have a code"
+  await page.getByRole('button', { name: 'I already have a code' }).click();
+  await expect(page.getByText(where)).toHaveCount(1);
+  await page.context().close();
 });
 
 /** This browser's offline copy as JSON text, or null when there is none */

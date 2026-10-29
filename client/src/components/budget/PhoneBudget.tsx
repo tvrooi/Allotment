@@ -26,13 +26,22 @@ interface Props {
   onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
   /** Nothing is planned this month yet: list every category, so there's something to plan */
   showAll?: boolean;
+  /** Before the budget start: figures to read, nothing to assign */
+  readOnly?: boolean;
 }
 
 /**
  * The budget on a phone: a card per category (planned, actual, remaining) instead of the
  * four-column table. Tapping the planned amount opens a sheet to change it.
  */
-export function PhoneBudget({ sections, month, onSave, onApplyBulk, showAll = false }: Props) {
+export function PhoneBudget({
+  sections,
+  month,
+  onSave,
+  onApplyBulk,
+  showAll = false,
+  readOnly = false,
+}: Props) {
   const [editing, setEditing] = useState<{ cat: BudgetCategory; isIncome: boolean } | null>(null);
 
   return (
@@ -42,6 +51,7 @@ export function PhoneBudget({ sections, month, onSave, onApplyBulk, showAll = fa
           key={section.key}
           section={section}
           showAll={showAll}
+          readOnly={readOnly}
           onEdit={(cat) => setEditing({ cat, isIncome: section.isIncome })}
         />
       ))}
@@ -60,10 +70,12 @@ export function PhoneBudget({ sections, month, onSave, onApplyBulk, showAll = fa
 function Section({
   section,
   showAll,
+  readOnly,
   onEdit,
 }: {
   section: PhoneBudgetSection;
   showAll: boolean;
+  readOnly: boolean;
   onEdit: (cat: BudgetCategory) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -98,7 +110,13 @@ function Section({
       {!collapsed && (
         <>
           {visible.map((cat) => (
-            <CategoryCard key={cat.id} cat={cat} isIncome={isIncome} onEdit={() => onEdit(cat)} />
+            <CategoryCard
+              key={cat.id}
+              cat={cat}
+              isIncome={isIncome}
+              readOnly={readOnly}
+              onEdit={() => onEdit(cat)}
+            />
           ))}
           {inactiveCount > 0 && !showAll && (
             <button
@@ -120,10 +138,12 @@ function Section({
 function CategoryCard({
   cat,
   isIncome,
+  readOnly,
   onEdit,
 }: {
   cat: BudgetCategory;
   isIncome: boolean;
+  readOnly: boolean;
   onEdit: () => void;
 }) {
   const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
@@ -170,7 +190,7 @@ function CategoryCard({
         <button
           type="button"
           onClick={onEdit}
-          disabled={!canSave}
+          disabled={!canSave || readOnly}
           aria-label={`Planned for ${cat.name}: ${formatCurrency(cat.budgeted)}`}
           className="min-h-11 flex items-center gap-1.5 text-left disabled:opacity-50"
         >

@@ -97,11 +97,11 @@ test.describe('categories', () => {
       .getByRole('dialog', { name: 'Edit Category' })
       .getByRole('button', { name: 'Delete' })
       .click();
-    const dialog = page.getByRole('dialog', { name: 'Delete Category' });
+    const dialog = page.getByRole('dialog', { name: 'Merge into another category' });
     await expect(dialog).toContainText('Parking has 1 transaction');
-    await expect(dialog.getByRole('button', { name: 'Reassign & Delete' })).toBeDisabled();
-    await dialog.getByRole('combobox', { name: 'Move transactions to' }).selectOption(transit.id);
-    await dialog.getByRole('button', { name: 'Reassign & Delete' }).click();
+    await expect(dialog.getByRole('button', { name: 'Merge & remove' })).toBeDisabled();
+    await dialog.getByRole('combobox', { name: 'Merge into' }).selectOption(transit.id);
+    await dialog.getByRole('button', { name: 'Merge & remove' }).click();
 
     await expect(page.getByRole('button', { name: 'Edit Parking' })).toBeHidden();
     const [tx] = await api.transactions();

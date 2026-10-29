@@ -4,6 +4,7 @@ import {
   DEFAULT_FILTERS,
   FILTER_KEYS,
   activeFilterCount,
+  dateRangeFor,
   filtersFromSearch,
   filtersToParams,
   filtersToSearch,
@@ -185,5 +186,13 @@ describe('transaction filters', () => {
       from: '2026-10-01',
       to: '2026-10-31',
     });
+  });
+});
+
+describe('the Last Month preset', () => {
+  it('covers the whole previous month', () => {
+    expect(
+      dateRangeFor({ datePreset: 'last-month', from: '', to: '' }, new Date(2026, 2, 31)),
+    ).toEqual({ from: '2026-02-01', to: '2026-02-28' });
   });
 });

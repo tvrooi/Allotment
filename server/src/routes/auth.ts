@@ -31,6 +31,7 @@ import {
   verifyDeviceToken,
 } from '../auth/sessions.js';
 import { checkSetupCode, clearSetupCode, setupCode } from '../auth/setupCode.js';
+import { hostKind } from '../auth/hostKind.js';
 import { clearResetCode, consumeResetCode, issueResetCode } from '../auth/resetCode.js';
 import {
   canNotifyHomeAssistant,
@@ -100,6 +101,7 @@ authRouter.get('/status', (req, res) => {
   if (needsSetup) setupCode();
   res.json({
     enabled: serverMode,
+    hostKind: hostKind(),
     needsSetup,
     authenticated: !serverMode || isValidSession(sessionToken(req)),
     // A password exists, so a forgotten one can be reset with a code from the server log

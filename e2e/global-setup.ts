@@ -275,6 +275,8 @@ export default async function globalSetup() {
       DB_PATH: path.join(dir, 'server.db'),
       CLIENT_DIST: path.join(dir, 'client-web'),
       FLYBUDGET_SERVER_MODE: 'true',
+      // Stands in for running in Docker, whatever this machine is (sign-in screens name the log)
+      FLYBUDGET_HOST_KIND: 'docker',
       FLYBUDGET_HOST: '127.0.0.1',
       FLYBUDGET_DATA_KEY: dataKey,
     },

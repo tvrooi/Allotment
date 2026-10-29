@@ -147,8 +147,8 @@ test.describe('recurring', () => {
     await scheduleRow(page, 'Rent').first().getByRole('button', { name: 'Actions' }).click();
     await page.getByRole('menuitem', { name: 'Cancel recurring' }).click();
     await page
-      .getByRole('dialog', { name: 'Cancel recurring item?' })
-      .getByRole('button', { name: 'Cancel item' })
+      .getByRole('dialog', { name: 'Stop this recurring item?' })
+      .getByRole('button', { name: 'Stop this bill' })
       .click();
     await expect
       .poll(async () => (await api.call<any[]>('GET', '/schedules'))[0].status)

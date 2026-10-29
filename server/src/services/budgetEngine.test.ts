@@ -349,6 +349,12 @@ export function legacyBudgetSummary(month: string, today = todayIso()) {
     carryOver: state.openingFunds,
     toBeBudgeted: state.unassigned,
     budgetStartMonth: budgetStartDate().slice(0, 7) || null,
+    // Added after the previous engine; not a funding figure, so the oracle reads it from the data
+    anythingAssigned: db
+      .select()
+      .from(budgetMonths)
+      .all()
+      .some((r) => r.budgeted !== 0 && r.month >= budgetStartDate().slice(0, 7)),
   };
 }
 

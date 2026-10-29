@@ -7,7 +7,17 @@ import { customReports, dashboardPages, dashboardWidgets } from '../db/schema.js
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export const DATE_PRESETS = ['1m', '3m', '6m', '12m', 'ytd', 'last-year', 'all', 'custom'] as const;
+export const DATE_PRESETS = [
+  '1m',
+  'last-month',
+  '3m',
+  '6m',
+  '12m',
+  'ytd',
+  'last-year',
+  'all',
+  'custom',
+] as const;
 
 const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Expected YYYY-MM');
 

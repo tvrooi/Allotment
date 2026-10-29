@@ -47,10 +47,10 @@ describe('date range helpers (property-based)', () => {
     );
   });
 
-  it('live presets other than last year end in the current month', () => {
+  it('live presets other than the last year or month end in the current month', () => {
     fc.assert(
       fc.property(arbLive, arbNow, (preset, now) => {
-        fc.pre(preset !== 'last-year');
+        fc.pre(preset !== 'last-year' && preset !== 'last-month');
         expect(computeDateRange(preset, now).to).toBe(format(now, 'yyyy-MM'));
       }),
     );
@@ -201,5 +201,18 @@ describe('short-range helpers (property-based)', () => {
         },
       ),
     );
+  });
+});
+
+describe('the Last Month preset', () => {
+  it('is the previous calendar month, including across a year', () => {
+    expect(computeDateRange('last-month', new Date(2026, 9, 29))).toEqual({
+      from: '2026-09',
+      to: '2026-09',
+    });
+    expect(computeDateRange('last-month', new Date(2026, 0, 5))).toEqual({
+      from: '2025-12',
+      to: '2025-12',
+    });
   });
 });

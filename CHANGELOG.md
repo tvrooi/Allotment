@@ -1,5 +1,18 @@
 # Changes
 
+## 0.2.0-up.61
+
+- **Phone fixes.** Reconcile shows the summary above a full-width list, and prefills the bank's balance for bank-linked accounts. The Budget header is compact: the extra actions sit in a **...** menu, month buttons look like buttons, and **Find a category** reaches Groceries in two taps. Tab bars show a fade and arrow when they scroll, and the Add transaction category list is full width.
+- **Dates follow your browser.** New installs show dates in your locale's style (for example 05/03/2026 in Australia). Existing choices are kept.
+- **Not categorised yet.** A filter at the top of Categories lists transactions with no category. New budgets call the default category **Other** instead of Uncategorized; existing budgets are unchanged.
+- **Safe mode covers what a friend sees.** The default is **All amounts**. People who never chose a level are moved to it; a level you picked is kept.
+- **Setup and reset codes say where to look.** In the Home Assistant app: Settings, Apps, FlyBudget, Log. In Docker: `docker logs flybudget`.
+- **Category picker keyboard.** Enter picks the first match, arrows move, Escape closes, in the register and the first-import sort step.
+- **Last month** preset in Reports and Transactions. Months before the budget starts show what you really spent, read-only.
+- **Put the rest in...** on Ready to assign. A brand-new budget no longer hides its empty categories.
+- **Recurring finder** skips transfers, ATM withdrawals, refunds and one-offs, and **Create N recurring** stays visible.
+- **Plain words.** "?" help for Ready to assign, Anchor payday and Funding rule; deleting a category says **Merge into...**; **Split across categories** and **Share with people**; cancelling a recurring item asks **Keep it** / **Stop this bill**.
+
 ## 0.2.0-up.60
 
 - **Undo a payday funding.** Right after **Apply funding** there is an **Undo** button, and every entry in **Funding history** has one. It takes back exactly what that funding added to each category's assigned amount, frees the deposits you used and returns the payday to "not applied", so the same preview comes back. It never takes back more than a category is still assigned that month, so money you moved or changed since is left alone and the screen lists what it could not take back. The entry stays in Funding history as "Undone on …".

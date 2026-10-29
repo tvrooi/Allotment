@@ -18,7 +18,13 @@ for (const phone of [false, true])
     });
     const original = await api.transactions();
     await open(page, '/budget');
-    await page.getByRole('button', { name: 'Until next payday' }).click();
+    if (phone) {
+      // On a phone the Budget header keeps its extra actions in one menu
+      await page.getByRole('button', { name: 'More budget actions' }).click();
+      await page.getByRole('menuitem', { name: 'Until next payday' }).click();
+    } else {
+      await page.getByRole('button', { name: 'Until next payday' }).click();
+    }
     await page.getByRole('button', { name: 'New payday plan' }).click();
     await page.getByLabel('Plan name').fill('Fortnightly essentials');
     await page.getByLabel('Anchor payday').fill(isoDay());
@@ -63,7 +69,7 @@ test('a changed budget requires a refreshed preview', async ({ page, api }) => {
     anchorDate: isoDay(),
     expectedIncome: 100000,
     weekendAdjust: 'none',
-    timeZone: 'UTC',
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, // same day as isoDay()
     rules: [{ categoryId: food.id, method: 'fixed', amount: 40000 }],
   });
   await open(page, '/budget');
@@ -161,7 +167,7 @@ test('an applied payday can be undone, previewed again and applied again', async
     anchorDate: isoDay(),
     expectedIncome: 100000,
     weekendAdjust: 'none',
-    timeZone: 'UTC',
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, // same day as isoDay()
     rules: [{ categoryId: food.id, method: 'fixed', amount: 40000 }],
   });
   await open(page, '/budget');

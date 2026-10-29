@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getReconciliation, saveReconciliation } from '../api/accounts';
+import { getAccountSyncStatus, getReconciliation, saveReconciliation } from '../api/accounts';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
@@ -53,6 +53,22 @@ export default function ReconcilePage() {
 
   const [step, setStep] = useState<1 | 2>(1);
   const [statementBalance, setStatementBalance] = useState(0);
+  // A bank-linked account already knows the bank's balance: offer it instead of making the
+  // owner type it. It is only a starting value; they can change it.
+  const { data: syncStatus } = useQuery({
+    queryKey: ['accounts', 'sync-status'],
+    queryFn: getAccountSyncStatus,
+    staleTime: 60_000,
+  });
+  const bankBalance = syncStatus?.find((s) => s.accountId === id)?.bankBalance ?? null;
+  const [prefilled, setPrefilled] = useState(false);
+  const [touched, setTouched] = useState(false);
+  useEffect(() => {
+    if (bankBalance !== null && !prefilled && !touched) {
+      setStatementBalance(bankBalance);
+      setPrefilled(true);
+    }
+  }, [bankBalance, prefilled, touched]);
   // A statement balance that can't be read would reconcile against the one from before
   const { allValid: statementValid, report } = useAmountValidity();
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
@@ -136,11 +152,20 @@ export default function ReconcilePage() {
                   currency={account.currency}
                   allowNegative
                   value={statementBalance}
-                  onChange={setStatementBalance}
+                  onChange={(v) => {
+                    setTouched(true);
+                    setStatementBalance(v);
+                  }}
                   aria-label="Statement balance"
                   className="w-full text-lg"
                 />
               </AmountFields>
+              {prefilled && !touched && (
+                <p className="text-xs text-text-tertiary">
+                  Filled in from the bank's balance at the last sync. Change it if your statement
+                  says something different.
+                </p>
+              )}
             </div>
 
             <div className="rounded-lg border border-border-light bg-surface-alt px-4 py-3">
@@ -183,8 +208,9 @@ export default function ReconcilePage() {
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1 overflow-y-auto">
+      {/* Phones: the summary sits above a full-width list and the whole page scrolls */}
+      <div className="flex flex-1 overflow-hidden max-sm:flex-col max-sm:overflow-y-auto">
+        <div className="flex-1 overflow-y-auto max-sm:order-2 max-sm:flex-none max-sm:overflow-visible">
           <table className="w-full border-collapse">
             <thead className="sticky top-0 bg-surface-alt border-b border-border z-10">
               <tr>
@@ -261,24 +287,24 @@ export default function ReconcilePage() {
           </table>
         </div>
 
-        <div className="w-64 shrink-0 border-l border-border flex flex-col">
-          <div className="flex-1 px-5 py-6 space-y-5">
+        <div className="w-64 shrink-0 border-l border-border flex flex-col max-sm:order-1 max-sm:w-full max-sm:border-l-0 max-sm:border-b">
+          <div className="flex-1 px-5 py-6 space-y-5 max-sm:grid max-sm:grid-cols-3 max-sm:gap-3 max-sm:space-y-0 max-sm:py-4">
             <div>
               <p className="text-xs text-text-tertiary mb-0.5">Selected Balance</p>
-              <p className="text-xl font-semibold text-text tabular-nums">
+              <p className="text-xl max-sm:text-base font-semibold text-text tabular-nums">
                 {formatMoney(selectedBalance, account.currency)}
               </p>
             </div>
             <div>
               <p className="text-xs text-text-tertiary mb-0.5">Statement Balance</p>
-              <p className="text-xl font-semibold text-text tabular-nums">
+              <p className="text-xl max-sm:text-base font-semibold text-text tabular-nums">
                 {formatMoney(statementBalance, account.currency)}
               </p>
             </div>
-            <div className="pt-3 border-t border-border-light">
+            <div className="pt-3 border-t border-border-light max-sm:border-t-0 max-sm:pt-0">
               <p className="text-xs text-text-tertiary mb-0.5">Difference</p>
               <p
-                className={`text-2xl font-semibold tabular-nums ${isBalanced ? 'text-positive' : 'text-negative'}`}
+                className={`text-2xl max-sm:text-base font-semibold tabular-nums ${isBalanced ? 'text-positive' : 'text-negative'}`}
               >
                 {formatMoney(difference, account.currency)}
               </p>
@@ -286,7 +312,7 @@ export default function ReconcilePage() {
             </div>
           </div>
 
-          <div className="px-5 py-5 space-y-2 border-t border-border">
+          <div className="px-5 py-5 space-y-2 border-t border-border max-sm:py-3">
             {error && (
               <p role="alert" className="text-xs text-negative">
                 {error}

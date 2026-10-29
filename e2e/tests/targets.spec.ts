@@ -22,7 +22,12 @@ for (const phone of [false, true])
     expect((await api.call('GET', `/budget/${thisMonth()}/summary`)).totalBudgeted).toBe(0);
 
     await open(page, '/budget');
-    await page.getByRole('button', { name: 'Fund targets (1)' }).click();
+    if (phone) {
+      await page.getByRole('button', { name: 'More budget actions' }).click();
+      await page.getByRole('menuitem', { name: 'Fund targets (1)' }).click();
+    } else {
+      await page.getByRole('button', { name: 'Fund targets (1)' }).click();
+    }
     const preview = page.getByRole('region', { name: 'Target funding preview' });
     await expect(preview).toContainText('$500 is unassigned today');
     await expect(preview).toContainText('assign $300');

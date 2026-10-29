@@ -78,9 +78,14 @@ test('the first Up import arrives categorised, and the rest is sorted a payee at
   await expect(offer).toContainText(/is now/);
 
   // One pick sorts a payee's transactions and makes it the payee's default
-  await sort
-    .getByLabel('Category for ATM Withdrawal Westpac')
-    .selectOption({ label: 'Miscellaneous' });
+  // (Escape closes the list and leaves the dialog open)
+  await sort.getByLabel('Category for ATM Withdrawal Westpac').click();
+  await expect(page.getByRole('textbox', { name: 'Search categories' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('textbox', { name: 'Search categories' })).toHaveCount(0);
+  await expect(dialog).toBeVisible();
+  await sort.getByLabel('Category for ATM Withdrawal Westpac').click();
+  await page.getByRole('button', { name: 'Miscellaneous' }).click();
   await expect(sort.getByLabel('Category for ATM Withdrawal Westpac')).toHaveCount(0);
   const atm = (await api.transactions()).filter((t) => t.payeeName === 'ATM Withdrawal Westpac');
   expect(atm.length).toBeGreaterThan(0);
@@ -102,7 +107,10 @@ test('the first Up import arrives categorised, and the rest is sorted a payee at
 
   // Without "future", only the existing rows move
   await sort.getByLabel('Also apply to future transactions').uncheck();
-  await sort.getByLabel('Category for Service NSW').selectOption({ label: 'Miscellaneous' });
+  // From the keyboard: type to narrow, Enter picks the first match
+  await sort.getByLabel('Category for Service NSW').click();
+  await page.keyboard.type('Miscellan');
+  await page.keyboard.press('Enter');
   await expect(sort.getByLabel('Category for Service NSW')).toHaveCount(0);
   expect((await payees()).find((p) => p.name === 'Service NSW')!.defaultCategoryId).toBeNull();
 
