@@ -11,6 +11,7 @@ import {
 import { formatMoney } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { Button } from '../ui/Button';
+import { ConfirmModal } from '../ui/ConfirmModal';
 import { UpRoundUpCheck } from './UpRoundUpCheck';
 
 function BankDetails({ source }: { source: UpReviewItem['current'] }) {
@@ -39,6 +40,7 @@ export function UpReview({ canSave }: { canSave: boolean }) {
   const [offset, setOffset] = useState(0),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<UpReviewItem | null>(null);
   const qc = useQueryClient();
   const review = useQuery({ queryKey: ['up-review', offset], queryFn: () => getUpReview(offset) });
   const rounds = useQuery({ queryKey: ['up-round-ups'], queryFn: getUpRoundUps });
@@ -104,7 +106,7 @@ export function UpReview({ canSave }: { canSave: boolean }) {
                       size="sm"
                       variant="secondary"
                       disabled={!canSave || busy || item.overlap.reconciled}
-                      onClick={() => void acknowledge(item.importedId, item.revision, true)}
+                      onClick={() => setConfirmDelete(item)}
                     >
                       Delete the older one
                     </Button>
@@ -121,6 +123,22 @@ export function UpReview({ canSave }: { canSave: boolean }) {
           </ul>
         </section>
       )}
+      <ConfirmModal
+        isOpen={!!confirmDelete?.overlap}
+        onClose={() => setConfirmDelete(null)}
+        title="Delete the older transaction?"
+        message={
+          confirmDelete?.overlap
+            ? `This deletes ${confirmDelete.overlap.payee ?? 'Unknown'}, ${formatDay(confirmDelete.overlap.date)}, ${formatMoney(confirmDelete.overlap.amount, 'AUD')} from your old history. Up's ${confirmDelete.current.description} (${formatDay(confirmDelete.current.createdAt.slice(0, 10))}) stays. It can't be undone.`
+            : ''
+        }
+        confirmLabel="Delete it"
+        danger
+        onConfirm={() => {
+          if (confirmDelete)
+            void acknowledge(confirmDelete.importedId, confirmDelete.revision, true);
+        }}
+      />
       <section
         aria-label="Up review"
         className="rounded-lg border border-border bg-surface p-4 space-y-3"

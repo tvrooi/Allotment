@@ -1,5 +1,6 @@
 import { createCategory, createGroup } from '../../api/categories';
 import { fileCategoryKey, type FileCategory } from '../../utils/csv';
+import { matchCategory } from '../../utils/categoryMatch';
 import type { ImportRow } from '../../api/transactions';
 import type { CategoryGroup } from '../../types';
 
@@ -31,22 +32,16 @@ export function distinctFileCategories(rows: ImportRow[]): FileCategoryUse[] {
   return [...found.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
-/** Matched by name (ignoring case) to an existing category, else a new one in a fitting group */
+/** Matched by name to an existing category, else a new one in a fitting group */
 export function suggestChoices(
   uses: FileCategoryUse[],
   groups: CategoryGroup[],
 ): Record<string, CategoryChoice> {
   const choices: Record<string, CategoryChoice> = {};
   for (const use of uses) {
-    const wanted = use.name.toLowerCase();
-    const matches = groups.flatMap((g) =>
-      g.categories.filter((c) => c.name.toLowerCase() === wanted).map((c) => ({ g, c })),
-    );
-    const best =
-      matches.find((m) => use.group && m.g.name.toLowerCase() === use.group.toLowerCase()) ??
-      matches[0];
-    if (best) {
-      choices[use.key] = { kind: 'existing', categoryId: best.c.id };
+    const match = matchCategory(use, groups);
+    if (match) {
+      choices[use.key] = { kind: 'existing', categoryId: match.id };
       continue;
     }
     const sameGroup = use.group

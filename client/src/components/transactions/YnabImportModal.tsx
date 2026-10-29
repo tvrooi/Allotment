@@ -10,7 +10,13 @@ import { useAccounts } from '../../hooks/useAccounts';
 import { useCategories } from '../../hooks/useCategories';
 import { useBudgetCurrency } from '../../hooks/useCurrency';
 import { createAccount } from '../../api/accounts';
-import { importConfirm, type ImportResult, type ImportRow } from '../../api/transactions';
+import {
+  importConfirm,
+  linkImportedTransfers,
+  type ImportResult,
+  type ImportRow,
+} from '../../api/transactions';
+import { pairYnabTransfers } from '../../utils/ynabTransfers';
 import { minorUnits } from '../../utils/currencies';
 import {
   buildImportRows,
@@ -96,6 +102,7 @@ function YnabImportDialog({ onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ name: string; accountId: string; result: ImportResult }[]>([]);
   const [finished, setFinished] = useState(false);
+  const [linkedTransfers, setLinkedTransfers] = useState(0);
   const { data: accounts = [] } = useAccounts();
   const { data: groups = [] } = useCategories();
   const budgetCurrency = useBudgetCurrency();
@@ -224,6 +231,17 @@ function YnabImportDialog({ onClose }: Props) {
         finishedNow.push({ name, accountId, result });
         setDone([...finishedNow]);
       }
+      // Both legs of a transfer came in with this file: link them (exact mirrors only)
+      const idOf = new Map(finishedNow.map((d) => [d.name, d.accountId]));
+      const pairs = pairYnabTransfers(new Map([...built].map(([name, b]) => [name, b.rows])))
+        .filter((p) => idOf.has(p.account) && idOf.has(p.otherAccount))
+        .map((p) => ({
+          accountId: idOf.get(p.account)!,
+          importedId: p.importedId,
+          otherAccountId: idOf.get(p.otherAccount)!,
+          otherImportedId: p.otherImportedId,
+        }));
+      if (pairs.length) setLinkedTransfers((await linkImportedTransfers(pairs)).linked);
       setFinished(true);
       await queryClient.invalidateQueries();
     } catch (e: unknown) {
@@ -465,6 +483,11 @@ function YnabImportDialog({ onClose }: Props) {
                   </li>
                 ))}
               </ul>
+              <p className="text-sm text-text-secondary mt-2" role="status">
+                {linkedTransfers > 0
+                  ? `${linkedTransfers} transfer${linkedTransfers === 1 ? '' : 's'} between these accounts linked.`
+                  : 'No transfers between these accounts were found to link.'}
+              </p>
             </div>
             <Button
               onClick={() => {

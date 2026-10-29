@@ -251,7 +251,15 @@ async function runSync(): Promise<UpSyncResult> {
           } else {
             balanceMismatch = startingBalance !== local.startingBalance;
           }
-          observeUpAccount(accountId, unique, now, newIds, mapping.upAccountId, overlaps);
+          observeUpAccount(
+            accountId,
+            unique,
+            now,
+            newIds,
+            mapping.upAccountId,
+            overlaps,
+            !mapping.initializedAt,
+          );
           db.update(upAccountMappings)
             .set({
               initializedAt: mapping.initializedAt ?? now,

@@ -148,8 +148,20 @@ describe('native Up integration', () => {
     await mapSpending();
     await syncUp();
     const get = async () => (await request('/review', undefined, 'GET')).json();
-    expect(await get()).toMatchObject({ total: 2, pending: 1 });
+    // The first sync is the starting history, not a list of changes to review
+    expect(await get()).toMatchObject({ total: 0, pending: 1 });
+    expect(db.select().from(upSourceRecords).all()).toHaveLength(3);
+    // Something new after that is a change to review, once
+    mock.setHistory('spending', [
+      upMockTransaction('salary', 10000),
+      upMockTransaction('coffee', -1000),
+      upMockTransaction('tea', -400),
+      upMockTransaction('held', -500, 'HELD'),
+    ]);
+    await syncUp();
+    expect(await get()).toMatchObject({ total: 1, pending: 1 });
     const item = (await get()).items[0];
+    expect(item).toMatchObject({ importedId: 'up:spending:tea', reviewState: 'new' });
     expect(
       (
         await request('/review/acknowledge', {
@@ -167,13 +179,13 @@ describe('native Up integration', () => {
       ).status,
     ).toBe(409);
     await syncUp();
-    expect(await get()).toMatchObject({ total: 1, pending: 1 });
-    expect(db.select().from(upSourceRecords).all()).toHaveLength(3);
+    expect(await get()).toMatchObject({ total: 0, pending: 1 });
+    expect(db.select().from(upSourceRecords).all()).toHaveLength(4);
     expect(JSON.stringify(createBackup())).toContain('upSourceRecords');
     expect(JSON.stringify(createBackup())).not.toContain(UP_TEST_TOKEN);
     const backup = createBackup();
     restoreBackup(parseBackup(backup));
-    expect(await get()).toMatchObject({ total: 1, pending: 1 });
+    expect(await get()).toMatchObject({ total: 0, pending: 1 });
   });
   it('compares bank changes against bank history, preserves local edits, and rejects stale review', async () => {
     await mapSpending();

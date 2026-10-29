@@ -1,6 +1,7 @@
-import { and, eq, isNull, lt, notLike, or, sql } from 'drizzle-orm';
+import { and, eq, gte, isNull, like, lt, notLike, or, sql } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { transactions } from '../db/schema.js';
+import { accounts, transactions, upAccountMappings } from '../db/schema.js';
+import { insertNewTransaction } from './ruleService.js';
 import { inAccountBalance } from './balances.js';
 
 // Linking Up to an account that already has history. Up rows before the cut-over are never
@@ -78,4 +79,88 @@ export function registerBalanceBefore(
     )
     .get();
   return startingBalance + (row?.sum ?? 0);
+}
+
+/**
+ * Recomputes the stored cut-over difference from the register as it is now (Up's balance at the
+ * last sync, less what Up's rows from the cut-over on add, less the older history): deleting an
+ * older row changes it between syncs.
+ */
+export function refreshCutoverDifference(accountId: string): number | null {
+  const mapping = db
+    .select()
+    .from(upAccountMappings)
+    .where(and(eq(upAccountMappings.accountId, accountId), eq(upAccountMappings.isEnabled, 1)))
+    .get();
+  const account = db.select().from(accounts).where(eq(accounts.id, accountId)).get();
+  if (!mapping?.cutoverDate || mapping.settledBalance === null || !account) return null;
+  const up = db
+    .select({ sum: sql<number>`coalesce(sum(${transactions.amount}), 0)` })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.accountId, accountId),
+        inAccountBalance,
+        like(transactions.importedId, 'up:%'),
+        notLike(transactions.importedId, '%:roundup'),
+        gte(transactions.date, mapping.cutoverDate),
+      ),
+    )
+    .get()!.sum;
+  const difference =
+    mapping.settledBalance -
+    up -
+    registerBalanceBefore(accountId, account.startingBalance, mapping.cutoverDate);
+  db.update(upAccountMappings)
+    .set({ cutoverDifference: difference })
+    .where(eq(upAccountMappings.id, mapping.id))
+    .run();
+  return difference;
+}
+
+export class CutoverError extends Error {}
+
+/** The day before a cut-over: where the history ends and the opening balance belongs */
+export const dayBefore = (cutover: string) =>
+  new Date(Date.parse(cutover + 'T00:00:00Z') - 86_400_000).toISOString().slice(0, 10);
+
+/**
+ * Owner-confirmed: settle the difference between the register and Up's balance on the day
+ * before the cut-over with one balance adjustment dated that day. It is a correction, not
+ * income (no category, left out of income and spending reports), so it lands in the past and
+ * today's net worth change stays honest. `expected` is the amount the owner saw.
+ */
+export function addCutoverOpeningBalance(accountId: string, expected: number) {
+  return db.transaction(() => {
+    refreshCutoverDifference(accountId);
+    const mapping = db
+      .select()
+      .from(upAccountMappings)
+      .where(and(eq(upAccountMappings.accountId, accountId), eq(upAccountMappings.isEnabled, 1)))
+      .get();
+    if (!mapping?.cutoverDate)
+      throw new CutoverError('This account was not linked to Up from a cut-over date.');
+    if (!mapping.cutoverDifference)
+      throw new CutoverError('Nothing to settle: the history already matches Up.');
+    if (mapping.cutoverDifference !== expected)
+      throw new CutoverError('The difference changed. Refresh and check the amount again.');
+    const date = dayBefore(mapping.cutoverDate);
+    insertNewTransaction({
+      accountId,
+      date,
+      amount: mapping.cutoverDifference,
+      payeeId: null,
+      payeeName: 'Opening balance',
+      importedPayee: null,
+      notes: `Balance Up reported on ${date}, added when linking from a cut-over date`,
+      categoryId: null,
+      importedId: null,
+      isAdjustment: true,
+    });
+    db.update(upAccountMappings)
+      .set({ cutoverDifference: 0 })
+      .where(eq(upAccountMappings.id, mapping.id))
+      .run();
+    return { date, amount: mapping.cutoverDifference };
+  });
 }

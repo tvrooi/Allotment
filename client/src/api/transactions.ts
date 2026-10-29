@@ -60,6 +60,20 @@ export interface ImportRow {
 /** What goes to the server: the file's own category label stays on this device */
 export const toApiRow = ({ fileCategory: _label, ...row }: ImportRow): ImportRow => row;
 
+/** Links the two legs of transfers that were imported together (exact mirrors only) */
+export const linkImportedTransfers = (
+  pairs: {
+    accountId: string;
+    importedId: string;
+    otherAccountId: string;
+    otherImportedId: string;
+  }[],
+) =>
+  apiFetch<{ linked: number; skipped: number }>('/transactions/import/link-transfers', {
+    method: 'POST',
+    body: JSON.stringify({ pairs }),
+  });
+
 /** The selection as the server's query string; shared by the register, summary and export */
 export function transactionQuery(params: TransactionQueryParams = {}): URLSearchParams {
   const q = new URLSearchParams();

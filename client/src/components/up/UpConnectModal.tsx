@@ -16,12 +16,35 @@ import {
   type UpMappingChoice,
   type UpSyncResult,
 } from '../../api/up';
+import type { Account } from '../../types';
 import { formatMoney } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { IS_DEMO } from '../../demo/demoApi';
 import { NotInDemoModal } from '../demo/NotInDemo';
 import { Private } from '../ui/Private';
 import { SortUncategorised } from '../review/SortUncategorised';
+
+/** Why no existing account can be linked to this Up account, in words */
+function linkBlockedReason(
+  up: UpDiscoveredAccount,
+  accounts: Account[],
+  choices: UpMappingChoice[],
+  current?: string,
+) {
+  const open = accounts.filter((x) => !x.closedAt);
+  if (up.accountId) return 'This Up account is already linked to an account.';
+  if (!open.length) return 'You have no accounts to link yet. Create a new one instead.';
+  const aud = open.filter((x) => (x.currency ?? 'AUD') === 'AUD');
+  if (!aud.length)
+    return `Up only syncs AUD accounts, and yours use ${[...new Set(open.map((x) => x.currency))].join(', ')}. Create a new account instead.`;
+  if (
+    aud.every((x) =>
+      choices.some((o) => o.action === 'link' && o.accountId === x.id && x.id !== current),
+    )
+  )
+    return 'Your AUD accounts are already chosen for other Up accounts.';
+  return 'No account can be linked here.';
+}
 
 const todayLocal = () => {
   const d = new Date();
@@ -187,7 +210,8 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
                   (local) =>
                     !local.closedAt &&
                     (!a.accountId || local.id === a.accountId) &&
-                    local.currency === 'AUD' &&
+                    // No currency yet (the budget hasn't picked one) is fine: linking makes it AUD
+                    (local.currency ?? 'AUD') === 'AUD' &&
                     !choices.some(
                       (other) =>
                         other.upAccountId !== a.upAccountId &&
@@ -235,6 +259,11 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
                           className="mt-1 w-full rounded-md border border-border bg-surface px-2 py-2 text-text"
                         />
                       </label>
+                    )}
+                    {!eligible.length && choice.action !== 'link' && (
+                      <p className="text-xs text-text-secondary">
+                        {linkBlockedReason(a, accounts, choices, choice.accountId)}
+                      </p>
                     )}
                     {choice.action === 'link' && (
                       <select

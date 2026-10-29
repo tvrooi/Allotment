@@ -20,7 +20,7 @@ function ynabStyleCsv(days = 30) {
   for (let i = 0; i < days; i++) {
     const date = dmy(isoDay(-100 + i));
     if (i % 10 === 0) rows.push([date, 'Employer Pty Ltd', '', 'salary', '', '$3,200.00']);
-    else if (i % 3 === 0) rows.push([date, 'Landlord', 'Bills: Rent', '', '$100.00', '']);
+    else if (i % 3 === 0) rows.push([date, 'Landlord', 'Bills: Landlord Fees', '', '$100.00', '']);
     else if (i % 3 === 1)
       rows.push([date, 'Coles ' + i, 'Food & Dining: Groceries', '', '$20.50', '']);
     else rows.push([date, 'Mystery ' + i, '', '', '$5.00', '']);
@@ -51,11 +51,11 @@ test('imports the categories in a YNAB-style CSV and shows what came in', async 
   const groceries = dialog.getByRole('combobox', { name: 'Category for Food & Dining: Groceries' });
   const groceryId = (await api.category('Groceries')).id;
   await expect(groceries).toHaveValue(groceryId); // matched by name, ignoring the group
-  const rent = dialog.getByRole('combobox', { name: 'Category for Bills: Rent' });
+  const rent = dialog.getByRole('combobox', { name: 'Category for Bills: Landlord Fees' });
   await expect(rent).toHaveValue('__new');
-  await expect(dialog.getByRole('combobox', { name: 'Group for Bills: Rent' })).toContainText(
-    'New group “Bills”',
-  );
+  await expect(
+    dialog.getByRole('combobox', { name: 'Group for Bills: Landlord Fees' }),
+  ).toContainText('New group “Bills”');
   expect((await api.categoryGroups()).some((g) => g.name === 'Bills')).toBe(false);
   await dialog.getByRole('button', { name: 'Preview' }).click();
 
@@ -70,7 +70,7 @@ test('imports the categories in a YNAB-style CSV and shows what came in', async 
   expect(txs).toHaveLength(30);
   const groups = await api.categoryGroups();
   const bills = groups.find((g) => g.name === 'Bills')!;
-  const rentCategory = bills.categories.find((c) => c.name === 'Rent')!;
+  const rentCategory = bills.categories.find((c) => c.name === 'Landlord Fees')!;
   const byPayee = (p: string) => txs.filter((t) => t.payeeName?.startsWith(p));
   expect(byPayee('Landlord').length).toBeGreaterThan(5);
   expect(byPayee('Landlord').every((t) => t.categoryId === rentCategory.id)).toBe(true);
@@ -125,25 +125,44 @@ test('imports a YNAB register with several accounts, from the welcome page', asy
     header +
     `Everyday,,${d1},Coles,Food & Dining: Groceries,Food & Dining,Groceries,weekly,"$1,234.56",$0.00,Cleared\n` +
     `Everyday,,${d2},Employer,Inflow: Ready to Assign,Inflow,Ready to Assign,,$0.00,"$3,000.00",Cleared\n` +
-    `Savings,,${d2},Interest,Income: Interest,Income,Interest,,$0.00,$1.25,Cleared\n`;
+    `Savings,,${d2},Interest,Income: Interest,Income,Interest,,$0.00,$1.25,Cleared\n` +
+    `Everyday,,${d1},Shell,Transport: Fuel,Transport,Fuel,,$50.00,$0.00,Cleared\n` +
+    `Everyday,,${d2},Transfer : Savings,,,,,$200.00,$0.00,Cleared\n` +
+    `Savings,,${d2},Transfer : Everyday,,,,,$0.00,$200.00,Cleared\n`;
   await dialog
     .getByLabel('YNAB register file')
     .setInputFiles({ name: 'Register.csv', mimeType: 'text/csv', buffer: Buffer.from(file) });
-  await expect(dialog).toContainText('3 transactions in 2 accounts');
+  await expect(dialog).toContainText('6 transactions in 2 accounts');
   await expect(dialog.getByRole('combobox', { name: 'Date format' })).toHaveValue('dmy');
   await expect(dialog.getByRole('textbox', { name: 'Name for Everyday' })).toHaveValue('Everyday');
-  await dialog.getByRole('button', { name: 'Import 3 transactions' }).click();
-  await expect(dialog).toContainText('Everyday: 2 imported');
-  await expect(dialog).toContainText('Savings: 1 imported');
+  // "Fuel" is offered as the existing "Gas / Fuel", not as a near-duplicate
+  await expect(dialog.getByRole('combobox', { name: 'Category for Transport: Fuel' })).toHaveValue(
+    (await api.category('Gas / Fuel')).id,
+  );
+  await dialog.getByRole('button', { name: 'Import 6 transactions' }).click();
+  await expect(dialog).toContainText('Everyday: 4 imported');
+  await expect(dialog).toContainText('Savings: 2 imported');
+  await expect(dialog).toContainText('1 transfer between these accounts linked.');
 
   const accounts = await api.accounts();
   expect(accounts.map((a) => a.name).sort()).toEqual(['Everyday', 'Savings']);
   const everyday = accounts.find((a) => a.name === 'Everyday')!;
-  expect(everyday.balance).toBe(300_000 - 123_456);
+  expect(everyday.balance).toBe(300_000 - 123_456 - 5_000 - 20_000);
   const txs = await api.transactions(`?account_id=${everyday.id}&from=2000-01-01`);
   const coles = txs.find((t) => t.payeeName === 'Coles')!;
   expect(coles.categoryId).toBe((await api.category('Groceries')).id);
   expect(coles.notes).toBe('weekly');
+  // The two legs of the transfer are one transfer now
+  const out = txs.find((t) => t.payeeName?.startsWith('Transfer'))!;
+  expect(out.transferTransactionId).toBeTruthy();
+  const savings = accounts.find((a) => a.name === 'Savings')!;
+  const back = (await api.transactions(`?account_id=${savings.id}&from=2000-01-01`)).find(
+    (t) => t.id === out.transferTransactionId,
+  );
+  expect(back?.transferTransactionId).toBe(out.id);
+  expect(txs.find((t) => t.payeeName === 'Shell')!.categoryId).toBe(
+    (await api.category('Gas / Fuel')).id,
+  );
   // Income filed under Ready to Assign is not a category to budget
   expect(txs.find((t) => t.payeeName === 'Employer')!.categoryId).toBeNull();
 });
@@ -215,9 +234,7 @@ test('links Up to an account that already has history, from a cut-over date', as
   await dialog.getByLabel('Set up Up Saver').selectOption('skip');
   await dialog.getByRole('button', { name: 'Save & Sync' }).click();
   await expect(dialog.getByText(/Imported \d+ transactions\./)).toBeVisible();
-  const skip = dialog.getByRole('button', { name: 'Skip for now' });
-  if (await skip.isVisible().catch(() => false)) await skip.click();
-  else await dialog.getByRole('button', { name: 'Done' }).click();
+  await dialog.getByRole('button', { name: /^(Skip for now|Done)$/ }).click();
 
   // One account, with nothing from before the cut-over taken from Up
   expect((await api.accounts()).filter((a) => a.name.includes('Old CBA'))).toHaveLength(1);
@@ -245,16 +262,91 @@ test('links Up to an account that already has history, from a cut-over date', as
   expect(connection.accounts.find((a) => a.cutoverDate)!.cutoverDate).toBe(cutover);
   expect(all.some((t) => /opening balance/i.test(t.payeeName ?? ''))).toBe(false);
 
-  // One click deletes the older row; the Up row stays
+  // Deleting the older row asks first, naming it; cancelling changes nothing
   await review.getByRole('button', { name: 'Delete the older one' }).first().click();
+  const sure = page.getByRole('dialog', { name: 'Delete the older transaction?' });
+  await expect(sure).toContainText('Same purchase');
+  await sure.getByRole('button', { name: 'Cancel' }).click();
+  expect(
+    (await api.transactions(`?account_id=${old.id}&from=2000-01-01`)).some(
+      (t) => t.payeeName === 'Same purchase',
+    ),
+  ).toBe(true);
+  await review.getByRole('button', { name: 'Delete the older one' }).first().click();
+  await sure.getByRole('button', { name: 'Delete it' }).click();
   await expect(review).toBeHidden();
   const after = await api.transactions(`?account_id=${old.id}&from=2000-01-01`);
   expect(after.some((t) => t.payeeName === 'Same purchase')).toBe(false);
   expect(
     after.filter((t) => t.date === overlapDate && t.amount === overlapAmount).length,
   ).toBeGreaterThanOrEqual(1);
+  // The difference at the cut-over is settled by an opening balance dated the day before it,
+  // not by a reconcile adjustment dated today
+  await page.getByRole('button', { name: /Add an opening balance dated/ }).click();
+  const opening = page.getByRole('dialog', { name: 'Add an opening balance?' });
+  await expect(opening).toContainText('not income or spending');
+  await opening.getByRole('button', { name: 'Add opening balance' }).click();
+  await expect(page.getByRole('button', { name: /Add an opening balance dated/ })).toBeHidden();
+  const dayBefore = new Date(cutover + 'T00:00:00Z');
+  dayBefore.setUTCDate(dayBefore.getUTCDate() - 1);
+  const adjustments = (await api.transactions(`?account_id=${old.id}&from=2000-01-01`)).filter(
+    (t) => t.isAdjustment,
+  );
+  expect(adjustments).toHaveLength(1);
+  expect(adjustments[0]).toMatchObject({
+    date: dayBefore.toISOString().slice(0, 10),
+    categoryId: null,
+  });
   // A second sync adds nothing
   const resync = await api.call<{ added: number }>('POST', '/up/sync');
   expect(resync.added).toBe(0);
+  await api.call('DELETE', '/up/connection');
+});
+
+test('the recommended order works on a fresh budget: YNAB import, then link Up to the imported account', async ({
+  page,
+  api,
+}) => {
+  test.slow();
+  await mock('rich');
+  await freshUpWindow(page, api, 14);
+  await open(page, '/welcome');
+  await page.getByRole('button', { name: 'Import from YNAB' }).click();
+  const ynab = page.getByRole('dialog', { name: 'Import from YNAB' });
+  const header =
+    'Account,Flag,Date,Payee,Category Group/Category,Category Group,Category,Memo,Outflow,Inflow,Cleared\n';
+  const rows = [-60, -55, -50]
+    .map(
+      (d, i) =>
+        `Everyday,,${dmy(isoDay(d))},Shop ${i},Food & Dining: Groceries,Food & Dining,Groceries,,$10.00,$0.00,Cleared\n`,
+    )
+    .join('');
+  await ynab.getByLabel('YNAB register file').setInputFiles({
+    name: 'Register.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(header + rows),
+  });
+  await ynab.getByRole('button', { name: 'Import 3 transactions' }).click();
+  await expect(ynab).toContainText('Everyday: 3 imported');
+  const [everyday] = await api.accounts();
+  expect(everyday.name).toBe('Everyday');
+  await ynab.getByRole('button', { name: 'View the account' }).click();
+
+  // No currency step in between: AUD is the default and linking is available
+  await open(page, '/settings?tab=connections');
+  await page.getByRole('button', { name: 'Up', exact: true }).click();
+  await page.getByRole('button', { name: 'Connect Up', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Connect Up' });
+  await dialog.getByLabel('Up personal access token').fill(UP_TEST_TOKEN);
+  await dialog.getByRole('button', { name: 'Connect', exact: true }).click();
+  const link = dialog.getByLabel('Set up Up Everyday').locator('option[value="link"]');
+  await expect(link).toBeEnabled();
+  await dialog.getByLabel('Set up Up Everyday').selectOption('link');
+  await dialog.getByLabel('Link Up Everyday to account').selectOption(everyday.id);
+  await expect(dialog.getByLabel('Cut-over date for Up Everyday')).toBeVisible();
+  await dialog.getByLabel('Set up Up Saver').selectOption('skip');
+  await dialog.getByRole('button', { name: 'Save & Sync' }).click();
+  await expect(dialog.getByText(/Imported \d+ transactions\./)).toBeVisible();
+  expect((await api.accounts()).filter((a) => a.name.includes('Everyday'))).toHaveLength(1);
   await api.call('DELETE', '/up/connection');
 });

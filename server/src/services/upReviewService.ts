@@ -37,6 +37,8 @@ export function observeUpAccount(
   upAccountId: string,
   /** Up imports that may duplicate an older row (importedId -> that row's id), flagged for review */
   overlaps: Map<string, string> = new Map(),
+  /** The account's first sync: what arrives then is the starting history, not a change to review */
+  firstSync = false,
 ) {
   const seen = new Set<string>();
   for (const tx of history) {
@@ -67,7 +69,9 @@ export function observeUpAccount(
         : newIds.has(importedId)
           ? overlaps.has(importedId)
             ? 'overlap'
-            : 'new'
+            : firstSync
+              ? 'reviewed'
+              : 'new'
           : changed && !wasHeld
             ? 'changed'
             : old?.reviewState === 'pending'

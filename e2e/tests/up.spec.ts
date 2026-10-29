@@ -88,12 +88,9 @@ test('sets background sync, reviews imports, and expands daily round-up details 
       .pollIntervalMinutes,
   ).toBe(15);
   const review = page.getByRole('region', { name: 'Up review', exact: true });
-  await expect(review.getByRole('heading')).toHaveText('Needs review (4)');
-  await review
-    .getByRole('button', { name: 'Acknowledge · keep local record', exact: true })
-    .first()
-    .click();
-  await expect(review.getByRole('heading')).toHaveText('Needs review (3)');
+  // The first sync is the starting history, not changes to review
+  await expect(review.getByRole('heading')).toHaveText('Needs review (0)');
+  await expect(review.getByText('Nothing needs review.')).toBeVisible();
   const rounds = page.getByRole('region', { name: 'Daily Up round-ups', exact: true });
   await rounds.getByText('A$2.40 reported', { exact: false }).click();
   await expect(rounds.getByText('Includes A$2 in boosts.')).toBeVisible();

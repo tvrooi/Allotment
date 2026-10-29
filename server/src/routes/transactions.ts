@@ -760,6 +760,51 @@ transactionsRouter.post('/import/confirm', (req, res) => {
   res.json({ ...outcome, skipped: rows.length - outcome.imported });
 });
 
+// POST /transactions/import/link-transfers — after a multi-account import (YNAB), link the two
+// legs of each transfer that arrived in the same file. Only exact mirrors (same day, opposite
+// amounts, different accounts, neither reconciled nor already a transfer) are linked.
+transactionsRouter.post('/import/link-transfers', (req, res) => {
+  const parsed = z
+    .object({
+      pairs: z
+        .array(
+          z.object({
+            accountId: z.string().max(64),
+            importedId: z.string().max(500),
+            otherAccountId: z.string().max(64),
+            otherImportedId: z.string().max(500),
+          }),
+        )
+        .max(20_000),
+    })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  const find = (accountId: string, importedId: string) =>
+    db
+      .select()
+      .from(transactions)
+      .where(and(eq(transactions.accountId, accountId), eq(transactions.importedId, importedId)))
+      .get();
+  let linked = 0;
+  let skipped = 0;
+  for (const p of parsed.data.pairs) {
+    const a = find(p.accountId, p.importedId);
+    const b = find(p.otherAccountId, p.otherImportedId);
+    if (!a || !b || a.date !== b.date || a.amount !== -b.amount || a.amount === 0) {
+      skipped++;
+      continue;
+    }
+    try {
+      linkTransfer(a.id, b.id);
+      linked++;
+    } catch (err) {
+      if (!(err instanceof TransferError)) throw err;
+      skipped++;
+    }
+  }
+  res.json({ linked, skipped });
+});
+
 // PUT /transactions/:id
 // A split's parts and a transfer's other side are separate rows: keep them in step with
 // the row being edited, so budgets and both accounts agree on dates and amounts.

@@ -136,3 +136,10 @@ export const enableUpRoundUpDebits = (accountId: string, count: number, total: n
   });
 export const disableUpRoundUpDebits = (accountId: string) =>
   apiFetch(`/up/round-up-debits/${encodeURIComponent(accountId)}`, { method: 'DELETE' });
+
+/** Settle the cut-over difference with one adjustment dated the day before the cut-over */
+export const addUpOpeningBalance = (accountId: string, expected: number) =>
+  apiFetch<{ date: string; amount: number }>('/up/cutover/opening-balance', {
+    method: 'POST',
+    body: JSON.stringify({ accountId, expected }),
+  });

@@ -11,6 +11,7 @@ import {
   upAccountMappings,
   upConnections,
   upSourceRecords,
+  budgetSettings,
 } from '../db/schema.js';
 import { upRouter } from './up.js';
 import { syncUp } from '../services/upSyncService.js';
@@ -211,13 +212,18 @@ describe('linking Up to an account with history, from a cut-over date', () => {
       importedId: 'up:spending:sep-5',
       overlap: { id: 'dup', date: '2026-09-05', amount: -1_000, reconciled: false },
     });
-    // Unflagged imports still appear in the ordinary review list
+    // The first sync's other rows are starting history: not listed as changes to review
+    expect(data.items.map((i: { importedId: string }) => i.importedId)).toEqual([
+      'up:spending:sep-5',
+    ]);
+    // A row that arrives later is an ordinary change to review
+    mock.setHistory('spending', [...UP_HISTORY, upTx('sep-9', -250, '2026-09-09')]);
+    await syncUp();
     expect(
-      data.items.some(
-        (i: { importedId: string; reviewState: string }) =>
-          i.importedId === 'up:spending:sep-1' && i.reviewState === 'new',
+      (await review()).items.find(
+        (i: { importedId: string }) => i.importedId === 'up:spending:sep-9',
       ),
-    ).toBe(true);
+    ).toMatchObject({ reviewState: 'new' });
   });
 
   it('keeps both on request, or deletes only the old row, each one click', async () => {
@@ -330,5 +336,108 @@ describe('linking Up to an account with history, from a cut-over date', () => {
         .all()
         .every((r) => r.reviewState !== 'overlap'),
     ).toBe(true);
+  });
+});
+
+describe('currency when linking', () => {
+  it('links an account with no currency of its own while the budget has none, and makes the budget AUD', async () => {
+    await setup();
+    db.delete(budgetSettings).run();
+    db.insert(accounts).values({ id: 'old', name: 'Everyday', type: 'checking' }).run();
+    csvRow('c1', '2026-08-15', -500);
+    mock.setHistory('spending', UP_HISTORY);
+    expect((await link(CUTOVER)).status).toBe(200);
+    expect(db.select().from(budgetSettings).get()?.currency).toBe('AUD');
+    expect((await syncUp()).errors).toEqual([]);
+  });
+  it('uses the budget currency when the account has none, and names the reason when it is not AUD', async () => {
+    await setup();
+    db.delete(budgetSettings).run();
+    db.insert(budgetSettings).values({ id: 'budget', currency: 'USD' }).run();
+    db.insert(accounts).values({ id: 'old', name: 'Everyday', type: 'checking' }).run();
+    const res = await link();
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain('Everyday uses USD');
+    db.update(budgetSettings).set({ currency: 'AUD' }).run();
+    expect((await link()).status).toBe(200);
+  });
+});
+
+describe('settling the cut-over difference', () => {
+  async function linked(starting = 0) {
+    await setup();
+    oldAccount(starting);
+    csvRow('c1', '2026-08-15', -300);
+    mock.setHistory('spending', UP_HISTORY);
+    await link(CUTOVER);
+    await syncUp();
+  }
+  const settle = (expected: number) =>
+    request('/cutover/opening-balance', { accountId: 'old', expected });
+  it('adds one balance adjustment dated the day before the cut-over, not income, and nothing else changes', async () => {
+    await linked();
+    const before = rows();
+    const res = await settle(-200);
+    expect(res.status).toBe(200);
+    const added = rows().filter((r) => !before.some((b) => b.id === r.id));
+    expect(added).toHaveLength(1);
+    expect(added[0]).toMatchObject({
+      date: '2026-08-31',
+      amount: -200,
+      isAdjustment: 1,
+      categoryId: null,
+      reconciled: 0,
+    });
+    for (const old of before)
+      expect(JSON.stringify(rows().find((r) => r.id === old.id))).toBe(JSON.stringify(old));
+    expect(db.select().from(upAccountMappings).get()!.cutoverDifference).toBe(0);
+    expect(accountIssues().find((i) => i.accountId === 'old')).toBeUndefined();
+    // Later syncs stay quiet and add nothing
+    const again = await syncUp();
+    expect(again.added).toBe(0);
+    expect(again.notices ?? []).toEqual([]);
+  });
+  it('refuses a stale amount, an account with no difference, and a second click', async () => {
+    await linked();
+    expect((await settle(-100)).status).toBe(409);
+    expect(rows().some((r) => r.isAdjustment === 1)).toBe(false);
+    expect((await settle(-200)).status).toBe(200);
+    expect((await settle(-200)).status).toBe(409);
+    expect(rows().filter((r) => r.isAdjustment === 1)).toHaveLength(1);
+  });
+  it('is refused for an account that is not linked from a cut-over', async () => {
+    await setup();
+    oldAccount();
+    expect((await settle(-200)).status).toBe(409);
+  });
+});
+
+describe('the cut-over difference follows the register', () => {
+  it('is recomputed when an older row is deleted, so the opening balance is never stale', async () => {
+    await setup();
+    oldAccount();
+    csvRow('c1', '2026-08-15', -300);
+    csvRow('dup', '2026-09-05', -1_000);
+    mock.setHistory('spending', UP_HISTORY);
+    await link(CUTOVER);
+    await syncUp();
+    const item = (await review()).items.find(
+      (i: { reviewState: string }) => i.reviewState === 'overlap',
+    );
+    // c1 alone is -300 against Up's -500 at the cut-over: -200 short. Deleting "dup" (dated
+    // after the cut-over) does not change the history before it.
+    expect(db.select().from(upAccountMappings).get()!.cutoverDifference).toBe(-200);
+    csvRow('before', '2026-08-20', -100);
+    await request('/review/overlap/delete-old', {
+      importedId: item.importedId,
+      revision: item.revision,
+    });
+    expect(db.select().from(upAccountMappings).get()!.cutoverDifference).toBe(-100);
+    expect(
+      (await request('/cutover/opening-balance', { accountId: 'old', expected: -200 })).status,
+    ).toBe(409);
+    expect(
+      (await request('/cutover/opening-balance', { accountId: 'old', expected: -100 })).status,
+    ).toBe(200);
   });
 });

@@ -7,6 +7,12 @@
 - **Import from YNAB.** From the Welcome page, **Settings, Data** and an account's Import dialog: pick YNAB's register export, and FlyBudget creates or matches one account for each YNAB account, with categories and memos. "Ready to Assign" income stays uncategorised. YNAB's plan export (assigned amounts) is not imported yet.
 - **A balance you typed stays true.** An account added with "Current balance as of today" keeps that balance when you later import older history: the starting balance moves by what the older rows add, and the import says so. Not for bank-linked accounts or accounts with reconciled rows (it shows the balance change instead), and not after you edit the starting balance yourself.
 - **After an import, the register shows it.** The register jumps to the imported dates instead of an empty This Month.
+- **Linking works before you pick a currency.** An account with no currency of its own in a budget with no currency yet can be linked to Up (it makes the budget AUD, as creating an Up account does). When an account really can't be linked, the dialog says why next to the option.
+- **Settle the cut-over difference without fake income.** If your history disagrees with Up's balance the day before the cut-over, Settings, Connected Banks, Up offers **Add an opening balance dated** that day: one balance adjustment you confirm, not income, instead of a reconcile adjustment dated today. Deleting an older row refreshes the figure.
+- **Deleting a possible duplicate asks first**, naming the older transaction (date, payee, amount).
+- **YNAB transfers are linked.** When both legs of a transfer are in the file and both accounts are imported together, they become one transfer; the summary says how many. Rows that don't mirror exactly are left as they are.
+- **Smarter category matches.** The suggested match ignores case and punctuation, accepts one part of "Gas / Fuel", and knows a few equivalents (Public Transport = Public Transit). You can still change each one.
+- **First sync isn't a list of changes.** The starting import is no longer counted under "Bank changes to review"; later changes and possible duplicates are.
 - **Welcome page** suggests an order for people coming from another app: connect your bank first and import only older history, or import everything and link Up from a cut-over date.
 
 ## 0.2.0-up.61

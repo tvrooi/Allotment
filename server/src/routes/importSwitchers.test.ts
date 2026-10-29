@@ -182,3 +182,59 @@ describe("an opening balance typed as today's balance", () => {
     expect(await balance(id)).toBe(150_000);
   });
 });
+
+describe('linking transfers whose two legs came in together', () => {
+  async function pair(aAmount = -20_000, bAmount = 20_000, bDate = '2026-08-05') {
+    const a = await mkAccount({ balanceAsOf: undefined, startingBalance: 0 });
+    const b = await mkAccount({ balanceAsOf: undefined, startingBalance: 0 });
+    const id = Math.random().toString(36).slice(2, 8);
+    await call('POST', '/transactions/import/confirm', {
+      accountId: a,
+      rows: [row(5, aAmount, { importedId: 'a' + id, payeeName: 'Transfer : B' })],
+    });
+    await call('POST', '/transactions/import/confirm', {
+      accountId: b,
+      rows: [
+        { ...row(5, bAmount, { importedId: 'b' + id, payeeName: 'Transfer : A' }), date: bDate },
+      ],
+    });
+    return { a, b, ia: 'a' + id, ib: 'b' + id };
+  }
+  const send = (p: { a: string; b: string; ia: string; ib: string }) =>
+    call('POST', '/transactions/import/link-transfers', {
+      pairs: [{ accountId: p.a, importedId: p.ia, otherAccountId: p.b, otherImportedId: p.ib }],
+    });
+  const rowOf = (accountId: string, importedId: string) =>
+    db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.accountId, accountId))
+      .all()
+      .find((r) => r.importedId === importedId)!;
+
+  it('links the two rows as one transfer and counts it', async () => {
+    const p = await pair();
+    const res = await send(p);
+    expect(res.body).toEqual({ linked: 1, skipped: 0 });
+    const a = rowOf(p.a, p.ia);
+    const b = rowOf(p.b, p.ib);
+    expect(a.transferTransactionId).toBe(b.id);
+    expect(b.transferTransactionId).toBe(a.id);
+  });
+  it('never links rows that do not mirror each other, and leaves them as imported', async () => {
+    for (const p of [await pair(-20_000, 19_999), await pair(-20_000, 20_000, '2026-08-06')]) {
+      const before = JSON.stringify([rowOf(p.a, p.ia), rowOf(p.b, p.ib)]);
+      expect((await send(p)).body).toEqual({ linked: 0, skipped: 1 });
+      expect(JSON.stringify([rowOf(p.a, p.ia), rowOf(p.b, p.ib)])).toBe(before);
+    }
+  });
+  it('skips a row that is reconciled or already a transfer, and unknown rows', async () => {
+    const p = await pair();
+    db.update(transactions)
+      .set({ reconciled: 1 })
+      .where(eq(transactions.id, rowOf(p.a, p.ia).id))
+      .run();
+    expect((await send(p)).body).toEqual({ linked: 0, skipped: 1 });
+    expect((await send({ ...p, ib: 'missing' })).body).toEqual({ linked: 0, skipped: 1 });
+  });
+});

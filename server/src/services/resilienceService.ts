@@ -465,7 +465,7 @@ export function resumeState(today = todayIso()) {
     ? db
         .select({ id: upSourceRecords.importedId })
         .from(upSourceRecords)
-        .where(inArray(upSourceRecords.reviewState, ['new', 'changed', 'missing']))
+        .where(inArray(upSourceRecords.reviewState, ['new', 'changed', 'missing', 'overlap']))
         .all().length
     : null;
   return {

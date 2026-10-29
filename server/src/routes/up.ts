@@ -13,7 +13,12 @@ import {
   simplefinAccountMappings,
   enableBankingAccountMappings,
 } from '../db/schema.js';
-import { isValidDay } from '../services/upCutover.js';
+import {
+  addCutoverOpeningBalance,
+  CutoverError,
+  isValidDay,
+  refreshCutoverDifference,
+} from '../services/upCutover.js';
 import { deleteTransactionRow } from '../services/transactionHelpers.js';
 import { cleanUpText, getUpAccounts, upErrorMessage } from '../services/upService.js';
 import {
@@ -209,8 +214,15 @@ upRouter.post('/map-accounts', (req, res) => {
       const local =
         choice.accountId &&
         db.select().from(accounts).where(eq(accounts.id, choice.accountId)).get();
-      if (!local || local.closedAt || accountCurrency(local.id, currencyContext()) !== 'AUD')
+      if (!local || local.closedAt)
         return res.status(400).json({ error: 'Choose an open account using AUD.' });
+      // Its own currency, else the budget's. A budget with no currency yet is still undecided:
+      // linking Up (AUD only) makes it AUD, as creating an Up account does.
+      const currency = accountCurrency(local.id, currencyContext());
+      if (currency !== null && currency !== 'AUD')
+        return res.status(400).json({
+          error: `${local.name} uses ${currency}. Up only syncs AUD accounts: choose an account in AUD or create a new one.`,
+        });
       if (mapping.accountId && mapping.accountId !== local.id)
         return res.status(409).json({
           error:
@@ -267,6 +279,8 @@ upRouter.post('/map-accounts', (req, res) => {
         continue;
       }
       let accountId = choice.accountId;
+      if (choice.action === 'link' && accountCurrency(accountId!, currencyContext()) === null)
+        currencyToStore('AUD'); // the budget had no currency: it is AUD now
       if (choice.action === 'create') {
         accountId = nanoid();
         const type =
@@ -426,12 +440,27 @@ upRouter.post('/review/overlap/delete-old', (req, res) => {
   }
   db.transaction(() => {
     if (old) deleteTransactionRow(old);
+    if (old) refreshCutoverDifference(old.accountId);
     db.update(upSourceRecords)
       .set({ reviewState: 'reviewed', previousJson: null })
       .where(eq(upSourceRecords.importedId, record.importedId))
       .run();
   });
   res.json({ deleted: !!old });
+});
+upRouter.post('/cutover/opening-balance', (req, res) => {
+  if (isUpSyncing()) return res.status(409).json({ error: 'Wait for the Up sync to finish.' });
+  const parsed = z
+    .object({ accountId: z.string().min(1).max(64), expected: z.number().int() })
+    .strict()
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Choose an account and its amount.' });
+  try {
+    res.json(addCutoverOpeningBalance(parsed.data.accountId, parsed.data.expected));
+  } catch (err) {
+    if (err instanceof CutoverError) return res.status(409).json({ error: err.message });
+    throw err;
+  }
 });
 upRouter.get('/round-ups', (_req, res) => {
   // Bank-local dates can be a day ahead/behind UTC; include an extra day at this boundary.
