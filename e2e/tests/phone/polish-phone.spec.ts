@@ -79,7 +79,8 @@ test.describe('the budget header', () => {
     await expect(planned).toBeInViewport();
     expect(await sidewaysOverflow(page)).toEqual([]);
     await planned.click();
-    await expect(page.getByRole('dialog')).toBeVisible();
+    // The closed Auto-assign sheet may still be animating out: name the one we expect
+    await expect(page.getByRole('dialog', { name: 'Plan Groceries' })).toBeVisible();
   });
 
   test('the Ready to assign help does not cover "Put the rest in…"', async ({ page, api }) => {
@@ -158,7 +159,8 @@ test('the category list in Add transaction is as wide as its field', async ({ pa
   const picker = search.locator('xpath=ancestor::div[contains(@class,"shadow-lg")][1]');
   const f = await box(field);
   const p = await box(picker);
-  expect(Math.round(p.width)).toBeGreaterThanOrEqual(Math.round(f.width) - 1);
+  // Full width give or take a scrollbar or border (the old list was about 65% of the field)
+  expect(Math.round(p.width)).toBeGreaterThanOrEqual(Math.round(f.width) - 8);
   expect(p.x).toBeGreaterThanOrEqual(0);
   expect(p.x + p.width).toBeLessThanOrEqual(WIDTH);
 });
