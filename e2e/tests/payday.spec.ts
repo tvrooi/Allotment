@@ -191,6 +191,8 @@ test('an applied payday can be undone, previewed again and applied again', async
   // Apply again, then undo from the history entry
   await page.getByRole('button', { name: 'Apply funding' }).click();
   await expect(page.getByText('Funding applied to your monthly budget.')).toBeVisible();
+  // Wait for the refreshed history (the new entry plus the undone one) before opening it
+  await expect(page.getByText('Funding history (2)', { exact: true })).toBeVisible();
   await page.getByText(/applied .*\$400/).click();
   await page.getByRole('button', { name: /Undo funding for payday/ }).click();
   await expect(page.getByText(/Funding undone/)).toBeVisible();
