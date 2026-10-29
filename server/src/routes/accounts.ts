@@ -37,7 +37,7 @@ import {
   valueToday,
   type CurrencyContext,
 } from '../services/mainAmountService.js';
-import { currencySchema } from '../utils/validation.js';
+import { currencySchema, isoDate } from '../utils/validation.js';
 import {
   importSettingsSchema,
   readImportSettings,
@@ -59,6 +59,8 @@ const fields = {
 
 const createSchema = z.object({
   ...fields,
+  /** The day the starting balance is the account's balance (the Add Account form: "as of today") */
+  balanceAsOf: isoDate.optional(),
   startingBalance: fields.startingBalance.default(0),
   isOffBudget: fields.isOffBudget.optional(),
   currency: fields.currency.optional(),
@@ -81,6 +83,7 @@ function shown(
   balance: number,
   hasTransactions: boolean,
   ctx: CurrencyContext,
+  lastTransactionDate: string | null = null,
 ) {
   const currency = account.currency ?? ctx.budget;
   const value = valueToday(balance, currency, ctx);
@@ -99,6 +102,8 @@ function shown(
     currency,
     balance,
     hasTransactions,
+    /** Newest transaction date, for "Up takes over from the day after" when linking Up */
+    lastTransactionDate,
     householdPool,
     // A bank feed supplies this account's transactions: a hand-entered row will disagree with the bank
     bankLinked: bankLinked(account.id),
@@ -109,12 +114,17 @@ function shown(
 
 function withBalance(account: typeof accounts.$inferSelect) {
   const sum = accountTransactionSum(account.id);
+  const last = db
+    .select({ date: sql<string | null>`max(${transactions.date})` })
+    .from(transactions)
+    .where(and(eq(transactions.accountId, account.id), inAccountBalance))
+    .get()?.date;
   const any = !!db
     .select({ id: transactions.id })
     .from(transactions)
     .where(eq(transactions.accountId, account.id))
     .get();
-  return shown(account, account.startingBalance + sum, any, currencyContext());
+  return shown(account, account.startingBalance + sum, any, currencyContext(), last ?? null);
 }
 
 const storedCurrency = currencyToStore;
@@ -132,15 +142,25 @@ accountsRouter.get('/', (req, res) => {
     .select({
       accountId: transactions.accountId,
       sum: sql<number>`coalesce(sum(case when ${inAccountBalance} then ${transactions.amount} else 0 end), 0)`,
+      last: sql<string | null>`max(case when ${inAccountBalance} then ${transactions.date} end)`,
     })
     .from(transactions)
     .groupBy(transactions.accountId)
     .all();
 
   const sumMap = new Map(sums.map((s) => [s.accountId, s.sum]));
+  const lastMap = new Map(sums.map((s) => [s.accountId, s.last]));
   const ctx = currencyContext();
   res.json(
-    rows.map((a) => shown(a, a.startingBalance + (sumMap.get(a.id) ?? 0), sumMap.has(a.id), ctx)),
+    rows.map((a) =>
+      shown(
+        a,
+        a.startingBalance + (sumMap.get(a.id) ?? 0),
+        sumMap.has(a.id),
+        ctx,
+        lastMap.get(a.id) ?? null,
+      ),
+    ),
   );
 });
 
@@ -214,9 +234,11 @@ accountsRouter.post('/', (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
+  const { balanceAsOf, ...data } = parsed.data;
   const account = {
     id: nanoid(),
-    ...parsed.data,
+    ...data,
+    balanceAsOf: balanceAsOf && data.startingBalance !== 0 ? balanceAsOf : null,
     currency: storedCurrency(parsed.data.currency) ?? null,
     // Homes, cars, investments and loans stay off budget unless asked otherwise
     isOffBudget: parsed.data.isOffBudget ?? defaultOffBudget(parsed.data.type),
@@ -435,7 +457,16 @@ accountsRouter.put('/:id', (req, res) => {
   }
 
   if (Object.keys(data).length) {
-    db.update(accounts).set(data).where(eq(accounts.id, req.params.id)).run();
+    db.update(accounts)
+      .set({
+        ...data,
+        // A hand-edited starting balance is the owner's word, not "today's balance" any more
+        ...(data.startingBalance !== undefined && data.startingBalance !== existing.startingBalance
+          ? { balanceAsOf: null }
+          : {}),
+      })
+      .where(eq(accounts.id, req.params.id))
+      .run();
   }
   const updated = db.select().from(accounts).where(eq(accounts.id, req.params.id)).get()!;
   res.json(withBalance(updated));

@@ -379,6 +379,13 @@
       "when": 1793990000000,
       "tag": "0053_up_cutover",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "6",
+      "when": 1794000000000,
+      "tag": "0054_account_balance_as_of",
+      "breakpoints": true
     }
   ]
 }

@@ -21,6 +21,8 @@ const COLUMN_ROLES = [
   'outflow',
   'direction',
   'notes',
+  'category',
+  'categoryGroup',
   'skip',
 ] as const;
 

@@ -1,4 +1,5 @@
 import { apiFetch } from './client';
+import type { FileCategory } from '../utils/csv';
 import type {
   Transaction,
   TransactionQueryParams,
@@ -50,7 +51,14 @@ export interface ImportRow {
   payeeName?: string | null;
   notes?: string | null;
   importedId: string;
+  /** Chosen for the file's category before importing */
+  categoryId?: string | null;
+  /** The file's own category (never sent): the person decides what it maps to */
+  fileCategory?: FileCategory | null;
 }
+
+/** What goes to the server: the file's own category label stays on this device */
+export const toApiRow = ({ fileCategory: _label, ...row }: ImportRow): ImportRow => row;
 
 /** The selection as the server's query string; shared by the register, summary and export */
 export function transactionQuery(params: TransactionQueryParams = {}): URLSearchParams {
@@ -164,13 +172,23 @@ export const unlockTransaction = (id: string) =>
 export const importPreview = (accountId: string, rows: ImportRow[]) =>
   apiFetch<ImportPreviewRow[]>('/transactions/import/preview', {
     method: 'POST',
-    body: JSON.stringify({ accountId, rows }),
+    body: JSON.stringify({ accountId, rows: rows.map(toApiRow) }),
   });
 
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+  /** The account's balance before and after (minor units) */
+  balanceBefore: number;
+  balance: number;
+  /** Its starting balance moved so a balance typed as "today's" stayed true */
+  startingBalanceAdjusted: boolean;
+}
+
 export const importConfirm = (accountId: string, rows: ImportRow[]) =>
-  apiFetch<{ imported: number; skipped: number }>('/transactions/import/confirm', {
+  apiFetch<ImportResult>('/transactions/import/confirm', {
     method: 'POST',
-    body: JSON.stringify({ accountId, rows }),
+    body: JSON.stringify({ accountId, rows: rows.map(toApiRow) }),
   });
 
 // ─── Phase 9: review, report visibility and tags ──────────────────────────────

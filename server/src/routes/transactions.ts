@@ -46,7 +46,8 @@ import {
   restoreBulkEdit,
   splitTransaction,
 } from '../services/transactionEdits.js';
-import { isBudgetBoundary } from '../services/balances.js';
+import { accountTransactionSum, isBudgetBoundary } from '../services/balances.js';
+import { hasBankFeed } from '../services/accountIntegrity.js';
 import {
   accountCurrency,
   convertAmount,
@@ -185,6 +186,8 @@ const importRowSchema = z.object({
   payeeName: z.string().max(500).nullable().optional(),
   notes: z.string().max(5_000).nullable().optional(),
   importedId: z.string().max(500),
+  /** From the file's category column, matched or created by the person importing */
+  categoryId: z.string().max(64).nullable().optional(),
 });
 const importRowsSchema = z.array(importRowSchema).max(100_000);
 
@@ -680,14 +683,40 @@ transactionsRouter.post('/import/confirm', (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const { accountId, rows } = parsed.data;
-  if (!db.select({ id: accounts.id }).from(accounts).where(eq(accounts.id, accountId)).get()) {
+  const account = db.select().from(accounts).where(eq(accounts.id, accountId)).get();
+  if (!account) {
     return res.status(404).json({ error: 'Account not found' });
   }
-  let imported = 0;
-  const ruleOpts = { rules: loadRules(), ctx: buildRuleContext(), currencies: currencyContext() };
+  const wanted = [...new Set(rows.map((r) => r.categoryId).filter((c): c is string => !!c))];
+  if (
+    wanted.length &&
+    db.select({ id: categories.id }).from(categories).where(inArray(categories.id, wanted)).all()
+      .length !== wanted.length
+  )
+    return res.status(400).json({ error: 'A category in this import no longer exists' });
+  const ruleOpts = {
+    rules: loadRules(),
+    ctx: buildRuleContext(),
+    currencies: currencyContext(),
+    // The file's own categories win over rules; rules still fill in the rest
+    keepUserCategory: true,
+  };
 
   // One transaction: all rows or none, and far faster than a commit per row
-  db.transaction(() => {
+  const outcome = db.transaction(() => {
+    let imported = 0;
+    let historical = 0;
+    const balanceBefore = account.startingBalance + accountTransactionSum(accountId);
+    // Typed as "today's balance": older rows must not change it. Not for a bank-fed account
+    // (the bank decides) or one with reconciled rows (those were agreed with a statement).
+    const keepsBalance =
+      !!account.balanceAsOf &&
+      !hasBankFeed(accountId) &&
+      !db
+        .select({ id: transactions.id })
+        .from(transactions)
+        .where(and(eq(transactions.accountId, accountId), eq(transactions.reconciled, 1)))
+        .get();
     for (const row of rows) {
       const dup = db
         .select()
@@ -707,16 +736,28 @@ transactionsRouter.post('/import/confirm', (req, res) => {
           payeeName: row.payeeName || null,
           importedPayee: row.payeeName || null,
           notes: row.notes ?? null,
-          categoryId: null,
+          categoryId: row.categoryId ?? null,
           importedId: row.importedId,
         },
         ruleOpts,
       );
       imported++;
+      if (keepsBalance && row.date <= account.balanceAsOf!) historical += row.amount;
     }
+    if (historical !== 0)
+      db.update(accounts)
+        .set({ startingBalance: account.startingBalance - historical })
+        .where(eq(accounts.id, accountId))
+        .run();
+    return {
+      imported,
+      balanceBefore,
+      startingBalanceAdjusted: historical !== 0,
+      balance: account.startingBalance - historical + accountTransactionSum(accountId),
+    };
   });
 
-  res.json({ imported, skipped: rows.length - imported });
+  res.json({ ...outcome, skipped: rows.length - outcome.imported });
 });
 
 // PUT /transactions/:id

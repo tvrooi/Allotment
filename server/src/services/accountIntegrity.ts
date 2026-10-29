@@ -5,6 +5,8 @@ import {
   transactions,
   upAccountMappings,
   enableBankingAccountMappings,
+  plaidAccountMappings,
+  simplefinAccountMappings,
 } from '../db/schema.js';
 import { format, parseISO } from 'date-fns';
 import { inAccountBalance, personalBudgetAccount, LIQUID_ACCOUNT_TYPES } from './balances.js';
@@ -18,6 +20,21 @@ export interface AccountIssue {
   registerBalance: number;
   bankBalance: number | null;
   difference: number | null;
+}
+
+/** Any bank feed (Up, Plaid, SimpleFIN, Enable Banking) supplies this account's transactions */
+export function hasBankFeed(accountId: string) {
+  return (
+    bankLinked(accountId) ||
+    [plaidAccountMappings, simplefinAccountMappings].some(
+      (table) =>
+        !!db
+          .select({ id: table.id })
+          .from(table)
+          .where(and(eq(table.accountId, accountId), eq(table.isEnabled, 1)))
+          .get(),
+    )
+  );
 }
 
 /** A bank feed supplies received income. Recurring expectations must not import it again. */

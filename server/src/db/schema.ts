@@ -33,6 +33,8 @@ export const accounts = sqliteTable('accounts', {
   importSettings: text('import_settings'),
   /** ISO 4217 code of the account's currency; null = the budget's currency */
   currency: text('currency'),
+  /** Day the starting balance was typed as "balance as of today"; imports of older rows keep it true */
+  balanceAsOf: text('balance_as_of'),
   createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`),

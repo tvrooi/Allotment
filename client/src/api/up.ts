@@ -17,13 +17,19 @@ export interface UpConnection {
   lastAttemptAt: string | null;
   lastCompletedAt: string | null;
   nextSyncAt: string | null;
-  accounts: (Omit<UpDiscoveredAccount, 'balance'> & { accountName: string | null })[];
+  accounts: (Omit<UpDiscoveredAccount, 'balance'> & {
+    accountName: string | null;
+    cutoverDate?: string | null;
+    cutoverDifference?: number | null;
+  })[];
 }
 export interface UpMappingChoice {
   upAccountId: string;
   action: 'create' | 'link' | 'skip';
   accountId?: string;
   accountName?: string;
+  /** Linking an account that already has history: Up's transactions from this day on are imported */
+  cutoverDate?: string;
 }
 export interface UpSyncResult {
   added: number;
@@ -72,6 +78,14 @@ export interface UpReviewItem {
   revision: number;
   current: UpObservation;
   previous: UpObservation | null;
+  /** reviewState 'overlap': the older row this import may duplicate (null once it's gone) */
+  overlap?: {
+    id: string;
+    date: string;
+    amount: number;
+    payee: string | null;
+    reconciled: boolean;
+  } | null;
 }
 export const getUpReview = (offset: number) =>
   apiFetch<{ total: number; pending: number; items: UpReviewItem[] }>(
@@ -79,6 +93,11 @@ export const getUpReview = (offset: number) =>
   );
 export const acknowledgeUpReview = (importedId: string, revision: number) =>
   apiFetch('/up/review/acknowledge', {
+    method: 'POST',
+    body: JSON.stringify({ importedId, revision }),
+  });
+export const deleteUpOverlapOld = (importedId: string, revision: number) =>
+  apiFetch('/up/review/overlap/delete-old', {
     method: 'POST',
     body: JSON.stringify({ importedId, revision }),
   });
