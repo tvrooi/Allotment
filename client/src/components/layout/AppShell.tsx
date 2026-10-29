@@ -5,17 +5,23 @@ import { useAccounts } from '../../hooks/useAccounts';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { useUndoKeyboard } from '../../hooks/useUndoKeyboard';
+import { useSafeModeKeyboard } from '../../hooks/useSafeModeKeyboard';
+import { useSafeMode } from '../../utils/safeMode';
 import { Toasts } from '../ui/Toasts';
 import { ConnectionBanner } from '../connection/ConnectionBanner';
 import { DemoBanner } from '../demo/DemoBanner';
-import { Sidebar, SidebarDrawer } from './Sidebar';
+import { Sidebar, SidebarDrawer, SafeModeButton } from './Sidebar';
 import { BrandName } from '../ui/BrandName';
 import logoUrl from '/logo.png';
 import { useUpFreshness } from '../../hooks/useUp';
 
 export function AppShell() {
   useUndoKeyboard();
+  useSafeModeKeyboard();
   useUpFreshness();
+  // Safe mode hiding every amount does it in the money formatters, which don't re-render
+  // anything: the shell is drawn again when that changes (cached data makes it quick)
+  const hidesAll = useSafeMode().all;
   const { data: accounts = [], isLoading } = useAccounts();
   const setupSkipped = usePreferencesStore((s) => s.setupSkipped);
   const isPhone = useIsPhone();
@@ -32,10 +38,10 @@ export function AppShell() {
     return <Navigate to="/welcome" replace />;
   }
 
-  if (isPhone) return <PhoneShell />;
+  if (isPhone) return <PhoneShell key={String(hidesAll)} />;
 
   return (
-    <div className="flex h-screen bg-page overflow-hidden">
+    <div key={String(hidesAll)} className="flex h-screen bg-page overflow-hidden">
       <Sidebar />
       <div className="flex-1 min-w-0 flex flex-col">
         {/* macOS desktop app: the window has no title bar, so this strip moves it */}
@@ -114,6 +120,7 @@ function PhoneShell() {
             flyClassName="text-brand-600"
             budgetClassName="text-sidebar-text-hi"
           />
+          <SafeModeButton className="relative ml-auto p-2 min-w-11 min-h-11 flex items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi no-drag-region" />
         </header>
         <DemoBanner />
         <ConnectionBanner />

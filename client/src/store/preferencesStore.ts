@@ -5,12 +5,18 @@ import type { FormFactor, HomeLayout } from '../utils/homeCards';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type DateFormatOption =
-  'MMM d, yyyy' | 'MM/dd/yyyy' | 'dd/MM/yyyy' | 'dd.MM.yyyy' | 'yyyy-MM-dd';
+  | 'MMM d, yyyy'
+  | 'MM/dd/yyyy'
+  | 'dd/MM/yyyy'
+  | 'dd.MM.yyyy'
+  | 'yyyy-MM-dd';
 /** How amounts are written: 1,234.56 / 1.234,56 / 1 234,56 / 1'234.56 */
 export type AmountFormat = 'dot' | 'comma' | 'space' | 'apostrophe';
 /** Whether the currency symbol goes before (€12.50) or after (12,50 €) the amount */
 export type SymbolPosition = 'before' | 'after';
 export type SidebarMode = 'persistent' | 'auto-hide';
+/** What Safe mode hides: balances and totals (wealth), or every amount */
+export type SafeModeLevel = 'balances' | 'all';
 /** How one currency's amounts are shown, when its own convention isn't wanted */
 export interface CurrencyDisplay {
   position?: SymbolPosition;
@@ -49,6 +55,8 @@ interface PreferencesState {
    * the default). Read through utils/homeCards.ts normalizeLayout. Presentation only.
    */
   homeLayouts: Partial<Record<FormFactor, HomeLayout>>;
+  /** What Safe mode hides on this device; whether it's on is store/safeModeStore.ts */
+  safeModeLevel: SafeModeLevel;
   setTheme: (theme: Theme) => void;
   setCurrencySymbol: (symbol: string) => void;
   setAmountFormat: (format: AmountFormat | 'auto') => void;
@@ -67,6 +75,7 @@ interface PreferencesState {
   setGettingStartedHidden: (hidden: boolean) => void;
   /** Null goes back to the default layout */
   setHomeLayout: (factor: FormFactor, layout: HomeLayout | null) => void;
+  setSafeModeLevel: (level: SafeModeLevel) => void;
 }
 
 const PREFERENCES_KEY = 'budget-preferences';
@@ -112,6 +121,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       setupSkipped: false,
       gettingStartedHidden: false,
       homeLayouts: {},
+      safeModeLevel: 'balances',
       setTheme: (theme) => set({ theme }),
       setCurrencySymbol: (currencySymbol) => set({ currencySymbol }),
       setAmountFormat: (amountFormat) => set({ amountFormat }),
@@ -140,6 +150,7 @@ export const usePreferencesStore = create<PreferencesState>()(
           else delete homeLayouts[factor];
           return { homeLayouts };
         }),
+      setSafeModeLevel: (safeModeLevel) => set({ safeModeLevel }),
     }),
     {
       name: PREFERENCES_KEY,

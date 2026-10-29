@@ -13,6 +13,7 @@ import { Select } from '../components/ui/Input';
 import { MoneyMoves } from '../components/budget/MoneyMoves';
 import { FundTargets } from '../components/budget/FundTargets';
 import { formatCurrency } from '../utils/currency';
+import { useHideBalances } from '../utils/safeMode';
 import { formatDay } from '../utils/dates';
 import { FUNDING_VIEWS } from '../utils/fundingViews';
 import {
@@ -538,6 +539,7 @@ export default function ReviewPage() {
   const guide = useQuery({ queryKey: ['review', 'guide'], queryFn: api.getGuide });
   const resilience = useQuery({ queryKey: ['review', 'resilience'], queryFn: api.getResilience });
   const resume = useQuery({ queryKey: ['review', 'resume'], queryFn: api.getResume });
+  const hideBalances = useHideBalances();
   const error = review.error ?? buffer.error ?? guide.error ?? resilience.error ?? resume.error;
   return (
     <div className="flex flex-col h-full bg-surface">
@@ -582,7 +584,8 @@ export default function ReviewPage() {
           <div className="space-y-4">
             {resume.data && <ResumeCard resume={resume.data} />}
             {review.data && <NeedsAttention review={review.data} group={group} />}
-            {resilience.data && <ResilienceCard data={resilience.data} />}
+            {/* Emergency fund and what you could live on: savings, so Safe mode hides them */}
+            {resilience.data && !hideBalances && <ResilienceCard data={resilience.data} />}
             {buffer.data && <Buffer buffer={buffer.data} />}
           </div>
           <div className="space-y-4">

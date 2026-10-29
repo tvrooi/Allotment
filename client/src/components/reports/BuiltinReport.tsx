@@ -15,6 +15,7 @@ import { TransactionCalendar } from './TransactionCalendar';
 import { ChartSkeleton } from './ChartHelpers';
 import type { StatCard } from './ChartHelpers';
 import type { BuiltinWidgetType } from '../../types';
+import { PrivateSection } from '../ui/Private';
 
 export const BUILTIN_REPORTS: Record<BuiltinWidgetType, { label: string; description: string }> = {
   summary: { label: 'Summary', description: 'Income, expenses and monthly averages' },
@@ -123,7 +124,11 @@ export function BuiltinReportChart({
     case 'summary':
       return <SummaryTiles from={from} to={to} />;
     case 'net-worth':
-      return <NetWorthChart from={from} to={to} headline />;
+      return (
+        <PrivateSection title="Net worth is hidden in Safe mode">
+          <NetWorthChart from={from} to={to} headline />
+        </PrivateSection>
+      );
     case 'income-expenses':
       return <IncomeExpensesChart from={from} to={to} />;
     case 'spending':

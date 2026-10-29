@@ -23,6 +23,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { useAccounts, useReorderAccounts } from '../../hooks/useAccounts';
 import { Badge } from '../ui/Badge';
 import { formatMoney } from '../../utils/currency';
+import { useHideBalances } from '../../utils/safeMode';
+import { Private } from '../ui/Private';
 import type { Account, AccountType } from '../../types';
 
 function SortableAccountRow({ account }: { account: Account }) {
@@ -36,6 +38,7 @@ function SortableAccountRow({ account }: { account: Account }) {
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 10 : undefined,
   };
+  const hide = useHideBalances();
 
   return (
     <div
@@ -56,9 +59,9 @@ function SortableAccountRow({ account }: { account: Account }) {
       </span>
       <Badge variant={account.type as AccountType} />
       <span
-        className={`text-sm tabular-nums font-medium shrink-0 ${account.balance >= 0 ? 'text-text-secondary' : 'text-negative'}`}
+        className={`text-sm tabular-nums font-medium shrink-0 ${account.balance >= 0 || hide ? 'text-text-secondary' : 'text-negative'}`}
       >
-        {formatMoney(account.balance, account.currency)}
+        <Private>{formatMoney(account.balance, account.currency)}</Private>
       </span>
     </div>
   );
@@ -157,7 +160,7 @@ export function AccountReorder() {
           {closed.map((a) => (
             <div key={a.id} className="flex items-center gap-3 border rounded-md p-3 text-sm">
               <span className="flex-1">{a.name}</span>
-              <span>{formatMoney(a.balance, a.currency)}</span>
+              <Private>{formatMoney(a.balance, a.currency)}</Private>
               {a.balance !== 0 && (
                 <Link className="underline text-caution" to={`/accounts/${a.id}/reconcile`}>
                   Reconcile to zero

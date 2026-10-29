@@ -43,6 +43,7 @@ import { EXPENSE_COLORS } from './ChartHelpers';
 import type { StatCard } from './ChartHelpers';
 import type { BuiltinWidgetType } from '../../types';
 import { formatWeekday } from '../../utils/dates';
+import { PrivateSection } from '../ui/Private';
 
 // The full view of every built-in report has the same parts, top to bottom: four headline
 // figures, the chart, and a table of the numbers behind it (which is what Export CSV saves).
@@ -1029,7 +1030,11 @@ export function ReportDetail({
     case 'summary':
       return <SummaryDetail from={from} to={to} />;
     case 'net-worth':
-      return <NetWorthDetail from={from} to={to} />;
+      return (
+        <PrivateSection title="Net worth is hidden in Safe mode">
+          <NetWorthDetail from={from} to={to} />
+        </PrivateSection>
+      );
     case 'income-expenses':
       return <IncomeExpensesDetail from={from} to={to} />;
     case 'spending':

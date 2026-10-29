@@ -6,7 +6,9 @@ import {
   type SidebarMode,
   type AmountFormat,
   type SymbolPosition,
+  type SafeModeLevel,
 } from '../../store/preferencesStore';
+import { useSafeModeStore } from '../../store/safeModeStore';
 import { amountStyle, formatAmount, formatMoney, useAmountStyle } from '../../utils/currency';
 import { Link } from 'react-router-dom';
 import { useCurrencySettings } from '../../hooks/useCurrency';
@@ -30,6 +32,15 @@ const dateFormats: { value: DateFormatOption; label: string; example: string }[]
   { value: 'dd/MM/yyyy', label: 'dd/MM/yyyy', example: '05/01/2026' },
   { value: 'dd.MM.yyyy', label: 'dd.MM.yyyy', example: '05.01.2026' },
   { value: 'yyyy-MM-dd', label: 'yyyy-MM-dd', example: '2026-01-05' },
+];
+
+const safeModeLevels: { value: SafeModeLevel; label: string; description: string }[] = [
+  {
+    value: 'balances',
+    label: 'Balances and totals',
+    description: 'Accounts, net worth, savings, super and investments',
+  },
+  { value: 'all', label: 'All amounts', description: 'Transactions and the budget too' },
 ];
 
 const amountFormats: (AmountFormat | 'auto')[] = ['auto', 'dot', 'comma', 'space', 'apostrophe'];
@@ -166,6 +177,8 @@ export function PreferencesPanel() {
           ))}
         </div>
       </div>
+
+      <SafeModeSettings />
 
       <div className="bg-surface-alt rounded-lg p-5 space-y-5">
         <h3 className="text-sm font-medium text-text">Icons</h3>
@@ -333,5 +346,70 @@ export function PreferencesPanel() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Safe mode: on for this session only, with what it hides kept as a preference */
+function SafeModeSettings() {
+  const on = useSafeModeStore((s) => s.on);
+  const setOn = useSafeModeStore((s) => s.setOn);
+  const level = usePreferencesStore((s) => s.safeModeLevel);
+  const setLevel = usePreferencesStore((s) => s.setSafeModeLevel);
+  return (
+    <section
+      aria-labelledby="safe-mode-heading"
+      className="bg-surface-alt rounded-lg p-5 space-y-4"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h3 id="safe-mode-heading" className="text-sm font-medium text-text">
+            Safe mode
+          </h3>
+          <p className="text-xs text-text-tertiary mt-0.5">
+            Hides amounts while someone helps you with your budget. It switches off when the app
+            closes, and anyone using this device can turn it off: it keeps figures off the screen,
+            it doesn't lock them. The eye button at the top of the menu, or Alt+Shift+H, switches it
+            too.
+          </p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          {[
+            { v: true, l: 'On' },
+            { v: false, l: 'Off' },
+          ].map((opt) => (
+            <button
+              key={String(opt.v)}
+              onClick={() => setOn(opt.v)}
+              aria-pressed={on === opt.v}
+              className={`px-3 py-1.5 text-xs rounded-md border transition-colors cursor-pointer max-md:min-h-11 ${
+                on === opt.v
+                  ? 'border-brand-500 bg-brand-50 text-brand-700 font-medium'
+                  : 'border-border bg-surface text-text-secondary hover:border-border'
+              }`}
+            >
+              {opt.l}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div role="radiogroup" aria-label="What Safe mode hides" className="flex flex-wrap gap-3">
+        {safeModeLevels.map((opt) => (
+          <button
+            key={opt.value}
+            role="radio"
+            aria-checked={level === opt.value}
+            onClick={() => setLevel(opt.value)}
+            className={`flex flex-col text-left px-4 py-2 text-sm rounded-md border transition-colors ${
+              level === opt.value
+                ? 'border-brand-500 bg-brand-50 text-brand-700 font-medium'
+                : 'border-border bg-surface text-text-secondary hover:border-border'
+            }`}
+          >
+            <span>{opt.label}</span>
+            <span className="text-xs text-text-tertiary font-normal mt-0.5">{opt.description}</span>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }

@@ -8,6 +8,8 @@ import { Button } from '../components/ui/Button';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { AmountFields, useAmountValidity } from '../components/ui/amountValidity';
 import { formatMoney } from '../utils/currency';
+import { useHideBalances } from '../utils/safeMode';
+import { SafeModeNotice } from '../components/ui/Private';
 import type { Transaction } from '../types';
 import { formatDay } from '../utils/dates';
 
@@ -54,6 +56,7 @@ export default function ReconcilePage() {
   // A statement balance that can't be read would reconcile against the one from before
   const { allValid: statementValid, report } = useAmountValidity();
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const hideBalances = useHideBalances();
 
   function startStep2() {
     if (!statementValid) return;
@@ -82,6 +85,15 @@ export default function ReconcilePage() {
   }
 
   if (!account) return null;
+
+  // Reconciling is all balances: the bank's and the register's
+  if (hideBalances) {
+    return (
+      <div className="flex-1 overflow-y-auto px-6 pt-5">
+        <SafeModeNotice title="Reconciling is hidden in Safe mode" />
+      </div>
+    );
+  }
 
   if (step === 1) {
     return (
