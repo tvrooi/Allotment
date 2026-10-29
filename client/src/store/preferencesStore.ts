@@ -5,11 +5,7 @@ import type { FormFactor, HomeLayout } from '../utils/homeCards';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type DateFormatOption =
-  | 'MMM d, yyyy'
-  | 'MM/dd/yyyy'
-  | 'dd/MM/yyyy'
-  | 'dd.MM.yyyy'
-  | 'yyyy-MM-dd';
+  'MMM d, yyyy' | 'MM/dd/yyyy' | 'dd/MM/yyyy' | 'dd.MM.yyyy' | 'yyyy-MM-dd';
 /** How amounts are written: 1,234.56 / 1.234,56 / 1 234,56 / 1'234.56 */
 export type AmountFormat = 'dot' | 'comma' | 'space' | 'apostrophe';
 /** Whether the currency symbol goes before (€12.50) or after (12,50 €) the amount */
