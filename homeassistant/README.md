@@ -1,11 +1,12 @@
-# FlyBudget Up Preview for Home Assistant OS
+# FlyBudget Up Preview for Home Assistant
 
-A local Home Assistant app (formerly called an add-on) containing the modified FlyBudget server
+A Home Assistant app (formerly called an add-on) containing the modified FlyBudget server
 with direct Up Bank imports. It gives your devices one password-protected budget stored on your
 Home Assistant machine. It has its own FlyBudget password, separate from Home Assistant's login.
 
-Download the app ZIP, extract `flybudget_up`, and copy that folder into Home Assistant's local
-apps directory using Samba or SSH. Install it from the Local apps section of the app store.
-See **Documentation** for the complete installation and remote-access steps.
+Install it from the FlyBudget app repository: in **Settings → Apps → Install app**, open the three
+dots (⋮), choose **Repositories** and add `https://github.com/tvrooi/home-assistant-apps`. Then
+install **FlyBudget Up Preview** and start it. See **Documentation** for the full steps,
+remote access and separate budgets. A manual local install is described there as an advanced option.
 
-The preview supports 64-bit ARM and x86-64. It is not an official FlyBudget or Home Assistant app.
+The app supports 64-bit ARM and x86-64. It is not an official FlyBudget or Home Assistant app.
