@@ -10,6 +10,7 @@ import {
 import { useCurrencyStore } from '../store/currencyStore';
 import { CURRENCY_CODES, minorUnits } from './currencies';
 import { amountChars, readImportAmount } from './csv';
+import { HIDDEN_AMOUNT, hidesAllAmounts } from './safeMode';
 
 /** How amounts are shown and typed on this device */
 export interface AmountStyle {
@@ -341,6 +342,7 @@ function withSymbol(number: string, negative: boolean, style: AmountStyle): stri
 
 /** An amount as this device writes it: "$1,234.56", "1.234,56 €"; whole amounts without cents */
 export function formatAmount(cents: number, style: AmountStyle): string {
+  if (hidesAllAmounts()) return HIDDEN_AMOUNT;
   const { group, decimal } = SEPARATORS[style.format];
   const unit = 10 ** decimalsOf(style);
   const abs = Math.abs(cents);
@@ -351,6 +353,7 @@ export function formatAmount(cents: number, style: AmountStyle): string {
 
 /** Short axis label: "$950", "$12.5k", "-1,2M €". Thresholds sit where rounding would reach the next unit. */
 export function formatAxisAmount(cents: number, style: AmountStyle): string {
+  if (hidesAllAmounts()) return HIDDEN_AMOUNT;
   const oneDecimal = (n: number) =>
     String(Math.round(n * 10) / 10).replace('.', decimalSeparator(style.format));
   const dollars = Math.abs(cents) / 10 ** decimalsOf(style);

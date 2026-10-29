@@ -13,6 +13,8 @@ import { useAccountCurrency, useConverted } from '../../hooks/useCurrency';
 import { MerchantSelect } from './MerchantSelect';
 import { CategorySelectButton } from './CategorySelectButton';
 import { AccountIcon } from '../accounts/AccountIcon';
+import { useHideBalances } from '../../utils/safeMode';
+import { Private } from '../ui/Private';
 
 interface Props {
   isOpen: boolean;
@@ -24,6 +26,7 @@ const inputClass =
 
 export function AddTransactionModal({ isOpen, onClose }: Props) {
   const [type, setType] = useState<'debit' | 'credit'>('debit');
+  const hideBalances = useHideBalances();
   const [amount, setAmount] = useState(0);
   const [payeeName, setPayeeName] = useState('');
   const [payeeId, setPayeeId] = useState<string | null>(null);
@@ -304,9 +307,9 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
                           <AccountIcon name={a.name} type={a.type} logo={a.logo} />
                           <span className="truncate flex-1">{a.name}</span>
                           <span
-                            className={`text-xs tabular-nums shrink-0 ${a.balance >= 0 ? 'text-text-tertiary' : 'text-negative'}`}
+                            className={`text-xs tabular-nums shrink-0 ${a.balance >= 0 || hideBalances ? 'text-text-tertiary' : 'text-negative'}`}
                           >
-                            {formatMoney(a.balance, a.currency)}
+                            <Private>{formatMoney(a.balance, a.currency)}</Private>
                           </span>
                         </button>
                       ))}
@@ -332,9 +335,9 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
                           <AccountIcon name={a.name} type={a.type} logo={a.logo} />
                           <span className="truncate flex-1">{a.name}</span>
                           <span
-                            className={`text-xs tabular-nums shrink-0 ${a.balance >= 0 ? 'text-text-tertiary' : 'text-negative'}`}
+                            className={`text-xs tabular-nums shrink-0 ${a.balance >= 0 || hideBalances ? 'text-text-tertiary' : 'text-negative'}`}
                           >
-                            {formatMoney(a.balance, a.currency)}
+                            <Private>{formatMoney(a.balance, a.currency)}</Private>
                           </span>
                         </button>
                       ))}

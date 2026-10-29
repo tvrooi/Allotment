@@ -6,6 +6,8 @@ import { Badge } from '../components/ui/Badge';
 import { Button, ButtonLink } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { formatCurrency, formatMoney } from '../utils/currency';
+import { useHideBalances } from '../utils/safeMode';
+import { Private } from '../components/ui/Private';
 import { TransactionTable } from '../components/transactions/TransactionTable';
 import { AccountIcon } from '../components/accounts/AccountIcon';
 import { EditAccountModal } from '../components/accounts/EditAccountModal';
@@ -21,6 +23,7 @@ export default function AccountTransactionsPage() {
   const account = accounts.find((a) => a.id === id);
   const [editOpen, setEditOpen] = useState(false);
   const [updateValueOpen, setUpdateValueOpen] = useState(false);
+  const hide = useHideBalances();
 
   if (!account) {
     if (isLoading) return null;
@@ -53,17 +56,22 @@ export default function AccountTransactionsPage() {
             </h1>
             <Badge variant={account.type} />
             <span
-              className={`text-base font-medium tabular-nums ${account.balance < 0 ? 'text-negative' : 'text-text-secondary'}`}
+              className={`text-base font-medium tabular-nums ${account.balance < 0 && !hide ? 'text-negative' : 'text-text-secondary'}`}
             >
-              {formatMoney(account.balance, account.currency)}
+              <Private>{formatMoney(account.balance, account.currency)}</Private>
             </span>
-            {account.rateDate && account.mainBalance !== null && (
-              <span className="text-sm tabular-nums text-text-tertiary">
-                ≈ {formatCurrency(account.mainBalance)}
-              </span>
+            {/* Each of these gives the balance away */}
+            {!hide && (
+              <>
+                {account.rateDate && account.mainBalance !== null && (
+                  <span className="text-sm tabular-nums text-text-tertiary">
+                    ≈ {formatCurrency(account.mainBalance)}
+                  </span>
+                )}
+                <CurrencyDifference account={account} />
+                <BankBalanceHint accountId={account.id} />
+              </>
             )}
-            <CurrencyDifference account={account} />
-            <BankBalanceHint accountId={account.id} />
           </div>
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>

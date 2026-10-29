@@ -19,6 +19,7 @@ import {
 import { formatMoney } from '../../utils/currency';
 import { IS_DEMO } from '../../demo/demoApi';
 import { NotInDemoModal } from '../demo/NotInDemo';
+import { Private } from '../ui/Private';
 
 interface Props {
   isOpen: boolean;
@@ -171,7 +172,7 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
                   >
                     <legend className="text-sm text-text px-1">{a.name}</legend>
                     <p className="text-xs text-text-secondary">
-                      Available: {formatMoney(a.balance, 'AUD')}
+                      Available: <Private>{formatMoney(a.balance, 'AUD')}</Private>
                     </p>
                     <label className="block text-xs text-text-secondary">
                       Set up {a.name}

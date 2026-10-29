@@ -13,6 +13,8 @@ import { Select } from '../components/ui/Input';
 import { MoneyMoves } from '../components/budget/MoneyMoves';
 import { FundTargets } from '../components/budget/FundTargets';
 import { formatCurrency } from '../utils/currency';
+import { useHideBalances } from '../utils/safeMode';
+import { Private } from '../components/ui/Private';
 import { formatDay } from '../utils/dates';
 import { FUNDING_VIEWS } from '../utils/fundingViews';
 import {
@@ -123,8 +125,10 @@ function StepDetail({ id, guide }: { id: api.GuideStepId; guide: api.GuideState 
             <li key={b.accountId} className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-text">{b.name}</span>
               <span className="flex items-center gap-2 tabular-nums">
-                {formatCurrency(b.balance)}
-                {b.currency ? ` ${b.currency}` : ''}
+                <Private>
+                  {formatCurrency(b.balance)}
+                  {b.currency ? ` ${b.currency}` : ''}
+                </Private>
                 {b.unreconciled > 0 && (
                   <Link
                     to={`/accounts/${b.accountId}/reconcile`}
@@ -445,6 +449,7 @@ function Buffer({ buffer }: { buffer: api.BufferState }) {
   const u = buffer.unresolved;
   const unresolved =
     u.overspent + u.uncategorised + u.cardShortfall + u.uncoveredCardPayments + u.overAssigned;
+  const hideBalances = useHideBalances();
   return (
     <Card>
       <div className="space-y-4">
@@ -478,54 +483,57 @@ function Buffer({ buffer }: { buffer: api.BufferState }) {
             Next month's targets assume nothing more is spent or assigned this month.
           </p>
         </Section>
-        <Section title="Cash runway (optional)">
-          {r.unrestricted !== null && (
-            <>
-              <Row label="Cash after debts" value={formatCurrency(r.resources ?? 0)} />
-              <Row
-                label="Restricted: bill reserves and card payments"
-                value={formatCurrency(-r.restricted)}
-              />
-              {r.cardDebtWithoutReserve > 0 && (
+        {/* What your cash after debts would cover: balances, so Safe mode hides it */}
+        {!hideBalances && (
+          <Section title="Cash runway (optional)">
+            {r.unrestricted !== null && (
+              <>
+                <Row label="Cash after debts" value={formatCurrency(r.resources ?? 0)} />
                 <Row
-                  label="Card debt without a reserve"
-                  value={formatCurrency(-r.cardDebtWithoutReserve)}
-                  tone="neg"
+                  label="Restricted: bill reserves and card payments"
+                  value={formatCurrency(-r.restricted)}
                 />
-              )}
-              <Row label="Unrestricted" value={formatCurrency(r.unrestricted)} tone="pos" />
-              <Row label="Average monthly spending" value={formatCurrency(r.monthlySpending)} />
-            </>
-          )}
-          {r.days !== null ? (
-            <p className="text-sm text-text">
-              Unrestricted money would cover about{' '}
-              <strong>{(r.days / (365 / 12)).toFixed(1)} months</strong> ({r.days} days) of everyday
-              spending.
-            </p>
-          ) : (
-            <div role="status" className="text-sm text-caution space-y-1">
-              <p className="font-medium">Runway incomplete</p>
-              <ul className="list-disc pl-5">
-                {r.incomplete.map((reason) => (
-                  <li key={reason}>{reason}</li>
+                {r.cardDebtWithoutReserve > 0 && (
+                  <Row
+                    label="Card debt without a reserve"
+                    value={formatCurrency(-r.cardDebtWithoutReserve)}
+                    tone="neg"
+                  />
+                )}
+                <Row label="Unrestricted" value={formatCurrency(r.unrestricted)} tone="pos" />
+                <Row label="Average monthly spending" value={formatCurrency(r.monthlySpending)} />
+              </>
+            )}
+            {r.days !== null ? (
+              <p className="text-sm text-text">
+                Unrestricted money would cover about{' '}
+                <strong>{(r.days / (365 / 12)).toFixed(1)} months</strong> ({r.days} days) of
+                everyday spending.
+              </p>
+            ) : (
+              <div role="status" className="text-sm text-caution space-y-1">
+                <p className="font-medium">Runway incomplete</p>
+                <ul className="list-disc pl-5">
+                  {r.incomplete.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <details className="text-xs text-text-secondary">
+              <summary className="cursor-pointer select-none">Assumptions</summary>
+              <ul className="list-disc pl-5 pt-1 space-y-0.5">
+                {r.assumptions.map((a) => (
+                  <li key={a}>{a}</li>
                 ))}
+                <li>
+                  Spending history: {formatDay(r.spending.from)} to {formatDay(r.spending.to)} (
+                  {r.spending.days} days, {formatCurrency(r.spending.total)}).
+                </li>
               </ul>
-            </div>
-          )}
-          <details className="text-xs text-text-secondary">
-            <summary className="cursor-pointer select-none">Assumptions</summary>
-            <ul className="list-disc pl-5 pt-1 space-y-0.5">
-              {r.assumptions.map((a) => (
-                <li key={a}>{a}</li>
-              ))}
-              <li>
-                Spending history: {formatDay(r.spending.from)} to {formatDay(r.spending.to)} (
-                {r.spending.days} days, {formatCurrency(r.spending.total)}).
-              </li>
-            </ul>
-          </details>
-        </Section>
+            </details>
+          </Section>
+        )}
       </div>
     </Card>
   );
@@ -538,6 +546,7 @@ export default function ReviewPage() {
   const guide = useQuery({ queryKey: ['review', 'guide'], queryFn: api.getGuide });
   const resilience = useQuery({ queryKey: ['review', 'resilience'], queryFn: api.getResilience });
   const resume = useQuery({ queryKey: ['review', 'resume'], queryFn: api.getResume });
+  const hideBalances = useHideBalances();
   const error = review.error ?? buffer.error ?? guide.error ?? resilience.error ?? resume.error;
   return (
     <div className="flex flex-col h-full bg-surface">
@@ -582,7 +591,8 @@ export default function ReviewPage() {
           <div className="space-y-4">
             {resume.data && <ResumeCard resume={resume.data} />}
             {review.data && <NeedsAttention review={review.data} group={group} />}
-            {resilience.data && <ResilienceCard data={resilience.data} />}
+            {/* Emergency fund and what you could live on: savings, so Safe mode hides them */}
+            {resilience.data && !hideBalances && <ResilienceCard data={resilience.data} />}
             {buffer.data && <Buffer buffer={buffer.data} />}
           </div>
           <div className="space-y-4">

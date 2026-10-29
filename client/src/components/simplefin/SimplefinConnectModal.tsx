@@ -19,6 +19,8 @@ import type {
 import type { SimplefinAccountMappingAction } from '../../api/simplefin';
 import { IS_DEMO } from '../../demo/demoApi';
 import { NotInDemoModal } from '../demo/NotInDemo';
+import { useHideBalances } from '../../utils/safeMode';
+import { Private } from '../ui/Private';
 
 interface Props {
   isOpen: boolean;
@@ -275,6 +277,7 @@ function SimplefinAccountMappingCard({
   linkedAccountIds,
   onChange,
 }: SimplefinAccountMappingCardProps) {
+  const hideBalances = useHideBalances();
   const availableAccounts = existingAccounts.filter(
     (a) => !a.closedAt && (!linkedAccountIds.has(a.id) || mapping.accountId === a.id),
   );
@@ -284,7 +287,12 @@ function SimplefinAccountMappingCard({
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-text">{account.name}</span>
         <span className="text-sm font-medium text-text-secondary">
-          {formatMoney(account.balance, isCurrencyCode(account.currency) ? account.currency : null)}
+          <Private>
+            {formatMoney(
+              account.balance,
+              isCurrencyCode(account.currency) ? account.currency : null,
+            )}
+          </Private>
         </span>
       </div>
 
@@ -333,7 +341,8 @@ function SimplefinAccountMappingCard({
           <option value="">Select an account...</option>
           {availableAccounts.map((a) => (
             <option key={a.id} value={a.id}>
-              {a.name} ({formatMoney(a.balance, a.currency)})
+              {a.name}
+              {!hideBalances && ` (${formatMoney(a.balance, a.currency)})`}
             </option>
           ))}
         </select>

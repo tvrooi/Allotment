@@ -25,6 +25,7 @@ import TaxPage from './pages/Tax';
 import ReviewPage from './pages/Review';
 import CashFlowPage from './pages/CashFlow';
 import CategoryDetailPage from './pages/CategoryDetail';
+import { useSafeMode } from './utils/safeMode';
 
 // electron loads via file:// and the demo is a static page under /demo/ on the website, so
 // both use hash routing
@@ -32,6 +33,9 @@ const isElectron = Boolean((window as any).__API_BASE__);
 const Router = isElectron || IS_DEMO ? HashRouter : BrowserRouter;
 
 export default function App() {
+  // Safe mode hiding every amount does it in the money formatters: drawing the routes again
+  // re-renders every page with them, without remounting (unsaved edits stay)
+  useSafeMode();
   return (
     <AuthGate>
       <Router>

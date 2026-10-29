@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom';
 import { CashRunway } from '../components/forecast/CashRunway';
 import { LongTermForecast } from '../components/longterm/LongTermForecast';
+import { PrivateSection } from '../components/ui/Private';
 
 // The Forecast page: the long-term, decades-long view first, with the cash runway (the next
 // 30 days to two years) as its second tab. Neither writes to the budget.
@@ -43,7 +44,9 @@ export default function ForecastPage() {
           ))}
         </div>
       </div>
-      {tab === 'cash' ? <CashRunway /> : <LongTermForecast />}
+      <PrivateSection title="Forecasts are hidden in Safe mode">
+        {tab === 'cash' ? <CashRunway /> : <LongTermForecast />}
+      </PrivateSection>
     </div>
   );
 }

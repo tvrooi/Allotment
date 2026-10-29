@@ -6,6 +6,7 @@ import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { CurrencyInput } from '../ui/CurrencyInput';
 import { useCreateTransaction } from '../../hooks/useTransactions';
 import { formatMoney } from '../../utils/currency';
+import { Private } from '../ui/Private';
 import { isLiabilityType } from '../../utils/accountTypes';
 import type { Account } from '../../types';
 
@@ -61,7 +62,7 @@ export function UpdateValueModal({ account, onClose, initialValue }: Props) {
             aria-label={liability ? 'Amount owed today' : 'Value today'}
           />
           <p className="mt-1 text-xs text-text-tertiary">
-            Currently {formatMoney(current, account.currency)}.
+            Currently <Private>{formatMoney(current, account.currency)}</Private>.
             {change !== 0 && (
               <>
                 {' '}

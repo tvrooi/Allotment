@@ -5,16 +5,18 @@ import { useAccounts } from '../../hooks/useAccounts';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { useUndoKeyboard } from '../../hooks/useUndoKeyboard';
+import { useSafeModeKeyboard } from '../../hooks/useSafeModeKeyboard';
 import { Toasts } from '../ui/Toasts';
 import { ConnectionBanner } from '../connection/ConnectionBanner';
 import { DemoBanner } from '../demo/DemoBanner';
-import { Sidebar, SidebarDrawer } from './Sidebar';
+import { Sidebar, SidebarDrawer, SafeModeButton } from './Sidebar';
 import { BrandName } from '../ui/BrandName';
 import logoUrl from '/logo.png';
 import { useUpFreshness } from '../../hooks/useUp';
 
 export function AppShell() {
   useUndoKeyboard();
+  useSafeModeKeyboard();
   useUpFreshness();
   const { data: accounts = [], isLoading } = useAccounts();
   const setupSkipped = usePreferencesStore((s) => s.setupSkipped);
@@ -114,6 +116,7 @@ function PhoneShell() {
             flyClassName="text-brand-600"
             budgetClassName="text-sidebar-text-hi"
           />
+          <SafeModeButton className="relative ml-auto p-2 min-w-11 min-h-11 flex items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi no-drag-region" />
         </header>
         <DemoBanner />
         <ConnectionBanner />

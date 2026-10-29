@@ -16,6 +16,8 @@ import { StatCardRow } from '../components/reports/ChartHelpers';
 import RowMenu from '../components/ui/RowMenu';
 import { transactionsLink } from '../utils/transactionFilters';
 import { formatCurrency } from '../utils/currency';
+import { useHideBalances } from '../utils/safeMode';
+import { SafeModeNotice } from '../components/ui/Private';
 import { usePreferencesStore } from '../store/preferencesStore';
 import type { Goal, GoalStatus } from '../types';
 import { formatDay } from '../utils/dates';
@@ -284,6 +286,8 @@ export default function GoalsPage() {
   const [deleting, setDeleting] = useState<Goal | null>(null);
   const [statusChange, setStatusChange] = useState<{ goal: Goal; status: GoalStatus } | null>(null);
   const statusModal = useModalValue(statusChange);
+  // Goals are mostly savings: what's saved, what's left and the totals
+  const hideBalances = useHideBalances();
 
   const accountNames = useMemo(() => new Map(accounts.map((a) => [a.id, a.name])), [accounts]);
   const goalNames = useMemo(() => new Map(goals.map((g) => [g.id, g.name])), [goals]);
@@ -346,6 +350,10 @@ export default function GoalsPage() {
               </Button>
             }
           />
+        </div>
+      ) : hideBalances ? (
+        <div className="flex-1 overflow-y-auto px-6 pt-5">
+          <SafeModeNotice title="Goals are hidden in Safe mode" />
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto">

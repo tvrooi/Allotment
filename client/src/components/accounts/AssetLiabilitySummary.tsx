@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '../../utils/currency';
+import { useHideBalances } from '../../utils/safeMode';
+import { Private } from '../ui/Private';
 import { balanceValue, unconvertedCurrencies } from '../../utils/accountMoney';
 import { UnconvertedNote } from '../currency/UnconvertedNote';
 import { chartColors, SUPER_COLOR } from '../../utils/chartColors';
@@ -65,7 +67,9 @@ export function AssetLiabilitySummary({ accounts }: Props) {
         <p className="mt-3 text-xs text-text-tertiary">
           Accessible now:{' '}
           <span className="tabular-nums text-text-secondary">
-            {formatCurrency((assets.get('cash') ?? 0) + (assets.get('investments') ?? 0))}
+            <Private>
+              {formatCurrency((assets.get('cash') ?? 0) + (assets.get('investments') ?? 0))}
+            </Private>
           </span>{' '}
           in cash and investments. Super counts towards net worth but stays preserved until 65, or
           until you retire from your preservation age.
@@ -103,17 +107,19 @@ function Section({ title, buckets, sums, emptyText, owed = false }: SectionProps
   // Bar widths use magnitudes; a bucket on the "wrong" side (overpaid card) gets no width
   const sign = owed ? -1 : 1;
   const barTotal = rows.reduce((s, b) => s + Math.max(sign * (sums.get(b.group) ?? 0), 0), 0);
+  // The bar's proportions say how the figures compare, so Safe mode hides it too
+  const hide = useHideBalances();
 
   return (
     <div>
       <div className="flex items-baseline justify-between">
         <span className="text-sm font-semibold text-text">{title}</span>
         <span className="text-sm font-semibold tabular-nums text-text">
-          {formatCurrency(total)}
+          <Private>{formatCurrency(total)}</Private>
         </span>
       </div>
 
-      {barTotal > 0 && (
+      {barTotal > 0 && !hide && (
         <div className="h-3 flex rounded-full overflow-hidden mt-2">
           {rows.map((b) => {
             const value = Math.max(sign * (sums.get(b.group) ?? 0), 0);
@@ -152,7 +158,7 @@ function Section({ title, buckets, sums, emptyText, owed = false }: SectionProps
               <span className="text-sm text-text-secondary">{b.label}</span>
             </div>
             <span className="text-sm tabular-nums text-text">
-              {formatCurrency(sums.get(b.group) ?? 0)}
+              <Private>{formatCurrency(sums.get(b.group) ?? 0)}</Private>
             </span>
           </div>
         ))}

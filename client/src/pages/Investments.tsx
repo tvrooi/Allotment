@@ -25,6 +25,7 @@ import {
 } from '../components/investments/InvestmentModals';
 import type { Holding, InvestmentAccount, Security, SecuritySummary } from '../api/investments';
 import { formatMoney } from '../utils/currency';
+import { PrivateSection } from '../components/ui/Private';
 import { formatDay } from '../utils/dates';
 import { formatUnits } from '../utils/units';
 import { accountTypeLabel } from '../utils/accountTypes';
@@ -309,94 +310,97 @@ export default function InvestmentsPage() {
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-6xl mx-auto px-6 py-6 max-md:px-4 space-y-6">
-          {isLoading ? (
-            <div className="h-24 bg-surface-alt rounded-lg animate-pulse" />
-          ) : error ? (
-            <p role="alert" className="text-sm text-negative">
-              {(error as Error).message}
-            </p>
-          ) : !data?.accounts.length ? (
-            <EmptyState
-              icon={<CandlestickChart size={24} />}
-              title="No investment accounts yet"
-              description="Add an investment, retirement or crypto account, then record what it holds here."
-              actions={
-                <Link to="/accounts">
-                  <Button>Go to Accounts</Button>
-                </Link>
-              }
-            />
-          ) : (
-            <>
-              <StatCardRow cards={cards} />
-              {data.accounts.map((a) => (
-                <AccountCard key={a.id} account={a} onDialog={setDialog} />
-              ))}
-
-              <section aria-labelledby="securities-heading">
-                <h2 id="securities-heading" className="text-sm font-semibold text-text mb-2">
-                  Securities
-                </h2>
-                {data.securities.length ? (
-                  <Card padding="none">
-                    <ul className="divide-y divide-border-light">
-                      {data.securities.map((s) => (
-                        <li
-                          key={s.id}
-                          className="px-5 py-3 flex items-center justify-between gap-3 text-sm"
-                        >
-                          <div className="min-w-0">
-                            <p className="font-medium text-text">
-                              {s.symbol}{' '}
-                              <span className="text-text-tertiary font-normal">
-                                {s.name} · {KIND_LABEL[s.kind]} · {s.currency}
-                              </span>
-                            </p>
-                            <p className="text-xs text-text-tertiary">
-                              {s.latestPrice === null
-                                ? 'No price entered'
-                                : `${formatMoney(s.latestPrice, s.currency)} on ${formatDay(s.latestPriceDate!)}`}
-                              {' · '}
-                              {s.holdingCount === 1 ? '1 holding' : `${s.holdingCount} holdings`}
-                            </p>
-                          </div>
-                          <RowMenu
-                            label={`Actions for ${s.symbol}`}
-                            items={[
-                              {
-                                label: 'Update price',
-                                onClick: () => setDialog({ kind: 'price', security: s }),
-                              },
-                              {
-                                label: 'Edit',
-                                onClick: () => setDialog({ kind: 'security', security: s }),
-                              },
-                              {
-                                label: 'Delete',
-                                danger: true,
-                                hidden: s.holdingCount > 0,
-                                onClick: () => setDialog({ kind: 'remove-security', security: s }),
-                              },
-                            ]}
-                          />
-                        </li>
-                      ))}
-                    </ul>
-                  </Card>
-                ) : (
-                  <p className="text-sm text-text-tertiary">
-                    Add the shares, funds or coins you hold, then record holdings of them.
-                  </p>
-                )}
-              </section>
-
-              <p className="text-xs text-text-tertiary">
-                Values use the latest price you entered on or before today, converted at the latest
-                exchange rate. Gains are unrealized and before tax: sales, dividends, fees outside a
-                lot's cost and time-weighted returns aren't calculated.
+          <PrivateSection title="Investments are hidden in Safe mode">
+            {isLoading ? (
+              <div className="h-24 bg-surface-alt rounded-lg animate-pulse" />
+            ) : error ? (
+              <p role="alert" className="text-sm text-negative">
+                {(error as Error).message}
               </p>
-            </>
-          )}
+            ) : !data?.accounts.length ? (
+              <EmptyState
+                icon={<CandlestickChart size={24} />}
+                title="No investment accounts yet"
+                description="Add an investment, retirement or crypto account, then record what it holds here."
+                actions={
+                  <Link to="/accounts">
+                    <Button>Go to Accounts</Button>
+                  </Link>
+                }
+              />
+            ) : (
+              <>
+                <StatCardRow cards={cards} />
+                {data.accounts.map((a) => (
+                  <AccountCard key={a.id} account={a} onDialog={setDialog} />
+                ))}
+
+                <section aria-labelledby="securities-heading">
+                  <h2 id="securities-heading" className="text-sm font-semibold text-text mb-2">
+                    Securities
+                  </h2>
+                  {data.securities.length ? (
+                    <Card padding="none">
+                      <ul className="divide-y divide-border-light">
+                        {data.securities.map((s) => (
+                          <li
+                            key={s.id}
+                            className="px-5 py-3 flex items-center justify-between gap-3 text-sm"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-medium text-text">
+                                {s.symbol}{' '}
+                                <span className="text-text-tertiary font-normal">
+                                  {s.name} · {KIND_LABEL[s.kind]} · {s.currency}
+                                </span>
+                              </p>
+                              <p className="text-xs text-text-tertiary">
+                                {s.latestPrice === null
+                                  ? 'No price entered'
+                                  : `${formatMoney(s.latestPrice, s.currency)} on ${formatDay(s.latestPriceDate!)}`}
+                                {' · '}
+                                {s.holdingCount === 1 ? '1 holding' : `${s.holdingCount} holdings`}
+                              </p>
+                            </div>
+                            <RowMenu
+                              label={`Actions for ${s.symbol}`}
+                              items={[
+                                {
+                                  label: 'Update price',
+                                  onClick: () => setDialog({ kind: 'price', security: s }),
+                                },
+                                {
+                                  label: 'Edit',
+                                  onClick: () => setDialog({ kind: 'security', security: s }),
+                                },
+                                {
+                                  label: 'Delete',
+                                  danger: true,
+                                  hidden: s.holdingCount > 0,
+                                  onClick: () =>
+                                    setDialog({ kind: 'remove-security', security: s }),
+                                },
+                              ]}
+                            />
+                          </li>
+                        ))}
+                      </ul>
+                    </Card>
+                  ) : (
+                    <p className="text-sm text-text-tertiary">
+                      Add the shares, funds or coins you hold, then record holdings of them.
+                    </p>
+                  )}
+                </section>
+
+                <p className="text-xs text-text-tertiary">
+                  Values use the latest price you entered on or before today, converted at the
+                  latest exchange rate. Gains are unrealized and before tax: sales, dividends, fees
+                  outside a lot's cost and time-weighted returns aren't calculated.
+                </p>
+              </>
+            )}
+          </PrivateSection>
         </div>
       </div>
 

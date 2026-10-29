@@ -20,8 +20,11 @@ import {
   ClipboardCheck,
   CandlestickChart,
   Receipt,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { usePreferencesStore } from '../../store/preferencesStore';
+import { useSafeModeStore } from '../../store/safeModeStore';
 import { SidebarAccountList } from './SidebarAccountList';
 import { ServerStatus } from './ServerStatus';
 import { DOCS_URL } from '../../utils/project';
@@ -160,6 +163,7 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
             <CircleHelp size={16} aria-hidden />
             <HeaderTooltip>Help &amp; docs</HeaderTooltip>
           </a>
+          <SafeModeButton className={`group ${headerButton}`} />
           {/* The phone drawer closes; the desktop sidebar has a pin instead: pinned stays open,
               unpinned collapses and opens on hover (the Sidebar setting in Preferences) */}
           {onClose ? (
@@ -297,6 +301,26 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
         <ServerStatus collapsed={!isExpanded} />
       </div>
     </div>
+  );
+}
+
+/** Safe mode on or off: hides balances and totals while someone else looks at the screen */
+export function SafeModeButton({ className }: { className: string }) {
+  const on = useSafeModeStore((s) => s.on);
+  const toggle = useSafeModeStore((s) => s.toggle);
+  const Icon = on ? EyeOff : Eye;
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-pressed={on}
+      aria-label="Safe mode"
+      aria-keyshortcuts="Alt+Shift+H"
+      className={className}
+    >
+      <Icon size={16} aria-hidden className={on ? 'text-brand-600' : undefined} />
+      <HeaderTooltip>{on ? 'Show balances' : 'Hide balances'}</HeaderTooltip>
+    </button>
   );
 }
 

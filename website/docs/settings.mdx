@@ -43,6 +43,7 @@ See [Backups and exports](./backups).
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Theme**           | Light, Dark, or System (follows your computer or phone).                                                                                                                                                                                        |
 | **Sidebar**         | **Pinned** (always open) or **Auto-hide** (collapsed, opens when you point at it). The pin at the top of the sidebar does the same.                                                                                                             |
+| **Safe mode**       | **On** or **Off**, and what it hides: **Balances and totals** (the default) or **All amounts**. See [Safe mode](#safe-mode) below.                                                                                                              |
 | **Icons**           | Show or hide merchant, category and account icons.                                                                                                                                                                                              |
 | **Number format**   | **Automatic** (as your device's language writes amounts), `1,234.56`, `1.234,56`, `1 234,56` or `1'234.56`.                                                                                                                                     |
 | **Currency symbol** | Up to 3 characters, like `$`, `€`, `£` or `EUR`, shown **Before** (`€12.50`) or **After** (`12,50 €`) the amount, or **Automatic**. Once your budget has a [currency](./currencies), its symbol comes from it and only the side is chosen here. |
@@ -64,6 +65,26 @@ choose otherwise. New installs start on **Automatic**.
 
 **Reset to defaults** puts them all back. Preferences are saved in your browser (or in the
 desktop app) rather than in your budget, so each device can have its own.
+
+### Safe mode
+
+Safe mode hides amounts while someone else looks at your screen, for example when your partner
+helps you with your budget. The eye button at the top of the menu switches it on and off, and so
+does **Alt+Shift+H** (**Option+Shift+H** on a Mac).
+
+- **Balances and totals** (the default) hides account balances, the sidebar totals, net worth,
+  assets and liabilities, savings, super, investments, goals, forecasts, the resilience and cash
+  runway cards on Review and reconciling. Transactions, payees, rules and the budget stay visible, so you can
+  still get help with them.
+- **All amounts** hides every figure, transactions and the budget included.
+
+A hidden amount shows as blurred dots. The real figure isn't sent to the page at all, so it can't
+be copied or read from it. Safe mode switches off when you close the app or the tab, and it only
+applies on the device where you switch it on.
+
+Safe mode keeps figures off the screen. It isn't a lock: anyone using the device can turn it off,
+and exports and backups still have every amount. For a budget only you can open, each person
+needs their own budget and password: on Home Assistant, that's the app's **multi_user** option.
 
 ## Server
 
