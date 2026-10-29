@@ -5,7 +5,7 @@ such as an AI assistant, **read-only** access to the budget with a token. The to
 accounts, transactions, the budget, reports, goals and reviews. It cannot change anything,
 except that a read and categorise token can set the category of past transactions and edit
 categories, and a read, categorise and organise token can also propose rules, set payee
-default categories and link suggested transfers.
+default categories and logos and link suggested transfers.
 
 ## What a token can and cannot do
 
@@ -37,6 +37,9 @@ default categories and link suggested transfers.
     (`POST /api/rules/apply` with `"scope": "uncategorized"`);
   - set a payee's default category, and nothing else about the payee
     (`PUT /api/payees/:id` with exactly `{"defaultCategoryId": …}`);
+  - give a payee that has no logo one, such as a brand icon (`PUT /api/payees/:id` with exactly
+    `{"logo": "data:image/png;base64,…"}`, PNG, JPEG or WebP). It never replaces or removes a
+    logo: remove a wrong one on the Payees page and the token can set another;
   - link two transactions as a transfer, only when the app itself suggests that pair
     (`POST /api/transactions/transfers/link`);
   - suggest assignments (`POST /api/budget-proposals`): this month or next, expense

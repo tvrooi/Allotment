@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.54
+
+- **An assistant can add brand logos to payees.** A *read, categorise and organise* access token can now give a payee that has no logo one, such as the merchant's brand icon (`PUT /api/payees/:id` with only `logo`). It never replaces or removes a logo you set: remove a wrong one on the Payees page and it can set another. Logos are stored in the budget, so everyone using it sees them.
+
 ## 0.2.0-up.53
 
 - **Check balances before assigning money.** A known mismatch with Up's settled balance, an uninitialised bank balance or money still recorded in a closed budget account marks Ready to Assign as unverified and blocks new funding. The budget lists each discrepancy; Review and resilience show the same warning. Existing cash and assignments are preserved for review.
