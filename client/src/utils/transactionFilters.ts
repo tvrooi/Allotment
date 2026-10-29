@@ -5,7 +5,7 @@ import type { TransactionQueryParams } from '../types';
 // links keep them (docs/MONARCH-DEVELOPMENT-PHASE.md, "Scope and drill-down"). The URL uses
 // the server's own query names, so a link is also exactly what the server is asked.
 
-export type DatePreset = 'this-month' | 'last-3' | 'this-year' | 'all' | 'custom';
+export type DatePreset = 'this-month' | 'last-month' | 'last-3' | 'this-year' | 'all' | 'custom';
 export type Direction = 'all' | 'debit' | 'credit';
 /** A yes/no register-row state filter (phase 9): reviewed, hidden from reports */
 export type Tristate = 'all' | 'yes' | 'no';
@@ -79,7 +79,7 @@ export const FILTER_KEYS = new Set([
   'hidden',
 ]);
 
-const PRESETS: DatePreset[] = ['this-month', 'last-3', 'this-year', 'all', 'custom'];
+const PRESETS: DatePreset[] = ['this-month', 'last-month', 'last-3', 'this-year', 'all', 'custom'];
 
 export function dateRangeFor(
   f: Pick<FilterState, 'datePreset' | 'from' | 'to'>,
@@ -89,6 +89,10 @@ export function dateRangeFor(
   switch (f.datePreset) {
     case 'this-month':
       return { from: day(startOfMonth(today)), to: day(endOfMonth(today)) };
+    case 'last-month': {
+      const last = subMonths(today, 1);
+      return { from: day(startOfMonth(last)), to: day(endOfMonth(last)) };
+    }
     case 'last-3':
       return { from: day(startOfMonth(subMonths(today, 2))), to: day(endOfMonth(today)) };
     case 'this-year':

@@ -14,7 +14,8 @@ export interface SafeMode {
 /** What Safe mode hides, from whether it's on and its level */
 export function safeModeHides(on: boolean, level: SafeModeLevel | undefined): SafeMode {
   if (!on) return { balances: false, all: false };
-  return { balances: true, all: level === 'all' };
+  // Anyone who never chose a level has every amount hidden: a friend sees nothing by default
+  return { balances: true, all: level !== 'balances' };
 }
 
 /** For the money formatters: whether every amount is hidden right now */

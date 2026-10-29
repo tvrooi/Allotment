@@ -1,5 +1,8 @@
 import type { BudgetSummary } from '../../types';
 import { useState } from 'react';
+import { CategoryPicker } from '../transactions/CategoryPicker';
+import { HelpTip } from '../ui/HelpTip';
+import type { CategoryGroup } from '../../types';
 import { formatCurrency, formatMoney } from '../../utils/currency';
 import { Link } from 'react-router-dom';
 import { formatAsOfDay } from '../../utils/dates';
@@ -23,6 +26,12 @@ interface BudgetSummaryWidgetProps {
   fixedExpenses?: ExpenseBreakdown;
   flexibleExpenses?: ExpenseBreakdown;
   nonMonthlyExpenses?: ExpenseBreakdown;
+  /** "Put the rest in…": pick an expense category and it gets all of Ready to assign */
+  putRest?: {
+    groups: CategoryGroup[];
+    disabled: boolean;
+    onPick: (categoryId: string, categoryName: string) => void;
+  };
 }
 
 function getHeroStyle(tbb: number, incomePlanned: number) {
@@ -140,8 +149,13 @@ export function BudgetSummaryWidget({
   fixedExpenses,
   flexibleExpenses,
   nonMonthlyExpenses,
+  putRest,
 }: BudgetSummaryWidgetProps) {
   const [activeTab, setActiveTab] = useState<Tab>('summary');
+  const [picking, setPicking] = useState(false);
+  const [pickerButton, setPickerButton] = useState<HTMLButtonElement | null>(null);
+  const canPutRest =
+    !!putRest && toBeBudgeted > 0 && !funding?.accountIssues?.length && funding?.complete !== false;
   const hero =
     funding && (!funding.complete || !funding.resolved)
       ? {
@@ -174,7 +188,45 @@ export function BudgetSummaryWidget({
                 : formatCurrency(toBeBudgeted)}
           </p>
           <p className={`text-xs ${hero.text} mt-0.5 opacity-75`}>{hero.label}</p>
+          <p className={`text-xs ${hero.text} mt-1 opacity-75`}>
+            Money you have that isn't in a category yet.
+            <HelpTip label="What is Ready to assign?">
+              Ready to assign is the money in your accounts that you haven't given a job yet. Give
+              it to categories (envelopes) until this reaches $0, so every dollar is planned.
+              Spending takes money out of its envelope, not out of here.
+            </HelpTip>
+          </p>
         </div>
+        {canPutRest && (
+          <div className="relative mt-2 text-center">
+            <button
+              ref={setPickerButton}
+              type="button"
+              onClick={() => setPicking((o) => !o)}
+              disabled={putRest.disabled}
+              aria-haspopup="listbox"
+              aria-expanded={picking}
+              className="min-h-11 md:min-h-0 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-surface-alt text-text hover:bg-hover disabled:opacity-50"
+            >
+              Put the rest in…
+            </button>
+            {picking && (
+              <CategoryPicker
+                anchor={pickerButton}
+                groups={putRest.groups}
+                allowNone={false}
+                onClose={() => setPicking(false)}
+                onChange={(id) => {
+                  setPicking(false);
+                  const name = putRest.groups
+                    .flatMap((g) => g.categories)
+                    .find((c) => c.id === id)?.name;
+                  if (id && name) putRest.onPick(id, name);
+                }}
+              />
+            )}
+          </div>
+        )}
       </div>
 
       {!!funding?.accountIssues?.length && (

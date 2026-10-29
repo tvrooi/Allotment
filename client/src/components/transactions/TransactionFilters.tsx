@@ -12,6 +12,7 @@ import {
   UNREADABLE_AMOUNT,
 } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
+import { ScrollCue } from '../ui/ScrollCue';
 import {
   activeFilterCount,
   DEFAULT_FILTERS,
@@ -23,6 +24,7 @@ import {
 
 const DATE_PRESETS: { value: DatePreset; label: string }[] = [
   { value: 'this-month', label: 'This Month' },
+  { value: 'last-month', label: 'Last Month' },
   { value: 'last-3', label: 'Last 3 Months' },
   { value: 'this-year', label: 'This Year' },
   { value: 'all', label: 'All Time' },
@@ -112,11 +114,14 @@ function CheckList({
   options,
   selected,
   onChange,
+  special,
 }: {
   label: string;
   options: { id: string; name: string; group?: string }[];
   selected: string[];
   onChange: (ids: string[]) => void;
+  /** A choice above the list that isn't one of the options ("Not categorised yet") */
+  special?: { label: string; checked: boolean; onToggle: () => void };
 }) {
   const [query, setQuery] = useState('');
   const shown = options.filter((o) => o.name.toLowerCase().includes(query.toLowerCase()));
@@ -124,13 +129,16 @@ function CheckList({
     <fieldset className="min-w-0">
       <legend className="text-xs font-medium text-text-secondary mb-1">
         {label}
-        {selected.length > 0 && (
+        {(selected.length > 0 || special?.checked) && (
           <button
             type="button"
-            onClick={() => onChange([])}
+            onClick={() => {
+              if (special?.checked) special.onToggle();
+              else onChange([]);
+            }}
             className="ml-2 text-brand-600 hover:text-brand-700 font-normal"
           >
-            Any ({selected.length} chosen)
+            Any ({special?.checked ? 1 : selected.length} chosen)
           </button>
         )}
       </legend>
@@ -145,6 +153,17 @@ function CheckList({
         />
       )}
       <div className="max-h-40 overflow-y-auto pr-1 space-y-0.5">
+        {special && (
+          <label className="flex items-center gap-2 py-0.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={special.checked}
+              onChange={special.onToggle}
+              className="rounded border-border text-brand-600 focus:ring-brand-600"
+            />
+            <span className="text-sm text-text font-medium truncate">{special.label}</span>
+          </label>
+        )}
         {shown.map((o) => (
           <label key={o.id} className="flex items-center gap-2 py-0.5 cursor-pointer">
             <input
@@ -309,7 +328,10 @@ export function TransactionFilters({
           {count > 0 && <span className="tabular-nums">({count})</span>}
         </button>
 
-        <div className="flex gap-0 border-b border-transparent max-md:max-w-full max-md:overflow-x-auto [scrollbar-width:none]">
+        <ScrollCue
+          className="border-b border-transparent max-md:max-w-full"
+          scrollerClassName="flex gap-0"
+        >
           {externalRange ? (
             <span className="px-2.5 py-1 text-xs text-text-secondary">{externalRange}</span>
           ) : (
@@ -327,7 +349,7 @@ export function TransactionFilters({
               </button>
             ))
           )}
-        </div>
+        </ScrollCue>
 
         {!externalRange && !externalMonth && state.datePreset === 'custom' && (
           <div className="flex items-center gap-1.5 text-xs text-text-secondary">
@@ -367,6 +389,11 @@ export function TransactionFilters({
             options={categoryOptions}
             selected={state.categoryIds}
             onChange={(categoryIds) => set({ categoryIds, uncategorized: false })}
+            special={{
+              label: 'Not categorised yet',
+              checked: state.uncategorized,
+              onToggle: () => set({ uncategorized: !state.uncategorized, categoryIds: [] }),
+            }}
           />
           <CheckList
             label="Payees"
@@ -469,7 +496,7 @@ export function TransactionFilters({
             />
           )}
           {state.uncategorized && (
-            <Chip label="Uncategorized" onClear={() => set({ uncategorized: false })} />
+            <Chip label="Not categorised yet" onClear={() => set({ uncategorized: false })} />
           )}
           {state.categoryIds.length > 0 && (
             <Chip

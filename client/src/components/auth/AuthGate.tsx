@@ -20,6 +20,7 @@ import { ReconnectScreen } from '../connection/ReconnectScreen';
 import { Button } from '../ui/Button';
 import { AuthScreen } from './AuthScreen';
 import { MIN_PASSWORD_LENGTH } from './passwordRules';
+import { rememberHostKind, whereIsTheLog, type HostKind } from '../../utils/hostKind';
 
 /** Multi-user mode: the person whose budget this page has shown since it loaded */
 let shownPerson: string | null = null;
@@ -63,6 +64,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     if (reconnectedAt !== null) void qc.invalidateQueries();
   }, [reconnectedAt, qc]);
 
+  useEffect(() => rememberHostKind(status?.hostKind), [status?.hostKind]);
   const hasOfflineCopy = useOfflineCopy((s) => s.restored);
   const loginRequired = !!status && status.enabled && !status.authenticated;
   // Signed out (expired, signed out elsewhere, password changed): forget this device's copy
@@ -155,6 +157,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       multiUser={Boolean(status.multiUser)}
       canRecover={Boolean(status.canRecover)}
       canNotify={Boolean(status.canNotify)}
+      hostKind={status.hostKind}
       onDone={onSignedIn}
     />
   );
@@ -179,6 +182,7 @@ function PasswordForm({
   multiUser,
   canRecover,
   canNotify,
+  hostKind,
   onDone,
 }: {
   mode: 'setup' | 'login';
@@ -186,6 +190,7 @@ function PasswordForm({
   /** Single-user server: "Forgot password?" makes a reset code in the server log */
   canRecover: boolean;
   canNotify: boolean;
+  hostKind: HostKind | undefined;
   onDone: () => void;
 }) {
   const [mode, setMode] = useState<FormMode>(startMode);
@@ -252,9 +257,9 @@ function PasswordForm({
   const { host, hostname, protocol } = window.location;
   const unencrypted = connectionSecurity(protocol, hostname) === 'unencrypted';
   // Single-user server: where the reset code can be read, which only the person running it can do
-  const whereToLook = canNotify
-    ? 'In Home Assistant: Notifications (the bell in the sidebar), or the FlyBudget app’s Log tab.'
-    : 'Docker: run docker logs flybudget on the server.';
+  const whereToLook = whereIsTheLog(canNotify ? 'home-assistant' : hostKind, {
+    notifications: canNotify,
+  });
   const submitLabel = {
     setup: 'Create password',
     login: 'Sign in',
@@ -286,7 +291,7 @@ function PasswordForm({
           {mode === 'forgot' && multiUser && (
             <span className="block mt-2">
               A code goes to the phone you chose in Settings. The administrator's code is also
-              written to the server's log (the app's Log in Home Assistant).
+              written to the server's log. {whereIsTheLog(hostKind)}
             </span>
           )}
           {mode === 'forgot' && !multiUser && (
@@ -351,8 +356,7 @@ function PasswordForm({
             />
             {isSetup && (
               <p className="text-xs text-text-tertiary mt-1">
-                Printed in the server log. With Docker, run{' '}
-                <code className="font-mono">docker logs flybudget</code>.
+                Printed in the server log. {whereIsTheLog(hostKind)}
               </p>
             )}
           </div>

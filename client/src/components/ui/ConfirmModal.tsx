@@ -8,6 +8,7 @@ interface Props {
   title: string;
   message: string;
   confirmLabel?: string;
+  cancelLabel?: string;
   danger?: boolean;
 }
 
@@ -18,6 +19,7 @@ export function ConfirmModal({
   title,
   message,
   confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
   danger = false,
 }: Props) {
   return (
@@ -25,7 +27,7 @@ export function ConfirmModal({
       <p className="text-sm text-text-secondary">{message}</p>
       <div className="flex justify-end gap-3 mt-6">
         <Button variant="secondary" onClick={onClose}>
-          Cancel
+          {cancelLabel}
         </Button>
         <Button
           variant={danger ? 'danger' : 'primary'}

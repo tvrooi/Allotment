@@ -358,13 +358,14 @@ export default function AllTab({
           if (confirm) deleteSchedule.mutate({ id: confirm.schedule.id, hard: confirm.hard });
           setConfirm(null);
         }}
-        title={confirm?.hard ? 'Delete recurring item?' : 'Cancel recurring item?'}
+        title={confirm?.hard ? 'Delete recurring item?' : 'Stop this recurring item?'}
         message={
           confirm?.hard
             ? `"${confirm.schedule.name}" will be permanently deleted. This cannot be undone.`
             : `"${confirm?.schedule.name}" will stop generating occurrences. You can restart it from the canceled list.`
         }
-        confirmLabel={confirm?.hard ? 'Delete' : 'Cancel item'}
+        confirmLabel={confirm?.hard ? 'Delete' : 'Stop this bill'}
+        cancelLabel={confirm?.hard ? 'Cancel' : 'Keep it'}
         danger
       />
     </div>

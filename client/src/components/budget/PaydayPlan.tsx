@@ -6,6 +6,7 @@ import { formatCurrency, centsToInput, parseCents, isUnreadableAmount } from '..
 import { formatDay } from '../../utils/dates';
 import { Input, Select } from '../ui/Input';
 import { Button } from '../ui/Button';
+import { HelpTip } from '../ui/HelpTip';
 import { useCanSave } from '../../hooks/useConnection';
 import { useCategories } from '../../hooks/useCategories';
 import { useTransactions, useUpdateTransaction } from '../../hooks/useTransactions';
@@ -107,15 +108,25 @@ function PlanEditor({
             onChange={(e) => setConfig({ ...config, name: e.target.value })}
           />
         </label>
-        <label className={field}>
-          Anchor payday
+        <div className={field}>
+          <span className="flex items-center gap-1">
+            <label htmlFor="payday-anchor">Anchor payday</label>
+            <HelpTip label="How to choose the payday date">
+              Pick any one day you were paid. FlyBudget counts every other payday from it, using
+              your pay rhythm (for example every 14 days), so it can tell when the next pay is due.
+            </HelpTip>
+          </span>
           <Input
+            id="payday-anchor"
             required
             type="date"
             value={config.anchorDate}
             onChange={(e) => setConfig({ ...config, anchorDate: e.target.value })}
           />
-        </label>
+          <span className="text-xs text-text-tertiary">
+            One day you were paid. Later paydays are counted from it.
+          </span>
+        </div>
         <label className={field}>
           Expected take-home pay
           <MoneyInput
@@ -158,6 +169,12 @@ function PlanEditor({
         </p>
       )}
       <p className="text-sm text-text-secondary">
+        A funding rule says how much of each pay goes to one category.
+        <HelpTip label="What is a funding rule?">
+          Each rule is a category plus a way to work out an amount: a fixed sum, a percentage of
+          pay, what is needed by a due date, or whatever is left over. Rules are filled from the
+          top, so put the most important first.
+        </HelpTip>{' '}
         Pay repeats every 14 days. Expected pay is for planning only. Scheduled bill categories
         without a rule are funded first. Add category rules below in funding priority order; the
         remainder runs last.

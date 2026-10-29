@@ -71,6 +71,7 @@ export function CategorySelectButton({
           groups={groups as CategoryGroup[]}
           onClose={() => setOpen(false)}
           position={position}
+          fullWidth
           transferAccounts={transferAccounts}
         />
       )}

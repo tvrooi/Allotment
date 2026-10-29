@@ -1,17 +1,24 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, Check, Plus, X } from 'lucide-react';
 import { useCreateCategory } from '../../hooks/useCategories';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import type { BudgetType, CategoryGroup } from '../../types';
 
 interface Props {
-  value: string | null;
+  value?: string | null;
   onChange: (id: string | null) => void;
   groups: CategoryGroup[];
   onClose: () => void;
   position?: 'below' | 'above';
   /** Accounts offered as "Transfer: name" at the bottom (picked as `transfer:<accountId>`) */
   transferAccounts?: { id: string; name: string }[];
+  /** Fill the width of the field it opens from (phones) instead of a fixed 16rem */
+  fullWidth?: boolean;
+  /** Open as a floating list beside this element, so a scrolling parent can't clip it */
+  anchor?: HTMLElement | null;
+  /** Offer "Uncategorized" (default). A sorting step that must pick a category turns it off. */
+  allowNone?: boolean;
 }
 
 export function CategoryPicker({
@@ -21,8 +28,20 @@ export function CategoryPicker({
   onClose,
   position = 'below',
   transferAccounts = [],
+  fullWidth = false,
+  anchor = null,
+  allowNone = true,
 }: Props) {
   const [query, setQuery] = useState('');
+  // The option the keyboard is on. With a search typed it starts on the first match, so Enter
+  // picks it; with nothing typed it starts on nothing, so Enter never picks "Uncategorized" by accident.
+  const [active, setActive] = useState(-1);
+  const [floatPos, setFloatPos] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+    width: number;
+  } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [newGroupId, setNewGroupId] = useState(groups[0]?.id ?? '');
@@ -32,9 +51,29 @@ export function CategoryPicker({
   const createCategory = useCreateCategory();
   const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
 
+  // A floating list draws one render later, once it knows where to go
+  const placed = !anchor || floatPos !== null;
   useEffect(() => {
-    searchRef.current?.focus();
-  }, []);
+    if (placed) searchRef.current?.focus();
+  }, [placed]);
+
+  useLayoutEffect(() => {
+    if (!anchor) return;
+    const place = () => {
+      const r = anchor.getBoundingClientRect();
+      const width = Math.min(Math.max(r.width, 256), window.innerWidth - 16);
+      const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
+      const below = window.innerHeight - r.bottom;
+      setFloatPos(
+        below < 340 && r.top > below
+          ? { bottom: window.innerHeight - r.top + 4, left, width }
+          : { top: r.bottom + 4, left, width },
+      );
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [anchor]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -66,6 +105,42 @@ export function CategoryPicker({
     `Transfer: ${a.name}`.toLowerCase().includes(query.toLowerCase()),
   );
 
+  // Everything the keyboard can land on, in the order it is listed
+  const options: (string | null)[] = [
+    ...(allowNone && !query ? [null] : []),
+    ...filtered.flatMap((g) => g.categories.map((c) => c.id)),
+    ...filteredTransfers.map((a) => `transfer:${a.id}`),
+  ];
+  const optionIndex = (id: string | null) => options.indexOf(id);
+
+  useEffect(() => {
+    setActive(query ? 0 : -1);
+  }, [query]);
+  useEffect(() => {
+    containerRef.current
+      ?.querySelector('[data-active="true"]')
+      ?.scrollIntoView?.({ block: 'nearest' });
+  }, [active]);
+
+  function handleSearchKey(e: React.KeyboardEvent) {
+    if (e.key === 'Escape') {
+      // Close the list only, not the dialog or sheet it opened from
+      e.stopPropagation();
+      onClose();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActive((a) => Math.min(options.length - 1, a + 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActive((a) => Math.max(0, a - 1));
+    } else if (e.key === 'Enter' && active >= 0 && active < options.length) {
+      e.preventDefault();
+      onChange(options[active]);
+    }
+  }
+  const rowCls = (id: string | null) =>
+    `${optionIndex(id) === active ? 'bg-hover ' : ''}${value === id ? 'bg-brand-50 text-brand-700' : 'text-text'}`;
+
   const selectedGroup = groups.find((g) => g.id === newGroupId);
   const isIncomeGroup = selectedGroup?.isIncome === 1;
 
@@ -85,10 +160,16 @@ export function CategoryPicker({
     );
   }
 
-  return (
+  if (anchor && !floatPos) return null;
+  const picker = (
     <div
       ref={containerRef}
-      className={`absolute left-0 z-50 w-64 bg-surface border border-border rounded-lg shadow-lg animate-menu-in ${position === 'above' ? 'bottom-full mb-1 origin-bottom-left' : 'top-full mt-1 origin-top-left'}`}
+      style={anchor && floatPos ? { position: 'fixed', ...floatPos } : undefined}
+      className={`z-50 bg-surface border border-border rounded-lg shadow-lg animate-menu-in ${
+        anchor
+          ? ''
+          : `absolute left-0 ${fullWidth ? 'w-64 max-md:w-full' : 'w-64'} ${position === 'above' ? 'bottom-full mb-1 origin-bottom-left' : 'top-full mt-1 origin-top-left'}`
+      }`}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="p-2 border-b border-border-light">
@@ -102,6 +183,7 @@ export function CategoryPicker({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleSearchKey}
             placeholder="Search categories..."
             aria-label="Search categories"
             className="w-full pl-8 pr-3 py-1.5 text-sm border border-border rounded-md bg-surface text-text focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
@@ -110,14 +192,17 @@ export function CategoryPicker({
       </div>
 
       <div className="overflow-y-auto max-h-72">
-        <button
-          type="button"
-          onClick={() => onChange(null)}
-          className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between hover:bg-hover ${value === null ? 'bg-brand-50 text-brand-700' : 'text-text-secondary'}`}
-        >
-          <span className="italic">Uncategorized</span>
-          {value === null && <Check size={14} className="text-brand-600 shrink-0" />}
-        </button>
+        {allowNone && (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            data-active={optionIndex(null) === active}
+            className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between hover:bg-hover ${optionIndex(null) === active ? 'bg-hover ' : ''}${value === null ? 'bg-brand-50 text-brand-700' : 'text-text-secondary'}`}
+          >
+            <span className="italic">Uncategorized</span>
+            {value === null && <Check size={14} className="text-brand-600 shrink-0" />}
+          </button>
+        )}
 
         {filtered.map((group) => (
           <div key={group.id}>
@@ -129,7 +214,8 @@ export function CategoryPicker({
                 type="button"
                 key={cat.id}
                 onClick={() => onChange(cat.id)}
-                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-hover ${value === cat.id ? 'bg-brand-50 text-brand-700' : 'text-text'}`}
+                data-active={optionIndex(cat.id) === active}
+                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-hover ${rowCls(cat.id)}`}
               >
                 {showCategoryIcons && cat.icon && (
                   <span className="text-base shrink-0">{cat.icon}</span>
@@ -153,7 +239,8 @@ export function CategoryPicker({
                   type="button"
                   key={a.id}
                   onClick={() => onChange(id)}
-                  className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-hover ${value === id ? 'bg-brand-50 text-brand-700' : 'text-text'}`}
+                  data-active={optionIndex(id) === active}
+                  className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-hover ${rowCls(id)}`}
                 >
                   <span className="truncate flex-1">Transfer: {a.name}</span>
                   {value === id && <Check size={14} className="text-brand-600 shrink-0" />}
@@ -254,4 +341,5 @@ export function CategoryPicker({
       </div>
     </div>
   );
+  return anchor ? createPortal(picker, document.body) : picker;
 }

@@ -3,6 +3,7 @@ import { useConnection } from '../../hooks/useConnection';
 import type { AppMode } from '../../hooks/useServer';
 import { AuthScreen } from '../auth/AuthScreen';
 import { Button } from '../ui/Button';
+import { lastHostKind } from '../../utils/hostKind';
 import { RetryProgress, retryLabel } from './RetryStatus';
 
 const TITLES: Record<AppMode, string> = {
@@ -78,18 +79,27 @@ export function ReconnectScreen({ mode, onRetry }: { mode: AppMode; onRetry: () 
             </summary>
             <div className="mt-3 space-y-3 leading-relaxed">
               <p>Your budget is safe on the server; this page just can't reach it.</p>
-              <div>
-                <p>Check that the container is running:</p>
-                <pre className="mt-1 px-2 py-1.5 rounded bg-surface-alt font-mono text-[11px] overflow-x-auto">
-                  docker ps --filter name=flybudget
-                </pre>
-              </div>
-              <div>
-                <p>See what it logged:</p>
-                <pre className="mt-1 px-2 py-1.5 rounded bg-surface-alt font-mono text-[11px] overflow-x-auto">
-                  docker logs --tail 50 flybudget
-                </pre>
-              </div>
+              {lastHostKind() === 'home-assistant' ? (
+                <p>
+                  In Home Assistant, open Settings → Apps → FlyBudget. Check that it says Started
+                  (start it if not), then look at the Log tab to see what it printed.
+                </p>
+              ) : (
+                <>
+                  <div>
+                    <p>Check that the container is running:</p>
+                    <pre className="mt-1 px-2 py-1.5 rounded bg-surface-alt font-mono text-[11px] overflow-x-auto">
+                      docker ps --filter name=flybudget
+                    </pre>
+                  </div>
+                  <div>
+                    <p>See what it logged:</p>
+                    <pre className="mt-1 px-2 py-1.5 rounded bg-surface-alt font-mono text-[11px] overflow-x-auto">
+                      docker logs --tail 50 flybudget
+                    </pre>
+                  </div>
+                </>
+              )}
               <p>
                 If you reach it through a reverse proxy or VPN, check that it's running too, and
                 that this device is connected to the right network.

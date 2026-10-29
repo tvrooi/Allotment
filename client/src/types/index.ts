@@ -447,6 +447,8 @@ export interface BudgetSummary {
   toBeBudgeted: number;
   /** First month the envelopes count (YYYY-MM); null = all history */
   budgetStartMonth?: string | null;
+  /** Some money has been assigned in some month (false: a brand-new budget) */
+  anythingAssigned?: boolean;
 }
 
 export interface Account {
@@ -593,7 +595,8 @@ export type ChartType = 'bar' | 'stacked-bar' | 'line' | 'area' | 'donut' | 'tab
 export type ReportMode = 'total' | 'time';
 export type ReportGroupBy = 'category' | 'categoryGroup' | 'payee' | 'account' | 'month';
 export type BalanceType = 'expense' | 'income' | 'net';
-export type DatePresetCustom = '1m' | '3m' | '6m' | '12m' | 'ytd' | 'last-year' | 'all' | 'custom';
+export type DatePresetCustom =
+  '1m' | 'last-month' | '3m' | '6m' | '12m' | 'ytd' | 'last-year' | 'all' | 'custom';
 
 /** `preset: 'custom'` is frozen to `from`/`to`; other presets are live, relative to today. */
 export interface ReportDateRange {
