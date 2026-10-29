@@ -1,41 +1,24 @@
-# Install FlyBudget with Up on Home Assistant OS
+# FlyBudget with Up on Home Assistant
 
-This package contains the modified FlyBudget source, a Dockerfile and a Home Assistant app
-configuration. It builds on your Home Assistant machine; no separate Docker installation,
-Docker management app, Node-RED or Up subscription is required.
+This app runs your FlyBudget budget on Home Assistant, with direct Up Bank imports. It is a
+prebuilt app for 64-bit Intel/AMD and ARM, so nothing is compiled on your device. It has its own
+FlyBudget password, separate from your Home Assistant login. For the full beginner walk-through,
+including the desktop app and making an Up token, see
+[Start here](https://github.com/tvrooi/FlyBudget/blob/main/docs/START-HERE.md).
 
-## 1. Copy the app to Home Assistant
+## 1. Install and start
 
-1. Download `FlyBudget-Up-Home-Assistant.zip` and unzip it on your computer.
-2. In Home Assistant, install and start the **Samba share** app if you do not already have access
-   to the local apps folder. Its login is the one you configure in Samba, not your HA login.
-3. On a Mac, use **Finder → Go → Connect to Server** and enter `smb://homeassistant.local`.
-   If that name does not resolve, use your Home Assistant machine's LAN IP instead.
-4. Open the `local_apps` share (called `addons` on older installations), and copy the extracted
-   `flybudget_up` folder into it. The result must be `local_apps/flybudget_up/config.yaml`
-   (or `addons/flybudget_up/config.yaml`), with the Dockerfile beside it. Do not copy it into
-   Home Assistant's `config` folder, and do not add an extra ZIP wrapper folder.
-
-If you use Terminal & SSH, check whether the local folder is exposed as `/local_apps` or `/addons`.
-These are app container paths, not the host filesystem. The app ID is `local_flybudget_up`.
-
-## 2. Install and start
-
-1. Open **Settings → Apps → Install app** (older versions: **Settings → Add-ons → Add-on Store**).
-2. Use the top-right menu to **Check for updates / Reload** the store. If the local section is
-   missing, enable **Advanced mode** in your Home Assistant user profile and refresh the page.
-3. Find **FlyBudget Up Preview** under **Local apps / Local add-ons**, and choose **Install**.
-   The first installation compiles the app and downloads its dependencies. Allow it to finish;
-   this can take several minutes, particularly on a Raspberry Pi. Home Assistant needs an
-   internet connection and enough free space and memory for a source build.
-4. Enable **Start on boot** and **Watchdog**, then choose **Start**.
-5. Open the app's **Log** tab. Copy its one-time FlyBudget setup code.
-6. In the updated desktop preview, choose **Budget → Budget location…** and connect to
-   `http://homeassistant.local:3001` (or `http://<home-assistant-LAN-IP>:3001`). For HTTP on a
-   trusted home network, select its confirmation. Alternatively, choose **Open Web UI**.
-7. Enter the setup code and create your FlyBudget password. Use this same password from each
-   device. This is one budget with one owner password, unless you turn on separate budgets
-   (below).
+1. Open **Settings → Apps → Install app**. Select the three dots (⋮) at the top right, then
+   **Repositories**. Add `https://github.com/tvrooi/home-assistant-apps`, then **Close**. If you
+   cannot see these menus, turn on **Advanced mode** on your user profile.
+2. Find **FlyBudget Up Preview** and select **Install**.
+3. Turn on **Start on boot** and **Watchdog**, then select **Start**.
+4. Open the app's **Log** tab and copy the one-time FlyBudget setup code.
+5. Select **Open web UI**, or connect the desktop app to `http://homeassistant.local:3001` (use
+   port 3001, not 8123; if that name does not work, use the address in **Settings → System →
+   Network**). For HTTP on a trusted home network, tick **I trust this home network or VPN**.
+6. Enter the setup code and create your FlyBudget password. Use the same password from each device.
+   This is one budget with one owner password, unless you turn on separate budgets (below).
 
 If you forget the password, choose **Forgot password?** on the sign-in screen. FlyBudget makes a
 one-time reset code (it works once, for 24 hours) and shows it in Home Assistant under
@@ -43,43 +26,49 @@ one-time reset code (it works once, for 24 hours) and shows it in Home Assistant
 is signed out.
 
 Keep protection mode enabled. The app asks for Home Assistant API access only to send password
-codes as notifications; it never reads your entities. It doesn't need
-Docker socket access, host networking or elevated Linux capabilities. Its startup script prepares
-only its private data directory, then starts FlyBudget as the unprivileged Node user.
+codes as notifications; it never reads your entities. It doesn't need Docker socket access, host
+networking or elevated Linux capabilities. Its startup script prepares only its private data
+directory, then starts FlyBudget as the unprivileged Node user.
 
-## 3. Connect Up
+## 2. Connect Up
 
-In FlyBudget, open **Settings → Connected Banks → Up → Connect Up**. Create a personal access
-token at [Up's developer portal](https://api.up.com.au/) and paste it directly into FlyBudget.
-Choose new accounts or AUD accounts (an account with history links from a cut-over date) and **Save & Sync**. Your other devices use that
-server connection; you do not enter a separate token on each device.
+In FlyBudget, choose **Connect Up** on the welcome screen, or open **Settings → Connected Banks →
+Up → Connect Up**. Create a personal access token at [Up's developer portal](https://api.up.com.au/)
+and paste it directly into FlyBudget. For each Up account choose **Create a new account**, or link
+an AUD account you already have (one with history links from a cut-over date), then **Save & Sync**.
+Your other devices use that server connection; you do not enter a token on each device.
 
 Up sync runs on app startup or **Sync Now**. In Settings → Connected Banks → Up, opt in to
-background sync every 15, 30, 60 or 240 minutes; failures delay retries. It defaults off. With a server
-that stays running, opening a browser does not restart the server; use **Sync Now** or enable background sync for updates.
-Only settled transactions are imported. Review internal transfers and Round Ups in the register.
+background sync every 15, 30, 60 or 240 minutes; failures delay retries. It defaults off. Opening a
+browser does not restart the server. Only settled transactions are imported. Review internal
+transfers and Round Ups in the register.
 
-This is a new server installation. The Mac preview's local budget does not automatically move
-here. If you already have data there, export a JSON backup under **Settings → Data** before moving
-it. The preview deliberately refuses linking accounts with existing history, so a populated
-desktop budget needs a separate migration step to preserve account links without double imports.
-For a new budget, connect Up directly in this server and use it from your desktop or other devices.
+This is a new server installation. A desktop budget on your computer does not move here
+automatically. To start fresh, connect Up directly in this server. If you want to keep an existing
+budget, export a JSON backup under **Settings → Data** first, or import it with **Import from
+YNAB** or **Import CSV**.
 
-## 4. Use it from other devices
+## 3. Use it from other devices
 
-The updated **FlyBudget Up Preview** desktop app can use this server directly. Open
-**Budget → Budget location…**, enter the FlyBudget address (for example
-`http://homeassistant.local:3001`), confirm HTTP if appropriate for your trusted home network,
-and choose **Connect to server**. After it restarts, sign in with the FlyBudget password.
-New desktop installations show this choice on first launch. See `DESKTOP-SERVER.md` in the source
-package for details. Budgeting stays in the desktop window; Home Assistant hosts the service.
+The FlyBudget desktop app can use this server directly. Open **Budget → Budget location…**,
+enter the FlyBudget address (for example `http://homeassistant.local:3001`), tick the HTTP
+confirmation if appropriate for your trusted home network, and choose **Connect to server**.
+After it restarts, sign in with the FlyBudget password. New desktop installations show this
+choice on first launch (**Where is your budget?**). See
+[Use the desktop app with Home Assistant storage](https://github.com/tvrooi/FlyBudget/blob/main/DESKTOP-SERVER.md).
 
-On a phone, tablet or another laptop, open the same FlyBudget URL in a browser and sign in.
-All these devices read and save the same server database. You can bookmark it or add it to your
-phone's home screen. Choosing **Use this computer** in the desktop app opens its separate local
+On a phone, tablet or another laptop, open the same FlyBudget address in a browser and sign in.
+You can bookmark it or add it to your phone's home screen. All these devices read and save the
+same server database. Choosing **Use this computer** in the desktop app opens a separate local
 budget; changing locations does not migrate or merge an existing budget.
 
-For access away from home, use **Tailscale**, either through the Home Assistant community app or
+## Reach it away from home
+
+HTTP is fine on a trusted home network but is not encrypted, so do not expose port 3001 to the
+internet, and do not use router port forwarding or Funnel for this. Home Assistant Cloud (Nabu
+Casa) does not forward FlyBudget's port, and this app does not use HA Ingress.
+
+To reach it from outside your home, use **Tailscale**, either through the Home Assistant community app or
 an existing VPN/router. Connect your devices to the same private network and expose FlyBudget
 there, preferably with HTTPS. A direct web port does not automatically become available through
 Home Assistant Cloud/Nabu Casa. This package opens its own web UI; it does not implement HA Ingress.
@@ -147,73 +136,47 @@ a budget only they can open, each with their own password.
 ## Storage, backups and updates
 
 - The database and credential encryption key live in the app's private `/data/flybudget` folder.
-  This folder persists through app restarts, rebuilds and normal updates.
+  This folder persists through app restarts and normal updates.
 - Include **FlyBudget Up Preview** in Home Assistant backups. It uses a cold backup: Home
   Assistant briefly stops it so the SQLite database and encryption key are copied consistently.
   Home Assistant backups include the key, so protect those backups.
 - You can also export a portable JSON backup in FlyBudget. Those exports exclude bank tokens
   and do not replace the full Home Assistant backup.
-- Uninstalling the app can remove its data. Export/back up before uninstalling.
-- This is a local app, so there is no published update feed. Replace the source with a newer
-  supplied package and use **Rebuild**; keep its slug `flybudget_up` so the same data is retained.
-
-## Repair an options.json permission error
-
-Version `0.2.0-up-ha.1` could fail with
-`EACCES: permission denied, open '/data/options.json'` when Supervisor's data directory or options
-file was root-only. Version `0.2.0-up-ha.2` fixes this; the current `0.2.0-up-ha.3` includes that
-fix and corrects the watchdog. The startup shell opens the configuration
-as root and passes a read-only descriptor to the unprivileged launcher. The Supervisor file stays
-root-owned and private; only traversal is granted on the parent directory, with the budget/key
-folder still private to user 1000.
-
-For an existing installation, use the supplied `FlyBudget-HA-Startup-Fix.py` repair script:
-
-1. Temporarily disable **Watchdog**, and **Stop** FlyBudget.
-2. In Studio Code Server, open `/share` and upload the repair script there.
-3. Open **Terminal → New Terminal** inside Studio Code Server and run:
-
-   ```sh
-   python3 /share/FlyBudget-HA-Startup-Fix.py
-   ```
-
-4. Reload/check for updates in the Home Assistant app store, then open FlyBudget and choose
-   **Update** to version `0.2.0-up-ha.3` (or **Rebuild** from its menu).
-5. **Start** FlyBudget, check its Log, and re-enable **Watchdog** once it is running.
-
-The script validates the existing app source, backs up the four files it changes, and can be
-rerun safely. It updates only startup/launcher source, the watchdog and the build version. It does not access
-the installed budget or encryption key. From the full source package the same script is named
-`homeassistant/repair-permissions.py`; an explicit app source path may be passed as its argument.
+- Uninstalling the app can remove its data. Export or back up before uninstalling.
+- Updates arrive through the repository like any other app. Select **Update** when Home Assistant
+  offers it, or turn on **Auto update**. Take a backup first if you want a safety net.
 
 ## Incorrect setup code
 
 The setup code lives in memory and changes on every server restart. Copy the last code printed
-after the most recent startup, rather than a code from an earlier screenshot/log block. Spaces,
-dashes and letter case are ignored. A completed password setup invalidates the code.
+after the most recent startup, rather than a code from an earlier log block. Spaces, dashes and
+letter case are ignored. A completed password setup invalidates the code. If the app keeps
+restarting, check the **Log** tab for the cause before trying again.
 
-In ha.1/ha.2 the HTTP watchdog can receive a 403 when `allowed_hosts` only contains the public
-hostname: Supervisor sends the container IP as the Host header. This can cause needless restarts
-and invalidate a setup code while you are entering it. Temporarily turn **Watchdog off**, restart
-FlyBudget once, refresh its Log, copy the newest code, then create the password without restarting
-again. Keep Watchdog off until the ha.3 update is installed.
+## Advanced: manual install
 
-ha.3 uses a TCP watchdog to check the listening port without a Host header. Docker's separate
-health check still requests `/api/health` over loopback. The host restrictions on budget/API
-requests remain enforced. The updated startup repair script upgrades ha.1 or ha.2 to ha.3.
+Most people should use the repository above. Use this route only if you cannot add the repository,
+for example when testing your own build. The app then has a different ID (`local_flybudget_up`) and
+a separate, empty data folder from the repository app. Adding the repository later does not
+migrate it; moving a budget between the two needs a verified cold backup that includes the
+encryption key. Keep the working app until you have checked the new one.
 
-## Validation
+1. Package the app from the source with `python3 homeassistant/package.py --out <folder>`. It
+   produces a `flybudget_up` folder.
+2. In Home Assistant, install and start the **Samba share** app if you do not already have access
+   to the local apps folder. Its login is the one you configure in Samba, not your HA login.
+3. On a Mac, use **Finder → Go → Connect to Server** and enter `smb://homeassistant.local` (or your
+   Home Assistant machine's address on your network).
+4. Open the `local_apps` share (called `addons` on older installations) and copy the
+   `flybudget_up` folder into it, so that `local_apps/flybudget_up/config.yaml` exists with the
+   Dockerfile beside it. Do not copy it into Home Assistant's `config` folder.
+5. In **Settings → Apps → Install app**, use the top-right menu to reload the store. Find
+   **FlyBudget Up Preview** under **Local apps** and select **Install**. This compiles the app on
+   your device, which can take several minutes on a Raspberry Pi.
+6. Continue from step 3 of "Install and start" above.
 
-The underlying native Up preview passed 435 server, 206 client and 161 browser tests. Three HA
-wrapper tests passed for persistent key handling and server configuration. The Linux ARM64 image
-also built and passed a local container test: login required, first-password setup, native Up
-endpoint availability, budget/password/key persistence after restart, and the web server running
-as user 1000. The permission regression test reproduces the old failure with a root-owned 0700
-data directory and a root-owned 0600 options file in a Linux volume, and passes with the fix.
-The options file retains its original ownership/permissions and is not directly readable by the
-web-server user. A strict-host test also confirms that a container-IP HTTP health request gets
-403 while the Supervisor-style TCP check connects successfully. Actual Supervisor installation
-and live Up access still need verification on your device.
+A local app has no update feed. To update it, replace the folder with a newer package and use
+**Rebuild**, keeping the slug `flybudget_up` so the same data is kept.
 
 ## Official references
 

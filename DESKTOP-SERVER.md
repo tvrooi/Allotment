@@ -1,18 +1,18 @@
 # Use the desktop app with Home Assistant storage
 
-The updated **FlyBudget Up Preview** desktop app can connect to the FlyBudget server on
-Home Assistant. Budgeting happens in its own desktop window. Home Assistant runs the database,
+The FlyBudget desktop app can connect to the FlyBudget server on Home Assistant. For a full
+walk-through from scratch, see [Start here](docs/START-HERE.md). Budgeting happens in its own desktop window. Home Assistant runs the database,
 password login and Up API connection in the background; you do not need to use its dashboard
 to manage your budget.
 
 ## Connect
 
-1. Install and start the Home Assistant package using `homeassistant/DOCS.md`.
-2. Open the updated desktop preview. On a new installation it asks **Where is your budget?**
+1. Install and start the app in Home Assistant, following [Start here](docs/START-HERE.md#track-a-home-assistant).
+2. Open the desktop app. On a new installation it asks **Where is your budget?**
    On an existing installation, choose **Budget → Budget location…** in the desktop menu.
 3. Enter the FlyBudget address, for example `http://homeassistant.local:3001`.
    Use the standalone FlyBudget address on port 3001, rather than Home Assistant's port 8123.
-4. For HTTP on your trusted home network or VPN, select the HTTP confirmation. Prefer HTTPS,
+4. For HTTP on your trusted home network or VPN, tick **I trust this home network or VPN**. Prefer HTTPS,
    particularly for access away from home. The app does not bypass certificate checks.
 5. Choose **Connect to server**. The app saves the address and restarts.
 6. Sign in with your FlyBudget password. If this is the first connection, enter the setup code
@@ -20,7 +20,7 @@ to manage your budget.
 7. Connect Up in **Settings → Connected Banks**. The token is kept on the Home Assistant server.
 
 The app remembers the server and its login session between launches (sessions can expire or be
-revoked). Other devices use the same server: another desktop preview, or its URL in a browser
+revoked). Other devices use the same server: another desktop, or its URL in a browser
 on your phone/tablet. FlyBudget uses one owner password for this budget.
 
 ## What runs where
@@ -35,7 +35,7 @@ on your phone/tablet. FlyBudget uses one owner password for this budget.
 Server mode does not start the desktop's embedded server, open its local database, or copy that
 database onto Home Assistant. **Use this computer** opens a separate local budget. Switching
 locations does not migrate or merge data. Back up an existing budget before planning a migration;
-the Up preview currently refuses to link bank accounts containing pre-existing manual/CSV history.
+Up can link an account that already has history only from a cut-over date you choose.
 
 Each server address has a separate desktop browser profile, keeping its login and optional
 offline copy apart from other budgets. Changing from a LAN address to a VPN/HTTPS address may
@@ -47,23 +47,10 @@ address. Home Assistant Cloud does not automatically forward FlyBudget's indepen
 If the server cannot be reached, the desktop shows the connection picker so you can retry or
 change its address. The **Budget** menu remains available.
 
-This capability is in the custom preview, rather than the unmodified upstream desktop release.
-The Apple silicon DMG is ad-hoc signed and is not Apple-notarized.
-
-## Developer checks
-
-```sh
-npm run compile:electron
-node --test electron/connection.test.cjs
-npm run build:server:bundle
-npm run build --prefix client -- --outDir /tmp/flybudget-web
-node electron/remote-smoke.cjs /tmp/flybudget-web
-```
-
-The smoke test uses real Electron and an isolated local server, with a throwaway database/profile.
-It checks the native picker, HTTP confirmation, login/setup, server writes visible to another
-signed-in device, session persistence, and that no local database or credential key was created.
-It does not use real Up credentials.
+Download the desktop app from this fork's [Releases](https://github.com/tvrooi/FlyBudget/releases),
+not from the original FlyBudget project, which cannot connect to a server like this. The Mac app is
+ad-hoc signed and is not Apple-notarised; [Start here](docs/START-HERE.md#track-b-desktop-only) shows
+how to open it.
 
 ## Desktop program updates
 

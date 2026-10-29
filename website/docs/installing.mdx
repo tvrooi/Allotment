@@ -1,9 +1,16 @@
 ---
-sidebar_position: 2
+sidebar_position: 3
 sidebar_label: Installing FlyBudget
 ---
 
 # Installing FlyBudget
+
+:::tip[Using the Up fork?]
+
+If you run the FlyBudget Up fork with Home Assistant, follow [Start here](./start-here) instead. It
+covers the whole install on one page. This page is the general guide.
+
+:::
 
 There are three ways to run FlyBudget. They all run the same app; they differ in where your
 budget is stored and which devices can open it.
@@ -15,7 +22,8 @@ budget is stored and which devices can open it.
 | [From source](#from-source)               | in the project folder                  | the computer running it (for developers) |
 
 Not sure? Start with the desktop app. You can move to a server later: download a
-[backup](./backups) and restore it there.
+[backup](./backups) and restore it there. If you connect Up, note that a budget with existing
+history links to Up from a cut-over date, so choose Home Assistant from the start if you want it.
 
 :::tip[Just looking?]
 
@@ -26,7 +34,7 @@ nothing to install, and nothing you change is saved.
 
 ## Desktop app
 
-The [download page](/download) picks the right file for your computer. FlyBudget runs on
+Download from the [releases page](https://github.com/tvrooi/FlyBudget/releases), which lists a file for each system. FlyBudget runs on
 Windows 10 and 11, macOS 12 Monterey or later (Apple silicon and Intel), and 64-bit Linux (x86
 and ARM).
 
@@ -92,7 +100,7 @@ protected by your operating system's keychain. You don't need to touch either fi
 
 ### Updating
 
-Download the new version from the [download page](/download) and install it over the old one.
+Download the new version from the [releases page](https://github.com/tvrooi/FlyBudget/releases) (or use **Budget → Check for desktop updates…**) and install it over the old one.
 Your budget stays where it is, and FlyBudget updates it for the new version when it starts.
 
 ## Self-hosted server
@@ -106,17 +114,16 @@ openssl rand -base64 32 > flybudget_data_key.txt   # the key that protects bank 
 docker compose up -d                                # with docker-compose.yml from the repository
 ```
 
-Then open `http://<your-server>:3001`, enter the setup code from `docker logs flybudget`, and
-choose your password. The [self-hosting guide](/community/self-hosting) covers every step,
+Then open `http://<your-server>:3001`, enter the setup code from the container's log, and
+choose your password. On Home Assistant, the code is in the app's **Log** tab instead. The [self-hosting guide](/community/self-hosting) covers every step,
 HTTPS, backups and updates.
 
 ## From source
 
-For trying the latest changes or contributing. You need [Node.js](https://nodejs.org/) 24 (the
-version FlyBudget is built and tested with) and Git.
+For trying the latest changes or contributing. You need [Node.js](https://nodejs.org/) 22 or newer and Git.
 
 ```bash
-git clone https://github.com/dtymoszenko/FlyBudget.git
+git clone https://github.com/tvrooi/FlyBudget.git
 cd FlyBudget
 npm ci && npm ci --prefix client && npm ci --prefix server
 npm run dev   # opens on http://localhost:5173
