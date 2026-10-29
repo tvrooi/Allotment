@@ -37,6 +37,7 @@ import {
   setTransactionTags,
   tagsByTransaction,
 } from '../services/transactionMarks.js';
+import { ReconciliationError, unlockTransaction } from '../services/reconciliationService.js';
 import {
   bulkEdit,
   previewBulkEdit,
@@ -92,10 +93,11 @@ transactionsRouter.param('id', (req, res, next, id) => {
     .get();
   if (linked && req.method !== 'GET') {
     const safeEdit =
-      req.method === 'PUT' &&
-      Object.keys(req.body ?? {}).every((k) =>
-        ['categoryId', 'notes', 'payeeId', 'payeeName', 'reconciled'].includes(k),
-      );
+      (req.method === 'POST' && req.path.endsWith('/unlock')) ||
+      (req.method === 'PUT' &&
+        Object.keys(req.body ?? {}).every((k) =>
+          ['categoryId', 'notes', 'payeeId', 'payeeName', 'reconciled'].includes(k),
+        ));
     if (!safeEdit)
       return res.status(409).json({
         error:
@@ -602,6 +604,18 @@ transactionsRouter.post('/:id/transfer', (req, res) => {
 });
 
 // POST /transactions/:id/unlink-transfer — "Not a transfer"
+// Unlock a reconciled transaction so its amount, date or account can change (or it can be deleted).
+// The balance it was reconciled to no longer holds until it is reconciled again.
+transactionsRouter.post('/:id/unlock', (req, res) => {
+  try {
+    res.json(unlockTransaction(req.params.id));
+  } catch (error) {
+    if (error instanceof ReconciliationError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
+});
+
 transactionsRouter.post('/:id/unlink-transfer', (req, res) => {
   // Undo sends `dismiss: false`, so the pair is suggested again
   const parsed = z.object({ dismiss: z.boolean().optional() }).safeParse(req.body ?? {});
@@ -690,12 +704,20 @@ transactionsRouter.put('/:id', (req, res) => {
 
   const existing = db.select().from(transactions).where(eq(transactions.id, req.params.id)).get();
   if (!existing) return res.status(404).json({ error: 'Not found' });
-  if (existing.reconciled === 1)
-    return res.status(403).json({ error: 'Cannot modify a reconciled transaction' });
 
   const data = parsed.data;
   const changes = (key: keyof typeof data) =>
     data[key] !== undefined && data[key] !== existing[key];
+  // A reconciled row is locked to what the bank statement agreed: amount, date and account stay put.
+  // Category, notes, tags and payee don't change any balance, so they remain editable.
+  if (
+    existing.reconciled === 1 &&
+    (changes('amount') || changes('date') || changes('accountId') || data.mainAmount !== undefined)
+  )
+    return res.status(403).json({
+      error:
+        'Cannot change the amount, date or account of a reconciled transaction. Unlock it first.',
+    });
   if (
     existing.parentTransactionId &&
     (changes('accountId') || changes('date') || changes('amount'))

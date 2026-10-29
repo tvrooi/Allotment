@@ -210,7 +210,7 @@ export interface BulkPreview {
 /** Stands in for a payee the apply would create: no row has its id yet */
 const NEW_PAYEE = '\u0000new';
 
-/** Category, payee and notes: what a reconciled, transfer, split or household row can't take */
+/** Category, payee and notes: what a transfer, split or household row can't always take */
 const LEDGER_FIELDS = ['categoryId', 'payeeName', 'notes'] as const;
 
 function targetRows(target: BulkTarget) {
@@ -230,7 +230,7 @@ function ledgerBlock(
   household: Set<string>,
   changes: BulkChanges,
 ): SkipReason | null {
-  if (row.reconciled === 1) return 'reconciled';
+  // Reconciled rows take these edits: category, payee and notes change no balance
   if (household.has(row.id)) return 'household';
   // A transfer's payee names the other account and its category is the budget boundary's
   if (
@@ -447,13 +447,12 @@ export function restoreBulkEdit(changes: BulkRestore[]) {
         .get();
       if (!row) continue;
       const update: Partial<typeof transactions.$inferInsert> = {};
-      if (c.categoryId !== undefined && row.reconciled !== 1 && row.isParent !== 1)
-        update.categoryId = c.categoryId;
-      if (c.payeeName !== undefined && row.reconciled !== 1) {
+      if (c.categoryId !== undefined && row.isParent !== 1) update.categoryId = c.categoryId;
+      if (c.payeeName !== undefined) {
         update.payeeId = c.payeeId ?? null;
         update.payeeName = c.payeeName;
       }
-      if (c.notes !== undefined && row.reconciled !== 1) update.notes = c.notes;
+      if (c.notes !== undefined) update.notes = c.notes;
       if (c.hiddenFromReports !== undefined) update.hiddenFromReports = c.hiddenFromReports;
       if (c.reviewedAt !== undefined) update.reviewedAt = c.reviewedAt;
       if (Object.keys(update).length) {

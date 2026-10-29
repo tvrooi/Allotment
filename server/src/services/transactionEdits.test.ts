@@ -167,7 +167,7 @@ describe('bulkEdit', () => {
     expect(row('x').categoryId).toBe('food');
   });
 
-  it('skips rows that cannot take a ledger change and reports why', () => {
+  it('skips rows that cannot take a ledger change and reports why; reconciled rows take them', () => {
     addTx('x', -100);
     addTx('rec', -200, { reconciled: 1 });
     addTx('s', -300);
@@ -176,12 +176,13 @@ describe('bulkEdit', () => {
       { categoryId: 'home', amount: -200 },
     ]);
     const preview = previewBulkEdit(all, { categoryId: 'fun' });
-    expect(preview).toMatchObject({ matched: 3, changing: 1 });
-    expect(preview.skipped).toMatchObject({ reconciled: 1, split: 1 });
+    expect(preview).toMatchObject({ matched: 3, changing: 2 });
+    expect(preview.skipped).toMatchObject({ reconciled: 0, split: 1 });
     expect(preview.accounts.map((a) => a.name)).toEqual(['Cash']);
     const result = bulkEdit(all, { categoryId: 'fun', hiddenFromReports: true }, 3);
     expect(row('x').categoryId).toBe('fun');
-    expect(row('rec').categoryId).toBe('food');
+    expect(row('rec').categoryId).toBe('fun');
+    expect(row('rec').reconciled).toBe(1);
     // Report visibility is not a ledger change: every row takes it
     expect([row('x'), row('rec'), row('s')].every((r) => r.hiddenFromReports === 1)).toBe(true);
     expect(result.changed).toBe(3);

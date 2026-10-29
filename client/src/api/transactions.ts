@@ -157,6 +157,10 @@ export const unlinkTransfer = (id: string, opts: { dismiss?: boolean } = {}) =>
     body: JSON.stringify(opts),
   });
 
+/** Unlocks one reconciled transaction so its amount, date and account can change again */
+export const unlockTransaction = (id: string) =>
+  apiFetch<Transaction>(`/transactions/${id}/unlock`, { method: 'POST', body: '{}' });
+
 export const importPreview = (accountId: string, rows: ImportRow[]) =>
   apiFetch<ImportPreviewRow[]>('/transactions/import/preview', {
     method: 'POST',

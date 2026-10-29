@@ -30,6 +30,18 @@ export function useTransactionSummary(params: TransactionQueryParams, enabled = 
   });
 }
 
+export function useUnlockTransaction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: txApi.unlockTransaction,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['transactions'] });
+      qc.invalidateQueries({ queryKey: ['accounts'] });
+      qc.invalidateQueries({ queryKey: ['review'] });
+    },
+  });
+}
+
 export function useCreateTransaction() {
   const qc = useQueryClient();
   return useMutation({

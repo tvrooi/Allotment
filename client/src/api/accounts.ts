@@ -28,6 +28,26 @@ export const saveReconciliation = (
     body: JSON.stringify(data),
   });
 
+export interface LastReconciliation {
+  id: string;
+  createdAt: string;
+  /** Rows it locked, not counting its adjustment */
+  transactions: number;
+  /** Amount of the adjustment it created (0 = none) */
+  adjustment: number;
+}
+export interface ReconciliationUndo {
+  unlocked: number;
+  /** Rows it locked that were unlocked, moved or deleted since, so were left alone */
+  alreadyChanged: number;
+  adjustment: 'removed' | 'kept' | 'none';
+  adjustmentAmount: number;
+}
+export const getLastReconciliation = (id: string) =>
+  apiFetch<LastReconciliation | null>(`/accounts/${id}/reconcile/last`);
+export const undoLastReconciliation = (id: string) =>
+  apiFetch<ReconciliationUndo>(`/accounts/${id}/reconcile/undo`, { method: 'POST', body: '{}' });
+
 export const createAccount = (data: {
   name: string;
   type: AccountType;

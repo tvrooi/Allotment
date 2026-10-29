@@ -14,6 +14,7 @@ import { EditAccountModal } from '../components/accounts/EditAccountModal';
 import { UpdateValueModal } from '../components/accounts/UpdateValueModal';
 import { accountTypeInfo } from '../utils/accountTypes';
 import { CurrencyDifference } from '../components/currency/CurrencyDifference';
+import { UndoReconciliation } from '../components/accounts/UndoReconciliation';
 import { BankBalanceHint } from '../components/accounts/BankBalanceHint';
 
 export default function AccountTransactionsPage() {
@@ -73,7 +74,7 @@ export default function AccountTransactionsPage() {
               </>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
               <Pencil size={13} /> Edit
             </Button>
@@ -92,6 +93,7 @@ export default function AccountTransactionsPage() {
                 <CheckSquare size={13} /> Reconcile
               </Button>
             )}
+            {typeInfo.group !== 'property' && <UndoReconciliation accountId={account.id} />}
           </div>
         </div>
       </div>

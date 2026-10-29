@@ -2,6 +2,9 @@ import { bankLinked } from '../services/accountIntegrity.js';
 import { Router } from 'express';
 import {
   reconcile,
+  lastReconciliation,
+  recordReconciliation,
+  undoLastReconciliation,
   reconciliationSnapshot,
   ReconciliationError,
 } from '../services/reconciliationService.js';
@@ -240,6 +243,20 @@ accountsRouter.get('/:id/reconcile', (req, res) => {
   }
 });
 
+accountsRouter.get('/:id/reconcile/last', (req, res) => {
+  res.json(lastReconciliation(req.params.id));
+});
+
+accountsRouter.post('/:id/reconcile/undo', (req, res) => {
+  try {
+    res.json(undoLastReconciliation(req.params.id));
+  } catch (error) {
+    if (error instanceof ReconciliationError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
+});
+
 accountsRouter.post('/:id/reconcile', (req, res) => {
   const parsed = z
     .object({
@@ -287,19 +304,27 @@ accountsRouter.put('/:id/reconcile', (req, res) => {
   }
 
   // Only this account's transactions
-  const result = db
-    .update(transactions)
-    .set({ reconciled: 1 })
-    .where(
-      and(
-        eq(transactions.accountId, req.params.id),
-        inArray(transactions.id, parsed.data.transactionIds),
-        ne(transactions.reconciled, 1),
-      ),
-    )
-    .run();
+  const result = db.transaction(() => {
+    const pending = db
+      .select({ id: transactions.id })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.accountId, req.params.id),
+          inArray(transactions.id, parsed.data.transactionIds),
+          ne(transactions.reconciled, 1),
+        ),
+      )
+      .all()
+      .map((t) => t.id);
+    if (pending.length) {
+      db.update(transactions).set({ reconciled: 1 }).where(inArray(transactions.id, pending)).run();
+      recordReconciliation(req.params.id, pending, 0);
+    }
+    return pending.length;
+  });
 
-  res.json({ reconciled: result.changes });
+  res.json({ reconciled: result });
 });
 
 const storedImportSettings = (id: string) =>
