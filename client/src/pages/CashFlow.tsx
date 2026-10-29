@@ -26,6 +26,7 @@ import {
 } from '../components/reports/ChartHelpers';
 import type { StatCard } from '../components/reports/ChartHelpers';
 import type { SpendingByCategory as SpendingByCat, IncomeByCategoryItem } from '../types';
+import { useSafeMode } from '../utils/safeMode';
 
 // ─── Types & Constants ───────────────────────────────────────────────────────
 
@@ -1131,6 +1132,8 @@ export default function CashFlowPage() {
   // Headline totals and savings rate use the shared definition (utils/reportSummary.ts):
   // spending is net of refunds across all expense categories, as on the dashboard
   const { data: ieData = [] } = useIncomeVsExpenses(from, to);
+  // Formatted here, so Safe mode hiding every amount must draw them again
+  const hidesAll = useSafeMode().all;
   const statCards = useMemo((): StatCard[] => {
     const { income, spending, net } = periodFlow(ieData);
     const rate = savingsRate(income, spending);
@@ -1148,7 +1151,7 @@ export default function CashFlowPage() {
         tone: rate !== null && rate < 0 ? 'negative' : undefined,
       },
     ];
-  }, [ieData]);
+  }, [ieData, hidesAll]);
 
   const handleNodeClick = useCallback((node: SelectedNode | null) => {
     setSelectedNode(node);

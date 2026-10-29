@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay } from './fixtures';
+import { test, expect, open, isoDay, thisMonth } from './fixtures';
 import type { Page } from '@playwright/test';
 
 // Safe mode hides balances and totals while someone helps with the budget. The figures must
@@ -22,6 +22,10 @@ test.describe('Safe mode', () => {
     await api.createAccount('Everyday', 432_109, 'checking');
     await api.createAccount('Rainy day', 1_234_567, 'savings');
     await api.createAccount('Super', 8_765_432, 'retirement');
+    // Ready to assign is a budget figure and stays visible: assigning some keeps it from
+    // matching the cash total
+    const rent = await api.category('Rent / Mortgage');
+    await api.call('PUT', `/budget/${thisMonth()}/${rent.id}`, { budgeted: 50_000 });
   });
 
   test('hides balances and totals on every page that shows them', async ({ page, api }) => {
@@ -48,6 +52,7 @@ test.describe('Safe mode', () => {
       ['/investments', hiddenPart('Investments are hidden in Safe mode')],
       ['/forecast', hiddenPart('Forecasts are hidden in Safe mode')],
       ['/reports', hiddenPart('Net worth is hidden in Safe mode')],
+      ['/review', hiddenAmount],
     ] as const) {
       await open(page, route);
       await expect(loaded).toBeVisible();
@@ -102,5 +107,12 @@ test.describe('Safe mode', () => {
 
     await page.keyboard.press('Alt+Shift+H');
     await expect(page.getByText('-$55.55').first()).toBeVisible();
+
+    // Switching on in place hides the amounts without remounting the page, so anything typed
+    // but not saved stays: the page's own elements are still the same ones
+    await page.locator('main').evaluate((el) => (el.dataset.probe = 'kept'));
+    await page.getByRole('complementary').getByRole('button', { name: 'Safe mode' }).click();
+    await expect(page.getByText('-$55.55')).toHaveCount(0);
+    await expect(page.locator('main[data-probe="kept"]')).toHaveCount(1);
   });
 });

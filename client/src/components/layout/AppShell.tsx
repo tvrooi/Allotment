@@ -6,7 +6,6 @@ import { useIsPhone } from '../../hooks/useIsPhone';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { useUndoKeyboard } from '../../hooks/useUndoKeyboard';
 import { useSafeModeKeyboard } from '../../hooks/useSafeModeKeyboard';
-import { useSafeMode } from '../../utils/safeMode';
 import { Toasts } from '../ui/Toasts';
 import { ConnectionBanner } from '../connection/ConnectionBanner';
 import { DemoBanner } from '../demo/DemoBanner';
@@ -19,9 +18,6 @@ export function AppShell() {
   useUndoKeyboard();
   useSafeModeKeyboard();
   useUpFreshness();
-  // Safe mode hiding every amount does it in the money formatters, which don't re-render
-  // anything: the shell is drawn again when that changes (cached data makes it quick)
-  const hidesAll = useSafeMode().all;
   const { data: accounts = [], isLoading } = useAccounts();
   const setupSkipped = usePreferencesStore((s) => s.setupSkipped);
   const isPhone = useIsPhone();
@@ -38,10 +34,10 @@ export function AppShell() {
     return <Navigate to="/welcome" replace />;
   }
 
-  if (isPhone) return <PhoneShell key={String(hidesAll)} />;
+  if (isPhone) return <PhoneShell />;
 
   return (
-    <div key={String(hidesAll)} className="flex h-screen bg-page overflow-hidden">
+    <div className="flex h-screen bg-page overflow-hidden">
       <Sidebar />
       <div className="flex-1 min-w-0 flex flex-col">
         {/* macOS desktop app: the window has no title bar, so this strip moves it */}
