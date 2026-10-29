@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.55
+
+- **See recurring bills coming in the budget.** A recurring expense with a category now shows against that category as an orange **−$X expected** amount under Activity, and its spending bar continues in orange by the same amount, so you can see what's still due this month before it's debited. Hover over it for each bill, its date and what the category will have left. A bill stops showing once it's paid (matched to a transaction) or skipped; overdue bills in the current month stay until they arrive. It's a forecast only: Activity, Available and Ready to Assign don't change until the money leaves the account. Transfers, paused items, income and closed or off-budget accounts aren't included.
+
 ## 0.2.0-up.54
 
 - **An assistant can add brand logos to payees.** A _read, categorise and organise_ access token can now give a payee that has no logo one, such as the merchant's brand icon (`PUT /api/payees/:id` with only `logo`). It never replaces or removes a logo you set: remove a wrong one on the Payees page and it can set another. Logos are stored in the budget, so everyone using it sees them.

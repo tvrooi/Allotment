@@ -8,6 +8,7 @@ import { useCanSave } from '../../hooks/useConnection';
 import { formatCurrency } from '../../utils/currency';
 import { categoryFigures, splitCategories } from '../../utils/budgetFigures';
 import { TransferredNote } from './TransferredNote';
+import { ExpectedNote } from './ExpectedNote';
 import type { BudgetCategory } from '../../types';
 import { targetLabel } from '../../utils/targets';
 
@@ -154,6 +155,7 @@ function CategoryCard({
         spent={isIncome ? actual : cat.spent}
         budgeted={cat.budgeted + (cat.transferred ?? 0)}
         isIncome={isIncome}
+        expected={cat.expected}
         className="h-1.5 w-full mt-2"
       />
       <TransferredNote cat={cat} className="mt-1" />
@@ -188,6 +190,7 @@ function CategoryCard({
           <span className="text-sm font-medium tabular-nums text-text">
             {formatCurrency(actual)}
           </span>
+          <ExpectedNote cat={cat} />
         </Link>
       </div>
     </div>

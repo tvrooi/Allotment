@@ -21,6 +21,7 @@ export function isActiveCategory(cat: BudgetCategory, isIncome: boolean) {
     cat.carryOver !== 0 ||
     cat.budgeted !== 0 ||
     (cat.transferred ?? 0) !== 0 ||
+    (cat.expected ?? 0) !== 0 ||
     categoryFigures(cat, isIncome).actual !== 0
   );
 }

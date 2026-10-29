@@ -6,20 +6,22 @@ import type { BudgetCategory } from '../types';
 const cents = fc.integer({ min: -10_000_000, max: 10_000_000 });
 const category = fc
   .record({ budgeted: cents, spent: fc.nat(10_000_000), carryOver: cents, received: cents })
-  .map(({ budgeted, spent, carryOver, received }): BudgetCategory => ({
-    id: 'c',
-    groupId: 'g',
-    name: 'Category',
-    icon: null,
-    budgetType: null,
-    sortOrder: 0,
-    createdAt: '',
-    budgeted,
-    spent,
-    carryOver,
-    // The server's balance: carry-over + planned + this month's activity
-    balance: carryOver + budgeted + received,
-  }));
+  .map(
+    ({ budgeted, spent, carryOver, received }): BudgetCategory => ({
+      id: 'c',
+      groupId: 'g',
+      name: 'Category',
+      icon: null,
+      budgetType: null,
+      sortOrder: 0,
+      createdAt: '',
+      budgeted,
+      spent,
+      carryOver,
+      // The server's balance: carry-over + planned + this month's activity
+      balance: carryOver + budgeted + received,
+    }),
+  );
 
 describe('categoryFigures (property-based)', () => {
   it('a transfer into a linked account funds the envelope without being activity', () => {
@@ -128,5 +130,27 @@ describe('splitCategories picks common categories to top up a section', () => {
     const names = ['Zoo Trips', 'Alpacas', 'Kayaks', 'Board Games'];
     const { shown } = splitCategories(names.map(idle), false);
     expect(shown.map((c) => c.name)).toEqual(['Zoo Trips', 'Alpacas', 'Kayaks']);
+  });
+});
+
+describe('expected recurring debits', () => {
+  it('keep an otherwise empty category listed, without changing its figures', () => {
+    const empty: BudgetCategory = {
+      id: 'phone',
+      groupId: 'g',
+      name: 'Phone',
+      icon: null,
+      budgetType: null,
+      sortOrder: 0,
+      createdAt: '',
+      budgeted: 0,
+      spent: 0,
+      carryOver: 0,
+      balance: 0,
+    };
+    expect(isActiveCategory(empty, false)).toBe(false);
+    const expecting = { ...empty, expected: 5000 };
+    expect(isActiveCategory(expecting, false)).toBe(true);
+    expect(categoryFigures(expecting, false)).toEqual(categoryFigures(empty, false));
   });
 });
