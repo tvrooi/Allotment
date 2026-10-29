@@ -26,6 +26,7 @@ import { checkSetupCode, clearSetupCode, setupCode } from '../auth/setupCode.js'
 import { parseState } from '../services/enableBankingTransactions.js';
 import { Budgets, ensureKey } from './budgets.js';
 import { NOTIFY_SERVICE, type Notify } from './notify.js';
+import { sharingRouter } from './sharing.js';
 import {
   HANDED_CODE_TTL_MS,
   NOTIFIED_CODE_TTL_MS,
@@ -483,6 +484,9 @@ export function createGateway(o: GatewayOptions) {
     res.json(describe(store.person(person.id)!));
   });
   app.use('/api/people', people);
+
+  // Combined households: the gateway puts them together from both budgets (gateway/sharing.ts)
+  app.use('/api/shared-households', sharingRouter({ store, budgets, signedIn, personChanged }));
 
   // ─── Everything else: the signed-in person's own budget ────────────────────
 

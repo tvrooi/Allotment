@@ -13,6 +13,7 @@ Last updated: 29 October 2026.
 - **Payee logos (up.54, up.55):** an organise token may set or replace a payee's logo, never remove one (docs/READ-ONLY-ACCESS.md). On 29 October an assistant added brand icons to 188 business payees and swapped 44 of them for cleaner theSVG brand icons (rendered to PNG); about 270 small or overseas businesses still show initials.
 - **Expected recurring debits (up.56):** the Budget page shows each expense category's unpaid recurring bills for the month in orange (`server/src/services/expectedDebits.ts`, attached by `GET /api/budget/:month`; `client/src/components/budget/ExpectedNote.tsx`). A projection only; it never writes occurrences or ledger rows.
 - **Safe mode (up.57):** a session-only screen privacy toggle (eye button, Alt+Shift+H, Settings → Preferences). `client/src/utils/safeMode.ts` and `store/safeModeStore.ts` hold the rules; `components/ui/Private.tsx` (`Private`, `PrivateChart`, `PrivateSection`) wraps balance displays, and the **All amounts** level masks in `formatAmount`/`formatAxisAmount`, and `App` subscribes so every page re-renders in place (no remount; a `useMemo` that formats amounts needs the level in its deps). New balance displays must use `Private`; `e2e/tests/safe-mode.spec.ts` checks no figure reaches the page. Not access control.
+- **Combined households (up.58):** two people in multi-user mode can combine a household each keeps (`server/src/gateway/sharing.ts`, `docs/HOUSEHOLDS.md` "Combining with another person"). The gateway merges both budgets' `GET /api/households/:id/shared-export` live; links and shared notes are in `people.db` (`household_links`, `household_notes`). Each person edits only their own entries; the note is shared. Not built: shared bills, receipts, or a combined view in single-user mode.
 - **Multi-user on live (29 October):** `multi_user` turned on after a full cold HA backup ("Before FlyBudget multi_user on", which includes the app). The gateway started healthy and printed a setup code in the app's Log. The owner still has to sign in with that code to claim the existing budget as administrator, then add their partner from Settings → Server → People.
 - **Live:** `0.2.0-up.56` installed on 29 October after a full HA backup ("Before FlyBudget 0.2.0-up.56"). Version and a clean start (server answering, host guard intact) were verified through the HA connector; budget access and Up sync are for the owner to confirm in the app.
 
@@ -84,8 +85,8 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
 3. **Multi-user (separate budgets per person):** built in `0.2.0-up.48` (`server/src/gateway/`,
    `docs/MULTI-USER-PLAN.md`, `homeassistant/DOCS.md`) and turned on live on 29 October (see
    State). Confirm the owner has signed in with the setup code and their budget opened with its
-   data, Up sync and access tokens intact. Not built yet: SMTP email codes, shared households
-   across budgets.
+   data, Up sync and access tokens intact. Not built yet: SMTP email codes. Shared households
+   are combined households (up.58).
 4. **Gaps found in the 26 October audit** (not built or not documented):
    - User guide pages missing for shipped features: households, payday plans, resilience/budget
      review, card payments, the long-term forecast (super, HECS-HELP) and Move money.

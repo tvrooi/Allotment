@@ -39,6 +39,7 @@ export function HouseholdSharing({ group, people }: Props) {
   const refresh = async () => {
     setError('');
     await qc.invalidateQueries({ queryKey: ['households'] });
+    await qc.invalidateQueries({ queryKey: ['shared-households'] });
     await qc.invalidateQueries({ queryKey: ['accounts'] });
     await qc.invalidateQueries({ queryKey: ['budget'] });
     await qc.invalidateQueries({ queryKey: ['budget-summary'] });

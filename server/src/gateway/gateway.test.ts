@@ -167,6 +167,161 @@ describe('multi-user gateway', () => {
     expect((await partner('POST', '/api/people', { name: 'Someone' })).status).toBe(403);
   }, 120_000);
 
+  it('combines two households, one in each budget, only once both agree', async () => {
+    const ownerId = (await owner('GET', '/api/auth/status')).body.person.id;
+    // Each keeps a household in their own budget
+    const home = (
+      await owner('POST', '/api/households', {
+        name: 'Home',
+        currency: 'AUD',
+        people: ['Tristan', 'Edward', 'Sam'],
+        selfIndex: 0,
+      })
+    ).body;
+    const [me, ed, sam] = home.people;
+    const privateGroup = await owner('POST', '/api/categories/groups', {
+      name: 'Private group',
+      isIncome: 0,
+    });
+    expect(privateGroup.status).toBe(201);
+    const added = await owner('POST', `/api/households/${home.group.id}/events`, {
+      kind: 'expense',
+      date: '2026-10-01',
+      description: 'Groceries',
+      amount: 9_000,
+      payerId: me.id,
+      shares: [ed, me, sam].map((p: { id: string }) => ({ personId: p.id, value: 1 })),
+      mode: 'weight',
+    });
+    expect(added.status).toBe(201);
+    const ours = (
+      await partner('POST', '/api/households', {
+        name: 'Our place',
+        currency: 'AUD',
+        people: ['Edward', 'Tristan'],
+        selfIndex: 0,
+      })
+    ).body;
+    const [edSelf, edTristan] = ours.people;
+    await partner('POST', `/api/households/${ours.group.id}/events`, {
+      kind: 'expense',
+      date: '2026-10-02',
+      description: 'Electricity',
+      amount: 20_000,
+      payerId: edSelf.id,
+      shares: [edSelf, edTristan].map((p: { id: string }) => ({ personId: p.id, value: 1 })),
+      mode: 'weight',
+    });
+
+    // Not without signing in, nor without a choice of who they are in the household
+    expect((await stranger('GET', '/api/shared-households')).status).toBe(401);
+    const listed = (await owner('GET', '/api/shared-households')).body;
+    expect(listed.people).toEqual([{ id: partnerId, name: 'Edward' }]);
+    expect(
+      (
+        await owner('POST', '/api/shared-households', {
+          partnerId,
+          groupId: home.group.id,
+          partnerPersonId: me.id,
+        })
+      ).status,
+    ).toBe(400);
+    const asked = await owner('POST', '/api/shared-households', {
+      partnerId,
+      groupId: home.group.id,
+      partnerPersonId: ed.id,
+    });
+    expect(asked.status).toBe(201);
+    const linkId = asked.body.id;
+    // Asked, not yet agreed: nothing to see
+    expect((await owner('GET', `/api/shared-households/${linkId}/register`)).status).toBe(400);
+    expect((await partner('GET', '/api/shared-households')).body.links).toMatchObject([
+      { id: linkId, role: 'invitee', status: 'pending', partner: { name: 'Tristan' } },
+    ]);
+    expect(
+      (
+        await partner('POST', `/api/shared-households/${linkId}/accept`, {
+          groupId: ours.group.id,
+          partnerPersonId: edTristan.id,
+        })
+      ).status,
+    ).toBe(200);
+
+    // Both see both households' entries, splits and the one person each of them is
+    const register = (await partner('GET', `/api/shared-households/${linkId}/register`)).body;
+    expect(
+      register.entries.map((e: { description: string; mine: boolean }) => [e.description, e.mine]),
+    ).toEqual([
+      ['Electricity', true],
+      ['Groceries', false],
+    ]);
+    expect(
+      register.people.map((p: { name: string; balance: number }) => [p.name, p.balance]),
+    ).toEqual([
+      ['Tristan', 9_000 - 3_000 - 10_000],
+      ['Edward', 20_000 - 10_000 - 3_000],
+      ['Sam', -3_000],
+    ]);
+    // Nothing from the budgets beyond the household: no accounts, balances or categories
+    const text = JSON.stringify(register);
+    for (const leak of ['Everyday', '12345', 'Private group', 'Edward savings'])
+      expect(text).not.toContain(leak);
+
+    // One note per entry that either of them can edit
+    const groceries = register.entries.find(
+      (e: { description: string }) => e.description === 'Groceries',
+    );
+    expect(
+      (
+        await partner('PUT', `/api/shared-households/${linkId}/notes`, {
+          ownerId: ownerId,
+          eventId: groceries.eventId,
+          text: 'Dinner with Sam',
+        })
+      ).status,
+    ).toBe(204);
+    await owner('PUT', `/api/shared-households/${linkId}/notes`, {
+      ownerId: ownerId,
+      eventId: groceries.eventId,
+      text: 'Dinner with Sam and friends',
+    });
+    const seen = (await partner('GET', `/api/shared-households/${linkId}/register`)).body;
+    expect(seen.entries.find((e: { key: string }) => e.key === groceries.key).note).toMatchObject({
+      text: 'Dinner with Sam and friends',
+      updatedBy: 'Tristan',
+    });
+    expect(
+      (
+        await owner('PUT', `/api/shared-households/${linkId}/notes`, {
+          ownerId,
+          eventId: 'not-an-entry',
+          text: 'x',
+        })
+      ).status,
+    ).toBe(400);
+    // Neither budget's own records changed
+    expect((await owner('GET', `/api/households/${home.group.id}`)).body.events).toHaveLength(1);
+
+    // Either can stop it, and then neither sees the other's
+    expect((await partner('DELETE', `/api/shared-households/${linkId}`)).status).toBe(204);
+    expect((await owner('GET', `/api/shared-households/${linkId}/register`)).status).toBe(404);
+    expect((await owner('GET', '/api/shared-households')).body.links).toEqual([]);
+
+    // Two requests at once for the same household: only one is made
+    const both = await Promise.all(
+      [0, 1].map(() =>
+        owner('POST', '/api/shared-households', {
+          partnerId,
+          groupId: home.group.id,
+          partnerPersonId: ed.id,
+        }),
+      ),
+    );
+    expect(both.map((r) => r.status).sort()).toEqual([201, 400]);
+    expect((await owner('GET', '/api/shared-households')).body.links).toHaveLength(1);
+    await owner('DELETE', `/api/shared-households/${both.find((r) => r.status === 201)!.body.id}`);
+  }, 120_000);
+
   it("reports the gateway's sign-in in Settings → Server, not a missing budget password", async () => {
     const info = await partner('GET', '/api/server/info');
     expect(info.body.mode).toBe('server');

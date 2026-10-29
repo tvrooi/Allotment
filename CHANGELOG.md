@@ -1,5 +1,14 @@
 # Changes
 
+## 0.2.0-up.58
+
+- **Combine households with another FlyBudget user.** With separate budgets per person (the Home Assistant app's **multi_user** option), two people who each keep a household can join them: **Household → Combine with another FlyBudget user**. One asks and the other accepts, each choosing who the other is in their own household.
+  - **What you both see:** one register of both households' entries, with date, amount, merchant and logo, who paid and the full split, and whose entry it is.
+  - **Balances:** add both ledgers. Housemates stay as each household named them.
+  - **Notes:** each entry has one shared note that either of you can edit. Each of you still edits only your own entries.
+  - **What stays private:** accounts, categories, transaction notes, balances and other transactions. An expense you both recorded on the same day for the same amount is flagged as a possible duplicate.
+  - **Stopping:** either of you can stop combining at any time. The other's view ends at once and the shared notes are deleted; both households keep their own entries.
+
 ## 0.2.0-up.57
 
 - **Safe mode hides balances while someone helps you.** Turn it on with the new eye button at the top of the menu, **Alt+Shift+H**, or **Settings → Preferences → Safe mode**. By default it hides balances and totals: account balances, sidebar totals, net worth, assets and liabilities, savings, super, investments, goals, forecasts, the resilience and cash runway cards on Review, reconciling and the balances in guided setup. Transactions, payees, rules and the budget stay visible so someone can still help with them. Choose **All amounts** to hide every figure instead. Hidden figures aren't on the page at all, not just blurred. Safe mode switches off when the app or tab closes and only applies on that device. It keeps figures off the screen but doesn't lock them: anyone using the device can turn it off, and exports and backups are unchanged.

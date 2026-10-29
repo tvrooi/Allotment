@@ -12,6 +12,7 @@ import { Modal } from '../components/ui/Modal';
 import { formatMoney } from '../utils/currency';
 import { formatDay } from '../utils/dates';
 import { HouseholdSharing } from '../components/household/HouseholdSharing';
+import { CombinedHousehold } from '../components/household/CombinedHousehold';
 import type { HouseholdSplit } from '../api/households';
 
 type Group = {
@@ -130,6 +131,8 @@ export default function HouseholdPage() {
       setCreating(false);
       setId(data.group.id);
       await cache.invalidateQueries({ queryKey: ['households'] });
+      // A combined household shows this ledger too
+      await cache.invalidateQueries({ queryKey: ['shared-households'] });
       await cache.invalidateQueries({ queryKey: ['budget'] });
       await cache.invalidateQueries({ queryKey: ['budget-summary'] });
       await cache.invalidateQueries({ queryKey: ['review'] });
@@ -363,6 +366,11 @@ export default function HouseholdPage() {
               </section>
 
               <HouseholdSharing key={state.group.id} group={state.group} people={state.people} />
+              <CombinedHousehold
+                key={`combine-${state.group.id}`}
+                group={state.group}
+                people={state.people}
+              />
 
               <div className="grid gap-4 lg:grid-cols-2 items-start">
                 <section className={card}>

@@ -122,6 +122,10 @@ a budget only they can open, each with their own password.
   only. The administrator can add people, stop someone signing in, or issue a reset code, but
   can't open their budget. Whoever administers Home Assistant can still read the app's files
   and backups, as for any app.
+- **Sharing household costs:** two people can combine a household each keeps in their own
+  budget (**Household → Combine with another FlyBudget user**). Both then see both households'
+  entries, splits and merchants, and one note on each entry that either can edit, but nothing
+  else from the other's budget. Either can stop combining at any time.
 - **Forgotten passwords:** each person can choose a phone in **Settings → Server → Password codes
   to your phone** (a notify service such as `notify.mobile_app_my_phone`). **Forgot password?**
   then sends a code there through the Home Assistant Companion app (six digits, for 10

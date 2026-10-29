@@ -22,6 +22,7 @@ import {
   recordEvent,
   repaymentSuggestions,
   shareTransaction,
+  sharedExport,
   snapshot,
   splitSchema,
 } from '../services/householdService.js';
@@ -106,6 +107,11 @@ householdsRouter.post('/', (req, res) =>
   ),
 );
 householdsRouter.get('/:id', (req, res) => run(res, () => snapshot(req.params.id)));
+// For a combined household (gateway/sharing.ts): the record the other person sees, which the
+// gateway asks for with its secret. Less than GET /:id, which the owner can already read.
+householdsRouter.get('/:id/shared-export', (req, res) =>
+  run(res, () => sharedExport(req.params.id)),
+);
 householdsRouter.post('/:id/events', (req, res) =>
   run(
     res,
