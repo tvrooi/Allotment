@@ -76,7 +76,9 @@ function schedule(id: string, amount: number, startDate: string, extra = {}) {
 }
 function snapshot() {
   const tables = db
-    .all<{ name: string }>(
+    .all<{
+      name: string;
+    }>(
       sql`select name from sqlite_master where type = 'table' and name not like 'sqlite_%' and name not like '__drizzle%'`,
     )
     .map((t) => t.name);
@@ -152,6 +154,32 @@ beforeEach(() => {
 });
 
 describe('cash runway', () => {
+  it('says how much spending in the lookback has no category, so the average is not trusted blindly', () => {
+    plan();
+    // Fully categorised: nothing to warn about
+    expect(forecast({ lookbackDays: 28 }).spending.uncategorised).toMatchObject({
+      total: 0,
+      count: 0,
+      significant: false,
+    });
+    // $70 of $350 (20%) has no category and is left out of the $280 average
+    tx('mystery', '2026-10-18', -7000, { categoryId: null });
+    const result = forecast({ lookbackDays: 28 });
+    expect(result.spending.total).toBe(28000);
+    expect(result.spending.uncategorised).toMatchObject({
+      total: 7000,
+      count: 1,
+      significant: true,
+    });
+    expect(result.spending.uncategorised.share).toBeCloseTo(0.2);
+    // Up to 5% is not worth a banner
+    db.delete(transactions)
+      .where(sql`id = 'mystery'`)
+      .run();
+    tx('mystery', '2026-10-18', -1000, { categoryId: null });
+    expect(forecast({ lookbackDays: 28 }).spending.uncategorised.significant).toBe(false);
+  });
+
   it('projects liquid personal cash with expected pay and averaged spending', () => {
     plan();
     const result = forecast({ horizonDays: 14, lookbackDays: 28 });

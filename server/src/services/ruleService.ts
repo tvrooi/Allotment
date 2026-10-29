@@ -110,6 +110,11 @@ export type NewTransactionInput = {
   id?: string;
   /** A balance correction (reconciliation, "Update value"): not categorized by rules */
   isAdjustment?: boolean;
+  /**
+   * A suggestion that applies only when no rule and no payee default chose a category (a bank's
+   * own category). Never changes a row that exists already.
+   */
+  fallbackCategoryId?: string | null;
 };
 
 type InsertOptions = {
@@ -152,6 +157,8 @@ export function insertNewTransaction(input: NewTransactionInput, opts: InsertOpt
     tx.categoryId =
       db.select().from(payees).where(eq(payees.id, tx.payeeId)).get()?.defaultCategoryId ?? null;
   }
+  if (!tx.categoryId && !split && input.fallbackCategoryId)
+    tx.categoryId = input.fallbackCategoryId;
 
   const now = new Date().toISOString();
   const row = {

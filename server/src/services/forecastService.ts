@@ -21,6 +21,7 @@ import {
 import { budgetActivity, inAccountBalance, mainAmount, personalBudgetAccount } from './balances.js';
 import { fundingState, LIQUID_ACCOUNT_TYPES } from './budgetService.js';
 import { convertAmount, currencyContext, todayIso } from './mainAmountService.js';
+import { UNCATEGORISED_WARN_SHARE, uncategorisedSummary } from './importTidy.js';
 import { loadPlan, paydays, paydaysInYear } from './paydayService.js';
 import type { PaydayConfig } from './paydayConfig.js';
 import { computeOccurrenceDates, type RecurrenceDefinition } from '../utils/recurrence.js';
@@ -243,15 +244,17 @@ function paydayEvents(
   incomePercent: number,
 ) {
   return plans.flatMap((plan) =>
-    paydays(plan, day(today, 1), end).map((p): ForecastEvent => ({
-      id: `payday:${plan.id}:${p.scheduledDate}`,
-      date: p.expectedDate,
-      kind: 'income',
-      description: `${plan.name} pay`,
-      amount: Number(floorDiv(BigInt(plan.expectedIncome) * BigInt(incomePercent), 100n)),
-      categoryId: null,
-      estimated: true,
-    })),
+    paydays(plan, day(today, 1), end).map(
+      (p): ForecastEvent => ({
+        id: `payday:${plan.id}:${p.scheduledDate}`,
+        date: p.expectedDate,
+        kind: 'income',
+        description: `${plan.name} pay`,
+        amount: Number(floorDiv(BigInt(plan.expectedIncome) * BigInt(incomePercent), 100n)),
+        categoryId: null,
+        estimated: true,
+      }),
+    ),
   );
 }
 
@@ -384,7 +387,22 @@ function variableSpending(today: string, lookbackDays: number, excludeHousehold:
   const coveredFrom = first && first > from ? first : from;
   const days = Math.max(1, differenceInCalendarDays(parseISO(today), parseISO(coveredFrom)) + 1);
   const net = rows.reduce((s, r) => s + r.amount, 0);
-  return { from: coveredFrom, to: today, days, total: Math.max(0, -net), count: rows.length };
+  // What the lookback leaves out: spending with no category is not in the figure above
+  const left = uncategorisedSummary(coveredFrom, today);
+  return {
+    from: coveredFrom,
+    to: today,
+    days,
+    total: Math.max(0, -net),
+    count: rows.length,
+    uncategorised: {
+      total: left.uncategorisedSpending,
+      count: left.uncategorisedSpendingCount,
+      share: left.share,
+      /** Enough to distrust the average: the screen says so */
+      significant: left.share > UNCATEGORISED_WARN_SHARE,
+    },
+  };
 }
 
 type GoalPlan = {
@@ -499,15 +517,17 @@ function projectScenario(
     }
     return events;
   });
-  const oneOffs = scenario.oneOffs.map((o, i): ForecastEvent => ({
-    id: `one-off:${i}`,
-    date: o.date,
-    kind: 'one-off',
-    description: o.description,
-    amount: o.amount,
-    categoryId: null,
-    estimated: true,
-  }));
+  const oneOffs = scenario.oneOffs.map(
+    (o, i): ForecastEvent => ({
+      id: `one-off:${i}`,
+      date: o.date,
+      kind: 'one-off',
+      description: o.description,
+      amount: o.amount,
+      categoryId: null,
+      estimated: true,
+    }),
+  );
   const events = [...ctx.baseEvents, ...income, ...oneOffs, ...costChanges].filter(
     (e) => e.date >= today && e.date <= ctx.end,
   );
