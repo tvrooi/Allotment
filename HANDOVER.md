@@ -10,10 +10,10 @@ Last updated: 29 October 2026.
 ## State
 
 - **Balance integrity (up.53):** reconciliation is atomic and rejects adjustments from partial or stale selections. Known bank mismatches and residual balances in closed budget accounts block new funding; Settings exposes closed balances for explicit reconciliation. Bank-fed income is never auto-created a second time. Existing ledger rows are preserved. See docs/ENVELOPE-FUNDING.md, “Balance checks and reconciliation”.
-- **Payee logos (up.54):** an organise token may add a logo to a payee that has none, never replace or remove one (docs/READ-ONLY-ACCESS.md). On 29 October an assistant used it to add brand icons to 182 of the owner's business payees; about 270 small or overseas businesses still show initials. The owner adds or fixes others on the Payees page.
-- **Live:** `0.2.0-up.54` installed on 29 October after a full HA backup ("Before FlyBudget 0.2.0-up.54"); health, budget access and Up sync verified afterwards.
+- **Payee logos (up.54, up.55):** an organise token may set or replace a payee's logo, never remove one (docs/READ-ONLY-ACCESS.md). On 29 October an assistant added brand icons to 188 business payees and swapped 44 of them for cleaner theSVG brand icons (rendered to PNG); about 270 small or overseas businesses still show initials.
+- **Live:** `0.2.0-up.55` installed on 29 October after a full HA backup ("Before FlyBudget 0.2.0-up.55"); health, budget access and Up sync verified afterwards.
 
-- **Live Home Assistant app:** installed from the catalog repository (not the old `local_flybudget_up`), with **Auto update on**. It ran `0.2.0-up.54` on 29 October; confirm the installed app identity and version before updating.
+- **Live Home Assistant app:** installed from the catalog repository (not the old `local_flybudget_up`), with **Auto update on**. It ran `0.2.0-up.55` on 29 October; confirm the installed app identity and version before updating.
   A completed release reaches it through the catalog sync (MAINTENANCE.md, step 5) and then its
   auto-update. Before relying on that, verify the installed version afterwards, and take a cold
   backup first when you update it by hand.
