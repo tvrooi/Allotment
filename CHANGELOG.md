@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.64
+
+- **Home Assistant releases no longer stall.** The ARM64 Home Assistant image built its web client under emulation, which froze the release three times (up.57, up.60 and up.63, which was never published). The client and server are now built natively for both architectures. Only the small runtime layer is assembled per architecture, and pull requests now build both architectures before a release.
+- Includes everything in up.63: **FlyBudget is now Allotment**, with the new name, icon and colours. Your budget, Up connection, passwords and settings stay where they are.
+
 ## 0.2.0-up.63
 
 - **FlyBudget is now Allotment.** Every dollar gets its plot. The app, desktop installers and Home Assistant app are called Allotment, with a new icon (three garden plots and a sprout) and the brand's Marigold, Soil and Canvas colours. See [docs/BRAND.md](docs/BRAND.md).
