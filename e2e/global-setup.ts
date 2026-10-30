@@ -21,7 +21,7 @@ import { startEnableBankingMock } from './mockEnableBanking';
 import { startFrankfurterMock } from './mockFrankfurter';
 import { startUpMock } from './mockUp';
 
-// Starts FlyBudget twice, each on a throwaway database:
+// Starts Allotment twice, each on a throwaway database:
 //
 // - desktop: configured exactly like the Electron app (client built with
 //   `--mode electron`, served by the API server, a per-launch API token cookie, and

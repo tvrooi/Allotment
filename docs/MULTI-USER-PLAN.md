@@ -31,7 +31,7 @@ turning the option off returns to it and its old password. That replaced step 4 
 
 ## What "can't see each other's" can and can't mean
 
-- **Through FlyBudget:** fully achievable. Each person signs in to their own budget. No page, API,
+- **Through Allotment:** fully achievable. Each person signs in to their own budget. No page, API,
   export, MCP endpoint, access token or backup of one budget can reach the other's.
 - **Against the server's administrator:** not achievable with ordinary passwords. Whoever administers
   Home Assistant can read the app's data folder, its backups and its logs. A truly private budget
@@ -41,7 +41,7 @@ turning the option off returns to it and its old password. That replaced step 4 
 
 ## Recommended design: one budget per person, each in its own process
 
-FlyBudget today is a single-owner app. One SQLite database is opened once
+Allotment today is a single-owner app. One SQLite database is opened once
 (`server/src/db/index.ts`), and about 100 server files import that connection directly. Background
 work (Up sync polling, receipt reading and matching, exchange rates) runs against it. Adding a
 `user_id` to every table and query would touch all of that, and a single missed `where` would leak
@@ -83,7 +83,7 @@ a problem.
   into `/data/budgets/<id>/` with its key. This is a migration of a live budget, so per CLAUDE.md it
   needs the owner's explicit go-ahead and a verified cold backup that includes the encryption key.
   It can't ride along with a routine release.
-- **The administrator can't open another person's budget** through FlyBudget. They can disable or
+- **The administrator can't open another person's budget** through Allotment. They can disable or
   delete a person and reset their password (below), but that doesn't let them in: a reset code goes
   to the person, not the administrator.
 - **Desktop app and access tokens:** the desktop app signs in to the gateway like a browser. Read-only
@@ -118,7 +118,7 @@ attributing changes to a person.
 
 ## Home Assistant app changes
 
-- Options: `smtp_*` (optional). Each person's notify target is set in FlyBudget, not in the options.
+- Options: `smtp_*` (optional). Each person's notify target is set in Allotment, not in the options.
 - `homeassistant_api: true` only for sending notifications. The app never reads entities.
 - The Supervisor TCP watchdog stays on the gateway port. `/data/options.json` stays root-only, as
   today.

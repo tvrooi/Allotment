@@ -112,7 +112,7 @@ function PlanEditor({
           <span className="flex items-center gap-1">
             <label htmlFor="payday-anchor">Anchor payday</label>
             <HelpTip label="How to choose the payday date">
-              Pick any one day you were paid. FlyBudget counts every other payday from it, using
+              Pick any one day you were paid. Allotment counts every other payday from it, using
               your pay rhythm (for example every 14 days), so it can tell when the next pay is due.
             </HelpTip>
           </span>

@@ -474,7 +474,7 @@ const directionWord = (raw: string | undefined) =>
  * Which way the money went according to a direction column ("Af"/"Bij" at ING, "Debit"/
  * "Credit", "S"/"H"), or null if the cell says neither. With `outWord` (what the user said
  * this bank writes for money out), that word also means out, and
- * any word FlyBudget doesn't know means in. The words it knows keep their meaning, so a
+ * any word Allotment doesn't know means in. The words it knows keep their meaning, so a
  * word typed for another file can't turn this file's debits into income.
  */
 export function readDirection(
@@ -489,7 +489,7 @@ export function readDirection(
   return outWord?.trim() ? 'in' : null;
 }
 
-/** The different words in a direction column that FlyBudget doesn't know, as written */
+/** The different words in a direction column that Allotment doesn't know, as written */
 export function unknownDirectionWords(values: string[]): string[] {
   const unknown = new Map<string, string>();
   for (const raw of values) {
@@ -610,7 +610,7 @@ export interface SkippedRow {
 export interface ImportFormats {
   dateFormat?: DateFormat;
   numberFormat?: NumberFormat;
-  /** What the direction column says for money out, if not a word FlyBudget knows */
+  /** What the direction column says for money out, if not a word Allotment knows */
   outWord?: string | null;
   /** Decimals of the account's currency (2 unless given: none for yen) */
   minor?: number;

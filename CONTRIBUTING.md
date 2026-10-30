@@ -1,6 +1,6 @@
-# Contributing to FlyBudget
+# Contributing to Allotment
 
-Thanks for helping make FlyBudget better. Bug reports, ideas and pull requests
+Thanks for helping make Allotment better. Bug reports, ideas and pull requests
 are all welcome.
 
 ## Before you start
@@ -12,7 +12,7 @@ are all welcome.
 
 ## This fork
 
-Send changes to **tvrooi/FlyBudget**, not upstream by accident. Contributions to this fork remain
+Send changes to **tvrooi/Allotment**, not upstream by accident. Contributions to this fork remain
 under AGPL-3.0-only; no separate CLA is required here. `CLA.md` is retained as an upstream document
 and describes submissions to the original project. No agreement is accepted on a contributor's behalf.
 
@@ -42,7 +42,7 @@ export excludes the Up token. See [migration and rollback notes](MAINTENANCE.md#
 
 ## Building the desktop app yourself
 
-Most people should download an installer from [Releases](https://github.com/tvrooi/FlyBudget/releases).
+Most people should download an installer from [Releases](https://github.com/tvrooi/Allotment/releases).
 To build your own you need Node.js 22 or newer, npm, and the tools Electron Builder needs on your
 system. The repository's `.npmrc` disables dependency install scripts; keep that setting.
 

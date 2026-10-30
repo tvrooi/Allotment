@@ -127,7 +127,7 @@ function relabelBlocker(current: string | null, next: string): string | null {
   }
   const blocked = all.some((a) => hasAmounts(a) && a.currency && a.currency !== next);
   return blocked
-    ? "Your budget has accounts in other currencies. Changing its currency would mean converting every amount, which FlyBudget can't do yet."
+    ? "Your budget has accounts in other currencies. Changing its currency would mean converting every amount, which Allotment can't do yet."
     : null;
 }
 

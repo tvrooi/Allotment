@@ -119,7 +119,7 @@ export function ImportCategories({ uses, groups, choices, onChange }: Props) {
               In your file
             </th>
             <th className="px-2 py-1.5 text-left text-xs font-medium text-text-tertiary">
-              In FlyBudget
+              In Allotment
             </th>
             <th className="px-2 py-1.5 text-left text-xs font-medium text-text-tertiary">Group</th>
           </tr>

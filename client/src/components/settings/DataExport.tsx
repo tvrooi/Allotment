@@ -34,7 +34,7 @@ export function DataExport() {
     try {
       setPending({ name: file.name, data: JSON.parse(await file.text()) });
     } catch {
-      setRestoreMessage({ ok: false, text: `${file.name} is not a FlyBudget backup file.` });
+      setRestoreMessage({ ok: false, text: `${file.name} is not an Allotment backup file.` });
     }
   }
 

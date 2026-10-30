@@ -1,6 +1,6 @@
 {
   "appId": "com.flybudget.app",
-  "productName": "FlyBudget",
+  "productName": "Allotment",
   "asar": true,
   "asarUnpack": ["**/better-sqlite3/**"],
   "directories": {
@@ -37,7 +37,7 @@
     {
       "provider": "github",
       "owner": "tvrooi",
-      "repo": "FlyBudget",
+      "repo": "Allotment",
       "channel": "up",
       "releaseType": "prerelease"
     }
@@ -55,7 +55,7 @@
     "icon": "electron/resources/icon.ico"
   },
   "nsis": {
-    "artifactName": "FlyBudget-Windows-Setup.${ext}"
+    "artifactName": "Allotment-Windows-Setup.${ext}"
   },
   "mac": {
     "target": [
@@ -72,10 +72,10 @@
     "category": "public.app-category.finance",
     "identity": "-",
     "hardenedRuntime": false,
-    "artifactName": "FlyBudget-macOS-${arch}.${ext}"
+    "artifactName": "Allotment-macOS-${arch}.${ext}"
   },
   "dmg": {
-    "artifactName": "FlyBudget-macOS-${arch}.${ext}"
+    "artifactName": "Allotment-macOS-${arch}.${ext}"
   },
   "linux": {
     "target": [
@@ -92,16 +92,16 @@
     "category": "Office",
     "executableName": "flybudget",
     "synopsis": "Budgeting that keeps your financial data on your computer",
-    "description": "FlyBudget is a free, open-source budgeting app. Plan every dollar, track your accounts, and keep your financial data on your own computer.",
+    "description": "Allotment is a free, open-source budgeting app. Plan every dollar, track your accounts, and keep your financial data on your own computer.",
     "maintainer": "David Tymoszenko <dtymoszenko@users.noreply.github.com>",
-    "vendor": "FlyBudget",
+    "vendor": "Allotment",
     "syncDesktopName": true
   },
   "appImage": {
-    "artifactName": "FlyBudget-Linux-${arch}.${ext}"
+    "artifactName": "Allotment-Linux-${arch}.${ext}"
   },
   "deb": {
-    "artifactName": "FlyBudget-Linux-${arch}.${ext}"
+    "artifactName": "Allotment-Linux-${arch}.${ext}"
   },
   "electronFuses": {
     "runAsNode": false,

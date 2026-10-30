@@ -8,14 +8,14 @@ import { canNotify, homeAssistantNotify } from './notify.js';
 import { GatewayStore } from './store.js';
 
 // Multi-user mode's entry point (docs/MULTI-USER-PLAN.md), bundled as gateway.js. It listens
-// where the single-user server would, and runs one FlyBudget server per person on loopback.
+// where the single-user server would, and runs one Allotment server per person on loopback.
 //
 // Environment:
 // - DB_PATH, FLYBUDGET_DATA_KEY_FILE: the budget that was here before; it becomes the first
 //   person's (the administrator's), in place. Nothing is moved or rewritten.
 // - FLYBUDGET_GATEWAY_DB: the gateway's own database (default: people.db next to DB_PATH)
 // - FLYBUDGET_BUDGETS_DIR: where new people's budgets go (default: budgets/ next to DB_PATH)
-// - FLYBUDGET_SERVER_SCRIPT: the FlyBudget server each budget runs (default: server.js here)
+// - FLYBUDGET_SERVER_SCRIPT: the Allotment server each budget runs (default: server.js here)
 // - FLYBUDGET_BUDGET_PORT: the first loopback port for budgets (default 4101)
 // - PORT, FLYBUDGET_HOST, FLYBUDGET_ALLOWED_HOSTS, FLYBUDGET_TRUST_PROXY, CLIENT_DIST: as for
 //   the single-user server
@@ -67,7 +67,7 @@ export async function startGateway({ port, serverScript, serverArgs = [] }: Gate
   const server = await new Promise<ReturnType<typeof app.listen>>((resolve, reject) => {
     const s = app.listen(port, listenHost, (err?: Error) => (err ? reject(err) : resolve(s)));
   });
-  console.log(`FlyBudget multi-user gateway on port ${port}: ${active.length} budget(s) running.`);
+  console.log(`Allotment multi-user gateway on port ${port}: ${active.length} budget(s) running.`);
   if (store.people().length === 0) setupCode();
 
   const shutdown = async () => {
@@ -90,7 +90,7 @@ if (process.env.FLYBUDGET_GATEWAY_AUTOSTART === 'true') {
       process.env.FLYBUDGET_SERVER_SCRIPT ?? path.join(path.dirname(process.argv[1]), 'server.js'),
     serverArgs: (process.env.FLYBUDGET_SERVER_NODE_ARGS ?? '').split(' ').filter(Boolean),
   }).catch((err) => {
-    console.error('FlyBudget gateway could not start:', err.message);
+    console.error('Allotment gateway could not start:', err.message);
     process.exit(1);
   });
 }

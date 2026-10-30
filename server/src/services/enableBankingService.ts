@@ -66,12 +66,12 @@ export type EnableBankingErrorKind =
 const MESSAGES: Record<EnableBankingErrorKind, string> = {
   login_required: 'Your bank access has ended. Reconnect the bank to keep syncing.',
   rate_limited:
-    'Your bank allows only a few updates a day. FlyBudget will try again later, or sync it yourself tomorrow.',
+    'Your bank allows only a few updates a day. Allotment will try again later, or sync it yourself tomorrow.',
   bad_credentials:
     "Enable Banking didn't accept the application ID or private key. Check them in Settings → Connected banks.",
   redirect_not_allowed:
     "The redirect URL isn't registered in your Enable Banking application. Add the one shown in Settings → Connected banks.",
-  psu_header_required: 'This bank only allows syncing while you use FlyBudget. Click Sync now.',
+  psu_header_required: 'This bank only allows syncing while you use Allotment. Click Sync now.',
   not_found: 'Enable Banking no longer knows this bank account. Reconnect the bank.',
   invalid_request: 'Enable Banking refused the request. Try again, or reconnect the bank.',
   bank_error:

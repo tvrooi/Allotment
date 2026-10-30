@@ -117,7 +117,7 @@ ebApp.use((req, res, next) => {
 });
 ebApp.get('/application', (_req, res) =>
   res.json({
-    name: 'My FlyBudget',
+    name: 'My Allotment',
     environment: 'PRODUCTION',
     redirect_urls: [RELAY_REDIRECT_URL],
   }),
@@ -186,7 +186,7 @@ ebApp.get('/accounts/:uid/balances', (req, res) => {
   });
 });
 
-// --- FlyBudget ---
+// --- Allotment ---
 
 let ebServer: Server;
 let server: Server;
@@ -287,7 +287,7 @@ describe('Enable Banking', () => {
       privateKey: PEM,
     });
     expect(ok.body).toEqual({
-      applicationName: 'My FlyBudget',
+      applicationName: 'My Allotment',
       environment: 'PRODUCTION',
       redirectUrlRegistered: true,
     });
@@ -355,7 +355,7 @@ describe('Enable Banking', () => {
       headers: { 'Sec-Fetch-Site': 'cross-site' },
     });
     expect(forgedPost.status).toBe(403);
-    // A state FlyBudget didn't make is refused
+    // A state Allotment didn't make is refused
     expect((await bankRedirect('state=fb1.1.' + 'a'.repeat(43) + '&code=c1')).status).toBe(400);
 
     const back = await bankRedirect(`state=${state}&code=code-1`);
@@ -442,7 +442,7 @@ describe('Enable Banking', () => {
     expect(mock.queries.checking.length).toBe(before);
   });
 
-  it('a sync cut off by quitting FlyBudget no longer shows as running after a restart', async () => {
+  it('a sync cut off by quitting Allotment no longer shows as running after a restart', async () => {
     db.update(enableBankingConnections).set({ syncStatus: 'syncing' }).run();
     await syncAllEnableBankingConnections({ unattended: true });
     const [conn] = (await call('GET', '/enable-banking/connections')).body;

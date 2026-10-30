@@ -92,7 +92,7 @@ export function accountCurrencies(): Map<string, string | null> {
   );
 }
 
-/** A currency code from a bank, if it's one FlyBudget knows (SimpleFIN may send a URL instead) */
+/** A currency code from a bank, if it's one Allotment knows (SimpleFIN may send a URL instead) */
 export function bankCurrency(code: unknown): string | null {
   if (typeof code !== 'string') return null;
   const upper = code.trim().toUpperCase();

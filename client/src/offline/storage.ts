@@ -93,5 +93,5 @@ export function updateValue<T>(
   );
 }
 
-/** Whether this browser lets FlyBudget store anything (false in some private windows) */
+/** Whether this browser lets Allotment store anything (false in some private windows) */
 export const storageWorks = () => openDb().then((db) => db !== null);

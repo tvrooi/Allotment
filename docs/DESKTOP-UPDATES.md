@@ -18,7 +18,7 @@ its code-signature verification.
 ## Optional future Mac signing setup
 
 The repository owner configures these **GitHub Actions repository secrets** at
-[FlyBudget Actions secrets](https://github.com/tvrooi/FlyBudget/settings/secrets/actions).
+[Allotment Actions secrets](https://github.com/tvrooi/Allotment/settings/secrets/actions).
 Do not put values in chat, source code, an issue, a PR, or a terminal command argument.
 
 | Secret                        | Value                                                                                                             |

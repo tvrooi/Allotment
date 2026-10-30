@@ -5,10 +5,11 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 29 October 2026.
+Last updated: 30 October 2026.
 
 ## State
 
+- **Allotment rebrand (up.63):** the owner detached the fork from `dtymoszenko/FlyBudget` and renamed the repository `tvrooi/Allotment` on 30 October (GitHub redirects the old address). The app is now called Allotment: name, icon, Marigold/Soil/Canvas palette and tagline (`docs/BRAND.md`). Stored identifiers keep `flybudget` (env vars, cookies, data paths, HA slug `flybudget_up`, image names, the packaged desktop app's internal name via `app.setName` in `electron/main.ts`). Desktop apps before up.63 cannot find updates after the move and need one manual install. Follow-ups: the `tvrooi/home-assistant-apps` catalog's own text still says FlyBudget, and the user-guide links still go to the upstream flybudget.org site.
 - **Balance integrity (up.53):** reconciliation is atomic and rejects adjustments from partial or stale selections. Known bank mismatches and residual balances in closed budget accounts block new funding; Settings exposes closed balances for explicit reconciliation. Bank-fed income is never auto-created a second time. Existing ledger rows are preserved. See docs/ENVELOPE-FUNDING.md, “Balance checks and reconciliation”.
 - **Payee logos (up.54, up.55):** an organise token may set or replace a payee's logo, never remove one (docs/READ-ONLY-ACCESS.md). On 29 October an assistant added brand icons to 188 business payees and swapped 44 of them for cleaner theSVG brand icons (rendered to PNG); about 270 small or overseas businesses still show initials.
 - **Expected recurring debits (up.56):** the Budget page shows each expense category's unpaid recurring bills for the month in orange (`server/src/services/expectedDebits.ts`, attached by `GET /api/budget/:month`; `client/src/components/budget/ExpectedNote.tsx`). A projection only; it never writes occurrences or ledger rows.
@@ -45,7 +46,7 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
 
 - **Hardware:** Home Assistant OS on an x86-64 mini PC with an Intel Alder Lake-N (N100-class) CPU
   and 16 GB RAM. About 4.6 GiB is in normal use; Frigate is the largest user and takes a lot of CPU.
-- **Ollama app** (community repository): FlyBudget reaches it on Home Assistant's internal network
+- **Ollama app** (community repository): Allotment reaches it on Home Assistant's internal network
   at the hostname shown in the Ollama app's documentation, `http://<app-hostname>:11434`. Keep the
   actual address out of the repository. The model for receipts is `qwen3-vl:4b-instruct`. The
   plain `qwen3-vl:4b` tag is a thinking variant, slower on a CPU; it is also installed, using about
@@ -53,7 +54,7 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
   - `OLLAMA_KV_CACHE_TYPE` was changed from `q8_0` to `f16`: `q8_0` with flash attention off stopped
     any model loading.
   - Recommended to the owner but not confirmed as applied: `OLLAMA_KEEP_ALIVE` 300 (it was −1),
-    `OLLAMA_CONTEXT_LENGTH` 8192, `OLLAMA_NO_CLOUD` on. FlyBudget sends `keep_alive` and `num_ctx`
+    `OLLAMA_CONTEXT_LENGTH` 8192, `OLLAMA_NO_CLOUD` on. Allotment sends `keep_alive` and `num_ctx`
     itself either way.
   - Measured: taking in even a small image takes about 75 s on this CPU. Allow 2–4 minutes a photo.
 - **Home Assistant's own Ollama integration** uses the same model with "Think before responding"
@@ -69,7 +70,7 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
   proxy app APIs and create backups (`ha_manage_backup`).
   - It stops every request after 30 s. A long Ollama request (downloading a model, reading an image)
     times out there, although an Ollama download resumes if you call it again.
-  - The FlyBudget app has no ingress and its own password, so a session cannot call FlyBudget through
+  - The Allotment app has no ingress and its own password, so a session cannot call Allotment through
     the connector. The owner tests it in the app, for example with **Try a sample receipt**.
 - **Local browser tests:** Chromium is at `/opt/pw-browsers/chromium`. Create
   `e2e/playwright.local-browser.config.ts`, which spreads the base config and sets
@@ -84,7 +85,7 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
    got right and how long it took.
 2. **Security, waiting on the owner's decision:** the Ollama app publishes port 11434 on the host.
    Its log showed requests from public internet addresses, and Ollama has no authentication. The fix
-   is to clear the app's 11434 port mapping, since FlyBudget uses the internal address. Do that only
+   is to clear the app's 11434 port mapping, since Allotment uses the internal address. Do that only
    after checking that Home Assistant's Ollama integration uses the internal address too.
 3. **Multi-user (separate budgets per person):** built in `0.2.0-up.48` (`server/src/gateway/`,
    `docs/MULTI-USER-PLAN.md`, `homeassistant/DOCS.md`) and turned on live on 29 October (see

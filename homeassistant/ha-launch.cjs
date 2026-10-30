@@ -71,6 +71,6 @@ module.exports = { ensureCredentialKey, settings };
 if (require.main === module)
   start().catch((err) => {
     // These are local setup errors, never bank responses or request headers.
-    console.error('FlyBudget app could not start:', err.message);
+    console.error('Allotment app could not start:', err.message);
     process.exitCode = 1;
   });

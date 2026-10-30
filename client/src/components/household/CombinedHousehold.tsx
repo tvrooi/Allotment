@@ -95,7 +95,7 @@ export function CombinedHousehold({ group, people }: Props) {
         id="household-combine"
         className="text-sm font-semibold text-text flex items-center gap-1.5"
       >
-        <Link2 size={14} aria-hidden /> Combine with another FlyBudget user
+        <Link2 size={14} aria-hidden /> Combine with another Allotment user
       </h2>
       <p className="text-xs text-text-tertiary mt-0.5">
         Join this household with the one another person keeps in their own budget. You each see both
@@ -135,7 +135,7 @@ export function CombinedHousehold({ group, people }: Props) {
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {data.people.length === 0 ? (
             <p className="text-xs text-text-secondary">
-              Nobody else uses FlyBudget on this server yet. The administrator adds people in
+              Nobody else uses Allotment on this server yet. The administrator adds people in
               Settings → Server → People.
             </p>
           ) : (

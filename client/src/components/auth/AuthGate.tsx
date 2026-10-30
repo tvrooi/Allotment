@@ -37,7 +37,7 @@ function restart() {
 }
 
 /**
- * Shows the login (or first-run setup) screen when FlyBudget runs as a server and
+ * Shows the login (or first-run setup) screen when Allotment runs as a server and
  * this browser isn't signed in. In the desktop app and dev mode login is disabled,
  * so this renders the app straight away. If the server can't be reached on startup it
  * opens with this device's offline copy (read-only, see offline/snapshot.ts) or, without
@@ -166,9 +166,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 type FormMode = 'setup' | 'login' | 'invite' | 'forgot' | 'reset';
 
 const TITLES: Record<FormMode, string> = {
-  setup: 'Set up your FlyBudget server',
-  login: 'Sign in to FlyBudget',
-  invite: 'Join this FlyBudget server',
+  setup: 'Set up your Allotment server',
+  login: 'Sign in to Allotment',
+  invite: 'Join this Allotment server',
   forgot: 'Forgot your password?',
   reset: 'Choose a new password',
 };
@@ -296,7 +296,7 @@ function PasswordForm({
           )}
           {mode === 'forgot' && !multiUser && (
             <span className="block mt-2">
-              FlyBudget makes a one-time reset code and puts it where only someone with access to
+              Allotment makes a one-time reset code and puts it where only someone with access to
               the server can read it. {whereToLook} Resetting signs every device out.
             </span>
           )}

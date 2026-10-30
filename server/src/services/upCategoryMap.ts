@@ -3,7 +3,7 @@ import { db } from '../db/index.js';
 import { categories, categoryGroups } from '../db/schema.js';
 
 /**
- * Up's own category slugs, each mapped to the names it could have in FlyBudget's category
+ * Up's own category slugs, each mapped to the names it could have in Allotment's category
  * templates (Australian first, then the general one). A slug maps to the first name the budget
  * has. Unclear matches are left out: an uncategorised row is better than a confidently wrong one.
  * Up's parent categories (good-life, home, personal, transport) are too broad to map, and so are

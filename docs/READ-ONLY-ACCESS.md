@@ -1,6 +1,6 @@
 # Read-only access and MCP
 
-A self-hosted FlyBudget server (including the Home Assistant app) can give another tool,
+A self-hosted Allotment server (including the Home Assistant app) can give another tool,
 such as an AI assistant, **read-only** access to the budget with a token. The tool can read
 accounts, transactions, the budget, reports, goals and reviews. It cannot change anything,
 except that a read and categorise token can set the category of past transactions and edit

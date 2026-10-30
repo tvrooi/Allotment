@@ -6,7 +6,7 @@ import type { AddressInfo } from 'net';
 import type { Server } from 'http';
 
 // The multi-user gateway (docs/MULTI-USER-PLAN.md) with real budget processes: each person's
-// FlyBudget server runs from source on loopback, with its own made-up empty database.
+// Allotment server runs from source on loopback, with its own made-up empty database.
 
 process.env.FLYBUDGET_SERVER_MODE = 'true';
 const { bankCallbackPerson, createGateway } = await import('./app.js');

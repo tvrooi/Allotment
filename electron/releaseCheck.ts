@@ -24,9 +24,9 @@ export function newerForkVersion(candidate: string, current: string) {
 }
 export function installerName(platform: string, arch: string) {
   if (!['arm64', 'x64'].includes(arch)) return null;
-  if (platform === 'darwin') return `FlyBudget-macOS-${arch}.dmg`;
-  if (platform === 'win32' && arch === 'x64') return 'FlyBudget-Windows-Setup.exe';
-  if (platform === 'linux') return `FlyBudget-Linux-${arch === 'x64' ? 'x86_64' : arch}.AppImage`;
+  if (platform === 'darwin') return `Allotment-macOS-${arch}.dmg`;
+  if (platform === 'win32' && arch === 'x64') return 'Allotment-Windows-Setup.exe';
+  if (platform === 'linux') return `Allotment-Linux-${arch === 'x64' ? 'x86_64' : arch}.AppImage`;
   return null;
 }
 /** Only this fork's named release assets can be opened by the native download action. */
@@ -40,7 +40,7 @@ export function isForkInstaller(url: string, tag: string, name: string) {
       !u.password &&
       !u.search &&
       !u.hash &&
-      u.pathname === `/tvrooi/FlyBudget/releases/download/${tag}/${name}`
+      u.pathname === `/tvrooi/Allotment/releases/download/${tag}/${name}`
     );
   } catch {
     return false;
@@ -55,9 +55,9 @@ export async function checkInstallerRelease(
   const name = installerName(platform, arch);
   if (!name) return null;
   const response = await request(
-    'https://api.github.com/repos/tvrooi/FlyBudget/releases?per_page=20',
+    'https://api.github.com/repos/tvrooi/Allotment/releases?per_page=20',
     {
-      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'FlyBudget-desktop-updates' },
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Allotment-desktop-updates' },
       redirect: 'error',
       signal: AbortSignal.timeout(15000),
     },

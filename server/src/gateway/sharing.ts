@@ -253,7 +253,7 @@ export function sharingRouter(o: {
       const body = z.object({ partnerId: id, groupId: id, partnerPersonId: id }).parse(req.body);
       const partner = store.person(body.partnerId);
       if (!partner || partner.id === me.id || partner.disabled || !partner.hasPassword)
-        throw new Invalid('Choose someone who uses FlyBudget on this server');
+        throw new Invalid('Choose someone who uses Allotment on this server');
       if (inUse(me.id, body.groupId)) throw new Invalid('That household is already combined');
       await checkGroup(me, body.groupId, body.partnerPersonId);
       // Again after waiting on the budget, with nothing awaited before the write: two requests

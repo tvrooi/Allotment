@@ -372,9 +372,9 @@ export function TransactionTable({
               disabled={!newTx.allowed}
               title={
                 !newTx.allowed
-                  ? 'Saving is paused until FlyBudget reconnects'
+                  ? 'Saving is paused until Allotment reconnects'
                   : newTx.onDevice
-                    ? 'Saved on this device and sent when FlyBudget reconnects'
+                    ? 'Saved on this device and sent when Allotment reconnects'
                     : undefined
               }
               onClick={startAdd}

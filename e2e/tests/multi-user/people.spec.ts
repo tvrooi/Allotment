@@ -36,14 +36,14 @@ test('the first person sets up with a name and keeps the budget already there', 
   baseURL,
 }) => {
   await owner.goto(`${baseURL}/`);
-  await expect(owner.getByText('Set up your FlyBudget server')).toBeVisible();
+  await expect(owner.getByText('Set up your Allotment server')).toBeVisible();
   await expect(owner.getByText(/You become the administrator/)).toBeVisible();
   await owner.getByLabel('Your name').fill('Tristan');
   await owner.getByLabel('Setup code').fill(lastCode(/setup code/i));
   await owner.getByLabel('New password').fill(OWNER);
   await owner.getByLabel('Confirm password').fill(OWNER);
   await owner.getByRole('button', { name: 'Create password' }).click();
-  await expect(owner.getByRole('heading', { name: 'Welcome to FlyBudget' })).toBeVisible();
+  await expect(owner.getByRole('heading', { name: 'Welcome to Allotment' })).toBeVisible();
   const made = await owner.request.post('/api/accounts', {
     data: { name: 'Owner everyday', type: 'checking', startingBalance: 50_000 },
   });
@@ -68,14 +68,14 @@ test('the administrator adds a person, who gets an invitation code', async () =>
 
 test('the invited person signs up and sees only their own, empty budget', async ({ baseURL }) => {
   await partner.goto(`${baseURL}/`);
-  await expect(partner.getByText('Sign in to FlyBudget')).toBeVisible();
+  await expect(partner.getByText('Sign in to Allotment')).toBeVisible();
   await partner.getByRole('button', { name: 'I have an invitation' }).click();
   await partner.getByLabel('Name').fill('edward');
   await partner.getByLabel('Invitation code').fill(invitation.toLowerCase());
   await partner.getByLabel('New password').fill(PARTNER);
   await partner.getByLabel('Confirm password').fill(PARTNER);
   await partner.getByRole('button', { name: 'Set password and sign in' }).click();
-  await expect(partner.getByRole('heading', { name: 'Welcome to FlyBudget' })).toBeVisible();
+  await expect(partner.getByRole('heading', { name: 'Welcome to Allotment' })).toBeVisible();
   const accounts = await partner.request.get('/api/accounts');
   expect(await accounts.json()).toEqual([]);
   const made = await partner.request.post('/api/accounts', {
@@ -135,7 +135,7 @@ test("two people combine their households and see each other's entries", async (
 
   // Tristan asks, naming who Edward is in his household
   await owner.goto('/household');
-  const ask = owner.getByRole('region', { name: 'Combine with another FlyBudget user' });
+  const ask = owner.getByRole('region', { name: 'Combine with another Allotment user' });
   await ask.getByLabel('Combine with').selectOption({ label: 'Edward' });
   await ask.getByLabel('Who they are in this household').selectOption({ label: 'Edward' });
   await ask.getByRole('button', { name: 'Ask to combine' }).click();
@@ -143,7 +143,7 @@ test("two people combine their households and see each other's entries", async (
 
   // Edward accepts with his own household
   await partner.goto('/household');
-  const accept = partner.getByRole('region', { name: 'Combine with another FlyBudget user' });
+  const accept = partner.getByRole('region', { name: 'Combine with another Allotment user' });
   await expect(accept.getByText('Tristan asked to combine')).toBeVisible();
   await accept.getByLabel('Who Tristan is in Our place').selectOption({ label: 'Tristan' });
   await accept.getByRole('button', { name: 'Combine with Our place' }).click();
@@ -231,7 +231,7 @@ test("another person signing in on the same browser takes over every tab's budge
   );
   await other.request.post('/api/auth/logout');
   await other.goto(`${baseURL}/`);
-  await expect(partner.getByText('Sign in to FlyBudget')).toBeVisible();
+  await expect(partner.getByText('Sign in to Allotment')).toBeVisible();
   // The page started again: nothing of Edward's stays in its memory (undo history, toasts...)
   await partner.waitForLoadState();
   expect(await partner.evaluate(() => 'edwardWasHere' in window)).toBe(false);

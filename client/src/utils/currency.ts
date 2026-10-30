@@ -378,7 +378,7 @@ export const formatCentsAxis = (cents: number) => formatAxisAmount(cents, amount
 export const formatMoney = (amount: number, currency: string | null | undefined) =>
   formatAmount(amount, currencyAmountStyle(currency));
 
-/** Symbols people typed as their currency before FlyBudget knew currencies */
+/** Symbols people typed as their currency before Allotment knew currencies */
 const SYMBOL_CURRENCIES: Record<string, string> = {
   '€': 'EUR',
   '£': 'GBP',

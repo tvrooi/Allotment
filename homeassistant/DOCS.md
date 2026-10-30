@@ -1,26 +1,26 @@
-# FlyBudget with Up on Home Assistant
+# Allotment with Up on Home Assistant
 
-This app runs your FlyBudget budget on Home Assistant, with direct Up Bank imports. It is a
+This app runs your Allotment budget on Home Assistant, with direct Up Bank imports. It is a
 prebuilt app for 64-bit Intel/AMD and ARM, so nothing is compiled on your device. It has its own
-FlyBudget password, separate from your Home Assistant login. For the full beginner walk-through,
+Allotment password, separate from your Home Assistant login. For the full beginner walk-through,
 including the desktop app and making an Up token, see
-[Start here](https://github.com/tvrooi/FlyBudget/blob/main/docs/START-HERE.md).
+[Start here](https://github.com/tvrooi/Allotment/blob/main/docs/START-HERE.md).
 
 ## 1. Install and start
 
 1. Open **Settings → Apps → Install app**. Select the three dots (⋮) at the top right, then
    **Repositories**. Add `https://github.com/tvrooi/home-assistant-apps`, then **Close**. If you
    cannot see these menus, turn on **Advanced mode** on your user profile.
-2. Find **FlyBudget Up Preview** and select **Install**.
+2. Find **Allotment** and select **Install**.
 3. Turn on **Start on boot** and **Watchdog**, then select **Start**.
-4. Open the app's **Log** tab and copy the one-time FlyBudget setup code.
+4. Open the app's **Log** tab and copy the one-time Allotment setup code.
 5. Select **Open web UI**, or connect the desktop app to `http://homeassistant.local:3001` (use
    port 3001, not 8123; if that name does not work, use the address in **Settings → System →
    Network**). For HTTP on a trusted home network, tick **I trust this home network or VPN**.
-6. Enter the setup code and create your FlyBudget password. Use the same password from each device.
+6. Enter the setup code and create your Allotment password. Use the same password from each device.
    This is one budget with one owner password, unless you turn on separate budgets (below).
 
-If you forget the password, choose **Forgot password?** on the sign-in screen. FlyBudget makes a
+If you forget the password, choose **Forgot password?** on the sign-in screen. Allotment makes a
 one-time reset code (it works once, for 24 hours) and shows it in Home Assistant under
 **Notifications** and in the app's **Log** tab. Enter it with a new password; every other device
 is signed out.
@@ -28,13 +28,13 @@ is signed out.
 Keep protection mode enabled. The app asks for Home Assistant API access only to send password
 codes as notifications; it never reads your entities. It doesn't need Docker socket access, host
 networking or elevated Linux capabilities. Its startup script prepares only its private data
-directory, then starts FlyBudget as the unprivileged Node user.
+directory, then starts Allotment as the unprivileged Node user.
 
 ## 2. Connect Up
 
-In FlyBudget, choose **Connect Up** on the welcome screen, or open **Settings → Connected Banks →
+In Allotment, choose **Connect Up** on the welcome screen, or open **Settings → Connected Banks →
 Up → Connect Up**. Create a personal access token at [Up's developer portal](https://api.up.com.au/)
-and paste it directly into FlyBudget. For each Up account choose **Create a new account**, or link
+and paste it directly into Allotment. For each Up account choose **Create a new account**, or link
 an AUD account you already have (one with history links from a cut-over date), then **Save & Sync**.
 Your other devices use that server connection; you do not enter a token on each device.
 
@@ -50,14 +50,14 @@ YNAB** or **Import CSV**.
 
 ## 3. Use it from other devices
 
-The FlyBudget desktop app can use this server directly. Open **Budget → Budget location…**,
-enter the FlyBudget address (for example `http://homeassistant.local:3001`), tick the HTTP
+The Allotment desktop app can use this server directly. Open **Budget → Budget location…**,
+enter the Allotment address (for example `http://homeassistant.local:3001`), tick the HTTP
 confirmation if appropriate for your trusted home network, and choose **Connect to server**.
-After it restarts, sign in with the FlyBudget password. New desktop installations show this
+After it restarts, sign in with the Allotment password. New desktop installations show this
 choice on first launch (**Where is your budget?**). See
-[Use the desktop app with Home Assistant storage](https://github.com/tvrooi/FlyBudget/blob/main/DESKTOP-SERVER.md).
+[Use the desktop app with Home Assistant storage](https://github.com/tvrooi/Allotment/blob/main/DESKTOP-SERVER.md).
 
-On a phone, tablet or another laptop, open the same FlyBudget address in a browser and sign in.
+On a phone, tablet or another laptop, open the same Allotment address in a browser and sign in.
 You can bookmark it or add it to your phone's home screen. All these devices read and save the
 same server database. Choosing **Use this computer** in the desktop app opens a separate local
 budget; changing locations does not migrate or merge an existing budget.
@@ -66,10 +66,10 @@ budget; changing locations does not migrate or merge an existing budget.
 
 HTTP is fine on a trusted home network but is not encrypted, so do not expose port 3001 to the
 internet, and do not use router port forwarding or Funnel for this. Home Assistant Cloud (Nabu
-Casa) does not forward FlyBudget's port, and this app does not use HA Ingress.
+Casa) does not forward Allotment's port, and this app does not use HA Ingress.
 
 To reach it from outside your home, use **Tailscale**, either through the Home Assistant community app or
-an existing VPN/router. Connect your devices to the same private network and expose FlyBudget
+an existing VPN/router. Connect your devices to the same private network and expose Allotment
 there, preferably with HTTPS. A direct web port does not automatically become available through
 Home Assistant Cloud/Nabu Casa. This package opens its own web UI; it does not implement HA Ingress.
 
@@ -91,8 +91,8 @@ the Tailscale admin console, and approval of the Home Assistant machine as its s
 Follow the [community app's Services documentation](https://github.com/hassio-addons/app-tailscale/blob/main/tailscale/DOCS.md#option-services).
 Do not enable Funnel or router port forwarding for this private-access setup.
 
-In FlyBudget's Home Assistant app Configuration tab, set `trust_proxy: true` when the app is
-behind that single HTTPS reverse proxy. This lets FlyBudget mark its login cookies Secure.
+In Allotment's Home Assistant app Configuration tab, set `trust_proxy: true` when the app is
+behind that single HTTPS reverse proxy. This lets Allotment mark its login cookies Secure.
 Optionally set `allowed_hosts` to your service hostname and any LAN hostname/IP you also use,
 separated by commas. Leave `trust_proxy: false` for a direct connection without a proxy.
 
@@ -111,13 +111,13 @@ a budget only they can open, each with their own password.
 - **Adding someone:** **Settings → Server → People → Add person** creates an empty budget for
   them and shows an invitation code. Give them the code; on the sign-in page they choose
   **I have an invitation**, enter their name and the code, and choose their password.
-- **Nobody sees anyone else's budget** through FlyBudget: each budget runs as its own process with
+- **Nobody sees anyone else's budget** through Allotment: each budget runs as its own process with
   its own database and encryption key, and every request goes to the signed-in person's budget
   only. The administrator can add people, stop someone signing in, or issue a reset code, but
   can't open their budget. Whoever administers Home Assistant can still read the app's files
   and backups, as for any app.
 - **Sharing household costs:** two people can combine a household each keeps in their own
-  budget (**Household → Combine with another FlyBudget user**). Both then see both households'
+  budget (**Household → Combine with another Allotment user**). Both then see both households'
   entries, splits and merchants, and one note on each entry that either can edit, but nothing
   else from the other's budget. Either can stop combining at any time.
 - **Forgotten passwords:** each person can choose a phone in **Settings → Server → Password codes
@@ -137,10 +137,10 @@ a budget only they can open, each with their own password.
 
 - The database and credential encryption key live in the app's private `/data/flybudget` folder.
   This folder persists through app restarts and normal updates.
-- Include **FlyBudget Up Preview** in Home Assistant backups. It uses a cold backup: Home
+- Include **Allotment** in Home Assistant backups. It uses a cold backup: Home
   Assistant briefly stops it so the SQLite database and encryption key are copied consistently.
   Home Assistant backups include the key, so protect those backups.
-- You can also export a portable JSON backup in FlyBudget. Those exports exclude bank tokens
+- You can also export a portable JSON backup in Allotment. Those exports exclude bank tokens
   and do not replace the full Home Assistant backup.
 - Uninstalling the app can remove its data. Export or back up before uninstalling.
 - Updates arrive through the repository like any other app. Select **Update** when Home Assistant
@@ -171,7 +171,7 @@ encryption key. Keep the working app until you have checked the new one.
    `flybudget_up` folder into it, so that `local_apps/flybudget_up/config.yaml` exists with the
    Dockerfile beside it. Do not copy it into Home Assistant's `config` folder.
 5. In **Settings → Apps → Install app**, use the top-right menu to reload the store. Find
-   **FlyBudget Up Preview** under **Local apps** and select **Install**. This compiles the app on
+   **Allotment** under **Local apps** and select **Install**. This compiles the app on
    your device, which can take several minutes on a Raspberry Pi.
 6. Continue from step 3 of "Install and start" above.
 

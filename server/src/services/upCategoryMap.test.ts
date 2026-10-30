@@ -15,7 +15,7 @@ describe('Up category mapping', () => {
     );
     expect(mapUpCategory('fuel', names('Gas / Fuel'))).toBe('id:Gas / Fuel');
   });
-  it('leaves a row uncategorised for no category, an unknown slug or a missing FlyBudget name', () => {
+  it('leaves a row uncategorised for no category, an unknown slug or a missing Allotment name', () => {
     expect(mapUpCategory(null, names('Groceries'))).toBeNull();
     expect(mapUpCategory('a-category-up-adds-later', names('Groceries'))).toBeNull();
     expect(mapUpCategory('groceries', names('Pharmacy'))).toBeNull();

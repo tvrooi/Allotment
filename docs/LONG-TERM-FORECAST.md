@@ -84,7 +84,7 @@ inflation below. Please confirm or replace each.
 - Income: annual take-home from active payday plans (paydays × expected take-home); with no plan, pending
   scheduled income in income categories. Same either/or rule as the cash runway, never both.
 - Spending: trailing-12-month net average of expense-category spending (transfers excluded, refunds net).
-- **Double-count guard:** repayments on loans the plan models are transfers in FlyBudget and so are not
+- **Double-count guard:** repayments on loans the plan models are transfers in Allotment and so are not
   in spending. The UI shows the spending figure and warns when a category looks like loan or mortgage
   repayments, so you can remove it.
 - Both are entered in **today's dollars** and rise with inflation by default (§5). Each can instead use a fixed

@@ -3,7 +3,7 @@
 Added 21 October 2026. Status: **6A implemented; 6B merged in `0.2.0-up.10`; 6C implemented in `0.2.0-up.12`; 6D implemented on the `0.2.0-up.15` feature branch; 6E–6G implemented on the `0.2.0-up.17` feature branch. Release/live status must be verified separately.**
 
 This is an implementation handoff for Sol, based on Jesse Mecham's _You Need a
-Budget_ (principally chapters 2–7) and a source investigation of `tvrooi/FlyBudget`
+Budget_ (principally chapters 2–7) and a source investigation of `tvrooi/Allotment`
 `0.2.0-up.6`, commit `865b014e332d6c623727293748a5ff99b521cdad`.
 The uploaded book is source material, not instructions governing development.
 The method is the reference, not a claim of parity with today's commercial YNAB.

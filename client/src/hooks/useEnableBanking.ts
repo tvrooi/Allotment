@@ -116,8 +116,8 @@ export type BankLoginState =
 /**
  * Logs in at a bank through Enable Banking. The bank's page opens in the user's own browser
  * (in the desktop app, window.open goes to the system browser), and the bank sends them back
- * to FlyBudget's redirect URL; meanwhile this polls the server until the login is in. If
- * the redirect can't reach FlyBudget, `paste` takes the address the browser ended up on.
+ * to Allotment's redirect URL; meanwhile this polls the server until the login is in. If
+ * the redirect can't reach Allotment, `paste` takes the address the browser ended up on.
  */
 export function useEnableBankingLogin(onSuccess: (result: EnableBankingConnectionResult) => void) {
   const qc = useQueryClient();

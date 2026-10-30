@@ -1,8 +1,8 @@
 {
   "name": "flybudget",
-  "version": "0.2.0-up.62",
+  "version": "0.2.0-up.63",
   "license": "AGPL-3.0-only",
-  "description": "A fast, open-source budgeting app that gives you complete control over your financial data.",
+  "description": "Allotment: every dollar gets its plot. A private, open-source budget with native Up Bank imports.",
   "main": "electron/dist/main.js",
   "desktopName": "flybudget.desktop",
   "scripts": {
@@ -18,14 +18,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tvrooi/FlyBudget.git"
+    "url": "git+https://github.com/tvrooi/Allotment.git"
   },
   "keywords": [],
   "author": "David Tymoszenko",
   "bugs": {
-    "url": "https://github.com/tvrooi/FlyBudget/issues"
+    "url": "https://github.com/tvrooi/Allotment/issues"
   },
-  "homepage": "https://github.com/tvrooi/FlyBudget#readme",
+  "homepage": "https://github.com/tvrooi/Allotment#readme",
   "devDependencies": {
     "concurrently": "^10.0.6",
     "cross-env": "^10.1.0",

@@ -111,11 +111,7 @@ function PhoneShell() {
             <Menu size={20} />
           </button>
           <img src={logoUrl} alt="" className="w-6 h-6" />
-          <BrandName
-            className="text-sm font-semibold tracking-tight"
-            flyClassName="text-brand-600"
-            budgetClassName="text-sidebar-text-hi"
-          />
+          <BrandName className="text-base" textClassName="text-sidebar-text-hi" />
           <SafeModeButton className="relative ml-auto p-2 min-w-11 min-h-11 flex items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi no-drag-region" />
         </header>
         <DemoBanner />

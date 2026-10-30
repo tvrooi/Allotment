@@ -22,11 +22,11 @@ def main():
         Path('/addons/flybudget_up'), Path('/local_apps/flybudget_up')]
     found = {p.resolve() for p in candidates if (p / 'config.yaml').is_file()}
     if len(found) != 1:
-        raise SystemExit('Could not identify one FlyBudget source folder. Supply its path as the last argument.')
+        raise SystemExit('Could not identify one Allotment source folder. Supply its path as the last argument.')
     root = found.pop()
     config = (root / 'config.yaml').read_text()
     if 'slug: flybudget_up' not in config:
-        raise SystemExit('This folder is not the FlyBudget Up Preview app. Nothing was changed.')
+        raise SystemExit('This folder is not the Allotment app. Nothing was changed.')
     changes = {}
     for relative in ['homeassistant/start.sh', 'homeassistant/ha-launch.cjs', 'config.yaml', 'Dockerfile']:
         target = root / relative
@@ -65,7 +65,7 @@ def main():
         target.write_text(replacement)
         print('Updated:', target.relative_to(root))
     print('Repair applied.' if changes else 'Repair already applied.')
-    print('Reload the Home Assistant app store, then Update or Rebuild FlyBudget and Start it.')
+    print('Reload the Home Assistant app store, then Update or Rebuild Allotment and Start it.')
     print('Keep Watchdog off until the update is installed. A restart prints a new setup code: use the last one in the log.')
     print('This repair only changes app source. It does not open or change your budget or encryption key.')
 

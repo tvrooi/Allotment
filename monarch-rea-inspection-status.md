@@ -4,7 +4,7 @@
 
 **Historical checkpoint (21 October 2026),** kept for the record; nothing below is a current prerequisite.
 
-21 October 2026. Requested deliverable: a findings report from an actual REA inspection of signed-in Monarch, compared with FlyBudget. Status: blocked before page capture.
+21 October 2026. Requested deliverable: a findings report from an actual REA inspection of signed-in Monarch, compared with Allotment. Status: blocked before page capture.
 
 ## Executed checks
 
@@ -26,6 +26,6 @@ The available execution host is a remote cloud workspace. It cannot reach the Ch
 
 ## Required continuation
 
-Continue this task in a local execution session on the computer running Chrome, with REA able to attach to that browser’s debugging endpoint. Preserve the original scope: inspect Monarch, compare against FlyBudget and write a findings report; make no application or financial-data changes. The earlier preliminary document is background only and is not the requested completed REA findings report.
+Continue this task in a local execution session on the computer running Chrome, with REA able to attach to that browser’s debugging endpoint. Preserve the original scope: inspect Monarch, compare against Allotment and write a findings report; make no application or financial-data changes. The earlier preliminary document is background only and is not the requested completed REA findings report.
 
 No application source, project configuration or financial data was changed by this attempt.

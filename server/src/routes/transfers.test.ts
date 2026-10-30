@@ -279,7 +279,7 @@ describe('when one side of a transfer changes on its own', () => {
     });
   });
 
-  it('a side FlyBudget created keeps its name when the other is deleted', async () => {
+  it('a side Allotment created keeps its name when the other is deleted', async () => {
     const checking = await account('Checking H');
     const savings = await account('Savings H', 'savings');
     const out = await imported(checking, '2096-08-05', -900, 'TO SAVINGS');
@@ -314,7 +314,7 @@ describe('when one side of a transfer changes on its own', () => {
     });
   });
 
-  it('a new amount from the bank is followed by the side FlyBudget created', async () => {
+  it('a new amount from the bank is followed by the side Allotment created', async () => {
     const checking = await account('Checking K');
     const savings = await account('Savings K', 'savings');
     const out = await imported(checking, '2096-08-20', -1_200, 'TO SAVINGS');

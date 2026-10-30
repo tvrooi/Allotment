@@ -43,10 +43,10 @@ export function AssignBlockError({ error }: { error: Error }) {
             <strong>{i.accountName}</strong>
             {i.reason === 'bank-mismatch' && i.difference !== null && i.bankBalance !== null ? (
               <>
-                : FlyBudget has {formatMoney(i.registerBalance, i.currency)}, the bank says{' '}
+                : Allotment has {formatMoney(i.registerBalance, i.currency)}, the bank says{' '}
                 {formatMoney(i.bankBalance, i.currency)} (
                 {formatMoney(Math.abs(i.difference), i.currency)}{' '}
-                {i.difference < 0 ? 'more in FlyBudget' : 'less in FlyBudget'}).
+                {i.difference < 0 ? 'more in Allotment' : 'less in Allotment'}).
               </>
             ) : i.reason === 'closed-balance' ? (
               <>: closed with {formatMoney(i.registerBalance, i.currency)} still in it.</>

@@ -4,7 +4,7 @@ import { SERVER_PORT } from '../../ports';
 
 // Self-hosted server mode (Docker): the first visitor sets a password with the setup
 // code from the server log, and everything else needs a login. These tests share one
-// server and run in order, like a real first week with FlyBudget.
+// server and run in order, like a real first week with Allotment.
 
 test.describe.configure({ mode: 'serial' });
 
@@ -26,7 +26,7 @@ async function signIn(page: Page, password: string) {
 
 test('a new server asks for a password and the setup code', async ({ baseURL }) => {
   await owner.goto(`${baseURL}/`);
-  await expect(owner.getByText('Set up your FlyBudget server')).toBeVisible();
+  await expect(owner.getByText('Set up your Allotment server')).toBeVisible();
   // Which server this is; on this computer (localhost) there's no insecure-connection warning
   await expect(owner.getByLabel('Server address')).toHaveText(`localhost:${SERVER_PORT}`);
   await expect(owner.getByText('Not a secure connection.')).toBeHidden();
@@ -49,7 +49,7 @@ test('a new server asks for a password and the setup code', async ({ baseURL }) 
 
   await owner.getByLabel('Confirm password').fill(PASSWORD);
   await owner.getByRole('button', { name: 'Create password' }).click();
-  await expect(owner.getByRole('heading', { name: 'Welcome to FlyBudget' })).toBeVisible();
+  await expect(owner.getByRole('heading', { name: 'Welcome to Allotment' })).toBeVisible();
 
   // The session cookie can't be read by scripts
   const cookies = await owner.context().cookies();
@@ -74,7 +74,7 @@ test('the signed-in owner uses the app, with real page URLs', async ({ baseURL }
 
 test('another browser sees only the login screen', async ({ page, baseURL }) => {
   await page.goto(`${baseURL}/accounts`);
-  await expect(page.getByText('Sign in to FlyBudget')).toBeVisible();
+  await expect(page.getByText('Sign in to Allotment')).toBeVisible();
   await expect(page.getByText('Credit Union')).toBeHidden();
   await signIn(page, 'not the password');
   await expect(page.getByText('Incorrect password')).toBeVisible();
@@ -102,7 +102,7 @@ test('changing the password signs out other browsers', async ({ browser, baseURL
 
   // The other browser's next request finds its session gone
   await other.reload();
-  await expect(other.getByText('Sign in to FlyBudget')).toBeVisible();
+  await expect(other.getByText('Sign in to Allotment')).toBeVisible();
   await signIn(other, PASSWORD);
   await expect(other.getByText('Incorrect password')).toBeVisible();
   await signIn(other, NEW_PASSWORD);
@@ -159,7 +159,7 @@ test('Settings → Server shows the security check and signed-in devices', async
   await expect(devices.getByRole('listitem')).toHaveCount(1);
   await expect(owner.getByRole('button', { name: 'Sign out all other devices' })).toBeDisabled();
   await phone.reload();
-  await expect(phone.getByText('Sign in to FlyBudget')).toBeVisible();
+  await expect(phone.getByText('Sign in to Allotment')).toBeVisible();
   await phone.context().close();
 });
 
@@ -260,7 +260,7 @@ test('the sidebar shows the server and can sign out', async ({ baseURL }) => {
 
   await status.click();
   await menu.getByRole('menuitem', { name: 'Sign out' }).click();
-  await expect(owner.getByText('Sign in to FlyBudget')).toBeVisible();
+  await expect(owner.getByText('Sign in to Allotment')).toBeVisible();
   await signIn(owner, NEW_PASSWORD);
   await expect(owner.getByRole('complementary')).toBeVisible();
 });
@@ -277,7 +277,7 @@ test('a forgotten password is reset with a code from the server log', async ({
 
   await owner.request.post('/api/auth/logout');
   await owner.goto(`${baseURL}/`);
-  await expect(owner.getByText('Sign in to FlyBudget')).toBeVisible();
+  await expect(owner.getByText('Sign in to Allotment')).toBeVisible();
   await owner.getByRole('button', { name: 'Forgot password?' }).click();
   await expect(owner.getByText('Forgot your password?')).toBeVisible();
   // It says where the code will be
@@ -312,7 +312,7 @@ test('a forgotten password is reset with a code from the server log', async ({
   });
   expect(reuse.status()).toBe(403);
   await other.reload();
-  await expect(other.getByText('Sign in to FlyBudget')).toBeVisible();
+  await expect(other.getByText('Sign in to Allotment')).toBeVisible();
   await signIn(other, NEW_PASSWORD);
   await expect(other.getByText('Incorrect password')).toBeVisible();
   await signIn(other, FORGOTTEN);
@@ -342,9 +342,9 @@ test('Home Assistant users are told to look in the app Log, not in Docker', asyn
     });
   });
   await page.goto(`${baseURL}/`);
-  await expect(page.getByText('Sign in to FlyBudget')).toBeVisible();
+  await expect(page.getByText('Sign in to Allotment')).toBeVisible();
   await page.getByRole('button', { name: 'Forgot password?' }).click();
-  const where = 'Find it in Home Assistant: Settings → Apps → FlyBudget → Log';
+  const where = 'Find it in Home Assistant: Settings → Apps → Allotment → Log';
   await expect(page.getByText(where)).toBeVisible();
   await expect(page.getByText(/docker logs/)).toHaveCount(0);
   // The code screen says it too (once), without making a code: "I already have a code"
@@ -397,7 +397,7 @@ test('with the server unreachable, the app opens with the offline copy and keeps
   await owner.goto(accountUrl);
   await expect(owner.getByRole('heading', { level: 1, name: 'Credit Union' })).toBeVisible();
   const banner = owner.getByRole('status', { name: 'Connection' });
-  await expect(banner).toContainText("Can't reach FlyBudget. Showing your data as of");
+  await expect(banner).toContainText("Can't reach Allotment. Showing your data as of");
   await expect(banner).toContainText('New transactions are saved on this device');
   // Other pages open from the copy too
   await owner.getByRole('complementary').getByRole('link', { name: 'Budget', exact: true }).click();
@@ -412,7 +412,7 @@ test('with the server unreachable, the app opens with the offline copy and keeps
   await form.getByRole('button', { name: 'Save' }).click();
   const waiting = owner.getByRole('region', { name: 'Saved on this device' });
   await expect(waiting.getByTestId('waiting-transaction')).toContainText('Coffee Cart');
-  await expect(waiting).toContainText('Sent when FlyBudget reconnects');
+  await expect(waiting).toContainText('Sent when Allotment reconnects');
   await expect(banner).toContainText('1 transaction waiting to send');
   await owner.reload();
   await expect(waiting.getByTestId('waiting-transaction')).toContainText('Coffee Cart');
@@ -447,7 +447,7 @@ test('the offline copy can be turned off, and signing out deletes it', async ({ 
 
   await owner.goto(`${baseURL}/settings?tab=server`);
   await owner.getByRole('button', { name: 'Sign out', exact: true }).click();
-  await expect(owner.getByText('Sign in to FlyBudget')).toBeVisible();
+  await expect(owner.getByText('Sign in to Allotment')).toBeVisible();
   expect(await offlineCopy(owner)).toBeNull();
   // So an unreachable server shows no data at all
   await unreachable(owner);
@@ -473,7 +473,7 @@ test('warns before sending the password over plain HTTP to another machine', asy
   try {
     const page = await browser.newPage();
     await page.goto(`http://flybudget.test:${SERVER_PORT}/`);
-    await expect(page.getByText('Sign in to FlyBudget')).toBeVisible();
+    await expect(page.getByText('Sign in to Allotment')).toBeVisible();
     await expect(page.getByLabel('Server address')).toHaveText(`flybudget.test:${SERVER_PORT}`);
     await expect(page.getByRole('note')).toContainText(
       'Not a secure connection. Your password would travel unencrypted. Only continue on a network you trust.',
@@ -499,7 +499,7 @@ test("someone guessing passwords can't lock the owner out", async ({ playwright,
   // …but a browser that signed in before has its own limit and still gets in
   await owner.goto(`${baseURL}/settings?tab=server`);
   await owner.getByRole('button', { name: 'Sign out', exact: true }).click();
-  await expect(owner.getByText('Sign in to FlyBudget')).toBeVisible();
+  await expect(owner.getByText('Sign in to Allotment')).toBeVisible();
   await signIn(owner, NEW_PASSWORD);
   await expect(owner.getByRole('complementary')).toBeVisible();
 });

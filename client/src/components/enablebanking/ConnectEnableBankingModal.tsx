@@ -214,7 +214,7 @@ function ConnectEnableBankingDialog({ isOpen, onClose, reconnect }: Props) {
       ) : effectiveStep === 'setup' ? (
         <div className="space-y-4">
           <p className="text-sm text-text-secondary">
-            FlyBudget connects to European banks through your own free Enable Banking application.
+            Allotment connects to European banks through your own free Enable Banking application.
             Set it up once:
           </p>
           <EnableBankingSetupForm onConfigured={() => setStep('bank')} />
@@ -242,7 +242,7 @@ function ConnectEnableBankingDialog({ isOpen, onClose, reconnect }: Props) {
       ) : effectiveStep === 'reconnect' && reconnect ? (
         <div className="space-y-4 text-center py-4">
           <p className="text-sm text-text-secondary max-w-sm mx-auto leading-relaxed">
-            Log in at {reconnect.bankName} again to give FlyBudget access for the next few months.
+            Log in at {reconnect.bankName} again to give Allotment access for the next few months.
             Your accounts and their history stay as they are.
           </p>
           <SavingPausedHint />
@@ -508,11 +508,11 @@ function BankLoginWaiting({
           </h3>
           <p className="text-xs text-text-secondary mt-1 max-w-sm mx-auto leading-relaxed">
             Your bank&apos;s page opened in your web browser. When you&apos;re done there, it sends
-            you back and FlyBudget carries on by itself.
+            you back and Allotment carries on by itself.
           </p>
         </div>
         <p className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary">
-          <ShieldCheck size={12} /> You log in on your bank&apos;s own site, never in FlyBudget.
+          <ShieldCheck size={12} /> You log in on your bank&apos;s own site, never in Allotment.
         </p>
         <div className="flex justify-center gap-2">
           <Button variant="secondary" onClick={onReopen} disabled={starting}>
@@ -558,7 +558,7 @@ function BankLoginWaiting({
             onClick={() => setShowPaste(true)}
             className="text-xs text-brand-600 hover:text-brand-700 font-medium max-md:min-h-11"
           >
-            Logged in, but FlyBudget didn&apos;t continue?
+            Logged in, but Allotment didn&apos;t continue?
           </button>
         )}
       </div>
@@ -827,7 +827,7 @@ function SyncDone({
         </ul>
       )}
       <p className="text-[11px] text-text-tertiary max-w-sm mx-auto">
-        FlyBudget syncs when it starts and when you click Sync now. Banks allow only a few automatic
+        Allotment syncs when it starts and when you click Sync now. Banks allow only a few automatic
         updates a day.{' '}
         <a
           href={ENABLE_BANKING_GUIDE_URL}

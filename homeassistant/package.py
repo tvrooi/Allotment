@@ -59,7 +59,7 @@ RUN apt-get update \\
  && rm -rf /var/lib/apt/lists/*
 COPY homeassistant/start.sh homeassistant/ha-launch.cjs /app/
 RUN chmod 755 /app/start.sh
-LABEL io.hass.name="FlyBudget Up Preview" \\
+LABEL io.hass.name="Allotment" \\
       io.hass.type="app" \\
       io.hass.version="__RELEASE_VERSION__"
 ENTRYPOINT ["/app/start.sh"]
@@ -75,7 +75,7 @@ FROM ha-${TARGETARCH} AS final
 dockerfile = dockerfile.replace('__RELEASE_VERSION__', version)
 (app / 'Dockerfile').write_text(dockerfile)
 
-archive = out / 'FlyBudget-Up-Home-Assistant.zip'
+archive = out / 'Allotment-Up-Home-Assistant.zip'
 with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_DEFLATED) as zipped:
     for file in sorted(app.rglob('*')):
         if file.is_file():

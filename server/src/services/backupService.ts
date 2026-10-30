@@ -183,15 +183,15 @@ export type ParsedBackup = Record<BackupTable, Row[]> & { beforeCurrencies?: boo
 
 export function parseBackup(input: unknown): ParsedBackup {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new InvalidBackupError('This is not a FlyBudget backup file');
+    throw new InvalidBackupError('This is not an Allotment backup file');
   }
   const body = input as Record<string, unknown>;
   const isV1 = body.format === undefined && Array.isArray(body.accounts);
   if (!isV1 && body.format !== BACKUP_FORMAT) {
-    throw new InvalidBackupError('This is not a FlyBudget backup file');
+    throw new InvalidBackupError('This is not an Allotment backup file');
   }
   if (typeof body.version === 'number' && body.version > BACKUP_VERSION) {
-    throw new InvalidBackupError('This backup was made by a newer version of FlyBudget');
+    throw new InvalidBackupError('This backup was made by a newer version of Allotment');
   }
 
   const result = {} as ParsedBackup;

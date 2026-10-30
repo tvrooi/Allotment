@@ -186,7 +186,7 @@ export function taxYear(fy: number) {
 
   const claims = rows.map((r) => {
     const cost = -r.amount;
-    // Rounded once, half away from zero, like every other share in FlyBudget
+    // Rounded once, half away from zero, like every other share in Allotment
     const claim = Math.sign(cost) * Math.round((Math.abs(cost) * r.workUseBps) / 10_000);
     const label = r.label as TaxLabel;
     const own = byOwner.get(r.parentTransactionId ?? r.transactionId) ?? [];
