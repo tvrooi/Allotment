@@ -386,6 +386,13 @@
       "when": 1794000000000,
       "tag": "0054_account_balance_as_of",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "6",
+      "when": 1794100000000,
+      "tag": "0055_household_recurring_bills",
+      "breakpoints": true
     }
   ]
 }

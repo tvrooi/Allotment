@@ -357,7 +357,7 @@ describe('payday funding', () => {
     const p = previewPayday('plan', request);
     applyPayday('plan', request, JSON.stringify(p));
     const backup = createBackup();
-    expect(backup.version).toBe(19);
+    expect(backup.version).toBe(20);
     restoreBackup(parseBackup(backup));
     expect(applyPayday('plan', request, JSON.stringify(p)).alreadyApplied).toBe(true);
     expect(incomeOptions('2026-10-21')).toEqual([]);

@@ -75,3 +75,27 @@ export const recordRepayment = (groupId: string, s: RepaymentSuggestion, selfId:
 /** Removes one household entry (undoing a share) */
 export const removeHouseholdEvent = (groupId: string, eventId: string) =>
   apiFetch<unknown>(`/households/${groupId}/events/${eventId}`, { method: 'DELETE' });
+
+/** A recurring item shared with the household, as GET /households/:id lists it */
+export interface SharedRecurringBill {
+  scheduleId: string;
+  name: string;
+  /** Expected amount of the next payment (positive) */
+  amount: number;
+  recurrenceType: string;
+  status: string;
+  nextDate: string | null;
+  paidFromPool: boolean;
+  /** Each person's part of `amount` with the default split */
+  shares: { personId: string; amount: number }[];
+  /** Recent payments, newest first, and whether each is shared yet */
+  payments: { transactionId: string; date: string; amount: number; shared: boolean }[];
+}
+
+export const shareRecurringBills = (groupId: string, scheduleIds: string[]) =>
+  apiFetch<unknown>(`/households/${groupId}/recurring-bills`, {
+    method: 'POST',
+    body: JSON.stringify({ scheduleIds }),
+  });
+export const unshareRecurringBill = (groupId: string, scheduleId: string) =>
+  apiFetch<unknown>(`/households/${groupId}/recurring-bills/${scheduleId}`, { method: 'DELETE' });

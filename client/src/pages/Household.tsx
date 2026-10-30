@@ -13,7 +13,8 @@ import { formatMoney } from '../utils/currency';
 import { formatDay } from '../utils/dates';
 import { HouseholdSharing } from '../components/household/HouseholdSharing';
 import { CombinedHousehold } from '../components/household/CombinedHousehold';
-import type { HouseholdSplit } from '../api/households';
+import { RecurringBills } from '../components/household/RecurringBills';
+import type { HouseholdSplit, SharedRecurringBill } from '../api/households';
 
 type Group = {
   id: string;
@@ -54,6 +55,7 @@ type State = {
   cash: number;
   unreserved: number;
   bills: Bill[];
+  recurringBills: SharedRecurringBill[];
 };
 const today = () => {
   const d = new Date();
@@ -111,11 +113,11 @@ export default function HouseholdPage() {
   });
   const { data: accounts = [] } = useAccounts();
   const { data: schedules = [] } = useSchedules();
-  const { data: bankPayments = [] } = useTransactions({
-    from: from || undefined,
-    to: to || undefined,
-  });
-  const payment = bankPayments.find((t) => t.id === params.get('transaction'));
+  const linkId = params.get('transaction');
+  const [recording, setRecording] = useState(!!linkId);
+  // Only while recording: the latest payments to link, not the whole register
+  const { data: bankPayments = [] } = useTransactions({ limit: 500 }, recording);
+  const payment = bankPayments.find((t) => t.id === linkId);
   const mutation = useMutation({
     mutationFn: ({
       path,
@@ -143,6 +145,7 @@ export default function HouseholdPage() {
   const [creating, setCreating] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const money = (n: number) => formatMoney(n, state?.group.currency ?? 'AUD');
+  const hasPool = (state?.group.poolAccountIds.length ?? 0) > 0;
   function submit(
     e: React.FormEvent<HTMLFormElement>,
     build: (f: FormData) => { path: string; body: unknown; method?: string },
@@ -322,390 +325,61 @@ export default function HouseholdPage() {
               <section className={card}>
                 <h2 className="text-sm font-semibold text-text">People & balances</h2>
                 <p className="text-xs text-text-tertiary mt-0.5 mb-3">
-                  Positive balances are advance credits or amounts owed to someone. Negative
-                  balances are amounts they owe.
+                  Across everything shared: who has paid more than their share, and who owes.
                 </p>
                 <div className="border-t border-border-light divide-y divide-border-light">
                   {state.people.map((p) => {
                     const balance = state.balances[p.id];
                     return (
-                      <div key={p.id} className="flex justify-between py-2 text-sm">
+                      <div key={p.id} className="flex justify-between gap-3 py-2 text-sm">
                         <span className="text-text">
                           {p.name}
                           {p.isSelf ? <span className="text-text-tertiary"> (me)</span> : ''}
                         </span>
                         <span
-                          className={`tabular-nums font-medium ${balance < 0 ? 'text-negative' : balance > 0 ? 'text-positive' : 'text-text'}`}
+                          className={`tabular-nums font-medium text-right ${balance < 0 ? 'text-negative' : balance > 0 ? 'text-positive' : 'text-text-tertiary'}`}
                         >
-                          {money(balance)}
+                          {balance < 0
+                            ? `owes ${money(-balance)}`
+                            : balance > 0
+                              ? `is owed ${money(balance)}`
+                              : 'settled'}
                         </span>
                       </div>
                     );
                   })}
                 </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-3 text-xs text-text-tertiary">
-                  <p className="bg-surface-alt rounded-lg p-2.5">
-                    Received pool funding remaining:{' '}
-                    <span className="block text-sm font-semibold tabular-nums text-text">
-                      {money(state.pool)}
-                    </span>
-                  </p>
-                  <p className="bg-surface-alt rounded-lg p-2.5">
-                    Bank cash:{' '}
-                    <span className="block text-sm font-semibold tabular-nums text-text">
-                      {money(state.cash)}
-                    </span>
-                  </p>
-                  <p className="bg-surface-alt rounded-lg p-2.5">
-                    Available to reserve:{' '}
-                    <span className="block text-sm font-semibold tabular-nums text-text">
-                      {money(state.unreserved)}
-                    </span>
-                  </p>
-                </div>
+                {hasPool && (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-3 text-xs text-text-tertiary">
+                    <p className="bg-surface-alt rounded-lg p-2.5">
+                      Received pool funding remaining:{' '}
+                      <span className="block text-sm font-semibold tabular-nums text-text">
+                        {money(state.pool)}
+                      </span>
+                    </p>
+                    <p className="bg-surface-alt rounded-lg p-2.5">
+                      Bank cash:{' '}
+                      <span className="block text-sm font-semibold tabular-nums text-text">
+                        {money(state.cash)}
+                      </span>
+                    </p>
+                    <p className="bg-surface-alt rounded-lg p-2.5">
+                      Available to reserve:{' '}
+                      <span className="block text-sm font-semibold tabular-nums text-text">
+                        {money(state.unreserved)}
+                      </span>
+                    </p>
+                  </div>
+                )}
               </section>
 
-              <HouseholdSharing key={state.group.id} group={state.group} people={state.people} />
-              <CombinedHousehold
-                key={`combine-${state.group.id}`}
-                group={state.group}
+              <RecurringBills
+                key={`recurring-${state.group.id}`}
+                groupId={state.group.id}
+                currency={state.group.currency}
                 people={state.people}
+                bills={state.recurringBills}
               />
-
-              <div className="grid gap-4 lg:grid-cols-2 items-start">
-                <section className={card}>
-                  <h2 className="text-sm font-semibold text-text mb-3">Record an event</h2>
-                  <form
-                    key={`${selected}-${payment?.id ?? 'manual'}`}
-                    className="grid gap-3"
-                    onSubmit={(e) =>
-                      submit(e, (f) => ({
-                        path: `/households/${selected}/events`,
-                        body: {
-                          kind,
-                          date: f.get('date'),
-                          description: f.get('description'),
-                          amount:
-                            kind === 'refund' && !f.get('amount')
-                              ? undefined
-                              : cents(f.get('amount')),
-                          payerId: f.get('payerId') || null,
-                          recipientId: f.get('recipientId') || null,
-                          transactionId: f.get('transactionId') || null,
-                          billId: f.get('billId') || null,
-                          reversesId: f.get('reversesId') || null,
-                          mode,
-                          shares:
-                            kind === 'expense'
-                              ? state.people
-                                  .filter((p) => f.has(`include-${p.id}`))
-                                  .map((p) => ({
-                                    personId: p.id,
-                                    value:
-                                      mode === 'equal'
-                                        ? 1
-                                        : mode === 'exact'
-                                          ? cents(f.get(p.id))
-                                          : Number(f.get(p.id)),
-                                  }))
-                              : [],
-                        },
-                      }))
-                    }
-                  >
-                    <label className={field}>
-                      Event
-                      <Select value={kind} onChange={(e) => setKind(e.target.value)}>
-                        <option value="expense">Shared expense</option>
-                        <option value="contribution">Advance into pool</option>
-                        <option value="settlement">Repayment between people</option>
-                        <option value="refund">Reverse refunded expense</option>
-                      </Select>
-                    </label>
-                    <label className={field}>
-                      Description
-                      <Input
-                        name="description"
-                        required
-                        maxLength={200}
-                        defaultValue={payment?.payeeName ?? ''}
-                      />
-                    </label>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <label className={field}>
-                        Date
-                        <Input
-                          type="date"
-                          name="date"
-                          defaultValue={payment?.date ?? today()}
-                          required
-                        />
-                      </label>
-                      <label className={field}>
-                        {kind === 'refund'
-                          ? 'Refund amount (AUD, blank = remaining)'
-                          : 'Amount (AUD)'}
-                        <Input
-                          name="amount"
-                          defaultValue={payment ? (Math.abs(payment.amount) / 100).toFixed(2) : ''}
-                          inputMode="decimal"
-                          placeholder="0.00"
-                          required={kind !== 'refund'}
-                        />
-                      </label>
-                    </div>
-                    {kind !== 'refund' && (
-                      <label className={field}>
-                        Paid by
-                        <Select
-                          name="payerId"
-                          defaultValue={
-                            payment?.accountId === state.group.accountId ? '' : self?.id
-                          }
-                        >
-                          {kind === 'expense' && state.group.accountId && (
-                            <option value="">Household pool</option>
-                          )}
-                          {state.people.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name}
-                            </option>
-                          ))}
-                        </Select>
-                      </label>
-                    )}
-                    {kind === 'settlement' && (
-                      <label className={field}>
-                        Paid to
-                        <Select name="recipientId">
-                          {state.people.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name}
-                            </option>
-                          ))}
-                        </Select>
-                      </label>
-                    )}
-                    {kind === 'expense' && (
-                      <>
-                        <label className={field}>
-                          Split method
-                          <Select value={mode} onChange={(e) => setMode(e.target.value)}>
-                            <option value="equal">
-                              Equal (remainder follows participant order)
-                            </option>
-                            <option value="exact">Exact AUD amounts</option>
-                            <option value="percentage">
-                              Percentage in basis points (10000 = 100%)
-                            </option>
-                            <option value="weight">Weights</option>
-                          </Select>
-                        </label>
-                        <fieldset className="grid gap-2">
-                          <legend className="text-sm font-medium text-text-secondary mb-1">
-                            Shared with
-                          </legend>
-                          {state.people.map((p) => (
-                            <label
-                              key={p.id}
-                              className="flex items-center gap-3 text-sm text-text min-h-9"
-                            >
-                              <input
-                                type="checkbox"
-                                name={`include-${p.id}`}
-                                defaultChecked
-                                className="h-4 w-4 accent-brand-600"
-                              />
-                              <span className="flex-1">{p.name}</span>
-                              {mode !== 'equal' && (
-                                <span className="w-32">
-                                  <Input
-                                    name={p.id}
-                                    aria-label={`${p.name} share`}
-                                    inputMode="decimal"
-                                    defaultValue={mode === 'weight' ? '1' : ''}
-                                  />
-                                </span>
-                              )}
-                            </label>
-                          ))}
-                        </fieldset>
-                        <label className={field}>
-                          Match shared bill
-                          <Select name="billId">
-                            <option value="">No bill</option>
-                            {state.bills
-                              .filter((b) => b.status !== 'paid')
-                              .map((b) => (
-                                <option key={b.id} value={b.id}>
-                                  {b.description}
-                                </option>
-                              ))}
-                          </Select>
-                        </label>
-                      </>
-                    )}
-                    {kind === 'refund' && (
-                      <label className={field}>
-                        Original expense
-                        <Select name="reversesId" required>
-                          <option value="">Choose expense</option>
-                          {state.events
-                            .filter((e) => e.kind === 'expense')
-                            .map((e) => (
-                              <option key={e.id} value={e.id}>
-                                {e.description} — {money(e.amount)}
-                              </option>
-                            ))}
-                        </Select>
-                      </label>
-                    )}
-                    <label className={field}>
-                      Existing bank payment (optional)
-                      <Select name="transactionId" defaultValue={payment?.id ?? ''}>
-                        <option value="">No bank link</option>
-                        {bankPayments
-                          .filter(
-                            (t) =>
-                              !t.isParent &&
-                              !t.parentTransactionId &&
-                              !state.events.some((e) => e.transactionId === t.id),
-                          )
-                          .map((t) => (
-                            <option key={t.id} value={t.id}>
-                              {t.date} ·{' '}
-                              {t.payeeName || accounts.find((a) => a.id === t.accountId)?.name} ·{' '}
-                              {money(t.amount)}
-                            </option>
-                          ))}
-                      </Select>
-                    </label>
-                    <div className="flex justify-end">
-                      <Button type="submit" disabled={mutation.isPending}>
-                        Save event
-                      </Button>
-                    </div>
-                  </form>
-                </section>
-
-                <section className={card}>
-                  <h2 className="text-sm font-semibold text-text">Shared bills</h2>
-                  <p className="text-xs text-text-tertiary mt-0.5 mb-3">
-                    Reserve received funds for each bill. An account balance alone does not mean a
-                    bill is funded.
-                  </p>
-                  {state.bills.length === 0 && (
-                    <p className="text-sm text-text-tertiary py-2">No shared bills yet.</p>
-                  )}
-                  <div className="divide-y divide-border-light border-t border-border-light">
-                    {state.bills.map((b) => (
-                      <div key={b.id} className="py-3 space-y-2">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-text">{b.description}</p>
-                            <p className="text-xs text-text-tertiary">
-                              Due {formatDay(b.dueDate)} · {money(b.amount)} · My estimate{' '}
-                              {money(b.personalShare)}
-                            </p>
-                          </div>
-                          <span
-                            className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${STATUS_CLASS[b.status] ?? 'bg-surface-alt text-text-secondary'}`}
-                          >
-                            {b.status}
-                          </span>
-                        </div>
-                        <form
-                          className="flex items-end gap-2"
-                          onSubmit={(e) =>
-                            submit(e, (f) => ({
-                              path: `/households/${selected}/bills/${b.id}/reservation`,
-                              method: 'PUT',
-                              body: { reserved: cents(f.get('reserved')) },
-                            }))
-                          }
-                        >
-                          <label className={`${field} flex-1`}>
-                            <span className="text-xs">Reserved</span>
-                            <Input
-                              name="reserved"
-                              inputMode="decimal"
-                              defaultValue={(b.reserved / 100).toFixed(2)}
-                            />
-                          </label>
-                          <Button
-                            type="submit"
-                            size="sm"
-                            variant="secondary"
-                            disabled={
-                              mutation.isPending || state.events.some((e) => e.billId === b.id)
-                            }
-                          >
-                            Update reservation
-                          </Button>
-                        </form>
-                      </div>
-                    ))}
-                  </div>
-                  <form
-                    className="grid gap-3 border-t border-border-light pt-4 mt-1"
-                    onSubmit={(e) =>
-                      submit(e, (f) => ({
-                        path: `/households/${selected}/bills`,
-                        body: {
-                          description: f.get('description'),
-                          dueDate: f.get('dueDate'),
-                          amount: cents(f.get('amount')),
-                          personalShare: cents(f.get('personalShare')),
-                          scheduleId: f.get('scheduleId') || null,
-                          reserved: cents(f.get('reserved')),
-                        },
-                      }))
-                    }
-                  >
-                    <h3 className="text-sm font-semibold text-text">Add a bill</h3>
-                    <label className={field}>
-                      Bill name
-                      <Input name="description" required />
-                    </label>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <label className={field}>
-                        Due date
-                        <Input type="date" name="dueDate" required />
-                      </label>
-                      <label className={field}>
-                        Estimated / billed total
-                        <Input name="amount" inputMode="decimal" placeholder="0.00" required />
-                      </label>
-                      <label className={field}>
-                        My estimated share
-                        <Input name="personalShare" inputMode="decimal" required defaultValue="0" />
-                      </label>
-                      <label className={field}>
-                        Reserve now
-                        <Input name="reserved" inputMode="decimal" defaultValue="0" required />
-                      </label>
-                    </div>
-                    <label className={field}>
-                      Recurring schedule (optional)
-                      <Select name="scheduleId">
-                        <option value="">One-off bill</option>
-                        {schedules
-                          .filter((s) => !s.autoCreate)
-                          .map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.name}
-                            </option>
-                          ))}
-                      </Select>
-                    </label>
-                    <div className="flex justify-end">
-                      <Button type="submit" variant="secondary" disabled={mutation.isPending}>
-                        Add bill
-                      </Button>
-                    </div>
-                  </form>
-                </section>
-              </div>
 
               <section className={card}>
                 <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
@@ -779,6 +453,371 @@ export default function HouseholdPage() {
                 )}
               </section>
 
+              <div
+                className={`grid gap-4 items-start ${hasPool || state.bills.length > 0 ? 'lg:grid-cols-2' : ''}`}
+              >
+                <section className={card}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="text-sm font-semibold text-text">Record something else</h2>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      aria-expanded={recording}
+                      onClick={() => setRecording(!recording)}
+                    >
+                      {recording ? 'Close' : 'Expense, advance or repayment'}
+                    </Button>
+                  </div>
+                  {!recording && (
+                    <p className="text-xs text-text-tertiary mt-0.5">
+                      A one-off shared cost, money paid into the household account, or someone
+                      paying someone back. To share a payment from your bank, use{' '}
+                      <span className="font-medium">Share with household</span> in Transactions.
+                    </p>
+                  )}
+                  {recording && (
+                    <form
+                      key={`${selected}-${payment?.id ?? 'manual'}`}
+                      className="grid gap-3 mt-3"
+                      onSubmit={(e) =>
+                        submit(e, (f) => ({
+                          path: `/households/${selected}/events`,
+                          body: {
+                            kind,
+                            date: f.get('date'),
+                            description: f.get('description'),
+                            amount:
+                              kind === 'refund' && !f.get('amount')
+                                ? undefined
+                                : cents(f.get('amount')),
+                            payerId: f.get('payerId') || null,
+                            recipientId: f.get('recipientId') || null,
+                            transactionId: f.get('transactionId') || null,
+                            billId: f.get('billId') || null,
+                            reversesId: f.get('reversesId') || null,
+                            mode,
+                            shares:
+                              kind === 'expense'
+                                ? state.people
+                                    .filter((p) => f.has(`include-${p.id}`))
+                                    .map((p) => ({
+                                      personId: p.id,
+                                      value:
+                                        mode === 'equal'
+                                          ? 1
+                                          : mode === 'exact'
+                                            ? cents(f.get(p.id))
+                                            : mode === 'percentage'
+                                              ? Math.round(Number(f.get(p.id)) * 100)
+                                              : Number(f.get(p.id)),
+                                    }))
+                                : [],
+                          },
+                        }))
+                      }
+                    >
+                      <label className={field}>
+                        Event
+                        <Select value={kind} onChange={(e) => setKind(e.target.value)}>
+                          <option value="expense">Shared expense</option>
+                          <option value="contribution">Advance into pool</option>
+                          <option value="settlement">Repayment between people</option>
+                          <option value="refund">Reverse refunded expense</option>
+                        </Select>
+                      </label>
+                      <label className={field}>
+                        Description
+                        <Input
+                          name="description"
+                          required
+                          maxLength={200}
+                          defaultValue={payment?.payeeName ?? ''}
+                        />
+                      </label>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className={field}>
+                          Date
+                          <Input
+                            type="date"
+                            name="date"
+                            defaultValue={payment?.date ?? today()}
+                            required
+                          />
+                        </label>
+                        <label className={field}>
+                          {kind === 'refund'
+                            ? 'Refund amount (AUD, blank = remaining)'
+                            : 'Amount (AUD)'}
+                          <Input
+                            name="amount"
+                            defaultValue={
+                              payment ? (Math.abs(payment.amount) / 100).toFixed(2) : ''
+                            }
+                            inputMode="decimal"
+                            placeholder="0.00"
+                            required={kind !== 'refund'}
+                          />
+                        </label>
+                      </div>
+                      {kind !== 'refund' && (
+                        <label className={field}>
+                          Paid by
+                          <Select
+                            name="payerId"
+                            defaultValue={
+                              payment?.accountId === state.group.accountId ? '' : self?.id
+                            }
+                          >
+                            {kind === 'expense' && state.group.accountId && (
+                              <option value="">Household pool</option>
+                            )}
+                            {state.people.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </Select>
+                        </label>
+                      )}
+                      {kind === 'settlement' && (
+                        <label className={field}>
+                          Paid to
+                          <Select name="recipientId">
+                            {state.people.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </Select>
+                        </label>
+                      )}
+                      {kind === 'expense' && (
+                        <>
+                          <label className={field}>
+                            Split method
+                            <Select value={mode} onChange={(e) => setMode(e.target.value)}>
+                              <option value="equal">
+                                Equal (remainder follows participant order)
+                              </option>
+                              <option value="exact">Exact AUD amounts</option>
+                              <option value="percentage">Percentages (total 100)</option>
+                              <option value="weight">Weights</option>
+                            </Select>
+                          </label>
+                          <fieldset className="grid gap-2">
+                            <legend className="text-sm font-medium text-text-secondary mb-1">
+                              Shared with
+                            </legend>
+                            {state.people.map((p) => (
+                              <label
+                                key={p.id}
+                                className="flex items-center gap-3 text-sm text-text min-h-9"
+                              >
+                                <input
+                                  type="checkbox"
+                                  name={`include-${p.id}`}
+                                  defaultChecked
+                                  className="h-4 w-4 accent-brand-600"
+                                />
+                                <span className="flex-1">{p.name}</span>
+                                {mode !== 'equal' && (
+                                  <span className="w-32">
+                                    <Input
+                                      name={p.id}
+                                      aria-label={`${p.name} share`}
+                                      inputMode="decimal"
+                                      defaultValue={mode === 'weight' ? '1' : ''}
+                                    />
+                                  </span>
+                                )}
+                              </label>
+                            ))}
+                          </fieldset>
+                          <label className={field}>
+                            Match shared bill
+                            <Select name="billId">
+                              <option value="">No bill</option>
+                              {state.bills
+                                .filter((b) => b.status !== 'paid')
+                                .map((b) => (
+                                  <option key={b.id} value={b.id}>
+                                    {b.description}
+                                  </option>
+                                ))}
+                            </Select>
+                          </label>
+                        </>
+                      )}
+                      {kind === 'refund' && (
+                        <label className={field}>
+                          Original expense
+                          <Select name="reversesId" required>
+                            <option value="">Choose expense</option>
+                            {state.events
+                              .filter((e) => e.kind === 'expense')
+                              .map((e) => (
+                                <option key={e.id} value={e.id}>
+                                  {e.description} — {money(e.amount)}
+                                </option>
+                              ))}
+                          </Select>
+                        </label>
+                      )}
+                      <label className={field}>
+                        Existing bank payment (optional)
+                        <Select name="transactionId" defaultValue={payment?.id ?? ''}>
+                          <option value="">No bank link</option>
+                          {bankPayments
+                            .filter(
+                              (t) =>
+                                !t.isParent &&
+                                !t.parentTransactionId &&
+                                !state.events.some((e) => e.transactionId === t.id),
+                            )
+                            .map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.date} ·{' '}
+                                {t.payeeName || accounts.find((a) => a.id === t.accountId)?.name} ·{' '}
+                                {money(t.amount)}
+                              </option>
+                            ))}
+                        </Select>
+                      </label>
+                      <div className="flex justify-end">
+                        <Button type="submit" disabled={mutation.isPending}>
+                          Save event
+                        </Button>
+                      </div>
+                    </form>
+                  )}
+                </section>
+
+                {(hasPool || state.bills.length > 0) && (
+                  <section className={card}>
+                    <h2 className="text-sm font-semibold text-text">Bills to reserve for</h2>
+                    <p className="text-xs text-text-tertiary mt-0.5 mb-3">
+                      Set money aside from the household account for a bill before it is due. An
+                      account balance alone does not mean a bill is funded.
+                    </p>
+                    {state.bills.length === 0 && (
+                      <p className="text-sm text-text-tertiary py-2">No shared bills yet.</p>
+                    )}
+                    <div className="divide-y divide-border-light border-t border-border-light">
+                      {state.bills.map((b) => (
+                        <div key={b.id} className="py-3 space-y-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-text">{b.description}</p>
+                              <p className="text-xs text-text-tertiary">
+                                Due {formatDay(b.dueDate)} · {money(b.amount)} · My estimate{' '}
+                                {money(b.personalShare)}
+                              </p>
+                            </div>
+                            <span
+                              className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${STATUS_CLASS[b.status] ?? 'bg-surface-alt text-text-secondary'}`}
+                            >
+                              {b.status}
+                            </span>
+                          </div>
+                          <form
+                            className="flex items-end gap-2"
+                            onSubmit={(e) =>
+                              submit(e, (f) => ({
+                                path: `/households/${selected}/bills/${b.id}/reservation`,
+                                method: 'PUT',
+                                body: { reserved: cents(f.get('reserved')) },
+                              }))
+                            }
+                          >
+                            <label className={`${field} flex-1`}>
+                              <span className="text-xs">Reserved</span>
+                              <Input
+                                name="reserved"
+                                inputMode="decimal"
+                                defaultValue={(b.reserved / 100).toFixed(2)}
+                              />
+                            </label>
+                            <Button
+                              type="submit"
+                              size="sm"
+                              variant="secondary"
+                              disabled={
+                                mutation.isPending || state.events.some((e) => e.billId === b.id)
+                              }
+                            >
+                              Update reservation
+                            </Button>
+                          </form>
+                        </div>
+                      ))}
+                    </div>
+                    <form
+                      className="grid gap-3 border-t border-border-light pt-4 mt-1"
+                      onSubmit={(e) =>
+                        submit(e, (f) => ({
+                          path: `/households/${selected}/bills`,
+                          body: {
+                            description: f.get('description'),
+                            dueDate: f.get('dueDate'),
+                            amount: cents(f.get('amount')),
+                            personalShare: cents(f.get('personalShare')),
+                            scheduleId: f.get('scheduleId') || null,
+                            reserved: cents(f.get('reserved')),
+                          },
+                        }))
+                      }
+                    >
+                      <h3 className="text-sm font-semibold text-text">Add a bill</h3>
+                      <label className={field}>
+                        Bill name
+                        <Input name="description" required />
+                      </label>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className={field}>
+                          Due date
+                          <Input type="date" name="dueDate" required />
+                        </label>
+                        <label className={field}>
+                          Estimated / billed total
+                          <Input name="amount" inputMode="decimal" placeholder="0.00" required />
+                        </label>
+                        <label className={field}>
+                          My estimated share
+                          <Input
+                            name="personalShare"
+                            inputMode="decimal"
+                            required
+                            defaultValue="0"
+                          />
+                        </label>
+                        <label className={field}>
+                          Reserve now
+                          <Input name="reserved" inputMode="decimal" defaultValue="0" required />
+                        </label>
+                      </div>
+                      <label className={field}>
+                        Recurring schedule (optional)
+                        <Select name="scheduleId">
+                          <option value="">One-off bill</option>
+                          {schedules
+                            .filter((s) => !s.autoCreate)
+                            .map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.name}
+                              </option>
+                            ))}
+                        </Select>
+                      </label>
+                      <div className="flex justify-end">
+                        <Button type="submit" variant="secondary" disabled={mutation.isPending}>
+                          Add bill
+                        </Button>
+                      </div>
+                    </form>
+                  </section>
+                )}
+              </div>
+
               <section className={card}>
                 <button
                   type="button"
@@ -833,6 +872,15 @@ export default function HouseholdPage() {
                   </div>
                 )}
               </section>
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary pt-2">
+                Household settings
+              </h2>
+              <HouseholdSharing key={state.group.id} group={state.group} people={state.people} />
+              <CombinedHousehold
+                key={`combine-${state.group.id}`}
+                group={state.group}
+                people={state.people}
+              />
             </>
           )}
         </div>

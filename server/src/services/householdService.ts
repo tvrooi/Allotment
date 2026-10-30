@@ -1,4 +1,5 @@
-import { eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNotNull, lt } from 'drizzle-orm';
+import { format, subDays } from 'date-fns';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { db } from '../db/index.js';
@@ -15,6 +16,9 @@ import {
   householdShares as shares,
   householdBills as bills,
   householdPoolAccounts as poolAccounts,
+  householdRecurringBills as recurringBills,
+  schedules,
+  scheduleOccurrences,
 } from '../db/schema.js';
 import { allocateShares, householdLedger } from './householdLedger.js';
 import { accountTransactionSum } from './balances.js';
@@ -101,8 +105,10 @@ export function snapshot(id: string) {
   );
   const reserved = remaining.reduce((sum, b) => sum + b.reserved, 0);
   const { defaultSplitJson, ...groupFields } = group;
+  const defaultSplit = parseSplit(defaultSplitJson);
   return {
-    group: { ...groupFields, poolAccountIds, defaultSplit: parseSplit(defaultSplitJson) },
+    recurringBills: sharedRecurringBills(id, members, defaultSplit, poolAccountIds),
+    group: { ...groupFields, poolAccountIds, defaultSplit },
     poolAccountIds,
     people: members,
     events: entries.map((e) => ({ ...e, shares: allocations.filter((s) => s.eventId === e.id) })),
@@ -329,12 +335,7 @@ export function shareTransaction(groupId: string, transactionId: string, split?:
   const tx = db.select().from(transactions).where(eq(transactions.id, transactionId)).get();
   if (!tx) throw new Error('Transaction not found');
   if (tx.amount >= 0) throw new Error('Only a payment (money out) can be shared');
-  const chosen = split ?? state.group.defaultSplit ?? null;
-  const mode = chosen?.mode ?? 'equal';
-  const shareList =
-    chosen && chosen.shares.length
-      ? chosen.shares
-      : state.people.map((p) => ({ personId: p.id, value: 1 }));
+  const { mode, shares: shareList } = splitOrEqual(split ?? state.group.defaultSplit, state.people);
   const fromPool = state.poolAccountIds.includes(tx.accountId);
   return recordEvent(groupId, {
     kind: 'expense',
@@ -346,6 +347,165 @@ export function shareTransaction(groupId: string, transactionId: string, split?:
     mode,
     shares: shareList,
   });
+}
+
+/** A split to use: the one given (or the default), else equal between everyone */
+function splitOrEqual(split: DefaultSplit | null, members: { id: string }[]) {
+  return split && split.shares.length
+    ? { mode: split.mode, shares: split.shares }
+    : { mode: 'equal' as const, shares: members.map((p) => ({ personId: p.id, value: 1 })) };
+}
+
+/** Days back a shared recurring bill looks for payments by its payee */
+const BILL_PAYMENT_DAYS = 180;
+/** Payments listed per shared recurring bill, newest first */
+const BILL_PAYMENTS_SHOWN = 6;
+
+/**
+ * Recurring items shared with this household: each with its next date, what everyone's share
+ * of the expected amount comes to with the default split, and its recent payments (those
+ * matched to it in Recurring, or by its payee) with whether each is shared yet. Sharing one
+ * stays a click (POST /share), so nothing is recorded on a guess.
+ */
+function sharedRecurringBills(
+  groupId: string,
+  members: { id: string }[],
+  split: DefaultSplit | null,
+  poolAccountIds: string[],
+) {
+  const links = db.select().from(recurringBills).where(eq(recurringBills.groupId, groupId)).all();
+  if (!links.length) return [];
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const since = format(subDays(new Date(), BILL_PAYMENT_DAYS), 'yyyy-MM-dd');
+  const linked = new Set(
+    db
+      .select({ id: events.transactionId })
+      .from(events)
+      .where(isNotNull(events.transactionId))
+      .all()
+      .map((e) => e.id),
+  );
+  const { mode, shares: weights } = splitOrEqual(split, members);
+  return links.flatMap((link) => {
+    const schedule = db.select().from(schedules).where(eq(schedules.id, link.scheduleId)).get();
+    if (!schedule) return [];
+    const next = db
+      .select({
+        date: scheduleOccurrences.expectedDate,
+        amount: scheduleOccurrences.expectedAmount,
+      })
+      .from(scheduleOccurrences)
+      .where(
+        and(
+          eq(scheduleOccurrences.scheduleId, schedule.id),
+          eq(scheduleOccurrences.status, 'pending'),
+          gte(scheduleOccurrences.expectedDate, today),
+        ),
+      )
+      .orderBy(scheduleOccurrences.expectedDate)
+      .get();
+    const amount = Math.abs(next?.amount ?? schedule.amount);
+    const values = weights.map((w) => (mode === 'equal' ? 1 : w.value));
+    const amounts = amount && values.some((v) => v > 0) ? allocateShares(amount, values) : [];
+    const matchedIds = db
+      .select({ id: scheduleOccurrences.matchedTransactionId })
+      .from(scheduleOccurrences)
+      .where(
+        and(
+          eq(scheduleOccurrences.scheduleId, schedule.id),
+          isNotNull(scheduleOccurrences.matchedTransactionId),
+          gte(scheduleOccurrences.expectedDate, since),
+        ),
+      )
+      .all()
+      .map((o) => o.id!);
+    const candidates = [
+      ...new Set([
+        ...matchedIds,
+        ...(schedule.payeeId ? payeeTransactionIds(schedule.payeeId, since) : []),
+      ]),
+    ];
+    const payments = (
+      candidates.length
+        ? db
+            .select()
+            .from(transactions)
+            .where(inArray(transactions.id, candidates))
+            .orderBy(desc(transactions.date))
+            .all()
+        : []
+    )
+      .filter((t) => t.amount < 0 && !t.isParent && !t.transferTransactionId)
+      .slice(0, BILL_PAYMENTS_SHOWN)
+      .map((t) => ({
+        transactionId: t.id,
+        date: t.date,
+        amount: -t.amount,
+        shared: linked.has(t.id),
+      }));
+    return [
+      {
+        scheduleId: schedule.id,
+        name: schedule.name,
+        amount,
+        recurrenceType: schedule.recurrenceType,
+        status: schedule.status,
+        nextDate: next?.date ?? null,
+        paidFromPool: !!schedule.accountId && poolAccountIds.includes(schedule.accountId),
+        shares: weights.map((w, i) => ({ personId: w.personId, amount: amounts[i] ?? 0 })),
+        payments,
+      },
+    ];
+  });
+}
+
+function payeeTransactionIds(payeeId: string, since: string) {
+  return db
+    .select({ id: transactions.id })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.payeeId, payeeId),
+        gte(transactions.date, since),
+        lt(transactions.amount, 0),
+      ),
+    )
+    .all()
+    .map((t) => t.id);
+}
+
+/**
+ * Shares recurring items with a household. Each must be an active, repeating payment (money
+ * out, not a transfer) not already shared with another household.
+ */
+export function shareRecurringBills(groupId: string, scheduleIds: string[]) {
+  snapshot(groupId);
+  for (const scheduleId of new Set(scheduleIds)) {
+    const schedule = db.select().from(schedules).where(eq(schedules.id, scheduleId)).get();
+    if (!schedule) throw new Error('Recurring item not found');
+    if (schedule.amount >= 0 || schedule.transferAccountId)
+      throw new Error(`${schedule.name} isn't a bill: only payments can be shared`);
+    if (schedule.status !== 'active') throw new Error(`${schedule.name} isn't active`);
+    const existing = db
+      .select()
+      .from(recurringBills)
+      .where(eq(recurringBills.scheduleId, scheduleId))
+      .get();
+    if (existing && existing.groupId !== groupId)
+      throw new Error(`${schedule.name} is already shared with another household`);
+    if (!existing) db.insert(recurringBills).values({ scheduleId, groupId }).run();
+  }
+  return snapshot(groupId);
+}
+
+/** Stops listing a recurring item; its payments already shared stay in the household */
+export function unshareRecurringBill(groupId: string, scheduleId: string) {
+  const result = db
+    .delete(recurringBills)
+    .where(and(eq(recurringBills.groupId, groupId), eq(recurringBills.scheduleId, scheduleId)))
+    .run();
+  if (!result.changes) throw new Error('This recurring item is not shared with this household');
+  return snapshot(groupId);
 }
 
 /** Days back that money received is checked against what people owe */

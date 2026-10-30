@@ -48,6 +48,19 @@ days whose payee contains the name of someone who owes the household, up to what
 what is owed to you, and not yet linked. **Record repayment** saves it as their settlement to
 you. Nothing is recorded without that click.
 
+## Recurring bills
+
+Bills you already track in **Recurring** can be shared with a household: **Household → Recurring
+bills → Add recurring bills**, then tick the ones you split (any active, repeating payment that
+isn't a transfer). A bill is shared with one household at a time. Each one lists its frequency, its
+next date, everyone's share of the expected amount with the household's default split, and its
+payments from the last six months: those matched to it in Recurring, and those to its payee. A
+payment that isn't shared yet can be shared in one click (**Share _N_ payments**), which records it
+exactly as **Share with household** in Transactions does. Nothing is shared automatically; for
+that, add a rule with the **Share with household** action. **Stop sharing** takes a bill off the
+list and leaves its shared payments in the household. These links are in backup version 20
+(`household_recurring_bills`); older backups restore without them.
+
 ## Combining with another person
 
 With multi-user mode (separate budgets per person, `docs/MULTI-USER-PLAN.md`), two people who

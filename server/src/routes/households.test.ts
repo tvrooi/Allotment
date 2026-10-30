@@ -6,7 +6,15 @@ import type { Server } from 'http';
 import type { AddressInfo } from 'net';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { db } from '../db/index.js';
-import { accounts, transactions, categories, categoryGroups } from '../db/schema.js';
+import {
+  accounts,
+  transactions,
+  categories,
+  categoryGroups,
+  payees,
+  schedules,
+  scheduleOccurrences,
+} from '../db/schema.js';
 import { transactionsRouter } from './transactions.js';
 import { householdsRouter } from './households.js';
 import { accountsRouter } from './accounts.js';
@@ -402,5 +410,98 @@ describe('household attribution', () => {
       householdShares: backup.householdShares,
       householdBills: backup.householdBills,
     });
+  });
+
+  it("lists recurring bills shared with the household with everyone's share and unshared payments", async () => {
+    const g = await group();
+    const [me, alex, sam] = g.people;
+    const day = (offset: number) =>
+      new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+    db.insert(payees).values({ id: 'ovo', name: 'OVO Energy' }).run();
+    db.insert(schedules)
+      .values([
+        {
+          id: 'power',
+          name: 'Electricity (OVO)',
+          amount: -18450,
+          recurrenceType: 'monthly',
+          startDate: day(-60),
+          accountId: 'mine',
+          payeeId: 'ovo',
+        },
+        {
+          id: 'pay',
+          name: 'Salary',
+          amount: 500000,
+          recurrenceType: 'monthly',
+          startDate: day(-60),
+        },
+      ])
+      .run();
+    db.insert(transactions)
+      .values([
+        { id: 'ovo-1', accountId: 'mine', date: day(-40), amount: -18450, payeeId: 'ovo' },
+        { id: 'ovo-2', accountId: 'mine', date: day(-10), amount: -18452, payeeId: 'ovo' },
+      ])
+      .run();
+    db.insert(scheduleOccurrences)
+      .values({
+        id: 'power-next',
+        scheduleId: 'power',
+        scheduledDate: day(20),
+        expectedDate: day(20),
+        expectedAmount: -18450,
+      })
+      .run();
+
+    expect((await call(`/${g.group.id}/recurring-bills`, { scheduleIds: ['pay'] })).status).toBe(
+      400,
+    );
+    const shared = await call(`/${g.group.id}/recurring-bills`, { scheduleIds: ['power'] });
+    expect(shared.status).toBe(200);
+    const [bill] = shared.data.recurringBills;
+    expect(bill).toMatchObject({ name: 'Electricity (OVO)', amount: 18450, nextDate: day(20) });
+    expect(bill.shares).toEqual([
+      { personId: me.id, amount: 6150 },
+      { personId: alex.id, amount: 6150 },
+      { personId: sam.id, amount: 6150 },
+    ]);
+    expect(bill.payments.map((p: any) => [p.transactionId, p.shared])).toEqual([
+      ['ovo-2', false],
+      ['ovo-1', false],
+    ]);
+    // Only one household can share an item
+    const other = await group();
+    expect(
+      (await call(`/${other.group.id}/recurring-bills`, { scheduleIds: ['power'] })).status,
+    ).toBe(400);
+
+    // Sharing a payment is still the owner's click, through the usual share endpoint
+    await call(`/${g.group.id}/share`, { transactionIds: ['ovo-2'] });
+    const after = (await call(`/${g.group.id}`)).data.recurringBills[0];
+    expect(after.payments.find((p: any) => p.transactionId === 'ovo-2').shared).toBe(true);
+
+    // The default split applies to the preview too
+    await call(
+      `/${g.group.id}/default-split`,
+      {
+        mode: 'percentage',
+        shares: [
+          { personId: me.id, value: 5000 },
+          { personId: alex.id, value: 2500 },
+          { personId: sam.id, value: 2500 },
+        ],
+      },
+      'PUT',
+    );
+    expect((await call(`/${g.group.id}`)).data.recurringBills[0].shares[0].amount).toBe(9225);
+
+    expect(createBackup().householdRecurringBills).toEqual([
+      expect.objectContaining({ scheduleId: 'power', groupId: g.group.id }),
+    ]);
+    const stopped = await call(`/${g.group.id}/recurring-bills/power`, undefined, 'DELETE');
+    expect(stopped.data.recurringBills).toEqual([]);
+    // Shared payments stay in the household
+    expect(stopped.data.events.some((e: any) => e.transactionId === 'ovo-2')).toBe(true);
   });
 });

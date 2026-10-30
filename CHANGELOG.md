@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.65
+
+- **Recurring bills on the Household page.** Bills you set up in Recurring (power, gas, internet, water) can now be shared with a household: **Household → Recurring bills → Add recurring bills**, tick the ones you split. Each shows how often it comes, its next date, what everyone's share of it is with the household's default split, and whether its recent payments are shared yet. **Share _N_ payments** shares the ones that aren't, in one click; nothing is shared without it. **Stop sharing** takes a bill off the list and keeps what was already shared.
+- **A clearer Household page.** Balances say who owes and who is owed instead of a signed number. The household account figures (pool funding, bank cash, available to reserve) and **Bills to reserve for** only show when the household has its own account. The form for a one-off expense, advance or repayment opens from **Record something else**, and the page only loads recent payments while it's open, instead of every transaction in the budget. Percentage splits are typed as percentages, as in the default split, not basis points. The household's settings (accounts, default split, combining) moved to the bottom.
+
 ## 0.2.0-up.64
 
 - **Home Assistant releases no longer stall.** The ARM64 Home Assistant image built its web client under emulation, which froze the release three times (up.57, up.60 and up.63, which was never published). The client and server are now built natively for both architectures. Only the small runtime layer is assembled per architecture, and pull requests now build both architectures before a release.
