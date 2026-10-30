@@ -8,7 +8,7 @@ import { onBudget } from './balances.js';
 // Setup problems that quietly make a budget less useful, for the Review page and assistants:
 // - a budget counting years of imported history (every old purchase is overspending);
 // - Up round-up debits missing from an account the bank proves short by exactly those;
-// - movements to or from savers that aren't in FlyBudget (closed, or never connected), which
+// - movements to or from savers that aren't in Allotment (closed, or never connected), which
 //   otherwise look like spending and income;
 // - categories nothing has ever used.
 // Read-only: each item links to where the owner fixes it.
@@ -20,7 +20,7 @@ const HISTORY_MONTHS = 3;
 /** Ids listed per saver, for one bulk categorise */
 const MAX_IDS = 5000;
 
-/** A name as letters and digits only: Up savers are "Cat Vet", FlyBudget's "🐈 Cat Vet" */
+/** A name as letters and digits only: Up savers are "Cat Vet", Allotment's "🐈 Cat Vet" */
 const plainName = (name: string) => name.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
 
 const monthsBetween = (a: string, b: string) =>

@@ -1,5 +1,12 @@
 # Changes
 
+## 0.2.0-up.63
+
+- **FlyBudget is now Allotment.** Every dollar gets its plot. The app, desktop installers and Home Assistant app are called Allotment, with a new icon (three garden plots and a sprout) and the brand's Marigold, Soil and Canvas colours. See [docs/BRAND.md](docs/BRAND.md).
+- **Nothing to move.** Your budget, Up connection, passwords and settings stay where they are. The Home Assistant app keeps its ID and updates in place; it now shows as **Allotment** under Settings, Apps. The desktop app keeps its local budget and stored keys.
+- **New home on GitHub:** [tvrooi/Allotment](https://github.com/tvrooi/Allotment), no longer linked to the upstream fork network. The old address redirects. Desktop installers are now named `Allotment-…`.
+- **Desktop apps from before this release can't find updates by themselves** after the repository move. Download this release once from the Releases page; from then on, desktop update checks work again.
+
 ## 0.2.0-up.62
 
 - **Link Up to an account that already has history.** In **Connect Up**, **Link an existing account** now works for an AUD account with transactions. You pick the day Up takes over (by default the day after the account's newest transaction). Your history before that day stays exactly as it is; Up's transactions from that day on are imported. Up rows close to the cut-over, or that look like one you already have (same amount, within 2 days; 3 just after the cut-over), are imported and listed under **Possible duplicates from your old history** in Settings, Connected Banks, Up, where you choose **Keep both** or **Delete the older one**. Nothing is merged for you, a reconciled row is never deleted, and no opening-balance row is made: if your history disagrees with Up's balance on the day before the cut-over, the difference is shown and the usual "account disagrees with the bank" steps apply. Empty accounts link as before.

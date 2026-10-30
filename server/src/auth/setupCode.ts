@@ -31,7 +31,7 @@ export function setupCode(): string {
   if (!code) {
     code = randomCode();
     console.log(
-      '\nFlyBudget needs a password. Open it in your browser and enter this setup code:\n\n' +
+      '\nAllotment needs a password. Open it in your browser and enter this setup code:\n\n' +
         `    ${formatSetupCode(code)}\n`,
     );
   }

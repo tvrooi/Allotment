@@ -23,7 +23,7 @@ export const isoMonth = z.string().regex(MONTH_RE, 'Expected a month as YYYY-MM'
 export const isMonth = (value: unknown): value is string =>
   typeof value === 'string' && MONTH_RE.test(value);
 
-/** An ISO 4217 currency code FlyBudget knows (EUR, USD, PLN…) */
+/** An ISO 4217 currency code Allotment knows (EUR, USD, PLN…) */
 export const currencySchema = z
   .string()
   .transform((s) => s.toUpperCase())

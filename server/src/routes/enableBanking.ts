@@ -72,7 +72,7 @@ function requireConfig(res: Parameters<RequestHandler>[1]) {
 
 function sendError(res: Parameters<RequestHandler>[1], context: string, err: unknown) {
   logError(context, err);
-  // Never 502-504: the client takes those to mean FlyBudget's own server is unreachable
+  // Never 502-504: the client takes those to mean Allotment's own server is unreachable
   const status = err instanceof EnableBankingError ? 422 : 500;
   res.status(status).json({ error: enableBankingErrorMessage(err) });
 }
@@ -569,7 +569,7 @@ function callbackPage(title: string, message: string): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(title)} · FlyBudget</title>
+<title>${escapeHtml(title)} · Allotment</title>
 <style>
   body { font-family: system-ui, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; display: grid; place-items: center; min-height: 100vh; padding: 16px; box-sizing: border-box; }
   main { max-width: 28rem; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; }
@@ -607,8 +607,8 @@ export const enableBankingCallback: RequestHandler = async (req, res) => {
         callbackPage(
           outcome.error === 'used' ? 'Already done' : 'Link expired',
           outcome.error === 'used'
-            ? 'This bank login was already received. You can close this tab and go back to FlyBudget.'
-            : 'FlyBudget is not waiting for this bank login (it may have expired). Go back to FlyBudget and connect the bank again.',
+            ? 'This bank login was already received. You can close this tab and go back to Allotment.'
+            : 'Allotment is not waiting for this bank login (it may have expired). Go back to Allotment and connect the bank again.',
         ),
       );
     return;
@@ -620,7 +620,7 @@ export const enableBankingCallback: RequestHandler = async (req, res) => {
       .send(
         callbackPage(
           'Bank connected',
-          'You can close this tab and go back to FlyBudget to choose which accounts to sync.',
+          'You can close this tab and go back to Allotment to choose which accounts to sync.',
         ),
       );
   } else {
@@ -632,7 +632,7 @@ export const enableBankingCallback: RequestHandler = async (req, res) => {
           'Bank not connected',
           poll.status === 'error'
             ? poll.message
-            : 'Go back to FlyBudget and connect the bank again.',
+            : 'Go back to Allotment and connect the bank again.',
         ),
       );
   }

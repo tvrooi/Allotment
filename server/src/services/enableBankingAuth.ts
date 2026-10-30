@@ -10,7 +10,7 @@ import { makeState } from './enableBankingTransactions.js';
 // - desktop app and `npm run dev`: Enable Banking only accepts https redirect URLs, so
 //   through a static page on flybudget.org that forwards it to 127.0.0.1 on the user's
 //   computer (the port is in the state);
-// - or the user pastes the address they landed on into FlyBudget.
+// - or the user pastes the address they landed on into Allotment.
 //
 // The `state` is the only proof the callback has (the bank's redirect carries no session
 // cookie or API token), so it is 32 random bytes, used once, and forgotten after 30 minutes.

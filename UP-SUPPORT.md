@@ -1,20 +1,20 @@
 # Connecting Up
 
-FlyBudget can import your Up transactions directly, using a personal access token that only you
-hold. New to FlyBudget? Begin with [Start here](docs/START-HERE.md), which covers installing and
+Allotment can import your Up transactions directly, using a personal access token that only you
+hold. New to Allotment? Begin with [Start here](docs/START-HERE.md), which covers installing and
 making the token.
 
 ## Connect your accounts
 
 1. Create a personal access token at [Up's developer portal](https://api.up.com.au/).
    [Start here](docs/START-HERE.md#make-an-up-token) has the three short steps.
-2. In FlyBudget choose **Connect Up** on the welcome screen, or **Settings → Connected Banks → Up →
+2. In Allotment choose **Connect Up** on the welcome screen, or **Settings → Connected Banks → Up →
    Connect Up**.
 3. Paste the token and select **Connect**. Do not put it in a GitHub issue or send it in chat.
 4. For each Up account choose **Create a new account**, link an AUD account you already have, or skip it.
    An account that already has transactions is linked from a **cut-over date** you choose: its older
    history stays, and Up's transactions from that day on are added.
-5. Select **Save & Sync**. FlyBudget then offers **Sort your first import**. Later, use **Sync Now** to
+5. Select **Save & Sync**. Allotment then offers **Sort your first import**. Later, use **Sync Now** to
    sync again. A desktop budget also syncs when the app starts; a Home Assistant budget syncs when
    the app starts.
 
@@ -27,14 +27,14 @@ Sync reports whether Up could be reached and its transactions imported, and **La
 with every successful import. A register that differs from Up's settled balance doesn't fail the
 sync. The account shows "Up says $X" beside its balance, and **Settings → Connected Banks → Up →
 Round-up accounting check** explains the difference (for example round-ups Up doesn't list) or links
-to **Reconcile**. FlyBudget never adjusts the balance by itself.
+to **Reconcile**. Allotment never adjusts the balance by itself.
 
 ## Current limits
 
 - Sync runs at startup, with **Sync Now**, and optionally in the background (15, 30, 60 or 240
   minutes, with backoff after failures). It fetches full history on every sync, so large accounts
   can take time or hit Up's rate limit.
-- Internal transfers use FlyBudget's existing transfer-review flow. Link the two sides in the
+- Internal transfers use Allotment's existing transfer-review flow. Link the two sides in the
   register before relying on income and spending reports.
 - Round-ups: Up attaches round-up details to a purchase, but does not link it to the Saver credit.
   **Round-up accounting check** (Settings → Connected Banks → Up) compares each account's register

@@ -1,4 +1,4 @@
-# Phase 10: a warmer FlyBudget
+# Phase 10: a warmer Allotment
 
 Added 22 October 2026. Status: implemented; local verification completed below.
 Release delivery is tracked separately in the feature PR.
@@ -35,7 +35,7 @@ bank integration or authorization changes belong in this phase.
    relevant existing desktop/phone browser flows. Visually inspect populated
    desktop/phone screens, dark mode and representative forms using disposable mock
    data. Check text/action contrast and overflow. Prepare the next release,
-   review the diff and open a PR to `tvrooi/FlyBudget`; merge only green CI.
+   review the diff and open a PR to `tvrooi/Allotment`; merge only green CI.
 
 ## Acceptance
 

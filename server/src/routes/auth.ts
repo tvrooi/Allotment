@@ -160,7 +160,7 @@ authRouter.post('/forgot', forgotRateLimit, (_req, res) => {
   if (!isPasswordSet()) return res.status(409).json({ error: 'No password has been set yet' });
   const code = issueResetCode();
   console.log(
-    '\nFlyBudget password reset. Open FlyBudget in your browser and enter this code (it works once, for 24 hours):\n\n' +
+    '\nAllotment password reset. Open Allotment in your browser and enter this code (it works once, for 24 hours):\n\n' +
       `    ${code}\n`,
   );
   const canNotify = canNotifyHomeAssistant();

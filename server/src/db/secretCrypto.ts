@@ -73,7 +73,7 @@ function loadDataKey(): string | undefined {
   } catch (err) {
     throw new Error(
       `Can't read the encryption key file ${file} (${(err as NodeJS.ErrnoException).code}). ` +
-        'It must exist and be readable by the user FlyBudget runs as (user id 1000 in Docker).',
+        'It must exist and be readable by the user Allotment runs as (user id 1000 in Docker).',
     );
   }
 }

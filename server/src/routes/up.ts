@@ -264,7 +264,7 @@ upRouter.post('/map-accounts', (req, res) => {
         targetIds.has(local.id) ||
         mappings.some((m) => m.upAccountId !== choice.upAccountId && m.accountId === local.id)
       )
-        return res.status(409).json({ error: 'Each Up account needs its own FlyBudget account.' });
+        return res.status(409).json({ error: 'Each Up account needs its own Allotment account.' });
       targetIds.add(local.id);
     }
   }

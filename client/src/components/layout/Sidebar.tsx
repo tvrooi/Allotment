@@ -142,11 +142,10 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
         <img src={logoUrl} alt="" className="w-7 h-7 shrink-0" />
         {/* Brand colours follow the light and dark navigation surfaces. */}
         <BrandName
-          className={`text-sm font-semibold tracking-tight transition-opacity duration-200 ${
+          className={`text-base transition-opacity duration-200 ${
             isExpanded ? 'opacity-100' : 'opacity-0'
           }`}
-          flyClassName="text-brand-600"
-          budgetClassName="text-sidebar-text-hi"
+          textClassName="text-sidebar-text-hi"
         />
         <div
           className={`ml-auto -mr-1.5 flex items-center gap-0.5 transition-opacity duration-200 ${

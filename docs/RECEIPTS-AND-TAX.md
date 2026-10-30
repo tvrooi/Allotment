@@ -17,11 +17,11 @@ From `docs/research/monarch-action-catalog.md`, `monarch-live-audit-continued.md
   attachments**.
 - Monarch has no tax-deduction feature.
 
-FlyBudget takes the upload, paste, inbox, matching and attachment ideas, and (since 0.2.0-up.43) splitting by line items. It leaves out two:
+Allotment takes the upload, paste, inbox, matching and attachment ideas, and (since 0.2.0-up.43) splitting by line items. It leaves out two:
 
 - **Email forwarding** would need an inbound mail service exposed to the internet, which a private,
   self-hosted budget should not run.
-- **Server-side AI parsing** would send receipts to a third party. FlyBudget can instead read
+- **Server-side AI parsing** would send receipts to a third party. Allotment can instead read
   photos with a model on the owner's own Ollama server (§5, since 0.2.0-up.44).
 
 The owner types a receipt's details and line items, and matching and splitting use those.
@@ -162,7 +162,7 @@ records, not only tax evidence.
     about 75 s to take in even a small image, so allow 2 to 4 minutes a photo.
   - Read-only tokens reach none of it (`/receipts` is not on the allowlist).
 - **Not built:** email forwarding (it needs an inbound mail service exposed to the internet) and a
-  "pending" state (FlyBudget imports settled transactions only).
+  "pending" state (Allotment imports settled transactions only).
 
 ## 6. Not built
 

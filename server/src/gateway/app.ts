@@ -304,8 +304,8 @@ export function createGateway(o: GatewayOptions) {
         void o
           .notify(
             person.notifyService,
-            'FlyBudget password reset',
-            `Your FlyBudget code is ${code}. It works once, for ${person.isAdmin ? '24 hours' : '10 minutes'}. If you didn't ask for it, ignore this message.`,
+            'Allotment password reset',
+            `Your Allotment code is ${code}. It works once, for ${person.isAdmin ? '24 hours' : '10 minutes'}. If you didn't ask for it, ignore this message.`,
           )
           .catch((e) => console.error('A password code could not be sent:', (e as Error).message));
       if (code && person.isAdmin)
@@ -401,8 +401,8 @@ export function createGateway(o: GatewayOptions) {
     try {
       await o.notify(
         person.notifyService,
-        'FlyBudget',
-        'Password codes for FlyBudget will come here.',
+        'Allotment',
+        'Password codes for Allotment will come here.',
       );
       res.status(204).send();
     } catch (e) {

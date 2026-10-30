@@ -7,13 +7,13 @@ import { lastHostKind } from '../../utils/hostKind';
 import { RetryProgress, retryLabel } from './RetryStatus';
 
 const TITLES: Record<AppMode, string> = {
-  desktop: 'FlyBudget is starting up again',
+  desktop: 'Allotment is starting up again',
   server: 'Reconnecting to your server',
-  dev: 'Reconnecting to FlyBudget',
+  dev: 'Reconnecting to Allotment',
 };
 
 /**
- * Shown instead of the app when FlyBudget's server can't be reached on startup. Keeps
+ * Shown instead of the app when Allotment's server can't be reached on startup. Keeps
  * retrying on its own (see store/connectionStore.ts); the app loads, without a page
  * reload, as soon as the server answers.
  */
@@ -48,7 +48,7 @@ export function ReconnectScreen({ mode, onRetry }: { mode: AppMode; onRetry: () 
               <span className="w-2 h-2 rounded-full bg-caution shrink-0" aria-hidden />
             )}
             {serverError
-              ? "FlyBudget's server answered with an error."
+              ? "Allotment's server answered with an error."
               : mode === 'desktop'
                 ? retryLabel(connection)
                 : `Can't reach it right now. ${retryLabel(connection)}`}
@@ -62,7 +62,7 @@ export function ReconnectScreen({ mode, onRetry }: { mode: AppMode; onRetry: () 
 
         {mode === 'desktop' && (
           <p className="text-xs text-text-tertiary leading-relaxed">
-            If this doesn't go away, quit FlyBudget and open it again. Your data is safe on this
+            If this doesn't go away, quit Allotment and open it again. Your data is safe on this
             computer.
           </p>
         )}
@@ -81,7 +81,7 @@ export function ReconnectScreen({ mode, onRetry }: { mode: AppMode; onRetry: () 
               <p>Your budget is safe on the server; this page just can't reach it.</p>
               {lastHostKind() === 'home-assistant' ? (
                 <p>
-                  In Home Assistant, open Settings → Apps → FlyBudget. Check that it says Started
+                  In Home Assistant, open Settings → Apps → Allotment. Check that it says Started
                   (start it if not), then look at the Log tab to see what it printed.
                 </p>
               ) : (

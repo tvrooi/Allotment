@@ -5,10 +5,10 @@ import { PERSON_CHANGED_CODE, PERSON_CHANGED_EVENT, PERSON_HEADER, signedInPerso
 
 export const AUTH_REQUIRED_EVENT = 'flybudget:auth-required';
 
-/** The request never reached FlyBudget's server (it's restarting, stopped, or offline). */
+/** The request never reached Allotment's server (it's restarting, stopped, or offline). */
 export class NetworkError extends Error {
   constructor() {
-    super("Can't reach FlyBudget right now. Nothing was saved; try again once it reconnects.");
+    super("Can't reach Allotment right now. Nothing was saved; try again once it reconnects.");
     this.name = 'NetworkError';
   }
 }

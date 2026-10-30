@@ -25,8 +25,8 @@ export function notifyResetCode(code: string, fetchImpl: typeof fetch = fetch) {
   return call(
     'create',
     {
-      title: 'FlyBudget password reset',
-      message: `Your FlyBudget reset code is ${code}. It works once, for 24 hours. If you did not ask for it, ignore this and no one can sign in with it.`,
+      title: 'Allotment password reset',
+      message: `Your Allotment reset code is ${code}. It works once, for 24 hours. If you did not ask for it, ignore this and no one can sign in with it.`,
     },
     fetchImpl,
   );

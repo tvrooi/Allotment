@@ -396,7 +396,7 @@ export type SyncedTransfer = 'linked' | 'unlinked' | 'locked';
 
 /**
  * A bank sync changed one side of a linked transfer (`before` → `date`/`amount`, with the
- * bank's new text). A side that wasn't imported (FlyBudget created it, or you entered it)
+ * bank's new text). A side that wasn't imported (Allotment created it, or you entered it)
  * follows the date and amount, like a manual edit. When both were imported, a new date keeps
  * the link and a new amount unlinks both (not dismissed: if they still match, they're suggested
  * again). Call it before saving the change.

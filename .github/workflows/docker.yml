@@ -12,7 +12,7 @@ name: Docker
 # weekly; results appear under Security → Code scanning.
 #
 # Verify an image with:
-#   gh attestation verify oci://ghcr.io/tvrooi/flybudget:<version> -R tvrooi/FlyBudget
+#   gh attestation verify oci://ghcr.io/tvrooi/flybudget:<version> -R tvrooi/Allotment
 
 on:
   push:
@@ -185,8 +185,8 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},enable=${{ !contains(github.ref_name, '-') }}
             type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') || startsWith(github.ref_name, 'v0.') }}
           labels: |
-            org.opencontainers.image.title=FlyBudget
-            org.opencontainers.image.description=Self-hosted FlyBudget server
+            org.opencontainers.image.title=Allotment
+            org.opencontainers.image.description=Self-hosted Allotment server
             org.opencontainers.image.licenses=AGPL-3.0-only
 
       - id: push

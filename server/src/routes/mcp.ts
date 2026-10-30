@@ -216,7 +216,7 @@ const TOOLS: Tool[] = [
   {
     name: 'budget_housekeeping',
     description:
-      "Setup problems that make the budget less useful: no budget start with years of history (suggestion = a month to start from), Up accounts missing round-up debits, uncategorised movements to or from savers that aren't in FlyBudget (grouped by saver, with ids), and how many categories were never used.",
+      "Setup problems that make the budget less useful: no budget start with years of history (suggestion = a month to start from), Up accounts missing round-up debits, uncategorised movements to or from savers that aren't in Allotment (grouped by saver, with ids), and how many categories were never used.",
     path: () => '/review/housekeeping',
   },
   {
@@ -825,16 +825,16 @@ async function callApi(req: Request, path: string, method = 'GET', body?: unknow
 }
 
 const TITLES: Record<TokenScope, string> = {
-  read: 'FlyBudget (read-only)',
-  categorise: 'FlyBudget (read and categorise)',
-  organise: 'FlyBudget (read, categorise and organise)',
+  read: 'Allotment (read-only)',
+  categorise: 'Allotment (read and categorise)',
+  organise: 'Allotment (read, categorise and organise)',
 };
 const BASICS =
   'Amounts are integer minor units (cents); a negative transaction amount is money out. Use list_* tools for ids, then filter transactions and reports with them. Money received in budget accounts is ready to assign to envelopes; income categories only label it for reports. Household pool accounts sit outside the personal budget. Envelopes count from budget_start; earlier history is only in reports. find_transactions pages with limit and offset, and fields keeps results short.';
 const INSTRUCTIONS: Record<TokenScope, string> = {
-  read: `Read-only access to a FlyBudget budget. ${BASICS}`,
-  categorise: `Read access to a FlyBudget budget, plus setting the category of past transactions (categorise_transactions, categorise_by_payee) and creating and editing categories and groups; nothing else can change. ${BASICS} Start from uncategorised_payees. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before categorising.`,
-  organise: `Read access to a FlyBudget budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers and suggesting assignments the owner applies. ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
+  read: `Read-only access to an Allotment budget. ${BASICS}`,
+  categorise: `Read access to an Allotment budget, plus setting the category of past transactions (categorise_transactions, categorise_by_payee) and creating and editing categories and groups; nothing else can change. ${BASICS} Start from uncategorised_payees. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before categorising.`,
+  organise: `Read access to an Allotment budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers and suggesting assignments the owner applies. ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
 };
 
 const schemaOf = (t: { properties?: Record<string, unknown>; required?: string[] }) => ({

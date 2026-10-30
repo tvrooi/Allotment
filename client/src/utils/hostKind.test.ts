@@ -4,7 +4,7 @@ import { whereIsTheLog } from './hostKind';
 describe('whereIsTheLog', () => {
   it('points Home Assistant users at the app Log', () => {
     expect(whereIsTheLog('home-assistant')).toBe(
-      'Find it in Home Assistant: Settings → Apps → FlyBudget → Log.',
+      'Find it in Home Assistant: Settings → Apps → Allotment → Log.',
     );
     expect(whereIsTheLog('home-assistant', { notifications: true })).toContain('Notifications');
   });

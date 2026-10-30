@@ -39,8 +39,8 @@ test('the assign block names the account, the gap and links to the fixes', async
   await input.fill('100');
   await input.press('Enter');
   const alert = page.getByRole('alert').filter({ hasText: "Money can't be assigned" });
-  await expect(alert).toContainText(`${bank.name}: FlyBudget has`);
-  await expect(alert).toContainText('14.50 less in FlyBudget');
+  await expect(alert).toContainText(`${bank.name}: Allotment has`);
+  await expect(alert).toContainText('14.50 less in Allotment');
 
   await expect(alert.getByRole('link', { name: 'reconcile it' })).toHaveAttribute(
     'href',

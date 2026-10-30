@@ -364,7 +364,7 @@ function YnabImportDialog({ onClose }: Props) {
                 <section aria-label="Accounts" className="space-y-2">
                   <h3 className="text-sm font-semibold text-text">Accounts</h3>
                   <p className="text-xs text-text-secondary">
-                    One FlyBudget account for each YNAB account. New accounts start at $0.00 and
+                    One Allotment account for each YNAB account. New accounts start at $0.00 and
                     follow their transactions, the way YNAB's own starting balance entries do.
                   </p>
                   <div className="border border-border rounded-lg divide-y divide-border-light">
@@ -384,7 +384,7 @@ function YnabImportDialog({ onClose }: Props) {
                           </p>
                           <div className="space-y-1">
                             <select
-                              aria-label={`FlyBudget account for ${name}`}
+                              aria-label={`Allotment account for ${name}`}
                               className={selectClass}
                               disabled={busy || done.some((d) => d.name === name)}
                               value={target?.kind === 'existing' ? target.accountId : '__new'}

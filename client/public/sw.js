@@ -1,5 +1,5 @@
-// FlyBudget's service worker: keeps the app itself (its page, scripts, styles and fonts)
-// on this device, so FlyBudget still opens when its server can't be reached. Budget data
+// Allotment's service worker: keeps the app itself (its page, scripts, styles and fonts)
+// on this device, so Allotment still opens when its server can't be reached. Budget data
 // never goes through here: /api requests always go to the server, and the app's own
 // offline copy (src/offline/) covers them.
 //

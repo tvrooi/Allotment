@@ -21,6 +21,17 @@ import { serverDrawsMacWindow, withMacWindowAgent } from './macWindow';
 
 const IS_DEV = process.env.ELECTRON_DEV === 'true';
 const PORT = 58342;
+const DISPLAY_NAME = 'Allotment';
+
+// Allotment was called FlyBudget. An installed app keeps its local budget, credentials.key
+// and the OS keychain entry that unlocks that key under the old name, so the packaged app
+// keeps it internally, set before anything reads userData or safeStorage. People only see
+// DISPLAY_NAME: the bundle (productName), window titles, menus and dialogs.
+if (app.isPackaged) {
+  app.setName('FlyBudget');
+  app.setPath('userData', path.join(app.getPath('appData'), 'FlyBudget'));
+}
+app.setAboutPanelOptions({ applicationName: DISPLAY_NAME });
 
 // Per-launch secret for the embedded API (see server/src/middleware/security.ts).
 // Only this app's window gets it, as an HttpOnly cookie, so other programs or
@@ -202,7 +213,7 @@ async function openWindow(): Promise<void> {
     minWidth: 900,
     minHeight: 600,
     icon: iconPath,
-    title: remote ? `FlyBudget — ${new URL(appUrl).host}` : 'FlyBudget',
+    title: remote ? `${DISPLAY_NAME} — ${new URL(appUrl).host}` : DISPLAY_NAME,
     ...(seamless && {
       titleBarStyle: 'hidden',
       trafficLightPosition: { x: 16, y: 14 },
@@ -252,7 +263,7 @@ async function openWindow(): Promise<void> {
     if (win.isDestroyed()) return;
     if (remote) {
       showLocationPicker(
-        'Could not reach the server. Check that FlyBudget is running and your home network or VPN is connected, then connect again.',
+        'Could not reach the server. Check that Allotment is running and your home network or VPN is connected, then connect again.',
       );
       win.close();
     }
@@ -264,7 +275,25 @@ let updates: ReturnType<typeof desktopUpdates> | null = null;
 // Keep the server selector and updater available even when the budget server cannot be reached.
 Menu.setApplicationMenu(
   Menu.buildFromTemplate([
-    ...(process.platform === 'darwin' ? [{ role: 'appMenu' as const }] : []),
+    // Not `role: 'appMenu'`: its labels use app.name, which stays FlyBudget (see above)
+    ...(process.platform === 'darwin'
+      ? [
+          {
+            label: DISPLAY_NAME,
+            submenu: [
+              { role: 'about' as const, label: `About ${DISPLAY_NAME}` },
+              { type: 'separator' as const },
+              { role: 'services' as const },
+              { type: 'separator' as const },
+              { role: 'hide' as const, label: `Hide ${DISPLAY_NAME}` },
+              { role: 'hideOthers' as const },
+              { role: 'unhide' as const },
+              { type: 'separator' as const },
+              { role: 'quit' as const, label: `Quit ${DISPLAY_NAME}` },
+            ],
+          },
+        ]
+      : []),
     {
       label: 'Budget',
       submenu: [
@@ -360,10 +389,10 @@ app.whenReady().then(async () => {
       await waitForServer(PORT);
     } catch (err) {
       // e.g. the port is taken by another program. Don't open a window that would load it.
-      console.error('FlyBudget failed to start:', err);
+      console.error('Allotment failed to start:', err);
       dialog.showErrorBox(
-        'FlyBudget could not start',
-        `FlyBudget's local server could not start on port ${PORT}. If FlyBudget is already ` +
+        'Allotment could not start',
+        `Allotment's local server could not start on port ${PORT}. If Allotment is already ` +
           'running, close it and try again; otherwise another program may be using the port.\n\n' +
           String((err as Error)?.message ?? err),
       );

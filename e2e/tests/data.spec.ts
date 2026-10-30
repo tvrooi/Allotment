@@ -413,7 +413,7 @@ test.describe('CSV import', () => {
     await dialog.getByRole('button', { name: 'Import 1 Transactions' }).click();
     await dialog.getByRole('button', { name: 'Done' }).click();
 
-    // Another export with other columns and the words FlyBudget knows
+    // Another export with other columns and the words Allotment knows
     dialog = await importCsv(
       page,
       'Datum,Naam / Omschrijving,Af Bij,Bedrag (EUR)\r\n' +
@@ -639,7 +639,7 @@ test.describe('export, backup and restore', () => {
       .getByRole('dialog', { name: 'Restore this backup?' })
       .getByRole('button', { name: 'Replace my data' })
       .click();
-    await expect(page.getByRole('status')).toContainText('This is not a FlyBudget backup file');
+    await expect(page.getByRole('status')).toContainText('This is not an Allotment backup file');
     expect((await api.accounts()).map((a) => a.name)).toEqual(['Checking']);
 
     await page.getByLabel('Backup file').setInputFiles({
@@ -648,7 +648,7 @@ test.describe('export, backup and restore', () => {
       buffer: Buffer.from('{not json'),
     });
     await expect(page.getByRole('status')).toContainText(
-      'broken.json is not a FlyBudget backup file',
+      'broken.json is not an Allotment backup file',
     );
   });
 });

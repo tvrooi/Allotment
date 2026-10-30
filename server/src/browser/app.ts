@@ -31,7 +31,7 @@ import { prioritiesRouter } from '../routes/priorities.js';
 import { currencyRouter } from '../routes/currency.js';
 
 /** Answer for anything that needs a real server: bank connections, sign-in. */
-const NOT_IN_DEMO = "This isn't available in the demo. Download FlyBudget to use it.";
+const NOT_IN_DEMO = "This isn't available in the demo. Download Allotment to use it.";
 
 const app = Router();
 

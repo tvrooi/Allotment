@@ -167,7 +167,7 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
         {!discovered && (
           <>
             <p className="text-sm text-text-secondary">
-              Connect directly to Up using your personal access token. FlyBudget imports settled AUD
+              Connect directly to Up using your personal access token. Allotment imports settled AUD
               transactions from the accounts you choose, including Savers and 2Up accounts available
               to your token.
             </p>
@@ -190,7 +190,7 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
               />
             </label>
             <p className="text-xs text-text-tertiary">
-              Your token stays on this FlyBudget installation and is excluded from exported backups.
+              Your token stays on this Allotment installation and is excluded from exported backups.
             </p>
             <Button onClick={connect} disabled={!canSave || busy || !token.trim()}>
               {busy && <Loader2 size={14} className="animate-spin" />} Connect
@@ -300,7 +300,7 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
                           Your existing history up to {formatDay(dayBefore(choice.cutoverDate))}{' '}
                           stays as it is. Up’s transactions from {formatDay(choice.cutoverDate)}{' '}
                           onwards are imported. Anything that looks like a repeat is kept and listed
-                          for you to check; FlyBudget never merges or adjusts anything by itself.
+                          for you to check; Allotment never merges or adjusts anything by itself.
                         </p>
                       </div>
                     )}

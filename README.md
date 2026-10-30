@@ -1,9 +1,16 @@
-# FlyBudget Up community fork
+<p align="center"><img src="client/public/logo.svg" alt="" width="88" /></p>
+
+# Allotment
+
+**Every dollar gets its plot.**
 
 A private budgeting app with a direct connection to Up Bank. It keeps your budget on your own
-computer or your own Home Assistant, with no FlyBudget account and no tracking.
-This is a community fork of [dtymoszenko/FlyBudget](https://github.com/dtymoszenko/FlyBudget),
-not an official FlyBudget, Up or Home Assistant release.
+computer or your own Home Assistant, with no Allotment account and no tracking.
+
+Allotment was the FlyBudget Up fork. It is built on
+[dtymoszenko/FlyBudget](https://github.com/dtymoszenko/FlyBudget) and stays AGPL-3.0-only; it is
+not an official FlyBudget, Up or Home Assistant release. Existing installs keep their budget,
+settings and Home Assistant app when they update ([what changed](docs/BRAND.md#renaming-from-flybudget)).
 
 ## Who it is for
 
@@ -33,14 +40,14 @@ Unsure of a word? See the [glossary](docs/GLOSSARY.md).
 ## Security and privacy
 
 Your budget and your Up token stay on your own server or computer. The token is encrypted, read-only
-and never included in exports. FlyBudget uses HTTP only on a trusted home network and never skips
-certificate checks. [Report security issues privately](https://github.com/tvrooi/FlyBudget/security/advisories/new).
+and never included in exports. Allotment uses HTTP only on a trusted home network and never skips
+certificate checks. [Report security issues privately](https://github.com/tvrooi/Allotment/security/advisories/new).
 See [SECURITY.md](SECURITY.md). Never put tokens, databases or private exports in issues.
 
 ## Help and downloads
 
-[Downloads](https://github.com/tvrooi/FlyBudget/releases) and
-[issues](https://github.com/tvrooi/FlyBudget/issues) for this fork are on GitHub. Changes and
+[Downloads](https://github.com/tvrooi/Allotment/releases) and
+[issues](https://github.com/tvrooi/Allotment/issues) for this fork are on GitHub. Changes and
 development: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licence and upstream credit

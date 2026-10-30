@@ -27,8 +27,8 @@ export function lastHostKind(): HostKind | undefined {
 export function whereIsTheLog(kind: HostKind | undefined, { notifications = false } = {}): string {
   if (kind === 'home-assistant')
     return notifications
-      ? 'Find it in Home Assistant: Settings → Apps → FlyBudget → Log (or the Notifications bell in the sidebar).'
-      : 'Find it in Home Assistant: Settings → Apps → FlyBudget → Log.';
+      ? 'Find it in Home Assistant: Settings → Apps → Allotment → Log (or the Notifications bell in the sidebar).'
+      : 'Find it in Home Assistant: Settings → Apps → Allotment → Log.';
   if (kind === 'docker') return 'Docker: run docker logs flybudget on the server.';
-  return "Find it in the server's log, wherever FlyBudget runs.";
+  return "Find it in the server's log, wherever Allotment runs.";
 }

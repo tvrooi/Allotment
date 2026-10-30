@@ -241,7 +241,7 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
     // The server's limit: say so, rather than fail the whole file with a generic error
     if (rows.length > MAX_IMPORT_ROWS) {
       setError(
-        `This file has ${rows.length.toLocaleString()} transactions. FlyBudget imports up to ${MAX_IMPORT_ROWS.toLocaleString()} at a time: split it into smaller files.`,
+        `This file has ${rows.length.toLocaleString()} transactions. Allotment imports up to ${MAX_IMPORT_ROWS.toLocaleString()} at a time: split it into smaller files.`,
       );
       return;
     }
@@ -305,7 +305,7 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
     if (/\.xml$/i.test(file.name) || looksLikeCamt(start)) {
       const found = parseCamt(decodeCamtBytes(buffer));
       if (!found?.length) {
-        setError("This file isn't a bank statement FlyBudget can read (CAMT.053)");
+        setError("This file isn't a bank statement Allotment can read (CAMT.053)");
         return;
       }
       const known = (await savedImport())?.statementAccount ?? null;
@@ -817,7 +817,7 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
                       : 'Rows in this file write amounts in different formats. ')}
                   {(!dateFormat || !numberFormat) && 'Choose the format your bank uses. '}
                   {needsOutWord &&
-                    `FlyBudget doesn't know what ${detected.unknownDirections
+                    `Allotment doesn't know what ${detected.unknownDirections
                       .slice(0, 3)
                       .map((w) => `"${w}"`)
                       .join(

@@ -1061,7 +1061,7 @@ export interface EnableBankingStatus {
 export interface EnableBankingConfigureResult {
   applicationName: string | null;
   environment: string | null;
-  /** Whether the application lists FlyBudget's redirect URL; null when it couldn't be checked */
+  /** Whether the application lists Allotment's redirect URL; null when it couldn't be checked */
   redirectUrlRegistered: boolean | null;
 }
 
@@ -1124,7 +1124,7 @@ export interface EnableBankingSyncResult {
   connectionId: string;
   bankName: string;
   added: number;
-  /** Already in FlyBudget (from a file or typed in), now recognised as the bank's */
+  /** Already in Allotment (from a file or typed in), now recognised as the bank's */
   adopted: number;
   skipped: { noDate: number; badAmount: number; otherCurrency: number };
   errors: string[];

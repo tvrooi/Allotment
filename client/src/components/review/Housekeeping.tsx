@@ -45,7 +45,7 @@ export function Housekeeping() {
           <div key={r.accountId} className="text-sm">
             <p className="font-medium text-text">{r.accountName} is missing round-ups</p>
             <p className="text-text-secondary">
-              Up's balance is {formatCurrency(r.total)} lower than FlyBudget's, exactly the{' '}
+              Up's balance is {formatCurrency(r.total)} lower than Allotment's, exactly the{' '}
               {r.count} round-up {r.count === 1 ? 'debit' : 'debits'} that never imported. Spending
               looks smaller than it is until they're added.
             </p>
@@ -136,13 +136,13 @@ function SaverItem({ savers }: { savers: HousekeepingData['unlinkedSavers'] }) {
   );
   return (
     <div className="text-sm">
-      <p className="font-medium text-text">Movements to savers that aren't in FlyBudget</p>
+      <p className="font-medium text-text">Movements to savers that aren't in Allotment</p>
       <p className="text-text-secondary">
         Up names these after savers you closed or never connected. Uncategorised, they look like
         spending and income. Give each saver one category (for example a transfers category), or add
         the saver as an account and link them.
       </p>
-      <ul aria-label="Savers not in FlyBudget" className="mt-2 space-y-2">
+      <ul aria-label="Savers not in Allotment" className="mt-2 space-y-2">
         {savers.map((s) => (
           <li key={s.name} className="flex flex-wrap items-center gap-2">
             <span className="flex-1 min-w-40">

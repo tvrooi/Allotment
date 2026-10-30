@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-FlyBudget is a single-user, local-first app under active development. Security
+Allotment is a single-user, local-first app under active development. Security
 fixes land on `main` and ship in the next release; older releases are not patched.
 
 | Version                 | Supported          |
@@ -15,7 +15,7 @@ fixes land on `main` and ship in the next release; older releases are not patche
 **Please do not open a public issue for security problems.**
 
 Report privately through GitHub: go to the
-[Security tab](https://github.com/tvrooi/FlyBudget/security) →
+[Security tab](https://github.com/tvrooi/Allotment/security) →
 **Report a vulnerability**. Please include:
 
 - what the issue is and where (file, endpoint, or screen)
@@ -28,13 +28,13 @@ promised response time. Coordinate upstream vulnerabilities with the original pr
 
 ## Scope
 
-FlyBudget runs entirely on your own machine. See [How FlyBudget protects your
+Allotment runs entirely on your own machine. See [How Allotment protects your
 data](#how-flybudget-protects-your-data) below for the full model.
 
 Especially in scope:
 
 - anything that lets a website, another user, or another process read or change
-  FlyBudget data or bank-sync credentials
+  Allotment data or bank-sync credentials
 - ways to make the local API reachable from outside the machine
 - vulnerabilities in the Electron desktop app
 - in the self-hosted Docker server: getting past the password login, stealing
@@ -46,16 +46,16 @@ Out of scope:
   or machine
 - vulnerabilities in third-party services (Up, Plaid, SimpleFIN) themselves, which
   should be reported to them
-- outdated dependencies with no demonstrated impact on FlyBudget (Dependabot
+- outdated dependencies with no demonstrated impact on Allotment (Dependabot
   already tracks these)
 
-## How FlyBudget protects your data
+## How Allotment protects your data
 
-FlyBudget is local-first: there is no FlyBudget server, account, telemetry, or
+Allotment is local-first: there is no Allotment server, account, telemetry, or
 crash reporting. Your data never leaves your computer except when bank sync
 talks to Up, Plaid, SimpleFIN or Enable Banking on your behalf.
 
-You can also host FlyBudget yourself with Docker ("server mode", see
+You can also host Allotment yourself with Docker ("server mode", see
 [Self-hosting](https://flybudget.org/community/self-hosting)). Then the data
 lives on your server, and:
 
@@ -90,7 +90,7 @@ Run it behind an HTTPS reverse proxy before exposing it to the internet.
 
 | Data                               | Location (desktop app)                     | Protection                                                                                        |
 | ---------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| Budget, accounts, transactions     | `budget.db` in the app's data folder       | Your OS user account (not encrypted by FlyBudget; see below)                                      |
+| Budget, accounts, transactions     | `budget.db` in the app's data folder       | Your OS user account (not encrypted by Allotment; see below)                                      |
 | Plaid secret and access tokens     | `budget.db`                                | AES-256-GCM, with a key protected by the OS (Windows DPAPI, macOS Keychain, Linux secret service) |
 | SimpleFIN access URL (credentials) | `budget.db`                                | Same as above                                                                                     |
 | Encryption key for the above       | `credentials.key` in the app's data folder | Encrypted by the OS; only usable by your user account on that machine                             |
@@ -119,11 +119,11 @@ Access tokens are never sent to the app's own UI, logs, or backup exports.
 
 - **Plaid:** you use your own Plaid API keys. You log in to your bank on
   Plaid's own page in your web browser (Plaid Hosted Link), never inside
-  FlyBudget, which is how banks that use OAuth (Chase, Wells Fargo, and others)
+  Allotment, which is how banks that use OAuth (Chase, Wells Fargo, and others)
   work in the desktop app. Disconnecting a bank revokes its
   access token at Plaid (`/item/remove`); if Plaid can't be reached, the
   connection is kept so you can retry.
-- **SimpleFIN:** SimpleFIN has no revoke API. Disconnecting deletes FlyBudget's
+- **SimpleFIN:** SimpleFIN has no revoke API. Disconnecting deletes Allotment's
   copy of the access URL; to revoke access completely, also remove the app in
   your [SimpleFIN Bridge](https://bridge.simplefin.org) account.
 - Data from banks is treated as untrusted: it is validated, amounts are converted
@@ -139,7 +139,7 @@ Access tokens are never sent to the app's own UI, logs, or backup exports.
   and the app refuses to start if its files have been modified (asar integrity).
 - Releases are built by GitHub Actions and signed with Sigstore, with SLSA build
   provenance. Verify a download with:
-  `gh attestation verify FlyBudget-Windows-Setup.exe -R dtymoszenko/FlyBudget` (the same
+  `gh attestation verify Allotment-Windows-Setup.exe -R dtymoszenko/FlyBudget` (the same
   for the macOS and Linux files; each release also has `SHA256SUMS.txt`)
 
 ### Development and supply chain
@@ -153,14 +153,14 @@ Access tokens are never sent to the app's own UI, logs, or backup exports.
 
 ### What you should do
 
-FlyBudget can't protect against someone who controls your user account. To keep
+Allotment can't protect against someone who controls your user account. To keep
 your financial data safe:
 
 - Use a strong OS login and turn on full-disk encryption (BitLocker on Windows,
   FileVault on macOS), since `budget.db` itself is not encrypted.
 - Treat backup exports (`budget-backup-*.json`) and CSV exports as sensitive:
   they contain your full financial history (but no bank credentials).
-- Only download FlyBudget from this repository's Releases page, and verify it
+- Only download Allotment from this repository's Releases page, and verify it
   with the command above.
 - Keep your Plaid API keys private, and disconnect banks you no longer use.
 - `npm run dev` is for development: it has no per-launch secret, and bank

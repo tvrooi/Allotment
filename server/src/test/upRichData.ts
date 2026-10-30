@@ -134,7 +134,7 @@ export function richUpHistory(now = new Date()) {
     if (dom === 5) add('spending', s, 3, 'Netflix', -1899, 'tv-and-music');
     if (dom === 12) add('spending', s, 3, 'Spotify', -1399, 'tv-and-music');
     if (dom === 20) add('spending', s, 3, 'Telstra', -6500, 'mobile-phone');
-    // Up could not place these: no category, or a slug FlyBudget has no category for
+    // Up could not place these: no category, or a slug Allotment has no category for
     if (dom === 3) add('spending', s, 12, 'ATM Withdrawal Westpac', -10000);
     if (dom === 9) add('spending', s, 13, 'Service NSW', -9500, 'life-admin');
     if (dom === 15)

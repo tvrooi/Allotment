@@ -217,7 +217,7 @@ export function UpSettings() {
         title="Disconnect Up"
         danger
         confirmLabel="Disconnect"
-        message="FlyBudget will forget your token and account links. Your accounts, transactions and observed bank details stay. To revoke the token itself, also revoke it in Up’s developer portal."
+        message="Allotment will forget your token and account links. Your accounts, transactions and observed bank details stay. To revoke the token itself, also revoke it in Up’s developer portal."
         onConfirm={async () => {
           await disconnectUp();
           setResult(null);

@@ -1,4 +1,4 @@
-// Safe copy of the database while FlyBudget is running (SQLite online backup, so
+// Safe copy of the database while Allotment is running (SQLite online backup, so
 // changes still in the write-ahead log are included).
 //   docker exec flybudget node backup.cjs
 const fs = require('fs');

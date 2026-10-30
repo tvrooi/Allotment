@@ -59,7 +59,7 @@ test('unsupported builds never contact the updater, and silent startup does not 
   await f.updates.check();
   assert.equal(f.driver.checks, 0);
   assert.equal(f.opened, 1);
-  assert.equal(RELEASES_URL, 'https://github.com/tvrooi/FlyBudget/releases');
+  assert.equal(RELEASES_URL, 'https://github.com/tvrooi/Allotment/releases');
 });
 test('an automatic check that cannot reach the feed stays quiet', async () => {
   const f = fixture();
@@ -148,7 +148,7 @@ test('release configuration preserves ad-hoc PR builds, but fails closed on inco
     assert.deepEqual(signed.publish[0], {
       provider: 'github',
       owner: 'tvrooi',
-      repo: 'FlyBudget',
+      repo: 'Allotment',
       channel: 'up',
       releaseType: 'prerelease',
     });
@@ -169,14 +169,14 @@ const {
   isForkInstaller,
 } = require('./dist/releaseCheck.js');
 test('unsigned release checks select only newer installers from this fork without authentication', async () => {
-  const name = 'FlyBudget-macOS-arm64.dmg';
+  const name = 'Allotment-macOS-arm64.dmg';
   const release = (tag, owner = 'tvrooi') => ({
     draft: false,
     tag_name: tag,
     assets: [
       {
         name,
-        browser_download_url: `https://github.com/${owner}/FlyBudget/releases/download/${tag}/${name}`,
+        browser_download_url: `https://github.com/${owner}/Allotment/releases/download/${tag}/${name}`,
       },
     ],
   });
@@ -185,7 +185,7 @@ test('unsigned release checks select only newer installers from this fork withou
     'darwin',
     'arm64',
     async (url, options) => {
-      assert.equal(url, 'https://api.github.com/repos/tvrooi/FlyBudget/releases?per_page=20');
+      assert.equal(url, 'https://api.github.com/repos/tvrooi/Allotment/releases?per_page=20');
       assert.equal(options.headers.Authorization, undefined);
       assert.equal(options.redirect, 'error');
       return new Response(
@@ -234,7 +234,7 @@ test('unsigned packaged apps offer an installer without downloading or replacing
   };
   const updater = new DesktopUpdates(f.driver, ui, false, async () => ({
     version: '0.2.0-up.7',
-    url: 'https://github.com/tvrooi/FlyBudget/releases/download/v0.2.0-up.7/FlyBudget-macOS-arm64.dmg',
+    url: 'https://github.com/tvrooi/Allotment/releases/download/v0.2.0-up.7/Allotment-macOS-arm64.dmg',
   }));
   await updater.check();
   assert.equal(urls.length, 1);

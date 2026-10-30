@@ -105,6 +105,9 @@ export default function WelcomePage() {
           <h1 className="text-2xl sm:text-3xl font-semibold text-text tracking-tight">
             Welcome to <BrandName />!
           </h1>
+          <p className="text-xs uppercase tracking-widest text-text-tertiary mt-2">
+            Every dollar gets its plot.
+          </p>
           <p className="text-sm sm:text-base text-text-secondary mt-2 max-w-lg mx-auto">
             A budget that shows where your money goes and gives every dollar a job. Start by adding
             the accounts you want to track.
@@ -174,8 +177,8 @@ export default function WelcomePage() {
           <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-text-tertiary">
             <ShieldCheck size={14} className="text-positive shrink-0" aria-hidden />
             {mode === 'server'
-              ? 'Your budget is stored on your own server. No FlyBudget account, no tracking.'
-              : 'Your budget stays on this computer. No FlyBudget account, no tracking.'}{' '}
+              ? 'Your budget is stored on your own server. No Allotment account, no tracking.'
+              : 'Your budget stays on this computer. No Allotment account, no tracking.'}{' '}
             <ExternalLink
               href={docsUrl('bank-sync')}
               className="font-medium text-brand-600 hover:text-brand-700"

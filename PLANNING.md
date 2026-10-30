@@ -1,6 +1,6 @@
-# FlyBudget — Project Overview and Roadmap
+# Allotment — Project Overview and Roadmap
 
-FlyBudget is a free, open-source, local-first budgeting app: an alternative to popular apps like Monarch, Mint and YNAB, without the subscription. Your data stays on your own computer or server.
+Allotment is a free, open-source, local-first budgeting app: an alternative to popular apps like Monarch, Mint and YNAB, without the subscription. Your data stays on your own computer or server.
 
 It runs three ways:
 
@@ -8,7 +8,7 @@ It runs three ways:
 - **Self-hosted server** (Docker), with a password login, for use from any browser
 - **In-browser demo** at [flybudget.org/demo](https://flybudget.org/demo/), with a sample budget and no server
 
-FlyBudget is licensed under AGPL-3.0-only.
+Allotment is licensed under AGPL-3.0-only.
 
 This document gives the big picture: goals, architecture, what has shipped and where the project is heading. For details, see:
 
@@ -173,7 +173,7 @@ authoritative scope for this addition; the general upstream ideas below remain u
 The original plan addition changed no application code. See [Card payments](docs/CARD-PAYMENTS.md) for phase 6B implementation and compatibility rules.
 
 The [phase 7 brief](docs/PSYCHOLOGY-OF-MONEY-DEVELOPMENT-PHASE.md) amends the
-[financial-resilience proposal (#11)](https://github.com/tvrooi/FlyBudget/pull/11) against the implemented
+[financial-resilience proposal (#11)](https://github.com/tvrooi/Allotment/pull/11) against the implemented
 phases 5 and 6. It adds no second funding, forecast or review engine.
 The [phase 8 implementation brief](docs/MONARCH-DEVELOPMENT-PHASE.md) consolidates
 actual Monarch REA findings into one additional phase. It builds on the implemented

@@ -292,7 +292,7 @@ function runStartupTasks() {
 // Auto-start unless bundled for Electron production (where main.ts calls startServer directly)
 if (!process.env.ELECTRON_PROD) {
   startServer(process.env.EXPRESS_PORT ?? process.env.PORT ?? 3001).catch((err) => {
-    console.error('FlyBudget failed to start:', err);
+    console.error('Allotment failed to start:', err);
     process.exit(1);
   });
 }

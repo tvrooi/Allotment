@@ -7,7 +7,7 @@ units, additive migrations, shared transaction write helpers, mock data in tests
 and no second funding, review, goal or forecast engine.
 
 These came from the owner's Monarch inspection, where the controls were visible but
-not exercised. Their design is checked against FlyBudget's accounting, not inferred
+not exercised. Their design is checked against Allotment's accounting, not inferred
 from Monarch.
 
 ## 1. Receipts and attachments

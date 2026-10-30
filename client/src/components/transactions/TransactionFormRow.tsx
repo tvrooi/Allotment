@@ -194,9 +194,9 @@ export function TransactionFormRow({
       }
       title={
         !canAdd
-          ? 'Save (paused until FlyBudget reconnects)'
+          ? 'Save (paused until Allotment reconnects)'
           : onDevice
-            ? 'Save on this device (sent when FlyBudget reconnects)'
+            ? 'Save on this device (sent when Allotment reconnects)'
             : 'Save'
       }
       aria-label="Save"

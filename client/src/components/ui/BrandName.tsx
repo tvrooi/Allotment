@@ -1,21 +1,12 @@
 interface Props {
   className?: string;
-  /** Color of "Budget": the page's text color by default (black, or white in dark mode) */
-  budgetClassName?: string;
-  /** Color of "Fly" */
-  flyClassName?: string;
+  /** Color of the wordmark: the page's text color by default (Soil, or white in dark mode) */
+  textClassName?: string;
 }
 
-/** The FlyBudget wordmark: "Fly" in the brand blue, "Budget" in the text color */
-export function BrandName({
-  className = '',
-  budgetClassName = 'text-text',
-  flyClassName = 'text-brand-600',
-}: Props) {
+/** The Allotment wordmark: one bold word, set tight, in the text color */
+export function BrandName({ className = '', textClassName = 'text-text' }: Props) {
   return (
-    <span className={className}>
-      <span className={flyClassName}>Fly</span>
-      <span className={budgetClassName}>Budget</span>
-    </span>
+    <span className={`font-bold tracking-tighter ${textClassName} ${className}`}>Allotment</span>
   );
 }

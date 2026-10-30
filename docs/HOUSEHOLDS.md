@@ -52,7 +52,7 @@ you. Nothing is recorded without that click.
 
 With multi-user mode (separate budgets per person, `docs/MULTI-USER-PLAN.md`), two people who
 each keep a household in their own budget can combine them: **Household → Combine with another
-FlyBudget user**. One asks, choosing which of their household's people is the other person; the
+Allotment user**. One asks, choosing which of their household's people is the other person; the
 other accepts with one of their own households, choosing who the first person is in it. Both
 households must use the same currency.
 

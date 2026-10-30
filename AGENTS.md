@@ -1,6 +1,7 @@
-# FlyBudget Up fork — working guide
+# Allotment — working guide
 
-This repository is `tvrooi/FlyBudget`, an AGPL-3.0-only fork of `dtymoszenko/FlyBudget`.
+This repository is `tvrooi/Allotment` (Allotment, formerly the FlyBudget Up fork), an AGPL-3.0-only
+fork of `dtymoszenko/FlyBudget`, detached from its fork network. Brand: [docs/BRAND.md](docs/BRAND.md).
 Read only the files relevant to the request. Do not read the entire repository or long conversation history.
 Detailed upstream architecture: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md), on demand.
 Release process and known limitations: [MAINTENANCE.md](MAINTENANCE.md).
@@ -50,12 +51,15 @@ Keep this file and CLAUDE.md identical.
   an existing key. Supervisor watchdog must be TCP because strict hosts reject its IP-based HTTP probe.
 - Prebuilt HA images need `io.hass.type=app`, version and architecture labels. BuildKit says `arm64`;
   HA says `aarch64`. The container smoke test verifies the actual image metadata.
+- People see the name Allotment. Stored identifiers keep `flybudget`: `FLYBUDGET_*` variables, cookies,
+  headers, data paths, the `flybudget_up` HA slug, image names, `flybudget-mac-window`, and the packaged
+  desktop app's internal name (its userData folder and keychain entry). Renaming them strands data.
 - Never migrate, replace or delete a live budget as part of a code release. HA catalog installation has
   a different app ID from `local_flybudget_up`; migration needs a cold backup including the encryption key.
 
 ## Changes and releases
 
-Use a feature branch and PR to this fork (explicit `--repo tvrooi/FlyBudget`, never upstream by accident).
+Use a feature branch and PR to this fork (explicit `--repo tvrooi/Allotment`, never upstream by accident).
 Conventional commits. Keep a brief test result in the PR. Never accept the upstream CLA on the user's behalf.
 Do not auto-merge dependency updates.
 For owner-requested features and fixes, standing authorization covers technical review, merging green PRs,

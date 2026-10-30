@@ -29,13 +29,13 @@ button[type=submit] { background: #2c65d8; color: white; border-color: #2c65d8; 
 .muted { font-size: 13px; opacity: .8; } #error { color: light-dark(#a51e1e,#ffadad); min-height: 22px; } hr { margin: 24px 0; opacity: .3; }
 </style></head><body>
 <h1>Where is your budget?</h1>
-<p>Connect to FlyBudget on your Home Assistant machine. Your budget and Up connection stay on that server.</p>
-<form id="server"><label for="url">FlyBudget server address</label>
+<p>Connect to Allotment on your Home Assistant machine. Your budget and Up connection stay on that server.</p>
+<form id="server"><label for="url">Allotment server address</label>
 <input id="url" type="url" required placeholder="http://homeassistant.local:3001" value="${escapeHtml(url)}" autocomplete="url" spellcheck="false" autofocus>
 <label class="check"><input id="http" type="checkbox" ${location?.mode === 'server' && location.allowHttp ? 'checked' : ''}><span>I trust this home network or VPN. Allow HTTP here. HTTP does not encrypt your password or budget; use HTTPS for remote access.</span></label>
 <button type="submit">Connect to server</button></form>
 <p id="error" role="alert">${escapeHtml(message)}</p>
-<p class="muted">The app remembers the address and restarts. Sign in with your FlyBudget password, separately from Home Assistant.</p>
+<p class="muted">The app remembers the address and restarts. Sign in with your Allotment password, separately from Home Assistant.</p>
 <hr><button id="local" type="button">Use this computer</button>
 <p class="muted">Opens a separate local budget. Changing location does not move or merge budgets.</p>
 <script nonce="${nonce}">
