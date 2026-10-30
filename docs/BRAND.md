@@ -9,13 +9,14 @@ ground you tend with intention; the app gives each dollar a place and a purpose.
 ## Mark and colours
 
 Three garden plots and a sprout. The app icon puts the mark in Canvas on a Soil tile, with one
-plot in Marigold.
+plot in Marigold and the sprout in Sprout green.
 
-| Name     | Hex       | Use                                                      |
-| -------- | --------- | -------------------------------------------------------- |
-| Soil     | `#262520` | Text, icon tile                                          |
-| Marigold | `#F46B35` | The one bright spot: brand accent (`--color-brand-500`)  |
-| Canvas   | `#F7F5EF` | Page background (`--color-page`), plots on the icon tile |
+| Name     | Hex       | Use                                                              |
+| -------- | --------- | ---------------------------------------------------------------- |
+| Soil     | `#262520` | Text, icon tile                                                  |
+| Marigold | `#F46B35` | The one bright spot: brand accent (`--color-brand-500`)          |
+| Canvas   | `#F7F5EF` | Page background (`--color-page`), plots on the icon tile         |
+| Sprout   | `#1B7550` | The icon's sprout; the app's positive green (`--color-positive`) |
 
 Filled controls and orange text keep the darker `--color-brand-600` so they stay readable.
 
