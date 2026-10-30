@@ -24,10 +24,12 @@ const PORT = 58342;
 const DISPLAY_NAME = 'Allotment';
 
 // Allotment was called FlyBudget. An installed app keeps its local budget, credentials.key
-// and the OS keychain entry that unlocks that key under the old name, so the packaged app
-// keeps it internally, set before anything reads userData or safeStorage. People only see
-// DISPLAY_NAME: the bundle (productName), window titles, menus and dialogs.
-if (app.isPackaged) {
+// and the OS keychain entry that unlocks that key under the name Electron gave it, so the
+// packaged app keeps that name internally, set before anything reads userData or safeStorage.
+// Electron names it after productName (now DISPLAY_NAME, formerly FlyBudget) or, on some Linux
+// builds, package.json's name (still flybudget, so nothing changes there). People only see
+// DISPLAY_NAME: the bundle, window titles, menus and dialogs.
+if (app.isPackaged && app.name === DISPLAY_NAME) {
   app.setName('FlyBudget');
   app.setPath('userData', path.join(app.getPath('appData'), 'FlyBudget'));
 }

@@ -36,7 +36,7 @@ Only what people see changed. Identifiers that existing installs depend on keep 
   browser storage keys and data paths (`/data/flybudget`, `flybudget_data_key.txt`).
 - The Home Assistant app slug `flybudget_up`, so the installed app updates in place, and the
   container images `ghcr.io/tvrooi/flybudget` and `flybudget-ha`.
-- The desktop app's internal name, FlyBudget (`electron/main.ts`): its local budget, credentials key
+- The desktop app's internal name, FlyBudget (`electron/main.ts`; on Linux builds that use the package name it stays `flybudget`): its local budget, credentials key
   and keychain entry stay where they are. Its bundle, menus and windows say Allotment. The Windows
   app ID `com.flybudget.app` and the Linux package and command `flybudget` are unchanged, so new
   installers upgrade the old app rather than install beside it.
