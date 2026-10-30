@@ -564,7 +564,7 @@ describe('backups', () => {
       splits: [{ accountId: 'cash', mode: 'percent', bps: 5000 }],
     });
     const data = await backup();
-    expect(data.version).toBe(19);
+    expect(data.version).toBe(20);
     for (const table of [
       'accountLoanDetails',
       'longTermPlans',

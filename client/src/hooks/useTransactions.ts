@@ -13,10 +13,11 @@ function findTxInCache(qc: QueryClient, id: string): Transaction | undefined {
   }
 }
 
-export function useTransactions(params: TransactionQueryParams = {}) {
+export function useTransactions(params: TransactionQueryParams = {}, enabled = true) {
   return useQuery({
     queryKey: ['transactions', params],
     queryFn: () => txApi.getTransactions(params),
+    enabled,
   });
 }
 

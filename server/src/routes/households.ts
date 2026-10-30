@@ -21,10 +21,12 @@ import {
   poolGroupOf,
   recordEvent,
   repaymentSuggestions,
+  shareRecurringBills,
   shareTransaction,
   sharedExport,
   snapshot,
   splitSchema,
+  unshareRecurringBill,
 } from '../services/householdService.js';
 import { todayIso } from '../services/mainAmountService.js';
 
@@ -276,6 +278,17 @@ householdsRouter.post('/:id/share', (req, res) => {
     household: snapshot(req.params.id),
   });
 });
+// Recurring items (Recurring page) shared with the household: listed with everyone's share
+householdsRouter.post('/:id/recurring-bills', (req, res) => {
+  const parsed = z
+    .object({ scheduleIds: z.array(z.string().min(1).max(64)).min(1).max(100) })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  run(res, () => shareRecurringBills(req.params.id, parsed.data.scheduleIds));
+});
+householdsRouter.delete('/:id/recurring-bills/:scheduleId', (req, res) =>
+  run(res, () => unshareRecurringBill(req.params.id, req.params.scheduleId)),
+);
 // Money received that looks like someone repaying what they owe (the owner confirms each)
 householdsRouter.get('/:id/repayment-suggestions', (req, res) =>
   run(res, () => repaymentSuggestions(req.params.id, todayIso())),

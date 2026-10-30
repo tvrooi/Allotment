@@ -16,7 +16,8 @@ test('records shared expenses, exports personal scope and keeps the bank debit i
   await page.getByLabel('People, one per line; put yourself first').fill('Me\nAlex');
   await page.getByRole('button', { name: 'Create household', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'People & balances' })).toBeVisible();
-  const event = page.getByRole('heading', { name: 'Record an event' }).locator('..');
+  await page.getByRole('button', { name: 'Expense, advance or repayment' }).click();
+  const event = page.getByRole('heading', { name: 'Record something else' }).locator('../..');
   await event.getByLabel('Description', { exact: true }).fill('Shared dinner');
   await event.getByLabel('Date', { exact: true }).fill('2026-10-21');
   await event.getByLabel('Amount (AUD)').fill('120.00');
@@ -169,4 +170,63 @@ test('picks payments in the register and shares just those, split equally', asyn
   );
   // Equal split, largest remainder: the odd cent goes to the first person
   expect(dinnerEvent.shares.map((s: { amount: number }) => s.amount)).toEqual([3001, 3000]);
+});
+
+test('lists recurring bills shared with housemates, with shares and one-click sharing', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Up Spending', 100000);
+  const day = (offset: number) =>
+    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+  const bills = [
+    ['Electricity (OVO)', 'OVO Energy', -18450],
+    ['Internet (Superloop)', 'Superloop', -8999],
+  ] as const;
+  for (const [name, payeeName, amount] of bills) {
+    const paid = await api.createTransaction({
+      accountId: account.id,
+      date: day(-5),
+      amount,
+      payeeName,
+    });
+    await api.call('POST', '/schedules', {
+      name,
+      amount,
+      recurrenceType: 'monthly',
+      recurrenceRule: { type: 'monthly', interval: 1, anchorDay: 1 },
+      startDate: day(-5),
+      accountId: account.id,
+      payeeId: paid.payeeId,
+    });
+  }
+  await api.call('POST', '/households', {
+    name: 'Home',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Sam', 'Jo'],
+    selfIndex: 0,
+  });
+  await open(page, '/household');
+  const recurring = page.getByRole('region', { name: 'Recurring bills' });
+  await expect(recurring).toContainText('No recurring bills shared yet');
+  // No household account: the pool figures stay out of the way
+  await expect(page.getByText(/Received pool funding remaining:/)).toHaveCount(0);
+  await recurring.getByRole('button', { name: 'Add recurring bills' }).click();
+  await recurring.getByLabel('Electricity (OVO)').check();
+  await recurring.getByLabel('Internet (Superloop)').check();
+  await recurring.getByRole('button', { name: 'Share 2 with household' }).click();
+  await expect(recurring.getByRole('listitem')).toHaveCount(2);
+  const power = recurring.getByRole('listitem').filter({ hasText: 'Electricity (OVO)' });
+  await expect(power).toContainText(/Me A?\$61\.50 · Sam A?\$61\.50 · Jo A?\$61\.50/);
+  await expect(power).toContainText('1 payment not shared yet');
+  await power.getByRole('button', { name: 'Share payment' }).click();
+  await expect(power).toContainText('Last payment shared');
+  await expect(page.getByRole('heading', { name: /My expense shares:.*61\.50/ })).toBeVisible();
+  await expect(page.getByText(/^owes A?\$61\.50$/)).toHaveCount(2);
+  await expect(page.getByText(/^is owed A?\$123$/)).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
 });

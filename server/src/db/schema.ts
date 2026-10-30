@@ -1053,6 +1053,23 @@ export const householdBills = sqliteTable('household_bills', {
   scheduleId: text('schedule_id').references(() => schedules.id, { onDelete: 'set null' }),
 });
 
+/** A recurring item shared with a household; its payments are shared with the default split */
+export const householdRecurringBills = sqliteTable(
+  'household_recurring_bills',
+  {
+    scheduleId: text('schedule_id')
+      .primaryKey()
+      .references(() => schedules.id, { onDelete: 'cascade' }),
+    groupId: text('group_id')
+      .notNull()
+      .references(() => householdGroups.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [index('household_recurring_bills_group').on(table.groupId)],
+);
+
 export const budgetRevision = sqliteTable('budget_revision', {
   id: integer('id').primaryKey(),
   revision: text('revision').notNull(),
