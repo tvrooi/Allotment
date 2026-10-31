@@ -143,4 +143,51 @@ test.describe('Safe mode', () => {
     await expect(page.getByText('-$55.55')).toHaveCount(0);
     await expect(page.locator('main[data-probe="kept"]')).toHaveCount(1);
   });
+
+  test('charts hide their amounts too: axes and bar labels', async ({ page, api }) => {
+    const [everyday] = await api.accounts();
+    const groceries = await api.category('Groceries');
+    const lastMonth = new Date();
+    lastMonth.setDate(1);
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    for (const [date, amount] of [
+      [isoDay(0), -123_456],
+      [`${lastMonth.getFullYear()}-${pad(lastMonth.getMonth() + 1)}-15`, -98_765],
+    ] as const)
+      await api.createTransaction({
+        accountId: everyday.id,
+        date,
+        amount,
+        payeeName: 'Market',
+        categoryId: groceries.id,
+      });
+    // Chart text is SVG, which innerText leaves out: read every text element's content
+    const chartAmounts = () =>
+      page
+        .locator('svg text')
+        .allTextContents()
+        .then((texts) => texts.filter((t) => /[$€£¥]\s?\d|\d(\.\d)?[kKM]\b|\d{3,}/.test(t)));
+
+    // Shown without Safe mode, so the checks below can't pass on an empty chart
+    await open(page, `/budget/category/${groceries.id}`);
+    await expect(page.getByRole('heading', { name: 'Spending History' })).toBeVisible();
+    await expect.poll(chartAmounts).not.toEqual([]);
+
+    await page.keyboard.press('Alt+Shift+H');
+    await expect(
+      page.getByRole('complementary').getByRole('button', { name: 'Safe mode' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    for (const route of [`/budget/category/${groceries.id}`, '/dashboard']) {
+      await open(page, route);
+      await expect(page.locator('svg text').first()).toBeAttached();
+      expect(await chartAmounts(), route).toEqual([]);
+      await expectNoBalances(page);
+    }
+    // The budget's editor shows the category's history as a small chart
+    await open(page, '/budget');
+    await page.getByRole('button', { name: /^Planned for Groceries:/ }).click();
+    await expect(page.locator('svg text').first()).toBeAttached();
+    expect(await chartAmounts(), 'budget editor').toEqual([]);
+  });
 });
