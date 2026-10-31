@@ -313,7 +313,7 @@ function NeedsAttention({ review, group }: { review: api.BudgetReview; group: st
     review.unassigned >= 0;
   return (
     <Card>
-      <div id="needs-attention" className="space-y-4">
+      <div id="needs-attention" data-guide="review.attention" className="space-y-4">
         <h2 className="text-base font-semibold text-text">Needs attention</h2>
         {!!review.accountIssues?.length && (
           <p role="alert" className="text-sm text-caution">
@@ -453,7 +453,7 @@ function Buffer({ buffer }: { buffer: api.BufferState }) {
   const hideBalances = useHideBalances();
   return (
     <Card>
-      <div className="space-y-4">
+      <div data-guide="review.buffer" className="space-y-4">
         <h2 className="text-base font-semibold text-text">Next month and buffer</h2>
         <Section title={monthLabel(buffer.nextMonth)}>
           <Row label="Already assigned" value={formatCurrency(buffer.nextAssigned)} tone="pos" />

@@ -60,29 +60,31 @@ export default function SettingsPage() {
         <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
           Settings
         </h1>
-        <ScrollCue
-          className="mt-3 border-b border-border-light -mb-px"
-          scrollerClassName="flex gap-0"
-        >
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium whitespace-nowrap shrink-0 transition-colors border-b-2 -mb-px ${
-                  isActive
-                    ? 'border-brand-600 text-brand-600'
-                    : 'border-transparent text-text-tertiary hover:text-text-secondary'
-                }`}
-              >
-                <Icon size={14} />
-                {tab.label}
-              </button>
-            );
-          })}
-        </ScrollCue>
+        <div data-guide="settings.tabs">
+          <ScrollCue
+            className="mt-3 border-b border-border-light -mb-px"
+            scrollerClassName="flex gap-0"
+          >
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium whitespace-nowrap shrink-0 transition-colors border-b-2 -mb-px ${
+                    isActive
+                      ? 'border-brand-600 text-brand-600'
+                      : 'border-transparent text-text-tertiary hover:text-text-secondary'
+                  }`}
+                >
+                  <Icon size={14} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </ScrollCue>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6">

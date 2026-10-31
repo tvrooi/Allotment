@@ -287,7 +287,7 @@ export default function InvestmentsPage() {
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 py-4 max-md:px-4 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
+        <div data-guide="investments.header" className="min-w-0">
           <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
             Investments
           </h1>
@@ -301,7 +301,7 @@ export default function InvestmentsPage() {
             <Button variant="secondary" onClick={() => setDialog({ kind: 'security' })}>
               Add security
             </Button>
-            <Button onClick={() => setDialog({ kind: 'holding' })}>
+            <Button onClick={() => setDialog({ kind: 'holding' })} data-guide="investments.add">
               <Plus size={16} /> Add holding
             </Button>
           </div>

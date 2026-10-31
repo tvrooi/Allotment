@@ -10,6 +10,10 @@ export const TIPS = {
     id: 'transactions.undo-key',
     text: 'Changed something by mistake? Ctrl+Z (⌘Z on a Mac) undoes it, and Ctrl+Shift+Z redoes it.',
   },
+  payeeDefault: {
+    id: 'payees.default-category',
+    text: 'Give a payee a default category and its new transactions are sorted for you.',
+  },
   budgetCarry: {
     id: 'budget.carry-forward',
     text: 'What’s left in a category carries into next month, so you can save up for bigger bills.',

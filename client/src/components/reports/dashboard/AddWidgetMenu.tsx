@@ -41,7 +41,7 @@ export default function AddWidgetMenu({
 
   return (
     <div className="relative" ref={ref}>
-      <Button variant="secondary" size="sm" onClick={() => setOpen(!open)}>
+      <Button variant="secondary" size="sm" onClick={() => setOpen(!open)} data-guide="reports.add">
         <Plus size={13} /> Add widget <ChevronDown size={12} />
       </Button>
       {open && (

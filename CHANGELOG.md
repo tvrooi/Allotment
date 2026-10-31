@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.69
+
+- **A guide for every page.** Accounts, Transactions, Rules, Recurring, Review, Pay later, Household, Goals, Forecast, Investments, Tax time, Reports and Settings now each have a short guide, like the Budget page's: offered the first time you open the page (once the welcome tour is taken or turned down) and always under **? → Guide for this page**. Settings' guide shows where to connect Up.
+- **A tip on Payees:** give a payee a default category and its new transactions are sorted for you.
+- The guides list (**?** on the keyboard, or **? → All guides and tips**) shows them all, ticked once seen.
+
 ## 0.2.0-up.68
 
 - **A guided tour for new budgets.** A new budget shows **New to Allotment?** at the top of the dashboard. **Take the tour** highlights one part of the app at a time and explains it, in about two minutes: the sidebar, accounts, transactions, Ready to assign, categories, moving money, Review, recurring bills, the dashboard, hiding amounts and where help is. The page behind is paused while it's open; **Next**, **Back**, the arrow keys and **Escape** work, and on a phone it's a sheet at the screen's edge.

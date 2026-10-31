@@ -1,4 +1,5 @@
 import { test, expect, open, type Api } from './fixtures';
+import { GUIDES } from '../../client/src/guides';
 
 // Guides and tips (docs/GUIDES.md). Progress is stored per person in the budget, outside
 // backups, so the database reset between tests doesn't touch it: each test here puts it back
@@ -120,4 +121,51 @@ test('guides can be found again, and tips turned off', async ({ page, api }) => 
   await expect(
     section.getByRole('group', { name: 'Show tips' }).getByRole('button', { name: 'Off' }),
   ).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('every page guide opens from its page and finds what it points at', async ({ page, api }) => {
+  test.setTimeout(120_000);
+  await api.call('PUT', '/guides', { welcomeTour: 'done', seenGuides: { welcome: 1 } });
+  const [account] = await api.accounts();
+  await api.createTransaction({
+    accountId: account.id,
+    date: new Date().toISOString().slice(0, 10),
+    amount: -1_500,
+    payeeName: 'Corner Grocery',
+  });
+  // Parts of a page that need data a new budget doesn't have (an Afterpay account, an
+  // investment account, a household): those steps show in the middle of the screen instead
+  const needsData = new Set([
+    'plans.earlier',
+    'investments.add',
+    'household.people',
+    'household.bills',
+    'household.record',
+  ]);
+
+  const pageGuides = GUIDES.filter((g) => g.page);
+  expect(pageGuides.length).toBeGreaterThanOrEqual(14);
+  for (const guide of pageGuides) {
+    await open(page, guide.page!);
+    await page.getByRole('button', { name: 'Help and guides' }).click();
+    await page
+      .getByRole('group', { name: 'Help and guides' })
+      .getByRole('button', { name: 'Guide for this page' })
+      .click();
+    const tour = page.getByTestId('guide-tour');
+    const card = page.getByRole('dialog');
+    for (const [i, step] of guide.steps.entries()) {
+      await expect(card.getByRole('heading', { name: step.title })).toBeVisible();
+      await expect(card).toContainText(`Step ${i + 1} of ${guide.steps.length}`);
+      const targets = step.target ? [step.target].flat() : [];
+      const expected = targets.some((t) => !needsData.has(t)) ? 'found' : 'missing';
+      await expect(tour, `${guide.id}: ${step.title}`).toHaveAttribute('data-target', expected);
+      await card
+        .getByRole('button', { name: i === guide.steps.length - 1 ? 'Done' : 'Next' })
+        .click();
+    }
+    await expect(tour).toBeHidden();
+  }
+  const seen = (await api.call('GET', '/guides')).seenGuides;
+  for (const guide of pageGuides) expect(seen[guide.id], guide.id).toBe(guide.version);
 });

@@ -70,6 +70,7 @@ export default function ReportsPage() {
               <AddWidgetMenu pageId={active.id} reports={reports} />
               <Link
                 to={`/reports/custom?dashboard=${active.id}&range=${encodeRangeParam(dashboardRange)}`}
+                data-guide="reports.custom"
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-brand-contrast bg-brand-600 rounded-md hover:bg-brand-700 shadow-xs transition-colors"
               >
                 <Plus size={13} />
@@ -79,7 +80,10 @@ export default function ReportsPage() {
           )}
         </div>
 
-        <div className="flex items-center gap-0 mt-3 -mb-px overflow-x-auto">
+        <div
+          data-guide="reports.pages"
+          className="flex items-center gap-0 mt-3 -mb-px overflow-x-auto"
+        >
           {pages.map((p) => (
             <button
               key={p.id}

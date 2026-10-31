@@ -20,6 +20,7 @@ export default function ForecastPage() {
           Forecast
         </h1>
         <div
+          data-guide="forecast.tabs"
           className="flex gap-1 mt-3 -mb-px overflow-x-auto"
           role="tablist"
           aria-label="Forecast view"

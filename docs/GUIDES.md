@@ -58,8 +58,14 @@ Unit: `npm test --prefix client -- guides`, `npm test --prefix server -- guides`
 `e2e/tests/guides.spec.ts` and `e2e/tests/phone/guides-phone.spec.ts`. The e2e database reset
 doesn't touch guide progress, so those specs put it back to a new budget's afterwards.
 
-## Next (PR 2)
+## Page guides
 
-Page guides for Accounts and Reconcile, Transactions, Rules, Recurring, Review, Pay later,
-Household, Goals, Forecast, Investments, Tax time and receipts, Reports and the Up connection,
-and more contextual tips.
+Every main page has a guide (`guides/budget.ts`, `guides/pages.ts`): Budget, Accounts,
+Transactions, Rules, Recurring, Review, Pay later, Household, Goals, Forecast, Investments, Tax
+time, Reports and Settings (which covers connecting Up). Tips: Dashboard (Safe mode shortcut),
+Transactions (undo), Budget (carry forward), Payees (default category).
+
+A step whose element needs data a new budget doesn't have (an Afterpay account, an investment
+account, a household) shows in the middle of the screen. `GuideTour` sets `data-target`
+(`searching`, `found`, `missing`) on its overlay; `guides.spec.ts` walks every page guide and
+checks each step finds its element, and the phone spec walks them all on a phone.

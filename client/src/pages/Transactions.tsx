@@ -76,7 +76,12 @@ export default function TransactionsPage() {
             </Button>
           </div>
         </div>
-        <div className="flex gap-1 mt-2 -mb-px" role="tablist" aria-label="Transactions view">
+        <div
+          data-guide="transactions.tabs"
+          className="flex gap-1 mt-2 -mb-px"
+          role="tablist"
+          aria-label="Transactions view"
+        >
           {(
             [
               ['all', 'All'],

@@ -95,7 +95,7 @@ export function RecurringBills({ groupId, currency, people, bills }: Props) {
   const busy = add.isPending || stop.isPending || share.isPending || update.isPending;
 
   return (
-    <section className={card} aria-labelledby="household-recurring">
+    <section data-guide="household.bills" className={card} aria-labelledby="household-recurring">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 id="household-recurring" className="text-sm font-semibold text-text">
