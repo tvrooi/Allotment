@@ -7,6 +7,8 @@ import { Button } from '../components/ui/Button';
 import { SavedViewsMenu } from '../components/transactions/SavedViews';
 import { useOpenFromLink } from '../hooks/useOpenFromLink';
 import { ReceiptsTab, ScanReceiptButton, useAddReceipts } from '../components/receipts/ReceiptsTab';
+import { Tip } from '../components/guide/Tip';
+import { TIPS } from '../guides';
 import {
   FILTER_KEYS,
   filtersFromSearch,
@@ -69,7 +71,7 @@ export default function TransactionsPage() {
           <div className="flex items-center gap-2">
             {view === 'all' && <SavedViewsMenu />}
             {view === 'all' && <ScanReceiptButton onFiles={scan.add} />}
-            <Button size="sm" onClick={() => setShowAdd(true)}>
+            <Button size="sm" onClick={() => setShowAdd(true)} data-guide="transactions.add">
               <Plus size={13} /> Add
             </Button>
           </div>
@@ -102,6 +104,13 @@ export default function TransactionsPage() {
         <p role="alert" className="px-6 py-2 text-sm text-negative">
           {scan.error}
         </p>
+      )}
+      {view === 'all' && (
+        <Tip
+          tip={TIPS.undoKey}
+          desktopOnly
+          className="px-6 py-2.5 border-b border-border-light shrink-0"
+        />
       )}
       {view === 'receipts' ? (
         <ReceiptsTab openId={openReceipt} onOpen={(id) => setPageParam({ receipt: id })} />

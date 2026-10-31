@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom';
 import { useCurrencySettings } from '../../hooks/useCurrency';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { IS_DEMO } from '../../demo/isDemo';
+import { GuideSettings } from '../guide/GuideSettings';
 
 const themeOptions: { value: Theme; label: string }[] = [
   { value: 'light', label: 'Light' },
@@ -179,6 +180,19 @@ export function PreferencesPanel() {
       </div>
 
       <SafeModeSettings />
+
+      <section aria-labelledby="guides-heading" className="bg-surface-alt rounded-lg p-5 space-y-4">
+        <div>
+          <h3 id="guides-heading" className="text-sm font-medium text-text">
+            Guides and tips
+          </h3>
+          <p className="text-xs text-text-tertiary mt-0.5">
+            Saved with your budget, so they follow you to every device. The ? button at the top of
+            the menu opens any guide again.
+          </p>
+        </div>
+        <GuideSettings />
+      </section>
 
       <div className="bg-surface-alt rounded-lg p-5 space-y-5">
         <h3 className="text-sm font-medium text-text">Icons</h3>

@@ -13,11 +13,17 @@ import { Sidebar, SidebarDrawer, SafeModeButton } from './Sidebar';
 import { BrandName } from '../ui/BrandName';
 import logoUrl from '/logo.png';
 import { useUpFreshness } from '../../hooks/useUp';
+import { useGuideKeyboard } from '../../hooks/useGuideKeyboard';
+import { useGuideStore } from '../../store/guideStore';
+import { GuideBanner } from '../guide/GuideBanner';
+import { GuideTour } from '../guide/GuideTour';
+import { GuidesDialog } from '../guide/GuidesDialog';
 
 export function AppShell() {
   useUndoKeyboard();
   useSafeModeKeyboard();
   useUpFreshness();
+  useGuideKeyboard();
   const { data: accounts = [], isLoading } = useAccounts();
   const setupSkipped = usePreferencesStore((s) => s.setupSkipped);
   const isPhone = useIsPhone();
@@ -47,11 +53,14 @@ export function AppShell() {
         />
         <DemoBanner />
         <ConnectionBanner />
+        <GuideBanner />
         <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>
       <Toasts />
+      <GuideTour />
+      <GuidesDialog />
     </div>
   );
 }
@@ -74,8 +83,12 @@ function PhoneShell() {
     setOpen(false);
   };
 
-  // Following a link in the drawer closes it
+  // Following a link in the drawer closes it, and so does starting a guide from it
   useEffect(() => setOpen(false), [location.pathname, location.search]);
+  const touring = useGuideStore((s) => !!s.active);
+  useEffect(() => {
+    if (touring) setOpen(false);
+  }, [touring]);
 
   useEffect(() => {
     if (!open) {
@@ -106,6 +119,7 @@ function PhoneShell() {
             aria-label="Open menu"
             aria-expanded={open}
             aria-controls="app-sidebar"
+            data-guide="nav.menu"
             className="p-2 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md text-sidebar-text-hi hover:bg-sidebar-hover no-drag-region"
           >
             <Menu size={20} />
@@ -116,11 +130,14 @@ function PhoneShell() {
         </header>
         <DemoBanner />
         <ConnectionBanner />
+        <GuideBanner />
         <main className="flex-1 min-h-0 overflow-y-auto">
           <Outlet />
         </main>
       </div>
       <Toasts />
+      <GuideTour />
+      <GuidesDialog />
     </div>
   );
 }

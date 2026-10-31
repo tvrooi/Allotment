@@ -44,6 +44,8 @@ import { categoryFigures, splitCategories } from '../utils/budgetFigures';
 import { TransferredNote } from '../components/budget/TransferredNote';
 import { ExpectedNote } from '../components/budget/ExpectedNote';
 import type { BudgetCategory, BudgetGroup, BudgetType } from '../types';
+import { Tip } from '../components/guide/Tip';
+import { TIPS } from '../guides';
 
 function AmountInput({
   cents,
@@ -788,6 +790,12 @@ export default function BudgetPage() {
         </div>
       </div>
 
+      {!nothingPlanned && !beforeStart && (
+        <Tip
+          tip={TIPS.budgetCarry}
+          className="px-6 max-md:px-4 py-3 border-b border-border-light shrink-0"
+        />
+      )}
       {nothingPlanned && !beforeStart && !(isPhone && needle) && (
         <div className="flex items-start gap-3 px-6 py-3 bg-brand-50 border-b border-border-light text-sm text-text-secondary shrink-0">
           <Lightbulb size={16} className="text-brand-600 shrink-0 mt-0.5" aria-hidden />
@@ -829,7 +837,10 @@ export default function BudgetPage() {
         inert={switchingMonth}
         className={`flex max-md:flex-col flex-1 overflow-y-auto transition-opacity ${switchingMonth ? 'opacity-60 pointer-events-none' : ''}`}
       >
-        <div className="flex-1 max-md:flex-none max-md:order-last max-md:overflow-x-auto">
+        <div
+          data-guide="budget.categories"
+          className="flex-1 max-md:flex-none max-md:order-last max-md:overflow-x-auto"
+        >
           {isPhone ? (
             <PhoneBudget
               sections={[
@@ -922,6 +933,7 @@ export default function BudgetPage() {
 
                 {/* Expenses section header */}
                 <tr
+                  data-guide="budget.columns"
                   className="bg-surface-alt border-y border-border cursor-pointer select-none hover:bg-hover transition-colors"
                   onClick={() => setExpensesCollapsed((c) => !c)}
                 >

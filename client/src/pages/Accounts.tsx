@@ -172,7 +172,7 @@ export default function AccountsPage() {
         <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
           Accounts
         </h1>
-        <Button size="sm" onClick={() => setAddOpen(true)}>
+        <Button size="sm" onClick={() => setAddOpen(true)} data-guide="accounts.add">
           <Plus size={14} /> Add Account
         </Button>
       </div>

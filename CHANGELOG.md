@@ -1,5 +1,13 @@
 # Changes
 
+## 0.2.0-up.68
+
+- **A guided tour for new budgets.** A new budget shows **New to Allotment?** at the top of the dashboard. **Take the tour** highlights one part of the app at a time and explains it, in about two minutes: the sidebar, accounts, transactions, Ready to assign, categories, moving money, Review, recurring bills, the dashboard, hiding amounts and where help is. The page behind is paused while it's open; **Next**, **Back**, the arrow keys and **Escape** work, and on a phone it's a sheet at the screen's edge.
+- **Guides for a page.** The Budget page has its own short guide, offered the first time you open it (once the welcome tour is taken or turned down). More pages follow.
+- **Find guides again.** The sidebar's **?** button now has **Guide for this page**, **Take the welcome tour**, **All guides and tips** and **Read the online guide**. On a computer, **?** on the keyboard lists every guide.
+- **Tips, once each.** Short tips appear in the page, never over it, one at a time: **Got it** hides one, **Turn off tips** hides them all. **Settings → Preferences → Guides and tips** turns tips and page guides on or off, starts the tour, and resets what you've seen.
+- **Per person.** What you've seen is saved with your budget, so it follows you to every device; in multi-user mode each person has their own. If you used Allotment before this release, the tour isn't offered and tips are off; a note says where guides are. Guide progress isn't part of backups.
+
 ## 0.2.0-up.67
 
 - **Afterpay purchases count as what you bought.** The new **Pay later** page records a purchase made with Afterpay once, in its real category: a drill from Bunnings is $200 of Home improvement, not four Afterpay payments. **Set up Afterpay** adds an Afterpay account (a small credit account) and an **Afterpay payment** envelope; **Add a purchase** takes the shop, category, price, number of payments (four, fortnightly, by default) and the account that pays.

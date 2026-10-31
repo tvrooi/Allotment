@@ -16,7 +16,6 @@ import {
   Settings,
   Pin,
   X,
-  CircleHelp,
   ClipboardCheck,
   CandlestickChart,
   Receipt,
@@ -28,7 +27,7 @@ import { usePreferencesStore } from '../../store/preferencesStore';
 import { useSafeModeStore } from '../../store/safeModeStore';
 import { SidebarAccountList } from './SidebarAccountList';
 import { ServerStatus } from './ServerStatus';
-import { DOCS_URL } from '../../utils/project';
+import { HelpMenu } from '../guide/HelpMenu';
 import { BrandName } from '../ui/BrandName';
 import logoUrl from '/logo.png';
 
@@ -153,16 +152,9 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
             isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         >
-          <a
-            href={DOCS_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Help & docs (opens in a new tab)"
-            className={`group ${headerButton}`}
-          >
-            <CircleHelp size={16} aria-hidden />
-            <HeaderTooltip>Help &amp; docs</HeaderTooltip>
-          </a>
+          <HelpMenu className={`group ${headerButton}`}>
+            <HeaderTooltip>Help &amp; guides</HeaderTooltip>
+          </HelpMenu>
           <SafeModeButton className={`group ${headerButton}`} />
           {/* The phone drawer closes; the desktop sidebar has a pin instead: pinned stays open,
               unpinned collapses and opens on hover (the Sidebar setting in Preferences) */}
@@ -198,7 +190,7 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
       {/* Navigation and accounts share a scroll area on short screens. */}
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
         {/* Primary nav */}
-        <nav className="pt-4 px-3 space-y-1">
+        <nav data-guide="nav.main" className="pt-4 px-3 space-y-1">
           <NavItem
             to="/dashboard"
             icon={<LayoutDashboard size={18} />}
@@ -322,6 +314,7 @@ export function SafeModeButton({ className }: { className: string }) {
       aria-pressed={on}
       aria-label="Safe mode"
       aria-keyshortcuts="Alt+Shift+H"
+      data-guide="nav.safe-mode"
       className={className}
     >
       <Icon size={16} aria-hidden className={on ? 'text-brand-600' : undefined} />
