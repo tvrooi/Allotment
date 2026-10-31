@@ -1063,6 +1063,10 @@ export const householdRecurringBills = sqliteTable(
     groupId: text('group_id')
       .notNull()
       .references(() => householdGroups.id, { onDelete: 'cascade' }),
+    /** This bill's own split ({ mode, shares }); null = the household's default split */
+    splitJson: text('split_json'),
+    /** Payments to its payee dated from this day are shared as they arrive; null = by hand */
+    autoShareFrom: text('auto_share_from'),
     createdAt: text('created_at')
       .notNull()
       .default(sql`(datetime('now'))`),

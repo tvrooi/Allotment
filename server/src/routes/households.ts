@@ -17,9 +17,15 @@ import {
 } from '../db/schema.js';
 import { householdLedger } from '../services/householdLedger.js';
 import {
+  addPerson,
+  checkSplit,
+  deleteBill,
+  editBill,
   poolAccountsOf,
   poolGroupOf,
   recordEvent,
+  renamePerson,
+  shareBillPayments,
   repaymentSuggestions,
   shareRecurringBills,
   shareTransaction,
@@ -27,6 +33,7 @@ import {
   snapshot,
   splitSchema,
   unshareRecurringBill,
+  updateRecurringBill,
 } from '../services/householdService.js';
 import { todayIso } from '../services/mainAmountService.js';
 
@@ -225,18 +232,7 @@ householdsRouter.put('/:id/default-split', (req, res) =>
     const state = snapshot(req.params.id);
     const split =
       req.body === null || req.body?.mode === undefined ? null : splitSchema.parse(req.body);
-    if (split) {
-      const ids = split.shares.map((s) => s.personId);
-      if (
-        new Set(ids).size !== ids.length ||
-        ids.some((id) => !state.people.some((p) => p.id === id))
-      )
-        throw new Error('Choose participants once each');
-      if (split.mode !== 'equal' && !split.shares.some((s) => s.value > 0))
-        throw new Error('Give someone a share');
-      if (split.mode === 'percentage' && split.shares.reduce((n, s) => n + s.value, 0) !== 10000)
-        throw new Error('Percentage shares must total 10000 basis points');
-    }
+    if (split) checkSplit(state.people, split);
     db.update(groups)
       .set({ defaultSplitJson: split ? JSON.stringify(split) : null })
       .where(eq(groups.id, state.group.id))
@@ -288,6 +284,49 @@ householdsRouter.post('/:id/recurring-bills', (req, res) => {
 });
 householdsRouter.delete('/:id/recurring-bills/:scheduleId', (req, res) =>
   run(res, () => unshareRecurringBill(req.params.id, req.params.scheduleId)),
+);
+// A bill's own split (null = the default) and whether new payments are shared as they arrive
+householdsRouter.put('/:id/recurring-bills/:scheduleId', (req, res) => {
+  const parsed = z
+    .object({ split: splitSchema.nullable().optional(), autoShare: z.boolean().optional() })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  run(res, () => updateRecurringBill(req.params.id, req.params.scheduleId, parsed.data));
+});
+// Shares a bill's payments with its own split
+householdsRouter.post('/:id/recurring-bills/:scheduleId/share', (req, res) => {
+  const parsed = z
+    .object({ transactionIds: z.array(z.string().min(1).max(64)).min(1).max(500) })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    const results = shareBillPayments(
+      req.params.id,
+      req.params.scheduleId,
+      parsed.data.transactionIds,
+    );
+    res.json({
+      shared: results.filter((r) => r.ok).length,
+      results,
+      household: snapshot(req.params.id),
+    });
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Could not share' });
+  }
+});
+// People: add someone, or rename them
+householdsRouter.post('/:id/people', (req, res) =>
+  run(res, () => addPerson(req.params.id, req.body?.name), 201),
+);
+householdsRouter.put('/:id/people/:personId', (req, res) =>
+  run(res, () => renamePerson(req.params.id, req.params.personId, req.body?.name)),
+);
+// Edit or delete a one-off bill
+householdsRouter.put('/:id/bills/:billId', (req, res) =>
+  run(res, () => editBill(req.params.id, req.params.billId, req.body)),
+);
+householdsRouter.delete('/:id/bills/:billId', (req, res) =>
+  run(res, () => deleteBill(req.params.id, req.params.billId)),
 );
 // Money received that looks like someone repaying what they owe (the owner confirms each)
 householdsRouter.get('/:id/repayment-suggestions', (req, res) =>

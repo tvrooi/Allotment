@@ -363,9 +363,10 @@ const BILL_PAYMENTS_SHOWN = 6;
 
 /**
  * Recurring items shared with this household: each with its next date, what everyone's share
- * of the expected amount comes to with the default split, and its recent payments (those
- * matched to it in Recurring, or by its payee) with whether each is shared yet. Sharing one
- * stays a click (POST /share), so nothing is recorded on a guess.
+ * of the expected amount comes to with its split (its own, or the default), and its recent
+ * payments (those matched to it in Recurring, or by its payee) with whether each is shared yet.
+ * Past payments are shared with a click; new ones automatically only when the bill says so
+ * (autoShareBillPayment).
  */
 function sharedRecurringBills(
   groupId: string,
@@ -385,10 +386,11 @@ function sharedRecurringBills(
       .all()
       .map((e) => e.id),
   );
-  const { mode, shares: weights } = splitOrEqual(split, members);
   return links.flatMap((link) => {
     const schedule = db.select().from(schedules).where(eq(schedules.id, link.scheduleId)).get();
     if (!schedule) return [];
+    const ownSplit = parseSplit(link.splitJson);
+    const { mode, shares: weights } = splitOrEqual(ownSplit ?? split, members);
     const next = db
       .select({
         date: scheduleOccurrences.expectedDate,
@@ -452,6 +454,9 @@ function sharedRecurringBills(
         status: schedule.status,
         nextDate: next?.date ?? null,
         paidFromPool: !!schedule.accountId && poolAccountIds.includes(schedule.accountId),
+        /** Its own split; null = the household's default split */
+        split: ownSplit,
+        autoShareFrom: link.autoShareFrom,
         shares: weights.map((w, i) => ({ personId: w.personId, amount: amounts[i] ?? 0 })),
         payments,
       },
@@ -495,6 +500,183 @@ export function shareRecurringBills(groupId: string, scheduleIds: string[]) {
       throw new Error(`${schedule.name} is already shared with another household`);
     if (!existing) db.insert(recurringBills).values({ scheduleId, groupId }).run();
   }
+  return snapshot(groupId);
+}
+
+/**
+ * Checks a split against the household's people: each once, someone with a share, and
+ * percentages (basis points) totalling 100%.
+ */
+export function checkSplit(people: { id: string }[], split: DefaultSplit) {
+  const ids = split.shares.map((s) => s.personId);
+  if (new Set(ids).size !== ids.length || ids.some((id) => !people.some((p) => p.id === id)))
+    throw new Error('Choose participants once each');
+  if (split.mode !== 'equal' && !split.shares.some((s) => s.value > 0))
+    throw new Error('Give someone a share');
+  if (split.mode === 'percentage' && split.shares.reduce((n, s) => n + s.value, 0) !== 10000)
+    throw new Error('Percentage shares must total 10000 basis points');
+}
+
+function billLink(groupId: string, scheduleId: string) {
+  const link = db
+    .select()
+    .from(recurringBills)
+    .where(and(eq(recurringBills.groupId, groupId), eq(recurringBills.scheduleId, scheduleId)))
+    .get();
+  if (!link) throw new Error('This recurring item is not shared with this household');
+  return link;
+}
+
+/**
+ * Changes a shared recurring bill: its own split (null = the household's default) and whether
+ * new payments are shared as they arrive (from today, so past ones stay a click).
+ */
+export function updateRecurringBill(
+  groupId: string,
+  scheduleId: string,
+  changes: { split?: DefaultSplit | null; autoShare?: boolean },
+  today = format(new Date(), 'yyyy-MM-dd'),
+) {
+  const state = snapshot(groupId);
+  const link = billLink(groupId, scheduleId);
+  const set: { splitJson?: string | null; autoShareFrom?: string | null } = {};
+  if (changes.split !== undefined) {
+    const split = changes.split && changes.split.mode !== 'equal' ? changes.split : null;
+    if (split) checkSplit(state.people, split);
+    set.splitJson = split ? JSON.stringify(split) : null;
+  }
+  if (changes.autoShare !== undefined)
+    set.autoShareFrom = changes.autoShare ? (link.autoShareFrom ?? today) : null;
+  if (Object.keys(set).length)
+    db.update(recurringBills).set(set).where(eq(recurringBills.scheduleId, scheduleId)).run();
+  return snapshot(groupId);
+}
+
+/** Shares a bill's payments with the bill's own split (or the default). Each is checked alone. */
+export function shareBillPayments(groupId: string, scheduleId: string, transactionIds: string[]) {
+  const split = parseSplit(billLink(groupId, scheduleId).splitJson) ?? undefined;
+  return transactionIds.map((transactionId) => {
+    try {
+      const eventId = db.transaction(() => shareTransaction(groupId, transactionId, split));
+      return { transactionId, ok: true, eventId };
+    } catch (error) {
+      return {
+        transactionId,
+        ok: false,
+        error: error instanceof Error ? error.message : 'Could not share',
+      };
+    }
+  });
+}
+
+/**
+ * A new payment to the payee of a bill that shares automatically, dated on or after the day it
+ * was turned on: shared with that bill's split. Money out only, never a transfer or a split
+ * part. A payment the household refuses is left unshared, so an import never fails over it.
+ * Returns whether it was shared.
+ */
+export function autoShareBillPayment(tx: {
+  id: string;
+  date: string;
+  amount: number;
+  payeeId: string | null;
+  transferTransactionId?: string | null;
+  parentTransactionId?: string | null;
+}) {
+  if (!tx.payeeId || tx.amount >= 0 || tx.transferTransactionId || tx.parentTransactionId)
+    return false;
+  const bill = db
+    .select({
+      groupId: recurringBills.groupId,
+      splitJson: recurringBills.splitJson,
+      from: recurringBills.autoShareFrom,
+    })
+    .from(recurringBills)
+    .innerJoin(schedules, eq(schedules.id, recurringBills.scheduleId))
+    .where(and(eq(schedules.payeeId, tx.payeeId), isNotNull(recurringBills.autoShareFrom)))
+    .all()
+    .find((b) => b.from! <= tx.date);
+  if (!bill) return false;
+  try {
+    shareTransaction(bill.groupId, tx.id, parseSplit(bill.splitJson) ?? undefined);
+    return true;
+  } catch (error) {
+    console.warn(
+      `Could not share a bill payment with the household: ${error instanceof Error ? error.message : error}`,
+    );
+    return false;
+  }
+}
+
+const personName = z.string().trim().min(1).max(200);
+
+function checkName(people: { id: string; name: string }[], name: string, except?: string) {
+  if (people.some((p) => p.id !== except && p.name.toLowerCase() === name.toLowerCase()))
+    throw new Error(`${name} is already in this household`);
+}
+
+/**
+ * Adds someone to a household. They start settled; an equal split includes them from now on,
+ * and a percentage or weight split leaves them out until it is changed.
+ */
+export function addPerson(groupId: string, raw: unknown) {
+  const state = snapshot(groupId);
+  const name = personName.parse(raw);
+  if (state.people.length >= 50) throw new Error('A household has at most 50 people');
+  checkName(state.people, name);
+  db.insert(people).values({ id: nanoid(), groupId, name, isSelf: 0 }).run();
+  return snapshot(groupId);
+}
+
+/** Renames someone; their entries, shares and balance stay theirs */
+export function renamePerson(groupId: string, personId: string, raw: unknown) {
+  const state = snapshot(groupId);
+  if (!state.people.some((p) => p.id === personId)) throw new Error('Person not found');
+  const name = personName.parse(raw);
+  checkName(state.people, name, personId);
+  db.update(people).set({ name }).where(eq(people.id, personId)).run();
+  return snapshot(groupId);
+}
+
+const billEdit = z.object({
+  description: name.optional(),
+  dueDate: date.optional(),
+  amount: money.optional(),
+  personalShare: z.number().int().min(0).max(1e12).optional(),
+});
+
+/**
+ * Edits a one-off bill. Its name and due date can always change; its amounts only while no
+ * expense is matched to it, since its paid/needs-review status compares them with payments.
+ */
+export function editBill(groupId: string, billId: string, raw: unknown) {
+  const state = snapshot(groupId);
+  const bill = state.bills.find((b) => b.id === billId);
+  if (!bill) throw new Error('Bill not found');
+  const input = billEdit.parse(raw);
+  const matched = state.events.some((e) => e.billId === billId);
+  if (
+    matched &&
+    ((input.amount !== undefined && input.amount !== bill.amount) ||
+      (input.personalShare !== undefined && input.personalShare !== bill.personalShare))
+  )
+    throw new Error('A payment is matched to this bill: remove that entry to change its amounts');
+  const amount = input.amount ?? bill.amount;
+  if ((input.personalShare ?? bill.personalShare) > amount)
+    throw new Error('Personal share exceeds the total bill');
+  if (bill.reserved > amount) throw new Error('Lower its reservation below the new total first');
+  if (Object.values(input).some((v) => v !== undefined))
+    db.update(bills).set(input).where(eq(bills.id, billId)).run();
+  return snapshot(groupId);
+}
+
+/** Deletes a one-off bill no expense is matched to; its reservation is released */
+export function deleteBill(groupId: string, billId: string) {
+  const state = snapshot(groupId);
+  if (!state.bills.some((b) => b.id === billId)) throw new Error('Bill not found');
+  if (state.events.some((e) => e.billId === billId))
+    throw new Error('A payment is matched to this bill: remove that entry first');
+  db.delete(bills).where(eq(bills.id, billId)).run();
   return snapshot(groupId);
 }
 

@@ -15,11 +15,13 @@ test('the resilience and resume cards run in the offline demo', async ({ page })
   });
   expect(result.priorities.revision).toBe(0);
   expect(result.resilience.status).toBe('not-set-up');
-  // The same shared funding figures as the budget: the partition adds up to its resources.
+  // The same shared funding figures as the budget: the partition, including cash already spent
+  // beyond envelopes this month (negative, so it depends on the day the demo is generated),
+  // adds up to its resources.
   const p = result.resilience.partition;
-  expect(p.card + p.committed + p.goals + p.flexibility + p.other + p.unassigned).toBe(
-    result.resilience.resources,
-  );
+  expect(
+    p.card + p.committed + p.goals + p.flexibility + p.other + p.overspent + p.unassigned,
+  ).toBe(result.resilience.resources);
   expect(p.unassigned).toBe(result.summary.toBeBudgeted);
   expect(errors).toEqual([]);
 });

@@ -56,10 +56,22 @@ isn't a transfer). A bill is shared with one household at a time. Each one lists
 next date, everyone's share of the expected amount with the household's default split, and its
 payments from the last six months: those matched to it in Recurring, and those to its payee. A
 payment that isn't shared yet can be shared in one click (**Share _N_ payments**), which records it
-exactly as **Share with household** in Transactions does. Nothing is shared automatically; for
-that, add a rule with the **Share with household** action. **Stop sharing** takes a bill off the
-list and leaves its shared payments in the household. These links are in backup version 20
-(`household_recurring_bills`); older backups restore without them.
+exactly as **Share with household** in Transactions does, but with the bill's split. **Change
+split** gives a bill its own equal, percentage or weight split; **The household's default split**
+puts it back. **Share new payments automatically** shares each new payment to the bill's payee as
+it is imported, from the day it was ticked: money out only, never a transfer or a split part, and
+a payment the household refuses is left unshared rather than failing the import. Older payments
+stay a click. A **Share with household** rule that matches the payment comes first. **Stop
+sharing** takes a bill off the list and leaves its shared payments in the household. These links
+are in backup version 20 (`household_recurring_bills`, with `split_json` and `auto_share_from`);
+older backups restore without them.
+
+## People
+
+**Add person** under People & balances adds someone with a zero balance. An equal split includes
+them from then on; a percentage or weight split (the default or a bill's) leaves them out until it
+is changed. **Rename** changes a name and keeps that person's entries, shares and balance. Names
+are unique within a household, ignoring case. People can't be removed yet.
 
 ## Combining with another person
 
@@ -134,7 +146,9 @@ instead leaves $2,868 owed to you. Do not record an advance and a repayment for 
 same receipt.
 
 Bills have a due date, total estimate or billed amount, personal estimate and
-reserved amount. Reservations use the smaller of received ledger funding and bank
+reserved amount. **Edit** changes a bill's name and due date at any time, and its amounts while
+no expense is matched to it; **Delete** removes a bill with no matched expense and releases its
+reservation. Reservations use the smaller of received ledger funding and bank
 cash, after other reservations. They can be increased across paydays as actual
 contributions arrive. Account cash by itself is not bill coverage. Payment consumes
 its bill reservation; an unrelated expense cannot consume funds reserved for other

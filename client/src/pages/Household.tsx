@@ -131,6 +131,10 @@ export default function HouseholdPage() {
     onSuccess: async (data) => {
       setError('');
       setCreating(false);
+      setEditingPerson('');
+      setAddingPerson(false);
+      setEditingBill('');
+      setDeletingBill('');
       setId(data.group.id);
       await cache.invalidateQueries({ queryKey: ['households'] });
       // A combined household shows this ledger too
@@ -143,6 +147,10 @@ export default function HouseholdPage() {
     onError: (e: Error) => setError(e.message),
   });
   const [creating, setCreating] = useState(false);
+  const [editingPerson, setEditingPerson] = useState('');
+  const [addingPerson, setAddingPerson] = useState(false);
+  const [editingBill, setEditingBill] = useState('');
+  const [deletingBill, setDeletingBill] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const money = (n: number) => formatMoney(n, state?.group.currency ?? 'AUD');
   const hasPool = (state?.group.poolAccountIds.length ?? 0) > 0;
@@ -331,11 +339,55 @@ export default function HouseholdPage() {
                   {state.people.map((p) => {
                     const balance = state.balances[p.id];
                     return (
-                      <div key={p.id} className="flex justify-between gap-3 py-2 text-sm">
-                        <span className="text-text">
-                          {p.name}
-                          {p.isSelf ? <span className="text-text-tertiary"> (me)</span> : ''}
-                        </span>
+                      <div
+                        key={p.id}
+                        className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2 text-sm"
+                      >
+                        {editingPerson === p.id ? (
+                          <form
+                            className="flex flex-1 items-center gap-2 min-w-56"
+                            onSubmit={(e) =>
+                              submit(e, (f) => ({
+                                path: `/households/${selected}/people/${p.id}`,
+                                method: 'PUT',
+                                body: { name: f.get('name') },
+                              }))
+                            }
+                          >
+                            <Input
+                              name="name"
+                              aria-label={`New name for ${p.name}`}
+                              defaultValue={p.name}
+                              required
+                              maxLength={200}
+                              autoFocus
+                            />
+                            <Button type="submit" size="sm" disabled={mutation.isPending}>
+                              Save
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setEditingPerson('')}
+                            >
+                              Cancel
+                            </Button>
+                          </form>
+                        ) : (
+                          <span className="text-text">
+                            {p.name}
+                            {p.isSelf ? <span className="text-text-tertiary"> (me)</span> : ''}
+                            <button
+                              type="button"
+                              className="ml-2 text-xs text-text-tertiary underline-offset-2 hover:underline"
+                              aria-label={`Rename ${p.name}`}
+                              onClick={() => setEditingPerson(p.id)}
+                            >
+                              Rename
+                            </button>
+                          </span>
+                        )}
                         <span
                           className={`tabular-nums font-medium text-right ${balance < 0 ? 'text-negative' : balance > 0 ? 'text-positive' : 'text-text-tertiary'}`}
                         >
@@ -349,6 +401,54 @@ export default function HouseholdPage() {
                     );
                   })}
                 </div>
+                {addingPerson ? (
+                  <form
+                    className="mt-2 flex items-center gap-2"
+                    onSubmit={(e) =>
+                      submit(e, (f) => ({
+                        path: `/households/${selected}/people`,
+                        body: { name: f.get('name') },
+                      }))
+                    }
+                  >
+                    <Input
+                      name="name"
+                      aria-label="New person's name"
+                      placeholder="Name"
+                      required
+                      maxLength={200}
+                      autoFocus
+                    />
+                    <Button type="submit" size="sm" disabled={mutation.isPending}>
+                      Add to household
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setAddingPerson(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </form>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="mt-1"
+                    onClick={() => setAddingPerson(true)}
+                  >
+                    <Plus size={14} /> Add person
+                  </Button>
+                )}
+                {addingPerson &&
+                  state.group.defaultSplit &&
+                  state.group.defaultSplit.mode !== 'equal' && (
+                    <p className="mt-1 text-xs text-text-tertiary">
+                      Your default split gives each person a set share, so it leaves someone new out
+                      until you change it in Household settings.
+                    </p>
+                  )}
                 {hasPool && (
                   <div className="mt-3 grid gap-2 sm:grid-cols-3 text-xs text-text-tertiary">
                     <p className="bg-surface-alt rounded-lg p-2.5">
@@ -719,6 +819,138 @@ export default function HouseholdPage() {
                               {b.status}
                             </span>
                           </div>
+                          <div className="flex flex-wrap gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              aria-label={`Edit ${b.description}`}
+                              onClick={() => setEditingBill(editingBill === b.id ? '' : b.id)}
+                            >
+                              Edit
+                            </Button>
+                            {deletingBill === b.id ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  disabled={mutation.isPending}
+                                  onClick={() =>
+                                    mutation.mutate({
+                                      path: `/households/${selected}/bills/${b.id}`,
+                                      method: 'DELETE',
+                                      body: undefined,
+                                    })
+                                  }
+                                >
+                                  Delete {b.description}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setDeletingBill('')}
+                                >
+                                  Keep it
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                aria-label={`Delete ${b.description}…`}
+                                disabled={state.events.some((e) => e.billId === b.id)}
+                                title={
+                                  state.events.some((e) => e.billId === b.id)
+                                    ? 'A payment is matched to this bill: remove that entry first'
+                                    : undefined
+                                }
+                                onClick={() => setDeletingBill(b.id)}
+                              >
+                                Delete
+                              </Button>
+                            )}
+                          </div>
+                          {editingBill === b.id && (
+                            <form
+                              className="grid gap-2 rounded-md bg-surface-alt p-2.5"
+                              onSubmit={(e) =>
+                                submit(e, (f) => {
+                                  const paid = state.events.some((x) => x.billId === b.id);
+                                  return {
+                                    path: `/households/${selected}/bills/${b.id}`,
+                                    method: 'PUT',
+                                    body: {
+                                      description: f.get('description'),
+                                      dueDate: f.get('dueDate'),
+                                      ...(paid
+                                        ? {}
+                                        : {
+                                            amount: cents(f.get('amount')),
+                                            personalShare: cents(f.get('personalShare')),
+                                          }),
+                                    },
+                                  };
+                                })
+                              }
+                            >
+                              <label className={field}>
+                                <span className="text-xs">Bill name</span>
+                                <Input
+                                  name="description"
+                                  defaultValue={b.description}
+                                  required
+                                  maxLength={200}
+                                />
+                              </label>
+                              <div className="grid gap-2 sm:grid-cols-3">
+                                <label className={field}>
+                                  <span className="text-xs">Due date</span>
+                                  <Input
+                                    type="date"
+                                    name="dueDate"
+                                    defaultValue={b.dueDate}
+                                    required
+                                  />
+                                </label>
+                                <label className={field}>
+                                  <span className="text-xs">Total</span>
+                                  <Input
+                                    name="amount"
+                                    inputMode="decimal"
+                                    defaultValue={(b.amount / 100).toFixed(2)}
+                                    disabled={state.events.some((x) => x.billId === b.id)}
+                                  />
+                                </label>
+                                <label className={field}>
+                                  <span className="text-xs">My estimated share</span>
+                                  <Input
+                                    name="personalShare"
+                                    inputMode="decimal"
+                                    defaultValue={(b.personalShare / 100).toFixed(2)}
+                                    disabled={state.events.some((x) => x.billId === b.id)}
+                                  />
+                                </label>
+                              </div>
+                              {state.events.some((x) => x.billId === b.id) && (
+                                <p className="text-xs text-text-tertiary">
+                                  A payment is matched to this bill, so its amounts stay as they
+                                  are.
+                                </p>
+                              )}
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setEditingBill('')}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button type="submit" size="sm" disabled={mutation.isPending}>
+                                  Save bill
+                                </Button>
+                              </div>
+                            </form>
+                          )}
                           <form
                             className="flex items-end gap-2"
                             onSubmit={(e) =>

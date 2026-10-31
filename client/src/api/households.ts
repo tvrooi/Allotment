@@ -86,7 +86,11 @@ export interface SharedRecurringBill {
   status: string;
   nextDate: string | null;
   paidFromPool: boolean;
-  /** Each person's part of `amount` with the default split */
+  /** Its own split; null = the household's default split */
+  split: HouseholdSplit | null;
+  /** New payments from this day are shared as they arrive; null = shared by hand */
+  autoShareFrom: string | null;
+  /** Each person's part of `amount` with the bill's split */
   shares: { personId: string; amount: number }[];
   /** Recent payments, newest first, and whether each is shared yet */
   payments: { transactionId: string; date: string; amount: number; shared: boolean }[];
@@ -99,3 +103,45 @@ export const shareRecurringBills = (groupId: string, scheduleIds: string[]) =>
   });
 export const unshareRecurringBill = (groupId: string, scheduleId: string) =>
   apiFetch<unknown>(`/households/${groupId}/recurring-bills/${scheduleId}`, { method: 'DELETE' });
+
+/** A bill's own split (null = the default) and/or whether new payments share themselves */
+export const updateRecurringBill = (
+  groupId: string,
+  scheduleId: string,
+  changes: { split?: HouseholdSplit | null; autoShare?: boolean },
+) =>
+  apiFetch<unknown>(`/households/${groupId}/recurring-bills/${scheduleId}`, {
+    method: 'PUT',
+    body: JSON.stringify(changes),
+  });
+/** Shares a bill's payments with the bill's own split */
+export const shareBillPayments = (groupId: string, scheduleId: string, transactionIds: string[]) =>
+  apiFetch<ShareResult>(`/households/${groupId}/recurring-bills/${scheduleId}/share`, {
+    method: 'POST',
+    body: JSON.stringify({ transactionIds }),
+  });
+
+export const addHouseholdPerson = (groupId: string, name: string) =>
+  apiFetch<unknown>(`/households/${groupId}/people`, {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  });
+export const renameHouseholdPerson = (groupId: string, personId: string, name: string) =>
+  apiFetch<unknown>(`/households/${groupId}/people/${personId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ name }),
+  });
+
+export interface BillEdit {
+  description?: string;
+  dueDate?: string;
+  amount?: number;
+  personalShare?: number;
+}
+export const editHouseholdBill = (groupId: string, billId: string, changes: BillEdit) =>
+  apiFetch<unknown>(`/households/${groupId}/bills/${billId}`, {
+    method: 'PUT',
+    body: JSON.stringify(changes),
+  });
+export const deleteHouseholdBill = (groupId: string, billId: string) =>
+  apiFetch<unknown>(`/households/${groupId}/bills/${billId}`, { method: 'DELETE' });
