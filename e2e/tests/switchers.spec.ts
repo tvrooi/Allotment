@@ -315,10 +315,15 @@ test('the recommended order works on a fresh budget: YNAB import, then link Up t
   const ynab = page.getByRole('dialog', { name: 'Import from YNAB' });
   const header =
     'Account,Flag,Date,Payee,Category Group/Category,Category Group,Category,Memo,Outflow,Inflow,Cleared\n';
-  const rows = [-60, -55, -50]
+  // The 20th–22nd two months back: older than Up's window, and a day over 12 shows the file
+  // writes DD/MM (with only days 1–12 the import rightly asks which format it is)
+  const month = new Date();
+  month.setDate(1);
+  month.setMonth(month.getMonth() - 2);
+  const rows = [20, 21, 22]
     .map(
-      (d, i) =>
-        `Everyday,,${dmy(isoDay(d))},Shop ${i},Food & Dining: Groceries,Food & Dining,Groceries,,$10.00,$0.00,Cleared\n`,
+      (day, i) =>
+        `Everyday,,${day}/${String(month.getMonth() + 1).padStart(2, '0')}/${month.getFullYear()},Shop ${i},Food & Dining: Groceries,Food & Dining,Groceries,,$10.00,$0.00,Cleared\n`,
     )
     .join('');
   await ynab.getByLabel('YNAB register file').setInputFiles({
