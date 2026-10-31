@@ -19,7 +19,7 @@ export const budgetGuide: Guide = {
       phoneBody:
         'Tap an amount to assign money to a category. What’s left to spend shows beside each one.',
       route: '/budget',
-      target: ['budget.columns', 'budget.categories'],
+      target: ['budget.columns', 'budget.expenses', 'budget.categories'],
     },
     {
       title: 'Move money',

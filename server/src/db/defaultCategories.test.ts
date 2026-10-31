@@ -6,6 +6,7 @@ describe('category templates for new budgets', () => {
     for (const env of ['default', 'au']) {
       const names = categoryTemplate(env).flatMap((g) => g.categories.map((c) => c.name));
       expect(names).not.toContain('Uncategorized');
+      expect(names).not.toContain('Uncategorised');
     }
     const other = categoryTemplate('default').find((g) => g.name === 'Other');
     expect(other?.categories.map((c) => c.name)).toContain('Other');

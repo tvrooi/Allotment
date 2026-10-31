@@ -37,7 +37,7 @@ export function CategorySelect({
         `block w-full bg-transparent text-sm text-text focus:outline-none ${className}`
       }
     >
-      <option value="">Uncategorized</option>
+      <option value="">Uncategorised</option>
       {groups.map((g) => (
         <optgroup key={g.id} label={g.name}>
           {g.categories.map((c) => (

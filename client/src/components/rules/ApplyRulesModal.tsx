@@ -20,7 +20,7 @@ interface Props {
 }
 
 const SCOPES: Array<{ value: RuleApplyScope; label: string }> = [
-  { value: 'uncategorized', label: 'Uncategorized only' },
+  { value: 'uncategorized', label: 'Uncategorised only' },
   { value: 'all', label: 'All transactions' },
 ];
 
@@ -70,7 +70,7 @@ export function ApplyRulesModal({
   }
 
   const category = (id: string | null) =>
-    id ? (lookups.category(id) ?? '(deleted)') : 'Uncategorized';
+    id ? (lookups.category(id) ?? '(deleted)') : 'Uncategorised';
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="xl">

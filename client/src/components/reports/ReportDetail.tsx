@@ -882,7 +882,7 @@ function DayTransactions({ day, onClose }: { day: string; onClose: () => void })
                     ? `Split (${t.children?.length ?? 0})`
                     : t.categoryId
                       ? categoryLabel(categoriesById.get(t.categoryId), showIcons)
-                      : 'Uncategorized'}
+                      : 'Uncategorised'}
                 </span>
               ),
             },

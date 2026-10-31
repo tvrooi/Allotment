@@ -69,7 +69,7 @@ test.describe('not categorised yet', () => {
   test('a new budget calls its catch-all category "Other"', async ({ api }) => {
     const names = (await api.categoryGroups()).flatMap((g) => g.categories.map((c) => c.name));
     expect(names).toContain('Other');
-    expect(names).not.toContain('Uncategorized');
+    expect(names).not.toContain('Uncategorised');
   });
 });
 
@@ -187,8 +187,8 @@ test.describe('the budget page', () => {
     await page.getByRole('button', { name: 'Put the rest in…' }).click();
     const search = page.getByRole('textbox', { name: 'Search categories' });
     await expect(search).toBeFocused();
-    // No "Uncategorized" here: the money has to go somewhere
-    await expect(page.getByRole('button', { name: 'Uncategorized' })).toHaveCount(0);
+    // No "Uncategorised" here: the money has to go somewhere
+    await expect(page.getByRole('button', { name: 'Uncategorised' })).toHaveCount(0);
     await search.fill('Groceries');
     await page.keyboard.press('Enter');
 

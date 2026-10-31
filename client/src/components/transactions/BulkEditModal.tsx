@@ -97,7 +97,7 @@ export function BulkEditModal({ params, count, isOpen, onClose }: Props) {
   const changeCount = Object.keys(changes).length;
   const categoryName = (id: string | null) =>
     id === null
-      ? 'Uncategorized'
+      ? 'Uncategorised'
       : (groups.flatMap((g) => g.categories).find((c) => c.id === id)?.name ?? 'Category');
   const tagName = (id: string) => tags.find((t) => t.id === id)?.name ?? 'Tag';
 
@@ -222,7 +222,7 @@ export function BulkEditModal({ params, count, isOpen, onClose }: Props) {
               >
                 <option value="keep">No change</option>
                 <option value="set">Set to</option>
-                <option value="clear">Uncategorized</option>
+                <option value="clear">Uncategorised</option>
               </select>
               {draft.category.mode === 'set' && (
                 <CategorySelect

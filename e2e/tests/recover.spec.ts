@@ -42,7 +42,7 @@ test('a reconciled transaction can still be categorised, but its amount stays lo
   const panel = page.getByRole('complementary', { name: 'Transaction details' });
   await expect(panel).toContainText('amount, date and account are locked');
   await expect(panel.getByRole('textbox', { name: 'Date' })).toBeDisabled();
-  await panel.getByRole('button', { name: 'Uncategorized' }).click();
+  await panel.getByRole('button', { name: 'Uncategorised' }).click();
   await page.getByPlaceholder('Search categories...').fill('grocer');
   await page
     .getByRole('button', { name: /Groceries/ })

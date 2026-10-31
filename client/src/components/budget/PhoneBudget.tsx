@@ -43,18 +43,29 @@ export function PhoneBudget({
   readOnly = false,
 }: Props) {
   const [editing, setEditing] = useState<{ cat: BudgetCategory; isIncome: boolean } | null>(null);
+  const firstExpenses = sections.find((s) => !s.isIncome);
 
   return (
     <div>
-      {sections.map((section) => (
-        <Section
-          key={section.key}
-          section={section}
-          showAll={showAll}
-          readOnly={readOnly}
-          onEdit={(cat) => setEditing({ cat, isIncome: section.isIncome })}
-        />
-      ))}
+      {sections.map((section) => {
+        const el = (
+          <Section
+            key={section.key}
+            section={section}
+            showAll={showAll}
+            readOnly={readOnly}
+            onEdit={(cat) => setEditing({ cat, isIncome: section.isIncome })}
+          />
+        );
+        // The guides' "Categories are envelopes" step points at the first envelopes, not income
+        return section === firstExpenses ? (
+          <div key={section.key} data-guide="budget.expenses">
+            {el}
+          </div>
+        ) : (
+          el
+        );
+      })}
       <BudgetAmountSheet
         category={editing?.cat ?? null}
         isIncome={editing?.isIncome ?? false}

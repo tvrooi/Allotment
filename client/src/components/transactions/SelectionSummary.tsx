@@ -91,7 +91,7 @@ export function SelectionSummary({ params, loadedCount }: Props) {
           type="button"
           onClick={() => setConfirming(true)}
           disabled={review.isPending}
-          className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-8"
+          className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
           title="Mark every transaction in this list reviewed (you can undo it)"
         >
           <CheckCheck size={12} /> Mark reviewed
@@ -101,7 +101,7 @@ export function SelectionSummary({ params, loadedCount }: Props) {
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-8"
+          className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
           title="Change category, payee, notes, tags or visibility on every transaction in this list"
         >
           <PencilLine size={12} /> Edit {reviewCount.toLocaleString()}
@@ -111,7 +111,7 @@ export function SelectionSummary({ params, loadedCount }: Props) {
         <button
           type="button"
           onClick={() => setDeleting(true)}
-          className="inline-flex items-center gap-1 text-text-secondary hover:text-negative max-md:min-h-8"
+          className="inline-flex items-center gap-1 text-text-secondary hover:text-negative max-md:min-h-11"
           title="Delete every transaction in this list (reconciled ones are kept)"
         >
           <Trash2 size={12} /> Delete {reviewCount.toLocaleString()}
@@ -161,7 +161,7 @@ export function SelectionSummary({ params, loadedCount }: Props) {
         <button
           type="button"
           onClick={exportCsv}
-          className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-8"
+          className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
           title="Download these transactions as a CSV file (a split's matching parts)"
         >
           <Download size={12} /> Export

@@ -44,6 +44,7 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen bg-page overflow-hidden">
+      <SkipToContent />
       <Sidebar />
       <div className="flex-1 min-w-0 flex flex-col">
         {/* macOS desktop app: the window has no title bar, so this strip moves it */}
@@ -54,7 +55,7 @@ export function AppShell() {
         <DemoBanner />
         <ConnectionBanner />
         <GuideBanner />
-        <main className="flex-1 overflow-y-auto">
+        <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto focus:outline-none">
           <Outlet />
         </main>
       </div>
@@ -62,6 +63,25 @@ export function AppShell() {
       <GuideTour />
       <GuidesDialog />
     </div>
+  );
+}
+
+/**
+ * The first thing Tab reaches: past the sidebar's links, straight to the page. It moves focus
+ * rather than following "#main", which the desktop app's hash routing would read as a page.
+ */
+function SkipToContent() {
+  return (
+    <a
+      href="#main"
+      onClick={(e) => {
+        e.preventDefault();
+        document.getElementById('main')?.focus();
+      }}
+      className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2 focus:rounded-md focus:bg-surface focus:text-text focus:shadow-hover focus:outline-2 focus:outline-brand-600"
+    >
+      Skip to content
+    </a>
   );
 }
 

@@ -45,7 +45,7 @@ export const welcomeTour: Guide = {
       phoneBody:
         'Each category is an envelope. Tap an amount to assign money to it; what’s left to spend shows beside it.',
       route: '/budget',
-      target: ['budget.columns', 'budget.categories'],
+      target: ['budget.columns', 'budget.expenses', 'budget.categories'],
     },
     {
       title: 'Cover overspending',

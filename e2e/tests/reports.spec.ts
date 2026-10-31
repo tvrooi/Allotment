@@ -74,7 +74,7 @@ test.describe('reports', () => {
     await page.getByRole('combobox', { name: 'Group by' }).selectOption('category');
     const table = page.getByRole('table');
     await expect(table.getByRole('row', { name: 'Groceries $48.50' })).toBeVisible();
-    await expect(table.getByRole('row', { name: 'Uncategorized $4' })).toBeVisible();
+    await expect(table.getByRole('row', { name: 'Uncategorised $4' })).toBeVisible();
     await expect(table.getByRole('row', { name: 'Total $52.50' })).toBeVisible();
 
     await page.getByRole('combobox', { name: 'Group by' }).selectOption('payee');

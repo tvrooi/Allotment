@@ -55,7 +55,7 @@ export function TransactionCard({
       {categoryEntry.name}
     </span>
   ) : (
-    <span className="text-caution">Uncategorized</span>
+    <span className="text-caution">Uncategorised</span>
   );
 
   return (

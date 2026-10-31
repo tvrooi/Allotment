@@ -669,7 +669,7 @@ function MatchPreview({
             <span className="w-20 shrink-0 text-text-tertiary">{formatDay(tx.date)}</span>
             <span className="flex-1 truncate text-text">{tx.payeeName ?? '—'}</span>
             <span className="hidden sm:block w-40 truncate text-text-tertiary">
-              {(tx.categoryId && options.lookups.category(tx.categoryId)) || 'Uncategorized'}
+              {(tx.categoryId && options.lookups.category(tx.categoryId)) || 'Uncategorised'}
             </span>
             <span
               className={`w-24 text-right tabular-nums ${tx.amount < 0 ? 'text-text' : 'text-positive'}`}

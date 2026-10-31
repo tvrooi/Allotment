@@ -297,7 +297,7 @@ export function SpendingChart({ from, to }: { from: string; to: string }) {
         .sort((a, b) => b.totalSpent - a.totalSpent)
         .slice(0, 10)
         .map((d, i) => {
-          const full = `${showCategoryIcons && d.categoryIcon ? d.categoryIcon + ' ' : ''}${d.categoryName ?? 'Uncategorized'}`;
+          const full = `${showCategoryIcons && d.categoryIcon ? d.categoryIcon + ' ' : ''}${d.categoryName ?? 'Uncategorised'}`;
           return {
             name: full.length > 22 ? full.slice(0, 21) + '…' : full,
             fullName: full,
@@ -412,7 +412,7 @@ export function MonthlySpendingChart({ from, to }: { from: string; to: string })
 export function categoryLabel(
   c: { name?: string | null; icon?: string | null } | undefined,
   showIcons: boolean,
-  fallback = 'Uncategorized',
+  fallback = 'Uncategorised',
 ) {
   if (!c?.name) return fallback;
   return `${showIcons && c.icon ? c.icon + ' ' : ''}${c.name}`;
