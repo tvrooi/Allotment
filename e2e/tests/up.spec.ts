@@ -142,3 +142,42 @@ test('adds balance-proven round-up debits only after an explicit choice', async 
   expect(await api.transactions()).toHaveLength(3);
   await api.call('DELETE', '/up/connection');
 });
+
+test('a deleted Up transaction stays deleted until it is restored from Up review', async ({
+  page,
+  api,
+}) => {
+  await fetch(`http://127.0.0.1:${UP_MOCK_PORT}/__mock/normal`, { method: 'POST' });
+  await freshUpWindow(page, api, 8);
+  await api.call('POST', '/up/setup', { accessToken: UP_TEST_TOKEN });
+  await api.call('POST', '/up/map-accounts', {
+    mappings: [
+      { upAccountId: 'spending', action: 'create' },
+      { upAccountId: 'saver', action: 'skip' },
+    ],
+  });
+  await api.call('POST', '/up/sync');
+  const everyday = (await api.accounts()).find((a) => a.name === 'Up Everyday')!;
+  const upRows = async () => (await api.transactions()).filter((t) => t.accountId === everyday.id);
+  const victim = (await upRows()).find((t) => t.amount < 0)!;
+
+  await open(page, `/accounts/${everyday.id}`);
+  await page.getByTestId('transaction-row').filter({ hasText: victim.payeeName }).click();
+  await page.getByRole('button', { name: 'Delete Transaction' }).click();
+  const confirm = page.getByRole('dialog');
+  await expect(confirm.getByText('It came from Up, so it stays deleted')).toBeVisible();
+  await confirm.getByRole('button', { name: 'Delete' }).click();
+  await expect.poll(async () => (await upRows()).length).toBe(1);
+
+  // Syncing doesn't bring it back
+  await api.call('POST', '/up/sync');
+  expect((await upRows()).some((t) => t.importedId === victim.importedId)).toBe(false);
+
+  await open(page, '/settings?tab=connections');
+  await page.getByRole('button', { name: 'Up', exact: true }).click();
+  const deleted = page.getByRole('region', { name: 'Deleted here, still at Up' });
+  await expect(deleted.getByText(victim.payeeName)).toBeVisible();
+  await deleted.getByRole('button', { name: `Restore ${victim.payeeName}` }).click();
+  await expect(deleted).toBeHidden();
+  expect((await upRows()).some((t) => t.importedId === victim.importedId)).toBe(true);
+});

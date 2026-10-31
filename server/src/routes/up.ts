@@ -34,6 +34,7 @@ import {
   roundUpCheck,
   roundUpDays,
   RoundUpError,
+  restoreDeletedUpImport,
   upReview,
   upTransactionId,
 } from '../services/upReviewService.js';
@@ -447,6 +448,22 @@ upRouter.post('/review/overlap/delete-old', (req, res) => {
       .run();
   });
   res.json({ deleted: !!old });
+});
+/**
+ * Bring back an Up transaction deleted here: forget the deletion and sync, which imports it
+ * again (as Up reports it now, without the edits it had before it was deleted).
+ */
+upRouter.post('/review/restore', async (req, res) => {
+  if (isUpSyncing()) return res.status(409).json({ error: 'Wait for the Up sync to finish.' });
+  const parsed = z
+    .object({ accountId: z.string().min(1).max(64), importedId: z.string().min(1).max(1024) })
+    .strict()
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Choose a deleted transaction.' });
+  if (!restoreDeletedUpImport(parsed.data.accountId, parsed.data.importedId))
+    return res.status(404).json({ error: 'It was already restored. Refresh the list.' });
+  const sync = await syncUp();
+  res.json({ restored: true, sync });
 });
 upRouter.post('/cutover/opening-balance', (req, res) => {
   if (isUpSyncing()) return res.status(409).json({ error: 'Wait for the Up sync to finish.' });

@@ -136,6 +136,10 @@ export const transactions = sqliteTable(
     index('transactions_date_idx').on(table.date),
     index('transactions_imported_id_idx').on(table.importedId),
     index('idx_transactions_schedule').on(table.scheduleId),
+    // Migration 0060
+    index('transactions_parent_idx').on(table.parentTransactionId),
+    index('transactions_transfer_idx').on(table.transferTransactionId),
+    index('transactions_payee_idx').on(table.payeeId),
   ],
 );
 
@@ -1345,6 +1349,22 @@ export const paymentPlanDismissals = sqliteTable(
       .references(() => transactions.id, { onDelete: 'cascade' }),
   },
   (t) => [primaryKey({ columns: [t.instalmentId, t.transactionId] })],
+);
+
+/**
+ * Up transactions the owner deleted here (migration 0059). Up still returns them, so the sync
+ * skips them rather than importing them again; Up review lists them so they can be restored.
+ */
+export const upDeletedImports = sqliteTable(
+  'up_deleted_imports',
+  {
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    importedId: text('imported_id').notNull(),
+    deletedAt: text('deleted_at').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.accountId, t.importedId] })],
 );
 
 /**

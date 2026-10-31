@@ -36,6 +36,7 @@ import {
   simplefinAccountMappings,
   upAccountMappings,
   upSourceRecords,
+  upDeletedImports,
   enableBankingAccountMappings,
   transactions,
   receipts,
@@ -96,7 +97,7 @@ import { isCurrencyCode } from '../utils/currencies.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 21;
+export const BACKUP_VERSION = 22;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -116,6 +117,8 @@ const TABLES = {
   receiptLineItems,
   taxClaims,
   upSourceRecords,
+  // Up transactions deleted here, so a restored budget doesn't import them again
+  upDeletedImports,
   scheduleOccurrences,
   scheduleMatchDismissals,
   transferMatchDismissals,
