@@ -527,6 +527,13 @@ describe('household attribution', () => {
       .values({ id: 'loop-old', accountId: 'mine', date: day(-20), amount: -9000, payeeId: 'loop' })
       .run();
     await call(`/${g.group.id}/recurring-bills`, { scheduleIds: ['net'] });
+    const noExtras = {
+      payeeId: null,
+      importedPayee: null,
+      notes: null,
+      categoryId: null,
+      importedId: null,
+    };
 
     // Its own split: I use most of the internet
     const bad = await call(
@@ -571,6 +578,7 @@ describe('household attribution', () => {
     );
     db.transaction(() => {
       insertNewTransaction({
+        ...noExtras,
         id: 'loop-new',
         accountId: 'mine',
         date: day(0),
@@ -578,6 +586,7 @@ describe('household attribution', () => {
         payeeName: 'Superloop',
       });
       insertNewTransaction({
+        ...noExtras,
         id: 'loop-backdated',
         accountId: 'mine',
         date: day(-5),
@@ -585,6 +594,7 @@ describe('household attribution', () => {
         payeeName: 'Superloop',
       });
       insertNewTransaction({
+        ...noExtras,
         id: 'loop-refund',
         accountId: 'mine',
         date: day(0),
@@ -608,6 +618,7 @@ describe('household attribution', () => {
     expect(resetBill).toMatchObject({ split: null, autoShareFrom: null });
     db.transaction(() =>
       insertNewTransaction({
+        ...noExtras,
         id: 'loop-manual',
         accountId: 'mine',
         date: day(0),
