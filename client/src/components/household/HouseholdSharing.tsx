@@ -13,7 +13,8 @@ import {
 import { formatMoney } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { Button } from '../ui/Button';
-import { Input, Select } from '../ui/Input';
+import { Select } from '../ui/Input';
+import { SplitEditor, describeSplit } from './SplitEditor';
 
 // Household → Sharing: the accounts the household pays from (each one outside your personal
 // budget), the split "Share with household" uses, and money received that looks like someone
@@ -75,32 +76,6 @@ export function HouseholdSharing({ group, people }: Props) {
   const [adding, setAdding] = useState('');
 
   const current = group.defaultSplit;
-  const [mode, setMode] = useState<HouseholdSplit['mode']>(current?.mode ?? 'equal');
-  const [values, setValues] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      people.map((p) => {
-        const v = current?.shares.find((s) => s.personId === p.id)?.value;
-        return [p.id, v === undefined ? '' : String(current?.mode === 'percentage' ? v / 100 : v)];
-      }),
-    ),
-  );
-  function saveSplit() {
-    if (mode === 'equal') return split.mutate(null);
-    const shares = people.map((p) => {
-      const n = Number(values[p.id] || 0);
-      return { personId: p.id, value: mode === 'percentage' ? Math.round(n * 100) : Math.round(n) };
-    });
-    split.mutate({ mode, shares });
-  }
-  const describe = (s: HouseholdSplit | null) =>
-    !s || s.mode === 'equal'
-      ? 'equal between everyone'
-      : s.shares
-          .map(
-            (x) =>
-              `${people.find((p) => p.id === x.personId)?.name ?? '?'} ${s.mode === 'percentage' ? `${x.value / 100}%` : `×${x.value}`}`,
-          )
-          .join(', ');
 
   return (
     <section className={card} aria-labelledby="household-sharing">
@@ -168,36 +143,15 @@ export function HouseholdSharing({ group, people }: Props) {
       <h3 className="text-xs font-semibold text-text-secondary mt-4">Default split</h3>
       <p className="text-xs text-text-tertiary">
         Used by <strong>Share with household</strong> in transactions and by rules. Now{' '}
-        {describe(current)}.
+        {describeSplit(current, people)}.
       </p>
-      <div className="mt-2 grid gap-2">
-        <Select
-          aria-label="Split"
-          value={mode}
-          onChange={(e) => setMode(e.target.value as HouseholdSplit['mode'])}
-        >
-          <option value="equal">Equal</option>
-          <option value="percentage">Percentages</option>
-          <option value="weight">Weights (for example 2 : 1 : 1)</option>
-        </Select>
-        {mode !== 'equal' &&
-          people.map((p) => (
-            <label key={p.id} className="flex items-center gap-2 text-xs text-text-secondary">
-              <span className="w-24 truncate">{p.name}</span>
-              <Input
-                aria-label={`${p.name}'s ${mode === 'percentage' ? 'percentage' : 'weight'}`}
-                inputMode="decimal"
-                value={values[p.id] ?? ''}
-                onChange={(e) => setValues((v) => ({ ...v, [p.id]: e.target.value }))}
-              />
-              {mode === 'percentage' && '%'}
-            </label>
-          ))}
-        <div>
-          <Button size="sm" variant="secondary" onClick={saveSplit} disabled={split.isPending}>
-            Save split
-          </Button>
-        </div>
+      <div className="mt-2">
+        <SplitEditor
+          people={people}
+          current={current}
+          saving={split.isPending}
+          onSave={(next) => split.mutate(next)}
+        />
       </div>
 
       {suggestions.length > 0 && self && (

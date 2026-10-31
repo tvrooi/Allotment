@@ -230,3 +230,96 @@ test('lists recurring bills shared with housemates, with shares and one-click sh
     true,
   );
 });
+
+test('bill splits, automatic sharing, people and one-off bills can all be changed', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Up Spending', 100000);
+  const day = (offset: number) =>
+    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+  const paid = await api.createTransaction({
+    accountId: account.id,
+    date: day(-5),
+    amount: -10000,
+    payeeName: 'Superloop',
+  });
+  const schedule = await api.call('POST', '/schedules', {
+    name: 'Internet (Superloop)',
+    amount: -10000,
+    recurrenceType: 'monthly',
+    recurrenceRule: { type: 'monthly', interval: 1, anchorDay: 1 },
+    startDate: day(-5),
+    accountId: account.id,
+    payeeId: paid.payeeId,
+  });
+  const group = await api.call('POST', '/households', {
+    name: 'Home',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Sam'],
+    selfIndex: 0,
+  });
+  await api.call('POST', `/households/${group.group.id}/recurring-bills`, {
+    scheduleIds: [schedule.id],
+  });
+  await api.call('POST', `/households/${group.group.id}/bills`, {
+    description: 'Council rates',
+    dueDate: day(30),
+    amount: 30000,
+  });
+  await open(page, '/household');
+
+  // People: add Jo, rename Sam
+  await page.getByRole('button', { name: 'Add person' }).click();
+  await page.getByLabel("New person's name").fill('Jo');
+  await page.getByRole('button', { name: 'Add to household' }).click();
+  await expect(page.getByRole('button', { name: 'Rename Jo' })).toBeVisible();
+  await page.getByRole('button', { name: 'Rename Sam' }).click();
+  await page.getByLabel('New name for Sam').fill('Samantha');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Rename Samantha' })).toBeVisible();
+
+  // A split of its own for the internet bill, then share its payment with it
+  const recurring = page.getByRole('region', { name: 'Recurring bills' });
+  const net = recurring.getByRole('listitem').filter({ hasText: 'Internet (Superloop)' });
+  await expect(net).toContainText("household's default split");
+  await net.getByRole('button', { name: 'Change split' }).click();
+  await net.getByLabel('Split').selectOption('percentage');
+  await net.getByLabel("Me's percentage").fill('50');
+  await net.getByLabel("Samantha's percentage").fill('25');
+  await net.getByLabel("Jo's percentage").fill('25');
+  await net.getByRole('button', { name: 'Save split' }).click();
+  await expect(net).toContainText(/Me A?\$50 · Samantha A?\$25 · Jo A?\$25/);
+  await expect(net).toContainText('Me 50%, Samantha 25%, Jo 25%');
+  await net.getByRole('button', { name: 'Share payment' }).click();
+  await expect(net).toContainText('Last payment shared');
+  const state = await api.call('GET', `/households/${group.group.id}`);
+  const entry = state.events.find((e: any) => e.transactionId === paid.id);
+  expect(entry.shares.map((s: any) => s.amount)).toEqual([5000, 2500, 2500]);
+
+  // Automatic sharing of new payments
+  await net.getByLabel('Share new payments automatically').click();
+  await expect(net.getByLabel('Share new payments automatically')).toBeChecked();
+  await expect(net).toContainText('(from ');
+  const next = await api.createTransaction({
+    accountId: account.id,
+    date: day(0),
+    amount: -10000,
+    payeeName: 'Superloop',
+  });
+  const after = await api.call('GET', `/households/${group.group.id}`);
+  expect(after.events.some((e: any) => e.transactionId === next.id)).toBe(true);
+
+  // One-off bill: edit, then delete
+  const bills = page.getByRole('heading', { name: 'Bills to reserve for' }).locator('..');
+  await bills.getByRole('button', { name: 'Edit Council rates' }).click();
+  await bills.getByLabel('Bill name').first().fill('Council rates Q2');
+  await bills.getByLabel('Total', { exact: true }).fill('310.00');
+  await bills.getByRole('button', { name: 'Save bill' }).click();
+  await expect(bills).toContainText('Council rates Q2');
+  await expect(bills).toContainText(/A?\$310/);
+  await bills.getByRole('button', { name: 'Delete Council rates Q2…' }).click();
+  await bills.getByRole('button', { name: 'Delete Council rates Q2', exact: true }).click();
+  await expect(bills).toHaveCount(0);
+});

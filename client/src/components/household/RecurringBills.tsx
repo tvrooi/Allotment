@@ -3,19 +3,23 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSchedules } from '../../hooks/useSchedules';
 import {
+  shareBillPayments,
   shareRecurringBills,
-  shareTransactions,
   unshareRecurringBill,
+  updateRecurringBill,
+  type HouseholdSplit,
   type SharedRecurringBill,
 } from '../../api/households';
+import { SplitEditor, describeSplit } from './SplitEditor';
 import { FREQ_LABEL } from '../recurring/scheduleFormat';
 import { formatMoney } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { Button } from '../ui/Button';
 
 // Household → Recurring bills: items from Recurring (power, gas, internet, water…) shared with
-// the household. Each shows its next date, everyone's share with the default split, and its
-// recent payments; sharing the ones not shared yet is one click, never automatic.
+// the household. Each shows its next date, everyone's share with its split (its own or the
+// household's default), and its recent payments. Past payments are shared with one click; new
+// ones are shared as they arrive only when the bill is set to.
 
 const card = 'bg-surface rounded-lg shadow-card border border-border-light p-4';
 const plural = (n: number) => (n === 1 ? 'payment' : `${n} payments`);
@@ -55,8 +59,21 @@ export function RecurringBills({ groupId, currency, people, bills }: Props) {
     onSuccess: refresh,
     onError,
   });
+  const [splitting, setSplitting] = useState('');
+  const update = useMutation({
+    mutationFn: (v: {
+      scheduleId: string;
+      changes: { split?: HouseholdSplit | null; autoShare?: boolean };
+    }) => updateRecurringBill(groupId, v.scheduleId, v.changes),
+    onSuccess: async () => {
+      setSplitting('');
+      await refresh();
+    },
+    onError,
+  });
   const share = useMutation({
-    mutationFn: (ids: string[]) => shareTransactions(groupId, ids),
+    mutationFn: (v: { scheduleId: string; ids: string[] }) =>
+      shareBillPayments(groupId, v.scheduleId, v.ids),
     onSuccess: async (r) => {
       await refresh();
       const failed = r.results.find((x) => !x.ok);
@@ -75,7 +92,7 @@ export function RecurringBills({ groupId, currency, people, bills }: Props) {
       !s.transferAccountId &&
       !shownIds.has(s.id),
   );
-  const busy = add.isPending || stop.isPending || share.isPending;
+  const busy = add.isPending || stop.isPending || share.isPending || update.isPending;
 
   return (
     <section className={card} aria-labelledby="household-recurring">
@@ -138,7 +155,43 @@ export function RecurringBills({ groupId, currency, people, bills }: Props) {
                       {name(s.personId)} <span className="tabular-nums">{money(s.amount)}</span>
                     </span>
                   ))}
+                  <span className="text-text-tertiary">
+                    {' '}
+                    ({b.split ? describeSplit(b.split, people) : "household's default split"})
+                  </span>
                 </p>
+                {splitting === b.scheduleId ? (
+                  <div className="rounded-md bg-surface-alt p-2.5">
+                    <SplitEditor
+                      people={people}
+                      current={b.split}
+                      equalLabel="The household's default split"
+                      saving={update.isPending}
+                      onSave={(split) =>
+                        update.mutate({ scheduleId: b.scheduleId, changes: { split } })
+                      }
+                      onCancel={() => setSplitting('')}
+                    />
+                  </div>
+                ) : null}
+                <label className="flex items-center gap-2 text-xs text-text-secondary min-h-8">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-brand-600"
+                    checked={!!b.autoShareFrom}
+                    disabled={busy}
+                    onChange={(e) =>
+                      update.mutate({
+                        scheduleId: b.scheduleId,
+                        changes: { autoShare: e.target.checked },
+                      })
+                    }
+                  />
+                  Share new payments automatically
+                  {b.autoShareFrom && (
+                    <span className="text-text-tertiary">(from {formatDay(b.autoShareFrom)})</span>
+                  )}
+                </label>
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
                   <p className="text-xs text-text-tertiary">
                     {b.payments.length === 0
@@ -152,11 +205,26 @@ export function RecurringBills({ groupId, currency, people, bills }: Props) {
                       <Button
                         size="sm"
                         disabled={busy}
-                        onClick={() => share.mutate(unshared.map((p) => p.transactionId))}
+                        onClick={() =>
+                          share.mutate({
+                            scheduleId: b.scheduleId,
+                            ids: unshared.map((p) => p.transactionId),
+                          })
+                        }
                       >
                         {unshared.length === 1
                           ? 'Share payment'
                           : `Share ${unshared.length} payments`}
+                      </Button>
+                    )}
+                    {splitting !== b.scheduleId && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => setSplitting(b.scheduleId)}
+                      >
+                        Change split
                       </Button>
                     )}
                     <Button

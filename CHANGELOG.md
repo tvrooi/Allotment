@@ -1,5 +1,12 @@
 # Changes
 
+## 0.2.0-up.66
+
+- **Split each recurring bill its own way.** **Change split** on a bill in **Household → Recurring bills** gives it equal, percentage or weight shares of its own, for example more of the internet for the person working from home. Its shares and **Share _N_ payments** use that split; **The household's default split** puts it back.
+- **Share a bill's payments as they arrive.** Tick **Share new payments automatically** on a bill and each new payment to its payee, from that day on, is shared with the bill's split when it's imported. Payments from before stay a click, refunds and transfers are never shared, and unticking it stops at once.
+- **Add or rename people.** **Add person** under People & balances adds a new housemate, starting settled; **Rename** next to a name changes it, keeping their entries and balance. A percentage or weight default split leaves someone new out until you change it, and the page says so.
+- **Edit or delete one-off bills.** Bills to reserve for now have **Edit** (name, due date, total and your share) and **Delete**. Once a payment is matched to a bill, only its name and date can change, and it can't be deleted until that entry is removed.
+
 ## 0.2.0-up.65
 
 - **Recurring bills on the Household page.** Bills you set up in Recurring (power, gas, internet, water) can now be shared with a household: **Household → Recurring bills → Add recurring bills**, tick the ones you split. Each shows how often it comes, its next date, what everyone's share of it is with the household's default split, and whether its recent payments are shared yet. **Share _N_ payments** shares the ones that aren't, in one click; nothing is shared without it. **Stop sharing** takes a bill off the list and keeps what was already shared.

@@ -8,7 +8,7 @@ import {
   tags,
   transactions,
 } from '../db/schema.js';
-import { shareTransaction } from './householdService.js';
+import { autoShareBillPayment, shareTransaction } from './householdService.js';
 import { claimByRule, claimedIds } from './taxService.js';
 import { scheduleReceiptMatching } from './receiptMatching.js';
 import { and, desc, eq, inArray, isNull, ne } from 'drizzle-orm';
@@ -189,6 +189,8 @@ export function insertNewTransaction(input: NewTransactionInput, opts: InsertOpt
     db.insert(transactions).values(row).run();
     for (const tagId of ruleTags) addTransactionTag(row.id, tagId);
     if (share) shareByRule(share, row.id);
+    // Otherwise a household bill set to share its payments as they arrive
+    else autoShareBillPayment(row);
     if (taxLabel) claimByRule(row.id, taxLabel);
     // A receipt waiting for this transaction is matched once the import is done
     scheduleReceiptMatching();
