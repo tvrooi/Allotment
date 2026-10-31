@@ -1,5 +1,21 @@
 # Changes
 
+## 0.2.0-up.70
+
+Fixes from a full code and UX review.
+
+- **Safe mode hides chart amounts too.** A category's history chart showed its monthly figures above the bars (an income category showed your pay), and the dashboard's Spending chart and the Budget page's small history chart showed amounts on their axes, all with Safe mode on. They now hide like every other amount, and use your budget's currency instead of always "$". An income category's chart is now called **Income History**.
+- **A deleted Up transaction stays deleted.** Before, the next sync imported it again, uncategorised. Now syncs leave it out, and **Settings → Connected Banks → Up → Deleted here, still at Up** lists it with **Restore**. The delete confirmations say so. Deleted Up transactions are part of backups (format 22).
+- **Up syncs say when Allotment is at fault.** A fault in Allotment used to show as "Could not reach Up"; it now says it was Allotment, and the app's log has the details. A bank-fed transaction can no longer be moved to another account, which could stop its account syncing.
+- **Security updates** for the server's network and request libraries (`undici`, `body-parser` and three others with published advisories).
+- **The Budget page on a phone** shows Ready to assign first; how it's worked out and the Income and Expenses summary fold under **How this is worked out**, and Card payments and Move money follow, so the envelopes come sooner. A budget with no money yet says **Nothing to assign yet** instead of "Fully budgeted".
+- **Plainer words** in the Ready to assign breakdown ("In your accounts, less card debt", "Left to assign", "Overspent envelopes") and for cards not set up for card payments yet. Australian spelling throughout: **Uncategorised**, **Categorise automatically**.
+- **Keyboard and screen readers:** **Skip to content** is the first stop on every page on a computer, and the Budget page's activity amounts say which category they belong to.
+- **Bigger tap targets on phones** for Settings tabs, report date ranges and the register's Edit, Delete and Export.
+- **The welcome tour on a phone** now points at your envelopes, not income, when it explains categories.
+- **Faster lookups** of split parts, transfers and payees on large budgets (new database indexes).
+- **Settings → Data** says that backups leave out receipt photos.
+
 ## 0.2.0-up.69
 
 - **A guide for every page.** Accounts, Transactions, Rules, Recurring, Review, Pay later, Household, Goals, Forecast, Investments, Tax time, Reports and Settings now each have a short guide, like the Budget page's: offered the first time you open the page (once the welcome tour is taken or turned down) and always under **? → Guide for this page**. Settings' guide shows where to connect Up.
