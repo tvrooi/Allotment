@@ -332,7 +332,7 @@ export default function GoalsPage() {
         <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
           Goals
         </h1>
-        <Button size="sm" onClick={() => setAddOpen(true)}>
+        <Button size="sm" onClick={() => setAddOpen(true)} data-guide="goals.add">
           <Plus size={14} /> Add Goal
         </Button>
       </div>

@@ -199,7 +199,7 @@ export default function AccountsPage() {
       ) : (
         <div className="flex-1 overflow-y-auto">
           <div className="px-6 pt-5 pb-3">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div data-guide="accounts.summary" className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <Card>
                 <NetWorthMini />
               </Card>
@@ -209,7 +209,7 @@ export default function AccountsPage() {
             </div>
           </div>
 
-          <div className="px-6 pb-6 space-y-4">
+          <div data-guide="accounts.list" className="px-6 pb-6 space-y-4">
             {allGroups.map((g) => (
               <AccountGroup
                 key={g.label}

@@ -1,6 +1,6 @@
 {
   "name": "flybudget",
-  "version": "0.2.0-up.68",
+  "version": "0.2.0-up.69",
   "license": "AGPL-3.0-only",
   "description": "Allotment: every dollar gets its plot. A private, open-source budget with native Up Bank imports.",
   "main": "electron/dist/main.js",

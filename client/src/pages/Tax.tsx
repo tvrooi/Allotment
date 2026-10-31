@@ -37,11 +37,12 @@ export default function TaxPage() {
         <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
           Tax time
         </h1>
-        <p className="text-sm text-text-tertiary mt-0.5">
+        <p data-guide="tax.header" className="text-sm text-text-tertiary mt-0.5">
           Deductions you claim and the receipts that prove them, for your Australian tax return.
           Record keeping, not tax advice.
         </p>
         <div
+          data-guide="tax.tabs"
           className="flex gap-1 mt-3 -mb-px overflow-x-auto"
           role="tablist"
           aria-label="Tax view"
@@ -83,7 +84,7 @@ function Deductions() {
 
   return (
     <div className="space-y-5 max-w-5xl">
-      <div className="flex flex-wrap items-end gap-3">
+      <div data-guide="tax.year" className="flex flex-wrap items-end gap-3">
         <label className="text-xs font-medium text-text-secondary space-y-1">
           <span className="block">Financial year (1 July to 30 June)</span>
           <Select

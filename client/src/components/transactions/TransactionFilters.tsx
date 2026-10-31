@@ -289,7 +289,7 @@ export function TransactionFilters({
         : `Up to ${formatCurrency(state.maxAmount ?? 0)}`;
 
   return (
-    <div className="border-b border-border-light bg-surface">
+    <div data-guide="transactions.filters" className="border-b border-border-light bg-surface">
       <div className="flex items-center gap-3 px-4 py-2 flex-wrap">
         <div className="relative flex items-center flex-1 min-w-40">
           <Search size={14} className="absolute left-2.5 text-text-tertiary pointer-events-none" />

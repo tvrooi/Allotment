@@ -53,15 +53,23 @@ export default function PaymentPlansPage() {
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-x-4">
-        <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text py-4">
+        <h1
+          data-guide="plans.header"
+          className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text py-4"
+        >
           Pay later
         </h1>
         {hasAccount && (
           <div className="flex items-center gap-2 py-2">
-            <Button variant="secondary" size="sm" onClick={() => setEarlierOpen(true)}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setEarlierOpen(true)}
+              data-guide="plans.earlier"
+            >
               <History size={13} /> Earlier payments
             </Button>
-            <Button size="sm" onClick={() => setAdding(true)}>
+            <Button size="sm" onClick={() => setAdding(true)} data-guide="plans.add">
               <Plus size={13} /> Add a purchase
             </Button>
           </div>
@@ -77,7 +85,11 @@ export default function PaymentPlansPage() {
               title="Track Afterpay purchases as what you bought"
               description="Record a drill as Home improvement, not as four Afterpay payments. Allotment adds an Afterpay account; each fortnightly payment from your bank is linked to the purchase once you confirm it."
               actions={
-                <Button onClick={setUp} disabled={!canSave || createAccount.isPending}>
+                <Button
+                  onClick={setUp}
+                  disabled={!canSave || createAccount.isPending}
+                  data-guide="plans.setup"
+                >
                   Set up Afterpay
                 </Button>
               }

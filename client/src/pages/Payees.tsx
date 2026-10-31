@@ -10,6 +10,8 @@ import { PayeeIcon } from '../components/payees/PayeeIcon';
 import RowMenu from '../components/ui/RowMenu';
 import { useIsPhone } from '../hooks/useIsPhone';
 import type { PayeeWithCount } from '../types';
+import { Tip } from '../components/guide/Tip';
+import { TIPS } from '../guides';
 
 function MergeModal({
   isOpen,
@@ -167,6 +169,12 @@ export default function PayeesPage() {
           </div>
         </div>
       </div>
+      {payees.length > 0 && (
+        <Tip
+          tip={TIPS.payeeDefault}
+          className="px-6 max-md:px-4 py-2.5 border-b border-border-light shrink-0"
+        />
+      )}
 
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (

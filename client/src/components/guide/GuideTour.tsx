@@ -246,7 +246,7 @@ function TourStep({ guide, index }: { guide: Guide; index: number }) {
 
   return createPortal(
     // Catches every click: the page behind waits until the guide is closed
-    <div className="fixed inset-0 z-[60]" data-testid="guide-tour">
+    <div className="fixed inset-0 z-[60]" data-testid="guide-tour" data-target={view.status}>
       {spot ? (
         <div
           aria-hidden

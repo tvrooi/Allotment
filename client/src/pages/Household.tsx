@@ -276,7 +276,7 @@ export default function HouseholdPage() {
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 py-4 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
+        <div data-guide="household.header" className="min-w-0">
           <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
             Household
           </h1>
@@ -317,7 +317,11 @@ export default function HouseholdPage() {
             </p>
           )}
           {groups.length === 0 && (
-            <section className={`${card} max-w-xl`} aria-labelledby="create-household">
+            <section
+              data-guide="household.create"
+              className={`${card} max-w-xl`}
+              aria-labelledby="create-household"
+            >
               <h2 id="create-household" className="text-sm font-semibold text-text mb-1">
                 Create a household
               </h2>
@@ -330,7 +334,7 @@ export default function HouseholdPage() {
           {isLoading && <div className="h-40 bg-surface-alt rounded-lg animate-pulse" />}
           {state && (
             <>
-              <section className={card}>
+              <section data-guide="household.people" className={card}>
                 <h2 className="text-sm font-semibold text-text">People & balances</h2>
                 <p className="text-xs text-text-tertiary mt-0.5 mb-3">
                   Across everything shared: who has paid more than their share, and who owes.
@@ -556,7 +560,7 @@ export default function HouseholdPage() {
               <div
                 className={`grid gap-4 items-start ${hasPool || state.bills.length > 0 ? 'lg:grid-cols-2' : ''}`}
               >
-                <section className={card}>
+                <section data-guide="household.record" className={card}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 className="text-sm font-semibold text-text">Record something else</h2>
                     <Button
