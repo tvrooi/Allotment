@@ -283,7 +283,9 @@ function TourStep({ guide, index }: { guide: Guide; index: number }) {
             id={titleId}
             ref={title}
             tabIndex={-1}
-            className="mt-1 text-base font-semibold text-text outline-none"
+            // Focused only so the step is read out, never reached with Tab: no focus ring
+            style={{ outline: 'none' }}
+            className="mt-1 text-base font-semibold text-text"
           >
             {step.title}
           </h2>

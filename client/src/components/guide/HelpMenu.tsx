@@ -86,7 +86,8 @@ export function HelpMenu({
         className={className}
       >
         <CircleHelp size={16} aria-hidden />
-        {children}
+        {/* The hover label, kept out of the way of the open list */}
+        {!open && children}
       </button>
       {open &&
         createPortal(
