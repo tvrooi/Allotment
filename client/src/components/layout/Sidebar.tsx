@@ -22,6 +22,7 @@ import {
   Receipt,
   Eye,
   EyeOff,
+  CalendarClock,
 } from 'lucide-react';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { useSafeModeStore } from '../../store/safeModeStore';
@@ -232,6 +233,12 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
             to="/recurring"
             icon={<Repeat size={18} />}
             label="Recurring"
+            collapsed={!isExpanded}
+          />
+          <NavItem
+            to="/payment-plans"
+            icon={<CalendarClock size={18} />}
+            label="Pay later"
             collapsed={!isExpanded}
           />
           <NavItem

@@ -1,4 +1,5 @@
 import { householdsRouter } from './routes/households.js';
+import { paymentPlansRouter } from './routes/paymentPlans.js';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -126,6 +127,7 @@ app.use('/api/export', exportRouter);
 app.use('/api/custom-reports', customReportsRouter);
 app.use('/api/dashboards', dashboardsRouter);
 app.use('/api/households', householdsRouter);
+app.use('/api/payment-plans', paymentPlansRouter);
 app.use('/api/schedules', schedulesRouter);
 app.use('/api/goals', goalsRouter);
 app.use('/api/payday', paydayRouter);

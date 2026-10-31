@@ -24,6 +24,7 @@ import {
   ResumeCard,
 } from '../components/review/Resilience';
 import { Housekeeping } from '../components/review/Housekeeping';
+import { PaymentMatches } from '../components/plans/PaymentMatches';
 
 // Phases 6F–6G: a read-only review of everything the budget has not resolved, a guided
 // setup, and next month's commitments with an optional runway. Every figure comes from the
@@ -587,6 +588,10 @@ export default function ReviewPage() {
             <ReminderBanner resume={resume.data} />
           </div>
         )}
+        {/* Afterpay-style payments waiting to be linked to their purchase */}
+        <div className="mb-4 empty:hidden">
+          <PaymentMatches compact />
+        </div>
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] max-lg:grid-cols-1 gap-4 items-start">
           <div className="space-y-4">
             {resume.data && <ResumeCard resume={resume.data} />}

@@ -1,5 +1,13 @@
 # Changes
 
+## 0.2.0-up.67
+
+- **Afterpay purchases count as what you bought.** The new **Pay later** page records a purchase made with Afterpay once, in its real category: a drill from Bunnings is $200 of Home improvement, not four Afterpay payments. **Set up Afterpay** adds an Afterpay account (a small credit account) and an **Afterpay payment** envelope; **Add a purchase** takes the shop, category, price, number of payments (four, fortnightly, by default) and the account that pays.
+- **Payments are linked when you confirm them.** An Afterpay payment from your bank close to its due date is listed under **Payments to confirm** on Pay later and Review. **Confirm** makes it a transfer to the Afterpay account, so it isn't counted as spending twice; **Not this** stops suggesting it. A payment covering the next few instalments links to all of them. Nothing is linked without you, and a reconciled transaction is never changed.
+- **Earlier Afterpay payments.** **Earlier payments** groups your bank's past Afterpay payments (6, 12 or 24 months) into the purchases they probably paid for; **Record purchase** names what you bought and links them.
+- **Your budget follows the money.** A purchase moves its envelope's money into Afterpay payment, each payment uses it up, and the Budget page shows payments due this month under that envelope. Refunds (taken off the last payments first) and late fees (added to the next payment) are one click; **Remove plan** puts everything back.
+- New budgets in Australia no longer start with an "Afterpay / Zip" spending category. Existing budgets keep theirs. Backups are now format 21.
+
 ## 0.2.0-up.66
 
 - **Split each recurring bill its own way.** **Change split** on a bill in **Household → Recurring bills** gives it equal, percentage or weight shares of its own, for example more of the internet for the person working from home. Its shares and **Share _N_ payments** use that split; **The household's default split** puts it back.

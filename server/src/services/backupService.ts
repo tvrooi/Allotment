@@ -11,6 +11,9 @@ import {
   householdShares,
   householdBills,
   householdRecurringBills,
+  paymentPlans,
+  paymentPlanInstalments,
+  paymentPlanDismissals,
   accounts,
   budgetSettings,
   exchangeRates,
@@ -93,7 +96,7 @@ import { isCurrencyCode } from '../utils/currencies.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 20;
+export const BACKUP_VERSION = 21;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -148,6 +151,9 @@ const TABLES = {
   householdShares,
   householdBills,
   householdRecurringBills,
+  paymentPlans,
+  paymentPlanInstalments,
+  paymentPlanDismissals,
   securities,
   securityPrices,
   holdings,
@@ -253,6 +259,16 @@ export function parseBackup(input: unknown): ParsedBackup {
         } catch {
           throw new InvalidBackupError('Invalid card funding setup');
         }
+      }
+      if (name === 'paymentPlans') {
+        let ids: unknown;
+        try {
+          ids = JSON.parse(String(row.extraTransactionIds ?? '[]'));
+        } catch {
+          ids = null;
+        }
+        if (!Array.isArray(ids) || ids.some((id) => typeof id !== 'string'))
+          throw new InvalidBackupError('Invalid payment plan');
       }
       if (name === 'paydayPlans') {
         try {

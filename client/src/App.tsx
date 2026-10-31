@@ -4,6 +4,7 @@ import { AuthGate } from './components/auth/AuthGate';
 import { IS_DEMO } from './demo/demoApi';
 import WelcomePage from './pages/Welcome';
 import HouseholdPage from './pages/Household';
+import PaymentPlansPage from './pages/PaymentPlans';
 import DashboardPage from './pages/Dashboard';
 import AccountsPage from './pages/Accounts';
 import AccountTransactionsPage from './pages/AccountTransactions';
@@ -53,6 +54,7 @@ export default function App() {
             <Route path="/accounts/:id" element={<AccountTransactionsPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />
             <Route path="/household" element={<HouseholdPage />} />
+            <Route path="/payment-plans" element={<PaymentPlansPage />} />
             <Route path="/recurring" element={<RecurringTransactionsPage />} />
             <Route path="/cash-flow" element={<CashFlowPage />} />
             <Route path="/reports" element={<ReportsPage />} />

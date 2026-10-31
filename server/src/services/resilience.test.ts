@@ -480,7 +480,7 @@ describe('7D goal lifecycle', () => {
     flex();
     completeReview();
     const backup = createBackup();
-    expect(backup.version).toBe(20);
+    expect(backup.version).toBe(21);
     db.delete(goals).run();
     restoreBackup(parseBackup(JSON.parse(JSON.stringify(backup))));
     expect(db.select().from(goals).get()).toMatchObject({ status: 'paused' });
