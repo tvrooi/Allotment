@@ -92,6 +92,7 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
   return (
     <section
       aria-label="Move money"
+      data-guide="budget.move"
       className="mb-4 bg-surface rounded-lg shadow-card border border-border-light p-4 text-sm space-y-3"
     >
       <h2 className="font-semibold text-text">Move money</h2>

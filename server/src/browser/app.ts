@@ -29,6 +29,7 @@ import { reviewRouter } from '../routes/review.js';
 import { investmentsRouter } from '../routes/investments.js';
 import { taxRouter } from '../routes/tax.js';
 import { prioritiesRouter } from '../routes/priorities.js';
+import { guidesRouter } from '../routes/guides.js';
 import { currencyRouter } from '../routes/currency.js';
 
 /** Answer for anything that needs a real server: bank connections, sign-in. */
@@ -87,6 +88,7 @@ app.use('/receipts', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO })
 app.get('/tax/years/:fy/archive', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
 app.use('/tax', taxRouter as unknown as ShimRouter);
 app.use('/priorities', prioritiesRouter as unknown as ShimRouter);
+app.use('/guides', guidesRouter as unknown as ShimRouter);
 // Rates can be typed in, but not downloaded: the demo never talks to another server
 app.put('/currency/download', (req, res, next) => {
   const body = req.body as { enabled?: unknown; url?: unknown } | undefined;

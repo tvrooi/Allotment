@@ -29,6 +29,7 @@ const sidebars: SidebarsConfig = {
         'payees',
         'currencies',
         'settings',
+        'guides',
       ],
     },
     {

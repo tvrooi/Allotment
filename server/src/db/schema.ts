@@ -1346,3 +1346,24 @@ export const paymentPlanDismissals = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.instalmentId, t.transactionId] })],
 );
+
+/**
+ * Guides and tips for the person whose budget this is (docs/GUIDES.md): one row, id 'default'.
+ * No row = a new budget (offer the welcome tour, tips on). Presentation only: not in backups.
+ */
+export const guideProgress = sqliteTable('guide_progress', {
+  id: text('id').primaryKey(),
+  tipsEnabled: integer('tips_enabled').notNull().default(1),
+  pageGuidesEnabled: integer('page_guides_enabled').notNull().default(1),
+  /** offer | done | dismissed */
+  welcomeTour: text('welcome_tour').notNull().default('offer'),
+  /** 1 = show once where guides are (budgets that were in use before guides existed) */
+  guidesNotice: integer('guides_notice').notNull().default(0),
+  /** JSON: { [guideId]: version seen } */
+  seenGuides: text('seen_guides').notNull().default('{}'),
+  /** JSON: tip ids dismissed */
+  dismissedTips: text('dismissed_tips').notNull().default('[]'),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});

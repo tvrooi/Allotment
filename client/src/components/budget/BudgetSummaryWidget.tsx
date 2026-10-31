@@ -175,6 +175,7 @@ export function BudgetSummaryWidget({
         <div
           role="status"
           aria-label="Ready to assign"
+          data-guide="budget.ready"
           className={`${hero.bg} rounded-lg px-4 py-3 text-center`}
         >
           <p className={`text-xs font-medium uppercase tracking-wide ${hero.text}`}>
