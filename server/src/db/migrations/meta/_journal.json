@@ -400,6 +400,13 @@
       "when": 1794200000000,
       "tag": "0056_household_bill_split_autoshare",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "6",
+      "when": 1794300000000,
+      "tag": "0057_payment_plans",
+      "breakpoints": true
     }
   ]
 }

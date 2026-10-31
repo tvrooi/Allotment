@@ -1266,3 +1266,83 @@ export const longTermSplits = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.planId, t.position] })],
 );
+
+/**
+ * Buy now, pay later (docs/PAYMENT-PLANS.md): one purchase on an Afterpay-style credit account
+ * (`accountId`), paid in `instalmentCount` instalments from `fundingAccountId`. The purchase row
+ * carries the real category. `extraTransactionIds` (JSON) lists refund and late-fee rows the plan
+ * created on the account, so removing the plan removes them too.
+ */
+export const paymentPlans = sqliteTable(
+  'payment_plans',
+  {
+    id: text('id').primaryKey(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    fundingAccountId: text('funding_account_id').references(() => accounts.id, {
+      onDelete: 'set null',
+    }),
+    purchaseTransactionId: text('purchase_transaction_id').references(() => transactions.id, {
+      onDelete: 'set null',
+    }),
+    provider: text('provider').notNull().default('afterpay'),
+    merchant: text('merchant').notNull(),
+    /** What was bought, positive minor units */
+    total: integer('total').notNull(),
+    instalmentCount: integer('instalment_count').notNull(),
+    /** weekly | fortnightly | monthly */
+    frequency: text('frequency').notNull().default('fortnightly'),
+    firstDueDate: text('first_due_date').notNull(),
+    extraTransactionIds: text('extra_transaction_ids').notNull().default('[]'),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    updatedAt: text('updated_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (t) => [index('payment_plans_account').on(t.accountId)],
+);
+
+/**
+ * One instalment of a plan (positive minor units). Paid once `transactionId` is set: the
+ * plan account's side of the transfer that paid it (one payment may pay several instalments).
+ * `previousJson` keeps the bank row's payee and category from before it became a transfer, so
+ * unlinking puts it back exactly. An instalment a refund brought to 0 is settled.
+ */
+export const paymentPlanInstalments = sqliteTable(
+  'payment_plan_instalments',
+  {
+    id: text('id').primaryKey(),
+    planId: text('plan_id')
+      .notNull()
+      .references(() => paymentPlans.id, { onDelete: 'cascade' }),
+    seq: integer('seq').notNull(),
+    dueDate: text('due_date').notNull(),
+    amount: integer('amount').notNull(),
+    transactionId: text('transaction_id').references(() => transactions.id, {
+      onDelete: 'set null',
+    }),
+    previousJson: text('previous_json'),
+    paidAt: text('paid_at'),
+  },
+  (t) => [
+    uniqueIndex('payment_plan_instalments_seq').on(t.planId, t.seq),
+    index('payment_plan_instalments_tx').on(t.transactionId),
+  ],
+);
+
+/** "Not this payment": a bank row never suggested for this instalment again */
+export const paymentPlanDismissals = sqliteTable(
+  'payment_plan_dismissals',
+  {
+    instalmentId: text('instalment_id')
+      .notNull()
+      .references(() => paymentPlanInstalments.id, { onDelete: 'cascade' }),
+    transactionId: text('transaction_id')
+      .notNull()
+      .references(() => transactions.id, { onDelete: 'cascade' }),
+  },
+  (t) => [primaryKey({ columns: [t.instalmentId, t.transactionId] })],
+);

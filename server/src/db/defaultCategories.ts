@@ -164,7 +164,8 @@ const defaultGroups: {
   },
 ];
 
-/** Australian households: rent and strata, rego and CTP, Medicare gaps, BNPL, super */
+/** Australian households: rent and strata, rego and CTP, Medicare gaps, super. Afterpay and Zip
+ * are accounts with payment plans (docs/PAYMENT-PLANS.md), not a spending category. */
 const australianGroups: typeof defaultGroups = [
   {
     name: 'Income',
@@ -271,7 +272,6 @@ const australianGroups: typeof defaultGroups = [
       { name: 'Investments', icon: '📈', budgetType: 'savings' },
       { name: 'Extra Super Contributions', icon: '🦘', budgetType: 'savings' },
       { name: 'Loan Repayments', icon: '🏦', budgetType: 'fixed' },
-      { name: 'Afterpay / Zip', icon: '🧾', budgetType: 'fixed' },
       { name: 'Bank Fees', icon: '💸', budgetType: 'flexible' },
       { name: 'Tax', icon: '🧮', budgetType: 'non_monthly' },
     ],

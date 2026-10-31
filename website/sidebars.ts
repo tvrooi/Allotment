@@ -20,6 +20,7 @@ const sidebars: SidebarsConfig = {
         'bank-sync',
         'budgeting',
         'recurring',
+        'pay-later',
         'rules',
         'reports',
         'goals',

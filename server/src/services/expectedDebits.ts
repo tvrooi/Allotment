@@ -10,6 +10,7 @@ import {
 } from '../utils/recurrence.js';
 import { monthBounds } from '../utils/date.js';
 import { accountCurrency, convertAmount, currencyContext, todayIso } from './mainAmountService.js';
+import { expectedInstalments } from './paymentPlanService.js';
 
 export interface ExpectedDebit {
   scheduleId: string;
@@ -97,6 +98,9 @@ export function expectedDebits(month: string, today = todayIso()): Map<string, E
       byCategory.set(s.categoryId, list);
     }
   }
+  // Afterpay-style instalments still to pay, under the plan account's payment envelope
+  for (const [categoryId, items] of expectedInstalments(month, today))
+    byCategory.set(categoryId, [...(byCategory.get(categoryId) ?? []), ...items]);
   for (const list of byCategory.values()) list.sort((a, b) => a.date.localeCompare(b.date));
   return byCategory;
 }
