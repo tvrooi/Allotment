@@ -142,7 +142,9 @@ export function DataExport() {
           <p className="text-xs text-text-tertiary mt-0.5">
             Download a complete JSON backup of all your data — accounts, transactions, budgets,
             categories, payees, rules, recurring transactions, goals, reports and dashboards. Bank
-            connection credentials are not included.
+            connection credentials are not included, and neither are receipt photos: receipt details
+            and tax claims are, but the images stay in this installation (a Home Assistant backup of
+            the app keeps them). Keep your tax receipts somewhere else too.
           </p>
         </div>
         <button

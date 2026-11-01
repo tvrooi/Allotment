@@ -59,7 +59,7 @@ test.describe('register', () => {
     await open(page, `/accounts/${checking.id}`);
 
     const card = page.getByTestId('transaction-card').filter({ hasText: 'Streamflix' });
-    await expect(card).toContainText('Uncategorized');
+    await expect(card).toContainText('Uncategorised');
     await expect(card).toContainText('family plan');
     await expect(card).toContainText('$19.99');
     // No desktop hover controls on a phone
@@ -73,7 +73,7 @@ test.describe('register', () => {
     expect(Math.round(box.width)).toBe(page.viewportSize()!.width);
     await expectTouchSize(details.getByRole('button', { name: 'Close details' }));
 
-    await details.getByRole('button', { name: 'Uncategorized' }).click();
+    await details.getByRole('button', { name: 'Uncategorised' }).click();
     await page.getByPlaceholder('Search categories...').fill('stream');
     await page.getByRole('button', { name: /Streaming Services/ }).click();
     const streaming = await api.category('Streaming Services');

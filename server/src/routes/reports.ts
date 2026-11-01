@@ -884,14 +884,14 @@ reportsRouter.get('/custom', (req, res) => {
 
     const months = monthRange(from, to);
     const groupSet = new Set<string>();
-    for (const r of rows) groupSet.add(r.name || 'Uncategorized');
+    for (const r of rows) groupSet.add(r.name || 'Uncategorised');
     const groups = Array.from(groupSet).sort();
 
     const dataMap = new Map<string, Record<string, number>>();
     for (const m of months) dataMap.set(m, {});
 
     for (const r of rows) {
-      const label = r.name || 'Uncategorized';
+      const label = r.name || 'Uncategorised';
       const bucket = dataMap.get(r.month);
       if (bucket) {
         const val = balance_type === 'expense' ? Math.abs(r.value) : r.value;
@@ -915,7 +915,7 @@ reportsRouter.get('/custom', (req, res) => {
     const data = rows
       .filter((r) => r.value !== 0)
       .map((r) => ({
-        name: r.name || 'Uncategorized',
+        name: r.name || 'Uncategorised',
         id: r.id,
         value: balance_type === 'expense' ? Math.abs(r.value) : r.value,
       }));

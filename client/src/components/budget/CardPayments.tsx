@@ -170,7 +170,10 @@ export function CardPayments({
         .filter((a) => !a.configured)
         .map((a) => (
           <div key={a.id}>
-            <p>{a.name}: existing net-debt treatment until reviewed.</p>
+            <p>
+              {a.name} isn’t set up for card payments yet: its purchases count like cash spending,
+              and what you owe comes off Ready to assign.
+            </p>
             <Button
               size="sm"
               variant="secondary"

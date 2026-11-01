@@ -17,7 +17,7 @@ interface Props {
   fullWidth?: boolean;
   /** Open as a floating list beside this element, so a scrolling parent can't clip it */
   anchor?: HTMLElement | null;
-  /** Offer "Uncategorized" (default). A sorting step that must pick a category turns it off. */
+  /** Offer "Uncategorised" (default). A sorting step that must pick a category turns it off. */
   allowNone?: boolean;
 }
 
@@ -34,7 +34,7 @@ export function CategoryPicker({
 }: Props) {
   const [query, setQuery] = useState('');
   // The option the keyboard is on. With a search typed it starts on the first match, so Enter
-  // picks it; with nothing typed it starts on nothing, so Enter never picks "Uncategorized" by accident.
+  // picks it; with nothing typed it starts on nothing, so Enter never picks "Uncategorised" by accident.
   const [active, setActive] = useState(-1);
   const [floatPos, setFloatPos] = useState<{
     top?: number;
@@ -203,7 +203,7 @@ export function CategoryPicker({
             data-active={optionIndex(null) === activeIndex}
             className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between hover:bg-hover ${optionIndex(null) === activeIndex ? 'bg-hover ' : ''}${value === null ? 'bg-brand-50 text-brand-700' : 'text-text-secondary'}`}
           >
-            <span className="italic">Uncategorized</span>
+            <span className="italic">Uncategorised</span>
             {value === null && <Check size={14} className="text-brand-600 shrink-0" />}
           </button>
         )}

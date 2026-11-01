@@ -87,10 +87,29 @@ export interface UpReviewItem {
     reconciled: boolean;
   } | null;
 }
+/** An Up transaction deleted here that Up still has: the sync skips it until it is restored */
+export interface UpDeletedImport {
+  accountId: string;
+  accountName: string;
+  importedId: string;
+  deletedAt: string;
+  /** What Up last reported (null when there's no record of it) */
+  date: string | null;
+  description: string | null;
+  amount: number | null;
+}
 export const getUpReview = (offset: number) =>
-  apiFetch<{ total: number; pending: number; items: UpReviewItem[] }>(
-    `/up/review?offset=${offset}`,
-  );
+  apiFetch<{
+    total: number;
+    pending: number;
+    items: UpReviewItem[];
+    deleted?: UpDeletedImport[];
+  }>(`/up/review?offset=${offset}`);
+export const restoreUpDeleted = (accountId: string, importedId: string) =>
+  apiFetch<{ restored: boolean; sync: { added: number; errors: string[] } }>('/up/review/restore', {
+    method: 'POST',
+    body: JSON.stringify({ accountId, importedId }),
+  });
 export const acknowledgeUpReview = (importedId: string, revision: number) =>
   apiFetch('/up/review/acknowledge', {
     method: 'POST',

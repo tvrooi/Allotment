@@ -1,6 +1,12 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { accounts, transactions, upAccountMappings, upConnections } from '../db/schema.js';
+import {
+  accounts,
+  transactions,
+  upAccountMappings,
+  upConnections,
+  upDeletedImports,
+} from '../db/schema.js';
 import { upCategoryResolver } from './upCategoryMap.js';
 import { buildRuleContext, insertNewTransaction, loadRules } from './ruleService.js';
 import { accountCurrency, currencyContext } from './mainAmountService.js';
@@ -151,11 +157,23 @@ async function runSync(): Promise<UpSyncResult> {
           .get();
         let balanceMismatch = false;
         let cutoverNotice: string | null = null;
+        let deletedCount = 0;
         db.transaction(() => {
           let added = 0;
           let skipped = 0;
           const newIds = new Set<string>();
+          // Deleted here by the owner: Up still returns it, but it stays deleted until restored
+          const deletedHere = new Set(
+            db
+              .select({ importedId: upDeletedImports.importedId })
+              .from(upDeletedImports)
+              .where(eq(upDeletedImports.accountId, accountId))
+              .all()
+              .map((d) => d.importedId),
+          );
+          deletedCount = deletedHere.size;
           const alreadyHere = (importedId: string) =>
+            deletedHere.has(importedId) ||
             !!db
               .select({ id: transactions.id })
               .from(transactions)
@@ -204,6 +222,7 @@ async function runSync(): Promise<UpSyncResult> {
               if (
                 !row ||
                 (cutover && row.date < cutover) ||
+                deletedHere.has(row.importedId) ||
                 db
                   .select({ id: transactions.id })
                   .from(transactions)
@@ -274,10 +293,12 @@ async function runSync(): Promise<UpSyncResult> {
         if (cutoverNotice) result.notices!.push(cutoverNotice);
         if (balanceMismatch)
           result.notices!.push(
-            `${local.name}'s register differs from Up's balance. Review transactions and reconcile; the opening balance was preserved.`,
+            deletedCount
+              ? `${local.name}'s register differs from Up's balance. ${deletedCount} transaction${deletedCount === 1 ? ' you deleted is' : 's you deleted are'} still at Up: restore ${deletedCount === 1 ? 'it' : 'them'} in Up review, or reconcile.`
+              : `${local.name}'s register differs from Up's balance. Review transactions and reconcile; the opening balance was preserved.`,
           );
       } catch (err) {
-        result.errors.push(upErrorMessage(err));
+        result.errors.push(syncErrorMessage(err, local.name));
       }
     }
     setStatus(result.errors.length ? 'error' : 'good', result.errors.join(' ') || null);
@@ -287,7 +308,7 @@ async function runSync(): Promise<UpSyncResult> {
         .where(eq(upConnections.id, UP_CONNECTION_ID))
         .run();
   } catch (err) {
-    result.errors.push(upErrorMessage(err));
+    result.errors.push(syncErrorMessage(err));
     setStatus('error', result.errors.join(' '));
   }
   const completedAt = new Date().toISOString();
@@ -301,6 +322,18 @@ async function runSync(): Promise<UpSyncResult> {
     .where(eq(upConnections.id, UP_CONNECTION_ID))
     .run();
   return result;
+}
+
+/**
+ * What a failed sync tells the owner. Up's own failures (UpError) are already worded for them.
+ * Anything else is a fault in Allotment, not the connection: say so, and log what it was
+ * (the error's name and message only: never the request, which carries the token).
+ */
+export function syncErrorMessage(err: unknown, accountName?: string) {
+  if (err instanceof UpError) return upErrorMessage(err);
+  const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  console.error('Up sync stopped by an error in Allotment:', JSON.stringify(detail.slice(0, 500)));
+  return `${accountName ? `${accountName}: ` : ''}Allotment could not save Up's transactions because of an error in Allotment, not the connection. Nothing was imported${accountName ? ' for this account' : ''}. The app's log has the details.`;
 }
 
 export const UP_POLL_INTERVALS = [0, 15, 30, 60, 240] as const;

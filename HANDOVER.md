@@ -9,6 +9,7 @@ Last updated: 1 November 2026.
 
 ## State
 
+- **Review fixes (up.70, in review, not released):** from a full code and UX review on 31 October. Safe mode: the category history chart (`pages/CategoryDetail.tsx`), the budget editor's chart (`BudgetEditPopover.tsx`) and the dashboard Spending chart (`SpendingComparison.tsx`) printed amounts with hand-written `$` formatters; they use `formatCentsAxis` now, and `safe-mode.spec.ts` checks SVG chart text. Up: a deleted Up transaction is remembered in `up_deleted_imports` (migration 0059, backup version 22) by `deleteTransactionByOwner` (`transactionHelpers.ts`, used by `DELETE /transactions/:id` and bulk delete; syncs and internal clean-ups still use `deleteTransactionRow`). `upSyncService` skips them, `GET /up/review` lists them as `deleted`, and `POST /up/review/restore` forgets one and syncs. `PUT /transactions/:id` refuses moving a bank-fed row to another account; `syncErrorMessage` reports non-`UpError` faults as Allotment's and logs them. Migration 0060 indexes `parent_transaction_id`, `transfer_transaction_id` and `payee_id`. Server dependency advisories fixed (`undici` 8.12.3, `body-parser` 2.4.0 and others), with npm 11 so the lockfile keeps its `libc` fields. UX: phone Budget shows Ready to assign first and folds the breakdown (`PhoneCollapsed` in `BudgetSummaryWidget.tsx`), "Nothing to assign yet" on an empty budget, plainer breakdown labels, Australian spelling, a desktop **Skip to content** link (`AppShell.tsx`, `<main id="main">`), labelled activity links, 44 px phone targets, and the tours' envelope step targets `budget.expenses` (first expense group on phones). Tests: `routes/upDeletedImports.test.ts`, `up.spec.ts`, `safe-mode.spec.ts`.
 - **Page guides (up.69, PR 2 of 2):** a guide for every main page in `client/src/guides/pages.ts` (Accounts, Transactions, Rules, Recurring, Review, Pay later, Household, Goals, Forecast, Investments, Tax time, Reports, Settings) with new `data-guide` markers on those pages, and a Payees tip. `GuideTour` exposes `data-target` (`searching`/`found`/`missing`); `e2e/tests/guides.spec.ts` walks every page guide on desktop and `phone/guides-phone.spec.ts` on a phone. Note for local e2e: `E2E_SKIP_BUILD=1` reuses a cached build in the system temp folder from its first use, so it can be stale; run without it after client changes.
 - **Guides and tips (up.68, PR 1 of 2):** a welcome tour, a Budget page guide and three tips (`docs/GUIDES.md`, user guide `website/docs/guides.mdx`). Progress is per person in the budget: migration 0058 `guide_progress` (one row; none = new budget; existing budgets with accounts or transactions get tour dismissed, tips and page guides off, and a one-time note), `services/guideService.ts`, `routes/guides.ts` at `/api/guides` (merge-only `PUT`, `POST /reset`), not in backups, not on the token allowlist. Client: guides as data in `client/src/guides/`, steps point at `data-guide` markers (checked by `utils/guides.test.ts`), `components/guide/` (`GuideTour` makes `#root` inert while open, `GuideBanner`, `Tip`, `HelpMenu` replaces the sidebar's docs link, `GuidesDialog`, `GuideSettings` also in Preferences), `?` opens the list. e2e `guides.spec.ts`, `phone/guides-phone.spec.ts` (they reset guide progress afterwards: the database reset doesn't). Next (PR 2): page guides for the other pages and more tips.
 - **Pay later / Afterpay (up.67):** a buy-now-pay-later purchase is recorded once in its real category on an Afterpay credit account, and the bank's instalments are linked as transfers only when the owner confirms them (`docs/PAYMENT-PLANS.md`, user guide `website/docs/pay-later.mdx`). Migration 0057 (`payment_plans`, `payment_plan_instalments`, `payment_plan_dismissals`), backup version 21. `services/paymentPlanService.ts` (create/link/unlink/refund/fee/remove, `findPaymentMatches`, `historyGroups` for earlier payments, `expectedInstalments` merged into `expectedDebits.ts`), `routes/paymentPlans.ts` at `/api/payment-plans`, `cardFundingSetup.setupEmptyCardFunding` (no-review setup for a new empty account), `transferToAccount(..., { createNew })`. Client: `pages/PaymentPlans.tsx` ("Pay later" in the sidebar), `components/plans/`, matches also on Review. The AU template no longer seeds "Afterpay / Zip". Owner decisions: confirm every link (no auto-linking), reconciled rows are skipped, one Afterpay account for all plans, earlier payments default to 12 months. Not built: Pay Monthly, token access to plans.
@@ -87,10 +88,10 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
 
 ## Open items (pick up here)
 
-1. **Confirm the live app reached the latest release** (`0.2.0-up.46` once released): version,
-   health, and that the budget opens. In November, check the October deficits no longer carry.
-   Ask the owner to press **Try a sample receipt** with `qwen3-vl:4b-instruct` and report what it
-   got right and how long it took.
+1. **Confirm the live app after each release:** version, health, and that the budget opens. In
+   November, check the October deficits no longer carry. Ask the owner to press **Try a sample
+   receipt** with `qwen3-vl:4b-instruct` and report what it got right and how long it took.
+   Auto update is on: take the cold backup before the store sees a new release.
 2. **Security, waiting on the owner's decision:** the Ollama app publishes port 11434 on the host.
    Its log showed requests from public internet addresses, and Ollama has no authentication. The fix
    is to clear the app's 11434 port mapping, since Allotment uses the internal address. Do that only
@@ -115,6 +116,16 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
    - `docs/DEVELOPMENT.md`'s pending legacy cleanup of `recurring_transactions`.
 5. **Optional, the owner's call:** remove the unused `qwen3-vl:4b` thinking model; try a larger
    receipt model (`qwen2.5vl:7b`) with **Try a sample receipt** if accuracy matters more than speed.
+6. **Left from the 31 October review** (not in up.70): after a first Up import, Ready to assign
+   can exceed cash (this month's history shows as overspending) and Up's own Saver transfers
+   count as uncategorised spending until each suggestion is reviewed; candidate fixes are a
+   "start budgeting from today" choice and one reviewed "link the transfers Up reported" list
+   (owner rule: no silent links). Also: point the help links at the fork's own guide instead of
+   flybudget.org (`client/src/utils/project.ts`), fetch Up incrementally (`filter[since]` plus a
+   periodic full sweep) instead of full history on every sync, and split the 2.5 MB client bundle
+   by route. The in-browser demo budget (`server/src/demo/demoBudget.ts`) has assigned more than
+   it has received early in a month (Ready to assign −$925.85 on 1 November), so a visitor then
+   sees "Assigned more than you have".
 
 ## Gotchas learned the hard way
 

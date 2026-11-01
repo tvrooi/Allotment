@@ -12,7 +12,11 @@ import {
 import { eq, and, sql, isNull, inArray, getTableColumns } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
-import { deleteTransactionRow, resolvePayee } from '../services/transactionHelpers.js';
+import {
+  deleteTransactionByOwner,
+  isUpImport,
+  resolvePayee,
+} from '../services/transactionHelpers.js';
 import { buildRuleContext, insertNewTransaction, loadRules } from '../services/ruleService.js';
 import {
   TransferError,
@@ -828,6 +832,17 @@ transactionsRouter.put('/:id', (req, res) => {
       error:
         'Cannot change the amount, date or account of a reconciled transaction. Unlock it first.',
     });
+  // A bank feed's row belongs to the account the bank reported it in: moved elsewhere, the next
+  // sync would import it again (and Up's would fail on the row's fixed id)
+  if (
+    changes('accountId') &&
+    existing.importedId &&
+    (isUpImport(existing.importedId) || hasBankFeed(existing.accountId))
+  )
+    return res.status(400).json({
+      error:
+        'This transaction came from your bank feed, so it stays in that account. To record it elsewhere, add it to the other account and delete this one.',
+    });
   // Access tokens (assistants) keep the old rule: they never touch a reconciled row at all
   if (existing.reconciled === 1 && /^bearer /i.test(req.headers.authorization ?? ''))
     return res.status(403).json({ error: 'Cannot modify a reconciled transaction' });
@@ -950,6 +965,6 @@ transactionsRouter.delete('/:id', (req, res) => {
       return res.status(403).json({ error: 'Cannot modify a reconciled transfer counterpart' });
     }
   }
-  deleteTransactionRow(existing);
+  deleteTransactionByOwner(existing);
   res.status(204).send();
 });

@@ -15,7 +15,7 @@ import {
 } from '../db/schema.js';
 import { unlinkOccurrenceByTransactionId } from './matchingEngine.js';
 import { refreshMainAmounts } from './mainAmountService.js';
-import { deleteTransactionRow, resolvePayee } from './transactionHelpers.js';
+import { deleteTransactionByOwner, resolvePayee } from './transactionHelpers.js';
 import { MarkError, tagsByTransaction } from './transactionMarks.js';
 import { registerCondition, type Selection } from './transactionSelection.js';
 
@@ -594,7 +594,7 @@ export function bulkDelete(target: BulkTarget, expectedCount: number) {
         `The selection now has ${deletable.length} transactions to delete, not ${expectedCount}. Check it and try again.`,
         409,
       );
-    for (const row of deletable) deleteTransactionRow(row);
+    for (const row of deletable) deleteTransactionByOwner(row);
     return { deleted: deletable.length, skipped };
   });
 }

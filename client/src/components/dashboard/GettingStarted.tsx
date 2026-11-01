@@ -89,7 +89,7 @@ export default function GettingStarted({ currentMonth }: { currentMonth: string 
     },
     {
       id: 'rules',
-      title: 'Categorize automatically',
+      title: 'Categorise automatically',
       description: 'Rules sort new transactions for you, by payee, amount and more.',
       done: (rules.data?.length ?? 0) > 0,
       action: { label: 'Create a rule', to: '/rules' },

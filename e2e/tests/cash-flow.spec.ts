@@ -51,7 +51,7 @@ test('Cash Flow clicks scope transactions to the category, group and chart range
   // A stale search must not hide the next chart selection.
   await list.getByPlaceholder('Search payee or notes…').fill('no such payee');
   await page
-    .getByRole('button', { name: 'Show transactions: Uncategorized', exact: true })
+    .getByRole('button', { name: 'Show transactions: Uncategorised', exact: true })
     .first()
     .click();
   await expect(list).toContainText('Unknown merchant');

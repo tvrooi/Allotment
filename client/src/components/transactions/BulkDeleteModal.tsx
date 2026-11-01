@@ -81,7 +81,8 @@ export function BulkDeleteModal({ params, isOpen, onClose }: Props) {
                 {data.deletable.toLocaleString()} transaction{data.deletable === 1 ? '' : 's'}
                 {data.accounts.length > 0 &&
                   ` in ${data.accounts.map((a) => a.name).join(', ')}`}{' '}
-                will be deleted for good. This can't be undone.
+                will be deleted for good. This can't be undone. Any that came from Up stay deleted
+                when Up syncs; Up review (Settings → Connected Banks → Up) can bring them back.
               </p>
               {data.sample.length > 0 && (
                 <ul className="text-sm text-text space-y-1 list-disc pl-5">

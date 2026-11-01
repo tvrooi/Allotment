@@ -69,7 +69,7 @@ export default function SpendingBreakdown({ currentMonth }: Props) {
                 <div className="flex items-center justify-between mb-0.5">
                   <span className="text-sm text-text-secondary truncate mr-2">
                     {showCategoryIcons && cat.categoryIcon ? `${cat.categoryIcon} ` : ''}
-                    {cat.categoryName || 'Uncategorized'}
+                    {cat.categoryName || 'Uncategorised'}
                   </span>
                   <span className="text-xs text-text-tertiary tabular-nums whitespace-nowrap">
                     {formatCurrency(cat.amount)}

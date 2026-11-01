@@ -48,6 +48,13 @@ to **Reconcile**. Allotment never adjusts the balance by itself.
   Up's transactions before that date are not added.
 - Existing imported transactions are preserved, including edits, splits and reconciled rows.
   Later bank corrections or deletions of a settled transaction are not applied automatically.
+- A transaction you delete in Allotment stays deleted: Up still returns it, but syncs leave it
+  out. **Settings → Connected Banks → Up → Deleted here, still at Up** lists them with **Restore**,
+  which imports it again as Up reports it now. While one is deleted, the register can differ from
+  Up's balance. Deleted transactions are kept in JSON backups, so a restore doesn't bring them back.
+- An Up transaction stays in the account Up reported it in; it can't be moved to another account.
+- When a sync fails because of a fault in Allotment rather than the connection, it says so, and
+  the app's log has the details.
 
 ## Your token and your data
 

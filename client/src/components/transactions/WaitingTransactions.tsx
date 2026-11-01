@@ -51,7 +51,7 @@ export function WaitingTransactions({ accountId, categoryName, accountName }: Pr
   function detailOf(item: OutboxItem) {
     if (item.kind === 'transfer') return 'Transfer';
     if (item.data.splits?.length) return `Split (${item.data.splits.length})`;
-    return (item.data.categoryId && categoryName(item.data.categoryId)) || 'Uncategorized';
+    return (item.data.categoryId && categoryName(item.data.categoryId)) || 'Uncategorised';
   }
 
   return (

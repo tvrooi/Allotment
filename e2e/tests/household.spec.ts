@@ -1,4 +1,4 @@
-import { test, expect, open } from './fixtures';
+import { test, expect, open, isoDay } from './fixtures';
 
 test('records shared expenses, exports personal scope and keeps the bank debit intact', async ({
   page,
@@ -85,7 +85,7 @@ test('shares a payment with the household in one step, with the default split', 
   const account = await api.createAccount('Everyday', 20000);
   const payment = await api.createTransaction({
     accountId: account.id,
-    date: '2026-10-21',
+    date: isoDay(), // the register opens on this month
     amount: -9000,
     payeeName: 'Groceries run',
   });
@@ -123,19 +123,19 @@ test('picks payments in the register and shares just those, split equally', asyn
   const account = await api.createAccount('Everyday', 50000);
   const dinner = await api.createTransaction({
     accountId: account.id,
-    date: '2026-10-20',
+    date: isoDay(), // the register opens on this month
     amount: -6001,
     payeeName: 'Dinner for two',
   });
   const solo = await api.createTransaction({
     accountId: account.id,
-    date: '2026-10-21',
+    date: isoDay(), // the register opens on this month
     amount: -1500,
     payeeName: 'Solo coffee',
   });
   const fuel = await api.createTransaction({
     accountId: account.id,
-    date: '2026-10-22',
+    date: isoDay(), // the register opens on this month
     amount: -8000,
     payeeName: 'Road trip fuel',
   });

@@ -236,6 +236,8 @@ function CategoryRow({
         <div className="text-right">
           <Link
             to={`/budget/category/${cat.id}`}
+            // The figure alone ("$0") says nothing to a screen reader
+            aria-label={`${isIncome ? 'Received for' : 'Activity in'} ${cat.name}: ${formatCurrency(actual)}`}
             className="tabular-nums text-sm text-text-secondary hover:text-brand-600 cursor-pointer transition-colors"
           >
             {formatCurrency(actual)}
@@ -1015,18 +1017,21 @@ export default function BudgetPage() {
         <div
           className={`w-80 max-md:w-full shrink-0 border-l max-md:border-l-0 max-md:border-b border-border p-4 self-start max-md:self-stretch sticky max-md:static top-0 ${needle ? 'max-md:hidden' : ''}`}
         >
-          <div>
-            <CardPayments
-              key={`cards:${selectedMonth}`}
-              month={selectedMonth}
-              summary={summary}
-              loading={switchingMonth || switchingSummary}
-            />
-            <MoneyMoves
-              key={selectedMonth}
-              month={selectedMonth}
-              categories={groups.filter((g) => !g.isIncome).flatMap((g) => g.categories)}
-            />
+          {/* On a phone, Ready to assign comes first: card payments and moves follow it */}
+          <div className="flex flex-col">
+            <div className="max-md:order-last">
+              <CardPayments
+                key={`cards:${selectedMonth}`}
+                month={selectedMonth}
+                summary={summary}
+                loading={switchingMonth || switchingSummary}
+              />
+              <MoneyMoves
+                key={selectedMonth}
+                month={selectedMonth}
+                categories={groups.filter((g) => !g.isIncome).flatMap((g) => g.categories)}
+              />
+            </div>
             <BudgetSummaryWidget
               funding={summary}
               expenseAvailable={expenseTotals.balance}

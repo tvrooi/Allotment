@@ -264,7 +264,7 @@ export function recordEvent(groupId: string, raw: unknown): string {
         .get();
       if (category?.income)
         throw new Error(
-          'Categorize repayments and refunds against the original expense, not salary',
+          'Categorise repayments and refunds against the original expense, not salary',
         );
     }
     if (tx.date !== input.date) throw new Error('Event date must match the bank transaction');

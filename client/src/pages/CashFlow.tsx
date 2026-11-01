@@ -254,7 +254,7 @@ function buildSankeyGraph(
     { total: number; groupId: string | null; items: SpendingByCat[] }
   >();
   for (const item of validSpending) {
-    const key = item.groupName ?? 'Uncategorized';
+    const key = item.groupName ?? 'Uncategorised';
     const ex = groupMap.get(key);
     if (ex) {
       ex.total += item.totalSpent;
@@ -268,7 +268,7 @@ function buildSankeyGraph(
   sortedGroups.forEach(([name], i) => {
     gColorMap.set(
       name,
-      name === 'Uncategorized' ? chartColors.axis : EXPENSE_COLORS[i % EXPENSE_COLORS.length],
+      name === 'Uncategorised' ? chartColors.axis : EXPENSE_COLORS[i % EXPENSE_COLORS.length],
     );
   });
 
@@ -310,7 +310,7 @@ function buildSankeyGraph(
     const sorted = [...items].sort((a, b) => b.totalSpent - a.totalSpent);
 
     const subs: SankeyNode[] = sorted.map((item, ci) => ({
-      name: `${icon(item)}${item.categoryName ?? 'Uncategorized'}`,
+      name: `${icon(item)}${item.categoryName ?? 'Uncategorised'}`,
       nodeType: 'subcategory' as NodeType,
       amount: item.totalSpent,
       color: lighten(gColor, sorted.length > 1 ? Math.min(ci * 0.12, 0.4) : 0),
@@ -1166,7 +1166,7 @@ export default function CashFlowPage() {
     downloadCsv(
       `cash-flow-${from}-${to}.csv`,
       spData.map((d) => ({
-        category: `${showIcons && d.categoryIcon ? d.categoryIcon + ' ' : ''}${d.categoryName ?? 'Uncategorized'}`,
+        category: `${showIcons && d.categoryIcon ? d.categoryIcon + ' ' : ''}${d.categoryName ?? 'Uncategorised'}`,
         group: d.groupName ?? '',
         total_cents: d.totalSpent,
       })),

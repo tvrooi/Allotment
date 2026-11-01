@@ -6,6 +6,8 @@ import {
   deleteUpOverlapOld,
   getUpReview,
   getUpRoundUps,
+  restoreUpDeleted,
+  type UpDeletedImport,
   type UpReviewItem,
 } from '../../api/up';
 import { formatMoney } from '../../utils/currency';
@@ -62,7 +64,23 @@ export function UpReview({ canSave }: { canSave: boolean }) {
       setBusy(false);
     }
   }
+  async function restore(item: UpDeletedImport) {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await restoreUpDeleted(item.accountId, item.importedId);
+      if (result.sync.errors.length) setError(result.sync.errors.join(' '));
+      // It is back in the register: balances, registers and reports all change
+      await qc.invalidateQueries();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not restore this transaction.');
+      await qc.invalidateQueries({ queryKey: ['up-review'] });
+    } finally {
+      setBusy(false);
+    }
+  }
   const overlaps = review.data?.items.filter((i) => i.reviewState === 'overlap') ?? [];
+  const deleted = review.data?.deleted ?? [];
   return (
     <div className="space-y-4">
       {overlaps.length > 0 && (
@@ -118,6 +136,48 @@ export function UpReview({ canSave }: { canSave: boolean }) {
                     Open register
                   </Link>
                 </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {deleted.length > 0 && (
+        <section
+          aria-label="Deleted here, still at Up"
+          className="rounded-lg border border-border bg-surface p-4 space-y-3"
+        >
+          <h3 className="text-sm font-semibold text-text">
+            Deleted here, still at Up ({deleted.length})
+          </h3>
+          <p className="text-xs text-text-secondary">
+            You deleted these in Allotment, so syncing leaves them out. Your register can then
+            differ from Up’s balance. Restore one to import it again as Up reports it (without the
+            category or notes it had).
+          </p>
+          <ul className="space-y-3">
+            {deleted.map((item) => (
+              <li
+                key={item.accountId + item.importedId}
+                className="border-t border-border pt-3 flex flex-wrap items-center justify-between gap-2 break-words"
+              >
+                <div>
+                  <p className="text-sm text-text">{item.description ?? 'Up transaction'}</p>
+                  <p className="text-xs text-text-secondary">
+                    {item.accountName}
+                    {item.date ? ` · ${formatDay(item.date)}` : ''}
+                    {item.amount !== null ? ` · ${formatMoney(item.amount, 'AUD')}` : ''} · deleted{' '}
+                    {formatDay(item.deletedAt.slice(0, 10))}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={!canSave || busy}
+                  onClick={() => void restore(item)}
+                  aria-label={`Restore ${item.description ?? 'Up transaction'}`}
+                >
+                  Restore
+                </Button>
               </li>
             ))}
           </ul>
