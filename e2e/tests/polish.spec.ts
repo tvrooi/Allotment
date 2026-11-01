@@ -52,7 +52,7 @@ test.describe('not categorised yet', () => {
     const summary = await api.call<{
       uncategorisedSpendingCount: number;
       uncategorisedIncomeCount: number;
-    }>('GET', `/reports/uncategorised-summary?from=${thisMonth()}-01&to=${thisMonth()}-31`);
+    }>('GET', `/reports/uncategorised-summary?from=${thisMonth()}-01&to=${isoDay(0)}`);
     const reportsCount = summary.uncategorisedSpendingCount + summary.uncategorisedIncomeCount;
     expect(reportsCount).toBe(4);
     await expect(page.getByText(`${reportsCount} transactions`, { exact: true })).toBeVisible();

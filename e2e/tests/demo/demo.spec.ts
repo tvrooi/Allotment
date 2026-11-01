@@ -289,10 +289,12 @@ test('reviewed card funding uses the same accounting inside the browser demo', a
       if (!response.ok) throw new Error(await response.text());
       return response.json();
     };
+    // Enough to fund the example whatever day it is: early in a month the sample budget has
+    // assigned more than it has received yet
     await call('POST', '/accounts', {
       name: 'Example cash',
       type: 'checking',
-      startingBalance: 100000,
+      startingBalance: 1_000_000,
     });
     const card = await call('POST', '/accounts', {
       name: 'Example payment card',

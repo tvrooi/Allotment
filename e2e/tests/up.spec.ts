@@ -162,6 +162,8 @@ test('a deleted Up transaction stays deleted until it is restored from Up review
   const victim = (await upRows()).find((t) => t.amount < 0)!;
 
   await open(page, `/accounts/${everyday.id}`);
+  // The mock's history has fixed dates; the register opens on this month
+  await page.getByRole('button', { name: 'All Time' }).click();
   await page.getByTestId('transaction-row').filter({ hasText: victim.payeeName }).click();
   await page.getByRole('button', { name: 'Delete Transaction' }).click();
   const confirm = page.getByRole('dialog');

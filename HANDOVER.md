@@ -123,7 +123,9 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
    (owner rule: no silent links). Also: point the help links at the fork's own guide instead of
    flybudget.org (`client/src/utils/project.ts`), fetch Up incrementally (`filter[since]` plus a
    periodic full sweep) instead of full history on every sync, and split the 2.5 MB client bundle
-   by route.
+   by route. The in-browser demo budget (`server/src/demo/demoBudget.ts`) has assigned more than
+   it has received early in a month (Ready to assign −$925.85 on 1 November), so a visitor then
+   sees "Assigned more than you have".
 
 ## Gotchas learned the hard way
 
