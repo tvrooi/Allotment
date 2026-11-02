@@ -16,6 +16,7 @@ import {
   schedules,
 } from '../db/schema.js';
 import { householdLedger } from '../services/householdLedger.js';
+import { billReconciliation } from '../services/householdReconciliation.js';
 import {
   addPerson,
   checkSplit,
@@ -331,6 +332,17 @@ householdsRouter.delete('/:id/bills/:billId', (req, res) =>
 // Money received that looks like someone repaying what they owe (the owner confirms each)
 householdsRouter.get('/:id/repayment-suggestions', (req, res) =>
   run(res, () => repaymentSuggestions(req.params.id, todayIso())),
+);
+// One shared recurring bill, person by person: shares owed and the deposits that paid them
+householdsRouter.get('/:id/recurring-bills/:scheduleId/reconciliation', (req, res) =>
+  run(res, () =>
+    billReconciliation(
+      req.params.id,
+      req.params.scheduleId,
+      req.query.from ? date.parse(req.query.from) : undefined,
+      req.query.to ? date.parse(req.query.to) : undefined,
+    ),
+  ),
 );
 householdsRouter.get('/:id/statement', (req, res) =>
   run(res, () => {
