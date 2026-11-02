@@ -5,7 +5,7 @@ import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import { accessTokens, householdGroups, rules, taxClaims, transactions } from '../db/schema.js';
 import { listTransferSuggestions } from '../services/transferService.js';
-import { poolAccountsOf } from '../services/householdService.js';
+import { poolAccountsOf, snapshot as householdSnapshot } from '../services/householdService.js';
 import { todayIso } from '../services/mainAmountService.js';
 import { gatewayPersonId } from '../config.js';
 import { logoSchema } from '../utils/logo.js';
@@ -15,9 +15,10 @@ import { logoSchema } from '../utils/logo.js';
 // past transactions and creating and editing categories (categoriseAllows,
 // categoryManageAllows); or 'organise': categorise, plus proposing rules the owner enables,
 // payee default categories and logos (never removing one), linking suggested transfers
-// (organiseAllows), claiming past transactions as tax deductions (taxClaimAllows) and recording
+// (organiseAllows), claiming past transactions as tax deductions (taxClaimAllows), recording
 // household contributions linked to a deposit into a household account
-// (householdContributionAllows). Only its SHA-256 is stored, like login sessions, so a leaked database doesn't leak usable tokens. Tokens expire, can be revoked, and changing the password
+// (householdContributionAllows) and your own unlinked contribution up to what you owe
+// (ownContributionAllows). Only its SHA-256 is stored, like login sessions, so a leaked database doesn't leak usable tokens. Tokens expire, can be revoked, and changing the password
 // revokes them all.
 
 export const TOKEN_PREFIX = 'fbro_';
@@ -444,6 +445,48 @@ export function householdContributionAllows(
   );
 }
 
+/** Your own contribution with no bank link: only you, and never more than you owe */
+const ownContributionBody = z
+  .object({
+    kind: z.literal('contribution'),
+    date: z.iso.date(),
+    description: z.string().trim().min(1).max(200),
+    amount: z.number().int().min(1),
+    payerId: z.string().min(1).max(64),
+  })
+  .strict();
+
+/**
+ * Whether an organise token may record the owner's own contribution without a bank link
+ * (owner-approved on 2 November 2026, docs/READ-ONLY-ACCESS.md): for money the owner put
+ * towards the household some other way, such as through a shared saver that isn't one of its
+ * accounts. Only the household's "you" person, dated today or earlier, and at most what you
+ * owe the household account now, so it can bring you to zero but never into credit. Never for
+ * anyone else: their contributions need a linked deposit (householdContributionAllows).
+ */
+export function ownContributionAllows(method: string, rawPath: string, body: unknown): boolean {
+  const match = HOUSEHOLD_EVENTS_PATH.exec(rawPath.replace(/\/+$/, ''));
+  if (method !== 'POST' || !match) return false;
+  const parsed = ownContributionBody.safeParse(body);
+  if (!parsed.success || parsed.data.date > todayIso()) return false;
+  let groupId: string;
+  try {
+    groupId = decodeURIComponent(match[1]);
+  } catch {
+    return false;
+  }
+  let state: ReturnType<typeof householdSnapshot>;
+  try {
+    state = householdSnapshot(groupId);
+  } catch {
+    return false;
+  }
+  const self = state.people.find((p) => p.isSelf);
+  if (!self || parsed.data.payerId !== self.id) return false;
+  const owes = -(state.toPool[self.id] ?? 0);
+  return owes > 0 && parsed.data.amount <= owes;
+}
+
 /** Whether a token with this scope may make this request (path relative to /api) */
 export function tokenAllows(scope: TokenScope, method: string, path: string, body: unknown) {
   if (readOnlyAllows(method, path)) return true;
@@ -455,6 +498,7 @@ export function tokenAllows(scope: TokenScope, method: string, path: string, bod
     (scope === 'organise' &&
       (organiseAllows(method, path, body) ||
         taxClaimAllows(method, path, body) ||
-        householdContributionAllows(method, path, body)))
+        householdContributionAllows(method, path, body) ||
+        ownContributionAllows(method, path, body)))
   );
 }

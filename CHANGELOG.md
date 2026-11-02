@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.74
+
+- **An assistant can record your own household contribution.** If you paid your share some other way, such as rent through a shared saver that isn't one of the household's accounts, `record_own_household_contribution` (a _read, categorise and organise_ token) records it with no bank link. It's only for you, never for anyone else, and at most what you owe the household account, so it can bring you to zero but never into credit. Remove an entry on the Household page.
+
 ## 0.2.0-up.73
 
 - **An assistant can reconcile a shared bill.** Any token's MCP tools now include `household_bill_reconciliation`: for one shared recurring bill, such as rent, it shows each person's share of its payments, the deposit into the household account that paid each one, and what's left. `household_contribution_suggestions` lists the deposits the Household page would suggest.
