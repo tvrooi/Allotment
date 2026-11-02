@@ -706,6 +706,47 @@ describe('household tools', () => {
       difference: 100,
     });
   });
+  it('records your own unlinked contribution, only up to what you owe', async () => {
+    const read = await newToken('read');
+    expect(await toolNames(read)).not.toContain('record_own_household_contribution');
+    const token = await newToken('organise');
+    const owes = async () => -(await call('GET', '/households/flat')).body.toPool.me as number;
+    expect(await owes()).toBe(1900);
+    const body = { kind: 'contribution', date: '2026-03-01', description: 'Rent via saver' };
+    // Never someone else's, never in the future, never more than you owe, never by a read token
+    for (const [auth, extra] of [
+      [token, { amount: 1000, payerId: 'ana' }],
+      [token, { amount: 1000, payerId: 'me', date: '2099-01-01' }],
+      [token, { amount: 1901, payerId: 'me' }],
+      [token, { amount: 1000, payerId: 'me', billId: 'b' }],
+      [read, { amount: 1000, payerId: 'me' }],
+    ] as const)
+      expect(
+        (await call('POST', '/households/flat/events', { token: auth }, { ...body, ...extra }))
+          .status,
+      ).toBe(403);
+    const over = await tool(token, 'record_own_household_contribution', {
+      household_id: 'flat',
+      amount: 2000,
+      date: '2026-03-01',
+      description: 'Rent via saver',
+    });
+    expect(over.data.error).toMatch(/more than you owe/);
+    const { data } = await tool(token, 'record_own_household_contribution', {
+      household_id: 'flat',
+      amount: 1900,
+      date: '2026-03-01',
+      description: 'Rent via saver',
+    });
+    expect(data).toMatchObject({ recorded: true, personId: 'me', owesHouseholdAccountNow: 0 });
+    const again = await tool(token, 'record_own_household_contribution', {
+      household_id: 'flat',
+      amount: 1,
+      date: '2026-03-01',
+      description: 'Rent via saver',
+    });
+    expect(again.data.error).toMatch(/owe the household account nothing/);
+  });
 });
 
 describe('tax claim candidates', () => {
