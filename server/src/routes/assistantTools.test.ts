@@ -18,6 +18,7 @@ const {
   transactions,
   householdGroups,
   householdPeople,
+  householdPoolAccounts,
   householdRecurringBills,
   schedules,
 } = await import('../db/schema.js');
@@ -648,6 +649,62 @@ describe('household tools', () => {
     expect(
       ana.matches.every((m: { deposit: { recordedEventId: string } }) => m.deposit.recordedEventId),
     ).toBe(true);
+  });
+  it('ignores moves between household accounts and counts refunds as less owed', async () => {
+    // A second household account, and a share-sized move into the first that names Ana
+    db.insert(accounts).values({ id: 'joint2', name: 'Ana Saver', type: 'savings' }).run();
+    db.insert(householdPoolAccounts).values({ groupId: 'flat', accountId: 'joint2' }).run();
+    R('move-out', 'joint2', '2026-01-31', -1000, { transferTransactionId: 'move-in' });
+    R('move-in', 'joint', '2026-01-31', 1000, {
+      transferTransactionId: 'move-out',
+      payeeName: 'Transfer: Ana Saver',
+    });
+    const token = await newToken('organise');
+    const rec = async () =>
+      (
+        await tool(token, 'household_bill_reconciliation', {
+          household_id: 'flat',
+          schedule_id: 'rent',
+        })
+      ).data;
+    const before = await rec();
+    const ben = before.people.find((p: { personId: string }) => p.personId === 'ben');
+    expect(JSON.stringify(before)).not.toContain('move-in');
+    expect(ben.paid).toBe(1010);
+    const { data } = await tool(token, 'record_household_contributions', {
+      household_id: 'flat',
+      contributions: [{ transaction_id: 'move-in', person_id: 'ana' }],
+    });
+    expect(data.recorded).toBe(0);
+    expect(data.results[0].error).toMatch(/Refused/);
+    // $3 of the second rent comes back: $1 less owed each, and $3 less in total
+    const snapshot = (await call('GET', '/households/flat')).body;
+    const rent2 = snapshot.events.find(
+      (e: { transactionId: string }) => e.transactionId === 'rent2',
+    );
+    expect(
+      (
+        await call(
+          'POST',
+          '/households/flat/events',
+          {},
+          {
+            kind: 'refund',
+            date: '2026-03-05',
+            description: 'Rent refund',
+            amount: 300,
+            reversesId: rent2.id,
+          },
+        )
+      ).status,
+    ).toBe(201);
+    const after = await rec();
+    expect(after.total).toBe(5700);
+    expect(after.people.find((p: { personId: string }) => p.personId === 'ana')).toMatchObject({
+      owed: 1900,
+      paid: 2000,
+      difference: 100,
+    });
   });
 });
 

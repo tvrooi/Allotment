@@ -71,7 +71,7 @@ export function billReconciliation(
     throw new Error('This recurring item is not shared with this household');
   const { schedule, ids } = billTransactionIds(scheduleId, from, to);
 
-  // The bill's payments shared with the household, less refunds of them
+  // The bill's payments shared with the household, and refunds of them (stored negative)
   const payments = state.events.filter(
     (e) =>
       e.kind === 'expense' &&
@@ -133,12 +133,14 @@ export function billReconciliation(
         ? { personId: event.payerId, eventId: event.id }
         : null;
     if (t.transferTransactionId && linkedEvents.has(t.transferTransactionId)) return null;
+    // A move between the household's own accounts brings no money in, whatever it is called
+    const other = t.transferTransactionId ? otherLegs.get(t.transferTransactionId) : undefined;
+    if (other && state.poolAccountIds.includes(other)) return null;
     const payee = new Set(words(`${t.payeeName ?? ''} ${t.importedPayee ?? ''}`));
     const named = others.filter((p) => words(p.name).some((w) => payee.has(w)));
     if (named.length === 1) return { personId: named[0].id, eventId: null };
     if (named.length > 1) return null;
-    const other = t.transferTransactionId ? otherLegs.get(t.transferTransactionId) : undefined;
-    if (other && !state.poolAccountIds.includes(other)) return { personId: self.id, eventId: null };
+    if (other) return { personId: self.id, eventId: null };
     return null;
   };
   const owned = deposits.flatMap((t) => {
@@ -150,7 +152,7 @@ export function billReconciliation(
     const shareOf = (e: (typeof state.events)[number]) =>
       e.shares.filter((s) => s.personId === person.id).reduce((n, s) => n + s.amount, 0);
     const owed =
-      payments.reduce((n, e) => n + shareOf(e), 0) - refunds.reduce((n, e) => n + shareOf(e), 0);
+      payments.reduce((n, e) => n + shareOf(e), 0) + refunds.reduce((n, e) => n + shareOf(e), 0);
     const mine = owned.filter((d) => d.personId === person.id);
     const used = new Set<string>();
     const matches = payments.map((payment) => {
@@ -223,7 +225,7 @@ export function billReconciliation(
     from,
     to,
     payments: payments.length,
-    total: payments.reduce((n, e) => n + e.amount, 0) - refunds.reduce((n, e) => n + e.amount, 0),
+    total: payments.reduce((n, e) => n + e.amount, 0) + refunds.reduce((n, e) => n + e.amount, 0),
     people,
     notes: [
       `A deposit into a household account counts towards a payment when it names the person (or is a transfer from one of your own accounts), arrives up to ${DAYS_BEFORE} days before or ${DAYS_AFTER} after it, and is within 2% (or $1) of their share.`,

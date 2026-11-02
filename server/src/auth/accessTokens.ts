@@ -391,7 +391,8 @@ const contributionBody = z
 /**
  * Whether an organise token may record this household entry (owner-approved on 2 November
  * 2026, docs/READ-ONLY-ACCESS.md): a contribution linked to a past deposit into one of that
- * household's accounts, for exactly the deposit's amount and date. Never an expense,
+ * household's accounts, for exactly the deposit's amount and date, that isn't a move from
+ * another of its accounts. Never an expense,
  * settlement, refund, bill, unlinked amount, edit or removal: those stay the owner's. The
  * household route still checks the person, that the deposit (or its other transfer leg) isn't
  * linked already, and the rest of the ledger's rules.
@@ -418,17 +419,28 @@ export function householdContributionAllows(
       accountId: transactions.accountId,
       date: transactions.date,
       amount: transactions.amount,
+      transferTransactionId: transactions.transferTransactionId,
     })
     .from(transactions)
     .where(eq(transactions.id, parsed.data.transactionId))
     .get();
+  const pool = poolAccountsOf(group);
+  // A move between the household's own accounts brings no money in
+  const otherLeg = tx?.transferTransactionId
+    ? db
+        .select({ accountId: transactions.accountId })
+        .from(transactions)
+        .where(eq(transactions.id, tx.transferTransactionId))
+        .get()
+    : undefined;
   return (
     !!tx &&
+    !(otherLeg && pool.includes(otherLeg.accountId)) &&
     tx.amount > 0 &&
     tx.amount === parsed.data.amount &&
     tx.date === parsed.data.date &&
     tx.date <= todayIso() &&
-    poolAccountsOf(group).includes(tx.accountId)
+    pool.includes(tx.accountId)
   );
 }
 
