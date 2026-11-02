@@ -25,6 +25,7 @@ const { rulesRouter } = await import('./rules.js');
 const { payeesRouter } = await import('./payees.js');
 const { changeSetsRouter } = await import('./changeSets.js');
 const { budgetProposalsRouter } = await import('./budgetProposals.js');
+const { taxRouter } = await import('./tax.js');
 
 let server: Server;
 let base: string;
@@ -69,6 +70,7 @@ beforeAll(async () => {
   app.use('/api/payees', payeesRouter);
   app.use('/api/change-sets', changeSetsRouter);
   app.use('/api/budget-proposals', budgetProposalsRouter);
+  app.use('/api/tax', taxRouter);
   app.use('/api/access-tokens', accessTokensRouter);
   app.use('/api/mcp', mcpRouter);
   app.use(errorHandler);
@@ -125,6 +127,19 @@ async function toolNames(token: string) {
   );
   return (res.body.result.tools as { name: string }[]).map((t) => t.name);
 }
+/** A row of its own for one test, already categorised so other tests' worklists don't see it */
+const ownRow = (id: string, amount: number, date = PAST) =>
+  db
+    .insert(transactions)
+    .values({
+      id,
+      accountId: 'spend',
+      date,
+      amount,
+      payeeName: 'Mock Software',
+      categoryId: 'coffee',
+    })
+    .run();
 const categoryOf = (id: string) =>
   db.select().from(transactions).where(eq(transactions.id, id)).get()!.categoryId;
 
@@ -212,6 +227,89 @@ describe('categorising with change sets', () => {
         })
       ).status,
     ).toBe(403);
+  });
+
+  it('the owner redoes an undone change set, never a token', async () => {
+    ownRow('r1', -100);
+    ownRow('r2', -200);
+    const token = await newToken('categorise');
+    const { data } = await tool(token, 'categorise_transactions', {
+      transaction_ids: ['r1', 'r2'],
+      category_id: 'groceries',
+    });
+    await call('POST', `/change-sets/${data.changeSetId}/undo`);
+    expect(categoryOf('r1')).toBe('coffee');
+    // A token can't redo, and a row edited since the undo keeps the edit
+    expect((await call('POST', `/change-sets/${data.changeSetId}/redo`, { token })).status).toBe(
+      403,
+    );
+    db.update(transactions).set({ categoryId: null }).where(eq(transactions.id, 'r2')).run();
+    const redo = await call('POST', `/change-sets/${data.changeSetId}/redo`);
+    expect(redo.body).toEqual({ reapplied: 1, skipped: ['r2'] });
+    expect(categoryOf('r1')).toBe('groceries');
+    db.update(transactions).set({ categoryId: 'coffee' }).where(eq(transactions.id, 'r2')).run();
+    const sets = (await call('GET', '/change-sets')).body as { id: string; undoneAt: unknown }[];
+    expect(sets.find((x) => x.id === data.changeSetId)?.undoneAt).toBeNull();
+    expect((await call('POST', `/change-sets/${data.changeSetId}/redo`)).status).toBe(409);
+  });
+});
+
+describe('tax deductions', () => {
+  it('an organise token claims past money out, never replacing or removing a claim', async () => {
+    ownRow('t1', -1000);
+    ownRow('t2', -500);
+    ownRow('later', -900, '2099-01-01');
+    ownRow('refund', 300);
+    const token = await newToken('organise');
+    const { data } = await tool(token, 'claim_tax_deductions', {
+      transaction_ids: ['t1', 'later', 'refund', 'missing'],
+      label: 'D5',
+      work_use_percent: 25,
+      notes: 'Software subscription, 25% work use',
+    });
+    expect(data.claimed).toBe(1);
+    expect(data.results.map((r: { error?: string }) => r.error)).toEqual([
+      undefined,
+      'Dated in the future',
+      'Not money out',
+      'Not found',
+    ]);
+    const again = await tool(token, 'claim_tax_deductions', {
+      transaction_ids: ['t1'],
+      label: 'D1',
+    });
+    expect(again.data.results[0].error).toMatch(/Already claimed/);
+    // The API refuses the same directly: replacing, removing, future rows, CSV and receipts
+    expect((await call('PUT', '/tax/claims/t1', { token }, { label: 'D1' })).status).toBe(403);
+    expect((await call('DELETE', '/tax/claims/t1', { token })).status).toBe(403);
+    expect((await call('PUT', '/tax/claims/later', { token }, { label: 'D5' })).status).toBe(403);
+    expect(
+      (await call('PUT', '/tax/claims/t2', { token }, { label: 'D5', receipt: 'x' })).status,
+    ).toBe(403);
+    expect((await call('GET', '/tax/years/2025/csv', { token })).status).toBe(403);
+    expect((await call('GET', '/tax/years/2025/archive', { token })).status).toBe(403);
+    const year = (await tool(token, 'tax_deductions', { financial_year: 2025 })).data.year;
+    expect(year.claims).toHaveLength(1);
+    expect(year.claims[0]).toMatchObject({
+      transactionId: 't1',
+      label: 'D5',
+      workUseBps: 2500,
+      cost: 1000,
+      claim: 250,
+      notes: 'Software subscription, 25% work use',
+    });
+    // The owner still changes and removes claims
+    expect((await call('PUT', '/tax/claims/t1', {}, { label: 'D4' })).status).toBe(200);
+    expect((await call('DELETE', '/tax/claims/t1')).status).toBe(204);
+  });
+
+  it('read and categorise tokens neither claim nor see claims', async () => {
+    for (const scope of ['read', 'categorise'] as const) {
+      const token = await newToken(scope);
+      expect(await toolNames(token)).not.toContain('claim_tax_deductions');
+      expect((await call('PUT', '/tax/claims/t2', { token }, { label: 'D5' })).status).toBe(403);
+      expect((await call('GET', '/tax/years/2025', { token })).status).toBe(403);
+    }
   });
 });
 

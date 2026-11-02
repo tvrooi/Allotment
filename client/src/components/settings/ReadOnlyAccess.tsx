@@ -10,6 +10,7 @@ import {
   getAccessTokens,
   getChangeSets,
   revokeAccessToken,
+  redoChangeSet,
   undoChangeSet,
   type AccessToken,
   type AccessTokenScope,
@@ -20,8 +21,9 @@ import {
 // or an MCP client, read this budget. They can't sign in, download backups or see bank
 // connections. A categorise token can also set past transactions' categories and edit
 // categories; an organise token can also propose rules (disabled until enabled here, in Rules),
-// set payee default categories and logos and link suggested transfers
-// (docs/READ-ONLY-ACCESS.md). Their category changes are listed below, each one undoable.
+// set payee default categories and logos, link suggested transfers and claim past transactions
+// as tax deductions (docs/READ-ONLY-ACCESS.md). Their category changes are listed below, each one
+// undoable, and an undone one can be redone.
 
 const DAYS = [7, 30, 90];
 const inputClass =
@@ -70,8 +72,9 @@ export function ReadOnlyAccess() {
         <em>read and categorise</em> token can also set the category of past transactions and create
         or edit categories. A <em>read, categorise and organise</em> token can also propose rules
         (they stay off until you turn them on in Rules), set payee default categories, set payee
-        logos and link transfers the app suggests. A token expires, you can revoke it here, and
-        changing the password revokes them all.
+        logos, link transfers the app suggests and claim past transactions as tax deductions (it
+        never changes or removes a claim). A token expires, you can revoke it here, and changing the
+        password revokes them all.
       </p>
 
       <form
@@ -205,24 +208,25 @@ export function ReadOnlyAccess() {
   );
 }
 
-/** Category changes made with tokens, newest first, each one undoable */
+/** Category changes made with tokens, newest first, each one undoable and then redoable */
 function AssistantChanges() {
   const qc = useQueryClient();
   const { data: sets = [] } = useQuery({ queryKey: ['change-sets'], queryFn: getChangeSets });
-  const undo = useMutation({
-    mutationFn: undoChangeSet,
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['change-sets'] });
-      void qc.invalidateQueries({ queryKey: ['transactions'] });
-      void qc.invalidateQueries({ queryKey: ['budget'] });
-    },
-  });
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: ['change-sets'] });
+    void qc.invalidateQueries({ queryKey: ['transactions'] });
+    void qc.invalidateQueries({ queryKey: ['budget'] });
+  };
+  const undo = useMutation({ mutationFn: undoChangeSet, onSuccess: refresh });
+  const redo = useMutation({ mutationFn: redoChangeSet, onSuccess: refresh });
+  const busy = undo.isPending || redo.isPending;
   if (!sets.length) return null;
   return (
     <div className="mt-4">
       <h3 className="text-xs font-semibold text-text-secondary">Changes made with tokens</h3>
       <p className="text-xs text-text-tertiary mt-0.5">
-        Undo puts back the previous categories. A transaction you edited since keeps your change.
+        Undo puts back the previous categories, and Redo sets the token's again. A transaction you
+        edited since keeps your change.
       </p>
       <ul aria-label="Changes made with tokens" className="mt-2 divide-y divide-border-light">
         {sets.slice(0, 20).map((c) => (
@@ -237,12 +241,22 @@ function AssistantChanges() {
                 {c.undoneAt ? ' · undone' : ''}
               </p>
             </div>
-            {!c.undoneAt && (
+            {c.undoneAt ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                aria-label={`Redo ${c.tokenName}'s change`}
+                disabled={busy}
+                onClick={() => redo.mutate(c.id)}
+              >
+                Redo
+              </Button>
+            ) : (
               <Button
                 variant="secondary"
                 size="sm"
                 aria-label={`Undo ${c.tokenName}'s change`}
-                disabled={undo.isPending}
+                disabled={busy}
                 onClick={() => undo.mutate(c.id)}
               >
                 Undo
@@ -251,7 +265,9 @@ function AssistantChanges() {
           </li>
         ))}
       </ul>
-      {undo.error && <p className="text-xs text-negative mt-2">{undo.error.message}</p>}
+      {(undo.error ?? redo.error) && (
+        <p className="text-xs text-negative mt-2">{(undo.error ?? redo.error)?.message}</p>
+      )}
     </div>
   );
 }

@@ -1,11 +1,16 @@
 # Changes
 
-## 0.2.0-up.72
+## 0.2.0-up.74
 
 Fixes from a review of 0.2.0-up.71.
 
 - **A suggested repayment can always be recorded.** If you were owed money for something you paid, but still owed the household account, recording the suggested repayment was refused. A repayment now only has to fit what is owed for things people paid themselves.
 - **Another household's money isn't your contribution.** A transfer into a household account from an account that belongs to another household is no longer offered as your contribution.
+
+## 0.2.0-up.72
+
+- **Redo an assistant's undone changes.** **Settings → Server → Read-only access → Changes made with tokens** now offers **Redo** on a change you undid. It sets the assistant's categories again, except on transactions you've changed since or reconciled.
+- **An assistant can claim tax deductions.** An AI assistant with a _read, categorise and organise_ token can read a financial year's claims and claim past payments as deductions, with a return label, a work-use share and a note (MCP tools `tax_deductions` and `claim_tax_deductions`). It can't change or remove a claim, download the tax CSV or receipt archive, or see receipts. Read-only and categorise tokens still see no claims.
 
 ## 0.2.0-up.71
 

@@ -51,9 +51,11 @@ The owner types a receipt's details and line items, and matching and splitting u
 - **Serving:** files are served with `X-Content-Type-Options: nosniff` and
   `Content-Security-Policy: default-src 'none'; img-src 'self'; sandbox`. Photos are inline; PDFs and
   HEIC are downloads, never documents that render in the app's origin.
-- **Read-only tokens:** `/api/receipts` and `/api/tax` are deliberately not on the read-only token
-  allowlist. An assistant token never sees a receipt or a claim (tested). Receipts are not under
-  `/transactions`, which is allowlisted.
+- **Access tokens:** `/api/receipts` is not on the token allowlist, and read and categorise
+  tokens never see a claim (tested). An organise token (owner-approved, 2 November 2026) can read
+  a year's claims and claim past, unclaimed transactions, but never replaces or removes a claim,
+  downloads the CSV or receipt archive, or sees a receipt (docs/READ-ONLY-ACCESS.md). Receipts are
+  not under `/transactions`, which is allowlisted.
 - **Demo:** the in-browser demo has no file uploads ("not in the demo"). Tax claims work there.
 - Mock data and made-up files only in tests and the demo.
 

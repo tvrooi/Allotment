@@ -52,3 +52,9 @@ export const undoChangeSet = (id: string) =>
   apiFetch<{ restored: number; skipped: string[] }>(`/change-sets/${id}/undo`, {
     method: 'POST',
   });
+
+/** Sets an undone change set's categories again (the owner only) */
+export const redoChangeSet = (id: string) =>
+  apiFetch<{ reapplied: number; skipped: string[] }>(`/change-sets/${id}/redo`, {
+    method: 'POST',
+  });

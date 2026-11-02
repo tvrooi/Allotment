@@ -46,7 +46,9 @@ Keep this file and CLAUDE.md identical.
   an `organise` token may also propose rules (created disabled, never enabled/reordered/deleted by a token),
   apply a category-only rule to uncategorised past rows, set payee default categories, set or replace
   a payee logo (never remove one), link only server-suggested transfers,
-  and suggest assignments that only the owner applies. Token category changes are undoable change sets.
+  suggest assignments that only the owner applies, and claim past unclaimed transactions as tax
+  deductions (never replace or remove a claim). Token category changes are undoable change sets;
+  only the owner redoes one.
 - HA `/data/options.json` stays root-only; root opens it before dropping to uid 1000. Never regenerate
   an existing key. Supervisor watchdog must be TCP because strict hosts reject its IP-based HTTP probe.
 - Prebuilt HA images need `io.hass.type=app`, version and architecture labels. BuildKit says `arm64`;

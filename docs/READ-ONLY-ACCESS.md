@@ -5,7 +5,8 @@ such as an AI assistant, **read-only** access to the budget with a token. The to
 accounts, transactions, the budget, reports, goals and reviews. It cannot change anything,
 except that a read and categorise token can set the category of past transactions and edit
 categories, and a read, categorise and organise token can also propose rules, set payee
-default categories and logos and link suggested transfers.
+default categories and logos, link suggested transfers and claim past transactions as tax
+deductions.
 
 ## What a token can and cannot do
 
@@ -43,12 +44,20 @@ default categories and logos and link suggested transfers.
   - link two transactions as a transfer, only when the app itself suggests that pair
     (`POST /api/transactions/transfers/link`);
   - suggest assignments (`POST /api/budget-proposals`): this month or next, expense
-    categories only, within money ready to assign. Only the owner applies or dismisses one.
+    categories only, within money ready to assign. Only the owner applies or dismisses one;
+  - read tax deductions (`GET /api/tax/labels`, `/api/tax/years`, `/api/tax/years/:fy`,
+    `/api/tax/claims`, `/api/tax/claims/:id`; never a year's CSV or receipt archive) and claim a
+    past transaction that has no claim yet (`PUT /api/tax/claims/:id` with only `label`,
+    `workUseBps` and `notes`). It never replaces or removes a claim: those stay the owner's. The
+    tax route still refuses split parents and transfers. Owner-approved on 2 November 2026.
 - **Change sets:** every category change made over MCP is saved as a change set, listed in
   **Settings → Server → Read-only access** with **Undo** (`GET /api/change-sets`,
   `POST /api/change-sets/:id/undo`). Undo puts back the previous category (even none) only
   where the transaction still has the category the change set gave it and isn't reconciled. A
-  token sees and undoes only its own change sets; you can undo any.
+  token sees and undoes only its own change sets; you can undo any. You can also **Redo** an
+  undone change set (`POST /api/change-sets/:id/redo`, the owner only): it sets the token's
+  categories again where the transaction still has the category the undo put back and isn't
+  reconciled.
 - Tokens are 256-bit random values starting with `fbro_`. The server stores only their
   SHA-256, as it does for login sessions. A token is shown once when it is created.
 - Every token expires (7, 30 or 90 days), can be revoked in **Settings → Server → Read-only
@@ -126,8 +135,11 @@ case, as the server's router does.
 
 With a **read, categorise and organise** token it also lists `test_rule_conditions`,
 `propose_rule`, `update_proposed_rule`, `preview_rule`, `apply_rule`,
-`set_payee_default_category`, `link_transfer` and `propose_assignments` (suggested amounts
-for expense envelopes, which the owner applies or dismisses on the Budget page). `categorise_by_payee` with
+`set_payee_default_category`, `link_transfer`, `propose_assignments` (suggested amounts
+for expense envelopes, which the owner applies or dismisses on the Budget page),
+`tax_deductions` (one financial year's claims and totals) and `claim_tax_deductions` (up to 100
+past money-out transactions under one return label, with a work-use percentage and notes;
+already-claimed rows are skipped). `categorise_by_payee` with
 `set_default: true` also makes the category the payee's default, so later imports get it.
 
 Each read tool call is a `GET` of the server's own API made with the caller's token, so a tool can
