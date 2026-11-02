@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import {
@@ -10,7 +10,9 @@ import {
 
 // Category changes an access token made (an MCP categorise or rule tool call), kept so the owner
 // or that token can put them back. Undo restores a transaction's previous category only while it
-// still has the category the change set gave it and isn't reconciled: a later edit wins.
+// still has the category the change set gave it and isn't reconciled: a later edit wins. The
+// owner can redo an undone change set: it sets the token's categories again, only on rows that
+// still have the category the undo put back.
 
 export interface ChangeEntry {
   transactionId: string;
@@ -127,4 +129,48 @@ export function undoChangeSet(id: string, tokenId?: string) {
       .run();
   });
   return { restored, skipped };
+}
+
+/** Sets an undone change set's categories again (the owner's, never a token's) */
+export function redoChangeSet(id: string) {
+  const set = db.select().from(assistantChangeSets).where(eq(assistantChangeSets.id, id)).get();
+  if (!set) throw new ChangeSetError('Change set not found', 404);
+  if (!set.undoneAt) throw new ChangeSetError('This change set is not undone', 409);
+  const entries = db
+    .select()
+    .from(assistantChangeEntries)
+    .where(eq(assistantChangeEntries.changeSetId, id))
+    .all();
+  let reapplied = 0;
+  const skipped: string[] = [];
+  db.transaction((tx) => {
+    for (const e of entries) {
+      const row = tx
+        .select({ categoryId: transactions.categoryId, reconciled: transactions.reconciled })
+        .from(transactions)
+        .where(eq(transactions.id, e.transactionId))
+        .get();
+      if (!row || row.reconciled === 1 || row.categoryId !== e.previousCategoryId) {
+        skipped.push(e.transactionId);
+        continue;
+      }
+      tx.update(transactions)
+        .set({ categoryId: e.newCategoryId })
+        .where(
+          and(
+            eq(transactions.id, e.transactionId),
+            e.previousCategoryId === null
+              ? isNull(transactions.categoryId)
+              : eq(transactions.categoryId, e.previousCategoryId),
+          ),
+        )
+        .run();
+      reapplied++;
+    }
+    tx.update(assistantChangeSets)
+      .set({ undoneAt: null })
+      .where(eq(assistantChangeSets.id, id))
+      .run();
+  });
+  return { reapplied, skipped };
 }

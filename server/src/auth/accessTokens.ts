@@ -3,7 +3,7 @@ import { and, eq, gt, inArray, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
-import { accessTokens, rules, transactions } from '../db/schema.js';
+import { accessTokens, rules, taxClaims, transactions } from '../db/schema.js';
 import { listTransferSuggestions } from '../services/transferService.js';
 import { todayIso } from '../services/mainAmountService.js';
 import { gatewayPersonId } from '../config.js';
@@ -13,8 +13,8 @@ import { logoSchema } from '../utils/logo.js';
 // recognisable prefix. Its scope is 'read'; 'categorise': read, plus setting the category of
 // past transactions and creating and editing categories (categoriseAllows,
 // categoryManageAllows); or 'organise': categorise, plus proposing rules the owner enables,
-// payee default categories and logos (never removing one) and linking suggested transfers
-// (organiseAllows). Only its SHA-256 is stored, like login sessions, so a leaked database doesn't leak usable tokens. Tokens expire, can be revoked, and changing the password
+// payee default categories and logos (never removing one), linking suggested transfers
+// (organiseAllows) and claiming past transactions as tax deductions (taxClaimAllows). Only its SHA-256 is stored, like login sessions, so a leaked database doesn't leak usable tokens. Tokens expire, can be revoked, and changing the password
 // revokes them all.
 
 export const TOKEN_PREFIX = 'fbro_';
@@ -323,6 +323,52 @@ export function organiseAllows(method: string, rawPath: string, body: unknown): 
   return false;
 }
 
+// ─── Tax deductions an organise token may record ──────────────────────────────
+
+const TAX_READ = [
+  /^\/tax\/labels$/,
+  /^\/tax\/years$/,
+  /^\/tax\/years\/\d{4}$/,
+  /^\/tax\/claims(\/[^/]+)?$/,
+];
+const TAX_CLAIM_PATH = /^\/tax\/claims\/([^/]+)$/i;
+/** A claim's label, work-use share and notes, as the tax route takes them */
+const taxClaimBody = z
+  .object({
+    label: z.string().min(1).max(8),
+    workUseBps: z.number().int().optional(),
+    notes: z.string().max(2_000).nullable().optional(),
+  })
+  .strict();
+
+/**
+ * Whether an organise token may read or add tax deduction claims (owner-approved,
+ * docs/READ-ONLY-ACCESS.md): read the labels, years, a year's claims (not its CSV or receipt
+ * archive) and claims; claim a past transaction that has no claim yet. Never replace or remove
+ * a claim: those are the owner's. The tax route still validates the label and share and
+ * refuses split parents and transfers.
+ */
+export function taxClaimAllows(method: string, rawPath: string, body: unknown): boolean {
+  const path = rawPath.toLowerCase().replace(/\/+$/, '');
+  if (method === 'GET' || method === 'HEAD') return TAX_READ.some((p) => p.test(path));
+  const match = TAX_CLAIM_PATH.exec(rawPath.replace(/\/+$/, ''));
+  if (method !== 'PUT' || !match || !taxClaimBody.safeParse(body).success) return false;
+  let id: string;
+  try {
+    id = decodeURIComponent(match[1]);
+  } catch {
+    return false;
+  }
+  if (db.select().from(taxClaims).where(eq(taxClaims.transactionId, id)).get()) return false;
+  const row = db
+    .select({ date: transactions.date })
+    .from(transactions)
+    .where(eq(transactions.id, id))
+    .get();
+  // A missing transaction is the route's 404, not a refusal
+  return !row || row.date <= todayIso();
+}
+
 /** Whether a token with this scope may make this request (path relative to /api) */
 export function tokenAllows(scope: TokenScope, method: string, path: string, body: unknown) {
   if (readOnlyAllows(method, path)) return true;
@@ -331,6 +377,7 @@ export function tokenAllows(scope: TokenScope, method: string, path: string, bod
   return (
     categoriseAllows(method, path, body) ||
     categoryManageAllows(method, path, body) ||
-    (scope === 'organise' && organiseAllows(method, path, body))
+    (scope === 'organise' &&
+      (organiseAllows(method, path, body) || taxClaimAllows(method, path, body)))
   );
 }

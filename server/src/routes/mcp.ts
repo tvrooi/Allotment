@@ -3,17 +3,19 @@ import { rateLimit } from 'express-rate-limit';
 import { inArray } from 'drizzle-orm';
 import { appVersion } from '../utils/version.js';
 import { db } from '../db/index.js';
-import { transactions } from '../db/schema.js';
+import { taxClaims, transactions } from '../db/schema.js';
 import { asScope, canCategorise, type TokenScope } from '../auth/accessTokens.js';
 import { recordChangeSet, type ChangeEntry } from '../services/changeSets.js';
 import { todayIso } from '../services/mainAmountService.js';
+import { TAX_LABEL_KEYS, TAX_LABELS } from '../services/taxService.js';
 
 // An MCP server (Model Context Protocol, Streamable HTTP with JSON responses) so an AI
 // assistant can read the budget with an access token (docs/READ-ONLY-ACCESS.md). Every read
 // tool is one GET of this server's own API, made over loopback with the caller's token, so a
 // tool can never reach more than the token itself: the same allowlist, validation and
 // accounting as the app. Writing tools are listed only for a token whose scope allows them
-// (categorise: categories; organise: also rules, payee defaults and suggested transfers) and
+// (categorise: categories; organise: also rules, payee defaults, suggested transfers and tax
+// deduction claims) and
 // make the same requests the app does. Category changes are saved as change sets that can be
 // undone (services/changeSets.ts).
 
@@ -402,6 +404,9 @@ const CATEGORY_TOOLS: (Tool & { write: { method: 'POST' | 'PUT'; body: (a: Args)
 
 /** Most transactions one categorise call changes */
 const MAX_CATEGORISE = 100;
+/** Most transactions one claim_tax_deductions call claims */
+const MAX_CLAIMS = 100;
+const labelHelp = TAX_LABEL_KEYS.map((k) => `${k} ${TAX_LABELS[k].name}`).join('; ');
 /** Most transactions categorise_by_payee or apply_rule changes in one call */
 const MAX_BULK = 1000;
 
@@ -797,6 +802,109 @@ const ACTION_TOOLS: ActionTool[] = [
       return r.ok ? { linked: true } : { error: r.error };
     },
   },
+  {
+    name: 'tax_deductions',
+    scope: 'organise',
+    description:
+      'The tax deductions claimed for one Australian financial year (1 July to 30 June), named by the year it starts (2025 = 2025–26): each claim with its label, work-use share, cost and claimed amount, totals per label, and receipts still missing. Record keeping, not tax advice.',
+    properties: {
+      financial_year: {
+        type: 'integer',
+        minimum: 1990,
+        maximum: 2200,
+        description: '2025 = 1 July 2025 to 30 June 2026',
+      },
+    },
+    required: ['financial_year'],
+    run: async (ctx, a) => {
+      if (!Number.isInteger(a.financial_year)) return { error: 'Give a financial year, e.g. 2025' };
+      const r = await api(ctx, `/tax/years/${seg(a.financial_year)}`);
+      return r.ok ? { year: r.data } : { error: r.error };
+    },
+  },
+  {
+    name: 'claim_tax_deductions',
+    scope: 'organise',
+    description: `Claims past transactions (money out, dated today or earlier) as tax deductions under one return label, with a work-use share, up to ${MAX_CLAIMS} at once. Claims never change a transaction or the budget. A transaction that already has a claim is skipped: only the owner replaces or removes claims. Split transactions are claimed by their parts; transfers can't be claimed. Labels: ${labelHelp}. What is deductible is the owner's call: confirm the list, label and share with the user first.`,
+    properties: {
+      transaction_ids: { type: 'array', items: idString, minItems: 1, maxItems: MAX_CLAIMS },
+      label: { type: 'string', enum: TAX_LABEL_KEYS },
+      work_use_percent: {
+        type: 'number',
+        minimum: 0.01,
+        maximum: 100,
+        description: 'Share of each cost used for work; default 100',
+      },
+      notes: {
+        type: 'string',
+        maxLength: 2000,
+        description: 'Kept with each claim, e.g. how the share was worked out',
+      },
+    },
+    required: ['transaction_ids', 'label'],
+    run: async (ctx, a) => {
+      const ids = a.transaction_ids;
+      if (
+        !Array.isArray(ids) ||
+        !ids.length ||
+        ids.length > MAX_CLAIMS ||
+        !ids.every(isId) ||
+        new Set(ids).size !== ids.length
+      ) {
+        return { error: `Give 1 to ${MAX_CLAIMS} distinct transaction ids` };
+      }
+      if (!TAX_LABEL_KEYS.includes(a.label as (typeof TAX_LABEL_KEYS)[number]))
+        return { error: `Unknown label; one of ${TAX_LABEL_KEYS.join(', ')}` };
+      const percent = a.work_use_percent ?? 100;
+      const workUseBps = typeof percent === 'number' ? Math.round(percent * 100) : NaN;
+      if (!Number.isInteger(workUseBps) || workUseBps < 1 || workUseBps > 10_000)
+        return { error: 'work_use_percent must be between 0.01 and 100' };
+      if (a.notes !== undefined && typeof a.notes !== 'string')
+        return { error: 'notes must be text' };
+      const rows = new Map(
+        db
+          .select({ id: transactions.id, date: transactions.date, amount: transactions.amount })
+          .from(transactions)
+          .where(inArray(transactions.id, ids))
+          .all()
+          .map((t) => [t.id, t]),
+      );
+      const claimed = new Set(
+        db
+          .select({ id: taxClaims.transactionId })
+          .from(taxClaims)
+          .where(inArray(taxClaims.transactionId, ids))
+          .all()
+          .map((c) => c.id),
+      );
+      const today = todayIso();
+      const results = [];
+      for (const id of ids) {
+        const row = rows.get(id);
+        const refusal = !row
+          ? 'Not found'
+          : claimed.has(id)
+            ? 'Already claimed; only the owner changes a claim'
+            : row.date > today
+              ? 'Dated in the future'
+              : row.amount >= 0
+                ? 'Not money out'
+                : null;
+        if (refusal) {
+          results.push({ id, ok: false, error: refusal });
+          continue;
+        }
+        const r = await api(ctx, `/tax/claims/${seg(id)}`, 'PUT', {
+          label: a.label,
+          workUseBps,
+          ...(a.notes ? { notes: a.notes } : {}),
+        });
+        results.push({ id, ok: r.ok, error: r.ok ? undefined : r.error });
+      }
+      const done = results.filter((r) => r.ok).length;
+      return { claimed: done, refused: results.length - done, results };
+    },
+  },
 ];
 
 const offered = (scope: TokenScope, tool: ActionTool) =>
@@ -834,7 +942,7 @@ const BASICS =
 const INSTRUCTIONS: Record<TokenScope, string> = {
   read: `Read-only access to an Allotment budget. ${BASICS}`,
   categorise: `Read access to an Allotment budget, plus setting the category of past transactions (categorise_transactions, categorise_by_payee) and creating and editing categories and groups; nothing else can change. ${BASICS} Start from uncategorised_payees. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before categorising.`,
-  organise: `Read access to an Allotment budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers and suggesting assignments the owner applies. ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
+  organise: `Read access to an Allotment budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers, suggesting assignments the owner applies, and claiming past transactions as tax deductions (tax_deductions, claim_tax_deductions; never replacing or removing a claim). ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
 };
 
 const schemaOf = (t: { properties?: Record<string, unknown>; required?: string[] }) => ({
