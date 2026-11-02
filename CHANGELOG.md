@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.73
+
+- **An assistant can reconcile a shared bill.** Any token's MCP tools now include `household_bill_reconciliation`: for one shared recurring bill, such as rent, it shows each person's share of its payments, the deposit into the household account that paid each one, and what's left. `household_contribution_suggestions` lists the deposits the Household page would suggest.
+- **An assistant can record household contributions.** With a _read, categorise and organise_ token, `record_household_contributions` records deposits into a household account as the person's contribution, each linked to its deposit, for exactly its amount and date. It can't record expenses, settlements or unlinked amounts, or change or remove an entry. Remove an entry on the Household page.
+- **An assistant can find missed tax claims.** `tax_claim_candidates` lists past payments in a financial year with no claim, from a payee (or category) you've already claimed this year or last, with that claim's label and work-use share. `tax_years` and `tax_claim` read the years and one claim. Claiming is still `claim_tax_deductions`, and still never replaces or removes a claim.
+
 ## 0.2.0-up.72
 
 - **Redo an assistant's undone changes.** **Settings → Server → Read-only access → Changes made with tokens** now offers **Redo** on a change you undid. It sets the assistant's categories again, except on transactions you've changed since or reconciled.

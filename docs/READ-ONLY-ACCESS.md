@@ -50,6 +50,14 @@ deductions.
     past transaction that has no claim yet (`PUT /api/tax/claims/:id` with only `label`,
     `workUseBps` and `notes`). It never replaces or removes a claim: those stay the owner's. The
     tax route still refuses split parents and transfers. Owner-approved on 2 November 2026.
+    It may also list a year's likely missed claims (`GET /api/tax/years/:fy/candidates`);
+  - record a household contribution linked to a deposit (`POST /api/households/:id/events` with
+    exactly `kind: "contribution"`, `date`, `description`, `amount`, `payerId` and
+    `transactionId`): a past deposit into one of that household's accounts, for exactly its
+    amount and date. Never an expense, settlement, refund, bill, unlinked amount, edit or removal:
+    those stay the owner's, who removes an entry on the Household page. The household route
+    still checks the person and that the deposit (or its other transfer leg) isn't linked
+    already. Owner-approved on 2 November 2026.
 - **Change sets:** every category change made over MCP is saved as a change set, listed in
   **Settings → Server → Read-only access** with **Undo** (`GET /api/change-sets`,
   `POST /api/change-sets/:id/undo`). Undo puts back the previous category (even none) only
@@ -117,6 +125,8 @@ Its read tools:
 | `uncategorised_payees`, `transfer_suggestions`        | Uncategorised transactions grouped by payee; unlinked pairs that look like transfers                        |
 | `budget_start`, `bank_sync_status`                    | The first budget month; each synced account's bank against register balance and round-ups                   |
 | `list_households`, `household`, `household_statement` | Household groups and pool accounts; one group's people, events and balances; your share                     |
+| `household_contribution_suggestions`                  | Deposits that look like someone paying the household or you, not recorded yet                               |
+| `household_bill_reconciliation`                       | One shared recurring bill person by person: shares owed, matched deposits, what's left to record            |
 | `list_change_sets`                                    | This token's category changes, each undoable                                                                |
 | `budget_housekeeping`, `list_budget_proposals`        | Setup problems (budget start, missing round-ups, unknown savers, unused categories); assignment suggestions |
 
@@ -139,7 +149,11 @@ With a **read, categorise and organise** token it also lists `test_rule_conditio
 for expense envelopes, which the owner applies or dismisses on the Budget page),
 `tax_deductions` (one financial year's claims and totals) and `claim_tax_deductions` (up to 100
 past money-out transactions under one return label, with a work-use percentage and notes;
-already-claimed rows are skipped). `categorise_by_payee` with
+already-claimed rows are skipped), `tax_years` (years with claims, and the return labels),
+`tax_claim` (one transaction's claim), `tax_claim_candidates` (unclaimed past payments from a
+payee, or failing that a category, already claimed this year or last, with the label and share
+of that claim) and `record_household_contributions` (up to 50 deposits into a household account
+recorded as the named person's contributions, each linked to its deposit). `categorise_by_payee` with
 `set_default: true` also makes the category the payee's default, so later imports get it.
 
 Each read tool call is a `GET` of the server's own API made with the caller's token, so a tool can
