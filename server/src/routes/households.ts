@@ -368,11 +368,12 @@ householdsRouter.delete('/:id/events/:eventId', (req, res) =>
     const retained = state.events.filter((e) => e.id !== event.id);
     const allocations = retained.flatMap((e) => e.shares);
     const ledger = householdLedger(state.people, retained, allocations);
-    if (ledger.pool < 0) throw new Error('Contribution has already funded expenses');
+    // Removing a contribution the household account has already spent leaves its payer owing
+    // the account again (toPool); only money set aside for bills has to stay covered.
     const reserved = state.bills
       .filter((b) => !retained.some((e) => e.billId === b.id && e.kind === 'expense'))
       .reduce((n, b) => n + b.reserved, 0);
-    if (ledger.pool < reserved)
+    if (reserved > 0 && ledger.pool < reserved)
       throw new Error('Release bill reservations before removing this funding');
     db.delete(shares).where(eq(shares.eventId, event.id)).run();
     db.delete(events).where(eq(events.id, event.id)).run();

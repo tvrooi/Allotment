@@ -323,3 +323,71 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
   await bills.getByRole('button', { name: 'Delete Council rates Q2', exact: true }).click();
   await expect(bills).toHaveCount(0);
 });
+
+test('a rent with fixed amounts from the household account shows what each owes the account', async ({
+  page,
+  api,
+}) => {
+  const joint = await api.createAccount('2Up Bills', 0);
+  const mine = await api.createAccount('Up Spending', 100000);
+  const day = (offset: number) =>
+    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+  const rent = await api.createTransaction({
+    accountId: joint.id,
+    date: day(-3),
+    amount: -300000,
+    payeeName: 'Ray White',
+  });
+  const schedule = await api.call('POST', '/schedules', {
+    name: 'Rent',
+    amount: -300000,
+    recurrenceType: 'monthly',
+    recurrenceRule: { type: 'monthly', interval: 1, anchorDay: 1 },
+    startDate: day(-3),
+    accountId: joint.id,
+    payeeId: rent.payeeId,
+  });
+  const group = await api.call('POST', '/households', {
+    name: 'Rental',
+    currency: 'AUD',
+    accountId: joint.id,
+    people: ['Me', 'Juno', 'Zephyr'],
+    selfIndex: 0,
+  });
+  await api.call('POST', `/households/${group.group.id}/recurring-bills`, {
+    scheduleIds: [schedule.id],
+  });
+  await open(page, '/household');
+
+  const recurring = page.getByRole('region', { name: 'Recurring bills' });
+  const bill = recurring.getByRole('listitem').filter({ hasText: 'Rent' });
+  await bill.getByRole('button', { name: 'Change split' }).click();
+  await bill.getByLabel('Split').selectOption('exact');
+  await bill.getByLabel("Me's amount").fill('1200');
+  await bill.getByLabel("Juno's amount").fill('1000');
+  await bill.getByLabel("Zephyr's amount").fill('700');
+  await expect(bill).toContainText(/expected to be A?\$3,000/);
+  await bill.getByLabel("Zephyr's amount").fill('800');
+  await expect(bill).toContainText(/Adds up to A?\$3,000\./);
+  await bill.getByRole('button', { name: 'Save split' }).click();
+  await expect(bill).toContainText(/Me A?\$1,200, Juno A?\$1,000, Zephyr A?\$800/);
+
+  // The household account paid before anyone put their part in: each owes the account
+  await bill.getByRole('button', { name: 'Share payment' }).click();
+  await expect(bill).toContainText('Last payment shared');
+  await expect(page.getByText(/^owes the household account A?\$1,200$/)).toBeVisible();
+  await expect(page.getByText(/^owes the household account A?\$800$/)).toBeVisible();
+
+  // My transfer into the account is offered as my contribution
+  await api.call('POST', '/transactions/transfer', {
+    fromAccountId: mine.id,
+    toAccountId: joint.id,
+    amount: 120000,
+    toAmount: 120000,
+    date: day(-1),
+  });
+  await page.reload();
+  const sharing = page.getByRole('region', { name: 'Sharing' });
+  await sharing.getByRole('button', { name: 'Record your contribution' }).click();
+  await expect(page.getByText(/^owes the household account A?\$1,200$/)).toHaveCount(0);
+});

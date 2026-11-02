@@ -31,9 +31,13 @@ const name = z.string().trim().min(1).max(200);
 const date = z.iso.date();
 const money = z.number().int().min(1).max(1e12);
 
-/** How a new shared expense splits by default: equal, or each person's percentage/weight */
+/**
+ * How a new shared expense splits by default: equal, or each person's percentage/weight. A
+ * shared recurring bill can also give each person a fixed amount in cents (`exact`), such as
+ * everyone's set part of the rent; a payment those amounts don't add up to stays unshared.
+ */
 export const splitSchema = z.object({
-  mode: z.enum(['equal', 'percentage', 'weight']),
+  mode: z.enum(['equal', 'percentage', 'weight', 'exact']),
   shares: z
     .array(z.object({ personId: z.string(), value: z.number().int().min(0).max(1e12) }))
     .max(50)
@@ -206,16 +210,17 @@ export function recordEvent(groupId: string, raw: unknown): string {
       throw new Error('Percentage shares must total 10000 basis points');
     const amounts = input.mode === 'exact' ? values : allocateShares(amount, values);
     portions = input.shares.map((s, i) => ({ personId: s.personId, amount: amounts[i] }));
-    if (
-      input.payerId === null &&
-      (!state.poolAccountIds.length ||
-        state.pool -
-          state.bills
-            .filter((b) => b.id !== input.billId && b.status !== 'paid')
-            .reduce((n, b) => n + b.reserved, 0) <
-          amount)
-    )
-      throw new Error('Record received pool contributions before spending them');
+    if (input.payerId === null) {
+      if (!state.poolAccountIds.length)
+        throw new Error('Add a household account before recording what it paid');
+      // The household account can pay before everyone has put their part in: whatever is
+      // missing is owed to it (toPool). It can't spend money set aside for other bills.
+      const reservedElsewhere = state.bills
+        .filter((b) => b.id !== input.billId && b.status !== 'paid')
+        .reduce((n, b) => n + b.reserved, 0);
+      if (reservedElsewhere > 0 && state.pool - reservedElsewhere < amount)
+        throw new Error('That would spend money reserved for other bills');
+    }
   } else {
     if (input.kind === 'contribution' && !state.poolAccountIds.length)
       throw new Error('Contributions require a household pool account');
@@ -336,6 +341,11 @@ export function shareTransaction(groupId: string, transactionId: string, split?:
   if (!tx) throw new Error('Transaction not found');
   if (tx.amount >= 0) throw new Error('Only a payment (money out) can be shared');
   const { mode, shares: shareList } = splitOrEqual(split ?? state.group.defaultSplit, state.people);
+  const fixed = mode === 'exact' ? shareList.reduce((n, s) => n + s.value, 0) : 0;
+  if (mode === 'exact' && fixed !== -tx.amount)
+    throw new Error(
+      `The fixed amounts add up to ${dollars(fixed)}, but this payment is ${dollars(-tx.amount)}`,
+    );
   const fromPool = state.poolAccountIds.includes(tx.accountId);
   return recordEvent(groupId, {
     kind: 'expense',
@@ -348,6 +358,9 @@ export function shareTransaction(groupId: string, transactionId: string, split?:
     shares: shareList,
   });
 }
+
+const dollars = (cents: number) =>
+  `$${(cents / 100).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /** A split to use: the one given (or the default), else equal between everyone */
 function splitOrEqual(split: DefaultSplit | null, members: { id: string }[]) {
@@ -408,7 +421,12 @@ function sharedRecurringBills(
       .get();
     const amount = Math.abs(next?.amount ?? schedule.amount);
     const values = weights.map((w) => (mode === 'equal' ? 1 : w.value));
-    const amounts = amount && values.some((v) => v > 0) ? allocateShares(amount, values) : [];
+    const amounts =
+      mode === 'exact'
+        ? values
+        : amount && values.some((v) => v > 0)
+          ? allocateShares(amount, values)
+          : [];
     const matchedIds = db
       .select({ id: scheduleOccurrences.matchedTransactionId })
       .from(scheduleOccurrences)
@@ -458,6 +476,8 @@ function sharedRecurringBills(
         split: ownSplit,
         autoShareFrom: link.autoShareFrom,
         shares: weights.map((w, i) => ({ personId: w.personId, amount: amounts[i] ?? 0 })),
+        /** What fixed amounts add up to (null for other splits); payments must equal it */
+        fixedTotal: mode === 'exact' ? values.reduce((n, v) => n + v, 0) : null,
         payments,
       },
     ];
@@ -505,9 +525,12 @@ export function shareRecurringBills(groupId: string, scheduleIds: string[]) {
 
 /**
  * Checks a split against the household's people: each once, someone with a share, and
- * percentages (basis points) totalling 100%.
+ * percentages (basis points) totalling 100%. Fixed amounts only suit a recurring bill, whose
+ * payments are the same each time, so the household's default split can't use them.
  */
-export function checkSplit(people: { id: string }[], split: DefaultSplit) {
+export function checkSplit(people: { id: string }[], split: DefaultSplit, allowFixed = false) {
+  if (split.mode === 'exact' && !allowFixed)
+    throw new Error('Fixed amounts are for a recurring bill, not the default split');
   const ids = split.shares.map((s) => s.personId);
   if (new Set(ids).size !== ids.length || ids.some((id) => !people.some((p) => p.id === id)))
     throw new Error('Choose participants once each');
@@ -542,7 +565,7 @@ export function updateRecurringBill(
   const set: { splitJson?: string | null; autoShareFrom?: string | null } = {};
   if (changes.split !== undefined) {
     const split = changes.split && changes.split.mode !== 'equal' ? changes.split : null;
-    if (split) checkSplit(state.people, split);
+    if (split) checkSplit(state.people, split, true);
     set.splitJson = split ? JSON.stringify(split) : null;
   }
   if (changes.autoShare !== undefined)
@@ -699,16 +722,18 @@ const words = (s: string) =>
     .filter((w) => w.length > 1);
 
 /**
- * Money received in your personal accounts that looks like a repayment from someone who owes
- * the household: the payee name has their name in it, it isn't linked to the household yet,
- * and it is no more than they owe (or than is owed to you). The owner confirms each one.
+ * Money received that looks like it settles something, for the owner to confirm one by one:
+ * - `settlement`: money into your personal accounts whose payee has the name of someone who owes
+ *   people (for things someone paid themselves), up to what they owe and what you're owed. What
+ *   people owe the household account isn't owed to you, so it never counts here.
+ * - `contribution`: money into a household account, not linked yet, from someone in the
+ *   household (their name in the payee), or a transfer from one of your own accounts.
  */
 export function repaymentSuggestions(groupId: string, today: string) {
   const state = snapshot(groupId);
   const self = state.people.find((p) => p.isSelf)!;
-  const owedToSelf = state.balances[self.id] ?? 0;
-  const debtors = state.people.filter((p) => !p.isSelf && (state.balances[p.id] ?? 0) < 0);
-  if (!debtors.length || owedToSelf <= 0) return [];
+  const owedToSelf = state.direct[self.id] ?? 0;
+  const debtors = state.people.filter((p) => !p.isSelf && (state.direct[p.id] ?? 0) < 0);
   const since = new Date(Date.parse(today) - REPAYMENT_DAYS * 86_400_000)
     .toISOString()
     .slice(0, 10);
@@ -716,43 +741,83 @@ export function repaymentSuggestions(groupId: string, today: string) {
     db
       .select({ id: events.transactionId })
       .from(events)
+      .where(isNotNull(events.transactionId))
       .all()
       .map((e) => e.id),
   );
-  const candidates = db
+  const recent = db
     .select()
     .from(transactions)
+    .where(and(gte(transactions.date, since), gte(transactions.amount, 1)))
     .all()
-    .filter(
-      (t) =>
-        t.amount > 0 &&
-        t.date >= since &&
-        t.date <= today &&
-        !t.isParent &&
-        !t.parentTransactionId &&
-        !t.transferTransactionId &&
-        !linked.has(t.id) &&
-        !state.poolAccountIds.includes(t.accountId),
-    );
-  return candidates.flatMap((t) => {
+    .filter((t) => t.date <= today && !t.isParent && !t.parentTransactionId && !linked.has(t.id));
+  const named = (t: (typeof recent)[number], among: typeof state.people) => {
     const payee = new Set(words(`${t.payeeName ?? ''} ${t.importedPayee ?? ''}`));
-    const person = debtors.find((p) => words(p.name).some((w) => payee.has(w)));
-    if (!person) return [];
-    const owes = -(state.balances[person.id] ?? 0);
-    if (t.amount > owes || t.amount > owedToSelf) return [];
-    return [
-      {
-        transactionId: t.id,
-        date: t.date,
-        amount: t.amount,
-        payeeName: t.payeeName,
-        notes: t.notes,
-        personId: person.id,
-        personName: person.name,
-        owes,
-      },
-    ];
+    return among.find((p) => words(p.name).some((w) => payee.has(w)));
+  };
+  const base = (t: (typeof recent)[number]) => ({
+    transactionId: t.id,
+    date: t.date,
+    amount: t.amount,
+    payeeName: t.payeeName,
+    notes: t.notes,
   });
+  const settlements =
+    debtors.length && owedToSelf > 0
+      ? recent
+          .filter((t) => !t.transferTransactionId && !state.poolAccountIds.includes(t.accountId))
+          .flatMap((t) => {
+            const person = named(t, debtors);
+            if (!person) return [];
+            const owes = -(state.direct[person.id] ?? 0);
+            if (t.amount > owes || t.amount > owedToSelf) return [];
+            return [
+              {
+                kind: 'settlement' as const,
+                ...base(t),
+                personId: person.id,
+                personName: person.name,
+                owes,
+              },
+            ];
+          })
+      : [];
+  const ownLeg = (t: (typeof recent)[number]) => {
+    if (!t.transferTransactionId) return false;
+    const other = db
+      .select({ accountId: transactions.accountId })
+      .from(transactions)
+      .where(eq(transactions.id, t.transferTransactionId))
+      .get();
+    return (
+      !!other &&
+      !state.poolAccountIds.includes(other.accountId) &&
+      !linked.has(t.transferTransactionId)
+    );
+  };
+  const contributions = recent
+    .filter((t) => state.poolAccountIds.includes(t.accountId))
+    .flatMap((t) => {
+      const person = ownLeg(t)
+        ? self
+        : t.transferTransactionId
+          ? undefined
+          : named(
+              t,
+              state.people.filter((p) => !p.isSelf),
+            );
+      if (!person) return [];
+      return [
+        {
+          kind: 'contribution' as const,
+          ...base(t),
+          personId: person.id,
+          personName: person.name,
+          owes: Math.max(0, -(state.toPool[person.id] ?? 0)),
+        },
+      ];
+    });
+  return [...settlements, ...contributions].sort((a, b) => b.date.localeCompare(a.date));
 }
 
 /**

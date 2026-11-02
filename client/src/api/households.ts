@@ -4,7 +4,8 @@ import { apiFetch } from './client';
 // default split quick sharing uses, sharing payments in one step, and repayment suggestions.
 
 export interface HouseholdSplit {
-  mode: 'equal' | 'percentage' | 'weight';
+  /** `exact`: each person's fixed amount in cents (a recurring bill's own split only) */
+  mode: 'equal' | 'percentage' | 'weight' | 'exact';
   shares: { personId: string; value: number }[];
 }
 
@@ -18,6 +19,8 @@ export interface HouseholdSummary {
 }
 
 export interface RepaymentSuggestion {
+  /** A repayment to you, or money put into the household account */
+  kind: 'settlement' | 'contribution';
   transactionId: string;
   date: string;
   amount: number;
@@ -25,6 +28,7 @@ export interface RepaymentSuggestion {
   notes: string | null;
   personId: string;
   personName: string;
+  /** What they owe you (settlement) or the household account (contribution) */
   owes: number;
 }
 
@@ -61,15 +65,26 @@ export const getRepaymentSuggestions = (groupId: string) =>
 export const recordRepayment = (groupId: string, s: RepaymentSuggestion, selfId: string) =>
   apiFetch<unknown>(`/households/${groupId}/events`, {
     method: 'POST',
-    body: JSON.stringify({
-      kind: 'settlement',
-      date: s.date,
-      description: `Repayment from ${s.personName}`,
-      amount: s.amount,
-      payerId: s.personId,
-      recipientId: selfId,
-      transactionId: s.transactionId,
-    }),
+    body: JSON.stringify(
+      s.kind === 'contribution'
+        ? {
+            kind: 'contribution',
+            date: s.date,
+            description: `Contribution from ${s.personName}`,
+            amount: s.amount,
+            payerId: s.personId,
+            transactionId: s.transactionId,
+          }
+        : {
+            kind: 'settlement',
+            date: s.date,
+            description: `Repayment from ${s.personName}`,
+            amount: s.amount,
+            payerId: s.personId,
+            recipientId: selfId,
+            transactionId: s.transactionId,
+          },
+    ),
   });
 
 /** Removes one household entry (undoing a share) */
@@ -92,6 +107,8 @@ export interface SharedRecurringBill {
   autoShareFrom: string | null;
   /** Each person's part of `amount` with the bill's split */
   shares: { personId: string; amount: number }[];
+  /** What fixed amounts add up to (null for other splits); a payment must equal it */
+  fixedTotal: number | null;
   /** Recent payments, newest first, and whether each is shared yet */
   payments: { transactionId: string; date: string; amount: number; shared: boolean }[];
 }
