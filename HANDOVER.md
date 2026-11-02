@@ -108,6 +108,10 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
      and undo feedback, BUD-03 availability states, BUD-05 keyboard/expressions, BUD-06 row moves
      and returning money to unassigned, BUD-07 selected-category funding, BUD-09 card rows in the
      table, BUD-10 inspector and notes. BUD-01 fixed in up.46.
+   - Household splitting backlog from the Spliit comparison in
+     `docs/research/spliit-household-gaps.md`: SPL-01 pool-aware "who pays whom" settle-up list and
+     SPL-02 one-click recording with outgoing repayment matching (P1), then SPL-03 in-place edits
+     with SPL-04 an activity log, and SPL-05 household reports.
    - Transaction detail has no previous/next (Monarch backlog P1).
    - A budget start on a specific day (YNAB's "fresh start" mid-month); today it is a month.
    - Future-month money moves; money age (deliberately not built, see BUDGET-REVIEW.md).
