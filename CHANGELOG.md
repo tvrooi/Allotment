@@ -1,5 +1,12 @@
 # Changes
 
+## 0.2.0-up.72
+
+Fixes from a review of 0.2.0-up.71.
+
+- **A suggested repayment can always be recorded.** If you were owed money for something you paid, but still owed the household account, recording the suggested repayment was refused. A repayment now only has to fit what is owed for things people paid themselves.
+- **Another household's money isn't your contribution.** A transfer into a household account from an account that belongs to another household is no longer offered as your contribution.
+
 ## 0.2.0-up.71
 
 Household bills shared the way a joint account works.
