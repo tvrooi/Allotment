@@ -2,7 +2,7 @@
 // return, by return label, for one financial year (1 July to 30 June), with the receipts that
 // prove them. Claims never change a transaction or the budget. This is record keeping, not tax
 // advice: what is deductible is the owner's (or their tax agent's) call.
-import { and, asc, eq, gte, inArray, isNotNull, isNull, lte } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, lte, notInArray } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import {
   accounts,
@@ -238,6 +238,97 @@ export function taxYear(fy: number) {
     workRelatedTotal: workRelated,
     missingReceipts: missing.length,
     notes,
+  };
+}
+
+/** Unclaimed transactions listed by claimCandidates at most */
+const MAX_CANDIDATES = 500;
+
+/**
+ * Past money out in a financial year with no claim, from a payee (or, failing that, a category)
+ * that already has a claim this year or last: likely repeats of something claimed, such as the
+ * months of a subscription. Each carries the label and work-use share of the latest such claim.
+ * A suggestion for the owner to confirm, not a judgement of what is deductible.
+ */
+export function claimCandidates(fy: number, today: string) {
+  const { from, to } = financialYearRange(fy);
+  const until = to < today ? to : today;
+  const precedents = db
+    .select({
+      transactionId: taxClaims.transactionId,
+      label: taxClaims.label,
+      workUseBps: taxClaims.workUseBps,
+      date: transactions.date,
+      payeeId: transactions.payeeId,
+      categoryId: transactions.categoryId,
+    })
+    .from(taxClaims)
+    .innerJoin(transactions, eq(transactions.id, taxClaims.transactionId))
+    .where(
+      and(
+        gte(transactions.date, financialYearRange(fy - 1).from),
+        lte(transactions.date, to),
+        claimable,
+      ),
+    )
+    .all()
+    .sort((a, b) => b.date.localeCompare(a.date));
+  if (!precedents.length || from > until)
+    return { financialYear: fy, name: financialYearName(fy), candidates: [], more: false };
+  const byPayee = new Map<string, (typeof precedents)[number]>();
+  const byCategory = new Map<string, (typeof precedents)[number]>();
+  for (const p of precedents) {
+    if (p.payeeId && !byPayee.has(p.payeeId)) byPayee.set(p.payeeId, p);
+    if (p.categoryId && !byCategory.has(p.categoryId)) byCategory.set(p.categoryId, p);
+  }
+  const claimed = db.select({ id: taxClaims.transactionId }).from(taxClaims);
+  const rows = db
+    .select({
+      transactionId: transactions.id,
+      date: transactions.date,
+      amount: mainAmount,
+      payeeId: transactions.payeeId,
+      payeeName: transactions.payeeName,
+      notes: transactions.notes,
+      categoryId: transactions.categoryId,
+      categoryName: categories.name,
+      accountName: accounts.name,
+    })
+    .from(transactions)
+    .innerJoin(accounts, eq(accounts.id, transactions.accountId))
+    .leftJoin(categories, eq(categories.id, transactions.categoryId))
+    .where(
+      and(
+        gte(transactions.date, from),
+        lte(transactions.date, until),
+        lt(transactions.amount, 0),
+        claimable,
+        notInArray(transactions.id, claimed),
+      ),
+    )
+    .orderBy(asc(transactions.date))
+    .all();
+  const candidates = rows.flatMap((r) => {
+    const payee = r.payeeId ? byPayee.get(r.payeeId) : undefined;
+    const precedent = payee ?? (r.categoryId ? byCategory.get(r.categoryId) : undefined);
+    if (!precedent) return [];
+    const { payeeId: _p, categoryId: _c, ...row } = r;
+    return [
+      {
+        ...row,
+        cost: -r.amount,
+        basis: payee ? ('payee' as const) : ('category' as const),
+        suggestedLabel: precedent.label as TaxLabel,
+        suggestedWorkUsePercent: precedent.workUseBps / 100,
+        likeClaim: precedent.transactionId,
+      },
+    ];
+  });
+  return {
+    financialYear: fy,
+    name: financialYearName(fy),
+    candidates: candidates.slice(0, MAX_CANDIDATES),
+    more: candidates.length > MAX_CANDIDATES,
   };
 }
 

@@ -10,8 +10,18 @@ const express = (await import('express')).default;
 const { migrate } = await import('drizzle-orm/better-sqlite3/migrator');
 const { eq } = await import('drizzle-orm');
 const { db } = await import('../db/index.js');
-const { accounts, categories, categoryGroups, payees, transactions } =
-  await import('../db/schema.js');
+const {
+  accounts,
+  categories,
+  categoryGroups,
+  payees,
+  transactions,
+  householdGroups,
+  householdPeople,
+  householdPoolAccounts,
+  householdRecurringBills,
+  schedules,
+} = await import('../db/schema.js');
 const { hostGuard, originGuard, errorHandler } = await import('../middleware/security.js');
 const { authRouter, requireSession } = await import('./auth.js');
 const { createSession, setInitialPassword, SESSION_COOKIE } = await import('../auth/sessions.js');
@@ -26,6 +36,7 @@ const { payeesRouter } = await import('./payees.js');
 const { changeSetsRouter } = await import('./changeSets.js');
 const { budgetProposalsRouter } = await import('./budgetProposals.js');
 const { taxRouter } = await import('./tax.js');
+const { householdsRouter } = await import('./households.js');
 
 let server: Server;
 let base: string;
@@ -71,6 +82,7 @@ beforeAll(async () => {
   app.use('/api/change-sets', changeSetsRouter);
   app.use('/api/budget-proposals', budgetProposalsRouter);
   app.use('/api/tax', taxRouter);
+  app.use('/api/households', householdsRouter);
   app.use('/api/access-tokens', accessTokensRouter);
   app.use('/api/mcp', mcpRouter);
   app.use(errorHandler);
@@ -461,5 +473,287 @@ describe('organise tokens', () => {
     expect((await call('PUT', '/payees/cafe', { token }, { defaultCategoryId: null })).status).toBe(
       403,
     );
+  });
+});
+
+describe('household tools', () => {
+  // A flat of three sharing rent of $30 (mock amounts) paid from a joint account, $10 each
+  const R = (id: string, accountId: string, date: string, amount: number, extra = {}) =>
+    db
+      .insert(transactions)
+      .values({ id, accountId, date, amount, categoryId: 'coffee', ...extra })
+      .run();
+  beforeAll(async () => {
+    db.insert(accounts).values({ id: 'joint', name: 'Joint', type: 'checking' }).run();
+    db.insert(accounts).values({ id: 'shared-saver', name: 'Saver', type: 'savings' }).run();
+    db.insert(householdGroups)
+      .values({ id: 'flat', name: 'Flat', currency: 'AUD', accountId: 'joint' })
+      .run();
+    for (const [id, name, isSelf] of [
+      ['me', 'Owner', 1],
+      ['ana', 'Ana', 0],
+      ['ben', 'Ben', 0],
+    ] as const)
+      db.insert(householdPeople).values({ id, groupId: 'flat', name, isSelf }).run();
+    db.insert(payees).values({ id: 'landlord', name: 'Mock Rentals' }).run();
+    db.insert(schedules)
+      .values({
+        id: 'rent',
+        name: 'Rent',
+        amount: -3000,
+        recurrenceType: 'monthly',
+        startDate: '2026-02-01',
+        accountId: 'joint',
+        payeeId: 'landlord',
+      })
+      .run();
+    const split = {
+      mode: 'exact',
+      shares: ['me', 'ana', 'ben'].map((p) => ({ personId: p, value: 1000 })),
+    };
+    db.insert(householdRecurringBills)
+      .values({ scheduleId: 'rent', groupId: 'flat', splitJson: JSON.stringify(split) })
+      .run();
+    R('rent1', 'joint', '2026-02-01', -3000, { payeeId: 'landlord', payeeName: 'Mock Rentals' });
+    R('rent2', 'joint', '2026-03-01', -3000, { payeeId: 'landlord', payeeName: 'Mock Rentals' });
+    R('ana1', 'joint', '2026-01-29', 1000, { payeeName: 'Ana', importedPayee: 'ANA MOCKPERSON' });
+    R('ana2', 'joint', '2026-02-27', 1000, { payeeName: 'Ana', importedPayee: 'Ana Mockperson' });
+    R('ana-bills', 'joint', '2026-02-10', 50, { payeeName: 'Ana', notes: 'Internet' });
+    R('ben1', 'joint', '2026-01-30', 1010, { payeeName: 'Ben Mock' });
+    // The owner's own transfer in, and a shared saver covering the whole rent
+    R('me-out', 'spend', '2026-01-28', -1000, { transferTransactionId: 'me-in' });
+    R('me-in', 'joint', '2026-01-28', 1000, { transferTransactionId: 'me-out' });
+    R('cover-out', 'shared-saver', '2026-02-26', -3000, { transferTransactionId: 'cover-in' });
+    R('cover-in', 'joint', '2026-02-26', 3000, { transferTransactionId: 'cover-out' });
+    R('personal-in', 'spend', '2026-01-29', 1000, { payeeName: 'Ana' });
+    for (const [id, date] of [
+      ['rent1', '2026-02-01'],
+      ['rent2', '2026-03-01'],
+    ])
+      expect(
+        (
+          await call(
+            'POST',
+            '/households/flat/events',
+            {},
+            {
+              kind: 'expense',
+              date,
+              description: 'Rent',
+              amount: 3000,
+              transactionId: id,
+              mode: 'exact',
+              shares: split.shares,
+            },
+          )
+        ).status,
+      ).toBe(201);
+  });
+
+  it('reconciles a shared bill person by person for any token', async () => {
+    const token = await newToken('read');
+    const { data, isError } = await tool(token, 'household_bill_reconciliation', {
+      household_id: 'flat',
+      schedule_id: 'rent',
+    });
+    expect(isError).toBe(false);
+    expect(data).toMatchObject({ payments: 2, total: 6000 });
+    const by = Object.fromEntries(
+      (data.people as { personId: string }[]).map((p) => [p.personId, p]),
+    ) as Record<string, Record<string, unknown>>;
+    expect(by.ana).toMatchObject({ owed: 2000, paid: 2000, difference: 0, unmatchedPayments: 0 });
+    expect(by.ana.toRecord).toEqual([
+      { transactionId: 'ana1', personId: 'ana' },
+      { transactionId: 'ana2', personId: 'ana' },
+    ]);
+    expect(by.ana.otherDeposits).toEqual([expect.objectContaining({ transactionId: 'ana-bills' })]);
+    // Within 2% (or $1) of a share counts; the rest stays owing
+    expect(by.ben).toMatchObject({
+      owed: 2000,
+      paid: 1010,
+      difference: -990,
+      unmatchedPayments: 1,
+    });
+    // Your own transfer in counts; a shared saver's whole-rent cover never matches a share
+    expect(by.me).toMatchObject({ owed: 2000, paid: 1000, unmatchedPayments: 1 });
+    const suggestions = await tool(token, 'household_contribution_suggestions', {
+      household_id: 'flat',
+    });
+    expect(suggestions.isError).toBe(false);
+    expect(await toolNames(token)).not.toContain('record_household_contributions');
+    const body = {
+      kind: 'contribution',
+      date: '2026-01-29',
+      description: 'Rent',
+      amount: 1000,
+      payerId: 'ana',
+      transactionId: 'ana1',
+    };
+    expect((await call('POST', '/households/flat/events', { token }, body)).status).toBe(403);
+  });
+
+  it('an organise token records only contributions linked to a household deposit', async () => {
+    const token = await newToken('organise');
+    const { data } = await tool(token, 'record_household_contributions', {
+      household_id: 'flat',
+      contributions: [
+        { transaction_id: 'ana1', person_id: 'ana', description: 'Rent' },
+        { transaction_id: 'ana2', person_id: 'ana' },
+        { transaction_id: 'rent1', person_id: 'ana' },
+        { transaction_id: 'personal-in', person_id: 'ana' },
+        { transaction_id: 'ben1', person_id: 'nobody' },
+      ],
+    });
+    expect(data.recorded).toBe(2);
+    expect(data.results.map((r: { error?: string }) => r.error)).toEqual([
+      undefined,
+      undefined,
+      'Not money in',
+      expect.stringMatching(/Refused/),
+      expect.stringMatching(/another household|payer/i),
+    ]);
+    const again = await tool(token, 'record_household_contributions', {
+      household_id: 'flat',
+      contributions: [{ transaction_id: 'ana1', person_id: 'ana' }],
+    });
+    expect(again.data.results[0].error).toMatch(/already linked/);
+    // The API refuses anything else a token might try
+    const base = { date: '2026-01-30', description: 'x', payerId: 'ben', transactionId: 'ben1' };
+    for (const body of [
+      { ...base, kind: 'contribution', amount: 1000 }, // not the deposit's amount
+      { ...base, kind: 'contribution', amount: 1010, date: '2026-01-31' }, // not its date
+      { ...base, kind: 'settlement', amount: 1010, recipientId: 'me' },
+      { ...base, kind: 'contribution', amount: 1010, billId: 'b' },
+      { kind: 'contribution', date: '2026-01-30', description: 'x', amount: 1010, payerId: 'ben' },
+      {
+        kind: 'expense',
+        date: '2026-02-01',
+        description: 'x',
+        amount: 3000,
+        transactionId: 'rent1',
+      },
+    ])
+      expect((await call('POST', '/households/flat/events', { token }, body)).status).toBe(403);
+    const snapshot = (await call('GET', '/households/flat')).body;
+    const recorded = snapshot.events.filter((e: { kind: string }) => e.kind === 'contribution');
+    expect(recorded).toHaveLength(2);
+    expect(
+      (await call('DELETE', `/households/flat/events/${recorded[0].id}`, { token })).status,
+    ).toBe(403);
+    const after = await tool(token, 'household_bill_reconciliation', {
+      household_id: 'flat',
+      schedule_id: 'rent',
+    });
+    const ana = after.data.people.find((p: { personId: string }) => p.personId === 'ana');
+    expect(ana.toRecord).toEqual([]);
+    expect(
+      ana.matches.every((m: { deposit: { recordedEventId: string } }) => m.deposit.recordedEventId),
+    ).toBe(true);
+  });
+  it('ignores moves between household accounts and counts refunds as less owed', async () => {
+    // A second household account, and a share-sized move into the first that names Ana
+    db.insert(accounts).values({ id: 'joint2', name: 'Ana Saver', type: 'savings' }).run();
+    db.insert(householdPoolAccounts).values({ groupId: 'flat', accountId: 'joint2' }).run();
+    R('move-out', 'joint2', '2026-01-31', -1000, { transferTransactionId: 'move-in' });
+    R('move-in', 'joint', '2026-01-31', 1000, {
+      transferTransactionId: 'move-out',
+      payeeName: 'Transfer: Ana Saver',
+    });
+    const token = await newToken('organise');
+    const rec = async () =>
+      (
+        await tool(token, 'household_bill_reconciliation', {
+          household_id: 'flat',
+          schedule_id: 'rent',
+        })
+      ).data;
+    const before = await rec();
+    const ben = before.people.find((p: { personId: string }) => p.personId === 'ben');
+    expect(JSON.stringify(before)).not.toContain('move-in');
+    expect(ben.paid).toBe(1010);
+    const { data } = await tool(token, 'record_household_contributions', {
+      household_id: 'flat',
+      contributions: [{ transaction_id: 'move-in', person_id: 'ana' }],
+    });
+    expect(data.recorded).toBe(0);
+    expect(data.results[0].error).toMatch(/Refused/);
+    // $3 of the second rent comes back: $1 less owed each, and $3 less in total
+    const snapshot = (await call('GET', '/households/flat')).body;
+    const rent2 = snapshot.events.find(
+      (e: { transactionId: string }) => e.transactionId === 'rent2',
+    );
+    expect(
+      (
+        await call(
+          'POST',
+          '/households/flat/events',
+          {},
+          {
+            kind: 'refund',
+            date: '2026-03-05',
+            description: 'Rent refund',
+            amount: 300,
+            reversesId: rent2.id,
+          },
+        )
+      ).status,
+    ).toBe(201);
+    const after = await rec();
+    expect(after.total).toBe(5700);
+    expect(after.people.find((p: { personId: string }) => p.personId === 'ana')).toMatchObject({
+      owed: 1900,
+      paid: 2000,
+      difference: 100,
+    });
+  });
+});
+
+describe('tax claim candidates', () => {
+  it('finds unclaimed repeats of claimed payees for organise tokens only', async () => {
+    db.insert(payees).values({ id: 'softco', name: 'Mock Software Co' }).run();
+    const sub = (id: string, date: string) =>
+      db
+        .insert(transactions)
+        .values({
+          id,
+          accountId: 'spend',
+          date,
+          amount: -2000,
+          payeeId: 'softco',
+          payeeName: 'Mock Software Co',
+          categoryId: 'groceries',
+        })
+        .run();
+    sub('sub1', '2025-08-01');
+    sub('sub2', '2025-09-01');
+    sub('sub3', '2025-10-01');
+    expect(
+      (await call('PUT', '/tax/claims/sub1', {}, { label: 'D5', workUseBps: 2500 })).status,
+    ).toBe(200);
+    expect(
+      (await call('PUT', '/tax/claims/sub3', {}, { label: 'D5', workUseBps: 2500 })).status,
+    ).toBe(200);
+    const token = await newToken('organise');
+    const { data } = await tool(token, 'tax_claim_candidates', { financial_year: 2025 });
+    const ids = data.candidates.map((c: { transactionId: string }) => c.transactionId);
+    expect(ids).toContain('sub2');
+    expect(ids).not.toContain('sub1');
+    expect(
+      data.candidates.find((c: { transactionId: string }) => c.transactionId === 'sub2'),
+    ).toMatchObject({
+      basis: 'payee',
+      suggestedLabel: 'D5',
+      suggestedWorkUsePercent: 25,
+      cost: 2000,
+    });
+    const years = await tool(token, 'tax_years');
+    expect(years.data.years[0]).toHaveProperty('financialYear');
+    expect(years.data.labels.map((l: { label: string }) => l.label)).toContain('D5');
+    expect((await tool(token, 'tax_claim', { transaction_id: 'sub1' })).data.claim).toMatchObject({
+      label: 'D5',
+    });
+    const read = await newToken('read');
+    expect(await toolNames(read)).not.toContain('tax_claim_candidates');
+    expect((await call('GET', '/tax/years/2025/candidates', { token: read })).status).toBe(403);
   });
 });

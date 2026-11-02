@@ -3,8 +3,9 @@ import { and, eq, gt, inArray, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
-import { accessTokens, rules, taxClaims, transactions } from '../db/schema.js';
+import { accessTokens, householdGroups, rules, taxClaims, transactions } from '../db/schema.js';
 import { listTransferSuggestions } from '../services/transferService.js';
+import { poolAccountsOf } from '../services/householdService.js';
 import { todayIso } from '../services/mainAmountService.js';
 import { gatewayPersonId } from '../config.js';
 import { logoSchema } from '../utils/logo.js';
@@ -14,7 +15,9 @@ import { logoSchema } from '../utils/logo.js';
 // past transactions and creating and editing categories (categoriseAllows,
 // categoryManageAllows); or 'organise': categorise, plus proposing rules the owner enables,
 // payee default categories and logos (never removing one), linking suggested transfers
-// (organiseAllows) and claiming past transactions as tax deductions (taxClaimAllows). Only its SHA-256 is stored, like login sessions, so a leaked database doesn't leak usable tokens. Tokens expire, can be revoked, and changing the password
+// (organiseAllows), claiming past transactions as tax deductions (taxClaimAllows) and recording
+// household contributions linked to a deposit into a household account
+// (householdContributionAllows). Only its SHA-256 is stored, like login sessions, so a leaked database doesn't leak usable tokens. Tokens expire, can be revoked, and changing the password
 // revokes them all.
 
 export const TOKEN_PREFIX = 'fbro_';
@@ -329,6 +332,7 @@ const TAX_READ = [
   /^\/tax\/labels$/,
   /^\/tax\/years$/,
   /^\/tax\/years\/\d{4}$/,
+  /^\/tax\/years\/\d{4}\/candidates$/,
   /^\/tax\/claims(\/[^/]+)?$/,
 ];
 const TAX_CLAIM_PATH = /^\/tax\/claims\/([^/]+)$/i;
@@ -369,6 +373,77 @@ export function taxClaimAllows(method: string, rawPath: string, body: unknown): 
   return !row || row.date <= todayIso();
 }
 
+// ─── Household contributions an organise token may record ────────────────────
+
+const HOUSEHOLD_EVENTS_PATH = /^\/households\/([^/]+)\/events$/i;
+/** A contribution linked to one bank deposit, and nothing else (no bill, split or reversal) */
+const contributionBody = z
+  .object({
+    kind: z.literal('contribution'),
+    date: z.iso.date(),
+    description: z.string().min(1).max(200),
+    amount: z.number().int().min(1),
+    payerId: z.string().min(1).max(64),
+    transactionId: z.string().min(1).max(64),
+  })
+  .strict();
+
+/**
+ * Whether an organise token may record this household entry (owner-approved on 2 November
+ * 2026, docs/READ-ONLY-ACCESS.md): a contribution linked to a past deposit into one of that
+ * household's accounts, for exactly the deposit's amount and date, that isn't a move from
+ * another of its accounts. Never an expense,
+ * settlement, refund, bill, unlinked amount, edit or removal: those stay the owner's. The
+ * household route still checks the person, that the deposit (or its other transfer leg) isn't
+ * linked already, and the rest of the ledger's rules.
+ */
+export function householdContributionAllows(
+  method: string,
+  rawPath: string,
+  body: unknown,
+): boolean {
+  const match = HOUSEHOLD_EVENTS_PATH.exec(rawPath.replace(/\/+$/, ''));
+  if (method !== 'POST' || !match) return false;
+  const parsed = contributionBody.safeParse(body);
+  if (!parsed.success) return false;
+  let groupId: string;
+  try {
+    groupId = decodeURIComponent(match[1]);
+  } catch {
+    return false;
+  }
+  const group = db.select().from(householdGroups).where(eq(householdGroups.id, groupId)).get();
+  if (!group) return false;
+  const tx = db
+    .select({
+      accountId: transactions.accountId,
+      date: transactions.date,
+      amount: transactions.amount,
+      transferTransactionId: transactions.transferTransactionId,
+    })
+    .from(transactions)
+    .where(eq(transactions.id, parsed.data.transactionId))
+    .get();
+  const pool = poolAccountsOf(group);
+  // A move between the household's own accounts brings no money in
+  const otherLeg = tx?.transferTransactionId
+    ? db
+        .select({ accountId: transactions.accountId })
+        .from(transactions)
+        .where(eq(transactions.id, tx.transferTransactionId))
+        .get()
+    : undefined;
+  return (
+    !!tx &&
+    !(otherLeg && pool.includes(otherLeg.accountId)) &&
+    tx.amount > 0 &&
+    tx.amount === parsed.data.amount &&
+    tx.date === parsed.data.date &&
+    tx.date <= todayIso() &&
+    pool.includes(tx.accountId)
+  );
+}
+
 /** Whether a token with this scope may make this request (path relative to /api) */
 export function tokenAllows(scope: TokenScope, method: string, path: string, body: unknown) {
   if (readOnlyAllows(method, path)) return true;
@@ -378,6 +453,8 @@ export function tokenAllows(scope: TokenScope, method: string, path: string, bod
     categoriseAllows(method, path, body) ||
     categoryManageAllows(method, path, body) ||
     (scope === 'organise' &&
-      (organiseAllows(method, path, body) || taxClaimAllows(method, path, body)))
+      (organiseAllows(method, path, body) ||
+        taxClaimAllows(method, path, body) ||
+        householdContributionAllows(method, path, body)))
   );
 }

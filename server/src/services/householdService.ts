@@ -719,7 +719,7 @@ export function unshareRecurringBill(groupId: string, scheduleId: string) {
 
 /** Days back that money received is checked against what people owe */
 const REPAYMENT_DAYS = 120;
-const words = (s: string) =>
+export const words = (s: string) =>
   s
     .toLocaleLowerCase()
     .split(/[^\p{L}\p{N}]+/u)
