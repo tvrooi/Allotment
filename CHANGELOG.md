@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.72
+
+- **Redo an assistant's undone changes.** **Settings → Server → Read-only access → Changes made with tokens** now offers **Redo** on a change you undid. It sets the assistant's categories again, except on transactions you've changed since or reconciled.
+- **An assistant can claim tax deductions.** An AI assistant with a _read, categorise and organise_ token can read a financial year's claims and claim past payments as deductions, with a return label, a work-use share and a note (MCP tools `tax_deductions` and `claim_tax_deductions`). It can't change or remove a claim, download the tax CSV or receipt archive, or see receipts. Read-only and categorise tokens still see no claims.
+
 ## 0.2.0-up.71
 
 Household bills shared the way a joint account works.
