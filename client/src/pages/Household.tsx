@@ -51,6 +51,10 @@ type State = {
   people: Person[];
   events: Entry[];
   balances: Record<string, number>;
+  /** Contributions less shares of what the household account paid: negative = owes it */
+  toPool: Record<string, number>;
+  /** For things people paid themselves, and repayments: negative = owes the people who paid */
+  direct: Record<string, number>;
   pool: number;
   cash: number;
   unreserved: number;
@@ -401,6 +405,13 @@ export default function HouseholdPage() {
                               ? `is owed ${money(balance)}`
                               : 'settled'}
                         </span>
+                        {state.group.poolAccountIds.length > 0 && (
+                          <BalanceParts
+                            toPool={state.toPool?.[p.id] ?? 0}
+                            direct={state.direct?.[p.id] ?? 0}
+                            money={money}
+                          />
+                        )}
                       </div>
                     );
                   })}
@@ -1126,4 +1137,34 @@ export default function HouseholdPage() {
       </Modal>
     </div>
   );
+}
+
+/**
+ * One person's balance in two parts: what they owe the household account (their shares of what
+ * it paid, less what they put in) and what they owe, or are owed, for things people paid
+ * themselves. Only the second is owed to a person.
+ */
+function BalanceParts({
+  toPool,
+  direct,
+  money,
+}: {
+  toPool: number;
+  direct: number;
+  money: (n: number) => string;
+}) {
+  if (!toPool && !direct) return null;
+  const parts = [
+    toPool < 0
+      ? `owes the household account ${money(-toPool)}`
+      : toPool > 0
+        ? `${money(toPool)} ahead in the household account`
+        : '',
+    direct < 0
+      ? `owes ${money(-direct)} for things others paid`
+      : direct > 0
+        ? `is owed ${money(direct)} for things they paid`
+        : '',
+  ].filter(Boolean);
+  return <p className="basis-full text-xs text-text-tertiary">{parts.join(' · ')}</p>;
 }

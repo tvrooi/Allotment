@@ -157,15 +157,28 @@ export function RecurringBills({ groupId, currency, people, bills }: Props) {
                   ))}
                   <span className="text-text-tertiary">
                     {' '}
-                    ({b.split ? describeSplit(b.split, people) : "household's default split"})
+                    (
+                    {b.split
+                      ? describeSplit(b.split, people, currency)
+                      : "household's default split"}
+                    )
                   </span>
                 </p>
+                {b.fixedTotal !== null && b.fixedTotal !== b.amount && (
+                  <p className="text-xs text-caution">
+                    The fixed amounts add up to {money(b.fixedTotal)}, but the next payment is
+                    expected to be {money(b.amount)}. Payments that don't match aren't shared.
+                  </p>
+                )}
                 {splitting === b.scheduleId ? (
                   <div className="rounded-md bg-surface-alt p-2.5">
                     <SplitEditor
                       people={people}
                       current={b.split}
                       equalLabel="The household's default split"
+                      allowFixed
+                      expected={b.amount}
+                      currency={currency}
                       saving={update.isPending}
                       onSave={(split) =>
                         update.mutate({ scheduleId: b.scheduleId, changes: { split } })

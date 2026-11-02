@@ -33,8 +33,7 @@ be removed while no household entry links one of their transactions.
 
 The **default split** (equal, percentages in basis points, or weights) is what quick sharing
 uses. **Share with household** records a payment as an expense with that split: paid by you
-when it left a personal account, or by the pool when it left a pool account (which needs
-received contributions, as before). From the register it shares every payment in the current
+when it left a personal account, or by the household account when it left a pool account. From the register it shares every payment in the current
 list, each checked on its own, so one refusal doesn't stop the rest; **Undo** removes the
 entries it made. **Pick to share** in the register puts a checkbox on each payment
 (money out that isn't a transfer); tick the ones you share, or **Pick all shown**, then
@@ -43,10 +42,18 @@ two-person household is 50/50. A rule action, **Share with household**, does the
 as they import (or when the rule is applied to existing transactions), and never fails an
 import: a payment the household checks refuse is left unshared.
 
-**Repayment suggestions** list money received in your personal accounts within the last 120
-days whose payee contains the name of someone who owes the household, up to what they owe and
-what is owed to you, and not yet linked. **Record repayment** saves it as their settlement to
-you. Nothing is recorded without that click.
+**Repayment and contribution suggestions** (**Household → Sharing**) list money received in
+the last 120 days that isn't linked yet:
+
+- money into your personal accounts whose payee contains the name of someone who owes for
+  things people paid themselves, up to what they owe and what is owed to you. **Record
+  repayment** saves it as their settlement to you. What someone owes the household account is
+  never counted as owed to you.
+- money into a household account whose payee contains the name of someone in the household, or
+  a transfer into it from one of your own accounts. **Record contribution** saves it as their
+  contribution.
+
+Nothing is recorded without that click.
 
 ## Recurring bills
 
@@ -58,7 +65,12 @@ payments from the last six months: those matched to it in Recurring, and those t
 payment that isn't shared yet can be shared in one click (**Share _N_ payments**), which records it
 exactly as **Share with household** in Transactions does, but with the bill's split. **Change
 split** gives a bill its own equal, percentage or weight split; **The household's default split**
-puts it back. **Share new payments automatically** shares each new payment to the bill's payee as
+puts it back. A bill's own split can also be **Fixed amounts**: a set dollar amount for each
+person, such as everyone's part of the rent. They're saved in cents and used exactly. A payment
+they don't add up to isn't shared (sharing it says what the amounts add up to and what the
+payment is, and automatic sharing leaves it unshared), and the bill warns when its next
+expected payment differs. The household's default split can't use fixed amounts, since it
+applies to payments of any size. **Share new payments automatically** shares each new payment to the bill's payee as
 it is imported, from the day it was ticked: money out only, never a transfer or a split part, and
 a payment the household refuses is left unshared rather than failing the import. Older payments
 stay a click. A **Share with household** rule that matches the payment comes first. **Stop
@@ -115,7 +127,14 @@ a confirmed transfer cannot be linked twice.
 
 A positive person balance is prepaid credit or an amount owed to that person;
 a negative balance means they owe the group. Balances net obligations across the
-group. Repayments move credit between people, support partial amounts and can
+group. With a household account, **People & balances** also shows each balance in two parts:
+
+- **The household account:** what they put in less their shares of what the account paid.
+  Negative means they owe the household account (not you); positive is credit held there.
+- **Things people paid themselves:** a direct payment credits its payer and debits everyone's
+  shares; repayments move it between people. Only this part is owed to a person.
+
+The two parts add up to the balance, and the household-account parts add up to the pool. Repayments move credit between people, support partial amounts and can
 settle balances spanning several expenses. Overpayments beyond either person's
 outstanding balance are rejected. They are net group settlements, not a legal
 per-invoice debt assignment.
@@ -133,17 +152,22 @@ Refunds reference the original expense and reverse its saved shares. Partial
 refunds allocate proportionally to the remaining unrefunded shares; the last refund
 reverses the remaining cents exactly. Cumulative over-refunds are rejected. To
 correct a mistaken entry, remove it in the event history and enter the correction.
-Remove dependent refunds first; contributions already consumed or reserved for
-bills cannot be removed without correcting those dependent entries.
+Remove dependent refunds first. Removing a contribution the household account has
+already spent leaves its payer owing the account again; one still needed for bill
+reservations can't be removed until they are released.
 
 ## Advances and shared bills
 
-Record received advances from each person into a selected pool before recording
-pool expenses. Each advance credits that person; spending the pool consumes the
-agreed shares. For $4,780 rent with an explicit 40/30/30 allocation, advances of
-$1,912/$1,434/$1,434 leave all balances zero after payment. Paying personally
-instead leaves $2,868 owed to you. Do not record an advance and a repayment for the
-same receipt.
+Record what each person puts into the household account as a contribution (an advance).
+Each one credits that person; a payment from the account consumes the agreed shares. For
+$4,780 rent with an explicit 40/30/30 allocation, advances of $1,912/$1,434/$1,434 leave all
+balances zero after payment. Paying personally instead leaves $2,868 owed to you. Do not
+record an advance and a repayment for the same receipt.
+
+The household account can pay before everyone has put their part in: a payment from it is
+recorded whatever has been contributed, and each person's unpaid share shows as owed to the
+household account until their contribution arrives. The one limit is money reserved for bills:
+a payment can't spend what is reserved for other bills.
 
 Bills have a due date, total estimate or billed amount, personal estimate and
 reserved amount. **Edit** changes a bill's name and due date at any time, and its amounts while

@@ -41,6 +41,8 @@ who changed what, and explaining where the shared money went. Those are the reco
 | SPL-08 | P3       | Household is single-currency; no per-expense original currency for travel                     | L      |
 | SPL-09 | P3       | No cross-household "net owed" summary                                                         | S      |
 | SPL-10 | P3       | Receipt reader can't create a household expense or split by receipt items                     | M      |
+| SPL-11 | Built    | A recurring bill can't give each person a fixed amount (everyone's set rent)                  | S      |
+| SPL-12 | Built    | Balances don't say what is owed to the household account rather than to you                   | M      |
 
 Recommended order: **SPL-01 + SPL-02 together** (one small PR, biggest user-visible win), then
 **SPL-06** (trivial, rides along), then **SPL-03 + SPL-04** together (editing needs the log to stay
@@ -199,6 +201,47 @@ auditable), then **SPL-05** and **SPL-07**. The P3 items wait for demand.
 - **Recommendation:** on a receipt matched to a shared payment, **Split items with household**: tick
   which items are shared (or assign items to people) and record an `exact` split from the item totals.
   This goes beyond Spliit. Keep the photo local; never add a cloud model.
+
+### SPL-11 (built in 0.2.0-up.71): fixed amounts for a recurring bill
+
+- **Spliit:** `BY_AMOUNT` split mode, where each participant's share is an amount and the shares
+  must add up to the expense (`schemas.ts`, "amountSum").
+- **Owner's case:** three housemates each have a set monthly rent contribution, for example
+  $1,200, $1,000 and $800 of a $3,000 rent. Percentages or weights only get close to this, and
+  they drift when the rent changes.
+- **Built:** `splitSchema` takes `exact` (cents per person) for a shared recurring bill's own split
+  only. `checkSplit(…, allowFixed)` refuses it for the household's default split, which covers
+  payments of any size. `shareTransaction` refuses a payment the amounts don't add up to, with the
+  two figures. Automatic sharing leaves that payment unshared, so an import never fails over it.
+  `sharedRecurringBills` returns `fixedTotal`. The bill warns when the next expected payment
+  differs, and `SplitEditor` (`allowFixed`) shows the running total.
+
+### SPL-12 (built in 0.2.0-up.71): owed to the household account, not to you
+
+- **Spliit:** has no shared account. Every expense has one payer, so every debt is owed to a person,
+  and `getSuggestedReimbursements` pairs people off.
+- **Owner's model:** bills paid from the joint account are owed to that account by everyone,
+  including the owner. Only a shared purchase someone paid for themselves is owed to that person.
+- **Allotment before:** one net balance per person mixed both. A pool payment could only be
+  recorded once contributions covered it ("Record received pool contributions before spending
+  them"), so a rent paid before a housemate's transfer arrived couldn't be shared. Repayment
+  suggestions treated anyone with a negative net balance as owing the owner.
+- **Built:**
+  - `householdLedger` returns `toPool` (contributions less shares of pool payments; the parts add
+    up to `pool`) and `direct` (personal payments and settlements; the parts add up to zero) next to
+    the unchanged `balances`, which are their sum.
+  - A pool payment no longer waits for contributions: the unpaid shares show as owed to the
+    household account. It still can't spend money reserved for other bills, and a household with no
+    pool account still can't record one. Removing a spent contribution leaves its payer owing the
+    account again.
+  - Repayment suggestions count `direct` debts only. New `contribution` suggestions offer money
+    into a pool account from a named housemate, or the owner's own transfer in.
+  - People & balances shows both parts for a household with an account.
+- **Not changed:** settlements are still checked against net balances, so existing
+  person-to-person repayments of pool shortfalls stay valid. The combined-household view still
+  shows net balances only.
+- **Follow-up:** SPL-01's settle-up list should use `direct` for "who pays whom", and list `toPool`
+  shortfalls as "put $x into the household account" rather than as transfers between people.
 
 ## Not recommended
 

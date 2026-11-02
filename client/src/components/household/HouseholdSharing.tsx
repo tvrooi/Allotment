@@ -156,14 +156,23 @@ export function HouseholdSharing({ group, people }: Props) {
 
       {suggestions.length > 0 && self && (
         <>
-          <h3 className="text-xs font-semibold text-text-secondary mt-4">Looks like repayments</h3>
-          <ul className="mt-1 divide-y divide-border-light" aria-label="Possible repayments">
+          <h3 className="text-xs font-semibold text-text-secondary mt-4">
+            Looks like repayments or contributions
+          </h3>
+          <ul
+            className="mt-1 divide-y divide-border-light"
+            aria-label="Possible repayments and contributions"
+          >
             {suggestions.map((s) => (
               <li key={s.transactionId} className="flex flex-wrap items-center gap-2 py-2 text-sm">
                 <span className="flex-1 min-w-48">
                   {formatDay(s.date)} · {s.payeeName}: {money(s.amount)}
                   <span className="block text-xs text-text-tertiary">
-                    {s.personName} owes {money(s.owes)}
+                    {s.kind === 'contribution'
+                      ? s.owes > 0
+                        ? `${s.personName} owes the household account ${money(s.owes)}`
+                        : `Into the household account from ${s.personName}`
+                      : `${s.personName} owes you ${money(s.owes)}`}
                     {s.notes ? ` · “${s.notes}”` : ''}
                   </span>
                 </span>
@@ -173,7 +182,11 @@ export function HouseholdSharing({ group, people }: Props) {
                   disabled={repay.isPending}
                   onClick={() => repay.mutate(s)}
                 >
-                  Record {s.personName}'s repayment
+                  {s.kind === 'contribution'
+                    ? s.personId === self.id
+                      ? 'Record your contribution'
+                      : `Record ${s.personName}'s contribution`
+                    : `Record ${s.personName}'s repayment`}
                 </Button>
               </li>
             ))}
