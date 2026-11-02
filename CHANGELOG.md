@@ -8,7 +8,7 @@ Household bills shared the way a joint account works.
 - **Owed to the household account, not to you.** With a household account, **People & balances** shows each person's balance in two parts: what they owe the household account (their shares of what it paid, less what they put in) and what they owe, or are owed, for things someone paid themselves. Only the second is owed to a person.
 - **The household account can pay first.** A payment from the household account can be shared before everyone has put their part in. Whatever is missing shows as owed to the account until their contribution arrives. Money reserved for other bills still can't be spent.
 - **Contributions suggested.** **Household → Sharing** now also offers money into the household account from someone in the household, or your own transfer into it, as their contribution: **Record contribution**. Repayment suggestions count only what people owe you for things you paid.
-- A server test no longer fails on days when the sample bank history happens to have three Coles trips.
+- A server test and a browser test no longer fail on days when the sample bank history happens to have three Coles trips.
 
 ## 0.2.0-up.70
 
