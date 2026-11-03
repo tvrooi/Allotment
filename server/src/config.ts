@@ -23,6 +23,29 @@ export const serverMode = process.env.FLYBUDGET_SERVER_MODE === 'true';
 /** Address to listen on. Only server mode should listen beyond this machine. */
 export const listenHost = process.env.FLYBUDGET_HOST ?? '127.0.0.1';
 
+const LOOPBACK_HOSTS = ['127.0.0.1', '::1', 'localhost'];
+
+/**
+ * Why this server must not start, if it would listen beyond this machine with nothing to stop
+ * other machines: outside server mode there is no login, and the Host check alone can be
+ * passed by any client that sends `Host: localhost`. Server mode (a password) or the desktop
+ * app's per-launch API token protect it; otherwise it must listen on loopback only.
+ */
+export function unprotectedBindError(opts: {
+  serverMode: boolean;
+  listenHost: string;
+  /** The desktop app: every request needs its per-launch API token */
+  desktop: boolean;
+}): string | null {
+  if (opts.serverMode || opts.desktop || LOOPBACK_HOSTS.includes(opts.listenHost.toLowerCase()))
+    return null;
+  return (
+    `FLYBUDGET_HOST=${opts.listenHost} would let anyone on the network read and change this ` +
+    'budget without a password. Set FLYBUDGET_SERVER_MODE=true (password login), or leave ' +
+    'FLYBUDGET_HOST unset to listen on 127.0.0.1 only.'
+  );
+}
+
 /**
  * Hostnames (optionally with :port) the server answers to in server mode, e.g.
  * "budget.example.com,192.168.1.20:3001". Empty = any host (login still required).

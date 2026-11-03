@@ -547,7 +547,7 @@ export function TransactionDetailPanel({
         title="Delete Transaction"
         message={
           tx.importedId?.startsWith('up:')
-            ? 'Delete this transaction? It came from Up, so it stays deleted when Up syncs. You can bring it back from Up review (Settings → Connected Banks → Up).'
+            ? 'Delete this transaction? Up still has it, so it stays deleted when Up syncs and this account’s balance won’t match Up’s. Until it does, assigning money pauses. The Budget page and Up review (Settings → Connected Banks → Up) can restore it.'
             : 'Are you sure you want to delete this transaction? This action cannot be undone.'
         }
         confirmLabel="Delete"

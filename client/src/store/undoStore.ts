@@ -8,6 +8,12 @@ export interface UndoCommand {
 
 const MAX_STACK = 50;
 
+/** Runs after every undo or redo that succeeds (main.tsx refreshes the ledger views) */
+let afterChange: () => unknown = () => {};
+export const setAfterUndoChange = (fn: () => unknown) => {
+  afterChange = fn;
+};
+
 interface UndoState {
   undoStack: UndoCommand[];
   redoStack: UndoCommand[];
@@ -45,6 +51,7 @@ export const useUndoStore = create<UndoState & UndoActions>((set, get) => ({
     set({ undoStack: undoStack.slice(0, -1) });
     try {
       await cmd.undo();
+      void afterChange();
       set({
         redoStack: [...redoStack, cmd],
         toastMessage: cmd.description,
@@ -62,6 +69,7 @@ export const useUndoStore = create<UndoState & UndoActions>((set, get) => ({
     set({ redoStack: redoStack.slice(0, -1) });
     try {
       await cmd.redo();
+      void afterChange();
       set({
         undoStack: [...undoStack, cmd],
         toastMessage: cmd.description,

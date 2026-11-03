@@ -3,7 +3,8 @@ import { format, subMonths } from 'date-fns';
 import { useBudget } from '../../hooks/useBudget';
 import { useIncomeVsExpenses } from '../../hooks/useReports';
 import { formatCurrency } from '../../utils/currency';
-import { leftToSpend as envelopeLeftToSpend } from '../../utils/leftToSpend';
+import { leftToSpend as envelopeLeftToSpend, savingsCategoryIds } from '../../utils/leftToSpend';
+import { useGoals } from '../../hooks/useGoals';
 import { StatCard } from '../ui/StatCard';
 import { monthsToAverage, periodFlow, savingsRate } from '../../utils/reportSummary';
 import { usePreferencesStore } from '../../store/preferencesStore';
@@ -21,6 +22,7 @@ export default function SummaryStats({ currentMonth }: Props) {
   const setSavingsGoal = usePreferencesStore((s) => s.setSavingsGoal);
 
   const { data: budgetData = [], isLoading: budgetLoading } = useBudget(currentMonth);
+  const { data: goals = [] } = useGoals();
   const { data: ieData = [], isLoading: ieLoading } = useIncomeVsExpenses(
     twelveMonthsAgo,
     currentMonth,
@@ -41,8 +43,12 @@ export default function SummaryStats({ currentMonth }: Props) {
   const expenseCats = budgetData.filter((g) => g.isIncome === 0).flatMap((g) => g.categories);
 
   // The envelopes' Available balances (carry-over and transfers count), like the dashboard's
-  // headline and the Budget page
-  const { left: leftToSpend, planned } = envelopeLeftToSpend(budgetData);
+  // headline and the Budget page, without savings envelopes
+  const {
+    left: leftToSpend,
+    setAside,
+    planned,
+  } = envelopeLeftToSpend(budgetData, savingsCategoryIds(goals));
   const totalSpent = expenseCats.reduce((sum, c) => sum + Math.abs(c.spent), 0);
   const spentPct = totalSpent / Math.max(totalSpent + leftToSpend, 1);
 
@@ -61,9 +67,14 @@ export default function SummaryStats({ currentMonth }: Props) {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {planned ? (
-        <StatCard label="Left to Spend" value={formatCurrency(leftToSpend)} valueColor={ltsColor} />
+        <StatCard
+          label="Left to spend"
+          value={formatCurrency(leftToSpend)}
+          valueColor={ltsColor}
+          sub={setAside > 0 ? `Not counting ${formatCurrency(setAside)} in savings` : undefined}
+        />
       ) : (
-        <StatCard label="Left to Spend" value="—" sub="No budget set this month" />
+        <StatCard label="Left to spend" value="—" sub="No budget set this month" />
       )}
       <StatCard
         label="Avg Monthly Income"

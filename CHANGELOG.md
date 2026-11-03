@@ -1,5 +1,16 @@
 # Changes
 
+## 0.2.0-up.85
+
+Fixes from a full audit of the app (correctness first).
+
+- **Figures stay current after every change.** After you recategorised or edited a transaction, the Budget page could show the old Activity and Available for up to 30 seconds. Every change that saves (and every Undo and Redo) now refreshes the budget, Review, account balances, reports, forecasts, payday plans and goals at once.
+- **"Left to spend" means spending money.** The dashboard's headline and its **Left to spend** card no longer count savings: envelopes whose type is **Savings**, and the category a goal saves in. The card says how much it leaves out ("Not counting $X in savings"). New budgets' **Savings** category is a Savings envelope, and so is the demo's Emergency Fund; the demo's trip goal saves in Holidays.
+- **Deleting an Up transaction says what it does.** Up still has it, so the account stops matching Up's balance and assigning money pauses. The confirmation now says so, and when an assignment is refused for that reason, the Budget page lists the transactions you deleted with a **Restore** button for each. Restoring brings it back and assigning works again.
+- **Ready to assign names the actual problem.** Instead of "Resolve overspending and uncategorised spending" whatever the cause, it says which of overspent envelopes, uncategorised spending, card payments without funding or more assigned than you have needs attention. Its smaller text is easier to read.
+- **The backup says what's in it.** **Full Backup** no longer calls itself complete: it lists what it keeps, and that files (receipt photos, PDFs, documents and videos) stay in the installation, with **Files → Download all** to keep a copy elsewhere.
+- **No password-free network access by mistake.** Outside server mode the server refuses to start when `FLYBUDGET_HOST` is anything but this machine (`127.0.0.1`, `::1`, `localhost`): without a login, anyone on the network could have read and changed the budget. Docker, Home Assistant and the desktop app are unaffected.
+
 ## 0.2.0-up.84
 
 Spacing and alignment, checked against a 4px grid on a computer and a phone.

@@ -82,7 +82,9 @@ export function BulkDeleteModal({ params, isOpen, onClose }: Props) {
                 {data.accounts.length > 0 &&
                   ` in ${data.accounts.map((a) => a.name).join(', ')}`}{' '}
                 will be deleted for good. This can't be undone. Any that came from Up stay deleted
-                when Up syncs; Up review (Settings → Connected Banks → Up) can bring them back.
+                when Up syncs, so the account's balance won't match Up's and assigning money pauses
+                until they're restored (from the Budget page or Up review, Settings → Connected
+                Banks → Up).
               </p>
               {data.sample.length > 0 && (
                 <ul className="text-sm text-text space-y-1 list-disc pl-5">

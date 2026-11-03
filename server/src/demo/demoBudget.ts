@@ -86,7 +86,7 @@ function seededRandom(seed: number) {
 
 // ─── The budget's structure ───────────────────────────────────────────────────
 
-type BudgetType = 'fixed' | 'flexible' | 'non_monthly';
+type BudgetType = 'fixed' | 'flexible' | 'non_monthly' | 'savings';
 
 /** Category groups and categories: key → [name, icon, budget type] */
 const GROUPS: {
@@ -178,7 +178,7 @@ const GROUPS: {
     name: 'Savings Goals',
     cats: [
       ['vacation', 'Holidays', 'Palmtree', 'non_monthly'],
-      ['emergencyFund', 'Emergency Fund', 'LifeBuoy', 'non_monthly'],
+      ['emergencyFund', 'Emergency Fund', 'LifeBuoy', 'savings'],
     ],
   },
 ];
@@ -1403,6 +1403,8 @@ export function buildDemoBudget(today: Date): DemoBudget {
       targetAmount: 450_000,
       currentAmount: vacationSaved,
       targetDate: ymd(lastDayOfMonth(addMonths(today, 7))),
+      // Saved in the Holidays envelope, so the dashboard counts it as set aside
+      categoryId: cat.vacation,
       icon: 'Plane',
       color: '#0EA5E9',
       sortOrder: 1,

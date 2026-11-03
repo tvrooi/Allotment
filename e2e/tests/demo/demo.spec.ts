@@ -31,7 +31,7 @@ test('the demo opens on a finished budget, and every page works', async ({ page 
   page.on('request', (r) => requests.push(new URL(r.url()).pathname));
 
   await openDemo(page);
-  await expect(page.getByText('Left to Spend', { exact: true })).toBeVisible();
+  await expect(page.getByText('Left to spend', { exact: true })).toBeVisible();
   await expect(page.getByText('Bills and income')).toBeVisible();
 
   for (const [route, text] of [
@@ -109,7 +109,7 @@ test('changes stay in the tab, and "Start over" brings the demo budget back', as
   await expect(page.getByRole('row', { name: /Corner Grocer/ })).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Start over' }).click();
-  await expect(page.getByText('Left to Spend', { exact: true })).toBeVisible();
+  await expect(page.getByText('Left to spend', { exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Payees' }).click();
   await expect(page.getByRole('row', { name: /Corner Grocer/ })).toBeVisible();
 });
@@ -257,7 +257,7 @@ test("the demo's preferences stay in the tab, and Start over resets them", async
   expect(stored.session).toContain('dark');
 
   await page.getByRole('button', { name: 'Start over' }).click();
-  await expect(page.getByText('Left to Spend', { exact: true })).toBeVisible();
+  await expect(page.getByText('Left to spend', { exact: true })).toBeVisible();
   await expect(page.locator('html')).not.toHaveClass(/dark/);
 });
 
@@ -277,7 +277,7 @@ test('the demo runs under a strict Content Security Policy', async ({ page }) =>
   expect(meta).toContain("default-src 'self'");
   expect(meta).toContain("connect-src 'self'");
   await expect(page.getByRole('region', { name: 'Demo' })).toBeVisible();
-  await expect(page.getByText('Left to Spend', { exact: true })).toBeVisible();
+  await expect(page.getByText('Left to spend', { exact: true })).toBeVisible();
 
   // A request to another site is blocked
   const blocked = await page.evaluate(() =>

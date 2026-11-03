@@ -4,7 +4,14 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { gatewaySecret, listenHost, serverMode, trustProxy } from './config.js';
+import {
+  gatewaySecret,
+  listenHost,
+  serverMode,
+  trustProxy,
+  unprotectedBindError,
+  appMode,
+} from './config.js';
 import { secretCipher } from './db/secretCrypto.js';
 import { deleteExpiredSessions, isPasswordSet } from './auth/sessions.js';
 import { setupCode } from './auth/setupCode.js';
@@ -158,6 +165,12 @@ export async function startServer(port: number | string): Promise<void> {
         '(or FLYBUDGET_DATA_KEY) to a 32-byte base64 key, e.g. from `openssl rand -base64 32`.',
     );
   }
+  const bindError = unprotectedBindError({
+    serverMode,
+    listenHost,
+    desktop: appMode === 'desktop',
+  });
+  if (bindError) throw new Error(bindError);
   if (gatewaySecret && (!serverMode || listenHost !== '127.0.0.1')) {
     throw new Error('Behind the multi-user gateway a budget must run in server mode on 127.0.0.1');
   }

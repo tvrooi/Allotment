@@ -136,7 +136,7 @@ const defaultGroups: {
     name: 'Financial',
     isIncome: 0,
     categories: [
-      { name: 'Savings', icon: 'PiggyBank', budgetType: 'non_monthly' },
+      { name: 'Savings', icon: 'PiggyBank', budgetType: 'savings' },
       { name: 'Investments', icon: 'TrendingUp', budgetType: 'non_monthly' },
       { name: 'Loan Payment', icon: 'Landmark', budgetType: 'fixed' },
       { name: 'Bank Fees', icon: 'Receipt', budgetType: 'fixed' },
