@@ -117,7 +117,7 @@ export default function CustomReportBuilder() {
           >
             <ArrowLeft size={16} />
           </Link>
-          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+          <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
             {reportName || 'Custom Report'}
           </h1>
           <SavedReportsList activeId={id} />

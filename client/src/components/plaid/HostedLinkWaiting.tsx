@@ -19,7 +19,7 @@ export function HostedLinkWaiting({
           automatically when you&apos;re done.
         </p>
       </div>
-      <p className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary">
+      <p className="inline-flex items-center gap-1.5 text-2xs text-text-tertiary">
         <ShieldCheck size={12} /> Your bank login happens on Plaid&apos;s secure site, never in
         Allotment.
       </p>

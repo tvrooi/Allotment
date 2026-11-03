@@ -369,7 +369,7 @@ export function FileDetailModal({ id, onClose }: { id: string | null; onClose: (
             <ul className="space-y-1.5">
               {doc.links.map((l) => (
                 <li key={`${l.kind}:${l.id}`} className="flex items-center gap-2 text-sm">
-                  <span className="text-[11px] uppercase tracking-wide text-text-tertiary w-24 shrink-0">
+                  <span className="text-2xs uppercase tracking-wide text-text-tertiary w-24 shrink-0">
                     {l.viaReceipt ? 'Receipt for' : KIND_NOUNS[l.kind]}
                   </span>
                   <Link

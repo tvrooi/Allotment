@@ -52,7 +52,7 @@ export default function ReportsPage() {
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 pt-4 border-b border-border shrink-0">
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text shrink-0">
+          <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text shrink-0">
             Reports
           </h1>
           {active && (

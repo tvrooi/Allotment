@@ -66,7 +66,7 @@ export default function TransactionsPage() {
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 pt-4 max-md:px-4 border-b border-border shrink-0">
         <div className="flex items-center justify-between">
-          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+          <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
             {view === 'receipts' ? 'Receipts' : 'All Transactions'}
           </h1>
           <div className="flex items-center gap-2">
@@ -109,7 +109,7 @@ export default function TransactionsPage() {
         </div>
       </div>
       {scan.error && (
-        <p role="alert" className="px-6 py-2 text-sm text-negative">
+        <p role="alert" className="px-6 max-md:px-4 py-2 text-sm text-negative">
           {scan.error}
         </p>
       )}

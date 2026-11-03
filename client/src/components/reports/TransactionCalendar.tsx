@@ -307,7 +307,7 @@ function DayCell({
         className={`relative flex h-full ${showAmounts ? 'flex-col justify-between p-1.5' : 'items-center justify-center'}`}
       >
         <span
-          className={`text-[11px] tabular-nums ${future ? 'text-text-disabled' : 'text-text'} ${
+          className={`text-2xs tabular-nums ${future ? 'text-text-disabled' : 'text-text'} ${
             day === today ? 'font-semibold' : ''
           }`}
         >
@@ -544,7 +544,7 @@ function DayTooltip({
           <p className="text-xs font-semibold text-text mt-1 pt-1 border-t border-border-light">
             Net: {formatCurrency(net)}
           </p>
-          <p className="text-[11px] text-text-tertiary mt-0.5">
+          <p className="text-2xs text-text-tertiary mt-0.5">
             {flow.count} {flow.count === 1 ? 'transaction' : 'transactions'}
           </p>
         </>

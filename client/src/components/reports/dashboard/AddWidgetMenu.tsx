@@ -46,7 +46,7 @@ export default function AddWidgetMenu({
       </Button>
       {open && (
         <div className="absolute right-0 top-full mt-1 w-72 max-h-[70vh] overflow-y-auto bg-surface rounded-md border border-border shadow-hover z-30 py-1">
-          <p className="px-3 pt-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
+          <p className="px-3 pt-1 pb-1 text-2xs font-semibold uppercase tracking-wide text-text-tertiary">
             Reports
           </p>
           {BUILTIN_TYPES.map((type) => (
@@ -61,7 +61,7 @@ export default function AddWidgetMenu({
             </button>
           ))}
           <div className="border-t border-border-light my-1" />
-          <p className="px-3 pt-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
+          <p className="px-3 pt-1 pb-1 text-2xs font-semibold uppercase tracking-wide text-text-tertiary">
             Custom reports
           </p>
           <button

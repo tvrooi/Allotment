@@ -86,7 +86,7 @@ export default function SummaryStats({ currentMonth }: Props) {
         value={formatCurrency(avgExpenses)}
         // Spending isn't an error: red is kept for overspent and negative balances
       />
-      <div className="bg-surface rounded-lg px-5 py-4 border border-border-light shadow-card">
+      <div className="bg-surface rounded-lg px-6 py-4 max-md:px-4 border border-border-light shadow-card">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <p className="text-xs font-medium text-text-secondary">Savings Rate</p>
           <select
