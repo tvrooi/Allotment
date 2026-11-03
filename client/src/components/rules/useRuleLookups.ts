@@ -5,7 +5,6 @@ import { usePayees } from '../../hooks/usePayees';
 import { useTags } from '../../hooks/useTags';
 import { useQuery } from '@tanstack/react-query';
 import { getHouseholds } from '../../api/households';
-import { usePreferencesStore } from '../../store/preferencesStore';
 import type { RuleLookups } from '../../utils/ruleFormat';
 import type { CategoryGroup } from '../../types';
 import type { PickerOption } from './OptionPicker';
@@ -17,7 +16,6 @@ export function useRuleLookups() {
   const { data: groups = [] } = useCategories();
   const { data: tags = [] } = useTags();
   const { data: households = [] } = useQuery({ queryKey: ['households'], queryFn: getHouseholds });
-  const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
 
   return useMemo(() => {
     const payeeOptions: PickerOption[] = [...payees]
@@ -28,7 +26,8 @@ export function useRuleLookups() {
       g.categories.map((c) => ({
         id: c.id,
         group: g.name,
-        label: `${showCategoryIcons && c.icon ? `${c.icon} ` : ''}${c.name}`,
+        // Labels are text, so no icon (stored icons are names, not emoji)
+        label: c.name,
       })),
     );
 
@@ -47,5 +46,5 @@ export function useRuleLookups() {
     };
     const householdOptions = households.map((h) => ({ id: h.id, label: h.name }));
     return { lookups, payeeOptions, accountOptions, categoryOptions, tagOptions, householdOptions };
-  }, [payees, accounts, groups, tags, households, showCategoryIcons]);
+  }, [payees, accounts, groups, tags, households]);
 }

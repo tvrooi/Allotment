@@ -3,6 +3,7 @@ import { useAccounts } from '../../hooks/useAccounts';
 import { useBudget } from '../../hooks/useBudget';
 import { useScheduleOccurrences } from '../../hooks/useSchedules';
 import { formatCurrency } from '../../utils/currency';
+import { leftToSpend as figureLeftToSpend } from '../../utils/leftToSpend';
 import { Private } from '../ui/Private';
 import { UpSyncBadge } from '../up/UpSyncBadge';
 
@@ -20,9 +21,7 @@ export function DashboardStatus({ currentMonth }: { currentMonth: string }) {
   );
   if (accountsLoading || budgetLoading) return <div className="h-9" aria-hidden />;
 
-  const expense = budget.filter((g) => g.isIncome === 0).flatMap((g) => g.categories);
-  const planned = expense.reduce((s, c) => s + c.budgeted, 0);
-  const left = planned - expense.reduce((s, c) => s + Math.abs(c.spent), 0);
+  const { left, planned } = figureLeftToSpend(budget);
   const nextPay = occurrences.find(
     (o) => o.expectedAmount > 0 && (o.displayStatus === 'upcoming' || o.displayStatus === 'due'),
   );
@@ -31,7 +30,7 @@ export function DashboardStatus({ currentMonth }: { currentMonth: string }) {
   let line: React.ReactNode;
   if (accounts.length === 0) {
     line = 'Welcome to Allotment. Start with the steps below.';
-  } else if (planned === 0) {
+  } else if (!planned) {
     line = 'Nothing’s planned for this month yet: give your money a job on the Budget page.';
   } else {
     line = (

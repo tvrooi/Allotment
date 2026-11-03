@@ -14,6 +14,12 @@ describe('codeFromPaste', () => {
     expect(codeFromPaste('[12:00:01] setup code: 5AWDHGGYHL4BBJEX')).toBe('5AWD-HGGY-HL4B-BJEX');
   });
 
+  it('finds a code made only of letters when it is written in its groups', () => {
+    expect(codeFromPaste('enter this setup code:\n    ABCD-EFGH-JKLM-NPQR\n')).toBe(
+      'ABCD-EFGH-JKLM-NPQR',
+    );
+  });
+
   it('ignores plain words that happen to be sixteen letters long', () => {
     expect(codeFromPaste('characteristical')).toBe('characteristical');
   });

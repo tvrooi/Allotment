@@ -140,7 +140,7 @@ test.describe('recurring', () => {
     await expect(page.getByRole('menuitem', { name: 'Resume' })).toBeVisible();
   });
 
-  test('cancelling hides a schedule behind "Show canceled"', async ({ page, api }) => {
+  test('cancelling hides a schedule behind "Show cancelled"', async ({ page, api }) => {
     const checking = await api.createAccount('Checking', 0);
     await createRent(api, checking.id);
     await openAll(page);
@@ -153,7 +153,7 @@ test.describe('recurring', () => {
     await expect
       .poll(async () => (await api.call<any[]>('GET', '/schedules'))[0].status)
       .toBe('canceled');
-    await expect(page.getByText(/Show \d+ canceled|Show canceled/)).toBeVisible();
+    await expect(page.getByText(/Show \d+ cancelled|Show cancelled/)).toBeVisible();
   });
 
   test('"Find recurring" discovers a subscription from past transactions', async ({
