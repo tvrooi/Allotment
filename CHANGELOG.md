@@ -1,5 +1,28 @@
 # Changes
 
+## 0.2.0-up.83
+
+Changes from a UX review of the whole app ([docs/UX-REVIEW.md](docs/UX-REVIEW.md)), as a first-time user would meet it.
+
+- **Pull to refresh is back on phones.** Drag the page down from the top and let go to fetch everything on screen again. The app's frame still stays still: only the content moves.
+- **A one-step start with Up.** The welcome screen leads with **Connect Up — about 2 minutes** and three short steps. Other banks, adding accounts by hand and importing from YNAB are under **Use another bank or add accounts by hand**. The footer links are gone.
+- **Connecting Up explains the token.** The dialog says, beside the box, that the token is read-only, can be revoked in Up, and is stored encrypted and never in backups. A **Paste** button fills it, and a token that doesn't start with `up:yeah:` gets a gentle hint.
+- **Finding the setup code.** The first screen gives steps for where Allotment runs (Home Assistant's **Log** tab, `docker logs`, or the service log), shows what the line looks like, and accepts the whole pasted log line. A button that can't be pressed yet says what it's waiting for, and disabled buttons are grey instead of pale orange.
+- **One place to start.** The dashboard's **Get started** checklist offers **Connect Up** and the two-minute tour (**Show me around**); the separate tour banner is gone. While the checklist shows, the cards below it don't repeat its buttons, and Net worth no longer draws a flat $0 line.
+- **Links open the page you asked for.** Before there are accounts, only opening the app goes to the welcome screen: a link to Settings or another page on a second device opens that page.
+- **Australian categories by default.** New budgets start with about 20 envelopes (Rent, Mortgage, Council Rates & Strata, Rego & CTP, Private Health Insurance and so on), unless the server's time zone is outside Australia or `FLYBUDGET_CATEGORY_TEMPLATE=default`. The budget asks **Do you rent or own your home?** and tucks away the envelopes that don't apply (hidden, never deleted). Up's categories map onto the new names.
+- **Icons, not emoji.** Categories and goals use the app's own line icons, picked from a grid; older budgets' emoji show as the nearest icon.
+- **Colour means one thing.** Red is for overspent or negative balances only: spending, a savings rate under its goal and a negative month are no longer red. Bills still to come are grey, not orange.
+- **A calmer budget table.** Amounts are plain text until you point at or tab to them, Available is the column that stands out (with a pill only when it isn't $0), and sections with no money in them start folded. **Month**, **Year** and **Until payday** are one switch, and **Auto-assign** is the one filled button.
+- **The dashboard says where you stand**: "You have $X left to spend this month. Next pay Fri 7 Nov.", with when Up last synced. **Bills and income** lists them apart, so pay isn't a bill.
+- **Review starts with Do this next**, one list in order of urgency, and the sidebar's Review link shows how many things are on it.
+- **Bulk changes need Select all.** On Transactions, Mark reviewed, Edit and Share appear after **Select all**, and Delete is in the **More** menu.
+- **Every page says what it's for** on a first visit, once.
+- **Allotment's own guide.** A short guide (getting started, connecting Up, budgeting and more) is built into the app at **Guide** in the ? menu, and every "Learn more" link opens it, offline too.
+- **Plainer words, Australian spelling.** Household, the budget's first-month notice and Review lead with what they do; the mechanics are under **How this works**. Spelling is Australian throughout (customise, categorise, colour, cancelled), and the Checking account type is now **Everyday**.
+- The sidebar's pin moved from the header to a labelled control at its foot.
+- **The demo is an Australian Up budget**: a Spending account, two Savers and a shared 2Up account, fortnightly pay and rent, opening with money ready to assign and nothing overspent. Its bar is one line (one slim line on a phone) with the tour, and its links go to Allotment's README and releases on GitHub. The first change you make says it won't be kept.
+
 ## 0.2.0-up.82
 
 Menu bars and buttons, reviewed on a computer, in a browser and on a phone.

@@ -11,6 +11,8 @@ import { formatDateAxisLabels, formatDateLabel } from '../../utils/chartTicks';
 import { useXAxisLayout } from '../../hooks/useXAxisLayout';
 import { useHideBalances } from '../../utils/safeMode';
 import { Private, PrivateChart } from '../ui/Private';
+import { TrendingUp } from 'lucide-react';
+import { useOnboardingActive } from './onboarding';
 
 function MiniTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
@@ -86,6 +88,7 @@ export default function NetWorthMini() {
   const { data = [], isLoading } = useNetWorth(from, to, granularity);
   const { data: accounts, isLoading: accountsLoading } = useAccounts();
   const noAccounts = !accountsLoading && accounts?.length === 0;
+  const onboarding = useOnboardingActive();
 
   const dateLabels = useMemo(() => formatDateAxisLabels(data.map((d) => d.month)), [data]);
   const xAxis = useXAxisLayout({
@@ -152,9 +155,11 @@ export default function NetWorthMini() {
         </div>
 
         {noAccounts ? (
-          <ButtonLink size="sm" to="/accounts?add=1">
-            Add an account
-          </ButtonLink>
+          !onboarding && (
+            <ButtonLink size="sm" to="/accounts?add=1">
+              Add an account
+            </ButtonLink>
+          )
         ) : (
           <select
             aria-label="Net worth period"
@@ -171,8 +176,14 @@ export default function NetWorthMini() {
         )}
       </div>
 
-      {/* Before any accounts, a flat $0 line (the page still offers "Add an account") */}
-      {data.length > 1 && (
+      {/* Before any accounts there's nothing to draw: no flat $0 line */}
+      {noAccounts && (
+        <div className="mt-4 flex items-center gap-3 rounded-lg bg-surface-alt px-4 py-3 text-sm text-text-tertiary">
+          <TrendingUp size={18} className="text-brand-600 shrink-0" aria-hidden />
+          Your net worth over time appears here once an account is in.
+        </div>
+      )}
+      {data.length > 1 && !noAccounts && (
         <div className="mt-4" ref={xAxis.ref}>
           <PrivateChart height={112}>
             <ResponsiveContainer width="100%" height={112}>

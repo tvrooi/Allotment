@@ -23,6 +23,12 @@ test('a new budget starts on the welcome screen', async ({ page }) => {
   await expect(page).toHaveURL(/#\/welcome$/);
 });
 
+test('a link to another page opens that page, even before any accounts', async ({ page }) => {
+  await open(page, '/settings');
+  await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/#\/settings$/);
+});
+
 test('every page opens from the sidebar', async ({ page, api }) => {
   const account = await api.createAccount('Everyday Checking', 150_000);
   await api.createTransaction({

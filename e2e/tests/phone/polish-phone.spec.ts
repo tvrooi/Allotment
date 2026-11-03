@@ -50,7 +50,7 @@ test.describe('the budget header', () => {
     // Everything above the categories, tip included, fits in a fifth of the screen
     await expect(page.getByRole('status', { name: 'Ready to assign' })).toBeVisible();
     expect((await box(header)).height).toBeLessThanOrEqual(200);
-    const tip = page.getByText(/No assignments for/);
+    const tip = page.getByText(/No money assigned for/);
     const bottom = (await box(tip)).y + (await box(tip)).height;
     expect(bottom).toBeLessThanOrEqual(300);
 

@@ -21,6 +21,8 @@ import type { SimplefinSetupResult } from '../../types';
 import { IS_DEMO } from '../../demo/demoApi';
 import { NotInDemo } from '../demo/NotInDemo';
 import { UpSettings } from '../up/UpSettings';
+import { useUpConnection } from '../../hooks/useUp';
+import { formatDistanceToNow } from 'date-fns';
 
 type Provider = 'plaid' | 'simplefin' | 'enablebanking' | 'up';
 
@@ -28,8 +30,12 @@ export function ConnectedAccounts() {
   return IS_DEMO ? <ConnectedAccountsDemo /> : <ConnectedAccountsSettings />;
 }
 
-/** The demo can't connect banks: say so where the setup would be */
+/**
+ * The demo's sample budget came from Up: its (pretend) connection, and Connect Up shown but
+ * switched off, since the demo can't connect banks
+ */
 function ConnectedAccountsDemo() {
+  const { data: up } = useUpConnection();
   return (
     <div className="space-y-5 max-w-xl">
       <div>
@@ -37,6 +43,29 @@ function ConnectedAccountsDemo() {
         <p className="text-xs text-text-tertiary mt-0.5">
           Automatically import transactions from your financial institutions.
         </p>
+      </div>
+      {up && (
+        <div className="rounded-lg border border-border bg-surface p-4 space-y-2">
+          <p className="text-sm font-medium text-text">Up</p>
+          <ul className="text-xs text-text-secondary space-y-0.5">
+            {up.accounts.map((a) => (
+              <li key={a.upAccountId}>{a.name}</li>
+            ))}
+          </ul>
+          {up.lastSyncedAt && (
+            <p className="text-xs text-text-tertiary">
+              Last synced {formatDistanceToNow(new Date(up.lastSyncedAt), { addSuffix: true })}
+            </p>
+          )}
+        </div>
+      )}
+      <div className="flex flex-wrap items-center gap-3">
+        <Button disabled aria-describedby="demo-connect-up-note">
+          Connect Up
+        </Button>
+        <span id="demo-connect-up-note" className="text-xs text-text-tertiary">
+          Works in the real app
+        </span>
       </div>
       <NotInDemo />
     </div>

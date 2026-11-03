@@ -11,15 +11,22 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import * as icons from 'lucide-react';
 
 const require = createRequire(import.meta.url);
-const { chromium } = require('../../e2e/node_modules/playwright');
+let playwright;
+try {
+  playwright = require('../../e2e/node_modules/playwright');
+} catch {
+  // A machine with Playwright installed globally (no e2e install)
+  playwright = require('playwright');
+}
+const { chromium } = playwright;
 
 /** key → [background, darker shade for the gradient, Lucide icon] */
 const DESIGNS = {
   // Banks and accounts
-  harbor: ['#1E40AF', '#1E3A8A', 'Landmark'],
-  harborSavings: ['#0F766E', '#115E59', 'PiggyBank'],
-  alpine: ['#B91C1C', '#7F1D1D', 'Euro'],
-  summit: ['#7C3AED', '#5B21B6', 'Mountain'],
+  upSpending: ['#F46B35', '#C2410C', 'Wallet'],
+  upSaver: ['#0F766E', '#115E59', 'PiggyBank'],
+  upHoliday: ['#0284C7', '#0369A1', 'Palmtree'],
+  twoUp: ['#7C3AED', '#5B21B6', 'Users'],
   evergreen: ['#16A34A', '#166534', 'TreePine'],
   pinecone: ['#D97706', '#B45309', 'TrendingUp'],
   northstar: ['#0369A1', '#0C4A6E', 'Star'],
@@ -48,6 +55,8 @@ const DESIGNS = {
   burgerBarn: ['#CA8A04', '#A16207', 'Sandwich'],
   // Car
   fuelStop: ['#0E7490', '#155E75', 'Fuel'],
+  opal: ['#262520', '#111827', 'TrainFront'],
+  registry: ['#1D4ED8', '#1E3A8A', 'FileBadge'],
   quickLube: ['#4B5563', '#374151', 'Wrench'],
   // Health
   wellway: ['#0D9488', '#0F766E', 'Pill'],

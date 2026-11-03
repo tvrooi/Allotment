@@ -26,7 +26,11 @@ const BADGE: Record<RecurringBadgeStatus, { label: string; className: string; Ic
       className: 'bg-surface-alt text-text-tertiary',
       Icon: SkipForward,
     },
-    cancelled: { label: 'Canceled', className: 'bg-surface-alt text-text-tertiary', Icon: XCircle },
+    cancelled: {
+      label: 'Cancelled',
+      className: 'bg-surface-alt text-text-tertiary',
+      Icon: XCircle,
+    },
     paused: { label: 'Paused', className: 'bg-caution-subtle text-caution', Icon: Pause },
     ended: {
       label: 'Possibly ended',

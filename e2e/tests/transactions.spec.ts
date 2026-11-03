@@ -39,14 +39,14 @@ test.describe('account register', () => {
     await open(page, `/accounts/${checking.id}`);
     await fillNewTransaction(page, {
       payee: 'Corner Grocery',
-      category: '🛒 Groceries',
+      category: 'Groceries',
       notes: 'weekly shop',
       outflow: '42.50',
     });
     await newForm(page).getByRole('button', { name: 'Save' }).click();
 
     await expect(page.getByRole('button', { name: 'Corner Grocery', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: '🛒 Groceries' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Groceries', exact: true })).toBeVisible();
     await expect(header(page)).toContainText('$957.50');
     expect(await api.balance(checking.id)).toBe(95_750);
 
@@ -85,7 +85,7 @@ test.describe('account register', () => {
     await open(page, `/accounts/${checking.id}`);
     await fillNewTransaction(page, {
       payee: 'Acme Corp',
-      category: '💵 Paychecks',
+      category: 'Paychecks',
       inflow: '2500',
     });
     await newForm(page).getByRole('button', { name: 'Save' }).click();
@@ -118,12 +118,12 @@ test.describe('account register', () => {
     await form.getByRole('button', { name: 'Split transaction' }).click();
     await form
       .getByRole('combobox', { name: 'Split 1 category' })
-      .selectOption({ label: '🛒 Groceries' });
+      .selectOption({ label: 'Groceries' });
     await form.getByRole('textbox', { name: 'Split 1 amount' }).fill('60');
     await expect(form.getByText('$40 remaining')).toBeVisible();
     await form
       .getByRole('combobox', { name: 'Split 2 category' })
-      .selectOption({ label: '🏠 Rent / Mortgage' });
+      .selectOption({ label: 'Rent / Mortgage' });
     await form.getByRole('textbox', { name: 'Split 2 amount' }).fill('40');
     await expect(form.getByText('Balanced')).toBeVisible();
     await newForm(page).getByRole('button', { name: 'Save' }).click();

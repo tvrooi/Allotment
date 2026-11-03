@@ -617,7 +617,7 @@ function SplitEditor({
         ) : (
           !hasRemainder && (
             <span className="text-xs text-text-tertiary">
-              Anything left over stays uncategorized.
+              Anything left over stays uncategorised.
             </span>
           )
         )}

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { CategoryIcon } from '../ui/CategoryIcon';
 import { Link } from 'react-router-dom';
 import { useSpendingByCategory } from '../../hooks/useReports';
 import { formatCurrency } from '../../utils/currency';
@@ -67,8 +68,8 @@ export default function SpendingBreakdown({ currentMonth }: Props) {
             return (
               <div key={cat.categoryId ?? i}>
                 <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-sm text-text-secondary truncate mr-2">
-                    {showCategoryIcons && cat.categoryIcon ? `${cat.categoryIcon} ` : ''}
+                  <span className="text-sm text-text-secondary truncate mr-2 inline-flex items-center gap-1.5">
+                    {showCategoryIcons && <CategoryIcon icon={cat.categoryIcon} size={14} />}
                     {cat.categoryName || 'Uncategorised'}
                   </span>
                   <span className="text-xs text-text-tertiary tabular-nums whitespace-nowrap">

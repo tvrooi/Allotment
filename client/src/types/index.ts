@@ -36,11 +36,11 @@ export interface AccountTypeInfo {
 export const ACCOUNT_TYPES: AccountTypeInfo[] = [
   {
     value: 'checking',
-    label: 'Checking',
+    label: 'Everyday',
     group: 'cash',
     liability: false,
     onBudget: true,
-    hint: 'Everyday bank account',
+    hint: 'Transaction account, like Up Spending or 2Up',
   },
   {
     value: 'savings',

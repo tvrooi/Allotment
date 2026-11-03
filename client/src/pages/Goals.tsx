@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { CategoryIcon } from '../components/ui/CategoryIcon';
 import { useMemo, useState } from 'react';
 import { Plus, ChevronDown, ChevronRight, Target } from 'lucide-react';
 import { differenceInCalendarDays, differenceInCalendarMonths, parseISO } from 'date-fns';
@@ -11,7 +12,6 @@ import { Modal, useModalValue } from '../components/ui/Modal';
 import { FilesSection } from '../components/files/FilesSection';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
-import { docsUrl } from '../utils/project';
 import { Card } from '../components/ui/Card';
 import { StatCardRow } from '../components/reports/ChartHelpers';
 import RowMenu from '../components/ui/RowMenu';
@@ -53,7 +53,7 @@ function GoalIcon({ goal }: { goal: Goal }) {
   return (
     <div className="w-9 h-9 rounded-lg bg-surface-alt border border-border-light flex items-center justify-center shrink-0">
       {showIcons ? (
-        <span className="text-lg leading-none">{goal.icon}</span>
+        <CategoryIcon icon={goal.icon} size={20} className="text-current" />
       ) : (
         <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: goal.color }} />
       )}
@@ -353,7 +353,7 @@ export default function GoalsPage() {
             icon={<Target size={26} />}
             title="Save for what matters"
             description="Set a target like an emergency fund, a trip or a new car, and see how close you are and how much to set aside each month."
-            learnMoreHref={docsUrl('goals')}
+            learnMore="goals"
             actions={
               <Button onClick={() => setAddOpen(true)}>
                 <Plus size={14} /> Add Goal

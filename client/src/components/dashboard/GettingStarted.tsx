@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, ChevronRight, X } from 'lucide-react';
+import { Check, ChevronRight, Compass, X } from 'lucide-react';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useTransactions } from '../../hooks/useTransactions';
 import { useBudget } from '../../hooks/useBudget';
@@ -10,10 +10,12 @@ import { useSalaryGuess } from '../../hooks/useReports';
 import { Modal } from '../ui/Modal';
 import { SortUncategorised, salaryCadence } from '../review/SortUncategorised';
 import { usePreferencesStore } from '../../store/preferencesStore';
-import { docsUrl } from '../../utils/project';
 import { AddAccountModal } from '../accounts/AddAccountModal';
-import { ExternalLink } from '../ui/ExternalLink';
+import { GuideLink } from '../guide/GuideLink';
 import { Card } from '../ui/Card';
+import { UpConnectModal } from '../up/UpConnectModal';
+import { useGuideProgress, useUpdateGuides } from '../../hooks/useGuides';
+import { useGuideStore } from '../../store/guideStore';
 
 interface Step {
   id: string;
@@ -21,16 +23,36 @@ interface Step {
   description: string;
   done: boolean;
   action: { label: string; to?: string; onClick?: () => void };
+  /** A second, quieter way to do it */
+  alternative?: { label: string; onClick: () => void };
 }
 
 /**
  * The first things to do in a new budget, ticked off as they're done. Shown on the
  * dashboard until every step is done or the user hides it.
  */
-export default function GettingStarted({ currentMonth }: { currentMonth: string }) {
+export default function GettingStarted({
+  currentMonth,
+  onVisibleChange,
+}: {
+  currentMonth: string;
+  /** Whether the checklist is showing, so the dashboard's cards can leave the next steps to it */
+  onVisibleChange?: (visible: boolean) => void;
+}) {
   const hidden = usePreferencesStore((s) => s.gettingStartedHidden);
-  const setHidden = usePreferencesStore((s) => s.setGettingStartedHidden);
+  const setHiddenPreference = usePreferencesStore((s) => s.setGettingStartedHidden);
   const [addAccountOpen, setAddAccountOpen] = useState(false);
+  const [upOpen, setUpOpen] = useState(false);
+  const guideProgress = useGuideProgress().data;
+  const updateGuides = useUpdateGuides();
+  const startGuide = useGuideStore((s) => s.start);
+  const offerTour = guideProgress?.welcomeTour === 'offer';
+  // Hiding the checklist turns down the tour it offered: the page guides and tips that wait
+  // for it can start
+  const setHidden = (value: boolean) => {
+    setHiddenPreference(value);
+    if (value && offerTour) updateGuides.mutate({ welcomeTour: 'dismissed' });
+  };
   const [sortOpen, setSortOpen] = useState(false);
 
   const accounts = useAccounts();
@@ -41,21 +63,23 @@ export default function GettingStarted({ currentMonth }: { currentMonth: string 
   const salary = useSalaryGuess().data;
 
   const loading = [accounts, transactions, budget, schedules, rules].some((q) => q.isLoading);
-  if (hidden || loading) return null;
 
   const firstAccount = accounts.data?.find((a) => !a.closedAt);
   const steps: Step[] = [
     {
       id: 'account',
-      title: 'Add your first account',
-      description: 'A checking account, credit card or cash: anything that holds money.',
+      title: 'Bring in your accounts',
+      description:
+        'Connect Up for your Spending account, Savers and 2Up, or add any account by hand.',
       done: (accounts.data?.length ?? 0) > 0,
-      action: { label: 'Add account', onClick: () => setAddAccountOpen(true) },
+      action: { label: 'Connect Up', onClick: () => setUpOpen(true) },
+      alternative: { label: 'Add account', onClick: () => setAddAccountOpen(true) },
     },
     {
       id: 'transactions',
       title: 'Bring in your transactions',
-      description: 'Import a CSV file from your bank, connect a bank, or add them by hand.',
+      description:
+        'Up brings them in by itself. Otherwise import a CSV file from your bank, or add them by hand.',
       done: (transactions.data?.length ?? 0) > 0,
       action: firstAccount
         ? { label: 'Import or add', to: `/accounts/${firstAccount.id}` }
@@ -75,7 +99,7 @@ export default function GettingStarted({ currentMonth }: { currentMonth: string 
       : []),
     {
       id: 'recurring',
-      title: 'Add your bills and paychecks',
+      title: 'Add your bills and pay',
       description: 'See what’s due next and never miss a payment.',
       done: (schedules.data?.length ?? 0) > 0,
       action: { label: 'Add recurring', to: '/recurring' },
@@ -83,7 +107,7 @@ export default function GettingStarted({ currentMonth }: { currentMonth: string 
     {
       id: 'budget',
       title: 'Plan this month’s budget',
-      description: 'With your paychecks and bills in, give the rest of your money a job.',
+      description: 'With your pay and bills in, give the rest of your money a job.',
       done: (budget.data ?? []).some((g) => g.categories.some((c) => c.budgeted !== 0)),
       action: { label: 'Open budget', to: '/budget' },
     },
@@ -97,7 +121,16 @@ export default function GettingStarted({ currentMonth }: { currentMonth: string 
   ];
 
   const doneCount = steps.filter((s) => s.done).length;
-  if (doneCount === steps.length) return null;
+  const visible = !hidden && !loading && doneCount < steps.length;
+  useEffect(() => onVisibleChange?.(visible), [visible, onVisibleChange]);
+  // Every step done before the tour was taken: it isn't offered any more, so the page guides
+  // and tips that wait for it can start
+  const allDone = !loading && doneCount === steps.length;
+  useEffect(() => {
+    if (allDone && offerTour) updateGuides.mutate({ welcomeTour: 'dismissed' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allDone, offerTour]);
+  if (!visible) return null;
   const nextStep = steps.find((s) => !s.done);
 
   return (
@@ -109,6 +142,16 @@ export default function GettingStarted({ currentMonth }: { currentMonth: string 
             {doneCount} of {steps.length} done. Each step brings more of your dashboard to life.
           </p>
         </div>
+        {offerTour && (
+          <button
+            type="button"
+            onClick={() => startGuide('welcome')}
+            className="ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-brand-600 hover:bg-brand-50 max-md:min-h-11"
+          >
+            <Compass size={14} aria-hidden /> Show me around
+            <span className="text-text-tertiary font-normal max-md:hidden">· 2 min</span>
+          </button>
+        )}
         <button
           onClick={() => setHidden(true)}
           aria-label="Hide getting started"
@@ -162,6 +205,15 @@ export default function GettingStarted({ currentMonth }: { currentMonth: string 
                   <p className="text-xs text-text-tertiary mt-0.5">{step.description}</p>
                 )}
               </div>
+              {!step.done && step.alternative && (
+                <button
+                  type="button"
+                  onClick={step.alternative.onClick}
+                  className="shrink-0 rounded-md px-2 py-1.5 text-xs font-medium text-text-secondary hover:text-text hover:bg-hover max-md:min-h-11"
+                >
+                  {step.alternative.label}
+                </button>
+              )}
               {!step.done && <StepAction step={step} primary={isNext} />}
             </li>
           );
@@ -170,15 +222,16 @@ export default function GettingStarted({ currentMonth }: { currentMonth: string 
 
       <div className="px-5 py-3 border-t border-border-light text-xs text-text-tertiary">
         Not sure where to begin?{' '}
-        <ExternalLink
-          href={docsUrl('getting-started')}
+        <GuideLink
+          page="getting-started"
           className="font-medium text-brand-600 hover:text-brand-700"
         >
           Read the getting started guide
-        </ExternalLink>
+        </GuideLink>
       </div>
 
       <AddAccountModal isOpen={addAccountOpen} onClose={() => setAddAccountOpen(false)} />
+      <UpConnectModal isOpen={upOpen} onClose={() => setUpOpen(false)} />
       {sortOpen && (
         <Modal
           isOpen

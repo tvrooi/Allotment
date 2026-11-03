@@ -309,7 +309,7 @@ function SignedInDevices() {
     <section className="pt-6 border-t border-border-light">
       <SectionTitle>Signed-in devices</SectionTitle>
       <p className="text-xs text-text-tertiary mt-1">
-        Browsers signed in to this server. Sign out any you don't recognize, then change the
+        Browsers signed in to this server. Sign out any you don't recognise, then change the
         password.
       </p>
       {isLoading && <Loader2 size={16} className="animate-spin text-text-tertiary mt-3" />}

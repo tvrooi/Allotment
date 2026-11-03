@@ -297,7 +297,7 @@ export function SpendingChart({ from, to }: { from: string; to: string }) {
         .sort((a, b) => b.totalSpent - a.totalSpent)
         .slice(0, 10)
         .map((d, i) => {
-          const full = `${showCategoryIcons && d.categoryIcon ? d.categoryIcon + ' ' : ''}${d.categoryName ?? 'Uncategorised'}`;
+          const full = d.categoryName ?? 'Uncategorised';
           return {
             name: full.length > 22 ? full.slice(0, 21) + '…' : full,
             fullName: full,
@@ -411,11 +411,13 @@ export function MonthlySpendingChart({ from, to }: { from: string; to: string })
 /** How a category is named in charts and tables: its icon (when shown) and name. */
 export function categoryLabel(
   c: { name?: string | null; icon?: string | null } | undefined,
-  showIcons: boolean,
+  /** Kept for callers: chart labels are text, so they never carry an icon */
+  _showIcons: boolean,
   fallback = 'Uncategorised',
 ) {
   if (!c?.name) return fallback;
-  return `${showIcons && c.icon ? c.icon + ' ' : ''}${c.name}`;
+  // Chart labels are text: icons (the app's line icons, never emoji) only appear in lists
+  return c.name;
 }
 
 /**

@@ -1,4 +1,5 @@
 import { ShareWithHousehold } from '../household/ShareWithHousehold';
+import { CategoryIcon } from '../ui/CategoryIcon';
 import { HouseholdIcon } from '../household/HouseholdIcon';
 import { useHouseholds } from '../../hooks/useHouseholds';
 import { useNavigate } from 'react-router-dom';
@@ -314,7 +315,7 @@ export function TransactionDetailPanel({
                   <div key={child.id} className="flex items-center justify-between text-sm pl-2">
                     <div className="flex items-center gap-1.5">
                       {showCategoryIcons && childCat?.icon && (
-                        <span className="text-sm">{childCat.icon}</span>
+                        <CategoryIcon icon={childCat.icon} size={14} />
                       )}
                       <span className="text-text-secondary">
                         {childCat?.name ?? 'Uncategorised'}
@@ -352,7 +353,7 @@ export function TransactionDetailPanel({
                 className={`${inputCls} text-left flex items-center gap-2 ${canEditCategory ? 'cursor-pointer' : ''}`}
               >
                 {showCategoryIcons && categoryEntry?.icon && (
-                  <span className="text-base">{categoryEntry.icon}</span>
+                  <CategoryIcon icon={categoryEntry.icon} size={15} />
                 )}
                 <span className={categoryEntry ? '' : 'text-text-secondary'}>
                   {categoryEntry?.name ?? 'Uncategorised'}

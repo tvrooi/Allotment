@@ -65,8 +65,7 @@ describe('the demo budget (property-based)', () => {
           if (t.transferTransactionId) {
             const other = byId.get(t.transferTransactionId)!;
             expect(other.transferTransactionId).toBe(t.id);
-            // In dollars, the two sides cancel out (between currencies the amounts differ)
-            expect((other.mainAmount ?? other.amount) + (t.mainAmount ?? t.amount)).toBe(0);
+            expect(other.amount + t.amount).toBe(0);
             expect(other.date).toBe(t.date);
           }
           if (t.isParent) {
@@ -80,24 +79,67 @@ describe('the demo budget (property-based)', () => {
     );
   });
 
-  it('values every euro transaction in dollars, at a rate it has', () => {
+  it("is an Australian Up budget: every account in the budget's dollars, no exchange rates", () => {
     fc.assert(
       fc.property(anyDay, (today) => {
         const demo = buildDemoBudget(today);
-        const euro = demo.accounts.find((a) => a.currency === 'EUR')!;
-        const rows = demo.transactions.filter((t) => t.accountId === euro.id);
-        expect(rows.length).toBeGreaterThan(0);
-        for (const t of rows) {
-          expect(t.mainAmount).toEqual(expect.any(Number));
-          expect(['rate', 'transfer']).toContain(t.mainAmountSource);
-          expect(Math.sign(t.mainAmount!)).toBe(Math.sign(t.amount));
-        }
-        // Euros for every working day back to the first transaction
-        const first = demo.transactions.map((t) => t.date).sort()[0];
-        expect(demo.exchangeRates[0].date <= first).toBe(true);
-        expect(demo.exchangeRates.every((r) => r.base === 'EUR' && r.quote === 'USD')).toBe(true);
+        expect(demo.budgetSettings[0].currency).toBe('AUD');
+        expect(demo.exchangeRates).toEqual([]);
+        expect(demo.accounts.every((a) => !a.currency)).toBe(true);
+        expect(demo.accounts.map((a) => a.name)).toEqual(
+          expect.arrayContaining(['Spending', 'Rainy Day', 'Holiday', '2Up Spending']),
+        );
       }),
-      { numRuns: 30 },
+      { numRuns: 10 },
+    );
+  });
+
+  it("has no emoji: categories and goals use the app's icon names", () => {
+    const demo = buildDemoBudget(new Date());
+    for (const row of [...demo.categories, ...demo.goals]) {
+      expect(row.icon, row.name).toMatch(/^[A-Z][A-Za-z0-9]+$/);
+    }
+    const emoji = /\p{Extended_Pictographic}/u;
+    for (const t of demo.transactions) expect(t.notes ?? '').not.toMatch(emoji);
+  });
+
+  it('opens with nothing overspent and money ready to assign, whatever the day', () => {
+    const onBudget = [
+      'demo-acct-checking',
+      'demo-acct-savings',
+      'demo-acct-holiday',
+      'demo-acct-card',
+    ];
+    fc.assert(
+      fc.property(anyDay, (today) => {
+        const demo = buildDemoBudget(today);
+        const rows = demo.transactions.filter((t) => onBudget.includes(t.accountId));
+        const income = new Set(['demo-cat-paychecks', 'demo-cat-interest', 'demo-cat-otherIncome']);
+        const cash = rows.filter((t) => !t.parentTransactionId).reduce((s, t) => s + t.amount, 0);
+        let envelopes = 0;
+        const months = [...new Set(demo.budgetMonths.map((b) => b.month))].sort();
+        for (const c of demo.categories.filter((c) => !income.has(c.id))) {
+          let balance = 0;
+          for (const month of months) {
+            balance += demo.budgetMonths
+              .filter((b) => b.categoryId === c.id && b.month === month)
+              .reduce((s, b) => s + (b.budgeted ?? 0), 0);
+            balance += rows
+              .filter((t) => !t.isParent && t.categoryId === c.id && t.date.startsWith(month))
+              .reduce((s, t) => s + t.amount, 0);
+            expect(balance, `${c.name} ${month}`).toBeGreaterThanOrEqual(0);
+          }
+          envelopes += balance;
+        }
+        const uncategorised = rows
+          .filter(
+            (t) => !t.categoryId && !t.transferTransactionId && !t.isParent && !t.isAdjustment,
+          )
+          .reduce((s, t) => s + t.amount, 0);
+        // Cash not in an envelope (less what still needs a category) is what's ready to assign
+        expect(cash - envelopes + uncategorised).toBeGreaterThan(0);
+      }),
+      { numRuns: 25 },
     );
   });
 
@@ -152,10 +194,24 @@ describe('the demo budget, loaded', () => {
     ]);
   });
 
-  it('leaves the latest card payment for the transfer suggestions', () => {
-    expect(listTransferSuggestions().map((s) => [s.outflow.payeeName, s.inflow.payeeName])).toEqual(
-      [['ONLINE PAYMENT - CREDIT CARD', 'PAYMENT RECEIVED - THANK YOU']],
+  it('opens tidy: every transfer is linked, and one purchase waits for a category', () => {
+    expect(listTransferSuggestions()).toEqual([]);
+    const uncategorised = buildDemoBudget(today).transactions.filter(
+      (t) =>
+        !t.categoryId &&
+        !t.transferTransactionId &&
+        !t.isParent &&
+        !t.isAdjustment &&
+        ['demo-acct-checking', 'demo-acct-savings', 'demo-acct-holiday', 'demo-acct-card'].includes(
+          t.accountId,
+        ),
     );
+    expect(uncategorised.map((t) => t.payeeName)).toEqual(['Parcel']);
+  });
+
+  it('has money ready to assign this month, not a shortfall', async () => {
+    const summary = await get(`/budget/${format(today, 'yyyy-MM')}/summary`);
+    expect(summary.toBeBudgeted).toBeGreaterThan(0);
   });
 
   it('leaves one subscription for "Find recurring" to spot', async () => {

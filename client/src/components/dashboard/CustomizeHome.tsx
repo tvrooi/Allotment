@@ -23,7 +23,7 @@ const labelOf = (id: string) => HOME_CARDS.find((c) => c.id === id)?.label ?? id
 /** Show, hide and reorder the home cards for this device's width. Changes apply at once. */
 export function CustomizeHome({ isOpen, onClose, factor, layout, onChange, onReset }: Props) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Customize home" size="sm">
+    <Modal isOpen={isOpen} onClose={onClose} title="Customise home" size="sm">
       <p className="text-xs text-text-tertiary mb-3">
         Saved on this device for {factor === 'phone' ? 'phone' : 'desktop'} screens. Hiding a card
         never changes your budget.

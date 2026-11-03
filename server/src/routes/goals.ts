@@ -88,7 +88,7 @@ goalsRouter.post('/', (req, res) => {
     targetDate: parsed.data.targetDate ?? null,
     accountId: parsed.data.accountId ?? null,
     categoryId: parsed.data.categoryId ?? null,
-    icon: parsed.data.icon ?? '🎯',
+    icon: parsed.data.icon ?? 'PiggyBank',
     color: parsed.data.color ?? '#2563EB',
     sortOrder: 0,
     status: 'active',

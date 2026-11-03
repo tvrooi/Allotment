@@ -114,7 +114,7 @@ test.describe('register', () => {
     await form.getByRole('button', { name: 'Split transaction' }).click();
     await form
       .getByRole('combobox', { name: 'Split 1 category' })
-      .selectOption({ label: '🛒 Groceries' });
+      .selectOption({ label: 'Groceries' });
     await form.getByRole('textbox', { name: 'Split 1 amount' }).fill('60,50');
     await form.getByRole('textbox', { name: 'Split 2 amount' }).fill('39.50');
     await expect(form.getByText('Balanced')).toBeVisible();

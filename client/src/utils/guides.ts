@@ -17,7 +17,9 @@ export function guideStatus(guide: Guide, progress: GuideProgress): 'new' | 'upd
 }
 
 export type Banner =
-  { kind: 'welcome' } | { kind: 'notice' } | { kind: 'page'; guide: Guide; updated: boolean };
+  | { kind: 'notice' }
+  | { kind: 'page'; guide: Guide; updated: boolean; intro?: string }
+  | { kind: 'intro'; id: string; text: string };
 
 /**
  * The one guide banner a page shows, if any: the welcome tour offer (a new budget, on the
@@ -30,16 +32,27 @@ export function bannerFor(
   progress: GuideProgress | undefined,
   guides: Guide[],
   touring: boolean,
+  intros: Record<string, { id: string; text: string }> = {},
 ): Banner | null {
   if (!progress || touring) return null;
-  if (progress.welcomeTour === 'offer')
-    return pathname === '/dashboard' ? { kind: 'welcome' } : null;
+  // The welcome tour is offered once, in the Get started checklist (or the demo's bar), not
+  // as a banner of its own: one onboarding system at a time
+  if (progress.welcomeTour === 'offer') return null;
   if (progress.guidesNotice) return { kind: 'notice' };
   if (!progress.pageGuidesEnabled) return null;
+  const path = pathname.replace(/\/+$/, '') || '/';
+  const intro = intros[path];
   const guide = guideForPage(pathname, guides);
-  if (!guide) return null;
+  if (!guide) {
+    // A page without a guide still says what it's for, once
+    return intro && !progress.seenGuides[intro.id]
+      ? { kind: 'intro', id: intro.id, text: intro.text }
+      : null;
+  }
   const status = guideStatus(guide, progress);
-  return status === 'seen' ? null : { kind: 'page', guide, updated: status === 'updated' };
+  return status === 'seen'
+    ? null
+    : { kind: 'page', guide, updated: status === 'updated', intro: intro?.text };
 }
 
 /** Tips wait until a new person has taken or turned down the welcome tour: one thing at a time */

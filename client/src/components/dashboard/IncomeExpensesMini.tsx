@@ -74,7 +74,7 @@ export default function IncomeExpensesMini({ sixMonthsAgo, currentMonth }: Props
         <p className="text-sm text-text-tertiary mb-3">
           Net this month:{' '}
           <span
-            className={`font-semibold tabular-nums ${latestNet >= 0 ? 'text-positive' : 'text-negative'}`}
+            className={`font-semibold tabular-nums ${latestNet >= 0 ? 'text-positive' : 'text-text'}`}
           >
             {formatCurrency(latestNet)}
           </span>

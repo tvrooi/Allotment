@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CategoryIcon } from '../ui/CategoryIcon';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight, Eye, Pencil } from 'lucide-react';
 import { SpentBar } from './SpentBar';
@@ -171,8 +172,8 @@ function CategoryCard({
       data-testid="budget-card"
     >
       <div className="flex items-center gap-2">
-        <span className="flex-1 min-w-0 truncate text-[15px] font-medium text-text">
-          {showCategoryIcons && cat.icon ? `${cat.icon} ` : ''}
+        <span className="flex-1 min-w-0 truncate text-[15px] font-medium text-text inline-flex items-center gap-1.5">
+          {showCategoryIcons && <CategoryIcon icon={cat.icon} size={15} />}
           {cat.name}
         </span>
         <span

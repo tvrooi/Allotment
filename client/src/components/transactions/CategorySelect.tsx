@@ -42,7 +42,6 @@ export function CategorySelect({
         <optgroup key={g.id} label={g.name}>
           {g.categories.map((c) => (
             <option key={c.id} value={c.id}>
-              {showCategoryIcons && c.icon ? `${c.icon} ` : ''}
               {c.name}
             </option>
           ))}

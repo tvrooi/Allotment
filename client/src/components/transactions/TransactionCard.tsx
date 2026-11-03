@@ -1,4 +1,5 @@
 import { RowMarks } from './TransactionMarks';
+import { CategoryIcon } from '../ui/CategoryIcon';
 import { useMemo } from 'react';
 import { ArrowLeftRight, ChevronRight, Lock, MoreHorizontal, Split } from 'lucide-react';
 import { PayeeIcon } from '../payees/PayeeIcon';
@@ -54,8 +55,8 @@ export function TransactionCard({
       <ArrowLeftRight size={12} aria-hidden /> Transfer
     </span>
   ) : categoryEntry ? (
-    <span>
-      {showCategoryIcons && categoryEntry.icon ? `${categoryEntry.icon} ` : ''}
+    <span className="inline-flex items-center gap-1">
+      {showCategoryIcons && <CategoryIcon icon={categoryEntry.icon} size={12} />}
       {categoryEntry.name}
     </span>
   ) : (

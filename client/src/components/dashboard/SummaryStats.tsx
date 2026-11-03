@@ -3,6 +3,7 @@ import { format, subMonths } from 'date-fns';
 import { useBudget } from '../../hooks/useBudget';
 import { useIncomeVsExpenses } from '../../hooks/useReports';
 import { formatCurrency } from '../../utils/currency';
+import { leftToSpend as envelopeLeftToSpend } from '../../utils/leftToSpend';
 import { StatCard } from '../ui/StatCard';
 import { monthsToAverage, periodFlow, savingsRate } from '../../utils/reportSummary';
 import { usePreferencesStore } from '../../store/preferencesStore';
@@ -39,13 +40,14 @@ export default function SummaryStats({ currentMonth }: Props) {
 
   const expenseCats = budgetData.filter((g) => g.isIncome === 0).flatMap((g) => g.categories);
 
-  const totalBudgeted = expenseCats.reduce((sum, c) => sum + c.budgeted, 0);
+  // The envelopes' Available balances (carry-over and transfers count), like the dashboard's
+  // headline and the Budget page
+  const { left: leftToSpend, planned } = envelopeLeftToSpend(budgetData);
   const totalSpent = expenseCats.reduce((sum, c) => sum + Math.abs(c.spent), 0);
-  const leftToSpend = totalBudgeted - totalSpent;
-  const spentPct = totalBudgeted > 0 ? totalSpent / totalBudgeted : 0;
+  const spentPct = totalSpent / Math.max(totalSpent + leftToSpend, 1);
 
   const ltsColor =
-    spentPct > 1 ? 'text-negative' : spentPct >= 0.8 ? 'text-caution' : 'text-positive';
+    leftToSpend < 0 ? 'text-negative' : spentPct >= 0.8 ? 'text-caution' : 'text-positive';
 
   // Only months since the budget's first income or spending (not the full 12 before it)
   const monthCount = monthsToAverage(ieData);
@@ -58,7 +60,7 @@ export default function SummaryStats({ currentMonth }: Props) {
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      {totalBudgeted > 0 ? (
+      {planned ? (
         <StatCard label="Left to Spend" value={formatCurrency(leftToSpend)} valueColor={ltsColor} />
       ) : (
         <StatCard label="Left to Spend" value="—" sub="No budget set this month" />
@@ -71,7 +73,7 @@ export default function SummaryStats({ currentMonth }: Props) {
       <StatCard
         label="Avg Monthly Expenses"
         value={formatCurrency(avgExpenses)}
-        valueColor={avgExpenses > 0 ? 'text-negative' : undefined}
+        // Spending isn't an error: red is kept for overspent and negative balances
       />
       <div className="bg-surface rounded-lg px-5 py-4 border border-border-light shadow-card">
         <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -91,7 +93,7 @@ export default function SummaryStats({ currentMonth }: Props) {
         </div>
         {rate !== null ? (
           <p
-            className={`text-xl font-semibold tabular-nums tracking-tight mt-2 ${rate >= savingsGoal ? 'text-positive' : 'text-negative'}`}
+            className={`text-xl font-semibold tabular-nums tracking-tight mt-2 ${rate >= savingsGoal ? 'text-positive' : 'text-text'}`}
           >
             {rate}%
           </p>

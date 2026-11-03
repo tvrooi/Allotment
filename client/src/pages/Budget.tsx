@@ -1,4 +1,5 @@
 import { CardPayments } from '../components/budget/CardPayments';
+import { CategoryIcon } from '../components/ui/CategoryIcon';
 import { MoneyMoves } from '../components/budget/MoneyMoves';
 import { AssistantSuggestions } from '../components/budget/AssistantSuggestions';
 import { useState, useRef, useMemo, type ElementRef } from 'react';
@@ -38,12 +39,13 @@ import { PaydayPlan } from '../components/budget/PaydayPlan';
 import { MissingRatesBanner } from '../components/currency/MissingRatesBanner';
 import { useIsPhone } from '../hooks/useIsPhone';
 import { useCanSave } from '../hooks/useConnection';
-import { ExternalLink } from '../components/ui/ExternalLink';
-import { docsUrl } from '../utils/project';
 import { categoryFigures, splitCategories } from '../utils/budgetFigures';
 import { TransferredNote } from '../components/budget/TransferredNote';
 import { ExpectedNote } from '../components/budget/ExpectedNote';
 import type { BudgetCategory, BudgetGroup, BudgetType } from '../types';
+import { RentOrOwn } from '../components/budget/RentOrOwn';
+import { BudgetViewSwitch } from '../components/budget/BudgetViewSwitch';
+import { GuideLink } from '../components/guide/GuideLink';
 import { Tip } from '../components/guide/Tip';
 import { TIPS } from '../guides';
 import { useMenuKeyboard } from '../hooks/useMenuKeyboard';
@@ -165,21 +167,25 @@ function CategoryRow({
           : []),
       ];
 
+  // Available is the column to read: a pill only when there's something in it (or it's
+  // overspent), plain grey for $0
   let remainingClass: string;
-  const pillBase = 'font-medium rounded-full px-2.5 py-0.5 text-text';
+  const pillBase = 'font-semibold rounded-full px-2.5 py-0.5 text-text';
   if (remaining > 0) {
     remainingClass = `${pillBase} bg-positive/20`;
   } else if (remaining < 0) {
     remainingClass = `${pillBase} bg-negative/20`;
   } else {
-    remainingClass = `${pillBase} bg-surface-alt`;
+    remainingClass = 'px-2.5 py-0.5 text-text-tertiary';
   }
 
   return (
     <tr className="border-b border-border-light">
       <td className="py-1.5 pb-2 pl-10 pr-3">
         <div className="text-sm text-text">
-          {showCategoryIcons && cat.icon && <span className="text-xs mr-1">{cat.icon}</span>}
+          {showCategoryIcons && (
+            <CategoryIcon icon={cat.icon} size={14} className="mr-1.5 inline" />
+          )}
           {cat.name}
         </div>
         <SpentBar
@@ -226,9 +232,12 @@ function CategoryRow({
               disabled={!canSave}
               title={canSave ? undefined : 'Saving is paused until Allotment reconnects'}
               aria-label={`${isIncome ? 'Expected from' : 'Planned for'} ${cat.name}: ${formatCurrency(cat.budgeted)}`}
-              className="tabular-nums text-sm rounded px-2 py-0.5 min-w-[5.5rem] text-right border border-border bg-surface transition-colors hover:border-text-tertiary cursor-text disabled:cursor-not-allowed disabled:opacity-60"
+              // Plain text until pointed at or focused: a column of empty boxes says nothing
+              className="tabular-nums text-sm rounded px-2 py-0.5 min-w-[5.5rem] text-right border border-transparent bg-transparent transition-colors hover:border-border hover:bg-surface focus-visible:border-brand-500 focus-visible:bg-surface cursor-text disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <span className="text-text-secondary">{formatCurrency(cat.budgeted)}</span>
+              <span className={cat.budgeted ? 'text-text' : 'text-text-tertiary'}>
+                {formatCurrency(cat.budgeted)}
+              </span>
             </button>
           )}
         </div>
@@ -384,7 +393,13 @@ function BudgetTypeSection({
   onApplyBulk,
   showAll,
 }: BudgetTypeSectionProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  // Once something's planned, a section with no money in it at all starts collapsed
+  const [collapsed, setCollapsed] = useState(
+    () =>
+      !showAll &&
+      categories.length > 0 &&
+      categories.every((c) => !c.budgeted && !c.balance && !c.spent && !c.carryOver),
+  );
   const [showUnbudgeted, setShowUnbudgeted] = useState(false);
 
   const totals = useMemo(
@@ -632,12 +647,15 @@ export default function BudgetPage() {
     return (
       <div className="flex flex-col h-full bg-surface text-text">
         <div className="px-6 py-4 border-b border-border flex flex-wrap items-center gap-3">
-          <Button variant="secondary" onClick={() => setPaydayView(false)}>
-            Monthly budget
-          </Button>
           <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight">
             Until next payday
           </h1>
+          <BudgetViewSwitch
+            current="payday"
+            year={selectedMonth.slice(0, 4)}
+            onMonth={() => setPaydayView(false)}
+            onPayday={() => setPaydayView(true)}
+          />
         </div>
         <div className="flex-1 overflow-y-auto">
           <PaydayPlan />
@@ -660,15 +678,13 @@ export default function BudgetPage() {
           <div className="flex items-center gap-2 flex-wrap">
             {!isPhone && (
               <>
-                <ButtonLink
-                  variant="ghost"
-                  size="sm"
-                  to={`/budget/year/${selectedMonth.slice(0, 4)}`}
-                >
-                  Year
-                </ButtonLink>
+                <BudgetViewSwitch
+                  current="month"
+                  year={selectedMonth.slice(0, 4)}
+                  onMonth={() => setPaydayView(false)}
+                  onPayday={() => setPaydayView(true)}
+                />
                 <Button
-                  variant="secondary"
                   size="sm"
                   onClick={() => autoAssignRef.current?.open()}
                   disabled={!canSaveBudget}
@@ -685,9 +701,6 @@ export default function BudgetPage() {
                     Fund targets ({underfundedCount})
                   </Button>
                 )}
-                <Button variant="secondary" size="sm" onClick={() => setPaydayView(true)}>
-                  Until next payday
-                </Button>
               </>
             )}
             <AutoAssign ref={autoAssignRef} month={selectedMonth} hideButton />
@@ -815,18 +828,31 @@ export default function BudgetPage() {
       {nothingPlanned && !beforeStart && !(isPhone && needle) && (
         <div className="flex items-start gap-3 px-6 py-3 bg-brand-50 border-b border-border-light text-sm text-text-secondary shrink-0">
           <Lightbulb size={16} className="text-brand-600 shrink-0 mt-0.5" aria-hidden />
-          <p>
-            No assignments for {format(monthDate, 'MMMM')} yet. {isPhone ? 'Tap' : 'Click'} an
-            amount to assign money you already have to an envelope.
-            {!isPhone &&
-              " Income you receive is ready to assign straight away; amounts beside income are only what you expect. Expense balances carry forward. Categories you leave empty are tucked away once you've planned something."}{' '}
-            <ExternalLink
-              href={docsUrl('budgeting')}
-              className="font-medium text-brand-600 hover:text-brand-700"
-            >
-              How budgeting works
-            </ExternalLink>
-          </p>
+          <div>
+            <p>
+              No money assigned for {format(monthDate, 'MMMM')} yet. {isPhone ? 'Tap' : 'Click'} an
+              amount to give money you already have a job.
+            </p>
+            {!isPhone && (
+              <details className="mt-1">
+                <summary className="cursor-pointer w-fit font-medium text-brand-600 hover:text-brand-700">
+                  How this works
+                </summary>
+                <p className="mt-1">
+                  Pay you’ve received is ready to assign straight away; the amounts beside income
+                  are only what you expect. What’s left in an envelope carries into next month.
+                  Envelopes you leave empty are tucked away once you’ve planned something.{' '}
+                  <GuideLink
+                    page="budgeting"
+                    className="font-medium text-brand-600 hover:text-brand-700"
+                  >
+                    Read the guide
+                  </GuideLink>
+                </p>
+              </details>
+            )}
+            <RentOrOwn />
+          </div>
         </div>
       )}
 

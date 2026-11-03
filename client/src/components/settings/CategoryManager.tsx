@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Check, X } from 'lucide-react';
 import { usePreferencesStore } from '../../store/preferencesStore';
-import { EmojiPickerPopover } from '../ui/EmojiPickerPopover';
+import { IconPickerPopover } from '../ui/IconPickerPopover';
+import { CategoryIcon } from '../ui/CategoryIcon';
 import {
   DndContext,
   closestCenter,
@@ -125,8 +126,8 @@ function SortableCategoryRow({
         className="flex-1 min-w-0 flex items-center gap-3 pr-3 py-2.5 text-left cursor-pointer"
       >
         {showCategoryIcons && (
-          <span className="shrink-0 text-base w-7 h-7 flex items-center justify-center">
-            {cat.icon || '📦'}
+          <span className="shrink-0 w-7 h-7 flex items-center justify-center">
+            <CategoryIcon icon={cat.icon || 'Package'} size={16} />
           </span>
         )}
         <span className="flex-1 min-w-0 text-sm text-text truncate">{cat.name}</span>
@@ -277,12 +278,12 @@ function GroupCard({
                   aria-label="Pick icon"
                   title="Pick icon"
                 >
-                  {newCategoryIcon || '📦'}
+                  <CategoryIcon icon={newCategoryIcon || 'Package'} size={16} />
                 </button>
                 {showNewCatEmojiPicker && (
-                  <EmojiPickerPopover
+                  <IconPickerPopover
                     anchorRef={newCatEmojiButtonRef}
-                    onSelect={(emoji) => onNewCategoryIconChange(emoji)}
+                    onSelect={(icon) => onNewCategoryIconChange(icon)}
                     onClose={() => setShowNewCatEmojiPicker(false)}
                   />
                 )}

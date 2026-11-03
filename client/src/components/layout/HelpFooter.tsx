@@ -1,6 +1,7 @@
 import { BookOpen, MessageCircleQuestion } from 'lucide-react';
 import { ExternalLink } from '../ui/ExternalLink';
-import { DOCS_URL, ISSUES_URL, SOURCE_CODE_URL } from '../../utils/project';
+import { ISSUES_URL, SOURCE_CODE_URL } from '../../utils/project';
+import { GuideLink } from '../guide/GuideLink';
 
 /** "Learn more" links at the bottom of a page: the user guide, the source code and issues */
 export function HelpFooter({ className = '' }: { className?: string }) {
@@ -10,9 +11,9 @@ export function HelpFooter({ className = '' }: { className?: string }) {
       className={`flex flex-wrap items-center justify-center gap-x-5 gap-y-2 py-6 text-xs text-text-tertiary ${className}`}
     >
       <span>New to Allotment?</span>
-      <ExternalLink href={DOCS_URL} className={link} icon={false}>
+      <GuideLink className={`inline-flex items-center ${link}`}>
         <BookOpen size={13} aria-hidden /> Read the guide
-      </ExternalLink>
+      </GuideLink>
       <ExternalLink href={SOURCE_CODE_URL} className={link} icon={false}>
         <GithubMark /> Source on GitHub
       </ExternalLink>

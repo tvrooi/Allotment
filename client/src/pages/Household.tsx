@@ -262,10 +262,18 @@ export default function HouseholdPage() {
         </Select>
       </label>
       <p className="text-xs text-text-tertiary">
-        Linking a pool removes its cash and activity from personal budget availability. Categorize
-        your confirmed transfers into it as contributions. Existing bank history remains intact;
-        review past budget figures after linking.
+        A shared account (like 2Up) that you all pay into. Optional.
       </p>
+      <details className="text-xs text-text-tertiary">
+        <summary className="cursor-pointer w-fit font-medium text-text-secondary">
+          How this works
+        </summary>
+        <p className="mt-1">
+          Money in the pool is shared, so it stops counting as yours to budget. Categorise your
+          transfers into it as contributions. Your bank history stays as it is; check past budget
+          figures after linking.
+        </p>
+      </details>
       <div className="flex justify-end gap-2">
         {groups.length > 0 && (
           <Button type="button" variant="secondary" onClick={() => setCreating(false)}>
@@ -288,10 +296,16 @@ export default function HouseholdPage() {
           <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
             Household
           </h1>
-          <p className="text-sm text-text-tertiary mt-0.5">
-            Agreed shares, pool advances and repayments, tracked privately. Bank payments keep their
-            full amounts; claims are not spendable cash.
-          </p>
+          <div className="text-sm text-text-tertiary mt-0.5">
+            Split bills with the people you live with and see who owes whom.{' '}
+            <details className="inline">
+              <summary className="inline cursor-pointer font-medium text-text-secondary">
+                How this works
+              </summary>{' '}
+              Shares and repayments are tracked privately, only in your budget. Bank payments keep
+              their full amounts; what others owe you isn’t money you can spend yet.
+            </details>
+          </div>
         </div>
         {groups.length > 0 && (
           <div className="flex items-center gap-2">
@@ -338,7 +352,7 @@ export default function HouseholdPage() {
                 Create a household
               </h2>
               <p className="text-sm text-text-secondary mb-4">
-                Add the people who share costs with you. They don’t get access to your budget.
+                Who do you share costs with? They don’t get access to your budget.
               </p>
               {createForm}
             </section>

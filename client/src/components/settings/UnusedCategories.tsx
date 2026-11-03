@@ -27,8 +27,7 @@ export function UnusedCategories() {
   const unused = all.filter((c) => !c.hidden && c.transactionCount === 0 && !c.everAssigned);
   const hidden = all.filter((c) => c.hidden);
   if (!unused.length && !hidden.length) return null;
-  const label = (c: Category & { groupName: string }) =>
-    `${c.icon ? `${c.icon} ` : ''}${c.name} · ${c.groupName}`;
+  const label = (c: Category & { groupName: string }) => `${c.name} · ${c.groupName}`;
 
   return (
     <section

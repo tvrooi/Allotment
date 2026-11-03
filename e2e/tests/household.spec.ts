@@ -107,6 +107,8 @@ test('shares a payment with the household in one step, with the default split', 
 
   await open(page, `/accounts/${account.id}`);
   await page.getByText('Groceries run').first().click();
+  // Sharing the whole list waits for "Select all"
+  await page.getByRole('button', { name: 'Select all 1' }).click();
   await page.getByRole('button', { name: 'Share with household' }).click();
   const dialog = page.getByRole('dialog', { name: 'Share with household' });
   await dialog.getByRole('button', { name: 'Share', exact: true }).click();

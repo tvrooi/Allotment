@@ -28,6 +28,7 @@ import { usePreferencesStore } from '../../store/preferencesStore';
 import { useSafeModeStore } from '../../store/safeModeStore';
 import { SidebarAccountList } from './SidebarAccountList';
 import { ServerStatus } from './ServerStatus';
+import { useNextSteps } from '../../hooks/useNextSteps';
 import { HelpMenu } from '../guide/HelpMenu';
 import { BrandName } from '../ui/BrandName';
 import logoUrl from '/logo.png';
@@ -37,13 +38,15 @@ interface NavItemProps {
   icon: React.ReactNode;
   label: string;
   collapsed: boolean;
+  /** A count of things waiting there (Review's "Do this next") */
+  badge?: number;
 }
 
-function NavItem({ to, icon, label, collapsed }: NavItemProps) {
+function NavItem({ to, icon, label, collapsed, badge }: NavItemProps) {
   return (
     <NavLink
       to={to}
-      title={collapsed ? label : undefined}
+      title={badge ? `${label}: ${badge} to do` : collapsed ? label : undefined}
       className={({ isActive }) =>
         // Phones (the drawer): full-size touch targets
         `flex items-center gap-3 py-2 max-md:min-h-11 max-md:text-[15px] px-3 rounded-md text-sm font-medium transition-colors ${
@@ -61,6 +64,15 @@ function NavItem({ to, icon, label, collapsed }: NavItemProps) {
       >
         {label}
       </span>
+      {!!badge && (
+        // Kept out of the link's name ("Review"); the count is in its tooltip and on the page
+        <span
+          aria-hidden
+          className={`ml-auto shrink-0 min-w-5 h-5 px-1.5 rounded-full bg-brand-600 text-brand-contrast text-[11px] font-semibold flex items-center justify-center transition-opacity duration-200 ${collapsed ? 'opacity-0' : 'opacity-100'}`}
+        >
+          {badge}
+        </span>
+      )}
     </NavLink>
   );
 }
@@ -124,6 +136,7 @@ export function Sidebar() {
 
 /** The sidebar's links, account list and footer, shared by the desktop sidebar and the phone drawer. */
 function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?: () => void }) {
+  const reviewCount = useNextSteps().length;
   const sidebarMode = usePreferencesStore((s) => s.sidebarMode);
   const setSidebarMode = usePreferencesStore((s) => s.setSidebarMode);
   const pinned = sidebarMode === 'persistent';
@@ -157,9 +170,8 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
             <HeaderTooltip>Help &amp; guides</HeaderTooltip>
           </HelpMenu>
           <SafeModeButton className={`group ${headerButton}`} />
-          {/* The phone drawer closes; the desktop sidebar has a pin instead: pinned stays open,
-              unpinned collapses and opens on hover (the Sidebar setting in Preferences) */}
-          {onClose ? (
+          {/* The phone drawer closes; the desktop sidebar's pin is a labelled control at its foot */}
+          {onClose && (
             <button
               type="button"
               onClick={onClose}
@@ -167,22 +179,6 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
               className={headerButton}
             >
               <X size={18} />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setSidebarMode(pinned ? 'auto-hide' : 'persistent')}
-              aria-pressed={pinned}
-              aria-label="Pin sidebar"
-              className={`group ${headerButton}`}
-            >
-              <Pin
-                size={16}
-                aria-hidden
-                fill={pinned ? 'currentColor' : 'none'}
-                className={pinned ? 'text-sidebar-text-hi' : undefined}
-              />
-              <HeaderTooltip>{pinned ? 'Unpin sidebar' : 'Pin sidebar'}</HeaderTooltip>
             </button>
           )}
         </div>
@@ -221,6 +217,7 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
             icon={<ClipboardCheck size={18} />}
             label="Review"
             collapsed={!isExpanded}
+            badge={reviewCount}
           />
           <NavItem
             to="/recurring"
@@ -301,9 +298,29 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
         />
       </nav>
 
-      {/* Where the data lives and whether the server is reachable */}
-      <div className="shrink-0 py-1.5 px-3 border-t border-sidebar-border">
-        <ServerStatus collapsed={!isExpanded} />
+      {/* Where the data lives and whether the server is reachable, and (desktop) the pin:
+          pinned stays open, unpinned collapses and opens on hover (Preferences → Sidebar) */}
+      <div className="shrink-0 py-1.5 px-3 border-t border-sidebar-border flex items-center gap-1">
+        <div className="min-w-0 flex-1">
+          <ServerStatus collapsed={!isExpanded} />
+        </div>
+        {!onClose && isExpanded && (
+          <button
+            type="button"
+            onClick={() => setSidebarMode(pinned ? 'auto-hide' : 'persistent')}
+            aria-pressed={pinned}
+            aria-label="Pin sidebar"
+            title={
+              pinned
+                ? 'Unpin: the sidebar folds away until you point at it'
+                : 'Pin: keep the sidebar open'
+            }
+            className="shrink-0 inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi"
+          >
+            <Pin size={12} aria-hidden fill={pinned ? 'currentColor' : 'none'} />
+            {pinned ? 'Pinned' : 'Pin'}
+          </button>
+        )}
       </div>
     </div>
   );

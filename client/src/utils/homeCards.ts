@@ -8,7 +8,7 @@ export const HOME_CARDS = [
   { id: 'income-expenses', label: 'Income & expenses', wide: false },
   { id: 'spending-comparison', label: 'Spending comparison', wide: false },
   { id: 'budget-progress', label: 'Budget progress', wide: false },
-  { id: 'upcoming-bills', label: 'Upcoming bills', wide: false },
+  { id: 'upcoming-bills', label: 'Bills and income', wide: false },
   { id: 'spending-breakdown', label: 'Spending breakdown', wide: false },
   { id: 'recent-transactions', label: 'Recent transactions', wide: false },
 ] as const;

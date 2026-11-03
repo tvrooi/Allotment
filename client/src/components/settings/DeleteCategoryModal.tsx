@@ -74,7 +74,6 @@ export function DeleteCategoryModal({
                   .filter((c) => c.id !== categoryId)
                   .map((c) => (
                     <option key={c.id} value={c.id}>
-                      {showCategoryIcons && c.icon ? `${c.icon} ` : ''}
                       {c.name}
                     </option>
                   ))}

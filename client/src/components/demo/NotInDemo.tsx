@@ -4,10 +4,9 @@ import { Button } from '../ui/Button';
 import { DOWNLOAD_URL } from './DemoBanner';
 
 const TEXT =
-  "Bank connections need the Allotment app, so the demo can't connect a bank or take bank " +
-  'credentials. In the app, Plaid, SimpleFIN or Enable Banking (European banks) brings in your ' +
-  'transactions automatically, and ' +
-  'you can also import CSV files from your bank.';
+  "Bank connections need the Allotment app, so the demo can't take an Up token or reach a " +
+  'bank. In the app, Up brings in your settled transactions, Savers and 2Up included, and other ' +
+  'banks connect through Plaid, SimpleFIN, Enable Banking or CSV files.';
 
 /** Shown in the demo instead of bank connection setup (see ConnectedAccounts). */
 export function NotInDemo() {

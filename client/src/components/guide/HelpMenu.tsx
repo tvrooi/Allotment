@@ -1,11 +1,10 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { BookOpen, CircleHelp, Compass, ListChecks, MapPin } from 'lucide-react';
 import { GUIDES } from '../../guides';
 import { useGuideStore } from '../../store/guideStore';
 import { guideForPage } from '../../utils/guides';
-import { DOCS_URL } from '../../utils/project';
 
 const MENU_WIDTH = 240;
 
@@ -113,17 +112,10 @@ export function HelpMenu({
               <ListChecks size={15} className="text-text-tertiary shrink-0" aria-hidden />
               All guides and tips
             </button>
-            <a
-              href={DOCS_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={item}
-              onClick={() => setOpen(false)}
-            >
+            <Link to="/guide" className={item} onClick={() => setOpen(false)}>
               <BookOpen size={15} className="text-text-tertiary shrink-0" aria-hidden />
-              Read the online guide
-              <span className="sr-only">(opens in a new tab)</span>
-            </a>
+              Read the guide
+            </Link>
           </div>,
           document.body,
         )}

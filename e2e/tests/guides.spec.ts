@@ -21,12 +21,14 @@ test('a new budget is offered the welcome tour, which walks through the basics',
   api,
 }) => {
   await open(page, '/dashboard');
+  // The tour is offered in the Get started checklist, not a banner of its own
   const banner = page.getByRole('region', { name: 'Guide' });
-  await expect(banner).toContainText('New to Allotment?');
+  await expect(page.getByRole('heading', { name: 'Get started with Allotment' })).toBeVisible();
+  await expect(banner).toBeHidden();
   // Tips wait until the tour is decided
   await expect(page.getByRole('note', { name: 'Tip' })).toHaveCount(0);
 
-  await banner.getByRole('button', { name: 'Take the tour' }).click();
+  await page.getByRole('button', { name: /Show me around/ }).click();
   const tour = page.getByRole('dialog');
   await expect(tour.getByRole('heading', { name: 'Welcome to Allotment' })).toBeFocused();
   await expect(banner).toBeHidden();
@@ -61,16 +63,26 @@ test('a new budget is offered the welcome tour, which walks through the basics',
 
   const progress = await api.call('GET', '/guides');
   expect(progress).toMatchObject({ welcomeTour: 'done', seenGuides: { welcome: 1 } });
+  // Now the dashboard says what it's for, once
+  await expect(banner).toContainText('Your home page');
+  await banner.getByRole('button', { name: 'Got it' }).click();
   await expect(banner).toBeHidden();
+  expect((await api.call('GET', '/guides')).seenGuides).toMatchObject({ 'intro.dashboard': 1 });
 });
 
 test('leaving the tour, tips and a page’s own guide', async ({ page, api }) => {
   await open(page, '/dashboard');
-  await page.getByRole('button', { name: 'Take the tour' }).click();
+  await page.getByRole('button', { name: /Show me around/ }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toBeHidden();
   expect(await api.call('GET', '/guides')).toMatchObject({ welcomeTour: 'dismissed' });
+
+  // Now the dashboard says what it's for; one thing at a time, so its tip waits for that
+  const intro = page.getByRole('region', { name: 'Guide' });
+  await expect(intro).toContainText('Your home page');
+  await expect(page.getByRole('note', { name: 'Tip' })).toHaveCount(0);
+  await intro.getByRole('button', { name: 'Got it' }).click();
 
   // Now tips show, once each
   const tip = page.getByRole('note', { name: 'Tip' });
@@ -89,7 +101,11 @@ test('leaving the tour, tips and a page’s own guide', async ({ page, api }) =>
   await guide.getByRole('button', { name: 'Close guide' }).click();
   await expect(guide).toBeHidden();
   await expect(banner).toBeHidden();
-  expect((await api.call('GET', '/guides')).seenGuides).toEqual({ welcome: 1, budget: 1 });
+  expect((await api.call('GET', '/guides')).seenGuides).toEqual({
+    welcome: 1,
+    'intro.dashboard': 1,
+    budget: 1,
+  });
 });
 
 test('guides can be found again, and tips turned off', async ({ page, api }) => {

@@ -1,22 +1,28 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Download, House, Loader2, RotateCcw } from 'lucide-react';
+import { Compass, Download, House, Loader2, RotateCcw } from 'lucide-react';
 import { IS_DEMO, resetDemo } from '../../demo/demoApi';
+import { useGuideProgress } from '../../hooks/useGuides';
+import { useGuideStore } from '../../store/guideStore';
 
-/** The website's download page (the demo is served from the website, under /demo/) */
-export const DOWNLOAD_URL = '/download';
-/** The website's homepage, which the demo was opened from */
-export const HOME_URL = '/';
+/** Allotment's releases on GitHub: the desktop installers and the Home Assistant app */
+export const DOWNLOAD_URL = 'https://github.com/tvrooi/Allotment/releases/latest';
+/** Allotment's home: its README on GitHub */
+export const HOME_URL = 'https://github.com/tvrooi/Allotment#readme';
 
 /**
- * The demo (website "Try the demo"): says this is a sample budget that isn't saved, and offers
- * to start over, go back to the website's homepage or download the app. Renders nothing outside the demo build.
+ * The demo ("Try the demo"): one strip that says this is a sample budget that isn't saved,
+ * offers the two-minute tour, starting over, Allotment's home page and the download. On a
+ * phone it's a single slim line. Renders nothing outside the demo build.
  */
 export function DemoBanner() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [resetting, setResetting] = useState(false);
+  const progress = useGuideProgress().data;
+  const touring = useGuideStore((s) => !!s.active);
+  const startGuide = useGuideStore((s) => s.start);
   if (!IS_DEMO) return null;
 
   async function startOver() {
@@ -31,50 +37,57 @@ export function DemoBanner() {
   }
 
   const button =
-    'inline-flex items-center justify-center gap-1.5 px-2.5 py-1 max-md:min-h-11 text-xs font-medium rounded-md transition-colors whitespace-nowrap';
+    'inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap';
+  const quiet = `${button} border border-border bg-surface text-text-secondary hover:text-text hover:bg-surface-alt`;
+  const offerTour = !touring && progress?.welcomeTour !== 'done';
   return (
     <div
       role="region"
       aria-label="Demo"
-      className="shrink-0 flex items-center gap-3 px-4 py-2 max-md:py-1.5 text-sm bg-brand-50 text-text border-b border-brand-200"
+      className="shrink-0 flex items-center gap-3 px-4 max-md:px-3 py-2 max-md:py-0 max-md:h-9 text-sm max-md:text-xs bg-brand-50 text-text border-b border-brand-200"
     >
-      <p className="min-w-0 flex-1">
-        <span className="font-medium">
-          This is a demo budget<span className="md:hidden">.</span>
-        </span>
-        <span className="md:hidden text-text-secondary"> Nothing is saved.</span>
-        <span className="max-md:hidden text-text-secondary">
-          . Change anything you like. Nothing is saved, and closing the tab starts it fresh.
+      <p className="min-w-0 flex-1 truncate">
+        <span className="font-medium">Demo</span>
+        <span className="text-text-secondary">
+          {' · '}
+          <span className="md:hidden">nothing saved</span>
+          <span className="max-md:hidden">
+            a sample budget from Up. Change anything; nothing is saved.
+          </span>
         </span>
       </p>
       <div className="flex items-center gap-2 shrink-0">
-        <a
-          href={HOME_URL}
-          aria-label="Back to home"
-          title="Back to the Allotment homepage"
-          className={`${button} max-md:min-w-11 border border-border bg-surface text-text-secondary hover:text-text hover:bg-surface-alt`}
-        >
-          <House size={14} aria-hidden />
-          <span className="max-md:hidden">Back to home</span>
-        </a>
+        {offerTour && (
+          <button
+            type="button"
+            onClick={() => startGuide('welcome')}
+            className={`${quiet} max-md:hidden`}
+          >
+            <Compass size={14} aria-hidden />
+            Take the 2-minute tour
+          </button>
+        )}
         <button
           type="button"
           onClick={() => void startOver()}
           disabled={resetting}
-          aria-label="Start over"
           title="Start over with the original demo budget"
-          className={`${button} max-md:min-w-11 border border-border bg-surface text-text-secondary hover:text-text hover:bg-surface-alt disabled:opacity-50`}
+          className={`${quiet} max-md:hidden disabled:opacity-50`}
         >
           {resetting ? (
             <Loader2 size={14} className="animate-spin" aria-hidden />
           ) : (
             <RotateCcw size={14} aria-hidden />
           )}
-          <span className="max-md:hidden">Start over</span>
+          Start over
         </button>
+        <a href={HOME_URL} className={`${quiet} max-md:hidden`}>
+          <House size={14} aria-hidden />
+          Back to home
+        </a>
         <a
           href={DOWNLOAD_URL}
-          className={`${button} bg-brand-600 text-brand-contrast hover:bg-brand-700`}
+          className={`${button} max-md:px-2 max-md:py-0.5 bg-brand-600 text-brand-contrast hover:bg-brand-700`}
         >
           <Download size={14} aria-hidden />
           Download<span className="max-md:hidden"> Allotment</span>

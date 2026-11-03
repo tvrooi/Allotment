@@ -9,8 +9,8 @@ test('hides, moves and resets home cards, keeping them across a reload', async (
   const cards = page.locator('[data-testid^="home-card-"]');
   await expect(cards.first()).toHaveAttribute('data-testid', 'home-card-net-worth');
 
-  await page.getByRole('button', { name: 'Customize' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Customize home' });
+  await page.getByRole('button', { name: 'Customise' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Customise home' });
   await dialog.getByRole('checkbox', { name: 'Net worth' }).uncheck();
   await dialog.getByRole('button', { name: 'Move Recent transactions up' }).click();
   await dialog.getByRole('button', { name: 'Done' }).click();
@@ -27,7 +27,7 @@ test('hides, moves and resets home cards, keeping them across a reload', async (
   );
 
   // Hiding everything leaves a way back, and nothing in the budget changed
-  await page.getByRole('button', { name: 'Customize' }).click();
+  await page.getByRole('button', { name: 'Customise' }).click();
   for (const box of await dialog.getByRole('checkbox').all()) await box.uncheck();
   await dialog.getByRole('button', { name: 'Done' }).click();
   await expect(page.getByText('All cards are hidden')).toBeVisible();

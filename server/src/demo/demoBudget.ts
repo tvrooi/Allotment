@@ -1,6 +1,7 @@
 /**
- * The demo budget: a couple with a median household income, about 18 months of history
- * ending today, with every feature in use (see README in ../browser). Pure: it takes today's
+ * The demo budget: an Australian couple banking with Up (a Spending account, two Savers and a
+ * shared 2Up account), paid fortnightly, with about 18 months of history ending today and
+ * every feature in use (see README in ../browser). Pure: it takes today's
  * date and returns rows, the same rows every time for the same day (a seeded random
  * generator, readable ids), so a visitor always sees a coherent, finished-looking budget.
  */
@@ -38,8 +39,6 @@ import {
   type RecurrenceType,
 } from '../utils/recurrence.js';
 import type { Action, Condition } from '../services/rulesEngine.js';
-import { buildRateBook } from '../services/exchangeRates.js';
-import { mainAmountFor } from '../services/mainAmounts.js';
 import { DEMO_LOGOS, type DemoLogo } from './logos.js';
 
 type Row<T extends { $inferInsert: unknown }> = T['$inferInsert'];
@@ -52,9 +51,9 @@ export interface ScheduleLink {
 }
 
 export interface DemoBudget {
-  /** In US dollars, with one account in euros */
+  /** In Australian dollars, like everything Up holds */
   budgetSettings: Row<typeof budgetSettings>[];
-  /** Daily ECB-style euro rates for the whole history (made up, but plausible) */
+  /** None: every account is in the budget's own currency */
   exchangeRates: Row<typeof exchangeRates>[];
   categoryGroups: Row<typeof categoryGroups>[];
   categories: Row<typeof categories>[];
@@ -101,83 +100,85 @@ const GROUPS: {
     name: 'Income',
     isIncome: true,
     cats: [
-      ['paychecks', 'Paychecks', '💵'],
-      ['interest', 'Interest', '💹'],
-      ['otherIncome', 'Other Income', '💰'],
+      ['paychecks', 'Pay', 'Banknote'],
+      ['interest', 'Interest', 'Percent'],
+      ['otherIncome', 'Other Income', 'Coins'],
     ],
   },
   {
     key: 'housing',
-    name: 'Housing',
+    name: 'Home',
     cats: [
-      ['rent', 'Rent', '🏠', 'fixed'],
-      ['rentersInsurance', 'Renters Insurance', '🛡️', 'fixed'],
-      ['homeGoods', 'Home Goods', '🛋️', 'flexible'],
+      ['rent', 'Rent', 'House', 'fixed'],
+      ['rentersInsurance', 'Contents Insurance', 'Shield', 'fixed'],
+      ['homeGoods', 'Home Goods', 'Sofa', 'flexible'],
     ],
   },
   {
     key: 'bills',
-    name: 'Bills & Utilities',
+    name: 'Bills',
     cats: [
-      ['electric', 'Electric', '⚡', 'fixed'],
-      ['internet', 'Internet', '🌐', 'fixed'],
-      ['phone', 'Phone', '📱', 'fixed'],
-      ['streaming', 'Streaming', '📺', 'fixed'],
+      ['electric', 'Electricity', 'Zap', 'fixed'],
+      ['internet', 'Internet', 'Wifi', 'fixed'],
+      ['phone', 'Phone', 'Smartphone', 'fixed'],
+      ['streaming', 'Streaming', 'Tv', 'fixed'],
     ],
   },
   {
     key: 'food',
-    name: 'Food & Dining',
+    name: 'Food',
     cats: [
-      ['groceries', 'Groceries', '🛒', 'flexible'],
-      ['restaurants', 'Restaurants', '🍽️', 'flexible'],
-      ['coffee', 'Coffee Shops', '☕', 'flexible'],
+      ['groceries', 'Groceries', 'ShoppingCart', 'flexible'],
+      ['restaurants', 'Eating Out', 'UtensilsCrossed', 'flexible'],
+      ['coffee', 'Coffee', 'Coffee', 'flexible'],
     ],
   },
   {
     key: 'transport',
-    name: 'Transportation',
+    name: 'Getting Around',
     cats: [
-      ['carPayment', 'Car Payment', '🚗', 'fixed'],
-      ['carInsurance', 'Car Insurance', '🛡️', 'fixed'],
-      ['gas', 'Gas', '⛽', 'flexible'],
-      ['carMaintenance', 'Car Maintenance', '🔧', 'non_monthly'],
+      ['carPayment', 'Car Loan', 'Car', 'fixed'],
+      ['carInsurance', 'Car Insurance', 'ShieldCheck', 'fixed'],
+      ['gas', 'Fuel', 'Fuel', 'flexible'],
+      ['transit', 'Public Transport', 'TrainFront', 'flexible'],
+      ['carMaintenance', 'Car Servicing', 'Wrench', 'non_monthly'],
+      ['rego', 'Rego & CTP', 'FileBadge', 'non_monthly'],
     ],
   },
   {
     key: 'health',
-    name: 'Health & Wellness',
+    name: 'Health',
     cats: [
-      ['gym', 'Gym', '🏋️', 'fixed'],
-      ['pharmacy', 'Pharmacy', '💊', 'flexible'],
-      ['medical', 'Doctor & Dentist', '🩺', 'non_monthly'],
+      ['gym', 'Gym', 'Dumbbell', 'fixed'],
+      ['pharmacy', 'Chemist', 'Pill', 'flexible'],
+      ['medical', 'Doctor & Dentist', 'Stethoscope', 'non_monthly'],
     ],
   },
   {
     key: 'lifestyle',
     name: 'Lifestyle',
     cats: [
-      ['clothing', 'Clothing', '👕', 'flexible'],
-      ['personalCare', 'Personal Care', '✨', 'flexible'],
-      ['pets', 'Biscuit (dog)', '🐶', 'flexible'],
-      ['entertainment', 'Entertainment', '🎬', 'flexible'],
-      ['electronics', 'Electronics', '💻', 'non_monthly'],
+      ['clothing', 'Clothing', 'Shirt', 'flexible'],
+      ['personalCare', 'Personal Care', 'Sparkles', 'flexible'],
+      ['pets', 'Biscuit (dog)', 'Dog', 'flexible'],
+      ['entertainment', 'Entertainment', 'Clapperboard', 'flexible'],
+      ['electronics', 'Electronics', 'Laptop', 'non_monthly'],
     ],
   },
   {
     key: 'giving',
     name: 'Gifts & Giving',
     cats: [
-      ['gifts', 'Gifts', '🎁', 'non_monthly'],
-      ['charity', 'Charity', '❤️', 'fixed'],
+      ['gifts', 'Gifts', 'Gift', 'non_monthly'],
+      ['charity', 'Charity', 'HeartHandshake', 'fixed'],
     ],
   },
   {
     key: 'goals',
     name: 'Savings Goals',
     cats: [
-      ['vacation', 'Vacation', '🏖️', 'non_monthly'],
-      ['emergencyFund', 'Emergency Fund', '🛟', 'non_monthly'],
+      ['vacation', 'Holidays', 'Palmtree', 'non_monthly'],
+      ['emergencyFund', 'Emergency Fund', 'LifeBuoy', 'non_monthly'],
     ],
   },
 ];
@@ -191,25 +192,25 @@ const ACCOUNTS: {
   offBudget?: boolean;
   logo: DemoLogo;
   startingBalance?: number;
-  /** Another currency than the budget's dollars */
-  currency?: string;
+  /** Up's own kind of account, for the demo's Up connection (none = not from Up) */
+  up?: 'TRANSACTIONAL' | 'SAVER';
 }[] = [
-  { key: 'checking', name: 'Harbor Checking', type: 'checking', logo: 'harbor' },
-  { key: 'savings', name: 'Harbor Savings', type: 'savings', logo: 'harborSavings' },
-  // For their trip to Europe: money moved over in dollars, spent in euros
-  { key: 'euro', name: 'Alpine Euro Account', type: 'checking', logo: 'alpine', currency: 'EUR' },
-  { key: 'card', name: 'Summit Rewards Card', type: 'credit', logo: 'summit' },
+  { key: 'checking', name: 'Spending', type: 'checking', logo: 'upSpending', up: 'TRANSACTIONAL' },
+  { key: 'savings', name: 'Rainy Day', type: 'savings', logo: 'upSaver', up: 'SAVER' },
+  { key: 'holiday', name: 'Holiday', type: 'savings', logo: 'upHoliday', up: 'SAVER' },
+  // The couple's shared 2Up account: everyday shared spending, topped up from Spending
+  { key: 'card', name: '2Up Spending', type: 'checking', logo: 'twoUp', up: 'TRANSACTIONAL' },
   {
     key: 'retirement',
-    name: 'Evergreen 401(k)',
+    name: 'Evergreen Super',
     type: 'retirement',
     offBudget: true,
     logo: 'evergreen',
-    startingBalance: 1_842_000,
+    startingBalance: 6_842_000,
   },
   {
     key: 'brokerage',
-    name: 'Pinecone Brokerage',
+    name: 'Pinecone Shares',
     type: 'investment',
     offBudget: true,
     logo: 'pinecone',
@@ -217,7 +218,7 @@ const ACCOUNTS: {
   },
   {
     key: 'carLoan',
-    name: 'Northstar Auto Loan',
+    name: 'Northstar Car Loan',
     type: 'auto_loan',
     offBudget: true,
     logo: 'northstar',
@@ -225,7 +226,7 @@ const ACCOUNTS: {
   },
   {
     key: 'car',
-    name: '2021 Crossover',
+    name: '2021 Hatchback',
     type: 'vehicle',
     offBudget: true,
     logo: 'vehicle',
@@ -234,43 +235,52 @@ const ACCOUNTS: {
 ];
 
 type AccountKey =
-  'checking' | 'savings' | 'euro' | 'card' | 'retirement' | 'brokerage' | 'carLoan' | 'car';
+  'checking' | 'savings' | 'holiday' | 'card' | 'retirement' | 'brokerage' | 'carLoan' | 'car';
 
-/** The budget's currency, and the euro account's */
-const BUDGET_CURRENCY = 'USD';
+/** The accounts the demo's (pretend) Up connection brings in, with Up's names and kinds */
+export const DEMO_UP_ACCOUNTS = ACCOUNTS.filter((a) => a.up).map((a) => ({
+  accountId: `demo-acct-${a.key}`,
+  name: a.name,
+  accountType: a.up!,
+}));
+
+/** The budget's currency */
+const BUDGET_CURRENCY = 'AUD';
 
 /** Payees: key → [name, logo, default category, raw bank text] */
 const PAYEES: Record<string, [string, DemoLogo, CategoryKey | null, string | null]> = {
-  brightwave: ['Brightwave Studio', 'brightwave', 'paychecks', 'BRIGHTWAVE STUDIO PAYROLL'],
-  cedarHealth: ['Cedar Health', 'cedarHealth', 'paychecks', 'CEDAR HEALTH DIR DEP'],
-  harbor: ['Harbor Bank', 'harbor', 'interest', null],
-  mapleCourt: ['Maple Court Apartments', 'mapleCourt', 'rent', 'MAPLE COURT APTS WEBPAY'],
+  brightwave: ['Brightwave Studio', 'brightwave', 'paychecks', 'BRIGHTWAVE STUDIO PAY'],
+  cedarHealth: ['Cedar Health', 'cedarHealth', 'paychecks', 'CEDAR HEALTH SALARY'],
+  harbor: ['Up', 'upSaver', 'interest', 'Interest'],
+  mapleCourt: ['Harbourside Realty', 'mapleCourt', 'rent', 'HARBOURSIDE REALTY RENT'],
   shieldwell: ['Shieldwell Insurance', 'shieldwell', 'carInsurance', 'SHIELDWELL INS PREMIUM'],
-  cityPower: ['City Power & Light', 'cityPower', 'electric', 'CITY POWER LIGHT AUTOPAY'],
-  loopFiber: ['Loop Fiber', 'loopFiber', 'internet', 'LOOP FIBER INTERNET'],
-  nimbus: ['Nimbus Mobile', 'nimbus', 'phone', 'NIMBUS MOBILE BILL PAY'],
+  cityPower: ['Southern Power', 'cityPower', 'electric', 'SOUTHERN POWER DD'],
+  loopFiber: ['Loop NBN', 'loopFiber', 'internet', 'LOOP NBN'],
+  nimbus: ['Nimbus Mobile', 'nimbus', 'phone', 'NIMBUS MOBILE'],
   streamline: ['Streamline', 'streamline', 'streaming', 'STREAMLINE.TV'],
   tuneful: ['Tuneful', 'tuneful', 'streaming', 'TUNEFUL*PREMIUM'],
   flexplay: ['FlexPlay', 'flexplay', 'streaming', 'FLEXPLAY SUBSCRIPTION'],
   peakFitness: ['Peak Fitness', 'peakFitness', 'gym', 'PEAK FITNESS CLUB'],
-  freshFields: ['Fresh Fields Market', 'freshFields', 'groceries', 'FRESH FIELDS MKT #0221'],
-  costwise: ['Costwise Warehouse', 'costwise', 'groceries', 'COSTWISE WHSE #0487'],
+  freshFields: ['Woolies', 'freshFields', 'groceries', 'WOOLWORTHS 1142 NEWTOWN'],
+  costwise: ['Costwise Warehouse', 'costwise', 'groceries', 'COSTWISE WHSE 0487'],
   cornerGrocer: ['Corner Grocer', 'cornerGrocer', 'groceries', 'CORNER GROCER'],
   dailyGrind: ['Daily Grind Coffee', 'dailyGrind', 'coffee', 'SQ *DAILY GRIND 1142'],
   luigis: ["Luigi's Trattoria", 'luigis', 'restaurants', 'LUIGIS TRATTORIA'],
-  tacoLuna: ['Taco Luna', 'tacoLuna', 'restaurants', 'TST* TACO LUNA'],
+  tacoLuna: ['Taco Luna', 'tacoLuna', 'restaurants', 'TACO LUNA'],
   sakura: ['Sakura Sushi', 'sakura', 'restaurants', 'SAKURA SUSHI BAR'],
-  burgerBarn: ['Burger Barn', 'burgerBarn', 'restaurants', 'BURGER BARN #12'],
-  fuelStop: ['Fuel Stop', 'fuelStop', 'gas', 'FUEL STOP 00318'],
+  burgerBarn: ['Burger Barn', 'burgerBarn', 'restaurants', 'BURGER BARN 12'],
+  fuelStop: ['Fuel Stop', 'fuelStop', 'gas', 'FUEL STOP 0318'],
+  opal: ['Opal', 'opal', 'transit', 'OPAL TOP UP'],
   quickLube: ['QuickLube Auto Care', 'quickLube', 'carMaintenance', 'QUICKLUBE AUTO CARE'],
-  northstar: ['Northstar Credit Union', 'northstar', 'carPayment', 'NORTHSTAR CU LOAN PMT'],
-  evergreen: ['Evergreen Retirement', 'evergreen', null, null],
+  registry: ['Motor Registry', 'registry', 'rego', 'MOTOR REGISTRY RENEWAL'],
+  northstar: ['Northstar Mutual', 'northstar', 'carPayment', 'NORTHSTAR MUTUAL LOAN'],
+  evergreen: ['Evergreen Super', 'evergreen', null, null],
   pinecone: ['Pinecone Invest', 'pinecone', null, null],
-  wellway: ['Wellway Pharmacy', 'wellway', 'pharmacy', 'WELLWAY PHARMACY #0921'],
-  riverside: ['Riverside Clinic', 'riverside', 'medical', 'RIVERSIDE CLINIC COPAY'],
+  wellway: ['Wellway Chemist', 'wellway', 'pharmacy', 'WELLWAY CHEMIST 0921'],
+  riverside: ['Riverside Medical', 'riverside', 'medical', 'RIVERSIDE MEDICAL GAP'],
   threadline: ['Threadline', 'threadline', 'clothing', 'THREADLINE ONLINE'],
-  hearthHome: ['Hearth & Home', 'hearthHome', 'homeGoods', 'HEARTH AND HOME #88'],
-  parcel: ['Parcel', 'parcel', null, 'PARCEL.COM*ORDER'],
+  hearthHome: ['Hearth & Home', 'hearthHome', 'homeGoods', 'HEARTH AND HOME 88'],
+  parcel: ['Parcel', 'parcel', null, 'PARCEL.COM.AU*ORDER'],
   glow: ['Glow Beauty', 'glow', 'personalCare', 'GLOW BEAUTY'],
   happyPaws: ['Happy Paws Pet Supply', 'happyPaws', 'pets', 'HAPPY PAWS PET SUPPLY'],
   oakwoodVet: ['Oakwood Vet', 'oakwoodVet', 'pets', 'OAKWOOD VETERINARY'],
@@ -283,6 +293,12 @@ const PAYEES: Record<string, [string, DemoLogo, CategoryKey | null, string | nul
 type PayeeKey = keyof typeof PAYEES;
 
 const MONTHS_OF_HISTORY = 18;
+
+/** Fortnightly take-home pay, and the fortnightly rent */
+const RILEY_PAY = 205_000;
+const RILEY_PAY_BEFORE_RAISE = 198_600;
+const SAM_PAY = 172_400;
+const RENT = 115_000;
 
 // ─── Building it ────────────────────────────────────────────────────────────────
 
@@ -363,34 +379,9 @@ export function buildDemoBudget(today: Date): DemoBudget {
       isOffBudget: a.offBudget ? 1 : 0,
       sortOrder: i,
       logo: DEMO_LOGOS[a.logo],
-      currency: a.currency ?? null,
       createdAt: `${ymd(firstMonth)} 09:00:00`,
     });
   });
-
-  // Euro rates for every working day, a gentle random walk around $1.08 (its own random
-  // numbers, so the rest of the budget is the same as without them)
-  const rateRand = seededRandom(1999);
-  let usdPerEuro = 1.08;
-  for (let d = subDays(firstMonth, 7); ymd(d) <= todayStr; d = addDays(d, 1)) {
-    if (getDay(d) === 0 || getDay(d) === 6) continue;
-    usdPerEuro = Math.min(1.16, Math.max(1.02, usdPerEuro + (rateRand() - 0.5) * 0.008));
-    const date = ymd(d);
-    result.exchangeRates.push({
-      id: `ecb:${date}:EUR:USD`,
-      date,
-      base: 'EUR',
-      quote: 'USD',
-      rate: usdPerEuro.toFixed(4),
-      source: 'ecb',
-    });
-  }
-  const rates = buildRateBook(
-    result.exchangeRates.map((r) => ({ ...r, source: r.source ?? 'ecb' })),
-  );
-  /** What euros cost in dollars that day */
-  const usdRate = (date: string) =>
-    Number(result.exchangeRates.filter((r) => r.date <= date).at(-1)?.rate ?? '1.08');
 
   // Payees
   for (const [key, [name, logo, defaultCategory]] of Object.entries(PAYEES)) {
@@ -418,14 +409,11 @@ export function buildDemoBudget(today: Date): DemoBudget {
   }): string {
     const id = nextTxId();
     const payee = t.payee ? PAYEES[t.payee] : null;
-    const currency = ACCOUNTS.find((a) => a.key === t.account)?.currency ?? null;
     result.transactions.push({
       id,
       accountId: acct[t.account],
       date: t.date,
       amount: t.amount,
-      // In euros: what the budget counts it as, at the day's rate
-      ...mainAmountFor({ amount: t.amount, date: t.date, currency }, BUDGET_CURRENCY, rates),
       payeeId: t.payee ? `demo-payee-${t.payee}` : null,
       payeeName: payee?.[0] ?? null,
       // Everything except adjustments gets its payee's category unless told otherwise
@@ -478,39 +466,6 @@ export function buildDemoBudget(today: Date): DemoBudget {
       },
     );
     return outId;
-  }
-
-  /** Dollars moved to the euro account: what left, and the euros that arrived after the fee */
-  function toEuros(from: AccountKey, date: string, dollars: number) {
-    const outId = nextTxId();
-    const inId = nextTxId();
-    const reconciled = date < reconciledBefore ? 1 : 0;
-    const euros = Math.round((dollars / usdRate(date)) * 0.995);
-    result.transactions.push(
-      {
-        id: outId,
-        accountId: acct[from],
-        date,
-        amount: -dollars,
-        payeeName: `Transfer: ${accountNames.euro}`,
-        transferTransactionId: inId,
-        notes: 'For the trip',
-        reconciled,
-      },
-      {
-        id: inId,
-        accountId: acct.euro,
-        date,
-        amount: euros,
-        payeeName: `Transfer: ${accountNames[from]}`,
-        transferTransactionId: outId,
-        notes: 'For the trip',
-        reconciled,
-        // Worth exactly the dollars that left: a transfer is neither income nor spending
-        mainAmount: dollars,
-        mainAmountSource: 'transfer',
-      },
-    );
   }
 
   function split(
@@ -579,7 +534,7 @@ export function buildDemoBudget(today: Date): DemoBudget {
   const start = ymd(firstMonth);
   const monthlyOn = (day: number) =>
     ymd(new Date(firstMonth.getFullYear(), firstMonth.getMonth(), day));
-  // The first Friday of the history, for Riley's every-other-Friday paychecks
+  // The first Friday of the history, for Riley's fortnightly pay
   const firstFriday = addDays(firstMonth, (5 - getDay(firstMonth) + 7) % 7);
   const raiseDate = ymd(addMonths(firstMonth, 9));
   // The monthly donation falls due two days ago, so the Recurring page has one "due" item
@@ -594,38 +549,37 @@ export function buildDemoBudget(today: Date): DemoBudget {
   const scheduleSpecs: ScheduleSpec[] = [
     {
       key: 'paycheckRiley',
-      name: "Riley's paycheck",
+      name: "Riley's pay",
       payee: 'brightwave',
       account: 'checking',
-      amount: 153_110,
+      amount: RILEY_PAY,
       amountType: 'approximate',
       type: 'biweekly',
       start: ymd(firstFriday),
-      paid: (date) => (date < raiseDate ? 148_652 : 153_110),
+      paid: (date) => (date < raiseDate ? RILEY_PAY_BEFORE_RAISE : RILEY_PAY),
     },
     {
       key: 'paycheckSam',
-      name: "Sam's paycheck",
+      name: "Sam's pay",
       payee: 'cedarHealth',
       account: 'checking',
-      amount: 126_240,
-      type: 'semimonthly',
-      start: monthlyOn(15),
-      rule: { type: 'semimonthly', day1: 15, day2: 31 },
-      weekendAdjust: 'before',
+      amount: SAM_PAY,
+      type: 'biweekly',
+      // The Thursday of the other week: one of them is paid every week
+      start: ymd(addDays(firstFriday, 6)),
     },
     {
       key: 'rent',
       name: 'Rent',
       payee: 'mapleCourt',
       account: 'checking',
-      amount: -185_000,
-      type: 'monthly',
-      start: monthlyOn(1),
+      amount: -RENT,
+      type: 'biweekly',
+      start: ymd(addDays(firstFriday, 3)),
     },
     {
       key: 'carPayment',
-      name: 'Car payment',
+      name: 'Car loan',
       payee: 'northstar',
       account: 'checking',
       amount: -38_900,
@@ -634,7 +588,7 @@ export function buildDemoBudget(today: Date): DemoBudget {
     },
     {
       key: 'electric',
-      name: 'Electric bill',
+      name: 'Electricity',
       payee: 'cityPower',
       account: 'checking',
       amount: -9_800,
@@ -704,7 +658,7 @@ export function buildDemoBudget(today: Date): DemoBudget {
     },
     {
       key: 'rentersInsurance',
-      name: 'Renters insurance',
+      name: 'Contents insurance',
       payee: 'shieldwell',
       account: 'card',
       category: 'rentersInsurance',
@@ -863,7 +817,7 @@ export function buildDemoBudget(today: Date): DemoBudget {
           date,
           amount: -14_860,
           payee: 'luigis',
-          notes: 'Anniversary dinner 🥂',
+          notes: 'Anniversary dinner',
         });
     }
 
@@ -877,11 +831,11 @@ export function buildDemoBudget(today: Date): DemoBudget {
           date,
           amount: -11_860,
           payee: 'sakura',
-          notes: "Sam's birthday dinner 🎂",
+          notes: "Sam's birthday dinner",
         });
     }
 
-    // Last month was an expensive one early on: a weekend away and new tires, so the
+    // Last month was an expensive one early on: a weekend away and new tyres, so the
     // dashboard's "this month vs. last month" spending lines pull clearly apart
     if (mi === monthStarts.length - 2) {
       const flights = on(5);
@@ -891,7 +845,7 @@ export function buildDemoBudget(today: Date): DemoBudget {
           date: flights,
           amount: -38_960,
           payee: 'skyhop',
-          notes: 'Flights for the lake weekend',
+          notes: 'Flights for the weekend away',
         });
       const hotel = on(7);
       if (hotel)
@@ -900,16 +854,16 @@ export function buildDemoBudget(today: Date): DemoBudget {
           date: hotel,
           amount: -48_620,
           payee: 'lakesideInn',
-          notes: 'Weekend at the lake',
+          notes: 'Weekend away',
         });
-      const tires = on(10);
-      if (tires)
+      const tyres = on(10);
+      if (tyres)
         add({
           account: 'card',
-          date: tires,
+          date: tyres,
           amount: -61_240,
           payee: 'quickLube',
-          notes: 'New tires',
+          notes: 'New tyres',
         });
     }
 
@@ -931,7 +885,24 @@ export function buildDemoBudget(today: Date): DemoBudget {
           date,
           amount: -61_240,
           payee: 'quickLube',
-          notes: 'Four new tires + alignment',
+          notes: 'Four new tyres + alignment',
+        });
+    }
+
+    // Opal top-ups for the train, and the car's rego and CTP once a year
+    for (const day of [between(1, 7), between(8, 14), between(15, 21), between(22, 28)]) {
+      const date = on(day);
+      if (date) add({ account: 'checking', date, amount: -between(2_000, 4_000), payee: 'opal' });
+    }
+    if (mi % 12 === 7) {
+      const date = on(between(10, 20));
+      if (date)
+        add({
+          account: 'checking',
+          date,
+          amount: -84_250,
+          payee: 'registry',
+          notes: 'Rego and CTP for the year',
         });
     }
 
@@ -943,7 +914,7 @@ export function buildDemoBudget(today: Date): DemoBudget {
     if (mi % 3 === 2) {
       const date = on(between(6, 24));
       if (date)
-        add({ account: 'checking', date, amount: -3_500, payee: 'riverside', notes: 'Copay' });
+        add({ account: 'checking', date, amount: -3_500, payee: 'riverside', notes: 'Gap fee' });
     }
 
     // Shopping and lifestyle
@@ -983,7 +954,7 @@ export function buildDemoBudget(today: Date): DemoBudget {
             amount: -between(3_500, 9_500),
             payee: pick(['parcel', 'threadline', 'hearthHome'] as const),
             category: 'gifts',
-            notes: 'Holiday gifts',
+            notes: 'Christmas gifts',
           });
       }
     }
@@ -996,7 +967,7 @@ export function buildDemoBudget(today: Date): DemoBudget {
           amount: -between(4_500, 7_500),
           payee: 'parcel',
           category: 'gifts',
-          notes: 'Birthday gift for Mom',
+          notes: 'Birthday gift for Mum',
         });
     }
     if (mi === 3) {
@@ -1046,20 +1017,26 @@ export function buildDemoBudget(today: Date): DemoBudget {
     payee: 'skyhop',
     notes: 'Flights to the coast (2)',
   });
-  // The trip was in Europe: euros moved over beforehand, the hotel and dinner paid in euros
-  toEuros('savings', ymd(new Date(tripMonth.getFullYear(), tripMonth.getMonth() - 1, 20)), 50_000);
-  toEuros('checking', ymd(new Date(tripMonth.getFullYear(), tripMonth.getMonth(), 2)), 30_000);
+  // The trip was up the coast: money moved to the Holiday saver beforehand, the hotel and a
+  // dinner paid from it
+  transfer(
+    'checking',
+    'holiday',
+    ymd(new Date(tripMonth.getFullYear(), tripMonth.getMonth() - 1, 20)),
+    80_000,
+    'For the trip',
+  );
   add({
-    account: 'euro',
+    account: 'holiday',
     date: ymd(new Date(tripMonth.getFullYear(), tripMonth.getMonth(), 9)),
-    amount: -56_400,
+    amount: -64_400,
     payee: 'lakesideInn',
     notes: '4 nights, ocean view',
   });
   add({
-    account: 'euro',
+    account: 'holiday',
     date: ymd(new Date(tripMonth.getFullYear(), tripMonth.getMonth(), 10)),
-    amount: -8_050,
+    amount: -9_050,
     payee: 'sakura',
     category: 'vacation',
     notes: 'Trip dinner',
@@ -1075,7 +1052,7 @@ export function buildDemoBudget(today: Date): DemoBudget {
     notes: 'New laptop for Sam',
   });
 
-  // Two recent purchases still waiting for a category
+  // One recent purchase still waiting for a category, for the tour to sort
   add({
     account: 'card',
     date: ymd(subDays(today, 1)),
@@ -1088,7 +1065,6 @@ export function buildDemoBudget(today: Date): DemoBudget {
     date: ymd(subDays(today, 3)),
     amount: -6_420,
     payee: 'hearthHome',
-    category: null,
   });
 
   // The opening deposit: money they had when they started budgeting
@@ -1096,6 +1072,14 @@ export function buildDemoBudget(today: Date): DemoBudget {
     account: 'checking',
     date: start,
     amount: 520_000,
+    payee: 'harbor',
+    category: 'otherIncome',
+    notes: 'Opening balance',
+  });
+  add({
+    account: 'card',
+    date: start,
+    amount: 600_000,
     payee: 'harbor',
     category: 'otherIncome',
     notes: 'Opening balance',
@@ -1109,8 +1093,8 @@ export function buildDemoBudget(today: Date): DemoBudget {
     notes: 'Opening balance',
   });
 
-  // ─── Credit card payments: last month's charges, paid in full on the 25th ──
-  const cardCharges = (month: string) =>
+  // ─── 2Up top-ups: on the 1st, Spending covers what the shared account spent last month ──
+  const sharedSpending = (month: string) =>
     result.transactions
       .filter(
         (t) =>
@@ -1120,34 +1104,14 @@ export function buildDemoBudget(today: Date): DemoBudget {
           t.date.startsWith(month),
       )
       .reduce((s, t) => s + t.amount, 0);
-  /** A row as the bank sent it: its own text as the payee, no category */
-  const bankRow = (account: AccountKey, date: string, amount: number, text: string) =>
-    result.transactions.push({
-      id: nextTxId(),
-      accountId: acct[account],
-      date,
-      amount,
-      payeeName: text,
-      importedPayee: text,
-      categoryId: null,
-      notes: null,
-      reconciled: 0,
-    });
-  monthStarts.slice(1).forEach((m, i, months) => {
-    const date = dayIn(m, 25);
-    const owed = -cardCharges(monthKey(subMonths(m, 1)));
-    if (!date || owed <= 0) return;
-    if (i < months.length - 1 && dayIn(months[i + 1], 25)) {
-      transfer('checking', 'card', date, owed, 'Statement balance');
-      return;
-    }
-    // The latest payment came in from both banks, not yet linked: the register suggests it
-    const posted = ymd(addDays(parseISO(date), 2));
-    bankRow('checking', date, -owed, 'ONLINE PAYMENT - CREDIT CARD');
-    bankRow('card', posted <= todayStr ? posted : todayStr, owed, 'PAYMENT RECEIVED - THANK YOU');
+  monthStarts.slice(1).forEach((m) => {
+    const date = dayIn(m, 1);
+    const spent = -sharedSpending(monthKey(subMonths(m, 1)));
+    if (!date || spent <= 0) return;
+    transfer('checking', 'card', date, spent, 'Top up 2Up');
   });
 
-  // ─── Accounts that change value: 401(k), brokerage, car loan, the car ───────
+  // ─── Accounts that change value: super, shares, car loan, the car ───────
   let retirement = 1_842_000;
   let brokerage = 615_000;
   let loan = -1_795_000;
@@ -1203,15 +1167,14 @@ export function buildDemoBudget(today: Date): DemoBudget {
   // income"), so this month's To Be Budgeted is a small, tidy number.
   const spending = new Map<string, number>();
   const income = new Map<string, number>();
-  const onBudget = new Set([acct.checking, acct.savings, acct.euro, acct.card]);
+  const onBudget = new Set([acct.checking, acct.savings, acct.holiday, acct.card]);
   const incomeCats = new Set(
     ['paychecks', 'interest', 'otherIncome'].map((k) => cat[k as CategoryKey]),
   );
   for (const t of result.transactions) {
     if (!t.categoryId || !onBudget.has(t.accountId) || t.isParent) continue;
     const month = t.date.slice(0, 7);
-    // In dollars: the euro account's rows count as what they cost
-    const value = t.mainAmount ?? t.amount;
+    const value = t.amount;
     if (incomeCats.has(t.categoryId)) {
       income.set(month, (income.get(month) ?? 0) + value);
     } else {
@@ -1231,7 +1194,7 @@ export function buildDemoBudget(today: Date): DemoBudget {
     // A fixed bill is planned at what it costs now (the electric bill changes with the
     // seasons, so it gets its average like everything else), rounded up to the dollar;
     // others at their average, rounded up to $5
-    const fixed = budgetTypes[key] === 'fixed' && key !== 'electric';
+    const fixed = budgetTypes[key] === 'fixed' && key !== 'electric' && key !== 'rent';
     const amount = fixed
       ? (spending.get(`${c.id}|${lastFullMonth}`) ?? 0)
       : total / fullMonths.length;
@@ -1245,30 +1208,69 @@ export function buildDemoBudget(today: Date): DemoBudget {
     ...fullMonths.map((month) => spending.get(`${cat.electric}|${month}`) ?? 0),
   );
   plan.set(cat.electric, Math.ceil((electricMax + 2_500) / 500) * 500);
+  // Rent is paid fortnightly, so some months have three payments: it's planned for those,
+  // and the two-payment months leave a fortnight's rent waiting
+  plan.set(cat.rent, 3 * RENT);
   plan.set(cat.vacation, 25_000);
   plan.set(cat.electronics, Math.max(plan.get(cat.electronics) ?? 0, 15_000));
   plan.set(cat.emergencyFund, 0);
   const planTotal = [...plan.values()].reduce((s, v) => s + v, 0);
 
+  // What's left unassigned at the end of each month, so the budget opens on a small positive
+  // Ready to assign rather than exactly zero
+  const BUFFER = 30_000;
+  /** How many fortnightly rent payments fall in a month */
+  const rentStart = addDays(firstFriday, 3);
+  const rentDue = (month: string) => {
+    let n = 0;
+    for (let d = rentStart; monthKey(d) <= month; d = addDays(d, 14))
+      if (monthKey(d) === month) n++;
+    return n;
+  };
+  /** Each category's balance carried into the month being planned */
+  const balances = new Map<string, number>();
   let carry = 0;
   monthStarts.forEach((m) => {
     const month = monthKey(m);
     const available = carry + (income.get(month) ?? 0);
-    // They budget a month ahead: each month is funded by the month before, and what's left
-    // after keeping next month's plan in reserve goes to the emergency fund. This month's
-    // paychecks are for next month, so they wait in To Be Budgeted.
     const isCurrent = month === currentMonth;
-    const leftover = isCurrent ? available - planTotal : planTotal;
-    const extra = Math.max(0, available - planTotal - leftover);
 
-    // Income is planned too: the paychecks they expect (Riley is paid every other Friday)
-    const riley = Math.round(((m < parseISO(raiseDate) ? 148_652 : 153_110) * 26) / 12);
+    // Each category gets its plan, or more when a dearer month would otherwise take it below
+    // zero: the app counts an overspent envelope against Ready to assign, and the demo opens
+    // on a budget with nothing overspent
+    const assigned = new Map<string, number>();
+    for (const [categoryId, planned] of plan) {
+      // Rent and power are planned at what the month needs, so their envelopes don't pile up:
+      // rent for the fortnights that fall in it, power for the bill (its average this month)
+      const amount =
+        categoryId === cat.rent
+          ? rentDue(month) * RENT
+          : categoryId === cat.electric && !isCurrent
+            ? Math.ceil((spending.get(`${categoryId}|${month}`) ?? 0) / 500) * 500
+            : planned;
+      const before = balances.get(categoryId) ?? 0;
+      const spent = spending.get(`${categoryId}|${month}`) ?? 0;
+      const budgeted = Math.max(amount, Math.ceil((spent - before) / 100) * 100);
+      assigned.set(categoryId, budgeted);
+    }
+    const assignedTotal = [...assigned.values()].reduce((a, b) => a + b, 0);
+
+    // They budget a month ahead: each month is funded by the month before, and what's left
+    // after keeping next month's plan (and a small buffer) in reserve goes to the emergency
+    // fund. This month's pay is for next month, so it waits in Ready to assign.
+    const extra = isCurrent ? 0 : Math.max(0, available - assignedTotal - planTotal - BUFFER);
+    assigned.set(cat.emergencyFund, (assigned.get(cat.emergencyFund) ?? 0) + extra);
+
+    // Income is planned too: the pay they expect, fortnightly averaged over the month
+    const riley = Math.round(
+      ((m < parseISO(raiseDate) ? RILEY_PAY_BEFORE_RAISE : RILEY_PAY) * 26) / 12,
+    );
     result.budgetMonths.push(
       {
         id: `demo-budget-${month}-${cat.paychecks}`,
         month,
         categoryId: cat.paychecks,
-        budgeted: Math.round((riley + 2 * 126_240) / 100) * 100,
+        budgeted: Math.round((riley + (SAM_PAY * 26) / 12) / 100) * 100,
       },
       {
         id: `demo-budget-${month}-${cat.interest}`,
@@ -1278,9 +1280,9 @@ export function buildDemoBudget(today: Date): DemoBudget {
       },
     );
 
-    for (const [categoryId, amount] of plan) {
-      let budgeted = amount;
-      if (categoryId === cat.emergencyFund) budgeted += extra;
+    for (const [categoryId, budgeted] of assigned) {
+      const spent = spending.get(`${categoryId}|${month}`) ?? 0;
+      balances.set(categoryId, (balances.get(categoryId) ?? 0) + budgeted - spent);
       if (budgeted === 0) continue;
       result.budgetMonths.push({
         id: `demo-budget-${month}-${categoryId}`,
@@ -1289,7 +1291,7 @@ export function buildDemoBudget(today: Date): DemoBudget {
         budgeted,
       });
     }
-    carry = available - planTotal - extra;
+    carry = available - assignedTotal - extra;
   });
 
   // ─── Rules ───────────────────────────────────────────────────────────────────
@@ -1391,17 +1393,17 @@ export function buildDemoBudget(today: Date): DemoBudget {
       targetAmount: 2_500_000,
       currentAmount: savingsBalance,
       accountId: acct.savings,
-      icon: '🛟',
+      icon: 'LifeBuoy',
       color: '#059669',
       sortOrder: 0,
     },
     {
       id: 'demo-goal-trip',
-      name: 'Anniversary trip to Portugal',
+      name: 'Anniversary trip to Tasmania',
       targetAmount: 450_000,
       currentAmount: vacationSaved,
       targetDate: ymd(lastDayOfMonth(addMonths(today, 7))),
-      icon: '✈️',
+      icon: 'Plane',
       color: '#0EA5E9',
       sortOrder: 1,
     },
@@ -1411,7 +1413,7 @@ export function buildDemoBudget(today: Date): DemoBudget {
       targetAmount: 130_000,
       currentAmount: 130_000,
       targetDate: ymd(new Date(today.getFullYear(), today.getMonth() - 2, 6)),
-      icon: '💻',
+      icon: 'Laptop',
       color: '#7C3AED',
       sortOrder: 2,
     },

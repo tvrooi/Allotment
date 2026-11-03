@@ -31,7 +31,10 @@ test('empty dashboard cards link to where their data comes from', async ({ page,
   await open(page, '/dashboard');
 
   await expect(page.getByText('No transactions yet')).toBeVisible();
-  await expect(page.getByText('Track your bills and paychecks')).toBeVisible();
+  await expect(page.getByText('Track your bills and pay')).toBeVisible();
+  // While the Get started checklist shows, it holds the next steps: the cards don't repeat them
+  await expect(page.getByRole('link', { name: 'Add a transaction' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Hide getting started' }).click();
 
   // "Add a transaction" in Recent Transactions opens the add dialog on the register
   await page.getByRole('link', { name: 'Add a transaction' }).last().click();
@@ -55,7 +58,7 @@ test('empty pages explain themselves and offer the first step', async ({ page, a
   await expect(page.getByText('Save for what matters')).toBeVisible();
 
   await open(page, '/budget');
-  await expect(page.getByText(/No assignments for/)).toBeVisible();
+  await expect(page.getByText(/No money assigned for/)).toBeVisible();
   // Every category is listed (none tucked away), so there's something to plan straight away
   await expect(page.getByRole('button', { name: /^Planned for Groceries:/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Show \d+ inactive/ })).toHaveCount(0);

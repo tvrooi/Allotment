@@ -4,9 +4,8 @@ import { test, expect, open, isoDay } from './fixtures';
 
 // Settings: managing categories and groups, and preferences.
 
-async function pickEmoji(page: Page, name: string) {
-  const picker = page.locator('aside.EmojiPickerReact');
-  await picker.getByRole('textbox', { name: 'Type to search for an emoji' }).fill(name);
+async function pickIcon(page: Page, name: string) {
+  const picker = page.getByRole('dialog', { name: 'Choose an icon' });
   await picker.getByRole('button', { name, exact: true }).click();
   await expect(picker).toBeHidden();
 }
@@ -35,14 +34,16 @@ test.describe('categories', () => {
     expect(pets.categories.map((c) => c.name)).toEqual(['Vet Bills']);
   });
 
-  test('the emoji picker shows its emojis and fits on screen', async ({ page }) => {
+  test('the icon picker shows the app’s line icons (no emoji) and fits on screen', async ({
+    page,
+  }) => {
     // The last group's form is at the bottom of its card, which hides what overflows it
     await page.getByRole('button', { name: 'Create Category' }).last().click();
     await page.getByRole('button', { name: 'Pick icon' }).click();
 
-    const picker = page.locator('aside.EmojiPickerReact');
-    await expect(picker.getByRole('button', { name: 'grinning face', exact: true })).toBeVisible();
-    await expect(picker.locator('img')).toHaveCount(0); // the CSP blocks the default CDN images
+    const picker = page.getByRole('dialog', { name: 'Choose an icon' });
+    await expect(picker.getByRole('button', { name: 'Shopping Cart', exact: true })).toBeVisible();
+    await expect(picker.locator('svg').first()).toBeVisible();
     await expect(picker).toBeInViewport({ ratio: 1 });
   });
 
@@ -50,24 +51,22 @@ test.describe('categories', () => {
     await page.getByRole('button', { name: 'Create Category' }).last().click();
     await page.getByPlaceholder('Category name...').fill('Dog Walker');
     await page.getByRole('button', { name: 'Pick icon' }).click();
-    await pickEmoji(page, 'dog face');
-    await expect(page.getByRole('button', { name: 'Pick icon' })).toHaveText('🐶');
+    await pickIcon(page, 'Dog');
 
     await page.getByRole('button', { name: 'Add category' }).click();
     await expect(page.getByRole('button', { name: 'Edit Dog Walker' })).toBeVisible();
-    await expect.poll(async () => (await api.category('Dog Walker'))?.icon).toBe('🐶');
+    await expect.poll(async () => (await api.category('Dog Walker'))?.icon).toBe('Dog');
   });
 
   test('changes a category icon in the edit dialog', async ({ page, api }) => {
     await page.getByRole('button', { name: 'Edit Parking' }).click();
     const dialog = page.getByRole('dialog', { name: 'Edit Category' });
     await dialog.getByRole('button', { name: 'Change icon' }).click();
-    await pickEmoji(page, 'dog face');
-    await expect(dialog.getByRole('button', { name: 'Change icon' })).toHaveText('🐶');
+    await pickIcon(page, 'Dog');
 
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(dialog).toBeHidden();
-    await expect.poll(async () => (await api.category('Parking'))?.icon).toBe('🐶');
+    await expect.poll(async () => (await api.category('Parking'))?.icon).toBe('Dog');
   });
 
   test('renames a category from the keyboard', async ({ page, api }) => {
@@ -249,12 +248,12 @@ test.describe('goals', () => {
     await dialog
       .getByRole('combobox', { name: 'Linked account' })
       .selectOption({ label: 'Savings' });
-    await dialog.getByRole('button', { name: '🛡️' }).click();
-    await expect(dialog.getByRole('button', { name: '🛡️' })).toHaveAttribute(
+    await dialog.getByRole('button', { name: 'Life Buoy' }).click();
+    await expect(dialog.getByRole('button', { name: 'Life Buoy' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
-    await dialog.getByRole('button', { name: 'Color #059669' }).click();
+    await dialog.getByRole('button', { name: 'Colour #059669' }).click();
     await dialog.getByRole('button', { name: 'Add Goal' }).click();
     await expect(dialog).toBeHidden();
 
@@ -266,7 +265,7 @@ test.describe('goals', () => {
       targetAmount: 1_000_000,
       currentAmount: 250_000,
       accountId: savings.id,
-      icon: '🛡️',
+      icon: 'LifeBuoy',
       color: '#059669',
     });
   });

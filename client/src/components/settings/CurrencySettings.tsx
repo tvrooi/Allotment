@@ -26,7 +26,7 @@ import {
 } from '../../utils/currency';
 import { parseRate } from '../../utils/money';
 import { formatDay } from '../../utils/dates';
-import { docsUrl } from '../../utils/project';
+import { GuideLink } from '../guide/GuideLink';
 
 const section = 'bg-surface-alt rounded-lg p-5 space-y-4';
 const inputClass =
@@ -49,7 +49,9 @@ export function CurrencySettings() {
         <p className="text-xs text-text-tertiary mt-0.5">
           Your budget has one currency. Accounts can each have their own: their amounts stay in it,
           and the budget and reports count them in yours at each day&apos;s exchange rate.{' '}
-          <ExternalLink href={docsUrl('currencies')}>How currencies work</ExternalLink>
+          <GuideLink page="currencies" className="text-brand-600 hover:text-brand-700">
+            How currencies work
+          </GuideLink>
         </p>
       </div>
       <BudgetCurrency current={settings.currency} />

@@ -32,7 +32,6 @@ import { ImportModal } from './ImportModal';
 import { Button, ButtonLink } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { useOpenFromLink } from '../../hooks/useOpenFromLink';
-import { docsUrl } from '../../utils/project';
 import { useAddTransaction } from '../../hooks/useOffline';
 import { formatCurrency } from '../../utils/currency';
 import { transactionValue } from '../../utils/accountMoney';
@@ -474,7 +473,7 @@ export function TransactionTable({
                     ? 'Import a CSV file downloaded from your bank, or add transactions by hand as you spend.'
                     : 'Add transactions by hand, import a CSV file from an account page, or connect a bank to bring them in automatically.'
                 }
-                learnMoreHref={docsUrl('transactions')}
+                learnMore="transactions"
                 actions={
                   accountId ? (
                     <>

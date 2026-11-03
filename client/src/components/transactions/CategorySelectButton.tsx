@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { CategoryIcon } from '../ui/CategoryIcon';
 import { ChevronDown } from 'lucide-react';
 import { useCategories } from '../../hooks/useCategories';
 import { usePreferencesStore } from '../../store/preferencesStore';
@@ -52,7 +53,7 @@ export function CategorySelectButton({
         <span className="flex items-center gap-2 truncate">
           {entry ? (
             <>
-              {showCategoryIcons && entry.icon && <span className="text-base">{entry.icon}</span>}
+              {showCategoryIcons && <CategoryIcon icon={entry.icon} size={15} />}
               <span className="text-text">{entry.name}</span>
             </>
           ) : (

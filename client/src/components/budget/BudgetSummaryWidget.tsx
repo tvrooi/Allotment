@@ -300,8 +300,7 @@ export function BudgetSummaryWidget({
               ))}
             </dl>
             <p className="text-text-tertiary mb-2">
-              Moving money to a saver changes where it sits. Assign it to a category to reserve it
-              for rent or another purpose.
+              A Saver is still yours to assign: put the money in an envelope to set it aside.
             </p>
             <dl className="grid gap-1">
               {(

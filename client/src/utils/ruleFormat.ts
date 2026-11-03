@@ -56,8 +56,8 @@ export function opLabel(field: RuleConditionField, op: RuleConditionOp): string 
   if (field === 'date') {
     if (op === 'is') return 'is on';
   }
-  if (field === 'category' && op === 'is_empty') return 'is uncategorized';
-  if (field === 'category' && op === 'is_not_empty') return 'is categorized';
+  if (field === 'category' && op === 'is_empty') return 'is uncategorised';
+  if (field === 'category' && op === 'is_not_empty') return 'is categorised';
   const labels: Record<RuleConditionOp, string> = {
     is: 'is',
     is_not: 'is not',
@@ -235,7 +235,7 @@ function splitPartText(p: RuleSplitPart, l: RuleLookups): string {
       : p.kind === 'percent'
         ? `${p.value}%`
         : 'the rest';
-  return `${amount} to ${p.categoryId ? (l.category(p.categoryId) ?? '(deleted)') : 'uncategorized'}`;
+  return `${amount} to ${p.categoryId ? (l.category(p.categoryId) ?? '(deleted)') : 'uncategorised'}`;
 }
 
 export function actionText(a: RuleAction, l: RuleLookups): string {

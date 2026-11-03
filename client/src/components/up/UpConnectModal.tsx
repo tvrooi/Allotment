@@ -1,6 +1,6 @@
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { ClipboardPaste, Loader2, ShieldCheck } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { ExternalLink } from '../ui/ExternalLink';
@@ -56,6 +56,18 @@ const dayBefore = (day: string) => {
   return d.toISOString().slice(0, 10);
 };
 
+const STEP =
+  'w-5 h-5 shrink-0 rounded-full bg-brand-600 text-brand-contrast text-[11px] font-semibold flex items-center justify-center mt-0.5';
+
+/**
+ * Whether typed or pasted text clearly isn't an Up token (they start "up:yeah:"). Only a
+ * hint, never a block: the server's check with Up is the real one.
+ */
+export function looksUnlikeUpToken(token: string): boolean {
+  const t = token.trim();
+  return t.length >= 8 && !t.startsWith('up:yeah:');
+}
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -96,6 +108,10 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
     setChoices((prev) =>
       prev.map((m) => (m.upAccountId === upAccountId ? { ...m, ...fields } : m)),
     );
+
+  const tokenLooksWrong = looksUnlikeUpToken(token);
+  // Reading the clipboard needs a secure page and a browser that allows it
+  const canPaste = typeof navigator !== 'undefined' && !!navigator.clipboard?.readText;
 
   async function connect() {
     setBusy(true);
@@ -167,31 +183,84 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
         {!discovered && (
           <>
             <p className="text-sm text-text-secondary">
-              Connect directly to Up using your personal access token. Allotment imports settled AUD
-              transactions from the accounts you choose, including Savers and 2Up accounts available
-              to your token.
+              Up lets you give apps like Allotment a <b>personal access token</b>: a long password
+              that can only read your accounts. Allotment brings in settled transactions from the
+              accounts you choose, Savers and 2Up included.
             </p>
-            <p className="text-xs text-text-secondary">
-              Create a token at{' '}
-              <ExternalLink href="https://api.up.com.au/" className="text-brand-600 underline">
-                Up’s developer portal
-              </ExternalLink>
-              , then paste it below.
-            </p>
-            <label className="block text-sm text-text">
-              Up personal access token
-              <input
-                type="password"
-                autoComplete="off"
-                spellCheck={false}
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-text"
-              />
-            </label>
-            <p className="text-xs text-text-tertiary">
-              Your token stays on this Allotment installation and is excluded from exported backups.
-            </p>
+            <ol className="space-y-2 text-sm">
+              <li className="flex gap-2">
+                <span className={STEP}>1</span>
+                <span>
+                  Open{' '}
+                  <ExternalLink href="https://api.up.com.au/" className="text-brand-600 underline">
+                    Up’s developer portal
+                  </ExternalLink>{' '}
+                  and sign in with the Up app on your phone.
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <span className={STEP}>2</span>
+                <span>
+                  Copy the token it shows you. It starts with{' '}
+                  <code className="font-mono text-xs">up:yeah:</code>
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <span className={STEP}>3</span>
+                <span>Paste it here and choose the accounts to bring in.</span>
+              </li>
+            </ol>
+            <div
+              role="note"
+              className="flex gap-2 rounded-md border border-positive/30 bg-positive-subtle p-3 text-sm text-text"
+            >
+              <ShieldCheck size={16} className="text-positive shrink-0 mt-0.5" aria-hidden />
+              <p>
+                <b>Read-only.</b> Allotment can’t move money, and you can revoke the token in Up at
+                any time. It’s stored encrypted on this Allotment installation and never included in
+                exported backups.
+              </p>
+            </div>
+            <div>
+              <label htmlFor="up-token" className="block text-sm font-medium text-text">
+                Up personal access token
+              </label>
+              <div className="mt-1 flex gap-2">
+                <input
+                  id="up-token"
+                  type="password"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="up:yeah:…"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  aria-describedby={tokenLooksWrong ? 'up-token-hint' : undefined}
+                  className="min-w-0 flex-1 rounded-md border border-border bg-surface px-3 py-2 text-text font-mono"
+                />
+                {canPaste && (
+                  <Button
+                    variant="secondary"
+                    onClick={async () => {
+                      try {
+                        setToken((await navigator.clipboard.readText()).trim());
+                      } catch {
+                        setError(
+                          'Allotment couldn’t read the clipboard: paste into the box instead.',
+                        );
+                      }
+                    }}
+                  >
+                    <ClipboardPaste size={14} aria-hidden /> Paste
+                  </Button>
+                )}
+              </div>
+              {tokenLooksWrong && (
+                <p id="up-token-hint" className="mt-1 text-xs text-caution">
+                  That doesn’t look like an Up token: they start with up:yeah: and are about 130
+                  characters long. You can still try it.
+                </p>
+              )}
+            </div>
             <Button onClick={connect} disabled={!canSave || busy || !token.trim()}>
               {busy && <Loader2 size={14} className="animate-spin" />} Connect
             </Button>

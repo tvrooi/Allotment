@@ -96,6 +96,15 @@ export const test = base.extend<Fixtures>({
         data: freshSnapshot(),
       });
       if (!res.ok()) throw new Error(`Database reset failed: ${await res.text()}`);
+      // Guide progress isn't in backups, so the restore leaves whatever the last test did
+      // (a dashboard visit can turn down the welcome tour). Start each test as a new budget.
+      for (const [method, path, data] of [
+        ['POST', '/api/guides/reset', undefined],
+        ['PUT', '/api/guides', { tipsEnabled: true, pageGuidesEnabled: true }],
+      ] as const) {
+        const guides = await request.fetch(path, { method, data });
+        if (!guides.ok()) throw new Error(`Guide reset failed: ${await guides.text()}`);
+      }
       await request.dispose();
       await use();
     },
