@@ -15,6 +15,7 @@ import {
   filtersToSearch,
   type FilterState,
 } from '../utils/transactionFilters';
+import { onTabListKeyDown } from '../components/ui/tabList';
 
 export default function TransactionsPage() {
   const [showAdd, setShowAdd] = useState(false);
@@ -78,9 +79,10 @@ export default function TransactionsPage() {
         </div>
         <div
           data-guide="transactions.tabs"
-          className="flex gap-1 mt-2 -mb-px"
+          className="scroll-row flex gap-1 mt-2 -mb-px"
           role="tablist"
           aria-label="Transactions view"
+          onKeyDown={onTabListKeyDown}
         >
           {(
             [
@@ -93,6 +95,7 @@ export default function TransactionsPage() {
               type="button"
               role="tab"
               aria-selected={view === id}
+              tabIndex={view === id ? 0 : -1}
               onClick={() => setPageParam({ view: id === 'all' ? null : id, receipt: null })}
               className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 max-md:min-h-11 ${
                 view === id

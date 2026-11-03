@@ -1,5 +1,18 @@
 # Changes
 
+## 0.2.0-up.82
+
+Menu bars and buttons, reviewed on a computer, in a browser and on a phone.
+
+- **Tab bars only scroll sideways.** On a phone, the Settings tabs (and the Transactions periods and a long-term plan's sections) could be dragged up and down by a pixel. Every tab bar now moves sideways only, and a swipe that reaches its end no longer moves the page.
+- **The open tab is in view.** Settings opened on a later tab (from a link, or after reloading) scrolls its tab bar so that tab shows whole, instead of half hidden at the edge. A long-term plan's sections and the Reports dashboards do the same, and show they scroll with the same fade and arrow as Settings.
+- **The app frame stays still.** On a phone, dragging the top bar no longer pulls the whole page down: only the content scrolls and bounces. Pull to refresh is off as a result; use **Sync Now** or reload.
+- **A mouse wheel scrolls a tab bar** that is wider than the window, instead of doing nothing.
+- **Keyboard.** Left and Right (and Home and End) move between tabs, and only the open tab is a Tab stop. The ⋮ menus, **Views** and the phone Budget menu open with focus on their first item, move with the arrow keys, and close on Escape, putting focus back on their button. A keyboard focus ring in a tab bar is no longer cut off.
+- **The Views menu closes** when you click elsewhere or press Escape. It used to stay open.
+- **Buttons feel like an app's.** Holding a button on a phone no longer selects its label, and tapping quickly no longer zooms the page. Disabled buttons don't show a pointer, and drag handles show a hand.
+- **The bank provider switch** (Up, Plaid, SimpleFIN, Enable Banking) has equal-height, touch-sized buttons, and the selected one's outline isn't clipped.
+
 ## 0.2.0-up.81
 
 - **The temporary assistant permission is gone.** An assistant can no longer record past household expenses or repayments (`record_household_entries`, added in 0.2.0-up.80 to bring in one Tricount history). You record these on the Household page, where **Paid ahead** stays.

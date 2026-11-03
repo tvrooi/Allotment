@@ -332,7 +332,7 @@ export function TransactionFilters({
             their own and scroll sideways only when even that is too narrow */}
         <ScrollCue
           className="shrink-0 max-w-full border-b border-transparent"
-          scrollerClassName="flex gap-0"
+          scrollerClassName="flex gap-0 -mb-px"
           activeKey={externalMonth ? undefined : state.datePreset}
         >
           {externalRange ? (
@@ -344,7 +344,7 @@ export function TransactionFilters({
                 aria-pressed={!externalMonth && state.datePreset === p.value}
                 data-scroll-active={!externalMonth && state.datePreset === p.value}
                 onClick={() => set({ datePreset: p.value })}
-                className={`px-2.5 py-1 max-md:min-h-11 max-md:text-sm whitespace-nowrap shrink-0 text-xs font-medium transition-colors border-b-2 -mb-px ${
+                className={`px-2.5 py-1 max-md:min-h-11 max-md:text-sm whitespace-nowrap shrink-0 text-xs font-medium transition-colors border-b-2 ${
                   !externalMonth && state.datePreset === p.value
                     ? 'border-brand-600 text-brand-600'
                     : 'border-transparent text-text-tertiary hover:text-text-secondary'

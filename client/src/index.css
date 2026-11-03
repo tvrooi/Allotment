@@ -234,11 +234,57 @@
   }
 }
 
-button,
-select,
-[type='checkbox'],
-[type='radio'] {
-  cursor: pointer;
+/* A row that scrolls sideways only (tab bars, segmented controls). overflow-x alone makes the
+   browser scroll it up and down too, by any pixel a tab hangs out of it. A swipe that reaches
+   its end doesn't move the page or go back a page, and it has no scrollbar. */
+@utility scroll-row {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* The row clips anything outside it, so the keyboard focus ring is drawn inside the control */
+.scroll-row :focus-visible {
+  outline-offset: -2px;
+}
+
+/* The app frame (header, sidebar, tab bars) stays put: only the content area scrolls and
+   bounces, never the whole page */
+html,
+body {
+  overscroll-behavior: none;
+}
+
+/* Buttons behave like an app's: a pointer, but not on a disabled one; holding one on a phone
+   doesn't select its label; a quick second tap doesn't zoom the page. In the base layer so a
+   button's own cursor (a drag handle's grab, a disabled not-allowed) wins. */
+@layer base {
+  button,
+  select,
+  summary,
+  [type='checkbox'],
+  [type='radio'] {
+    cursor: pointer;
+  }
+  :disabled {
+    cursor: default;
+  }
+  button,
+  a,
+  summary,
+  label,
+  [role='button'],
+  [role='tab'] {
+    touch-action: manipulation;
+  }
+  button {
+    -webkit-user-select: none;
+    user-select: none;
+  }
 }
 
 /* Headings are Inter at weight 500 */

@@ -31,6 +31,7 @@ import {
 } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { downloadCsv } from '../../utils/exportCsv';
+import { onTabListKeyDown } from '../ui/tabList';
 
 const COLORS = [chartColors.brand, chartColors.caution, chartColors.positive];
 const KIND_LABEL: Record<api.ForecastEvent['kind'], string> = {
@@ -664,13 +665,19 @@ export function CashRunway() {
                   ))}
                 </ul>
               )}
-              <div className="flex gap-2 flex-wrap" role="tablist" aria-label="Scenario">
+              <div
+                className="flex gap-2 flex-wrap"
+                role="tablist"
+                aria-label="Scenario"
+                onKeyDown={onTabListKeyDown}
+              >
                 {data.scenarios.map((s, i) => (
                   <Button
                     key={s.name}
                     size="sm"
                     role="tab"
                     aria-selected={i === selected}
+                    tabIndex={i === selected ? 0 : -1}
                     variant={i === selected ? 'primary' : 'secondary'}
                     onClick={() => setSelected(i)}
                   >

@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router-dom';
 import { CashRunway } from '../components/forecast/CashRunway';
 import { LongTermForecast } from '../components/longterm/LongTermForecast';
 import { PrivateSection } from '../components/ui/Private';
+import { onTabListKeyDown } from '../components/ui/tabList';
 
 // The Forecast page: the long-term, decades-long view first, with the cash runway (the next
 // 30 days to two years) as its second tab. Neither writes to the budget.
@@ -21,9 +22,10 @@ export default function ForecastPage() {
         </h1>
         <div
           data-guide="forecast.tabs"
-          className="flex gap-1 mt-3 -mb-px overflow-x-auto"
+          className="scroll-row flex gap-1 mt-3 -mb-px"
           role="tablist"
           aria-label="Forecast view"
+          onKeyDown={onTabListKeyDown}
         >
           {TABS.map((t) => (
             <button
@@ -31,6 +33,7 @@ export default function ForecastPage() {
               type="button"
               role="tab"
               aria-selected={tab === t.id}
+              tabIndex={tab === t.id ? 0 : -1}
               onClick={() =>
                 setParams(t.id === 'long-term' ? {} : { tab: t.id }, { replace: true })
               }

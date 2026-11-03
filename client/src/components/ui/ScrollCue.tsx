@@ -1,15 +1,17 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 /**
  * A row that scrolls sideways (tab bars on a phone). When part of it is off screen, a fade
  * and an arrow on that edge say so, so a tab cut off at the edge doesn't read as the last one.
+ * It never scrolls up and down, and a mouse wheel over it scrolls it sideways.
  */
 export function ScrollCue({
   children,
   className = '',
   scrollerClassName = '',
   activeKey,
+  scrollerProps,
 }: {
   children: ReactNode;
   /** Classes for the outer box (borders, margins, max width) */
@@ -21,6 +23,8 @@ export function ScrollCue({
    * data-scroll-active is in view, clear of the fade, rather than hidden past the edge.
    */
   activeKey?: string;
+  /** Attributes for the scrolling row, e.g. role="tablist" and its aria-label */
+  scrollerProps?: HTMLAttributes<HTMLDivElement>;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [more, setMore] = useState({ left: false, right: false });
@@ -39,7 +43,17 @@ export function ScrollCue({
     observer?.observe(el);
     for (const child of Array.from(el.children)) observer?.observe(child);
     window.addEventListener('resize', update);
+    // A mouse wheel only scrolls up and down: over a row that is wider than the screen it
+    // scrolls the row instead, until the row reaches its end
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      const before = el.scrollLeft;
+      el.scrollLeft += e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+      if (el.scrollLeft !== before) e.preventDefault();
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
     return () => {
+      el.removeEventListener('wheel', onWheel);
       el.removeEventListener('scroll', update);
       observer?.disconnect();
       window.removeEventListener('resize', update);
@@ -64,9 +78,10 @@ export function ScrollCue({
   return (
     <div data-testid="scroll-cue" className={`relative ${className}`}>
       <div
+        {...scrollerProps}
         ref={scroller}
         data-testid="scroll-cue-scroller"
-        className={`overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${scrollerClassName}`}
+        className={`scroll-row ${scrollerClassName}`}
       >
         {children}
       </div>
