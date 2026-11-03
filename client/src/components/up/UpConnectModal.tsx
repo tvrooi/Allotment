@@ -1,5 +1,7 @@
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { invalidateLedgerViews } from '../../utils/ledgerViews';
 import { ClipboardPaste, Loader2, ShieldCheck } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -32,6 +34,7 @@ import { format, parseISO } from 'date-fns';
  * and offers the whole month instead; the choice stays in Settings → Budget.
  */
 function FreshStartNote({ day }: { day: string }) {
+  const qc = useQueryClient();
   const [state, setState] = useState<'today' | 'saving' | 'month' | 'failed'>('today');
   const month = format(parseISO(day), 'MMMM');
   if (state === 'month')
@@ -55,6 +58,9 @@ function FreshStartNote({ day }: { day: string }) {
           setState('saving');
           try {
             await setBudgetStart({ month: day.slice(0, 7), day: null });
+            // A direct call, not a mutation: refresh what the start changes ourselves
+            void qc.invalidateQueries({ queryKey: ['budget-start'] });
+            void invalidateLedgerViews(qc);
             setState('month');
           } catch {
             setState('failed');
