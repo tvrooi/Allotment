@@ -135,6 +135,19 @@ export const restoreHouseholdEvent = async (groupId: string, e: HouseholdEvent) 
     })
   ).events.find((x) => x.transactionId === e.transactionId)!.id;
 
+/**
+ * Removes the shared-expense entries now linked to these payments in a household, whatever
+ * their ids (an entry that Stop sharing removed and Undo recorded again has a new id). Payments
+ * with no such entry are skipped.
+ */
+export async function removeSharedEntries(groupId: string, transactionIds: string[]) {
+  const ids = new Set(transactionIds);
+  const entries = (await getHouseholdEvents(groupId)).filter(
+    (e) => e.kind === 'expense' && e.transactionId !== null && ids.has(e.transactionId),
+  );
+  for (const e of entries.reverse()) await removeHouseholdEvent(groupId, e.id);
+}
+
 export const removeHouseholdEvent = (groupId: string, eventId: string) =>
   apiFetch<unknown>(`/households/${groupId}/events/${eventId}`, { method: 'DELETE' });
 

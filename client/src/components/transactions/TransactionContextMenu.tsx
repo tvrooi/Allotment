@@ -4,6 +4,7 @@ import { ExternalLink, PanelRight, SlidersHorizontal, Users, UserMinus } from 'l
 import {
   getHouseholdEvents,
   removeHouseholdEvent,
+  removeSharedEntries,
   restoreHouseholdEvent,
   type HouseholdSummary,
 } from '../../api/households';
@@ -63,16 +64,16 @@ export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onC
     },
     onSuccess: ({ h, entry, name }) => {
       refresh();
-      // Undo records it again exactly as it was, split included
-      let current = entry.id;
+      // Undo records it again exactly as it was, split included (with a new id, so redo and an
+      // earlier share's undo find it by its payment)
       useUndoStore.getState().push({
         description: `Stop sharing ${name} with ${h.name}`,
         undo: async () => {
-          current = await restoreHouseholdEvent(h.id, entry);
+          await restoreHouseholdEvent(h.id, entry);
           refresh();
         },
         redo: async () => {
-          await removeHouseholdEvent(h.id, current);
+          await removeSharedEntries(h.id, [entry.transactionId!]);
           refresh();
         },
       });

@@ -308,6 +308,56 @@ test('right-click shares a payment with a household, and Undo or Stop sharing re
   await expect(page.getByRole('button', { name: 'Create rule' })).toBeVisible();
 });
 
+test('share, stop sharing, then undo and redo both, in order', async ({ page, api }) => {
+  const account = await api.createAccount('Everyday', 20000);
+  const grocer = await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -4500,
+    payeeName: 'Mock Grocer',
+  });
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Juno'],
+    selfIndex: 0,
+  });
+  const shared = async () =>
+    (await api.call('GET', `/households/${group.group.id}`)).events.filter(
+      (e: { transactionId: string }) => e.transactionId === grocer.id,
+    ).length;
+  await open(page, `/accounts/${account.id}`);
+  const row = page.getByTestId('transaction-row').filter({ hasText: 'Mock Grocer' });
+  const badge = row.getByRole('img', { name: 'Shared with Flat' });
+  const menu = page.getByRole('menu', { name: 'Actions for Mock Grocer' });
+
+  await row.click({ button: 'right' });
+  await menu.getByRole('menuitem', { name: 'Share with' }).hover();
+  await page
+    .getByRole('menu', { name: 'Share with' })
+    .getByRole('menuitem', { name: /^Flat/ })
+    .click();
+  await expect(badge).toBeVisible();
+  await row.click({ button: 'right' });
+  await menu.getByRole('menuitem', { name: 'Stop sharing with Flat' }).click();
+  await expect(badge).toHaveCount(0);
+
+  // Undo the stop (recorded again, with a new id), then undo the share itself
+  await page.keyboard.press('Control+z');
+  await expect(badge).toBeVisible();
+  await page.keyboard.press('Control+z');
+  await expect(badge).toHaveCount(0);
+  await expect.poll(shared).toBe(0);
+  // And forward again: shared, then stopped
+  await page.keyboard.press('Control+Shift+z');
+  await expect(badge).toBeVisible();
+  await expect.poll(shared).toBe(1);
+  await page.keyboard.press('Control+Shift+z');
+  await expect(badge).toHaveCount(0);
+  await expect.poll(shared).toBe(0);
+});
+
 test('right-clicking one of several picked payments shares all of them', async ({ page, api }) => {
   const account = await api.createAccount('Everyday', 20000);
   const ids: string[] = [];

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Users } from 'lucide-react';
 import {
   getHouseholds,
-  removeHouseholdEvent,
+  removeSharedEntries,
   shareTransactions,
   type HouseholdSummary,
 } from '../../api/households';
@@ -86,26 +86,19 @@ export function useShareWithHousehold() {
     onSuccess: ({ groupId, result }) => {
       void qc.invalidateQueries({ queryKey: ['households'] });
       void qc.invalidateQueries({ queryKey: ['transactions'] });
-      const events = result.results.filter((r) => r.ok && r.eventId).map((r) => r.eventId!);
-      if (events.length)
+      const shared = result.results.filter((r) => r.ok && r.eventId).map((r) => r.transactionId);
+      if (shared.length)
         useUndoStore.getState().push({
-          description: `Share ${events.length} with the household`,
+          description: `Share ${shared.length} with the household`,
+          // By payment, not entry id: the entries may have been removed and recorded again
+          // since (Stop sharing, then Undo), with new ids
           undo: async () => {
-            for (const e of [...events].reverse()) await removeHouseholdEvent(groupId, e);
+            await removeSharedEntries(groupId, shared);
             void qc.invalidateQueries({ queryKey: ['households'] });
             void qc.invalidateQueries({ queryKey: ['transactions'] });
           },
           redo: async () => {
-            const again = await shareAll(
-              groupId,
-              result.results.filter((r) => r.ok).map((r) => r.transactionId),
-            );
-            // Undo after a redo removes the entries the redo made
-            events.splice(
-              0,
-              events.length,
-              ...again.results.filter((r) => r.ok && r.eventId).map((r) => r.eventId!),
-            );
+            await shareAll(groupId, shared);
             void qc.invalidateQueries({ queryKey: ['households'] });
             void qc.invalidateQueries({ queryKey: ['transactions'] });
           },
