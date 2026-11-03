@@ -5,10 +5,11 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 3 November 2026.
+Last updated: 4 November 2026.
 
 ## State
 
+- **Full audit and Stage 1 fixes (up.85, up.86):** an owner-requested repository, architecture, financial, security and UX audit on 3 November is in [docs/AUDIT-2026-11.md](docs/AUDIT-2026-11.md) (findings F-01–F-24, roadmap, owner decisions I-1–I-11; the status table at its top says what has landed). Owner decisions taken: left to spend excludes savings (I-1), a new budget starts the day it connects Up (I-2), bank deletes warn and offer Restore (I-3). **up.85 (#122, released):** `client/src/utils/ledgerViews.ts` lists every ledger-derived query; the global `MutationCache.onSuccess` in `main.tsx` refreshes them after any save, and `setAfterUndoChange` in `store/undoStore.ts` after Undo/Redo (e2e `freshness.spec.ts`). `utils/leftToSpend.ts` leaves out Savings-type envelopes and goals' categories (`savingsCategoryIds`), and the dashboard card says what it leaves out; the full template's Savings and the demo's Emergency Fund are type `savings`, and the demo trip goal saves in Holidays. `AssignBlockError` lists Up rows deleted here, with Restore (`GET /up/review`, `POST /up/review/restore`; e2e in `assign-block.spec.ts`), and the delete confirmations say assigning pauses. `utils/fundingStatus.ts` names only the real causes on the Ready to assign hero. Full Backup copy says file bytes aren't in it. `config.ts` `unprotectedBindError`: the server refuses `FLYBUDGET_HOST` beyond loopback outside server mode and the desktop app. **up.86 (#123, merged 3 November; its tag and release follow main CI, check before relying on it):** `budget_settings.budget_start_day` (migration 0063, additive, CHECKed; backup format unchanged). The shared `budgetStartDay` SQL in `services/balances.ts` uses it, so envelope activity, card funding and the guards all honour a mid-month start without engine changes. `startBudgetIfNew` (called by `POST /up/map-accounts`) starts a new budget today; the Up dialog's `FreshStartNote` offers "Count all of _month_ instead"; Settings → Budget start shows and changes the day; `GET/PUT /budget/start` carry `{ month, day }`. Tests: `readyToAssign.test.ts`, `budgetFunding.test.ts`, `budgetService.test.ts`, `budgetEngine.test.ts` (generator includes a day start), e2e `first-import.spec.ts`. Neither release has been installed on the live app by these sessions.
 - **UX review (up.83):** owner-requested teardown in `docs/UX-REVIEW.md`, implemented except #7 (the sidebar's item count). Pull to refresh is back on phones as an in-app gesture (`hooks/usePullToRefresh.ts`, `components/layout/PullToRefresh.tsx`: refetches active queries) because `html, body` keep `overscroll-behavior: none`. The demo is an Australian Up budget (`server/src/demo/demoBudget.ts`: AUD, Spending/Rainy Day/Holiday/2Up keyed `checking`/`savings`/`holiday`/`card`, fortnightly pay and rent, every envelope funded to stay ≥ $0 and a $300 buffer; property test in `demoBudget.test.ts`) with a pretend Up connection in `server/src/browser/app.ts`; its links go to GitHub (`DemoBanner.tsx`). Category and goal icons are Lucide names (`client/src/utils/categoryIcons.ts`, emoji mapped at render time, no data migration); the short Australian template is the default unless the time zone is outside Australia (`db/defaultCategories.ts`), and `upCategoryMap.ts` knows its merged names. Allotment's own guide is `client/src/userGuide/articles.tsx` at `/guide`; `upstreamDocsUrl` remains only for Enable Banking's setup. Welcome redirects only from `/` and `/dashboard` (`AppShell.tsx`). Review's `utils/reviewNext.ts` drives both "Do this next" and the sidebar badge. First-visit intros: `guides/intros.ts` (seen under `intro.*` ids). Transactions bulk actions need **Select all** (`SelectionSummary.tsx`).
 - **Menu bars and buttons (up.82):** owner-requested review after a Settings tab bar on a phone could be dragged up and down (a tab's `-mb-px` hung 1px out of an `overflow-x-auto` row, and `overflow-x` alone makes a row scroll vertically too). Every sideways row now uses the `scroll-row` utility (`index.css`: `overflow-y: hidden`, `overscroll-behavior-x: contain`, no scrollbar, focus ring drawn inside); the underline overlap moved from the tabs to the row. Long rows use `ScrollCue` (fade, arrow, wheel scrolls it sideways, `activeKey` keeps the open tab in view). `role="tablist"` rows use `components/ui/tabList.ts` (arrow keys, roving tabindex). Drop-down menus use `hooks/useMenuKeyboard.ts` (focus first item, arrows, Escape returns focus, outside press or focus leaving closes; a nested menu counts as inside). `html, body` have `overscroll-behavior: none` (the frame never bounces; pull to refresh is off). The global button cursor moved into `@layer base`, so `cursor-grab` and disabled cursors apply. Checks: `e2e/tests/menus.spec.ts`, and the tab-bar tests in `e2e/tests/phone/polish-phone.spec.ts`.
 - **Repayments paid ahead (up.80), Tricount history recorded, temporary token permission removed (up.81):** owner-approved on 3 November. `eventSchema.advance` lets a settlement exceed what is owed (`recordEvent` skips only the outstanding-balance check; still a repayment between two different people); the Household form's **Paid ahead** tick sets it, and Undo (`restoreHouseholdEvent`) sends it for settlements so a removed advance comes back. up.80 also carried a temporary organise-token permission (`householdEntryAllows`, MCP `record_household_entries`), used once on 3 November to record the owner's Tricount history in their two-person household (169 past expenses and repayments, 89 linked to the owner's bank payments, none refused); up.81 removes it and `routes/assistantTools.test.ts` now checks every token is refused. The owner revokes the organise token used for it.
@@ -94,10 +95,9 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
     times out there, although an Ollama download resumes if you call it again.
   - The Allotment app has no ingress and its own password, so a session cannot call Allotment through
     the connector. The owner tests it in the app, for example with **Try a sample receipt**.
-- **Local browser tests:** Chromium is at `/opt/pw-browsers/chromium`. Create
-  `e2e/playwright.local-browser.config.ts`, which spreads the base config and sets
-  `use.launchOptions.executablePath` to that path. It is listed in `.git/info/exclude` and never
-  committed. Run `npm run build --prefix client` before e2e, or the tests use a stale build.
+- **Local browser tests:** Chromium is under `/opt/pw-browsers/` (see Gotchas for the build
+  number). Create `e2e/playwright.local-browser.config.ts`, which spreads the base config and sets
+  `use.launchOptions.executablePath` to it. Add it to `.git/info/exclude` and never commit it. Run `npm run build --prefix client` before e2e, or the tests use a stale build.
 
 ## Open items (pick up here)
 
@@ -133,16 +133,15 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
    - `docs/DEVELOPMENT.md`'s pending legacy cleanup of `recurring_transactions`.
 5. **Optional, the owner's call:** remove the unused `qwen3-vl:4b` thinking model; try a larger
    receipt model (`qwen2.5vl:7b`) with **Try a sample receipt** if accuracy matters more than speed.
-6. **Left from the 31 October review** (not in up.70): after a first Up import, Ready to assign
-   can exceed cash (this month's history shows as overspending) and Up's own Saver transfers
-   count as uncategorised spending until each suggestion is reviewed; candidate fixes are a
-   "start budgeting from today" choice and one reviewed "link the transfers Up reported" list
-   (owner rule: no silent links). Also: point the help links at the fork's own guide instead of
-   flybudget.org (`client/src/utils/project.ts`), fetch Up incrementally (`filter[since]` plus a
-   periodic full sweep) instead of full history on every sync, and split the 2.5 MB client bundle
-   by route. The in-browser demo budget (`server/src/demo/demoBudget.ts`) has assigned more than
-   it has received early in a month (Ready to assign −$925.85 on 1 November), so a visitor then
-   sees "Assigned more than you have".
+6. **Left from the 31 October review**, rechecked by the 3 November audit. Fixed: Ready to assign
+   above cash after a first Up import (up.86, a new budget starts that day), and the demo's
+   negative Ready to assign (up.83). Partly superseded: Up's Saver transfers net to zero
+   uncategorised when both legs are mapped; they still need reviewing as transfers, and one
+   reviewed "link the transfers Up reported" list is still a candidate (owner rule: no silent
+   links). Still open: the Settings → Server self-hosting link and Enable Banking's guide link go
+   to flybudget.org (`client/src/utils/project.ts`); fetch Up incrementally (`filter[since]` plus a
+   periodic full sweep) instead of full history on every sync (audit F-10); split the client
+   bundle by route (2.28 MB main chunk, audit F-11).
 7. **Depreciating assets on Tax time (planned, not built):** owner request of 3 November.
    [docs/DEPRECIATING-ASSETS-PLAN.md](docs/DEPRECIATING-ASSETS-PLAN.md) has the ATO rules
    (prime cost and diminishing value), the design, four phases and five owner decisions (§7).
@@ -157,6 +156,19 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
    and auto-create only at server start (run them on a timer), then ACT-03 hold for next month,
    ACT-04 per-category overspending rollover and ACT-05 month quick fills. Check the code first:
    later releases may have covered parts of them.
+
+10. **Audit roadmap, next round** ([docs/AUDIT-2026-11.md](docs/AUDIT-2026-11.md) section H): Stage 1
+    leftovers are financial property tests across transfers, cards, splits, linked envelopes and
+    household pools, plus "sync twice equals sync once" (F-16); deleted-import memory for Enable
+    Banking and SimpleFIN like Up's `up_deleted_imports` (F-14, probable, verify first). Stage 2:
+    ESLint with `react-hooks` and `jsx-a11y` in CI (F-08); one term per concept and neutral zeros
+    (F-09); one onboarding surface (F-12); one service per action family for sharing and assigning
+    (F-13); a declarative token policy (F-18); treat bank-synced accounts as reconciled to the sync
+    date (F-17). Stage 3: route splitting and removing the unused `emoji-picker-react` (F-11),
+    incremental Up fetch (F-10), the remaining accessibility fixes (F-15), docs drift (F-19, G.2).
+    Owner decisions still open: I-4 to I-11 (sidebar, theme default, backup with files, onboarding
+    model, household reports, `website/`, non-Up banks, token exceptions). Work in feature PRs with
+    tests; the owner reviews and merges.
 
 ## Gotchas learned the hard way
 
@@ -179,6 +191,13 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
   `updatedAt`.
 - Controlled checkboxes that save to the server need local, optimistic state, or the click doesn't
   register until the reply arrives.
+- Saves refresh the ledger views through the global `MutationCache.onSuccess` (`main.tsx`,
+  `utils/ledgerViews.ts`). Code that calls an API function directly instead of through a mutation
+  (as `FreshStartNote` and `AssignBlockError` do) must call `invalidateLedgerViews(qc)` itself.
+- Local e2e: Playwright 1.64 expects Chromium build 1248, but the cloud container has 1243 at
+  `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`. Point the local config's `executablePath` there, and add it
+  to `.git/info/exclude` yourself in a fresh clone. Kill leftover servers on ports 3171–3180 after
+  an aborted run, or the next global setup fails with "No setup code in the server log".
 - Global rules in `client/src/index.css` belong in an `@layer` (usually `base`). Unlayered CSS beats
   every Tailwind utility whatever its specificity: the unlayered `* { scrollbar-width: thin }` kept
   `ScrollCue`'s `[scrollbar-width:none]` from applying until up.75.
