@@ -161,15 +161,7 @@ payee, or failing that a category, already claimed this year or last, with the l
 of that claim) and `record_household_contributions` (up to 50 deposits into a household account
 recorded as the named person's contributions, each linked to its deposit) and
 `record_own_household_contribution` (your own contribution without a bank link, up to what you
-owe the household account). For now (owner-approved on 3 November 2026 to bring one Tricount
-history into a household, and removed once that is done) it also lists `record_household_entries`:
-up to 100 past expenses, each paid by one of the household's people in exact per-person shares, and
-repayments from one of its people to another, recorded in the order given and stopping at the first
-one Allotment refuses. An entry may link your own unlinked bank payment out (not from a household
-account, not a transfer) with the same date and amount, for something you paid. Never the household
-account, refunds, contributions, edits or removals; a repayment must still fit what is owed
-unless the user says it was paid ahead (`advance`), as the owner can on the Household page.
-`categorise_by_payee` with
+owe the household account). `categorise_by_payee` with
 `set_default: true` also makes the category the payee's default, so later imports get it.
 
 Each read tool call is a `GET` of the server's own API made with the caller's token, so a tool can

@@ -52,12 +52,7 @@ Keep this file and CLAUDE.md identical.
   deductions (never replace or remove a claim), and record a household contribution linked to a
   past deposit into that household's account for its exact amount and date (never expenses,
   settlements, edits or removals), and record the owner's own unlinked contribution up to what
-  the owner owes the household account (never anyone else's, never into credit). TEMPORARY (owner-approved 3 November
-  2026 for one Tricount history; remove once recorded): an `organise` token may also record past-dated
-  household expenses in exact per-person shares and repayments between that household's people, paid by
-  a person, never the household account, optionally linked to the owner's own unlinked bank payment out
-  with the same date and amount (`householdEntryAllows`); never edits, removals, refunds, contributions,
-  settings or bank changes, and every recordEvent check still applies. Token category changes are undoable change sets;
+  the owner owes the household account (never anyone else's, never into credit). Token category changes are undoable change sets;
   only the owner redoes one.
 - HA `/data/options.json` stays root-only; root opens it before dropping to uid 1000. Never regenerate
   an existing key. Supervisor watchdog must be TCP because strict hosts reject its IP-based HTTP probe.
