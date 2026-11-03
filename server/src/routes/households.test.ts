@@ -211,6 +211,37 @@ describe('household attribution', () => {
     expect(others.status).toBe(201);
     expect(db.select().from(transactions).all()).toHaveLength(2);
   });
+  it('records a repayment paid ahead only when it is marked as an advance', async () => {
+    const g = await group();
+    const [me, alex] = g.people;
+    const repay = (extra = {}) =>
+      call(`/${g.group.id}/events`, {
+        kind: 'settlement',
+        date,
+        description: 'Paid ahead',
+        amount: 5000,
+        payerId: me.id,
+        recipientId: alex.id,
+        ...extra,
+      });
+    // Nothing is owed: an ordinary repayment is refused, an advance flips who owes whom
+    expect((await repay()).data.error).toMatch(/exceeds the outstanding balance/);
+    const ahead = await repay({ advance: true });
+    expect(ahead.status).toBe(201);
+    expect(ahead.data.balances).toMatchObject({ [me.id]: 5000, [alex.id]: -5000 });
+    // Still a repayment between two different people, and only a repayment
+    expect((await repay({ advance: true, recipientId: me.id })).status).toBe(400);
+    const expense = await call(`/${g.group.id}/events`, {
+      kind: 'expense',
+      date,
+      description: 'Lunch',
+      amount: 2000,
+      payerId: me.id,
+      shares: [{ personId: alex.id, value: 1 }],
+      advance: true,
+    });
+    expect(expense.data.error).toMatch(/Only a repayment/);
+  });
   it('rejects wrong totals, foreign people, missing bank records and unreceived pool money', async () => {
     const g = await group();
     const stranger = (await group()).people[0];

@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.80
+
+- **Record a repayment paid ahead.** When you record a repayment between people on the Household page, tick **Paid ahead** to record it even if it is more than is owed now. The extra is then owed back the other way. Without the tick, Allotment still refuses a repayment larger than what is owed.
+- **For now, an assistant can bring in past shared expenses.** With a _read, categorise and organise_ token, `record_household_entries` records past expenses split in exact amounts per person, and repayments between a household's people. It can link your own unlinked bank payment with the same date and amount, and it stops at the first entry Allotment refuses. It can't record anything paid by the household account, refunds or contributions, or change or remove an entry. This is temporary, to bring in one Tricount history, and goes in the next release.
+
 ## 0.2.0-up.79
 
 - **Files: a library for your documents.** **Files** in the sidebar keeps bills, warranties, insurance policies and photos or videos of what you own with your budget. Link each file to as many transactions, categories, goals and accounts as it belongs to; removing a link keeps the file. Star files as reminders, mark the ones that matter as important, sort them with labels, and download them all at once as a ZIP with a list of what each one is.

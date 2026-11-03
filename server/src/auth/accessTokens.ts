@@ -515,7 +515,14 @@ const householdEntryBody = z.discriminatedUnion('kind', [
         .max(50),
     })
     .strict(),
-  z.object({ kind: z.literal('settlement'), ...entryFields, recipientId: personId }).strict(),
+  z
+    .object({
+      kind: z.literal('settlement'),
+      ...entryFields,
+      recipientId: personId,
+      advance: z.boolean().optional(),
+    })
+    .strict(),
 ]);
 
 /**
@@ -526,8 +533,8 @@ const householdEntryBody = z.discriminatedUnion('kind', [
  * a repayment to another of its people. It may link one of your own unlinked bank payments out
  * of a personal account (not a household account or a transfer) with the same date and amount,
  * and only for something you paid. Never edits, removals, refunds, contributions, bills,
- * settings or bank changes. recordEvent still makes every one of its checks, including that a
- * repayment fits what is owed.
+ * settings or bank changes. recordEvent still makes every one of its checks; a repayment must fit
+ * what is owed unless it is marked as paid ahead (`advance`, owner-approved the same day).
  */
 export function householdEntryAllows(method: string, rawPath: string, body: unknown): boolean {
   const match = HOUSEHOLD_EVENTS_PATH.exec(rawPath.replace(/\/+$/, ''));

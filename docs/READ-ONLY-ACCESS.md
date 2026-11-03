@@ -167,7 +167,8 @@ up to 100 past expenses, each paid by one of the household's people in exact per
 repayments from one of its people to another, recorded in the order given and stopping at the first
 one Allotment refuses. An entry may link your own unlinked bank payment out (not from a household
 account, not a transfer) with the same date and amount, for something you paid. Never the household
-account, refunds, contributions, edits or removals; a repayment must still fit what is owed.
+account, refunds, contributions, edits or removals; a repayment must still fit what is owed
+unless the user says it was paid ahead (`advance`), as the owner can on the Household page.
 `categorise_by_payee` with
 `set_default: true` also makes the category the payee's default, so later imports get it.
 

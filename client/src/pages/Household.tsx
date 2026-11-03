@@ -618,6 +618,7 @@ export default function HouseholdPage() {
                             transactionId: f.get('transactionId') || null,
                             billId: f.get('billId') || null,
                             reversesId: f.get('reversesId') || null,
+                            advance: kind === 'settlement' && f.has('advance'),
                             mode,
                             shares:
                               kind === 'expense'
@@ -703,16 +704,25 @@ export default function HouseholdPage() {
                         </label>
                       )}
                       {kind === 'settlement' && (
-                        <label className={field}>
-                          Paid to
-                          <Select name="recipientId">
-                            {state.people.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.name}
-                              </option>
-                            ))}
-                          </Select>
-                        </label>
+                        <>
+                          <label className={field}>
+                            Paid to
+                            <Select name="recipientId">
+                              {state.people.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name}
+                                </option>
+                              ))}
+                            </Select>
+                          </label>
+                          <label className="flex items-start gap-2 text-sm">
+                            <input type="checkbox" name="advance" className="mt-1" />
+                            <span>
+                              Paid ahead: allow more than is owed now. The extra becomes owed back
+                              the other way.
+                            </span>
+                          </label>
+                        </>
                       )}
                       {kind === 'expense' && (
                         <>

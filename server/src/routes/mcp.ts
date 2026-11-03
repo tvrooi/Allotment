@@ -1117,7 +1117,7 @@ const ACTION_TOOLS: ActionTool[] = [
   {
     name: 'record_household_entries',
     scope: 'organise',
-    description: `Records past expenses and repayments between a household's people, in the order given, and stops at the first one Allotment refuses (it reports that one and records nothing after it), so the user can decide. An expense is paid by one person, with each person's exact share in cents adding up to it; a repayment is from one person to another and must fit what is owed. Optionally link one of your own bank payments out, unlinked, with the same date and amount, for something you paid. Up to ${MAX_ENTRIES} per call. Never the household account, refunds, contributions, edits or removals (the owner removes an entry on the Household page). Confirm the list with the user first.`,
+    description: `Records past expenses and repayments between a household's people, in the order given, and stops at the first one Allotment refuses (it reports that one and records nothing after it), so the user can decide. An expense is paid by one person, with each person's exact share in cents adding up to it; a repayment is from one person to another and must fit what is owed, unless the user says it was paid ahead (advance). Optionally link one of your own bank payments out, unlinked, with the same date and amount, for something you paid. Up to ${MAX_ENTRIES} per call. Never the household account, refunds, contributions, edits or removals (the owner removes an entry on the Household page). Confirm the list with the user first.`,
     properties: {
       household_id: { ...idString, description: 'From list_households' },
       entries: {
@@ -1147,6 +1147,11 @@ const ACTION_TOOLS: ActionTool[] = [
               },
             },
             transaction_id: { ...idString, description: 'Optional: your bank payment' },
+            advance: {
+              type: 'boolean',
+              description:
+                'A repayment paid ahead: allowed to be more than is owed now. Only when the user says so',
+            },
           },
           required: ['kind', 'date', 'description', 'amount', 'payer_id'],
           additionalProperties: false,
@@ -1168,7 +1173,11 @@ const ACTION_TOOLS: ActionTool[] = [
         const shares = Array.isArray(row?.shares) ? (row.shares as Args[]) : [];
         const body =
           row?.kind === 'repayment'
-            ? { kind: 'settlement', recipientId: row.recipient_id }
+            ? {
+                kind: 'settlement',
+                recipientId: row.recipient_id,
+                ...(row.advance === undefined ? {} : { advance: row.advance }),
+              }
             : {
                 kind: row?.kind,
                 mode: 'exact',

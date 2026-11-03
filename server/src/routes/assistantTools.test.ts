@@ -842,6 +842,7 @@ describe('past household expenses and repayments (temporary)', () => {
       expense({ transactionId: 'h-xfer' }), // a move between your accounts
       expense({ transactionId: 'h-pool' }), // a household account's payment
       expense({ transactionId: 'missing' }),
+      expense({ advance: true }),
       { ...repay, amount: 2000, payerId: 'p-ed', recipientId: 'p-me', transactionId: 'h-in' },
     ])
       expect((await post(token, body)).status, JSON.stringify(body)).toBe(403);
@@ -915,6 +916,12 @@ describe('past household expenses and repayments (temporary)', () => {
     expect(state.events[1].shares.map((s: { amount: number }) => s.amount).sort()).toEqual([
       2000, 4000,
     ]);
+    // Marked as paid ahead (owner-approved), the same repayment is recorded and flips the balance
+    const ahead = await tool(token, 'record_household_entries', {
+      household_id: 'pair',
+      entries: [{ ...entries[3], advance: true }],
+    });
+    expect(ahead.data).toMatchObject({ recorded: 1, balances: { 'p-me': 499, 'p-ed': -499 } });
     // recordEvent's own checks still apply: a payment links once
     const again = await tool(token, 'record_household_entries', {
       household_id: 'pair',
