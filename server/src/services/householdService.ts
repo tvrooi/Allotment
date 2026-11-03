@@ -154,6 +154,8 @@ export const eventSchema = z.object({
   transactionId: z.string().nullable().default(null),
   reversesId: z.string().nullable().default(null),
   billId: z.string().nullable().default(null),
+  /** A repayment paid ahead: it may be more than is owed now, and then flips who owes whom */
+  advance: z.boolean().default(false),
   mode: z.enum(['equal', 'percentage', 'weight', 'exact']).default('equal'),
   shares: z
     .array(z.object({ personId: z.string(), value: z.number().int().min(0).max(1e12) }))
@@ -234,11 +236,13 @@ export function recordEvent(groupId: string, raw: unknown): string {
       input.kind === 'settlement' &&
       (!member(input.recipientId) ||
         input.recipientId === input.payerId ||
-        !(within(state.direct) || within(state.balances)))
+        (!input.advance && !(within(state.direct) || within(state.balances))))
     )
       throw new Error('Settlement exceeds the outstanding balance');
   }
   if (input.kind !== 'refund' && input.reversesId) throw new Error('Only refunds reverse expenses');
+  if (input.advance && input.kind !== 'settlement')
+    throw new Error('Only a repayment can be paid ahead');
   if (input.billId && !state.bills.some((b) => b.id === input.billId))
     throw new Error('Bill belongs to another household');
   if (

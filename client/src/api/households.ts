@@ -129,6 +129,8 @@ export const restoreHouseholdEvent = async (groupId: string, e: HouseholdEvent) 
         transactionId: e.transactionId,
         reversesId: e.reversesId,
         billId: e.billId,
+        // Putting back a repayment that was recorded is fine even if it was paid ahead
+        advance: e.kind === 'settlement',
         mode: 'exact',
         shares: e.shares.map((s) => ({ personId: s.personId, value: s.amount })),
       }),
