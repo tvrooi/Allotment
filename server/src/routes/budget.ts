@@ -107,19 +107,35 @@ budgetRouter.get('/year/:year', (req, res) => {
   res.json(annualOverview(year));
 });
 
-// Budget start (Settings → Budget start): the first month envelopes count. Earlier activity
-// and assignments stay in the register and reports. Moving it changes balances, not the ledger.
-budgetRouter.get('/start', (_req, res) =>
-  res.json({ month: getBudgetSettings().budgetStartMonth }),
-);
+// Budget start (Settings → Budget start): the first month envelopes count, optionally from a day
+// in it (a fresh start mid-month). Earlier activity and assignments stay in the register and
+// reports. Moving it changes balances, not the ledger.
+const startDay = (s: ReturnType<typeof getBudgetSettings>) =>
+  s.budgetStartDay && s.budgetStartDay.slice(0, 7) === s.budgetStartMonth ? s.budgetStartDay : null;
+budgetRouter.get('/start', (_req, res) => {
+  const settings = getBudgetSettings();
+  res.json({ month: settings.budgetStartMonth, day: startDay(settings) });
+});
 budgetRouter.put('/start', (req, res) => {
-  const month = req.body?.month;
-  if (month !== null && !isMonth(month))
+  const parsed = z
+    .object({
+      month: z.string().nullable(),
+      day: z.iso.date().nullable().optional(),
+    })
+    .safeParse(req.body);
+  if (!parsed.success || (parsed.data.month !== null && !isMonth(parsed.data.month)))
     return res.status(400).json({ error: 'Expected a month as YYYY-MM, or null for all history' });
-  if (month && month > todayIso().slice(0, 7))
-    return res.status(400).json({ error: 'The budget start cannot be a future month' });
-  updateBudgetSettings({ budgetStartMonth: month });
-  res.json({ month });
+  const { month } = parsed.data;
+  const day = month ? (parsed.data.day ?? null) : null;
+  if (day && day.slice(0, 7) !== month)
+    return res.status(400).json({ error: 'The start day must be in the start month' });
+  const today = todayIso();
+  if ((month && month > today.slice(0, 7)) || (day && day > today))
+    return res.status(400).json({ error: 'The budget start cannot be in the future' });
+  // The first of the month is the month itself
+  const stored = day && !day.endsWith('-01') ? day : null;
+  updateBudgetSettings({ budgetStartMonth: month, budgetStartDay: stored });
+  res.json({ month, day: stored });
 });
 
 // Each expense category also lists the recurring debits still expected this month

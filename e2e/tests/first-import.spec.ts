@@ -229,3 +229,69 @@ test('stays quiet when almost everything has a category', async ({ page, api }) 
   await expect(page.getByText('Cash today', { exact: true })).toBeVisible();
   await expect(page.getByRole('status', { name: 'Uncategorised spending' })).toHaveCount(0);
 });
+
+// A new budget connecting Up mid-month starts that day (services/mainAmountService.ts
+// startBudgetIfNew): spending earlier in the month is history, not overspending, so the first
+// screen isn't "Cover overspent envelopes" with more to assign than there is.
+test('connecting Up starts a new budget today, and the whole month is one click away', async ({
+  page,
+  api,
+}) => {
+  test.slow();
+  await mock('rich');
+  await freshUpWindow(page, api);
+  await open(page, '/settings?tab=connections');
+  await page.getByRole('button', { name: 'Up', exact: true }).click();
+  await page.getByRole('button', { name: 'Connect Up', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Connect Up' });
+  await dialog.getByLabel('Up personal access token').fill(UP_TEST_TOKEN);
+  await dialog.getByRole('button', { name: 'Connect', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Save & Sync' }).click();
+  await expect(dialog.getByText(/^Imported \d+ transactions?\.$/)).toBeVisible();
+
+  const today = isoDay();
+  const month = today.slice(0, 7);
+  const budgetSummary = () => api.call<any>('GET', `/budget/${month}/summary`);
+  const start = await api.call<{ month: string; day: string | null }>('GET', '/budget/start');
+  expect(start.month).toBe(month);
+
+  // Independently: only expense spending dated today or later can be overspent
+  const income = new Set(
+    (await api.categoryGroups())
+      .filter((g) => g.isIncome)
+      .flatMap((g) => g.categories.map((c) => c.id)),
+  );
+  const overspentFrom = async (from: string) => {
+    const byCategory = new Map<string, number>();
+    for (const t of await api.transactions())
+      if (
+        t.categoryId &&
+        !income.has(t.categoryId) &&
+        t.date >= from &&
+        t.date <= today &&
+        !t.isParent
+      )
+        byCategory.set(t.categoryId, (byCategory.get(t.categoryId) ?? 0) + t.amount);
+    return [...byCategory.values()].reduce((s, v) => s + Math.max(0, -v), 0);
+  };
+
+  if (today.endsWith('-01')) {
+    // The 1st: the month itself is the start, nothing to explain
+    expect(start.day).toBeNull();
+    await expect(dialog.getByText(/Your budget starts today/)).toHaveCount(0);
+    return;
+  }
+  expect(start.day).toBe(today);
+  const note = dialog.getByText(/Your budget starts today/);
+  await expect(note).toBeVisible();
+  const fresh = await budgetSummary();
+  expect(fresh.overspent).toBe(await overspentFrom(today));
+  // Ready to assign is what the accounts hold, less only what today's spending already took
+  expect(fresh.toBeBudgeted + fresh.envelopes + fresh.laterDeduction).toBe(fresh.resources);
+
+  // The whole month instead: the earlier spending is overspending again
+  await dialog.getByRole('button', { name: /^Count all of \w+ instead$/ }).click();
+  await expect(dialog.getByText(/Your budget counts all of/)).toBeVisible();
+  expect((await api.call<any>('GET', '/budget/start')).day).toBeNull();
+  expect((await budgetSummary()).overspent).toBe(await overspentFrom(`${month}-01`));
+});

@@ -12,7 +12,7 @@ import {
 } from '../db/schema.js';
 import { budgetGroups, budgetSummary } from './budgetService.js';
 import { applyMove, fundedWrite, previewMove } from './budgetMoves.js';
-import { ratesChanged } from './mainAmountService.js';
+import { ratesChanged, startBudgetIfNew } from './mainAmountService.js';
 import { monthBounds } from '../utils/date.js';
 import { lt } from 'drizzle-orm';
 
@@ -342,4 +342,49 @@ it("this month's unassigned spending is cash overspending: Ready to Assign is ca
   expect(october.resolved).toBe(false);
   vi.setSystemTime(new Date('2026-11-02T02:00:00Z'));
   expect(rta('2026-11')).toBe(cash);
+});
+
+// A fresh start mid-month (a new budget connecting its first bank): this month's spending from
+// before the start is history, not overspending, so Ready to assign is exactly the cash.
+it('a budget started on a day leaves earlier spending in that month out of the envelopes', () => {
+  db.insert(budgetSettings)
+    .values({ id: 'budget', budgetStartMonth: '2026-10', budgetStartDay: '2026-10-15' })
+    .run();
+  account('cash', '2026-06-01', 1_500_000);
+  txn('cash', '2026-10-03', -400_000, 'rent'); // before the start: history
+  txn('cash', '2026-10-09', -21_110, 'food');
+  txn('cash', '2026-10-16', -5_000, 'food'); // after it: this envelope's spending
+  const cash = 1_500_000 - 400_000 - 21_110 - 5_000;
+  const october = budgetSummary('2026-10');
+  expect(october.toBeBudgeted).toBe(cash + 5_000);
+  expect(october).toMatchObject({
+    overspent: 5_000,
+    cashOverspent: 5_000,
+    budgetStartDay: '2026-10-15',
+  });
+  expect(available('2026-10', 'rent')).toBe(0);
+  expect(available('2026-10', 'food')).toBe(-5_000);
+  // Assigning what is there covers it, and nothing is left over
+  assign('food', '2026-10', 5_000);
+  expect(available('2026-10', 'food')).toBe(0);
+  expect(rta('2026-10')).toBe(cash);
+  // Counting the whole month instead brings the earlier spending back as overspending
+  db.update(budgetSettings).set({ budgetStartDay: null }).run();
+  expect(budgetSummary('2026-10').overspent).toBe(400_000 + 21_110);
+});
+
+it('a new budget connecting its first bank starts today, and an existing one is left alone', () => {
+  expect(startBudgetIfNew('2026-10-21')).toBe('2026-10');
+  expect(budgetSummary('2026-10').budgetStartDay).toBe('2026-10-21');
+  // Already started: nothing changes
+  expect(startBudgetIfNew('2026-11-05')).toBeNull();
+  db.delete(budgetSettings).run();
+  // The first of the month is just the month
+  expect(startBudgetIfNew('2026-10-01')).toBe('2026-10');
+  expect(budgetSummary('2026-10').budgetStartDay).toBe('2026-10-01');
+  db.delete(budgetSettings).run();
+  // Money already assigned: not a new budget
+  account('cash', '2026-06-01', 100_000);
+  assign('food', '2026-10', 1_000);
+  expect(startBudgetIfNew('2026-10-21')).toBeNull();
 });

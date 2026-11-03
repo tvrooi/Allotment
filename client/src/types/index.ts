@@ -454,6 +454,8 @@ export interface BudgetSummary {
   toBeBudgeted: number;
   /** First month the envelopes count (YYYY-MM); null = all history */
   budgetStartMonth?: string | null;
+  /** The first day envelopes count (YYYY-MM-DD), or null for all history */
+  budgetStartDay?: string | null;
   /** Some money has been assigned in some month (false: a brand-new budget) */
   anythingAssigned?: boolean;
 }

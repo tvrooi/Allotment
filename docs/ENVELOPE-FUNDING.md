@@ -194,6 +194,16 @@ register and the spending history used by the runway ignore the start. A month b
 shows no assignments or activity. Moving the start changes the funding revision; it never
 rewrites transactions or stored assignments.
 
+**A start day (a fresh start mid-month).** The start can also be a day in its month
+(`budget_settings.budget_start_day`, migration 0063; null = the month's first day). Activity
+before it is history in the same way, so the start month's earlier spending is neither
+overspending nor uncategorised. A new budget connecting its first bank starts **today**
+(`startBudgetIfNew`, called by `POST /up/map-accounts`): Ready to assign is then exactly the money
+in the accounts, instead of the month's earlier spending showing as cash overspending and Ready
+to assign exceeding cash. The Up dialog says so and offers **Count all of _month_ instead**
+(`PUT /budget/start` with `day: null`); **Settings → Budget** shows and changes it. A start on the
+1st is stored as the month alone.
+
 ## Balance checks and reconciliation
 
 Ready to Assign still follows the signed-envelope calculation above. Before using it for

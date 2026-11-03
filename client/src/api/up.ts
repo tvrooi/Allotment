@@ -46,7 +46,12 @@ export const setupUp = (accessToken: string) =>
     body: JSON.stringify({ accessToken }),
   });
 export const mapUpAccounts = (mappings: UpMappingChoice[]) =>
-  apiFetch<{ mapped: number }>('/up/map-accounts', {
+  apiFetch<{
+    mapped: number;
+    /** Set when this connection started a new budget: its month, and the day (null = the 1st) */
+    budgetStartMonth?: string | null;
+    budgetStartDay?: string | null;
+  }>('/up/map-accounts', {
     method: 'POST',
     body: JSON.stringify({ mappings }),
   });

@@ -1045,6 +1045,11 @@ export const budgetSettings = sqliteTable('budget_settings', {
    * assignments stay in the register and reports but don't carry into envelopes.
    */
   budgetStartMonth: text('budget_start_month'),
+  /**
+   * The day the budget starts (YYYY-MM-DD, in budget_start_month's month), for a fresh start
+   * mid-month; null = the month's first day. Activity before it doesn't count in envelopes.
+   */
+  budgetStartDay: text('budget_start_day'),
   /** Receipts: split a matched transaction by its line items' categories (1 = on) */
   receiptAutoSplit: integer('receipt_auto_split').notNull().default(1),
   /** Receipts: add the receipt's notes and items to a matched transaction's notes */
