@@ -351,7 +351,12 @@ export function FileDetailModal({ id, onClose }: { id: string | null; onClose: (
             <div className="flex items-center">
               <p className="text-xs font-medium text-text-secondary">Linked to</p>
               {!adding && (
-                <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setAdding(true)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="ml-auto"
+                  onClick={() => setAdding(true)}
+                >
                   <Link2 size={13} /> Link
                 </Button>
               )}
@@ -367,14 +372,20 @@ export function FileDetailModal({ id, onClose }: { id: string | null; onClose: (
                   <span className="text-[11px] uppercase tracking-wide text-text-tertiary w-24 shrink-0">
                     {l.viaReceipt ? 'Receipt for' : KIND_NOUNS[l.kind]}
                   </span>
-                  <Link to={linkTarget(l)} onClick={onClose} className="flex-1 min-w-0 truncate hover:text-brand-600">
+                  <Link
+                    to={linkTarget(l)}
+                    onClick={onClose}
+                    className="flex-1 min-w-0 truncate hover:text-brand-600"
+                  >
                     <LinkLabel link={l} />
                   </Link>
                   <button
                     type="button"
                     className="p-1 rounded text-text-tertiary hover:text-negative"
                     aria-label={`Remove the link to ${l.label}`}
-                    title={l.viaReceipt ? 'Unmatch the receipt' : 'Remove the link (the file stays)'}
+                    title={
+                      l.viaReceipt ? 'Unmatch the receipt' : 'Remove the link (the file stays)'
+                    }
                     onClick={() => unlink.mutate({ id: doc.id, kind: l.kind, targetId: l.id })}
                   >
                     <X size={14} />

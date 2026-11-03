@@ -1,5 +1,17 @@
 # Changes
 
+## 0.2.0-up.76
+
+- **Files: a library for your documents.** **Files** in the sidebar keeps bills, warranties, insurance policies and photos or videos of what you own with your budget. Link each file to as many transactions, categories, goals and accounts as it belongs to; removing a link keeps the file. Star files as reminders, mark the ones that matter as important, sort them with labels, and download them all at once as a ZIP with a list of what each one is.
+- **More kinds of file.** Besides photos and PDFs: Word, Excel, PowerPoint and OpenDocument files, CSV, Markdown and text, GIFs, and videos (MP4, MOV) up to 250 MB. Allotment checks what each file really is and refuses anything else.
+- **Search inside files.** Search finds the words in PDFs, Word, Excel, PowerPoint and text files, as well as names, descriptions and labels. With reading receipts turned on, your own model can read a photo's words too.
+- **See files without leaving Allotment.** Photos, videos, text and PDFs show in the page. PDFs are drawn page by page, so nothing inside them can run.
+- **Files everywhere they belong.** A transaction's details have **Other files**, a category's page has **Files**, and goals and accounts have **Files** too. In Transactions, a paperclip marks rows with receipts or files, and a new **Receipts and files** filter finds them.
+- **Receipts are files too.** Every receipt appears in Files, linked to its transaction, and a photo or PDF in Files can become a receipt (**Use as a receipt**).
+- **Better tax evidence.** At tax time, a file linked to a claimed transaction (an invoice, a policy) counts as its evidence, and goes in the year's download.
+- **Share to Allotment from your phone.** Installed on an Android home screen, Allotment appears in the share sheet and adds what you share to Files.
+- **Storage.** Files shows how much your files take, and you can set a limit. Backups made with this version are format 23: they carry what each file is and what it's linked to, not the files themselves (your server's own backup and **Download all** keep those).
+
 ## 0.2.0-up.75
 
 - **Tidier period tabs on Transactions.** A scrollbar no longer draws across This Month, Last Month and the rest. The tabs are never squeezed beside **Filters** with a label cut off: they keep their full width or take a row of their own, and on a phone the period you choose scrolls into view.

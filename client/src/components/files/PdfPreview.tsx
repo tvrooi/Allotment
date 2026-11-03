@@ -39,7 +39,9 @@ export function PdfPreview({ id, fileName }: { id: string; fileName: string }) {
         for (let n = 1; n <= Math.min(doc.numPages, MAX_PAGES); n++) {
           const page = await doc.getPage(n);
           if (cancelled) return;
-          const viewport = page.getViewport({ scale: width / page.getViewport({ scale: 1 }).width });
+          const viewport = page.getViewport({
+            scale: width / page.getViewport({ scale: 1 }).width,
+          });
           const canvas = document.createElement('canvas');
           canvas.width = Math.floor(viewport.width * ratio);
           canvas.height = Math.floor(viewport.height * ratio);

@@ -43,9 +43,31 @@ export class DocumentError extends Error {
 
 export const MAX_DOCUMENTS = 50_000;
 
+/** What the page shows for a link's target (a transaction also says when, how much and where) */
+type TargetLabel = { label: string; date?: string; amount?: number; accountName?: string };
+
+/** A target that is a row with a name: exists, and its name */
+function named(table: typeof categories | typeof goals | typeof accounts) {
+  return {
+    resolve: (id: string) =>
+      db.select({ id: table.id }).from(table).where(eq(table.id, id)).get()?.id ?? null,
+    describe: (ids: string[]) =>
+      new Map(
+        db
+          .select({ id: table.id, name: table.name })
+          .from(table)
+          .where(inArray(table.id, ids))
+          .all()
+          .map((r): [string, TargetLabel] => [r.id, { label: r.name }]),
+      ),
+  };
+}
+
 /**
  * What a document can be linked to. Each kind is one nullable foreign-key column on
- * document_links; adding a kind is that column (an additive migration) and an entry here.
+ * document_links (`<kind>_id`, ON DELETE CASCADE, with a partial unique index); adding a kind is
+ * that column, in an additive migration and schema.ts, and an entry here. Routes, search, counts,
+ * backups and the export follow from this list.
  */
 const LINK_TARGETS = {
   transaction: {
@@ -60,40 +82,44 @@ const LINK_TARGETS = {
         .get();
       return row ? (row.parent ?? row.id) : null;
     },
+    describe: (ids: string[]) =>
+      new Map(
+        db
+          .select({
+            id: transactions.id,
+            date: transactions.date,
+            amount: transactions.amount,
+            payeeName: transactions.payeeName,
+            importedPayee: transactions.importedPayee,
+            accountName: accounts.name,
+          })
+          .from(transactions)
+          .innerJoin(accounts, eq(accounts.id, transactions.accountId))
+          .where(inArray(transactions.id, ids))
+          .all()
+          .map((t): [string, TargetLabel] => [
+            t.id,
+            {
+              label: t.payeeName || t.importedPayee || 'Transaction',
+              date: t.date,
+              amount: t.amount,
+              accountName: t.accountName,
+            },
+          ]),
+      ),
   },
-  category: {
-    column: documentLinks.categoryId,
-    noun: 'Category',
-    resolve: (id: string) =>
-      db.select({ id: categories.id }).from(categories).where(eq(categories.id, id)).get()?.id ??
-      null,
-  },
-  goal: {
-    column: documentLinks.goalId,
-    noun: 'Goal',
-    resolve: (id: string) =>
-      db.select({ id: goals.id }).from(goals).where(eq(goals.id, id)).get()?.id ?? null,
-  },
-  account: {
-    column: documentLinks.accountId,
-    noun: 'Account',
-    resolve: (id: string) =>
-      db.select({ id: accounts.id }).from(accounts).where(eq(accounts.id, id)).get()?.id ?? null,
-  },
+  category: { column: documentLinks.categoryId, noun: 'Category', ...named(categories) },
+  goal: { column: documentLinks.goalId, noun: 'Goal', ...named(goals) },
+  account: { column: documentLinks.accountId, noun: 'Account', ...named(accounts) },
 } as const;
 
 export type LinkKind = keyof typeof LINK_TARGETS;
 export const LINK_KINDS = Object.keys(LINK_TARGETS) as LinkKind[];
 
 /** A link as the page shows it */
-export type DocumentLink = {
+export type DocumentLink = TargetLabel & {
   kind: LinkKind;
   id: string;
-  label: string;
-  /** Transactions: when, how much and where */
-  date?: string;
-  amount?: number;
-  accountName?: string;
   /** The receipt's matched transaction (managed as the receipt's match) */
   viaReceipt?: boolean;
 };
@@ -120,44 +146,12 @@ function resolveTarget(kind: LinkKind, id: string) {
 
 /** Labels for the targets of these links, in one query per kind */
 function describeTargets(pairs: { kind: LinkKind; id: string }[]) {
-  const ids = (kind: LinkKind) => [
-    ...new Set(pairs.filter((p) => p.kind === kind).map((p) => p.id)),
-  ];
-  const out = new Map<string, Omit<DocumentLink, 'kind' | 'id' | 'viaReceipt'>>();
-  const tx = ids('transaction');
-  if (tx.length)
-    for (const t of db
-      .select({
-        id: transactions.id,
-        date: transactions.date,
-        amount: transactions.amount,
-        payeeName: transactions.payeeName,
-        importedPayee: transactions.importedPayee,
-        accountName: accounts.name,
-      })
-      .from(transactions)
-      .innerJoin(accounts, eq(accounts.id, transactions.accountId))
-      .where(inArray(transactions.id, tx))
-      .all())
-      out.set(`transaction:${t.id}`, {
-        label: t.payeeName || t.importedPayee || 'Transaction',
-        date: t.date,
-        amount: t.amount,
-        accountName: t.accountName,
-      });
-  const named = (kind: LinkKind, table: typeof categories | typeof goals | typeof accounts) => {
-    const list = ids(kind);
-    if (!list.length) return;
-    for (const r of db
-      .select({ id: table.id, name: table.name })
-      .from(table)
-      .where(inArray(table.id, list))
-      .all())
-      out.set(`${kind}:${r.id}`, { label: r.name });
-  };
-  named('category', categories);
-  named('goal', goals);
-  named('account', accounts);
+  const out = new Map<string, TargetLabel>();
+  for (const kind of LINK_KINDS) {
+    const ids = [...new Set(pairs.filter((p) => p.kind === kind).map((p) => p.id))];
+    if (!ids.length) continue;
+    for (const [id, label] of LINK_TARGETS[kind].describe(ids)) out.set(`${kind}:${id}`, label);
+  }
   return out;
 }
 

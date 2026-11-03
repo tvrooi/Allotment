@@ -53,12 +53,7 @@ export function FileThumb({ doc, size = 48 }: { doc: StoredDocument; size?: numb
       style={{ width: size, height: size }}
     >
       {drawable(doc) ? (
-        <img
-          src={fileUrl(doc.id)}
-          alt=""
-          loading="lazy"
-          className="w-full h-full object-cover"
-        />
+        <img src={fileUrl(doc.id)} alt="" loading="lazy" className="w-full h-full object-cover" />
       ) : (
         <KindIcon kind={doc.kind} size={Math.round(size * 0.42)} />
       )}

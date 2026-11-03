@@ -26,6 +26,7 @@ const sidebars: SidebarsConfig = {
         'goals',
         'investments',
         'tax',
+        'files',
         'payees',
         'currencies',
         'settings',
