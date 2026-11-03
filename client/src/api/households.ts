@@ -96,6 +96,58 @@ export const recordRepayment = (groupId: string, s: RepaymentSuggestion, selfId:
   });
 
 /** Removes one household entry (undoing a share) */
+/** An entry in a household, as GET /households/:id lists it */
+export interface HouseholdEvent {
+  id: string;
+  kind: string;
+  date: string;
+  description: string;
+  amount: number;
+  payerId: string | null;
+  recipientId: string | null;
+  transactionId: string | null;
+  reversesId: string | null;
+  billId: string | null;
+  shares: { personId: string; amount: number }[];
+}
+
+export const getHouseholdEvents = async (groupId: string) =>
+  (await apiFetch<{ events: HouseholdEvent[] }>(`/households/${groupId}`)).events;
+
+/** Records an entry again exactly as it was (each person's share as a fixed amount) */
+export const restoreHouseholdEvent = async (groupId: string, e: HouseholdEvent) =>
+  (
+    await apiFetch<{ events: HouseholdEvent[] }>(`/households/${groupId}/events`, {
+      method: 'POST',
+      body: JSON.stringify({
+        kind: e.kind,
+        date: e.date,
+        description: e.description,
+        amount: e.amount,
+        payerId: e.payerId,
+        recipientId: e.recipientId,
+        transactionId: e.transactionId,
+        reversesId: e.reversesId,
+        billId: e.billId,
+        mode: 'exact',
+        shares: e.shares.map((s) => ({ personId: s.personId, value: s.amount })),
+      }),
+    })
+  ).events.find((x) => x.transactionId === e.transactionId)!.id;
+
+/**
+ * Removes the shared-expense entries now linked to these payments in a household, whatever
+ * their ids (an entry that Stop sharing removed and Undo recorded again has a new id). Payments
+ * with no such entry are skipped.
+ */
+export async function removeSharedEntries(groupId: string, transactionIds: string[]) {
+  const ids = new Set(transactionIds);
+  const entries = (await getHouseholdEvents(groupId)).filter(
+    (e) => e.kind === 'expense' && e.transactionId !== null && ids.has(e.transactionId),
+  );
+  for (const e of entries.reverse()) await removeHouseholdEvent(groupId, e.id);
+}
+
 export const removeHouseholdEvent = (groupId: string, eventId: string) =>
   apiFetch<unknown>(`/households/${groupId}/events/${eventId}`, { method: 'DELETE' });
 

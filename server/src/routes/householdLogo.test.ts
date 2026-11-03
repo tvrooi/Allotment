@@ -122,14 +122,14 @@ describe('shared payments in the register', () => {
         ),
       );
     let rows = await byId();
-    expect(rows.get('groceries')).toEqual({ id: groupId, eventId });
+    expect(rows.get('groceries')).toEqual({ id: groupId, eventId, kind: 'expense' });
     expect(rows.get('coffee')).toBeNull();
     // Filters on columns the household entry also has (date, amount, description) still work
     rows = await byId(
       '?direction=debit&min_amount=1000&from=2026-10-01&to=2026-10-31&search=Grocer',
     );
     expect([...rows.keys()]).toEqual(['groceries']);
-    expect(rows.get('groceries')).toEqual({ id: groupId, eventId });
+    expect(rows.get('groceries')).toEqual({ id: groupId, eventId, kind: 'expense' });
 
     expect(
       (await call(`/households/${groupId}/events/${eventId}`, undefined, 'DELETE')).status,

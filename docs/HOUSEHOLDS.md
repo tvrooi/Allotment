@@ -48,9 +48,29 @@ household's initial shows on a coloured square (households are square, merchants
 a small PNG, JPEG or WebP image, like an account or payee logo (`household_groups.logo`,
 migration 0061, `PUT /api/households/:id/logo`, owner only; no access token reaches it). It is
 kept in backups and never sent to a combined household. A payment the register lists carries
-`household: { id, eventId }` when it is linked to an entry in a household, and the details then
+`household: { id, eventId, kind }` when it is linked to an entry in a household, and the details then
 show **Shared with _name_** and **View in household** (`/household?household=<id>`) instead of
 the share buttons.
+
+**Right-click a transaction** in the register (or press Shift+F10 or the Menu key on it, long
+press it, or tap ⋯ on a phone card) for its menu (`components/ui/ContextMenu.tsx`,
+`components/transactions/TransactionContextMenu.tsx`):
+
+- **Share with ▸** lists each household with its picture and split; choosing one shares the
+  payment at once with that household's default split, and the toast offers **Undo**.
+  **Custom split…** opens the Household page's form for it. While payments are picked, right-
+  clicking one of them shares all of the picked ones (**Share _N_ picked with ▸**).
+- A payment that can't be shared (money in, a transfer, a split as a whole, a balance
+  correction) shows the item greyed out with the reason. With no household yet, the item opens
+  the Household page.
+- A shared payment shows **View in _household_** and **Stop sharing with _household_**. Stop
+  sharing removes the entry; **Undo** records it again with exactly the same shares (a
+  `mode: 'exact'` entry). Entries for money in (contributions, settlements) are removed on the
+  Household page, not from the menu.
+
+The menu is keyboard-operable (arrows, Home/End, Right or Enter opens the sub-menu, Left or
+Escape goes back, Tab closes) and returns focus to the row. On a phone the sub-menu opens in
+place with **Back**.
 
 **Repayment and contribution suggestions** (**Household → Sharing**) list money received in
 the last 120 days that isn't linked yet:
