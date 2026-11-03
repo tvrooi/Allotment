@@ -170,7 +170,7 @@ records, not only tax evidence.
 
 - Email forwarding, and reading PDFs (only photos are read).
 - Working-from-home hours (the fixed rate per hour), car logbooks and cents per kilometre.
-- Depreciation schedules and the low-value pool calculation.
+- Depreciation schedules and the low-value pool calculation (planned: [DEPRECIATING-ASSETS-PLAN.md](DEPRECIATING-ASSETS-PLAN.md)).
 - Income, tax withheld, tax offsets and an estimated refund.
 - Lodging with the ATO. myTax has no import, so the CSV is for you or your tax agent.
 - A "Has receipt" filter in the register (markers show instead).
