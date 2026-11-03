@@ -17,7 +17,7 @@ const accentBorders: Record<string, string> = {
 export function StatCard({ label, value, sub, accent, valueColor, className = '' }: Props) {
   return (
     <div
-      className={`bg-surface rounded-lg px-5 py-4 border border-border-light shadow-card ${
+      className={`bg-surface rounded-lg px-6 py-4 max-md:px-4 border border-border-light shadow-card ${
         accent ? accentBorders[accent] : ''
       } ${className}`}
     >

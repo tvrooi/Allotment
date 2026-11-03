@@ -242,7 +242,7 @@ export function EnableBankingSetupForm({
           onChange={(e) => handleFile(e.target.files?.[0])}
         />
         {fileError && <p className="text-xs text-negative mt-1">{fileError}</p>}
-        <p className="text-[11px] text-text-tertiary mt-1">
+        <p className="text-2xs text-text-tertiary mt-1">
           The key stays in Allotment, encrypted, and is only used to sign requests to Enable
           Banking.
         </p>

@@ -493,7 +493,7 @@ function SetupCodeHelp({ id, hostKind }: { id: string; hostKind: HostKind | unde
       <p className="mt-2 text-text-tertiary">It looks like this in the log:</p>
       <pre
         aria-hidden
-        className="mt-1 overflow-x-auto rounded bg-surface px-2 py-1.5 font-mono text-[11px] leading-relaxed text-text-tertiary"
+        className="mt-1 overflow-x-auto rounded bg-surface px-2 py-1.5 font-mono text-2xs leading-relaxed text-text-tertiary"
       >
         {'Allotment needs a password. Open it\nin your browser and enter this\nsetup code:\n\n    '}
         <span className="rounded bg-brand-50 px-1 text-text font-semibold">

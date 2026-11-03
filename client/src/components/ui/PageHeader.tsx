@@ -18,7 +18,7 @@ interface Props {
 export function PageHeader({ title, subtitle, actions, tabs, breadcrumbs, children }: Props) {
   return (
     <div className="bg-page border-b border-border-light shrink-0">
-      <div className="px-6 py-5 max-md:px-4">
+      <div className="px-6 py-4 max-md:px-4">
         {breadcrumbs && breadcrumbs.length > 0 && (
           <nav className="flex items-center gap-1 text-xs text-text-tertiary mb-2">
             {breadcrumbs.map((crumb, i) => (
@@ -37,14 +37,16 @@ export function PageHeader({ title, subtitle, actions, tabs, breadcrumbs, childr
         )}
         <div className="flex items-center justify-between gap-x-4 gap-y-2 flex-wrap">
           <div>
-            <h1 className="font-display text-3xl tracking-tight text-text">{title}</h1>
-            {subtitle && <p className="text-sm text-text-secondary mt-1.5">{subtitle}</p>}
+            <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
+              {title}
+            </h1>
+            {subtitle && <p className="text-sm text-text-secondary mt-1">{subtitle}</p>}
           </div>
           {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
         </div>
       </div>
-      {tabs && <div className="px-6">{tabs}</div>}
-      {children && <div className="px-6 pb-4">{children}</div>}
+      {tabs && <div className="px-6 max-md:px-4">{tabs}</div>}
+      {children && <div className="px-6 pb-4 max-md:px-4">{children}</div>}
     </div>
   );
 }

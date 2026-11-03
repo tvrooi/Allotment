@@ -127,7 +127,7 @@ export default function ReconcilePage() {
             <span className="text-text-secondary">Reconcile</span>
           </div>
           <div className="flex items-center gap-2">
-            <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+            <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
               Reconcile: {account.name}
             </h1>
             <Badge variant={account.type} />
@@ -201,7 +201,7 @@ export default function ReconcilePage() {
           <span className="text-text-secondary">Reconcile</span>
         </div>
         <div className="flex items-center gap-2">
-          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+          <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
             Reconcile: {account.name}
           </h1>
           <Badge variant={account.type} />

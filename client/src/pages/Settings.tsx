@@ -57,7 +57,7 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 py-4 border-b border-border shrink-0">
-        <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+        <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
           Settings
         </h1>
         <div data-guide="settings.tabs">

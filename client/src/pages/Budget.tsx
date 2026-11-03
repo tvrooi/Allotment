@@ -647,7 +647,7 @@ export default function BudgetPage() {
     return (
       <div className="flex flex-col h-full bg-surface text-text">
         <div className="px-6 py-4 border-b border-border flex flex-wrap items-center gap-3">
-          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight">
+          <h1 className="font-display text-title max-md:text-2xl tracking-tight">
             Until next payday
           </h1>
           <BudgetViewSwitch
@@ -826,7 +826,7 @@ export default function BudgetPage() {
         />
       )}
       {nothingPlanned && !beforeStart && !(isPhone && needle) && (
-        <div className="flex items-start gap-3 px-6 py-3 bg-brand-50 border-b border-border-light text-sm text-text-secondary shrink-0">
+        <div className="flex items-start gap-3 px-6 max-md:px-4 py-3 bg-brand-50 border-b border-border-light text-sm text-text-secondary shrink-0">
           <Lightbulb size={16} className="text-brand-600 shrink-0 mt-0.5" aria-hidden />
           <div>
             <p>

@@ -69,8 +69,10 @@ export default function Dashboard() {
 
   return (
     <OnboardingContext.Provider value={onboarding}>
-      <div className="p-8 max-md:p-4 max-w-[1400px] mx-auto">
-        <div className="flex items-center justify-between gap-4 mb-7">
+      {/* One gap between every block, the same as between cards. A block with nothing to show is
+          hidden (empty:hidden), and a hidden block takes no gap. */}
+      <div className="p-8 max-md:p-4 max-w-[1400px] mx-auto flex flex-col gap-6 max-md:gap-4">
+        <div className="flex items-center justify-between gap-4">
           <DashboardStatus currentMonth={currentMonth} />
           <Button
             variant="secondary"
@@ -82,17 +84,17 @@ export default function Dashboard() {
           </Button>
         </div>
         {/* Not cards: they keep their own show/hide rules */}
-        <div className="mb-5 empty:hidden">
+        <div className="empty:hidden">
           <Reminder />
         </div>
-        <div className="mb-5 empty:hidden">
+        <div className="empty:hidden">
           <Tip
             tip={TIPS.safeModeKey}
             desktopOnly
-            className="rounded-lg border border-border-light px-4 py-3"
+            className="rounded-lg border border-border-light p-4"
           />
         </div>
-        <div className="mb-6 empty:hidden">
+        <div className="empty:hidden">
           <GettingStarted currentMonth={currentMonth} onVisibleChange={setOnboarding} />
         </div>
 
@@ -124,6 +126,7 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Not part of the cards: further from them than they are from each other */}
         <HelpFooter className="mt-4" />
         <CustomizeHome
           isOpen={customizing}

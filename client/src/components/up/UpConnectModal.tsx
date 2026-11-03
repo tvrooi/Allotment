@@ -57,7 +57,7 @@ const dayBefore = (day: string) => {
 };
 
 const STEP =
-  'w-5 h-5 shrink-0 rounded-full bg-brand-600 text-brand-contrast text-[11px] font-semibold flex items-center justify-center mt-0.5';
+  'w-5 h-5 shrink-0 rounded-full bg-brand-600 text-brand-contrast text-2xs font-semibold flex items-center justify-center mt-0.5';
 
 /**
  * Whether typed or pasted text clearly isn't an Up token (they start "up:yeah:"). Only a

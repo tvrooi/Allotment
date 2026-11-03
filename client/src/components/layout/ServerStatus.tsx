@@ -101,7 +101,7 @@ export function ServerStatus({ collapsed }: { collapsed: boolean }) {
     />
   );
   const itemClass =
-    'flex items-center gap-2 w-full px-3 py-1.5 text-left text-[13px] text-text-secondary hover:bg-hover hover:text-text focus:bg-hover focus:text-text focus:outline-none cursor-pointer';
+    'flex items-center gap-2 w-full px-3 py-1.5 text-left text-nav text-text-secondary hover:bg-hover hover:text-text focus:bg-hover focus:text-text focus:outline-none cursor-pointer';
 
   return (
     <>
@@ -112,7 +112,7 @@ export function ServerStatus({ collapsed }: { collapsed: boolean }) {
         title={collapsed ? label : undefined}
         aria-haspopup="menu"
         aria-expanded={pos !== null}
-        className="flex items-center gap-2.5 w-full py-1.5 max-md:min-h-11 px-3 rounded-md text-[12px] text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi transition-colors"
+        className="flex items-center gap-2.5 w-full py-1.5 max-md:min-h-11 px-3 rounded-md text-xs text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi transition-colors"
       >
         <span className="w-[18px] flex justify-center shrink-0">{dot}</span>
         <span
@@ -138,7 +138,7 @@ export function ServerStatus({ collapsed }: { collapsed: boolean }) {
               </p>
               <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-text-secondary">
                 <dt className="text-text-tertiary">Address</dt>
-                <dd className="truncate font-mono text-[11px] leading-5">{address}</dd>
+                <dd className="truncate font-mono text-2xs leading-5">{address}</dd>
                 <dt className="text-text-tertiary">Connection</dt>
                 <dd>{mode === 'server' ? SECURITY_LABEL[security] : SECURITY_LABEL.local}</dd>
                 <dt className="text-text-tertiary">Version</dt>

@@ -113,7 +113,7 @@ export default function WidgetCard({ widget, report, pages, dashboardRange, edit
             <p className="text-sm font-semibold text-text truncate group-hover:text-brand-600 transition-colors">
               {title}
             </p>
-            <p className="flex items-center gap-1 text-[11px] text-text-tertiary">
+            <p className="flex items-center gap-1 text-2xs text-text-tertiary">
               {source === 'frozen' && (
                 <Snowflake size={10} className="text-brand-500" aria-label="Frozen" />
               )}
