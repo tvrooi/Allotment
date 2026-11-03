@@ -225,12 +225,16 @@ export function recordEvent(groupId: string, raw: unknown): string {
     if (input.kind === 'contribution' && !state.poolAccountIds.length)
       throw new Error('Contributions require a household pool account');
     if (!amount || !member(input.payerId)) throw new Error('Choose a payer and positive amount');
+    // A repayment settles what is owed for things people paid themselves (`direct`), whatever
+    // either of them owes the household account; one within their overall balances, as before,
+    // is fine too.
+    const within = (balances: Record<string, number>) =>
+      amount <= -(balances[input.payerId!] ?? 0) && amount <= (balances[input.recipientId!] ?? 0);
     if (
       input.kind === 'settlement' &&
       (!member(input.recipientId) ||
         input.recipientId === input.payerId ||
-        amount > -(state.balances[input.payerId!] ?? 0) ||
-        amount > (state.balances[input.recipientId!] ?? 0))
+        !(within(state.direct) || within(state.balances)))
     )
       throw new Error('Settlement exceeds the outstanding balance');
   }
@@ -789,11 +793,8 @@ export function repaymentSuggestions(groupId: string, today: string) {
       .from(transactions)
       .where(eq(transactions.id, t.transferTransactionId))
       .get();
-    return (
-      !!other &&
-      !state.poolAccountIds.includes(other.accountId) &&
-      !linked.has(t.transferTransactionId)
-    );
+    // From one of your own accounts: not this household's, and not another household's either
+    return !!other && !poolGroupOf(other.accountId) && !linked.has(t.transferTransactionId);
   };
   const contributions = recent
     .filter((t) => state.poolAccountIds.includes(t.accountId))

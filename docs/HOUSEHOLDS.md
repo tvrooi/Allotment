@@ -166,7 +166,8 @@ group. With a household account, **People & balances** also shows each balance i
 
 The two parts add up to the balance, and the household-account parts add up to the pool. Repayments move credit between people, support partial amounts and can
 settle balances spanning several expenses. Overpayments beyond either person's
-outstanding balance are rejected. They are net group settlements, not a legal
+outstanding balance are rejected; a repayment within what is owed for things people paid
+themselves is accepted even while either person owes the household account. They are net group settlements, not a legal
 per-invoice debt assignment.
 
 For personal repayments/refunds, categorize the bank receipt against the original

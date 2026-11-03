@@ -370,9 +370,102 @@ export const receiptFiles = sqliteTable('receipt_files', {
   id: text('id').primaryKey(),
   mimeType: text('mime_type').notNull(),
   size: integer('size').notNull(),
+  /** The bytes; empty when the file is kept on disk instead (onDisk = 1) */
   data: blob('data', { mode: 'buffer' }).notNull(),
+  /**
+   * 1 = the bytes are in the files folder next to the database (fileStore.ts), named by the hash:
+   * videos, too large to keep in the database. Everything else is in `data`.
+   */
+  onDisk: integer('on_disk').notNull().default(0),
   createdAt: text('created_at').notNull(),
 });
+
+/**
+ * Files (docs/FILES.md): the library of documents kept with the budget. Every stored file is a
+ * document, receipts included (receipts.document_id). The bytes are in receipt_files, once per
+ * content; a document says what the file is, and links say what it belongs to.
+ */
+export const documents = sqliteTable(
+  'documents',
+  {
+    id: text('id').primaryKey(),
+    fileId: text('file_id').notNull(),
+    fileName: text('file_name').notNull(),
+    mimeType: text('mime_type').notNull(),
+    size: integer('size').notNull(),
+    description: text('description'),
+    /** The date the document is about (a bill's date), not when it was added */
+    documentDate: text('document_date'),
+    /** Flagged as one to keep (insurance, mortgage, legal) */
+    important: integer('important').notNull().default(0),
+    /** A temporary reminder, such as a refund still to come */
+    starred: integer('starred').notNull().default(0),
+    /** Text found in the file, for search (fileText.ts); null = none found or not looked yet */
+    searchText: text('search_text'),
+    /** Finding its text: pending | read | failed | none; null = not looked yet */
+    textStatus: text('text_status'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => [
+    index('documents_file_idx').on(table.fileId),
+    index('documents_created_idx').on(table.createdAt),
+  ],
+);
+
+/**
+ * What a document belongs to: exactly one target per row, each its own foreign key so deleting
+ * the target removes the link (never the document). Adding a kind of target is one nullable column
+ * here and one entry in LINK_TARGETS (documentService.ts).
+ */
+export const documentLinks = sqliteTable(
+  'document_links',
+  {
+    id: text('id').primaryKey(),
+    documentId: text('document_id')
+      .notNull()
+      .references(() => documents.id, { onDelete: 'cascade' }),
+    transactionId: text('transaction_id').references(() => transactions.id, {
+      onDelete: 'cascade',
+    }),
+    categoryId: text('category_id').references(() => categories.id, { onDelete: 'cascade' }),
+    goalId: text('goal_id').references(() => goals.id, { onDelete: 'cascade' }),
+    accountId: text('account_id').references(() => accounts.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at').notNull(),
+  },
+  (table) => [
+    index('document_links_document_idx').on(table.documentId),
+    uniqueIndex('document_links_transaction_idx')
+      .on(table.transactionId, table.documentId)
+      .where(sql`transaction_id IS NOT NULL`),
+    uniqueIndex('document_links_category_idx')
+      .on(table.categoryId, table.documentId)
+      .where(sql`category_id IS NOT NULL`),
+    uniqueIndex('document_links_goal_idx')
+      .on(table.goalId, table.documentId)
+      .where(sql`goal_id IS NOT NULL`),
+    uniqueIndex('document_links_account_idx')
+      .on(table.accountId, table.documentId)
+      .where(sql`account_id IS NOT NULL`),
+  ],
+);
+
+/** A document's labels: the budget's tags, shared with transactions */
+export const documentTags = sqliteTable(
+  'document_tags',
+  {
+    documentId: text('document_id')
+      .notNull()
+      .references(() => documents.id, { onDelete: 'cascade' }),
+    tagId: text('tag_id')
+      .notNull()
+      .references(() => tags.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.documentId, table.tagId] }),
+    index('document_tags_tag_idx').on(table.tagId),
+  ],
+);
 
 /** A receipt: a file, what it says, and the transaction it belongs to (null = unmatched) */
 export const receipts = sqliteTable(
@@ -383,6 +476,10 @@ export const receipts = sqliteTable(
       onDelete: 'set null',
     }),
     fileId: text('file_id').notNull(),
+    /** Its entry in the Files library (deleting the document deletes the receipt) */
+    documentId: text('document_id').references((): AnySQLiteColumn => documents.id, {
+      onDelete: 'cascade',
+    }),
     fileName: text('file_name').notNull(),
     mimeType: text('mime_type').notNull(),
     size: integer('size').notNull(),
@@ -404,7 +501,10 @@ export const receipts = sqliteTable(
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
   },
-  (table) => [index('receipts_transaction_idx').on(table.transactionId)],
+  (table) => [
+    index('receipts_transaction_idx').on(table.transactionId),
+    index('receipts_document_idx').on(table.documentId),
+  ],
 );
 
 /**
@@ -955,6 +1055,8 @@ export const budgetSettings = sqliteTable('budget_settings', {
   receiptReaderEnabled: integer('receipt_reader_enabled').notNull().default(0),
   receiptReaderUrl: text('receipt_reader_url'),
   receiptReaderModel: text('receipt_reader_model'),
+  /** Files: the most the library may hold, in MB; null = no limit beyond the disk */
+  filesCapMb: integer('files_cap_mb'),
   updatedAt: text('updated_at')
     .notNull()
     .default(sql`(datetime('now'))`),

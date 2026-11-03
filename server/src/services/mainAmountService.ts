@@ -45,6 +45,7 @@ export function getBudgetSettings(): BudgetSettings {
       receiptReaderEnabled: 0,
       receiptReaderUrl: null,
       receiptReaderModel: null,
+      filesCapMb: null,
       updatedAt: new Date(0).toISOString(),
     }
   );

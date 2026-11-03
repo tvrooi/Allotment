@@ -481,6 +481,12 @@ export function TransactionFilters({
               value={state.hidden}
               onChange={(hidden) => set({ hidden })}
             />
+            <Segmented
+              legend="Receipts and files"
+              options={TRISTATE}
+              value={state.hasFiles}
+              onChange={(hasFiles) => set({ hasFiles })}
+            />
           </div>
         </div>
       )}
@@ -555,6 +561,12 @@ export function TransactionFilters({
             <Chip
               label={state.hidden === 'yes' ? 'Hidden from reports' : 'Shown in reports'}
               onClear={() => set({ hidden: 'all' })}
+            />
+          )}
+          {state.hasFiles !== 'all' && (
+            <Chip
+              label={state.hasFiles === 'yes' ? 'Has receipts or files' : 'No receipts or files'}
+              onClear={() => set({ hasFiles: 'all' })}
             />
           )}
           <button

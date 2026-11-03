@@ -18,6 +18,7 @@
     "date-fns": "^4.4.0",
     "emoji-picker-react": "^4.22.3",
     "lucide-react": "^1.55.0",
+    "pdfjs-dist": "6.4.299",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-grid-layout": "^2.3.0",

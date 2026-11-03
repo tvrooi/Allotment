@@ -77,8 +77,16 @@ jobs:
 
   # End-to-end: the real app in a real browser (Playwright), against throwaway databases.
   # Covers the desktop-app setup and self-hosted server mode; see e2e/global-setup.ts.
+  # Tests run one at a time (they share a database), so the suite is split by file across
+  # shards, each with its own servers and databases. Change the shard list to rebalance.
   e2e:
+    name: e2e (${{ matrix.shard }}/${{ strategy.job-total }})
     runs-on: ubuntu-latest
+    strategy:
+      # Let every shard finish, so one run shows all the failures
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -99,20 +107,21 @@ jobs:
         working-directory: e2e
       - run: npx tsc --noEmit
         working-directory: e2e
-      - run: npm test
+      - run: npm test -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
         working-directory: e2e
-      # Every page at phone size (tests/phone), to look through when changing layouts
+      # Every page at phone size (tests/phone), to look through when changing layouts.
+      # Only the shard that ran tests/phone has any.
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
-          name: phone-screenshots
+          name: phone-screenshots-${{ matrix.shard }}
           path: e2e/test-results/**/phone-*.png
           if-no-files-found: ignore
           retention-days: 14
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: |
             e2e/playwright-report
             e2e/test-results

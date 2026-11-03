@@ -97,6 +97,7 @@ export function transactionQuery(params: TransactionQueryParams = {}): URLSearch
   if (params.reconciled !== undefined) q.set('reconciled', String(params.reconciled));
   if (params.reviewed !== undefined) q.set('reviewed', String(params.reviewed));
   if (params.hidden !== undefined) q.set('hidden', String(params.hidden));
+  if (params.hasFiles !== undefined) q.set('has_files', String(params.hasFiles));
   if (params.tagIds?.length) q.set('tag_ids', params.tagIds.join(','));
   return q;
 }

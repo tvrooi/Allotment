@@ -216,3 +216,87 @@ describe('a rent with fixed amounts paid from the household account', () => {
     expect(removed.data.toPool[juno]).toBe(-100000);
   });
 });
+
+describe('repayments and contributions alongside other money', () => {
+  let flat: string;
+  let me: string;
+  let kai: string;
+
+  it('records a repayment for what I paid, though I still owe the household account', async () => {
+    db.insert(accounts)
+      .values([
+        { id: 'flat', name: 'Flat account', type: 'checking' },
+        { id: 'trip', name: 'Trip account', type: 'checking' },
+      ])
+      .run();
+    const created = (
+      await call('', {
+        name: 'Flat',
+        currency: 'AUD',
+        accountId: 'flat',
+        people: ['Me', 'Kai'],
+        selfIndex: 0,
+      })
+    ).data;
+    flat = created.group.id;
+    [me, kai] = created.people.map((p: { id: string }) => p.id);
+    tx('power', 'flat', -10000, 'AGL');
+    tx('dinner', 'mine', -2000, 'Thai place');
+    await call(`/${flat}/share`, { transactionIds: ['power', 'dinner'] });
+    let state = (await call(`/${flat}`)).data;
+    // I owe the account $50 and am owed $10 for dinner: my overall balance is −$40
+    expect(state.toPool[me]).toBe(-5000);
+    expect(state.direct[me]).toBe(1000);
+    expect(state.balances[me]).toBe(-4000);
+    tx('kai-back', 'mine', 1000, 'Kai Tran');
+    const suggestion = (await call(`/${flat}/repayment-suggestions`)).data.find(
+      (s: { transactionId: string }) => s.transactionId === 'kai-back',
+    );
+    expect(suggestion).toMatchObject({ kind: 'settlement', personId: kai, owes: 1000 });
+    const recorded = await call(`/${flat}/events`, {
+      kind: 'settlement',
+      date,
+      description: 'Dinner back',
+      amount: 1000,
+      payerId: kai,
+      recipientId: me,
+      transactionId: 'kai-back',
+    });
+    expect(recorded.status).toBe(201);
+    state = recorded.data;
+    expect(state.direct).toEqual({ [me]: 0, [kai]: 0 });
+    // More than either balance is still refused
+    expect(
+      (
+        await call(`/${flat}/events`, {
+          kind: 'settlement',
+          date,
+          description: 'Too much',
+          amount: 100,
+          payerId: kai,
+          recipientId: me,
+        })
+      ).status,
+    ).toBe(400);
+  });
+
+  it("doesn't take a transfer from another household's account as my contribution", async () => {
+    await call('', {
+      name: 'Trip',
+      currency: 'AUD',
+      accountId: 'trip',
+      people: ['Me', 'Kai'],
+      selfIndex: 0,
+    });
+    tx('trip-out', 'trip', -3000, 'Transfer to Flat account', { transferTransactionId: 'flat-in' });
+    tx('flat-in', 'flat', 3000, 'Transfer from Trip account', {
+      transferTransactionId: 'trip-out',
+    });
+    tx('mine-out', 'mine', -5000, 'Transfer to Flat account', { transferTransactionId: 'mine-in' });
+    tx('mine-in', 'flat', 5000, 'Transfer from Spending', { transferTransactionId: 'mine-out' });
+    const contributions = (await call(`/${flat}/repayment-suggestions`)).data
+      .filter((s: { kind: string }) => s.kind === 'contribution')
+      .map((s: { transactionId: string; personId: string }) => [s.transactionId, s.personId]);
+    expect(contributions).toEqual([['mine-in', me]]);
+  });
+});

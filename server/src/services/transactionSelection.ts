@@ -50,6 +50,8 @@ export const selectionSchema = z
     reconciled: flag,
     reviewed: flag,
     hidden: flag,
+    /** Has a receipt or any file in Files (1), or none (0) */
+    has_files: flag,
     tag_ids: idList,
     transfers: z.enum(['include', 'exclude']),
     budget_report: flag,
@@ -119,6 +121,10 @@ function registerStateConditions(s: Selection, on: 'register' | 'leaf'): SQL[] {
   if (s.reviewed === '1') c.push(sql`${state('reviewed_at')} is not null`);
   if (s.reviewed === '0') c.push(sql`${state('reviewed_at')} is null`);
   if (s.hidden) c.push(sql`${state('hidden_from_reports')} = ${Number(s.hidden)}`);
+  if (s.has_files) {
+    const has = sql`(exists (select 1 from document_links dl where dl.transaction_id = ${rowId}) or exists (select 1 from receipts r where r.transaction_id = ${rowId}))`;
+    c.push(s.has_files === '1' ? has : sql`not ${has}`);
+  }
   if (s.tag_ids?.length) {
     c.push(
       sql`exists (select 1 from transaction_tags tt where tt.transaction_id = ${rowId} and tt.tag_id in (${sql.join(

@@ -1,3 +1,4 @@
+import { moveCategoryLinks } from '../services/documentRecords.js';
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import {
@@ -373,6 +374,9 @@ function mergeCategory(from: string, to: string) {
       const next = repointRule(rule.conditions, rule.actions, from, to);
       if (next) db.update(rules).set(next).where(eq(rules.id, rule.id)).run();
     }
+
+    // Its files go with it
+    moveCategoryLinks(from, to);
 
     db.delete(categories).where(eq(categories.id, from)).run();
   });

@@ -32,17 +32,24 @@ The owner types a receipt's details and line items, and matching and splitting u
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------- |
 | `receipt_files` | the bytes, once per content (id = SHA-256), type, size                                                                             | no              |
 | `receipts`      | file id, file name, type, size, optional merchant / date / total / notes, and the transaction (null = inbox; `ON DELETE SET NULL`) | yes             |
+| `documents`     | since 0.2.0-up.79 every receipt is also a document in Files (`receipts.document_id`, the same id); see [FILES.md](FILES.md)        | yes             |
 | `tax_claims`    | one per transaction: return label, work-use share (bps), notes (`ON DELETE CASCADE`)                                               | yes             |
 
 - **Files live in the database**, so a cold copy of it (the Home Assistant backup, or the desktop data
   folder) holds every receipt, and a restore's safety copy keeps them too. Photos are shrunk in the
   browser to at most 2,000 px as JPEG before upload. A PDF or a HEIC photo the browser can't read is
   kept as it is. The limit is 10 MB a file and 20,000 receipts.
-- **JSON backups** (format 19) carry receipt details, line items and claims, but not files, so they stay small.
+- **JSON backups** (format 19, and 23 with Files) carry receipt details, line items and claims, but not files, so they stay small.
   Restoring on the same installation finds every file by its hash. Elsewhere, a receipt says its
   file is not on this installation (`hasFile: false`) instead of failing. Format 17 and older backups
   restore with no receipts or claims.
-- Deleting a receipt deletes its file once no receipt uses it.
+- Deleting a receipt deletes its document in Files, and its file once no receipt or document uses
+  it (the same bytes can be a receipt and another document). Deleting the document in Files
+  deletes the receipt.
+- **Files** ([FILES.md](FILES.md)): a receipt shows in the Files library, linked to its matched
+  transaction; removing that link there unmatches it. A photo or PDF added to Files can become a
+  receipt (**Use as a receipt**). Files linked to a claimed transaction count as its evidence
+  (§4).
 
 ## 3. Safety
 
@@ -84,7 +91,11 @@ The owner types a receipt's details and line items, and matching and splitting u
   applied. It claims only outflows, the first matching rule wins, and it never replaces an existing
   claim. Created rules follow the usual rule review; tokens can propose such a rule only disabled.
 - **Exports:** `GET /api/tax/years/:fy/csv` and `/archive` (a stored ZIP of the CSV plus every
-  claimed receipt, named `receipts/<date> <label> <payee>.<ext>`).
+  claimed receipt, named `receipts/<date> <label> <payee>.<ext>`, and since 0.2.0-up.79 the other
+  files in Files linked to claimed transactions, `files/<date> <label> <name>.<ext>`; the CSV has
+  an **Other files** column).
+- **Evidence:** a receipt, or (since 0.2.0-up.79) any file in Files linked to the claimed
+  transaction. Missing receipts and the written-evidence check count claims with neither.
   - Spreadsheet formulas in payee names are neutralised with a leading apostrophe.
   - The ZIP writer is dependency-free (stored entries, CRC-32, UTF-8 names), and is checked with
     `unzip -t` and in tests.
@@ -168,12 +179,12 @@ records, not only tax evidence.
 
 ## 6. Not built
 
-- Email forwarding, and reading PDFs (only photos are read).
+- Email forwarding, and reading PDFs as receipts (only photos are read; Files finds a PDF's text
+  for search only).
 - Working-from-home hours (the fixed rate per hour), car logbooks and cents per kilometre.
 - Depreciation schedules and the low-value pool calculation (planned: [DEPRECIATING-ASSETS-PLAN.md](DEPRECIATING-ASSETS-PLAN.md)).
 - Income, tax withheld, tax offsets and an estimated refund.
 - Lodging with the ATO. myTax has no import, so the CSV is for you or your tax agent.
-- A "Has receipt" filter in the register (markers show instead).
 - Uploading receipts from the read-only assistant.
 
 Receipts are read only by a model on the owner's own Ollama server (§5). The assistant route

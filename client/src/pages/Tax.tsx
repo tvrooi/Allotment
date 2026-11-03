@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Download, Paperclip, Trash2 } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Download, FolderOpen, Paperclip, Trash2 } from 'lucide-react';
 import { StatCardRow } from '../components/reports/ChartHelpers';
 import { ReceiptDrop, ReceiptThumb } from '../components/tax/ReceiptsSection';
 import { Button } from '../components/ui/Button';
@@ -201,19 +201,31 @@ function Deductions() {
                           )}
                         </td>
                         <td className="py-2 pl-4">
-                          {c.receipts.length ? (
-                            c.receipts.map((r) => (
-                              <a
-                                key={r.id}
-                                href={receiptFileUrl(r.id)}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center gap-1 text-brand-600 hover:text-brand-700"
-                              >
-                                <Paperclip size={12} />
-                                <span className="truncate max-w-40">{r.fileName}</span>
-                              </a>
-                            ))
+                          {c.receipts.length || c.files.length ? (
+                            <>
+                              {c.receipts.map((r) => (
+                                <a
+                                  key={r.id}
+                                  href={receiptFileUrl(r.id)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex items-center gap-1 text-brand-600 hover:text-brand-700"
+                                >
+                                  <Paperclip size={12} />
+                                  <span className="truncate max-w-40">{r.fileName}</span>
+                                </a>
+                              ))}
+                              {c.files.map((f) => (
+                                <Link
+                                  key={f.id}
+                                  to={`/files?file=${encodeURIComponent(f.id)}`}
+                                  className="flex items-center gap-1 text-brand-600 hover:text-brand-700"
+                                >
+                                  <FolderOpen size={12} />
+                                  <span className="truncate max-w-40">{f.fileName}</span>
+                                </Link>
+                              ))}
+                            </>
                           ) : (
                             <span className="text-xs text-negative">None</span>
                           )}

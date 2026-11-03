@@ -117,6 +117,14 @@ describe('transaction filters', () => {
     expect(filtersFromSearch(new URLSearchParams('')).datePreset).toBe('this-month');
   });
 
+  it('filters by receipts and files, and keeps the choice in the URL', () => {
+    const f: FilterState = { ...DEFAULT_FILTERS, datePreset: 'all', hasFiles: 'no' };
+    expect(filtersToParams(f, undefined, today)).toEqual({ hasFiles: 0 });
+    expect(filtersFromSearch(new URLSearchParams('has_files=1')).hasFiles).toBe('yes');
+    expect(filtersFromSearch(new URLSearchParams('has_files=x')).hasFiles).toBe('all');
+    expect(activeFilterCount({ ...DEFAULT_FILTERS, hasFiles: 'yes' })).toBe(1);
+  });
+
   it('sends review, visibility and tag filters as the server reads them', () => {
     const f: FilterState = {
       ...DEFAULT_FILTERS,

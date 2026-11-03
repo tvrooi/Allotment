@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { CheckSquare, ChevronRight, Landmark, Pencil, RefreshCw } from 'lucide-react';
+import { CheckSquare, ChevronRight, FolderOpen, Landmark, Pencil, RefreshCw } from 'lucide-react';
 import { useAccounts } from '../hooks/useAccounts';
 import { Badge } from '../components/ui/Badge';
 import { Button, ButtonLink } from '../components/ui/Button';
@@ -16,6 +16,8 @@ import { accountTypeInfo } from '../utils/accountTypes';
 import { CurrencyDifference } from '../components/currency/CurrencyDifference';
 import { UndoReconciliation } from '../components/accounts/UndoReconciliation';
 import { BankBalanceHint } from '../components/accounts/BankBalanceHint';
+import { FilesSection } from '../components/files/FilesSection';
+import { Modal } from '../components/ui/Modal';
 
 export default function AccountTransactionsPage() {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +26,7 @@ export default function AccountTransactionsPage() {
   const account = accounts.find((a) => a.id === id);
   const [editOpen, setEditOpen] = useState(false);
   const [updateValueOpen, setUpdateValueOpen] = useState(false);
+  const [filesOpen, setFilesOpen] = useState(false);
   const hide = useHideBalances();
 
   if (!account) {
@@ -94,6 +97,10 @@ export default function AccountTransactionsPage() {
               </Button>
             )}
             {typeInfo.group !== 'property' && <UndoReconciliation accountId={account.id} />}
+            {/* Statements, loan contracts, a property's insurance */}
+            <Button variant="secondary" size="sm" onClick={() => setFilesOpen(true)}>
+              <FolderOpen size={13} /> Files
+            </Button>
           </div>
         </div>
       </div>
@@ -102,6 +109,14 @@ export default function AccountTransactionsPage() {
       {updateValueOpen && (
         <UpdateValueModal account={account} onClose={() => setUpdateValueOpen(false)} />
       )}
+      <Modal
+        isOpen={filesOpen}
+        onClose={() => setFilesOpen(false)}
+        title={`Files: ${account.name}`}
+        size="lg"
+      >
+        <FilesSection kind="account" targetId={account.id} />
+      </Modal>
     </div>
   );
 }
