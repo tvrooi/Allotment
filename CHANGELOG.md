@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.75
+
+- **Tidier period tabs on Transactions.** A scrollbar no longer draws across This Month, Last Month and the rest. The tabs are never squeezed beside **Filters** with a label cut off: they keep their full width or take a row of their own, and on a phone the period you choose scrolls into view.
+- Scrollbars elsewhere stay thin; a row that hides its own scrollbar now does.
+
 ## 0.2.0-up.74
 
 - **An assistant can record your own household contribution.** If you paid your share some other way, such as rent through a shared saver that isn't one of the household's accounts, `record_own_household_contribution` (a _read, categorise and organise_ token) records it with no bank link. It's only for you, never for anyone else, and at most what you owe the household account, so it can bring you to zero but never into credit. Remove an entry on the Household page.
