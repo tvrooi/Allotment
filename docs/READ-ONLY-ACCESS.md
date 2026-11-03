@@ -57,7 +57,13 @@ deductions.
     amount and date. Never an expense, settlement, refund, bill, unlinked amount, edit or removal:
     those stay the owner's, who removes an entry on the Household page. The household route
     still checks the person and that the deposit (or its other transfer leg) isn't linked
-    already. Owner-approved on 2 November 2026.
+    already. Owner-approved on 2 November 2026;
+  - record your own contribution with no bank link (`POST /api/households/:id/events` with
+    exactly `kind: "contribution"`, `date`, `description`, `amount` and `payerId`): only for the
+    household's "you" person, dated today or earlier, and at most what you owe the household
+    account now, so it can bring you to zero but never into credit. For money you paid some
+    other way, such as through a shared saver that isn't a household account. Never for anyone
+    else. Owner-approved on 2 November 2026.
 - **Change sets:** every category change made over MCP is saved as a change set, listed in
   **Settings → Server → Read-only access** with **Undo** (`GET /api/change-sets`,
   `POST /api/change-sets/:id/undo`). Undo puts back the previous category (even none) only
@@ -153,7 +159,9 @@ already-claimed rows are skipped), `tax_years` (years with claims, and the retur
 `tax_claim` (one transaction's claim), `tax_claim_candidates` (unclaimed past payments from a
 payee, or failing that a category, already claimed this year or last, with the label and share
 of that claim) and `record_household_contributions` (up to 50 deposits into a household account
-recorded as the named person's contributions, each linked to its deposit). `categorise_by_payee` with
+recorded as the named person's contributions, each linked to its deposit) and
+`record_own_household_contribution` (your own contribution without a bank link, up to what you
+owe the household account). `categorise_by_payee` with
 `set_default: true` also makes the category the payee's default, so later imports get it.
 
 Each read tool call is a `GET` of the server's own API made with the caller's token, so a tool can

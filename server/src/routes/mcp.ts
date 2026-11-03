@@ -269,7 +269,7 @@ const TOOLS: Tool[] = [
   {
     name: 'household_bill_reconciliation',
     description:
-      "One shared recurring bill (such as rent) person by person: each person's share of its payments shared with the household, the deposit into a household account matched to each payment (by name, date and amount), the difference, deposits already recorded, and toRecord: matched deposits not recorded yet, ready for record_household_contributions. Payments funded another way show as unmatched.",
+      "One shared recurring bill (such as rent) person by person: each person's share of its payments shared with the household, the deposit into a household account matched to each payment (by name, date and amount), the difference, deposits already recorded, and toRecord: matched deposits not recorded yet, ready for record_household_contributions. Payments funded another way show as unmatched; for your own share, record_own_household_contribution records it.",
     properties: {
       household_id: { type: 'string', description: 'From list_households' },
       schedule_id: { type: 'string', description: "From household's recurringBills" },
@@ -981,6 +981,63 @@ const ACTION_TOOLS: ActionTool[] = [
     },
   },
   {
+    name: 'record_own_household_contribution',
+    scope: 'organise',
+    description:
+      "Records money you (the household's own person) put towards the household some other way, with no bank deposit to link, such as rent paid through a shared saver that isn't one of the household's accounts. Up to what you owe the household account now (its toPool), so it can bring you to zero but never into credit; never for anyone else. Say in the description how it was paid. Confirm the amount with the user first; the owner removes an entry on the Household page.",
+    properties: {
+      household_id: { ...idString, description: 'From list_households' },
+      amount: { type: 'integer', minimum: 1, description: 'Minor units (cents)' },
+      date: { ...day, description: 'When it was paid (today or earlier)' },
+      description: {
+        type: 'string',
+        minLength: 1,
+        maxLength: 200,
+        description: 'How it was paid, e.g. "Rent May–Oct via shared saver (12 × $825.50)"',
+      },
+    },
+    required: ['household_id', 'amount', 'date', 'description'],
+    run: async (ctx, a) => {
+      if (!isId(a.household_id)) return { error: 'Give a household id' };
+      if (!Number.isInteger(a.amount) || (a.amount as number) < 1)
+        return { error: 'amount must be a positive whole number of cents' };
+      if (typeof a.description !== 'string' || !a.description.trim())
+        return { error: 'Say how it was paid' };
+      const state = await api(ctx, `/households/${seg(a.household_id)}`);
+      if (!state.ok) return { error: state.error };
+      const household = state.data as {
+        people: { id: string; name: string; isSelf: number }[];
+        toPool: Record<string, number>;
+      };
+      const self = household.people.find((p) => p.isSelf);
+      if (!self) return { error: 'This household has no "you" person' };
+      const owes = -(household.toPool[self.id] ?? 0);
+      if (owes <= 0) return { error: 'You owe the household account nothing' };
+      if ((a.amount as number) > owes)
+        return { error: `That is more than you owe the household account (${owes} cents)` };
+      const r = await api(ctx, `/households/${seg(a.household_id)}/events`, 'POST', {
+        kind: 'contribution',
+        date: a.date,
+        description: a.description.trim(),
+        amount: a.amount,
+        payerId: self.id,
+      });
+      if (!r.ok)
+        return {
+          error:
+            r.status === 403
+              ? 'Refused: only your own contribution, dated today or earlier, up to what you owe'
+              : r.error,
+        };
+      const after = r.data as { toPool: Record<string, number> };
+      return {
+        recorded: true,
+        personId: self.id,
+        owesHouseholdAccountNow: -(after.toPool[self.id] ?? 0),
+      };
+    },
+  },
+  {
     name: 'record_household_contributions',
     scope: 'organise',
     description: `Records money someone put into a household account as their contribution, linked to that deposit: the entry takes the deposit's exact amount and date. Up to ${MAX_CONTRIBUTIONS} at once, e.g. the toRecord list of household_bill_reconciliation. Only past deposits into that household's own accounts, not linked yet; never expenses, settlements, unlinked amounts, edits or removals (the owner removes an entry on the Household page). Confirm the list with the user first.`,
@@ -1091,7 +1148,7 @@ const BASICS =
 const INSTRUCTIONS: Record<TokenScope, string> = {
   read: `Read-only access to an Allotment budget. ${BASICS}`,
   categorise: `Read access to an Allotment budget, plus setting the category of past transactions (categorise_transactions, categorise_by_payee) and creating and editing categories and groups; nothing else can change. ${BASICS} Start from uncategorised_payees. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before categorising.`,
-  organise: `Read access to an Allotment budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers, suggesting assignments the owner applies, claiming past transactions as tax deductions (tax_years, tax_deductions, tax_claim_candidates, claim_tax_deductions; never replacing or removing a claim), and recording household contributions linked to deposits into a household account (household_bill_reconciliation, record_household_contributions). ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
+  organise: `Read access to an Allotment budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers, suggesting assignments the owner applies, claiming past transactions as tax deductions (tax_years, tax_deductions, tax_claim_candidates, claim_tax_deductions; never replacing or removing a claim), recording household contributions linked to deposits into a household account (household_bill_reconciliation, record_household_contributions), and your own unlinked contribution up to what you owe the household account (record_own_household_contribution). ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
 };
 
 const schemaOf = (t: { properties?: Record<string, unknown>; required?: string[] }) => ({

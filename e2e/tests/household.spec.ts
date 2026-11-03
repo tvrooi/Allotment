@@ -116,6 +116,287 @@ test('shares a payment with the household in one step, with the default split', 
   expect(event.shares.map((s: { amount: number }) => s.amount)).toEqual([3600, 2700, 2700]);
 });
 
+test('a household picture shows on the payments shared with it', async ({ page, api }) => {
+  const account = await api.createAccount('Everyday', 20000);
+  const shared = await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -4500,
+    payeeName: 'Mock Grocer',
+  });
+  await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -800,
+    payeeName: 'Mock Cafe',
+  });
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Juno'],
+    selfIndex: 0,
+  });
+
+  // Upload a picture in Household → Sharing (a 1×1 PNG, resized to a small square)
+  await open(page, '/household');
+  const sharing = page.getByRole('region', { name: 'Sharing' });
+  await sharing.getByTestId('household-logo-input').setInputFiles({
+    name: 'flat.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    ),
+  });
+  await expect(sharing.getByRole('button', { name: 'Remove the picture for Flat' })).toBeVisible();
+  const [listed] = await api.call('GET', '/households');
+  expect(listed.logo).toMatch(/^data:image\/png;base64,/);
+
+  await api.call('POST', `/households/${group.group.id}/share`, { transactionIds: [shared.id] });
+  await open(page, `/accounts/${account.id}`);
+  const rows = page.getByTestId('transaction-row');
+  const badge = rows
+    .filter({ hasText: 'Mock Grocer' })
+    .getByRole('img', { name: 'Shared with Flat' });
+  await expect(badge).toBeVisible();
+  await expect(badge).toHaveAttribute('src', listed.logo);
+  await expect(
+    rows.filter({ hasText: 'Mock Cafe' }).getByRole('img', { name: 'Shared with Flat' }),
+  ).toHaveCount(0);
+
+  // The details say where it's shared instead of offering to share it again
+  await rows.filter({ hasText: 'Mock Grocer' }).getByText('$45').click();
+  const status = page.getByTestId('shared-with-household');
+  await expect(status).toContainText('Shared with Flat');
+  const actions = status.locator('..');
+  await expect(actions.getByRole('button', { name: 'Share with household' })).toHaveCount(0);
+  await expect(actions.getByRole('button', { name: 'Share with people' })).toHaveCount(0);
+  await status.getByRole('button', { name: 'View in household' }).click();
+  await expect(page).toHaveURL(new RegExp(`/household\\?household=${group.group.id}$`));
+  await expect(page.getByRole('heading', { name: 'People & balances' })).toBeVisible();
+
+  // Without a picture, the household's initial shows instead
+  await page
+    .getByRole('region', { name: 'Sharing' })
+    .getByRole('button', { name: 'Remove the picture for Flat' })
+    .click();
+  await expect.poll(async () => (await api.call('GET', '/households'))[0].logo).toBeNull();
+  await open(page, `/accounts/${account.id}`);
+  await expect(
+    rows.filter({ hasText: 'Mock Grocer' }).getByRole('img', { name: 'Shared with Flat' }),
+  ).toHaveText('F');
+});
+
+test('right-click shares a payment with a household, and Undo or Stop sharing reverses it', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Everyday', 20000);
+  const grocer = await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -4500,
+    payeeName: 'Mock Grocer',
+  });
+  await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: 250000,
+    payeeName: 'Mock Employer',
+  });
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Juno', 'Zephyr'],
+    selfIndex: 0,
+  });
+  const entries = async () =>
+    (await api.call('GET', `/households/${group.group.id}`)).events.filter(
+      (e: { transactionId: string }) => e.transactionId === grocer.id,
+    );
+  await open(page, `/accounts/${account.id}`);
+  const row = page.getByTestId('transaction-row').filter({ hasText: 'Mock Grocer' });
+  const badge = row.getByRole('img', { name: 'Shared with Flat' });
+  const toast = page.getByTestId('undo-toast');
+
+  // Right-click → Share with → Flat shares it at once, with the default split
+  await row.click({ button: 'right' });
+  const menu = page.getByRole('menu', { name: 'Actions for Mock Grocer' });
+  await expect(menu).toBeVisible();
+  await menu.getByRole('menuitem', { name: 'Share with' }).hover();
+  const households = page.getByRole('menu', { name: 'Share with' });
+  await expect(households.getByRole('menuitem', { name: /^Flat/ })).toContainText('split equally');
+  await households.getByRole('menuitem', { name: /^Flat/ }).click();
+  await expect(menu).toHaveCount(0);
+  await expect(toast).toContainText('Shared with Flat.');
+  await expect(badge).toBeVisible();
+  expect((await entries())[0].shares.map((s: { amount: number }) => s.amount)).toEqual([
+    1500, 1500, 1500,
+  ]);
+  await toast.getByRole('button', { name: 'Undo' }).click();
+  await expect(badge).toHaveCount(0);
+  expect(await entries()).toEqual([]);
+
+  // From the keyboard: Shift+F10 on the focused row, arrows to the household, Enter
+  await row.focus();
+  await page.keyboard.press('Shift+F10');
+  await expect(menu.getByRole('menuitem', { name: 'Open details' })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(menu.getByRole('menuitem', { name: 'Share with' })).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(households.getByRole('menuitem', { name: /^Flat/ })).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(households).toHaveCount(0);
+  await expect(menu.getByRole('menuitem', { name: 'Share with' })).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(badge).toBeVisible();
+  // A custom split made on the Household page would survive Stop sharing → Undo exactly
+  const [shared] = await entries();
+  await api.call('DELETE', `/households/${group.group.id}/events/${shared.id}`);
+  const [me, juno, zephyr] = group.people.map((p: { id: string }) => p.id);
+  await api.call('POST', `/households/${group.group.id}/events`, {
+    kind: 'expense',
+    date: grocer.date,
+    description: 'Mock Grocer',
+    amount: 4500,
+    payerId: me,
+    transactionId: grocer.id,
+    mode: 'exact',
+    shares: [
+      { personId: me, value: 2500 },
+      { personId: juno, value: 2000 },
+      { personId: zephyr, value: 0 },
+    ],
+  });
+  await page.reload();
+
+  // Already shared: the menu shows where, and stops sharing (Undo restores the same split)
+  await row.click({ button: 'right' });
+  await expect(menu.getByRole('menuitem', { name: /^View in Flat/ })).toContainText(
+    'Shared with Flat',
+  );
+  await expect(menu.getByRole('menuitem', { name: 'Share with' })).toHaveCount(0);
+  await menu.getByRole('menuitem', { name: 'Stop sharing with Flat' }).click();
+  await expect(toast).toContainText('Stopped sharing Mock Grocer with Flat.');
+  await expect(badge).toHaveCount(0);
+  expect(await entries()).toEqual([]);
+  await toast.getByRole('button', { name: 'Undo' }).click();
+  await expect(badge).toBeVisible();
+  const [restored] = await entries();
+  expect(restored.shares.map((s: { amount: number }) => s.amount)).toEqual([2500, 2000, 0]);
+  await row.click({ button: 'right' });
+  await menu.getByRole('menuitem', { name: /^View in Flat/ }).click();
+  await expect(page).toHaveURL(new RegExp(`/household\\?household=${group.group.id}$`));
+  await page.goBack();
+
+  // Money in can't be shared: the item says why. Escape closes the menu
+  const pay = page.getByTestId('transaction-row').filter({ hasText: 'Mock Employer' });
+  await pay.click({ button: 'right' });
+  const payMenu = page.getByRole('menu', { name: 'Actions for Mock Employer' });
+  const disabled = payMenu.getByRole('menuitem', { name: /^Share with/ });
+  await expect(disabled).toBeDisabled();
+  await expect(disabled).toContainText('Only money out can be shared');
+  await page.keyboard.press('Escape');
+  await expect(payMenu).toHaveCount(0);
+
+  // Open details from the menu
+  await pay.click({ button: 'right' });
+  await payMenu.getByRole('menuitem', { name: 'Open details' }).click();
+  await expect(page.getByRole('button', { name: 'Create rule' })).toBeVisible();
+});
+
+test('share, stop sharing, then undo and redo both, in order', async ({ page, api }) => {
+  const account = await api.createAccount('Everyday', 20000);
+  const grocer = await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -4500,
+    payeeName: 'Mock Grocer',
+  });
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Juno'],
+    selfIndex: 0,
+  });
+  const shared = async () =>
+    (await api.call('GET', `/households/${group.group.id}`)).events.filter(
+      (e: { transactionId: string }) => e.transactionId === grocer.id,
+    ).length;
+  await open(page, `/accounts/${account.id}`);
+  const row = page.getByTestId('transaction-row').filter({ hasText: 'Mock Grocer' });
+  const badge = row.getByRole('img', { name: 'Shared with Flat' });
+  const menu = page.getByRole('menu', { name: 'Actions for Mock Grocer' });
+
+  await row.click({ button: 'right' });
+  await menu.getByRole('menuitem', { name: 'Share with' }).hover();
+  await page
+    .getByRole('menu', { name: 'Share with' })
+    .getByRole('menuitem', { name: /^Flat/ })
+    .click();
+  await expect(badge).toBeVisible();
+  await row.click({ button: 'right' });
+  await menu.getByRole('menuitem', { name: 'Stop sharing with Flat' }).click();
+  await expect(badge).toHaveCount(0);
+
+  // Undo the stop (recorded again, with a new id), then undo the share itself
+  await page.keyboard.press('Control+z');
+  await expect(badge).toBeVisible();
+  await page.keyboard.press('Control+z');
+  await expect(badge).toHaveCount(0);
+  await expect.poll(shared).toBe(0);
+  // And forward again: shared, then stopped
+  await page.keyboard.press('Control+Shift+z');
+  await expect(badge).toBeVisible();
+  await expect.poll(shared).toBe(1);
+  await page.keyboard.press('Control+Shift+z');
+  await expect(badge).toHaveCount(0);
+  await expect.poll(shared).toBe(0);
+});
+
+test('right-clicking one of several picked payments shares all of them', async ({ page, api }) => {
+  const account = await api.createAccount('Everyday', 20000);
+  const ids: string[] = [];
+  for (const [payeeName, amount] of [
+    ['Mock Fuel', -6000],
+    ['Mock Dinner', -8000],
+    ['Mock Solo', -1000],
+  ] as const)
+    ids.push(
+      (await api.createTransaction({ accountId: account.id, date: isoDay(), amount, payeeName }))
+        .id,
+    );
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Juno'],
+    selfIndex: 0,
+  });
+  await open(page, `/accounts/${account.id}`);
+  await page.getByRole('button', { name: 'Pick to share' }).click();
+  await page.getByRole('checkbox', { name: /^Pick Mock Fuel/ }).check();
+  await page.getByRole('checkbox', { name: /^Pick Mock Dinner/ }).check();
+  await page
+    .getByTestId('transaction-row')
+    .filter({ hasText: 'Mock Fuel' })
+    .click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Share 2 picked with' }).hover();
+  await page
+    .getByRole('menu', { name: 'Share 2 picked with' })
+    .getByRole('menuitem', { name: /^Flat/ })
+    .click();
+  await expect(page.getByTestId('undo-toast')).toContainText('Shared 2 with Flat.');
+  const state = await api.call('GET', `/households/${group.group.id}`);
+  expect(state.events.map((e: { transactionId: string }) => e.transactionId).sort()).toEqual(
+    [ids[0], ids[1]].sort(),
+  );
+});
+
 test('picks payments in the register and shares just those, split equally', async ({
   page,
   api,

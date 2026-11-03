@@ -4,6 +4,8 @@ import { Plus, Receipt, SearchX, Upload, Link2, ListChecks } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query';
 import { getHouseholds } from '../../api/households';
 import { ShareWithHousehold } from '../household/ShareWithHousehold';
+import { MenuTarget, type MenuPoint } from '../ui/ContextMenu';
+import { TransactionContextMenu } from './TransactionContextMenu';
 import { useTransactions } from '../../hooks/useTransactions';
 import { SelectionSummary } from './SelectionSummary';
 import { SaveViewModal } from './SavedViews';
@@ -36,7 +38,7 @@ import { formatCurrency } from '../../utils/currency';
 import { transactionValue } from '../../utils/accountMoney';
 import { formatMoney } from '../../utils/currency';
 import { useAccountCurrency, useBudgetCurrency } from '../../hooks/useCurrency';
-import type { CategoryGroup } from '../../types';
+import type { CategoryGroup, Transaction } from '../../types';
 import type { CreateTransactionData } from '../../api/transactions';
 import { formatDay, formatDayLong } from '../../utils/dates';
 
@@ -111,6 +113,8 @@ export function TransactionTable({
   const [showImport, setShowImport] = useState(false);
   // Picking payments to share with a household: null when not picking
   const [picked, setPicked] = useState<Set<string> | null>(null);
+  // The right-click (long-press, Shift+F10, ⋯) menu: which transaction, and where
+  const [menu, setMenu] = useState<{ tx: Transaction; at: MenuPoint } | null>(null);
   const { data: households = [] } = useQuery({ queryKey: ['households'], queryFn: getHouseholds });
 
   const showAccountCol = !accountId;
@@ -542,61 +546,64 @@ export function TransactionTable({
                     </span>
                   </div>
 
-                  {group.txs.map((tx) =>
-                    withPick(
-                      tx,
-                      isPhone ? (
-                        <TransactionCard
-                          key={tx.id}
-                          tx={tx}
-                          categoryEntry={
-                            tx.categoryId ? (categoryMap.get(tx.categoryId) ?? null) : null
-                          }
-                          payees={payees}
-                          accountName={
-                            showAccountCol ? accountInfoMap.get(tx.accountId)?.name : undefined
-                          }
-                          isSelected={detailId === tx.id}
-                          onOpenDetail={setDetailId}
-                        />
-                      ) : (
-                        <TransactionRow
-                          key={tx.id}
-                          tx={tx}
-                          categoryEntry={
-                            tx.categoryId ? (categoryMap.get(tx.categoryId) ?? null) : null
-                          }
-                          categoryMap={categoryMap}
-                          groups={groups as CategoryGroup[]}
-                          payees={payees}
-                          accountName={
-                            showAccountCol ? accountInfoMap.get(tx.accountId)?.name : undefined
-                          }
-                          accountType={
-                            showAccountCol ? accountInfoMap.get(tx.accountId)?.type : undefined
-                          }
-                          accountLogo={
-                            showAccountCol ? accountInfoMap.get(tx.accountId)?.logo : undefined
-                          }
-                          showAccountCol={showAccountCol}
-                          isSelected={detailId === tx.id}
-                          onOpenDetail={setDetailId}
-                          onFilterCategory={(catId) =>
-                            setFilters((f) => ({
-                              ...f,
-                              categoryIds: [catId],
-                              uncategorized: false,
-                              datePreset: 'all',
-                            }))
-                          }
-                          onFilterSearch={(search) =>
-                            setFilters((f) => ({ ...f, search, datePreset: 'all' }))
-                          }
-                          transferAccounts={transferAccounts}
-                        />
-                      ),
-                    ),
-                  )}
+                  {group.txs.map((tx) => (
+                    <MenuTarget key={tx.id} onOpen={(at) => setMenu({ tx, at })}>
+                      {withPick(
+                        tx,
+                        isPhone ? (
+                          <TransactionCard
+                            key={tx.id}
+                            tx={tx}
+                            categoryEntry={
+                              tx.categoryId ? (categoryMap.get(tx.categoryId) ?? null) : null
+                            }
+                            payees={payees}
+                            accountName={
+                              showAccountCol ? accountInfoMap.get(tx.accountId)?.name : undefined
+                            }
+                            isSelected={detailId === tx.id}
+                            onOpenDetail={setDetailId}
+                            onMenu={(at) => setMenu({ tx, at })}
+                          />
+                        ) : (
+                          <TransactionRow
+                            key={tx.id}
+                            tx={tx}
+                            categoryEntry={
+                              tx.categoryId ? (categoryMap.get(tx.categoryId) ?? null) : null
+                            }
+                            categoryMap={categoryMap}
+                            groups={groups as CategoryGroup[]}
+                            payees={payees}
+                            accountName={
+                              showAccountCol ? accountInfoMap.get(tx.accountId)?.name : undefined
+                            }
+                            accountType={
+                              showAccountCol ? accountInfoMap.get(tx.accountId)?.type : undefined
+                            }
+                            accountLogo={
+                              showAccountCol ? accountInfoMap.get(tx.accountId)?.logo : undefined
+                            }
+                            showAccountCol={showAccountCol}
+                            isSelected={detailId === tx.id}
+                            onOpenDetail={setDetailId}
+                            onFilterCategory={(catId) =>
+                              setFilters((f) => ({
+                                ...f,
+                                categoryIds: [catId],
+                                uncategorized: false,
+                                datePreset: 'all',
+                              }))
+                            }
+                            onFilterSearch={(search) =>
+                              setFilters((f) => ({ ...f, search, datePreset: 'all' }))
+                            }
+                            transferAccounts={transferAccounts}
+                          />
+                        ),
+                      )}
+                    </MenuTarget>
+                  ))}
                 </div>
               ))}
               {hiddenRows > 0 && (
@@ -638,6 +645,13 @@ export function TransactionTable({
           </div>
         )}
       </div>
+
+      <TransactionContextMenu
+        menu={menu}
+        pickedIds={pickedIds}
+        onOpenDetail={setDetailId}
+        onClose={() => setMenu(null)}
+      />
 
       {/* Phones: the entry form in a sheet (splits and transfers included) */}
       {accountId && isPhone && (

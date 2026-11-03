@@ -1,11 +1,31 @@
 # Changes
 
-## 0.2.0-up.74
+## 0.2.0-up.78
 
 Fixes from a review of 0.2.0-up.71.
 
 - **A suggested repayment can always be recorded.** If you were owed money for something you paid, but still owed the household account, recording the suggested repayment was refused. A repayment now only has to fit what is owed for things people paid themselves.
 - **Another household's money isn't your contribution.** A transfer into a household account from an account that belongs to another household is no longer offered as your contribution.
+
+## 0.2.0-up.77
+
+- **Share a transaction from its menu.** Right-click a transaction (or long-press it, or tap ⋯ on a phone) and choose **Share with**, then a household. It's shared at once with that household's usual split, and **Undo** in the message takes it back. **Custom split…** opens the Household page to choose who pays what. If you've picked several payments to share, right-click one of them to share them all.
+- **Stop sharing just as easily.** On a shared payment the menu shows **View in _household_** and **Stop sharing**. **Undo** puts it back with exactly the same split.
+- A payment that can't be shared, such as money in or a transfer, says why in the menu. The menu works from the keyboard too: Shift+F10 or the Menu key opens it, then use the arrow keys, Enter and Escape.
+
+## 0.2.0-up.76
+
+- **See which payments are shared with a household.** A payment shared with a household now shows that household's picture next to its payee, in the register and on phone cards. Open it and the details say **Shared with _household_**, with **View in household**, instead of offering to share it again.
+- **Give a household a picture.** **Household → Sharing → Picture** takes a small image, the way account and payee logos do. Without one, the household's initial shows on a coloured square. The Household page shows it next to the household's name. It's kept in backups and isn't shown to someone you've combined a household with.
+
+## 0.2.0-up.75
+
+- **Tidier period tabs on Transactions.** A scrollbar no longer draws across This Month, Last Month and the rest. The tabs are never squeezed beside **Filters** with a label cut off: they keep their full width or take a row of their own, and on a phone the period you choose scrolls into view.
+- Scrollbars elsewhere stay thin; a row that hides its own scrollbar now does.
+
+## 0.2.0-up.74
+
+- **An assistant can record your own household contribution.** If you paid your share some other way, such as rent through a shared saver that isn't one of the household's accounts, `record_own_household_contribution` (a _read, categorise and organise_ token) records it with no bank link. It's only for you, never for anyone else, and at most what you owe the household account, so it can bring you to zero but never into credit. Remove an entry on the Household page.
 
 ## 0.2.0-up.73
 

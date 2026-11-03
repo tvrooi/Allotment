@@ -9,12 +9,18 @@ export function ScrollCue({
   children,
   className = '',
   scrollerClassName = '',
+  activeKey,
 }: {
   children: ReactNode;
   /** Classes for the outer box (borders, margins, max width) */
   className?: string;
   /** Classes for the scrolling row itself (flex, gap) */
   scrollerClassName?: string;
+  /**
+   * The chosen item's key. When it changes, the row scrolls so the child marked
+   * data-scroll-active is in view, clear of the fade, rather than hidden past the edge.
+   */
+  activeKey?: string;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [more, setMore] = useState({ left: false, right: false });
@@ -39,6 +45,20 @@ export function ScrollCue({
       window.removeEventListener('resize', update);
     };
   }, []);
+
+  useEffect(() => {
+    const el = scroller.current;
+    const active = el?.querySelector<HTMLElement>('[data-scroll-active="true"]');
+    if (!el || !active) return;
+    // Only the row scrolls: scrollIntoView could also move the page
+    const clear = 40; // the fade's width
+    const start =
+      active.getBoundingClientRect().left - el.getBoundingClientRect().left + el.scrollLeft;
+    const end = start + active.getBoundingClientRect().width;
+    if (start - clear < el.scrollLeft) el.scrollLeft = Math.max(0, start - clear);
+    else if (end + clear > el.scrollLeft + el.clientWidth)
+      el.scrollLeft = end + clear - el.clientWidth;
+  }, [activeKey]);
 
   const fade = 'pointer-events-none absolute inset-y-0 w-10 flex items-center text-text-tertiary';
   return (

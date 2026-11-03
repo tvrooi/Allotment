@@ -49,7 +49,8 @@ Keep this file and CLAUDE.md identical.
   suggest assignments that only the owner applies, claim past unclaimed transactions as tax
   deductions (never replace or remove a claim), and record a household contribution linked to a
   past deposit into that household's account for its exact amount and date (never expenses,
-  settlements, unlinked amounts, edits or removals). Token category changes are undoable change sets;
+  settlements, edits or removals), and record the owner's own unlinked contribution up to what
+  the owner owes the household account (never anyone else's, never into credit). Token category changes are undoable change sets;
   only the owner redoes one.
 - HA `/data/options.json` stays root-only; root opens it before dropping to uid 1000. Never regenerate
   an existing key. Supervisor watchdog must be TCP because strict hosts reject its IP-based HTTP probe.
