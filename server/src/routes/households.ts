@@ -37,6 +37,7 @@ import {
   updateRecurringBill,
 } from '../services/householdService.js';
 import { todayIso } from '../services/mainAmountService.js';
+import { logoSchema } from '../utils/logo.js';
 
 export const householdsRouter = Router();
 const money = z.number().int().min(1).max(1e12);
@@ -241,6 +242,16 @@ householdsRouter.put('/:id/default-split', (req, res) =>
     return snapshot(state.group.id);
   }),
 );
+// The household's picture, shown next to its shared payments (null removes it). Owner only:
+// read-only access tokens never reach this route.
+householdsRouter.put('/:id/logo', (req, res) => {
+  const parsed = z.object({ logo: logoSchema }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  const group = db.select({ id: groups.id }).from(groups).where(eq(groups.id, req.params.id)).get();
+  if (!group) return res.status(404).json({ error: 'Household not found' });
+  db.update(groups).set({ logo: parsed.data.logo }).where(eq(groups.id, group.id)).run();
+  res.json({ id: group.id, logo: parsed.data.logo });
+});
 // Share bank payments with the household in one go, each with the default split (or `split`)
 householdsRouter.post('/:id/share', (req, res) => {
   const parsed = z
