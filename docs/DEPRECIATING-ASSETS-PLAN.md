@@ -63,7 +63,7 @@ From the ATO's [Guide to depreciating assets 2026][guide] and
 
 ## 3. Design
 
-### 3.1 Data (migration 0061, additive)
+### 3.1 Data (migration 0062, additive; the next free number when built)
 
 `depreciating_assets`
 
@@ -192,7 +192,7 @@ edits or disposes of an asset.
 
 ## 4. Phases (one PR and release each)
 
-1. **Calculation and storage (server only):** `depreciation.ts` with tests, migration 0061,
+1. **Calculation and storage (server only):** `depreciation.ts` with tests, migration 0062,
    the service, routes, the double-counting guards, `taxYear` and CSV integration, and backup
    version 23.
 2. **UI:** the Assets tab, the form with both-method preview, the asset page, disposal, lodged
@@ -244,7 +244,7 @@ Each app phase follows CLAUDE.md:
 - after main CI passes, Publish tested main;
 - a cold backup including the encryption key before the live HA app takes the release.
 
-Migration 0061 only adds tables, so existing claims, transactions and budgets are untouched.
+Migration 0062 only adds tables, so existing claims, transactions and budgets are untouched.
 
 ## 7. Owner decisions
 
