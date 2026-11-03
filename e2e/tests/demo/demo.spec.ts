@@ -36,7 +36,7 @@ test('the demo opens on a finished budget, and every page works', async ({ page 
 
   for (const [route, text] of [
     ['/budget', 'Contents Insurance'],
-    ['/transactions', 'Harbourside Realty'],
+    ['/transactions', 'All Transactions'],
     ['/accounts', 'Synced from Up'],
     ['/recurring', "Riley's pay"],
     ['/reports', 'Where the money goes'],
@@ -48,6 +48,12 @@ test('the demo opens on a finished budget, and every page works', async ({ page 
   ] as const) {
     await page.evaluate((r) => (location.hash = `#${r}`), route);
     await expect(page.getByText(text).first(), route).toBeVisible();
+    // The list opens on This Month, which early in a month may hold only that month's
+    // transfers. The fortnightly rent is always in the last three months.
+    if (route === '/transactions') {
+      await page.getByRole('button', { name: 'Last 3 Months' }).click();
+      await expect(page.getByText('Harbourside Realty').first(), route).toBeVisible();
+    }
   }
 
   expect(requests.filter((p) => !p.startsWith('/demo/'))).toEqual([]);
