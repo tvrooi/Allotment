@@ -136,7 +136,22 @@ test('the Transactions period tabs show they scroll, and none is cut off', async
     name: /^(This Month|Last Month|Last 3 Months|This Year|All Time|Custom)$/,
   });
   const bar = page.getByTestId('scroll-cue').first();
+  // The row scrolls without a scrollbar of its own: the global thin scrollbar used to win
+  // over the row's hidden one and drew a bar across the tab labels
+  const scrollbar = await bar
+    .getByTestId('scroll-cue-scroller')
+    .evaluate((el) => getComputedStyle(el).scrollbarWidth);
+  expect(scrollbar).toBe('none');
   await expectTabsReadable(page, bar, tabs);
+  // A period chosen past the edge is brought into view, clear of the fade, page unmoved
+  await bar.getByTestId('scroll-cue-scroller').evaluate((el) => (el.scrollLeft = 0));
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await bar.getByRole('button', { name: 'Custom' }).click();
+  await expect(bar.getByRole('button', { name: 'Custom' })).toHaveAttribute('aria-pressed', 'true');
+  const custom = await box(bar.getByRole('button', { name: 'Custom' }));
+  const row = await box(bar.getByTestId('scroll-cue-scroller'));
+  expect(custom.x + custom.width).toBeLessThanOrEqual(row.x + row.width + 1);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
 });
 
 test('the Settings tabs show they scroll, and none is cut off', async ({ page, api }) => {

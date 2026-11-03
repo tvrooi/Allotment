@@ -328,9 +328,12 @@ export function TransactionFilters({
           {count > 0 && <span className="tabular-nums">({count})</span>}
         </button>
 
+        {/* Never squeezed beside Filters: the dates keep their full width, or take a row of
+            their own and scroll sideways only when even that is too narrow */}
         <ScrollCue
-          className="border-b border-transparent max-md:max-w-full"
+          className="shrink-0 max-w-full border-b border-transparent"
           scrollerClassName="flex gap-0"
+          activeKey={externalMonth ? undefined : state.datePreset}
         >
           {externalRange ? (
             <span className="px-2.5 py-1 text-xs text-text-secondary">{externalRange}</span>
@@ -338,6 +341,8 @@ export function TransactionFilters({
             DATE_PRESETS.map((p) => (
               <button
                 key={p.value}
+                aria-pressed={!externalMonth && state.datePreset === p.value}
+                data-scroll-active={!externalMonth && state.datePreset === p.value}
                 onClick={() => set({ datePreset: p.value })}
                 className={`px-2.5 py-1 max-md:min-h-11 max-md:text-sm whitespace-nowrap shrink-0 text-xs font-medium transition-colors border-b-2 -mb-px ${
                   !externalMonth && state.datePreset === p.value
