@@ -857,7 +857,13 @@ export default function BudgetPage() {
       )}
 
       {(setBudgetMutation.error || setBulkMutation.error) && (
-        <AssignBlockError error={(setBudgetMutation.error || setBulkMutation.error)!} />
+        <AssignBlockError
+          error={(setBudgetMutation.error || setBulkMutation.error)!}
+          onResolved={() => {
+            setBudgetMutation.reset();
+            setBulkMutation.reset();
+          }}
+        />
       )}
       <MissingRatesBanner className="mx-6 mt-3 shrink-0" />
       <AssistantSuggestions />

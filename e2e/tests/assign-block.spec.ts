@@ -67,3 +67,55 @@ test('the assign block names the account, the gap and links to the fixes', async
 
   await api.call('DELETE', '/up/connection');
 });
+
+test('an Up transaction deleted here pauses assigning, and the block restores it in one step', async ({
+  page,
+  api,
+}) => {
+  test.info().annotations.push({
+    type: 'allow-page-errors',
+    description: 'Expected refusal to assign while an account disagrees with its bank',
+  });
+  await fetch(`http://127.0.0.1:${UP_MOCK_PORT}/__mock/normal`, { method: 'POST' });
+  await freshUpWindow(page, api, 8);
+  await api.call('POST', '/up/setup', { accessToken: UP_TEST_TOKEN });
+  await api.call('POST', '/up/map-accounts', {
+    mappings: [
+      { upAccountId: 'spending', action: 'create' },
+      { upAccountId: 'saver', action: 'skip' },
+    ],
+  });
+  await api.call('POST', '/up/sync');
+  const everyday = (await api.accounts()).find((a: any) => a.name === 'Up Everyday')!;
+  const upRows = async () =>
+    (await api.transactions()).filter((t: any) => t.accountId === everyday.id);
+  const victim = (await upRows()).find((t: any) => t.amount < 0)!;
+  await api.call('DELETE', `/transactions/${victim.id}`);
+
+  await open(page, '/budget');
+  const assign = async () => {
+    await page
+      .getByRole('button', { name: /^Planned for / })
+      .first()
+      .click();
+    const input = page.getByRole('textbox', { name: /^Planned for / });
+    await input.fill('100');
+    await input.press('Enter');
+  };
+  await assign();
+  const alert = page.getByRole('alert').filter({ hasText: "Money can't be assigned" });
+  await expect(alert).toContainText('You deleted a transaction that Up still has');
+  await expect(alert).toContainText(victim.payeeName);
+  await alert.getByRole('button', { name: 'Restore' }).click();
+  await expect(alert).toBeHidden();
+  await expect
+    .poll(async () => (await upRows()).some((t: any) => t.importedId === victim.importedId))
+    .toBe(true);
+
+  // The balances match again, so the same assignment goes through
+  await assign();
+  await expect(page.getByRole('alert').filter({ hasText: "Money can't be assigned" })).toHaveCount(
+    0,
+  );
+  await api.call('DELETE', '/up/connection');
+});

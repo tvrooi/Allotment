@@ -1,4 +1,5 @@
 import type { BudgetSummary } from '../../types';
+import { unresolvedReason } from '../../utils/fundingStatus';
 import { useState } from 'react';
 import { CategoryPicker } from '../transactions/CategoryPicker';
 import { HelpTip } from '../ui/HelpTip';
@@ -187,11 +188,7 @@ export function BudgetSummaryWidget({
       ? {
           bg: 'bg-caution-subtle',
           text: 'text-caution',
-          label: funding.accountIssues?.length
-            ? 'Reconcile account balances before assigning money'
-            : funding.complete
-              ? 'Resolve overspending and uncategorised spending'
-              : 'Incomplete: missing exchange rates',
+          label: unresolvedReason(funding),
         }
       : getHeroStyle(
           toBeBudgeted,
@@ -218,8 +215,8 @@ export function BudgetSummaryWidget({
                 ? 'Incomplete'
                 : formatCurrency(toBeBudgeted)}
           </p>
-          <p className={`text-xs ${hero.text} mt-0.5 opacity-75`}>{hero.label}</p>
-          <p className={`text-xs ${hero.text} mt-1 opacity-75`}>
+          <p className={`text-xs ${hero.text} mt-0.5`}>{hero.label}</p>
+          <p className={`text-xs ${hero.text} mt-1`}>
             Money you have that isn't in a category yet.
             <HelpTip label="What is Ready to assign?" inline>
               Ready to assign is the money in your accounts that you haven't given a job yet. Give

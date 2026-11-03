@@ -13,6 +13,8 @@ import { initTheme } from './utils/applyTheme';
 import { restoreOfflineCopy, startOfflineCopy } from './offline/snapshot';
 import { loadOutbox } from './offline/outbox';
 import { IS_DEMO, startDemoApi } from './demo/demoApi';
+import { invalidateLedgerViews } from './utils/ledgerViews';
+import { setAfterUndoChange } from './store/undoStore';
 
 initTheme();
 // The macOS desktop app has no title bar: `mac-window:` styles add the drag strips. Its
@@ -23,14 +25,18 @@ if (window.__PLATFORM__ === 'darwin' || navigator.userAgent.includes(' FlyBudget
 
 const queryClient = new QueryClient({
   mutationCache: new MutationCache({
+    // Whatever a save changed, every page showing ledger figures follows it (utils/ledgerViews.ts)
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['goals'] });
+      void invalidateLedgerViews(queryClient);
     },
   }),
   defaultOptions: {
     queries: { staleTime: 30_000, retry: 1 },
   },
 });
+
+// Undo and redo call the API directly, not through a mutation
+setAfterUndoChange(() => invalidateLedgerViews(queryClient));
 
 const render = () =>
   createRoot(document.getElementById('root')!).render(

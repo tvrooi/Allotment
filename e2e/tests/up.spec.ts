@@ -167,7 +167,7 @@ test('a deleted Up transaction stays deleted until it is restored from Up review
   await page.getByTestId('transaction-row').filter({ hasText: victim.payeeName }).click();
   await page.getByRole('button', { name: 'Delete Transaction' }).click();
   const confirm = page.getByRole('dialog');
-  await expect(confirm.getByText('It came from Up, so it stays deleted')).toBeVisible();
+  await expect(confirm.getByText('Up still has it, so it stays deleted')).toBeVisible();
   await confirm.getByRole('button', { name: 'Delete' }).click();
   await expect.poll(async () => (await upRows()).length).toBe(1);
 

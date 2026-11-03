@@ -140,11 +140,12 @@ export function DataExport() {
         <div>
           <h3 className="text-sm font-medium text-text">Full Backup</h3>
           <p className="text-xs text-text-tertiary mt-0.5">
-            Download a complete JSON backup of all your data — accounts, transactions, budgets,
-            categories, payees, rules, recurring transactions, goals, reports and dashboards. Bank
-            connection credentials are not included, and neither are receipt photos: receipt details
-            and tax claims are, but the images stay in this installation (a Home Assistant backup of
-            the app keeps them). Keep your tax receipts somewhere else too.
+            Download a JSON backup of your budget: accounts, transactions, budgets, categories,
+            payees, rules, recurring transactions, goals, reports, dashboards, receipt details and
+            tax claims. It doesn’t include the files themselves (receipt photos, PDFs, documents and
+            videos in Files) or bank connection credentials: the files stay in this installation,
+            and a Home Assistant backup of the app or a copy of its data folder keeps them. To keep
+            your files somewhere else too, use <strong>Files → Download all</strong>.
           </p>
         </div>
         <button

@@ -3,7 +3,8 @@ import { useAccounts } from '../../hooks/useAccounts';
 import { useBudget } from '../../hooks/useBudget';
 import { useScheduleOccurrences } from '../../hooks/useSchedules';
 import { formatCurrency } from '../../utils/currency';
-import { leftToSpend as figureLeftToSpend } from '../../utils/leftToSpend';
+import { leftToSpend as figureLeftToSpend, savingsCategoryIds } from '../../utils/leftToSpend';
+import { useGoals } from '../../hooks/useGoals';
 import { Private } from '../ui/Private';
 import { UpSyncBadge } from '../up/UpSyncBadge';
 
@@ -14,6 +15,7 @@ import { UpSyncBadge } from '../up/UpSyncBadge';
 export function DashboardStatus({ currentMonth }: { currentMonth: string }) {
   const { data: accounts = [], isLoading: accountsLoading } = useAccounts();
   const { data: budget = [], isLoading: budgetLoading } = useBudget(currentMonth);
+  const { data: goals = [] } = useGoals();
   const today = format(new Date(), 'yyyy-MM-dd');
   const { data: occurrences = [] } = useScheduleOccurrences(
     today,
@@ -21,7 +23,8 @@ export function DashboardStatus({ currentMonth }: { currentMonth: string }) {
   );
   if (accountsLoading || budgetLoading) return <div className="h-9" aria-hidden />;
 
-  const { left, planned } = figureLeftToSpend(budget);
+  // Savings envelopes (Savings categories, goals' categories) aren't spending money
+  const { left, planned } = figureLeftToSpend(budget, savingsCategoryIds(goals));
   const nextPay = occurrences.find(
     (o) => o.expectedAmount > 0 && (o.displayStatus === 'upcoming' || o.displayStatus === 'due'),
   );
