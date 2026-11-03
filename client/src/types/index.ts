@@ -218,6 +218,8 @@ export interface Transaction {
   hiddenFromReports?: number;
   /** Phase 9: tag ids on this register row (a split's parts share them) */
   tagIds?: string[];
+  /** The household this payment is shared with, and its entry there (null = not shared) */
+  household?: { id: string; eventId: string } | null;
 }
 
 /** A tag (phase 9) */

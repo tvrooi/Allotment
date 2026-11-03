@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.76
+
+- **See which payments are shared with a household.** A payment shared with a household now shows that household's picture next to its payee, in the register and on phone cards. Open it and the details say **Shared with _household_**, with **View in household**, instead of offering to share it again.
+- **Give a household a picture.** **Household → Sharing → Picture** takes a small image, the way account and payee logos do. Without one, the household's initial shows on a coloured square. The Household page shows it next to the household's name. It's kept in backups and isn't shown to someone you've combined a household with.
+
 ## 0.2.0-up.75
 
 - **Tidier period tabs on Transactions.** A scrollbar no longer draws across This Month, Last Month and the rest. The tabs are never squeezed beside **Filters** with a label cut off: they keep their full width or take a row of their own, and on a phone the period you choose scrolls into view.
