@@ -42,6 +42,7 @@ const { sniffFileType } = await import('../services/fileTypes.js');
 const { extractText, indexText } = await import('../services/fileText.js');
 const { createBackup, parseBackup, restoreBackup } = await import('../services/backupService.js');
 const { zip } = await import('../utils/zip.js');
+const { taxYear, taxYearArchive } = await import('../services/taxService.js');
 const { zipEntries, zipEntryData } = await import('../utils/unzip.js');
 
 let server: Server;
@@ -74,6 +75,7 @@ afterAll(() => {
 beforeEach(() => {
   db.delete(documentLinks).run();
   db.delete(documentTags).run();
+  db.delete(schema.taxClaims).run();
   db.delete(receipts).run();
   db.delete(documents).run();
   db.delete(receiptFiles).run();
@@ -452,6 +454,31 @@ describe('receipts in Files', () => {
     // Deleting the document deletes its receipt
     expect((await call('DELETE', `/files/${doc.id}`)).status).toBe(204);
     expect(db.select().from(receipts).all()).toEqual([]);
+  });
+});
+
+describe('tax time', () => {
+  it('counts a file linked to a claimed transaction as its evidence, and puts it in the archive', async () => {
+    db.insert(schema.taxClaims)
+      .values({
+        transactionId: 'insurance',
+        label: 'D15',
+        workUseBps: 10_000,
+        createdAt: 'x',
+        updatedAt: 'x',
+      })
+      .run();
+    expect(taxYear(2026).missingReceipts).toBe(1);
+    await upload('Income protection policy.pdf', pdf(), '&linkKind=transaction&linkId=insurance');
+    const year = taxYear(2026);
+    expect(year.missingReceipts).toBe(0);
+    expect(year.claims[0].files).toEqual([
+      expect.objectContaining({ fileName: 'Income protection policy.pdf' }),
+    ]);
+    const archive = taxYearArchive(2026);
+    expect(zipEntries(archive.data)!.map((e) => e.name)).toContain(
+      'files/2026-09-01 D15 Income protection policy.pdf',
+    );
   });
 });
 
