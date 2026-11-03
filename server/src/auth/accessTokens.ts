@@ -5,11 +5,7 @@ import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import { accessTokens, householdGroups, rules, taxClaims, transactions } from '../db/schema.js';
 import { listTransferSuggestions } from '../services/transferService.js';
-import {
-  poolAccountsOf,
-  poolGroupOf,
-  snapshot as householdSnapshot,
-} from '../services/householdService.js';
+import { poolAccountsOf, snapshot as householdSnapshot } from '../services/householdService.js';
 import { todayIso } from '../services/mainAmountService.js';
 import { gatewayPersonId } from '../config.js';
 import { logoSchema } from '../utils/logo.js';
@@ -22,8 +18,7 @@ import { logoSchema } from '../utils/logo.js';
 // (organiseAllows), claiming past transactions as tax deductions (taxClaimAllows), recording
 // household contributions linked to a deposit into a household account
 // (householdContributionAllows) and your own unlinked contribution up to what you owe
-// (ownContributionAllows), and, temporarily, past expenses and repayments between a
-// household's people (householdEntryAllows). Only its SHA-256 is stored, like login sessions, so a leaked database doesn't leak usable tokens. Tokens expire, can be revoked, and changing the password
+// (ownContributionAllows). Only its SHA-256 is stored, like login sessions, so a leaked database doesn't leak usable tokens. Tokens expire, can be revoked, and changing the password
 // revokes them all.
 
 export const TOKEN_PREFIX = 'fbro_';
@@ -492,95 +487,6 @@ export function ownContributionAllows(method: string, rawPath: string, body: unk
   return owes > 0 && parsed.data.amount <= owes;
 }
 
-// ─── Past household expenses and repayments (TEMPORARY) ──────────────────────
-
-const personId = z.string().min(1).max(64);
-const entryFields = {
-  date: z.iso.date(),
-  description: z.string().trim().min(1).max(200),
-  amount: z.number().int().min(1),
-  payerId: personId,
-  transactionId: personId.optional(),
-};
-/** An expense with exact per-person shares, or a repayment, between the household's people */
-const householdEntryBody = z.discriminatedUnion('kind', [
-  z
-    .object({
-      kind: z.literal('expense'),
-      ...entryFields,
-      mode: z.literal('exact'),
-      shares: z
-        .array(z.object({ personId, value: z.number().int().min(0).max(1e12) }).strict())
-        .min(1)
-        .max(50),
-    })
-    .strict(),
-  z
-    .object({
-      kind: z.literal('settlement'),
-      ...entryFields,
-      recipientId: personId,
-      advance: z.boolean().optional(),
-    })
-    .strict(),
-]);
-
-/**
- * TEMPORARY, owner-approved on 3 November 2026 to bring one Tricount history into a household;
- * removed once that is recorded (docs/READ-ONLY-ACCESS.md). Whether an organise token may record
- * a past-dated expense or repayment (settlement) between the household's people: paid by a
- * person, never the household account; an expense in exact per-person shares that add up to it;
- * a repayment to another of its people. It may link one of your own unlinked bank payments out
- * of a personal account (not a household account or a transfer) with the same date and amount,
- * and only for something you paid. Never edits, removals, refunds, contributions, bills,
- * settings or bank changes. recordEvent still makes every one of its checks; a repayment must fit
- * what is owed unless it is marked as paid ahead (`advance`, owner-approved the same day).
- */
-export function householdEntryAllows(method: string, rawPath: string, body: unknown): boolean {
-  const match = HOUSEHOLD_EVENTS_PATH.exec(rawPath.replace(/\/+$/, ''));
-  if (method !== 'POST' || !match) return false;
-  const parsed = householdEntryBody.safeParse(body);
-  if (!parsed.success || parsed.data.date > todayIso()) return false;
-  const entry = parsed.data;
-  let state: ReturnType<typeof householdSnapshot>;
-  try {
-    state = householdSnapshot(decodeURIComponent(match[1]));
-  } catch {
-    return false;
-  }
-  const member = (id: string) => state.people.some((p) => p.id === id);
-  if (!member(entry.payerId)) return false;
-  if (entry.kind === 'settlement') {
-    if (!member(entry.recipientId) || entry.recipientId === entry.payerId) return false;
-  } else if (
-    !entry.shares.every((s) => member(s.personId)) ||
-    new Set(entry.shares.map((s) => s.personId)).size !== entry.shares.length ||
-    entry.shares.reduce((n, s) => n + s.value, 0) !== entry.amount
-  )
-    return false;
-  if (entry.transactionId === undefined) return true;
-  // Linked: only your own payment out, for something you paid
-  const self = state.people.find((p) => p.isSelf);
-  if (!self || entry.payerId !== self.id) return false;
-  const tx = db
-    .select({
-      accountId: transactions.accountId,
-      date: transactions.date,
-      amount: transactions.amount,
-      transferTransactionId: transactions.transferTransactionId,
-    })
-    .from(transactions)
-    .where(eq(transactions.id, entry.transactionId))
-    .get();
-  return (
-    !!tx &&
-    !tx.transferTransactionId &&
-    tx.amount === -entry.amount &&
-    tx.date === entry.date &&
-    !poolGroupOf(tx.accountId)
-  );
-}
-
 /** Whether a token with this scope may make this request (path relative to /api) */
 export function tokenAllows(scope: TokenScope, method: string, path: string, body: unknown) {
   if (readOnlyAllows(method, path)) return true;
@@ -593,7 +499,6 @@ export function tokenAllows(scope: TokenScope, method: string, path: string, bod
       (organiseAllows(method, path, body) ||
         taxClaimAllows(method, path, body) ||
         householdContributionAllows(method, path, body) ||
-        ownContributionAllows(method, path, body) ||
-        householdEntryAllows(method, path, body)))
+        ownContributionAllows(method, path, body)))
   );
 }

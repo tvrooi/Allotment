@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.81
+
+- **The temporary assistant permission is gone.** An assistant can no longer record past household expenses or repayments (`record_household_entries`, added in 0.2.0-up.80 to bring in one Tricount history). You record these on the Household page, where **Paid ahead** stays.
+
 ## 0.2.0-up.80
 
 - **Record a repayment paid ahead.** When you record a repayment between people on the Household page, tick **Paid ahead** to record it even if it is more than is owed now. The extra is then owed back the other way. Without the tick, Allotment still refuses a repayment larger than what is owed.
