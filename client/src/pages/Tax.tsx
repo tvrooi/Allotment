@@ -18,6 +18,7 @@ import {
 } from '../hooks/useTax';
 import { formatCurrency } from '../utils/currency';
 import { formatDay } from '../utils/dates';
+import { onTabListKeyDown } from '../components/ui/tabList';
 
 // Tax time (docs/RECEIPTS-AND-TAX.md): a financial year's deductions by return label, with
 // their receipts, and the inbox of receipts not yet matched to a transaction. Record keeping
@@ -43,9 +44,10 @@ export default function TaxPage() {
         </p>
         <div
           data-guide="tax.tabs"
-          className="flex gap-1 mt-3 -mb-px overflow-x-auto"
+          className="scroll-row flex gap-1 mt-3 -mb-px"
           role="tablist"
           aria-label="Tax view"
+          onKeyDown={onTabListKeyDown}
         >
           {TABS.map((t) => (
             <button
@@ -53,6 +55,7 @@ export default function TaxPage() {
               type="button"
               role="tab"
               aria-selected={tab === t.id}
+              tabIndex={tab === t.id ? 0 : -1}
               onClick={() =>
                 setParams(t.id === 'deductions' ? {} : { tab: t.id }, { replace: true })
               }

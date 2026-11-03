@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bookmark } from 'lucide-react';
 import NameModal from '../reports/dashboard/NameModal';
@@ -12,6 +12,7 @@ import {
 } from '../../hooks/useTags';
 import { filtersToSearch, type FilterState } from '../../utils/transactionFilters';
 import type { SavedView } from '../../types';
+import { useMenuKeyboard } from '../../hooks/useMenuKeyboard';
 
 // Phase 9 saved views: an All Transactions URL query under a name. Opening one is following
 // its link, so it shows exactly what that link would.
@@ -23,15 +24,26 @@ export function SavedViewsMenu() {
   const remove = useDeleteSavedView();
   const [open, setOpen] = useState(false);
   const [renaming, setRenaming] = useState<SavedView | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useMenuKeyboard({ open, menuRef, buttonRef, onClose: () => setOpen(false) });
   if (!views.length) return null;
 
   return (
     <div className="relative">
-      <Button variant="secondary" size="sm" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+      <Button
+        ref={buttonRef}
+        variant="secondary"
+        size="sm"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
         <Bookmark size={13} /> Views
       </Button>
       {open && (
         <div
+          ref={menuRef}
           role="menu"
           aria-label="Saved views"
           className="absolute right-0 top-full mt-1 z-30 w-64 max-w-[calc(100vw-2rem)] rounded-md border border-border bg-surface shadow-card py-1"

@@ -61,9 +61,12 @@ export default function SettingsPage() {
           Settings
         </h1>
         <div data-guide="settings.tabs">
+          {/* The row overlaps the bar's border by a pixel, so the open tab's underline sits
+              on it. Its tabs stay inside the row: one hanging out made it scroll up and down. */}
           <ScrollCue
             className="mt-3 border-b border-border-light -mb-px"
-            scrollerClassName="flex gap-0"
+            scrollerClassName="flex gap-0 -mb-px"
+            activeKey={activeTab}
           >
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -71,8 +74,11 @@ export default function SettingsPage() {
               return (
                 <button
                   key={tab.id}
+                  type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1.5 px-3 py-2 max-md:min-h-11 text-sm font-medium whitespace-nowrap shrink-0 transition-colors border-b-2 -mb-px ${
+                  aria-current={isActive ? 'page' : undefined}
+                  data-scroll-active={isActive}
+                  className={`flex items-center gap-1.5 px-3 py-2 max-md:min-h-11 text-sm font-medium whitespace-nowrap shrink-0 transition-colors border-b-2 ${
                     isActive
                       ? 'border-brand-600 text-brand-600'
                       : 'border-transparent text-text-tertiary hover:text-text-secondary'

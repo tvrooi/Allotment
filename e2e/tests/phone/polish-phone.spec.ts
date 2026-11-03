@@ -179,3 +179,61 @@ test('the category list in Add transaction is as wide as its field', async ({ pa
   expect(p.x).toBeGreaterThanOrEqual(0);
   expect(p.x + p.width).toBeLessThanOrEqual(WIDTH);
 });
+
+/**
+ * Every row that scrolls sideways (tab bars, the bank provider switch) on the page: none may
+ * also scroll up and down. A tab hanging a pixel out of its row used to let a finger drag the
+ * whole bar up and down.
+ */
+async function rowsThatScrollUpAndDown(page: Page) {
+  return page.evaluate(() => {
+    const rows = document.querySelectorAll<HTMLElement>(
+      '[data-testid="scroll-cue-scroller"], [role="tablist"], .scroll-row',
+    );
+    const problems: string[] = [];
+    for (const row of rows) {
+      // A tab row that wraps instead of scrolling can't scroll either way
+      if (getComputedStyle(row).overflowX === 'visible') continue;
+      const name = (row.getAttribute('aria-label') ?? row.textContent ?? '').trim().slice(0, 30);
+      if (getComputedStyle(row).overflowY !== 'hidden') problems.push(`"${name}" overflow-y`);
+      row.scrollTop = 20;
+      if (row.scrollTop !== 0 || row.scrollHeight > row.clientHeight)
+        problems.push(`"${name}" scrolls down +${row.scrollHeight - row.clientHeight}px`);
+    }
+    return { count: rows.length, problems };
+  });
+}
+
+test('tab bars scroll sideways only, never up and down', async ({ page, api }) => {
+  await api.createAccount('Everyday', 100_000);
+  for (const route of [
+    '/settings',
+    '/settings?tab=connections',
+    '/transactions',
+    '/forecast',
+    '/tax',
+    '/reports',
+  ]) {
+    await open(page, route);
+    await page.waitForLoadState('networkidle');
+    await expect(
+      page.locator('main [data-testid="scroll-cue-scroller"], main [role="tablist"]').first(),
+    ).toBeVisible();
+    const { count, problems } = await rowsThatScrollUpAndDown(page);
+    expect(count, route).toBeGreaterThan(0);
+    expect(problems, route).toEqual([]);
+  }
+});
+
+test('Settings opened on a later tab shows that tab whole', async ({ page, api }) => {
+  await api.createAccount('Everyday', 100_000);
+  await open(page, '/settings?tab=connections');
+  const bar = page.getByTestId('scroll-cue').first();
+  const tab = bar.getByRole('button', { name: 'Connected Banks' });
+  await expect(tab).toHaveAttribute('aria-current', 'page');
+  // Clear of the fade at either edge, not half hidden under it
+  const t = await box(tab);
+  const s = await box(bar.getByTestId('scroll-cue-scroller'));
+  expect(t.x).toBeGreaterThanOrEqual(s.x + 39);
+  expect(t.x + t.width).toBeLessThanOrEqual(s.x + s.width - 39);
+});

@@ -79,61 +79,45 @@ function ConnectedAccountsSettings() {
         </p>
       </div>
 
-      {/* Provider toggle */}
-      <div className="flex rounded-lg bg-surface-alt p-1 w-fit max-w-full overflow-x-auto">
-        <button
-          onClick={() => setProvider('up')}
-          title="Up Bank, Australia"
-          className={`px-4 py-1.5 max-md:min-h-11 text-sm font-medium rounded-md whitespace-nowrap transition-all ${provider === 'up' ? 'bg-surface text-text shadow-sm ring-2 ring-brand-600' : 'text-text-tertiary hover:text-text-secondary'}`}
-        >
-          Up
-        </button>
-        <button
-          onClick={() => setProvider('plaid')}
-          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ease-in-out ${
-            provider === 'plaid'
-              ? 'bg-surface text-text shadow-sm ring-2 ring-brand-600'
-              : 'text-text-tertiary hover:text-text-secondary ring-0 ring-transparent'
-          }`}
-        >
-          Plaid
-          {items.length > 0 && (
-            <span className="ml-1.5 text-[10px] bg-brand-50 text-brand-600 px-1.5 py-0.5 rounded-full">
-              {items.length}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setProvider('simplefin')}
-          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ease-in-out ${
-            provider === 'simplefin'
-              ? 'bg-surface text-text shadow-sm ring-2 ring-brand-600'
-              : 'text-text-tertiary hover:text-text-secondary ring-0 ring-transparent'
-          }`}
-        >
-          SimpleFIN
-          {sfConnections.length > 0 && (
-            <span className="ml-1.5 text-[10px] bg-brand-50 text-brand-600 px-1.5 py-0.5 rounded-full">
-              {sfConnections.length}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setProvider('enablebanking')}
-          title="European banks"
-          className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-all duration-200 ease-in-out ${
-            provider === 'enablebanking'
-              ? 'bg-surface text-text shadow-sm ring-2 ring-brand-600'
-              : 'text-text-tertiary hover:text-text-secondary ring-0 ring-transparent'
-          }`}
-        >
-          Enable Banking
-          {ebConnections.length > 0 && (
-            <span className="ml-1.5 text-[10px] bg-brand-50 text-brand-600 px-1.5 py-0.5 rounded-full">
-              {ebConnections.length}
-            </span>
-          )}
-        </button>
+      {/* Provider toggle: one row that scrolls sideways when it's wider than the screen */}
+      <div
+        role="group"
+        aria-label="Bank connection provider"
+        className="scroll-row flex rounded-lg bg-surface-alt p-1 w-fit max-w-full"
+      >
+        {(
+          [
+            { id: 'up', label: 'Up', title: 'Up Bank, Australia', count: 0 },
+            { id: 'plaid', label: 'Plaid', title: undefined, count: items.length },
+            { id: 'simplefin', label: 'SimpleFIN', title: undefined, count: sfConnections.length },
+            {
+              id: 'enablebanking',
+              label: 'Enable Banking',
+              title: 'European banks',
+              count: ebConnections.length,
+            },
+          ] as const
+        ).map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => setProvider(p.id)}
+            title={p.title}
+            aria-pressed={provider === p.id}
+            className={`flex items-center shrink-0 px-4 py-1.5 max-md:min-h-11 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${
+              provider === p.id
+                ? 'bg-surface text-text shadow-sm ring-2 ring-inset ring-brand-600'
+                : 'text-text-tertiary hover:text-text-secondary'
+            }`}
+          >
+            {p.label}
+            {p.count > 0 && (
+              <span className="ml-1.5 text-[10px] bg-brand-50 text-brand-600 px-1.5 py-0.5 rounded-full">
+                {p.count}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
       {/* Plaid content */}

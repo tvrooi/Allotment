@@ -21,6 +21,8 @@ import { NetWorthChart } from './NetWorthChart';
 import { SavingsPanel } from './SavingsPanel';
 import { SimulationPanel } from './SimulationPanel';
 import { YearBreakdown } from './YearBreakdown';
+import { ScrollCue } from '../ui/ScrollCue';
+import { onTabListKeyDown } from '../ui/tabList';
 
 const remember = (key: string, value?: string): string | null => {
   try {
@@ -567,10 +569,15 @@ function Editor({
       )}
 
       <section className="space-y-4">
-        <div
-          className="flex gap-1 overflow-x-auto border-b border-border-light"
-          role="tablist"
-          aria-label="Plan sections"
+        <ScrollCue
+          className="border-b border-border-light"
+          scrollerClassName="flex gap-1 -mb-px"
+          activeKey={panel}
+          scrollerProps={{
+            role: 'tablist',
+            'aria-label': 'Plan sections',
+            onKeyDown: onTabListKeyDown,
+          }}
         >
           {PANELS.map((p) => (
             <button
@@ -578,13 +585,15 @@ function Editor({
               type="button"
               role="tab"
               aria-selected={panel === p.id}
+              tabIndex={panel === p.id ? 0 : -1}
+              data-scroll-active={panel === p.id}
               onClick={() => setPanel(p.id)}
-              className={`px-3 py-2 text-sm whitespace-nowrap border-b-2 -mb-px max-md:min-h-11 ${panel === p.id ? 'border-brand-600 font-medium text-text' : 'border-transparent text-text-secondary'}`}
+              className={`px-3 py-2 text-sm whitespace-nowrap shrink-0 border-b-2 max-md:min-h-11 transition-colors ${panel === p.id ? 'border-brand-600 font-medium text-text' : 'border-transparent text-text-secondary hover:text-text'}`}
             >
               {p.label}
             </button>
           ))}
-        </div>
+        </ScrollCue>
 
         {panel !== 'events' && panel !== 'compare' && panel !== 'simulation' && (
           <div className="flex flex-wrap items-center gap-3">

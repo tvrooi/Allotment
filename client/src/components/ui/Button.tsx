@@ -7,6 +7,7 @@ interface Props extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
   children: React.ReactNode;
+  ref?: React.Ref<HTMLButtonElement>;
 }
 
 const variants = {

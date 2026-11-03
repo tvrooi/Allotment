@@ -21,6 +21,7 @@ import {
 } from '../hooks/useDashboards';
 import { useSavedReports } from '../hooks/useCustomReports';
 import { dashboardDateRange, dayBounds, encodeRangeParam } from '../utils/dateRange';
+import { ScrollCue } from '../components/ui/ScrollCue';
 
 type DashboardModal = 'new' | 'rename' | 'delete' | null;
 
@@ -80,33 +81,38 @@ export default function ReportsPage() {
           )}
         </div>
 
-        <div
-          data-guide="reports.pages"
-          className="flex items-center gap-0 mt-3 -mb-px overflow-x-auto"
-        >
-          {pages.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => select(p.id)}
-              className={`px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors border-b-2 cursor-pointer ${
-                active?.id === p.id
-                  ? 'border-brand-600 text-brand-600'
-                  : 'border-transparent text-text-tertiary hover:text-text-secondary'
-              }`}
-            >
-              {p.name}
-            </button>
-          ))}
+        {/* The dashboards scroll sideways when there are many; New and the dashboard's menu
+            stay at the ends of the bar */}
+        <div data-guide="reports.pages" className="flex items-center gap-0 mt-3 -mb-px">
+          <ScrollCue className="min-w-0" scrollerClassName="flex" activeKey={active?.id}>
+            {pages.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => select(p.id)}
+                aria-current={active?.id === p.id ? 'page' : undefined}
+                data-scroll-active={active?.id === p.id}
+                className={`px-3 py-2 max-md:min-h-11 text-sm font-medium whitespace-nowrap shrink-0 transition-colors border-b-2 ${
+                  active?.id === p.id
+                    ? 'border-brand-600 text-brand-600'
+                    : 'border-transparent text-text-tertiary hover:text-text-secondary'
+                }`}
+              >
+                {p.name}
+              </button>
+            ))}
+          </ScrollCue>
           <button
+            type="button"
             onClick={() => setModal('new')}
             aria-label="New dashboard"
             title="New dashboard"
-            className="ml-1 p-1.5 rounded text-text-tertiary hover:text-text-secondary hover:bg-hover transition-colors cursor-pointer"
+            className="ml-1 p-1.5 max-md:min-w-11 max-md:min-h-11 shrink-0 flex items-center justify-center rounded text-text-tertiary hover:text-text-secondary hover:bg-hover transition-colors"
           >
             <Plus size={15} />
           </button>
           {active && (
-            <div className="ml-auto pl-2">
+            <div className="ml-auto pl-2 shrink-0">
               <RowMenu
                 items={[
                   { label: 'Rename dashboard…', onClick: () => setModal('rename') },

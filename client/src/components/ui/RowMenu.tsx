@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreVertical } from 'lucide-react';
 import { PHONE_MAX_WIDTH } from '../../hooks/useIsPhone';
+import { useMenuKeyboard } from '../../hooks/useMenuKeyboard';
 
 export interface RowMenuItem {
   label: string;
@@ -12,7 +13,10 @@ export interface RowMenuItem {
 
 const MENU_W = 200;
 
-/** ⋮ button that opens a portal popover of actions. Closes on outside click, scroll, or ESC. */
+/**
+ * ⋮ button that opens a portal popover of actions. Arrow keys move through it; it closes on
+ * Escape (focus back on ⋮), an outside press, focus leaving it, or a scroll.
+ */
 export default function RowMenu({
   items,
   label = 'Actions',
@@ -26,28 +30,14 @@ export default function RowMenu({
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const visible = items.filter((i) => !i.hidden);
 
+  const open = pos !== null;
+  useMenuKeyboard({ open, menuRef, buttonRef: btnRef, onClose: () => setPos(null) });
   useEffect(() => {
-    if (!pos) return;
+    if (!open) return;
     const close = () => setPos(null);
-    const onDown = (e: MouseEvent) => {
-      if (
-        !menuRef.current?.contains(e.target as Node) &&
-        !btnRef.current?.contains(e.target as Node)
-      )
-        close();
-    };
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
     window.addEventListener('scroll', close, true);
-    window.addEventListener('resize', close);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-      window.removeEventListener('scroll', close, true);
-      window.removeEventListener('resize', close);
-    };
-  }, [pos]);
+    return () => window.removeEventListener('scroll', close, true);
+  }, [open]);
 
   if (!visible.length) return <span className="w-7" />;
 
@@ -66,6 +56,7 @@ export default function RowMenu({
     <>
       <button
         ref={btnRef}
+        type="button"
         onClick={toggle}
         aria-label={label}
         aria-haspopup="menu"
@@ -81,6 +72,7 @@ export default function RowMenu({
           <div
             ref={menuRef}
             role="menu"
+            aria-label={label}
             onClick={(e) => e.stopPropagation()}
             className="fixed z-50 bg-surface border border-border rounded-md shadow-hover py-1 animate-menu-in"
             style={{ top: pos.top, left: pos.left, width: MENU_W }}
@@ -88,6 +80,7 @@ export default function RowMenu({
             {visible.map((item) => (
               <button
                 key={item.label}
+                type="button"
                 role="menuitem"
                 onClick={() => {
                   setPos(null);

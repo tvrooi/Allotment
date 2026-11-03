@@ -46,6 +46,7 @@ import { ExpectedNote } from '../components/budget/ExpectedNote';
 import type { BudgetCategory, BudgetGroup, BudgetType } from '../types';
 import { Tip } from '../components/guide/Tip';
 import { TIPS } from '../guides';
+import { useMenuKeyboard } from '../hooks/useMenuKeyboard';
 
 function AmountInput({
   cents,
@@ -487,6 +488,16 @@ export default function BudgetPage() {
   const [expensesCollapsed, setExpensesCollapsed] = useState(false);
   const [query, setQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useMenuKeyboard({
+    open: menuOpen,
+    menuRef,
+    buttonRef: menuButtonRef,
+    onClose: () => setMenuOpen(false),
+    // Its backdrop takes a tap outside, so the tap closes the menu without pressing what's below
+    closeOnOutsidePress: false,
+  });
   const autoAssignRef = useRef<ElementRef<typeof AutoAssign>>(null);
   const fundTargetsRef = useRef<ElementRef<typeof FundTargets>>(null);
   const canSaveBudget = useCanSave();
@@ -701,6 +712,7 @@ export default function BudgetPage() {
             {isPhone && (
               <div className="relative">
                 <button
+                  ref={menuButtonRef}
                   type="button"
                   onClick={() => setMenuOpen((o) => !o)}
                   aria-label="More budget actions"
@@ -714,7 +726,9 @@ export default function BudgetPage() {
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
                     <div
+                      ref={menuRef}
                       role="menu"
+                      aria-label="More budget actions"
                       className="absolute right-0 top-full mt-1 z-40 w-56 rounded-lg border border-border bg-surface shadow-lg py-1"
                     >
                       <Link
