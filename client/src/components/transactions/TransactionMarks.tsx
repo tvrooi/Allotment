@@ -71,7 +71,7 @@ export function RowMarks({ tx }: { tx: Transaction }) {
           name={household.name}
           logo={household.logo}
           size="xs"
-          title={`Shared with ${household.name}`}
+          title={`${tx.household!.kind === 'expense' ? 'Shared with' : 'Linked to'} ${household.name}`}
         />
       )}
       {shown.slice(0, 2).map((t) => (

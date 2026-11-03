@@ -459,7 +459,8 @@ export function TransactionDetailPanel({
           <div className="flex items-center gap-2 text-sm" data-testid="shared-with-household">
             <HouseholdIcon name={sharedWith.name} logo={sharedWith.logo} size="sm" />
             <span className="flex-1 min-w-0 truncate text-text-secondary">
-              Shared with <span className="font-medium text-text">{sharedWith.name}</span>
+              {tx.household?.kind === 'expense' ? 'Shared with' : 'Linked to'}{' '}
+              <span className="font-medium text-text">{sharedWith.name}</span>
             </span>
             <Button
               variant="secondary"

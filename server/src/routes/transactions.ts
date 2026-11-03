@@ -381,6 +381,7 @@ transactionsRouter.get('/', (req, res) => {
       isBudgetBoundary: isBudgetBoundary.mapWith(Boolean),
       householdGroupId: householdEvents.groupId,
       householdEventId: householdEvents.id,
+      householdEventKind: householdEvents.kind,
     })
     .from(transactions)
     .leftJoin(householdEvents, eq(householdEvents.transactionId, transactions.id))
@@ -421,12 +422,13 @@ transactionsRouter.get('/', (req, res) => {
   }
 
   const tagMap = tagsByTransaction(rows.map((r) => r.id));
-  const result = rows.map(({ householdGroupId, householdEventId, ...r }) => ({
+  const result = rows.map(({ householdGroupId, householdEventId, householdEventKind, ...r }) => ({
     ...r,
-    // The household this payment is shared with, and its entry there (null = not shared)
+    // The household this payment is linked to, its entry there and the entry's kind (an
+    // expense when it was shared); null = not linked
     household:
       householdGroupId && householdEventId
-        ? { id: householdGroupId, eventId: householdEventId }
+        ? { id: householdGroupId, eventId: householdEventId, kind: householdEventKind }
         : null,
     tagIds: tagMap.get(r.id) ?? [],
     ...(r.isParent === 1 ? { children: childrenMap.get(r.id) ?? [] } : {}),

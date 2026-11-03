@@ -37,12 +37,82 @@ async function shareAll(groupId: string, ids: string[]) {
   };
 }
 
-const splitText = (g: HouseholdSummary) =>
+/** How a household's quick share splits, for a label */
+export const splitText = (g: HouseholdSummary) =>
   !g.defaultSplit || g.defaultSplit.mode === 'equal'
     ? 'split equally'
     : g.defaultSplit.mode === 'percentage'
       ? 'split by percentage'
       : 'split by weight';
+
+type ShareOutcome = Awaited<ReturnType<typeof shareAll>>;
+
+/** What a share did, in a sentence: how many, what was skipped and why, and what wasn't sent */
+export function describeShare(result: ShareOutcome, householdName?: string) {
+  const skipped = result.results.filter((r) => !r.ok);
+  const reasons = [...new Set(skipped.map((r) => r.error))].slice(0, 2).join('; ');
+  const done =
+    householdName && result.shared === 1 && !skipped.length && !result.stopped
+      ? `Shared with ${householdName}.`
+      : `Shared ${result.shared}${householdName ? ` with ${householdName}` : ''}.`;
+  return (
+    done +
+    (skipped.length ? ` ${skipped.length} not shared: ${reasons}` : '') +
+    (result.stopped
+      ? ` Then it stopped (${result.stopped.error}): ${result.stopped.unsent} weren't ` +
+        'sent. Share again to send them; payments already shared are skipped.'
+      : '')
+  );
+}
+
+/**
+ * Shares payments with a household's default split, refreshes what shows them and records one
+ * undo step (Undo removes the entries it made). Used by the dialog below and the register's
+ * right-click menu.
+ */
+export function useShareWithHousehold() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      groupId,
+      ids,
+    }: {
+      groupId: string;
+      ids: string[] | (() => Promise<string[]>);
+    }) => ({
+      groupId,
+      result: await shareAll(groupId, typeof ids === 'function' ? await ids() : ids),
+    }),
+    onSuccess: ({ groupId, result }) => {
+      void qc.invalidateQueries({ queryKey: ['households'] });
+      void qc.invalidateQueries({ queryKey: ['transactions'] });
+      const events = result.results.filter((r) => r.ok && r.eventId).map((r) => r.eventId!);
+      if (events.length)
+        useUndoStore.getState().push({
+          description: `Share ${events.length} with the household`,
+          undo: async () => {
+            for (const e of [...events].reverse()) await removeHouseholdEvent(groupId, e);
+            void qc.invalidateQueries({ queryKey: ['households'] });
+            void qc.invalidateQueries({ queryKey: ['transactions'] });
+          },
+          redo: async () => {
+            const again = await shareAll(
+              groupId,
+              result.results.filter((r) => r.ok).map((r) => r.transactionId),
+            );
+            // Undo after a redo removes the entries the redo made
+            events.splice(
+              0,
+              events.length,
+              ...again.results.filter((r) => r.ok && r.eventId).map((r) => r.eventId!),
+            );
+            void qc.invalidateQueries({ queryKey: ['households'] });
+            void qc.invalidateQueries({ queryKey: ['transactions'] });
+          },
+        });
+    },
+  });
+}
 
 interface Props {
   /** One transaction, the payments picked in the register, or the register's list */
@@ -63,54 +133,31 @@ export function ShareWithHousehold({
   variant = 'button',
   onShared,
 }: Props) {
-  const qc = useQueryClient();
   const { data: groups = [] } = useQuery({ queryKey: ['households'], queryFn: getHouseholds });
   const [open, setOpen] = useState(false);
   const [groupId, setGroupId] = useState('');
   const [outcome, setOutcome] = useState<string | null>(null);
-  const share = useMutation({
-    mutationFn: async (id: string) => {
-      const ids = transactionId
-        ? [transactionId]
-        : (transactionIds ??
-          (await getTransactions(params ?? {}))
-            .filter((t) => t.amount < 0 && !t.isParent && !t.transferTransactionId)
-            .map((t) => t.id));
-      return { id, result: await shareAll(id, ids) };
-    },
-    onSuccess: ({ id, result }) => {
-      void qc.invalidateQueries({ queryKey: ['households'] });
-      void qc.invalidateQueries({ queryKey: ['transactions'] });
-      const skipped = result.results.filter((r) => !r.ok);
-      const reasons = [...new Set(skipped.map((r) => r.error))].slice(0, 2).join('; ');
-      setOutcome(
-        `Shared ${result.shared}.` +
-          (skipped.length ? ` ${skipped.length} not shared: ${reasons}` : '') +
-          (result.stopped
-            ? ` Then it stopped (${result.stopped.error}): ${result.stopped.unsent} weren't ` +
-              'sent. Share again to send them; payments already shared are skipped.'
-            : ''),
-      );
-      onShared?.(result.sentIds);
-      const events = result.results.filter((r) => r.ok && r.eventId).map((r) => r.eventId!);
-      if (events.length)
-        useUndoStore.getState().push({
-          description: `Share ${events.length} with the household`,
-          undo: async () => {
-            for (const e of [...events].reverse()) await removeHouseholdEvent(id, e);
-            void qc.invalidateQueries({ queryKey: ['households'] });
-          },
-          redo: async () => {
-            await shareAll(
-              id,
-              result.results.filter((r) => r.ok).map((r) => r.transactionId),
-            );
-            void qc.invalidateQueries({ queryKey: ['households'] });
-          },
-        });
-    },
-    onError: (e: Error) => setOutcome(e.message),
-  });
+  const share = useShareWithHousehold();
+  const shareWith = (id: string) =>
+    share.mutate(
+      {
+        groupId: id,
+        ids: transactionId
+          ? [transactionId]
+          : (transactionIds ??
+            (async () =>
+              (await getTransactions(params ?? {}))
+                .filter((t) => t.amount < 0 && !t.isParent && !t.transferTransactionId)
+                .map((t) => t.id))),
+      },
+      {
+        onSuccess: ({ result }) => {
+          setOutcome(describeShare(result));
+          onShared?.(result.sentIds);
+        },
+        onError: (e: Error) => setOutcome(e.message),
+      },
+    );
   if (!groups.length) return null;
   const chosen = groups.find((g) => g.id === (groupId || groups[0].id))!;
   const label = transactionId
@@ -186,7 +233,7 @@ export function ShareWithHousehold({
               {outcome ? 'Close' : 'Cancel'}
             </Button>
             {!outcome && (
-              <Button disabled={share.isPending} onClick={() => share.mutate(chosen.id)}>
+              <Button disabled={share.isPending} onClick={() => shareWith(chosen.id)}>
                 Share
               </Button>
             )}

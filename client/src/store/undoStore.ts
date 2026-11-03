@@ -12,7 +12,8 @@ interface UndoState {
   undoStack: UndoCommand[];
   redoStack: UndoCommand[];
   toastMessage: string | null;
-  toastAction: 'undo' | 'redo' | null;
+  /** undo/redo: what was just undone or redone; done: an action that Undo reverses; note: a message */
+  toastAction: 'undo' | 'redo' | 'done' | 'note' | null;
 }
 
 interface UndoActions {
@@ -20,6 +21,8 @@ interface UndoActions {
   undo: () => Promise<void>;
   redo: () => Promise<void>;
   clearToast: () => void;
+  /** Show what just happened, with Undo when it pushed an undo command */
+  announce: (message: string, undoable: boolean) => void;
 }
 
 export const useUndoStore = create<UndoState & UndoActions>((set, get) => ({
@@ -71,5 +74,9 @@ export const useUndoStore = create<UndoState & UndoActions>((set, get) => ({
 
   clearToast() {
     set({ toastMessage: null, toastAction: null });
+  },
+
+  announce(message, undoable) {
+    set({ toastMessage: message, toastAction: undoable ? 'done' : 'note' });
   },
 }));
