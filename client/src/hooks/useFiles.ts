@@ -1,5 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from '../api/files';
+import { nextFilesOffset } from '../utils/filePages';
 
 // Files never change a transaction's amount or category. A receipt is a file too, and linking
 // or unlinking one can match or unmatch it, so receipts and the register's marks refresh with them.
@@ -14,6 +15,23 @@ export function useFiles(filter: api.FileFilter, enabled = true) {
     // Photos being read by the local model change when it finishes
     refetchInterval: (q) =>
       q.state.data?.documents.some((d) => d.textStatus === 'pending') ? 5000 : false,
+  });
+}
+
+/**
+ * The library a page at a time (the Files page's Show more). Each request asks for one page at
+ * the next offset, so it never goes over the server's 500-file limit however many are shown.
+ */
+export function useFilePages(filter: Omit<api.FileFilter, 'limit' | 'offset'>, pageSize: number) {
+  return useInfiniteQuery({
+    queryKey: [...FILES, 'pages', filter, pageSize],
+    queryFn: ({ pageParam }) => api.listFiles({ ...filter, limit: pageSize, offset: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) => nextFilesOffset(pages, last.total),
+    refetchInterval: (q) =>
+      q.state.data?.pages.some((p) => p.documents.some((d) => d.textStatus === 'pending'))
+        ? 5000
+        : false,
   });
 }
 

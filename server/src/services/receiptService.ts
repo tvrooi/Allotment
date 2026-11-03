@@ -10,7 +10,7 @@ import { db } from '../db/index.js';
 import { accounts, documents, receiptFiles, receipts, transactions } from '../db/schema.js';
 import { RECEIPT_TYPES, extensionOf } from './receiptMeta.js';
 import { sniffMediaType } from './fileTypes.js';
-import { presentFiles, releaseFiles } from './fileStore.js';
+import { presentFiles, releaseFiles, storageCapExceeded } from './fileStore.js';
 import {
   attachReceipt,
   detachReceipt,
@@ -92,6 +92,13 @@ export function addReceipt(input: {
   if (count >= MAX_RECEIPTS) throw new ReceiptError('There are too many receipts already', 409);
 
   const fileId = createHash('sha256').update(input.bytes).digest('hex');
+  // Receipts are files too: they count towards the Files storage limit
+  const capMb = storageCapExceeded(fileId, input.bytes.length);
+  if (capMb != null)
+    throw new ReceiptError(
+      `Files are limited to ${capMb} MB (Files → Storage). Delete some, or raise the limit.`,
+      413,
+    );
   const stamp = now();
   const id = nanoid();
   const fileName = cleanName(input.fileName, mimeType);

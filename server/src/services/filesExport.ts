@@ -7,7 +7,7 @@ import { asc } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { documents } from '../db/schema.js';
 import { listDocuments } from './documentService.js';
-import { storedFile } from './fileStore.js';
+import { storedFile, storedFileInfo } from './fileStore.js';
 import { csvCell } from './taxService.js';
 import { extensionOf } from './receiptMeta.js';
 import { ZipWriter } from '../utils/zip.js';
@@ -45,8 +45,10 @@ export async function exportAllFiles(res: Response) {
     docs.push(...listDocuments({ limit: 500, offset: i }).documents);
   docs.sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
 
-  const files = docs.map((d) => ({ doc: d, file: d.hasFile ? storedFile(d.fileId) : null }));
-  const total = files.reduce((sum, f) => sum + (f.file?.size ?? 0), 0);
+  // Sizes from the metadata only: each file's bytes are read as its entry is written, so the
+  // whole library is never in memory at once
+  const files = docs.map((d) => ({ doc: d, info: d.hasFile ? storedFileInfo(d.fileId) : null }));
+  const total = files.reduce((sum, f) => sum + (f.info?.size ?? 0), 0);
   if (total > MAX_ARCHIVE_BYTES)
     throw new FilesExportError(
       'There are more than 4 GB of files, too many for one ZIP. Copy the data folder instead (docs/FILES.md).',
@@ -84,8 +86,9 @@ export async function exportAllFiles(res: Response) {
     });
   const zip = new ZipWriter(write);
   try {
-    for (const { doc, file } of files) {
+    for (const { doc, info } of files) {
       let path = '';
+      const file = info ? storedFile(doc.fileId) : null;
       if (file) {
         const ext = extensionOf(doc.mimeType);
         const stem = `files/${doc.date} ${safeName(doc.fileName.replace(/\.[a-z0-9]+$/i, '')) || 'file'}`;

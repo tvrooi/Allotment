@@ -12,6 +12,7 @@ import { nanoid } from 'nanoid';
 import { databasePath, db } from '../db/index.js';
 import { documents, receiptFiles, receipts } from '../db/schema.js';
 import { looksLikeVideo } from './fileTypes.js';
+import { getBudgetSettings } from './mainAmountService.js';
 
 /** Largest file kept in the database */
 export const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -163,8 +164,11 @@ export function storeUpload(upload: Upload, mimeType: string, stamp: string) {
   return fileId;
 }
 
-/** A stored file's bytes (in memory) or path (on disk); null when it is not on this installation */
-export function storedFile(fileId: string) {
+/**
+ * What a stored file is and where it lives, without reading its bytes; null when it is not on
+ * this installation
+ */
+export function storedFileInfo(fileId: string) {
   const row = db
     .select({
       mimeType: receiptFiles.mimeType,
@@ -178,14 +182,22 @@ export function storedFile(fileId: string) {
   if (row.onDisk) {
     const file = diskPath(fileId);
     if (!existsSync(file)) return null;
-    return { mimeType: row.mimeType, size: statSync(file).size, path: file, data: null };
+    return { mimeType: row.mimeType, size: statSync(file).size, path: file };
   }
+  return { mimeType: row.mimeType, size: row.size, path: null };
+}
+
+/** A stored file's bytes (in memory) or path (on disk); null when it is not on this installation */
+export function storedFile(fileId: string) {
+  const info = storedFileInfo(fileId);
+  if (!info) return null;
+  if (info.path) return { ...info, data: null };
   const data = db
     .select({ data: receiptFiles.data })
     .from(receiptFiles)
     .where(eq(receiptFiles.id, fileId))
     .get()?.data as Buffer;
-  return { mimeType: row.mimeType, size: row.size, path: null, data };
+  return { ...info, data };
 }
 
 /** Whether these files are on this installation (a JSON backup carries no files) */
@@ -230,4 +242,16 @@ export function storageUsed() {
     .from(receiptFiles)
     .get();
   return { bytes: row?.bytes ?? 0, files: row?.files ?? 0, onDisk: row?.onDisk ?? 0 };
+}
+
+/**
+ * The storage limit (Files → Storage) a new file of this size would go over, or null when it
+ * fits. Files and receipts share one store, so both check it; a file already stored (the same
+ * bytes) takes no more room.
+ */
+export function storageCapExceeded(fileId: string, size: number) {
+  const capMb = getBudgetSettings().filesCapMb;
+  if (capMb == null) return null;
+  if (presentFiles([fileId]).size > 0) return null;
+  return storageUsed().bytes + size > capMb * 1024 * 1024 ? capMb : null;
 }

@@ -8,7 +8,12 @@ import { Button } from '../components/ui/Button';
 import { Input, Select } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
-import { useFiles, useFileStorage, useSetFileStorageCap, useUploadFile } from '../hooks/useFiles';
+import {
+  useFilePages,
+  useFileStorage,
+  useSetFileStorageCap,
+  useUploadFile,
+} from '../hooks/useFiles';
 import { useDebounce } from '../hooks/useDebounce';
 import { useTags } from '../hooks/useTags';
 import { formatDay } from '../utils/dates';
@@ -127,7 +132,6 @@ export default function FilesPage() {
   const openId = params.get('file');
   const [search, setSearch] = useState(params.get('q') ?? '');
   const q = useDebounce(search.trim(), 250);
-  const [limit, setLimit] = useState(PAGE);
   const { data: tags = [] } = useTags();
 
   const set = (changes: Record<string, string | null>) => {
@@ -136,7 +140,6 @@ export default function FilesPage() {
       if (value) next.set(key, value);
       else next.delete(key);
     }
-    setLimit(PAGE);
     // Typing a search replaces the history entry instead of adding one per letter
     setParams(next, { replace: Object.keys(changes).every((k) => k === 'q') });
   };
@@ -151,12 +154,15 @@ export default function FilesPage() {
     important: view === 'important' ? true : undefined,
     receipt: view === 'receipts' ? true : undefined,
     linked: view === 'unlinked' ? false : undefined,
-    limit,
   };
-  const { data, isLoading } = useFiles(filter);
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useFilePages(
+    filter,
+    PAGE,
+  );
   const upload = useUploadFile();
   const [errors, setErrors] = useState<string[]>([]);
-  const docs = data?.documents ?? [];
+  const docs = data?.pages.flatMap((p) => p.documents) ?? [];
+  const total = data?.pages[0]?.total ?? 0;
 
   async function add(files: File[]) {
     setErrors([]);
@@ -386,9 +392,14 @@ export default function FilesPage() {
                 ))}
               </ul>
             )}
-            {data && data.total > docs.length && (
-              <Button variant="secondary" size="sm" onClick={() => setLimit((n) => n + PAGE)}>
-                Show more ({data.total - docs.length} more)
+            {hasNextPage && (
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={isFetchingNextPage}
+                onClick={() => void fetchNextPage()}
+              >
+                Show more ({total - docs.length} more)
               </Button>
             )}
             <div className="md:hidden">

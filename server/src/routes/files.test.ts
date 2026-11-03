@@ -415,6 +415,15 @@ describe('the library', () => {
     await upload('again.png', first);
     const big = png('b'.repeat(1024 * 1024));
     expect((await call('POST', '/files?fileName=big.png', { raw: big })).status).toBe(413);
+    // A receipt is a file too, in the same store: it keeps to the same limit
+    const receipt = await call('POST', '/receipts?fileName=new.png', {
+      raw: png('c'.repeat(17_000)),
+    });
+    expect(receipt.status).toBe(413);
+    expect(receipt.body.error).toMatch(/limited to 1 MB/);
+    expect((await call('GET', '/files/storage')).body).toMatchObject({ documents: 2, files: 1 });
+    // Bytes already stored take no more room, as a receipt too
+    expect((await call('POST', '/receipts?fileName=same.png', { raw: first })).status).toBe(201);
   });
 });
 

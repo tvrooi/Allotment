@@ -26,6 +26,7 @@ import {
   MAX_VIDEO_BYTES,
   presentFiles,
   releaseFiles,
+  storageCapExceeded,
   storageUsed,
   storeUpload,
   type Upload,
@@ -388,15 +389,12 @@ export function addDocument(input: {
         .from(documents)
         .get()?.n ?? 0;
     if (count >= MAX_DOCUMENTS) throw new DocumentError('There are too many files already', 409);
-    const capMb = getBudgetSettings().filesCapMb;
-    if (capMb != null) {
-      const isNew = presentFiles([upload.sha256]).size === 0;
-      if (isNew && storageUsed().bytes + upload.size > capMb * 1024 * 1024)
-        throw new DocumentError(
-          `Files are limited to ${capMb} MB (Files → Storage). Delete some, or raise the limit.`,
-          413,
-        );
-    }
+    const capMb = storageCapExceeded(upload.sha256, upload.size);
+    if (capMb != null)
+      throw new DocumentError(
+        `Files are limited to ${capMb} MB (Files → Storage). Delete some, or raise the limit.`,
+        413,
+      );
     const link = input.link
       ? { kind: input.link.kind, id: resolveTarget(input.link.kind, input.link.id) }
       : null;
