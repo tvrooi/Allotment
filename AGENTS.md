@@ -13,6 +13,8 @@ Keep this file and CLAUDE.md identical.
 - React UI: `client/src/`; Express + SQLite: `server/src/`.
 - Up API: `server/src/services/upService.ts`, `upSyncService.ts`, `upTransactions.ts`, `routes/up.ts`.
 - Up UI: `client/src/components/up/`, `hooks/useUp.ts`, `api/up.ts`.
+- Files (documents, links, receipts as documents): `server/src/services/documentService.ts`,
+  `fileStore.ts`, `routes/files.ts`; `client/src/components/files/`. Design: [docs/FILES.md](docs/FILES.md).
 - Desktop remote connection: `electron/connection.ts`, `connectionPage.ts`, `main.ts`.
 - HA wrapper: `homeassistant/`; image builds and desktop releases: `.github/workflows/release.yml`.
 - HA install catalog: separate `tvrooi/home-assistant-apps` repo. Never duplicate app source there.

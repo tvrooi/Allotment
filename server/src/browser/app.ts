@@ -85,6 +85,21 @@ app.use('/investments', investmentsRouter as unknown as ShimRouter);
 app.get('/receipts', (_req, res) => res.json([]));
 app.get('/receipts/counts', (_req, res) => res.json([]));
 app.use('/receipts', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
+// Files likewise: an empty library, and nothing can be added
+app.get('/files', (_req, res) => res.json({ total: 0, documents: [] }));
+app.get('/files/counts', (_req, res) => res.json([]));
+app.get('/files/storage', (_req, res) =>
+  res.json({
+    bytes: 0,
+    files: 0,
+    onDisk: 0,
+    documents: 0,
+    capMb: null,
+    maxFileBytes: 0,
+    maxVideoBytes: 0,
+  }),
+);
+app.use('/files', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
 app.get('/tax/years/:fy/archive', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
 app.use('/tax', taxRouter as unknown as ShimRouter);
 app.use('/priorities', prioritiesRouter as unknown as ShimRouter);

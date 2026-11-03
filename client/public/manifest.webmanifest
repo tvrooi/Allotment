@@ -1,0 +1,47 @@
+{
+  "name": "Allotment",
+  "short_name": "Allotment",
+  "description": "Every dollar gets its plot. A private budget on your own server.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [{ "src": "/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }],
+  "share_target": {
+    "action": "/share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "files",
+          "accept": [
+            "image/*",
+            "application/pdf",
+            "video/mp4",
+            "video/quicktime",
+            "text/csv",
+            "text/plain",
+            "text/markdown",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.oasis.opendocument.text",
+            "application/vnd.oasis.opendocument.spreadsheet",
+            "application/vnd.oasis.opendocument.presentation",
+            ".docx",
+            ".xlsx",
+            ".pptx",
+            ".odt",
+            ".ods",
+            ".odp",
+            ".csv",
+            ".md",
+            ".txt"
+          ]
+        }
+      ]
+    }
+  }
+}

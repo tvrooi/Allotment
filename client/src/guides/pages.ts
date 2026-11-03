@@ -310,6 +310,34 @@ export const taxGuide: Guide = {
   ],
 };
 
+export const filesGuide: Guide = {
+  id: 'files',
+  version: 1,
+  title: 'Files',
+  summary: 'Bills, warranties and policies, kept with what they belong to.',
+  page: '/files',
+  steps: [
+    {
+      title: 'Your documents, in one place',
+      body: 'Keep bills, warranties, insurance policies and photos of what you own with your budget. Star a file as a reminder, mark the ones that matter as important, and sort them with labels.',
+      route: '/files',
+      target: 'files.views',
+    },
+    {
+      title: 'Find anything',
+      body: 'Search names, descriptions and labels, and the words inside PDFs, Word and Excel files. Narrow it by kind of file or by date.',
+      route: '/files',
+      target: 'files.search',
+    },
+    {
+      title: 'Add and link',
+      body: 'Drop files here, then link each to the transactions, categories, goals and accounts it belongs to. One file can have many links, and removing a link keeps the file.',
+      route: '/files',
+      target: 'files.add',
+    },
+  ],
+};
+
 export const reportsGuide: Guide = {
   id: 'reports',
   version: 1,
@@ -376,6 +404,7 @@ export const PAGE_GUIDES: Guide[] = [
   forecastGuide,
   investmentsGuide,
   taxGuide,
+  filesGuide,
   reportsGuide,
   settingsGuide,
 ];

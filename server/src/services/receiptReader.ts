@@ -498,3 +498,48 @@ export function startSampleRead() {
 export function readsSettled() {
   return chain;
 }
+
+// ─── Reading any photo's text, for searching Files (fileText.ts) ─────────────
+
+/** Whether the local model is set up to read photos */
+export function canReadPhotos() {
+  const s = readerSettings();
+  return s.enabled && !!s.url && !!s.model;
+}
+
+export const isReadablePhoto = (mimeType: string) => READABLE.has(mimeType);
+
+/** Every word on a photo, as plain text, from the local model (never anywhere else) */
+export async function transcribePhoto(image: string) {
+  const s = readerSettings();
+  if (!s.enabled || !s.url || !s.model) throw new ReceiptError('Reading receipts is turned off');
+  const body = (await ollama(s.url, '/api/chat', {
+    method: 'POST',
+    timeoutMs: READ_TIMEOUT_MS,
+    body: JSON.stringify({
+      model: s.model,
+      stream: false,
+      think: false,
+      keep_alive: KEEP_ALIVE,
+      options: { temperature: 0, num_ctx: CONTEXT_TOKENS },
+      messages: [
+        {
+          role: 'user',
+          content:
+            'Write out all the text you can read in this image, as plain text, line by line. ' +
+            'Write nothing else. If there is no text, answer with nothing.',
+          images: [image],
+        },
+      ],
+    }),
+  })) as { message?: { content?: unknown } };
+  const content = body.message?.content;
+  if (typeof content !== 'string') throw new ReceiptError('Ollama sent no answer', 502);
+  return content;
+}
+
+/** Run a model task after the reads already waiting (one model, one task at a time) */
+export function afterReads(task: () => Promise<void>) {
+  chain = chain.then(task).catch(() => undefined);
+  return chain;
+}

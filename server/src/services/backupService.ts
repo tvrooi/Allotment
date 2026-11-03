@@ -41,6 +41,9 @@ import {
   transactions,
   receipts,
   receiptLineItems,
+  documents,
+  documentLinks,
+  documentTags,
   taxClaims,
   transferMatchDismissals,
   paydayPlans,
@@ -69,6 +72,7 @@ import {
 } from '../db/schema.js';
 import { paydayConfigSchema, fundingSnapshotSchema } from './paydayConfig.js';
 import { fillMissingMainAmounts, ratesChanged } from './mainAmountService.js';
+import { ensureReceiptDocuments } from './documentRecords.js';
 import { upObservationSchema } from './upTransactions.js';
 import { targetSchema } from './targetConfig.js';
 import { CADENCES, PURPOSES, reviewSnapshotSchema } from './resilienceConfig.js';
@@ -97,7 +101,7 @@ import { isCurrencyCode } from '../utils/currencies.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 22;
+export const BACKUP_VERSION = 23;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -112,7 +116,8 @@ const TABLES = {
   payees,
   schedules,
   transactions,
-  // Receipts' details and claims; the files themselves stay in this installation's database
+  // Files' and receipts' details and claims; the files themselves stay on this installation
+  documents,
   receipts,
   receiptLineItems,
   taxClaims,
@@ -161,6 +166,9 @@ const TABLES = {
   securityPrices,
   holdings,
   taxLots,
+  // Files (format 23): what each document is linked to, and its labels
+  documentLinks,
+  documentTags,
 } satisfies Record<string, SQLiteTable>;
 
 export type BackupTable = keyof typeof TABLES;
@@ -684,6 +692,8 @@ export function restoreBackup(data: ParsedBackup) {
   // currencies yet
   ratesChanged();
   fillMissingMainAmounts();
+  // A backup from before Files (format 22 and older) has receipts without their documents
+  ensureReceiptDocuments();
 
   return Object.fromEntries(BACKUP_TABLES.map((name) => [name, data[name].length]));
 }

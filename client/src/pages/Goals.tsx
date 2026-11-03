@@ -7,7 +7,8 @@ import { useAccounts } from '../hooks/useAccounts';
 import { GoalFormModal } from '../components/goals/GoalFormModal';
 import { GoalStatusModal } from '../components/goals/GoalStatusModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
-import { useModalValue } from '../components/ui/Modal';
+import { Modal, useModalValue } from '../components/ui/Modal';
+import { FilesSection } from '../components/files/FilesSection';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { docsUrl } from '../utils/project';
@@ -74,6 +75,7 @@ function GoalRow({
   onEdit,
   onDelete,
   onStatus,
+  onFiles,
 }: {
   goal: Goal;
   accountName: string | null;
@@ -81,6 +83,7 @@ function GoalRow({
   onEdit: () => void;
   onDelete: () => void;
   onStatus: (status: GoalStatus) => void;
+  onFiles: () => void;
 }) {
   const { pct, remaining } = progressOf(goal);
   const complete = remaining === 0 && goal.targetAmount > 0 && goal.fundingComplete !== false;
@@ -123,6 +126,7 @@ function GoalRow({
           <RowMenu
             items={[
               { label: 'Edit goal', onClick: onEdit },
+              { label: 'Files', onClick: onFiles },
               {
                 label: goal.status === 'active' ? 'Pause goal' : 'Make active again',
                 onClick: () => onStatus(goal.status === 'active' ? 'paused' : 'active'),
@@ -217,6 +221,7 @@ function GoalGroup({
   onEdit,
   onDelete,
   onStatus,
+  onFiles,
   defaultCollapsed = false,
 }: {
   label: string;
@@ -226,6 +231,7 @@ function GoalGroup({
   onEdit: (g: Goal) => void;
   onDelete: (g: Goal) => void;
   onStatus: (g: Goal, status: GoalStatus) => void;
+  onFiles: (g: Goal) => void;
   defaultCollapsed?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
@@ -265,6 +271,7 @@ function GoalGroup({
               onEdit={() => onEdit(goal)}
               onDelete={() => onDelete(goal)}
               onStatus={(status) => onStatus(goal, status)}
+              onFiles={() => onFiles(goal)}
             />
           ))}
         </div>
@@ -286,6 +293,8 @@ export default function GoalsPage() {
   const [deleting, setDeleting] = useState<Goal | null>(null);
   const [statusChange, setStatusChange] = useState<{ goal: Goal; status: GoalStatus } | null>(null);
   const statusModal = useModalValue(statusChange);
+  const [filesGoal, setFilesGoal] = useState<Goal | null>(null);
+  const filesModal = useModalValue(filesGoal);
   // Goals are mostly savings: what's saved, what's left and the totals
   const hideBalances = useHideBalances();
 
@@ -304,6 +313,7 @@ export default function GoalsPage() {
     onEdit: setEditGoal,
     onDelete: setDeleting,
     onStatus: (goal: Goal, status: GoalStatus) => setStatusChange({ goal, status }),
+    onFiles: setFilesGoal,
   };
 
   const totalSaved = goals.reduce((s, g) => s + amountOf(g), 0);
@@ -425,6 +435,17 @@ export default function GoalsPage() {
           isOpen={statusModal.isOpen}
           onClose={() => setStatusChange(null)}
         />
+      )}
+
+      {filesModal.value && (
+        <Modal
+          isOpen={filesModal.isOpen}
+          onClose={() => setFilesGoal(null)}
+          title={`Files: ${filesModal.value.name}`}
+          size="lg"
+        >
+          <FilesSection kind="goal" targetId={filesModal.value.id} />
+        </Modal>
       )}
 
       <ConfirmModal

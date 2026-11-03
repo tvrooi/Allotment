@@ -196,6 +196,7 @@ const VIEW_KEYS = new Set([
   'budget_report',
   'reviewed',
   'hidden',
+  'has_files',
   'tag_ids',
 ]);
 

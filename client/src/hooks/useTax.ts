@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from '../api/tax';
+import { fileCounts } from '../api/files';
 
 // Receipts and tax claims. Neither changes a transaction, so only their own queries refresh.
 
@@ -35,8 +36,14 @@ export function useReceipts(filter: Parameters<typeof api.listReceipts>[0]) {
 export function useReceiptMarks() {
   const counts = useQuery({ queryKey: [...RECEIPTS, 'counts'], queryFn: api.receiptCounts });
   const claims = useQuery({ queryKey: [...TAX, 'claimed'], queryFn: api.claimedIds });
+  // Files linked to a transaction (receipts included) show the same paperclip
+  const files = useQuery({
+    queryKey: ['files', 'counts', 'transaction'],
+    queryFn: () => fileCounts('transaction'),
+  });
   return {
     receipts: new Set((counts.data ?? []).map((c) => c.transactionId)),
+    files: new Set((files.data ?? []).map((c) => c.id)),
     claims: new Set(claims.data ?? []),
   };
 }
@@ -47,6 +54,7 @@ function useRefresh() {
     Promise.all([
       qc.invalidateQueries({ queryKey: RECEIPTS }),
       qc.invalidateQueries({ queryKey: TAX }),
+      qc.invalidateQueries({ queryKey: ['files'] }),
     ]);
 }
 
@@ -146,6 +154,8 @@ export function useRefreshAll() {
       // A transaction made from a receipt changes its account's balance and the budget
       qc.invalidateQueries({ queryKey: ['accounts'] }),
       qc.invalidateQueries({ queryKey: ['review'] }),
+      // Every receipt is in Files too
+      qc.invalidateQueries({ queryKey: ['files'] }),
     ]);
 }
 

@@ -5,6 +5,8 @@
 import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, lte, notInArray } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import {
+  documentLinks,
+  documents,
   accounts,
   categories,
   receiptFiles,
@@ -177,6 +179,19 @@ export function taxYear(fy: number) {
         .where(inArray(receipts.transactionId, owners))
         .all()
     : [];
+  // Other files in Files linked to the transaction (an invoice, a warranty) are evidence too
+  const linkedFiles = owners.length
+    ? db
+        .select({
+          id: documents.id,
+          transactionId: documentLinks.transactionId,
+          fileName: documents.fileName,
+        })
+        .from(documentLinks)
+        .innerJoin(documents, eq(documents.id, documentLinks.documentId))
+        .where(inArray(documentLinks.transactionId, owners))
+        .all()
+    : [];
   const byOwner = new Map<string, typeof attached>();
   for (const r of attached) {
     const list = byOwner.get(r.transactionId!) ?? [];
@@ -196,6 +211,9 @@ export function taxYear(fy: number) {
       cost,
       claim,
       receipts: own.map(({ id, fileName }) => ({ id, fileName })),
+      files: linkedFiles
+        .filter((f) => f.transactionId === (r.parentTransactionId ?? r.transactionId))
+        .map(({ id, fileName }) => ({ id, fileName })),
       overImmediateLimit:
         TAX_LABELS[label]?.workRelated === true &&
         label !== 'D1' &&
@@ -214,7 +232,7 @@ export function taxYear(fy: number) {
   const workRelated = claims
     .filter((c) => TAX_LABELS[c.label]?.workRelated && c.label !== 'D1')
     .reduce((s, c) => s + c.claim, 0);
-  const missing = claims.filter((c) => c.receipts.length === 0);
+  const missing = claims.filter((c) => c.receipts.length === 0 && c.files.length === 0);
   const notes: string[] = [];
   if (
     workRelated > WRITTEN_EVIDENCE_THRESHOLD &&
@@ -346,7 +364,7 @@ export function taxYears(today: string) {
     .map((fy) => ({ financialYear: fy, name: financialYearName(fy) }));
 }
 
-const csvCell = (v: string | number | null | undefined) => {
+export const csvCell = (v: string | number | null | undefined) => {
   const s = v === null || v === undefined ? '' : String(v);
   // A leading = + - @ would run as a formula in a spreadsheet
   // Only a whole number (an amount) may start with a minus sign as it is
@@ -371,6 +389,7 @@ export function taxYearCsv(fy: number) {
       'Claim notes',
       'Transaction notes',
       'Receipts',
+      'Other files',
     ],
     ...year.claims.map((c) => [
       c.date,
@@ -385,6 +404,7 @@ export function taxYearCsv(fy: number) {
       c.notes,
       c.transactionNotes,
       c.receipts.map((r) => r.fileName).join('; '),
+      c.files.map((f) => f.fileName).join('; '),
     ]),
   ];
   return { name: year.name, csv: lines.map((l) => l.map(csvCell).join(',')).join('\r\n') + '\r\n' };
@@ -436,5 +456,38 @@ export function taxYearArchive(fy: number) {
       });
     });
   }
-  return { name, data: zip(files), missingFiles: ids.length - used.size };
+  // Files linked to claimed transactions, from the database (a video on disk is left out)
+  const docIds = [...new Set(year.claims.flatMap((c) => c.files.map((f) => f.id)))];
+  const docRows = docIds.length
+    ? db
+        .select({ id: documents.id, mimeType: documents.mimeType, data: receiptFiles.data })
+        .from(documents)
+        .innerJoin(receiptFiles, eq(receiptFiles.id, documents.fileId))
+        .where(and(inArray(documents.id, docIds), eq(receiptFiles.onDisk, 0)))
+        .all()
+    : [];
+  const docById = new Map(docRows.map((d) => [d.id, d]));
+  const usedDocs = new Set<string>();
+  for (const c of year.claims)
+    for (const f of c.files) {
+      const file = docById.get(f.id);
+      if (!file || usedDocs.has(f.id)) continue;
+      usedDocs.add(f.id);
+      const title = f.fileName
+        .replace(/\.[a-z0-9]+$/i, '')
+        .replace(/[^A-Za-z0-9 ._-]+/g, '')
+        .trim()
+        .slice(0, 40);
+      const stem = `files/${c.date} ${c.label} ${title || 'file'}`;
+      const ext = extensionOf(file.mimeType);
+      let fileName = `${stem}.${ext}`;
+      for (let n = 2; names.has(fileName); n++) fileName = `${stem} ${n}.${ext}`;
+      names.add(fileName);
+      files.push({ name: fileName, data: file.data as Buffer });
+    }
+  return {
+    name,
+    data: zip(files),
+    missingFiles: ids.length - used.size + docIds.length - usedDocs.size,
+  };
 }

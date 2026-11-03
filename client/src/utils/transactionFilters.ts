@@ -28,6 +28,8 @@ export interface FilterState {
   tagIds: string[];
   reviewed: Tristate;
   hidden: Tristate;
+  /** Has a receipt or a file in Files */
+  hasFiles: Tristate;
   // Scope a drill-down brings with it (Cash Flow, reports, merchant breakdown)
   budgetReport: boolean;
   categoryGroupId: string | null;
@@ -51,6 +53,7 @@ export const DEFAULT_FILTERS: FilterState = {
   tagIds: [],
   reviewed: 'all',
   hidden: 'all',
+  hasFiles: 'all',
   budgetReport: false,
   categoryGroupId: null,
   uncategorized: false,
@@ -77,6 +80,7 @@ export const FILTER_KEYS = new Set([
   'tag_ids',
   'reviewed',
   'hidden',
+  'has_files',
 ]);
 
 const PRESETS: DatePreset[] = ['this-month', 'last-month', 'last-3', 'this-year', 'all', 'custom'];
@@ -129,6 +133,7 @@ export function filtersToParams(
   if (f.tagIds.length) p.tagIds = f.tagIds;
   if (f.reviewed !== 'all') p.reviewed = f.reviewed === 'yes' ? 1 : 0;
   if (f.hidden !== 'all') p.hidden = f.hidden === 'yes' ? 1 : 0;
+  if (f.hasFiles !== 'all') p.hasFiles = f.hasFiles === 'yes' ? 1 : 0;
   if (f.budgetReport) p.budgetReport = true;
   return p;
 }
@@ -147,6 +152,7 @@ export function activeFilterCount(f: FilterState): number {
     f.tagIds.length > 0,
     f.reviewed !== 'all',
     f.hidden !== 'all',
+    f.hasFiles !== 'all',
     f.budgetReport,
   ].filter(Boolean).length;
 }
@@ -184,6 +190,7 @@ export function filtersFromSearch(sp: URLSearchParams): FilterState {
     tagIds: ids(sp.get('tag_ids')),
     reviewed: tristate(sp.get('reviewed')),
     hidden: tristate(sp.get('hidden')),
+    hasFiles: tristate(sp.get('has_files')),
     budgetReport: sp.get('budget_report') === '1',
     categoryGroupId: sp.get('category_group_id') || null,
     uncategorized: sp.get('uncategorized') === '1',
@@ -233,6 +240,7 @@ export function filtersToSearch(f: FilterState): URLSearchParams {
   if (f.tagIds.length) sp.set('tag_ids', f.tagIds.join(','));
   if (f.reviewed !== 'all') sp.set('reviewed', f.reviewed === 'yes' ? '1' : '0');
   if (f.hidden !== 'all') sp.set('hidden', f.hidden === 'yes' ? '1' : '0');
+  if (f.hasFiles !== 'all') sp.set('has_files', f.hasFiles === 'yes' ? '1' : '0');
   if (f.budgetReport) sp.set('budget_report', '1');
   if (f.categoryGroupId) sp.set('category_group_id', f.categoryGroupId);
   if (f.uncategorized) sp.set('uncategorized', '1');

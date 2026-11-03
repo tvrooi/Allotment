@@ -5,6 +5,11 @@ tab, worked out by the ATO's two methods (prime cost and diminishing value). Thi
 [RECEIPTS-AND-TAX.md](RECEIPTS-AND-TAX.md) §4, and replaces the "Depreciation schedules" line in
 its §6 "Not built" once it ships. Record keeping, not tax advice, like the rest of Tax time.
 
+Amended 3 November 2026 for [Files](FILES.md) (0.2.0-up.79), which this builds on: an asset's
+records (invoice, warranty, photos, a valuation) are files in Files linked to the asset, through a
+new `asset` link kind. Files took migration 0062 and backup version 23, so this plan uses 0063
+and 24.
+
 ## 1. What exists today
 
 - `tax_claims` (`server/src/db/schema.ts`): one claim per transaction, with a return label
@@ -17,7 +22,14 @@ its §6 "Not built" once it ships. Record keeping, not tax advice, like the rest
   `?tab=`. The transaction panel has `TaxClaimSection`.
 - Tokens: organise tokens may read the tax years and add claims (`taxClaimAllows`); MCP has
   `tax_years`, `tax_deductions`, `tax_claim_candidates` and `claim_tax_deductions`.
-- Backups are at version 22 and include `tax_claims`.
+- **Files** ([FILES.md](FILES.md)): `documents` (every stored file, receipts included),
+  `document_links` (one row per link, one nullable foreign-key column per kind of target:
+  transaction, category, goal, account) and `document_tags`. `LINK_TARGETS` in
+  `services/documentService.ts` lists the kinds; `FilesSection` (`client/src/components/files/`)
+  lists, adds and links files for any target. `taxYear` already gives each claim its `files`
+  (files linked to the transaction), which count as evidence, and the year's ZIP includes them.
+- Backups are at version 23 (Files) and include `tax_claims`, `documents`, `document_links` and
+  `document_tags`. The last migration is 0062 (`0062_files.sql`).
 
 ## 2. The ATO rules this follows
 
@@ -66,7 +78,7 @@ From the ATO's [Guide to depreciating assets 2026][guide] and
 
 ## 3. Design
 
-### 3.1 Data (migration 0062, additive; the next free number when built)
+### 3.1 Data (migration 0063, additive; the next free number when built)
 
 `depreciating_assets`
 
@@ -81,7 +93,7 @@ From the ATO's [Guide to depreciating assets 2026][guide] and
 | `purchase_date`                          | for the owner's records; defaults to the purchase transaction's date                                                               |
 | `effective_life_hundredths`              | effective life in hundredths of a year, so 2.5 years is 250                                                                        |
 | `work_use_bps`                           | default taxable-use share, 1–10,000                                                                                                |
-| `transaction_id`                         | purchase transaction, nullable, `ON DELETE SET NULL`                                                                               |
+| `transaction_id`                         | purchase transaction, nullable, `ON DELETE SET NULL`; its receipts and files are the purchase evidence                             |
 | `opening_fy`, `opening_adjustable_value` | optional: for an asset already depreciated elsewhere, the adjustable value at the start of `opening_fy`; the schedule starts there |
 | `disposed_date`, `termination_value`     | balancing adjustment event, nullable                                                                                               |
 | `created_at`, `updated_at`               |                                                                                                                                    |
@@ -97,6 +109,26 @@ would silently change the 2026–27 figures already lodged.
 
 Integer cents everywhere, like the rest of Allotment. The asset doesn't change the transaction
 or the budget: the purchase stays an expense in its category.
+
+**Files link to assets** (the same migration): one more link kind, exactly as FILES.md §4
+describes for adding one.
+
+```sql
+ALTER TABLE `document_links` ADD `asset_id` text REFERENCES `depreciating_assets`(`id`) ON DELETE CASCADE;
+CREATE UNIQUE INDEX `document_links_asset_idx` ON `document_links` (`asset_id`,`document_id`) WHERE asset_id IS NOT NULL;
+```
+
+- `schema.ts`: `assetId` on `documentLinks`, with the same partial unique index.
+- `documentService.ts`: one entry in `LINK_TARGETS`,
+  `asset: { column: documentLinks.assetId, noun: 'Asset', ...named(depreciatingAssets) }`
+  (`named` gives `resolve` and `describe` for any table with `id` and `name`; add
+  `typeof depreciatingAssets` to its parameter type). The route's `linkKind` enum, search
+  (`GET /files?linkKind=asset`), `linkCounts`, labels on links and the Download all index follow
+  from `LINK_KINDS` with no other change.
+- Deleting an asset removes only its links: the files stay in Files. Records must be kept for five
+  years after the last claim or disposal (§2), so the asset's delete confirmation says how many
+  files it has, and that they stay.
+- An asset's **evidence** is its files plus the purchase transaction's receipts and files.
 
 ### 3.2 Calculation (`server/src/services/depreciation.ts`, pure)
 
@@ -139,8 +171,11 @@ Worked example: a laptop costing $2,400, start time 1 October 2026, effective li
   depreciated as <asset>"). `claimByRule` skips it quietly. `claimCandidates` leaves it out.
   "Depreciate instead" on a claimed transaction creates the asset and removes the outright claim
   in one database transaction.
-- **`taxYear(fy)`** gains `assets`: each asset's row for the year, with its receipts taken from
-  the purchase transaction. Asset deductions add into the label totals and the year total.
+- **`taxYear(fy)`** gains `assets`: each asset's row for the year, with `receipts` and `files`
+  shaped like a claim's: the purchase transaction's receipts, and its files together with the
+  files linked to the asset (the same query as claims' files, on `document_links.asset_id` as
+  well as `transaction_id`, without duplicates). Asset deductions add into the label totals and
+  the year total. Missing receipts counts an asset with neither, like a claim.
   `overImmediateLimit` claims link to "Depreciate instead". A balancing adjustment that is
   income shows as a separate note, not as a negative deduction.
 - **Routes** in `routes/tax.ts`:
@@ -152,13 +187,20 @@ Worked example: a laptop costing $2,400, start time 1 October 2026, effective li
   - `PUT /tax/lodged/:fy` and `DELETE /tax/lodged/:fy` (owner only);
   - `GET /tax/years/:fy/assets/csv`: the depreciation schedule for the agent, in the shape of
     the ATO's depreciation worksheet.
-- **Exports:** the year's deductions CSV gains a row per asset ("Decline in value: <name>").
-  The ZIP adds `depreciation-<year>.csv` and the purchase receipts of assets claimed that year.
-  Every cell goes through `csvCell`.
-- **Backups:** add the three tables, bump `BACKUP_VERSION` to 23, and make restoring an older
-  backup leave them empty. Data export: the same.
+- **Exports:** the year's deductions CSV gains a row per asset ("Decline in value: <name>"), with
+  its receipts and **Other files**. The ZIP adds `depreciation-<year>.csv`, the purchase receipts
+  of assets claimed that year (`receipts/…`, as for claims) and their files
+  (`files/<date> <label> <name>`, the same code path as claims' files in `taxYearArchive`; a video
+  kept on disk is left out). Every cell goes through `csvCell`. Files' own **Download all** index
+  shows asset links as "Asset: <name>" (`filesExport.ts`).
+- **Backups:** add the three tables to `TABLES` in `backupService.ts`, before `documentLinks`
+  (parents before the rows that reference them), bump `BACKUP_VERSION` to 24, and make restoring
+  an older backup leave them empty. `document_links.asset_id` travels with `documentLinks`, which
+  is already backed up; a version 23 backup has no `assetId` and restores as it is. Data export:
+  the same.
 - **Tokens:** nothing new by default. The new routes are not on the allowlist. Owner decision 2
-  covers read access.
+  covers read access. Files stay off the allowlist either way (FILES.md §3): a token that may read
+  assets sees how many files each has, never the files.
 
 ### 3.4 Client
 
@@ -176,6 +218,13 @@ Worked example: a laptop costing $2,400, start time 1 October 2026, effective li
   - The asset's page shows the full schedule by year, a work-use share per year, **Dispose**
     (date and termination value, showing the balancing adjustment) and Delete (with
     confirmation, refused while a lodged year includes it).
+  - **Records** on the asset's page: `<FilesSection kind="asset" targetId={asset.id}
+title="Records" />` for the invoice, warranty, photos or a valuation, above a read-only list of
+    the purchase transaction's receipts and files. A line says how long to keep them ("Keep until
+    30 June <year>": five years after the last claim, or after disposal). The asset list shows a
+    paperclip from `GET /files/counts?kind=asset`.
+  - Creating an asset from a purchase links nothing new: the purchase's receipts and files already
+    count. Files added on the asset's page are linked to the asset.
   - **Mark this year lodged** and its undo sit beside the year selector.
 - **Deductions tab:** label totals include asset deductions. Under the claims table, a "Decline
   in value" table lists that year's asset rows. An "Over $300" claim gets a **Depreciate
@@ -187,8 +236,11 @@ Worked example: a laptop costing $2,400, start time 1 October 2026, effective li
   covers the new tab.
 - **Guides:** add steps to the Tax time page guide in `client/src/guides/pages.ts`, with new
   `data-guide` markers (`tax.assets`, `tax.assetMethod`). `utils/guides.test.ts` checks them.
+- **Files, for the new kind:** `LinkKind` in `api/files.ts` gains `'asset'`; `FileDetailModal`
+  gains an **Asset** choice under **Link** (a select of assets, like goals) and `linkTarget` opens
+  `/tax?tab=assets&asset=<id>`. Nothing else in Files changes.
 - Hooks and API in `hooks/useTax.ts` and `api/tax.ts`. React Query invalidates the tax year when
-  an asset changes.
+  an asset changes, and `['files']` when one is deleted (its links go).
 
 ### 3.5 MCP (only with owner approval, decision 2)
 
@@ -197,12 +249,14 @@ edits or disposes of an asset.
 
 ## 4. Phases (one PR and release each)
 
-1. **Calculation and storage (server only):** `depreciation.ts` with tests, migration 0062,
-   the service, routes, the double-counting guards, `taxYear` and CSV integration, and backup
-   version 23.
-2. **UI:** the Assets tab, the form with both-method preview, the asset page, disposal, lodged
-   years, "Depreciate instead", the transaction panel action, guides, the user guide
-   (`website/docs/tax.mdx`) and docs.
+1. **Calculation and storage (server only):** `depreciation.ts` with tests, migration 0063
+   (with `document_links.asset_id`), the service, routes, the `asset` link kind, the
+   double-counting guards, `taxYear` and CSV/ZIP integration (asset evidence), and backup
+   version 24.
+2. **UI:** the Assets tab, the form with both-method preview, the asset page with its Records
+   (`FilesSection`), disposal, lodged years, "Depreciate instead", the transaction panel action,
+   the **Asset** link choice in Files, guides, the user guides (`website/docs/tax.mdx`,
+   `website/docs/files.mdx`) and docs (this file, FILES.md §4 and §8).
 3. **Low-value pool (D6):** allocating low-cost or low-value assets, one pool across years
    (18.75% for a low-cost asset added this year, 37.5% for a low-value asset's opening
    adjustable value in its first pooled year, and 37.5% of the previous year's closing balance),
@@ -234,12 +288,18 @@ edits or disposes of an asset.
   - `setClaim` refused for an asset's purchase, and "Depreciate instead" being atomic;
   - `taxYear` totals including assets;
   - CSV and ZIP contents, with formula cells neutralised;
-  - a backup round trip at version 23, with a version 22 backup restoring;
-  - the new routes not reachable with any token (until decision 2).
+  - a backup round trip at version 24 with an asset's file links, with version 23 and 22
+    backups restoring;
+  - the new routes not reachable with any token (until decision 2), and `/files` still not;
+  - Files: linking a file to an asset (and to a missing one, 404), `GET /files?linkKind=asset`,
+    `GET /files/counts?kind=asset`, deleting an asset keeping its files, and an asset with only a
+    linked file (no receipt) counting as evidenced in `taxYear`, with that file in the ZIP
+    (extend `server/src/routes/files.test.ts`, "tax time").
 - **Client:** form validation and the preview showing both methods.
 - **e2e:** extend `e2e/tests/receipts-tax.spec.ts` to add an asset from a purchase over $300,
-  check the Deductions total, dispose of it, and check Safe mode.
-- Checks: `npm test --prefix server -- depreciation tax`, `cd server && npx tsc --noEmit`,
+  add a warranty PDF under its Records, check the Deductions total, dispose of it, and check
+  Safe mode.
+- Checks: `npm test --prefix server -- depreciation tax files`, `cd server && npx tsc --noEmit`,
   `npm test --prefix client`, `npm run build --prefix client` and
   `cd e2e && npm test -- --project=desktop tests/receipts-tax.spec.ts`.
 
@@ -251,7 +311,8 @@ Each app phase follows CLAUDE.md:
 - after main CI passes, Publish tested main;
 - a cold backup including the encryption key before the live HA app takes the release.
 
-Migration 0062 only adds tables, so existing claims, transactions and budgets are untouched.
+Migration 0063 only adds tables and one nullable column, so existing claims, transactions, files
+and budgets are untouched.
 
 ## 7. Owner decisions
 

@@ -10,7 +10,7 @@ process.env.FLYBUDGET_ALLOWED_HOSTS = 'budget.example.com';
 const express = (await import('express')).default;
 const { migrate } = await import('drizzle-orm/better-sqlite3/migrator');
 const { db } = await import('../db/index.js');
-const { accounts, receiptFiles, receipts, taxClaims, transactions } =
+const { accounts, documents, receiptFiles, receipts, taxClaims, transactions } =
   await import('../db/schema.js');
 const { hostGuard, originGuard, errorHandler } = await import('../middleware/security.js');
 const { authRouter, requireSession } = await import('./auth.js');
@@ -50,6 +50,7 @@ afterAll(() => server.close());
 
 beforeEach(() => {
   db.delete(receipts).run();
+  db.delete(documents).run();
   db.delete(receiptFiles).run();
   db.delete(taxClaims).run();
   db.delete(transactions).run();

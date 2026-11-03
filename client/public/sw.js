@@ -7,6 +7,10 @@
 // app. Browsers allow service workers on https:// and localhost only.
 
 const CACHE = 'flybudget-app-v1';
+// Files shared to Allotment from another app (the phone's share sheet), held on this device only
+// until the Files page uploads them (docs/FILES.md §7)
+const SHARED = 'flybudget-shared';
+const SHARE_TARGET = '/share-target';
 // The page every in-app URL serves (/budget, /accounts/…): the app routes on its own
 const SHELL = '/';
 // Hashed build files pile up across updates; keep the newest ones
@@ -44,7 +48,8 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
       for (const name of await caches.keys()) {
-        if (name.startsWith('flybudget-') && name !== CACHE) await caches.delete(name);
+        if (name.startsWith('flybudget-') && name !== CACHE && name !== SHARED)
+          await caches.delete(name);
       }
       await self.clients.claim();
     })(),
@@ -90,10 +95,39 @@ async function file(request) {
   return res;
 }
 
+// Shared files: kept in a cache of their own, then the Files page opens and uploads them. They
+// never reach the server here; the page sends them like any upload, signed in as usual.
+async function receiveShare(request) {
+  const form = await request.formData();
+  const files = form.getAll('files').filter((f) => typeof f === 'object' && f && 'name' in f);
+  await caches.delete(SHARED);
+  const cache = await caches.open(SHARED);
+  await Promise.all(
+    files.slice(0, 20).map((f, i) =>
+      cache.put(
+        `/shared-file/${i}`,
+        new Response(f, {
+          headers: {
+            'Content-Type': f.type || 'application/octet-stream',
+            'X-File-Name': encodeURIComponent(f.name || `shared-${i + 1}`),
+          },
+        }),
+      ),
+    ),
+  );
+  return Response.redirect(`/files?shared=${Math.min(files.length, 20)}`, 303);
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  if (request.method !== 'GET') return;
   const url = new URL(request.url);
+  if (
+    request.method === 'POST' &&
+    url.origin === self.location.origin &&
+    url.pathname === SHARE_TARGET
+  )
+    return event.respondWith(receiveShare(request));
+  if (request.method !== 'GET') return;
   // Other sites, and all budget data: straight to the network, never saved here
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api')) return;
   if (request.mode === 'navigate') return event.respondWith(page(request));

@@ -22,6 +22,7 @@ import {
   Eye,
   EyeOff,
   CalendarClock,
+  FolderOpen,
 } from 'lucide-react';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { useSafeModeStore } from '../../store/safeModeStore';
@@ -268,6 +269,12 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
             to="/tax"
             icon={<Receipt size={18} />}
             label="Tax time"
+            collapsed={!isExpanded}
+          />
+          <NavItem
+            to="/files"
+            icon={<FolderOpen size={18} />}
+            label="Files"
             collapsed={!isExpanded}
           />
         </nav>
