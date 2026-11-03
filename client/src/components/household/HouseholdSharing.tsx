@@ -7,6 +7,7 @@ import {
   recordRepayment,
   removePoolAccount,
   setDefaultSplit,
+  setHouseholdLogo,
   type HouseholdSplit,
   type RepaymentSuggestion,
 } from '../../api/households';
@@ -15,8 +16,10 @@ import { formatDay } from '../../utils/dates';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Input';
 import { SplitEditor, describeSplit } from './SplitEditor';
+import { HouseholdIcon } from './HouseholdIcon';
 
-// Household → Sharing: the accounts the household pays from (each one outside your personal
+// Household → Sharing: the household's picture (shown on payments shared with it), the accounts
+// the household pays from (each one outside your personal
 // budget), the split "Share with household" uses, and money received that looks like someone
 // repaying what they owe.
 
@@ -25,6 +28,8 @@ const card = 'bg-surface rounded-lg shadow-card border border-border-light p-4';
 interface Props {
   group: {
     id: string;
+    name: string;
+    logo?: string | null;
     currency: string;
     accountId: string | null;
     poolAccountIds: string[];
@@ -58,6 +63,11 @@ export function HouseholdSharing({ group, people }: Props) {
     onSuccess: refresh,
     onError,
   });
+  const logo = useMutation({
+    mutationFn: (value: string | null) => setHouseholdLogo(group.id, value),
+    onSuccess: refresh,
+    onError,
+  });
   const { data: suggestions = [] } = useQuery({
     queryKey: ['repayments', group.id],
     queryFn: () => getRepaymentSuggestions(group.id),
@@ -87,6 +97,19 @@ export function HouseholdSharing({ group, people }: Props) {
           {error}
         </p>
       )}
+
+      <h3 className="text-xs font-semibold text-text-secondary mt-3">Picture</h3>
+      <p className="text-xs text-text-tertiary">
+        Shown next to each payment shared with {group.name}. Without one, its initial is shown.
+      </p>
+      <div className="mt-2">
+        <HouseholdIcon
+          name={group.name}
+          logo={group.logo}
+          size="lg"
+          onLogoChange={(value) => logo.mutate(value)}
+        />
+      </div>
 
       <h3 className="text-xs font-semibold text-text-secondary mt-3">Household accounts</h3>
       <p className="text-xs text-text-tertiary">
