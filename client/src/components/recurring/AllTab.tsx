@@ -24,7 +24,6 @@ import {
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
-import { docsUrl } from '../../utils/project';
 import type { Schedule, ScheduleOccurrence } from '../../types';
 import { formatDay } from '../../utils/dates';
 
@@ -322,8 +321,8 @@ export default function AllTab({
             <EmptyState
               icon={<Repeat size={26} />}
               title="No recurring items yet"
-              description="Add bills, subscriptions and paychecks to see what’s due and when, or let Allotment find them in the transactions you already have."
-              learnMoreHref={docsUrl('recurring')}
+              description="Add bills, subscriptions and pay to see what’s due and when, or let Allotment find them in the transactions you already have."
+              learnMore="recurring"
               actions={
                 <>
                   <Button variant="secondary" onClick={onFind}>
@@ -346,7 +345,7 @@ export default function AllTab({
               onClick={() => setShowCanceled(true)}
               className="w-full py-2.5 text-center text-sm italic text-text-tertiary hover:bg-hover transition-colors cursor-pointer"
             >
-              Show canceled recurring ({canceled.length})
+              Show cancelled recurring ({canceled.length})
             </button>
           ))}
       </div>
@@ -362,7 +361,7 @@ export default function AllTab({
         message={
           confirm?.hard
             ? `"${confirm.schedule.name}" will be permanently deleted. This cannot be undone.`
-            : `"${confirm?.schedule.name}" will stop generating occurrences. You can restart it from the canceled list.`
+            : `"${confirm?.schedule.name}" will stop generating occurrences. You can restart it from the cancelled list.`
         }
         confirmLabel={confirm?.hard ? 'Delete' : 'Stop this bill'}
         cancelLabel={confirm?.hard ? 'Cancel' : 'Keep it'}

@@ -57,9 +57,34 @@ describe('guide content', () => {
   });
 });
 
+describe('first-visit intros', () => {
+  const intros = {
+    '/payees': { id: 'intro.payees', text: 'Everyone you pay.' },
+    '/budget': { id: 'intro.budget', text: 'Give every dollar a job.' },
+  };
+  const toured = { ...fresh, welcomeTour: 'done' as const, guidesNotice: false };
+
+  it('says what a page without a guide is for, once', () => {
+    expect(bannerFor('/payees', toured, GUIDES, false, intros)).toEqual({
+      kind: 'intro',
+      id: 'intro.payees',
+      text: 'Everyone you pay.',
+    });
+    const seen = { ...toured, seenGuides: { 'intro.payees': 1 } };
+    expect(bannerFor('/payees', seen, GUIDES, false, intros)).toBeNull();
+  });
+
+  it('leads a page’s own guide with its intro', () => {
+    expect(bannerFor('/budget', toured, GUIDES, false, intros)).toMatchObject({
+      kind: 'page',
+      intro: 'Give every dollar a job.',
+    });
+  });
+});
+
 describe('which banner a page shows', () => {
-  it('offers the welcome tour to a new budget on the dashboard only', () => {
-    expect(bannerFor('/dashboard', fresh, GUIDES, false)).toEqual({ kind: 'welcome' });
+  it('never offers the welcome tour as a banner: the Get started checklist does', () => {
+    expect(bannerFor('/dashboard', fresh, GUIDES, false)).toBeNull();
     expect(bannerFor('/accounts', fresh, GUIDES, false)).toBeNull();
     // A page's own guide waits until the tour is taken or turned down
     expect(bannerFor('/budget', fresh, GUIDES, false)).toBeNull();

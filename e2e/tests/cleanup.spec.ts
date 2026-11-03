@@ -28,7 +28,11 @@ test('Delete 30 removes the list after typing delete, keeping reconciled rows', 
 }) => {
   const account = await duplicateAccount(api, true);
   await open(page, `/accounts/${account.id}`);
-  await page.getByRole('button', { name: 'Delete 30' }).click();
+  // Bulk actions wait for "Select all", and Delete sits in the More menu
+  await expect(page.getByRole('button', { name: 'Delete 30' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Select all 30' }).click();
+  await page.getByRole('button', { name: 'More actions' }).click();
+  await page.getByRole('menuitem', { name: 'Delete 30' }).click();
   const dialog = page.getByRole('dialog', { name: 'Delete 29 transactions' });
   await expect(dialog).toContainText('Everyday (CSV)');
   await expect(dialog).toContainText('1 reconciled (unlock them to delete)');

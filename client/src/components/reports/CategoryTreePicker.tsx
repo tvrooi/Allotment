@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CategoryIcon } from '../ui/CategoryIcon';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import { useCategories } from '../../hooks/useCategories';
 import { usePreferencesStore } from '../../store/preferencesStore';
@@ -112,8 +113,8 @@ export default function CategoryTreePicker({
                     onChange={() => toggleCategory(c.id)}
                     className="rounded border-border text-brand-600 focus:ring-brand-600"
                   />
-                  <span className="text-sm text-text-secondary">
-                    {showCategoryIcons && c.icon ? `${c.icon} ` : ''}
+                  <span className="text-sm text-text-secondary inline-flex items-center gap-1.5">
+                    {showCategoryIcons && <CategoryIcon icon={c.icon} size={14} />}
                     {c.name}
                   </span>
                 </label>

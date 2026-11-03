@@ -21,7 +21,6 @@ import { useAccounts } from '../../hooks/useAccounts';
 import { formatCurrency } from '../../utils/currency';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
-import { docsUrl } from '../../utils/project';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { getUpcomingDays } from './scheduleFormat';
 import type { Schedule, ScheduleOccurrence } from '../../types';
@@ -266,7 +265,7 @@ export default function MonthlyTab({
             icon={<Repeat size={26} />}
             title={
               allRecurring.length === 0
-                ? 'Track your bills, subscriptions and paychecks'
+                ? 'Track your bills, subscriptions and pay'
                 : 'No recurring items this month'
             }
             description={
@@ -274,7 +273,7 @@ export default function MonthlyTab({
                 ? 'See what’s due and what’s been paid each month. Add them one by one, or let Allotment find them in the transactions you already have.'
                 : 'Nothing is scheduled for this month.'
             }
-            learnMoreHref={allRecurring.length === 0 ? docsUrl('recurring') : undefined}
+            learnMore={allRecurring.length === 0 ? 'recurring' : undefined}
             actions={
               <>
                 <Button variant="secondary" size="sm" onClick={onFind}>

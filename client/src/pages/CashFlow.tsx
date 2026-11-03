@@ -224,14 +224,11 @@ function buildSankeyGraph(
   const totalExpenses = validSpending.reduce((s, c) => s + c.totalSpent, 0);
   const savings = totalIncome - totalExpenses;
 
-  const icon = (c: { categoryIcon?: string | null }) =>
-    showIcons && c.categoryIcon ? c.categoryIcon + ' ' : '';
-
   // Layer 0: Income sources
   const incomeNodes: SankeyNode[] = validIncome
     .sort((a, b) => b.totalReceived - a.totalReceived)
     .map((c) => ({
-      name: `${icon(c)}${c.categoryName ?? 'Income'}`,
+      name: c.categoryName ?? 'Income',
       nodeType: 'income',
       amount: c.totalReceived,
       color: chartColors.positive,
@@ -310,7 +307,7 @@ function buildSankeyGraph(
     const sorted = [...items].sort((a, b) => b.totalSpent - a.totalSpent);
 
     const subs: SankeyNode[] = sorted.map((item, ci) => ({
-      name: `${icon(item)}${item.categoryName ?? 'Uncategorised'}`,
+      name: item.categoryName ?? 'Uncategorised',
       nodeType: 'subcategory' as NodeType,
       amount: item.totalSpent,
       color: lighten(gColor, sorted.length > 1 ? Math.min(ci * 0.12, 0.4) : 0),
@@ -1166,7 +1163,7 @@ export default function CashFlowPage() {
     downloadCsv(
       `cash-flow-${from}-${to}.csv`,
       spData.map((d) => ({
-        category: `${showIcons && d.categoryIcon ? d.categoryIcon + ' ' : ''}${d.categoryName ?? 'Uncategorised'}`,
+        category: d.categoryName ?? 'Uncategorised',
         group: d.groupName ?? '',
         total_cents: d.totalSpent,
       })),

@@ -188,7 +188,7 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
             value={name}
             onChange={(e) => setName(e.target.value)}
             aria-label="Name"
-            placeholder="e.g. Netflix, Rent, Paycheck…"
+            placeholder="e.g. Netflix, Rent, Pay…"
             required
           />
         </div>

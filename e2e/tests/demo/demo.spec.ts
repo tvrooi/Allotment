@@ -31,20 +31,20 @@ test('the demo opens on a finished budget, and every page works', async ({ page 
   page.on('request', (r) => requests.push(new URL(r.url()).pathname));
 
   await openDemo(page);
-  await expect(page.getByText('Left to Spend')).toBeVisible();
-  await expect(page.getByText('Upcoming Bills')).toBeVisible();
+  await expect(page.getByText('Left to Spend', { exact: true })).toBeVisible();
+  await expect(page.getByText('Bills and income')).toBeVisible();
 
   for (const [route, text] of [
-    ['/budget', 'Renters Insurance'],
-    ['/transactions', 'Maple Court Apartments'],
-    ['/accounts', 'Northstar Auto Loan'],
-    ['/recurring', "Riley's paycheck"],
+    ['/budget', 'Contents Insurance'],
+    ['/transactions', 'Harbourside Realty'],
+    ['/accounts', 'Synced from Up'],
+    ['/recurring', "Riley's pay"],
     ['/reports', 'Where the money goes'],
     ['/cash-flow', 'Total income'],
     ['/goals', 'Emergency fund'],
     ['/payees', 'Daily Grind Coffee'],
     ['/rules', 'Rename payee to Daily Grind Coffee'],
-    ['/settings', 'Paychecks'],
+    ['/settings', 'Pay'],
   ] as const) {
     await page.evaluate((r) => (location.hash = `#${r}`), route);
     await expect(page.getByText(text).first(), route).toBeVisible();
@@ -58,8 +58,14 @@ test('the banner leads back to the website: its homepage and the download page',
 }) => {
   await openDemo(page);
   const banner = page.getByRole('region', { name: 'Demo' });
-  await expect(banner.getByRole('link', { name: 'Back to home' })).toHaveAttribute('href', '/');
-  await expect(banner.getByRole('link', { name: /Download/ })).toHaveAttribute('href', '/download');
+  await expect(banner.getByRole('link', { name: 'Back to home' })).toHaveAttribute(
+    'href',
+    'https://github.com/tvrooi/Allotment#readme',
+  );
+  await expect(banner.getByRole('link', { name: /Download/ })).toHaveAttribute(
+    'href',
+    'https://github.com/tvrooi/Allotment/releases/latest',
+  );
 });
 
 test('every payee shows its logo', async ({ page }) => {
@@ -85,7 +91,7 @@ test('changes stay in the tab, and "Start over" brings the demo budget back', as
   );
   await page.reload();
   // A reload starts a fresh demo: nothing was saved
-  await expect(page.getByText('Harbor Checking').first()).toBeVisible();
+  await expect(page.getByText('2Up Spending').first()).toBeVisible();
   await expect(page.getByText('My test account')).toHaveCount(0);
 
   await page.getByRole('link', { name: 'Payees' }).click();
@@ -97,7 +103,7 @@ test('changes stay in the tab, and "Start over" brings the demo budget back', as
   await expect(page.getByRole('row', { name: /Corner Grocer/ })).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Start over' }).click();
-  await expect(page.getByText('Left to Spend')).toBeVisible();
+  await expect(page.getByText('Left to Spend', { exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Payees' }).click();
   await expect(page.getByRole('row', { name: /Corner Grocer/ })).toBeVisible();
 });
@@ -173,14 +179,14 @@ test('every visitor, and every tab, gets its own demo', async ({ page, context, 
   // Another tab in the same browser starts from the demo budget
   const secondTab = await context.newPage();
   await openDemo(secondTab, '/accounts');
-  expect(await accountNames(secondTab)).toContain('Harbor Checking');
+  expect(await accountNames(secondTab)).toContain('Spending');
   expect(await accountNames(secondTab)).not.toContain('Only in the first tab');
 
   // And so does another visitor
   const other = await browser.newContext();
   const visitor = await other.newPage();
   await openDemo(visitor, '/accounts');
-  expect(await accountNames(visitor)).toContain('Harbor Checking');
+  expect(await accountNames(visitor)).toContain('Spending');
   expect(await accountNames(visitor)).not.toContain('Only in the first tab');
   await other.close();
 
@@ -213,7 +219,7 @@ test('nothing leaves the browser: imports, backups and restores stay in the tab'
     .getByRole('dialog', { name: 'Restore this backup?' })
     .getByRole('button', { name: 'Replace my data' })
     .click();
-  await expect(page.getByRole('status')).toContainText('Restored');
+  await expect(page.getByRole('status').filter({ hasText: 'Restored' })).toBeVisible();
 
   // A CSV import, all the way through
   await page.evaluate(() => (location.hash = '#/accounts/demo-acct-checking'));
@@ -245,7 +251,7 @@ test("the demo's preferences stay in the tab, and Start over resets them", async
   expect(stored.session).toContain('dark');
 
   await page.getByRole('button', { name: 'Start over' }).click();
-  await expect(page.getByText('Left to Spend')).toBeVisible();
+  await expect(page.getByText('Left to Spend', { exact: true })).toBeVisible();
   await expect(page.locator('html')).not.toHaveClass(/dark/);
 });
 
@@ -265,7 +271,7 @@ test('the demo runs under a strict Content Security Policy', async ({ page }) =>
   expect(meta).toContain("default-src 'self'");
   expect(meta).toContain("connect-src 'self'");
   await expect(page.getByRole('region', { name: 'Demo' })).toBeVisible();
-  await expect(page.getByText('Left to Spend')).toBeVisible();
+  await expect(page.getByText('Left to Spend', { exact: true })).toBeVisible();
 
   // A request to another site is blocked
   const blocked = await page.evaluate(() =>
@@ -330,5 +336,5 @@ test('reviewed card funding uses the same accounting inside the browser demo', a
   });
   await expect(
     page.getByTestId('card-payment').filter({ hasText: 'Example payment card' }),
-  ).toContainText('Available for payment: $80');
+  ).toContainText(/Available for payment: A?\$80/);
 });

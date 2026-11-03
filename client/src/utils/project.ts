@@ -6,9 +6,11 @@
 export const SOURCE_CODE_URL = 'https://github.com/tvrooi/Allotment';
 export const LICENSE_URL = 'https://www.gnu.org/licenses/agpl-3.0.html';
 
-/** The user guide. Allotment is built on FlyBudget and links to the upstream FlyBudget guide. */
+/**
+ * The upstream FlyBudget website, which Allotment is built on. Allotment's own guide is served
+ * by the app at /guide (client/src/userGuide); only a few detailed setup pages link upstream.
+ */
 export const WEBSITE_URL = 'https://flybudget.org';
-export const DOCS_URL = `${WEBSITE_URL}/docs/intro`;
 
 /** Where people report bugs and ask for features */
 export const ISSUES_URL = 'https://github.com/tvrooi/Allotment/issues';
@@ -16,7 +18,7 @@ export const ISSUES_URL = 'https://github.com/tvrooi/Allotment/issues';
 /** How to run Allotment on your own server (linked from Settings → Server) */
 export const SELF_HOSTING_URL = `${WEBSITE_URL}/community/self-hosting`;
 
-/** A page of the user guide, e.g. `docsUrl('budgeting')` */
+/** A page of Allotment's guide (/guide/<page>), e.g. `<GuideLink page="budgeting">` */
 export type DocsPage =
   | 'getting-started'
   | 'accounts'
@@ -30,4 +32,5 @@ export type DocsPage =
   | 'currencies'
   | 'backups';
 
-export const docsUrl = (page: DocsPage) => `${WEBSITE_URL}/docs/${page}`;
+/** The same topic in the upstream FlyBudget guide, for setup details Allotment's guide skips */
+export const upstreamDocsUrl = (page: DocsPage) => `${WEBSITE_URL}/docs/${page}`;

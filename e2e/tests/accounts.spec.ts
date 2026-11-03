@@ -3,6 +3,7 @@ import { test, expect, open, isoDay, typeAmount } from './fixtures';
 test.describe('accounts', () => {
   test('a new user adds their first account from the welcome screen', async ({ page, api }) => {
     await open(page, '/dashboard');
+    await page.getByText('Use another bank or add accounts by hand').click();
     await page.getByRole('button', { name: /Add accounts manually/ }).click();
 
     const dialog = page.getByRole('dialog', { name: 'Add Account' });

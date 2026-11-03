@@ -8,11 +8,12 @@ import {
   useEnableBankingStatus,
   useRemoveEnableBankingConfig,
 } from '../../hooks/useEnableBanking';
-import { docsUrl } from '../../utils/project';
+import { upstreamDocsUrl } from '../../utils/project';
 import type { EnableBankingConfigureResult } from '../../types';
 
 const CONTROL_PANEL_URL = 'https://enablebanking.com/cp/applications';
-export const ENABLE_BANKING_GUIDE_URL = `${docsUrl('bank-sync')}#enable-banking`;
+// Enable Banking's own setup steps are in the upstream FlyBudget guide, which Allotment is built on
+export const ENABLE_BANKING_GUIDE_URL = `${upstreamDocsUrl('bank-sync')}#enable-banking`;
 
 const inputClass =
   'w-full text-sm border border-border rounded-md px-3 py-2 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600';

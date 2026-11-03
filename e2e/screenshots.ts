@@ -77,22 +77,22 @@ async function importCsv(page: Page) {
 const SHOTS: Shot[] = [
   // --- The tour: one screenshot of each page ---
   { name: 'dashboard', route: '/dashboard', waitFor: 'Left to Spend' },
-  { name: 'accounts', route: '/accounts', waitFor: 'Harbor Checking' },
+  { name: 'accounts', route: '/accounts', waitFor: '2Up Spending' },
   { name: 'account-register', route: '/accounts/demo-acct-checking', waitFor: 'Reconcile' },
-  { name: 'transactions', route: '/transactions', waitFor: 'Fresh Fields Market' },
+  { name: 'transactions', route: '/transactions', waitFor: 'Woolies' },
   { name: 'budget', route: '/budget', waitFor: 'Ready to assign' },
   { name: 'category-detail', route: '/budget/category/demo-cat-groceries', waitFor: 'Groceries' },
-  { name: 'recurring', route: '/recurring', waitFor: "Riley's paycheck" },
+  { name: 'recurring', route: '/recurring', waitFor: "Riley's pay" },
   {
     name: 'recurring-calendar',
     route: '/recurring',
-    waitFor: "Riley's paycheck",
+    waitFor: "Riley's pay",
     prepare: (page) => page.getByRole('button', { name: 'Calendar' }).click(),
   },
   {
     name: 'recurring-all',
     route: '/recurring',
-    waitFor: "Riley's paycheck",
+    waitFor: "Riley's pay",
     prepare: (page) => page.getByRole('button', { name: 'All recurring' }).click(),
   },
   { name: 'reports', route: '/reports', waitFor: 'Where the money goes' },
@@ -107,19 +107,19 @@ const SHOTS: Shot[] = [
   { name: 'goals', route: '/goals', waitFor: 'Emergency fund' },
   { name: 'payees', route: '/payees', waitFor: 'Daily Grind Coffee' },
   { name: 'rules', route: '/rules', waitFor: 'Rename payee to Daily Grind Coffee' },
-  { name: 'settings', route: '/settings', waitFor: 'Paychecks' },
+  { name: 'settings', route: '/settings', waitFor: 'Pay' },
 
   // --- The user guide: dialogs and details ---
   {
     name: 'transaction-detail',
     route: '/transactions',
-    waitFor: 'Fresh Fields Market',
-    prepare: (page) => openTransaction(page, 'Fresh Fields Market'),
+    waitFor: 'Woolies',
+    prepare: (page) => openTransaction(page, 'Woolies'),
   },
   {
     name: 'transaction-add',
     route: '/transactions',
-    waitFor: 'Fresh Fields Market',
+    waitFor: 'Woolies',
     prepare: (page) => openDialog(page, 'Add'),
     element: dialog,
   },
@@ -132,7 +132,7 @@ const SHOTS: Shot[] = [
   {
     name: 'transaction-split',
     route: '/transactions',
-    waitFor: 'Fresh Fields Market',
+    waitFor: 'Woolies',
     prepare: async (page) => {
       await page.getByRole('button', { name: 'Last 3 Months' }).click();
       await page.getByPlaceholder(/Search payee or notes/).fill('Costwise');
@@ -157,7 +157,7 @@ const SHOTS: Shot[] = [
     },
     element: dialog,
   },
-  { name: 'reconcile', route: '/accounts/demo-acct-checking/reconcile', waitFor: 'Harbor' },
+  { name: 'reconcile', route: '/accounts/demo-acct-checking/reconcile', waitFor: 'Spending' },
   {
     name: 'update-value',
     route: '/accounts/demo-acct-car',
@@ -168,7 +168,7 @@ const SHOTS: Shot[] = [
   {
     name: 'add-account',
     route: '/accounts',
-    waitFor: 'Harbor Checking',
+    waitFor: '2Up Spending',
     prepare: (page) => openDialog(page, 'Add Account'),
     element: dialog,
   },
@@ -192,14 +192,14 @@ const SHOTS: Shot[] = [
   {
     name: 'recurring-find',
     route: '/recurring',
-    waitFor: "Riley's paycheck",
+    waitFor: "Riley's pay",
     prepare: (page) => openDialog(page, 'Find recurring'),
     element: dialog,
   },
   {
     name: 'recurring-add',
     route: '/recurring',
-    waitFor: "Riley's paycheck",
+    waitFor: "Riley's pay",
     prepare: (page) => openDialog(page, 'Add recurring'),
     element: dialog,
   },
@@ -267,7 +267,7 @@ const SHOTS: Shot[] = [
     name: 'phone-transactions',
     route: '/transactions',
     phone: true,
-    waitFor: 'Fresh Fields Market',
+    waitFor: 'Woolies',
   },
   {
     name: 'phone-menu',

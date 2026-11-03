@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { CategoryIcon } from '../ui/CategoryIcon';
 import { createPortal } from 'react-dom';
 import { Search, Check, Plus, X } from 'lucide-react';
 import { useCreateCategory } from '../../hooks/useCategories';
@@ -221,9 +222,7 @@ export function CategoryPicker({
                 data-active={optionIndex(cat.id) === activeIndex}
                 className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-hover ${rowCls(cat.id)}`}
               >
-                {showCategoryIcons && cat.icon && (
-                  <span className="text-base shrink-0">{cat.icon}</span>
-                )}
+                {showCategoryIcons && cat.icon && <CategoryIcon icon={cat.icon} size={16} />}
                 <span className="truncate flex-1">{cat.name}</span>
                 {value === cat.id && <Check size={14} className="text-brand-600 shrink-0" />}
               </button>

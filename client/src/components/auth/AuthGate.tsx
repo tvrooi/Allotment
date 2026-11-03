@@ -21,6 +21,7 @@ import { Button } from '../ui/Button';
 import { AuthScreen } from './AuthScreen';
 import { MIN_PASSWORD_LENGTH } from './passwordRules';
 import { rememberHostKind, whereIsTheLog, type HostKind } from '../../utils/hostKind';
+import { codeFromPaste } from '../../utils/setupCode';
 
 /** Multi-user mode: the person whose budget this page has shown since it loaded */
 let shownPerson: string | null = null;
@@ -268,6 +269,24 @@ function PasswordForm({
     reset: 'Set password and sign in',
   }[mode];
 
+  // A button that can't be pressed yet says what it's waiting for
+  const missing =
+    needsName && !name.trim()
+      ? isSetup
+        ? 'Enter your name to continue'
+        : 'Enter your name'
+      : needsCode && !code
+        ? isSetup
+          ? 'Enter the setup code to continue'
+          : mode === 'invite'
+            ? 'Enter the invitation code to continue'
+            : 'Enter the code to continue'
+        : mode !== 'forgot' && !password
+          ? choosing
+            ? 'Choose a password to continue'
+            : 'Enter your password'
+          : null;
+
   return (
     <AuthScreen
       title={TITLES[mode]}
@@ -352,13 +371,19 @@ function PasswordForm({
               }
               value={code}
               onChange={(e) => setCode(e.target.value)}
+              // A whole line (or more) copied from the log works too: only the code is kept
+              onPaste={(e) => {
+                const pasted = e.clipboardData.getData('text');
+                const found = codeFromPaste(pasted, { allowShort: mode === 'reset' });
+                if (found !== pasted.trim()) {
+                  e.preventDefault();
+                  setCode(found);
+                }
+              }}
+              aria-describedby={isSetup ? 'setup-code-help' : undefined}
               className={`${inputClass} font-mono uppercase`}
             />
-            {isSetup && (
-              <p className="text-xs text-text-tertiary mt-1">
-                Printed in the server log. {whereIsTheLog(hostKind)}
-              </p>
-            )}
+            {isSetup && <SetupCodeHelp id="setup-code-help" hostKind={hostKind} />}
           </div>
         )}
         {mode !== 'forgot' && (
@@ -393,18 +418,9 @@ function PasswordForm({
           </div>
         )}
         {error && <p className="text-xs text-negative">{error}</p>}
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={
-            busy ||
-            (needsName && !name.trim()) ||
-            (mode !== 'forgot' && !password) ||
-            (needsCode && !code)
-          }
-        >
-          {busy ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
-          {submitLabel}
+        <Button type="submit" className="w-full" disabled={busy || !!missing}>
+          {busy ? <Loader2 size={14} className="animate-spin" /> : !missing && <Lock size={14} />}
+          {missing ?? submitLabel}
         </Button>
       </form>
       {(multiUser || canRecover) && !isSetup && (
@@ -434,6 +450,57 @@ function PasswordForm({
         </div>
       )}
     </AuthScreen>
+  );
+}
+
+/**
+ * Where the setup code is, step by step for the kind of server this is, with a sample of the
+ * log line to look for. Pasting the whole line is fine: the field keeps just the code.
+ */
+function SetupCodeHelp({ id, hostKind }: { id: string; hostKind: HostKind | undefined }) {
+  const steps =
+    hostKind === 'home-assistant'
+      ? [
+          <>
+            In Home Assistant, open <b>Settings → Apps → Allotment</b>.
+          </>,
+          <>
+            Open the <b>Log</b> tab.
+          </>,
+          <>Copy the line with the setup code and paste it here. The whole line is fine.</>,
+        ]
+      : hostKind === 'docker'
+        ? [
+            <>
+              On the server, run <code className="font-mono">docker logs flybudget</code> (the
+              container keeps its original name).
+            </>,
+            <>Look for “enter this setup code”.</>,
+            <>Copy the code, or the whole line, and paste it here.</>,
+          ]
+        : [
+            <>Open the log of wherever Allotment runs (its terminal window or service log).</>,
+            <>Look for “enter this setup code”.</>,
+            <>Copy the code, or the whole line, and paste it here.</>,
+          ];
+  return (
+    <div id={id} className="mt-2 rounded-md border border-border-light bg-surface-alt p-3 text-xs">
+      <ol className="space-y-1 text-text-secondary list-decimal pl-4">
+        {steps.map((step, i) => (
+          <li key={i}>{step}</li>
+        ))}
+      </ol>
+      <p className="mt-2 text-text-tertiary">It looks like this in the log:</p>
+      <pre
+        aria-hidden
+        className="mt-1 overflow-x-auto rounded bg-surface px-2 py-1.5 font-mono text-[11px] leading-relaxed text-text-tertiary"
+      >
+        {'Allotment needs a password. Open it\nin your browser and enter this\nsetup code:\n\n    '}
+        <span className="rounded bg-brand-50 px-1 text-text font-semibold">
+          XXXX-XXXX-XXXX-XXXX
+        </span>
+      </pre>
+    </div>
   );
 }
 

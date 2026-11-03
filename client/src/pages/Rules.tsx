@@ -26,7 +26,6 @@ import { useModalValue } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useOpenFromLink } from '../hooks/useOpenFromLink';
-import { docsUrl } from '../utils/project';
 import RowMenu from '../components/ui/RowMenu';
 import { useIsPhone } from '../hooks/useIsPhone';
 import { actionText, conditionText, ruleSearchText, type RuleLookups } from '../utils/ruleFormat';
@@ -324,8 +323,8 @@ export default function RulesPage() {
           <EmptyState
             icon={<Wand2 size={26} />}
             title="Let rules do the sorting"
-            description="Rules categorize, rename and split transactions for you as they come in, for example “payee contains Netflix → Streaming”. You can also make one from any transaction."
-            learnMoreHref={docsUrl('rules')}
+            description="Rules categorise, rename and split transactions for you as they come in, for example “payee contains Netflix → Streaming”. You can also make one from any transaction."
+            learnMore="rules"
             actions={
               <Button onClick={newRule}>
                 <Plus size={14} /> Add your first rule

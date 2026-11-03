@@ -1,10 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import EmojiPicker, { EmojiStyle, type EmojiClickData } from 'emoji-picker-react';
+import { CATEGORY_ICONS } from '../../utils/categoryIcons';
 
 const WIDTH = 320;
-const HEIGHT = 400;
-const MIN_HEIGHT = 240;
+const HEIGHT = 300;
+const MIN_HEIGHT = 200;
 const GAP = 4;
 const EDGE = 8;
 
@@ -31,16 +31,18 @@ function placeBeside(anchor: DOMRect): Position {
 }
 
 /**
- * Emoji picker opened from a button (`anchorRef`). It's portaled to the body so a card with
- * `overflow-hidden` or a dialog can't cut it off. Closes on a click outside it or on the anchor.
+ * Icon picker opened from a button (`anchorRef`): the app's own line icons, so every category
+ * looks alike (no emoji). Gives back the icon's name. It's portaled to the body so a card with
+ * `overflow-hidden` or a dialog can't cut it off. Closes on a click outside it, on the anchor
+ * or on Escape.
  */
-export function EmojiPickerPopover({
+export function IconPickerPopover({
   anchorRef,
   onSelect,
   onClose,
 }: {
   anchorRef: React.RefObject<HTMLElement | null>;
-  onSelect: (emoji: string) => void;
+  onSelect: (icon: string) => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -77,19 +79,36 @@ export function EmojiPickerPopover({
   if (!pos) return null;
 
   return createPortal(
-    <div ref={ref} className="fixed z-[60]" style={{ top: pos.top, left: pos.left }}>
-      <EmojiPicker
-        onEmojiClick={(data: EmojiClickData) => {
-          onSelect(data.emoji);
+    <div
+      ref={ref}
+      role="dialog"
+      aria-label="Choose an icon"
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
           onClose();
-        }}
-        width={WIDTH}
-        height={pos.height}
-        searchPlaceholder="Search emoji..."
-        previewConfig={{ showPreview: false }}
-        // The default style loads images from a CDN, which the CSP blocks
-        emojiStyle={EmojiStyle.NATIVE}
-      />
+        }
+      }}
+      className="fixed z-[60] overflow-y-auto rounded-lg border border-border bg-surface p-2 shadow-hover"
+      style={{ top: pos.top, left: pos.left, width: WIDTH, maxHeight: pos.height }}
+    >
+      <div className="grid grid-cols-8 gap-1">
+        {Object.entries(CATEGORY_ICONS).map(([name, Icon]) => (
+          <button
+            key={name}
+            type="button"
+            title={name.replace(/([a-z])([A-Z0-9])/g, '$1 $2')}
+            aria-label={name.replace(/([a-z])([A-Z0-9])/g, '$1 $2')}
+            onClick={() => {
+              onSelect(name);
+              onClose();
+            }}
+            className="flex aspect-square items-center justify-center rounded-md text-text-secondary hover:bg-hover hover:text-text focus-visible:outline-2 focus-visible:outline-brand-600"
+          >
+            <Icon size={18} aria-hidden />
+          </button>
+        ))}
+      </div>
     </div>,
     document.body,
   );

@@ -7,7 +7,6 @@ import { Wallet } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { EmptyState } from '../ui/EmptyState';
 import { ButtonLink } from '../ui/Button';
-import { docsUrl } from '../../utils/project';
 import type { BudgetType } from '../../types';
 
 interface Props {
@@ -82,7 +81,7 @@ export default function BudgetProgress({ currentMonth }: Props) {
           icon={<Wallet size={20} />}
           title={`No budget for ${monthLabel} yet`}
           description="Set how much you plan to spend in each category, then watch your progress here."
-          learnMoreHref={docsUrl('budgeting')}
+          learnMore="budgeting"
           actions={
             <ButtonLink size="sm" to="/budget">
               Plan your budget

@@ -175,4 +175,15 @@ describe('category templates', () => {
     expect(names(categoryTemplate('au', 'UTC'))).not.toContain('Afterpay / Zip');
     expect(names(categoryTemplate('default', 'Australia/Perth'))).not.toContain('Rego & CTP');
   });
+
+  it('defaults to the short Australian template, even on a UTC server (most Docker hosts)', () => {
+    const au = categoryTemplate(undefined, 'UTC');
+    const expenses = au.filter((g) => !g.isIncome).flatMap((g) => g.categories);
+    expect(expenses.map((c) => c.name)).toContain('Rego & CTP');
+    expect(expenses.map((c) => c.name)).not.toContain('HOA Fees');
+    expect(expenses.length).toBeGreaterThanOrEqual(18);
+    expect(expenses.length).toBeLessThanOrEqual(22);
+    // Icons are the app's own (Lucide names), not emoji
+    for (const c of au.flatMap((g) => g.categories)) expect(c.icon).toMatch(/^[A-Z][A-Za-z0-9]+$/);
+  });
 });

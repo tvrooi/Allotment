@@ -4,10 +4,9 @@ import { useGuideProgress } from '../../hooks/useGuides';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { useGuideStore } from '../../store/guideStore';
 import { guideStatus } from '../../utils/guides';
-import { DOCS_URL } from '../../utils/project';
+import { Link } from 'react-router-dom';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { ExternalLink } from '../ui/ExternalLink';
 import { GuideSettings } from './GuideSettings';
 
 /** Every guide, to take (again), with the tip settings: the ? menu, or ? on the keyboard */
@@ -56,9 +55,13 @@ export function GuidesDialog() {
       </div>
       <p className="mt-4 text-xs text-text-tertiary">
         Want more detail?{' '}
-        <ExternalLink href={DOCS_URL} className="text-brand-700 hover:underline">
-          Read the online guide
-        </ExternalLink>
+        <Link
+          to="/guide"
+          onClick={() => setListOpen(false)}
+          className="text-brand-700 hover:underline"
+        >
+          Read the guide
+        </Link>
         .{!isPhone && ' Press ? at any time to open this list.'}
       </p>
     </Modal>

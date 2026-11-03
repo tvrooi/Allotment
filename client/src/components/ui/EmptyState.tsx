@@ -1,4 +1,6 @@
-import { ExternalLink } from './ExternalLink';
+import { GuideLink } from '../guide/GuideLink';
+import type { DocsPage } from '../../utils/project';
+import { useOnboardingActive } from '../dashboard/onboarding';
 
 interface Props {
   icon?: React.ReactNode;
@@ -6,8 +8,8 @@ interface Props {
   description?: React.ReactNode;
   /** Buttons or links: what the user can do about it */
   actions?: React.ReactNode;
-  /** A page of the user guide that explains this part of the app */
-  learnMoreHref?: string;
+  /** The page of Allotment's guide that explains this part of the app */
+  learnMore?: DocsPage;
   /** Smaller, for inside a dashboard card */
   compact?: boolean;
   className?: string;
@@ -22,10 +24,13 @@ export function EmptyState({
   title,
   description,
   actions,
-  learnMoreHref,
+  learnMore,
   compact = false,
   className = '',
 }: Props) {
+  // On the dashboard of a new budget the Get started checklist holds the next steps
+  const onboarding = useOnboardingActive();
+  const shownActions = onboarding ? undefined : actions;
   return (
     <div
       className={`flex flex-col items-center text-center ${compact ? 'py-6 px-2' : 'py-14 px-6'} ${className}`}
@@ -48,20 +53,20 @@ export function EmptyState({
           {description}
         </p>
       )}
-      {actions && (
+      {shownActions && (
         <div
           className={`flex flex-wrap items-center justify-center gap-2 ${compact ? 'mt-3' : 'mt-5'}`}
         >
-          {actions}
+          {shownActions}
         </div>
       )}
-      {learnMoreHref && (
-        <ExternalLink
-          href={learnMoreHref}
+      {learnMore && (
+        <GuideLink
+          page={learnMore}
           className={`text-xs font-medium text-brand-600 hover:text-brand-700 ${compact ? 'mt-2' : 'mt-4'}`}
         >
           Learn more
-        </ExternalLink>
+        </GuideLink>
       )}
     </div>
   );

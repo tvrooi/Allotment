@@ -10,11 +10,16 @@ interface Props extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   ref?: React.Ref<HTMLButtonElement>;
 }
 
+// A disabled filled button turns neutral grey: a pale brand colour reads as a style, not as
+// "not yet". Outlined and ghost buttons just fade.
+const filledDisabled =
+  'disabled:bg-surface-alt disabled:text-text-tertiary disabled:shadow-none disabled:ring-1 disabled:ring-inset disabled:ring-border';
 const variants = {
-  primary: 'bg-brand-600 text-brand-contrast hover:bg-brand-700 shadow-xs',
-  secondary: 'bg-surface text-text-secondary border border-border hover:bg-surface-alt',
-  ghost: 'text-text-secondary hover:bg-surface-alt hover:text-text',
-  danger: 'bg-negative text-semantic-contrast hover:opacity-90',
+  primary: `bg-brand-600 text-brand-contrast hover:bg-brand-700 shadow-xs ${filledDisabled}`,
+  secondary:
+    'bg-surface text-text-secondary border border-border hover:bg-surface-alt disabled:opacity-50',
+  ghost: 'text-text-secondary hover:bg-surface-alt hover:text-text disabled:opacity-50',
+  danger: `bg-negative text-semantic-contrast hover:opacity-90 ${filledDisabled}`,
 };
 
 // Phones: at least 44px tall, the recommended minimum for a touch target
@@ -24,7 +29,7 @@ const sizes = {
 };
 
 const buttonClass = (variant: Variant, size: Size, className: string) =>
-  `inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium rounded-full transition-colors disabled:opacity-50 disabled:pointer-events-none ${variants[variant]} ${sizes[size]} ${className}`;
+  `inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium rounded-full transition-colors disabled:pointer-events-none ${variants[variant]} ${sizes[size]} ${className}`;
 
 export function Button({
   variant = 'primary',

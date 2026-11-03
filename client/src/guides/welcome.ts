@@ -67,7 +67,7 @@ export const welcomeTour: Guide = {
     },
     {
       title: 'Your dashboard',
-      body: 'Balances, spending and upcoming bills at a glance. Customize picks which cards show on this device, and Reports has more charts.',
+      body: 'Balances, spending and upcoming bills at a glance. Customise picks which cards show on this device, and Reports has more charts.',
       route: '/dashboard',
       target: 'dashboard.customize',
     },

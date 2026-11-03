@@ -31,6 +31,7 @@ import { taxRouter } from '../routes/tax.js';
 import { prioritiesRouter } from '../routes/priorities.js';
 import { guidesRouter } from '../routes/guides.js';
 import { currencyRouter } from '../routes/currency.js';
+import { DEMO_UP_ACCOUNTS } from '../demo/demoBudget.js';
 
 /** Answer for anything that needs a real server: bank connections, sign-in. */
 const NOT_IN_DEMO = "This isn't available in the demo. Download Allotment to use it.";
@@ -47,7 +48,37 @@ app.get('/server/info', (_req, res) => res.json({ mode: 'demo', version: DEMO_VE
 app.get('/plaid/status', (_req, res) => res.json({ configured: false, environment: null }));
 app.get('/plaid/items', (_req, res) => res.json([]));
 app.get('/simplefin/connections', (_req, res) => res.json([]));
-app.get('/up/connection', (_req, res) => res.json(null));
+// The sample budget came from Up: a pretend connection, last synced a few minutes before the
+// demo opened. Syncing, setup and changes still need the app (they fall through to 403 below).
+const demoOpenedAt = Date.now();
+app.get('/up/connection', (_req, res) => {
+  const synced = new Date(demoOpenedAt - 4 * 60_000).toISOString();
+  res.json({
+    id: 'demo-up',
+    syncStatus: 'good',
+    syncError: null,
+    lastSyncedAt: synced,
+    pollIntervalMinutes: 0,
+    lastAttemptAt: synced,
+    lastCompletedAt: synced,
+    nextSyncAt: null,
+    accounts: DEMO_UP_ACCOUNTS.map((a) => ({
+      upAccountId: `demo-up-${a.accountId}`,
+      name: a.name,
+      accountType: a.accountType,
+      accountId: a.accountId,
+      accountName: a.name,
+      isEnabled: 1,
+      cutoverDate: null,
+      cutoverDifference: null,
+    })),
+  });
+});
+app.get('/up/review', (_req, res) => res.json({ total: 0, pending: 0, items: [], deleted: [] }));
+app.get('/up/round-ups', (_req, res) =>
+  res.json({ since: new Date(Date.now() - 91 * 86400_000).toISOString().slice(0, 10), days: [] }),
+);
+app.get('/up/round-up-check', (_req, res) => res.json([]));
 app.get('/enable-banking/status', (_req, res) =>
   res.json({
     configured: false,

@@ -1,4 +1,5 @@
 import { RowMarks } from './TransactionMarks';
+import { CategoryIcon } from '../ui/CategoryIcon';
 import { useMemo, useState } from 'react';
 import { ChevronRight, ChevronDown, ArrowRight, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -197,7 +198,7 @@ export function TransactionRow({
                 disabled={!canEditCategory}
               >
                 {showCategoryIcons && categoryEntry?.icon && (
-                  <span className="text-base shrink-0">{categoryEntry.icon}</span>
+                  <CategoryIcon icon={categoryEntry.icon} size={15} />
                 )}
                 <span
                   className={`text-sm truncate ${categoryEntry ? 'text-text-secondary' : 'text-text-disabled'}`}
@@ -301,7 +302,7 @@ export function TransactionRow({
                 {childCat ? (
                   <>
                     {showCategoryIcons && childCat.icon && (
-                      <span className="text-sm shrink-0">{childCat.icon}</span>
+                      <CategoryIcon icon={childCat.icon} size={14} />
                     )}
                     <span className="text-xs text-text-tertiary truncate">{childCat.name}</span>
                   </>

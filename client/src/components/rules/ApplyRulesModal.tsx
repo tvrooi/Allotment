@@ -119,7 +119,7 @@ export function ApplyRulesModal({
             <p className="text-sm text-text-tertiary py-8 text-center">Checking transactions…</p>
           ) : items.length === 0 ? (
             <p className="text-sm text-text-secondary py-8 text-center">
-              Nothing to change: no {scope === 'uncategorized' ? 'uncategorized ' : ''}transactions
+              Nothing to change: no {scope === 'uncategorized' ? 'uncategorised ' : ''}transactions
               would be updated.
             </p>
           ) : (

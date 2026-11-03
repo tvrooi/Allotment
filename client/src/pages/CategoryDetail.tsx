@@ -1,4 +1,5 @@
 import { categoryFigures } from '../utils/budgetFigures';
+import { CategoryIcon } from '../components/ui/CategoryIcon';
 import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
@@ -297,8 +298,8 @@ export default function CategoryDetailPage() {
             Budget
           </Link>
           <ChevronRight size={14} className="text-text-tertiary" />
-          <span className="font-semibold text-text">
-            {showCategoryIcons && cat?.icon ? `${cat.icon} ` : ''}
+          <span className="font-semibold text-text inline-flex items-center gap-1.5">
+            {showCategoryIcons && <CategoryIcon icon={cat?.icon} size={15} />}
             {categoryName}
           </span>
         </div>

@@ -18,6 +18,10 @@ import { useGuideStore } from '../../store/guideStore';
 import { GuideBanner } from '../guide/GuideBanner';
 import { GuideTour } from '../guide/GuideTour';
 import { GuidesDialog } from '../guide/GuidesDialog';
+import { PullToRefresh } from './PullToRefresh';
+
+/** Where opening the app lands: the root, which goes on to the dashboard */
+const FRONT_DOOR = new Set(['/', '/dashboard']);
 
 export function AppShell() {
   useUndoKeyboard();
@@ -27,6 +31,7 @@ export function AppShell() {
   const { data: accounts = [], isLoading } = useAccounts();
   const setupSkipped = usePreferencesStore((s) => s.setupSkipped);
   const isPhone = useIsPhone();
+  const { pathname } = useLocation();
 
   if (isLoading) {
     return (
@@ -36,7 +41,9 @@ export function AppShell() {
     );
   }
 
-  if (accounts.length === 0 && !setupSkipped) {
+  // A new budget opens on the welcome page, but only from the front door: a link to another
+  // page (opened on a phone, or a second browser that hasn't seen "Skip for now") goes there
+  if (accounts.length === 0 && !setupSkipped && FRONT_DOOR.has(pathname)) {
     return <Navigate to="/welcome" replace />;
   }
 
@@ -93,6 +100,7 @@ function SkipToContent() {
 function PhoneShell() {
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
+  const phoneMain = useRef<HTMLElement>(null);
   const refocusMenuButton = useRef(false);
   const location = useLocation();
 
@@ -151,9 +159,12 @@ function PhoneShell() {
         <DemoBanner />
         <ConnectionBanner />
         <GuideBanner />
-        <main className="flex-1 min-h-0 overflow-y-auto">
-          <Outlet />
-        </main>
+        <div className="relative flex-1 min-h-0 flex flex-col">
+          <PullToRefresh scroller={phoneMain} />
+          <main ref={phoneMain} className="flex-1 min-h-0 overflow-y-auto">
+            <Outlet />
+          </main>
+        </div>
       </div>
       <Toasts />
       <GuideTour />

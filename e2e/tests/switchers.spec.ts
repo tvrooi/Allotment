@@ -84,6 +84,7 @@ test('a balance typed as "today" is still that balance after importing older his
   api,
 }) => {
   await open(page, '/dashboard');
+  await page.getByText('Use another bank or add accounts by hand').click();
   await page.getByRole('button', { name: /Add accounts manually/ }).click();
   const add = page.getByRole('dialog', { name: 'Add Account' });
   await add.getByRole('textbox', { name: 'Account name' }).fill('Everyday');
@@ -113,8 +114,9 @@ test('imports a YNAB register with several accounts, from the welcome page', asy
   api,
 }) => {
   await open(page, '/welcome');
-  await expect(page.getByText('Coming from another app?')).toBeVisible();
-  await expect(page.getByText('link Up from a cut-over date')).toBeVisible();
+  // Other ways in wait behind one disclosure, under Connect Up
+  await page.getByText('Use another bank or add accounts by hand').click();
+  await expect(page.getByText('Coming from YNAB?')).toBeVisible();
   await page.getByRole('button', { name: 'Import from YNAB' }).click();
   const dialog = page.getByRole('dialog', { name: 'Import from YNAB' });
   const header =
@@ -311,6 +313,7 @@ test('the recommended order works on a fresh budget: YNAB import, then link Up t
   await mock('rich');
   await freshUpWindow(page, api, 14);
   await open(page, '/welcome');
+  await page.getByText('Use another bank or add accounts by hand').click();
   await page.getByRole('button', { name: 'Import from YNAB' }).click();
   const ynab = page.getByRole('dialog', { name: 'Import from YNAB' });
   const header =

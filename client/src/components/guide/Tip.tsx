@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Lightbulb } from 'lucide-react';
 import { GUIDES, type TipDef } from '../../guides';
+import { PAGE_INTROS } from '../../guides/intros';
 import { useGuideProgress, useUpdateGuides } from '../../hooks/useGuides';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { useGuideStore } from '../../store/guideStore';
@@ -33,7 +34,7 @@ export function Tip({
   const eligible =
     tipVisible(tip.id, progress) &&
     !(desktopOnly && isPhone) &&
-    !bannerFor(pathname, progress, GUIDES, touring);
+    !bannerFor(pathname, progress, GUIDES, touring, PAGE_INTROS);
 
   useEffect(() => {
     if (!eligible) return;

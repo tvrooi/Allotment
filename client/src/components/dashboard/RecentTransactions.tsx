@@ -9,7 +9,6 @@ import { Plus, Receipt, Upload } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { EmptyState } from '../ui/EmptyState';
 import { ButtonLink } from '../ui/Button';
-import { docsUrl } from '../../utils/project';
 import type { CategoryGroup } from '../../types';
 
 export default function RecentTransactions() {
@@ -66,7 +65,7 @@ export default function RecentTransactions() {
           icon={<Receipt size={20} />}
           title="No transactions yet"
           description="Import a CSV file from your bank, connect a bank, or add transactions by hand."
-          learnMoreHref={docsUrl('transactions')}
+          learnMore="transactions"
           actions={
             <>
               {firstAccount && (

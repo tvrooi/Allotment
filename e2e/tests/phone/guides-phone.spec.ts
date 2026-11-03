@@ -16,10 +16,7 @@ test('the welcome tour works on a phone', async ({ page, api }) => {
   await newBudgetGuides(api);
   await api.createAccount('Everyday Checking', 100_000);
   await open(page, '/dashboard');
-  await page
-    .getByRole('region', { name: 'Guide' })
-    .getByRole('button', { name: 'Take the tour' })
-    .tap();
+  await page.getByRole('button', { name: /Show me around/ }).tap();
 
   const tour = page.getByRole('dialog');
   await tour.getByRole('button', { name: 'Start tour' }).tap();

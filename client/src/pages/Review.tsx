@@ -25,6 +25,7 @@ import {
 } from '../components/review/Resilience';
 import { Housekeeping } from '../components/review/Housekeeping';
 import { PaymentMatches } from '../components/plans/PaymentMatches';
+import { DoThisNext } from '../components/review/DoThisNext';
 
 // Phases 6F–6G: a read-only review of everything the budget has not resolved, a guided
 // setup, and next month's commitments with an optional runway. Every figure comes from the
@@ -557,8 +558,8 @@ export default function ReviewPage() {
             Review
           </h1>
           <p className="text-xs text-text-tertiary">
-            {review.data ? `As of ${formatDay(review.data.asOf)}` : 'Loading…'} · Read-only; changes
-            happen only when you act.
+            {review.data ? `As of ${formatDay(review.data.asOf)}` : 'Loading…'} · Nothing here
+            changes until you choose to.
           </p>
         </div>
         {review.data && review.data.groups.length > 1 && (
@@ -592,31 +593,29 @@ export default function ReviewPage() {
         <div className="mb-4 empty:hidden">
           <PaymentMatches compact />
         </div>
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] max-lg:grid-cols-1 gap-4 items-start">
-          <div className="space-y-4">
-            {resume.data && <ResumeCard resume={resume.data} />}
-            {review.data && <NeedsAttention review={review.data} group={group} />}
-            {/* Emergency fund and what you could live on: savings, so Safe mode hides them */}
-            {resilience.data && !hideBalances && <ResilienceCard data={resilience.data} />}
-            {buffer.data && <Buffer buffer={buffer.data} />}
-          </div>
-          <div className="space-y-4">
-            {guide.data && (
-              <Card>
-                <h2 className="text-base font-semibold text-text">Guided setup</h2>
-                <p className="text-xs text-text-secondary">
-                  Each step is checked against your budget as it is now.
-                </p>
-                <ol className="mt-2">
-                  {guide.data.steps.map((s) => (
-                    <GuideStep key={s.id} step={s} guide={guide.data} />
-                  ))}
-                </ol>
-              </Card>
-            )}
-            {resilience.data && <ExtraIncome resilience={resilience.data} />}
-            <Housekeeping />
-          </div>
+        {/* One list to work through first; the detail behind it follows in one column */}
+        <div className="max-w-3xl mx-auto space-y-4">
+          <DoThisNext />
+          {resume.data && <ResumeCard resume={resume.data} />}
+          {review.data && <NeedsAttention review={review.data} group={group} />}
+          {guide.data && (
+            <Card>
+              <h2 className="text-base font-semibold text-text">Guided setup</h2>
+              <p className="text-xs text-text-secondary">
+                Each step is checked against your budget as it is now.
+              </p>
+              <ol className="mt-2">
+                {guide.data.steps.map((s) => (
+                  <GuideStep key={s.id} step={s} guide={guide.data} />
+                ))}
+              </ol>
+            </Card>
+          )}
+          {/* Emergency fund and what you could live on: savings, so Safe mode hides them */}
+          {resilience.data && !hideBalances && <ResilienceCard data={resilience.data} />}
+          {buffer.data && <Buffer buffer={buffer.data} />}
+          {resilience.data && <ExtraIncome resilience={resilience.data} />}
+          <Housekeeping />
         </div>
       </div>
     </div>

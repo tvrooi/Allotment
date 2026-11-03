@@ -6,8 +6,23 @@ import { CurrencyInput } from '../ui/CurrencyInput';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useCategories } from '../../hooks/useCategories';
 import type { Goal } from '../../types';
+import { CategoryIcon } from '../ui/CategoryIcon';
 
-const ICONS = ['🎯', '🏠', '✈️', '🚗', '💰', '🎓', '💍', '🏖️', '📱', '🛡️', '🎁', '⭐'];
+/** The app's line icons, by name (no emoji): see utils/categoryIcons.ts */
+const ICONS = [
+  'PiggyBank',
+  'House',
+  'Plane',
+  'Car',
+  'Coins',
+  'GraduationCap',
+  'Gem',
+  'Palmtree',
+  'Laptop',
+  'LifeBuoy',
+  'Gift',
+  'Baby',
+];
 const COLORS = [
   '#2563EB',
   '#059669',
@@ -45,7 +60,7 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
   const [currentAmount, setCurrentAmount] = useState(0);
   const [targetDate, setTargetDate] = useState('');
   const [accountId, setAccountId] = useState('');
-  const [icon, setIcon] = useState('🎯');
+  const [icon, setIcon] = useState('PiggyBank');
   const [color, setColor] = useState('#2563EB');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -68,7 +83,7 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
       setCurrentAmount(0);
       setTargetDate('');
       setAccountId('');
-      setIcon('🎯');
+      setIcon('PiggyBank');
       setColor('#2563EB');
     }
   }, [isOpen, editGoal]);
@@ -199,25 +214,26 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
                 type="button"
                 onClick={() => setIcon(i)}
                 aria-pressed={icon === i}
-                className={`w-9 h-9 text-lg rounded-md border transition-colors ${
+                aria-label={i.replace(/([a-z])([A-Z])/g, '$1 $2')}
+                className={`w-9 h-9 flex items-center justify-center rounded-md border transition-colors ${
                   icon === i ? 'border-brand-500 bg-brand-50' : 'border-border-light hover:bg-hover'
                 }`}
               >
-                {i}
+                <CategoryIcon icon={i} size={18} className="text-text-secondary" />
               </button>
             ))}
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-text-secondary">Color</label>
+          <label className="text-sm font-medium text-text-secondary">Colour</label>
           <div className="flex gap-2">
             {COLORS.map((c) => (
               <button
                 key={c}
                 type="button"
                 onClick={() => setColor(c)}
-                aria-label={`Color ${c}`}
+                aria-label={`Colour ${c}`}
                 aria-pressed={color === c}
                 className={`w-7 h-7 rounded-full border-2 transition-all ${
                   color === c ? 'border-text scale-110' : 'border-transparent'

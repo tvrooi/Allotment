@@ -48,4 +48,5 @@ Desktop apps from before the rename check `tvrooi/FlyBudget` for updates with re
 so they cannot find newer releases by themselves. Install the next release once by hand from the
 [Releases page](https://github.com/tvrooi/Allotment/releases); later updates are found again.
 
-The user guide links still point at the upstream FlyBudget site, which Allotment is built on.
+Allotment has its own short guide, served by the app at `/guide` (`client/src/userGuide`). Only Enable
+Banking's detailed setup still links to the upstream FlyBudget site, which Allotment is built on.

@@ -12,11 +12,11 @@ import {
 import { useAccounts, useBalancesAgo } from '../hooks/useAccounts';
 import { AddAccountModal } from '../components/accounts/AddAccountModal';
 import { AssetLiabilitySummary } from '../components/accounts/AssetLiabilitySummary';
+import { UpSyncBadge } from '../components/up/UpSyncBadge';
 import { Button, ButtonLink } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useOpenFromLink } from '../hooks/useOpenFromLink';
-import { docsUrl } from '../utils/project';
 import { formatCurrency, formatMoney } from '../utils/currency';
 import { useHideBalances } from '../utils/safeMode';
 import { Private } from '../components/ui/Private';
@@ -169,9 +169,12 @@ export default function AccountsPage() {
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 py-4 border-b border-border shrink-0 flex items-center justify-between">
-        <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
-          Accounts
-        </h1>
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+            Accounts
+          </h1>
+          <UpSyncBadge />
+        </div>
         <Button size="sm" onClick={() => setAddOpen(true)} data-guide="accounts.add">
           <Plus size={14} /> Add Account
         </Button>
@@ -182,8 +185,8 @@ export default function AccountsPage() {
           <EmptyState
             icon={<Landmark size={26} />}
             title="Add the accounts you want to track"
-            description="Checking, savings, credit cards, loans, investments or your home: each account keeps its own balance and transactions, and together they make up your net worth."
-            learnMoreHref={docsUrl('accounts')}
+            description="Everyday and savings accounts, cards, loans, super or your home: each account keeps its own balance and transactions, and together they make up your net worth."
+            learnMore="accounts"
             actions={
               <>
                 <Button onClick={() => setAddOpen(true)}>

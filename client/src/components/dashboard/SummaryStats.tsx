@@ -71,7 +71,7 @@ export default function SummaryStats({ currentMonth }: Props) {
       <StatCard
         label="Avg Monthly Expenses"
         value={formatCurrency(avgExpenses)}
-        valueColor={avgExpenses > 0 ? 'text-negative' : undefined}
+        // Spending isn't an error: red is kept for overspent and negative balances
       />
       <div className="bg-surface rounded-lg px-5 py-4 border border-border-light shadow-card">
         <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -91,7 +91,7 @@ export default function SummaryStats({ currentMonth }: Props) {
         </div>
         {rate !== null ? (
           <p
-            className={`text-xl font-semibold tabular-nums tracking-tight mt-2 ${rate >= savingsGoal ? 'text-positive' : 'text-negative'}`}
+            className={`text-xl font-semibold tabular-nums tracking-tight mt-2 ${rate >= savingsGoal ? 'text-positive' : 'text-text'}`}
           >
             {rate}%
           </p>

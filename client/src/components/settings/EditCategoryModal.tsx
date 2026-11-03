@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useFormReset } from '../../hooks/useFormReset';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { EmojiPickerPopover } from '../ui/EmojiPickerPopover';
+import { IconPickerPopover } from '../ui/IconPickerPopover';
+import { CategoryIcon } from '../ui/CategoryIcon';
 import { useUpdateCategory } from '../../hooks/useCategories';
 import { useAccounts } from '../../hooks/useAccounts';
 import { usePreferencesStore } from '../../store/preferencesStore';
@@ -107,10 +108,10 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
                   aria-label="Change icon"
                   className="text-xl w-10 h-10 flex items-center justify-center rounded-lg border border-border hover:bg-hover transition-colors"
                 >
-                  {icon || '📦'}
+                  <CategoryIcon icon={icon || 'Package'} size={20} />
                 </button>
                 {showEmojiPicker && (
-                  <EmojiPickerPopover
+                  <IconPickerPopover
                     anchorRef={emojiButtonRef}
                     onSelect={setIcon}
                     onClose={() => setShowEmojiPicker(false)}

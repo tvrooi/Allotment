@@ -4,39 +4,45 @@ import { categories, categoryGroups } from '../db/schema.js';
 
 /**
  * Up's own category slugs, each mapped to the names it could have in Allotment's category
- * templates (Australian first, then the general one). A slug maps to the first name the budget
+ * templates (the older Australian names, the short Australian template's merged ones, then the
+ * general template's). A slug maps to the first name the budget
  * has. Unclear matches are left out: an uncategorised row is better than a confidently wrong one.
  * Up's parent categories (good-life, home, personal, transport) are too broad to map, and so are
  * lottery-and-gambling, tobacco-and-vaping, cycling and utilities (water, gas and power together).
  */
 const UP_CATEGORY_NAMES: Record<string, string[]> = {
   groceries: ['Groceries'],
-  takeaway: ['Takeaway & Delivery', 'Fast Food'],
-  'restaurants-and-cafes': ['Eating Out', 'Restaurants'],
-  'pubs-and-bars': ['Alcohol', 'Alcohol / Bars'],
+  takeaway: ['Takeaway & Delivery', 'Eating Out & Takeaway', 'Fast Food'],
+  'restaurants-and-cafes': ['Eating Out', 'Eating Out & Takeaway', 'Restaurants'],
+  'pubs-and-bars': ['Alcohol', 'Alcohol / Bars', 'Eating Out & Takeaway'],
   booze: ['Alcohol', 'Alcohol / Bars'],
-  'tv-and-music': ['Streaming & Subscriptions', 'Streaming Services'],
-  'apps-games-and-software': ['Software & AI', 'Software / Tools', 'Entertainment'],
+  'tv-and-music': ['Streaming & Subscriptions', 'Subscriptions', 'Streaming Services'],
+  'apps-games-and-software': [
+    'Software & AI',
+    'Software / Tools',
+    'Subscriptions',
+    'Entertainment',
+  ],
   'events-and-gigs': ['Entertainment'],
   hobbies: ['Hobbies'],
   'holidays-and-travel': ['Holidays', 'Vacation'],
   'homeware-and-appliances': ['Home Goods', 'Home Maintenance'],
-  internet: ['Internet'],
+  internet: ['Internet', 'Phone & Internet'],
   'maintenance-and-improvements': ['Home Maintenance', 'Home Improvement'],
   pets: ['Pet Food & Supplies'],
   'rates-and-insurance': ['Contents & Home Insurance', 'Home Insurance'],
   'rent-and-mortgage': ['Rent', 'Rent / Mortgage'],
-  'hair-and-beauty': ['Personal Care'],
-  'health-and-medical': ['GP & Specialists', 'Doctor / Medical'],
+  'hair-and-beauty': ['Personal Care', 'Clothing & Personal Care'],
+  'health-and-medical': ['GP & Specialists', 'Medical & Chemist', 'Doctor / Medical'],
   technology: ['Electronics'],
-  'clothing-and-accessories': ['Clothing'],
+  'clothing-and-accessories': ['Clothing', 'Clothing & Personal Care'],
   'education-and-student-loans': ['Tuition', 'Student Loans'],
   'fitness-and-wellbeing': ['Fitness', 'Gym / Fitness'],
   'gifts-and-charity': ['Gifts'],
   investments: ['Investments'],
-  'mobile-phone': ['Mobile', 'Phone'],
+  'mobile-phone': ['Mobile', 'Phone & Internet', 'Phone'],
   'news-magazines-and-books': ['Books & Supplies'],
-  'car-insurance-and-maintenance': ['Car Insurance'],
+  'car-insurance-and-maintenance': ['Car Insurance', 'Car Insurance & Servicing'],
   fuel: ['Fuel', 'Gas / Fuel'],
   parking: ['Tolls & Parking', 'Parking'],
   'public-transport': ['Public Transport', 'Public Transit'],

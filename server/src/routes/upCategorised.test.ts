@@ -98,7 +98,7 @@ describe('first Up sync uses Up’s own categories', () => {
     expect(by('Coles')).toEqual(['Groceries']);
     expect(by('Ray White Property Mgmt')).toEqual(['Rent']);
     expect(by('Transport for NSW Opal')).toEqual(['Public Transport']);
-    expect(by('Netflix')).toEqual(['Streaming & Subscriptions']);
+    expect(by('Netflix')).toEqual(['Subscriptions']);
     // Up's category with no counterpart here stays for the owner to sort
     expect(by('Service NSW')).toEqual([null]);
   });

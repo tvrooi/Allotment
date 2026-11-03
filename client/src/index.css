@@ -60,8 +60,9 @@
   --color-negative-subtle: #feebec;
   --color-caution: #9a5a00;
   --color-caution-subtle: #fff7c2;
-  /* A scheduled debit that hasn't left the account yet (budget Activity) */
-  --color-expected: #c2410c;
+  /* A scheduled debit that hasn't left the account yet (budget Activity): neutral, because a
+     bill that's due and covered is fine. Orange would read as a warning; red means overspent. */
+  --color-expected: #696765;
 
   /* Sidebar */
   --color-sidebar-bg: #f7f5ef;
@@ -182,7 +183,7 @@
   --color-negative-subtle: #44262a;
   --color-caution: #f0b955;
   --color-caution-subtle: #3f3219;
-  --color-expected: #fb923c;
+  --color-expected: #aaa39a;
 
   --color-sidebar-bg: #211e1b;
   --color-sidebar-deep: #1c1a17;
@@ -362,4 +363,21 @@ body {
   filter: blur(3px);
   user-select: none;
   letter-spacing: 0.05em;
+}
+
+/* The in-app guide's article text: lists with markers and a little space between items */
+.guide-prose ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.guide-prose ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.guide-prose li + li {
+  margin-top: 0.375rem;
+}
+.guide-prose b {
+  color: var(--color-text);
+  font-weight: 600;
 }

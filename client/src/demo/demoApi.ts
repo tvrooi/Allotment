@@ -15,6 +15,15 @@ interface DemoResponse {
 type Reply = { id: number; ok: true; response?: DemoResponse } | { id: number; ok: false };
 
 let worker: Worker | null = null;
+
+/** The visitor's first change to the sample budget: the moment to say it won't be kept */
+let firstEditSeen = false;
+const firstEditListeners = new Set<() => void>();
+export function onFirstDemoEdit(listener: () => void): () => void {
+  firstEditListeners.add(listener);
+  return () => firstEditListeners.delete(listener);
+}
+
 let nextId = 1;
 const pending = new Map<number, (reply: Reply) => void>();
 
@@ -71,6 +80,11 @@ export function startDemoApi() {
       });
     }
     const { status, headers: resHeaders, body: resBody } = reply.response;
+    const method = (init?.method ?? 'GET').toUpperCase();
+    if (!firstEditSeen && method !== 'GET' && status < 400 && !path.startsWith('/guides')) {
+      firstEditSeen = true;
+      for (const listener of firstEditListeners) listener();
+    }
     return new Response(status === 204 ? null : (resBody ?? null), { status, headers: resHeaders });
   };
 }
