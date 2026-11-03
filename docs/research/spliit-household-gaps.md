@@ -237,7 +237,8 @@ auditable), then **SPL-05** and **SPL-07**. The P3 items wait for demand.
   - Repayment suggestions count `direct` debts only. New `contribution` suggestions offer money
     into a pool account from a named housemate, or the owner's own transfer in.
   - People & balances shows both parts for a household with an account.
-- **Not changed:** settlements are still checked against net balances, so existing
+- **Fixed in 0.2.0-up.78 (review):** a settlement within the `direct` balances is accepted even when the net balances wouldn't allow it, so a suggested repayment always records. A transfer from another household's pool account is not offered as the owner's contribution.
+- **Not changed:** settlements within net balances are still accepted, so existing
   person-to-person repayments of pool shortfalls stay valid. The combined-household view still
   shows net balances only.
 - **Follow-up:** SPL-01's settle-up list should use `direct` for "who pays whom", and list `toPool`
