@@ -11,7 +11,7 @@ import {
   budgetMoves,
   budgetSettings,
 } from '../db/schema.js';
-import { budgetGroups, budgetSummary, fundingState } from './budgetService.js';
+import { budgetGroups, budgetSummary, fundingRevision, fundingState } from './budgetService.js';
 import { applyMove, previewMove, undoMove } from './budgetMoves.js';
 import { createBackup, parseBackup, restoreBackup } from './backupService.js';
 import { ratesChanged } from './mainAmountService.js';
@@ -303,4 +303,24 @@ it('keeps an invalid budget start out of the database and backups', () => {
   backup.budgetSettings = [{ id: 'budget', budgetStartMonth: '2026-10' }];
   restoreBackup(parseBackup(backup));
   expect(budgetSummary('2026-10').budgetStartMonth).toBe('2026-10');
+  // A start day: a date, in the start month
+  expect(() => db.update(budgetSettings).set({ budgetStartDay: 'soon' }).run()).toThrow(/CHECK/);
+  backup.budgetSettings = [
+    { id: 'budget', budgetStartMonth: '2026-10', budgetStartDay: '2026-11-03' },
+  ];
+  expect(() => parseBackup(backup)).toThrow(/budget start day/);
+  backup.budgetSettings = [
+    { id: 'budget', budgetStartMonth: '2026-10', budgetStartDay: '2026-10-15' },
+  ];
+  restoreBackup(parseBackup(backup));
+  expect(budgetSummary('2026-10').budgetStartDay).toBe('2026-10-15');
+});
+
+// funding_budget_settings_update (any change to the settings row) covers the start day
+it('changing only the start day refreshes the cached ledger', () => {
+  db.delete(budgetSettings).run();
+  db.insert(budgetSettings).values({ id: 'budget', budgetStartMonth: '2026-10' }).run();
+  const before = fundingRevision();
+  db.update(budgetSettings).set({ budgetStartDay: '2026-10-15' }).run();
+  expect(fundingRevision()).not.toBe(before);
 });

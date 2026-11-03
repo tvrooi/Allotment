@@ -75,7 +75,7 @@ function BudgetStartItem({ data }: { data: HousekeepingData['budgetStart'] }) {
   const qc = useQueryClient();
   const canSave = useCanSave();
   const start = useMutation({
-    mutationFn: () => setBudgetStart(data.suggestion),
+    mutationFn: () => setBudgetStart({ month: data.suggestion }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['review'] });
       void qc.invalidateQueries({ queryKey: ['budget'] });

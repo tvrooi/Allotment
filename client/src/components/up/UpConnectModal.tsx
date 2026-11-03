@@ -1,5 +1,7 @@
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { invalidateLedgerViews } from '../../utils/ledgerViews';
 import { ClipboardPaste, Loader2, ShieldCheck } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -23,6 +25,56 @@ import { IS_DEMO } from '../../demo/demoApi';
 import { NotInDemoModal } from '../demo/NotInDemo';
 import { Private } from '../ui/Private';
 import { SortUncategorised } from '../review/SortUncategorised';
+import { setBudgetStart } from '../../api/budget';
+import { format, parseISO } from 'date-fns';
+
+/**
+ * A new budget connecting its first bank starts today (server: startBudgetIfNew), so this
+ * month's spending from before the connection is history rather than overspending. Says so,
+ * and offers the whole month instead; the choice stays in Settings → Budget.
+ */
+function FreshStartNote({ day }: { day: string }) {
+  const qc = useQueryClient();
+  const [state, setState] = useState<'today' | 'saving' | 'month' | 'failed'>('today');
+  const month = format(parseISO(day), 'MMMM');
+  if (state === 'month')
+    return (
+      <p role="status" className="text-sm text-text-secondary">
+        Your budget counts all of {month}. Change it any time in Settings → Budget.
+      </p>
+    );
+  return (
+    <div className="rounded-md bg-surface-alt px-3 py-2.5 text-sm text-text-secondary space-y-2">
+      <p>
+        Your budget starts today, {format(parseISO(day), 'd MMMM')}. Spending earlier in {month}{' '}
+        stays in your accounts and reports, but doesn’t count against your envelopes, so Ready to
+        assign is the money you have now.
+      </p>
+      <Button
+        size="sm"
+        variant="secondary"
+        disabled={state === 'saving'}
+        onClick={async () => {
+          setState('saving');
+          try {
+            await setBudgetStart({ month: day.slice(0, 7), day: null });
+            // A direct call, not a mutation: refresh what the start changes ourselves
+            void qc.invalidateQueries({ queryKey: ['budget-start'] });
+            void invalidateLedgerViews(qc);
+            setState('month');
+          } catch {
+            setState('failed');
+          }
+        }}
+      >
+        Count all of {month} instead
+      </Button>
+      {state === 'failed' && (
+        <p className="text-negative">Could not change it. Try again in Settings → Budget.</p>
+      )}
+    </div>
+  );
+}
 
 /** Why no existing account can be linked to this Up account, in words */
 function linkBlockedReason(
@@ -87,6 +139,8 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<UpSyncResult | null>(null);
+  // Set when this connection started a new budget mid-month
+  const [freshStart, setFreshStart] = useState<string | null>(null);
   const { data: accounts = [] } = useAccounts();
   const canSave = useCanSave();
   const refresh = useRefreshUp();
@@ -140,7 +194,8 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
     setBusy(true);
     setError(null);
     try {
-      await mapUpAccounts(choices);
+      const mapping = await mapUpAccounts(choices);
+      if (mapping.budgetStartDay) setFreshStart(mapping.budgetStartDay);
       // Keep retry choices idempotent even if the subsequent network request fails.
       const mapped = await getUpConnection();
       setChoices((prev) =>
@@ -392,6 +447,7 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
             <p className="text-sm text-text">
               Imported {result.added} transaction{result.added === 1 ? '' : 's'}.
             </p>
+            {freshStart && <FreshStartNote day={freshStart} />}
             {result.errors.length > 0 && (
               <p role="alert" className="text-sm text-negative">
                 {result.errors.join(' ')} Retry using Sync Now in Connected Banks.

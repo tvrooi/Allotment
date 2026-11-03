@@ -216,12 +216,19 @@ export interface AnnualOverview {
 
 export const getAnnualOverview = (year: number) => apiFetch<AnnualOverview>(`/budget/year/${year}`);
 
-/** First month the envelopes count (YYYY-MM); null = all history (Settings → Budget) */
-export const getBudgetStart = () => apiFetch<{ month: string | null }>('/budget/start');
-export const setBudgetStart = (month: string | null) =>
-  apiFetch<{ month: string | null }>('/budget/start', {
+/**
+ * First month the envelopes count (YYYY-MM), and the day in it they start from (YYYY-MM-DD; null
+ * = the whole month); month null = all history (Settings → Budget)
+ */
+export interface BudgetStart {
+  month: string | null;
+  day: string | null;
+}
+export const getBudgetStart = () => apiFetch<BudgetStart>('/budget/start');
+export const setBudgetStart = (start: { month: string | null; day?: string | null }) =>
+  apiFetch<BudgetStart>('/budget/start', {
     method: 'PUT',
-    body: JSON.stringify({ month }),
+    body: JSON.stringify(start),
   });
 
 /** An assistant's suggested assignments, waiting for the owner (server: routes/budgetProposals.ts) */

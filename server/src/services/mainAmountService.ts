@@ -39,6 +39,7 @@ export function getBudgetSettings(): BudgetSettings {
       ratesLastFetchedAt: null,
       ratesLastError: null,
       budgetStartMonth: null,
+      budgetStartDay: null,
       receiptAutoSplit: 1,
       receiptAddNotes: 1,
       receiptAddTag: 1,
@@ -484,8 +485,11 @@ export function missingRateSummary(): { count: number; currencies: string[] } {
 }
 
 /**
- * Sets the budget start to this month when there is none and nothing was ever assigned (a new
- * budget connecting its first bank), and returns it; otherwise changes nothing and returns null.
+ * Starts the budget today when it has no start and nothing was ever assigned (a new budget
+ * connecting its first bank), and returns the month; otherwise changes nothing and returns
+ * null. Starting on the day, not the month, keeps this month's spending from before the
+ * connection out of the envelopes: it is history, not overspending, so Ready to assign is the
+ * money in the accounts. The owner can count the whole month instead (PUT /budget/start).
  */
 export function startBudgetIfNew(today = todayIso()): string | null {
   if (getBudgetSettings().budgetStartMonth) return null;
@@ -496,6 +500,10 @@ export function startBudgetIfNew(today = todayIso()): string | null {
     .get();
   if (assigned) return null;
   const month = today.slice(0, 7);
-  updateBudgetSettings({ budgetStartMonth: month });
+  // The first of the month is the month itself
+  updateBudgetSettings({
+    budgetStartMonth: month,
+    budgetStartDay: today.endsWith('-01') ? null : today,
+  });
   return month;
 }

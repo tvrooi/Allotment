@@ -95,3 +95,30 @@ it('sets, validates and clears the budget start', async () => {
   expect((await put('/start', { month: null })).status).toBe(200);
   expect(await start()).toBeNull();
 });
+
+it('sets and validates a start day in the start month, a fresh start mid-month', async () => {
+  const start = async () =>
+    (await (await fetch(`${base}/start`)).json()) as {
+      month: string | null;
+      day: string | null;
+    };
+  const today = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+  const thisMonth = today.slice(0, 7);
+  // Not in the month, not a date, or in the future
+  for (const day of [`${addMonthsTo(thisMonth, -1)}-10`, 'soon', `${addMonthsTo(thisMonth, 1)}-01`])
+    expect((await put('/start', { month: thisMonth, day })).status).toBe(400);
+  expect((await put('/start', { month: thisMonth, day: today })).status).toBe(200);
+  expect(await start()).toEqual({ month: thisMonth, day: today.endsWith('-01') ? null : today });
+  const summary = await (await fetch(`${base}/${thisMonth}/summary`)).json();
+  expect(summary.budgetStartDay).toBe(today);
+  // The whole month instead
+  expect((await put('/start', { month: thisMonth, day: null })).status).toBe(200);
+  expect(await start()).toEqual({ month: thisMonth, day: null });
+  // Clearing the start clears the day
+  await put('/start', { month: thisMonth, day: today });
+  expect((await put('/start', { month: null })).status).toBe(200);
+  expect(await start()).toEqual({ month: null, day: null });
+});

@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.86
+
+- **A new budget starts the day you connect Up.** Connecting Up mid-month used to count the month's earlier spending against empty envelopes: the first thing Review asked was to cover overspent envelopes, and Ready to assign showed more than the accounts held. A new budget now starts on the day of its first connection. Spending earlier that month stays in your accounts, the register and reports, but isn't overspending, so Ready to assign is the money you have. The Up dialog says so, with **Count all of _month_ instead**, and **Settings → Budget** shows the start day and can count the whole month. Existing budgets are unchanged.
+
 ## 0.2.0-up.85
 
 Fixes from a full audit of the app (correctness first).

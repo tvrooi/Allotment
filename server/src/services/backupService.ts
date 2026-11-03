@@ -256,6 +256,17 @@ export function parseBackup(input: unknown): ParsedBackup {
           `Row ${i + 1} of "budgetSettings" has an invalid budget start`,
         );
       }
+      // Budget start day (0.2.0-up.86): a date in the start month, or null
+      if (
+        name === 'budgetSettings' &&
+        row.budgetStartDay != null &&
+        (!/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(String(row.budgetStartDay)) ||
+          String(row.budgetStartDay).slice(0, 7) !== row.budgetStartMonth)
+      ) {
+        throw new InvalidBackupError(
+          `Row ${i + 1} of "budgetSettings" has an invalid budget start day`,
+        );
+      }
       if (name === 'cardFunding') {
         try {
           const ids = JSON.parse(String(row.baselineIds));

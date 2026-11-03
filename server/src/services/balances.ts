@@ -49,11 +49,14 @@ export const reportActivity: SQL = and(
 )!;
 export const budgetActivity: SQL = and(onBudget, reportActivity)!;
 
-/** Day the envelope budget starts counting ('' = all history): Settings → Budget start */
-const budgetStartDay = sql`coalesce((select min(bs.budget_start_month) from budget_settings bs) || '-01', '')`;
+/**
+ * Day the envelope budget starts counting ('' = all history): Settings → Budget start. The start
+ * day when one is set in the start month (a fresh start mid-month), else the month's first day.
+ */
+const budgetStartDay = sql`coalesce((select min(case when substr(bs.budget_start_day, 1, 7) = bs.budget_start_month then bs.budget_start_day else bs.budget_start_month || '-01' end) from budget_settings bs), '')`;
 /** Rows on or after the budget start. Reports ignore it; envelopes and funding use it. */
 export const sinceBudgetStart: SQL = sql`${transactions.date} >= ${budgetStartDay}`;
-/** The budget start as YYYY-MM-01, or '' when every month counts */
+/** The budget start as YYYY-MM-DD, or '' when every month counts */
 export function budgetStartDate(): string {
   return db.get<{ day: string }>(sql`select ${budgetStartDay} as day`)?.day ?? '';
 }

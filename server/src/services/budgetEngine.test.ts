@@ -349,6 +349,7 @@ export function legacyBudgetSummary(month: string, today = todayIso()) {
     carryOver: state.openingFunds,
     toBeBudgeted: state.unassigned,
     budgetStartMonth: budgetStartDate().slice(0, 7) || null,
+    budgetStartDay: budgetStartDate() || null,
     // Added after the previous engine; not a funding figure, so the oracle reads it from the data
     anythingAssigned: db
       .select()
@@ -503,7 +504,14 @@ function generate(seed: number) {
     .values({
       id: 'budget',
       currency: 'AUD',
-      budgetStartMonth: pick([null, null, '2026-07', '2026-09']),
+      ...pick([
+        { budgetStartMonth: null },
+        { budgetStartMonth: null },
+        { budgetStartMonth: '2026-07' },
+        { budgetStartMonth: '2026-09' },
+        // A fresh start mid-month
+        { budgetStartMonth: '2026-09', budgetStartDay: '2026-09-14' },
+      ]),
     })
     .run();
   const foreign = rand() < 0.5;
