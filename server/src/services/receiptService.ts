@@ -7,8 +7,10 @@ import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, sql } from 'drizzl
 import { nanoid } from 'nanoid';
 import { addDays, format, parseISO } from 'date-fns';
 import { db } from '../db/index.js';
-import { accounts, receiptFiles, receipts, transactions } from '../db/schema.js';
-import { extensionOf } from './receiptMeta.js';
+import { accounts, documents, receiptFiles, receipts, transactions } from '../db/schema.js';
+import { RECEIPT_TYPES, extensionOf } from './receiptMeta.js';
+import { sniffMediaType } from './fileTypes.js';
+import { presentFiles, releaseFiles } from './fileStore.js';
 import {
   attachReceipt,
   detachReceipt,
@@ -38,25 +40,18 @@ export const MAX_RECEIPTS = 20_000;
  * JPEG, PNG, WebP, HEIC photos and PDFs only.
  */
 export function sniffReceiptType(bytes: Buffer): string | null {
-  const at = (offset: number, text: string) =>
-    bytes.subarray(offset, offset + text.length).toString('latin1') === text;
-  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)
-    return 'image/jpeg';
-  if (at(0, '\x89PNG\r\n\x1a\n')) return 'image/png';
-  if (at(0, 'RIFF') && at(8, 'WEBP')) return 'image/webp';
-  if (at(0, '%PDF-')) return 'application/pdf';
-  if (at(4, 'ftyp') && ['heic', 'heix', 'mif1', 'msf1'].some((b) => at(8, b))) return 'image/heic';
-  return null;
+  const type = sniffMediaType(bytes);
+  return type && RECEIPT_TYPES.includes(type) ? type : null;
 }
 
 /** A file name safe to store and to offer back in a download */
-function cleanName(name: string | undefined, mimeType: string) {
+export function cleanName(name: string | undefined, mimeType: string, fallback = 'receipt') {
   const base = (name ?? '')
     .replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 120);
-  return base || `receipt.${extensionOf(mimeType)}`;
+  return base || `${fallback}.${extensionOf(mimeType)}`;
 }
 
 const now = () => new Date().toISOString();
@@ -98,11 +93,15 @@ export function addReceipt(input: {
 
   const fileId = createHash('sha256').update(input.bytes).digest('hex');
   const stamp = now();
+  const id = nanoid();
+  const fileName = cleanName(input.fileName, mimeType);
   const row = {
-    id: nanoid(),
+    id,
     transactionId: input.transactionId ?? null,
     fileId,
-    fileName: cleanName(input.fileName, mimeType),
+    // Every receipt is also a document in Files, with the same id
+    documentId: id,
+    fileName,
     mimeType,
     size: input.bytes.length,
     merchant: null,
@@ -127,6 +126,17 @@ export function addReceipt(input: {
       })
       .onConflictDoNothing()
       .run();
+    tx.insert(documents)
+      .values({
+        id,
+        fileId,
+        fileName,
+        mimeType,
+        size: input.bytes.length,
+        createdAt: stamp,
+        updatedAt: stamp,
+      })
+      .run();
     tx.insert(receipts).values(row).run();
   });
   // Added to a transaction: attached the same way as any match (its tag; no details yet)
@@ -136,14 +146,7 @@ export function addReceipt(input: {
 
 /** A receipt with whether its file is on this installation (a backup carries no files) */
 function withFile<T extends { fileId: string }>(row: T) {
-  return {
-    ...row,
-    hasFile: !!db
-      .select({ id: receiptFiles.id })
-      .from(receiptFiles)
-      .where(eq(receiptFiles.id, row.fileId))
-      .get(),
-  };
+  return { ...row, hasFile: presentFiles([row.fileId]).has(row.fileId) };
 }
 
 export function listReceipts(
@@ -176,16 +179,7 @@ export function listReceipts(
           .map((t) => [t.id, t])
       : [],
   );
-  const present = new Set(
-    rows.length
-      ? db
-          .select({ id: receiptFiles.id })
-          .from(receiptFiles)
-          .where(inArray(receiptFiles.id, [...new Set(rows.map((r) => r.fileId))]))
-          .all()
-          .map((f) => f.id)
-      : [],
-  );
+  const present = presentFiles(rows.map((r) => r.fileId));
   return rows.map((r) => ({
     ...r,
     hasFile: present.has(r.fileId),
@@ -293,18 +287,51 @@ export function createTransactionFromReceipt(
   return { ...getReceipt(id), outcome };
 }
 
-/** Delete a receipt, and its file once no receipt uses it */
+/** Delete a receipt and its document in Files, and its file once nothing uses it */
 export function deleteReceipt(id: string) {
   const row = receiptRow(id);
   db.transaction((tx) => {
     tx.delete(receipts).where(eq(receipts.id, id)).run();
-    const still = tx
-      .select({ id: receipts.id })
-      .from(receipts)
-      .where(eq(receipts.fileId, row.fileId))
-      .get();
-    if (!still) tx.delete(receiptFiles).where(eq(receiptFiles.id, row.fileId)).run();
+    if (row.documentId) tx.delete(documents).where(eq(documents.id, row.documentId)).run();
   });
+  releaseFiles([row.fileId]);
+}
+
+/**
+ * Make a document in Files a receipt (a photo or PDF), so it can be read, matched and split.
+ * When the document is linked to exactly one transaction without a receipt, the receipt is
+ * attached to it (and that link becomes the receipt's match).
+ */
+export function receiptForDocument(documentId: string, transactionId: string | null) {
+  const doc = db.select().from(documents).where(eq(documents.id, documentId)).get();
+  if (!doc) throw new ReceiptError('File not found', 404);
+  if (!RECEIPT_TYPES.includes(doc.mimeType))
+    throw new ReceiptError('Only a photo (JPEG, PNG, WebP, HEIC) or a PDF can be a receipt');
+  if (
+    db.select({ id: receipts.id }).from(receipts).where(eq(receipts.documentId, documentId)).get()
+  )
+    throw new ReceiptError('This file is a receipt already', 409);
+  if (transactionId) assertTransaction(transactionId);
+  const stamp = now();
+  const id = nanoid();
+  db.insert(receipts)
+    .values({
+      id,
+      transactionId: null,
+      fileId: doc.fileId,
+      documentId,
+      fileName: doc.fileName,
+      mimeType: doc.mimeType,
+      size: doc.size,
+      receiptDate: doc.documentDate,
+      matchedBy: null,
+      notes: doc.description,
+      createdAt: stamp,
+      updatedAt: stamp,
+    })
+    .run();
+  const outcome = transactionId ? attachReceipt(id, transactionId, 'manual') : null;
+  return { ...getReceipt(id), outcome };
 }
 
 export function receiptFile(id: string) {

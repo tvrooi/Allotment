@@ -77,3 +77,86 @@ export function zip(files: { name: string; data: Uint8Array }[], when = new Date
     throw new RangeError('Too much for one archive');
   return Buffer.concat([...locals, directory, end]);
 }
+
+/**
+ * The same archive written as it is made, for archives too large to hold in memory (every file
+ * in Files): entries go out one by one, and the directory at the end. Files on disk are read
+ * twice (once for the CRC, once to send), so nothing large is ever held in memory.
+ */
+export class ZipWriter {
+  private centrals: Buffer[] = [];
+  private offset = 0;
+  private count = 0;
+  private readonly time: number;
+  private readonly day: number;
+
+  constructor(
+    private readonly write: (chunk: Buffer) => Promise<void>,
+    when = new Date(),
+  ) {
+    ({ time: this.time, day: this.day } = dosTime(when));
+  }
+
+  private headers(name: Buffer, crc: number, size: number) {
+    if (this.offset + 30 + name.length + size > 0xffffffff || this.count >= 0xffff)
+      throw new RangeError('Too much for one archive');
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(0x0800, 6);
+    local.writeUInt16LE(0, 8);
+    local.writeUInt16LE(this.time, 10);
+    local.writeUInt16LE(this.day, 12);
+    local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(size, 18);
+    local.writeUInt32LE(size, 22);
+    local.writeUInt16LE(name.length, 26);
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(20, 4);
+    central.writeUInt16LE(20, 6);
+    central.writeUInt16LE(0x0800, 8);
+    central.writeUInt16LE(this.time, 12);
+    central.writeUInt16LE(this.day, 14);
+    central.writeUInt32LE(crc, 16);
+    central.writeUInt32LE(size, 20);
+    central.writeUInt32LE(size, 24);
+    central.writeUInt16LE(name.length, 28);
+    central.writeUInt32LE(this.offset, 42);
+    this.centrals.push(central, name);
+    this.offset += 30 + name.length + size;
+    this.count++;
+    return Buffer.concat([local, name]);
+  }
+
+  async add(fileName: string, data: Uint8Array) {
+    const name = Buffer.from(fileName, 'utf8');
+    await this.write(this.headers(name, crc32(data), data.length));
+    await this.write(Buffer.from(data));
+  }
+
+  async addFile(fileName: string, path: string) {
+    const { createReadStream } = await import('node:fs');
+    let crc = 0xffffffff;
+    let size = 0;
+    for await (const chunk of createReadStream(path) as AsyncIterable<Buffer>) {
+      for (let i = 0; i < chunk.length; i++) crc = CRC_TABLE[(crc ^ chunk[i]) & 0xff] ^ (crc >>> 8);
+      size += chunk.length;
+    }
+    const name = Buffer.from(fileName, 'utf8');
+    await this.write(this.headers(name, (crc ^ 0xffffffff) >>> 0, size));
+    for await (const chunk of createReadStream(path) as AsyncIterable<Buffer>)
+      await this.write(chunk);
+  }
+
+  async finish() {
+    const directory = Buffer.concat(this.centrals);
+    const end = Buffer.alloc(22);
+    end.writeUInt32LE(0x06054b50, 0);
+    end.writeUInt16LE(this.count, 8);
+    end.writeUInt16LE(this.count, 10);
+    end.writeUInt32LE(directory.length, 12);
+    end.writeUInt32LE(this.offset, 16);
+    await this.write(Buffer.concat([directory, end]));
+  }
+}

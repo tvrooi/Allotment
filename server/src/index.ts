@@ -45,6 +45,7 @@ import { forecastRouter } from './routes/forecast.js';
 import { reviewRouter } from './routes/review.js';
 import { investmentsRouter } from './routes/investments.js';
 import { receiptsRouter } from './routes/receipts.js';
+import { filesRouter } from './routes/files.js';
 import { taxRouter } from './routes/tax.js';
 import { prioritiesRouter } from './routes/priorities.js';
 import { guidesRouter } from './routes/guides.js';
@@ -59,6 +60,8 @@ import { DEFAULT_RATES_URL, fetchRates, fetchRatesIfDue } from './services/rateF
 import { assertSafeUrl } from './services/safeFetch.js';
 import { fillMissingMainAmounts } from './services/mainAmountService.js';
 import { resumePendingReads } from './services/receiptReader.js';
+import { ensureReceiptDocuments } from './services/documentRecords.js';
+import { indexPendingText } from './services/fileText.js';
 import { syncAllItems } from './services/plaidSyncService.js';
 import { encryptStoredCredentials } from './services/credentialEncryption.js';
 import { seedDefaultCategories } from './db/defaultCategories.js';
@@ -136,6 +139,7 @@ app.use('/api/forecast', forecastRouter);
 app.use('/api/review', reviewRouter);
 app.use('/api/investments', investmentsRouter);
 app.use('/api/receipts', receiptsRouter);
+app.use('/api/files', filesRouter);
 app.use('/api/tax', taxRouter);
 app.use('/api/priorities', prioritiesRouter);
 app.use('/api/guides', guidesRouter);
@@ -242,6 +246,14 @@ function runStartupTasks() {
   runStartupTask('Receipt reading', () => {
     const waiting = resumePendingReads();
     if (waiting > 0) console.log(`Resumed reading ${waiting} receipt(s)`);
+  });
+
+  // Files: every receipt is a document, and documents' text is found for search
+  runStartupTask('Files', () => {
+    const added = ensureReceiptDocuments();
+    if (added > 0) console.log(`Added ${added} receipt(s) to Files`);
+    const waiting = indexPendingText();
+    if (waiting > 0) console.log(`Finding the text of ${waiting} file(s)`);
   });
 
   // Transactions in another currency still waiting for a rate, or saved by an older version

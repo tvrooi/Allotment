@@ -346,7 +346,7 @@ export function taxYears(today: string) {
     .map((fy) => ({ financialYear: fy, name: financialYearName(fy) }));
 }
 
-const csvCell = (v: string | number | null | undefined) => {
+export const csvCell = (v: string | number | null | undefined) => {
   const s = v === null || v === undefined ? '' : String(v);
   // A leading = + - @ would run as a formula in a spreadsheet
   // Only a whole number (an amount) may start with a minus sign as it is
