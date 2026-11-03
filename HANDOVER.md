@@ -146,6 +146,9 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
 - After a squash merge, start new work from a fresh branch off `origin/main`.
 - **CI passed** reports _failure_ when a newer push cancels a run. Check the jobs: a `cancelled` e2e
   job on a superseded commit is not a real failure.
+- CI's e2e runs as four shards, `e2e (1/4)` … `e2e (4/4)`, split by file. Reproduce a failure
+  locally with `npm test -- --shard=N/4` in `e2e/`. Artifacts are `playwright-report-N` and
+  `phone-screenshots-N`. Branch protection requires only **CI passed**, which covers all shards.
 - Backups: a new table needs `BACKUP_VERSION` bumped and the table added to `backupService.ts`
   (`TABLES` and the imports), and every test asserting the version updated, including
   `e2e/tests/data.spec.ts` and `e2e/tests/demo/category-goals.spec.ts`. New columns on existing
