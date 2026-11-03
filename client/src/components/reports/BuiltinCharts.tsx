@@ -158,7 +158,7 @@ export function NetWorthChart({
           )}
         </div>
       )}
-      <div className="flex items-center gap-3 flex-wrap px-1 pb-1 text-[11px] text-text-secondary">
+      <div className="flex items-center gap-3 flex-wrap px-1 pb-1 text-2xs text-text-secondary">
         <LegendKey color={chartColors.brand} label="Net worth" line />
         <LegendKey color={chartColors.positiveLight} label="Assets" line />
         {showDebt && <LegendKey color={chartColors.negativeLight} label="Liabilities" />}
@@ -511,7 +511,7 @@ export function SpendingTrendsChart({
       ) : (
         <div className="h-full flex flex-col">
           {(caption || daily) && (
-            <p className="text-[11px] text-text-tertiary px-1 pb-1 shrink-0">
+            <p className="text-2xs text-text-tertiary px-1 pb-1 shrink-0">
               {caption
                 ? `${caption}${daily ? ' · running total' : ''}`
                 : 'Running total this month'}

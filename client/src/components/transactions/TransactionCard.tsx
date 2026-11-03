@@ -76,11 +76,11 @@ export function TransactionCard({
       <PayeeIcon name={payeeName} logo={payee?.logo} transfer={isTransfer} />
       <span className="flex-1 min-w-0 grid gap-0.5">
         <span className="flex items-baseline gap-2">
-          <span className="flex-1 min-w-0 truncate text-[15px] font-medium text-text">
+          <span className="flex-1 min-w-0 truncate text-row font-medium text-text">
             {payeeName}
           </span>
           <span
-            className={`shrink-0 text-[15px] font-medium tabular-nums ${tx.amount > 0 ? 'text-positive' : 'text-text'}`}
+            className={`shrink-0 text-row font-medium tabular-nums ${tx.amount > 0 ? 'text-positive' : 'text-text'}`}
           >
             {tx.amount > 0 ? '+' : ''}
             {formatMoney(Math.abs(tx.amount), currencyOf(tx.accountId))}
@@ -88,8 +88,9 @@ export function TransactionCard({
         </span>
         <ForeignValue tx={tx} className="justify-self-end" />
         <span className="flex items-center gap-1.5 text-xs text-text-tertiary min-w-0">
-          <span className="truncate">{category}</span>
-          {accountName && <span className="truncate">· {accountName}</span>}
+          <span className="min-w-0 truncate">{category}</span>
+          {/* A long account name gives way first, so the category stays readable */}
+          {accountName && <span className="min-w-0 truncate shrink-[4]">· {accountName}</span>}
           {tx.reconciled ? (
             <Lock size={11} className="shrink-0 text-text-disabled" aria-label="Reconciled" />
           ) : null}

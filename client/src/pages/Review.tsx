@@ -554,7 +554,7 @@ export default function ReviewPage() {
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 max-md:px-4 py-4 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-3">
         <div data-guide="review.header">
-          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+          <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
             Review
           </h1>
           <p className="text-xs text-text-tertiary">

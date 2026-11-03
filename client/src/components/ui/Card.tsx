@@ -6,7 +6,7 @@ interface Props {
   className?: string;
 }
 
-const paddings = { none: '', sm: 'p-4', md: 'p-6 max-md:p-4', lg: 'p-7 max-md:p-5' };
+const paddings = { none: '', sm: 'p-4', md: 'p-6 max-md:p-4', lg: 'p-6 max-md:p-4' };
 
 const accents: Record<string, string> = {
   positive: 'border-l-[3px] border-l-positive',

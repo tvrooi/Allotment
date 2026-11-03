@@ -44,10 +44,10 @@ function SetupOption({ icon, title, tag, time, description, action, onClick }: O
       </span>
       <span className="text-sm font-semibold text-text">{title}</span>
       <span className="flex flex-wrap items-center gap-1.5 mt-1.5">
-        <span className="bg-surface-alt text-text-secondary text-[11px] font-medium px-2 py-0.5 rounded-md">
+        <span className="bg-surface-alt text-text-secondary text-2xs font-medium px-2 py-0.5 rounded-md">
           {tag}
         </span>
-        <span className="inline-flex items-center gap-1 bg-surface-alt text-text-secondary text-[11px] font-medium px-2 py-0.5 rounded-md">
+        <span className="inline-flex items-center gap-1 bg-surface-alt text-text-secondary text-2xs font-medium px-2 py-0.5 rounded-md">
           <Clock size={11} aria-hidden />
           <span className="sr-only">Setup time:</span> {time}
         </span>

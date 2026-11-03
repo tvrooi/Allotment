@@ -20,7 +20,7 @@ const TAG_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4', '#a85
 export function TagChip({ tag, onRemove }: { tag: Tag; onRemove?: () => void }) {
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium text-white max-w-40"
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-medium text-white max-w-40"
       style={{ backgroundColor: tag.color }}
     >
       <span className="truncate">{tag.name}</span>
@@ -78,9 +78,7 @@ export function RowMarks({ tx }: { tx: Transaction }) {
       {shown.slice(0, 2).map((t) => (
         <TagChip key={t.id} tag={t} />
       ))}
-      {shown.length > 2 && (
-        <span className="text-[11px] text-text-tertiary">+{shown.length - 2}</span>
-      )}
+      {shown.length > 2 && <span className="text-2xs text-text-tertiary">+{shown.length - 2}</span>}
       {tx.hiddenFromReports ? (
         <EyeOff size={12} className="text-caution" aria-label="Hidden from reports" role="img">
           <title>Hidden from reports</title>

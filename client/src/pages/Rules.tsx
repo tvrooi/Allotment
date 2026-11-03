@@ -126,14 +126,12 @@ function RuleRow({
           </p>
         )}
         <div className="min-w-0">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary mb-1">
-            If
-          </p>
+          <p className="text-2xs font-medium uppercase tracking-wide text-text-tertiary mb-1">If</p>
           {rule.conditions.length ? (
             <div className="flex flex-wrap items-center gap-1">
               {rule.conditions.map((c, i) => (
                 <span key={i} className="contents">
-                  {i > 0 && <span className="text-[11px] text-text-tertiary">{joiner}</span>}
+                  {i > 0 && <span className="text-2xs text-text-tertiary">{joiner}</span>}
                   <span className="px-2 py-0.5 rounded-md bg-surface-alt text-xs text-text break-words">
                     {conditionText(c, lookups)}
                   </span>
@@ -145,7 +143,7 @@ function RuleRow({
           )}
         </div>
         <div className="min-w-0">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary mb-1">
+          <p className="text-2xs font-medium uppercase tracking-wide text-text-tertiary mb-1">
             Then
           </p>
           <div className="flex flex-wrap gap-1">
@@ -268,7 +266,7 @@ export default function RulesPage() {
       <div className="px-6 py-4 border-b border-border shrink-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div data-guide="rules.header">
-            <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+            <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
               Rules
             </h1>
             <p className="text-xs text-text-tertiary mt-0.5">

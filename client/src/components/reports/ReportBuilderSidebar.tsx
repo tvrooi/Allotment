@@ -160,7 +160,7 @@ export default function ReportBuilderSidebar({ config, onChange }: Props) {
             defaultOpen={justChoseCustom}
           />
         )}
-        <p className="text-[11px] text-text-tertiary mt-1.5">
+        <p className="text-2xs text-text-tertiary mt-1.5">
           {config.dateRange.preset === 'custom'
             ? 'Frozen: these dates stay fixed.'
             : 'Live: moves forward with the current month.'}

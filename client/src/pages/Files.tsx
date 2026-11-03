@@ -221,7 +221,7 @@ export default function FilesPage() {
           <a
             href={filesExportUrl()}
             download
-            className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-xs font-medium text-text-secondary hover:bg-surface-alt"
+            className="inline-flex h-8 max-md:min-h-11 items-center gap-1.5 rounded-full border border-border px-3 text-xs max-md:text-sm font-medium text-text-secondary hover:bg-surface-alt"
           >
             <Download size={13} /> Download all
           </a>
@@ -250,9 +250,7 @@ export default function FilesPage() {
             </nav>
             {tags.length > 0 && (
               <div className="space-y-1">
-                <p className="px-2.5 text-[11px] uppercase tracking-wide text-text-tertiary">
-                  Labels
-                </p>
+                <p className="px-2.5 text-2xs uppercase tracking-wide text-text-tertiary">Labels</p>
                 <div className="space-y-0.5 max-md:flex max-md:flex-wrap max-md:gap-1 max-md:space-y-0">
                   {tags.map((t) => (
                     <button
@@ -282,7 +280,7 @@ export default function FilesPage() {
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
                 />
                 <Input
-                  className="pl-8"
+                  className="w-full pl-8"
                   placeholder="Search names, descriptions, labels and what files say"
                   aria-label="Search files"
                   value={search}

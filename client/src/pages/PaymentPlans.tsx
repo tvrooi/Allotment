@@ -55,7 +55,7 @@ export default function PaymentPlansPage() {
       <div className="px-6 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-x-4">
         <h1
           data-guide="plans.header"
-          className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text py-4"
+          className="font-display text-title max-md:text-2xl tracking-tight text-text py-4"
         >
           Pay later
         </h1>

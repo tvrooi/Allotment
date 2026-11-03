@@ -47,7 +47,7 @@ export default function BudgetProgress({ currentMonth }: Props) {
   if (isLoading) {
     return (
       <Card>
-        <div className="h-5 w-40 bg-surface-alt rounded animate-pulse mb-6" />
+        <div className="h-5 w-40 bg-surface-alt rounded animate-pulse mb-4" />
         <div className="space-y-6">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i}>
@@ -66,9 +66,9 @@ export default function BudgetProgress({ currentMonth }: Props) {
 
   return (
     <Card>
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <h3 className="text-base font-bold text-text">Budget</h3>
+          <h3 className="text-sm font-semibold text-text">Budget</h3>
           <Link to="/budget" className="text-sm text-text-tertiary hover:text-text-secondary">
             {monthLabel}
           </Link>

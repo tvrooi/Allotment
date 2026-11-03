@@ -55,7 +55,7 @@ export default function AccountTransactionsPage() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2.5 min-w-0">
             <AccountIcon name={account.name} type={account.type} logo={account.logo} size="md" />
-            <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+            <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
               {account.name}
             </h1>
             <Badge variant={account.type} />

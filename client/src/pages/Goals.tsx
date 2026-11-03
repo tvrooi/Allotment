@@ -107,7 +107,7 @@ function GoalRow({
           <span className="text-sm font-medium text-text truncate flex items-center gap-2">
             {goal.name}
             {goal.status !== 'active' && (
-              <span className="text-[11px] font-medium rounded px-1.5 py-0.5 bg-surface-alt text-text-secondary">
+              <span className="text-2xs font-medium rounded px-1.5 py-0.5 bg-surface-alt text-text-secondary">
                 {STATUS_LABEL[goal.status]}
               </span>
             )}
@@ -339,9 +339,7 @@ export default function GoalsPage() {
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 py-4 border-b border-border shrink-0 flex items-center justify-between">
-        <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
-          Goals
-        </h1>
+        <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">Goals</h1>
         <Button size="sm" onClick={() => setAddOpen(true)} data-guide="goals.add">
           <Plus size={14} /> Add Goal
         </Button>

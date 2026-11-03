@@ -58,9 +58,9 @@ export default function AnnualBudget() {
 
   return (
     <div className="flex flex-col h-full bg-surface">
-      <div className="px-6 py-4 border-b border-border shrink-0">
+      <div className="px-6 max-md:px-4 py-4 border-b border-border shrink-0">
         <div className="flex flex-wrap gap-3 items-center justify-between">
-          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+          <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
             {year} budget
           </h1>
           <div className="flex items-center gap-2">

@@ -14,18 +14,22 @@ interface Props extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 // "not yet". Outlined and ghost buttons just fade.
 const filledDisabled =
   'disabled:bg-surface-alt disabled:text-text-tertiary disabled:shadow-none disabled:ring-1 disabled:ring-inset disabled:ring-border';
+// Every variant has a 1px border (transparent unless outlined), so a primary button and a
+// secondary one beside it are the same height
 const variants = {
-  primary: `bg-brand-600 text-brand-contrast hover:bg-brand-700 shadow-xs ${filledDisabled}`,
+  primary: `border border-transparent bg-brand-600 text-brand-contrast hover:bg-brand-700 shadow-xs ${filledDisabled}`,
   secondary:
-    'bg-surface text-text-secondary border border-border hover:bg-surface-alt disabled:opacity-50',
-  ghost: 'text-text-secondary hover:bg-surface-alt hover:text-text disabled:opacity-50',
-  danger: `bg-negative text-semantic-contrast hover:opacity-90 ${filledDisabled}`,
+    'border border-border bg-surface text-text-secondary hover:bg-surface-alt disabled:opacity-50',
+  ghost:
+    'border border-transparent text-text-secondary hover:bg-surface-alt hover:text-text disabled:opacity-50',
+  danger: `border border-transparent bg-negative text-semantic-contrast hover:opacity-90 ${filledDisabled}`,
 };
 
-// Phones: at least 44px tall, the recommended minimum for a touch target
+// Fixed heights on the 4px grid: md matches an Input (40px). Phones: at least 44px tall, the
+// recommended minimum for a touch target.
 const sizes = {
-  sm: 'px-3.5 py-2 text-xs max-md:min-h-11 max-md:text-sm',
-  md: 'px-4 py-2.5 text-sm max-md:min-h-11',
+  sm: 'h-8 px-3 text-xs max-md:min-h-11 max-md:text-sm',
+  md: 'h-10 px-4 text-sm max-md:min-h-11',
 };
 
 const buttonClass = (variant: Variant, size: Size, className: string) =>
