@@ -38,6 +38,7 @@ const { accessTokensRouter } = await import('./accessTokens.js');
 const { receiptsRouter } = await import('./receipts.js');
 const { filesRouter } = await import('./files.js');
 const { categoriesRouter } = await import('./categories.js');
+const { transactionsRouter } = await import('./transactions.js');
 const { sniffFileType } = await import('../services/fileTypes.js');
 const { extractText, indexText } = await import('../services/fileText.js');
 const { createBackup, parseBackup, restoreBackup } = await import('../services/backupService.js');
@@ -61,6 +62,7 @@ beforeAll(async () => {
   app.use('/api/receipts', receiptsRouter);
   app.use('/api/files', filesRouter);
   app.use('/api/categories', categoriesRouter);
+  app.use('/api/transactions', transactionsRouter);
   app.use(errorHandler);
   server = await new Promise<Server>((r) => {
     const s = app.listen(0, '127.0.0.1', () => r(s));
@@ -328,6 +330,15 @@ describe('the library', () => {
       'goal',
     ]);
     expect((await call('GET', '/files?linked=0')).body.total).toBe(0);
+  });
+
+  it('filters the register to transactions with receipts or files, or without', async () => {
+    await upload('policy.pdf', pdf(), '&linkKind=transaction&linkId=insurance');
+    await call('POST', '/receipts?transactionId=fridge&fileName=r.png', { raw: png('r') });
+    const ids = async (q: string) =>
+      (await call('GET', `/transactions?${q}`)).body.map((t: { id: string }) => t.id).sort();
+    expect(await ids('has_files=1')).toEqual(['fridge', 'insurance']);
+    expect(await ids('has_files=0')).toEqual(['refund']);
   });
 
   it('moves a merged category’s files to the category it joins', async () => {

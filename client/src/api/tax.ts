@@ -109,6 +109,8 @@ export interface TaxYearClaim extends TaxClaim {
   cost: number;
   claim: number;
   receipts: { id: string; fileName: string }[];
+  /** Other files in Files linked to the transaction: evidence too */
+  files: { id: string; fileName: string }[];
   overImmediateLimit: boolean;
 }
 

@@ -44,11 +44,12 @@ export function RowMarks({ tx }: { tx: Transaction }) {
     .map((id) => tags.find((t) => t.id === id))
     .filter((t): t is Tag => Boolean(t));
   const hasReceipt = marks.receipts.has(tx.id);
+  const hasFiles = hasReceipt || marks.files.has(tx.id);
   // A split's claims are on its parts
   const claimed = [tx.id, ...(tx.children ?? []).map((c) => c.id)].some((id) =>
     marks.claims.has(id),
   );
-  if (!shown.length && !tx.hiddenFromReports && !tx.reviewedAt && !hasReceipt && !claimed)
+  if (!shown.length && !tx.hiddenFromReports && !tx.reviewedAt && !hasFiles && !claimed)
     return null;
   return (
     <span className="inline-flex items-center gap-1 shrink-0">
@@ -63,9 +64,14 @@ export function RowMarks({ tx }: { tx: Transaction }) {
           <title>Hidden from reports</title>
         </EyeOff>
       ) : null}
-      {hasReceipt && (
-        <Paperclip size={12} className="text-text-tertiary" aria-label="Has a receipt" role="img">
-          <title>Has a receipt</title>
+      {hasFiles && (
+        <Paperclip
+          size={12}
+          className="text-text-tertiary"
+          aria-label={hasReceipt ? 'Has a receipt' : 'Has files'}
+          role="img"
+        >
+          <title>{hasReceipt ? 'Has a receipt' : 'Has files'}</title>
         </Paperclip>
       )}
       {claimed && (

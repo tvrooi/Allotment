@@ -29,6 +29,7 @@ import { GoalLink } from '../goals/GoalLink';
 import { TransactionMarks } from './TransactionMarks';
 import { ReceiptsSection } from '../tax/ReceiptsSection';
 import { TaxClaimSection } from '../tax/TaxClaimSection';
+import { FilesSection } from '../files/FilesSection';
 import { SplitTransactionModal } from './SplitTransactionModal';
 import type {
   Transaction,
@@ -421,6 +422,9 @@ export function TransactionDetailPanel({
         </div>
 
         {!tx.parentTransactionId && <ReceiptsSection transactionId={tx.id} />}
+        {!tx.parentTransactionId && (
+          <FilesSection kind="transaction" targetId={tx.id} title="Other files" hideReceipts />
+        )}
         {!tx.isAdjustment && <TaxClaimSection tx={tx} currency={currency} />}
 
         {linkedSchedule && (

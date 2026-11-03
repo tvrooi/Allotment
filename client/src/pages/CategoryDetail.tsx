@@ -24,6 +24,7 @@ import type { Transaction } from '../types';
 import { useXAxisLayout } from '../hooks/useXAxisLayout';
 import { formatDay } from '../utils/dates';
 import { TargetCard } from '../components/budget/TargetCard';
+import { FilesSection } from '../components/files/FilesSection';
 
 function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
@@ -343,8 +344,13 @@ export default function CategoryDetailPage() {
               />
             )}
           </div>
-          <div>
+          <div className="space-y-4">
             <SummaryWidget transactions={transactions} categoryId={id ?? ''} isIncome={isIncome} />
+            {id && (
+              <div className="bg-surface rounded-lg shadow-card border border-border-light p-4">
+                <FilesSection kind="category" targetId={id} />
+              </div>
+            )}
           </div>
         </div>
       </div>

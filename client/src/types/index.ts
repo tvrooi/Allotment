@@ -334,6 +334,8 @@ export interface TransactionQueryParams {
   /** Phase 9: register-row state; a split's parts share it */
   reviewed?: 0 | 1;
   hidden?: 0 | 1;
+  /** Has a receipt or any file in Files */
+  hasFiles?: 0 | 1;
   /** Any of these tags */
   tagIds?: string[];
   limit?: number;
