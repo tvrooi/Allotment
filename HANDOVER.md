@@ -134,6 +134,10 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
    by route. The in-browser demo budget (`server/src/demo/demoBudget.ts`) has assigned more than
    it has received early in a month (Ready to assign −$925.85 on 1 November), so a visitor then
    sees "Assigned more than you have".
+7. **Depreciating assets on Tax time (planned, not built):** owner request of 3 November.
+   [docs/DEPRECIATING-ASSETS-PLAN.md](docs/DEPRECIATING-ASSETS-PLAN.md) has the ATO rules
+   (prime cost and diminishing value), the design, four phases and five owner decisions (§7).
+   Waiting for those decisions before phase 1.
 
 ## Gotchas learned the hard way
 
