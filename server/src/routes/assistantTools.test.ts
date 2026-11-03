@@ -768,6 +768,167 @@ describe('household tools', () => {
   });
 });
 
+describe('past household expenses and repayments (temporary)', () => {
+  // Two people sharing costs, each paying directly; no household account
+  const P = (id: string, accountId: string, date: string, amount: number, extra = {}) =>
+    db
+      .insert(transactions)
+      .values({ id, accountId, date, amount, ...extra })
+      .run();
+  const D = '2026-02-10';
+  beforeAll(() => {
+    db.insert(householdGroups).values({ id: 'pair', name: 'Pair', currency: 'AUD' }).run();
+    db.insert(householdPeople).values({ id: 'p-me', groupId: 'pair', name: 'Me', isSelf: 1 }).run();
+    db.insert(householdPeople).values({ id: 'p-ed', groupId: 'pair', name: 'Ed', isSelf: 0 }).run();
+    P('h-dinner', 'spend', D, -3000, { payeeName: 'Mock Diner' });
+    P('h-repay', 'spend', '2026-02-12', -1000, { payeeName: 'Ed Mock' });
+    P('h-other', 'spend', D, -2000, { payeeName: 'Mock Shop' });
+    P('h-in', 'spend', D, 2000, { payeeName: 'Ed Mock' });
+    P('h-xfer', 'spend', D, -2000, { transferTransactionId: 'h-xfer-in' });
+    P('h-xfer-in', 'saver', D, 2000, { transferTransactionId: 'h-xfer' });
+    P('h-pool', 'joint', D, -2000, { payeeName: 'Mock Shop' });
+  });
+  const expense = (extra: Record<string, unknown> = {}) => ({
+    kind: 'expense',
+    date: D,
+    description: 'Groceries',
+    amount: 2000,
+    payerId: 'p-me',
+    mode: 'exact',
+    shares: [
+      { personId: 'p-me', value: 1200 },
+      { personId: 'p-ed', value: 800 },
+    ],
+    ...extra,
+  });
+  const post = (token: string, body: unknown) =>
+    call('POST', '/households/pair/events', { token }, body);
+
+  it('is not offered to read or categorise tokens', async () => {
+    for (const scope of ['read', 'categorise'] as const) {
+      const token = await newToken(scope);
+      expect(await toolNames(token)).not.toContain('record_household_entries');
+      expect((await post(token, expense())).status).toBe(403);
+    }
+    expect(await toolNames(await newToken('organise'))).toContain('record_household_entries');
+  });
+
+  it('refuses anything but a past expense in exact shares or a repayment between its people', async () => {
+    const token = await newToken('organise');
+    const repay = { kind: 'settlement', date: D, description: 'x', amount: 500 };
+    for (const body of [
+      expense({ date: '2099-01-01' }), // not past
+      expense({ payerId: null }), // the household account
+      expense({ payerId: 'ana' }), // someone from another household
+      expense({ mode: 'equal' }),
+      expense({ shares: [{ personId: 'p-me', value: 1999 }] }), // shares don't add up
+      expense({
+        shares: [
+          { personId: 'p-me', value: 1000 },
+          { personId: 'ana', value: 1000 },
+        ],
+      }),
+      expense({ billId: 'b' }),
+      expense({ kind: 'refund', reversesId: 'x' }),
+      expense({ kind: 'contribution' }),
+      { ...repay, payerId: 'p-me', recipientId: 'p-me' },
+      { ...repay, payerId: 'p-me', recipientId: 'ana' },
+      { ...repay, payerId: 'p-me' },
+      // Links: only your own unlinked payment out, same date and amount, for what you paid
+      expense({ payerId: 'p-ed', transactionId: 'h-other' }),
+      expense({ transactionId: 'h-dinner' }), // a different amount
+      expense({ transactionId: 'h-other', date: '2026-02-11' }), // a different date
+      expense({ transactionId: 'h-in' }), // money in
+      expense({ transactionId: 'h-xfer' }), // a move between your accounts
+      expense({ transactionId: 'h-pool' }), // a household account's payment
+      expense({ transactionId: 'missing' }),
+      { ...repay, amount: 2000, payerId: 'p-ed', recipientId: 'p-me', transactionId: 'h-in' },
+    ])
+      expect((await post(token, body)).status, JSON.stringify(body)).toBe(403);
+    expect((await call('GET', '/households/pair')).body.events).toEqual([]);
+  });
+
+  it('records entries in order and stops at the first one Allotment refuses', async () => {
+    const token = await newToken('organise');
+    const both = (me: number, ed: number) => [
+      { person_id: 'p-me', amount: me },
+      { person_id: 'p-ed', amount: ed },
+    ];
+    const entries = [
+      {
+        kind: 'expense',
+        date: D,
+        description: 'Dinner',
+        amount: 3000,
+        payer_id: 'p-me',
+        shares: both(1501, 1499),
+        transaction_id: 'h-dinner',
+      },
+      {
+        kind: 'expense',
+        date: '2026-02-11',
+        description: 'Groceries',
+        amount: 6000,
+        payer_id: 'p-ed',
+        shares: both(4000, 2000),
+      },
+      {
+        kind: 'repayment',
+        date: '2026-02-12',
+        description: 'Part repayment',
+        amount: 1000,
+        payer_id: 'p-me',
+        recipient_id: 'p-ed',
+        transaction_id: 'h-repay',
+      },
+      // Me now owes Ed $15.01: a $20 repayment is more than owed, and recordEvent refuses it
+      {
+        kind: 'repayment',
+        date: '2026-02-13',
+        description: 'Too much',
+        amount: 2000,
+        payer_id: 'p-me',
+        recipient_id: 'p-ed',
+      },
+      {
+        kind: 'expense',
+        date: '2026-02-14',
+        description: 'Never reached',
+        amount: 100,
+        payer_id: 'p-ed',
+        shares: both(50, 50),
+      },
+    ];
+    const { data } = await tool(token, 'record_household_entries', {
+      household_id: 'pair',
+      entries,
+    });
+    expect(data).toMatchObject({ recorded: 3, stoppedAt: 3, notRecorded: 2 });
+    expect(data.error).toMatch(/exceeds the outstanding balance/);
+    const state = (await call('GET', '/households/pair')).body;
+    expect(state.balances).toEqual({ 'p-me': -1501, 'p-ed': 1501 });
+    expect(state.events.map((e: { transactionId: string | null }) => e.transactionId)).toEqual([
+      'h-dinner',
+      null,
+      'h-repay',
+    ]);
+    expect(state.events[1].shares.map((s: { amount: number }) => s.amount).sort()).toEqual([
+      2000, 4000,
+    ]);
+    // recordEvent's own checks still apply: a payment links once
+    const again = await tool(token, 'record_household_entries', {
+      household_id: 'pair',
+      entries: [{ ...entries[0], description: 'Dinner again' }],
+    });
+    expect(again.data).toMatchObject({ recorded: 0, stoppedAt: 0 });
+    expect(again.data.error).toMatch(/already linked/);
+    // Never an edit or removal
+    expect(
+      (await call('DELETE', `/households/pair/events/${state.events[0].id}`, { token })).status,
+    ).toBe(403);
+  });
+});
+
 describe('tax claim candidates', () => {
   it('finds unclaimed repeats of claimed payees for organise tokens only', async () => {
     db.insert(payees).values({ id: 'softco', name: 'Mock Software Co' }).run();

@@ -431,6 +431,8 @@ const MAX_CLAIMS = 100;
 const labelHelp = TAX_LABEL_KEYS.map((k) => `${k} ${TAX_LABELS[k].name}`).join('; ');
 /** Most contributions one record_household_contributions call records */
 const MAX_CONTRIBUTIONS = 50;
+/** Most entries one record_household_entries call records (TEMPORARY tool) */
+const MAX_ENTRIES = 100;
 /** Most transactions categorise_by_payee or apply_rule changes in one call */
 const MAX_BULK = 1000;
 
@@ -1111,6 +1113,96 @@ const ACTION_TOOLS: ActionTool[] = [
       return { recorded: done, refused: results.length - done, results };
     },
   },
+  // TEMPORARY (owner-approved on 3 November 2026 for one Tricount history): householdEntryAllows
+  {
+    name: 'record_household_entries',
+    scope: 'organise',
+    description: `Records past expenses and repayments between a household's people, in the order given, and stops at the first one Allotment refuses (it reports that one and records nothing after it), so the user can decide. An expense is paid by one person, with each person's exact share in cents adding up to it; a repayment is from one person to another and must fit what is owed. Optionally link one of your own bank payments out, unlinked, with the same date and amount, for something you paid. Up to ${MAX_ENTRIES} per call. Never the household account, refunds, contributions, edits or removals (the owner removes an entry on the Household page). Confirm the list with the user first.`,
+    properties: {
+      household_id: { ...idString, description: 'From list_households' },
+      entries: {
+        type: 'array',
+        minItems: 1,
+        maxItems: MAX_ENTRIES,
+        items: {
+          type: 'object',
+          properties: {
+            kind: { type: 'string', enum: ['expense', 'repayment'] },
+            date: { ...day, description: 'When it happened (today or earlier)' },
+            description: { type: 'string', minLength: 1, maxLength: 200 },
+            amount: { type: 'integer', minimum: 1, description: 'Minor units (cents)' },
+            payer_id: { ...idString, description: 'Who paid, from household people' },
+            recipient_id: { ...idString, description: 'A repayment: who was repaid' },
+            shares: {
+              type: 'array',
+              description: 'An expense: each person’s exact share in cents, adding up to amount',
+              items: {
+                type: 'object',
+                properties: {
+                  person_id: idString,
+                  amount: { type: 'integer', minimum: 0 },
+                },
+                required: ['person_id', 'amount'],
+                additionalProperties: false,
+              },
+            },
+            transaction_id: { ...idString, description: 'Optional: your bank payment' },
+          },
+          required: ['kind', 'date', 'description', 'amount', 'payer_id'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['household_id', 'entries'],
+    run: async (ctx, a) => {
+      const rows = a.entries;
+      if (
+        !isId(a.household_id) ||
+        !Array.isArray(rows) ||
+        !rows.length ||
+        rows.length > MAX_ENTRIES
+      )
+        return { error: `Give a household id and 1 to ${MAX_ENTRIES} entries` };
+      const results = [];
+      for (const [index, row] of (rows as Args[]).entries()) {
+        const shares = Array.isArray(row?.shares) ? (row.shares as Args[]) : [];
+        const body =
+          row?.kind === 'repayment'
+            ? { kind: 'settlement', recipientId: row.recipient_id }
+            : {
+                kind: row?.kind,
+                mode: 'exact',
+                shares: shares.map((s) => ({ personId: s?.person_id, value: s?.amount })),
+              };
+        const r = await api(ctx, `/households/${seg(a.household_id)}/events`, 'POST', {
+          ...body,
+          date: row?.date,
+          description: typeof row?.description === 'string' ? row.description.trim() : undefined,
+          amount: row?.amount,
+          payerId: row?.payer_id,
+          ...(row?.transaction_id === undefined ? {} : { transactionId: row.transaction_id }),
+        });
+        if (r.ok) {
+          results.push({ index, ok: true });
+          continue;
+        }
+        return {
+          recorded: results.length,
+          stoppedAt: index,
+          error:
+            r.status === 403
+              ? 'Refused: only a past expense in exact shares, or a repayment, between this household’s people, linked only to your own unlinked payment out with the same date and amount'
+              : r.error,
+          notRecorded: rows.length - results.length,
+        };
+      }
+      const after = await api(ctx, `/households/${seg(a.household_id)}`);
+      return {
+        recorded: results.length,
+        balances: after.ok ? (after.data as { balances: unknown }).balances : undefined,
+      };
+    },
+  },
 ];
 
 const offered = (scope: TokenScope, tool: ActionTool) =>
@@ -1148,7 +1240,7 @@ const BASICS =
 const INSTRUCTIONS: Record<TokenScope, string> = {
   read: `Read-only access to an Allotment budget. ${BASICS}`,
   categorise: `Read access to an Allotment budget, plus setting the category of past transactions (categorise_transactions, categorise_by_payee) and creating and editing categories and groups; nothing else can change. ${BASICS} Start from uncategorised_payees. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before categorising.`,
-  organise: `Read access to an Allotment budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers, suggesting assignments the owner applies, claiming past transactions as tax deductions (tax_years, tax_deductions, tax_claim_candidates, claim_tax_deductions; never replacing or removing a claim), recording household contributions linked to deposits into a household account (household_bill_reconciliation, record_household_contributions), and your own unlinked contribution up to what you owe the household account (record_own_household_contribution). ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
+  organise: `Read access to an Allotment budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers, suggesting assignments the owner applies, claiming past transactions as tax deductions (tax_years, tax_deductions, tax_claim_candidates, claim_tax_deductions; never replacing or removing a claim), recording household contributions linked to deposits into a household account (household_bill_reconciliation, record_household_contributions), and your own unlinked contribution up to what you owe the household account (record_own_household_contribution), and, for now, past expenses in exact shares and repayments between a household's people (record_household_entries). ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
 };
 
 const schemaOf = (t: { properties?: Record<string, unknown>; required?: string[] }) => ({
