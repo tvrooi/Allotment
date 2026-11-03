@@ -12,6 +12,8 @@ interface Props {
   learnMore?: DocsPage;
   /** Smaller, for inside a dashboard card */
   compact?: boolean;
+  /** Keep the buttons even while the Get started checklist holds the next steps */
+  keepActions?: boolean;
   className?: string;
 }
 
@@ -26,11 +28,12 @@ export function EmptyState({
   actions,
   learnMore,
   compact = false,
+  keepActions = false,
   className = '',
 }: Props) {
   // On the dashboard of a new budget the Get started checklist holds the next steps
   const onboarding = useOnboardingActive();
-  const shownActions = onboarding ? undefined : actions;
+  const shownActions = onboarding && !keepActions ? undefined : actions;
   return (
     <div
       className={`flex flex-col items-center text-center ${compact ? 'py-6 px-2' : 'py-14 px-6'} ${className}`}

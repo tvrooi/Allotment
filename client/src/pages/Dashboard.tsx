@@ -100,6 +100,7 @@ export default function Dashboard() {
           <EmptyState
             compact
             icon={<LayoutGrid size={20} />}
+            keepActions
             title="All cards are hidden"
             description="Your home page is empty on this device. Nothing in your budget changed."
             actions={
