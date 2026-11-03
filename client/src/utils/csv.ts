@@ -402,6 +402,10 @@ const COLUMN_HINTS: Record<string, ColumnRole> = {
   credit: 'inflow',
   deposit: 'inflow',
   inflow: 'inflow',
+  // YNAB's register export. The combined column ("Group: Category") comes first in the file
+  'category group/category': 'category',
+  'category group': 'categoryGroup',
+  category: 'category',
   memo: 'notes',
   notes: 'notes',
   note: 'notes',
@@ -448,7 +452,16 @@ const COLUMN_HINTS: Record<string, ColumnRole> = {
 };
 
 export type ColumnRole =
-  'date' | 'payee' | 'amount' | 'inflow' | 'outflow' | 'direction' | 'notes' | 'skip';
+  | 'date'
+  | 'payee'
+  | 'amount'
+  | 'inflow'
+  | 'outflow'
+  | 'direction'
+  | 'notes'
+  | 'category'
+  | 'categoryGroup'
+  | 'skip';
 
 // What banks write in a direction column, lowercased and without dots
 const MONEY_OUT = new Set(['af', 'debit', 'dbit', 'd', 'dr', 'db', 'soll', 's', 'out']);
@@ -461,7 +474,7 @@ const directionWord = (raw: string | undefined) =>
  * Which way the money went according to a direction column ("Af"/"Bij" at ING, "Debit"/
  * "Credit", "S"/"H"), or null if the cell says neither. With `outWord` (what the user said
  * this bank writes for money out), that word also means out, and
- * any word FlyBudget doesn't know means in. The words it knows keep their meaning, so a
+ * any word Allotment doesn't know means in. The words it knows keep their meaning, so a
  * word typed for another file can't turn this file's debits into income.
  */
 export function readDirection(
@@ -476,7 +489,7 @@ export function readDirection(
   return outWord?.trim() ? 'in' : null;
 }
 
-/** The different words in a direction column that FlyBudget doesn't know, as written */
+/** The different words in a direction column that Allotment doesn't know, as written */
 export function unknownDirectionWords(values: string[]): string[] {
   const unknown = new Map<string, string>();
   for (const raw of values) {
@@ -530,12 +543,49 @@ export function columnRolesFor(
 }
 
 export function guessColumnRoles(headers: string[]): ColumnRole[] {
+  const taken = new Set<ColumnRole>();
   return headers.map((h) => {
     const key = h.trim().toLowerCase();
     // hasOwn: a column named "constructor" isn't Object.prototype's
-    return Object.hasOwn(COLUMN_HINTS, key) ? COLUMN_HINTS[key] : 'skip';
+    const role = Object.hasOwn(COLUMN_HINTS, key) ? COLUMN_HINTS[key] : 'skip';
+    // One category column is enough: YNAB writes it twice (combined, and on its own)
+    if (role === 'category' || role === 'categoryGroup') {
+      if (taken.has(role)) return 'skip';
+      taken.add(role);
+    }
+    return role;
   });
 }
+
+/** A category as a file names it: its group (when the file has one) and its own name */
+export interface FileCategory {
+  group: string | null;
+  name: string;
+}
+
+/** "Bills: Rent" (YNAB's combined column) or a name with the group in its own column */
+export function readFileCategory(
+  category: string | undefined,
+  group: string | undefined,
+): FileCategory | null {
+  let name = (category ?? '').trim();
+  let groupName = (group ?? '').trim() || null;
+  if (!name) return null;
+  if (groupName && name.toLowerCase().startsWith(groupName.toLowerCase() + ': '))
+    name = name.slice(groupName.length + 2).trim();
+  else if (!groupName) {
+    const at = name.indexOf(': ');
+    if (at > 0 && at < name.length - 2) {
+      groupName = name.slice(0, at).trim();
+      name = name.slice(at + 2).trim();
+    }
+  }
+  return name ? { group: groupName?.slice(0, 200) || null, name: name.slice(0, 200) } : null;
+}
+
+/** Stable key for one category of a file (case-insensitive, like matching to existing ones) */
+export const fileCategoryKey = (c: FileCategory) =>
+  `${(c.group ?? '').toLowerCase()}\u0000${c.name.toLowerCase()}`;
 
 /**
  * A real calendar date as YYYY-MM-DD, like the server's `isRealDate`: "13/45/2024" normalizes
@@ -560,7 +610,7 @@ export interface SkippedRow {
 export interface ImportFormats {
   dateFormat?: DateFormat;
   numberFormat?: NumberFormat;
-  /** What the direction column says for money out, if not a word FlyBudget knows */
+  /** What the direction column says for money out, if not a word Allotment knows */
   outWord?: string | null;
   /** Decimals of the account's currency (2 unless given: none for yen) */
   minor?: number;
@@ -582,6 +632,8 @@ export function buildImportRows(
   const outflowIdx = roles.indexOf('outflow');
   const notesIdx = roles.indexOf('notes');
   const directionIdx = roles.indexOf('direction');
+  const categoryIdx = roles.indexOf('category');
+  const categoryGroupIdx = roles.indexOf('categoryGroup');
 
   if (dateIdx === -1) return 'Date column is required';
   if (amountIdx === -1 && inflowIdx === -1 && outflowIdx === -1) {
@@ -642,7 +694,21 @@ export function buildImportRows(
     const occurrence = (seen.get(key) ?? 0) + 1;
     seen.set(key, occurrence);
     const importedId = generateImportId(date, amount, payeeName ?? '', occurrence);
-    rows.push({ date, amount, payeeName, notes, importedId });
+    const fileCategory =
+      categoryIdx === -1
+        ? null
+        : readFileCategory(
+            raw[categoryIdx],
+            categoryGroupIdx === -1 ? undefined : raw[categoryGroupIdx],
+          );
+    rows.push({
+      date,
+      amount,
+      payeeName,
+      notes,
+      importedId,
+      ...(fileCategory && { fileCategory }),
+    });
   });
   return { rows, skipped };
 }

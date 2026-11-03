@@ -1,8 +1,14 @@
 import { ShareWithHousehold } from '../household/ShareWithHousehold';
+import { HouseholdIcon } from '../household/HouseholdIcon';
+import { useHouseholds } from '../../hooks/useHouseholds';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { X, Lock, Trash2, Repeat, Unlink, Wand2, Split } from 'lucide-react';
-import { useUpdateTransaction, useDeleteTransaction } from '../../hooks/useTransactions';
+import { X, Lock, Trash2, Repeat, Unlink, Wand2, Split, ChevronDown } from 'lucide-react';
+import {
+  useUpdateTransaction,
+  useDeleteTransaction,
+  useUnlockTransaction,
+} from '../../hooks/useTransactions';
 import { useOfferCategoryFollowup } from '../../hooks/useCategoryFollowup';
 import { useTransferToAccount, useUnlinkTransfer } from '../../hooks/useTransfers';
 import { useCanSave } from '../../hooks/useConnection';
@@ -70,6 +76,8 @@ export function TransactionDetailPanel({
   const { data: schedules = [] } = useSchedules();
   const unmatchByTx = useUnmatchByTransaction();
   const linkedSchedule = tx.scheduleId ? schedules.find((s) => s.id === tx.scheduleId) : null;
+  const { data: households = [] } = useHouseholds();
+  const sharedWith = tx.household ? households.find((h) => h.id === tx.household!.id) : undefined;
   const freqMap = new Map(RECURRENCE_TYPE_LABELS.map((f) => [f.value, f.label]));
 
   const [localDate, setLocalDate] = useState(tx.date);
@@ -77,6 +85,8 @@ export function TransactionDetailPanel({
   const [localPayee, setLocalPayee] = useState({ id: tx.payeeId, name: tx.payeeName ?? '' });
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showUnlockConfirm, setShowUnlockConfirm] = useState(false);
+  const unlock = useUnlockTransaction();
   const [ruleDraft, setRuleDraft] = useState<RuleInput | null>(null);
   const [splitting, setSplitting] = useState(false);
   const ruleModal = useModalValue(ruleDraft);
@@ -97,6 +107,7 @@ export function TransactionDetailPanel({
         e.key === 'Escape' &&
         !showCategoryPicker &&
         !showDeleteConfirm &&
+        !showUnlockConfirm &&
         !ruleDraft &&
         !splitting
       )
@@ -104,12 +115,13 @@ export function TransactionDetailPanel({
     }
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [onClose, showCategoryPicker, showDeleteConfirm, ruleDraft, splitting]);
+  }, [onClose, showCategoryPicker, showDeleteConfirm, showUnlockConfirm, ruleDraft, splitting]);
 
   const isReconciled = tx.reconciled === 1;
   const isTransfer = !!tx.transferTransactionId;
   const isSplitParent = tx.isParent === 1 && tx.children && tx.children.length > 0;
-  const canEditCategory = !isReconciled && (!isTransfer || !!tx.isBudgetBoundary) && !isSplitParent;
+  // A reconciled row keeps its amount, date and account; category, payee and notes change no balance
+  const canEditCategory = (!isTransfer || !!tx.isBudgetBoundary) && !isSplitParent;
   // Synced and earlier transactions can be split into categories here, or have their parts changed
   const canSplit = !isReconciled && !isTransfer && !tx.isAdjustment && !tx.parentTransactionId;
 
@@ -233,10 +245,28 @@ export function TransactionDetailPanel({
         </div>
 
         {isReconciled && (
-          <div className="flex items-center gap-2 px-3 py-2 bg-surface-alt rounded-lg text-text-tertiary text-xs">
-            <Lock size={12} />
-            <span>This transaction is reconciled and cannot be edited.</span>
-          </div>
+          <>
+            <div className="flex items-center gap-2 px-3 py-2 bg-surface-alt rounded-lg text-text-tertiary text-xs">
+              <Lock size={12} className="shrink-0" />
+              <span className="flex-1">
+                Reconciled: the amount, date and account are locked. Category, payee and notes can
+                still change.
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!canSave || unlock.isPending}
+                onClick={() => setShowUnlockConfirm(true)}
+              >
+                Unlock
+              </Button>
+            </div>
+            {unlock.error && (
+              <p role="alert" className="text-xs text-negative">
+                {unlock.error.message}
+              </p>
+            )}
+          </>
         )}
 
         <div>
@@ -268,7 +298,7 @@ export function TransactionDetailPanel({
                 }
               >
                 <Split size={12} />
-                {isSplitParent ? 'Edit split' : 'Split'}
+                {isSplitParent ? 'Edit split' : 'Split across categories'}
               </button>
             )}
           </div>
@@ -286,7 +316,7 @@ export function TransactionDetailPanel({
                         <span className="text-sm">{childCat.icon}</span>
                       )}
                       <span className="text-text-secondary">
-                        {childCat?.name ?? 'Uncategorized'}
+                        {childCat?.name ?? 'Uncategorised'}
                       </span>
                     </div>
                     <span className="tabular-nums text-text-tertiary">
@@ -318,21 +348,24 @@ export function TransactionDetailPanel({
             <div className="relative">
               <button
                 onClick={() => canEditCategory && setShowCategoryPicker(!showCategoryPicker)}
-                disabled={isReconciled}
                 className={`${inputCls} text-left flex items-center gap-2 ${canEditCategory ? 'cursor-pointer' : ''}`}
               >
                 {showCategoryIcons && categoryEntry?.icon && (
                   <span className="text-base">{categoryEntry.icon}</span>
                 )}
-                <span className={categoryEntry ? '' : 'text-text-tertiary'}>
-                  {categoryEntry?.name ?? 'Uncategorized'}
+                <span className={categoryEntry ? '' : 'text-text-secondary'}>
+                  {categoryEntry?.name ?? 'Uncategorised'}
                 </span>
+                {canEditCategory && (
+                  <ChevronDown size={14} className="ml-auto text-text-tertiary" aria-hidden />
+                )}
               </button>
               {showCategoryPicker && (
                 <CategoryPicker
                   value={tx.categoryId}
                   onChange={handleCategoryChange}
                   groups={groups}
+                  fullWidth
                   onClose={() => setShowCategoryPicker(false)}
                   transferAccounts={transferAccounts}
                 />
@@ -372,7 +405,7 @@ export function TransactionDetailPanel({
                 value={localPayee}
                 onChange={handlePayeeChange}
                 payees={payees}
-                className={`border border-border rounded-lg px-3 py-2 focus:border-brand-600 focus:ring-1 focus:ring-brand-600 ${isReconciled ? 'opacity-60 pointer-events-none' : ''}`}
+                className={`border border-border rounded-lg px-3 py-2 focus:border-brand-600 focus:ring-1 focus:ring-brand-600`}
               />
             </div>
           </div>
@@ -384,7 +417,6 @@ export function TransactionDetailPanel({
             value={localNotes}
             onChange={(e) => setLocalNotes(e.target.value)}
             onBlur={saveNotes}
-            disabled={isReconciled}
             placeholder="Add notes to this transaction..."
             aria-label="Notes"
             rows={3}
@@ -423,20 +455,44 @@ export function TransactionDetailPanel({
       </div>
 
       <div className="px-5 py-4 border-t border-border space-y-2">
-        {!tx.isParent && !tx.parentTransactionId && !tx.isAdjustment && tx.amount < 0 && (
-          <Button
-            variant="secondary"
-            className="w-full"
-            onClick={() => {
-              onClose();
-              navigate(`/household?transaction=${encodeURIComponent(tx.id)}`);
-            }}
-          >
-            Split with people
-          </Button>
-        )}
-        {!tx.isParent && !tx.parentTransactionId && !tx.isAdjustment && tx.amount < 0 && (
-          <ShareWithHousehold transactionId={tx.id} />
+        {sharedWith ? (
+          <div className="flex items-center gap-2 text-sm" data-testid="shared-with-household">
+            <HouseholdIcon name={sharedWith.name} logo={sharedWith.logo} size="sm" />
+            <span className="flex-1 min-w-0 truncate text-text-secondary">
+              {tx.household?.kind === 'expense' ? 'Shared with' : 'Linked to'}{' '}
+              <span className="font-medium text-text">{sharedWith.name}</span>
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                onClose();
+                navigate(`/household?household=${encodeURIComponent(sharedWith.id)}`);
+              }}
+            >
+              View in household
+            </Button>
+          </div>
+        ) : (
+          !tx.household &&
+          !tx.isParent &&
+          !tx.parentTransactionId &&
+          !tx.isAdjustment &&
+          tx.amount < 0 && (
+            <>
+              <Button
+                variant="secondary"
+                className="w-full"
+                onClick={() => {
+                  onClose();
+                  navigate(`/household?transaction=${encodeURIComponent(tx.id)}`);
+                }}
+              >
+                Share with people
+              </Button>
+              <ShareWithHousehold transactionId={tx.id} />
+            </>
+          )
         )}
         {!isTransfer && (
           <Button variant="secondary" onClick={startRule} className="w-full">
@@ -470,9 +526,25 @@ export function TransactionDetailPanel({
       )}
 
       <ConfirmModal
+        isOpen={showUnlockConfirm}
+        title="Unlock reconciled transaction"
+        message="Unlocking lets you change this transaction's amount, date or account, or delete it. The account's reconciled balance will no longer match your statement until you reconcile again."
+        confirmLabel="Unlock"
+        onConfirm={() => {
+          setShowUnlockConfirm(false);
+          unlock.mutate(tx.id);
+        }}
+        onClose={() => setShowUnlockConfirm(false)}
+      />
+
+      <ConfirmModal
         isOpen={showDeleteConfirm}
         title="Delete Transaction"
-        message="Are you sure you want to delete this transaction? This action cannot be undone."
+        message={
+          tx.importedId?.startsWith('up:')
+            ? 'Delete this transaction? It came from Up, so it stays deleted when Up syncs. You can bring it back from Up review (Settings → Connected Banks → Up).'
+            : 'Are you sure you want to delete this transaction? This action cannot be undone.'
+        }
         confirmLabel="Delete"
         danger
         onConfirm={handleDelete}

@@ -18,6 +18,8 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { useOpenFromLink } from '../hooks/useOpenFromLink';
 import { docsUrl } from '../utils/project';
 import { formatCurrency, formatMoney } from '../utils/currency';
+import { useHideBalances } from '../utils/safeMode';
+import { Private } from '../components/ui/Private';
 import {
   balanceValue,
   earlierValue,
@@ -63,6 +65,7 @@ function AccountGroup({ label, accounts, balancesAgo }: AccountGroupProps) {
   const missing = unconvertedCurrencies(accounts);
   const change = groupTotal - groupTotalAgo;
   const changePct = groupTotalAgo !== 0 ? (change / Math.abs(groupTotalAgo)) * 100 : 0;
+  const hide = useHideBalances();
 
   return (
     <Card padding="none">
@@ -77,7 +80,7 @@ function AccountGroup({ label, accounts, balancesAgo }: AccountGroupProps) {
             {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
           </span>
           <span className="text-base font-semibold text-text">{label}</span>
-          {change !== 0 && (
+          {change !== 0 && !hide && (
             <span
               className={`flex items-center gap-1 text-xs tabular-nums ${change >= 0 ? 'text-positive' : 'text-negative'}`}
             >
@@ -86,13 +89,13 @@ function AccountGroup({ label, accounts, balancesAgo }: AccountGroupProps) {
               {formatCurrency(change)} ({Math.abs(changePct).toFixed(1)}%)
             </span>
           )}
-          <span className="text-xs text-text-tertiary">past month</span>
+          {!hide && <span className="text-xs text-text-tertiary">past month</span>}
         </div>
         <span className="text-right">
           <span
-            className={`block text-base font-semibold tabular-nums ${groupTotal < 0 ? 'text-negative' : 'text-text'}`}
+            className={`block text-base font-semibold tabular-nums ${groupTotal < 0 && !hide ? 'text-negative' : 'text-text'}`}
           >
-            {formatCurrency(groupTotal)}
+            <Private>{formatCurrency(groupTotal)}</Private>
           </span>
           <UnconvertedNote currencies={missing} link={false} />
         </span>
@@ -125,9 +128,9 @@ function AccountGroup({ label, accounts, balancesAgo }: AccountGroupProps) {
               </div>
               <span className="text-right">
                 <span className="block text-sm font-medium tabular-nums text-text">
-                  {formatMoney(account.balance, account.currency)}
+                  <Private>{formatMoney(account.balance, account.currency)}</Private>
                 </span>
-                {account.rateDate && account.mainBalance !== null && (
+                {account.rateDate && account.mainBalance !== null && !hide && (
                   <span className="block text-xs tabular-nums text-text-tertiary">
                     ≈ {formatCurrency(account.mainBalance)}
                   </span>
@@ -169,7 +172,7 @@ export default function AccountsPage() {
         <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
           Accounts
         </h1>
-        <Button size="sm" onClick={() => setAddOpen(true)}>
+        <Button size="sm" onClick={() => setAddOpen(true)} data-guide="accounts.add">
           <Plus size={14} /> Add Account
         </Button>
       </div>
@@ -196,7 +199,7 @@ export default function AccountsPage() {
       ) : (
         <div className="flex-1 overflow-y-auto">
           <div className="px-6 pt-5 pb-3">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div data-guide="accounts.summary" className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <Card>
                 <NetWorthMini />
               </Card>
@@ -206,7 +209,7 @@ export default function AccountsPage() {
             </div>
           </div>
 
-          <div className="px-6 pb-6 space-y-4">
+          <div data-guide="accounts.list" className="px-6 pb-6 space-y-4">
             {allGroups.map((g) => (
               <AccountGroup
                 key={g.label}

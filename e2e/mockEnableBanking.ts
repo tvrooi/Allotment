@@ -3,7 +3,7 @@ import { DESKTOP_PORT, ENABLE_BANKING_MOCK_PORT } from './ports';
 
 // A stand-in for Enable Banking's API (api.enablebanking.com), for the desktop server the
 // tests start (FLYBUDGET_ENABLE_BANKING_API points here). Its "bank login" page sends the
-// browser straight to FlyBudget's callback on 127.0.0.1, like the flybudget.org relay page
+// browser straight to Allotment's callback on 127.0.0.1, like the flybudget.org relay page
 // does, unless a test holds it there to try the paste fallback.
 //
 // Test controls (POST, no auth: 127.0.0.1 only, test data only):
@@ -79,7 +79,7 @@ export function startEnableBankingMock(): Promise<http.Server> {
       return json(res, 200, state);
     }
 
-    // The bank's login page: straight back to FlyBudget, as the relay page would. Only ever
+    // The bank's login page: straight back to Allotment, as the relay page would. Only ever
     // to the test desktop server (the relay reads the port from the state; tests use one)
     if (path === '/bank') {
       const query = new URLSearchParams({
@@ -101,7 +101,7 @@ export function startEnableBankingMock(): Promise<http.Server> {
       return json(res, 401, { error: 'UNAUTHORIZED_ACCESS' });
     }
     if (req.method === 'GET' && path === '/application') {
-      return json(res, 200, { name: 'E2E FlyBudget', environment: 'PRODUCTION' });
+      return json(res, 200, { name: 'E2E Allotment', environment: 'PRODUCTION' });
     }
     if (req.method === 'GET' && path === '/aspsps') {
       return json(res, 200, {

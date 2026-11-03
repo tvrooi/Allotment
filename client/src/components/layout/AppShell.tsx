@@ -5,17 +5,25 @@ import { useAccounts } from '../../hooks/useAccounts';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { useUndoKeyboard } from '../../hooks/useUndoKeyboard';
+import { useSafeModeKeyboard } from '../../hooks/useSafeModeKeyboard';
 import { Toasts } from '../ui/Toasts';
 import { ConnectionBanner } from '../connection/ConnectionBanner';
 import { DemoBanner } from '../demo/DemoBanner';
-import { Sidebar, SidebarDrawer } from './Sidebar';
+import { Sidebar, SidebarDrawer, SafeModeButton } from './Sidebar';
 import { BrandName } from '../ui/BrandName';
 import logoUrl from '/logo.png';
 import { useUpFreshness } from '../../hooks/useUp';
+import { useGuideKeyboard } from '../../hooks/useGuideKeyboard';
+import { useGuideStore } from '../../store/guideStore';
+import { GuideBanner } from '../guide/GuideBanner';
+import { GuideTour } from '../guide/GuideTour';
+import { GuidesDialog } from '../guide/GuidesDialog';
 
 export function AppShell() {
   useUndoKeyboard();
+  useSafeModeKeyboard();
   useUpFreshness();
+  useGuideKeyboard();
   const { data: accounts = [], isLoading } = useAccounts();
   const setupSkipped = usePreferencesStore((s) => s.setupSkipped);
   const isPhone = useIsPhone();
@@ -36,6 +44,7 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen bg-page overflow-hidden">
+      <SkipToContent />
       <Sidebar />
       <div className="flex-1 min-w-0 flex flex-col">
         {/* macOS desktop app: the window has no title bar, so this strip moves it */}
@@ -45,12 +54,34 @@ export function AppShell() {
         />
         <DemoBanner />
         <ConnectionBanner />
-        <main className="flex-1 overflow-y-auto">
+        <GuideBanner />
+        <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto focus:outline-none">
           <Outlet />
         </main>
       </div>
       <Toasts />
+      <GuideTour />
+      <GuidesDialog />
     </div>
+  );
+}
+
+/**
+ * The first thing Tab reaches: past the sidebar's links, straight to the page. It moves focus
+ * rather than following "#main", which the desktop app's hash routing would read as a page.
+ */
+function SkipToContent() {
+  return (
+    <a
+      href="#main"
+      onClick={(e) => {
+        e.preventDefault();
+        document.getElementById('main')?.focus();
+      }}
+      className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2 focus:rounded-md focus:bg-surface focus:text-text focus:shadow-hover focus:outline-2 focus:outline-brand-600"
+    >
+      Skip to content
+    </a>
   );
 }
 
@@ -72,8 +103,12 @@ function PhoneShell() {
     setOpen(false);
   };
 
-  // Following a link in the drawer closes it
+  // Following a link in the drawer closes it, and so does starting a guide from it
   useEffect(() => setOpen(false), [location.pathname, location.search]);
+  const touring = useGuideStore((s) => !!s.active);
+  useEffect(() => {
+    if (touring) setOpen(false);
+  }, [touring]);
 
   useEffect(() => {
     if (!open) {
@@ -104,24 +139,25 @@ function PhoneShell() {
             aria-label="Open menu"
             aria-expanded={open}
             aria-controls="app-sidebar"
+            data-guide="nav.menu"
             className="p-2 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md text-sidebar-text-hi hover:bg-sidebar-hover no-drag-region"
           >
             <Menu size={20} />
           </button>
           <img src={logoUrl} alt="" className="w-6 h-6" />
-          <BrandName
-            className="text-sm font-semibold tracking-tight"
-            flyClassName="text-brand-600"
-            budgetClassName="text-sidebar-text-hi"
-          />
+          <BrandName className="text-base" textClassName="text-sidebar-text-hi" />
+          <SafeModeButton className="relative ml-auto p-2 min-w-11 min-h-11 flex items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi no-drag-region" />
         </header>
         <DemoBanner />
         <ConnectionBanner />
+        <GuideBanner />
         <main className="flex-1 min-h-0 overflow-y-auto">
           <Outlet />
         </main>
       </div>
       <Toasts />
+      <GuideTour />
+      <GuidesDialog />
     </div>
   );
 }

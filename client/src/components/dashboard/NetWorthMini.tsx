@@ -9,6 +9,8 @@ import { formatCurrency } from '../../utils/currency';
 import { chartColors } from '../../utils/chartColors';
 import { formatDateAxisLabels, formatDateLabel } from '../../utils/chartTicks';
 import { useXAxisLayout } from '../../hooks/useXAxisLayout';
+import { useHideBalances } from '../../utils/safeMode';
+import { Private, PrivateChart } from '../ui/Private';
 
 function MiniTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
@@ -109,6 +111,7 @@ export default function NetWorthMini() {
   const first = data.length > 0 ? data[0].netWorth : latest;
   const change = latest - first;
   const pct = first !== 0 ? (change / Math.abs(first)) * 100 : 0;
+  const hide = useHideBalances();
 
   if (isLoading) {
     return (
@@ -128,16 +131,17 @@ export default function NetWorthMini() {
         <div>
           <p className="text-sm font-medium text-text-secondary">Net Worth</p>
           <p
-            className={`text-4xl max-md:text-3xl font-semibold tracking-tight tabular-nums mt-2 break-words ${latest >= 0 ? 'text-text' : 'text-negative'}`}
+            className={`text-4xl max-md:text-3xl font-semibold tracking-tight tabular-nums mt-2 break-words ${latest >= 0 || hide ? 'text-text' : 'text-negative'}`}
           >
-            {formatCurrency(latest)}
+            <Private>{formatCurrency(latest)}</Private>
           </p>
           {noAccounts && (
             <p className="text-sm text-text-tertiary mt-1">
               What you own minus what you owe, across all your accounts.
             </p>
           )}
-          {data.length > 1 && !noAccounts && (
+          {/* The change and its percentage would give the total away */}
+          {data.length > 1 && !noAccounts && !hide && (
             <p
               className={`text-sm tabular-nums mt-0.5 ${change >= 0 ? 'text-positive' : 'text-negative'}`}
             >
@@ -170,27 +174,29 @@ export default function NetWorthMini() {
       {/* Before any accounts, a flat $0 line (the page still offers "Add an account") */}
       {data.length > 1 && (
         <div className="mt-4" ref={xAxis.ref}>
-          <ResponsiveContainer width="100%" height={112}>
-            <AreaChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
-              <defs>
-                <linearGradient id="gNetMini" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={chartColors.brand} stopOpacity={0.15} />
-                  <stop offset="95%" stopColor={chartColors.brand} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="month" axisLine={false} tickLine={false} {...xAxis.axisProps} />
-              <YAxis hide domain={yDomain} />
-              <Tooltip content={<MiniTooltip />} labelFormatter={formatDateLabel} />
-              <Area
-                type="monotone"
-                dataKey="netWorth"
-                name="Net Worth"
-                stroke={chartColors.brand}
-                strokeWidth={2}
-                fill="url(#gNetMini)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          <PrivateChart height={112}>
+            <ResponsiveContainer width="100%" height={112}>
+              <AreaChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
+                <defs>
+                  <linearGradient id="gNetMini" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={chartColors.brand} stopOpacity={0.15} />
+                    <stop offset="95%" stopColor={chartColors.brand} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="month" axisLine={false} tickLine={false} {...xAxis.axisProps} />
+                <YAxis hide domain={yDomain} />
+                <Tooltip content={<MiniTooltip />} labelFormatter={formatDateLabel} />
+                <Area
+                  type="monotone"
+                  dataKey="netWorth"
+                  name="Net Worth"
+                  stroke={chartColors.brand}
+                  strokeWidth={2}
+                  fill="url(#gNetMini)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </PrivateChart>
         </div>
       )}
     </Card>

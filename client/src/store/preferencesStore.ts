@@ -11,6 +11,8 @@ export type AmountFormat = 'dot' | 'comma' | 'space' | 'apostrophe';
 /** Whether the currency symbol goes before (€12.50) or after (12,50 €) the amount */
 export type SymbolPosition = 'before' | 'after';
 export type SidebarMode = 'persistent' | 'auto-hide';
+/** What Safe mode hides: balances and totals (wealth), or every amount */
+export type SafeModeLevel = 'balances' | 'all';
 /** How one currency's amounts are shown, when its own convention isn't wanted */
 export interface CurrencyDisplay {
   position?: SymbolPosition;
@@ -49,6 +51,10 @@ interface PreferencesState {
    * the default). Read through utils/homeCards.ts normalizeLayout. Presentation only.
    */
   homeLayouts: Partial<Record<FormFactor, HomeLayout>>;
+  /** What Safe mode hides on this device; whether it's on is store/safeModeStore.ts */
+  safeModeLevel: SafeModeLevel;
+  /** The owner picked a level themselves (until then, the default can change with the app) */
+  safeModeLevelChosen: boolean;
   setTheme: (theme: Theme) => void;
   setCurrencySymbol: (symbol: string) => void;
   setAmountFormat: (format: AmountFormat | 'auto') => void;
@@ -67,12 +73,40 @@ interface PreferencesState {
   setGettingStartedHidden: (hidden: boolean) => void;
   /** Null goes back to the default layout */
   setHomeLayout: (factor: FormFactor, layout: HomeLayout | null) => void;
+  setSafeModeLevel: (level: SafeModeLevel) => void;
 }
 
 const PREFERENCES_KEY = 'budget-preferences';
 
-/** 1: amount format and symbol position (Automatic for new installs). 2: home card layouts */
-export const PREFERENCES_VERSION = 2;
+/**
+ * 1: amount format and symbol position (Automatic for new installs). 2: home card layouts.
+ * 3: Safe mode hides every amount unless the owner chose a level
+ */
+export const PREFERENCES_VERSION = 3;
+
+/**
+ * The date format to start with, from the browser's language: en-AU writes 05/01/2026, German
+ * 05.01.2026, Swedish 2026-01-05. US English and anything unclear keep "Jan 5, 2026".
+ */
+export function dateFormatForLocale(locale?: string): DateFormatOption {
+  try {
+    const tag = locale ?? (typeof navigator === 'undefined' ? undefined : navigator.language);
+    if (!tag || /^en-US$/i.test(tag) || /^en$/i.test(tag)) return 'MMM d, yyyy';
+    const parts = new Intl.DateTimeFormat(tag, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      timeZone: 'UTC',
+    }).formatToParts(new Date(Date.UTC(2026, 0, 5)));
+    const order = parts.filter((p) => p.type !== 'literal').map((p) => p.type);
+    const separator = parts.find((p) => p.type === 'literal')?.value.trim() ?? '';
+    if (order[0] === 'year') return 'yyyy-MM-dd';
+    if (order[0] === 'day') return separator === '.' ? 'dd.MM.yyyy' : 'dd/MM/yyyy';
+    return 'MMM d, yyyy';
+  } catch {
+    return 'MMM d, yyyy';
+  }
+}
 
 /**
  * Preferences saved by an older version, brought up to date. Installs from before the amount
@@ -84,6 +118,10 @@ export function migratePreferences(persisted: unknown, version: number): unknown
   const state = persisted && typeof persisted === 'object' ? { ...persisted } : {};
   if (version < 1) {
     Object.assign(state, { amountFormat: 'dot', symbolPosition: 'before' });
+  }
+  // Safe mode used to start on "balances" for everyone. Whoever never chose it gets the new default.
+  if (version < 3 && !(state as { safeModeLevelChosen?: boolean }).safeModeLevelChosen) {
+    delete (state as { safeModeLevel?: unknown }).safeModeLevel;
   }
   // Layouts are checked card by card when drawn; something that isn't one is dropped
   const layouts = (state as { homeLayouts?: unknown }).homeLayouts;
@@ -101,7 +139,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       amountFormat: 'auto',
       symbolPosition: 'auto',
       currencyStyles: {},
-      dateFormat: 'MMM d, yyyy',
+      dateFormat: dateFormatForLocale(),
       savingsGoal: 20,
       sidebarMode: 'persistent',
       showMerchantIcons: true,
@@ -112,6 +150,8 @@ export const usePreferencesStore = create<PreferencesState>()(
       setupSkipped: false,
       gettingStartedHidden: false,
       homeLayouts: {},
+      safeModeLevel: 'all',
+      safeModeLevelChosen: false,
       setTheme: (theme) => set({ theme }),
       setCurrencySymbol: (currencySymbol) => set({ currencySymbol }),
       setAmountFormat: (amountFormat) => set({ amountFormat }),
@@ -140,6 +180,7 @@ export const usePreferencesStore = create<PreferencesState>()(
           else delete homeLayouts[factor];
           return { homeLayouts };
         }),
+      setSafeModeLevel: (safeModeLevel) => set({ safeModeLevel, safeModeLevelChosen: true }),
     }),
     {
       name: PREFERENCES_KEY,

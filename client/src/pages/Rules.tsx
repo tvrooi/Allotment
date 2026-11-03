@@ -268,7 +268,7 @@ export default function RulesPage() {
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 py-4 border-b border-border shrink-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
+          <div data-guide="rules.header">
             <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
               Rules
             </h1>
@@ -304,10 +304,11 @@ export default function RulesPage() {
                 })
               }
               disabled={enabledCount === 0}
+              data-guide="rules.run"
             >
               <Play size={12} /> Run rules
             </Button>
-            <Button size="sm" onClick={newRule}>
+            <Button size="sm" onClick={newRule} data-guide="rules.add">
               <Plus size={13} /> Add rule
             </Button>
           </div>

@@ -1,4 +1,5 @@
 import { apiFetch } from './client';
+import type { FileCategory } from '../utils/csv';
 import type {
   Transaction,
   TransactionQueryParams,
@@ -50,7 +51,28 @@ export interface ImportRow {
   payeeName?: string | null;
   notes?: string | null;
   importedId: string;
+  /** Chosen for the file's category before importing */
+  categoryId?: string | null;
+  /** The file's own category (never sent): the person decides what it maps to */
+  fileCategory?: FileCategory | null;
 }
+
+/** What goes to the server: the file's own category label stays on this device */
+export const toApiRow = ({ fileCategory: _label, ...row }: ImportRow): ImportRow => row;
+
+/** Links the two legs of transfers that were imported together (exact mirrors only) */
+export const linkImportedTransfers = (
+  pairs: {
+    accountId: string;
+    importedId: string;
+    otherAccountId: string;
+    otherImportedId: string;
+  }[],
+) =>
+  apiFetch<{ linked: number; skipped: number }>('/transactions/import/link-transfers', {
+    method: 'POST',
+    body: JSON.stringify({ pairs }),
+  });
 
 /** The selection as the server's query string; shared by the register, summary and export */
 export function transactionQuery(params: TransactionQueryParams = {}): URLSearchParams {
@@ -157,16 +179,30 @@ export const unlinkTransfer = (id: string, opts: { dismiss?: boolean } = {}) =>
     body: JSON.stringify(opts),
   });
 
+/** Unlocks one reconciled transaction so its amount, date and account can change again */
+export const unlockTransaction = (id: string) =>
+  apiFetch<Transaction>(`/transactions/${id}/unlock`, { method: 'POST', body: '{}' });
+
 export const importPreview = (accountId: string, rows: ImportRow[]) =>
   apiFetch<ImportPreviewRow[]>('/transactions/import/preview', {
     method: 'POST',
-    body: JSON.stringify({ accountId, rows }),
+    body: JSON.stringify({ accountId, rows: rows.map(toApiRow) }),
   });
 
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+  /** The account's balance before and after (minor units) */
+  balanceBefore: number;
+  balance: number;
+  /** Its starting balance moved so a balance typed as "today's" stayed true */
+  startingBalanceAdjusted: boolean;
+}
+
 export const importConfirm = (accountId: string, rows: ImportRow[]) =>
-  apiFetch<{ imported: number; skipped: number }>('/transactions/import/confirm', {
+  apiFetch<ImportResult>('/transactions/import/confirm', {
     method: 'POST',
-    body: JSON.stringify({ accountId, rows }),
+    body: JSON.stringify({ accountId, rows: rows.map(toApiRow) }),
   });
 
 // ─── Phase 9: review, report visibility and tags ──────────────────────────────
@@ -295,3 +331,26 @@ export const restoreBulkEdit = (restore: BulkRestore[]) =>
     method: 'POST',
     body: JSON.stringify({ restore }),
   });
+
+export interface BulkDeletePreview {
+  matched: number;
+  /** Rows that will be deleted */
+  deletable: number;
+  skipped: { reconciled: number; household: number };
+  accounts: { id: string; name: string }[];
+  sample: { id: string; date: string; payeeName: string | null; amount: number }[];
+}
+
+/** What deleting the selection would remove, without deleting anything */
+export const previewBulkDelete = (target: BulkTarget) =>
+  apiFetch<BulkDeletePreview>('/transactions/bulk-delete', {
+    method: 'POST',
+    body: JSON.stringify({ ...bulkBody(target), preview: true }),
+  });
+
+/** Delete the selection's deletable rows; refused (409) if their number is no longer `expectedCount` */
+export const bulkDeleteTransactions = (target: BulkTarget, expectedCount: number) =>
+  apiFetch<{ deleted: number; skipped: BulkDeletePreview['skipped'] }>(
+    '/transactions/bulk-delete',
+    { method: 'POST', body: JSON.stringify({ ...bulkBody(target), expectedCount }) },
+  );

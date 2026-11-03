@@ -13,6 +13,8 @@ import { Select } from '../components/ui/Input';
 import { MoneyMoves } from '../components/budget/MoneyMoves';
 import { FundTargets } from '../components/budget/FundTargets';
 import { formatCurrency } from '../utils/currency';
+import { useHideBalances } from '../utils/safeMode';
+import { Private } from '../components/ui/Private';
 import { formatDay } from '../utils/dates';
 import { FUNDING_VIEWS } from '../utils/fundingViews';
 import {
@@ -22,6 +24,7 @@ import {
   ResumeCard,
 } from '../components/review/Resilience';
 import { Housekeeping } from '../components/review/Housekeeping';
+import { PaymentMatches } from '../components/plans/PaymentMatches';
 
 // Phases 6F–6G: a read-only review of everything the budget has not resolved, a guided
 // setup, and next month's commitments with an optional runway. Every figure comes from the
@@ -123,8 +126,10 @@ function StepDetail({ id, guide }: { id: api.GuideStepId; guide: api.GuideState 
             <li key={b.accountId} className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-text">{b.name}</span>
               <span className="flex items-center gap-2 tabular-nums">
-                {formatCurrency(b.balance)}
-                {b.currency ? ` ${b.currency}` : ''}
+                <Private>
+                  {formatCurrency(b.balance)}
+                  {b.currency ? ` ${b.currency}` : ''}
+                </Private>
                 {b.unreconciled > 0 && (
                   <Link
                     to={`/accounts/${b.accountId}/reconcile`}
@@ -173,9 +178,11 @@ function StepDetail({ id, guide }: { id: api.GuideStepId; guide: api.GuideState 
     return (
       <>
         <p>
-          {guide.complete
-            ? `${formatCurrency(guide.unassigned)} is unassigned today. Give every dollar you already have a job; money you expect later is assigned when it arrives.`
-            : 'Some exchange rates are missing, so unassigned money is unknown.'}
+          {guide.accountIssues?.length
+            ? 'Account balances need reconciliation before unassigned money can be relied on.'
+            : guide.complete
+              ? `${formatCurrency(guide.unassigned)} is unassigned today. Give every dollar you already have a job; money you expect later is assigned when it arrives.`
+              : 'Some exchange rates are missing, so unassigned money is unknown.'}
         </p>
         <ButtonLink size="sm" variant="secondary" to="/budget">
           Open the budget
@@ -298,6 +305,7 @@ function NeedsAttention({ review, group }: { review: api.BudgetReview; group: st
     .map((c) => ({ ...c, categories: inGroup(c.categories) }))
     .filter((c) => c.categories.length);
   const nothing =
+    !review.accountIssues?.length &&
     !review.uncategorisedCount &&
     !deficits.length &&
     !shortfalls.length &&
@@ -305,8 +313,17 @@ function NeedsAttention({ review, group }: { review: api.BudgetReview; group: st
     review.unassigned >= 0;
   return (
     <Card>
-      <div id="needs-attention" className="space-y-4">
+      <div id="needs-attention" data-guide="review.attention" className="space-y-4">
         <h2 className="text-base font-semibold text-text">Needs attention</h2>
+        {!!review.accountIssues?.length && (
+          <p role="alert" className="text-sm text-caution">
+            Account balances need reconciliation.{' '}
+            <Link to="/budget" className="underline">
+              Review the balance discrepancies
+            </Link>{' '}
+            before assigning more money.
+          </p>
+        )}
         <div className="grid grid-cols-2 max-md:grid-cols-1 gap-x-6">
           <Row label="Uncategorised spending" value={formatCurrency(review.totals.uncategorised)} />
           <Row label="Overspent" value={formatCurrency(review.totals.deficits)} />
@@ -317,7 +334,13 @@ function NeedsAttention({ review, group }: { review: api.BudgetReview; group: st
           />
           <Row
             label="Unassigned"
-            value={review.complete ? formatCurrency(review.unassigned) : 'Unknown'}
+            value={
+              review.accountIssues?.length
+                ? 'Check account balances'
+                : review.complete
+                  ? formatCurrency(review.unassigned)
+                  : 'Unknown'
+            }
             tone={review.unassigned < 0 ? 'neg' : undefined}
           />
           {(review.totals.cardShortfall > 0 || review.totals.uncoveredCardPayments > 0) && (
@@ -427,9 +450,10 @@ function Buffer({ buffer }: { buffer: api.BufferState }) {
   const u = buffer.unresolved;
   const unresolved =
     u.overspent + u.uncategorised + u.cardShortfall + u.uncoveredCardPayments + u.overAssigned;
+  const hideBalances = useHideBalances();
   return (
     <Card>
-      <div className="space-y-4">
+      <div data-guide="review.buffer" className="space-y-4">
         <h2 className="text-base font-semibold text-text">Next month and buffer</h2>
         <Section title={monthLabel(buffer.nextMonth)}>
           <Row label="Already assigned" value={formatCurrency(buffer.nextAssigned)} tone="pos" />
@@ -460,54 +484,57 @@ function Buffer({ buffer }: { buffer: api.BufferState }) {
             Next month's targets assume nothing more is spent or assigned this month.
           </p>
         </Section>
-        <Section title="Cash runway (optional)">
-          {r.unrestricted !== null && (
-            <>
-              <Row label="Cash after debts" value={formatCurrency(r.resources ?? 0)} />
-              <Row
-                label="Restricted: bill reserves and card payments"
-                value={formatCurrency(-r.restricted)}
-              />
-              {r.cardDebtWithoutReserve > 0 && (
+        {/* What your cash after debts would cover: balances, so Safe mode hides it */}
+        {!hideBalances && (
+          <Section title="Cash runway (optional)">
+            {r.unrestricted !== null && (
+              <>
+                <Row label="Cash after debts" value={formatCurrency(r.resources ?? 0)} />
                 <Row
-                  label="Card debt without a reserve"
-                  value={formatCurrency(-r.cardDebtWithoutReserve)}
-                  tone="neg"
+                  label="Restricted: bill reserves and card payments"
+                  value={formatCurrency(-r.restricted)}
                 />
-              )}
-              <Row label="Unrestricted" value={formatCurrency(r.unrestricted)} tone="pos" />
-              <Row label="Average monthly spending" value={formatCurrency(r.monthlySpending)} />
-            </>
-          )}
-          {r.days !== null ? (
-            <p className="text-sm text-text">
-              Unrestricted money would cover about{' '}
-              <strong>{(r.days / (365 / 12)).toFixed(1)} months</strong> ({r.days} days) of everyday
-              spending.
-            </p>
-          ) : (
-            <div role="status" className="text-sm text-caution space-y-1">
-              <p className="font-medium">Runway incomplete</p>
-              <ul className="list-disc pl-5">
-                {r.incomplete.map((reason) => (
-                  <li key={reason}>{reason}</li>
+                {r.cardDebtWithoutReserve > 0 && (
+                  <Row
+                    label="Card debt without a reserve"
+                    value={formatCurrency(-r.cardDebtWithoutReserve)}
+                    tone="neg"
+                  />
+                )}
+                <Row label="Unrestricted" value={formatCurrency(r.unrestricted)} tone="pos" />
+                <Row label="Average monthly spending" value={formatCurrency(r.monthlySpending)} />
+              </>
+            )}
+            {r.days !== null ? (
+              <p className="text-sm text-text">
+                Unrestricted money would cover about{' '}
+                <strong>{(r.days / (365 / 12)).toFixed(1)} months</strong> ({r.days} days) of
+                everyday spending.
+              </p>
+            ) : (
+              <div role="status" className="text-sm text-caution space-y-1">
+                <p className="font-medium">Runway incomplete</p>
+                <ul className="list-disc pl-5">
+                  {r.incomplete.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <details className="text-xs text-text-secondary">
+              <summary className="cursor-pointer select-none">Assumptions</summary>
+              <ul className="list-disc pl-5 pt-1 space-y-0.5">
+                {r.assumptions.map((a) => (
+                  <li key={a}>{a}</li>
                 ))}
+                <li>
+                  Spending history: {formatDay(r.spending.from)} to {formatDay(r.spending.to)} (
+                  {r.spending.days} days, {formatCurrency(r.spending.total)}).
+                </li>
               </ul>
-            </div>
-          )}
-          <details className="text-xs text-text-secondary">
-            <summary className="cursor-pointer select-none">Assumptions</summary>
-            <ul className="list-disc pl-5 pt-1 space-y-0.5">
-              {r.assumptions.map((a) => (
-                <li key={a}>{a}</li>
-              ))}
-              <li>
-                Spending history: {formatDay(r.spending.from)} to {formatDay(r.spending.to)} (
-                {r.spending.days} days, {formatCurrency(r.spending.total)}).
-              </li>
-            </ul>
-          </details>
-        </Section>
+            </details>
+          </Section>
+        )}
       </div>
     </Card>
   );
@@ -520,11 +547,12 @@ export default function ReviewPage() {
   const guide = useQuery({ queryKey: ['review', 'guide'], queryFn: api.getGuide });
   const resilience = useQuery({ queryKey: ['review', 'resilience'], queryFn: api.getResilience });
   const resume = useQuery({ queryKey: ['review', 'resume'], queryFn: api.getResume });
+  const hideBalances = useHideBalances();
   const error = review.error ?? buffer.error ?? guide.error ?? resilience.error ?? resume.error;
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 max-md:px-4 py-4 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-3">
-        <div>
+        <div data-guide="review.header">
           <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
             Review
           </h1>
@@ -560,11 +588,16 @@ export default function ReviewPage() {
             <ReminderBanner resume={resume.data} />
           </div>
         )}
+        {/* Afterpay-style payments waiting to be linked to their purchase */}
+        <div className="mb-4 empty:hidden">
+          <PaymentMatches compact />
+        </div>
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] max-lg:grid-cols-1 gap-4 items-start">
           <div className="space-y-4">
             {resume.data && <ResumeCard resume={resume.data} />}
             {review.data && <NeedsAttention review={review.data} group={group} />}
-            {resilience.data && <ResilienceCard data={resilience.data} />}
+            {/* Emergency fund and what you could live on: savings, so Safe mode hides them */}
+            {resilience.data && !hideBalances && <ResilienceCard data={resilience.data} />}
             {buffer.data && <Buffer buffer={buffer.data} />}
           </div>
           <div className="space-y-4">

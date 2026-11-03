@@ -1,9 +1,17 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { accounts, transactions, upAccountMappings, upConnections } from '../db/schema.js';
+import {
+  accounts,
+  transactions,
+  upAccountMappings,
+  upConnections,
+  upDeletedImports,
+} from '../db/schema.js';
+import { upCategoryResolver } from './upCategoryMap.js';
 import { buildRuleContext, insertNewTransaction, loadRules } from './ruleService.js';
 import { accountCurrency, currencyContext } from './mainAmountService.js';
 import { accountTransactionSum } from './balances.js';
+import { findOverlaps, registerBalanceBefore } from './upCutover.js';
 import {
   bankObservation,
   observeUpAccount,
@@ -20,6 +28,16 @@ import {
 } from './upService.js';
 
 export const UP_CONNECTION_ID = 'default';
+const dollars = (cents: number) =>
+  `$${Math.floor(cents / 100).toLocaleString('en-AU')}.${String(cents % 100).padStart(2, '0')}`;
+/** The day before a cut-over, as a person would say it */
+const cutoverLabel = (cutover: string) =>
+  new Date(Date.parse(cutover + 'T00:00:00Z') - 86_400_000).toLocaleDateString('en-AU', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
 export interface UpSyncResult {
   added: number;
   skipped: number;
@@ -125,8 +143,12 @@ async function runSync(): Promise<UpSyncResult> {
         // Fetch and validate the WHOLE account before any writes or balance changes.
         const history = await getUpTransactions(connection.accessToken, mapping.upAccountId);
         const unique = [...new Map(history.map((t) => [t.id, t])).values()];
-        const rows = unique.flatMap((t) => upImportRows(t, mapping.upAccountId));
+        const cutover = mapping.cutoverDate;
+        // Linked to an account with history: Up's rows before the cut-over are never imported
+        const allRows = unique.flatMap((t) => upImportRows(t, mapping.upAccountId));
+        const rows = cutover ? allRows.filter((r) => r.date >= cutover) : allRows;
         const target = upSettledBalance(bank, unique);
+        const upCategory = upCategoryResolver();
         const ruleOpts = { rules: loadRules(), ctx: buildRuleContext(), currencies: ctx };
         const hadHistory = !!db
           .select({ id: transactions.id })
@@ -134,23 +156,42 @@ async function runSync(): Promise<UpSyncResult> {
           .where(eq(transactions.accountId, accountId))
           .get();
         let balanceMismatch = false;
+        let cutoverNotice: string | null = null;
+        let deletedCount = 0;
         db.transaction(() => {
           let added = 0;
           let skipped = 0;
           const newIds = new Set<string>();
-          for (const row of rows) {
-            const existing = db
+          // Deleted here by the owner: Up still returns it, but it stays deleted until restored
+          const deletedHere = new Set(
+            db
+              .select({ importedId: upDeletedImports.importedId })
+              .from(upDeletedImports)
+              .where(eq(upDeletedImports.accountId, accountId))
+              .all()
+              .map((d) => d.importedId),
+          );
+          deletedCount = deletedHere.size;
+          const alreadyHere = (importedId: string) =>
+            deletedHere.has(importedId) ||
+            !!db
               .select({ id: transactions.id })
               .from(transactions)
               .where(
-                and(
-                  eq(transactions.accountId, accountId),
-                  eq(transactions.importedId, row.importedId),
-                ),
+                and(eq(transactions.accountId, accountId), eq(transactions.importedId, importedId)),
               )
               .get();
+          // Looked at before anything is inserted, so only rows that were here already count
+          const overlaps = cutover
+            ? findOverlaps(
+                accountId,
+                cutover,
+                rows.filter((r) => !alreadyHere(r.importedId)),
+              )
+            : new Map<string, string>();
+          for (const { upCategory: slug, ...row } of rows) {
             // Preserve user edits, splits, links and reconciled rows on later syncs.
-            if (existing) {
+            if (alreadyHere(row.importedId)) {
               skipped++;
               continue;
             }
@@ -162,6 +203,8 @@ async function runSync(): Promise<UpSyncResult> {
                 payeeId: null,
                 importedPayee: row.payeeName,
                 categoryId: null,
+                // After rules and the payee's default; never for rows that already exist
+                fallbackCategoryId: upCategory(slug),
               },
               ruleOpts,
             );
@@ -178,6 +221,8 @@ async function runSync(): Promise<UpSyncResult> {
               );
               if (
                 !row ||
+                (cutover && row.date < cutover) ||
+                deletedHere.has(row.importedId) ||
                 db
                   .select({ id: transactions.id })
                   .from(transactions)
@@ -208,25 +253,52 @@ async function runSync(): Promise<UpSyncResult> {
             throw new UpError('Up returned amounts outside the supported range.');
           // Establish an opening balance only for an empty register. Later discrepancies
           // need review, not an invisible historical adjustment that hides missing postings.
-          if (!hadHistory && !mapping.initializedAt) {
+          let cutoverDifference: number | null = null;
+          if (cutover) {
+            // Bank balance at the cut-over, from today's balance and Up's later rows, against the
+            // register's. Shown, never adjusted: the owner reconciles or fixes the history.
+            const after = rows.reduce((sum, r) => sum + r.amount, 0);
+            cutoverDifference =
+              target - after - registerBalanceBefore(accountId, local.startingBalance, cutover);
+            if (!Number.isSafeInteger(cutoverDifference))
+              throw new UpError('Up returned amounts outside the supported range.');
+            if (cutoverDifference !== 0)
+              cutoverNotice = `${local.name}'s history up to ${cutoverLabel(cutover)} is ${dollars(Math.abs(cutoverDifference))} ${cutoverDifference > 0 ? 'less' : 'more'} than Up's balance on that day. Nothing was adjusted: check the older transactions and reconcile.`;
+            else if (startingBalance !== local.startingBalance) balanceMismatch = true;
+          } else if (!hadHistory && !mapping.initializedAt) {
             db.update(accounts).set({ startingBalance }).where(eq(accounts.id, accountId)).run();
           } else {
             balanceMismatch = startingBalance !== local.startingBalance;
           }
-          observeUpAccount(accountId, unique, now, newIds, mapping.upAccountId);
+          observeUpAccount(
+            accountId,
+            unique,
+            now,
+            newIds,
+            mapping.upAccountId,
+            overlaps,
+            !mapping.initializedAt,
+          );
           db.update(upAccountMappings)
-            .set({ initializedAt: mapping.initializedAt ?? now, settledBalance: target })
+            .set({
+              initializedAt: mapping.initializedAt ?? now,
+              settledBalance: target,
+              ...(cutover ? { cutoverDifference } : {}),
+            })
             .where(eq(upAccountMappings.id, mapping.id))
             .run();
           result.added += added;
           result.skipped += skipped;
         });
+        if (cutoverNotice) result.notices!.push(cutoverNotice);
         if (balanceMismatch)
           result.notices!.push(
-            `${local.name}'s register differs from Up's balance. Review transactions and reconcile; the opening balance was preserved.`,
+            deletedCount
+              ? `${local.name}'s register differs from Up's balance. ${deletedCount} transaction${deletedCount === 1 ? ' you deleted is' : 's you deleted are'} still at Up: restore ${deletedCount === 1 ? 'it' : 'them'} in Up review, or reconcile.`
+              : `${local.name}'s register differs from Up's balance. Review transactions and reconcile; the opening balance was preserved.`,
           );
       } catch (err) {
-        result.errors.push(upErrorMessage(err));
+        result.errors.push(syncErrorMessage(err, local.name));
       }
     }
     setStatus(result.errors.length ? 'error' : 'good', result.errors.join(' ') || null);
@@ -236,7 +308,7 @@ async function runSync(): Promise<UpSyncResult> {
         .where(eq(upConnections.id, UP_CONNECTION_ID))
         .run();
   } catch (err) {
-    result.errors.push(upErrorMessage(err));
+    result.errors.push(syncErrorMessage(err));
     setStatus('error', result.errors.join(' '));
   }
   const completedAt = new Date().toISOString();
@@ -250,6 +322,18 @@ async function runSync(): Promise<UpSyncResult> {
     .where(eq(upConnections.id, UP_CONNECTION_ID))
     .run();
   return result;
+}
+
+/**
+ * What a failed sync tells the owner. Up's own failures (UpError) are already worded for them.
+ * Anything else is a fault in Allotment, not the connection: say so, and log what it was
+ * (the error's name and message only: never the request, which carries the token).
+ */
+export function syncErrorMessage(err: unknown, accountName?: string) {
+  if (err instanceof UpError) return upErrorMessage(err);
+  const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  console.error('Up sync stopped by an error in Allotment:', JSON.stringify(detail.slice(0, 500)));
+  return `${accountName ? `${accountName}: ` : ''}Allotment could not save Up's transactions because of an error in Allotment, not the connection. Nothing was imported${accountName ? ' for this account' : ''}. The app's log has the details.`;
 }
 
 export const UP_POLL_INTERVALS = [0, 15, 30, 60, 240] as const;

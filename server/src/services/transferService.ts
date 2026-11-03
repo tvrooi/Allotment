@@ -278,7 +278,14 @@ function linkRows(id: string, otherId: string): LinkResult {
 export function transferToAccount(
   id: string,
   accountId: string,
-  { otherAmount }: { otherAmount?: number } = {},
+  {
+    otherAmount,
+    createNew = false,
+  }: {
+    otherAmount?: number;
+    /** Always create the other side, never link a row already there (a payment plan's payment) */
+    createNew?: boolean;
+  } = {},
 ): LinkResult {
   return db.transaction(() => {
     const tx = getRow(id);
@@ -300,7 +307,7 @@ export function transferToAccount(
 
     const [self] = loadCandidates(tx.accountId).filter((c) => c.id === tx.id);
     const match = bestCounterpart(self ?? tx, loadCandidates(accountId));
-    if (match && otherAmount === undefined) return linkRows(tx.id, match.id);
+    if (match && otherAmount === undefined && !createNew) return linkRows(tx.id, match.id);
 
     let amount = -tx.amount;
     if (crossCurrency) {
@@ -396,7 +403,7 @@ export type SyncedTransfer = 'linked' | 'unlinked' | 'locked';
 
 /**
  * A bank sync changed one side of a linked transfer (`before` → `date`/`amount`, with the
- * bank's new text). A side that wasn't imported (FlyBudget created it, or you entered it)
+ * bank's new text). A side that wasn't imported (Allotment created it, or you entered it)
  * follows the date and amount, like a manual edit. When both were imported, a new date keeps
  * the link and a new amount unlinks both (not dismissed: if they still match, they're suggested
  * again). Call it before saving the change.

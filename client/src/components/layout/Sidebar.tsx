@@ -16,15 +16,18 @@ import {
   Settings,
   Pin,
   X,
-  CircleHelp,
   ClipboardCheck,
   CandlestickChart,
   Receipt,
+  Eye,
+  EyeOff,
+  CalendarClock,
 } from 'lucide-react';
 import { usePreferencesStore } from '../../store/preferencesStore';
+import { useSafeModeStore } from '../../store/safeModeStore';
 import { SidebarAccountList } from './SidebarAccountList';
 import { ServerStatus } from './ServerStatus';
-import { DOCS_URL } from '../../utils/project';
+import { HelpMenu } from '../guide/HelpMenu';
 import { BrandName } from '../ui/BrandName';
 import logoUrl from '/logo.png';
 
@@ -139,27 +142,20 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
         <img src={logoUrl} alt="" className="w-7 h-7 shrink-0" />
         {/* Brand colours follow the light and dark navigation surfaces. */}
         <BrandName
-          className={`text-sm font-semibold tracking-tight transition-opacity duration-200 ${
+          className={`text-base transition-opacity duration-200 ${
             isExpanded ? 'opacity-100' : 'opacity-0'
           }`}
-          flyClassName="text-brand-600"
-          budgetClassName="text-sidebar-text-hi"
+          textClassName="text-sidebar-text-hi"
         />
         <div
           className={`ml-auto -mr-1.5 flex items-center gap-0.5 transition-opacity duration-200 ${
             isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         >
-          <a
-            href={DOCS_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Help & docs (opens in a new tab)"
-            className={`group ${headerButton}`}
-          >
-            <CircleHelp size={16} aria-hidden />
-            <HeaderTooltip>Help &amp; docs</HeaderTooltip>
-          </a>
+          <HelpMenu className={`group ${headerButton}`}>
+            <HeaderTooltip>Help &amp; guides</HeaderTooltip>
+          </HelpMenu>
+          <SafeModeButton className={`group ${headerButton}`} />
           {/* The phone drawer closes; the desktop sidebar has a pin instead: pinned stays open,
               unpinned collapses and opens on hover (the Sidebar setting in Preferences) */}
           {onClose ? (
@@ -194,7 +190,7 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
       {/* Navigation and accounts share a scroll area on short screens. */}
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
         {/* Primary nav */}
-        <nav className="pt-4 px-3 space-y-1">
+        <nav data-guide="nav.main" className="pt-4 px-3 space-y-1">
           <NavItem
             to="/dashboard"
             icon={<LayoutDashboard size={18} />}
@@ -229,6 +225,12 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
             to="/recurring"
             icon={<Repeat size={18} />}
             label="Recurring"
+            collapsed={!isExpanded}
+          />
+          <NavItem
+            to="/payment-plans"
+            icon={<CalendarClock size={18} />}
+            label="Pay later"
             collapsed={!isExpanded}
           />
           <NavItem
@@ -297,6 +299,27 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
         <ServerStatus collapsed={!isExpanded} />
       </div>
     </div>
+  );
+}
+
+/** Safe mode on or off: hides balances and totals while someone else looks at the screen */
+export function SafeModeButton({ className }: { className: string }) {
+  const on = useSafeModeStore((s) => s.on);
+  const toggle = useSafeModeStore((s) => s.toggle);
+  const Icon = on ? EyeOff : Eye;
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-pressed={on}
+      aria-label="Safe mode"
+      aria-keyshortcuts="Alt+Shift+H"
+      data-guide="nav.safe-mode"
+      className={className}
+    >
+      <Icon size={16} aria-hidden className={on ? 'text-brand-600' : undefined} />
+      <HeaderTooltip>{on ? 'Show balances' : 'Hide balances'}</HeaderTooltip>
+    </button>
   );
 }
 

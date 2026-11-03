@@ -1,11 +1,12 @@
 import { test, expect, open } from './fixtures';
 import { UP_TEST_TOKEN } from '../mockUp';
 import { UP_MOCK_PORT } from '../ports';
+import { freshUpWindow } from './upWindow';
 
 test('connects Up, imports settled history, resyncs and disconnects', async ({ page, api }) => {
   await fetch(`http://127.0.0.1:${UP_MOCK_PORT}/__mock/normal`, { method: 'POST' });
   // Banks are intentionally retained by backup restore, so clear this connection explicitly.
-  await api.call('DELETE', '/up/connection');
+  await freshUpWindow(page, api, 8);
   await api.createAccount('Manual account');
   await open(page, '/settings?tab=connections');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
@@ -17,7 +18,9 @@ test('connects Up, imports settled history, resyncs and disconnects', async ({ p
   await expect(dialog.getByLabel('Set up Up Everyday')).toBeVisible();
   await dialog.getByRole('button', { name: 'Save & Sync' }).click();
   await expect(dialog.getByText('Imported 3 transactions.')).toBeVisible();
-  await dialog.getByRole('button', { name: 'Done' }).click();
+  // Two payees have no category yet, so the first-import step offers to sort them (or skip)
+  await expect(dialog.getByRole('region', { name: 'Sort your first import' })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Skip for now' }).click();
   const accounts = await api.accounts();
   const everyday = accounts.find((a) => a.name === 'Up Everyday')!;
   expect(everyday.balance).toBe(9_000); // Available 8500 + held 500
@@ -47,7 +50,7 @@ test('shows an invalid Up token without saving a connection', async ({ page, api
   test
     .info()
     .annotations.push({ type: 'allow-page-errors', description: 'Expected rejected credentials' });
-  await api.call('DELETE', '/up/connection');
+  await freshUpWindow(page, api, 4);
   await api.createAccount('Manual account');
   await open(page, '/settings?tab=connections');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
@@ -64,7 +67,8 @@ test('sets background sync, reviews imports, and expands daily round-up details 
   api,
 }) => {
   await fetch(`http://127.0.0.1:${UP_MOCK_PORT}/__mock/round-ups-current`, { method: 'POST' });
-  await api.call('DELETE', '/up/connection');
+  // Earlier Up tests (here or in first-import.spec.ts) share the bank write limit
+  await freshUpWindow(page, api, 8);
   await api.call('POST', '/up/setup', { accessToken: UP_TEST_TOKEN });
   await api.call('POST', '/up/map-accounts', {
     mappings: [
@@ -84,12 +88,9 @@ test('sets background sync, reviews imports, and expands daily round-up details 
       .pollIntervalMinutes,
   ).toBe(15);
   const review = page.getByRole('region', { name: 'Up review', exact: true });
-  await expect(review.getByRole('heading')).toHaveText('Needs review (4)');
-  await review
-    .getByRole('button', { name: 'Acknowledge · keep local record', exact: true })
-    .first()
-    .click();
-  await expect(review.getByRole('heading')).toHaveText('Needs review (3)');
+  // The first sync is the starting history, not changes to review
+  await expect(review.getByRole('heading')).toHaveText('Needs review (0)');
+  await expect(review.getByText('Nothing needs review.')).toBeVisible();
   const rounds = page.getByRole('region', { name: 'Daily Up round-ups', exact: true });
   await rounds.getByText('A$2.40 reported', { exact: false }).click();
   await expect(rounds.getByText('Includes A$2 in boosts.')).toBeVisible();
@@ -117,16 +118,7 @@ test('adds balance-proven round-up debits only after an explicit choice', async 
   const mode = (name: string) =>
     fetch(`http://127.0.0.1:${UP_MOCK_PORT}/__mock/${name}`, { method: 'POST' });
   await mode('implicit-round-ups-start');
-  // The earlier Up tests share the bank rate limit (20 writes a minute). This test needs
-  // eight, so start it in a fresh window rather than tripping the limit midway.
-  for (;;) {
-    const res = await api.request.fetch('/api/up/connection', { method: 'DELETE' });
-    const limit = res.headers()['ratelimit'] ?? '';
-    const remaining = Number(/r=(\d+)/.exec(limit)?.[1] ?? 20);
-    const reset = Number(/t=(\d+)/.exec(limit)?.[1] ?? 0);
-    if (res.status() !== 429 && remaining >= 8) break;
-    await page.waitForTimeout((reset + 1) * 1000);
-  }
+  await freshUpWindow(page, api, 8);
   await api.call('POST', '/up/setup', { accessToken: UP_TEST_TOKEN });
   await api.call('POST', '/up/map-accounts', {
     mappings: [{ upAccountId: 'spending', action: 'create' }],
@@ -149,4 +141,45 @@ test('adds balance-proven round-up debits only after an explicit choice', async 
   await api.call('POST', '/up/sync');
   expect(await api.transactions()).toHaveLength(3);
   await api.call('DELETE', '/up/connection');
+});
+
+test('a deleted Up transaction stays deleted until it is restored from Up review', async ({
+  page,
+  api,
+}) => {
+  await fetch(`http://127.0.0.1:${UP_MOCK_PORT}/__mock/normal`, { method: 'POST' });
+  await freshUpWindow(page, api, 8);
+  await api.call('POST', '/up/setup', { accessToken: UP_TEST_TOKEN });
+  await api.call('POST', '/up/map-accounts', {
+    mappings: [
+      { upAccountId: 'spending', action: 'create' },
+      { upAccountId: 'saver', action: 'skip' },
+    ],
+  });
+  await api.call('POST', '/up/sync');
+  const everyday = (await api.accounts()).find((a) => a.name === 'Up Everyday')!;
+  const upRows = async () => (await api.transactions()).filter((t) => t.accountId === everyday.id);
+  const victim = (await upRows()).find((t) => t.amount < 0)!;
+
+  await open(page, `/accounts/${everyday.id}`);
+  // The mock's history has fixed dates; the register opens on this month
+  await page.getByRole('button', { name: 'All Time' }).click();
+  await page.getByTestId('transaction-row').filter({ hasText: victim.payeeName }).click();
+  await page.getByRole('button', { name: 'Delete Transaction' }).click();
+  const confirm = page.getByRole('dialog');
+  await expect(confirm.getByText('It came from Up, so it stays deleted')).toBeVisible();
+  await confirm.getByRole('button', { name: 'Delete' }).click();
+  await expect.poll(async () => (await upRows()).length).toBe(1);
+
+  // Syncing doesn't bring it back
+  await api.call('POST', '/up/sync');
+  expect((await upRows()).some((t) => t.importedId === victim.importedId)).toBe(false);
+
+  await open(page, '/settings?tab=connections');
+  await page.getByRole('button', { name: 'Up', exact: true }).click();
+  const deleted = page.getByRole('region', { name: 'Deleted here, still at Up' });
+  await expect(deleted.getByText(victim.payeeName)).toBeVisible();
+  await deleted.getByRole('button', { name: `Restore ${victim.payeeName}` }).click();
+  await expect(deleted).toBeHidden();
+  expect((await upRows()).some((t) => t.importedId === victim.importedId)).toBe(true);
 });

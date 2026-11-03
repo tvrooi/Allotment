@@ -3,17 +3,22 @@ import { and, eq, gt, inArray, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
-import { accessTokens, rules, transactions } from '../db/schema.js';
+import { accessTokens, householdGroups, rules, taxClaims, transactions } from '../db/schema.js';
 import { listTransferSuggestions } from '../services/transferService.js';
+import { poolAccountsOf, snapshot as householdSnapshot } from '../services/householdService.js';
 import { todayIso } from '../services/mainAmountService.js';
 import { gatewayPersonId } from '../config.js';
+import { logoSchema } from '../utils/logo.js';
 
 // Read-only access tokens (docs/READ-ONLY-ACCESS.md). A token is 256 random bits with a
 // recognisable prefix. Its scope is 'read'; 'categorise': read, plus setting the category of
 // past transactions and creating and editing categories (categoriseAllows,
 // categoryManageAllows); or 'organise': categorise, plus proposing rules the owner enables,
-// payee default categories and linking suggested transfers (organiseAllows). Only its SHA-256
-// is stored, like login sessions, so a leaked database doesn't leak usable tokens. Tokens expire, can be revoked, and changing the password
+// payee default categories and logos (never removing one), linking suggested transfers
+// (organiseAllows), claiming past transactions as tax deductions (taxClaimAllows), recording
+// household contributions linked to a deposit into a household account
+// (householdContributionAllows) and your own unlinked contribution up to what you owe
+// (ownContributionAllows). Only its SHA-256 is stored, like login sessions, so a leaked database doesn't leak usable tokens. Tokens expire, can be revoked, and changing the password
 // revokes them all.
 
 export const TOKEN_PREFIX = 'fbro_';
@@ -263,6 +268,7 @@ function categoryOnlyRule(ruleId: unknown) {
  *   is still disabled, without enabling it. Never delete, reorder or enable a rule;
  * - apply one category-only rule to uncategorised past transactions (POST /rules/apply);
  * - set a payee's default category, and nothing else about the payee;
+ * - set or replace a payee's logo (a brand icon); never remove one;
  * - link a pair of transactions the server itself suggests as a transfer;
  * - suggest assignments for the owner to apply (POST /budget-proposals).
  */
@@ -302,11 +308,11 @@ export function organiseAllows(method: string, rawPath: string, body: unknown): 
       return !!row && row.enabled === 0;
     }
     if (PAYEE_PATH.test(path)) {
-      return (
-        isObject(body) &&
-        Object.keys(body).length === 1 &&
-        (typeof body.defaultCategoryId === 'string' || body.defaultCategoryId === null)
-      );
+      if (!isObject(body) || Object.keys(body).length !== 1) return false;
+      if (typeof body.defaultCategoryId === 'string' || body.defaultCategoryId === null)
+        return true;
+      // A logo can be set or replaced, never removed
+      return typeof body.logo === 'string' && logoSchema.safeParse(body.logo).success;
     }
     return false;
   }
@@ -321,6 +327,166 @@ export function organiseAllows(method: string, rawPath: string, body: unknown): 
   return false;
 }
 
+// ─── Tax deductions an organise token may record ──────────────────────────────
+
+const TAX_READ = [
+  /^\/tax\/labels$/,
+  /^\/tax\/years$/,
+  /^\/tax\/years\/\d{4}$/,
+  /^\/tax\/years\/\d{4}\/candidates$/,
+  /^\/tax\/claims(\/[^/]+)?$/,
+];
+const TAX_CLAIM_PATH = /^\/tax\/claims\/([^/]+)$/i;
+/** A claim's label, work-use share and notes, as the tax route takes them */
+const taxClaimBody = z
+  .object({
+    label: z.string().min(1).max(8),
+    workUseBps: z.number().int().optional(),
+    notes: z.string().max(2_000).nullable().optional(),
+  })
+  .strict();
+
+/**
+ * Whether an organise token may read or add tax deduction claims (owner-approved,
+ * docs/READ-ONLY-ACCESS.md): read the labels, years, a year's claims (not its CSV or receipt
+ * archive) and claims; claim a past transaction that has no claim yet. Never replace or remove
+ * a claim: those are the owner's. The tax route still validates the label and share and
+ * refuses split parents and transfers.
+ */
+export function taxClaimAllows(method: string, rawPath: string, body: unknown): boolean {
+  const path = rawPath.toLowerCase().replace(/\/+$/, '');
+  if (method === 'GET' || method === 'HEAD') return TAX_READ.some((p) => p.test(path));
+  const match = TAX_CLAIM_PATH.exec(rawPath.replace(/\/+$/, ''));
+  if (method !== 'PUT' || !match || !taxClaimBody.safeParse(body).success) return false;
+  let id: string;
+  try {
+    id = decodeURIComponent(match[1]);
+  } catch {
+    return false;
+  }
+  if (db.select().from(taxClaims).where(eq(taxClaims.transactionId, id)).get()) return false;
+  const row = db
+    .select({ date: transactions.date })
+    .from(transactions)
+    .where(eq(transactions.id, id))
+    .get();
+  // A missing transaction is the route's 404, not a refusal
+  return !row || row.date <= todayIso();
+}
+
+// ─── Household contributions an organise token may record ────────────────────
+
+const HOUSEHOLD_EVENTS_PATH = /^\/households\/([^/]+)\/events$/i;
+/** A contribution linked to one bank deposit, and nothing else (no bill, split or reversal) */
+const contributionBody = z
+  .object({
+    kind: z.literal('contribution'),
+    date: z.iso.date(),
+    description: z.string().min(1).max(200),
+    amount: z.number().int().min(1),
+    payerId: z.string().min(1).max(64),
+    transactionId: z.string().min(1).max(64),
+  })
+  .strict();
+
+/**
+ * Whether an organise token may record this household entry (owner-approved on 2 November
+ * 2026, docs/READ-ONLY-ACCESS.md): a contribution linked to a past deposit into one of that
+ * household's accounts, for exactly the deposit's amount and date, that isn't a move from
+ * another of its accounts. Never an expense,
+ * settlement, refund, bill, unlinked amount, edit or removal: those stay the owner's. The
+ * household route still checks the person, that the deposit (or its other transfer leg) isn't
+ * linked already, and the rest of the ledger's rules.
+ */
+export function householdContributionAllows(
+  method: string,
+  rawPath: string,
+  body: unknown,
+): boolean {
+  const match = HOUSEHOLD_EVENTS_PATH.exec(rawPath.replace(/\/+$/, ''));
+  if (method !== 'POST' || !match) return false;
+  const parsed = contributionBody.safeParse(body);
+  if (!parsed.success) return false;
+  let groupId: string;
+  try {
+    groupId = decodeURIComponent(match[1]);
+  } catch {
+    return false;
+  }
+  const group = db.select().from(householdGroups).where(eq(householdGroups.id, groupId)).get();
+  if (!group) return false;
+  const tx = db
+    .select({
+      accountId: transactions.accountId,
+      date: transactions.date,
+      amount: transactions.amount,
+      transferTransactionId: transactions.transferTransactionId,
+    })
+    .from(transactions)
+    .where(eq(transactions.id, parsed.data.transactionId))
+    .get();
+  const pool = poolAccountsOf(group);
+  // A move between the household's own accounts brings no money in
+  const otherLeg = tx?.transferTransactionId
+    ? db
+        .select({ accountId: transactions.accountId })
+        .from(transactions)
+        .where(eq(transactions.id, tx.transferTransactionId))
+        .get()
+    : undefined;
+  return (
+    !!tx &&
+    !(otherLeg && pool.includes(otherLeg.accountId)) &&
+    tx.amount > 0 &&
+    tx.amount === parsed.data.amount &&
+    tx.date === parsed.data.date &&
+    tx.date <= todayIso() &&
+    pool.includes(tx.accountId)
+  );
+}
+
+/** Your own contribution with no bank link: only you, and never more than you owe */
+const ownContributionBody = z
+  .object({
+    kind: z.literal('contribution'),
+    date: z.iso.date(),
+    description: z.string().trim().min(1).max(200),
+    amount: z.number().int().min(1),
+    payerId: z.string().min(1).max(64),
+  })
+  .strict();
+
+/**
+ * Whether an organise token may record the owner's own contribution without a bank link
+ * (owner-approved on 2 November 2026, docs/READ-ONLY-ACCESS.md): for money the owner put
+ * towards the household some other way, such as through a shared saver that isn't one of its
+ * accounts. Only the household's "you" person, dated today or earlier, and at most what you
+ * owe the household account now, so it can bring you to zero but never into credit. Never for
+ * anyone else: their contributions need a linked deposit (householdContributionAllows).
+ */
+export function ownContributionAllows(method: string, rawPath: string, body: unknown): boolean {
+  const match = HOUSEHOLD_EVENTS_PATH.exec(rawPath.replace(/\/+$/, ''));
+  if (method !== 'POST' || !match) return false;
+  const parsed = ownContributionBody.safeParse(body);
+  if (!parsed.success || parsed.data.date > todayIso()) return false;
+  let groupId: string;
+  try {
+    groupId = decodeURIComponent(match[1]);
+  } catch {
+    return false;
+  }
+  let state: ReturnType<typeof householdSnapshot>;
+  try {
+    state = householdSnapshot(groupId);
+  } catch {
+    return false;
+  }
+  const self = state.people.find((p) => p.isSelf);
+  if (!self || parsed.data.payerId !== self.id) return false;
+  const owes = -(state.toPool[self.id] ?? 0);
+  return owes > 0 && parsed.data.amount <= owes;
+}
+
 /** Whether a token with this scope may make this request (path relative to /api) */
 export function tokenAllows(scope: TokenScope, method: string, path: string, body: unknown) {
   if (readOnlyAllows(method, path)) return true;
@@ -329,6 +495,10 @@ export function tokenAllows(scope: TokenScope, method: string, path: string, bod
   return (
     categoriseAllows(method, path, body) ||
     categoryManageAllows(method, path, body) ||
-    (scope === 'organise' && organiseAllows(method, path, body))
+    (scope === 'organise' &&
+      (organiseAllows(method, path, body) ||
+        taxClaimAllows(method, path, body) ||
+        householdContributionAllows(method, path, body) ||
+        ownContributionAllows(method, path, body)))
   );
 }

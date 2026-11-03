@@ -13,6 +13,11 @@ import { useBudgetCurrency, useCurrencySettings } from '../../hooks/useCurrency'
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { guessCurrency } from '../../utils/currency';
 
+const localToday = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -56,6 +61,8 @@ export function AddAccountModal({ isOpen, onClose }: Props) {
       type,
       // Debts are entered as the amount owed and stored as a negative balance
       startingBalance: info.liability ? -Math.abs(amount) : amount,
+      // Typed as today's balance: importing older history later must not change it
+      ...(amount !== 0 ? { balanceAsOf: localToday() } : {}),
       isOffBudget: isOffBudget ? 1 : 0,
       ...(currency ? { currency } : {}),
     });
@@ -71,7 +78,7 @@ export function AddAccountModal({ isOpen, onClose }: Props) {
     ? 'What you owe as of today.'
     : info.group === 'property'
       ? "What it's worth today. You can update it any time from the account page."
-      : 'Enter your balance as of today.';
+      : "Enter your balance as of today. Importing older history later won't change it.";
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Add Account" size="sm">

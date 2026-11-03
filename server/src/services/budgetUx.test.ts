@@ -170,7 +170,9 @@ describe('category templates', () => {
       t.flatMap((g) => g.categories.map((c) => c.name));
     expect(names(categoryTemplate(undefined, 'Australia/Melbourne'))).toContain('Rego & CTP');
     expect(names(categoryTemplate(undefined, 'America/New_York'))).toContain('HOA Fees');
-    expect(names(categoryTemplate('au', 'UTC'))).toContain('Afterpay / Zip');
+    expect(names(categoryTemplate('au', 'UTC'))).toContain('Private Health Insurance');
+    // Afterpay purchases are recorded as payment plans with their real category
+    expect(names(categoryTemplate('au', 'UTC'))).not.toContain('Afterpay / Zip');
     expect(names(categoryTemplate('default', 'Australia/Perth'))).not.toContain('Rego & CTP');
   });
 });

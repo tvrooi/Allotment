@@ -13,10 +13,11 @@ function findTxInCache(qc: QueryClient, id: string): Transaction | undefined {
   }
 }
 
-export function useTransactions(params: TransactionQueryParams = {}) {
+export function useTransactions(params: TransactionQueryParams = {}, enabled = true) {
   return useQuery({
     queryKey: ['transactions', params],
     queryFn: () => txApi.getTransactions(params),
+    enabled,
   });
 }
 
@@ -27,6 +28,18 @@ export function useTransactionSummary(params: TransactionQueryParams, enabled = 
     queryKey: ['transactions', 'summary', params],
     queryFn: () => txApi.getTransactionSummary(params),
     enabled,
+  });
+}
+
+export function useUnlockTransaction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: txApi.unlockTransaction,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['transactions'] });
+      qc.invalidateQueries({ queryKey: ['accounts'] });
+      qc.invalidateQueries({ queryKey: ['review'] });
+    },
   });
 }
 

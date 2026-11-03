@@ -6,7 +6,15 @@ import type { Server } from 'http';
 import type { AddressInfo } from 'net';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { db } from '../db/index.js';
-import { accounts, transactions, categories, categoryGroups } from '../db/schema.js';
+import {
+  accounts,
+  transactions,
+  categories,
+  categoryGroups,
+  payees,
+  schedules,
+  scheduleOccurrences,
+} from '../db/schema.js';
 import { transactionsRouter } from './transactions.js';
 import { householdsRouter } from './households.js';
 import { accountsRouter } from './accounts.js';
@@ -14,6 +22,7 @@ import { allocateShares } from '../services/householdLedger.js';
 import { createBackup, parseBackup, restoreBackup } from '../services/backupService.js';
 import { eq } from 'drizzle-orm';
 import { budgetActivity } from '../services/balances.js';
+import { insertNewTransaction } from '../services/ruleService.js';
 let server: Server;
 let base: string;
 beforeAll(async () => {
@@ -402,5 +411,297 @@ describe('household attribution', () => {
       householdShares: backup.householdShares,
       householdBills: backup.householdBills,
     });
+  });
+
+  it("lists recurring bills shared with the household with everyone's share and unshared payments", async () => {
+    const g = await group();
+    const [me, alex, sam] = g.people;
+    const day = (offset: number) =>
+      new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+    db.insert(payees).values({ id: 'ovo', name: 'OVO Energy' }).run();
+    db.insert(schedules)
+      .values([
+        {
+          id: 'power',
+          name: 'Electricity (OVO)',
+          amount: -18450,
+          recurrenceType: 'monthly',
+          startDate: day(-60),
+          accountId: 'mine',
+          payeeId: 'ovo',
+        },
+        {
+          id: 'pay',
+          name: 'Salary',
+          amount: 500000,
+          recurrenceType: 'monthly',
+          startDate: day(-60),
+        },
+      ])
+      .run();
+    db.insert(transactions)
+      .values([
+        { id: 'ovo-1', accountId: 'mine', date: day(-40), amount: -18450, payeeId: 'ovo' },
+        { id: 'ovo-2', accountId: 'mine', date: day(-10), amount: -18452, payeeId: 'ovo' },
+      ])
+      .run();
+    db.insert(scheduleOccurrences)
+      .values({
+        id: 'power-next',
+        scheduleId: 'power',
+        scheduledDate: day(20),
+        expectedDate: day(20),
+        expectedAmount: -18450,
+      })
+      .run();
+
+    expect((await call(`/${g.group.id}/recurring-bills`, { scheduleIds: ['pay'] })).status).toBe(
+      400,
+    );
+    const shared = await call(`/${g.group.id}/recurring-bills`, { scheduleIds: ['power'] });
+    expect(shared.status).toBe(200);
+    const [bill] = shared.data.recurringBills;
+    expect(bill).toMatchObject({ name: 'Electricity (OVO)', amount: 18450, nextDate: day(20) });
+    expect(bill.shares).toEqual([
+      { personId: me.id, amount: 6150 },
+      { personId: alex.id, amount: 6150 },
+      { personId: sam.id, amount: 6150 },
+    ]);
+    expect(bill.payments.map((p: any) => [p.transactionId, p.shared])).toEqual([
+      ['ovo-2', false],
+      ['ovo-1', false],
+    ]);
+    // Only one household can share an item
+    const other = await group();
+    expect(
+      (await call(`/${other.group.id}/recurring-bills`, { scheduleIds: ['power'] })).status,
+    ).toBe(400);
+
+    // Sharing a payment is still the owner's click, through the usual share endpoint
+    await call(`/${g.group.id}/share`, { transactionIds: ['ovo-2'] });
+    const after = (await call(`/${g.group.id}`)).data.recurringBills[0];
+    expect(after.payments.find((p: any) => p.transactionId === 'ovo-2').shared).toBe(true);
+
+    // The default split applies to the preview too
+    await call(
+      `/${g.group.id}/default-split`,
+      {
+        mode: 'percentage',
+        shares: [
+          { personId: me.id, value: 5000 },
+          { personId: alex.id, value: 2500 },
+          { personId: sam.id, value: 2500 },
+        ],
+      },
+      'PUT',
+    );
+    expect((await call(`/${g.group.id}`)).data.recurringBills[0].shares[0].amount).toBe(9225);
+
+    expect(createBackup().householdRecurringBills).toEqual([
+      expect.objectContaining({ scheduleId: 'power', groupId: g.group.id }),
+    ]);
+    const stopped = await call(`/${g.group.id}/recurring-bills/power`, undefined, 'DELETE');
+    expect(stopped.data.recurringBills).toEqual([]);
+    // Shared payments stay in the household
+    expect(stopped.data.events.some((e: any) => e.transactionId === 'ovo-2')).toBe(true);
+  });
+
+  it('splits a recurring bill its own way and shares its new payments automatically', async () => {
+    const g = await group();
+    const [me, alex, sam] = g.people;
+    const day = (offset: number) =>
+      new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+    db.insert(payees).values({ id: 'loop', name: 'Superloop' }).run();
+    db.insert(schedules)
+      .values({
+        id: 'net',
+        name: 'Internet (Superloop)',
+        amount: -9000,
+        recurrenceType: 'monthly',
+        startDate: day(-60),
+        accountId: 'mine',
+        payeeId: 'loop',
+      })
+      .run();
+    db.insert(transactions)
+      .values({ id: 'loop-old', accountId: 'mine', date: day(-20), amount: -9000, payeeId: 'loop' })
+      .run();
+    await call(`/${g.group.id}/recurring-bills`, { scheduleIds: ['net'] });
+    const noExtras = {
+      payeeId: null,
+      importedPayee: null,
+      notes: null,
+      categoryId: null,
+      importedId: null,
+    };
+
+    // Its own split: I use most of the internet
+    const bad = await call(
+      `/${g.group.id}/recurring-bills/net`,
+      {
+        split: {
+          mode: 'percentage',
+          shares: [
+            { personId: me.id, value: 5000 },
+            { personId: alex.id, value: 2500 },
+          ],
+        },
+      },
+      'PUT',
+    );
+    expect(bad.status).toBe(400);
+    const split = {
+      mode: 'percentage',
+      shares: [
+        { personId: me.id, value: 5000 },
+        { personId: alex.id, value: 2500 },
+        { personId: sam.id, value: 2500 },
+      ],
+    };
+    const updated = await call(`/${g.group.id}/recurring-bills/net`, { split }, 'PUT');
+    const bill = updated.data.recurringBills.find((b: any) => b.scheduleId === 'net');
+    expect(bill.split).toEqual(split);
+    expect(bill.shares.map((s: any) => s.amount)).toEqual([4500, 2250, 2250]);
+
+    // Sharing its past payment uses that split
+    const shared = await call(`/${g.group.id}/recurring-bills/net/share`, {
+      transactionIds: ['loop-old'],
+    });
+    expect(shared.data.shared).toBe(1);
+    const entry = shared.data.household.events.find((e: any) => e.transactionId === 'loop-old');
+    expect(entry.shares.map((s: any) => s.amount)).toEqual([4500, 2250, 2250]);
+
+    // Automatic sharing: new payments from today on, never the ones before
+    const auto = await call(`/${g.group.id}/recurring-bills/net`, { autoShare: true }, 'PUT');
+    expect(auto.data.recurringBills.find((b: any) => b.scheduleId === 'net').autoShareFrom).toBe(
+      new Date().toISOString().slice(0, 10),
+    );
+    db.transaction(() => {
+      insertNewTransaction({
+        ...noExtras,
+        id: 'loop-new',
+        accountId: 'mine',
+        date: day(0),
+        amount: -9100,
+        payeeName: 'Superloop',
+      });
+      insertNewTransaction({
+        ...noExtras,
+        id: 'loop-backdated',
+        accountId: 'mine',
+        date: day(-5),
+        amount: -9100,
+        payeeName: 'Superloop',
+      });
+      insertNewTransaction({
+        ...noExtras,
+        id: 'loop-refund',
+        accountId: 'mine',
+        date: day(0),
+        amount: 500,
+        payeeName: 'Superloop',
+      });
+    });
+    const after = (await call(`/${g.group.id}`)).data;
+    const autoEntry = after.events.find((e: any) => e.transactionId === 'loop-new');
+    expect(autoEntry.shares.map((s: any) => s.amount)).toEqual([4550, 2275, 2275]);
+    expect(after.events.some((e: any) => e.transactionId === 'loop-backdated')).toBe(false);
+    expect(after.events.some((e: any) => e.transactionId === 'loop-refund')).toBe(false);
+
+    // Back to the default split and by-hand sharing
+    const reset = await call(
+      `/${g.group.id}/recurring-bills/net`,
+      { split: null, autoShare: false },
+      'PUT',
+    );
+    const resetBill = reset.data.recurringBills.find((b: any) => b.scheduleId === 'net');
+    expect(resetBill).toMatchObject({ split: null, autoShareFrom: null });
+    db.transaction(() =>
+      insertNewTransaction({
+        ...noExtras,
+        id: 'loop-manual',
+        accountId: 'mine',
+        date: day(0),
+        amount: -9000,
+        payeeName: 'Superloop',
+      }),
+    );
+    expect(
+      (await call(`/${g.group.id}`)).data.events.some(
+        (e: any) => e.transactionId === 'loop-manual',
+      ),
+    ).toBe(false);
+  });
+
+  it('adds and renames people, keeping their entries and balance', async () => {
+    const g = await group();
+    const [me, alex] = g.people;
+    await call(`/${g.group.id}/events`, {
+      kind: 'expense',
+      date,
+      description: 'Groceries',
+      amount: 9000,
+      payerId: me.id,
+      shares: g.people.map((p: any) => ({ personId: p.id, value: 1 })),
+    });
+    expect((await call(`/${g.group.id}/people`, { name: 'alex' })).status).toBe(400);
+    expect((await call(`/${g.group.id}/people`, { name: '  ' })).status).toBe(400);
+    const added = await call(`/${g.group.id}/people`, { name: 'Jo' });
+    expect(added.status).toBe(201);
+    const jo = added.data.people.find((p: any) => p.name === 'Jo');
+    expect(added.data.balances[jo.id]).toBe(0);
+    const renamed = await call(`/${g.group.id}/people/${alex.id}`, { name: 'Alexandra' }, 'PUT');
+    expect(renamed.data.people.find((p: any) => p.id === alex.id).name).toBe('Alexandra');
+    expect(renamed.data.balances[alex.id]).toBe(-3000);
+    expect((await call(`/${g.group.id}/people/${alex.id}`, { name: 'Jo' }, 'PUT')).status).toBe(
+      400,
+    );
+    expect((await call(`/${g.group.id}/people/nobody`, { name: 'X' }, 'PUT')).status).toBe(400);
+  });
+
+  it('edits and deletes one-off bills, but not the amounts of a paid one', async () => {
+    const g = await group();
+    const made = await call(`/${g.group.id}/bills`, {
+      description: 'Council rates',
+      dueDate: '2026-11-30',
+      amount: 30000,
+      personalShare: 10000,
+    });
+    const rates = made.data.bills.find((b: any) => b.description === 'Council rates');
+    const edited = await call(
+      `/${g.group.id}/bills/${rates.id}`,
+      { description: 'Council rates Q2', dueDate: '2026-12-15', amount: 31000 },
+      'PUT',
+    );
+    expect(edited.data.bills.find((b: any) => b.id === rates.id)).toMatchObject({
+      description: 'Council rates Q2',
+      dueDate: '2026-12-15',
+      amount: 31000,
+    });
+    expect(
+      (await call(`/${g.group.id}/bills/${rates.id}`, { personalShare: 40000 }, 'PUT')).status,
+    ).toBe(400);
+    await call(`/${g.group.id}/events`, {
+      kind: 'expense',
+      date,
+      description: 'Rates paid',
+      amount: 31000,
+      payerId: g.people[0].id,
+      billId: rates.id,
+      shares: g.people.map((p: any) => ({ personId: p.id, value: 1 })),
+    });
+    expect((await call(`/${g.group.id}/bills/${rates.id}`, { amount: 1 }, 'PUT')).status).toBe(400);
+    expect(
+      (await call(`/${g.group.id}/bills/${rates.id}`, { description: 'Rates' }, 'PUT')).status,
+    ).toBe(200);
+    expect((await call(`/${g.group.id}/bills/${rates.id}`, undefined, 'DELETE')).status).toBe(400);
+    const spare = await call(`/${g.group.id}/bills`, {
+      description: 'Spare',
+      dueDate: '2026-11-30',
+      amount: 100,
+    });
+    const spareId = spare.data.bills.find((b: any) => b.description === 'Spare').id;
+    const deleted = await call(`/${g.group.id}/bills/${spareId}`, undefined, 'DELETE');
+    expect(deleted.data.bills.some((b: any) => b.id === spareId)).toBe(false);
   });
 });

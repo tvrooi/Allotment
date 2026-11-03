@@ -5,6 +5,7 @@ import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 const sidebars: SidebarsConfig = {
   tutorialSidebar: [
     'intro',
+    'start-here',
     'installing',
     'getting-started',
     {
@@ -19,6 +20,7 @@ const sidebars: SidebarsConfig = {
         'bank-sync',
         'budgeting',
         'recurring',
+        'pay-later',
         'rules',
         'reports',
         'goals',
@@ -27,6 +29,7 @@ const sidebars: SidebarsConfig = {
         'payees',
         'currencies',
         'settings',
+        'guides',
       ],
     },
     {

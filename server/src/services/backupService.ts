@@ -10,6 +10,10 @@ import {
   householdEvents,
   householdShares,
   householdBills,
+  householdRecurringBills,
+  paymentPlans,
+  paymentPlanInstalments,
+  paymentPlanDismissals,
   accounts,
   budgetSettings,
   exchangeRates,
@@ -32,6 +36,7 @@ import {
   simplefinAccountMappings,
   upAccountMappings,
   upSourceRecords,
+  upDeletedImports,
   enableBankingAccountMappings,
   transactions,
   receipts,
@@ -40,6 +45,8 @@ import {
   transferMatchDismissals,
   paydayPlans,
   paydayFundingEvents,
+  paydayFundingUndos,
+  accountReconciliations,
   paydayFundingReceipts,
   financialPriorities,
   categoryPurposes,
@@ -90,7 +97,7 @@ import { isCurrencyCode } from '../utils/currencies.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 19;
+export const BACKUP_VERSION = 22;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -110,6 +117,8 @@ const TABLES = {
   receiptLineItems,
   taxClaims,
   upSourceRecords,
+  // Up transactions deleted here, so a restored budget doesn't import them again
+  upDeletedImports,
   scheduleOccurrences,
   scheduleMatchDismissals,
   transferMatchDismissals,
@@ -131,6 +140,8 @@ const TABLES = {
   goalStatusEvents,
   paydayPlans,
   paydayFundingEvents,
+  paydayFundingUndos,
+  accountReconciliations,
   paydayFundingReceipts,
   financialPriorities,
   categoryPurposes,
@@ -142,6 +153,10 @@ const TABLES = {
   householdEvents,
   householdShares,
   householdBills,
+  householdRecurringBills,
+  paymentPlans,
+  paymentPlanInstalments,
+  paymentPlanDismissals,
   securities,
   securityPrices,
   holdings,
@@ -179,15 +194,15 @@ export type ParsedBackup = Record<BackupTable, Row[]> & { beforeCurrencies?: boo
 
 export function parseBackup(input: unknown): ParsedBackup {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new InvalidBackupError('This is not a FlyBudget backup file');
+    throw new InvalidBackupError('This is not an Allotment backup file');
   }
   const body = input as Record<string, unknown>;
   const isV1 = body.format === undefined && Array.isArray(body.accounts);
   if (!isV1 && body.format !== BACKUP_FORMAT) {
-    throw new InvalidBackupError('This is not a FlyBudget backup file');
+    throw new InvalidBackupError('This is not an Allotment backup file');
   }
   if (typeof body.version === 'number' && body.version > BACKUP_VERSION) {
-    throw new InvalidBackupError('This backup was made by a newer version of FlyBudget');
+    throw new InvalidBackupError('This backup was made by a newer version of Allotment');
   }
 
   const result = {} as ParsedBackup;
@@ -248,6 +263,16 @@ export function parseBackup(input: unknown): ParsedBackup {
           throw new InvalidBackupError('Invalid card funding setup');
         }
       }
+      if (name === 'paymentPlans') {
+        let ids: unknown;
+        try {
+          ids = JSON.parse(String(row.extraTransactionIds ?? '[]'));
+        } catch {
+          ids = null;
+        }
+        if (!Array.isArray(ids) || ids.some((id) => typeof id !== 'string'))
+          throw new InvalidBackupError('Invalid payment plan');
+      }
       if (name === 'paydayPlans') {
         try {
           paydayConfigSchema.parse(JSON.parse(row.configJson as string));
@@ -280,7 +305,7 @@ export function parseBackup(input: unknown): ParsedBackup {
           }
         }
         if (
-          !['new', 'changed', 'missing', 'pending', 'reviewed'].includes(
+          !['new', 'changed', 'missing', 'pending', 'reviewed', 'overlap'].includes(
             String(row.reviewState ?? 'reviewed'),
           ) ||
           (row.revision !== undefined && Number(row.revision) < 1) ||

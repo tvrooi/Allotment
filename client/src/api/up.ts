@@ -17,13 +17,19 @@ export interface UpConnection {
   lastAttemptAt: string | null;
   lastCompletedAt: string | null;
   nextSyncAt: string | null;
-  accounts: (Omit<UpDiscoveredAccount, 'balance'> & { accountName: string | null })[];
+  accounts: (Omit<UpDiscoveredAccount, 'balance'> & {
+    accountName: string | null;
+    cutoverDate?: string | null;
+    cutoverDifference?: number | null;
+  })[];
 }
 export interface UpMappingChoice {
   upAccountId: string;
   action: 'create' | 'link' | 'skip';
   accountId?: string;
   accountName?: string;
+  /** Linking an account that already has history: Up's transactions from this day on are imported */
+  cutoverDate?: string;
 }
 export interface UpSyncResult {
   added: number;
@@ -72,13 +78,45 @@ export interface UpReviewItem {
   revision: number;
   current: UpObservation;
   previous: UpObservation | null;
+  /** reviewState 'overlap': the older row this import may duplicate (null once it's gone) */
+  overlap?: {
+    id: string;
+    date: string;
+    amount: number;
+    payee: string | null;
+    reconciled: boolean;
+  } | null;
+}
+/** An Up transaction deleted here that Up still has: the sync skips it until it is restored */
+export interface UpDeletedImport {
+  accountId: string;
+  accountName: string;
+  importedId: string;
+  deletedAt: string;
+  /** What Up last reported (null when there's no record of it) */
+  date: string | null;
+  description: string | null;
+  amount: number | null;
 }
 export const getUpReview = (offset: number) =>
-  apiFetch<{ total: number; pending: number; items: UpReviewItem[] }>(
-    `/up/review?offset=${offset}`,
-  );
+  apiFetch<{
+    total: number;
+    pending: number;
+    items: UpReviewItem[];
+    deleted?: UpDeletedImport[];
+  }>(`/up/review?offset=${offset}`);
+export const restoreUpDeleted = (accountId: string, importedId: string) =>
+  apiFetch<{ restored: boolean; sync: { added: number; errors: string[] } }>('/up/review/restore', {
+    method: 'POST',
+    body: JSON.stringify({ accountId, importedId }),
+  });
 export const acknowledgeUpReview = (importedId: string, revision: number) =>
   apiFetch('/up/review/acknowledge', {
+    method: 'POST',
+    body: JSON.stringify({ importedId, revision }),
+  });
+export const deleteUpOverlapOld = (importedId: string, revision: number) =>
+  apiFetch('/up/review/overlap/delete-old', {
     method: 'POST',
     body: JSON.stringify({ importedId, revision }),
   });
@@ -117,3 +155,10 @@ export const enableUpRoundUpDebits = (accountId: string, count: number, total: n
   });
 export const disableUpRoundUpDebits = (accountId: string) =>
   apiFetch(`/up/round-up-debits/${encodeURIComponent(accountId)}`, { method: 'DELETE' });
+
+/** Settle the cut-over difference with one adjustment dated the day before the cut-over */
+export const addUpOpeningBalance = (accountId: string, expected: number) =>
+  apiFetch<{ date: string; amount: number }>('/up/cutover/opening-balance', {
+    method: 'POST',
+    body: JSON.stringify({ accountId, expected }),
+  });

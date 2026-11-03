@@ -18,6 +18,9 @@ test('hides, moves and resets home cards, keeping them across a reload', async (
   await expect(page.getByTestId('home-card-net-worth')).toHaveCount(0);
   await page.reload();
   await expect(page.getByTestId('home-card-net-worth')).toHaveCount(0);
+  // Cards load independently; read the order once both compared cards are on the page
+  await expect(page.getByTestId('home-card-recent-transactions')).toBeVisible();
+  await expect(page.getByTestId('home-card-spending-breakdown')).toBeVisible();
   const order = await cards.evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
   expect(order.indexOf('home-card-recent-transactions')).toBeLessThan(
     order.indexOf('home-card-spending-breakdown'),

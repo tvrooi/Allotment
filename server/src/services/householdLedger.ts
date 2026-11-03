@@ -27,9 +27,18 @@ type Event = {
   recipientId: string | null;
 };
 type Share = { eventId: string; personId: string; amount: number };
-/** Positive = prepaid credit / owed to the person; negative = owes the group. Pool is implicit. */
+/**
+ * Positive = prepaid credit / owed to the person; negative = owes the group. Pool is implicit.
+ * Each balance is the sum of two parts:
+ * - `toPool`: contributions to the household account less shares of what it paid. Negative =
+ *   owes the household account; positive = credit held there. These add up to `pool`.
+ * - `direct`: what people paid themselves for others, and repayments between people. Negative =
+ *   owes the people who paid; positive = owed by them. These add up to zero.
+ */
 export function householdLedger(people: { id: string }[], events: Event[], shares: Share[]) {
-  const balances: Record<string, number> = Object.fromEntries(people.map((p) => [p.id, 0]));
+  const zero = () => Object.fromEntries(people.map((p) => [p.id, 0])) as Record<string, number>;
+  const toPool = zero();
+  const direct = zero();
   const byEvent = new Map<string, Share[]>();
   for (const share of shares) {
     const list = byEvent.get(share.eventId) ?? [];
@@ -39,16 +48,19 @@ export function householdLedger(people: { id: string }[], events: Event[], share
   let pool = 0;
   for (const e of events) {
     if (e.kind === 'expense' || e.kind === 'refund') {
-      if (e.payerId) balances[e.payerId] += e.amount;
+      const side = e.payerId ? direct : toPool;
+      if (e.payerId) direct[e.payerId] += e.amount;
       else pool -= e.amount;
-      for (const s of byEvent.get(e.id) ?? []) balances[s.personId] -= s.amount;
+      for (const s of byEvent.get(e.id) ?? []) side[s.personId] -= s.amount;
     } else if (e.kind === 'contribution') {
-      balances[e.payerId!] += e.amount;
+      toPool[e.payerId!] += e.amount;
       pool += e.amount;
     } else if (e.kind === 'settlement') {
-      balances[e.payerId!] += e.amount;
-      balances[e.recipientId!] -= e.amount;
+      direct[e.payerId!] += e.amount;
+      direct[e.recipientId!] -= e.amount;
     }
   }
-  return { balances, pool };
+  const balances = zero();
+  for (const id of Object.keys(balances)) balances[id] = toPool[id] + direct[id];
+  return { balances, pool, toPool, direct };
 }

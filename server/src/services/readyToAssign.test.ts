@@ -14,6 +14,7 @@ import { budgetGroups, budgetSummary } from './budgetService.js';
 import { applyMove, fundedWrite, previewMove } from './budgetMoves.js';
 import { ratesChanged } from './mainAmountService.js';
 import { monthBounds } from '../utils/date.js';
+import { lt } from 'drizzle-orm';
 
 // Ready to Assign, the YNAB way (docs/ENVELOPE-FUNDING.md): the acceptance cases, then a
 // from-scratch ledger recompute that has to agree with every figure the budget displays.
@@ -289,4 +290,56 @@ it('every displayed figure equals a from-scratch ledger recompute, in integer ce
           expect(Number.isSafeInteger(value), `${label}, ${key}`).toBe(true);
     }
   }
+});
+
+// A switcher's imported history (categorised, months before the budget start) is real money
+// in the accounts but never in the envelopes: it must not move Ready to Assign.
+it('categorised history before the budget start leaves Ready to Assign at cash minus assigned', () => {
+  db.insert(budgetSettings).values({ id: 'budget', budgetStartMonth: '2026-10' }).run();
+  account('cash', '2026-06-01');
+  const history = (cat: (id: string) => string | null) => {
+    txn('cash', '2026-07-03', 300000, cat('salary'));
+    txn('cash', '2026-08-10', -120000, cat('rent'));
+    txn('cash', '2026-08-12', -45000, cat('food'));
+    txn('cash', '2026-09-10', -150000, cat('rent')); // overspent in a month that has no envelopes
+    txn('cash', '2026-09-20', -20000, cat('fun'));
+  };
+  history((id) => id);
+  txn('cash', '2026-10-05', 200000, 'salary');
+  const cash = 300000 - 120000 - 45000 - 150000 - 20000 + 200000;
+  expect(rta('2026-10')).toBe(cash); // the accounts' cash, nothing assigned yet
+  assign('food', '2026-10', 50000);
+  expect(rta('2026-10')).toBe(cash - 50000);
+  // The same history without categories, or with none at all, gives the same answer
+  db.update(transactions)
+    .set({ categoryId: null })
+    .where(lt(transactions.date, '2026-10-01'))
+    .run();
+  expect(rta('2026-10')).toBe(cash - 50000);
+  // No envelope carries a deficit out of those months
+  for (const id of ['rent', 'food', 'fun'])
+    expect(available('2026-10', id)).toBeGreaterThanOrEqual(0);
+  const summary = budgetSummary('2026-10');
+  expect(summary).toMatchObject({ envelopes: 50000, overspent: 0, uncategorized: 0 });
+  // Viewing an earlier month shows its Activity read-only without touching the figures
+  const before = rta('2026-10');
+  budgetGroups('2026-09');
+  expect(rta('2026-10')).toBe(before);
+});
+
+// What a switcher sees right after linking a bank: this month's spending sits in envelopes that
+// were never assigned. By the documented rule (docs/ENVELOPE-FUNDING.md, "The overspending
+// rule") that does not lower this month's Ready to Assign; it comes out of next month's, once.
+it("this month's unassigned spending is cash overspending: Ready to Assign is cash plus it, then next month pays it", () => {
+  db.insert(budgetSettings).values({ id: 'budget', budgetStartMonth: '2026-10' }).run();
+  account('cash', '2026-06-01', 1_500_000);
+  txn('cash', '2026-10-03', -400_000, 'rent');
+  txn('cash', '2026-10-09', -21_110, 'food');
+  const cash = 1_500_000 - 400_000 - 21_110;
+  const october = budgetSummary('2026-10');
+  expect(october).toMatchObject({ cashOverspent: 421_110, overspent: 421_110 });
+  expect(october.toBeBudgeted).toBe(cash + 421_110);
+  expect(october.resolved).toBe(false);
+  vi.setSystemTime(new Date('2026-11-02T02:00:00Z'));
+  expect(rta('2026-11')).toBe(cash);
 });

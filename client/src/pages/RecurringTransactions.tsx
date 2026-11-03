@@ -93,10 +93,13 @@ export default function RecurringTransactionsPage() {
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-x-4">
         <div className="flex items-center gap-6">
-          <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text py-4">
+          <h1
+            data-guide="recurring.header"
+            className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text py-4"
+          >
             Recurring
           </h1>
-          <div className="flex gap-1 self-stretch">
+          <div data-guide="recurring.tabs" className="flex gap-1 self-stretch">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -113,10 +116,15 @@ export default function RecurringTransactionsPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 py-2">
-          <Button variant="secondary" size="sm" onClick={() => setDiscoverOpen(true)}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setDiscoverOpen(true)}
+            data-guide="recurring.find"
+          >
             <Sparkles size={13} /> Find recurring
           </Button>
-          <Button size="sm" onClick={handleAdd}>
+          <Button size="sm" onClick={handleAdd} data-guide="recurring.add">
             <Plus size={13} /> Add recurring
           </Button>
         </div>

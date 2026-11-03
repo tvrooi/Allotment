@@ -21,6 +21,8 @@ const COLUMN_ROLES = [
   'outflow',
   'direction',
   'notes',
+  'category',
+  'categoryGroup',
   'skip',
 ] as const;
 
@@ -43,7 +45,7 @@ export const importSettingsSchema = z.object({
     .transform((pairs): Record<string, (typeof COLUMN_ROLES)[number]> => Object.fromEntries(pairs)),
   dateFormat: z.enum(['mdy', 'dmy', 'ymd']).nullable(),
   numberFormat: z.enum(['dot', 'comma']).nullable(),
-  /** What the direction column says for money going out, if not a word FlyBudget knows */
+  /** What the direction column says for money going out, if not a word Allotment knows */
   outWord: z.string().trim().max(50).nullable(),
 });
 

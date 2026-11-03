@@ -4,7 +4,7 @@ import type { AccountType } from '../utils/accountTypes.js';
 import { minorUnits } from '../utils/currencies.js';
 import { decimalToMinor } from '../utils/money.js';
 
-// Turning Enable Banking (PSD2) account data into FlyBudget transactions. Pure: no database,
+// Turning Enable Banking (PSD2) account data into Allotment transactions. Pure: no database,
 // no clock, so the same rules can be tested exhaustively and re-run anywhere.
 //
 // Bank data is untrusted. Every transaction is validated on its own: one the bank sent
@@ -155,7 +155,7 @@ const clip = (value: string, max: number) => value.slice(0, max);
  * a response (repeats get "#2", "#3", like CAMT imports). A record sent twice with the same
  * reference (some banks repeat pages) counts once.
  *
- * `mappingId` is FlyBudget's id for the bank account, not the bank's `uid`, which changes
+ * `mappingId` is Allotment's id for the bank account, not the bank's `uid`, which changes
  * whenever the user reconnects.
  */
 export function mapTransactions(
@@ -280,7 +280,7 @@ export function pickBalance(raw: readonly unknown[], currency?: string | null): 
   return balances.reduce((best, b) => (rank(b.type) < rank(best.type) ? b : best)).cents;
 }
 
-/** FlyBudget account type for the bank's ISO 20022 cash account type. */
+/** Allotment account type for the bank's ISO 20022 cash account type. */
 export function suggestAccountType(cashAccountType: string | null | undefined): AccountType {
   switch (cashAccountType?.toUpperCase()) {
     case 'SVGS':
@@ -328,7 +328,7 @@ export interface ExistingRow {
 const dayNumber = (date: string) =>
   Date.UTC(+date.slice(0, 4), +date.slice(5, 7) - 1, +date.slice(8, 10)) / DAY_MS;
 
-/** How far apart (in days) a bank transaction and one already in FlyBudget may be dated */
+/** How far apart (in days) a bank transaction and one already in Allotment may be dated */
 export const ADOPT_MAX_DAYS = 3;
 
 /** Ids other bank syncs give their transactions (they find their rows by them) */
@@ -429,7 +429,7 @@ export interface ReturningAccount {
 }
 
 /**
- * After a new bank login, which of the bank's accounts are the ones FlyBudget already
+ * After a new bank login, which of the bank's accounts are the ones Allotment already
  * knows (their ids change with every session). By identification hash, then IBAN, then the
  * same name and currency; and if exactly one linked account is still missing and exactly
  * one new account (in the same currency) is left, they are the same, since banks sometimes

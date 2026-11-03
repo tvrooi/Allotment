@@ -1,12 +1,23 @@
 import { CardPayments } from '../components/budget/CardPayments';
 import { MoneyMoves } from '../components/budget/MoneyMoves';
 import { AssistantSuggestions } from '../components/budget/AssistantSuggestions';
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, type ElementRef } from 'react';
 import { Link } from 'react-router-dom';
 import { format, parseISO, addMonths, subMonths } from 'date-fns';
-import { ChevronLeft, ChevronRight, ChevronDown, Eye, Lightbulb } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Eye,
+  Lightbulb,
+  MoreHorizontal,
+  Search,
+  X,
+} from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { usePreferencesStore } from '../store/preferencesStore';
+import { AssignBlockError } from '../components/budget/AssignBlockError';
+import { useCategories } from '../hooks/useCategories';
 import { useBudget, useBudgetSummary, useSetBudget, useSetBudgetBulk } from '../hooks/useBudget';
 import {
   formatCurrency,
@@ -20,6 +31,7 @@ import { BudgetEditPopover } from '../components/budget/BudgetEditPopover';
 import { Button, ButtonLink } from '../components/ui/Button';
 import { targetLabel } from '../utils/targets';
 import { FundTargets } from '../components/budget/FundTargets';
+import { AutoAssign } from '../components/budget/AutoAssign';
 import { SpentBar } from '../components/budget/SpentBar';
 import { PhoneBudget } from '../components/budget/PhoneBudget';
 import { PaydayPlan } from '../components/budget/PaydayPlan';
@@ -29,22 +41,31 @@ import { useCanSave } from '../hooks/useConnection';
 import { ExternalLink } from '../components/ui/ExternalLink';
 import { docsUrl } from '../utils/project';
 import { categoryFigures, splitCategories } from '../utils/budgetFigures';
+import { TransferredNote } from '../components/budget/TransferredNote';
+import { ExpectedNote } from '../components/budget/ExpectedNote';
 import type { BudgetCategory, BudgetGroup, BudgetType } from '../types';
+import { Tip } from '../components/guide/Tip';
+import { TIPS } from '../guides';
 
 function AmountInput({
   cents,
   label,
+  closed,
+  onDraft,
   onSave,
   onCancel,
 }: {
   cents: number;
   label: string;
+  /** Set once the editor has already saved or cancelled, so leaving the field does nothing */
+  closed: { current: boolean };
+  /** The amount typed so far, or null while it isn't readable */
+  onDraft: (c: number | null) => void;
   onSave: (c: number) => void;
   onCancel: () => void;
 }) {
   const [raw, setRaw] = useState(centsToInput(cents));
   const [invalid, setInvalid] = useState(false);
-  const cancelled = useRef(false);
 
   return (
     <input
@@ -56,6 +77,7 @@ function AmountInput({
       onChange={(e) => {
         setRaw(e.target.value);
         setInvalid(false);
+        onDraft(isUnreadableAmount(e.target.value) ? null : parseCents(e.target.value));
       }}
       aria-invalid={invalid || undefined}
       title={invalid ? UNREADABLE_AMOUNT : undefined}
@@ -68,12 +90,12 @@ function AmountInput({
           else (e.target as HTMLInputElement).blur();
         }
         if (e.key === 'Escape') {
-          cancelled.current = true;
+          closed.current = true;
           onCancel();
         }
       }}
       onBlur={() => {
-        if (cancelled.current) return;
+        if (closed.current) return;
         // Left with text that isn't an amount: keep the planned amount it had
         if (isUnreadableAmount(raw)) onCancel();
         else onSave(parseCents(raw));
@@ -109,6 +131,38 @@ function CategoryRow({
   const canSave = useCanSave();
   const isEditing = editingId === cat.id && canSave;
   const { actual, remaining } = categoryFigures(cat, isIncome);
+  const [draft, setDraft] = useState<number | null>(cat.budgeted);
+  const closed = useRef(false);
+  function startEdit() {
+    closed.current = false;
+    setDraft(cat.budgeted);
+    onStartEdit(cat.id);
+  }
+  // A quick amount saves straight away and closes the editor
+  function pick(cents: number) {
+    closed.current = true;
+    onSave(cents);
+  }
+  const quickAmounts = isIncome
+    ? []
+    : [
+        ...(remaining < 0
+          ? [
+              {
+                label: `Cover ${formatCurrency(-remaining)} overspent`,
+                cents: cat.budgeted - remaining,
+              },
+            ]
+          : []),
+        ...(cat.target && cat.target.underfunded > 0
+          ? [
+              {
+                label: `Fund target (+${formatCurrency(cat.target.underfunded)})`,
+                cents: cat.budgeted + cat.target.underfunded,
+              },
+            ]
+          : []),
+      ];
 
   let remainingClass: string;
   const pillBase = 'font-medium rounded-full px-2.5 py-0.5 text-text';
@@ -129,9 +183,11 @@ function CategoryRow({
         </div>
         <SpentBar
           spent={isIncome ? actual : cat.spent}
-          budgeted={cat.budgeted}
+          budgeted={cat.budgeted + (cat.transferred ?? 0)}
           isIncome={isIncome}
+          expected={cat.expected}
         />
+        <TransferredNote cat={cat} className="mt-0.5" />
         {cat.target && (
           <p
             className={`text-xs mt-0.5 ${cat.target.underfunded ? 'text-caution' : 'text-text-tertiary'}`}
@@ -147,6 +203,8 @@ function CategoryRow({
               <AmountInput
                 cents={cat.budgeted}
                 label={isIncome ? `Expected from ${cat.name}` : `Planned for ${cat.name}`}
+                closed={closed}
+                onDraft={setDraft}
                 onSave={onSave}
                 onCancel={onCancel}
               />
@@ -154,15 +212,18 @@ function CategoryRow({
                 categoryId={cat.id}
                 isIncome={isIncome}
                 currentAmount={cat.budgeted}
+                draftAmount={draft}
+                quickAmounts={quickAmounts}
                 month={month}
+                onPick={pick}
                 onApplyBulk={(cents, expected) => onApplyBulk(cat.id, cents, expected)}
               />
             </>
           ) : (
             <button
-              onClick={() => onStartEdit(cat.id)}
+              onClick={startEdit}
               disabled={!canSave}
-              title={canSave ? undefined : 'Saving is paused until FlyBudget reconnects'}
+              title={canSave ? undefined : 'Saving is paused until Allotment reconnects'}
               aria-label={`${isIncome ? 'Expected from' : 'Planned for'} ${cat.name}: ${formatCurrency(cat.budgeted)}`}
               className="tabular-nums text-sm rounded px-2 py-0.5 min-w-[5.5rem] text-right border border-border bg-surface transition-colors hover:border-text-tertiary cursor-text disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -175,10 +236,13 @@ function CategoryRow({
         <div className="text-right">
           <Link
             to={`/budget/category/${cat.id}`}
+            // The figure alone ("$0") says nothing to a screen reader
+            aria-label={`${isIncome ? 'Received for' : 'Activity in'} ${cat.name}: ${formatCurrency(actual)}`}
             className="tabular-nums text-sm text-text-secondary hover:text-brand-600 cursor-pointer transition-colors"
           >
             {formatCurrency(actual)}
           </Link>
+          <ExpectedNote cat={cat} />
         </div>
       </td>
       <td className="py-1.5 pl-3 pr-6 text-right align-top">
@@ -421,6 +485,13 @@ export default function BudgetPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [incomeCollapsed, setIncomeCollapsed] = useState(false);
   const [expensesCollapsed, setExpensesCollapsed] = useState(false);
+  const [query, setQuery] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const autoAssignRef = useRef<ElementRef<typeof AutoAssign>>(null);
+  const fundTargetsRef = useRef<ElementRef<typeof FundTargets>>(null);
+  const canSaveBudget = useCanSave();
+  const { data: categoryGroups = [] } = useCategories();
+  const [putRestNote, setPutRestNote] = useState<string | null>(null);
 
   const { data: groups = [], isPlaceholderData: switchingMonth } = useBudget(selectedMonth);
   const { data: summary, isPlaceholderData: switchingSummary } = useBudgetSummary(selectedMonth);
@@ -447,6 +518,30 @@ export default function BudgetPage() {
         categories: allExpenseCats.filter((c) => c.budgetType === t.key),
       })).filter((bt) => bt.categories.length > 0),
     [allExpenseCats],
+  );
+
+  // The jump field narrows the list to matching categories (inactive ones included)
+  const needle = query.trim().toLowerCase();
+  const matches = (c: BudgetCategory) => c.name.toLowerCase().includes(needle);
+  const shownIncomeGroups = useMemo(
+    () =>
+      needle
+        ? incomeGroups
+            .map((g) => ({ ...g, categories: g.categories.filter(matches) }))
+            .filter((g) => g.categories.length > 0)
+        : incomeGroups,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [incomeGroups, needle],
+  );
+  const shownExpensesByType = useMemo(
+    () =>
+      needle
+        ? expensesByType
+            .map((bt) => ({ ...bt, categories: bt.categories.filter(matches) }))
+            .filter((bt) => bt.categories.length > 0)
+        : expensesByType,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [expensesByType, needle],
   );
 
   const incomeTotals = useMemo(() => {
@@ -491,6 +586,7 @@ export default function BudgetPage() {
   if (editingMonth !== selectedMonth) {
     setEditingMonth(selectedMonth);
     setEditingId(null);
+    setPutRestNote(null);
   }
   function handleSave(categoryId: string, budgeted: number) {
     if (switchingMonth) return;
@@ -508,6 +604,13 @@ export default function BudgetPage() {
 
   const nothingPlanned =
     groups.length > 0 && !groups.some((g) => g.categories.some((c) => c.budgeted !== 0));
+  // A brand-new budget lists every category until the first assignment has been made
+  const brandNew = summary?.anythingAssigned === false;
+  const showEvery = nothingPlanned || brandNew || !!needle;
+  const beforeStart = !!summary?.budgetStartMonth && selectedMonth < summary.budgetStartMonth;
+  const underfundedCount = groups
+    .flatMap((g) => g.categories)
+    .filter((c) => c.target?.underfunded).length;
   const tbb = summary?.toBeBudgeted ?? 0;
   const carryOver = summary?.carryOver ?? 0;
   const expRemaining = expenseTotals.balance;
@@ -533,50 +636,176 @@ export default function BudgetPage() {
 
   return (
     <div className="flex flex-col h-full bg-surface">
-      <div className="px-6 py-4 border-b border-border shrink-0">
-        <div className="flex flex-wrap gap-3 items-center justify-between">
+      <div
+        data-testid="budget-header"
+        className="px-6 max-md:px-4 py-4 max-md:py-3 border-b border-border shrink-0"
+      >
+        <div className="flex flex-wrap gap-3 max-md:gap-2 items-center justify-between">
           <div className="flex items-center gap-1">
             <span className="text-lg font-semibold text-text">
               {format(monthDate, 'MMMM yyyy')}
             </span>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <ButtonLink variant="ghost" size="sm" to={`/budget/year/${selectedMonth.slice(0, 4)}`}>
-              Year
-            </ButtonLink>
-            <FundTargets month={selectedMonth} groups={groups} />
-            <Button variant="secondary" size="sm" onClick={() => setPaydayView(true)}>
-              Until next payday
-            </Button>
+            {!isPhone && (
+              <>
+                <ButtonLink
+                  variant="ghost"
+                  size="sm"
+                  to={`/budget/year/${selectedMonth.slice(0, 4)}`}
+                >
+                  Year
+                </ButtonLink>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => autoAssignRef.current?.open()}
+                  disabled={!canSaveBudget}
+                >
+                  Auto-assign
+                </Button>
+                {underfundedCount > 0 && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => fundTargetsRef.current?.open()}
+                    disabled={!canSaveBudget}
+                  >
+                    Fund targets ({underfundedCount})
+                  </Button>
+                )}
+                <Button variant="secondary" size="sm" onClick={() => setPaydayView(true)}>
+                  Until next payday
+                </Button>
+              </>
+            )}
+            <AutoAssign ref={autoAssignRef} month={selectedMonth} hideButton />
+            <FundTargets ref={fundTargetsRef} month={selectedMonth} groups={groups} hideButton />
             <button
               onClick={() => setSelectedMonth(format(subMonths(monthDate, 1), 'yyyy-MM'))}
               aria-label="Previous month"
-              className="p-1.5 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md hover:bg-surface-alt text-text-tertiary hover:text-text-secondary transition-colors"
+              className="p-1.5 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md border border-border bg-surface-alt hover:bg-hover text-text-secondary hover:text-text transition-colors"
             >
               <ChevronLeft size={18} />
             </button>
             <button
               onClick={() => setSelectedMonth(format(addMonths(monthDate, 1), 'yyyy-MM'))}
               aria-label="Next month"
-              className="p-1.5 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md hover:bg-surface-alt text-text-tertiary hover:text-text-secondary transition-colors"
+              className="p-1.5 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md border border-border bg-surface-alt hover:bg-hover text-text-secondary hover:text-text transition-colors"
             >
               <ChevronRight size={18} />
             </button>
             <Button variant="secondary" size="sm" onClick={goToToday}>
               Today
             </Button>
+            {isPhone && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((o) => !o)}
+                  aria-label="More budget actions"
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  className="min-w-11 min-h-11 flex items-center justify-center rounded-md border border-border bg-surface-alt text-text-secondary"
+                >
+                  <MoreHorizontal size={18} />
+                </button>
+                {menuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+                    <div
+                      role="menu"
+                      className="absolute right-0 top-full mt-1 z-40 w-56 rounded-lg border border-border bg-surface shadow-lg py-1"
+                    >
+                      <Link
+                        role="menuitem"
+                        to={`/budget/year/${selectedMonth.slice(0, 4)}`}
+                        className="flex items-center min-h-11 px-4 text-sm text-text hover:bg-hover"
+                      >
+                        Year
+                      </Link>
+                      <button
+                        role="menuitem"
+                        disabled={!canSaveBudget}
+                        onClick={() => {
+                          setMenuOpen(false);
+                          autoAssignRef.current?.open();
+                        }}
+                        className="flex w-full items-center min-h-11 px-4 text-sm text-text hover:bg-hover disabled:opacity-50"
+                      >
+                        Auto-assign
+                      </button>
+                      {underfundedCount > 0 && (
+                        <button
+                          role="menuitem"
+                          disabled={!canSaveBudget}
+                          onClick={() => {
+                            setMenuOpen(false);
+                            fundTargetsRef.current?.open();
+                          }}
+                          className="flex w-full items-center min-h-11 px-4 text-sm text-text hover:bg-hover disabled:opacity-50"
+                        >
+                          Fund targets ({underfundedCount})
+                        </button>
+                      )}
+                      <button
+                        role="menuitem"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setPaydayView(true);
+                        }}
+                        className="flex w-full items-center min-h-11 px-4 text-sm text-text hover:bg-hover"
+                      >
+                        Until next payday
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
+        </div>
+        <div className="relative mt-3 max-md:mt-2">
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+            aria-hidden
+          />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Find a category"
+            aria-label="Find a category"
+            className="w-full max-w-sm max-md:max-w-none text-sm border border-border rounded-lg pl-8 pr-8 py-1.5 max-md:min-h-11 bg-surface text-text focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600 [&::-webkit-search-cancel-button]:hidden"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              aria-label="Clear category search"
+              className="absolute right-1 top-1/2 -translate-y-1/2 min-w-8 min-h-8 flex items-center justify-center text-text-tertiary hover:text-text-secondary"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
 
-      {nothingPlanned && (
+      {!nothingPlanned && !beforeStart && (
+        <Tip
+          tip={TIPS.budgetCarry}
+          className="px-6 max-md:px-4 py-3 border-b border-border-light shrink-0"
+        />
+      )}
+      {nothingPlanned && !beforeStart && !(isPhone && needle) && (
         <div className="flex items-start gap-3 px-6 py-3 bg-brand-50 border-b border-border-light text-sm text-text-secondary shrink-0">
           <Lightbulb size={16} className="text-brand-600 shrink-0 mt-0.5" aria-hidden />
           <p>
             No assignments for {format(monthDate, 'MMMM')} yet. {isPhone ? 'Tap' : 'Click'} an
-            amount to assign money you already have to an envelope. Income you receive is ready to
-            assign straight away; amounts beside income are only what you expect. Expense balances
-            carry forward. Categories you leave empty are tucked away once you've planned something.{' '}
+            amount to assign money you already have to an envelope.
+            {!isPhone &&
+              " Income you receive is ready to assign straight away; amounts beside income are only what you expect. Expense balances carry forward. Categories you leave empty are tucked away once you've planned something."}{' '}
             <ExternalLink
               href={docsUrl('budgeting')}
               className="font-medium text-brand-600 hover:text-brand-700"
@@ -588,16 +817,15 @@ export default function BudgetPage() {
       )}
 
       {(setBudgetMutation.error || setBulkMutation.error) && (
-        <p role="alert" className="px-6 py-3 text-negative">
-          {(setBudgetMutation.error || setBulkMutation.error)?.message}
-        </p>
+        <AssignBlockError error={(setBudgetMutation.error || setBulkMutation.error)!} />
       )}
       <MissingRatesBanner className="mx-6 mt-3 shrink-0" />
       <AssistantSuggestions />
-      {summary?.budgetStartMonth && selectedMonth < summary.budgetStartMonth && (
-        <p role="status" className="mx-6 mt-3 shrink-0 text-sm text-text-secondary">
-          This month is before your budget start, so its envelopes are empty. Its transactions are
-          still in your accounts and reports.{' '}
+      {beforeStart && (
+        <p role="status" className="mx-6 max-md:mx-4 mt-3 shrink-0 text-sm text-text-secondary">
+          This month is before your budget start. Activity is what you really spent, shown for
+          reference: nothing is assigned or carried, and it can't be edited. Its transactions are
+          also in your accounts and reports.{' '}
           <Link to="/settings?tab=budget" className="text-brand-700 underline">
             Budget start
           </Link>
@@ -611,17 +839,20 @@ export default function BudgetPage() {
         inert={switchingMonth}
         className={`flex max-md:flex-col flex-1 overflow-y-auto transition-opacity ${switchingMonth ? 'opacity-60 pointer-events-none' : ''}`}
       >
-        <div className="flex-1 max-md:flex-none max-md:order-last max-md:overflow-x-auto">
+        <div
+          data-guide="budget.categories"
+          className="flex-1 max-md:flex-none max-md:order-last max-md:overflow-x-auto"
+        >
           {isPhone ? (
             <PhoneBudget
               sections={[
-                ...incomeGroups.map((g) => ({
+                ...shownIncomeGroups.map((g) => ({
                   key: g.id,
                   label: g.name,
                   isIncome: true,
                   categories: g.categories,
                 })),
-                ...expensesByType.map((bt) => ({
+                ...shownExpensesByType.map((bt) => ({
                   key: bt.key,
                   label: bt.label,
                   isIncome: false,
@@ -631,7 +862,8 @@ export default function BudgetPage() {
               month={selectedMonth}
               onSave={handleSave}
               onApplyBulk={handleApplyBulk}
-              showAll={nothingPlanned}
+              showAll={showEvery}
+              readOnly={beforeStart}
             />
           ) : (
             <table className="w-full border-collapse">
@@ -673,17 +905,17 @@ export default function BudgetPage() {
 
                 {!incomeCollapsed && (
                   <>
-                    {incomeGroups.map((group) => (
+                    {shownIncomeGroups.map((group) => (
                       <IncomeGroupSection
                         key={group.id}
                         group={group}
                         editingId={editingId}
                         month={selectedMonth}
-                        onStartEdit={setEditingId}
+                        onStartEdit={beforeStart ? () => undefined : setEditingId}
                         onSave={handleSave}
                         onCancel={() => setEditingId(null)}
                         onApplyBulk={handleApplyBulk}
-                        showAll={nothingPlanned}
+                        showAll={showEvery}
                       />
                     ))}
 
@@ -703,6 +935,7 @@ export default function BudgetPage() {
 
                 {/* Expenses section header */}
                 <tr
+                  data-guide="budget.columns"
                   className="bg-surface-alt border-y border-border cursor-pointer select-none hover:bg-hover transition-colors"
                   onClick={() => setExpensesCollapsed((c) => !c)}
                 >
@@ -729,7 +962,7 @@ export default function BudgetPage() {
 
                 {!expensesCollapsed && (
                   <>
-                    {expensesByType.map((bt) => (
+                    {shownExpensesByType.map((bt) => (
                       <BudgetTypeSection
                         key={bt.key}
                         budgetType={bt.key}
@@ -737,11 +970,11 @@ export default function BudgetPage() {
                         categories={bt.categories}
                         editingId={editingId}
                         month={selectedMonth}
-                        onStartEdit={setEditingId}
+                        onStartEdit={beforeStart ? () => undefined : setEditingId}
                         onSave={handleSave}
                         onCancel={() => setEditingId(null)}
                         onApplyBulk={handleApplyBulk}
-                        showAll={nothingPlanned}
+                        showAll={showEvery}
                       />
                     ))}
 
@@ -781,19 +1014,24 @@ export default function BudgetPage() {
           )}
         </div>
 
-        <div className="w-80 max-md:w-full shrink-0 border-l max-md:border-l-0 max-md:border-b border-border p-4 self-start max-md:self-stretch sticky max-md:static top-0">
-          <div>
-            <CardPayments
-              key={`cards:${selectedMonth}`}
-              month={selectedMonth}
-              summary={summary}
-              loading={switchingMonth || switchingSummary}
-            />
-            <MoneyMoves
-              key={selectedMonth}
-              month={selectedMonth}
-              categories={groups.filter((g) => !g.isIncome).flatMap((g) => g.categories)}
-            />
+        <div
+          className={`w-80 max-md:w-full shrink-0 border-l max-md:border-l-0 max-md:border-b border-border p-4 self-start max-md:self-stretch sticky max-md:static top-0 ${needle ? 'max-md:hidden' : ''}`}
+        >
+          {/* On a phone, Ready to assign comes first: card payments and moves follow it */}
+          <div className="flex flex-col">
+            <div className="max-md:order-last">
+              <CardPayments
+                key={`cards:${selectedMonth}`}
+                month={selectedMonth}
+                summary={summary}
+                loading={switchingMonth || switchingSummary}
+              />
+              <MoneyMoves
+                key={selectedMonth}
+                month={selectedMonth}
+                categories={groups.filter((g) => !g.isIncome).flatMap((g) => g.categories)}
+              />
+            </div>
             <BudgetSummaryWidget
               funding={summary}
               expenseAvailable={expenseTotals.balance}
@@ -808,7 +1046,26 @@ export default function BudgetPage() {
               fixedExpenses={expensesByBudgetType.fixed}
               flexibleExpenses={expensesByBudgetType.flexible}
               nonMonthlyExpenses={expensesByBudgetType.nonMonthly}
+              putRest={
+                beforeStart
+                  ? undefined
+                  : {
+                      groups: categoryGroups.filter((g) => !g.isIncome),
+                      disabled: !canSaveBudget || switchingMonth,
+                      onPick: (categoryId, categoryName) => {
+                        const cat = allExpenseCats.find((c) => c.id === categoryId);
+                        // Everything left goes on top of what the category already has
+                        handleSave(categoryId, (cat?.budgeted ?? 0) + tbb);
+                        setPutRestNote(`Put ${formatCurrency(tbb)} in ${categoryName}.`);
+                      },
+                    }
+              }
             />
+            {putRestNote && !(setBudgetMutation.error || setBulkMutation.error) && (
+              <p role="status" className="mt-2 text-xs text-text-secondary text-center">
+                {putRestNote}
+              </p>
+            )}
           </div>
         </div>
       </div>

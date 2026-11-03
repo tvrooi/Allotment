@@ -1,65 +1,59 @@
-# FlyBudget Up community fork
+<p align="center"><img src="client/public/logo.svg" alt="" width="88" /></p>
 
-Native Up Bank imports and a desktop client that connects to your own FlyBudget server.
-Maintained fork of [dtymoszenko/FlyBudget](https://github.com/dtymoszenko/FlyBudget), under AGPL-3.0-only.
-This is an independent community preview, not an official FlyBudget, Up or Home Assistant release.
+# Allotment
 
-## Install and use
+**Every dollar gets its plot.**
 
-- [Desktop downloads](https://github.com/tvrooi/FlyBudget/releases): macOS ARM/Intel, Windows and Linux.
-- [Home Assistant app repository](https://github.com/tvrooi/home-assistant-apps): prebuilt AMD64/ARM64 containers and normal HA updates.
-- [Connect the desktop to your server](DESKTOP-SERVER.md): **Budget → Budget location…**, enter its HTTPS URL and sign in with the FlyBudget password.
-- [Connect Up](UP-SUPPORT.md): use **Connect Up** in the welcome screen or Settings → Connected Banks.
+A private budgeting app with a direct connection to Up Bank. It keeps your budget on your own
+computer or your own Home Assistant, with no Allotment account and no tracking.
 
-Your budget and encrypted bank token stay on your server. The desktop displays that server's UI;
-you do not need to budget inside Home Assistant. Server UI changes reach the connected desktop
-without reinstalling it. Desktop-specific changes require downloading a new installer.
+Allotment was the FlyBudget Up fork. It is built on
+[dtymoszenko/FlyBudget](https://github.com/dtymoszenko/FlyBudget) and stays AGPL-3.0-only; it is
+not an official FlyBudget, Up or Home Assistant release. Existing installs keep their budget,
+settings and Home Assistant app when they update ([what changed](docs/BRAND.md#renaming-from-flybudget)).
 
-macOS builds are ad-hoc signed and unnotarized. Windows builds are not Authenticode-signed.
-Up currently imports settled AUD transactions, including Savers and available 2Up accounts.
-Sync runs at server startup and via **Sync Now**. Settings → Connected Banks → Up also offers
-opt-in background sync every 15, 30, 60 or 240 minutes, with delayed retries after failures.
-Review new imports and bank changes there; acknowledging never overwrites local edits. Daily
-round-up details show purchase metadata without inventing transfers or double-counting saver credits.
-No webhooks are used.
+## Who it is for
 
-**Budget → Until next payday** offers optional fortnightly funding plans, bill coverage and
-allocation previews using received income. [Payday plans guide](docs/PAYDAY-PLANS.md).
+Australians with an Up account who want an envelope-style budget they control. If you already run
+Home Assistant, it fits there. If you do not, the desktop app works on its own.
 
-**Forecast** projects cash until payday and goal attainment under labelled scenarios, read-only.
-[Forecasts guide](docs/FORECASTS.md).
+## Install
 
-## Moving an existing local HA preview
+Both routes start on one page: **[Start here](docs/START-HERE.md)**.
 
-The repository-installed app has a different identifier and private data directory. Adding the
-repository does not migrate `local_flybudget_up`. Keep the working app until a verified cold backup
-and restore has preserved the database **and encryption key**. A JSON export excludes the Up token.
-See [migration and rollback notes](MAINTENANCE.md#first-release-and-migration).
+- **Home Assistant** (budget on every device): the [Start here](docs/START-HERE.md#track-a-home-assistant) page, Track A.
+- **Mac, Windows or Linux desktop only**: the [Start here](docs/START-HERE.md#track-b-desktop-only) page, Track B.
 
-## Make changes and release
+Unsure of a word? See the [glossary](docs/GLOSSARY.md).
 
-Open this checkout as a dedicated Codex project. Start with [AGENTS.md](AGENTS.md), a short map of
-the files and relevant checks. Read the longer [development reference](docs/DEVELOPMENT.md) only
-when needed. Use feature branches and PRs to this fork; green CI is required on main.
+## What you get
 
-[MAINTENANCE.md](MAINTENANCE.md) documents the full release process. Feature/fix PRs include the next
-`0.2.0-up.N` version and release notes. After merging and successful main CI, GitHub automatically tags
-that prepared version, builds and tests installers/containers, then publishes the completed release.
-The HA catalog follows verified releases; its installed app can use Home Assistant's **Auto update**.
-Desktops offer **Budget → Check for desktop updates…** and installer downloads. Verified signed Mac
-builds additionally support restart-and-install. The first updater build needs one manual install.
-[Desktop updates and optional signing](docs/DESKTOP-UPDATES.md).
-Documentation-only merges do not publish a new version. Your local preview does not move into the
-catalog app automatically, and a merge does not bypass release checks or the backup/migration rules.
+- Up Bank imports of settled AUD transactions, including Savers and 2Up accounts, with Up's
+  categories where they match and a quick sort step for the rest.
+- Zero-based envelope budgeting, with optional fortnightly [payday plans](docs/PAYDAY-PLANS.md)
+  and bill coverage.
+- [Forecasts](docs/FORECASTS.md) of cash until payday and progress towards goals.
+- Import from YNAB or CSV, and link Up to an account that already has history from a cut-over date.
+- Optional separate budgets for each person in a household.
+- Works on your phone through a browser when it runs on Home Assistant.
 
-## Upstream, security and license
+## Security and privacy
+
+Your budget and your Up token stay on your own server or computer. The token is encrypted, read-only
+and never included in exports. Allotment uses HTTP only on a trusted home network and never skips
+certificate checks. [Report security issues privately](https://github.com/tvrooi/Allotment/security/advisories/new).
+See [SECURITY.md](SECURITY.md). Never put tokens, databases or private exports in issues.
+
+## Help and downloads
+
+[Downloads](https://github.com/tvrooi/Allotment/releases) and
+[issues](https://github.com/tvrooi/Allotment/issues) for this fork are on GitHub. Changes and
+development: see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Licence and upstream credit
 
 Original application and copyright: [dtymoszenko/FlyBudget](https://github.com/dtymoszenko/FlyBudget).
-The [upstream README](docs/UPSTREAM-README.md) is retained as reference; its download links and
-contribution policies describe upstream. This fork's instructions are above and in [CONTRIBUTING.md](CONTRIBUTING.md).
-
-[Report security issues privately](https://github.com/tvrooi/FlyBudget/security/advisories/new).
-See [SECURITY.md](SECURITY.md). Never put bank tokens, databases, keys or private exports in issues or PRs.
-
-All original notices and the [AGPL-3.0-only license](LICENSE) are retained. Modified source is public
-here and linked from the application. This fork does not require or accept the upstream CLA on your behalf.
+The [upstream README](docs/UPSTREAM-README.md) is kept for reference; its download links and
+contribution rules describe upstream. All original notices and the
+[AGPL-3.0-only licence](LICENSE) are retained. Modified source is public here and linked from the
+app. This fork does not require or accept the upstream CLA on your behalf.

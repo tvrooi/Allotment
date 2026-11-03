@@ -41,7 +41,7 @@ function present(rows: (typeof goals.$inferSelect)[]) {
       categoryName: cat?.name,
       fundingComplete: state.complete,
       fundedAmount: state.complete ? Math.max(0, cat?.balance ?? 0) : null,
-      assignedThisMonth: cat?.budgeted ?? 0,
+      assignedThisMonth: (cat?.budgeted ?? 0) + (cat?.transferred ?? 0),
       activity: cat?.activity ?? 0,
       available: state.complete ? (cat?.balance ?? 0) : null,
       asOf: today,

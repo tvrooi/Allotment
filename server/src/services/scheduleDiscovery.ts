@@ -9,8 +9,9 @@
  * (1 / (daysOff + 1) per occurrence). The best-ranked candidate per payee wins, and its
  * start date is walked backwards while earlier matching transactions keep existing.
  *
- * Transactions already linked to a schedule, transfers, and split children are ignored,
- * as are payees that already have a non-canceled schedule.
+ * Transactions already linked to a schedule, transfers (linked, suggested or labelled as one by
+ * the bank), cash withdrawals and split children are ignored, as are payees that already have
+ * a non-canceled schedule and money back from a payee that is otherwise paid (a refund).
  *
  * Payees whose recent transactions look regular but don't qualify are returned as near
  * misses, with the reason, so "why wasn't my gym found?" has an answer.
@@ -35,6 +36,7 @@ import {
 } from '../utils/recurrence.js';
 import { ensureOccurrences } from './scheduleService.js';
 import { linkOccurrenceToTransaction } from './matchingEngine.js';
+import { listTransferSuggestions } from './transferService.js';
 
 const DATE_WINDOW = 2; // ±days, Actual's approx-date bound
 const OCCURRENCES_TO_MATCH = 3;
@@ -267,7 +269,37 @@ function matchedTxIds(): Set<string> {
   );
 }
 
-function loadTransactions(accountId: string, claimed: Set<string>): Tx[] {
+/** Cash taken out is spending money, not a bill */
+const CASH_PAYEE = /\b(atm|cash\s*(out|withdrawals?|advance)|withdrawal)\b/i;
+/** A bank's own label for money moved between accounts */
+const TRANSFER_PAYEE = /^(internal\s+)?transfer\s+(to|from)\b/i;
+
+/** Rows that move or take out money rather than pay for something that repeats */
+export function isNotABill(
+  t: { id: string; payeeName: string | null; notes: string | null },
+  suggestedTransfers: Set<string>,
+): boolean {
+  return (
+    suggestedTransfers.has(t.id) ||
+    (t.notes ?? '').includes('Up internal transfer') ||
+    TRANSFER_PAYEE.test(t.payeeName ?? '') ||
+    CASH_PAYEE.test(t.payeeName ?? '')
+  );
+}
+
+function suggestedTransferIds(): Set<string> {
+  try {
+    return new Set(listTransferSuggestions().flatMap((s) => [s.outflow.id, s.inflow.id]));
+  } catch {
+    return new Set();
+  }
+}
+
+function loadTransactions(
+  accountId: string,
+  claimed: Set<string>,
+  suggested: Set<string>,
+): (Tx & { notes: string | null })[] {
   return db
     .select({
       id: transactions.id,
@@ -277,6 +309,7 @@ function loadTransactions(accountId: string, claimed: Set<string>): Tx[] {
       payeeId: transactions.payeeId,
       payeeName: transactions.payeeName,
       categoryId: transactions.categoryId,
+      notes: transactions.notes,
     })
     .from(transactions)
     .where(
@@ -288,7 +321,7 @@ function loadTransactions(accountId: string, claimed: Set<string>): Tx[] {
       ),
     )
     .all()
-    .filter((t) => !claimed.has(t.id))
+    .filter((t) => !claimed.has(t.id) && !isNotABill(t, suggested))
     .map((t) => ({ ...t, payeeKey: payeeKeyOf(t) }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
@@ -359,11 +392,21 @@ export function discoverSchedules(): { found: DiscoveredSchedule[]; nearMisses: 
   );
 
   const claimed = matchedTxIds();
+  const suggested = suggestedTransferIds();
+  const loaded = openAccounts.map((acct) => ({
+    id: acct.id,
+    txs: loadTransactions(acct.id, claimed, suggested),
+  }));
+  // A payee that is paid anywhere: money back from it is a refund, not income that repeats
+  const paid = new Set(
+    loaded.flatMap((l) => l.txs.filter((t) => t.amount < 0).map((t) => t.payeeKey)),
+  );
   const txsByAccount = new Map<string, Tx[]>();
   let all: Candidate[] = [];
-  for (const acct of openAccounts) {
-    const txs = loadTransactions(acct.id, claimed);
+  for (const { id: accountId, txs: raw } of loaded) {
+    const txs = raw.filter((t) => !(t.amount > 0 && paid.has(t.payeeKey)));
     if (!txs.length) continue;
+    const acct = { id: accountId };
     txsByAccount.set(acct.id, txs);
     all = all.concat(candidatesForAccount(txs, txs[txs.length - 1].date));
   }
@@ -390,6 +433,8 @@ export function discoverSchedules(): { found: DiscoveredSchedule[]; nearMisses: 
     };
     const dates = computeOccurrenceDates(def, startDate, today).map((p) => p.scheduledDate);
     const matched = matchingTxs(c, txs, dates);
+    // Fewer than three real matches is a coincidence, not a habit
+    if (matched.length < OCCURRENCES_TO_MATCH) continue;
     const sample = matched[matched.length - 1] ?? txs.find((t) => t.payeeKey === c.payeeKey);
 
     found.push({

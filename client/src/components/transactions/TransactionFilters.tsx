@@ -12,6 +12,7 @@ import {
   UNREADABLE_AMOUNT,
 } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
+import { ScrollCue } from '../ui/ScrollCue';
 import {
   activeFilterCount,
   DEFAULT_FILTERS,
@@ -23,6 +24,7 @@ import {
 
 const DATE_PRESETS: { value: DatePreset; label: string }[] = [
   { value: 'this-month', label: 'This Month' },
+  { value: 'last-month', label: 'Last Month' },
   { value: 'last-3', label: 'Last 3 Months' },
   { value: 'this-year', label: 'This Year' },
   { value: 'all', label: 'All Time' },
@@ -112,11 +114,14 @@ function CheckList({
   options,
   selected,
   onChange,
+  special,
 }: {
   label: string;
   options: { id: string; name: string; group?: string }[];
   selected: string[];
   onChange: (ids: string[]) => void;
+  /** A choice above the list that isn't one of the options ("Not categorised yet") */
+  special?: { label: string; checked: boolean; onToggle: () => void };
 }) {
   const [query, setQuery] = useState('');
   const shown = options.filter((o) => o.name.toLowerCase().includes(query.toLowerCase()));
@@ -124,13 +129,16 @@ function CheckList({
     <fieldset className="min-w-0">
       <legend className="text-xs font-medium text-text-secondary mb-1">
         {label}
-        {selected.length > 0 && (
+        {(selected.length > 0 || special?.checked) && (
           <button
             type="button"
-            onClick={() => onChange([])}
+            onClick={() => {
+              if (special?.checked) special.onToggle();
+              else onChange([]);
+            }}
             className="ml-2 text-brand-600 hover:text-brand-700 font-normal"
           >
-            Any ({selected.length} chosen)
+            Any ({special?.checked ? 1 : selected.length} chosen)
           </button>
         )}
       </legend>
@@ -145,6 +153,17 @@ function CheckList({
         />
       )}
       <div className="max-h-40 overflow-y-auto pr-1 space-y-0.5">
+        {special && (
+          <label className="flex items-center gap-2 py-0.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={special.checked}
+              onChange={special.onToggle}
+              className="rounded border-border text-brand-600 focus:ring-brand-600"
+            />
+            <span className="text-sm text-text font-medium truncate">{special.label}</span>
+          </label>
+        )}
         {shown.map((o) => (
           <label key={o.id} className="flex items-center gap-2 py-0.5 cursor-pointer">
             <input
@@ -270,7 +289,7 @@ export function TransactionFilters({
         : `Up to ${formatCurrency(state.maxAmount ?? 0)}`;
 
   return (
-    <div className="border-b border-border-light bg-surface">
+    <div data-guide="transactions.filters" className="border-b border-border-light bg-surface">
       <div className="flex items-center gap-3 px-4 py-2 flex-wrap">
         <div className="relative flex items-center flex-1 min-w-40">
           <Search size={14} className="absolute left-2.5 text-text-tertiary pointer-events-none" />
@@ -309,13 +328,21 @@ export function TransactionFilters({
           {count > 0 && <span className="tabular-nums">({count})</span>}
         </button>
 
-        <div className="flex gap-0 border-b border-transparent max-md:max-w-full max-md:overflow-x-auto [scrollbar-width:none]">
+        {/* Never squeezed beside Filters: the dates keep their full width, or take a row of
+            their own and scroll sideways only when even that is too narrow */}
+        <ScrollCue
+          className="shrink-0 max-w-full border-b border-transparent"
+          scrollerClassName="flex gap-0"
+          activeKey={externalMonth ? undefined : state.datePreset}
+        >
           {externalRange ? (
             <span className="px-2.5 py-1 text-xs text-text-secondary">{externalRange}</span>
           ) : (
             DATE_PRESETS.map((p) => (
               <button
                 key={p.value}
+                aria-pressed={!externalMonth && state.datePreset === p.value}
+                data-scroll-active={!externalMonth && state.datePreset === p.value}
                 onClick={() => set({ datePreset: p.value })}
                 className={`px-2.5 py-1 max-md:min-h-11 max-md:text-sm whitespace-nowrap shrink-0 text-xs font-medium transition-colors border-b-2 -mb-px ${
                   !externalMonth && state.datePreset === p.value
@@ -327,7 +354,7 @@ export function TransactionFilters({
               </button>
             ))
           )}
-        </div>
+        </ScrollCue>
 
         {!externalRange && !externalMonth && state.datePreset === 'custom' && (
           <div className="flex items-center gap-1.5 text-xs text-text-secondary">
@@ -367,6 +394,11 @@ export function TransactionFilters({
             options={categoryOptions}
             selected={state.categoryIds}
             onChange={(categoryIds) => set({ categoryIds, uncategorized: false })}
+            special={{
+              label: 'Not categorised yet',
+              checked: state.uncategorized,
+              onToggle: () => set({ uncategorized: !state.uncategorized, categoryIds: [] }),
+            }}
           />
           <CheckList
             label="Payees"
@@ -469,7 +501,7 @@ export function TransactionFilters({
             />
           )}
           {state.uncategorized && (
-            <Chip label="Uncategorized" onClear={() => set({ uncategorized: false })} />
+            <Chip label="Not categorised yet" onClear={() => set({ uncategorized: false })} />
           )}
           {state.categoryIds.length > 0 && (
             <Chip

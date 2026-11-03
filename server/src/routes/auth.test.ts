@@ -47,9 +47,23 @@ const deviceCookie = (res: Response) =>
 describe('server mode login', () => {
   let cookie: string;
 
+  it('says what kind of host it runs on, so screens can say where its log is', async () => {
+    const before = process.env.FLYBUDGET_HOST_KIND;
+    try {
+      process.env.FLYBUDGET_HOST_KIND = 'home-assistant';
+      expect((await (await get('/auth/status')).json()).hostKind).toBe('home-assistant');
+      process.env.FLYBUDGET_HOST_KIND = 'docker';
+      expect((await (await get('/auth/status')).json()).hostKind).toBe('docker');
+    } finally {
+      if (before === undefined) delete process.env.FLYBUDGET_HOST_KIND;
+      else process.env.FLYBUDGET_HOST_KIND = before;
+    }
+  });
+
   it('starts locked, asking for setup; data requires a login', async () => {
     expect(await (await get('/auth/status')).json()).toEqual({
       enabled: true,
+      hostKind: expect.stringMatching(/^(home-assistant|docker|other)$/),
       needsSetup: true,
       authenticated: false,
     });

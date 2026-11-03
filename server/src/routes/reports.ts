@@ -4,6 +4,7 @@ import { transactions, accounts, categories, categoryGroups, payees } from '../d
 import { eq, and, gte, lte, sql, inArray, lt, isNull } from 'drizzle-orm';
 import type { Request, Response } from 'express';
 import { monthBounds } from '../utils/date.js';
+import { detectSalary, uncategorisedSummary } from '../services/importTidy.js';
 import { isLiabilityType } from '../utils/accountTypes.js';
 import { isMonth, isRealDate } from '../utils/validation.js';
 import {
@@ -347,6 +348,21 @@ reportsRouter.get('/uncategorised-payees', (req, res) => {
       sampleNotes: [...notes],
     })),
   });
+});
+
+// How much of the spending (and money in) in a window has no category, so a chart or forecast
+// built on it can say what it leaves out. `from`/`to` are days.
+reportsRouter.get('/uncategorised-summary', (req, res) => {
+  const { from, to } = req.query;
+  const badDay = (v: unknown) => v !== undefined && (typeof v !== 'string' || !isRealDate(v));
+  if (badDay(from) || badDay(to))
+    return res.status(400).json({ error: 'Expected `from` and `to` as YYYY-MM-DD' });
+  res.json(uncategorisedSummary(from as string | undefined, to as string | undefined));
+});
+
+// A repeating pay deposit (7, 14 or 28-31 days), or null. A guess for the owner to confirm.
+reportsRouter.get('/salary', (_req, res) => {
+  res.json(detectSalary());
 });
 
 reportsRouter.get('/income-vs-expenses', (req, res) => {
@@ -868,14 +884,14 @@ reportsRouter.get('/custom', (req, res) => {
 
     const months = monthRange(from, to);
     const groupSet = new Set<string>();
-    for (const r of rows) groupSet.add(r.name || 'Uncategorized');
+    for (const r of rows) groupSet.add(r.name || 'Uncategorised');
     const groups = Array.from(groupSet).sort();
 
     const dataMap = new Map<string, Record<string, number>>();
     for (const m of months) dataMap.set(m, {});
 
     for (const r of rows) {
-      const label = r.name || 'Uncategorized';
+      const label = r.name || 'Uncategorised';
       const bucket = dataMap.get(r.month);
       if (bucket) {
         const val = balance_type === 'expense' ? Math.abs(r.value) : r.value;
@@ -899,7 +915,7 @@ reportsRouter.get('/custom', (req, res) => {
     const data = rows
       .filter((r) => r.value !== 0)
       .map((r) => ({
-        name: r.name || 'Uncategorized',
+        name: r.name || 'Uncategorised',
         id: r.id,
         value: balance_type === 'expense' ? Math.abs(r.value) : r.value,
       }));

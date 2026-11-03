@@ -13,6 +13,7 @@ import type { DatePresetCustom, ReportDateRange } from '../types';
 /** Live presets roll forward with today; 'custom' is a frozen range with fixed dates. */
 export const DATE_PRESETS: { id: DatePresetCustom; label: string; long: string }[] = [
   { id: '1m', label: '1M', long: 'This month' },
+  { id: 'last-month', label: 'Last Month', long: 'Last month' },
   { id: '3m', label: '3M', long: 'Last 3 months' },
   { id: '6m', label: '6M', long: 'Last 6 months' },
   { id: '12m', label: '12M', long: 'Last 12 months' },
@@ -30,6 +31,10 @@ export function computeDateRange(
   switch (preset) {
     case '1m':
       return { from: to, to };
+    case 'last-month': {
+      const last = format(subMonths(now, 1), 'yyyy-MM');
+      return { from: last, to: last };
+    }
     case '3m':
       return { from: format(subMonths(now, 2), 'yyyy-MM'), to };
     case '12m':

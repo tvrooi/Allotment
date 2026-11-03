@@ -13,12 +13,15 @@ import { SimplefinConnectModal } from '../simplefin/SimplefinConnectModal';
 import { UpConnectModal } from '../up/UpConnectModal';
 import { ConnectEnableBankingModal } from '../enablebanking/ConnectEnableBankingModal';
 import type { Account } from '../../types';
+import { Private } from '../ui/Private';
+import { useHideBalances } from '../../utils/safeMode';
 
 /** Five rows plus padding, allowing for phone touch targets. */
 const MENU_HEIGHT = 228;
 
 function AccountRow({ account }: { account: Account }) {
-  const isNegative = account.balance < 0;
+  // Hidden balances aren't coloured either: red would say which are overdrawn
+  const isNegative = account.balance < 0 && !useHideBalances();
   return (
     <NavLink
       to={`/accounts/${account.id}`}
@@ -34,7 +37,7 @@ function AccountRow({ account }: { account: Account }) {
       <span
         className={`ml-2 tabular-nums text-xs shrink-0 ${isNegative ? 'text-negative' : 'text-sidebar-text'}`}
       >
-        {formatMoney(account.balance, account.currency)}
+        <Private>{formatMoney(account.balance, account.currency)}</Private>
       </span>
     </NavLink>
   );
@@ -130,7 +133,7 @@ export function SidebarAccountList() {
         >
           <span>All accounts</span>
           <span className="tabular-nums ml-2" title={missingTitle}>
-            {formatCurrency(allTotal)}
+            <Private>{formatCurrency(allTotal)}</Private>
             {missing.length > 0 && '*'}
           </span>
         </NavLink>
@@ -143,7 +146,9 @@ export function SidebarAccountList() {
           >
             <span>For budget</span>
             <span className="flex items-center gap-1">
-              <span className="tabular-nums text-[12px]">{formatCurrency(onBudgetTotal)}</span>
+              <span className="tabular-nums text-[12px]">
+                <Private>{formatCurrency(onBudgetTotal)}</Private>
+              </span>
               {forBudgetOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
             </span>
           </button>
@@ -168,7 +173,9 @@ export function SidebarAccountList() {
             >
               <span>Off budget</span>
               <span className="flex items-center gap-1">
-                <span className="tabular-nums text-[12px]">{formatCurrency(offBudgetTotal)}</span>
+                <span className="tabular-nums text-[12px]">
+                  <Private>{formatCurrency(offBudgetTotal)}</Private>
+                </span>
                 {offBudgetOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               </span>
             </button>
@@ -192,7 +199,9 @@ export function SidebarAccountList() {
             >
               <span>Household</span>
               <span className="flex items-center gap-1">
-                <span className="tabular-nums text-[12px]">{formatCurrency(householdTotal)}</span>
+                <span className="tabular-nums text-[12px]">
+                  <Private>{formatCurrency(householdTotal)}</Private>
+                </span>
                 {householdOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               </span>
             </button>

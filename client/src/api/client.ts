@@ -5,10 +5,10 @@ import { PERSON_CHANGED_CODE, PERSON_CHANGED_EVENT, PERSON_HEADER, signedInPerso
 
 export const AUTH_REQUIRED_EVENT = 'flybudget:auth-required';
 
-/** The request never reached FlyBudget's server (it's restarting, stopped, or offline). */
+/** The request never reached Allotment's server (it's restarting, stopped, or offline). */
 export class NetworkError extends Error {
   constructor() {
-    super("Can't reach FlyBudget right now. Nothing was saved; try again once it reconnects.");
+    super("Can't reach Allotment right now. Nothing was saved; try again once it reconnects.");
     this.name = 'NetworkError';
   }
 }
@@ -18,6 +18,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    /** Structured detail some refusals carry, for the screen to link to the fix */
+    readonly details?: unknown,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -66,7 +68,7 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
         : body.error
           ? 'Some of the values entered are invalid'
           : res.statusText;
-    throw new ApiError(message, res.status);
+    throw new ApiError(message, res.status, body.details);
   }
   if (res.status === 204) return undefined as T;
   return res.json();

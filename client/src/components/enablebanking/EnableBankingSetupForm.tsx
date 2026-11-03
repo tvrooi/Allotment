@@ -137,7 +137,7 @@ export function EnableBankingSetupForm({
           <p className="flex items-start gap-1.5 text-xs text-caution">
             <AlertTriangle size={13} className="mt-0.5 shrink-0" />
             Your application doesn&apos;t list the redirect URL below yet. Add it in the Enable
-            Banking Control Panel, or your bank can&apos;t send you back to FlyBudget.
+            Banking Control Panel, or your bank can&apos;t send you back to Allotment.
           </p>
         )}
         {redirectUrl && (
@@ -189,7 +189,7 @@ export function EnableBankingSetupForm({
               <span className="flex items-start gap-1.5 text-caution">
                 <AlertTriangle size={13} className="mt-0.5 shrink-0" />
                 This server is on plain HTTP. Enable Banking needs an https:// redirect URL: put
-                FlyBudget behind HTTPS (see the self-hosting guide), or you&apos;ll paste the
+                Allotment behind HTTPS (see the self-hosting guide), or you&apos;ll paste the
                 address back by hand after each bank login.
               </span>
             )}
@@ -202,7 +202,7 @@ export function EnableBankingSetupForm({
         <li>
           Click <strong>Activate by linking accounts</strong> and log in to your bank there. Free
           applications can only use the accounts you link, so link every account you want in
-          FlyBudget.
+          Allotment.
         </li>
         <li>Copy the application ID and choose the .pem file below.</li>
       </ol>
@@ -242,7 +242,7 @@ export function EnableBankingSetupForm({
         />
         {fileError && <p className="text-xs text-negative mt-1">{fileError}</p>}
         <p className="text-[11px] text-text-tertiary mt-1">
-          The key stays in FlyBudget, encrypted, and is only used to sign requests to Enable
+          The key stays in Allotment, encrypted, and is only used to sign requests to Enable
           Banking.
         </p>
       </div>

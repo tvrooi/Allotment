@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { UncategorisedNotice } from '../review/UncategorisedBanner';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Copy, Download, Plus, Save, Trash2, X } from 'lucide-react';
 import {
@@ -649,6 +650,13 @@ export function CashRunway() {
           {isLoading && <div className="h-64 bg-surface-alt rounded animate-pulse" />}
           {data && scenario && (
             <div className={`space-y-5 ${isFetching ? 'opacity-70' : ''}`}>
+              {data.spending.uncategorised.significant && (
+                <UncategorisedNotice
+                  amount={data.spending.uncategorised.total}
+                  from={data.spending.from}
+                  to={data.spending.to}
+                />
+              )}
               {data.warnings.length > 0 && (
                 <ul className="text-sm text-caution list-disc pl-5" aria-label="Forecast warnings">
                   {data.warnings.map((w) => (

@@ -1,5 +1,196 @@
 # Changes
 
+## 0.2.0-up.77
+
+- **Share a transaction from its menu.** Right-click a transaction (or long-press it, or tap ⋯ on a phone) and choose **Share with**, then a household. It's shared at once with that household's usual split, and **Undo** in the message takes it back. **Custom split…** opens the Household page to choose who pays what. If you've picked several payments to share, right-click one of them to share them all.
+- **Stop sharing just as easily.** On a shared payment the menu shows **View in _household_** and **Stop sharing**. **Undo** puts it back with exactly the same split.
+- A payment that can't be shared, such as money in or a transfer, says why in the menu. The menu works from the keyboard too: Shift+F10 or the Menu key opens it, then use the arrow keys, Enter and Escape.
+
+## 0.2.0-up.76
+
+- **See which payments are shared with a household.** A payment shared with a household now shows that household's picture next to its payee, in the register and on phone cards. Open it and the details say **Shared with _household_**, with **View in household**, instead of offering to share it again.
+- **Give a household a picture.** **Household → Sharing → Picture** takes a small image, the way account and payee logos do. Without one, the household's initial shows on a coloured square. The Household page shows it next to the household's name. It's kept in backups and isn't shown to someone you've combined a household with.
+
+## 0.2.0-up.75
+
+- **Tidier period tabs on Transactions.** A scrollbar no longer draws across This Month, Last Month and the rest. The tabs are never squeezed beside **Filters** with a label cut off: they keep their full width or take a row of their own, and on a phone the period you choose scrolls into view.
+- Scrollbars elsewhere stay thin; a row that hides its own scrollbar now does.
+
+## 0.2.0-up.74
+
+- **An assistant can record your own household contribution.** If you paid your share some other way, such as rent through a shared saver that isn't one of the household's accounts, `record_own_household_contribution` (a _read, categorise and organise_ token) records it with no bank link. It's only for you, never for anyone else, and at most what you owe the household account, so it can bring you to zero but never into credit. Remove an entry on the Household page.
+
+## 0.2.0-up.73
+
+- **An assistant can reconcile a shared bill.** Any token's MCP tools now include `household_bill_reconciliation`: for one shared recurring bill, such as rent, it shows each person's share of its payments, the deposit into the household account that paid each one, and what's left. `household_contribution_suggestions` lists the deposits the Household page would suggest.
+- **An assistant can record household contributions.** With a _read, categorise and organise_ token, `record_household_contributions` records deposits into a household account as the person's contribution, each linked to its deposit, for exactly its amount and date. It can't record expenses, settlements or unlinked amounts, or change or remove an entry. Remove an entry on the Household page.
+- **An assistant can find missed tax claims.** `tax_claim_candidates` lists past payments in a financial year with no claim, from a payee (or category) you've already claimed this year or last, with that claim's label and work-use share. `tax_years` and `tax_claim` read the years and one claim. Claiming is still `claim_tax_deductions`, and still never replaces or removes a claim.
+
+## 0.2.0-up.72
+
+- **Redo an assistant's undone changes.** **Settings → Server → Read-only access → Changes made with tokens** now offers **Redo** on a change you undid. It sets the assistant's categories again, except on transactions you've changed since or reconciled.
+- **An assistant can claim tax deductions.** An AI assistant with a _read, categorise and organise_ token can read a financial year's claims and claim past payments as deductions, with a return label, a work-use share and a note (MCP tools `tax_deductions` and `claim_tax_deductions`). It can't change or remove a claim, download the tax CSV or receipt archive, or see receipts. Read-only and categorise tokens still see no claims.
+
+## 0.2.0-up.71
+
+Household bills shared the way a joint account works.
+
+- **Fixed amounts for a recurring bill.** **Household → Recurring bills → Change split → Fixed amounts** gives each person a set dollar amount, such as everyone's part of the rent. A payment those amounts don't add up to isn't shared (it says what they add up to and what the payment was), and the bill warns when its next payment is expected to be different. The household's default split stays equal, percentages or weights.
+- **Owed to the household account, not to you.** With a household account, **People & balances** shows each person's balance in two parts: what they owe the household account (their shares of what it paid, less what they put in) and what they owe, or are owed, for things someone paid themselves. Only the second is owed to a person.
+- **The household account can pay first.** A payment from the household account can be shared before everyone has put their part in. Whatever is missing shows as owed to the account until their contribution arrives. Money reserved for other bills still can't be spent.
+- **Contributions suggested.** **Household → Sharing** now also offers money into the household account from someone in the household, or your own transfer into it, as their contribution: **Record contribution**. Repayment suggestions count only what people owe you for things you paid.
+- A server test and a browser test no longer fail on days when the sample bank history happens to have three Coles trips.
+
+## 0.2.0-up.70
+
+Fixes from a full code and UX review.
+
+- **Safe mode hides chart amounts too.** A category's history chart showed its monthly figures above the bars (an income category showed your pay), and the dashboard's Spending chart and the Budget page's small history chart showed amounts on their axes, all with Safe mode on. They now hide like every other amount, and use your budget's currency instead of always "$". An income category's chart is now called **Income History**.
+- **A deleted Up transaction stays deleted.** Before, the next sync imported it again, uncategorised. Now syncs leave it out, and **Settings → Connected Banks → Up → Deleted here, still at Up** lists it with **Restore**. The delete confirmations say so. Deleted Up transactions are part of backups (format 22).
+- **Up syncs say when Allotment is at fault.** A fault in Allotment used to show as "Could not reach Up"; it now says it was Allotment, and the app's log has the details. A bank-fed transaction can no longer be moved to another account, which could stop its account syncing.
+- **Security updates** for the server's network and request libraries (`undici`, `body-parser` and three others with published advisories).
+- **The Budget page on a phone** shows Ready to assign first; how it's worked out and the Income and Expenses summary fold under **How this is worked out**, and Card payments and Move money follow, so the envelopes come sooner. A budget with no money yet says **Nothing to assign yet** instead of "Fully budgeted".
+- **Plainer words** in the Ready to assign breakdown ("In your accounts, less card debt", "Left to assign", "Overspent envelopes") and for cards not set up for card payments yet. Australian spelling throughout: **Uncategorised**, **Categorise automatically**.
+- **Keyboard and screen readers:** **Skip to content** is the first stop on every page on a computer, and the Budget page's activity amounts say which category they belong to.
+- **Bigger tap targets on phones** for Settings tabs, report date ranges and the register's Edit, Delete and Export.
+- **The welcome tour on a phone** now points at your envelopes, not income, when it explains categories.
+- **Faster lookups** of split parts, transfers and payees on large budgets (new database indexes).
+- **Settings → Data** says that backups leave out receipt photos.
+
+## 0.2.0-up.69
+
+- **A guide for every page.** Accounts, Transactions, Rules, Recurring, Review, Pay later, Household, Goals, Forecast, Investments, Tax time, Reports and Settings now each have a short guide, like the Budget page's: offered the first time you open the page (once the welcome tour is taken or turned down) and always under **? → Guide for this page**. Settings' guide shows where to connect Up.
+- **A tip on Payees:** give a payee a default category and its new transactions are sorted for you.
+- The guides list (**?** on the keyboard, or **? → All guides and tips**) shows them all, ticked once seen.
+
+## 0.2.0-up.68
+
+- **A guided tour for new budgets.** A new budget shows **New to Allotment?** at the top of the dashboard. **Take the tour** highlights one part of the app at a time and explains it, in about two minutes: the sidebar, accounts, transactions, Ready to assign, categories, moving money, Review, recurring bills, the dashboard, hiding amounts and where help is. The page behind is paused while it's open; **Next**, **Back**, the arrow keys and **Escape** work, and on a phone it's a sheet at the screen's edge.
+- **Guides for a page.** The Budget page has its own short guide, offered the first time you open it (once the welcome tour is taken or turned down). More pages follow.
+- **Find guides again.** The sidebar's **?** button now has **Guide for this page**, **Take the welcome tour**, **All guides and tips** and **Read the online guide**. On a computer, **?** on the keyboard lists every guide.
+- **Tips, once each.** Short tips appear in the page, never over it, one at a time: **Got it** hides one, **Turn off tips** hides them all. **Settings → Preferences → Guides and tips** turns tips and page guides on or off, starts the tour, and resets what you've seen.
+- **Per person.** What you've seen is saved with your budget, so it follows you to every device; in multi-user mode each person has their own. If you used Allotment before this release, the tour isn't offered and tips are off; a note says where guides are. Guide progress isn't part of backups.
+
+## 0.2.0-up.67
+
+- **Afterpay purchases count as what you bought.** The new **Pay later** page records a purchase made with Afterpay once, in its real category: a drill from Bunnings is $200 of Home improvement, not four Afterpay payments. **Set up Afterpay** adds an Afterpay account (a small credit account) and an **Afterpay payment** envelope; **Add a purchase** takes the shop, category, price, number of payments (four, fortnightly, by default) and the account that pays.
+- **Payments are linked when you confirm them.** An Afterpay payment from your bank close to its due date is listed under **Payments to confirm** on Pay later and Review. **Confirm** makes it a transfer to the Afterpay account, so it isn't counted as spending twice; **Not this** stops suggesting it. A payment covering the next few instalments links to all of them. Nothing is linked without you, and a reconciled transaction is never changed.
+- **Earlier Afterpay payments.** **Earlier payments** groups your bank's past Afterpay payments (6, 12 or 24 months) into the purchases they probably paid for; **Record purchase** names what you bought and links them.
+- **Your budget follows the money.** A purchase moves its envelope's money into Afterpay payment, each payment uses it up, and the Budget page shows payments due this month under that envelope. Refunds (taken off the last payments first) and late fees (added to the next payment) are one click; **Remove plan** puts everything back.
+- New budgets in Australia no longer start with an "Afterpay / Zip" spending category. Existing budgets keep theirs. Backups are now format 21.
+
+## 0.2.0-up.66
+
+- **Split each recurring bill its own way.** **Change split** on a bill in **Household → Recurring bills** gives it equal, percentage or weight shares of its own, for example more of the internet for the person working from home. Its shares and **Share _N_ payments** use that split; **The household's default split** puts it back.
+- **Share a bill's payments as they arrive.** Tick **Share new payments automatically** on a bill and each new payment to its payee, from that day on, is shared with the bill's split when it's imported. Payments from before stay a click, refunds and transfers are never shared, and unticking it stops at once.
+- **Add or rename people.** **Add person** under People & balances adds a new housemate, starting settled; **Rename** next to a name changes it, keeping their entries and balance. A percentage or weight default split leaves someone new out until you change it, and the page says so.
+- **Edit or delete one-off bills.** Bills to reserve for now have **Edit** (name, due date, total and your share) and **Delete**. Once a payment is matched to a bill, only its name and date can change, and it can't be deleted until that entry is removed.
+
+## 0.2.0-up.65
+
+- **Recurring bills on the Household page.** Bills you set up in Recurring (power, gas, internet, water) can now be shared with a household: **Household → Recurring bills → Add recurring bills**, tick the ones you split. Each shows how often it comes, its next date, what everyone's share of it is with the household's default split, and whether its recent payments are shared yet. **Share _N_ payments** shares the ones that aren't, in one click; nothing is shared without it. **Stop sharing** takes a bill off the list and keeps what was already shared.
+- **A clearer Household page.** Balances say who owes and who is owed instead of a signed number. The household account figures (pool funding, bank cash, available to reserve) and **Bills to reserve for** only show when the household has its own account. The form for a one-off expense, advance or repayment opens from **Record something else**, and the page only loads recent payments while it's open, instead of every transaction in the budget. Percentage splits are typed as percentages, as in the default split, not basis points. The household's settings (accounts, default split, combining) moved to the bottom.
+
+## 0.2.0-up.64
+
+- **Home Assistant releases no longer stall.** The ARM64 Home Assistant image built its web client under emulation, which froze the release three times (up.57, up.60 and up.63, which was never published). The client and server are now built natively for both architectures. Only the small runtime layer is assembled per architecture, and pull requests now build both architectures before a release.
+- Includes everything in up.63: **FlyBudget is now Allotment**, with the new name, icon and colours. Your budget, Up connection, passwords and settings stay where they are.
+
+## 0.2.0-up.63
+
+- **FlyBudget is now Allotment.** Every dollar gets its plot. The app, desktop installers and Home Assistant app are called Allotment, with a new icon (three garden plots and a sprout) and the brand's Marigold, Soil and Canvas colours. See [docs/BRAND.md](docs/BRAND.md).
+- **Nothing to move.** Your budget, Up connection, passwords and settings stay where they are. The Home Assistant app keeps its ID and updates in place; it now shows as **Allotment** under Settings, Apps. The desktop app keeps its local budget and stored keys.
+- **New home on GitHub:** [tvrooi/Allotment](https://github.com/tvrooi/Allotment), no longer linked to the upstream fork network. The old address redirects. Desktop installers are now named `Allotment-…`.
+- **Desktop apps from before this release can't find updates by themselves** after the repository move. Download this release once from the Releases page; from then on, desktop update checks work again.
+
+## 0.2.0-up.62
+
+- **Link Up to an account that already has history.** In **Connect Up**, **Link an existing account** now works for an AUD account with transactions. You pick the day Up takes over (by default the day after the account's newest transaction). Your history before that day stays exactly as it is; Up's transactions from that day on are imported. Up rows close to the cut-over, or that look like one you already have (same amount, within 2 days; 3 just after the cut-over), are imported and listed under **Possible duplicates from your old history** in Settings, Connected Banks, Up, where you choose **Keep both** or **Delete the older one**. Nothing is merged for you, a reconciled row is never deleted, and no opening-balance row is made: if your history disagrees with Up's balance on the day before the cut-over, the difference is shown and the usual "account disagrees with the bank" steps apply. Empty accounts link as before.
+- **Categories come with a CSV.** The column mapper has **Category** and **Category group**. After mapping, each category in the file is matched to yours by name or created in a group you choose, before anything is imported. The file's categories win over rules; blank ones stay uncategorised.
+- **Import from YNAB.** From the Welcome page, **Settings, Data** and an account's Import dialog: pick YNAB's register export, and FlyBudget creates or matches one account for each YNAB account, with categories and memos. "Ready to Assign" income stays uncategorised. YNAB's plan export (assigned amounts) is not imported yet.
+- **A balance you typed stays true.** An account added with "Current balance as of today" keeps that balance when you later import older history: the starting balance moves by what the older rows add, and the import says so. Not for bank-linked accounts or accounts with reconciled rows (it shows the balance change instead), and not after you edit the starting balance yourself.
+- **After an import, the register shows it.** The register jumps to the imported dates instead of an empty This Month.
+- **Linking works before you pick a currency.** An account with no currency of its own in a budget with no currency yet can be linked to Up (it makes the budget AUD, as creating an Up account does). When an account really can't be linked, the dialog says why next to the option.
+- **Settle the cut-over difference without fake income.** If your history disagrees with Up's balance the day before the cut-over, Settings, Connected Banks, Up offers **Add an opening balance dated** that day: one balance adjustment you confirm, not income, instead of a reconcile adjustment dated today. Deleting an older row refreshes the figure.
+- **Deleting a possible duplicate asks first**, naming the older transaction (date, payee, amount).
+- **YNAB transfers are linked.** When both legs of a transfer are in the file and both accounts are imported together, they become one transfer; the summary says how many. Rows that don't mirror exactly are left as they are.
+- **Smarter category matches.** The suggested match ignores case and punctuation, accepts one part of "Gas / Fuel", and knows a few equivalents (Public Transport = Public Transit). You can still change each one.
+- **First sync isn't a list of changes.** The starting import is no longer counted under "Bank changes to review"; later changes and possible duplicates are.
+- **Welcome page** suggests an order for people coming from another app: connect your bank first and import only older history, or import everything and link Up from a cut-over date.
+
+## 0.2.0-up.61
+
+- **Phone fixes.** Reconcile shows the summary above a full-width list, and prefills the bank's balance for bank-linked accounts. The Budget header is compact: the extra actions sit in a **...** menu, month buttons look like buttons, and **Find a category** reaches Groceries in two taps. Tab bars show a fade and arrow when they scroll, and the Add transaction category list is full width.
+- **Dates follow your browser.** New installs show dates in your locale's style (for example 05/03/2026 in Australia). Existing choices are kept.
+- **Not categorised yet.** A filter at the top of Categories lists transactions with no category. New budgets call the default category **Other** instead of Uncategorized; existing budgets are unchanged.
+- **Safe mode covers what a friend sees.** The default is **All amounts**. People who never chose a level are moved to it; a level you picked is kept.
+- **Setup and reset codes say where to look.** In the Home Assistant app: Settings, Apps, FlyBudget, Log. In Docker: `docker logs flybudget`.
+- **Category picker keyboard.** Enter picks the first match, arrows move, Escape closes, in the register and the first-import sort step.
+- **Last month** preset in Reports and Transactions. Months before the budget starts show what you really spent, read-only.
+- **Put the rest in...** on Ready to assign. A brand-new budget no longer hides its empty categories.
+- **Recurring finder** skips transfers, ATM withdrawals, refunds and one-offs, and **Create N recurring** stays visible.
+- **Plain words.** "?" help for Ready to assign, Anchor payday and Funding rule; deleting a category says **Merge into...**; **Split across categories** and **Share with people**; cancelling a recurring item asks **Keep it** / **Stop this bill**.
+
+## 0.2.0-up.60
+
+- **Undo a payday funding.** Right after **Apply funding** there is an **Undo** button, and every entry in **Funding history** has one. It takes back exactly what that funding added to each category's assigned amount, frees the deposits you used and returns the payday to "not applied", so the same preview comes back. It never takes back more than a category is still assigned that month, so money you moved or changed since is left alone and the screen lists what it could not take back. The entry stays in Funding history as "Undone on …".
+- **Undo a reconciliation, and fix a reconciled row.** On an account, **Undo last reconciliation** unlocks the transactions that reconciliation locked and removes the balance adjustment it made, unless you have changed that adjustment since (then it is kept). Rows locked by an earlier reconciliation, and rows you have already unlocked or moved, are left alone. A single reconciled transaction has an **Unlock** button with a warning. Category, payee, notes and tags can now be changed on a reconciled transaction without unlocking it, since they don't change a balance. Amount, date and account stay locked.
+- **Cash goes to Cash.** In **Add transaction**, the account list offers **Cash (create)** when you have no Cash account. Choosing a bank-linked account (Up or another bank feed) now shows "this account is linked to your bank; a transaction added by hand will make it disagree" with **Use Cash instead**.
+- **The assign block explains itself.** When Budget refuses to assign money because an account doesn't match its bank, it names each account, what FlyBudget has against what the bank says, and links to the account's transactions (to delete or move a row you added by hand) and to reconcile it.
+- **Forgot your password?** On a single-user server the sign-in screen now has **Forgot password?**. It makes a one-time reset code (the same strength as the setup code, working once, for 24 hours), writes it to the server log (the app's **Log** tab in Home Assistant, or `docker logs flybudget`) and, in the Home Assistant app, also shows it as a Home Assistant notification. Entering the code and a new password signs every other device out. Requests are rate limited and asking again while a code is still valid returns the same code. `docker/reset-password.cjs` still works.
+- **Clean up in bulk.** The transaction list has **Delete N** next to **Edit N**: it shows what would go, keeps reconciled transactions and ones tied to a household entry, and needs you to type `delete`. An account's **Edit** has **Delete…** to remove the account and all its transactions after typing its name. It refuses while a bank feed supplies the account (and says how to unlink it), while recurring items, a household or card funding use it, or a transfer's other side is reconciled elsewhere. Neither can be undone.
+
+## 0.2.0-up.59
+
+- **Your first Up import arrives mostly categorised.** FlyBudget now reads Up's own category on each transaction (Groceries, Takeaway, Rent and Mortgage, Public Transport and so on) and puts new transactions in the matching FlyBudget category when you have one. A rule or a payee's default category still wins, transfers and money in are never categorised from Up, and transactions already in your budget are never changed. Where Up's category has no clear match here (for example Life Admin), the transaction stays uncategorised for you to sort.
+- **Sort your first import in a few picks.** After **Save & Sync**, a new step lists what is still uncategorised, a payee at a time with the biggest groups first. One pick sorts all of a payee's transactions and, with **Also apply to future transactions** ticked (the default), makes it the payee's default category. Each pick can be undone, and **Skip for now** leaves everything as it is.
+- **Pay is found for you.** A repeating deposit from the same payee every 7 or 14 days, or monthly, is offered as "Looks like pay from X every 14 days. Mark it as income?". One tap puts its deposits in your pay category and makes that the payee's default; it can be undone. The offer appears when an import finishes and in **Get started** on the dashboard.
+- **Payday plans start from your pay.** A new payday plan is filled in from the latest pay found (its date, amount and the 14-day cycle), so it can be saved without typing. When no deposit is marked as income yet, the plan lists recent uncategorised deposits with a **This is pay** button instead of telling you to leave the screen.
+- **Forecasts and reports say what they leave out.** When more than 5% of spending has no category, the cash runway forecast and Reports show "$X of spending isn't categorised, so this leaves it out" with a link to those transactions. Reports no longer shows "Income $0" and a green expenses figure while none of your income is categorised; it points you to sort it instead.
+
+## 0.2.0-up.58
+
+- **Combine households with another FlyBudget user.** With separate budgets per person (the Home Assistant app's **multi_user** option), two people who each keep a household can join them: **Household → Combine with another FlyBudget user**. One asks and the other accepts, each choosing who the other is in their own household.
+  - **What you both see:** one register of both households' entries, with date, amount, merchant and logo, who paid and the full split, and whose entry it is.
+  - **Balances:** add both ledgers. Housemates stay as each household named them.
+  - **Notes:** each entry has one shared note that either of you can edit. Each of you still edits only your own entries.
+  - **What stays private:** accounts, categories, transaction notes, balances and other transactions. An expense you both recorded on the same day for the same amount is flagged as a possible duplicate.
+  - **Stopping:** either of you can stop combining at any time. The other's view ends at once and the shared notes are deleted; both households keep their own entries.
+
+## 0.2.0-up.57
+
+- **Safe mode hides balances while someone helps you.** Turn it on with the new eye button at the top of the menu, **Alt+Shift+H**, or **Settings → Preferences → Safe mode**. By default it hides balances and totals: account balances, sidebar totals, net worth, assets and liabilities, savings, super, investments, goals, forecasts, the resilience and cash runway cards on Review, reconciling and the balances in guided setup. Transactions, payees, rules and the budget stay visible so someone can still help with them. Choose **All amounts** to hide every figure instead. Hidden figures aren't on the page at all, not just blurred. Safe mode switches off when the app or tab closes and only applies on that device. It keeps figures off the screen but doesn't lock them: anyone using the device can turn it off, and exports and backups are unchanged.
+
+## 0.2.0-up.56
+
+- **See recurring bills coming in the budget.** A recurring expense with a category now shows against that category as an orange **−$X expected** amount under Activity, and its spending bar continues in orange by the same amount, so you can see what's still due this month before it's debited. Hover over it for each bill, its date and what the category will have left. A bill stops showing once it's paid (matched to a transaction) or skipped; overdue bills in the current month stay until they arrive. It's a forecast only: Activity, Available and Ready to Assign don't change until the money leaves the account. Transfers, paused items, income and closed or off-budget accounts aren't included.
+
+## 0.2.0-up.55
+
+- **An assistant can replace payee logos.** A _read, categorise and organise_ access token can now replace a payee's logo as well as add one, for example to swap in a cleaner brand icon. It still can't remove a logo. This includes images you uploaded yourself, so revoke the token if you don't want an assistant changing them.
+
+## 0.2.0-up.54
+
+- **An assistant can add brand logos to payees.** A _read, categorise and organise_ access token can now give a payee that has no logo one, such as the merchant's brand icon (`PUT /api/payees/:id` with only `logo`). It never replaces or removes a logo you set: remove a wrong one on the Payees page and it can set another. Logos are stored in the budget, so everyone using it sees them.
+
+## 0.2.0-up.53
+
+- **Check balances before assigning money.** A known mismatch with Up's settled balance, an uninitialised bank balance or money still recorded in a closed budget account marks Ready to Assign as unverified and blocks new funding. The budget lists each discrepancy; Review and resilience show the same warning. Existing cash and assignments are preserved for review.
+- **Safer reconciliation.** The first screen shows the dated register balance and selects all current transactions. An adjustment cannot be created from unchecked entries, future transactions or duplicate generated bank income. The server checks for stale data and saves the correction and reconciliation together, so a failed save cannot leave half a correction. Negative statement balances stay negative.
+- **Closed accounts keep their history without hiding money.** Accounts must reach zero before closing. Older closed accounts remain visible in Settings with their balances and a route to reconcile residuals explicitly.
+- **Prevent duplicate generated salaries.** Connected bank accounts wait for the imported income receipt instead of auto-creating another salary. Closed accounts never auto-create scheduled transactions. Existing entries are not deleted or rewritten.
+- Payday funding cannot consume a received deposit while account balances need reconciliation; card payment reserves and manual assignments have the same protection.
+
+## 0.2.0-up.52
+
+- **Fund a category from its own account.** Edit a category and choose an account under **Funded by transfers to** (for example Rent → your Rent saver). A transfer into that account from another budget account now goes straight into the category, as if you'd assigned it, and comes out of Ready to assign; moving money back out takes it out of the category. The category shows **+$X moved to …** for the month, and the transfer counts toward its target. Only linked (confirmed) transfers count, and each account funds one expense category.
+
+## 0.2.0-up.51
+
+- **Auto-assign**, like YNAB's. A new **Auto-assign** button on the budget previews what it would add to each category, then assigns exactly that once you confirm: **Cover overspending** (bring every negative category back to $0), **Underfunded** (what targets still need), **Assigned last month**, **Spent last month** or **Average spent** (last 3 months). It only uses money that is ready to assign today, never counts expected income and never lowers an amount you already assigned.
+- **One-click amounts in the assign field.** Clicking into an overspent category's amount now offers **Cover $X overspent**, and a category with a target offers **Fund target**; either saves straight away. The **Spent last month** and **Monthly average** figures are now buttons that assign that amount.
+- Fix: the editor no longer offers "Use $0 for the next 12 months" before you've typed anything. It now repeats the amount you've typed.
+
 ## 0.2.0-up.50
 
 - **The budget is much faster on long histories.** Every month's envelopes are now worked out in one pass and kept until something changes, instead of being rebuilt from your whole history for each month. On a five-year test budget, changing last year's assignment went from about 6 seconds to under a tenth of a second, and opening a month from about a quarter of a second to almost nothing. Every figure is exactly the same as before.

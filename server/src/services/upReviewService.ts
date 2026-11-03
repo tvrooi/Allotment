@@ -2,7 +2,13 @@ import { and, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import { createHash } from 'crypto';
 import { db } from '../db/index.js';
 import { accountTransactionSum } from './balances.js';
-import { accounts, transactions, upSourceRecords, upAccountMappings } from '../db/schema.js';
+import {
+  accounts,
+  transactions,
+  upDeletedImports,
+  upSourceRecords,
+  upAccountMappings,
+} from '../db/schema.js';
 import { cleanUpText, upObservationSchema, type UpTransaction } from './upTransactions.js';
 
 export function bankObservation(tx: UpTransaction) {
@@ -35,6 +41,10 @@ export function observeUpAccount(
   now: string,
   newIds: Set<string>,
   upAccountId: string,
+  /** Up imports that may duplicate an older row (importedId -> that row's id), flagged for review */
+  overlaps: Map<string, string> = new Map(),
+  /** The account's first sync: what arrives then is the starting history, not a change to review */
+  firstSync = false,
 ) {
   const seen = new Set<string>();
   for (const tx of history) {
@@ -63,7 +73,11 @@ export function observeUpAccount(
               : 'changed'
             : old.reviewState
         : newIds.has(importedId)
-          ? 'new'
+          ? overlaps.has(importedId)
+            ? 'overlap'
+            : firstSync
+              ? 'reviewed'
+              : 'new'
           : changed && !wasHeld
             ? 'changed'
             : old?.reviewState === 'pending'
@@ -76,6 +90,7 @@ export function observeUpAccount(
         transactionId: local?.id ?? null,
         sourceJson,
         reviewState,
+        overlapTransactionId: overlaps.get(importedId) ?? null,
         lastSeenAt: now,
       })
       .onConflictDoUpdate({
@@ -111,7 +126,25 @@ export function observeUpAccount(
   }
 }
 
-const needsReview = inArray(upSourceRecords.reviewState, ['new', 'changed', 'missing']);
+const needsReview = inArray(upSourceRecords.reviewState, ['new', 'changed', 'missing', 'overlap']);
+/** The older row a flagged import may duplicate, as it is now (null once it's gone) */
+function overlapOf(r: { reviewState: string; overlapTransactionId: string | null }) {
+  if (r.reviewState !== 'overlap' || !r.overlapTransactionId) return null;
+  const old = db
+    .select()
+    .from(transactions)
+    .where(eq(transactions.id, r.overlapTransactionId))
+    .get();
+  return old
+    ? {
+        id: old.id,
+        date: old.date,
+        amount: old.amount,
+        payee: old.payeeName,
+        reconciled: old.reconciled === 1,
+      }
+    : null;
+}
 export function upReview(offset = 0) {
   const names = new Map(
     db
@@ -139,6 +172,7 @@ export function upReview(offset = 0) {
     .offset(offset)
     .all();
   return {
+    deleted: deletedUpImports(),
     total: db
       .select({ count: sql<number>`count(*)` })
       .from(upSourceRecords)
@@ -156,10 +190,67 @@ export function upReview(offset = 0) {
       accountName,
       reviewState: r.reviewState,
       revision: r.revision,
+      overlap: overlapOf(r),
       current: view(r.sourceJson),
       previous: r.previousJson ? view(r.previousJson) : null,
     })),
   };
+}
+
+/**
+ * Up transactions the owner deleted here that Up still has (`up_deleted_imports`), newest first,
+ * with what Up last reported about each. Restoring one lets the next sync import it again.
+ */
+export function deletedUpImports() {
+  return db
+    .select({
+      accountId: upDeletedImports.accountId,
+      importedId: upDeletedImports.importedId,
+      deletedAt: upDeletedImports.deletedAt,
+      accountName: accounts.name,
+    })
+    .from(upDeletedImports)
+    .innerJoin(accounts, eq(accounts.id, upDeletedImports.accountId))
+    .orderBy(desc(upDeletedImports.deletedAt), upDeletedImports.importedId)
+    .limit(200)
+    .all()
+    .map((d) => {
+      // A cashback row shares its purchase's bank record
+      const cashback = d.importedId.endsWith(':cashback');
+      const record = db
+        .select({ sourceJson: upSourceRecords.sourceJson })
+        .from(upSourceRecords)
+        .where(eq(upSourceRecords.importedId, d.importedId.replace(/:cashback$/, '')))
+        .get();
+      let source: Observation | null = null;
+      try {
+        source = record ? observation(record.sourceJson) : null;
+      } catch {
+        source = null;
+      }
+      return {
+        ...d,
+        date: source ? source.createdAt.slice(0, 10) : null,
+        description: source
+          ? cashback
+            ? (source.cashbackDescription ?? 'Up cashback')
+            : source.description
+          : null,
+        amount: source ? (cashback ? source.cashbackAmount : source.amount) : null,
+      };
+    });
+}
+
+/** Forgets a deletion, so the next sync imports the transaction again. False if there was none. */
+export function restoreDeletedUpImport(accountId: string, importedId: string) {
+  return (
+    db
+      .delete(upDeletedImports)
+      .where(
+        and(eq(upDeletedImports.accountId, accountId), eq(upDeletedImports.importedId, importedId)),
+      )
+      .run().changes > 0
+  );
 }
 
 export function roundUpDays(since: string) {

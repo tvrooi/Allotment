@@ -1,4 +1,5 @@
 import { householdsRouter } from '../routes/households.js';
+import { paymentPlansRouter } from '../routes/paymentPlans.js';
 // The in-browser demo's "server": the real budget routers, mounted like index.ts does,
 // plus answers for the few server-only endpoints the app asks about. Runs in a Web Worker
 // (see worker.ts and README.md here).
@@ -28,10 +29,11 @@ import { reviewRouter } from '../routes/review.js';
 import { investmentsRouter } from '../routes/investments.js';
 import { taxRouter } from '../routes/tax.js';
 import { prioritiesRouter } from '../routes/priorities.js';
+import { guidesRouter } from '../routes/guides.js';
 import { currencyRouter } from '../routes/currency.js';
 
 /** Answer for anything that needs a real server: bank connections, sign-in. */
-const NOT_IN_DEMO = "This isn't available in the demo. Download FlyBudget to use it.";
+const NOT_IN_DEMO = "This isn't available in the demo. Download Allotment to use it.";
 
 const app = Router();
 
@@ -72,6 +74,7 @@ app.use('/export', exportRouter as unknown as ShimRouter);
 app.use('/custom-reports', customReportsRouter as unknown as ShimRouter);
 app.use('/dashboards', dashboardsRouter as unknown as ShimRouter);
 app.use('/households', householdsRouter as unknown as ShimRouter);
+app.use('/payment-plans', paymentPlansRouter as unknown as ShimRouter);
 app.use('/schedules', schedulesRouter as unknown as ShimRouter);
 app.use('/goals', goalsRouter as unknown as ShimRouter);
 app.use('/payday', paydayRouter as unknown as ShimRouter);
@@ -85,6 +88,7 @@ app.use('/receipts', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO })
 app.get('/tax/years/:fy/archive', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
 app.use('/tax', taxRouter as unknown as ShimRouter);
 app.use('/priorities', prioritiesRouter as unknown as ShimRouter);
+app.use('/guides', guidesRouter as unknown as ShimRouter);
 // Rates can be typed in, but not downloaded: the demo never talks to another server
 app.put('/currency/download', (req, res, next) => {
   const body = req.body as { enabled?: unknown; url?: unknown } | undefined;

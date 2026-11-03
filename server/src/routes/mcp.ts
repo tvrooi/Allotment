@@ -1,19 +1,21 @@
 import { Router, type Request } from 'express';
 import { rateLimit } from 'express-rate-limit';
-import { inArray } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { appVersion } from '../utils/version.js';
 import { db } from '../db/index.js';
-import { transactions } from '../db/schema.js';
+import { taxClaims, transactions } from '../db/schema.js';
 import { asScope, canCategorise, type TokenScope } from '../auth/accessTokens.js';
 import { recordChangeSet, type ChangeEntry } from '../services/changeSets.js';
 import { todayIso } from '../services/mainAmountService.js';
+import { TAX_LABEL_KEYS, TAX_LABELS } from '../services/taxService.js';
 
 // An MCP server (Model Context Protocol, Streamable HTTP with JSON responses) so an AI
 // assistant can read the budget with an access token (docs/READ-ONLY-ACCESS.md). Every read
 // tool is one GET of this server's own API, made over loopback with the caller's token, so a
 // tool can never reach more than the token itself: the same allowlist, validation and
 // accounting as the app. Writing tools are listed only for a token whose scope allows them
-// (categorise: categories; organise: also rules, payee defaults and suggested transfers) and
+// (categorise: categories; organise: also rules, payee defaults, suggested transfers, tax
+// deduction claims and household contributions linked to a deposit) and
 // make the same requests the app does. Category changes are saved as change sets that can be
 // undone (services/changeSets.ts).
 
@@ -119,7 +121,7 @@ const TOOLS: Tool[] = [
   {
     name: 'budget_summary',
     description:
-      'Money available to assign, reserved, overspent, uncategorised and card payment position for a month.',
+      'Money available to assign, reserved, overspent, uncategorised and card payment position for a month. accountIssues lists known bank or closed-account discrepancies; available is zero until they are reconciled. Raw unassigned is unverified while issues remain.',
     properties: { month },
     required: ['month'],
     path: (a) => `/budget/${seg(a.month)}/summary`,
@@ -216,7 +218,7 @@ const TOOLS: Tool[] = [
   {
     name: 'budget_housekeeping',
     description:
-      "Setup problems that make the budget less useful: no budget start with years of history (suggestion = a month to start from), Up accounts missing round-up debits, uncategorised movements to or from savers that aren't in FlyBudget (grouped by saver, with ids), and how many categories were never used.",
+      "Setup problems that make the budget less useful: no budget start with years of history (suggestion = a month to start from), Up accounts missing round-up debits, uncategorised movements to or from savers that aren't in Allotment (grouped by saver, with ids), and how many categories were never used.",
     path: () => '/review/housekeeping',
   },
   {
@@ -255,6 +257,28 @@ const TOOLS: Tool[] = [
     },
     required: ['household_id'],
     path: (a) => `/households/${seg(a.household_id)}/statement${query(a, ['from', 'to'])}`,
+  },
+  {
+    name: 'household_contribution_suggestions',
+    description:
+      "Money received in the last 120 days that looks like someone paying the household: deposits into its accounts not linked yet (contribution: the person's name in the payee, or a transfer from one of your own accounts) and repayments into your accounts (settlement), each with what that person owes. A transfer back from a shared saver outside the household is offered as yours: check whose money it is.",
+    properties: { household_id: { type: 'string', description: 'From list_households' } },
+    required: ['household_id'],
+    path: (a) => `/households/${seg(a.household_id)}/repayment-suggestions`,
+  },
+  {
+    name: 'household_bill_reconciliation',
+    description:
+      "One shared recurring bill (such as rent) person by person: each person's share of its payments shared with the household, the deposit into a household account matched to each payment (by name, date and amount), the difference, deposits already recorded, and toRecord: matched deposits not recorded yet, ready for record_household_contributions. Payments funded another way show as unmatched; for your own share, record_own_household_contribution records it.",
+    properties: {
+      household_id: { type: 'string', description: 'From list_households' },
+      schedule_id: { type: 'string', description: "From household's recurringBills" },
+      from: { ...day, description: 'First payment day, inclusive' },
+      to: { ...day, description: 'Last payment day, inclusive' },
+    },
+    required: ['household_id', 'schedule_id'],
+    path: (a) =>
+      `/households/${seg(a.household_id)}/recurring-bills/${seg(a.schedule_id)}/reconciliation${query(a, ['from', 'to'])}`,
   },
   {
     name: 'bank_sync_status',
@@ -402,6 +426,11 @@ const CATEGORY_TOOLS: (Tool & { write: { method: 'POST' | 'PUT'; body: (a: Args)
 
 /** Most transactions one categorise call changes */
 const MAX_CATEGORISE = 100;
+/** Most transactions one claim_tax_deductions call claims */
+const MAX_CLAIMS = 100;
+const labelHelp = TAX_LABEL_KEYS.map((k) => `${k} ${TAX_LABELS[k].name}`).join('; ');
+/** Most contributions one record_household_contributions call records */
+const MAX_CONTRIBUTIONS = 50;
 /** Most transactions categorise_by_payee or apply_rule changes in one call */
 const MAX_BULK = 1000;
 
@@ -418,6 +447,8 @@ interface ActionTool {
   /** The narrowest scope it is listed for: categorise (and organise), or organise only */
   scope: 'categorise' | 'organise';
   idempotent?: boolean;
+  /** Changes nothing (a read only some scopes may make) */
+  readOnly?: boolean;
   run: (ctx: Context, args: Args) => Promise<Record<string, unknown>>;
 }
 
@@ -797,6 +828,289 @@ const ACTION_TOOLS: ActionTool[] = [
       return r.ok ? { linked: true } : { error: r.error };
     },
   },
+  {
+    name: 'tax_deductions',
+    scope: 'organise',
+    readOnly: true,
+    description:
+      'The tax deductions claimed for one Australian financial year (1 July to 30 June), named by the year it starts (2025 = 2025–26): each claim with its label, work-use share, cost and claimed amount, totals per label, and receipts still missing. Record keeping, not tax advice.',
+    properties: {
+      financial_year: {
+        type: 'integer',
+        minimum: 1990,
+        maximum: 2200,
+        description: '2025 = 1 July 2025 to 30 June 2026',
+      },
+    },
+    required: ['financial_year'],
+    run: async (ctx, a) => {
+      if (!Number.isInteger(a.financial_year)) return { error: 'Give a financial year, e.g. 2025' };
+      const r = await api(ctx, `/tax/years/${seg(a.financial_year)}`);
+      return r.ok ? { year: r.data } : { error: r.error };
+    },
+  },
+  {
+    name: 'claim_tax_deductions',
+    scope: 'organise',
+    description: `Claims past transactions (money out, dated today or earlier) as tax deductions under one return label, with a work-use share, up to ${MAX_CLAIMS} at once. Claims never change a transaction or the budget. A transaction that already has a claim is skipped: only the owner replaces or removes claims. Split transactions are claimed by their parts; transfers can't be claimed. Labels: ${labelHelp}. What is deductible is the owner's call: confirm the list, label and share with the user first.`,
+    properties: {
+      transaction_ids: { type: 'array', items: idString, minItems: 1, maxItems: MAX_CLAIMS },
+      label: { type: 'string', enum: TAX_LABEL_KEYS },
+      work_use_percent: {
+        type: 'number',
+        minimum: 0.01,
+        maximum: 100,
+        description: 'Share of each cost used for work; default 100',
+      },
+      notes: {
+        type: 'string',
+        maxLength: 2000,
+        description: 'Kept with each claim, e.g. how the share was worked out',
+      },
+    },
+    required: ['transaction_ids', 'label'],
+    run: async (ctx, a) => {
+      const ids = a.transaction_ids;
+      if (
+        !Array.isArray(ids) ||
+        !ids.length ||
+        ids.length > MAX_CLAIMS ||
+        !ids.every(isId) ||
+        new Set(ids).size !== ids.length
+      ) {
+        return { error: `Give 1 to ${MAX_CLAIMS} distinct transaction ids` };
+      }
+      if (!TAX_LABEL_KEYS.includes(a.label as (typeof TAX_LABEL_KEYS)[number]))
+        return { error: `Unknown label; one of ${TAX_LABEL_KEYS.join(', ')}` };
+      const percent = a.work_use_percent ?? 100;
+      const workUseBps = typeof percent === 'number' ? Math.round(percent * 100) : NaN;
+      if (!Number.isInteger(workUseBps) || workUseBps < 1 || workUseBps > 10_000)
+        return { error: 'work_use_percent must be between 0.01 and 100' };
+      if (a.notes !== undefined && typeof a.notes !== 'string')
+        return { error: 'notes must be text' };
+      const rows = new Map(
+        db
+          .select({ id: transactions.id, date: transactions.date, amount: transactions.amount })
+          .from(transactions)
+          .where(inArray(transactions.id, ids))
+          .all()
+          .map((t) => [t.id, t]),
+      );
+      const claimed = new Set(
+        db
+          .select({ id: taxClaims.transactionId })
+          .from(taxClaims)
+          .where(inArray(taxClaims.transactionId, ids))
+          .all()
+          .map((c) => c.id),
+      );
+      const today = todayIso();
+      const results = [];
+      for (const id of ids) {
+        const row = rows.get(id);
+        const refusal = !row
+          ? 'Not found'
+          : claimed.has(id)
+            ? 'Already claimed; only the owner changes a claim'
+            : row.date > today
+              ? 'Dated in the future'
+              : row.amount >= 0
+                ? 'Not money out'
+                : null;
+        if (refusal) {
+          results.push({ id, ok: false, error: refusal });
+          continue;
+        }
+        const r = await api(ctx, `/tax/claims/${seg(id)}`, 'PUT', {
+          label: a.label,
+          workUseBps,
+          ...(a.notes ? { notes: a.notes } : {}),
+        });
+        results.push({ id, ok: r.ok, error: r.ok ? undefined : r.error });
+      }
+      const done = results.filter((r) => r.ok).length;
+      return { claimed: done, refused: results.length - done, results };
+    },
+  },
+  {
+    name: 'tax_years',
+    scope: 'organise',
+    readOnly: true,
+    description:
+      'Financial years that have tax deduction claims, and the current one, newest first (2025 = 2025–26), with the return labels claims can use.',
+    properties: {},
+    run: async (ctx) => {
+      const [years, labels] = await Promise.all([api(ctx, '/tax/years'), api(ctx, '/tax/labels')]);
+      if (!years.ok) return { error: years.error };
+      return { years: years.data, labels: labels.ok ? labels.data : undefined };
+    },
+  },
+  {
+    name: 'tax_claim',
+    scope: 'organise',
+    readOnly: true,
+    description:
+      "One transaction's tax deduction claim (label, work-use share, notes), or null when it has none.",
+    properties: { transaction_id: idString },
+    required: ['transaction_id'],
+    run: async (ctx, a) => {
+      if (!isId(a.transaction_id)) return { error: 'Give a transaction id' };
+      const r = await api(ctx, `/tax/claims/${seg(a.transaction_id)}`);
+      return r.ok ? { claim: r.data } : { error: r.error };
+    },
+  },
+  {
+    name: 'tax_claim_candidates',
+    scope: 'organise',
+    readOnly: true,
+    description:
+      "Past money out in one financial year with no claim yet, from a payee (basis payee) or failing that a category (basis category) that already has a claim this year or last: likely missed repeats, such as a subscription's other months. Each has the suggested label and work-use share of the latest similar claim (likeClaim). Category matches are looser: check them. Confirm with the user, then claim with claim_tax_deductions grouped by label and share. Record keeping, not tax advice.",
+    properties: {
+      financial_year: {
+        type: 'integer',
+        minimum: 1990,
+        maximum: 2200,
+        description: '2025 = 1 July 2025 to 30 June 2026',
+      },
+    },
+    required: ['financial_year'],
+    run: async (ctx, a) => {
+      if (!Number.isInteger(a.financial_year)) return { error: 'Give a financial year, e.g. 2025' };
+      const r = await api(ctx, `/tax/years/${seg(a.financial_year)}/candidates`);
+      return r.ok ? (r.data as Record<string, unknown>) : { error: r.error };
+    },
+  },
+  {
+    name: 'record_own_household_contribution',
+    scope: 'organise',
+    description:
+      "Records money you (the household's own person) put towards the household some other way, with no bank deposit to link, such as rent paid through a shared saver that isn't one of the household's accounts. Up to what you owe the household account now (its toPool), so it can bring you to zero but never into credit; never for anyone else. Say in the description how it was paid. Confirm the amount with the user first; the owner removes an entry on the Household page.",
+    properties: {
+      household_id: { ...idString, description: 'From list_households' },
+      amount: { type: 'integer', minimum: 1, description: 'Minor units (cents)' },
+      date: { ...day, description: 'When it was paid (today or earlier)' },
+      description: {
+        type: 'string',
+        minLength: 1,
+        maxLength: 200,
+        description: 'How it was paid, e.g. "Rent May–Oct via shared saver (12 × $825.50)"',
+      },
+    },
+    required: ['household_id', 'amount', 'date', 'description'],
+    run: async (ctx, a) => {
+      if (!isId(a.household_id)) return { error: 'Give a household id' };
+      if (!Number.isInteger(a.amount) || (a.amount as number) < 1)
+        return { error: 'amount must be a positive whole number of cents' };
+      if (typeof a.description !== 'string' || !a.description.trim())
+        return { error: 'Say how it was paid' };
+      const state = await api(ctx, `/households/${seg(a.household_id)}`);
+      if (!state.ok) return { error: state.error };
+      const household = state.data as {
+        people: { id: string; name: string; isSelf: number }[];
+        toPool: Record<string, number>;
+      };
+      const self = household.people.find((p) => p.isSelf);
+      if (!self) return { error: 'This household has no "you" person' };
+      const owes = -(household.toPool[self.id] ?? 0);
+      if (owes <= 0) return { error: 'You owe the household account nothing' };
+      if ((a.amount as number) > owes)
+        return { error: `That is more than you owe the household account (${owes} cents)` };
+      const r = await api(ctx, `/households/${seg(a.household_id)}/events`, 'POST', {
+        kind: 'contribution',
+        date: a.date,
+        description: a.description.trim(),
+        amount: a.amount,
+        payerId: self.id,
+      });
+      if (!r.ok)
+        return {
+          error:
+            r.status === 403
+              ? 'Refused: only your own contribution, dated today or earlier, up to what you owe'
+              : r.error,
+        };
+      const after = r.data as { toPool: Record<string, number> };
+      return {
+        recorded: true,
+        personId: self.id,
+        owesHouseholdAccountNow: -(after.toPool[self.id] ?? 0),
+      };
+    },
+  },
+  {
+    name: 'record_household_contributions',
+    scope: 'organise',
+    description: `Records money someone put into a household account as their contribution, linked to that deposit: the entry takes the deposit's exact amount and date. Up to ${MAX_CONTRIBUTIONS} at once, e.g. the toRecord list of household_bill_reconciliation. Only past deposits into that household's own accounts, not linked yet; never expenses, settlements, unlinked amounts, edits or removals (the owner removes an entry on the Household page). Confirm the list with the user first.`,
+    properties: {
+      household_id: { ...idString, description: 'From list_households' },
+      contributions: {
+        type: 'array',
+        minItems: 1,
+        maxItems: MAX_CONTRIBUTIONS,
+        items: {
+          type: 'object',
+          properties: {
+            transaction_id: { ...idString, description: 'The deposit' },
+            person_id: { ...idString, description: 'Who paid it, from household people' },
+            description: { type: 'string', minLength: 1, maxLength: 200 },
+          },
+          required: ['transaction_id', 'person_id'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['household_id', 'contributions'],
+    run: async (ctx, a) => {
+      const rows = a.contributions;
+      if (
+        !isId(a.household_id) ||
+        !Array.isArray(rows) ||
+        !rows.length ||
+        rows.length > MAX_CONTRIBUTIONS
+      )
+        return { error: `Give a household id and 1 to ${MAX_CONTRIBUTIONS} contributions` };
+      const results = [];
+      for (const row of rows as Args[]) {
+        const id = row?.transaction_id;
+        if (!isId(id) || !isId(row.person_id)) {
+          results.push({ transactionId: id, ok: false, error: 'Give a transaction and person id' });
+          continue;
+        }
+        if (row.description !== undefined && typeof row.description !== 'string') {
+          results.push({ transactionId: id, ok: false, error: 'description must be text' });
+          continue;
+        }
+        const tx = db
+          .select({ date: transactions.date, amount: transactions.amount })
+          .from(transactions)
+          .where(eq(transactions.id, id))
+          .get();
+        if (!tx || tx.amount <= 0) {
+          results.push({ transactionId: id, ok: false, error: tx ? 'Not money in' : 'Not found' });
+          continue;
+        }
+        const r = await api(ctx, `/households/${seg(a.household_id)}/events`, 'POST', {
+          kind: 'contribution',
+          date: tx.date,
+          description: (row.description as string | undefined)?.trim() || 'Contribution',
+          amount: tx.amount,
+          payerId: row.person_id,
+          transactionId: id,
+        });
+        results.push({
+          transactionId: id,
+          ok: r.ok,
+          error: r.ok
+            ? undefined
+            : r.status === 403
+              ? 'Refused: only a past deposit into this household’s accounts can be recorded'
+              : r.error,
+        });
+      }
+      const done = results.filter((r) => r.ok).length;
+      return { recorded: done, refused: results.length - done, results };
+    },
+  },
 ];
 
 const offered = (scope: TokenScope, tool: ActionTool) =>
@@ -825,16 +1139,16 @@ async function callApi(req: Request, path: string, method = 'GET', body?: unknow
 }
 
 const TITLES: Record<TokenScope, string> = {
-  read: 'FlyBudget (read-only)',
-  categorise: 'FlyBudget (read and categorise)',
-  organise: 'FlyBudget (read, categorise and organise)',
+  read: 'Allotment (read-only)',
+  categorise: 'Allotment (read and categorise)',
+  organise: 'Allotment (read, categorise and organise)',
 };
 const BASICS =
   'Amounts are integer minor units (cents); a negative transaction amount is money out. Use list_* tools for ids, then filter transactions and reports with them. Money received in budget accounts is ready to assign to envelopes; income categories only label it for reports. Household pool accounts sit outside the personal budget. Envelopes count from budget_start; earlier history is only in reports. find_transactions pages with limit and offset, and fields keeps results short.';
 const INSTRUCTIONS: Record<TokenScope, string> = {
-  read: `Read-only access to a FlyBudget budget. ${BASICS}`,
-  categorise: `Read access to a FlyBudget budget, plus setting the category of past transactions (categorise_transactions, categorise_by_payee) and creating and editing categories and groups; nothing else can change. ${BASICS} Start from uncategorised_payees. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before categorising.`,
-  organise: `Read access to a FlyBudget budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers and suggesting assignments the owner applies. ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
+  read: `Read-only access to an Allotment budget. ${BASICS}`,
+  categorise: `Read access to an Allotment budget, plus setting the category of past transactions (categorise_transactions, categorise_by_payee) and creating and editing categories and groups; nothing else can change. ${BASICS} Start from uncategorised_payees. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before categorising.`,
+  organise: `Read access to an Allotment budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers, suggesting assignments the owner applies, claiming past transactions as tax deductions (tax_years, tax_deductions, tax_claim_candidates, claim_tax_deductions; never replacing or removing a claim), recording household contributions linked to deposits into a household account (household_bill_reconciliation, record_household_contributions), and your own unlinked contribution up to what you owe the household account (record_own_household_contribution). ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
 };
 
 const schemaOf = (t: { properties?: Record<string, unknown>; required?: string[] }) => ({
@@ -886,7 +1200,8 @@ async function handle(ctx: Context, scope: TokenScope, message: Record<string, u
             description: t.description,
             inputSchema: schemaOf(t),
             annotations: {
-              readOnlyHint: t.name.startsWith('test_') || t.name.startsWith('preview_'),
+              readOnlyHint:
+                !!t.readOnly || t.name.startsWith('test_') || t.name.startsWith('preview_'),
               destructiveHint: false,
               idempotentHint: !!t.idempotent,
               openWorldHint: false,

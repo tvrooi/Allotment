@@ -1,3 +1,5 @@
+import { accounts } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import express from 'express';
 import type { AddressInfo } from 'net';
@@ -79,7 +81,7 @@ it('"All time" keeps only the 12 months up to the first transaction', async () =
   expect(points).toHaveLength(15);
 });
 
-it('leaves closed accounts out of net worth, and counts them again when reopened', async () => {
+it('leaves legacy closed accounts out of net worth, and counts them again when reopened', async () => {
   const month = new Date().toISOString().slice(0, 7);
   const netWorth = async () =>
     (await send('GET', `/reports/net-worth?from=${month}&to=${month}`)).at(-1).netWorth;
@@ -92,7 +94,13 @@ it('leaves closed accounts out of net worth, and counts them again when reopened
   });
   expect(await netWorth()).toBe(before + 25_000);
 
-  await fetch(`${base}/accounts/${account.id}`, { method: 'DELETE' });
+  expect((await fetch(`${base}/accounts/${account.id}`, { method: 'DELETE' })).status).toBe(409);
+  // Existing closed rows can predate the zero-balance guard. Net worth retains its
+  // established closed-account policy; funding separately discloses their residuals.
+  db.update(accounts)
+    .set({ closedAt: new Date().toISOString() })
+    .where(eq(accounts.id, account.id))
+    .run();
   expect(await netWorth()).toBe(before);
 
   // Undo of "Close account"

@@ -22,6 +22,17 @@ const category = fc
   }));
 
 describe('categoryFigures (property-based)', () => {
+  it('a transfer into a linked account funds the envelope without being activity', () => {
+    fc.assert(
+      fc.property(category, fc.nat(10_000_000), (cat, transferred) => {
+        const linked = { ...cat, transferred, balance: cat.balance + transferred };
+        const { actual, remaining } = categoryFigures(linked, false);
+        expect(actual).toBe(categoryFigures(cat, false).actual);
+        expect(remaining).toBe(linked.balance);
+      }),
+    );
+  });
+
   it('expenses: activity is signed and availability includes rollover', () => {
     fc.assert(
       fc.property(category, (cat) => {
@@ -117,5 +128,27 @@ describe('splitCategories picks common categories to top up a section', () => {
     const names = ['Zoo Trips', 'Alpacas', 'Kayaks', 'Board Games'];
     const { shown } = splitCategories(names.map(idle), false);
     expect(shown.map((c) => c.name)).toEqual(['Zoo Trips', 'Alpacas', 'Kayaks']);
+  });
+});
+
+describe('expected recurring debits', () => {
+  it('keep an otherwise empty category listed, without changing its figures', () => {
+    const empty: BudgetCategory = {
+      id: 'phone',
+      groupId: 'g',
+      name: 'Phone',
+      icon: null,
+      budgetType: null,
+      sortOrder: 0,
+      createdAt: '',
+      budgeted: 0,
+      spent: 0,
+      carryOver: 0,
+      balance: 0,
+    };
+    expect(isActiveCategory(empty, false)).toBe(false);
+    const expecting = { ...empty, expected: 5000 };
+    expect(isActiveCategory(expecting, false)).toBe(true);
+    expect(categoryFigures(expecting, false)).toEqual(categoryFigures(empty, false));
   });
 });

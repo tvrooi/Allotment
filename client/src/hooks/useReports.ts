@@ -88,3 +88,20 @@ export const useSpendingComparison = (mode: string) =>
     queryKey: ['reports', 'spending-comparison', mode],
     queryFn: () => reportsApi.getSpendingComparison(mode),
   });
+
+export const useUncategorisedSummary = (from: string, to: string) =>
+  useQuery({
+    queryKey: ['reports', 'uncategorised-summary', from, to],
+    queryFn: () => reportsApi.getUncategorisedSummary(from, to),
+  });
+
+export const useUncategorisedPayees = (enabled = true) =>
+  useQuery({
+    queryKey: ['reports', 'uncategorised-payees'],
+    queryFn: () => reportsApi.getUncategorisedPayees(),
+    enabled,
+  });
+
+/** A repeating pay deposit in the register, or null */
+export const useSalaryGuess = () =>
+  useQuery({ queryKey: ['reports', 'salary'], queryFn: reportsApi.getSalaryGuess });

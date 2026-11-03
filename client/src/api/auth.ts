@@ -1,16 +1,21 @@
 import { apiFetch } from './client';
+import type { HostKind } from '../utils/hostKind';
 
 // Login for server mode (Docker / self-hosted). The desktop app and `npm run dev`
 // report `enabled: false` and never show a login screen.
 
 export interface AuthStatus {
   enabled: boolean;
+  /** Where the server runs, to say where its log is (utils/hostKind.ts) */
+  hostKind?: HostKind;
   needsSetup: boolean;
   authenticated: boolean;
   /** Multi-user mode (the gateway, docs/MULTI-USER-PLAN.md): people sign in by name */
   multiUser?: boolean;
-  /** Multi-user: password codes can be sent as Home Assistant notifications */
+  /** Password codes can be sent as Home Assistant notifications (the server runs as the HA app) */
   canNotify?: boolean;
+  /** Single-user server: a forgotten password can be reset with a code from the server log */
+  canRecover?: boolean;
   /** Multi-user: who is signed in */
   person?: { id: string; name: string; isAdmin: boolean; notifyService: string | null };
 }
@@ -43,6 +48,13 @@ export const forgotPassword = (name: string) =>
 
 export const resetPassword = (name: string, code: string, password: string) =>
   apiFetch<void>('/auth/reset', { method: 'POST', body: JSON.stringify({ name, code, password }) });
+
+// Single-user server: the code is written to the server log (and a Home Assistant notification)
+export const requestResetCode = () =>
+  apiFetch<{ canNotify: boolean }>('/auth/forgot', { method: 'POST', body: '{}' });
+
+export const resetWithCode = (code: string, password: string) =>
+  apiFetch<void>('/auth/reset', { method: 'POST', body: JSON.stringify({ code, password }) });
 
 export const logout = () => apiFetch<void>('/auth/logout', { method: 'POST' });
 

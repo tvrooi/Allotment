@@ -32,6 +32,13 @@ For each category you see:
 A bar under each category fills as you spend: green, then amber when you're close to the plan,
 and red when you've gone over. Click the arrow next to a group to collapse it.
 
+Recurring expenses that have a category show up front: under **Actual**, an orange
+**−$_X_ expected** line adds up that category's recurring bills still due this month, and the bar
+continues in orange by the same amount. Hover over it to see each bill, its date and what the
+category would have left once they're paid. Each bill drops off once it's paid (matched to a
+transaction) or skipped. Expected bills are only a forecast: they don't change Actual, Remaining
+or what's ready to assign until the money really leaves your account. Past months show none.
+
 <Screenshot name="budget-overspent" alt="Overspent categories show in red" />
 
 Categories with nothing planned or spent this month are tucked away: choose
@@ -113,6 +120,22 @@ Manage categories and groups in **Settings → Categories**:
 - **Delete** a category and FlyBudget asks where its transactions should move.
 
 A new budget starts with a set of common categories you can change freely.
+
+### Funding a category from its own account
+
+If you keep money for one thing in its own account (a Rent saver, say), edit the category and
+choose that account under **Funded by transfers to**. From then on, a transfer into the account
+from another account in your budget goes into the category, just as if you had assigned it, and
+comes out of To Be Budgeted. Moving money back out of the account takes it out of the category
+again. The category shows **+$X moved to …** under its name for the month.
+
+- Only a confirmed transfer counts: a transfer FlyBudget suggests counts once you link it in the
+  register. Other money arriving in the account (interest, a payment from someone else) stays
+  ready to budget as usual.
+- Paying the bill from that account is ordinary spending in the category.
+- Each account funds one category, and only an expense category in your budget. A transfer you
+  link also counts toward the category's target.
+- You can still assign money to the category as well; the two add up.
 
 ## A simple routine
 

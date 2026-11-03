@@ -11,7 +11,7 @@ export function parseLocation(value: unknown): BudgetLocation {
   const input = value as Record<string, unknown>;
   if (input.mode === 'local') return { mode: 'local' };
   if (input.mode !== 'server' || typeof input.url !== 'string') {
-    throw new Error('Enter the FlyBudget server address.');
+    throw new Error('Enter the Allotment server address.');
   }
   const text = input.url.trim();
   if (!text || text.length > 2048 || /[\u0000-\u0020\u007f\\]/.test(text)) {

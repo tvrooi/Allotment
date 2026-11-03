@@ -4,6 +4,7 @@ import {
   TAX_LABELS,
   TAX_LABEL_KEYS,
   TaxError,
+  claimCandidates,
   claimedIds,
   getClaim,
   removeClaim,
@@ -52,6 +53,12 @@ taxRouter.get(
 taxRouter.get(
   '/years/:fy',
   action((req, res) => res.json(taxYear(fy.parse(req.params.fy)))),
+);
+
+// Unclaimed past payments like ones already claimed, for the owner to confirm
+taxRouter.get(
+  '/years/:fy/candidates',
+  action((req, res) => res.json(claimCandidates(fy.parse(req.params.fy), todayIso()))),
 );
 
 taxRouter.get(

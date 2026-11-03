@@ -7,6 +7,8 @@ import { usePreferencesStore } from '../../store/preferencesStore';
 import { useCanSave } from '../../hooks/useConnection';
 import { formatCurrency } from '../../utils/currency';
 import { categoryFigures, splitCategories } from '../../utils/budgetFigures';
+import { TransferredNote } from './TransferredNote';
+import { ExpectedNote } from './ExpectedNote';
 import type { BudgetCategory } from '../../types';
 import { targetLabel } from '../../utils/targets';
 
@@ -24,25 +26,46 @@ interface Props {
   onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
   /** Nothing is planned this month yet: list every category, so there's something to plan */
   showAll?: boolean;
+  /** Before the budget start: figures to read, nothing to assign */
+  readOnly?: boolean;
 }
 
 /**
  * The budget on a phone: a card per category (planned, actual, remaining) instead of the
  * four-column table. Tapping the planned amount opens a sheet to change it.
  */
-export function PhoneBudget({ sections, month, onSave, onApplyBulk, showAll = false }: Props) {
+export function PhoneBudget({
+  sections,
+  month,
+  onSave,
+  onApplyBulk,
+  showAll = false,
+  readOnly = false,
+}: Props) {
   const [editing, setEditing] = useState<{ cat: BudgetCategory; isIncome: boolean } | null>(null);
+  const firstExpenses = sections.find((s) => !s.isIncome);
 
   return (
     <div>
-      {sections.map((section) => (
-        <Section
-          key={section.key}
-          section={section}
-          showAll={showAll}
-          onEdit={(cat) => setEditing({ cat, isIncome: section.isIncome })}
-        />
-      ))}
+      {sections.map((section) => {
+        const el = (
+          <Section
+            key={section.key}
+            section={section}
+            showAll={showAll}
+            readOnly={readOnly}
+            onEdit={(cat) => setEditing({ cat, isIncome: section.isIncome })}
+          />
+        );
+        // The guides' "Categories are envelopes" step points at the first envelopes, not income
+        return section === firstExpenses ? (
+          <div key={section.key} data-guide="budget.expenses">
+            {el}
+          </div>
+        ) : (
+          el
+        );
+      })}
       <BudgetAmountSheet
         category={editing?.cat ?? null}
         isIncome={editing?.isIncome ?? false}
@@ -58,10 +81,12 @@ export function PhoneBudget({ sections, month, onSave, onApplyBulk, showAll = fa
 function Section({
   section,
   showAll,
+  readOnly,
   onEdit,
 }: {
   section: PhoneBudgetSection;
   showAll: boolean;
+  readOnly: boolean;
   onEdit: (cat: BudgetCategory) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -96,7 +121,13 @@ function Section({
       {!collapsed && (
         <>
           {visible.map((cat) => (
-            <CategoryCard key={cat.id} cat={cat} isIncome={isIncome} onEdit={() => onEdit(cat)} />
+            <CategoryCard
+              key={cat.id}
+              cat={cat}
+              isIncome={isIncome}
+              readOnly={readOnly}
+              onEdit={() => onEdit(cat)}
+            />
           ))}
           {inactiveCount > 0 && !showAll && (
             <button
@@ -118,10 +149,12 @@ function Section({
 function CategoryCard({
   cat,
   isIncome,
+  readOnly,
   onEdit,
 }: {
   cat: BudgetCategory;
   isIncome: boolean;
+  readOnly: boolean;
   onEdit: () => void;
 }) {
   const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
@@ -151,10 +184,12 @@ function CategoryCard({
       </div>
       <SpentBar
         spent={isIncome ? actual : cat.spent}
-        budgeted={cat.budgeted}
+        budgeted={cat.budgeted + (cat.transferred ?? 0)}
         isIncome={isIncome}
+        expected={cat.expected}
         className="h-1.5 w-full mt-2"
       />
+      <TransferredNote cat={cat} className="mt-1" />
       {cat.target && (
         <p
           className={`text-xs mt-1 ${cat.target.underfunded ? 'text-caution' : 'text-text-tertiary'}`}
@@ -166,7 +201,7 @@ function CategoryCard({
         <button
           type="button"
           onClick={onEdit}
-          disabled={!canSave}
+          disabled={!canSave || readOnly}
           aria-label={`Planned for ${cat.name}: ${formatCurrency(cat.budgeted)}`}
           className="min-h-11 flex items-center gap-1.5 text-left disabled:opacity-50"
         >
@@ -186,6 +221,7 @@ function CategoryCard({
           <span className="text-sm font-medium tabular-nums text-text">
             {formatCurrency(actual)}
           </span>
+          <ExpectedNote cat={cat} />
         </Link>
       </div>
     </div>

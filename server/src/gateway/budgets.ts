@@ -5,7 +5,7 @@ import http from 'http';
 import path from 'path';
 import type { Person } from './store.js';
 
-// Each person's budget runs as its own FlyBudget server process (docs/MULTI-USER-PLAN.md), on
+// Each person's budget runs as its own Allotment server process (docs/MULTI-USER-PLAN.md), on
 // loopback only, with its own database and encryption key. Isolation comes from separate
 // files and processes, not from query filters. The gateway starts them, restarts one that
 // stops, and forwards requests to it with a secret only the gateway and its budgets know.
@@ -117,7 +117,7 @@ export async function waitForHealth(port: number, timeoutMs: number) {
 }
 
 /**
- * Starts budgets as child processes running the FlyBudget server (`script`, e.g. /app/server.js)
+ * Starts budgets as child processes running the Allotment server (`script`, e.g. /app/server.js)
  * in server mode on 127.0.0.1, with the person's database and key. Their log lines are prefixed
  * with the person's id, never their name.
  */

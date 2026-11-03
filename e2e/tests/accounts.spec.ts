@@ -27,11 +27,11 @@ test.describe('accounts', () => {
     await expect(
       page.getByRole('complementary').getByRole('link', { name: 'Budget' }),
     ).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Get started with FlyBudget' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Get started with Allotment' })).toBeVisible();
 
     await page.reload();
     await expect(page).toHaveURL(/#\/dashboard$/);
-    await expect(page.getByRole('heading', { name: 'Get started with FlyBudget' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Get started with Allotment' })).toBeVisible();
   });
 
   test('the assets and liabilities summary lists only the kinds of accounts you have', async ({
@@ -139,7 +139,7 @@ test.describe('accounts', () => {
 
   test('closing an account hides it', async ({ page, api }) => {
     await api.createAccount('Keep Me', 100);
-    const account = await api.createAccount('Old Card', -500, 'credit');
+    const account = await api.createAccount('Old Card', 0, 'credit');
     await open(page, `/accounts/${account.id}`);
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page

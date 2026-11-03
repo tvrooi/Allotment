@@ -53,3 +53,50 @@ export const getSpendingComparison = (mode: string) =>
 
 export const getDailyFlow = (from: string, to: string) =>
   apiFetch<DailyFlowPoint[]>(`/reports/daily-flow${toQueryString(from, to)}`);
+
+/** Spending and money in over a window, split by whether it has a category */
+export interface UncategorisedSummary {
+  spending: number;
+  uncategorisedSpending: number;
+  uncategorisedSpendingCount: number;
+  uncategorisedIncome: number;
+  uncategorisedIncomeCount: number;
+  categorisedIncome: number;
+  /** uncategorisedSpending / spending, 0 to 1 */
+  share: number;
+}
+export const getUncategorisedSummary = (from: string, to: string) =>
+  apiFetch<UncategorisedSummary>(`/reports/uncategorised-summary${toQueryString(from, to)}`);
+
+/** Uncategorised transactions grouped by payee, biggest groups first */
+export interface UncategorisedPayee {
+  payeeId: string | null;
+  payeeName: string;
+  count: number;
+  moneyIn: number;
+  moneyOut: number;
+  net: number;
+  firstDate: string;
+  lastDate: string;
+  sampleNotes: string[];
+}
+export const getUncategorisedPayees = (limit = 200) =>
+  apiFetch<{ payeeCount: number; transactionCount: number; payees: UncategorisedPayee[] }>(
+    `/reports/uncategorised-payees?limit=${limit}`,
+  );
+
+/** A repeating pay deposit found in the register, for the owner to confirm */
+export interface SalaryGuess {
+  payeeId: string;
+  payeeName: string;
+  schedule: 'weekly' | 'fortnightly' | 'monthly';
+  /** 7 or 14; null for monthly pay */
+  intervalDays: number | null;
+  latestDate: string;
+  latestAmount: number;
+  occurrences: number;
+  uncategorisedCount: number;
+  categoryId: string | null;
+  categoryName: string | null;
+}
+export const getSalaryGuess = () => apiFetch<SalaryGuess | null>('/reports/salary');

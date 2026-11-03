@@ -26,6 +26,7 @@ import {
 } from '../components/reports/ChartHelpers';
 import type { StatCard } from '../components/reports/ChartHelpers';
 import type { SpendingByCategory as SpendingByCat, IncomeByCategoryItem } from '../types';
+import { useSafeMode } from '../utils/safeMode';
 
 // ─── Types & Constants ───────────────────────────────────────────────────────
 
@@ -253,7 +254,7 @@ function buildSankeyGraph(
     { total: number; groupId: string | null; items: SpendingByCat[] }
   >();
   for (const item of validSpending) {
-    const key = item.groupName ?? 'Uncategorized';
+    const key = item.groupName ?? 'Uncategorised';
     const ex = groupMap.get(key);
     if (ex) {
       ex.total += item.totalSpent;
@@ -267,7 +268,7 @@ function buildSankeyGraph(
   sortedGroups.forEach(([name], i) => {
     gColorMap.set(
       name,
-      name === 'Uncategorized' ? chartColors.axis : EXPENSE_COLORS[i % EXPENSE_COLORS.length],
+      name === 'Uncategorised' ? chartColors.axis : EXPENSE_COLORS[i % EXPENSE_COLORS.length],
     );
   });
 
@@ -309,7 +310,7 @@ function buildSankeyGraph(
     const sorted = [...items].sort((a, b) => b.totalSpent - a.totalSpent);
 
     const subs: SankeyNode[] = sorted.map((item, ci) => ({
-      name: `${icon(item)}${item.categoryName ?? 'Uncategorized'}`,
+      name: `${icon(item)}${item.categoryName ?? 'Uncategorised'}`,
       nodeType: 'subcategory' as NodeType,
       amount: item.totalSpent,
       color: lighten(gColor, sorted.length > 1 ? Math.min(ci * 0.12, 0.4) : 0),
@@ -1131,6 +1132,8 @@ export default function CashFlowPage() {
   // Headline totals and savings rate use the shared definition (utils/reportSummary.ts):
   // spending is net of refunds across all expense categories, as on the dashboard
   const { data: ieData = [] } = useIncomeVsExpenses(from, to);
+  // Formatted here, so Safe mode hiding every amount must draw them again
+  const hidesAll = useSafeMode().all;
   const statCards = useMemo((): StatCard[] => {
     const { income, spending, net } = periodFlow(ieData);
     const rate = savingsRate(income, spending);
@@ -1148,7 +1151,7 @@ export default function CashFlowPage() {
         tone: rate !== null && rate < 0 ? 'negative' : undefined,
       },
     ];
-  }, [ieData]);
+  }, [ieData, hidesAll]);
 
   const handleNodeClick = useCallback((node: SelectedNode | null) => {
     setSelectedNode(node);
@@ -1163,7 +1166,7 @@ export default function CashFlowPage() {
     downloadCsv(
       `cash-flow-${from}-${to}.csv`,
       spData.map((d) => ({
-        category: `${showIcons && d.categoryIcon ? d.categoryIcon + ' ' : ''}${d.categoryName ?? 'Uncategorized'}`,
+        category: `${showIcons && d.categoryIcon ? d.categoryIcon + ' ' : ''}${d.categoryName ?? 'Uncategorised'}`,
         group: d.groupName ?? '',
         total_cents: d.totalSpent,
       })),

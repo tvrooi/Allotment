@@ -1,8 +1,8 @@
-# FlyBudget: Australian budgeting and shared expenses investigation
+# Allotment: Australian budgeting and shared expenses investigation
 
 20 October 2026 · Investigation with implementation notes for phases one to three
 
-Source reviewed: `tvrooi/FlyBudget` at `f952208ad41c3d65643aeb826f4256220df6672b` (`v0.2.0-up.4`). This investigation used source code, synthetic examples and public documentation. The original investigation did not inspect or change the live budget, bank connection or Home Assistant installation. A later user-authorised read-only UI check is described in the phase-one notes below. Examples of percentages and account balances are illustrative.
+Source reviewed: `tvrooi/Allotment` at `f952208ad41c3d65643aeb826f4256220df6672b` (`v0.2.0-up.4`). This investigation used source code, synthetic examples and public documentation. The original investigation did not inspect or change the live budget, bank connection or Home Assistant installation. A later user-authorised read-only UI check is described in the phase-one notes below. Examples of percentages and account balances are illustrative.
 
 The recommended direction is to retain the existing monthly envelope budget and add payday funding, shared-expense attribution and a separate forecasting layer. Bank statements must continue to reconcile exactly. A different display or report must not rewrite a real bank payment.
 
@@ -48,7 +48,7 @@ The current preview refreshes on startup/manual sync. A changing summary needs b
 
 ## 2. Merchant photographs and logos
 
-FlyBudget already supports small custom payee images. The Payees screen and transaction row use `PayeeIcon`; selecting its editable image allows an upload, saved once per payee. Consolidating duplicate payees lets transactions reuse that image.
+Allotment already supports small custom payee images. The Payees screen and transaction row use `PayeeIcon`; selecting its editable image allows an upload, saved once per payee. Consolidating duplicate payees lets transactions reuse that image.
 
 I found no merchant photograph/logo field or merchant image endpoint in Up's published transaction schema. Attachments are a separate resource and should not be treated as a merchant-logo feed. Exact image parity with the Up app is therefore unavailable through the documented personal API reviewed here. [Up: published OpenAPI specification](https://raw.githubusercontent.com/up-banking/api/master/v1/openapi.json)
 
@@ -58,7 +58,7 @@ I found no merchant photograph/logo field or merchant image endpoint in Up's pub
 
 Fortnightly pay is compatible with envelope budgeting. The missing convenience is funding categories on paydays rather than manually translating every goal into a monthly amount.
 
-**Correction to the initial premise:** FlyBudget already has `biweekly` schedules, labelled “Every 2 Weeks”. YNAB documents using fortnightly income within a monthly plan, while its current target documentation says a dedicated biweekly target is unavailable. These are different capabilities: receiving income every 14 days, repeating a transaction, and calculating category funding per payday. [YNAB: pay cycles](https://support.ynab.com/en_us/how-to-adjust-your-plan-on-any-pay-cycle-HkpGZdW1o), [YNAB: target types](https://support.ynab.com/en_us/getting-started-with-targets-ryAEP08xC)
+**Correction to the initial premise:** Allotment already has `biweekly` schedules, labelled “Every 2 Weeks”. YNAB documents using fortnightly income within a monthly plan, while its current target documentation says a dedicated biweekly target is unavailable. These are different capabilities: receiving income every 14 days, repeating a transaction, and calculating category funding per payday. [YNAB: pay cycles](https://support.ynab.com/en_us/how-to-adjust-your-plan-on-any-pay-cycle-HkpGZdW1o), [YNAB: target types](https://support.ynab.com/en_us/getting-started-with-targets-ryAEP08xC)
 
 Add a **Payday plan** with an anchor payday, expected take-home pay, every-14-days recurrence, optional adjusted payment dates and several funding methods:
 
@@ -94,7 +94,7 @@ Do not hard-code an old quarterly employer-payment assumption. Current ATO guida
 
 ## 5. Useful ideas from Actual and Up
 
-FlyBudget already has transaction rules, category splits, recurrence discovery, transfer suggestions, custom reports, goal progress and client undo/redo. Those should be extended rather than rebuilt.
+Allotment already has transaction rules, category splits, recurrence discovery, transfer suggestions, custom reports, goal progress and client undo/redo. Those should be extended rather than rebuilt.
 
 The best additions for this application are:
 
@@ -109,7 +109,7 @@ Up's Essentials is a particularly relevant reference: its current description ti
 
 ## 6. 2Up, rent contributions and shared Essentials bills
 
-Separate three concepts: a bank account's holders, the people contributing to a household, and each person's agreed expense share. Up describes 2Up as two account holders. A household's other contributors can still be tracked in FlyBudget; that does not make them additional bank holders. [Up: 2Up](https://up.com.au/2up/)
+Separate three concepts: a bank account's holders, the people contributing to a household, and each person's agreed expense share. Up describes 2Up as two account holders. A household's other contributors can still be tracked in Allotment; that does not make them additional bank holders. [Up: 2Up](https://up.com.au/2up/)
 
 The API exposes joint ownership and may identify the customer performing a transaction; that does not establish who ultimately owes each share. No documented Essentials bill-definition/Regulars endpoint was found in the reviewed public specification. Account availability and categorisation must be checked against the actual account list before claiming complete Essentials coverage. Bill definitions can be entered locally, then matched to imported payments. [Up: published API specification](https://raw.githubusercontent.com/up-banking/api/master/v1/openapi.json)
 
@@ -133,7 +133,7 @@ There should be separate **Bank movement**, **Household spending** and **My shar
 
 An interim manual approach is to categorise housemates' receipts back to the relevant expense category, rather than Salary. The current category-spending endpoint nets those flows, which may give a useful net cost when deposits and bills fall in the same report period. It does not provide a participant ledger, reliable cross-period shares or protection for other people's money. Review transfers explicitly and do not modify the real payment amount to the personal share.
 
-**Essentials bills:** extend existing schedules with household group, paying account, total estimate, personal share, due date, actual billed amount, received contributions and allocated funds. Useful statuses are “funded”, “shortfall”, “due”, “paid” and “needs review”. A quarterly bill should accrue across paydays. Match an imported debit to its occurrence once; it must not coexist with a duplicate auto-created bill transaction. Account cash alone is not bill coverage: it may already be reserved for another bill. Importing a bank account does not automatically import Up's bill setup, and FlyBudget should not promise to initiate payments.
+**Essentials bills:** extend existing schedules with household group, paying account, total estimate, personal share, due date, actual billed amount, received contributions and allocated funds. Useful statuses are “funded”, “shortfall”, “due”, “paid” and “needs review”. A quarterly bill should accrue across paydays. Match an imported debit to its occurrence once; it must not coexist with a duplicate auto-created bill transaction. Account cash alone is not bill coverage: it may already be reserved for another bill. Importing a bank account does not automatically import Up's bill setup, and Allotment should not promise to initiate payments.
 
 ## 7. Tricount-style people and balances
 
@@ -218,7 +218,7 @@ Each deliverable should be a focused pull request with a short acceptance exampl
 
 Rechecked the [published Up OpenAPI specification](https://raw.githubusercontent.com/up-banking/api/master/v1/openapi.json). `RoundUpObject.amount` is a signed negative total including its boost; `boostPortion` is a component. The published transaction example has a purchase amount and round-up amount but a null `transferAccount`. That example does not establish a source/deposit journal pair or how holds and reversals affect every posting.
 
-At the user's request, inspected the running remote FlyBudget UI read-only. The inspected imported round-up entries were positive, uncategorised saver credits. One detail panel contained the importer's internal-transfer review note; the current-month payee search showed saver-side entries. This confirms separate credits in the imported register. It does **not** prove the raw purchase posting shape, identify a counterpart by amount/date alone, or prove that a debit under another description is absent. The deployed importer discarded purchase round-up metadata, so the register cannot recover that evidence. No records, connection settings or Home Assistant configuration were changed; no live data, screenshots, identifiers, account names, amounts, credentials or deployment address were copied into this repository.
+At the user's request, inspected the running remote Allotment UI read-only. The inspected imported round-up entries were positive, uncategorised saver credits. One detail panel contained the importer's internal-transfer review note; the current-month payee search showed saver-side entries. This confirms separate credits in the imported register. It does **not** prove the raw purchase posting shape, identify a counterpart by amount/date alone, or prove that a debit under another description is absent. The deployed importer discarded purchase round-up metadata, so the register cannot recover that evidence. No records, connection settings or Home Assistant configuration were changed; no live data, screenshots, identifiers, account names, amounts, credentials or deployment address were copied into this repository.
 
 The parser now validates and retains optional round-up metadata **in memory during parsing**. Import mapping leaves the purchase amount and existing bank IDs unchanged, does not add the boost again, and does not manufacture a transfer leg from that metadata. This phase adds no metadata table or automatic historical backfill. Synthetic fixtures cover an explicitly supplied debit/credit pair, boost totals, an even-dollar boost, zero round-up, held purchases, a late settlement over the DST boundary, repeat imports and reconciled/user-edited records. An explicit paired fixture demonstrates importer behaviour, not proof that Up always uses that posting shape.
 

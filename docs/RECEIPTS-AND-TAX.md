@@ -17,11 +17,11 @@ From `docs/research/monarch-action-catalog.md`, `monarch-live-audit-continued.md
   attachments**.
 - Monarch has no tax-deduction feature.
 
-FlyBudget takes the upload, paste, inbox, matching and attachment ideas, and (since 0.2.0-up.43) splitting by line items. It leaves out two:
+Allotment takes the upload, paste, inbox, matching and attachment ideas, and (since 0.2.0-up.43) splitting by line items. It leaves out two:
 
 - **Email forwarding** would need an inbound mail service exposed to the internet, which a private,
   self-hosted budget should not run.
-- **Server-side AI parsing** would send receipts to a third party. FlyBudget can instead read
+- **Server-side AI parsing** would send receipts to a third party. Allotment can instead read
   photos with a model on the owner's own Ollama server (§5, since 0.2.0-up.44).
 
 The owner types a receipt's details and line items, and matching and splitting use those.
@@ -51,9 +51,11 @@ The owner types a receipt's details and line items, and matching and splitting u
 - **Serving:** files are served with `X-Content-Type-Options: nosniff` and
   `Content-Security-Policy: default-src 'none'; img-src 'self'; sandbox`. Photos are inline; PDFs and
   HEIC are downloads, never documents that render in the app's origin.
-- **Read-only tokens:** `/api/receipts` and `/api/tax` are deliberately not on the read-only token
-  allowlist. An assistant token never sees a receipt or a claim (tested). Receipts are not under
-  `/transactions`, which is allowlisted.
+- **Access tokens:** `/api/receipts` is not on the token allowlist, and read and categorise
+  tokens never see a claim (tested). An organise token (owner-approved, 2 November 2026) can read
+  a year's claims and claim past, unclaimed transactions, but never replaces or removes a claim,
+  downloads the CSV or receipt archive, or sees a receipt (docs/READ-ONLY-ACCESS.md). Receipts are
+  not under `/transactions`, which is allowlisted.
 - **Demo:** the in-browser demo has no file uploads ("not in the demo"). Tax claims work there.
 - Mock data and made-up files only in tests and the demo.
 
@@ -162,13 +164,13 @@ records, not only tax evidence.
     about 75 s to take in even a small image, so allow 2 to 4 minutes a photo.
   - Read-only tokens reach none of it (`/receipts` is not on the allowlist).
 - **Not built:** email forwarding (it needs an inbound mail service exposed to the internet) and a
-  "pending" state (FlyBudget imports settled transactions only).
+  "pending" state (Allotment imports settled transactions only).
 
 ## 6. Not built
 
 - Email forwarding, and reading PDFs (only photos are read).
 - Working-from-home hours (the fixed rate per hour), car logbooks and cents per kilometre.
-- Depreciation schedules and the low-value pool calculation.
+- Depreciation schedules and the low-value pool calculation (planned: [DEPRECIATING-ASSETS-PLAN.md](DEPRECIATING-ASSETS-PLAN.md)).
 - Income, tax withheld, tax offsets and an estimated refund.
 - Lodging with the ATO. myTax has no import, so the CSV is for you or your tax agent.
 - A "Has receipt" filter in the register (markers show instead).

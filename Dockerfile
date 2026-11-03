@@ -1,4 +1,4 @@
-# FlyBudget self-hosted server: the web app and API in one container, with a
+# Allotment self-hosted server: the web app and API in one container, with a
 # password login (server mode). See docs: https://flybudget.org/community/self-hosting
 #
 #   docker compose up -d        (see docker-compose.yml)

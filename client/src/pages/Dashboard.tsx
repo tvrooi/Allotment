@@ -20,6 +20,8 @@ import { ReminderBanner } from '../components/review/Resilience';
 import { useIsPhone } from '../hooks/useIsPhone';
 import { usePreferencesStore } from '../store/preferencesStore';
 import { HOME_CARDS, normalizeLayout, visibleCards, type HomeCardId } from '../utils/homeCards';
+import { Tip } from '../components/guide/Tip';
+import { TIPS } from '../guides';
 
 const now = new Date();
 const currentMonth = format(now, 'yyyy-MM');
@@ -73,13 +75,25 @@ export default function Dashboard() {
             A little clarity for your everyday plans.
           </p>
         </div>
-        <Button variant="secondary" size="sm" onClick={() => setCustomizing(true)}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setCustomizing(true)}
+          data-guide="dashboard.customize"
+        >
           <LayoutGrid size={15} aria-hidden /> Customize
         </Button>
       </div>
       {/* Not cards: they keep their own show/hide rules */}
       <div className="mb-5 empty:hidden">
         <Reminder />
+      </div>
+      <div className="mb-5 empty:hidden">
+        <Tip
+          tip={TIPS.safeModeKey}
+          desktopOnly
+          className="rounded-lg border border-border-light px-4 py-3"
+        />
       </div>
       <div className="mb-6 empty:hidden">
         <GettingStarted currentMonth={currentMonth} />

@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import subprocess
 
-REPOSITORY = 'tvrooi/FlyBudget'
+REPOSITORY = 'tvrooi/Allotment'
 ROOT = Path(__file__).resolve().parent.parent
 SHA = re.compile(r'[0-9a-f]{40}')
 VERSION = re.compile(r'(\d+)\.(\d+)\.(\d+)(?:-up\.(\d+))?')

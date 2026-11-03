@@ -17,6 +17,7 @@ import { ExternalLink } from '../components/ui/ExternalLink';
 import { PlaidLogo, SimplefinLogo } from '../components/ui/BankLogos';
 import { BrandName } from '../components/ui/BrandName';
 import { docsUrl } from '../utils/project';
+import { YnabImportModal } from '../components/transactions/YnabImportModal';
 
 interface OptionProps {
   icon: React.ReactNode;
@@ -75,6 +76,7 @@ export default function WelcomePage() {
   const [showUp, setShowUp] = useState(false);
   const [showEnableBanking, setShowEnableBanking] = useState(false);
   const [showManual, setShowManual] = useState(false);
+  const [showYnab, setShowYnab] = useState(false);
 
   if (isLoading) {
     return (
@@ -84,7 +86,8 @@ export default function WelcomePage() {
     );
   }
 
-  if (accounts.length > 0) {
+  // Not while a YNAB import is running: it makes the first account before it is done
+  if (accounts.length > 0 && !showYnab) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -102,6 +105,9 @@ export default function WelcomePage() {
           <h1 className="text-2xl sm:text-3xl font-semibold text-text tracking-tight">
             Welcome to <BrandName />!
           </h1>
+          <p className="text-xs uppercase tracking-widest text-text-tertiary mt-2">
+            Every dollar gets its plot.
+          </p>
           <p className="text-sm sm:text-base text-text-secondary mt-2 max-w-lg mx-auto">
             A budget that shows where your money goes and gives every dollar a job. Start by adding
             the accounts you want to track.
@@ -155,11 +161,24 @@ export default function WelcomePage() {
             />
           </div>
 
-          <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-text-tertiary">
+          <p className="mt-6 text-xs text-text-secondary max-w-xl mx-auto">
+            <span className="font-medium text-text">Coming from another app?</span> Connect your
+            bank first, then import only the older history — or import everything and link Up from a
+            cut-over date.{' '}
+            <button
+              type="button"
+              onClick={() => setShowYnab(true)}
+              className="font-medium text-brand-600 hover:underline max-md:min-h-11"
+            >
+              Import from YNAB
+            </button>
+          </p>
+
+          <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-text-tertiary">
             <ShieldCheck size={14} className="text-positive shrink-0" aria-hidden />
             {mode === 'server'
-              ? 'Your budget is stored on your own server. No FlyBudget account, no tracking.'
-              : 'Your budget stays on this computer. No FlyBudget account, no tracking.'}{' '}
+              ? 'Your budget is stored on your own server. No Allotment account, no tracking.'
+              : 'Your budget stays on this computer. No Allotment account, no tracking.'}{' '}
             <ExternalLink
               href={docsUrl('bank-sync')}
               className="font-medium text-brand-600 hover:text-brand-700"
@@ -195,6 +214,7 @@ export default function WelcomePage() {
         onClose={() => setShowEnableBanking(false)}
       />
       <AddAccountModal isOpen={showManual} onClose={() => setShowManual(false)} />
+      <YnabImportModal isOpen={showYnab} onClose={() => setShowYnab(false)} />
     </div>
   );
 }

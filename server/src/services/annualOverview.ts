@@ -48,7 +48,8 @@ export function annualOverview(year: number, today = todayIso()) {
         return {
           month,
           planned: month > current,
-          assigned: cat?.budgeted ?? 0,
+          // Transfers into a linked account fund the envelope like an assignment
+          assigned: (cat?.budgeted ?? 0) + (cat?.transferred ?? 0),
           activity: cat?.activity ?? 0,
           balance: cat?.balance ?? 0,
         };

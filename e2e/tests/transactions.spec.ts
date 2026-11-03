@@ -171,7 +171,7 @@ test.describe('account register', () => {
     const panel = page.getByRole('complementary', { name: 'Transaction details' });
 
     // Category via the searchable picker
-    await panel.getByRole('button', { name: 'Uncategorized' }).click();
+    await panel.getByRole('button', { name: 'Uncategorised' }).click();
     await page.getByPlaceholder('Search categories...').fill('stream');
     await page.getByRole('button', { name: /Streaming Services/ }).click();
 
@@ -382,7 +382,7 @@ test.describe('transfers between existing transactions (#89)', () => {
     await row(page, 'ONLINE TRANSFER 0042').click();
     const panel = page.getByRole('complementary', { name: 'Transaction details' });
 
-    await panel.getByRole('button', { name: 'Uncategorized' }).click();
+    await panel.getByRole('button', { name: 'Uncategorised' }).click();
     await page.getByPlaceholder('Search categories...').fill('transfer');
     await page.getByRole('button', { name: 'Transfer: Rainy Day Savings' }).click();
 
@@ -393,7 +393,7 @@ test.describe('transfers between existing transactions (#89)', () => {
     expect(await api.balance(savings.id)).toBe(525_000);
 
     await panel.getByRole('button', { name: 'Not a transfer' }).click();
-    await expect(panel.getByRole('button', { name: 'Uncategorized' })).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'Uncategorised' })).toBeVisible();
     const [tx] = await api.transactions(`?account_id=${checking.id}`);
     expect(tx).toMatchObject({ transferTransactionId: null, payeeName: 'ONLINE TRANSFER 0042' });
   });
@@ -456,7 +456,7 @@ test('categorises a transfer across the budget boundary without changing either 
   await row(page, 'Transfer: Retirement tracking').click();
   const panel = page.getByRole('complementary', { name: 'Transaction details' });
   await expect(panel.getByText(/Transfer across the budget boundary/)).toBeVisible();
-  await panel.getByRole('button', { name: 'Uncategorized', exact: true }).click();
+  await panel.getByRole('button', { name: 'Uncategorised', exact: true }).click();
   await page.getByPlaceholder('Search categories...').fill('Savings');
   await page.getByRole('button', { name: /Savings$/ }).click();
   await expect(panel.getByRole('button', { name: /Savings$/ })).toBeVisible();
@@ -588,10 +588,8 @@ test.describe('long histories', () => {
     const { checking } = await setup(api);
     await seedDaily(api, checking.id, 250);
     await open(page, `/accounts/${checking.id}/reconcile`);
-    // Nothing reconciled yet, so the reconciled part is just the starting balance
-    await expect(page.getByText('Current selected balance in app').locator('..')).toContainText(
-      '$1,000',
-    );
+    // The opening screen shows the full dated register, rather than the unselected base.
+    await expect(page.getByText('Current register balance').locator('..')).toContainText('$750');
     await page.getByRole('button', { name: 'Start Reconciliation' }).click();
     await expect(page.getByText('Shop 249')).toBeVisible();
   });

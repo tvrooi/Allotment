@@ -89,6 +89,30 @@ settings, card funding and the household tables), and when the rate book is relo
 It is read-only: a changed input needs a trigger (a migration), or must stay out of the
 engine. `budgetEngine.test.ts` holds it to the previous per-month engine, figure for figure.
 
+## Envelopes linked to an account
+
+An expense envelope can follow one account (`categories.linked_account_id`, set in **Settings →
+Categories → Edit**). The linked account's side of a confirmed transfer with another personal
+budget account counts in the envelope as `transferred`: into the account adds, back out takes
+away (`linkedTransfers` in `budgetLedger.ts`). It sits next to `budgeted`, so:
+
+`Available = carry + budgeted + transferred + activity`
+
+Resources don't change (an internal transfer), so the envelope's larger Available comes out of
+Ready to Assign, exactly like an assignment. Nothing is stored: the figure is read from
+transactions, from the budget start on and up to the assessment date, with the same rule as
+income for generated, unreconciled rows. Unlinking or deleting the account (`ON DELETE SET
+NULL`) stops it without rewriting a transaction or an assignment.
+
+- Only confirmed transfers count; an unpaired inflow stays ready to assign, and a transfer from
+  an off-budget or household account is new money, not a contribution.
+- One envelope per account (a unique index), only expense envelopes (not income or card
+  payment), and only open checking, savings or cash accounts in the personal budget.
+- Targets, auto-assign, goals and the annual overview count `transferred` with `budgeted`.
+  The assignment guard and Move money are unchanged: `budgeted` is still only stored assignments.
+- Read-only tokens can't set the link (`categoryManageAllows` lists the fields they may edit).
+- Reports still leave internal transfers out.
+
 ## Resources
 
 Resources are the dated balances of personal on-budget checking, savings, cash,
@@ -169,3 +193,37 @@ include everything, so cash spent before the start simply isn't there to assign.
 register and the spending history used by the runway ignore the start. A month before the start
 shows no assignments or activity. Moving the start changes the funding revision; it never
 rewrites transactions or stored assignments.
+
+## Balance checks and reconciliation
+
+Ready to Assign still follows the signed-envelope calculation above. Before using it for
+new funding, the service checks personal budget accounts for known discrepancies: Up's
+current settled balance must match dated received register activity, and a closed cash or
+debt account must not hold a residual balance. A bank account awaiting its first balance
+also needs sync. Current bank snapshots are never compared with historical month ends.
+
+The response includes `accountIssues`. While it is nonempty, `available` is zero, `resolved`
+is false, and new manual, payday and card reserve funding is refused. Automatic assignment
+previews have no available money. The raw resource/envelope arithmetic remains visible for
+review; no bank record, starting balance or assignment is silently rewritten. Review and
+resilience disclose the same incomplete balance check. Bank accounts describe where money
+sits; category availability describes what is reserved for each purpose.
+
+Closing requires a zero register balance, checked in the same transaction as the close.
+Settings lists older closed accounts too, with a link to reconcile a residual explicitly.
+Closing an account cannot erase cash or debt from the funding model. The owner should check
+the actual closing statement before reconciling it to zero.
+
+Reconciliation loads one complete dated snapshot, selects all current unreconciled parent
+rows initially and excludes future entries and split children. A matching partial selection
+may be confirmed, but an adjustment requires every current entry to be checked. A revision
+and register-balance check reject stale saves. A correction and its reconciliation commit
+in one database transaction; retries of a stale request cannot duplicate it. Corrections
+remain distinct from earned income and spending. Only the owner session can use these
+writing routes; MCP token scopes are unchanged.
+
+On a bank-connected account, an income schedule remains an expectation for matching to the
+actual receipt; it does not auto-create another deposit. A legacy generated income entry
+must be reviewed against its bank receipt before reconciliation can make it received cash.
+Schedules never auto-create entries in closed accounts. Existing transactions survive the
+upgrade unchanged; these safeguards do not perform a live budget repair automatically.

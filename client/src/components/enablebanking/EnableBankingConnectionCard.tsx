@@ -71,7 +71,7 @@ export function EnableBankingConnectionCard({
           <div className="flex items-start gap-2 bg-caution-subtle border border-caution/20 rounded-md px-3 py-2">
             <KeyRound size={14} className="text-caution mt-0.5 shrink-0" />
             <p className="text-xs text-text">
-              Your bank&apos;s access for FlyBudget has ended (banks ask again every few months).
+              Your bank&apos;s access for Allotment has ended (banks ask again every few months).
               Reconnect to keep syncing; your accounts and history stay as they are.
             </p>
           </div>
@@ -166,7 +166,7 @@ export function EnableBankingConnectionCard({
         onClose={() => setShowDisconnect(false)}
         onConfirm={() => disconnect.mutate(connection.id)}
         title={`Disconnect ${connection.aspspName}`}
-        message={`FlyBudget will end its access to ${connection.aspspName} at Enable Banking and stop syncing. Your accounts and transactions stay in FlyBudget.`}
+        message={`Allotment will end its access to ${connection.aspspName} at Enable Banking and stop syncing. Your accounts and transactions stay in Allotment.`}
         confirmLabel="Disconnect"
         danger
       />

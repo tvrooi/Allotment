@@ -102,7 +102,12 @@ export function budgetWithTargets(month: string, today = todayIso()) {
     categories: g.categories.map((c) => {
       const target = targets.get(c.id);
       if (!target || g.isIncome) return { ...c, target: null };
-      const status = targetStatus(target, c, month);
+      // Money transferred into a linked account counts toward the target like an assignment
+      const status = targetStatus(
+        target,
+        { budgeted: c.budgeted + c.transferred, carryOver: c.carryOver },
+        month,
+      );
       return { ...c, target: inactive.has(c.id) ? pausedStatus(status) : status };
     }),
   }));

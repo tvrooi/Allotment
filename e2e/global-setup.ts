@@ -21,7 +21,7 @@ import { startEnableBankingMock } from './mockEnableBanking';
 import { startFrankfurterMock } from './mockFrankfurter';
 import { startUpMock } from './mockUp';
 
-// Starts FlyBudget twice, each on a throwaway database:
+// Starts Allotment twice, each on a throwaway database:
 //
 // - desktop: configured exactly like the Electron app (client built with
 //   `--mode electron`, served by the API server, a per-launch API token cookie, and
@@ -275,11 +275,18 @@ export default async function globalSetup() {
       DB_PATH: path.join(dir, 'server.db'),
       CLIENT_DIST: path.join(dir, 'client-web'),
       FLYBUDGET_SERVER_MODE: 'true',
+      // Stands in for running in Docker, whatever this machine is (sign-in screens name the log)
+      FLYBUDGET_HOST_KIND: 'docker',
       FLYBUDGET_HOST: '127.0.0.1',
       FLYBUDGET_DATA_KEY: dataKey,
     },
     serverLog,
   );
+  // The server's log goes to a file too: reset codes are printed there (as in Home Assistant's
+  // Log tab or `docker logs`) and the password recovery test reads them
+  const serverLogFile = path.join(dir, 'server.log');
+  server.stdout!.on('data', (chunk: Buffer) => fs.appendFileSync(serverLogFile, chunk));
+  server.stderr!.on('data', (chunk: Buffer) => fs.appendFileSync(serverLogFile, chunk));
 
   // The multi-user gateway, with its budgets run from source. Its log goes to a file the
   // tests read (setup and reset codes are printed there, as in Home Assistant's Log).
@@ -349,6 +356,7 @@ export default async function globalSetup() {
   process.env.E2E_SNAPSHOT = snapshotData;
   process.env.E2E_DIR = dir;
   process.env.E2E_MULTI_USER_LOG = multiUserLogFile;
+  process.env.E2E_SERVER_LOG = serverLogFile;
 
   return async () => {
     control.close();

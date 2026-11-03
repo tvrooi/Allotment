@@ -203,7 +203,8 @@ export default function DiscoverSchedulesModal({ isOpen, onClose, onAddAnyway }:
         </section>
       )}
 
-      <div className="flex items-center justify-between mt-4">
+      {/* Stays at the bottom of the screen while the lists scroll, so Create is always in view */}
+      <div className="sticky bottom-0 z-10 -mx-6 max-md:-mx-4 -mb-5 mt-4 px-6 max-md:px-4 py-3 bg-surface border-t border-border-light flex items-center justify-between">
         <span className="text-xs text-text-tertiary">
           {selected.size > 0
             ? `${selected.size} selected`

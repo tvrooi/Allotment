@@ -33,8 +33,7 @@ be removed while no household entry links one of their transactions.
 
 The **default split** (equal, percentages in basis points, or weights) is what quick sharing
 uses. **Share with household** records a payment as an expense with that split: paid by you
-when it left a personal account, or by the pool when it left a pool account (which needs
-received contributions, as before). From the register it shares every payment in the current
+when it left a personal account, or by the household account when it left a pool account. From the register it shares every payment in the current
 list, each checked on its own, so one refusal doesn't stop the rest; **Undo** removes the
 entries it made. **Pick to share** in the register puts a checkbox on each payment
 (money out that isn't a transfer); tick the ones you share, or **Pick all shown**, then
@@ -43,10 +42,104 @@ two-person household is 50/50. A rule action, **Share with household**, does the
 as they import (or when the rule is applied to existing transactions), and never fails an
 import: a payment the household checks refuse is left unshared.
 
-**Repayment suggestions** list money received in your personal accounts within the last 120
-days whose payee contains the name of someone who owes the household, up to what they owe and
-what is owed to you, and not yet linked. **Record repayment** saves it as their settlement to
-you. Nothing is recorded without that click.
+**A household's picture** (**Household → Sharing → Picture**) shows next to every payment
+shared with it, in the register, on phone cards and in the transaction details; without one, the
+household's initial shows on a coloured square (households are square, merchants round). It is
+a small PNG, JPEG or WebP image, like an account or payee logo (`household_groups.logo`,
+migration 0061, `PUT /api/households/:id/logo`, owner only; no access token reaches it). It is
+kept in backups and never sent to a combined household. A payment the register lists carries
+`household: { id, eventId, kind }` when it is linked to an entry in a household, and the details then
+show **Shared with _name_** and **View in household** (`/household?household=<id>`) instead of
+the share buttons.
+
+**Right-click a transaction** in the register (or press Shift+F10 or the Menu key on it, long
+press it, or tap ⋯ on a phone card) for its menu (`components/ui/ContextMenu.tsx`,
+`components/transactions/TransactionContextMenu.tsx`):
+
+- **Share with ▸** lists each household with its picture and split; choosing one shares the
+  payment at once with that household's default split, and the toast offers **Undo**.
+  **Custom split…** opens the Household page's form for it. While payments are picked, right-
+  clicking one of them shares all of the picked ones (**Share _N_ picked with ▸**).
+- A payment that can't be shared (money in, a transfer, a split as a whole, a balance
+  correction) shows the item greyed out with the reason. With no household yet, the item opens
+  the Household page.
+- A shared payment shows **View in _household_** and **Stop sharing with _household_**. Stop
+  sharing removes the entry; **Undo** records it again with exactly the same shares (a
+  `mode: 'exact'` entry). Entries for money in (contributions, settlements) are removed on the
+  Household page, not from the menu.
+
+The menu is keyboard-operable (arrows, Home/End, Right or Enter opens the sub-menu, Left or
+Escape goes back, Tab closes) and returns focus to the row. On a phone the sub-menu opens in
+place with **Back**.
+
+**Repayment and contribution suggestions** (**Household → Sharing**) list money received in
+the last 120 days that isn't linked yet:
+
+- money into your personal accounts whose payee contains the name of someone who owes for
+  things people paid themselves, up to what they owe and what is owed to you. **Record
+  repayment** saves it as their settlement to you. What someone owes the household account is
+  never counted as owed to you.
+- money into a household account whose payee contains the name of someone in the household, or
+  a transfer into it from one of your own accounts. **Record contribution** saves it as their
+  contribution.
+
+Nothing is recorded without that click.
+
+## Recurring bills
+
+Bills you already track in **Recurring** can be shared with a household: **Household → Recurring
+bills → Add recurring bills**, then tick the ones you split (any active, repeating payment that
+isn't a transfer). A bill is shared with one household at a time. Each one lists its frequency, its
+next date, everyone's share of the expected amount with the household's default split, and its
+payments from the last six months: those matched to it in Recurring, and those to its payee. A
+payment that isn't shared yet can be shared in one click (**Share _N_ payments**), which records it
+exactly as **Share with household** in Transactions does, but with the bill's split. **Change
+split** gives a bill its own equal, percentage or weight split; **The household's default split**
+puts it back. A bill's own split can also be **Fixed amounts**: a set dollar amount for each
+person, such as everyone's part of the rent. They're saved in cents and used exactly. A payment
+they don't add up to isn't shared (sharing it says what the amounts add up to and what the
+payment is, and automatic sharing leaves it unshared), and the bill warns when its next
+expected payment differs. The household's default split can't use fixed amounts, since it
+applies to payments of any size. **Share new payments automatically** shares each new payment to the bill's payee as
+it is imported, from the day it was ticked: money out only, never a transfer or a split part, and
+a payment the household refuses is left unshared rather than failing the import. Older payments
+stay a click. A **Share with household** rule that matches the payment comes first. **Stop
+sharing** takes a bill off the list and leaves its shared payments in the household. These links
+are in backup version 20 (`household_recurring_bills`, with `split_json` and `auto_share_from`);
+older backups restore without them.
+
+## People
+
+**Add person** under People & balances adds someone with a zero balance. An equal split includes
+them from then on; a percentage or weight split (the default or a bill's) leaves them out until it
+is changed. **Rename** changes a name and keeps that person's entries, shares and balance. Names
+are unique within a household, ignoring case. People can't be removed yet.
+
+## Combining with another person
+
+With multi-user mode (separate budgets per person, `docs/MULTI-USER-PLAN.md`), two people who
+each keep a household in their own budget can combine them: **Household → Combine with another
+Allotment user**. One asks, choosing which of their household's people is the other person; the
+other accepts with one of their own households, choosing who the first person is in it. Both
+households must use the same currency.
+
+Once combined, each sees one register of both households' entries, newest first: date, amount,
+kind, the merchant and its logo for an entry linked to a bank payment, who paid and the full
+split, whose entry it is, and anything flagged for review. Balances add both ledgers, with the two
+linked people counted once each; other people (housemates) stay separate, as each household
+named them, and a household pool payment moves no one's balance. Each person edits only their own
+entries, in their own budget. One **shared note** per entry is the exception: either can edit it,
+and it shows who changed it last. An expense both recorded on the same day for the same amount is
+flagged as a possible duplicate.
+
+Nothing is copied between budgets. The gateway (`server/src/gateway/sharing.ts`) puts the register
+together each time it's opened from each budget's `GET /api/households/:id/shared-export`, which
+gives only the group's name and currency, its people, and its entries with their shares and
+merchants: never an account, category, transaction note, bank balance or pool cash. The links and
+the shared notes are kept in the gateway's `people.db`. Either person can stop combining at any
+time (**Stop combining**, or declining or cancelling a request); the other's view ends at once and
+the shared notes are deleted. Both households keep their own entries. Read-only access tokens and
+the MCP endpoint belong to one budget and never reach a combined register.
 
 ## Expenses and people
 
@@ -64,7 +157,14 @@ a confirmed transfer cannot be linked twice.
 
 A positive person balance is prepaid credit or an amount owed to that person;
 a negative balance means they owe the group. Balances net obligations across the
-group. Repayments move credit between people, support partial amounts and can
+group. With a household account, **People & balances** also shows each balance in two parts:
+
+- **The household account:** what they put in less their shares of what the account paid.
+  Negative means they owe the household account (not you); positive is credit held there.
+- **Things people paid themselves:** a direct payment credits its payer and debits everyone's
+  shares; repayments move it between people. Only this part is owed to a person.
+
+The two parts add up to the balance, and the household-account parts add up to the pool. Repayments move credit between people, support partial amounts and can
 settle balances spanning several expenses. Overpayments beyond either person's
 outstanding balance are rejected. They are net group settlements, not a legal
 per-invoice debt assignment.
@@ -82,20 +182,27 @@ Refunds reference the original expense and reverse its saved shares. Partial
 refunds allocate proportionally to the remaining unrefunded shares; the last refund
 reverses the remaining cents exactly. Cumulative over-refunds are rejected. To
 correct a mistaken entry, remove it in the event history and enter the correction.
-Remove dependent refunds first; contributions already consumed or reserved for
-bills cannot be removed without correcting those dependent entries.
+Remove dependent refunds first. Removing a contribution the household account has
+already spent leaves its payer owing the account again; one still needed for bill
+reservations can't be removed until they are released.
 
 ## Advances and shared bills
 
-Record received advances from each person into a selected pool before recording
-pool expenses. Each advance credits that person; spending the pool consumes the
-agreed shares. For $4,780 rent with an explicit 40/30/30 allocation, advances of
-$1,912/$1,434/$1,434 leave all balances zero after payment. Paying personally
-instead leaves $2,868 owed to you. Do not record an advance and a repayment for the
-same receipt.
+Record what each person puts into the household account as a contribution (an advance).
+Each one credits that person; a payment from the account consumes the agreed shares. For
+$4,780 rent with an explicit 40/30/30 allocation, advances of $1,912/$1,434/$1,434 leave all
+balances zero after payment. Paying personally instead leaves $2,868 owed to you. Do not
+record an advance and a repayment for the same receipt.
+
+The household account can pay before everyone has put their part in: a payment from it is
+recorded whatever has been contributed, and each person's unpaid share shows as owed to the
+household account until their contribution arrives. The one limit is money reserved for bills:
+a payment can't spend what is reserved for other bills.
 
 Bills have a due date, total estimate or billed amount, personal estimate and
-reserved amount. Reservations use the smaller of received ledger funding and bank
+reserved amount. **Edit** changes a bill's name and due date at any time, and its amounts while
+no expense is matched to it; **Delete** removes a bill with no matched expense and releases its
+reservation. Reservations use the smaller of received ledger funding and bank
 cash, after other reservations. They can be increased across paydays as actual
 contributions arrive. Account cash by itself is not bill coverage. Payment consumes
 its bill reservation; an unrelated expense cannot consume funds reserved for other

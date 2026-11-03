@@ -33,6 +33,8 @@ export const accounts = sqliteTable('accounts', {
   importSettings: text('import_settings'),
   /** ISO 4217 code of the account's currency; null = the budget's currency */
   currency: text('currency'),
+  /** Day the starting balance was typed as "balance as of today"; imports of older rows keep it true */
+  balanceAsOf: text('balance_as_of'),
   createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -62,6 +64,11 @@ export const categories = sqliteTable('categories', {
     .default(sql`(datetime('now'))`),
   /** 1 = tucked away from pickers and the budget while it holds no money (never deleted) */
   hidden: integer('hidden').notNull().default(0),
+  /** An expense envelope that follows a budget account: confirmed transfers into the account
+   * add to it, transfers back out take from it (budgetLedger.ts). One envelope per account. */
+  linkedAccountId: text('linked_account_id').references(() => accounts.id, {
+    onDelete: 'set null',
+  }),
 });
 
 export const payees = sqliteTable('payees', {
@@ -129,6 +136,10 @@ export const transactions = sqliteTable(
     index('transactions_date_idx').on(table.date),
     index('transactions_imported_id_idx').on(table.importedId),
     index('idx_transactions_schedule').on(table.scheduleId),
+    // Migration 0060
+    index('transactions_parent_idx').on(table.parentTransactionId),
+    index('transactions_transfer_idx').on(table.transferTransactionId),
+    index('transactions_payee_idx').on(table.payeeId),
   ],
 );
 
@@ -167,6 +178,48 @@ export const paydayFundingEvents = sqliteTable(
       .default(sql`(datetime('now'))`),
   },
   (table) => [uniqueIndex('payday_event_plan_date').on(table.planId, table.scheduledDate)],
+);
+
+/** One finished reconciliation: the rows it locked and any adjustment it created (for undo) */
+export const accountReconciliations = sqliteTable(
+  'account_reconciliations',
+  {
+    id: text('id').primaryKey(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    /** JSON array of the transaction ids this reconciliation locked (adjustment included) */
+    transactionIds: text('transaction_ids').notNull(),
+    adjustmentTransactionId: text('adjustment_transaction_id'),
+    adjustmentAmount: integer('adjustment_amount').notNull().default(0),
+    statementBalance: integer('statement_balance').notNull(),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    undoneAt: text('undone_at'),
+  },
+  (table) => [index('account_reconciliations_account').on(table.accountId)],
+);
+
+/** A funding that was undone: kept for Funding history while the payday itself is free again */
+export const paydayFundingUndos = sqliteTable(
+  'payday_funding_undos',
+  {
+    id: text('id').primaryKey(),
+    planId: text('plan_id').notNull(),
+    scheduledDate: text('scheduled_date').notNull(),
+    appliedDate: text('applied_date').notNull(),
+    snapshotJson: text('snapshot_json').notNull(),
+    /** { reversed: [{categoryId,name,amount}], skipped: [{categoryId,name,amount,reason}] } */
+    resultJson: text('result_json').notNull(),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    undoneAt: text('undone_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [index('payday_undo_plan').on(table.planId)],
 );
 
 // Retain the receipt identity even if its ledger row is later deleted. A second plan
@@ -610,6 +663,10 @@ export const upAccountMappings = sqliteTable('up_account_mappings', {
   settledBalance: integer('settled_balance'),
   /** When the owner enabled round-up debits proven missing by that balance; null = off. */
   roundUpDebitsAt: text('round_up_debits_at'),
+  /** Set when linked to an account that already had history: Up rows before this day are never imported. */
+  cutoverDate: text('cutover_date'),
+  /** Bank balance at the cut-over minus the register's, at the last sync (0 = they agree). */
+  cutoverDifference: integer('cutover_difference'),
 });
 
 // Bank observations are separate from the editable/reconciled ledger. No credentials or raw payloads.
@@ -628,6 +685,8 @@ export const upSourceRecords = sqliteTable(
     reviewState: text('review_state').notNull().default('reviewed'),
     revision: integer('revision').notNull().default(1),
     seenInLatest: integer('seen_in_latest').notNull().default(1),
+    /** Review state 'overlap': the older, non-Up row this import may duplicate. */
+    overlapTransactionId: text('overlap_transaction_id'),
     lastSeenAt: text('last_seen_at').notNull(),
   },
   (table) => [index('up_source_review').on(table.reviewState, table.lastSeenAt)],
@@ -932,6 +991,8 @@ export const householdGroups = sqliteTable('household_groups', {
     .unique(),
   /** How a quick-shared expense splits: { mode, shares: [{ personId, value }] }; null = equal */
   defaultSplitJson: text('default_split_json'),
+  /** Custom logo as a small image data URL, shown on shared payments; null = colored initial */
+  logo: text('logo'),
 });
 /** More pool accounts for a group (an Up 2Up spending account and its savers, say) */
 export const householdPoolAccounts = sqliteTable(
@@ -997,6 +1058,27 @@ export const householdBills = sqliteTable('household_bills', {
   reserved: integer('reserved').notNull().default(0),
   scheduleId: text('schedule_id').references(() => schedules.id, { onDelete: 'set null' }),
 });
+
+/** A recurring item shared with a household; its payments are shared with the default split */
+export const householdRecurringBills = sqliteTable(
+  'household_recurring_bills',
+  {
+    scheduleId: text('schedule_id')
+      .primaryKey()
+      .references(() => schedules.id, { onDelete: 'cascade' }),
+    groupId: text('group_id')
+      .notNull()
+      .references(() => householdGroups.id, { onDelete: 'cascade' }),
+    /** This bill's own split ({ mode, shares }); null = the household's default split */
+    splitJson: text('split_json'),
+    /** Payments to its payee dated from this day are shared as they arrive; null = by hand */
+    autoShareFrom: text('auto_share_from'),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [index('household_recurring_bills_group').on(table.groupId)],
+);
 
 export const budgetRevision = sqliteTable('budget_revision', {
   id: integer('id').primaryKey(),
@@ -1190,3 +1272,120 @@ export const longTermSplits = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.planId, t.position] })],
 );
+
+/**
+ * Buy now, pay later (docs/PAYMENT-PLANS.md): one purchase on an Afterpay-style credit account
+ * (`accountId`), paid in `instalmentCount` instalments from `fundingAccountId`. The purchase row
+ * carries the real category. `extraTransactionIds` (JSON) lists refund and late-fee rows the plan
+ * created on the account, so removing the plan removes them too.
+ */
+export const paymentPlans = sqliteTable(
+  'payment_plans',
+  {
+    id: text('id').primaryKey(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    fundingAccountId: text('funding_account_id').references(() => accounts.id, {
+      onDelete: 'set null',
+    }),
+    purchaseTransactionId: text('purchase_transaction_id').references(() => transactions.id, {
+      onDelete: 'set null',
+    }),
+    provider: text('provider').notNull().default('afterpay'),
+    merchant: text('merchant').notNull(),
+    /** What was bought, positive minor units */
+    total: integer('total').notNull(),
+    instalmentCount: integer('instalment_count').notNull(),
+    /** weekly | fortnightly | monthly */
+    frequency: text('frequency').notNull().default('fortnightly'),
+    firstDueDate: text('first_due_date').notNull(),
+    extraTransactionIds: text('extra_transaction_ids').notNull().default('[]'),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    updatedAt: text('updated_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (t) => [index('payment_plans_account').on(t.accountId)],
+);
+
+/**
+ * One instalment of a plan (positive minor units). Paid once `transactionId` is set: the
+ * plan account's side of the transfer that paid it (one payment may pay several instalments).
+ * `previousJson` keeps the bank row's payee and category from before it became a transfer, so
+ * unlinking puts it back exactly. An instalment a refund brought to 0 is settled.
+ */
+export const paymentPlanInstalments = sqliteTable(
+  'payment_plan_instalments',
+  {
+    id: text('id').primaryKey(),
+    planId: text('plan_id')
+      .notNull()
+      .references(() => paymentPlans.id, { onDelete: 'cascade' }),
+    seq: integer('seq').notNull(),
+    dueDate: text('due_date').notNull(),
+    amount: integer('amount').notNull(),
+    transactionId: text('transaction_id').references(() => transactions.id, {
+      onDelete: 'set null',
+    }),
+    previousJson: text('previous_json'),
+    paidAt: text('paid_at'),
+  },
+  (t) => [
+    uniqueIndex('payment_plan_instalments_seq').on(t.planId, t.seq),
+    index('payment_plan_instalments_tx').on(t.transactionId),
+  ],
+);
+
+/** "Not this payment": a bank row never suggested for this instalment again */
+export const paymentPlanDismissals = sqliteTable(
+  'payment_plan_dismissals',
+  {
+    instalmentId: text('instalment_id')
+      .notNull()
+      .references(() => paymentPlanInstalments.id, { onDelete: 'cascade' }),
+    transactionId: text('transaction_id')
+      .notNull()
+      .references(() => transactions.id, { onDelete: 'cascade' }),
+  },
+  (t) => [primaryKey({ columns: [t.instalmentId, t.transactionId] })],
+);
+
+/**
+ * Up transactions the owner deleted here (migration 0059). Up still returns them, so the sync
+ * skips them rather than importing them again; Up review lists them so they can be restored.
+ */
+export const upDeletedImports = sqliteTable(
+  'up_deleted_imports',
+  {
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    importedId: text('imported_id').notNull(),
+    deletedAt: text('deleted_at').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.accountId, t.importedId] })],
+);
+
+/**
+ * Guides and tips for the person whose budget this is (docs/GUIDES.md): one row, id 'default'.
+ * No row = a new budget (offer the welcome tour, tips on). Presentation only: not in backups.
+ */
+export const guideProgress = sqliteTable('guide_progress', {
+  id: text('id').primaryKey(),
+  tipsEnabled: integer('tips_enabled').notNull().default(1),
+  pageGuidesEnabled: integer('page_guides_enabled').notNull().default(1),
+  /** offer | done | dismissed */
+  welcomeTour: text('welcome_tour').notNull().default('offer'),
+  /** 1 = show once where guides are (budgets that were in use before guides existed) */
+  guidesNotice: integer('guides_notice').notNull().default(0),
+  /** JSON: { [guideId]: version seen } */
+  seenGuides: text('seen_guides').notNull().default('{}'),
+  /** JSON: tip ids dismissed */
+  dismissedTips: text('dismissed_tips').notNull().default('[]'),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});

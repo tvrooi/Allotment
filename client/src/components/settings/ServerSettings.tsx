@@ -40,7 +40,7 @@ const inputClass =
 
 /**
  * Settings → Server. Desktop app (and dev): where the data lives, and how to use
- * FlyBudget on other devices. Self-hosted server: a security check of the setup,
+ * Allotment on other devices. Self-hosted server: a security check of the setup,
  * signed-in devices, change password and sign out.
  */
 export function ServerSettings({ onOpenTab }: { onOpenTab: (tab: 'data') => void }) {
@@ -75,8 +75,8 @@ function LocalSettings({ onOpenTab }: { onOpenTab: (tab: 'data') => void }) {
               <>
                 <p className="font-medium text-text">On this computer</p>
                 <p className="text-text-secondary mt-1 leading-relaxed">
-                  Your budget is a file on this computer, and FlyBudget only talks to it through its
-                  own local server. Nothing is sent to FlyBudget or anyone else; bank sync contacts
+                  Your budget is a file on this computer, and Allotment only talks to it through its
+                  own local server. Nothing is sent to Allotment or anyone else; bank sync contacts
                   Plaid, SimpleFIN or Enable Banking only when you connect a bank.
                 </p>
               </>
@@ -93,10 +93,10 @@ function LocalSettings({ onOpenTab }: { onOpenTab: (tab: 'data') => void }) {
           <Smartphone size={20} className="text-brand-600 shrink-0 mt-0.5" aria-hidden />
           <div className="text-sm">
             <h2 className="font-semibold text-text">
-              Use FlyBudget on your phone and other devices
+              Use Allotment on your phone and other devices
             </h2>
             <p className="text-text-secondary mt-1 leading-relaxed">
-              Run FlyBudget on a server you control, such as a home server or a small cloud machine,
+              Run Allotment on a server you control, such as a home server or a small cloud machine,
               and sign in from any browser. Your data moves to that server; nobody else hosts it.
             </p>
             <div className="flex flex-wrap gap-2 mt-3">
@@ -145,7 +145,7 @@ function OfflineCopySettings() {
             Keep a copy of my budget on this device
           </span>
           <span className="block text-xs text-text-tertiary mt-1 leading-relaxed">
-            When FlyBudget can't reach its server, it opens with what this browser last loaded. You
+            When Allotment can't reach its server, it opens with what this browser last loaded. You
             can look through everything and add new transactions; they're sent when it reconnects.
             The copy is deleted when you sign out. Turn this off on a shared computer.
           </span>
@@ -184,7 +184,7 @@ function describeCheck(check: SecurityCheck): CheckText {
         label: 'Not using HTTPS: passwords and data travel unencrypted',
         fix: (
           <>
-            Put FlyBudget behind a reverse proxy with HTTPS (Caddy, Nginx, Traefik) or a VPN, and
+            Put Allotment behind a reverse proxy with HTTPS (Caddy, Nginx, Traefik) or a VPN, and
             set <Env>FLYBUDGET_TRUST_PROXY</Env>.
           </>
         ),
@@ -193,10 +193,10 @@ function describeCheck(check: SecurityCheck): CheckText {
       if (check.ok) return { label: 'Reverse proxy settings match how you connect' };
       if (check.reason === 'untrusted-proxy')
         return {
-          label: 'A reverse proxy is in front of FlyBudget, but not trusted',
+          label: 'A reverse proxy is in front of Allotment, but not trusted',
           fix: (
             <>
-              Set <Env>FLYBUDGET_TRUST_PROXY=1</Env> (the number of proxies in front of FlyBudget)
+              Set <Env>FLYBUDGET_TRUST_PROXY=1</Env> (the number of proxies in front of Allotment)
               so HTTPS and client addresses are detected.
             </>
           ),
@@ -402,7 +402,7 @@ function SelfHostedSettings() {
       <section className="pt-6 border-t border-border-light max-w-md">
         <SectionTitle>Change password</SectionTitle>
         <p className="text-xs text-text-tertiary mt-1">
-          This password protects your FlyBudget server. Changing it signs out every other device and
+          This password protects your Allotment server. Changing it signs out every other device and
           revokes every read-only token.
         </p>
         <form onSubmit={changePassword} className="space-y-3 mt-4">
@@ -458,7 +458,7 @@ function SelfHostedSettings() {
 
       <section className="pt-6 border-t border-border-light">
         <SectionTitle>Sign out</SectionTitle>
-        <p className="text-xs text-text-tertiary mt-1">Sign out of FlyBudget on this browser.</p>
+        <p className="text-xs text-text-tertiary mt-1">Sign out of Allotment on this browser.</p>
         <Button variant="secondary" className="mt-4" onClick={signOut}>
           <LogOut size={14} /> Sign out
         </Button>

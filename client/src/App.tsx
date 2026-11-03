@@ -4,6 +4,7 @@ import { AuthGate } from './components/auth/AuthGate';
 import { IS_DEMO } from './demo/demoApi';
 import WelcomePage from './pages/Welcome';
 import HouseholdPage from './pages/Household';
+import PaymentPlansPage from './pages/PaymentPlans';
 import DashboardPage from './pages/Dashboard';
 import AccountsPage from './pages/Accounts';
 import AccountTransactionsPage from './pages/AccountTransactions';
@@ -25,6 +26,7 @@ import TaxPage from './pages/Tax';
 import ReviewPage from './pages/Review';
 import CashFlowPage from './pages/CashFlow';
 import CategoryDetailPage from './pages/CategoryDetail';
+import { useSafeMode } from './utils/safeMode';
 
 // electron loads via file:// and the demo is a static page under /demo/ on the website, so
 // both use hash routing
@@ -32,6 +34,9 @@ const isElectron = Boolean((window as any).__API_BASE__);
 const Router = isElectron || IS_DEMO ? HashRouter : BrowserRouter;
 
 export default function App() {
+  // Safe mode hiding every amount does it in the money formatters: drawing the routes again
+  // re-renders every page with them, without remounting (unsaved edits stay)
+  useSafeMode();
   return (
     <AuthGate>
       <Router>
@@ -49,6 +54,7 @@ export default function App() {
             <Route path="/accounts/:id" element={<AccountTransactionsPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />
             <Route path="/household" element={<HouseholdPage />} />
+            <Route path="/payment-plans" element={<PaymentPlansPage />} />
             <Route path="/recurring" element={<RecurringTransactionsPage />} />
             <Route path="/cash-flow" element={<CashFlowPage />} />
             <Route path="/reports" element={<ReportsPage />} />

@@ -40,7 +40,13 @@ export const createCategory = (data: {
 
 export const updateCategory = (
   id: string,
-  data: { name?: string; groupId?: string; icon?: string; budgetType?: string | null },
+  data: {
+    name?: string;
+    groupId?: string;
+    icon?: string;
+    budgetType?: string | null;
+    linkedAccountId?: string | null;
+  },
 ) => apiFetch<Category>(`/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 
 export const deleteCategory = (id: string, reassignTo?: string) =>

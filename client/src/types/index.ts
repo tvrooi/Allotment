@@ -218,6 +218,11 @@ export interface Transaction {
   hiddenFromReports?: number;
   /** Phase 9: tag ids on this register row (a split's parts share them) */
   tagIds?: string[];
+  /**
+   * The household this payment is linked to, its entry there and the entry's kind ('expense'
+   * when it was shared; a contribution or settlement when it was money in); null = not linked
+   */
+  household?: { id: string; eventId: string; kind: string } | null;
 }
 
 /** A tag (phase 9) */
@@ -280,6 +285,8 @@ export interface Category {
   createdAt: string;
   /** 1 = tucked away from pickers and the budget while it holds no money */
   hidden?: number;
+  /** The account this envelope follows: transfers into it fund the envelope */
+  linkedAccountId?: string | null;
   /** With `?usage=1` (getCategoriesWithUsage) */
   transactionCount?: number;
   lastUsedDate?: string | null;
@@ -379,10 +386,25 @@ export interface BudgetCategory {
   hidden?: number;
   target?: TargetStatus | null;
   paymentAccountId?: string | null;
+  /** The account this envelope follows (linked envelopes) */
+  linkedAccountId?: string | null;
   budgeted: number;
+  /** Net transfers into the linked account this month: in the envelope like an assignment */
+  transferred?: number;
   spent: number;
   carryOver: number;
   balance: number;
+  /** Recurring debits still expected this month (positive cents; expense categories only) */
+  expected?: number;
+  expectedItems?: ExpectedDebit[];
+}
+
+export interface ExpectedDebit {
+  scheduleId: string;
+  name: string;
+  date: string;
+  /** Positive cents in the budget's currency */
+  amount: number;
 }
 
 export interface BudgetGroup {
@@ -395,6 +417,15 @@ export interface BudgetGroup {
 }
 
 export interface BudgetSummary {
+  accountIssues?: {
+    accountId: string;
+    accountName: string;
+    currency: string | null;
+    reason: 'closed-balance' | 'bank-mismatch' | 'bank-balance-unavailable';
+    registerBalance: number;
+    bankBalance: number | null;
+    difference: number | null;
+  }[];
   revision?: string;
   cards?: import('../api/budget').CardPosition[];
   paymentShortfall?: number;
@@ -421,6 +452,8 @@ export interface BudgetSummary {
   toBeBudgeted: number;
   /** First month the envelopes count (YYYY-MM); null = all history */
   budgetStartMonth?: string | null;
+  /** Some money has been assigned in some month (false: a brand-new budget) */
+  anythingAssigned?: boolean;
 }
 
 export interface Account {
@@ -444,11 +477,15 @@ export interface Account {
   rateDate: string | null;
   /** Its currency can only change while it has none */
   hasTransactions: boolean;
+  /** Date of its newest transaction (null when it has none) */
+  lastTransactionDate?: string | null;
   /**
    * The household group whose pool this account is, or null. A pool is outside the personal
    * budget even when it isn't marked off budget (docs/HOUSEHOLDS.md).
    */
   householdPool?: string | null;
+  /** A bank feed (Up or Enable Banking) supplies its transactions */
+  bankLinked?: boolean;
   /**
    * In another currency: how much more (or less) it's worth today in the budget's currency
    * than it was counted as when its money came in (the rate moved). Null when not known.
@@ -565,7 +602,8 @@ export type ChartType = 'bar' | 'stacked-bar' | 'line' | 'area' | 'donut' | 'tab
 export type ReportMode = 'total' | 'time';
 export type ReportGroupBy = 'category' | 'categoryGroup' | 'payee' | 'account' | 'month';
 export type BalanceType = 'expense' | 'income' | 'net';
-export type DatePresetCustom = '1m' | '3m' | '6m' | '12m' | 'ytd' | 'last-year' | 'all' | 'custom';
+export type DatePresetCustom =
+  '1m' | 'last-month' | '3m' | '6m' | '12m' | 'ytd' | 'last-year' | 'all' | 'custom';
 
 /** `preset: 'custom'` is frozen to `from`/`to`; other presets are live, relative to today. */
 export interface ReportDateRange {
@@ -1028,7 +1066,7 @@ export interface EnableBankingStatus {
 export interface EnableBankingConfigureResult {
   applicationName: string | null;
   environment: string | null;
-  /** Whether the application lists FlyBudget's redirect URL; null when it couldn't be checked */
+  /** Whether the application lists Allotment's redirect URL; null when it couldn't be checked */
   redirectUrlRegistered: boolean | null;
 }
 
@@ -1091,7 +1129,7 @@ export interface EnableBankingSyncResult {
   connectionId: string;
   bankName: string;
   added: number;
-  /** Already in FlyBudget (from a file or typed in), now recognised as the bank's */
+  /** Already in Allotment (from a file or typed in), now recognised as the bank's */
   adopted: number;
   skipped: { noDate: number; badAmount: number; otherCurrency: number };
   errors: string[];

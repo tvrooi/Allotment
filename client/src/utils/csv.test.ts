@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
+  guessColumnRoles,
+  readFileCategory,
   buildImportRows,
   columnKeys,
   columnRolesFor,
@@ -633,5 +635,63 @@ describe('generateImportId', () => {
         expect(ids[0]).toBe(generateImportId('2024-01-01', -500, 'Cafe'));
       }),
     );
+  });
+});
+
+describe('category columns (YNAB register export)', () => {
+  const headers = [
+    'Account',
+    'Flag',
+    'Date',
+    'Payee',
+    'Category Group/Category',
+    'Category Group',
+    'Category',
+    'Memo',
+    'Outflow',
+    'Inflow',
+    'Cleared',
+  ];
+  it('reads one category column and the group beside it, skipping the repeat', () => {
+    const roles = guessColumnRoles(headers);
+    expect(roles[4]).toBe('category');
+    expect(roles[5]).toBe('categoryGroup');
+    expect(roles[6]).toBe('skip');
+    expect(roles[7]).toBe('notes');
+  });
+  it('splits "Group: Category" and keeps a plain name', () => {
+    expect(readFileCategory('Bills: Rent', undefined)).toEqual({ group: 'Bills', name: 'Rent' });
+    expect(readFileCategory('Bills: Rent', 'Bills')).toEqual({ group: 'Bills', name: 'Rent' });
+    expect(readFileCategory('Groceries', '')).toEqual({ group: null, name: 'Groceries' });
+    expect(readFileCategory('  ', 'Bills')).toBeNull();
+  });
+  it('puts the category on each built row, blank ones none', () => {
+    const roles = guessColumnRoles(headers);
+    const row = (cat: string, out: string, inflow: string) => [
+      'Everyday',
+      '',
+      '01/08/2026',
+      'Shop',
+      cat,
+      '',
+      '',
+      '',
+      out,
+      inflow,
+      'C',
+    ];
+    const built = buildImportRows(
+      [row('Bills: Rent', '$1,200.50', ''), row('', '', '$5.00')],
+      roles,
+      {
+        dateFormat: 'dmy',
+        numberFormat: 'dot',
+      },
+    );
+    if (typeof built === 'string') throw new Error(built);
+    expect(built.rows.map((r) => [r.amount, r.fileCategory ?? null])).toEqual([
+      [-120050, { group: 'Bills', name: 'Rent' }],
+      [500, null],
+    ]);
   });
 });

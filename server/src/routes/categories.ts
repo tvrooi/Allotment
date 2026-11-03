@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import {
+  accounts,
   categories,
   categoryGroups,
   transactions,
@@ -15,6 +16,7 @@ import {
 import { and, eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
+import { personalBudgetAccount } from '../services/balances.js';
 
 export const categoriesRouter = Router();
 
@@ -31,6 +33,46 @@ const categorySchema = z.object({
   /** 1 tucks it away from pickers and the budget while it holds no money */
   hidden: z.union([z.literal(0), z.literal(1)]).optional(),
 });
+
+/** Editing a category may also link it to an account (never on create, never by a token) */
+const categoryEditSchema = categorySchema.partial().extend({
+  linkedAccountId: z.string().min(1).max(64).nullable().optional(),
+});
+
+/** Account types an envelope can follow: cash the budget counts, not card debt */
+const LINKABLE_TYPES = ['checking', 'savings', 'cash'];
+
+/**
+ * Why `categoryId`, in group `groupId`, can't follow `accountId` (null: it can). Only an expense
+ * envelope follows an account, only an open personal budget account, and each account only one
+ * envelope, so a transfer is never counted twice (docs/ENVELOPE-FUNDING.md). The account is
+ * checked only when the link is new: an existing link to an account closed since keeps its
+ * history, and other edits to the category still save.
+ */
+function linkError(
+  categoryId: string,
+  groupId: string,
+  accountId: string,
+  newLink: boolean,
+): string | null {
+  const group = db.select().from(categoryGroups).where(eq(categoryGroups.id, groupId)).get();
+  if (group?.isIncome) return 'Only an expense envelope can follow an account';
+  if (!newLink) return null;
+  const account = db
+    .select()
+    .from(accounts)
+    .where(and(eq(accounts.id, accountId), personalBudgetAccount))
+    .get();
+  if (!account || account.closedAt || !LINKABLE_TYPES.includes(account.type))
+    return 'Choose an open checking, savings or cash account in this budget';
+  const other = db
+    .select({ name: categories.name })
+    .from(categories)
+    .where(and(eq(categories.linkedAccountId, accountId), sql`${categories.id} != ${categoryId}`))
+    .get();
+  if (other) return `${account.name} already funds ${other.name}`;
+  return null;
+}
 
 /** Per category: transactions (split parts included), the latest one, and whether money was ever assigned */
 function categoryUsage() {
@@ -203,9 +245,24 @@ categoriesRouter.put('/reorder', (req, res) => {
 
 categoriesRouter.put('/:id', (req, res) => {
   if (paymentCategory(req.params.id)) return res.status(409).json(managedError);
-  const parsed = categorySchema.partial().safeParse(req.body);
+  const parsed = categoryEditSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
+  const current = db.select().from(categories).where(eq(categories.id, req.params.id)).get();
+  if (!current) return res.status(404).json({ error: 'Not found' });
+  const linked =
+    parsed.data.linkedAccountId === undefined
+      ? current.linkedAccountId
+      : parsed.data.linkedAccountId;
+  if (linked) {
+    const error = linkError(
+      current.id,
+      parsed.data.groupId ?? current.groupId,
+      linked,
+      linked !== current.linkedAccountId,
+    );
+    if (error) return res.status(409).json({ error });
+  }
   if (Object.keys(parsed.data).length) {
     db.update(categories).set(parsed.data).where(eq(categories.id, req.params.id)).run();
   }

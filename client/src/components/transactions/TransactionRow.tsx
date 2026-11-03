@@ -66,9 +66,8 @@ export function TransactionRow({
 
   const isTransfer = !!tx.transferTransactionId;
   const isSplitParent = tx.isParent === 1 && tx.children && tx.children.length > 0;
-  const canEditCategory =
-    !tx.reconciled && (!isTransfer || !!tx.isBudgetBoundary) && !isSplitParent;
-  const canEditPayee = !tx.reconciled && !isTransfer;
+  const canEditCategory = (!isTransfer || !!tx.isBudgetBoundary) && !isSplitParent;
+  const canEditPayee = !isTransfer;
 
   const payeeName = tx.payeeName || (isTransfer ? 'Transfer' : '—');
   const payee = useMemo(

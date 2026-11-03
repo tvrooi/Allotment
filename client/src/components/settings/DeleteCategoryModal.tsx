@@ -39,19 +39,19 @@ export function DeleteCategoryModal({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Delete Category" size="sm">
+    <Modal isOpen={isOpen} onClose={onClose} title="Merge into another category" size="sm">
       <div className="space-y-4">
         <p className="text-sm text-text-secondary">
           <span className="font-medium text-text">{categoryName}</span> has{' '}
           <span className="font-medium text-text">{transactionCount}</span> transaction
           {transactionCount !== 1 ? 's' : ''}
-          {hasAssignments ? ' and assigned money' : ''}. Choose a category to move{' '}
+          {hasAssignments ? ' and assigned money' : ''}. Merge it into another category:{' '}
           {transactionCount > 0 && hasAssignments
-            ? 'them'
+            ? 'they move'
             : transactionCount > 0
-              ? 'the transactions'
-              : 'the money'}{' '}
-          into before deleting.
+              ? 'the transactions move'
+              : 'the money moves'}{' '}
+          there, then {categoryName} is removed.
         </p>
         {hasAssignments && (
           <p className="text-xs text-caution">
@@ -60,7 +60,7 @@ export function DeleteCategoryModal({
           </p>
         )}
         <select
-          aria-label="Move transactions to"
+          aria-label="Merge into"
           value={reassignTo}
           onChange={(e) => setReassignTo(e.target.value)}
           className="block w-full text-sm border border-border rounded-md px-3 py-2 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
@@ -87,7 +87,7 @@ export function DeleteCategoryModal({
           Cancel
         </Button>
         <Button variant="danger" onClick={handleConfirm} disabled={!reassignTo}>
-          Reassign & Delete
+          Merge & remove
         </Button>
       </div>
     </Modal>

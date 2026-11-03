@@ -7,7 +7,7 @@ import { DESKTOP_PORT, ENABLE_BANKING_MOCK_PORT } from '../ports';
 import { MOCK_IBAN } from '../mockEnableBanking';
 
 // European bank sync through Enable Banking, against the mock in mockEnableBanking.ts: set up
-// the application, log in at the bank in another window (whose redirect reaches FlyBudget
+// the application, log in at the bank in another window (whose redirect reaches Allotment
 // with no API token), map the account an earlier CAMT statement went into, sync without
 // duplicating what's there, the session ending, reconnecting with the paste fallback, and
 // disconnecting. Also the flybudget.org relay page the desktop app registers.
@@ -50,7 +50,7 @@ test('connects a European bank, syncs it, reconnects and disconnects', async ({
       buffer: Buffer.from(pem),
     });
     await page.getByRole('button', { name: 'Check and save' }).click();
-    await expect(page.getByText('E2E FlyBudget')).toBeVisible();
+    await expect(page.getByText('E2E Allotment')).toBeVisible();
 
     // Saving opens the connect dialog
     const dialog = page.getByRole('dialog', { name: 'Connect a European bank' });
@@ -87,20 +87,20 @@ test('connects a European bank, syncs it, reconnects and disconnects', async ({
     await expect(page.getByText('Login Required')).toBeVisible();
     await mock('renew');
 
-    // Reconnect, with the redirect not reaching FlyBudget: paste the address instead
+    // Reconnect, with the redirect not reaching Allotment: paste the address instead
     await mock('hold');
     await page.getByRole('button', { name: 'Reconnect' }).click();
     const reconnect = page.getByRole('dialog', { name: 'Reconnect Mock Bank' });
     const again = context.waitForEvent('page');
     await reconnect.getByRole('button', { name: 'Log in at your bank' }).click();
     const held = await again;
-    // The tab opens blank on the click, then goes to the bank once FlyBudget has its address
+    // The tab opens blank on the click, then goes to the bank once Allotment has its address
     await held.waitForURL(/\/bank\?/);
     const address = (await held.locator('body').textContent())?.trim();
     expect(address).toContain('/api/enable-banking/callback?');
     await held.close();
     await reconnect
-      .getByRole('button', { name: "Logged in, but FlyBudget didn't continue?" })
+      .getByRole('button', { name: "Logged in, but Allotment didn't continue?" })
       .click();
     await reconnect.getByLabel(/copy the whole address/).fill(address!);
     await reconnect.getByRole('button', { name: 'Continue' }).click();
@@ -151,7 +151,7 @@ const relayDir = path.resolve(
   '../../website/static/bank-callback',
 );
 
-test('the flybudget.org relay page sends the bank login to FlyBudget on this computer', async ({
+test('the flybudget.org relay page sends the bank login to Allotment on this computer', async ({
   page,
 }) => {
   // Served from the website's files, as Cloudflare Pages would
@@ -167,7 +167,7 @@ test('the flybudget.org relay page sends the bank login to FlyBudget on this com
 
   const state = `fb1.${DESKTOP_PORT}.${randomBytes(32).toString('base64url')}`;
   await page.goto(`https://flybudget.org/bank-callback/?code=abc&state=${state}`);
-  // FlyBudget isn't waiting for this login, and says so: the page reached it
+  // Allotment isn't waiting for this login, and says so: the page reached it
   await expect(page).toHaveURL(
     new RegExp(
       `^http://127\\.0\\.0\\.1:${DESKTOP_PORT}/api/enable-banking/callback\\?code=abc&state=`,
@@ -179,7 +179,7 @@ test('the flybudget.org relay page sends the bank login to FlyBudget on this com
   await page.goto(`https://flybudget.org/bank-callback/?error=access_denied&state=${state}`);
   await expect(page).toHaveURL(/\/api\/enable-banking\/callback\?error=access_denied/);
 
-  // Anything that isn't FlyBudget's state goes nowhere
+  // Anything that isn't Allotment's state goes nowhere
   await page.goto('https://flybudget.org/bank-callback/?code=abc&state=https://evil.example');
   await expect(page.getByRole('heading', { name: 'Nothing to pass on' })).toBeVisible();
   expect(new URL(page.url()).host).toBe('flybudget.org');

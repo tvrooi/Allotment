@@ -1,7 +1,12 @@
 import type { BudgetSummary } from '../../types';
 import { useState } from 'react';
-import { formatCurrency } from '../../utils/currency';
+import { CategoryPicker } from '../transactions/CategoryPicker';
+import { HelpTip } from '../ui/HelpTip';
+import type { CategoryGroup } from '../../types';
+import { formatCurrency, formatMoney } from '../../utils/currency';
+import { Link } from 'react-router-dom';
 import { formatAsOfDay } from '../../utils/dates';
+import { useIsPhone } from '../../hooks/useIsPhone';
 
 interface ExpenseBreakdown {
   planned: number;
@@ -22,9 +27,39 @@ interface BudgetSummaryWidgetProps {
   fixedExpenses?: ExpenseBreakdown;
   flexibleExpenses?: ExpenseBreakdown;
   nonMonthlyExpenses?: ExpenseBreakdown;
+  /** "Put the rest in…": pick an expense category and it gets all of Ready to assign */
+  putRest?: {
+    groups: CategoryGroup[];
+    disabled: boolean;
+    onPick: (categoryId: string, categoryName: string) => void;
+  };
 }
 
-function getHeroStyle(tbb: number, incomePlanned: number) {
+/** On a phone the working behind Ready to assign folds away, so the envelopes come sooner */
+function PhoneCollapsed({
+  collapsed,
+  label,
+  children,
+}: {
+  collapsed: boolean;
+  label: string;
+  children: React.ReactNode;
+}) {
+  if (!collapsed) return <>{children}</>;
+  return (
+    <details>
+      <summary className="px-4 min-h-11 flex items-center cursor-pointer select-none text-xs text-text-secondary">
+        {label}
+      </summary>
+      {children}
+    </details>
+  );
+}
+
+function getHeroStyle(tbb: number, incomePlanned: number, hasMoney: boolean) {
+  // A new budget: no money yet is nothing to praise
+  if (tbb === 0 && !hasMoney)
+    return { bg: 'bg-surface-alt', text: 'text-text-secondary', label: 'Nothing to assign yet' };
   if (tbb < 0)
     return {
       bg: 'bg-negative-subtle',
@@ -139,18 +174,30 @@ export function BudgetSummaryWidget({
   fixedExpenses,
   flexibleExpenses,
   nonMonthlyExpenses,
+  putRest,
 }: BudgetSummaryWidgetProps) {
   const [activeTab, setActiveTab] = useState<Tab>('summary');
+  const isPhone = useIsPhone();
+  const [picking, setPicking] = useState(false);
+  const [pickerButton, setPickerButton] = useState<HTMLButtonElement | null>(null);
+  const canPutRest =
+    !!putRest && toBeBudgeted > 0 && !funding?.accountIssues?.length && funding?.complete !== false;
   const hero =
     funding && (!funding.complete || !funding.resolved)
       ? {
           bg: 'bg-caution-subtle',
           text: 'text-caution',
-          label: funding.complete
-            ? 'Resolve overspending and uncategorised spending'
-            : 'Incomplete: missing exchange rates',
+          label: funding.accountIssues?.length
+            ? 'Reconcile account balances before assigning money'
+            : funding.complete
+              ? 'Resolve overspending and uncategorised spending'
+              : 'Incomplete: missing exchange rates',
         }
-      : getHeroStyle(toBeBudgeted, incomePlanned);
+      : getHeroStyle(
+          toBeBudgeted,
+          incomePlanned,
+          !funding || funding.resources !== 0 || (funding.envelopes ?? funding.reserved) !== 0,
+        );
 
   return (
     <div className="rounded-lg shadow-card border border-border-light overflow-hidden bg-surface">
@@ -158,70 +205,181 @@ export function BudgetSummaryWidget({
         <div
           role="status"
           aria-label="Ready to assign"
+          data-guide="budget.ready"
           className={`${hero.bg} rounded-lg px-4 py-3 text-center`}
         >
           <p className={`text-xs font-medium uppercase tracking-wide ${hero.text}`}>
             Ready to assign
           </p>
           <p className={`text-lg font-semibold tabular-nums ${hero.text}`}>
-            {funding?.complete === false ? 'Incomplete' : formatCurrency(toBeBudgeted)}
+            {funding?.accountIssues?.length
+              ? 'Check balances'
+              : funding?.complete === false
+                ? 'Incomplete'
+                : formatCurrency(toBeBudgeted)}
           </p>
           <p className={`text-xs ${hero.text} mt-0.5 opacity-75`}>{hero.label}</p>
+          <p className={`text-xs ${hero.text} mt-1 opacity-75`}>
+            Money you have that isn't in a category yet.
+            <HelpTip label="What is Ready to assign?" inline>
+              Ready to assign is the money in your accounts that you haven't given a job yet. Give
+              it to categories (envelopes) until this reaches $0, so every dollar is planned.
+              Spending takes money out of its envelope, not out of here.
+            </HelpTip>
+          </p>
         </div>
+        {canPutRest && (
+          <div className="relative mt-2 text-center">
+            <button
+              ref={setPickerButton}
+              type="button"
+              onClick={() => setPicking((o) => !o)}
+              disabled={putRest.disabled}
+              aria-haspopup="listbox"
+              aria-expanded={picking}
+              className="min-h-11 md:min-h-0 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-surface-alt text-text hover:bg-hover disabled:opacity-50"
+            >
+              Put the rest in…
+            </button>
+            {picking && (
+              <CategoryPicker
+                anchor={pickerButton}
+                groups={putRest.groups}
+                allowNone={false}
+                onClose={() => setPicking(false)}
+                onChange={(id) => {
+                  setPicking(false);
+                  const name = putRest.groups
+                    .flatMap((g) => g.categories)
+                    .find((c) => c.id === id)?.name;
+                  if (id && name) putRest.onPick(id, name);
+                }}
+              />
+            )}
+          </div>
+        )}
       </div>
 
-      {funding && (
-        <div className="px-4 pb-3 text-xs">
-          <p className="text-text-tertiary mb-1.5">
-            Unassigned as of {formatAsOfDay(funding.asOf)}
-          </p>
-          <dl className="grid gap-1">
-            {(
-              [
-                ['Envelope deficits', funding.overspent],
-                ['Uncategorised spending', funding.uncategorized],
-                ['Assigned in later months', funding.laterDeduction ?? funding.futureAssigned],
-                ['Card payment shortfall', funding.paymentShortfall ?? 0],
-                ['Payments without funding', funding.uncoveredCardPayments ?? 0],
-              ] as const
-            ).map(([label, value]) => (
-              <div key={label} className="flex justify-between gap-2">
-                <dt className="text-text-secondary">{label}</dt>
-                <dd
-                  className={`tabular-nums ${value > 0 && label !== 'Assigned in later months' ? 'text-negative font-medium' : 'text-text'}`}
-                >
-                  {formatCurrency(value)}
-                </dd>
-              </div>
+      {!!funding?.accountIssues?.length && (
+        <div role="alert" className="px-4 pb-3 text-xs text-caution">
+          <p>Ready to assign is unverified. Resolve these balances before funding categories.</p>
+          <ul className="mt-2 space-y-2">
+            {funding.accountIssues.map((issue) => (
+              <li key={issue.accountId}>
+                <Link className="underline" to={`/accounts/${issue.accountId}/reconcile`}>
+                  {issue.accountName}
+                </Link>
+                {issue.reason === 'closed-balance'
+                  ? `: closed with ${formatMoney(issue.registerBalance, issue.currency)} still recorded. Reconcile it to zero.`
+                  : issue.bankBalance === null
+                    ? ': sync the bank to check its settled balance.'
+                    : `: register ${formatMoney(issue.registerBalance, issue.currency)}, bank ${formatMoney(issue.bankBalance, issue.currency)}.`}
+              </li>
             ))}
-          </dl>
-          <p className="text-text-tertiary mt-1.5">
-            {(funding.cashOverspent ?? 0) > 0
-              ? `${formatCurrency(funding.cashOverspent ?? 0)} overspent from cash comes out of next month's Ready to assign. `
-              : ''}
-            Unreviewed card accounts retain net-debt funding.
-          </p>
+          </ul>
         </div>
       )}
-      <div className="flex justify-center gap-4 px-4 pb-2">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`pb-1.5 text-xs transition-colors border-b-2 ${
-              activeTab === tab.key
-                ? 'border-text text-text font-semibold'
-                : 'border-transparent text-text-tertiary hover:text-text-secondary'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <PhoneCollapsed collapsed={isPhone} label="How this is worked out">
+        {funding && (
+          <div className="px-4 pb-3 text-xs">
+            <p className="text-text-tertiary mb-1.5">
+              Unassigned as of {formatAsOfDay(funding.asOf)}
+            </p>
+            <dl className="grid gap-1 mb-2 border-b border-border-light pb-2">
+              {(
+                [
+                  ['In your accounts, less card debt', funding.resources],
+                  ['Held in envelopes', funding.envelopes ?? funding.reserved],
+                  ['Left to assign', toBeBudgeted],
+                ] as const
+              ).map(([label, value]) => (
+                <div key={label} className="flex justify-between gap-2">
+                  <dt>{label}</dt>
+                  <dd className="tabular-nums">{formatCurrency(value)}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="text-text-tertiary mb-2">
+              Moving money to a saver changes where it sits. Assign it to a category to reserve it
+              for rent or another purpose.
+            </p>
+            <dl className="grid gap-1">
+              {(
+                [
+                  ['Overspent envelopes', funding.overspent],
+                  ['Uncategorised spending', funding.uncategorized],
+                  ['Assigned in later months', funding.laterDeduction ?? funding.futureAssigned],
+                  ['Card payment shortfall', funding.paymentShortfall ?? 0],
+                  ['Payments without funding', funding.uncoveredCardPayments ?? 0],
+                ] as const
+              ).map(([label, value]) => (
+                <div key={label} className="flex justify-between gap-2">
+                  <dt className="text-text-secondary">{label}</dt>
+                  <dd
+                    className={`tabular-nums ${value > 0 && label !== 'Assigned in later months' ? 'text-negative font-medium' : 'text-text'}`}
+                  >
+                    {formatCurrency(value)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <p className="text-text-tertiary mt-1.5">
+              {(funding.cashOverspent ?? 0) > 0
+                ? `${formatCurrency(funding.cashOverspent ?? 0)} overspent from cash comes out of next month's Ready to assign.`
+                : ''}
+            </p>
+          </div>
+        )}
+        <div className="flex justify-center gap-4 px-4 pb-2">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`pb-1.5 text-xs transition-colors border-b-2 ${
+                activeTab === tab.key
+                  ? 'border-text text-text font-semibold'
+                  : 'border-transparent text-text-tertiary hover:text-text-secondary'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-      <div className="px-4 pb-2">
-        {activeTab === 'summary' && (
-          <div>
+        <div className="px-4 pb-2">
+          {activeTab === 'summary' && (
+            <div>
+              <SummarySection
+                label="Income"
+                planned={incomePlanned}
+                actual={incomeEarned}
+                actualLabel="earned"
+                type="income"
+              />
+              <div className="border-t border-border-light" />
+              <SummarySection
+                label="Expense envelopes"
+                available={expenseAvailable}
+                planned={expensesPlanned}
+                actual={expensesSpent}
+                actualLabel="Spent this month"
+                type="expenses"
+              />
+              {savingsPlanned > 0 && (
+                <>
+                  <div className="border-t border-border-light" />
+                  <SummarySection
+                    label="Save up"
+                    planned={savingsPlanned}
+                    actual={savingsContributed}
+                    actualLabel="spent from savings categories"
+                    type="savings"
+                  />
+                </>
+              )}
+            </div>
+          )}
+          {activeTab === 'income' && (
             <SummarySection
               label="Income"
               planned={incomePlanned}
@@ -229,79 +387,49 @@ export function BudgetSummaryWidget({
               actualLabel="earned"
               type="income"
             />
-            <div className="border-t border-border-light" />
-            <SummarySection
-              label="Expense envelopes"
-              available={expenseAvailable}
-              planned={expensesPlanned}
-              actual={expensesSpent}
-              actualLabel="Spent this month"
-              type="expenses"
-            />
-            {savingsPlanned > 0 && (
-              <>
-                <div className="border-t border-border-light" />
+          )}
+          {activeTab === 'expenses' && (
+            <div>
+              {fixedExpenses && (fixedExpenses.planned > 0 || fixedExpenses.spent > 0) && (
                 <SummarySection
-                  label="Save up"
-                  planned={savingsPlanned}
-                  actual={savingsContributed}
-                  actualLabel="spent from savings categories"
-                  type="savings"
-                />
-              </>
-            )}
-          </div>
-        )}
-        {activeTab === 'income' && (
-          <SummarySection
-            label="Income"
-            planned={incomePlanned}
-            actual={incomeEarned}
-            actualLabel="earned"
-            type="income"
-          />
-        )}
-        {activeTab === 'expenses' && (
-          <div>
-            {fixedExpenses && (fixedExpenses.planned > 0 || fixedExpenses.spent > 0) && (
-              <SummarySection
-                label="Fixed"
-                planned={fixedExpenses.planned}
-                actual={fixedExpenses.spent}
-                actualLabel="spent"
-                type="expenses"
-              />
-            )}
-            {flexibleExpenses && (flexibleExpenses.planned > 0 || flexibleExpenses.spent > 0) && (
-              <>
-                {fixedExpenses && (fixedExpenses.planned > 0 || fixedExpenses.spent > 0) && (
-                  <div className="border-t border-border-light" />
-                )}
-                <SummarySection
-                  label="Flexible"
-                  planned={flexibleExpenses.planned}
-                  actual={flexibleExpenses.spent}
+                  label="Fixed"
+                  planned={fixedExpenses.planned}
+                  actual={fixedExpenses.spent}
                   actualLabel="spent"
                   type="expenses"
                 />
-              </>
-            )}
-            {nonMonthlyExpenses &&
-              (nonMonthlyExpenses.planned > 0 || nonMonthlyExpenses.spent > 0) && (
+              )}
+              {flexibleExpenses && (flexibleExpenses.planned > 0 || flexibleExpenses.spent > 0) && (
                 <>
-                  <div className="border-t border-border-light" />
+                  {fixedExpenses && (fixedExpenses.planned > 0 || fixedExpenses.spent > 0) && (
+                    <div className="border-t border-border-light" />
+                  )}
                   <SummarySection
-                    label="Non-Monthly"
-                    planned={nonMonthlyExpenses.planned}
-                    actual={nonMonthlyExpenses.spent}
+                    label="Flexible"
+                    planned={flexibleExpenses.planned}
+                    actual={flexibleExpenses.spent}
                     actualLabel="spent"
                     type="expenses"
                   />
                 </>
               )}
-          </div>
-        )}
-      </div>
+              {nonMonthlyExpenses &&
+                (nonMonthlyExpenses.planned > 0 || nonMonthlyExpenses.spent > 0) && (
+                  <>
+                    <div className="border-t border-border-light" />
+                    <SummarySection
+                      label="Non-Monthly"
+                      planned={nonMonthlyExpenses.planned}
+                      actual={nonMonthlyExpenses.spent}
+                      actualLabel="spent"
+                      type="expenses"
+                    />
+                  </>
+                )}
+            </div>
+          )}
+        </div>
+      </PhoneCollapsed>
     </div>
   );
 }

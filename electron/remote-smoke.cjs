@@ -1,4 +1,4 @@
-// Real Electron + real FlyBudget server, using disposable profiles and no bank token.
+// Real Electron + real Allotment server, using disposable profiles and no bank token.
 // Run after compile:electron and build:server:bundle; pass a built web client as argv[2].
 const { _electron, expect } = require('../e2e/node_modules/playwright/test');
 const { spawn } = require('node:child_process');
@@ -107,7 +107,7 @@ async function macWindow(page) {
   desktop = await launch();
   const picker = await desktop.firstWindow();
   await expect(picker.getByRole('heading', { name: 'Where is your budget?' })).toBeVisible();
-  await picker.getByLabel('FlyBudget server address').fill(url);
+  await picker.getByLabel('Allotment server address').fill(url);
   await picker.getByRole('button', { name: 'Connect to server' }).click();
   await expect(picker.getByRole('alert')).toContainText('confirm that you trust');
   await picker.getByRole('checkbox').check();
@@ -123,7 +123,7 @@ async function macWindow(page) {
 
   desktop = await launch();
   const page = await desktop.firstWindow();
-  await expect(page.getByRole('heading', { name: 'Set up your FlyBudget server' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Set up your Allotment server' })).toBeVisible();
   const isolated = await page.evaluate(() => ({
     api: typeof window.__API_BASE__,
     ipc: typeof window.budgetLocation,
@@ -185,7 +185,7 @@ async function macWindow(page) {
   });
   await expect.poll(() => desktop.windows().length).toBe(2);
   const selector = desktop.windows().find((win) => win !== reopened);
-  await expect(selector.getByLabel('FlyBudget server address')).toHaveValue(url);
+  await expect(selector.getByLabel('Allotment server address')).toHaveValue(url);
   // Arbitrary web contents cannot invoke the local picker's IPC handler.
   assert.equal(
     await desktop.evaluate(async ({ webContents }) => {

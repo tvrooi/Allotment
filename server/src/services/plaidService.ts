@@ -92,9 +92,9 @@ export async function createHostedLink(
 ): Promise<{ linkToken: string; url: string }> {
   const client = getPlaidClient();
   const response = await client.linkTokenCreate({
-    // Plaid requires a stable, non-identifying user id; FlyBudget is single-user
+    // Plaid requires a stable, non-identifying user id; Allotment is single-user
     user: { client_user_id: 'local-user' },
-    client_name: 'FlyBudget',
+    client_name: 'Allotment',
     language: 'en',
     country_codes: [CountryCode.Us],
     ...(accessToken ? { access_token: accessToken } : { products: [Products.Transactions] }),

@@ -1,13 +1,13 @@
 # Maintain this fork
 
-Application: https://github.com/tvrooi/FlyBudget
+Application: https://github.com/tvrooi/Allotment
 Home Assistant catalog: https://github.com/tvrooi/home-assistant-apps
 Upstream: https://github.com/dtymoszenko/FlyBudget
 
 ## Everyday changes
 
 Open this repository as its own Codex project. Describe one change, then work on a feature branch
-and a pull request to **tvrooi/FlyBudget**. CI checks types, formatting, unit tests, browser tests
+and a pull request to **tvrooi/Allotment**. CI checks types, formatting, unit tests, browser tests
 and builds. Review the diff and merge green checks. Small changes need only the relevant local
 checks; let CI run the full suite. AGENTS.md is deliberately short; detailed architecture is in
 `docs/DEVELOPMENT.md` and should be read only when needed.
@@ -57,7 +57,7 @@ the connected client is sufficient for server/UI changes.
 4. The release is published only after all build jobs succeed. Its `home-assistant-app.zip` contains
    public installation metadata plus the exact source commit and image digest. Downloads have
    SHA-256 checksums and GitHub build-provenance attestations.
-5. The catalog repo's **Sync FlyBudget release** workflow checks for completed Up releases hourly.
+5. The catalog repo's **Sync Allotment release** workflow checks for completed Up releases hourly.
    You can run it manually immediately. It verifies the bundle's provenance, checksums, expected
    filenames, version and image digest, then commits only the catalog metadata. It needs no PAT
    or cross-repository write access. A failed/incomplete release cannot update the catalog.
@@ -74,7 +74,7 @@ main commit, run **Release** manually on that exact tag after verifying its succ
 never retag it. Release still publishes only after all installer/image checks succeed.
 
 To receive routine automatic HA updates, add the catalog repository using Settings → Apps → Install
-app → Repositories, then enable **Auto update** on the catalog-installed FlyBudget app after the
+app → Repositories, then enable **Auto update** on the catalog-installed Allotment app after the
 backup/update path has been verified. Adding a repository only registers a source; it does not
 replace the local app, move its budget or enable updates on that local app. The existing local
 preview still needs separately authorised migration before it can follow catalog updates.
@@ -90,7 +90,7 @@ The local HA preview is a separate app (`local_flybudget_up`). Repository apps
 have a different identifier and private data directory. Adding this catalog does **not** migrate it.
 Keep the working local app until a checked cold backup and restore has been performed. Back up the
 entire private app data, including `credentials.key` and database/WAL files, while the app is stopped.
-A FlyBudget JSON export excludes the Up token; it cannot preserve the bank connection by itself.
+An Allotment JSON export excludes the Up token; it cannot preserve the bank connection by itself.
 Do not run two copies on port 3001. Restore first, verify login, account/transaction counts, bank
 connection and the key, then switch port/routing. Do not delete the original app or backup until
 verification. A Home Assistant full backup is the rollback path.

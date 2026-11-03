@@ -16,6 +16,7 @@ import type {
 import type { AccountMappingAction } from '../../api/plaid';
 import { IS_DEMO } from '../../demo/demoApi';
 import { NotInDemoModal } from '../demo/NotInDemo';
+import { useHideBalances } from '../../utils/safeMode';
 
 interface Props {
   isOpen: boolean;
@@ -238,6 +239,7 @@ function AccountMappingCard({
   linkedAccountIds,
   onChange,
 }: AccountMappingCardProps) {
+  const hideBalances = useHideBalances();
   const availableAccounts = existingAccounts.filter(
     (a) => !a.closedAt && (!linkedAccountIds.has(a.id) || mapping.accountId === a.id),
   );
@@ -312,7 +314,8 @@ function AccountMappingCard({
           <option value="">Select an account...</option>
           {availableAccounts.map((a) => (
             <option key={a.id} value={a.id}>
-              {a.name} ({formatMoney(a.balance, a.currency)})
+              {a.name}
+              {!hideBalances && ` (${formatMoney(a.balance, a.currency)})`}
             </option>
           ))}
         </select>

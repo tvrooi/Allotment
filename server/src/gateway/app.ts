@@ -5,6 +5,7 @@ import fs from 'fs';
 import http from 'http';
 import path from 'path';
 import { z } from 'zod';
+import { hostKind } from '../auth/hostKind.js';
 import { trustProxy } from '../config.js';
 import {
   BANK_CALLBACK_PATH,
@@ -26,6 +27,7 @@ import { checkSetupCode, clearSetupCode, setupCode } from '../auth/setupCode.js'
 import { parseState } from '../services/enableBankingTransactions.js';
 import { Budgets, ensureKey } from './budgets.js';
 import { NOTIFY_SERVICE, type Notify } from './notify.js';
+import { sharingRouter } from './sharing.js';
 import {
   HANDED_CODE_TTL_MS,
   NOTIFIED_CODE_TTL_MS,
@@ -194,6 +196,7 @@ export function createGateway(o: GatewayOptions) {
     res.json({
       enabled: true,
       multiUser: true,
+      hostKind: hostKind(),
       needsSetup,
       authenticated: Boolean(person),
       canNotify: o.canNotify(),
@@ -301,8 +304,8 @@ export function createGateway(o: GatewayOptions) {
         void o
           .notify(
             person.notifyService,
-            'FlyBudget password reset',
-            `Your FlyBudget code is ${code}. It works once, for ${person.isAdmin ? '24 hours' : '10 minutes'}. If you didn't ask for it, ignore this message.`,
+            'Allotment password reset',
+            `Your Allotment code is ${code}. It works once, for ${person.isAdmin ? '24 hours' : '10 minutes'}. If you didn't ask for it, ignore this message.`,
           )
           .catch((e) => console.error('A password code could not be sent:', (e as Error).message));
       if (code && person.isAdmin)
@@ -398,8 +401,8 @@ export function createGateway(o: GatewayOptions) {
     try {
       await o.notify(
         person.notifyService,
-        'FlyBudget',
-        'Password codes for FlyBudget will come here.',
+        'Allotment',
+        'Password codes for Allotment will come here.',
       );
       res.status(204).send();
     } catch (e) {
@@ -483,6 +486,9 @@ export function createGateway(o: GatewayOptions) {
     res.json(describe(store.person(person.id)!));
   });
   app.use('/api/people', people);
+
+  // Combined households: the gateway puts them together from both budgets (gateway/sharing.ts)
+  app.use('/api/shared-households', sharingRouter({ store, budgets, signedIn, personChanged }));
 
   // ─── Everything else: the signed-in person's own budget ────────────────────
 

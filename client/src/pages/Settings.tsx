@@ -22,6 +22,7 @@ import { PrioritiesSettings } from '../components/settings/PrioritiesSettings';
 import { TagManager } from '../components/settings/TagManager';
 import { BudgetStartSettings } from '../components/settings/BudgetStartSettings';
 import { LICENSE_URL, SOURCE_CODE_URL } from '../utils/project';
+import { ScrollCue } from '../components/ui/ScrollCue';
 
 const tabs = [
   { id: 'categories', label: 'Categories', icon: Layers },
@@ -59,25 +60,30 @@ export default function SettingsPage() {
         <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
           Settings
         </h1>
-        <div className="flex gap-0 mt-3 border-b border-border-light -mb-px overflow-x-auto [scrollbar-width:none]">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium whitespace-nowrap shrink-0 transition-colors border-b-2 -mb-px ${
-                  isActive
-                    ? 'border-brand-600 text-brand-600'
-                    : 'border-transparent text-text-tertiary hover:text-text-secondary'
-                }`}
-              >
-                <Icon size={14} />
-                {tab.label}
-              </button>
-            );
-          })}
+        <div data-guide="settings.tabs">
+          <ScrollCue
+            className="mt-3 border-b border-border-light -mb-px"
+            scrollerClassName="flex gap-0"
+          >
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-1.5 px-3 py-2 max-md:min-h-11 text-sm font-medium whitespace-nowrap shrink-0 transition-colors border-b-2 -mb-px ${
+                    isActive
+                      ? 'border-brand-600 text-brand-600'
+                      : 'border-transparent text-text-tertiary hover:text-text-secondary'
+                  }`}
+                >
+                  <Icon size={14} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </ScrollCue>
         </div>
       </div>
 
@@ -95,7 +101,7 @@ export default function SettingsPage() {
           {activeTab === 'server' && <ServerSettings onOpenTab={setActiveTab} />}
 
           <p className="mt-10 pt-4 border-t border-border-light text-xs text-text-tertiary">
-            FlyBudget is free software under the{' '}
+            Allotment is free software under the{' '}
             <a
               href={LICENSE_URL}
               target="_blank"

@@ -1,4 +1,5 @@
-import { and, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/sqlite-core';
 import { db } from '../db/index.js';
 import {
   accounts,
@@ -14,6 +15,7 @@ import {
   budgetStartDate,
   inAccountBalance,
   mainAmount,
+  onBudget,
   personalBudgetAccount,
   sinceBudgetStart,
 } from './balances.js';
@@ -41,6 +43,44 @@ export const receivedSpending = and(
 )!;
 /** What the envelopes count: received activity from the budget start on */
 export const receivedActivity = and(receivedSpending, sinceBudgetStart)!;
+
+/**
+ * Transfers that move money into or out of an envelope's linked account (categories
+ * .linked_account_id): the linked account's side of a confirmed transfer with another personal
+ * budget account, from the budget start on. Into the account adds to the envelope; back out
+ * takes from it. Internal transfers are otherwise no activity (balances.ts budgetActivity),
+ * and reports still leave them out.
+ */
+const counterpart = alias(transactions, 'counterpart');
+function linkedTransfers(...where: ReturnType<typeof sql>[]) {
+  return db
+    .select({
+      categoryId: categories.id,
+      month: sql<string>`substr(${transactions.date}, 1, 7)`,
+      total: sql<number>`coalesce(sum(${mainAmount}), 0)`,
+    })
+    .from(transactions)
+    .innerJoin(categories, eq(categories.linkedAccountId, transactions.accountId))
+    .innerJoin(counterpart, eq(counterpart.id, transactions.transferTransactionId))
+    .where(
+      and(
+        inAccountBalance,
+        onBudget,
+        sinceBudgetStart,
+        sql`${counterpart.accountId} != ${transactions.accountId}`,
+        inArray(
+          counterpart.accountId,
+          db.select({ id: accounts.id }).from(accounts).where(personalBudgetAccount),
+        ),
+        // A generated, unreconciled transfer in is still an expectation, like income
+        sql`not (${transactions.amount} > 0 and coalesce(${transactions.importedId}, '') like 'schedule:%' and ${transactions.reconciled} = 0)`,
+        ...where,
+      ),
+    )
+    .groupBy(categories.id, sql`substr(${transactions.date}, 1, 7)`)
+    .all();
+}
+
 export const fundingRevision = () =>
   `${todayIso()}:${db.select().from(budgetRevision).get()?.revision ?? 'initial'}`;
 
@@ -57,6 +97,8 @@ interface CategoryHistory {
   assigned: Map<string, number>;
   /** Received activity by month, for the whole month (a date cut-off only matters in its own) */
   activity: Map<string, number>;
+  /** Net transfers into the linked account by month (linkedTransfers), counted like activity */
+  transferred: Map<string, number>;
   /** Every month holding an assignment or activity with what the category carries out of it */
   steps: { month: string; net: number; after: number }[];
   /** The months holding an assignment, oldest first */
@@ -88,8 +130,8 @@ export interface Ledger {
   ctx: CurrencyContext;
   /** Received activity by date: uncategorized spending, and rows still awaiting a rate */
   days: { dates: string[]; uncategorized: number[]; missing: number[] };
-  /** Category activity in the part of a month up to a date, by date */
-  partial: Map<string, Map<string, number>>;
+  /** Category activity, and linked transfers, in the part of a month up to a date, by date */
+  partial: Map<string, { activity: Map<string, number>; transferred: Map<string, number> }>;
   /** What card funding reads from the database, loaded when the first card figure is asked */
   cardData: CardData | null;
   /** Card funding replayed as of a date */
@@ -143,6 +185,7 @@ function build(): Ledger {
         resets: !incomeGroups.has(category.groupId) && !paymentIds.has(category.id),
         assigned: new Map(),
         activity: new Map(),
+        transferred: new Map(),
         steps: [],
         assignedMonths: [],
       },
@@ -163,11 +206,25 @@ function build(): Ledger {
     .all();
   for (const r of activityRows)
     if (r.categoryId) envelopes.get(r.categoryId)?.activity.set(r.month, r.total);
+  // Only an expense envelope follows its account (the categories route allows no other)
+  for (const r of linkedTransfers()) {
+    const history = envelopes.get(r.categoryId);
+    if (history?.resets) history.transferred.set(r.month, r.total);
+  }
   for (const history of envelopes.values()) {
-    const months = [...new Set([...history.assigned.keys(), ...history.activity.keys()])].sort();
+    const months = [
+      ...new Set([
+        ...history.assigned.keys(),
+        ...history.activity.keys(),
+        ...history.transferred.keys(),
+      ]),
+    ].sort();
     let carry = 0;
     history.steps = months.map((month) => {
-      const net = (history.assigned.get(month) ?? 0) + (history.activity.get(month) ?? 0);
+      const net =
+        (history.assigned.get(month) ?? 0) +
+        (history.activity.get(month) ?? 0) +
+        (history.transferred.get(month) ?? 0);
       carry = settle(carry, net, history.resets);
       return { month, net, after: carry };
     });
@@ -286,29 +343,29 @@ export function clearLedger() {
   cached = null;
 }
 
-/** Activity in `date`'s month up to and including `date`, by category */
-function partialMonth(l: Ledger, date: string): Map<string, number> {
+/** Activity and linked transfers in `date`'s month up to and including `date`, by category */
+function partialMonth(l: Ledger, date: string) {
   let found = l.partial.get(date);
   if (!found) {
     const month = date.slice(0, 7);
-    found = new Map(
+    const inMonth = [
+      sql`${transactions.date} >= ${monthBounds(month).from}`,
+      sql`${transactions.date} <= ${date}`,
+    ];
+    const activity = new Map(
       db
         .select({
           categoryId: transactions.categoryId,
           total: sql<number>`coalesce(sum(${mainAmount}), 0)`,
         })
         .from(transactions)
-        .where(
-          and(
-            sql`${transactions.date} >= ${monthBounds(month).from}`,
-            sql`${transactions.date} <= ${date}`,
-            receivedActivity,
-          ),
-        )
+        .where(and(...inMonth, receivedActivity))
         .groupBy(transactions.categoryId)
         .all()
         .flatMap((r) => (r.categoryId ? [[r.categoryId, r.total] as const] : [])),
     );
+    const transferred = new Map(linkedTransfers(...inMonth).map((r) => [r.categoryId, r.total]));
+    found = { activity, transferred };
     l.partial.set(date, found);
   }
   return found;
@@ -319,16 +376,27 @@ function currentActivity(l: Ledger, h: CategoryHistory, today: string): number |
   const month = today.slice(0, 7);
   return today >= monthBounds(month).to
     ? h.activity.get(month)
-    : partialMonth(l, today).get(h.category.id);
+    : partialMonth(l, today).activity.get(h.category.id);
+}
+
+/** Linked transfers in the month `today` falls in, up to and including `today` */
+function currentTransferred(l: Ledger, h: CategoryHistory, today: string): number | undefined {
+  const month = today.slice(0, 7);
+  // Only envelopes that follow an account have any (and never an income category)
+  if (!h.transferred.size) return undefined;
+  return today >= monthBounds(month).to
+    ? h.transferred.get(month)
+    : partialMonth(l, today).transferred.get(h.category.id);
 }
 
 /** The category's net change in the month `today` falls in (undefined: no assignment or rows) */
 function currentMonthNet(l: Ledger, h: CategoryHistory, today: string): number | undefined {
   const assigned = h.assigned.get(today.slice(0, 7));
   const activity = currentActivity(l, h, today);
-  return assigned === undefined && activity === undefined
+  const transferred = currentTransferred(l, h, today);
+  return assigned === undefined && activity === undefined && transferred === undefined
     ? undefined
-    : (assigned ?? 0) + (activity ?? 0);
+    : (assigned ?? 0) + (activity ?? 0) + (transferred ?? 0);
 }
 
 /**
@@ -388,14 +456,22 @@ export function envelopeGroups(l: Ledger, month: string, today: string) {
           : month === current
             ? (currentActivity(l, h, today) ?? 0)
             : 0;
+      // Money moved into the linked account this month: in the envelope like an assignment
+      const transferred =
+        month < current
+          ? (h.transferred.get(month) ?? 0)
+          : month === current
+            ? (currentTransferred(l, h, today) ?? 0)
+            : 0;
       const carryOver = carryInto(l, h, month, today);
       return {
         ...h.category,
         budgeted,
+        transferred,
         activity,
         spent: Math.abs(Math.min(activity, 0)),
         carryOver,
-        balance: carryOver + budgeted + activity,
+        balance: carryOver + budgeted + transferred + activity,
         history: () => monthlyNet(l, h, month, today),
         resets: h.resets,
       };

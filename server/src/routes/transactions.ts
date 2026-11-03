@@ -12,7 +12,11 @@ import {
 import { eq, and, sql, isNull, inArray, getTableColumns } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
-import { deleteTransactionRow, resolvePayee } from '../services/transactionHelpers.js';
+import {
+  deleteTransactionByOwner,
+  isUpImport,
+  resolvePayee,
+} from '../services/transactionHelpers.js';
 import { buildRuleContext, insertNewTransaction, loadRules } from '../services/ruleService.js';
 import {
   TransferError,
@@ -37,13 +41,17 @@ import {
   setTransactionTags,
   tagsByTransaction,
 } from '../services/transactionMarks.js';
+import { ReconciliationError, unlockTransaction } from '../services/reconciliationService.js';
 import {
   bulkEdit,
+  bulkDelete,
+  previewBulkDelete,
   previewBulkEdit,
   restoreBulkEdit,
   splitTransaction,
 } from '../services/transactionEdits.js';
-import { isBudgetBoundary } from '../services/balances.js';
+import { accountTransactionSum, isBudgetBoundary } from '../services/balances.js';
+import { hasBankFeed } from '../services/accountIntegrity.js';
 import {
   accountCurrency,
   convertAmount,
@@ -92,10 +100,11 @@ transactionsRouter.param('id', (req, res, next, id) => {
     .get();
   if (linked && req.method !== 'GET') {
     const safeEdit =
-      req.method === 'PUT' &&
-      Object.keys(req.body ?? {}).every((k) =>
-        ['categoryId', 'notes', 'payeeId', 'payeeName', 'reconciled'].includes(k),
-      );
+      (req.method === 'POST' && req.path.endsWith('/unlock')) ||
+      (req.method === 'PUT' &&
+        Object.keys(req.body ?? {}).every((k) =>
+          ['categoryId', 'notes', 'payeeId', 'payeeName', 'reconciled'].includes(k),
+        ));
     if (!safeEdit)
       return res.status(409).json({
         error:
@@ -181,6 +190,8 @@ const importRowSchema = z.object({
   payeeName: z.string().max(500).nullable().optional(),
   notes: z.string().max(5_000).nullable().optional(),
   importedId: z.string().max(500),
+  /** From the file's category column, matched or created by the person importing */
+  categoryId: z.string().max(64).nullable().optional(),
 });
 const importRowsSchema = z.array(importRowSchema).max(100_000);
 
@@ -289,6 +300,28 @@ transactionsRouter.post('/bulk', (req, res) => {
   }
 });
 
+const bulkDeleteSchema = z.union([
+  bulkTargetSchema.extend({ preview: z.literal(true) }),
+  bulkTargetSchema.extend({ expectedCount: z.number().int().min(1).max(1_000_000) }),
+]);
+
+// POST /transactions/bulk-delete — preview what a delete would remove, or delete the selection
+// (reconciled and household-linked rows are skipped and counted). The caller confirms the count.
+transactionsRouter.post('/bulk-delete', (req, res) => {
+  const parsed = bulkDeleteSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  const body = parsed.data;
+  const selection = parseSelection(body.selection);
+  if (!selection.success) return res.status(400).json({ error: selection.error.flatten() });
+  const target = { selection: selection.data, ids: body.ids, excludeIds: body.excludeIds };
+  try {
+    if ('preview' in body) return res.json(previewBulkDelete(target));
+    res.json(bulkDelete(target, body.expectedCount));
+  } catch (error) {
+    sendMarkError(res, error);
+  }
+});
+
 // PUT /transactions/:id/split — split it into parts, change the parts, or (no parts) unsplit
 transactionsRouter.put('/:id/split', (req, res) => {
   const parsed = z
@@ -341,12 +374,17 @@ transactionsRouter.get('/', (req, res) => {
   const selection = parseSelection(req.query as Record<string, unknown>);
   if (!selection.success) return res.status(400).json({ error: selection.error.flatten() });
 
+  // A payment is linked to at most one household entry (transaction_id is unique there)
   const query = db
     .select({
       ...getTableColumns(transactions),
       isBudgetBoundary: isBudgetBoundary.mapWith(Boolean),
+      householdGroupId: householdEvents.groupId,
+      householdEventId: householdEvents.id,
+      householdEventKind: householdEvents.kind,
     })
     .from(transactions)
+    .leftJoin(householdEvents, eq(householdEvents.transactionId, transactions.id))
     .where(registerCondition(selection.data))
     .$dynamic();
 
@@ -384,8 +422,14 @@ transactionsRouter.get('/', (req, res) => {
   }
 
   const tagMap = tagsByTransaction(rows.map((r) => r.id));
-  const result = rows.map((r) => ({
+  const result = rows.map(({ householdGroupId, householdEventId, householdEventKind, ...r }) => ({
     ...r,
+    // The household this payment is linked to, its entry there and the entry's kind (an
+    // expense when it was shared); null = not linked
+    household:
+      householdGroupId && householdEventId
+        ? { id: householdGroupId, eventId: householdEventId, kind: householdEventKind }
+        : null,
     tagIds: tagMap.get(r.id) ?? [],
     ...(r.isParent === 1 ? { children: childrenMap.get(r.id) ?? [] } : {}),
   }));
@@ -602,6 +646,18 @@ transactionsRouter.post('/:id/transfer', (req, res) => {
 });
 
 // POST /transactions/:id/unlink-transfer — "Not a transfer"
+// Unlock a reconciled transaction so its amount, date or account can change (or it can be deleted).
+// The balance it was reconciled to no longer holds until it is reconciled again.
+transactionsRouter.post('/:id/unlock', (req, res) => {
+  try {
+    res.json(unlockTransaction(req.params.id));
+  } catch (error) {
+    if (error instanceof ReconciliationError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
+});
+
 transactionsRouter.post('/:id/unlink-transfer', (req, res) => {
   // Undo sends `dismiss: false`, so the pair is suggested again
   const parsed = z.object({ dismiss: z.boolean().optional() }).safeParse(req.body ?? {});
@@ -642,14 +698,40 @@ transactionsRouter.post('/import/confirm', (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const { accountId, rows } = parsed.data;
-  if (!db.select({ id: accounts.id }).from(accounts).where(eq(accounts.id, accountId)).get()) {
+  const account = db.select().from(accounts).where(eq(accounts.id, accountId)).get();
+  if (!account) {
     return res.status(404).json({ error: 'Account not found' });
   }
-  let imported = 0;
-  const ruleOpts = { rules: loadRules(), ctx: buildRuleContext(), currencies: currencyContext() };
+  const wanted = [...new Set(rows.map((r) => r.categoryId).filter((c): c is string => !!c))];
+  if (
+    wanted.length &&
+    db.select({ id: categories.id }).from(categories).where(inArray(categories.id, wanted)).all()
+      .length !== wanted.length
+  )
+    return res.status(400).json({ error: 'A category in this import no longer exists' });
+  const ruleOpts = {
+    rules: loadRules(),
+    ctx: buildRuleContext(),
+    currencies: currencyContext(),
+    // The file's own categories win over rules; rules still fill in the rest
+    keepUserCategory: true,
+  };
 
   // One transaction: all rows or none, and far faster than a commit per row
-  db.transaction(() => {
+  const outcome = db.transaction(() => {
+    let imported = 0;
+    let historical = 0;
+    const balanceBefore = account.startingBalance + accountTransactionSum(accountId);
+    // Typed as "today's balance": older rows must not change it. Not for a bank-fed account
+    // (the bank decides) or one with reconciled rows (those were agreed with a statement).
+    const keepsBalance =
+      !!account.balanceAsOf &&
+      !hasBankFeed(accountId) &&
+      !db
+        .select({ id: transactions.id })
+        .from(transactions)
+        .where(and(eq(transactions.accountId, accountId), eq(transactions.reconciled, 1)))
+        .get();
     for (const row of rows) {
       const dup = db
         .select()
@@ -669,16 +751,73 @@ transactionsRouter.post('/import/confirm', (req, res) => {
           payeeName: row.payeeName || null,
           importedPayee: row.payeeName || null,
           notes: row.notes ?? null,
-          categoryId: null,
+          categoryId: row.categoryId ?? null,
           importedId: row.importedId,
         },
         ruleOpts,
       );
       imported++;
+      if (keepsBalance && row.date <= account.balanceAsOf!) historical += row.amount;
     }
+    if (historical !== 0)
+      db.update(accounts)
+        .set({ startingBalance: account.startingBalance - historical })
+        .where(eq(accounts.id, accountId))
+        .run();
+    return {
+      imported,
+      balanceBefore,
+      startingBalanceAdjusted: historical !== 0,
+      balance: account.startingBalance - historical + accountTransactionSum(accountId),
+    };
   });
 
-  res.json({ imported, skipped: rows.length - imported });
+  res.json({ ...outcome, skipped: rows.length - outcome.imported });
+});
+
+// POST /transactions/import/link-transfers — after a multi-account import (YNAB), link the two
+// legs of each transfer that arrived in the same file. Only exact mirrors (same day, opposite
+// amounts, different accounts, neither reconciled nor already a transfer) are linked.
+transactionsRouter.post('/import/link-transfers', (req, res) => {
+  const parsed = z
+    .object({
+      pairs: z
+        .array(
+          z.object({
+            accountId: z.string().max(64),
+            importedId: z.string().max(500),
+            otherAccountId: z.string().max(64),
+            otherImportedId: z.string().max(500),
+          }),
+        )
+        .max(20_000),
+    })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  const find = (accountId: string, importedId: string) =>
+    db
+      .select()
+      .from(transactions)
+      .where(and(eq(transactions.accountId, accountId), eq(transactions.importedId, importedId)))
+      .get();
+  let linked = 0;
+  let skipped = 0;
+  for (const p of parsed.data.pairs) {
+    const a = find(p.accountId, p.importedId);
+    const b = find(p.otherAccountId, p.otherImportedId);
+    if (!a || !b || a.date !== b.date || a.amount !== -b.amount || a.amount === 0) {
+      skipped++;
+      continue;
+    }
+    try {
+      linkTransfer(a.id, b.id);
+      linked++;
+    } catch (err) {
+      if (!(err instanceof TransferError)) throw err;
+      skipped++;
+    }
+  }
+  res.json({ linked, skipped });
 });
 
 // PUT /transactions/:id
@@ -690,12 +829,34 @@ transactionsRouter.put('/:id', (req, res) => {
 
   const existing = db.select().from(transactions).where(eq(transactions.id, req.params.id)).get();
   if (!existing) return res.status(404).json({ error: 'Not found' });
-  if (existing.reconciled === 1)
-    return res.status(403).json({ error: 'Cannot modify a reconciled transaction' });
 
   const data = parsed.data;
   const changes = (key: keyof typeof data) =>
     data[key] !== undefined && data[key] !== existing[key];
+  // A reconciled row is locked to what the bank statement agreed: amount, date and account stay put.
+  // Category, notes, tags and payee don't change any balance, so they remain editable.
+  if (
+    existing.reconciled === 1 &&
+    (changes('amount') || changes('date') || changes('accountId') || data.mainAmount !== undefined)
+  )
+    return res.status(403).json({
+      error:
+        'Cannot change the amount, date or account of a reconciled transaction. Unlock it first.',
+    });
+  // A bank feed's row belongs to the account the bank reported it in: moved elsewhere, the next
+  // sync would import it again (and Up's would fail on the row's fixed id)
+  if (
+    changes('accountId') &&
+    existing.importedId &&
+    (isUpImport(existing.importedId) || hasBankFeed(existing.accountId))
+  )
+    return res.status(400).json({
+      error:
+        'This transaction came from your bank feed, so it stays in that account. To record it elsewhere, add it to the other account and delete this one.',
+    });
+  // Access tokens (assistants) keep the old rule: they never touch a reconciled row at all
+  if (existing.reconciled === 1 && /^bearer /i.test(req.headers.authorization ?? ''))
+    return res.status(403).json({ error: 'Cannot modify a reconciled transaction' });
   if (
     existing.parentTransactionId &&
     (changes('accountId') || changes('date') || changes('amount'))
@@ -815,6 +976,6 @@ transactionsRouter.delete('/:id', (req, res) => {
       return res.status(403).json({ error: 'Cannot modify a reconciled transfer counterpart' });
     }
   }
-  deleteTransactionRow(existing);
+  deleteTransactionByOwner(existing);
   res.status(204).send();
 });

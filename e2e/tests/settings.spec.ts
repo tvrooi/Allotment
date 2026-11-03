@@ -97,11 +97,11 @@ test.describe('categories', () => {
       .getByRole('dialog', { name: 'Edit Category' })
       .getByRole('button', { name: 'Delete' })
       .click();
-    const dialog = page.getByRole('dialog', { name: 'Delete Category' });
+    const dialog = page.getByRole('dialog', { name: 'Merge into another category' });
     await expect(dialog).toContainText('Parking has 1 transaction');
-    await expect(dialog.getByRole('button', { name: 'Reassign & Delete' })).toBeDisabled();
-    await dialog.getByRole('combobox', { name: 'Move transactions to' }).selectOption(transit.id);
-    await dialog.getByRole('button', { name: 'Reassign & Delete' }).click();
+    await expect(dialog.getByRole('button', { name: 'Merge & remove' })).toBeDisabled();
+    await dialog.getByRole('combobox', { name: 'Merge into' }).selectOption(transit.id);
+    await dialog.getByRole('button', { name: 'Merge & remove' }).click();
 
     await expect(page.getByRole('button', { name: 'Edit Parking' })).toBeHidden();
     const [tx] = await api.transactions();
@@ -280,7 +280,7 @@ test('settings link to the license and the source code', async ({ page, api }) =
     'https://www.gnu.org/licenses/agpl-3.0.html',
   );
   const source = page.getByRole('link', { name: 'Source code' });
-  await expect(source).toHaveAttribute('href', 'https://github.com/tvrooi/FlyBudget');
+  await expect(source).toHaveAttribute('href', 'https://github.com/tvrooi/Allotment');
   // Opens outside the app (the desktop app hands https links to the system browser)
   await expect(source).toHaveAttribute('target', '_blank');
   await expect(source).toHaveAttribute('rel', /noopener/);

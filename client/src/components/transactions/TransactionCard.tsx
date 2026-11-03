@@ -1,11 +1,12 @@
 import { RowMarks } from './TransactionMarks';
 import { useMemo } from 'react';
-import { ArrowLeftRight, ChevronRight, Lock, Split } from 'lucide-react';
+import { ArrowLeftRight, ChevronRight, Lock, MoreHorizontal, Split } from 'lucide-react';
 import { PayeeIcon } from '../payees/PayeeIcon';
 import { formatMoney } from '../../utils/currency';
 import { useAccountCurrency } from '../../hooks/useCurrency';
 import { ForeignValue } from '../currency/ForeignValue';
 import { usePreferencesStore } from '../../store/preferencesStore';
+import type { MenuPoint } from '../ui/ContextMenu';
 import type { Transaction, PayeeWithCount } from '../../types';
 
 interface Props {
@@ -16,6 +17,8 @@ interface Props {
   accountName?: string;
   isSelected: boolean;
   onOpenDetail: (id: string) => void;
+  /** Opens its actions menu (a ⋯ button; a long press does the same) */
+  onMenu?: (at: MenuPoint) => void;
 }
 
 /**
@@ -30,6 +33,7 @@ export function TransactionCard({
   accountName,
   isSelected,
   onOpenDetail,
+  onMenu,
 }: Props) {
   const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
   const currencyOf = useAccountCurrency();
@@ -55,16 +59,16 @@ export function TransactionCard({
       {categoryEntry.name}
     </span>
   ) : (
-    <span className="text-caution">Uncategorized</span>
+    <span className="text-caution">Uncategorised</span>
   );
 
-  return (
+  const card = (
     <button
       type="button"
       onClick={() => onOpenDetail(tx.id)}
       data-testid="transaction-card"
       aria-current={isSelected || undefined}
-      className={`w-full min-h-14 flex items-center gap-3 px-4 py-2.5 text-left border-b border-border-light transition-colors ${
+      className={`w-full min-h-14 flex items-center gap-3 px-4 py-2.5 text-left select-none [-webkit-touch-callout:none] border-b border-border-light transition-colors ${
         isSelected ? 'bg-brand-50' : 'bg-surface active:bg-hover'
       }`}
     >
@@ -92,7 +96,29 @@ export function TransactionCard({
         </span>
         {tx.notes && <span className="text-xs text-text-tertiary truncate">{tx.notes}</span>}
       </span>
-      <ChevronRight size={16} className="shrink-0 text-text-disabled" aria-hidden />
+      {onMenu ? (
+        <span className="w-8 shrink-0" aria-hidden />
+      ) : (
+        <ChevronRight size={16} className="shrink-0 text-text-disabled" aria-hidden />
+      )}
     </button>
+  );
+  if (!onMenu) return card;
+  return (
+    <div className="relative">
+      {card}
+      <button
+        type="button"
+        aria-label={`Actions for ${payeeName}`}
+        aria-haspopup="menu"
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          onMenu({ x: r.right - 240, y: r.bottom });
+        }}
+        className="absolute right-1 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center rounded-full text-text-tertiary active:bg-hover"
+      >
+        <MoreHorizontal size={18} />
+      </button>
+    </div>
   );
 }

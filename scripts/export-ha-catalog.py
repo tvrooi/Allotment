@@ -19,7 +19,7 @@ def export(out, commit, digest):
     config = (ROOT / 'homeassistant/config.yaml').read_text()
     if f"version: '{version}'" not in config:
         raise ValueError('Release versions disagree')
-    config += f"image: {image}\nurl: https://github.com/tvrooi/FlyBudget/tree/{commit}\n"
+    config += f"image: {image}\nurl: https://github.com/tvrooi/Allotment/tree/{commit}\n"
     files = {
         'config.yaml': config.encode(),
         'README.md': (ROOT / 'homeassistant/README.md').read_bytes(),
@@ -28,7 +28,7 @@ def export(out, commit, digest):
         'LICENSE': (ROOT / 'LICENSE').read_bytes(),
         'icon.png': (ROOT / 'client/public/logo.png').read_bytes(),
     }
-    receipt = dict(version=version, source_repository='tvrooi/FlyBudget',
+    receipt = dict(version=version, source_repository='tvrooi/Allotment',
                    source_commit=commit, image=image, image_digest=digest,
                    files={name: hashlib.sha256(data).hexdigest() for name, data in files.items()})
     files['release.json'] = (json.dumps(receipt, indent=2) + '\n').encode()

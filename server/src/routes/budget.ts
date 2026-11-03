@@ -16,7 +16,9 @@ import {
   BudgetError,
   fundedWrite,
 } from '../services/budgetMoves.js';
+import { withHistoricActivity } from '../services/historicActivity.js';
 import { budgetSummary, fundingRevision, fundingState } from '../services/budgetService.js';
+import { withExpectedDebits } from '../services/expectedDebits.js';
 import { annualOverview } from '../services/annualOverview.js';
 import { Router } from 'express';
 import { db } from '../db/index.js';
@@ -41,6 +43,11 @@ import {
   saveTarget,
 } from '../services/targetService.js';
 import { categoryTargets } from '../db/schema.js';
+import {
+  AUTO_ASSIGN_STRATEGIES,
+  applyAutoAssign,
+  previewAutoAssign,
+} from '../services/autoAssign.js';
 
 export const budgetRouter = Router();
 
@@ -65,7 +72,7 @@ budgetRouter.post('/card-funding/:accountId/funding-preview', (req, res, next) =
     res.json(previewCardAssignment(req.params.accountId, parsed.data.month, parsed.data.amount));
   } catch (error) {
     if (error instanceof BudgetError)
-      return res.status(error.status).json({ error: error.message });
+      return res.status(error.status).json({ error: error.message, details: error.details });
     next(error);
   }
 });
@@ -87,7 +94,7 @@ for (const action of ['preview', 'apply'])
       );
     } catch (error) {
       if (error instanceof BudgetError)
-        return res.status(error.status).json({ error: error.message });
+        return res.status(error.status).json({ error: error.message, details: error.details });
       next(error);
     }
   });
@@ -115,7 +122,15 @@ budgetRouter.put('/start', (req, res) => {
   res.json({ month });
 });
 
-budgetRouter.get('/:month', (req, res) => res.json(budgetWithTargets(req.params.month)));
+// Each expense category also lists the recurring debits still expected this month
+budgetRouter.get('/:month', (req, res) =>
+  res.json(
+    withExpectedDebits(
+      withHistoricActivity(budgetWithTargets(req.params.month), req.params.month),
+      req.params.month,
+    ),
+  ),
+);
 
 // Existing overcommitments survive; new reservations require existing resources.
 budgetRouter.put('/:month/:categoryId', (req, res, next) => {
@@ -152,7 +167,7 @@ budgetRouter.put('/:month/:categoryId', (req, res, next) => {
     });
   } catch (error) {
     if (error instanceof BudgetError)
-      return res.status(error.status).json({ error: error.message });
+      return res.status(error.status).json({ error: error.message, details: error.details });
     next(error);
   }
 });
@@ -316,7 +331,7 @@ budgetRouter.put('/category/:categoryId/bulk', (req, res, next) => {
     });
   } catch (error) {
     if (error instanceof BudgetError)
-      return res.status(error.status).json({ error: error.message });
+      return res.status(error.status).json({ error: error.message, details: error.details });
     return next(error);
   }
   res.json({ categoryId, budgeted, months });
@@ -346,7 +361,7 @@ function moveHandler(action: 'preview' | 'apply') {
       );
     } catch (error) {
       if (error instanceof BudgetError)
-        return res.status(error.status).json({ error: error.message });
+        return res.status(error.status).json({ error: error.message, details: error.details });
       next(error);
     }
   };
@@ -368,7 +383,7 @@ budgetRouter.post('/moves/:id/undo', (req, res, next) => {
     res.json(undoMove(req.params.id));
   } catch (error) {
     if (error instanceof BudgetError)
-      return res.status(error.status).json({ error: error.message });
+      return res.status(error.status).json({ error: error.message, details: error.details });
     next(error);
   }
 });
@@ -381,7 +396,7 @@ budgetRouter.put('/category/:categoryId/target', (req, res, next) => {
     res.json(saveTarget(req.params.categoryId, parsed.data));
   } catch (error) {
     if (error instanceof BudgetError)
-      return res.status(error.status).json({ error: error.message });
+      return res.status(error.status).json({ error: error.message, details: error.details });
     next(error);
   }
 });
@@ -389,6 +404,40 @@ budgetRouter.put('/category/:categoryId/target', (req, res, next) => {
 budgetRouter.delete('/category/:categoryId/target', (req, res) => {
   db.delete(categoryTargets).where(eq(categoryTargets.categoryId, req.params.categoryId)).run();
   res.status(204).send();
+});
+const strategySchema = z.object({ strategy: z.enum(AUTO_ASSIGN_STRATEGIES) });
+budgetRouter.post('/:month/auto-assign/preview', (req, res) => {
+  const parsed = strategySchema.safeParse(req.body);
+  if (!isMonth(req.params.month) || !parsed.success)
+    return res.status(400).json({ error: 'Choose a month and an auto-assign option' });
+  res.json(previewAutoAssign(req.params.month, parsed.data.strategy));
+});
+budgetRouter.post('/:month/auto-assign/apply', (req, res, next) => {
+  const parsed = strategySchema
+    .extend({
+      revision: z.string().min(1).max(200),
+      rows: z
+        .array(z.object({ categoryId: z.string().min(1).max(64), proposed: cents }))
+        .max(10_000),
+    })
+    .safeParse(req.body);
+  if (!isMonth(req.params.month) || !parsed.success)
+    return res.status(400).json({ error: 'Preview auto-assign first' });
+  try {
+    res.json(
+      applyAutoAssign(
+        req.params.month,
+        parsed.data.strategy,
+        parsed.data.revision,
+        parsed.data.rows,
+        fundedWrite,
+      ),
+    );
+  } catch (error) {
+    if (error instanceof BudgetError)
+      return res.status(error.status).json({ error: error.message, details: error.details });
+    next(error);
+  }
 });
 budgetRouter.post('/:month/targets/preview', (req, res) =>
   res.json(previewTargetFunding(req.params.month)),
@@ -409,7 +458,7 @@ budgetRouter.post('/:month/targets/apply', (req, res, next) => {
     );
   } catch (error) {
     if (error instanceof BudgetError)
-      return res.status(error.status).json({ error: error.message });
+      return res.status(error.status).json({ error: error.message, details: error.details });
     next(error);
   }
 });

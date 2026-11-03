@@ -195,7 +195,7 @@ export const bankCallbackRateLimit = rateLimit({
 });
 
 /**
- * Server mode behind a reverse proxy that FlyBudget wasn't told about: every request
+ * Server mode behind a reverse proxy that Allotment wasn't told about: every request
  * seems to come from the proxy, so HTTPS isn't detected (cookies lose `Secure`) and new
  * browsers share one login rate limit. Says so once in the log.
  */
@@ -204,8 +204,8 @@ export const proxyConfigWarning: RequestHandler = (req, _res, next) => {
   if (serverMode && !trustProxy && !proxyWarned && req.headers['x-forwarded-for']) {
     proxyWarned = true;
     console.warn(
-      'FlyBudget is behind a reverse proxy, but FLYBUDGET_TRUST_PROXY is not set. Set it to ' +
-        'the number of proxies in front of FlyBudget (usually 1) so HTTPS and client ' +
+      'Allotment is behind a reverse proxy, but FLYBUDGET_TRUST_PROXY is not set. Set it to ' +
+        'the number of proxies in front of Allotment (usually 1) so HTTPS and client ' +
         'addresses are detected: https://flybudget.org/community/self-hosting',
     );
   }

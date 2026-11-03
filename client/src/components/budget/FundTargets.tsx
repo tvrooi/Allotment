@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { forwardRef, useImperativeHandle, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   applyTargetFunding,
@@ -13,7 +13,10 @@ import { Modal } from '../ui/Modal';
 
 /** Previews assignments for underfunded targets, capped at unassigned money, then applies
  * exactly that preview once. Targets never assign money on their own. */
-export function FundTargets({ month, groups }: { month: string; groups: BudgetGroup[] }) {
+export const FundTargets = forwardRef<
+  { open: () => void },
+  { month: string; groups: BudgetGroup[]; hideButton?: boolean }
+>(function FundTargets({ month, groups, hideButton = false }, ref) {
   const qc = useQueryClient();
   const canSave = useCanSave();
   const [preview, setPreview] = useState<TargetFundingPreview | null>(null);
@@ -22,7 +25,6 @@ export function FundTargets({ month, groups }: { month: string; groups: BudgetGr
   const underfunded = groups
     .flatMap((g) => g.categories)
     .filter((c) => c.target?.underfunded).length;
-  if (!underfunded) return null;
   async function load() {
     setError(null);
     try {
@@ -31,6 +33,7 @@ export function FundTargets({ month, groups }: { month: string; groups: BudgetGr
       setError(err instanceof Error ? err.message : 'Could not preview target funding.');
     }
   }
+  useImperativeHandle(ref, () => ({ open: () => void load() }));
   async function apply() {
     if (!preview) return;
     setBusy(true);
@@ -48,11 +51,14 @@ export function FundTargets({ month, groups }: { month: string; groups: BudgetGr
       setBusy(false);
     }
   }
+  if (!underfunded) return null;
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={load} disabled={!canSave}>
-        Fund targets ({underfunded})
-      </Button>
+      {!hideButton && (
+        <Button variant="secondary" size="sm" onClick={load} disabled={!canSave}>
+          Fund targets ({underfunded})
+        </Button>
+      )}
       <Modal isOpen={!!preview} onClose={() => setPreview(null)} title="Fund targets">
         {preview && (
           <div className="space-y-3 text-sm" role="region" aria-label="Target funding preview">
@@ -102,4 +108,4 @@ export function FundTargets({ month, groups }: { month: string; groups: BudgetGr
       )}
     </>
   );
-}
+});

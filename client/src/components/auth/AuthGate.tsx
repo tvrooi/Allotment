@@ -20,6 +20,7 @@ import { ReconnectScreen } from '../connection/ReconnectScreen';
 import { Button } from '../ui/Button';
 import { AuthScreen } from './AuthScreen';
 import { MIN_PASSWORD_LENGTH } from './passwordRules';
+import { rememberHostKind, whereIsTheLog, type HostKind } from '../../utils/hostKind';
 
 /** Multi-user mode: the person whose budget this page has shown since it loaded */
 let shownPerson: string | null = null;
@@ -36,7 +37,7 @@ function restart() {
 }
 
 /**
- * Shows the login (or first-run setup) screen when FlyBudget runs as a server and
+ * Shows the login (or first-run setup) screen when Allotment runs as a server and
  * this browser isn't signed in. In the desktop app and dev mode login is disabled,
  * so this renders the app straight away. If the server can't be reached on startup it
  * opens with this device's offline copy (read-only, see offline/snapshot.ts) or, without
@@ -63,6 +64,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     if (reconnectedAt !== null) void qc.invalidateQueries();
   }, [reconnectedAt, qc]);
 
+  useEffect(() => rememberHostKind(status?.hostKind), [status?.hostKind]);
   const hasOfflineCopy = useOfflineCopy((s) => s.restored);
   const loginRequired = !!status && status.enabled && !status.authenticated;
   // Signed out (expired, signed out elsewhere, password changed): forget this device's copy
@@ -153,6 +155,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     <PasswordForm
       mode={status.needsSetup ? 'setup' : 'login'}
       multiUser={Boolean(status.multiUser)}
+      canRecover={Boolean(status.canRecover)}
+      canNotify={Boolean(status.canNotify)}
+      hostKind={status.hostKind}
       onDone={onSignedIn}
     />
   );
@@ -161,9 +166,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 type FormMode = 'setup' | 'login' | 'invite' | 'forgot' | 'reset';
 
 const TITLES: Record<FormMode, string> = {
-  setup: 'Set up your FlyBudget server',
-  login: 'Sign in to FlyBudget',
-  invite: 'Join this FlyBudget server',
+  setup: 'Set up your Allotment server',
+  login: 'Sign in to Allotment',
+  invite: 'Join this Allotment server',
   forgot: 'Forgot your password?',
   reset: 'Choose a new password',
 };
@@ -175,10 +180,17 @@ const TITLES: Record<FormMode, string> = {
 function PasswordForm({
   mode: startMode,
   multiUser,
+  canRecover,
+  canNotify,
+  hostKind,
   onDone,
 }: {
   mode: 'setup' | 'login';
   multiUser: boolean;
+  /** Single-user server: "Forgot password?" makes a reset code in the server log */
+  canRecover: boolean;
+  canNotify: boolean;
+  hostKind: HostKind | undefined;
   onDone: () => void;
 }) {
   const [mode, setMode] = useState<FormMode>(startMode);
@@ -214,17 +226,23 @@ function PasswordForm({
     setBusy(true);
     try {
       if (mode === 'forgot') {
-        const { message } = await authApi.forgotPassword(name);
+        if (multiUser) {
+          const { message } = await authApi.forgotPassword(name);
+          setNotice(message);
+        } else {
+          await authApi.requestResetCode();
+          setNotice('A reset code was made.');
+        }
         setBusy(false);
         setMode('reset');
-        setNotice(message);
         return;
       }
       if (mode === 'setup')
         await authApi.setupPassword(password, code, multiUser ? name : undefined);
       else if (mode === 'login') await authApi.login(password, multiUser ? name : undefined);
       else if (mode === 'invite') await authApi.acceptInvite(name, code, password);
-      else await authApi.resetPassword(name, code, password);
+      else if (multiUser) await authApi.resetPassword(name, code, password);
+      else await authApi.resetWithCode(code, password);
       onDone();
     } catch (err) {
       setError((err as Error).message);
@@ -238,11 +256,15 @@ function PasswordForm({
   const linkClass = 'text-xs text-brand-600 hover:text-brand-700 font-medium';
   const { host, hostname, protocol } = window.location;
   const unencrypted = connectionSecurity(protocol, hostname) === 'unencrypted';
+  // Single-user server: where the reset code can be read, which only the person running it can do
+  const whereToLook = whereIsTheLog(canNotify ? 'home-assistant' : hostKind, {
+    notifications: canNotify,
+  });
   const submitLabel = {
     setup: 'Create password',
     login: 'Sign in',
     invite: 'Set password and sign in',
-    forgot: 'Send me a code',
+    forgot: multiUser ? 'Send me a code' : 'Make a reset code',
     reset: 'Set password and sign in',
   }[mode];
 
@@ -266,12 +288,19 @@ function PasswordForm({
               Enter your name as the administrator added it, and the invitation code they gave you.
             </span>
           )}
-          {mode === 'forgot' && (
+          {mode === 'forgot' && multiUser && (
             <span className="block mt-2">
               A code goes to the phone you chose in Settings. The administrator's code is also
-              written to the server's log (the app's Log in Home Assistant).
+              written to the server's log. {whereIsTheLog(hostKind)}
             </span>
           )}
+          {mode === 'forgot' && !multiUser && (
+            <span className="block mt-2">
+              Allotment makes a one-time reset code and puts it where only someone with access to
+              the server can read it. {whereToLook} Resetting signs every device out.
+            </span>
+          )}
+          {mode === 'reset' && !multiUser && <span className="block mt-2">{whereToLook}</span>}
         </>
       }
     >
@@ -327,8 +356,7 @@ function PasswordForm({
             />
             {isSetup && (
               <p className="text-xs text-text-tertiary mt-1">
-                Printed in the server log. With Docker, run{' '}
-                <code className="font-mono">docker logs flybudget</code>.
+                Printed in the server log. {whereIsTheLog(hostKind)}
               </p>
             )}
           </div>
@@ -379,7 +407,7 @@ function PasswordForm({
           {submitLabel}
         </Button>
       </form>
-      {multiUser && !isSetup && (
+      {(multiUser || canRecover) && !isSetup && (
         <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1">
           {mode !== 'login' && (
             <button type="button" className={linkClass} onClick={() => go('login')}>
@@ -391,9 +419,11 @@ function PasswordForm({
               <button type="button" className={linkClass} onClick={() => go('forgot')}>
                 Forgot password?
               </button>
-              <button type="button" className={linkClass} onClick={() => go('invite')}>
-                I have an invitation
-              </button>
+              {multiUser && (
+                <button type="button" className={linkClass} onClick={() => go('invite')}>
+                  I have an invitation
+                </button>
+              )}
             </>
           )}
           {mode === 'forgot' && (

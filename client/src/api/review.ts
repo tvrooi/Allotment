@@ -9,6 +9,7 @@ interface GroupedItem {
   amount: number;
 }
 export interface BudgetReview {
+  accountIssues?: import('../types').BudgetSummary['accountIssues'];
   asOf: string;
   month: string;
   revision: string;
@@ -87,6 +88,7 @@ export interface BufferState {
 export type GuideStepId =
   'balances' | 'before-income' | 'assign' | 'irregular' | 'before-spending' | 'priorities';
 export interface GuideState {
+  accountIssues?: import('../types').BudgetSummary['accountIssues'];
   asOf: string;
   month: string;
   unassigned: number;

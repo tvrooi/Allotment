@@ -1,5 +1,6 @@
 import http from 'http';
 import type { AddressInfo } from 'net';
+import { richUpHistory } from './upRichData.js';
 
 // No real bank calls or credentials. Also used by server integration tests.
 export const UP_TEST_TOKEN = 'up-test-token';
@@ -29,6 +30,7 @@ export function upMockTransaction(
 export async function startUpMock(port = 0) {
   let mode = 'normal';
   let calls = 0;
+  let richData: ReturnType<typeof richUpHistory> | undefined;
   const histories = new Map<string, ReturnType<typeof upMockTransaction>[]>();
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url!, 'http://localhost');
@@ -51,7 +53,10 @@ export async function startUpMock(port = 0) {
       res.end(JSON.stringify(body));
     };
     if (url.pathname.startsWith('/__mock/')) {
-      if (req.method === 'POST') mode = url.pathname.split('/').pop()!;
+      if (req.method === 'POST') {
+        mode = url.pathname.split('/').pop()!;
+        richData = undefined;
+      }
       return send({ mode, calls });
     }
     if (req.headers.authorization !== `Bearer ${UP_TEST_TOKEN}`) return send({}, 401);
@@ -60,6 +65,30 @@ export async function startUpMock(port = 0) {
     if (mode === 'rate-limit') return send({}, 429);
     if (mode === 'malformed') return send({ data: [{ id: 1 }] });
     if (mode === 'slow') await new Promise((r) => setTimeout(r, 100));
+    // A realistic quarter of history with Up's own categories (see upRichData.ts)
+    if (mode === 'rich') {
+      const rich = (richData ??= richUpHistory());
+      if (url.pathname === '/accounts')
+        return send({
+          data: (['spending', 'saver'] as const).map((id) => ({
+            id,
+            attributes: {
+              displayName: id === 'spending' ? 'Up Everyday' : 'Up Saver',
+              accountType: id === 'spending' ? 'TRANSACTIONAL' : 'SAVER',
+              ownershipType: 'INDIVIDUAL',
+              balance: money(rich.balances[id]),
+            },
+          })),
+          links: { next: null },
+        });
+      const account = /^\/accounts\/(spending|saver)\/transactions$/.exec(url.pathname)?.[1];
+      if (account)
+        return send({
+          data: rich.transactions[account as 'spending' | 'saver'],
+          links: { next: null },
+        });
+      return send({}, 404);
+    }
     const overridden = [...histories].find(
       ([id]) => url.pathname === `/accounts/${id}/transactions`,
     );
@@ -190,6 +219,7 @@ export async function startUpMock(port = 0) {
     base: `http://127.0.0.1:${(server.address() as AddressInfo).port}/`,
     setMode: (next: string) => {
       mode = next;
+      richData = undefined;
       histories.clear();
     },
     setHistory: (id: string, rows: ReturnType<typeof upMockTransaction>[]) => {

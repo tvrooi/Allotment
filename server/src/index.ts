@@ -1,4 +1,5 @@
 import { householdsRouter } from './routes/households.js';
+import { paymentPlansRouter } from './routes/paymentPlans.js';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -46,6 +47,7 @@ import { investmentsRouter } from './routes/investments.js';
 import { receiptsRouter } from './routes/receipts.js';
 import { taxRouter } from './routes/tax.js';
 import { prioritiesRouter } from './routes/priorities.js';
+import { guidesRouter } from './routes/guides.js';
 import { plaidRouter } from './routes/plaid.js';
 import { simplefinRouter } from './routes/simplefin.js';
 import { upRouter } from './routes/up.js';
@@ -126,6 +128,7 @@ app.use('/api/export', exportRouter);
 app.use('/api/custom-reports', customReportsRouter);
 app.use('/api/dashboards', dashboardsRouter);
 app.use('/api/households', householdsRouter);
+app.use('/api/payment-plans', paymentPlansRouter);
 app.use('/api/schedules', schedulesRouter);
 app.use('/api/goals', goalsRouter);
 app.use('/api/payday', paydayRouter);
@@ -135,6 +138,7 @@ app.use('/api/investments', investmentsRouter);
 app.use('/api/receipts', receiptsRouter);
 app.use('/api/tax', taxRouter);
 app.use('/api/priorities', prioritiesRouter);
+app.use('/api/guides', guidesRouter);
 setRateDownloader({ download: fetchRates, checkUrl: assertSafeUrl, defaultUrl: DEFAULT_RATES_URL });
 app.use('/api/currency', currencyRouter);
 app.use('/api/plaid', bankRateLimit, plaidRouter);
@@ -292,7 +296,7 @@ function runStartupTasks() {
 // Auto-start unless bundled for Electron production (where main.ts calls startServer directly)
 if (!process.env.ELECTRON_PROD) {
   startServer(process.env.EXPRESS_PORT ?? process.env.PORT ?? 3001).catch((err) => {
-    console.error('FlyBudget failed to start:', err);
+    console.error('Allotment failed to start:', err);
     process.exit(1);
   });
 }

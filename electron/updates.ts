@@ -1,5 +1,5 @@
 // Native main-process controls only: no updater bridge is exposed to a remote budget page.
-export const RELEASES_URL = 'https://github.com/tvrooi/FlyBudget/releases';
+export const RELEASES_URL = 'https://github.com/tvrooi/Allotment/releases';
 import type { ReleaseOffer } from './releaseCheck';
 export interface UpdateDriver {
   autoDownload: boolean;
@@ -45,7 +45,7 @@ export class DesktopUpdates {
     driver.on('update-not-available', () => {
       this.state = 'idle';
       if (this.manual)
-        void ui.ask('FlyBudget is up to date.', 'Your Home Assistant server updates separately.', [
+        void ui.ask('Allotment is up to date.', 'Your Home Assistant server updates separately.', [
           'OK',
         ]);
     });
@@ -68,7 +68,7 @@ export class DesktopUpdates {
           if (offer) {
             if (
               (await this.ui.ask(
-                `FlyBudget ${offer.version} is available.`,
+                `Allotment ${offer.version} is available.`,
                 'Download the correct desktop installer from your fork? It opens in your browser; install it to replace the desktop program. Your Home Assistant budget stays in place. This build cannot replace itself automatically.',
                 ['Download installer', 'Later'],
               )) === 0
@@ -76,7 +76,7 @@ export class DesktopUpdates {
               this.ui.openInstaller?.(offer.url);
           } else if (manual)
             await this.ui.ask(
-              'FlyBudget is up to date.',
+              'Allotment is up to date.',
               'Your Home Assistant server updates separately.',
               ['OK'],
             );
@@ -127,8 +127,8 @@ export class DesktopUpdates {
         ? ` ${version}`
         : '';
     const choice = await this.ui.ask(
-      `FlyBudget${label} is available.`,
-      'Download the desktop update from tvrooi/FlyBudget? Your budget and Home Assistant server stay in place.',
+      `Allotment${label} is available.`,
+      'Download the desktop update from tvrooi/Allotment? Your budget and Home Assistant server stay in place.',
       ['Download update', 'Later'],
     );
     if (choice !== 0) {
@@ -149,7 +149,7 @@ export class DesktopUpdates {
     this.state = 'installing';
     const choice = await this.ui.ask(
       'The desktop update is ready.',
-      'Restart FlyBudget to install it? Home Assistant keeps running.',
+      'Restart Allotment to install it? Home Assistant keeps running.',
       ['Restart and install', 'Later'],
     );
     if (choice !== 0) {

@@ -39,9 +39,12 @@ config = re.sub(r"(?m)^version:.*$", f"version: '{version}'", config)
 (app / 'config.yaml').write_text(config)
 upstream = (root / 'Dockerfile').read_text()
 (app / 'Dockerfile.upstream').write_text(upstream)
-# Build on the device's own architecture, and retain the upstream hardened runtime.
-dockerfile = upstream.replace('FROM --platform=$BUILDPLATFORM ', 'FROM ')
-dockerfile = dockerfile.replace('ENTRYPOINT ["/usr/bin/tini", "--"]', '')
+# Keep the upstream build stage on the build machine's own architecture: its output is plain
+# JS/HTML plus better-sqlite3's prebuilds for every Linux architecture. Under QEMU the ARM64
+# client build stalled the release (up.57, up.60, up.63). This file already needs BuildKit
+# (ha-${TARGETARCH} below), so a local Supervisor build gets $BUILDPLATFORM too.
+assert 'FROM --platform=$BUILDPLATFORM ' in upstream, 'The build stage should build natively'
+dockerfile = upstream.replace('ENTRYPOINT ["/usr/bin/tini", "--"]', '')
 dockerfile = dockerfile.replace('CMD ["node", "server.js"]', '')
 # Name the common runtime so each BuildKit target can add HA's own architecture name.
 prefix, runtime = dockerfile.rsplit('\nFROM ', 1)
@@ -59,7 +62,7 @@ RUN apt-get update \\
  && rm -rf /var/lib/apt/lists/*
 COPY homeassistant/start.sh homeassistant/ha-launch.cjs /app/
 RUN chmod 755 /app/start.sh
-LABEL io.hass.name="FlyBudget Up Preview" \\
+LABEL io.hass.name="Allotment" \\
       io.hass.type="app" \\
       io.hass.version="__RELEASE_VERSION__"
 ENTRYPOINT ["/app/start.sh"]
@@ -75,7 +78,7 @@ FROM ha-${TARGETARCH} AS final
 dockerfile = dockerfile.replace('__RELEASE_VERSION__', version)
 (app / 'Dockerfile').write_text(dockerfile)
 
-archive = out / 'FlyBudget-Up-Home-Assistant.zip'
+archive = out / 'Allotment-Up-Home-Assistant.zip'
 with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_DEFLATED) as zipped:
     for file in sorted(app.rglob('*')):
         if file.is_file():

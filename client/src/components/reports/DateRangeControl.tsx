@@ -21,7 +21,7 @@ export function DateRangeControl({
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <div className="flex gap-0">
+      <div className="flex flex-wrap gap-0">
         {DATE_PRESETS.filter((p) => p.id !== 'custom').map((p) => (
           <button
             type="button"
@@ -32,7 +32,7 @@ export function DateRangeControl({
               setJustFroze(false);
               onChange({ preset: p.id, ...computeDateRange(p.id) });
             }}
-            className={`px-2.5 py-1 text-xs font-medium transition-colors border-b-2 cursor-pointer ${
+            className={`px-2.5 py-1 max-md:min-h-11 max-md:min-w-11 text-xs font-medium transition-colors border-b-2 cursor-pointer ${
               value.preset === p.id
                 ? 'border-brand-600 text-brand-600'
                 : 'border-transparent text-text-tertiary hover:text-text-secondary'

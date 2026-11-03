@@ -1,4 +1,18 @@
+import { bankLinked } from '../services/accountIntegrity.js';
 import { Router } from 'express';
+import {
+  AccountDeletionError,
+  deleteAccountWithTransactions,
+  previewAccountDeletion,
+} from '../services/accountDeletion.js';
+import {
+  reconcile,
+  lastReconciliation,
+  recordReconciliation,
+  undoLastReconciliation,
+  reconciliationSnapshot,
+  ReconciliationError,
+} from '../services/reconciliationService.js';
 import { db } from '../db/index.js';
 import {
   cardFunding,
@@ -23,7 +37,7 @@ import {
   valueToday,
   type CurrencyContext,
 } from '../services/mainAmountService.js';
-import { currencySchema } from '../utils/validation.js';
+import { currencySchema, isoDate } from '../utils/validation.js';
 import {
   importSettingsSchema,
   readImportSettings,
@@ -45,6 +59,8 @@ const fields = {
 
 const createSchema = z.object({
   ...fields,
+  /** The day the starting balance is the account's balance (the Add Account form: "as of today") */
+  balanceAsOf: isoDate.optional(),
   startingBalance: fields.startingBalance.default(0),
   isOffBudget: fields.isOffBudget.optional(),
   currency: fields.currency.optional(),
@@ -67,6 +83,7 @@ function shown(
   balance: number,
   hasTransactions: boolean,
   ctx: CurrencyContext,
+  lastTransactionDate: string | null = null,
 ) {
   const currency = account.currency ?? ctx.budget;
   const value = valueToday(balance, currency, ctx);
@@ -85,7 +102,11 @@ function shown(
     currency,
     balance,
     hasTransactions,
+    /** Newest transaction date, for "Up takes over from the day after" when linking Up */
+    lastTransactionDate,
     householdPool,
+    // A bank feed supplies this account's transactions: a hand-entered row will disagree with the bank
+    bankLinked: bankLinked(account.id),
     ...value,
     currencyDifference,
   };
@@ -93,21 +114,26 @@ function shown(
 
 function withBalance(account: typeof accounts.$inferSelect) {
   const sum = accountTransactionSum(account.id);
+  const last = db
+    .select({ date: sql<string | null>`max(${transactions.date})` })
+    .from(transactions)
+    .where(and(eq(transactions.accountId, account.id), inAccountBalance))
+    .get()?.date;
   const any = !!db
     .select({ id: transactions.id })
     .from(transactions)
     .where(eq(transactions.accountId, account.id))
     .get();
-  return shown(account, account.startingBalance + sum, any, currencyContext());
+  return shown(account, account.startingBalance + sum, any, currencyContext(), last ?? null);
 }
 
 const storedCurrency = currencyToStore;
 
-accountsRouter.get('/', (_req, res) => {
+accountsRouter.get('/', (req, res) => {
   const rows = db
     .select()
     .from(accounts)
-    .where(isNull(accounts.closedAt))
+    .where(req.query.include_closed === '1' ? undefined : isNull(accounts.closedAt))
     .orderBy(accounts.sortOrder)
     .all();
   if (!rows.length) return res.json([]);
@@ -116,15 +142,25 @@ accountsRouter.get('/', (_req, res) => {
     .select({
       accountId: transactions.accountId,
       sum: sql<number>`coalesce(sum(case when ${inAccountBalance} then ${transactions.amount} else 0 end), 0)`,
+      last: sql<string | null>`max(case when ${inAccountBalance} then ${transactions.date} end)`,
     })
     .from(transactions)
     .groupBy(transactions.accountId)
     .all();
 
   const sumMap = new Map(sums.map((s) => [s.accountId, s.sum]));
+  const lastMap = new Map(sums.map((s) => [s.accountId, s.last]));
   const ctx = currencyContext();
   res.json(
-    rows.map((a) => shown(a, a.startingBalance + (sumMap.get(a.id) ?? 0), sumMap.has(a.id), ctx)),
+    rows.map((a) =>
+      shown(
+        a,
+        a.startingBalance + (sumMap.get(a.id) ?? 0),
+        sumMap.has(a.id),
+        ctx,
+        lastMap.get(a.id) ?? null,
+      ),
+    ),
   );
 });
 
@@ -198,9 +234,11 @@ accountsRouter.post('/', (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
+  const { balanceAsOf, ...data } = parsed.data;
   const account = {
     id: nanoid(),
-    ...parsed.data,
+    ...data,
+    balanceAsOf: balanceAsOf && data.startingBalance !== 0 ? balanceAsOf : null,
     currency: storedCurrency(parsed.data.currency) ?? null,
     // Homes, cars, investments and loans stay off budget unless asked otherwise
     isOffBudget: parsed.data.isOffBudget ?? defaultOffBudget(parsed.data.type),
@@ -224,26 +262,98 @@ accountsRouter.put('/reorder', (req, res) => {
   res.json({ ok: true });
 });
 
+accountsRouter.get('/:id/reconcile', (req, res) => {
+  try {
+    res.json(reconciliationSnapshot(req.params.id));
+  } catch (error) {
+    if (error instanceof ReconciliationError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
+});
+
+accountsRouter.get('/:id/reconcile/last', (req, res) => {
+  res.json(lastReconciliation(req.params.id));
+});
+
+accountsRouter.post('/:id/reconcile/undo', (req, res) => {
+  try {
+    res.json(undoLastReconciliation(req.params.id));
+  } catch (error) {
+    if (error instanceof ReconciliationError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
+});
+
+accountsRouter.post('/:id/reconcile', (req, res) => {
+  const parsed = z
+    .object({
+      transactionIds: z.array(z.string().min(1).max(64)).max(100_000),
+      statementBalance: z.number().int().min(-1e13).max(1e13),
+      expectedBalance: z.number().int().min(-1e13).max(1e13),
+      revision: z.string().min(1).max(200),
+      createAdjustment: z.boolean(),
+    })
+    .strict()
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    res.json(reconcile(req.params.id, parsed.data));
+  } catch (error) {
+    if (error instanceof ReconciliationError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
+});
+
 accountsRouter.put('/:id/reconcile', (req, res) => {
   const parsed = z
     .object({ transactionIds: z.array(z.string().max(64)).min(1).max(100_000) })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  // Only this account's transactions
-  const result = db
-    .update(transactions)
-    .set({ reconciled: 1 })
-    .where(
-      and(
-        eq(transactions.accountId, req.params.id),
-        inArray(transactions.id, parsed.data.transactionIds),
-        ne(transactions.reconciled, 1),
-      ),
+  if (bankLinked(req.params.id)) {
+    const selected = db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.accountId, req.params.id),
+          inArray(transactions.id, parsed.data.transactionIds),
+        ),
+      )
+      .all();
+    if (
+      selected.some((t) => t.amount > 0 && !t.reconciled && t.importedId?.startsWith('schedule:'))
     )
-    .run();
+      return res
+        .status(409)
+        .json({ error: 'Review generated income against its bank receipt before reconciling.' });
+  }
 
-  res.json({ reconciled: result.changes });
+  // Only this account's transactions
+  const result = db.transaction(() => {
+    const pending = db
+      .select({ id: transactions.id })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.accountId, req.params.id),
+          inArray(transactions.id, parsed.data.transactionIds),
+          ne(transactions.reconciled, 1),
+        ),
+      )
+      .all()
+      .map((t) => t.id);
+    if (pending.length) {
+      db.update(transactions).set({ reconciled: 1 }).where(inArray(transactions.id, pending)).run();
+      recordReconciliation(req.params.id, pending, 0);
+    }
+    return pending.length;
+  });
+
+  res.json({ reconciled: result });
 });
 
 const storedImportSettings = (id: string) =>
@@ -347,16 +457,63 @@ accountsRouter.put('/:id', (req, res) => {
   }
 
   if (Object.keys(data).length) {
-    db.update(accounts).set(data).where(eq(accounts.id, req.params.id)).run();
+    db.update(accounts)
+      .set({
+        ...data,
+        // A hand-edited starting balance is the owner's word, not "today's balance" any more
+        ...(data.startingBalance !== undefined && data.startingBalance !== existing.startingBalance
+          ? { balanceAsOf: null }
+          : {}),
+      })
+      .where(eq(accounts.id, req.params.id))
+      .run();
   }
   const updated = db.select().from(accounts).where(eq(accounts.id, req.params.id)).get()!;
   res.json(withBalance(updated));
 });
 
+// Delete an account and all its transactions for good (typed name). Closing stays DELETE /:id.
+accountsRouter.get('/:id/deletion', (req, res) => {
+  try {
+    res.json(previewAccountDeletion(req.params.id));
+  } catch (error) {
+    if (error instanceof AccountDeletionError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
+});
+
+accountsRouter.post('/:id/delete-permanently', (req, res) => {
+  const parsed = z
+    .object({ confirmName: z.string().max(500) })
+    .strict()
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Type the account name to confirm' });
+  try {
+    res.json(deleteAccountWithTransactions(req.params.id, parsed.data.confirmName));
+  } catch (error) {
+    if (error instanceof AccountDeletionError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
+});
+
 accountsRouter.delete('/:id', (req, res) => {
-  db.update(accounts)
-    .set({ closedAt: new Date().toISOString() })
-    .where(eq(accounts.id, req.params.id))
-    .run();
+  const result = db.transaction(() => {
+    const account = db.select().from(accounts).where(eq(accounts.id, req.params.id)).get();
+    if (!account) return 'missing';
+    if (account.startingBalance + accountTransactionSum(account.id) !== 0) return 'nonzero';
+    db.update(accounts)
+      .set({ closedAt: new Date().toISOString() })
+      .where(eq(accounts.id, account.id))
+      .run();
+    return null;
+  });
+  if (result === 'missing') return res.status(404).json({ error: 'Account not found' });
+  if (result === 'nonzero')
+    return res.status(409).json({
+      error:
+        'Reconcile this account to zero before closing it. Closing does not remove its money or debt.',
+    });
   res.status(204).send();
 });

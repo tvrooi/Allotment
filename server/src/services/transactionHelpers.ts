@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { payees, transactions, householdEvents } from '../db/schema.js';
+import { payees, transactions, householdEvents, upDeletedImports } from '../db/schema.js';
 import { eq, inArray } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { unlinkOccurrenceByTransactionId } from './matchingEngine.js';
@@ -87,5 +87,34 @@ export function deleteTransactionRow(row: { id: string; transferTransactionId: s
     tx.delete(transactions).where(eq(transactions.id, row.id)).run();
     // The other side is an ordinary transaction again, worth its own amount
     if (other) refreshMainAmounts([other.id]);
+  });
+}
+
+/** An Up import: the sync would bring it back after a delete unless it is remembered */
+export const isUpImport = (importedId: string | null | undefined): importedId is string =>
+  !!importedId && importedId.startsWith('up:');
+
+/**
+ * Deletes a transaction because its owner asked to (the register's Delete and bulk delete).
+ * An Up import is remembered (`up_deleted_imports`), so the next sync doesn't import it again;
+ * Up review lists it to restore. Syncs and other internal clean-ups use deleteTransactionRow.
+ */
+export function deleteTransactionByOwner(row: {
+  id: string;
+  accountId: string;
+  importedId: string | null;
+  transferTransactionId: string | null;
+}) {
+  db.transaction((tx) => {
+    if (isUpImport(row.importedId))
+      tx.insert(upDeletedImports)
+        .values({
+          accountId: row.accountId,
+          importedId: row.importedId,
+          deletedAt: new Date().toISOString(),
+        })
+        .onConflictDoNothing()
+        .run();
+    deleteTransactionRow(row);
   });
 }

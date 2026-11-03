@@ -36,14 +36,14 @@ test('the first person sets up with a name and keeps the budget already there', 
   baseURL,
 }) => {
   await owner.goto(`${baseURL}/`);
-  await expect(owner.getByText('Set up your FlyBudget server')).toBeVisible();
+  await expect(owner.getByText('Set up your Allotment server')).toBeVisible();
   await expect(owner.getByText(/You become the administrator/)).toBeVisible();
   await owner.getByLabel('Your name').fill('Tristan');
   await owner.getByLabel('Setup code').fill(lastCode(/setup code/i));
   await owner.getByLabel('New password').fill(OWNER);
   await owner.getByLabel('Confirm password').fill(OWNER);
   await owner.getByRole('button', { name: 'Create password' }).click();
-  await expect(owner.getByRole('heading', { name: 'Welcome to FlyBudget' })).toBeVisible();
+  await expect(owner.getByRole('heading', { name: 'Welcome to Allotment' })).toBeVisible();
   const made = await owner.request.post('/api/accounts', {
     data: { name: 'Owner everyday', type: 'checking', startingBalance: 50_000 },
   });
@@ -68,14 +68,14 @@ test('the administrator adds a person, who gets an invitation code', async () =>
 
 test('the invited person signs up and sees only their own, empty budget', async ({ baseURL }) => {
   await partner.goto(`${baseURL}/`);
-  await expect(partner.getByText('Sign in to FlyBudget')).toBeVisible();
+  await expect(partner.getByText('Sign in to Allotment')).toBeVisible();
   await partner.getByRole('button', { name: 'I have an invitation' }).click();
   await partner.getByLabel('Name').fill('edward');
   await partner.getByLabel('Invitation code').fill(invitation.toLowerCase());
   await partner.getByLabel('New password').fill(PARTNER);
   await partner.getByLabel('Confirm password').fill(PARTNER);
   await partner.getByRole('button', { name: 'Set password and sign in' }).click();
-  await expect(partner.getByRole('heading', { name: 'Welcome to FlyBudget' })).toBeVisible();
+  await expect(partner.getByRole('heading', { name: 'Welcome to Allotment' })).toBeVisible();
   const accounts = await partner.request.get('/api/accounts');
   expect(await accounts.json()).toEqual([]);
   const made = await partner.request.post('/api/accounts', {
@@ -94,6 +94,93 @@ test('the invited person signs up and sees only their own, empty budget', async 
   expect((await ownerAccounts.json()).map((a: { name: string }) => a.name)).toEqual([
     'Owner everyday',
   ]);
+});
+
+test("two people combine their households and see each other's entries", async () => {
+  // Each keeps a household in their own budget, with one entry
+  const home = await (
+    await owner.request.post('/api/households', {
+      data: { name: 'Home', currency: 'AUD', people: ['Tristan', 'Edward', 'Sam'], selfIndex: 0 },
+    })
+  ).json();
+  const [me, ed, sam] = home.people;
+  await owner.request.post(`/api/households/${home.group.id}/events`, {
+    data: {
+      kind: 'expense',
+      date: '2026-10-01',
+      description: 'Groceries',
+      amount: 9_000,
+      payerId: me.id,
+      mode: 'weight',
+      shares: [me, ed, sam].map((p: { id: string }) => ({ personId: p.id, value: 1 })),
+    },
+  });
+  const ours = await (
+    await partner.request.post('/api/households', {
+      data: { name: 'Our place', currency: 'AUD', people: ['Edward', 'Tristan'], selfIndex: 0 },
+    })
+  ).json();
+  const [edSelf, edTristan] = ours.people;
+  await partner.request.post(`/api/households/${ours.group.id}/events`, {
+    data: {
+      kind: 'expense',
+      date: '2026-10-02',
+      description: 'Electricity',
+      amount: 20_000,
+      payerId: edSelf.id,
+      mode: 'weight',
+      shares: [edSelf, edTristan].map((p: { id: string }) => ({ personId: p.id, value: 1 })),
+    },
+  });
+
+  // Tristan asks, naming who Edward is in his household
+  await owner.goto('/household');
+  const ask = owner.getByRole('region', { name: 'Combine with another Allotment user' });
+  await ask.getByLabel('Combine with').selectOption({ label: 'Edward' });
+  await ask.getByLabel('Who they are in this household').selectOption({ label: 'Edward' });
+  await ask.getByRole('button', { name: 'Ask to combine' }).click();
+  await expect(ask.getByText('Waiting for Edward to accept.')).toBeVisible();
+
+  // Edward accepts with his own household
+  await partner.goto('/household');
+  const accept = partner.getByRole('region', { name: 'Combine with another Allotment user' });
+  await expect(accept.getByText('Tristan asked to combine')).toBeVisible();
+  await accept.getByLabel('Who Tristan is in Our place').selectOption({ label: 'Tristan' });
+  await accept.getByRole('button', { name: 'Combine with Our place' }).click();
+  await expect(accept.getByText('Combined with Tristan.')).toBeVisible();
+
+  // He sees Tristan's entry, its split and the combined balances
+  await accept.getByRole('button', { name: /Groceries/ }).click();
+  await expect(accept.getByText("Tristan's", { exact: false }).first()).toBeVisible();
+  const split = accept.getByRole('table', { name: 'Split' });
+  await expect(split).toContainText('Sam');
+  await expect(split).toContainText('$30');
+  // His own new budget has no currency yet, so AUD shows as A$
+  await expect(accept.getByRole('listitem').filter({ hasText: 'Sam' }).first()).toContainText(
+    /-A?\$30/,
+  );
+  await accept.screenshot({ path: test.info().outputPath('combined-household.png') });
+  // Nothing else from Tristan's budget
+  expect(await accept.innerText()).not.toContain('Owner everyday');
+
+  // A note either can edit
+  await accept.getByLabel('Shared note').fill('Dinner with Sam');
+  await accept.getByRole('button', { name: 'Save note' }).click();
+  await expect(accept.getByText('Last changed by Edward')).toBeVisible();
+  await owner.reload();
+  await ask.getByRole('button', { name: /Groceries/ }).click();
+  await expect(ask.getByLabel('Shared note')).toHaveValue('Dinner with Sam');
+  await ask.getByLabel('Shared note').fill('Dinner with Sam and friends');
+  await ask.getByRole('button', { name: 'Save note' }).click();
+  await expect(ask.getByText('Last changed by Tristan')).toBeVisible();
+
+  // Either can stop, and then neither sees the other's entries
+  await ask.getByRole('button', { name: 'Stop combining' }).click();
+  await owner.getByRole('dialog').getByRole('button', { name: 'Stop combining' }).click();
+  await expect(ask.getByRole('button', { name: 'Ask to combine' })).toBeVisible();
+  await partner.reload();
+  await expect(accept.getByText('Combined with Tristan.')).toBeHidden();
+  await expect(accept.getByRole('button', { name: /Groceries/ })).toHaveCount(0);
 });
 
 test('signing in needs the right name for the password', async ({ browser, baseURL }) => {
@@ -144,7 +231,7 @@ test("another person signing in on the same browser takes over every tab's budge
   );
   await other.request.post('/api/auth/logout');
   await other.goto(`${baseURL}/`);
-  await expect(partner.getByText('Sign in to FlyBudget')).toBeVisible();
+  await expect(partner.getByText('Sign in to Allotment')).toBeVisible();
   // The page started again: nothing of Edward's stays in its memory (undo history, toasts...)
   await partner.waitForLoadState();
   expect(await partner.evaluate(() => 'edwardWasHere' in window)).toBe(false);

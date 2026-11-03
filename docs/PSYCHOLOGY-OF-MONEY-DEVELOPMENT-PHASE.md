@@ -10,7 +10,7 @@ personal finance advice.
 
 ## Baseline and dependencies
 
-The original proposal ([PR #11](https://github.com/tvrooi/FlyBudget/pull/11)) reviewed
+The original proposal ([PR #11](https://github.com/tvrooi/Allotment/pull/11)) reviewed
 main `4b97955` (`0.2.0-up.8`), when phases 5 and 6 were only planned. They have since
 been implemented: phase 5 read-only forecasts (`0.2.0-up.13`, [Forecasts](FORECASTS.md)),
 6A envelope funding, 6B card payments, 6C category-funded goals, 6D targets, and 6E–6G

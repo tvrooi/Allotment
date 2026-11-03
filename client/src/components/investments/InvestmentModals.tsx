@@ -228,7 +228,7 @@ export function PriceModal({ security, onClose }: { security: Security; onClose:
     <Modal isOpen onClose={onClose} title={`Price of ${security.symbol}`} size="sm">
       <form onSubmit={submit} className="space-y-4">
         <p className="text-sm text-text-tertiary">
-          Prices are entered by you; FlyBudget doesn't fetch quotes. A day's price replaces any
+          Prices are entered by you; Allotment doesn't fetch quotes. A day's price replaces any
           price already entered for that day.
         </p>
         <div className="grid grid-cols-2 gap-3">

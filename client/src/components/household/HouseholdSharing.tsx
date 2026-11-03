@@ -7,15 +7,19 @@ import {
   recordRepayment,
   removePoolAccount,
   setDefaultSplit,
+  setHouseholdLogo,
   type HouseholdSplit,
   type RepaymentSuggestion,
 } from '../../api/households';
 import { formatMoney } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { Button } from '../ui/Button';
-import { Input, Select } from '../ui/Input';
+import { Select } from '../ui/Input';
+import { SplitEditor, describeSplit } from './SplitEditor';
+import { HouseholdIcon } from './HouseholdIcon';
 
-// Household → Sharing: the accounts the household pays from (each one outside your personal
+// Household → Sharing: the household's picture (shown on payments shared with it), the accounts
+// the household pays from (each one outside your personal
 // budget), the split "Share with household" uses, and money received that looks like someone
 // repaying what they owe.
 
@@ -24,6 +28,8 @@ const card = 'bg-surface rounded-lg shadow-card border border-border-light p-4';
 interface Props {
   group: {
     id: string;
+    name: string;
+    logo?: string | null;
     currency: string;
     accountId: string | null;
     poolAccountIds: string[];
@@ -39,6 +45,7 @@ export function HouseholdSharing({ group, people }: Props) {
   const refresh = async () => {
     setError('');
     await qc.invalidateQueries({ queryKey: ['households'] });
+    await qc.invalidateQueries({ queryKey: ['shared-households'] });
     await qc.invalidateQueries({ queryKey: ['accounts'] });
     await qc.invalidateQueries({ queryKey: ['budget'] });
     await qc.invalidateQueries({ queryKey: ['budget-summary'] });
@@ -53,6 +60,11 @@ export function HouseholdSharing({ group, people }: Props) {
   });
   const split = useMutation({
     mutationFn: (s: HouseholdSplit | null) => setDefaultSplit(group.id, s),
+    onSuccess: refresh,
+    onError,
+  });
+  const logo = useMutation({
+    mutationFn: (value: string | null) => setHouseholdLogo(group.id, value),
     onSuccess: refresh,
     onError,
   });
@@ -74,32 +86,6 @@ export function HouseholdSharing({ group, people }: Props) {
   const [adding, setAdding] = useState('');
 
   const current = group.defaultSplit;
-  const [mode, setMode] = useState<HouseholdSplit['mode']>(current?.mode ?? 'equal');
-  const [values, setValues] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      people.map((p) => {
-        const v = current?.shares.find((s) => s.personId === p.id)?.value;
-        return [p.id, v === undefined ? '' : String(current?.mode === 'percentage' ? v / 100 : v)];
-      }),
-    ),
-  );
-  function saveSplit() {
-    if (mode === 'equal') return split.mutate(null);
-    const shares = people.map((p) => {
-      const n = Number(values[p.id] || 0);
-      return { personId: p.id, value: mode === 'percentage' ? Math.round(n * 100) : Math.round(n) };
-    });
-    split.mutate({ mode, shares });
-  }
-  const describe = (s: HouseholdSplit | null) =>
-    !s || s.mode === 'equal'
-      ? 'equal between everyone'
-      : s.shares
-          .map(
-            (x) =>
-              `${people.find((p) => p.id === x.personId)?.name ?? '?'} ${s.mode === 'percentage' ? `${x.value / 100}%` : `×${x.value}`}`,
-          )
-          .join(', ');
 
   return (
     <section className={card} aria-labelledby="household-sharing">
@@ -111,6 +97,19 @@ export function HouseholdSharing({ group, people }: Props) {
           {error}
         </p>
       )}
+
+      <h3 className="text-xs font-semibold text-text-secondary mt-3">Picture</h3>
+      <p className="text-xs text-text-tertiary">
+        Shown next to each payment shared with {group.name}. Without one, its initial is shown.
+      </p>
+      <div className="mt-2">
+        <HouseholdIcon
+          name={group.name}
+          logo={group.logo}
+          size="lg"
+          onLogoChange={(value) => logo.mutate(value)}
+        />
+      </div>
 
       <h3 className="text-xs font-semibold text-text-secondary mt-3">Household accounts</h3>
       <p className="text-xs text-text-tertiary">
@@ -167,48 +166,36 @@ export function HouseholdSharing({ group, people }: Props) {
       <h3 className="text-xs font-semibold text-text-secondary mt-4">Default split</h3>
       <p className="text-xs text-text-tertiary">
         Used by <strong>Share with household</strong> in transactions and by rules. Now{' '}
-        {describe(current)}.
+        {describeSplit(current, people)}.
       </p>
-      <div className="mt-2 grid gap-2">
-        <Select
-          aria-label="Split"
-          value={mode}
-          onChange={(e) => setMode(e.target.value as HouseholdSplit['mode'])}
-        >
-          <option value="equal">Equal</option>
-          <option value="percentage">Percentages</option>
-          <option value="weight">Weights (for example 2 : 1 : 1)</option>
-        </Select>
-        {mode !== 'equal' &&
-          people.map((p) => (
-            <label key={p.id} className="flex items-center gap-2 text-xs text-text-secondary">
-              <span className="w-24 truncate">{p.name}</span>
-              <Input
-                aria-label={`${p.name}'s ${mode === 'percentage' ? 'percentage' : 'weight'}`}
-                inputMode="decimal"
-                value={values[p.id] ?? ''}
-                onChange={(e) => setValues((v) => ({ ...v, [p.id]: e.target.value }))}
-              />
-              {mode === 'percentage' && '%'}
-            </label>
-          ))}
-        <div>
-          <Button size="sm" variant="secondary" onClick={saveSplit} disabled={split.isPending}>
-            Save split
-          </Button>
-        </div>
+      <div className="mt-2">
+        <SplitEditor
+          people={people}
+          current={current}
+          saving={split.isPending}
+          onSave={(next) => split.mutate(next)}
+        />
       </div>
 
       {suggestions.length > 0 && self && (
         <>
-          <h3 className="text-xs font-semibold text-text-secondary mt-4">Looks like repayments</h3>
-          <ul className="mt-1 divide-y divide-border-light" aria-label="Possible repayments">
+          <h3 className="text-xs font-semibold text-text-secondary mt-4">
+            Looks like repayments or contributions
+          </h3>
+          <ul
+            className="mt-1 divide-y divide-border-light"
+            aria-label="Possible repayments and contributions"
+          >
             {suggestions.map((s) => (
               <li key={s.transactionId} className="flex flex-wrap items-center gap-2 py-2 text-sm">
                 <span className="flex-1 min-w-48">
                   {formatDay(s.date)} · {s.payeeName}: {money(s.amount)}
                   <span className="block text-xs text-text-tertiary">
-                    {s.personName} owes {money(s.owes)}
+                    {s.kind === 'contribution'
+                      ? s.owes > 0
+                        ? `${s.personName} owes the household account ${money(s.owes)}`
+                        : `Into the household account from ${s.personName}`
+                      : `${s.personName} owes you ${money(s.owes)}`}
                     {s.notes ? ` · “${s.notes}”` : ''}
                   </span>
                 </span>
@@ -218,7 +205,11 @@ export function HouseholdSharing({ group, people }: Props) {
                   disabled={repay.isPending}
                   onClick={() => repay.mutate(s)}
                 >
-                  Record {s.personName}'s repayment
+                  {s.kind === 'contribution'
+                    ? s.personId === self.id
+                      ? 'Record your contribution'
+                      : `Record ${s.personName}'s contribution`
+                    : `Record ${s.personName}'s repayment`}
                 </Button>
               </li>
             ))}

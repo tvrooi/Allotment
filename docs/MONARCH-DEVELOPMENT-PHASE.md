@@ -7,7 +7,7 @@ filtered export and the shared savings rate; (3) home dashboard preferences;
 [expansion proposals](PHASE-8-PROPOSALS.md).
 
 This phase consolidates the recommendations from the owner's signed-in Monarch
-REA inspection into the fork's development pipeline. It extends FlyBudget's
+REA inspection into the fork's development pipeline. It extends Allotment's
 existing features; it is not a claim of complete Monarch parity.
 
 ## Position and dependencies
@@ -16,7 +16,7 @@ Keep the existing phase IDs. Phase 7 is the financial-resilience
 [brief](PSYCHOLOGY-OF-MONEY-DEVELOPMENT-PHASE.md); this is phase 8.
 Phase numbers identify workstreams, not a strict execution order.
 
-The initial inspection compared FlyBudget commit `05f653e`, and the first brief
+The initial inspection compared Allotment commit `05f653e`, and the first brief
 was reconciled against main `4413bc3`. This amendment reconciles it against main
 `2319038`, which also includes phase 5 forecasts, 6D targets, 6E payday
 integration, 6F buffer, 6G review and phase 7 resilience (7A–7F). Do not
@@ -215,7 +215,7 @@ household authentication are outside this phase.
 
 ## Acceptance and verification
 
-Use a disposable FlyBudget budget with mock data only. The saved Monarch session
+Use a disposable Allotment budget with mock data only. The saved Monarch session
 is not a test dependency, and no real account or bank export belongs in fixtures.
 
 | Fixture      | Date       | Direction | Category  |   Amount |
@@ -283,5 +283,5 @@ identifiers, personal values and credentials are excluded. Manual entry and
 aggregation were tested on four records. Attachments, split edits, goal-link
 accounting, holdings and forecasts were not exercised. Their visible controls
 do not establish their implementation or correctness. Phase 8's design choices
-must be validated against FlyBudget's current accounting, not inferred Monarch
+must be validated against Allotment's current accounting, not inferred Monarch
 internals.

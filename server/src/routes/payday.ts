@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
-import { paydayPlans, paydayFundingEvents } from '../db/schema.js';
+import { paydayPlans, paydayFundingEvents, paydayFundingUndos } from '../db/schema.js';
 import { dateInZone, paydayConfigSchema, paydayRequestSchema } from '../services/paydayConfig.js';
 import {
   applyPayday,
@@ -13,6 +13,7 @@ import {
   PaydayError,
   paydays,
   previewPayday,
+  undoPayday,
   validateCategories,
 } from '../services/paydayService.js';
 import { addMonths, format, parseISO } from 'date-fns';
@@ -82,6 +83,12 @@ paydayRouter.get(
         .where(eq(paydayFundingEvents.planId, plan.id))
         .all()
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      undone: db
+        .select()
+        .from(paydayFundingUndos)
+        .where(eq(paydayFundingUndos.planId, plan.id))
+        .all()
+        .sort((a, b) => b.undoneAt.localeCompare(a.undoneAt)),
     });
   }),
 );
@@ -102,10 +109,18 @@ paydayRouter.post(
     res.json(applyPayday(req.params.id, request, request.previewKey));
   }),
 );
+paydayRouter.post(
+  '/:id/events/:eventId/undo',
+  action((req, res) => {
+    res.json(undoPayday(req.params.id, req.params.eventId));
+  }),
+);
 
 // Catch locally as well as in Express: the offline demo's router runs the same
 // handlers and intentionally does not implement Express error middleware.
-function action(handler: RequestHandler<{ id: string }>): RequestHandler<{ id: string }> {
+function action(
+  handler: RequestHandler<{ id: string; eventId: string }>,
+): RequestHandler<{ id: string; eventId: string }> {
   return (req, res, next) => {
     try {
       return handler(req, res, next);

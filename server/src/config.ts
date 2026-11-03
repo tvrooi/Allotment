@@ -1,6 +1,6 @@
 // Runtime configuration from environment variables.
 //
-// FlyBudget runs in three ways:
+// Allotment runs in three ways:
 // - desktop app (Electron): local only, protected by a per-launch secret
 // - `npm run dev`: local only, for development
 // - server mode (Docker / self-hosted): reachable from other devices, so every
@@ -39,7 +39,7 @@ export const allowedHosts = (process.env.FLYBUDGET_ALLOWED_HOSTS ?? '')
 export const trustProxy = process.env.FLYBUDGET_TRUST_PROXY;
 
 /**
- * How FlyBudget is running: the desktop app (Electron passes a per-launch API token),
+ * How Allotment is running: the desktop app (Electron passes a per-launch API token),
  * a self-hosted server, or `npm run dev`. Read on load, before Electron clears the token
  * from the environment.
  */

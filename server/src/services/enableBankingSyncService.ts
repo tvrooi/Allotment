@@ -120,7 +120,7 @@ function uniqueAccounts(list: readonly SessionAccount[]): SessionAccount[] {
   return list.filter((acct) => !seen.has(acct.uid) && !!seen.add(acct.uid));
 }
 
-/** A bank account FlyBudget hasn't seen: not mapped to a FlyBudget account yet */
+/** A bank account Allotment hasn't seen: not mapped to an Allotment account yet */
 function newMapping(connectionId: string, acct: SessionAccount, now: string) {
   return {
     id: nanoid(),
@@ -137,7 +137,7 @@ function newMapping(connectionId: string, acct: SessionAccount, now: string) {
   };
 }
 
-/** Saves a new bank login and its accounts (not mapped to FlyBudget accounts yet). */
+/** Saves a new bank login and its accounts (not mapped to Allotment accounts yet). */
 export function saveNewConnection(
   session: EnableBankingSession,
   validUntil: Date,
@@ -250,7 +250,7 @@ export interface EnableBankingSyncResult {
   connectionId: string;
   bankName: string;
   added: number;
-  /** Already in FlyBudget (from a file or typed in), now recognised as this bank's */
+  /** Already in Allotment (from a file or typed in), now recognised as this bank's */
   adopted: number;
   skipped: SkippedCounts;
   errors: string[];
@@ -492,7 +492,7 @@ export async function syncEnableBankingConnection(
 
 /**
  * On startup no sync can be running, so a connection still marked "syncing" was cut off
- * (FlyBudget quit or crashed mid-sync). Without this its Sync button would stay disabled
+ * (Allotment quit or crashed mid-sync). Without this its Sync button would stay disabled
  * until the next startup sync, which waits for the bank's daily limit.
  */
 export function resetInterruptedSyncs() {

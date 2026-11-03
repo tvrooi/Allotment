@@ -8,7 +8,7 @@ import {
   tags,
   transactions,
 } from '../db/schema.js';
-import { shareTransaction } from './householdService.js';
+import { autoShareBillPayment, shareTransaction } from './householdService.js';
 import { claimByRule, claimedIds } from './taxService.js';
 import { scheduleReceiptMatching } from './receiptMatching.js';
 import { and, desc, eq, inArray, isNull, ne } from 'drizzle-orm';
@@ -110,6 +110,11 @@ export type NewTransactionInput = {
   id?: string;
   /** A balance correction (reconciliation, "Update value"): not categorized by rules */
   isAdjustment?: boolean;
+  /**
+   * A suggestion that applies only when no rule and no payee default chose a category (a bank's
+   * own category). Never changes a row that exists already.
+   */
+  fallbackCategoryId?: string | null;
 };
 
 type InsertOptions = {
@@ -152,6 +157,8 @@ export function insertNewTransaction(input: NewTransactionInput, opts: InsertOpt
     tx.categoryId =
       db.select().from(payees).where(eq(payees.id, tx.payeeId)).get()?.defaultCategoryId ?? null;
   }
+  if (!tx.categoryId && !split && input.fallbackCategoryId)
+    tx.categoryId = input.fallbackCategoryId;
 
   const now = new Date().toISOString();
   const row = {
@@ -182,6 +189,8 @@ export function insertNewTransaction(input: NewTransactionInput, opts: InsertOpt
     db.insert(transactions).values(row).run();
     for (const tagId of ruleTags) addTransactionTag(row.id, tagId);
     if (share) shareByRule(share, row.id);
+    // Otherwise a household bill set to share its payments as they arrive
+    else autoShareBillPayment(row);
     if (taxLabel) claimByRule(row.id, taxLabel);
     // A receipt waiting for this transaction is matched once the import is done
     scheduleReceiptMatching();

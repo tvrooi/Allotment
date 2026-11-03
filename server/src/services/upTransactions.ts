@@ -37,6 +37,10 @@ export const upTransactionSchema = z.object({
   relationships: z.object({
     account: z.object({ data: z.object({ id: bankId }) }),
     transferAccount: z.object({ data: z.object({ id: bankId }).nullable() }),
+    // Up's own category (a slug such as `groceries`). Both are optional and the slug is any
+    // string, so a category Up adds later is tolerated rather than failing the whole sync.
+    category: z.object({ data: z.object({ id: z.string().max(200) }).nullable() }).optional(),
+    parentCategory: z.object({ data: z.object({ id: z.string().max(200) }).nullable() }).optional(),
   }),
 });
 export type UpAccount = z.infer<typeof upAccountSchema>;
@@ -78,6 +82,10 @@ export function upImportRows(tx: UpTransaction, upAccountId: string) {
     payeeName: cleanUpText(a.description).slice(0, 200) || 'Unknown',
     notes: notes.join(' · ').slice(0, 5_000) || null,
     importedId: `up:${upAccountId}:${tx.id}`,
+    // Only a hint for new rows (upCategoryMap.ts); transfers are never categorised from it.
+    upCategory: tx.relationships.transferAccount.data
+      ? null
+      : (tx.relationships.category?.data?.id ?? null),
   };
   // Round-up metadata alone does not identify another bank posting or destination.
   // Keep the purchase amount and bank ID; never add the boost twice or invent transfer legs.
@@ -90,6 +98,7 @@ export function upImportRows(tx: UpTransaction, upAccountId: string) {
           amount: a.cashback.amount.valueInBaseUnits,
           payeeName: cleanUpText(a.cashback.description).slice(0, 200) || 'Up cashback',
           importedId: base.importedId + ':cashback',
+          upCategory: null,
         },
       ]
     : [base];

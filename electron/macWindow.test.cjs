@@ -10,7 +10,7 @@ const {
 } = require('./dist/macWindow.js');
 
 const page = (head) =>
-  `<!doctype html><html><head><title>FlyBudget</title>${head}</head><body><div id="root"></div></body></html>`;
+  `<!doctype html><html><head><title>Allotment</title>${head}</head><body><div id="root"></div></body></html>`;
 const respond =
   (body, init = {}) =>
   async () =>

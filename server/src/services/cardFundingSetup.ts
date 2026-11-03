@@ -90,6 +90,8 @@ function install(accountId: string, initialFunding: number) {
   const card = after.cards.find((c) => c.accountId === accountId)!;
   if (!after.complete)
     throw new BudgetError('Add missing account and transaction exchange rates before setup');
+  if (initialFunding > 0 && after.accountIssues.length)
+    throw new BudgetError('Reconcile account balance discrepancies before funding a card payment.');
   if (initialFunding > card.debt)
     throw new BudgetError('Initial funding cannot exceed existing card debt', 400);
   if (after.unassigned < 0)
@@ -119,6 +121,24 @@ export function previewCardSetup(accountId: string, initialFunding: number) {
     beforeUnassigned: before.unassigned,
     ...result!,
   };
+}
+/**
+ * Payment funding for a brand-new account with nothing on it (an Afterpay account made from
+ * the payment-plan setup): there is no existing debt or assignment to review, so the preview
+ * would show no change. Same checks as a reviewed setup; throws BudgetError when they fail.
+ */
+export function setupEmptyCardFunding(accountId: string) {
+  return db.transaction(() => {
+    const existing = db
+      .select({ id: transactions.id })
+      .from(transactions)
+      .where(eq(transactions.accountId, accountId))
+      .get();
+    const account = db.select().from(accounts).where(eq(accounts.id, accountId)).get();
+    if (existing || !account || account.startingBalance !== 0)
+      throw new BudgetError('Review payment funding for an account that already has activity');
+    return install(accountId, 0);
+  });
 }
 export function applyCardSetup(accountId: string, initialFunding: number, revision: string) {
   return db.transaction(() => {
@@ -180,6 +200,10 @@ export function previewCardAssignment(
         .run();
       const after = fundingState(),
         card = after.cards.find((c) => c.accountId === accountId)!;
+      if (after.reserved > before.reserved && after.accountIssues.length)
+        throw new BudgetError(
+          'Reconcile account balance discrepancies before funding a card payment.',
+        );
       if (after.reserved > before.reserved && after.unassigned < 0)
         throw new BudgetError('Insufficient unassigned money for this payment funding');
       throw new FundingPreviewRollback({
