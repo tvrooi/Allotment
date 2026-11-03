@@ -46,7 +46,7 @@ test.describe('account register', () => {
     await newForm(page).getByRole('button', { name: 'Save' }).click();
 
     await expect(page.getByRole('button', { name: 'Corner Grocery', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Groceries' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Groceries', exact: true })).toBeVisible();
     await expect(header(page)).toContainText('$957.50');
     expect(await api.balance(checking.id)).toBe(95_750);
 

@@ -98,7 +98,7 @@ test('a balance typed as "today" is still that balance after importing older his
     .getByRole('complementary')
     .getByRole('link', { name: 'Accounts', exact: true })
     .click();
-  await page.getByRole('main').getByText('Everyday', { exact: true }).click();
+  await page.getByRole('main').getByText('Everyday', { exact: true }).first().click();
   const dialog = await importFile(page, ynabStyleCsv());
   await dialog.getByRole('button', { name: 'Preview' }).click();
   await dialog.getByRole('button', { name: 'Preview' }).click();
