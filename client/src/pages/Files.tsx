@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Download, FolderOpen, Search, Star, Tag as TagIcon } from 'lucide-react';
 import { filesExportUrl, type FileFilter, type FileKind } from '../api/files';
@@ -171,6 +171,39 @@ export default function FilesPage() {
     setErrors(failed);
   }
 
+  // Files shared from another app (the phone's share sheet): the service worker held them on
+  // this device; upload them now, then forget them
+  const shared = params.get('shared');
+  const [sharedNote, setSharedNote] = useState<string | null>(null);
+  const took = useRef(false);
+  useEffect(() => {
+    if (shared === null || took.current) return;
+    took.current = true;
+    (async () => {
+      const files: File[] = [];
+      try {
+        const cache = await caches.open('flybudget-shared');
+        for (const request of await cache.keys()) {
+          const res = await cache.match(request);
+          if (!res) continue;
+          const blob = await res.blob();
+          const name = decodeURIComponent(res.headers.get('X-File-Name') ?? 'shared file');
+          files.push(new File([blob], name, { type: blob.type }));
+        }
+        await caches.delete('flybudget-shared');
+      } catch {
+        // No Cache Storage here: nothing was held
+      }
+      if (files.length) {
+        await add(files);
+        setSharedNote(`Added ${files.length} shared ${files.length === 1 ? 'file' : 'files'}.`);
+      } else setSharedNote('Nothing was shared. Share a file to Allotment from another app.');
+      set({ shared: null });
+    })();
+    // Runs once per share; add and set read the latest state when it does
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shared]);
+
   const filtered = !!(q || tag || kind || from || to || view);
 
   return (
@@ -190,7 +223,11 @@ export default function FilesPage() {
       />
       <div className="flex-1 overflow-y-auto px-6 py-5 max-md:px-4">
         <div className="flex gap-6 max-md:flex-col">
-          <aside className="w-52 shrink-0 space-y-4 max-md:w-full" aria-label="File views">
+          <aside
+            data-guide="files.views"
+            className="w-52 shrink-0 space-y-4 max-md:w-full"
+            aria-label="File views"
+          >
             <nav className="space-y-0.5 max-md:flex max-md:flex-wrap max-md:gap-1 max-md:space-y-0">
               {VIEWS.map((v) => (
                 <button
@@ -232,7 +269,7 @@ export default function FilesPage() {
           </aside>
 
           <div className="flex-1 min-w-0 space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
+            <div data-guide="files.search" className="flex flex-wrap items-center gap-2">
               <div className="relative flex-1 min-w-48">
                 <Search
                   size={14}
@@ -278,7 +315,14 @@ export default function FilesPage() {
               />
             </div>
 
-            <FileDrop onFiles={add} busy={upload.isPending} label="Add files" />
+            <div data-guide="files.add">
+              <FileDrop onFiles={add} busy={upload.isPending} label="Add files" />
+            </div>
+            {sharedNote && (
+              <p role="status" className="text-sm text-text-secondary">
+                {sharedNote}
+              </p>
+            )}
             {errors.map((e) => (
               <p key={e} role="alert" className="text-sm text-negative">
                 {e}

@@ -1,6 +1,7 @@
 // Every file in Files as one ZIP (docs/FILES.md §5): the files under files/, named by date and
 // name, and files.csv saying what each is, its labels and what it is linked to. JSON backups
 // carry no files, so this is how files move to another installation.
+import { createReadStream } from 'node:fs';
 import type { Response } from 'express';
 import { asc } from 'drizzle-orm';
 import { db } from '../db/index.js';
@@ -91,7 +92,8 @@ export async function exportAllFiles(res: Response) {
         path = `${stem}.${ext}`;
         for (let n = 2; names.has(path); n++) path = `${stem} ${n}.${ext}`;
         names.add(path);
-        if (file.path) await zip.addFile(path, file.path);
+        const onDisk = file.path;
+        if (onDisk) await zip.addStream(path, () => createReadStream(onDisk));
         else await zip.add(path, file.data!);
       }
       index.push([

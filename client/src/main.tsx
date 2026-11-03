@@ -70,4 +70,10 @@ if (
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
+  // Installable, and a share target: a phone's share sheet can send files to Files (the
+  // service worker receives them). Only here, where the service worker runs.
+  const manifest = document.createElement('link');
+  manifest.rel = 'manifest';
+  manifest.href = '/manifest.webmanifest';
+  document.head.appendChild(manifest);
 }

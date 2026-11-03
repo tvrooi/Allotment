@@ -57,6 +57,7 @@ test('every page fits a phone screen', async ({ page, api }, testInfo) => {
     ['payees', '/payees'],
     ['rules', '/rules'],
     ['settings', '/settings'],
+    ['files', '/files'],
   ];
 
   const problems: string[] = [];

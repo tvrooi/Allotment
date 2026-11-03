@@ -135,18 +135,20 @@ export class ZipWriter {
     await this.write(Buffer.from(data));
   }
 
-  async addFile(fileName: string, path: string) {
-    const { createReadStream } = await import('node:fs');
+  /**
+   * A file read in chunks, twice: `read` opens it afresh each time (fs.createReadStream). No Node
+   * module here, so the in-browser demo can bundle this file too.
+   */
+  async addStream(fileName: string, read: () => AsyncIterable<Uint8Array>) {
     let crc = 0xffffffff;
     let size = 0;
-    for await (const chunk of createReadStream(path) as AsyncIterable<Buffer>) {
+    for await (const chunk of read()) {
       for (let i = 0; i < chunk.length; i++) crc = CRC_TABLE[(crc ^ chunk[i]) & 0xff] ^ (crc >>> 8);
       size += chunk.length;
     }
     const name = Buffer.from(fileName, 'utf8');
     await this.write(this.headers(name, (crc ^ 0xffffffff) >>> 0, size));
-    for await (const chunk of createReadStream(path) as AsyncIterable<Buffer>)
-      await this.write(chunk);
+    for await (const chunk of read()) await this.write(Buffer.from(chunk));
   }
 
   async finish() {
