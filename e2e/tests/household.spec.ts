@@ -116,6 +116,78 @@ test('shares a payment with the household in one step, with the default split', 
   expect(event.shares.map((s: { amount: number }) => s.amount)).toEqual([3600, 2700, 2700]);
 });
 
+test('a household picture shows on the payments shared with it', async ({ page, api }) => {
+  const account = await api.createAccount('Everyday', 20000);
+  const shared = await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -4500,
+    payeeName: 'Mock Grocer',
+  });
+  await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -800,
+    payeeName: 'Mock Cafe',
+  });
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Juno'],
+    selfIndex: 0,
+  });
+
+  // Upload a picture in Household → Sharing (a 1×1 PNG, resized to a small square)
+  await open(page, '/household');
+  const sharing = page.getByRole('region', { name: 'Sharing' });
+  await sharing.getByTestId('household-logo-input').setInputFiles({
+    name: 'flat.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    ),
+  });
+  await expect(sharing.getByRole('button', { name: 'Remove the picture for Flat' })).toBeVisible();
+  const [listed] = await api.call('GET', '/households');
+  expect(listed.logo).toMatch(/^data:image\/png;base64,/);
+
+  await api.call('POST', `/households/${group.group.id}/share`, { transactionIds: [shared.id] });
+  await open(page, `/accounts/${account.id}`);
+  const rows = page.getByTestId('transaction-row');
+  const badge = rows
+    .filter({ hasText: 'Mock Grocer' })
+    .getByRole('img', { name: 'Shared with Flat' });
+  await expect(badge).toBeVisible();
+  await expect(badge).toHaveAttribute('src', listed.logo);
+  await expect(
+    rows.filter({ hasText: 'Mock Cafe' }).getByRole('img', { name: 'Shared with Flat' }),
+  ).toHaveCount(0);
+
+  // The details say where it's shared instead of offering to share it again
+  await rows.filter({ hasText: 'Mock Grocer' }).getByText('$45').click();
+  const status = page.getByTestId('shared-with-household');
+  await expect(status).toContainText('Shared with Flat');
+  const actions = status.locator('..');
+  await expect(actions.getByRole('button', { name: 'Share with household' })).toHaveCount(0);
+  await expect(actions.getByRole('button', { name: 'Share with people' })).toHaveCount(0);
+  await status.getByRole('button', { name: 'View in household' }).click();
+  await expect(page).toHaveURL(new RegExp(`/household\\?household=${group.group.id}$`));
+  await expect(page.getByRole('heading', { name: 'People & balances' })).toBeVisible();
+
+  // Without a picture, the household's initial shows instead
+  await page
+    .getByRole('region', { name: 'Sharing' })
+    .getByRole('button', { name: 'Remove the picture for Flat' })
+    .click();
+  await expect.poll(async () => (await api.call('GET', '/households'))[0].logo).toBeNull();
+  await open(page, `/accounts/${account.id}`);
+  await expect(
+    rows.filter({ hasText: 'Mock Grocer' }).getByRole('img', { name: 'Shared with Flat' }),
+  ).toHaveText('F');
+});
+
 test('picks payments in the register and shares just those, split equally', async ({
   page,
   api,

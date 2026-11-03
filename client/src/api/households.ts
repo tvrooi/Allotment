@@ -16,6 +16,8 @@ export interface HouseholdSummary {
   accountId: string | null;
   poolAccountIds: string[];
   defaultSplit: HouseholdSplit | null;
+  /** Its picture (small image data URL), shown on payments shared with it; null = initial */
+  logo: string | null;
 }
 
 export interface RepaymentSuggestion {
@@ -51,6 +53,12 @@ export const setDefaultSplit = (groupId: string, split: HouseholdSplit | null) =
   apiFetch<unknown>(`/households/${groupId}/default-split`, {
     method: 'PUT',
     body: JSON.stringify(split ?? {}),
+  });
+
+export const setHouseholdLogo = (groupId: string, logo: string | null) =>
+  apiFetch<{ id: string; logo: string | null }>(`/households/${groupId}/logo`, {
+    method: 'PUT',
+    body: JSON.stringify({ logo }),
   });
 
 export const shareTransactions = (groupId: string, transactionIds: string[]) =>

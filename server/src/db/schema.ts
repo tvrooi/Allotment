@@ -991,6 +991,8 @@ export const householdGroups = sqliteTable('household_groups', {
     .unique(),
   /** How a quick-shared expense splits: { mode, shares: [{ personId, value }] }; null = equal */
   defaultSplitJson: text('default_split_json'),
+  /** Custom logo as a small image data URL, shown on shared payments; null = colored initial */
+  logo: text('logo'),
 });
 /** More pool accounts for a group (an Up 2Up spending account and its savers, say) */
 export const householdPoolAccounts = sqliteTable(

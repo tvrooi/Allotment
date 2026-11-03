@@ -42,6 +42,16 @@ two-person household is 50/50. A rule action, **Share with household**, does the
 as they import (or when the rule is applied to existing transactions), and never fails an
 import: a payment the household checks refuse is left unshared.
 
+**A household's picture** (**Household → Sharing → Picture**) shows next to every payment
+shared with it, in the register, on phone cards and in the transaction details; without one, the
+household's initial shows on a coloured square (households are square, merchants round). It is
+a small PNG, JPEG or WebP image, like an account or payee logo (`household_groups.logo`,
+migration 0061, `PUT /api/households/:id/logo`, owner only; no access token reaches it). It is
+kept in backups and never sent to a combined household. A payment the register lists carries
+`household: { id, eventId }` when it is linked to an entry in a household, and the details then
+show **Shared with _name_** and **View in household** (`/household?household=<id>`) instead of
+the share buttons.
+
 **Repayment and contribution suggestions** (**Household → Sharing**) list money received in
 the last 120 days that isn't linked yet:
 

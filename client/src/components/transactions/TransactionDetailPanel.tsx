@@ -1,4 +1,6 @@
 import { ShareWithHousehold } from '../household/ShareWithHousehold';
+import { HouseholdIcon } from '../household/HouseholdIcon';
+import { useHouseholds } from '../../hooks/useHouseholds';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { X, Lock, Trash2, Repeat, Unlink, Wand2, Split, ChevronDown } from 'lucide-react';
@@ -74,6 +76,8 @@ export function TransactionDetailPanel({
   const { data: schedules = [] } = useSchedules();
   const unmatchByTx = useUnmatchByTransaction();
   const linkedSchedule = tx.scheduleId ? schedules.find((s) => s.id === tx.scheduleId) : null;
+  const { data: households = [] } = useHouseholds();
+  const sharedWith = tx.household ? households.find((h) => h.id === tx.household!.id) : undefined;
   const freqMap = new Map(RECURRENCE_TYPE_LABELS.map((f) => [f.value, f.label]));
 
   const [localDate, setLocalDate] = useState(tx.date);
@@ -451,20 +455,43 @@ export function TransactionDetailPanel({
       </div>
 
       <div className="px-5 py-4 border-t border-border space-y-2">
-        {!tx.isParent && !tx.parentTransactionId && !tx.isAdjustment && tx.amount < 0 && (
-          <Button
-            variant="secondary"
-            className="w-full"
-            onClick={() => {
-              onClose();
-              navigate(`/household?transaction=${encodeURIComponent(tx.id)}`);
-            }}
-          >
-            Share with people
-          </Button>
-        )}
-        {!tx.isParent && !tx.parentTransactionId && !tx.isAdjustment && tx.amount < 0 && (
-          <ShareWithHousehold transactionId={tx.id} />
+        {sharedWith ? (
+          <div className="flex items-center gap-2 text-sm" data-testid="shared-with-household">
+            <HouseholdIcon name={sharedWith.name} logo={sharedWith.logo} size="sm" />
+            <span className="flex-1 min-w-0 truncate text-text-secondary">
+              Shared with <span className="font-medium text-text">{sharedWith.name}</span>
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                onClose();
+                navigate(`/household?household=${encodeURIComponent(sharedWith.id)}`);
+              }}
+            >
+              View in household
+            </Button>
+          </div>
+        ) : (
+          !tx.household &&
+          !tx.isParent &&
+          !tx.parentTransactionId &&
+          !tx.isAdjustment &&
+          tx.amount < 0 && (
+            <>
+              <Button
+                variant="secondary"
+                className="w-full"
+                onClick={() => {
+                  onClose();
+                  navigate(`/household?transaction=${encodeURIComponent(tx.id)}`);
+                }}
+              >
+                Share with people
+              </Button>
+              <ShareWithHousehold transactionId={tx.id} />
+            </>
+          )
         )}
         {!isTransfer && (
           <Button variant="secondary" onClick={startRule} className="w-full">
