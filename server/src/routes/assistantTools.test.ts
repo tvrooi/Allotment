@@ -464,6 +464,25 @@ describe('organise tokens', () => {
     db.update(payees).set({ logo: null }).where(eq(payees.id, 'shop')).run();
   });
 
+  it('no token sets or removes a household logo; the owner does', async () => {
+    db.insert(householdGroups)
+      .values({ id: 'logo-house', name: 'Logo house', currency: 'AUD' })
+      .run();
+    const logo = 'data:image/png;base64,iVBORw0KGgo=';
+    const saved = () =>
+      db.select().from(householdGroups).where(eq(householdGroups.id, 'logo-house')).get()?.logo;
+    for (const scope of ['read', 'categorise', 'organise'] as const) {
+      const token = await newToken(scope);
+      expect((await call('PUT', '/households/logo-house/logo', { token }, { logo })).status).toBe(
+        403,
+      );
+    }
+    expect(saved()).toBeNull();
+    expect((await call('PUT', '/households/logo-house/logo', {}, { logo })).status).toBe(200);
+    expect(saved()).toBe(logo);
+    db.delete(householdGroups).where(eq(householdGroups.id, 'logo-house')).run();
+  });
+
   it('a categorise token reaches none of the organise writes', async () => {
     const token = await newToken('categorise');
     expect((await call('POST', '/rules/test', { token }, { conditions: [] })).status).toBe(403);

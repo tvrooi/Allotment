@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Undo2, Redo2, X } from 'lucide-react';
+import { Check, Info, Undo2, Redo2, X } from 'lucide-react';
 import { useUndoStore } from '../../store/undoStore';
 
 export function UndoToast() {
@@ -11,31 +11,51 @@ export function UndoToast() {
 
   useEffect(() => {
     if (!message) return;
-    const t = setTimeout(clearToast, 4000);
+    // Something just done stays a little longer, so there's time to undo it
+    const t = setTimeout(clearToast, action === 'done' ? 6000 : 4000);
     return () => clearTimeout(t);
-  }, [message, clearToast]);
+  }, [message, action, clearToast]);
 
   if (!message) return null;
 
-  const isUndo = action === 'undo';
+  const icon =
+    action === 'undo' ? (
+      <Undo2 size={14} />
+    ) : action === 'redo' ? (
+      <Redo2 size={14} />
+    ) : action === 'done' ? (
+      <Check size={14} />
+    ) : (
+      <Info size={14} />
+    );
+  const text =
+    action === 'undo' ? `Undid: ${message}` : action === 'redo' ? `Redid: ${message}` : message;
+  // After an undo, offer Redo; after a redo or something just done, offer Undo
+  const button = action === 'undo' ? 'Redo' : action === 'note' ? null : 'Undo';
 
   return (
-    <div className="pointer-events-auto flex items-center gap-3 bg-text text-surface rounded-lg shadow-lg px-4 py-2.5 text-sm">
-      {isUndo ? <Undo2 size={14} /> : <Redo2 size={14} />}
-      <span>
-        {isUndo ? 'Undid' : 'Redid'}: {message}
-      </span>
-      <button
-        onClick={() => {
-          clearToast();
-          isUndo ? redo() : undo();
-        }}
-        className="ml-1 font-medium text-brand-300 hover:text-brand-200 transition-colors"
-      >
-        {isUndo ? 'Redo' : 'Undo'}
-      </button>
+    <div
+      aria-live="polite"
+      data-testid="undo-toast"
+      className="pointer-events-auto flex items-center gap-3 bg-text text-surface rounded-lg shadow-lg px-4 py-2.5 text-sm"
+    >
+      {icon}
+      <span>{text}</span>
+      {button && (
+        <button
+          onClick={() => {
+            clearToast();
+            if (action === 'undo') void redo();
+            else void undo();
+          }}
+          className="ml-1 font-medium text-brand-300 hover:text-brand-200 transition-colors"
+        >
+          {button}
+        </button>
+      )}
       <button
         onClick={clearToast}
+        aria-label="Dismiss"
         className="ml-1 text-surface/60 hover:text-surface transition-colors"
       >
         <X size={14} />

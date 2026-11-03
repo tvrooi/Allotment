@@ -12,6 +12,7 @@ import { Modal } from '../components/ui/Modal';
 import { formatMoney } from '../utils/currency';
 import { formatDay } from '../utils/dates';
 import { HouseholdSharing } from '../components/household/HouseholdSharing';
+import { HouseholdIcon } from '../components/household/HouseholdIcon';
 import { CombinedHousehold } from '../components/household/CombinedHousehold';
 import { RecurringBills } from '../components/household/RecurringBills';
 import type { HouseholdSplit, SharedRecurringBill } from '../api/households';
@@ -23,6 +24,7 @@ type Group = {
   accountId: string | null;
   poolAccountIds: string[];
   defaultSplit: HouseholdSplit | null;
+  logo?: string | null;
 };
 type Person = { id: string; name: string; isSelf: number };
 type Entry = {
@@ -92,7 +94,8 @@ function cents(value: FormDataEntryValue | null) {
 export default function HouseholdPage() {
   const [params] = useSearchParams();
   const cache = useQueryClient();
-  const [id, setId] = useState('');
+  // ?household= opens that household (e.g. "View in household" on a shared payment)
+  const [id, setId] = useState(() => params.get('household') ?? '');
   const [error, setError] = useState('');
   const [kind, setKind] = useState('expense');
   const [mode, setMode] = useState('equal');
@@ -105,7 +108,8 @@ export default function HouseholdPage() {
     queryKey: ['households'],
     queryFn: () => apiFetch<Group[]>('/households'),
   });
-  const selected = id || groups[0]?.id || '';
+  const selected = (groups.some((g) => g.id === id) ? id : groups[0]?.id) ?? '';
+  const current = groups.find((g) => g.id === selected);
   const {
     data: state,
     isLoading,
@@ -291,6 +295,10 @@ export default function HouseholdPage() {
         </div>
         {groups.length > 0 && (
           <div className="flex items-center gap-2">
+            {current && <HouseholdIcon name={current.name} logo={current.logo} size="sm" />}
+            {groups.length === 1 && current && (
+              <span className="text-sm font-medium text-text">{current.name}</span>
+            )}
             {groups.length > 1 && (
               <div className="w-48">
                 <Select

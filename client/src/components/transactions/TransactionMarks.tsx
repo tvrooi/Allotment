@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Check, EyeOff, Paperclip, Plus, ReceiptText, Tag as TagIcon, X } from 'lucide-react';
 import { useReceiptMarks } from '../../hooks/useTax';
+import { useHouseholds } from '../../hooks/useHouseholds';
+import { HouseholdIcon } from '../household/HouseholdIcon';
 import {
   useCreateTag,
   useSetTransactionFlags,
@@ -36,9 +38,14 @@ export function TagChip({ tag, onRemove }: { tag: Tag; onRemove?: () => void }) 
   );
 }
 
-/** Compact marks for a register row or phone card: tags, hidden from reports, reviewed */
+/**
+ * Compact marks for a register row or phone card: the household it's shared with, tags,
+ * hidden from reports, receipts and files, a tax claim, reviewed
+ */
 export function RowMarks({ tx }: { tx: Transaction }) {
   const { data: tags = [] } = useTags();
+  const { data: households = [] } = useHouseholds();
+  const household = tx.household ? households.find((h) => h.id === tx.household!.id) : undefined;
   const marks = useReceiptMarks();
   const shown = (tx.tagIds ?? [])
     .map((id) => tags.find((t) => t.id === id))
@@ -49,10 +56,25 @@ export function RowMarks({ tx }: { tx: Transaction }) {
   const claimed = [tx.id, ...(tx.children ?? []).map((c) => c.id)].some((id) =>
     marks.claims.has(id),
   );
-  if (!shown.length && !tx.hiddenFromReports && !tx.reviewedAt && !hasFiles && !claimed)
+  if (
+    !household &&
+    !shown.length &&
+    !tx.hiddenFromReports &&
+    !tx.reviewedAt &&
+    !hasFiles &&
+    !claimed
+  )
     return null;
   return (
     <span className="inline-flex items-center gap-1 shrink-0">
+      {household && (
+        <HouseholdIcon
+          name={household.name}
+          logo={household.logo}
+          size="xs"
+          title={`${tx.household!.kind === 'expense' ? 'Shared with' : 'Linked to'} ${household.name}`}
+        />
+      )}
       {shown.slice(0, 2).map((t) => (
         <TagChip key={t.id} tag={t} />
       ))}

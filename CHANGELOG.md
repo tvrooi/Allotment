@@ -1,6 +1,6 @@
 # Changes
 
-## 0.2.0-up.76
+## 0.2.0-up.79
 
 - **Files: a library for your documents.** **Files** in the sidebar keeps bills, warranties, insurance policies and photos or videos of what you own with your budget. Link each file to as many transactions, categories, goals and accounts as it belongs to; removing a link keeps the file. Star files as reminders, mark the ones that matter as important, sort them with labels, and download them all at once as a ZIP with a list of what each one is.
 - **More kinds of file.** Besides photos and PDFs: Word, Excel, PowerPoint and OpenDocument files, CSV, Markdown and text, GIFs, and videos (MP4, MOV) up to 250 MB. Allotment checks what each file really is and refuses anything else.
@@ -11,6 +11,17 @@
 - **Better tax evidence.** At tax time, a file linked to a claimed transaction (an invoice, a policy) counts as its evidence, and goes in the year's download.
 - **Share to Allotment from your phone.** Installed on an Android home screen, Allotment appears in the share sheet and adds what you share to Files.
 - **Storage.** Files shows how much your files take, and you can set a limit. Backups made with this version are format 23: they carry what each file is and what it's linked to, not the files themselves (your server's own backup and **Download all** keep those).
+
+## 0.2.0-up.77
+
+- **Share a transaction from its menu.** Right-click a transaction (or long-press it, or tap ⋯ on a phone) and choose **Share with**, then a household. It's shared at once with that household's usual split, and **Undo** in the message takes it back. **Custom split…** opens the Household page to choose who pays what. If you've picked several payments to share, right-click one of them to share them all.
+- **Stop sharing just as easily.** On a shared payment the menu shows **View in _household_** and **Stop sharing**. **Undo** puts it back with exactly the same split.
+- A payment that can't be shared, such as money in or a transfer, says why in the menu. The menu works from the keyboard too: Shift+F10 or the Menu key opens it, then use the arrow keys, Enter and Escape.
+
+## 0.2.0-up.76
+
+- **See which payments are shared with a household.** A payment shared with a household now shows that household's picture next to its payee, in the register and on phone cards. Open it and the details say **Shared with _household_**, with **View in household**, instead of offering to share it again.
+- **Give a household a picture.** **Household → Sharing → Picture** takes a small image, the way account and payee logos do. Without one, the household's initial shows on a coloured square. The Household page shows it next to the household's name. It's kept in backups and isn't shown to someone you've combined a household with.
 
 ## 0.2.0-up.75
 

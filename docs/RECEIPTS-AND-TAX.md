@@ -32,7 +32,7 @@ The owner types a receipt's details and line items, and matching and splitting u
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------- |
 | `receipt_files` | the bytes, once per content (id = SHA-256), type, size                                                                             | no              |
 | `receipts`      | file id, file name, type, size, optional merchant / date / total / notes, and the transaction (null = inbox; `ON DELETE SET NULL`) | yes             |
-| `documents`     | since 0.2.0-up.76 every receipt is also a document in Files (`receipts.document_id`, the same id); see [FILES.md](FILES.md)        | yes             |
+| `documents`     | since 0.2.0-up.79 every receipt is also a document in Files (`receipts.document_id`, the same id); see [FILES.md](FILES.md)        | yes             |
 | `tax_claims`    | one per transaction: return label, work-use share (bps), notes (`ON DELETE CASCADE`)                                               | yes             |
 
 - **Files live in the database**, so a cold copy of it (the Home Assistant backup, or the desktop data
@@ -91,10 +91,10 @@ The owner types a receipt's details and line items, and matching and splitting u
   applied. It claims only outflows, the first matching rule wins, and it never replaces an existing
   claim. Created rules follow the usual rule review; tokens can propose such a rule only disabled.
 - **Exports:** `GET /api/tax/years/:fy/csv` and `/archive` (a stored ZIP of the CSV plus every
-  claimed receipt, named `receipts/<date> <label> <payee>.<ext>`, and since 0.2.0-up.76 the other
+  claimed receipt, named `receipts/<date> <label> <payee>.<ext>`, and since 0.2.0-up.79 the other
   files in Files linked to claimed transactions, `files/<date> <label> <name>.<ext>`; the CSV has
   an **Other files** column).
-- **Evidence:** a receipt, or (since 0.2.0-up.76) any file in Files linked to the claimed
+- **Evidence:** a receipt, or (since 0.2.0-up.79) any file in Files linked to the claimed
   transaction. Missing receipts and the written-evidence check count claims with neither.
   - Spreadsheet formulas in payee names are neutralised with a leading apostrophe.
   - The ZIP writer is dependency-free (stored entries, CRC-32, UTF-8 names), and is checked with

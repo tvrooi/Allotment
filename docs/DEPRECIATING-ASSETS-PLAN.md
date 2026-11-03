@@ -5,9 +5,9 @@ tab, worked out by the ATO's two methods (prime cost and diminishing value). Thi
 [RECEIPTS-AND-TAX.md](RECEIPTS-AND-TAX.md) §4, and replaces the "Depreciation schedules" line in
 its §6 "Not built" once it ships. Record keeping, not tax advice, like the rest of Tax time.
 
-Amended 3 November 2026 for [Files](FILES.md) (0.2.0-up.76), which this builds on: an asset's
+Amended 3 November 2026 for [Files](FILES.md) (0.2.0-up.79), which this builds on: an asset's
 records (invoice, warranty, photos, a valuation) are files in Files linked to the asset, through a
-new `asset` link kind. Files took migration 0061 and backup version 23, so this plan uses 0062
+new `asset` link kind. Files took migration 0062 and backup version 23, so this plan uses 0063
 and 24.
 
 ## 1. What exists today
@@ -29,7 +29,7 @@ and 24.
   lists, adds and links files for any target. `taxYear` already gives each claim its `files`
   (files linked to the transaction), which count as evidence, and the year's ZIP includes them.
 - Backups are at version 23 (Files) and include `tax_claims`, `documents`, `document_links` and
-  `document_tags`. The last migration is 0061 (`0061_files.sql`).
+  `document_tags`. The last migration is 0062 (`0062_files.sql`).
 
 ## 2. The ATO rules this follows
 
@@ -57,16 +57,19 @@ From the ATO's [Guide to depreciating assets 2026][guide] and
   determination (the ATO's effective life tables). Allotment stores what the owner types.
 - **Method:** chosen per asset, and it can't be changed for that asset later.
 - **$300 or less:** an item used mainly to earn non-business income is deducted at once (the
-  existing claim). That includes sets: identical items bought together that total over $300
-  are depreciated.
+  existing claim), unless it is part of a set, or one of several identical or substantially
+  identical items, costing more than $300 in total in the income year. Those items are
+  depreciated (or pooled) even though each costs $300 or less.
 - **Balancing adjustment event:** sold, lost, destroyed, or no longer used and never expected to
   be used again. Termination value (usually sale proceeds or an insurance payout) less the
   adjustable value on that day gives a balancing adjustment. A shortfall is a deduction; an
   excess is assessable income. Each is reduced by the private-use share. Any capital gain or
   loss on the private share is outside this feature: Allotment shows a note about it.
 - **Low-value pool (D6):** a low-cost asset (under $1,000) or a low-value asset (DV adjustable
-  value under $1,000) may go into the pool. It's written down at 18.75% in the year it's
-  allocated and 37.5% of the closing balance after that. Once an asset is pooled it stays
+  value under $1,000) may go into the pool. A low-cost asset is written down at 18.75% in the
+  year it's allocated. A low-value asset is written down at 37.5% of its opening adjustable
+  value in that year. After that, the pool is written down at 37.5% of the previous year's
+  closing balance. Once an asset is pooled it stays
   pooled. See [Low-value pool][pool].
 - **Labels:** an asset's decline goes on the label of what it's used for: D5 for most work
   tools, D4 for self-education, D1 for a car (logbook method only) and D6 for the pool.
@@ -75,7 +78,7 @@ From the ATO's [Guide to depreciating assets 2026][guide] and
 
 ## 3. Design
 
-### 3.1 Data (migration 0062, additive)
+### 3.1 Data (migration 0063, additive; the next free number when built)
 
 `depreciating_assets`
 
@@ -157,7 +160,8 @@ Worked example: a laptop costing $2,400, start time 1 October 2026, effective li
 
 - `services/depreciatingAssetService.ts` handles create, update, dispose, undispose and remove,
   using the shared transaction helpers. It refuses:
-  - a cost of $300 or less (suggest a claim instead);
+  - a cost of $300 or less, unless the owner ticks "Part of a set or identical items costing
+    over $300 this year" (otherwise suggest a claim instead);
   - an effective life of zero or less;
   - a start time before 10 May 2006;
   - a method change once a year that includes the asset is lodged;
@@ -225,8 +229,9 @@ title="Records" />` for the invoice, warranty, photos or a valuation, above a re
 - **Deductions tab:** label totals include asset deductions. Under the claims table, a "Decline
   in value" table lists that year's asset rows. An "Over $300" claim gets a **Depreciate
   instead** button.
-- **Transaction panel:** money out over $300 shows "Record as a depreciating asset" beside
-  _Claim as a tax deduction_. A purchase already linked to an asset shows that link instead.
+- **Transaction panel:** money out shows "Record as a depreciating asset" beside _Claim as a
+  tax deduction_. For $300 or less the form asks for the set tick first. A purchase already
+  linked to an asset shows that link instead.
 - **Safe mode:** every amount goes through `formatCurrency`/`Private`, and `safe-mode.spec.ts`
   covers the new tab.
 - **Guides:** add steps to the Tax time page guide in `client/src/guides/pages.ts`, with new
@@ -244,7 +249,7 @@ edits or disposes of an asset.
 
 ## 4. Phases (one PR and release each)
 
-1. **Calculation and storage (server only):** `depreciation.ts` with tests, migration 0062
+1. **Calculation and storage (server only):** `depreciation.ts` with tests, migration 0063
    (with `document_links.asset_id`), the service, routes, the `asset` link kind, the
    double-counting guards, `taxYear` and CSV/ZIP integration (asset evidence), and backup
    version 24.
@@ -253,8 +258,9 @@ edits or disposes of an asset.
    the **Asset** link choice in Files, guides, the user guides (`website/docs/tax.mdx`,
    `website/docs/files.mdx`) and docs (this file, FILES.md §4 and §8).
 3. **Low-value pool (D6):** allocating low-cost or low-value assets, one pool across years
-   (18.75% for the year an asset is added, 37.5% of the opening balance), disposals reducing the
-   closing balance, and the D6 total. Pooled assets leave the per-asset schedule. This also
+   (18.75% for a low-cost asset added this year, 37.5% for a low-value asset's opening
+   adjustable value in its first pooled year, and 37.5% of the previous year's closing balance),
+   disposals reducing the closing balance, and the D6 total. Pooled assets leave the per-asset schedule. This also
    lets a DV asset that falls under $1,000 move into the pool.
 4. **Optional, later:**
    - second-element costs (an upgrade added to an asset's cost);
@@ -273,10 +279,11 @@ edits or disposes of an asset.
   - PC adding up to exactly the cost, and a DV tail;
   - a work-use share that changes by year;
   - an opening adjustable value brought forward;
+  - (phase 3) pool entry rates: 18.75% for a low-cost asset, 37.5% for a low-value asset;
   - disposal: a balancing adjustment deduction and an income case, both reduced by private use;
   - start times before 10 May 2006 refused.
 - **Route tests:**
-  - CRUD validation and the $300 floor;
+  - CRUD validation, the $300 floor and its set exception;
   - lodged-year locks;
   - `setClaim` refused for an asset's purchase, and "Depreciate instead" being atomic;
   - `taxYear` totals including assets;
@@ -304,7 +311,7 @@ Each app phase follows CLAUDE.md:
 - after main CI passes, Publish tested main;
 - a cold backup including the encryption key before the live HA app takes the release.
 
-Migration 0062 only adds tables and one nullable column, so existing claims, transactions, files
+Migration 0063 only adds tables and one nullable column, so existing claims, transactions, files
 and budgets are untouched.
 
 ## 7. Owner decisions

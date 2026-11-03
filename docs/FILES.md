@@ -1,6 +1,6 @@
 # Files
 
-Status: built (0.2.0-up.76). A document library kept with the budget, after PocketSmith's
+Status: built (0.2.0-up.79). A document library kept with the budget, after PocketSmith's
 [Files](https://www.pocketsmith.com/features/files/): bills, warranties, insurance policies,
 receipts and photos or videos of what you own, each linked to what it belongs to.
 
@@ -35,7 +35,7 @@ mention, and there are no paid plans: storage is the owner's own disk, with an o
 | `document_tags`  | a document's labels: the budget's `tags`, shared with transactions                                                         | yes             |
 | `receipts`       | a receipt's details (RECEIPTS-AND-TAX.md), and its document (`document_id`; deleting the document deletes the receipt)     | yes             |
 
-- **Every stored file is a document.** Migration 0061 made a document for each existing receipt,
+- **Every stored file is a document.** Migration 0062 made a document for each existing receipt,
   with the receipt's id. `addReceipt` makes both. Restoring a backup from before Files (format 22
   or older) gives each receipt its document (`ensureReceiptDocuments`, also run at startup).
 - **Bytes live in the database**, as for receipts, so a cold copy of the database holds them. The

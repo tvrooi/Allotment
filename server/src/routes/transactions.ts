@@ -374,12 +374,17 @@ transactionsRouter.get('/', (req, res) => {
   const selection = parseSelection(req.query as Record<string, unknown>);
   if (!selection.success) return res.status(400).json({ error: selection.error.flatten() });
 
+  // A payment is linked to at most one household entry (transaction_id is unique there)
   const query = db
     .select({
       ...getTableColumns(transactions),
       isBudgetBoundary: isBudgetBoundary.mapWith(Boolean),
+      householdGroupId: householdEvents.groupId,
+      householdEventId: householdEvents.id,
+      householdEventKind: householdEvents.kind,
     })
     .from(transactions)
+    .leftJoin(householdEvents, eq(householdEvents.transactionId, transactions.id))
     .where(registerCondition(selection.data))
     .$dynamic();
 
@@ -417,8 +422,14 @@ transactionsRouter.get('/', (req, res) => {
   }
 
   const tagMap = tagsByTransaction(rows.map((r) => r.id));
-  const result = rows.map((r) => ({
+  const result = rows.map(({ householdGroupId, householdEventId, householdEventKind, ...r }) => ({
     ...r,
+    // The household this payment is linked to, its entry there and the entry's kind (an
+    // expense when it was shared); null = not linked
+    household:
+      householdGroupId && householdEventId
+        ? { id: householdGroupId, eventId: householdEventId, kind: householdEventKind }
+        : null,
     tagIds: tagMap.get(r.id) ?? [],
     ...(r.isParent === 1 ? { children: childrenMap.get(r.id) ?? [] } : {}),
   }));
