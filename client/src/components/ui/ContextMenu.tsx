@@ -83,9 +83,13 @@ export function ContextMenu({ items, at, onClose, label }: Props) {
   }, [openSub, inPlace, rootPos]);
 
   // Focus the first item when the menu opens, and the sub-menu's when it's opened by key
+  // (once it's positioned: it stays hidden, and can't take focus, until then)
+  const focused = useRef(false);
   useEffect(() => {
+    if (!rootPos || focused.current) return;
+    focused.current = true;
     firstItem(rootRef.current)?.focus();
-  }, []);
+  }, [rootPos]);
   useEffect(() => {
     if (inPlace) firstItem(rootRef.current)?.focus();
     else if (openSub?.focus && subPos) firstItem(subRef.current)?.focus();
