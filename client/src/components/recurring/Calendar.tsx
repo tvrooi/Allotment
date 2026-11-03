@@ -106,14 +106,14 @@ export default function Calendar({ month, occurrences, onDateClick }: Props) {
             {dayOccs.slice(0, MAX_CHIPS).map((occ) => (
               <span
                 key={occ.id}
-                className={`max-md:hidden text-[11px] leading-tight px-1.5 py-0.5 rounded truncate ${CHIP_COLORS[occ.displayStatus]}`}
+                className={`max-md:hidden text-2xs leading-tight px-1.5 py-0.5 rounded truncate ${CHIP_COLORS[occ.displayStatus]}`}
                 title={occ.scheduleName}
               >
                 {occ.scheduleName}
               </span>
             ))}
             {dayOccs.length > MAX_CHIPS && (
-              <span className="max-md:hidden text-[11px] text-text-tertiary px-1">
+              <span className="max-md:hidden text-2xs text-text-tertiary px-1">
                 +{dayOccs.length - MAX_CHIPS} more
               </span>
             )}

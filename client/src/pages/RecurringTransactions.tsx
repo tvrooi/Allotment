@@ -95,7 +95,7 @@ export default function RecurringTransactionsPage() {
         <div className="flex items-center gap-6">
           <h1
             data-guide="recurring.header"
-            className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text py-4"
+            className="font-display text-title max-md:text-2xl tracking-tight text-text py-4"
           >
             Recurring
           </h1>

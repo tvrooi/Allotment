@@ -17,7 +17,7 @@ export default function ForecastPage() {
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 pt-4 max-md:px-4 border-b border-border shrink-0">
-        <h1 className="font-display text-[28px] max-md:text-2xl leading-tight tracking-tight text-text">
+        <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
           Forecast
         </h1>
         <div

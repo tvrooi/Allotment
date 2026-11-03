@@ -19,7 +19,7 @@ export function PlaidEnvironmentSelect({
         <option value="production">Production — your real bank accounts</option>
         <option value="sandbox">Sandbox — test data only (for developers)</option>
       </select>
-      <p className="text-[11px] text-text-tertiary mt-1">
+      <p className="text-2xs text-text-tertiary mt-1">
         Use the secret that matches this environment in your Plaid dashboard.
       </p>
     </div>

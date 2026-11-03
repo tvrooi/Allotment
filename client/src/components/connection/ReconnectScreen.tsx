@@ -88,13 +88,13 @@ export function ReconnectScreen({ mode, onRetry }: { mode: AppMode; onRetry: () 
                 <>
                   <div>
                     <p>Check that the container is running:</p>
-                    <pre className="mt-1 px-2 py-1.5 rounded bg-surface-alt font-mono text-[11px] overflow-x-auto">
+                    <pre className="mt-1 px-2 py-1.5 rounded bg-surface-alt font-mono text-2xs overflow-x-auto">
                       docker ps --filter name=flybudget
                     </pre>
                   </div>
                   <div>
                     <p>See what it logged:</p>
-                    <pre className="mt-1 px-2 py-1.5 rounded bg-surface-alt font-mono text-[11px] overflow-x-auto">
+                    <pre className="mt-1 px-2 py-1.5 rounded bg-surface-alt font-mono text-2xs overflow-x-auto">
                       docker logs --tail 50 flybudget
                     </pre>
                   </div>

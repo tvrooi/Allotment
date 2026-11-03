@@ -49,7 +49,7 @@ function NavItem({ to, icon, label, collapsed, badge }: NavItemProps) {
       title={badge ? `${label}: ${badge} to do` : collapsed ? label : undefined}
       className={({ isActive }) =>
         // Phones (the drawer): full-size touch targets
-        `flex items-center gap-3 py-2 max-md:min-h-11 max-md:text-[15px] px-3 rounded-md text-sm font-medium transition-colors ${
+        `flex items-center gap-3 py-2 max-md:min-h-11 max-md:text-row px-3 rounded-md text-sm font-medium transition-colors ${
           isActive
             ? 'bg-sidebar-active text-sidebar-text-hi'
             : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi'
@@ -68,7 +68,7 @@ function NavItem({ to, icon, label, collapsed, badge }: NavItemProps) {
         // Kept out of the link's name ("Review"); the count is in its tooltip and on the page
         <span
           aria-hidden
-          className={`ml-auto shrink-0 min-w-5 h-5 px-1.5 rounded-full bg-brand-600 text-brand-contrast text-[11px] font-semibold flex items-center justify-center transition-opacity duration-200 ${collapsed ? 'opacity-0' : 'opacity-100'}`}
+          className={`ml-auto shrink-0 min-w-5 h-5 px-1.5 rounded-full bg-brand-600 text-brand-contrast text-2xs font-semibold flex items-center justify-center transition-opacity duration-200 ${collapsed ? 'opacity-0' : 'opacity-100'}`}
         >
           {badge}
         </span>
@@ -315,7 +315,7 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
                 ? 'Unpin: the sidebar folds away until you point at it'
                 : 'Pin: keep the sidebar open'
             }
-            className="shrink-0 inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi"
+            className="shrink-0 inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-2xs text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi"
           >
             <Pin size={12} aria-hidden fill={pinned ? 'currentColor' : 'none'} />
             {pinned ? 'Pinned' : 'Pin'}

@@ -172,7 +172,7 @@ function CategoryCard({
       data-testid="budget-card"
     >
       <div className="flex items-center gap-2">
-        <span className="flex-1 min-w-0 truncate text-[15px] font-medium text-text inline-flex items-center gap-1.5">
+        <span className="flex-1 min-w-0 truncate text-row font-medium text-text inline-flex items-center gap-1.5">
           {showCategoryIcons && <CategoryIcon icon={cat.icon} size={15} />}
           {cat.name}
         </span>

@@ -643,12 +643,12 @@ function TrendCategoryPicker({
             {auto && <Check size={14} className="text-brand-600 shrink-0" />}
           </button>
           <div className="border-t border-border-light my-1" />
-          <p className="px-3 pt-1 pb-1 text-[11px] text-text-tertiary">
+          <p className="px-3 pt-1 pb-1 text-2xs text-text-tertiary">
             Or choose up to {MAX_TREND_CATEGORIES}
           </p>
           {expenseGroups.map((g) => (
             <div key={g.id}>
-              <p className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
+              <p className="px-3 pt-2 pb-1 text-2xs font-semibold uppercase tracking-wide text-text-tertiary">
                 {g.name}
               </p>
               {g.categories.map((c) => {

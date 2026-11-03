@@ -511,7 +511,7 @@ function BankLoginWaiting({
             you back and Allotment carries on by itself.
           </p>
         </div>
-        <p className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary">
+        <p className="inline-flex items-center gap-1.5 text-2xs text-text-tertiary">
           <ShieldCheck size={12} /> You log in on your bank&apos;s own site, never in Allotment.
         </p>
         <div className="flex justify-center gap-2">
@@ -738,7 +738,7 @@ function MappingCard({
             ))}
           </select>
           {account.suggestedAccountId && mapping.accountId === account.suggestedAccountId && (
-            <p className="text-[11px] text-text-tertiary">
+            <p className="text-2xs text-text-tertiary">
               Your last bank statement for this account went here.
             </p>
           )}
@@ -747,7 +747,7 @@ function MappingCard({
             const target = existingAccounts.find((a) => a.id === mapping.accountId);
             const theirs = account.currency?.toUpperCase();
             return target?.currency && theirs && target.currency !== theirs ? (
-              <p role="alert" className="text-[11px] text-caution">
+              <p role="alert" className="text-2xs text-caution">
                 This bank account is in {theirs}, but {target.name} is in {target.currency}. Link it
                 to an account in {theirs}, or create a new one.
               </p>
@@ -826,7 +826,7 @@ function SyncDone({
           ))}
         </ul>
       )}
-      <p className="text-[11px] text-text-tertiary max-w-sm mx-auto">
+      <p className="text-2xs text-text-tertiary max-w-sm mx-auto">
         Allotment syncs when it starts and when you click Sync now. Banks allow only a few automatic
         updates a day.{' '}
         <a

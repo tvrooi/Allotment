@@ -145,6 +145,17 @@
   --color-invest-bg: #efe9f3;
   --color-invest-text: #78548d;
 
+  /* In-between text sizes, each with a whole-pixel line height on the 4px grid. A bare
+     text-[13px] inherits a 1.5 line height (19.5px) and leaves rows a fraction of a pixel off. */
+  --text-2xs: 0.6875rem; /* 11px */
+  --text-2xs--line-height: 1rem; /* 16px */
+  --text-nav: 0.8125rem; /* 13px: sidebar rows and menus */
+  --text-nav--line-height: 1.25rem; /* 20px */
+  --text-row: 0.9375rem; /* 15px: phone list rows */
+  --text-row--line-height: 1.25rem; /* 20px */
+  --text-title: 1.75rem; /* 28px: every page's h1 */
+  --text-title--line-height: 2.25rem; /* 36px */
+
   /* Radii */
   --radius-sm: 6px;
   --radius-md: 10px;

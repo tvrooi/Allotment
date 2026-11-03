@@ -1,5 +1,17 @@
 # Changes
 
+## 0.2.0-up.84
+
+Spacing and alignment, checked against a 4px grid on a computer and a phone.
+
+- **The Files search and date fields have their frames back.** A field given its own width or padding lost its whole style, so on a phone the search box ran into **Any kind** and the dates sat unframed. The work-use % box on Tax time had the same problem.
+- **Buttons and fields are the same height.** A filled button is now as tall as an outlined one beside it, and both match a text field (40px; 44px on a phone), so **Cancel** and **Save** and a search box with its button line up.
+- **Every page title is the same size**, and the headers of Files, Payees and Annual budget sit at the same edge as the rest of the page on a phone.
+- **The sidebar's account list lines up** with the links above it, and its totals line up with the account balances.
+- **The dashboard has one gap between everything**, and the summary figures line up with the Net worth card above them. The Budget card's heading matches the other cards'.
+- In-between text sizes use whole-pixel line heights, so rows no longer land a fraction of a pixel off.
+- On a phone transaction, a long account name shortens before the category does.
+
 ## 0.2.0-up.83
 
 Changes from a UX review of the whole app ([docs/UX-REVIEW.md](docs/UX-REVIEW.md)), as a first-time user would meet it.

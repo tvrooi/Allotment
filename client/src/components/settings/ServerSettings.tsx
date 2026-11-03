@@ -170,7 +170,7 @@ interface CheckText {
 }
 
 const Env = ({ children }: { children: string }) => (
-  <code className="font-mono text-[11px] px-1 py-0.5 rounded bg-surface-alt text-text">
+  <code className="font-mono text-2xs px-1 py-0.5 rounded bg-surface-alt text-text">
     {children}
   </code>
 );
@@ -323,7 +323,7 @@ function SignedInDevices() {
                 <p className="text-sm text-text flex items-center gap-2">
                   {name}
                   {d.current && (
-                    <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700">
+                    <span className="text-2xs font-medium px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700">
                       This device
                     </span>
                   )}

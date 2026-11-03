@@ -161,7 +161,7 @@ export function StatCardRow({
           className="rounded-lg bg-surface-alt border border-border-light px-4 py-3 min-w-[110px]"
         >
           <p className="text-xs text-text-tertiary">{c.label}</p>
-          {c.sub && <p className="text-[11px] text-text-tertiary">{c.sub}</p>}
+          {c.sub && <p className="text-2xs text-text-tertiary">{c.sub}</p>}
           <p
             className={`text-lg font-semibold mt-0.5 tabular-nums ${c.tone ? TONE_CLASS[c.tone] : 'text-text'}`}
           >

@@ -26,7 +26,7 @@ function AccountRow({ account }: { account: Account }) {
     <NavLink
       to={`/accounts/${account.id}`}
       className={({ isActive }) =>
-        `flex items-center justify-between pl-5 pr-3 py-1.5 max-md:min-h-11 rounded-md text-[13px] transition-all duration-150 ${
+        `flex items-center justify-between pl-6 pr-3 py-1.5 max-md:min-h-11 rounded-md text-nav transition-all duration-150 ${
           isActive
             ? 'bg-sidebar-active text-sidebar-text-hi font-medium'
             : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi'
@@ -129,7 +129,7 @@ export function SidebarAccountList() {
         {/* All accounts */}
         <NavLink
           to="/accounts"
-          className="flex items-center justify-between py-1.5 text-[13px] font-bold text-sidebar-text-hi hover:text-sidebar-text-hi transition-colors"
+          className="flex items-center justify-between px-3 py-1.5 text-nav font-bold text-sidebar-text-hi hover:text-sidebar-text-hi transition-colors"
         >
           <span>All accounts</span>
           <span className="tabular-nums ml-2" title={missingTitle}>
@@ -142,11 +142,11 @@ export function SidebarAccountList() {
         <div className="mt-2">
           <button
             onClick={() => setForBudgetOpen((o) => !o)}
-            className="flex items-center justify-between w-full py-1.5 text-[13px] font-semibold text-sidebar-text-hi border-b border-sidebar-text/20 hover:text-sidebar-text-hi transition-colors"
+            className="flex items-center justify-between w-full px-3 py-1.5 text-nav font-semibold text-sidebar-text-hi border-b border-sidebar-text/20 hover:text-sidebar-text-hi transition-colors"
           >
             <span>For budget</span>
             <span className="flex items-center gap-1">
-              <span className="tabular-nums text-[12px]">
+              <span className="tabular-nums text-xs">
                 <Private>{formatCurrency(onBudgetTotal)}</Private>
               </span>
               {forBudgetOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
@@ -158,7 +158,7 @@ export function SidebarAccountList() {
                 <AccountRow key={a.id} account={a} />
               ))}
               {onBudget.length === 0 && (
-                <p className="pl-5 py-1 text-xs text-sidebar-text">No accounts yet</p>
+                <p className="pl-6 py-1 text-xs text-sidebar-text">No accounts yet</p>
               )}
             </div>
           )}
@@ -169,11 +169,11 @@ export function SidebarAccountList() {
           <div className="mt-2">
             <button
               onClick={() => setOffBudgetOpen((o) => !o)}
-              className="flex items-center justify-between w-full py-1.5 text-[13px] font-semibold text-sidebar-text-hi border-b border-sidebar-text/20 hover:text-sidebar-text-hi transition-colors"
+              className="flex items-center justify-between w-full px-3 py-1.5 text-nav font-semibold text-sidebar-text-hi border-b border-sidebar-text/20 hover:text-sidebar-text-hi transition-colors"
             >
               <span>Off budget</span>
               <span className="flex items-center gap-1">
-                <span className="tabular-nums text-[12px]">
+                <span className="tabular-nums text-xs">
                   <Private>{formatCurrency(offBudgetTotal)}</Private>
                 </span>
                 {offBudgetOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
@@ -195,11 +195,11 @@ export function SidebarAccountList() {
             <button
               onClick={() => setHouseholdOpen((o) => !o)}
               title="Household pool accounts: outside your personal budget"
-              className="flex items-center justify-between w-full py-1.5 text-[13px] font-semibold text-sidebar-text-hi border-b border-sidebar-text/20 hover:text-sidebar-text-hi transition-colors"
+              className="flex items-center justify-between w-full px-3 py-1.5 text-nav font-semibold text-sidebar-text-hi border-b border-sidebar-text/20 hover:text-sidebar-text-hi transition-colors"
             >
               <span>Household</span>
               <span className="flex items-center gap-1">
-                <span className="tabular-nums text-[12px]">
+                <span className="tabular-nums text-xs">
                   <Private>{formatCurrency(householdTotal)}</Private>
                 </span>
                 {householdOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
@@ -220,7 +220,7 @@ export function SidebarAccountList() {
           <button
             ref={buttonRef}
             onClick={() => setMenuOpen(!menuOpen)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] text-sidebar-text hover:text-sidebar-text-hi transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-nav text-sidebar-text hover:text-sidebar-text-hi transition-colors"
           >
             <Plus size={14} />
             <span>Add account</span>
