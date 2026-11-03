@@ -12,6 +12,13 @@
 - **Share to Allotment from your phone.** Installed on an Android home screen, Allotment appears in the share sheet and adds what you share to Files.
 - **Storage.** Files shows how much your files take, and you can set a limit. Backups made with this version are format 23: they carry what each file is and what it's linked to, not the files themselves (your server's own backup and **Download all** keep those).
 
+## 0.2.0-up.78
+
+Fixes from a review of 0.2.0-up.71.
+
+- **A suggested repayment can always be recorded.** If you were owed money for something you paid, but still owed the household account, recording the suggested repayment was refused. A repayment now only has to fit what is owed for things people paid themselves.
+- **Another household's money isn't your contribution.** A transfer into a household account from an account that belongs to another household is no longer offered as your contribution.
+
 ## 0.2.0-up.77
 
 - **Share a transaction from its menu.** Right-click a transaction (or long-press it, or tap ⋯ on a phone) and choose **Share with**, then a household. It's shared at once with that household's usual split, and **Undo** in the message takes it back. **Custom split…** opens the Household page to choose who pays what. If you've picked several payments to share, right-click one of them to share them all.
