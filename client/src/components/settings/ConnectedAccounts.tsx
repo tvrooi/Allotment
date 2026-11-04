@@ -23,6 +23,7 @@ import { NotInDemo } from '../demo/NotInDemo';
 import { UpSettings } from '../up/UpSettings';
 import { useUpConnection } from '../../hooks/useUp';
 import { formatDistanceToNow } from 'date-fns';
+import { CommunitySupportedNote } from '../banks/CommunitySupported';
 
 type Provider = 'plaid' | 'simplefin' | 'enablebanking' | 'up';
 
@@ -104,7 +105,8 @@ function ConnectedAccountsSettings() {
       <div>
         <h2 className="text-sm font-semibold text-text">Connected Banks</h2>
         <p className="text-xs text-text-tertiary mt-0.5">
-          Automatically import transactions from your financial institutions.
+          Automatically import transactions from your financial institutions. Any other bank: import
+          its CSV files from the account's page.
         </p>
       </div>
 
@@ -117,12 +119,22 @@ function ConnectedAccountsSettings() {
         {(
           [
             { id: 'up', label: 'Up', title: 'Up Bank, Australia', count: 0 },
-            { id: 'plaid', label: 'Plaid', title: undefined, count: items.length },
-            { id: 'simplefin', label: 'SimpleFIN', title: undefined, count: sfConnections.length },
+            {
+              id: 'plaid',
+              label: 'Plaid',
+              title: 'Community supported',
+              count: items.length,
+            },
+            {
+              id: 'simplefin',
+              label: 'SimpleFIN',
+              title: 'Community supported',
+              count: sfConnections.length,
+            },
             {
               id: 'enablebanking',
               label: 'Enable Banking',
-              title: 'European banks',
+              title: 'European banks, community supported',
               count: ebConnections.length,
             },
           ] as const
@@ -148,6 +160,8 @@ function ConnectedAccountsSettings() {
           </button>
         ))}
       </div>
+
+      {provider !== 'up' && <CommunitySupportedNote />}
 
       {/* Plaid content */}
       {provider === 'up' && <UpSettings />}

@@ -239,37 +239,6 @@ export function SidebarAccountList() {
                 <button
                   onClick={() => {
                     setMenuOpen(false);
-                    setAddOpen(true);
-                  }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm whitespace-nowrap text-text-secondary hover:bg-hover hover:text-text transition-colors"
-                >
-                  <Plus size={14} className="shrink-0" />
-                  Add Manual Account
-                </button>
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    if (plaidConfigured) setConnectOpen(true);
-                    else setPlaidSetupOpen(true);
-                  }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm whitespace-nowrap text-text-secondary hover:bg-hover hover:text-text transition-colors"
-                >
-                  <Building2 size={14} className="shrink-0" />
-                  Connect via Plaid
-                </button>
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setSimplefinOpen(true);
-                  }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm whitespace-nowrap text-text-secondary hover:bg-hover hover:text-text transition-colors"
-                >
-                  <Link2 size={14} className="shrink-0" />
-                  Connect via SimpleFIN
-                </button>
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
                     setUpOpen(true);
                   }}
                   className="flex items-center gap-2 w-full px-3 py-2 max-md:min-h-11 text-left text-sm whitespace-nowrap text-text-secondary hover:bg-hover hover:text-text transition-colors"
@@ -279,9 +248,47 @@ export function SidebarAccountList() {
                 <button
                   onClick={() => {
                     setMenuOpen(false);
+                    setAddOpen(true);
+                  }}
+                  className="flex items-center gap-2 w-full px-3 py-2 max-md:min-h-11 text-left text-sm whitespace-nowrap text-text-secondary hover:bg-hover hover:text-text transition-colors"
+                >
+                  <Plus size={14} className="shrink-0" />
+                  Any bank: add an account for CSV files
+                </button>
+                {/* Plaid, SimpleFIN and Enable Banking: community supported (audit decision I-10) */}
+                <p
+                  role="presentation"
+                  className="mt-1 border-t border-border-light px-3 pt-2 pb-1 text-2xs font-semibold uppercase tracking-wide text-text-tertiary"
+                >
+                  Community supported
+                </p>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    if (plaidConfigured) setConnectOpen(true);
+                    else setPlaidSetupOpen(true);
+                  }}
+                  className="flex items-center gap-2 w-full px-3 py-2 max-md:min-h-11 text-left text-sm whitespace-nowrap text-text-secondary hover:bg-hover hover:text-text transition-colors"
+                >
+                  <Building2 size={14} className="shrink-0" />
+                  Connect via Plaid
+                </button>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setSimplefinOpen(true);
+                  }}
+                  className="flex items-center gap-2 w-full px-3 py-2 max-md:min-h-11 text-left text-sm whitespace-nowrap text-text-secondary hover:bg-hover hover:text-text transition-colors"
+                >
+                  <Link2 size={14} className="shrink-0" />
+                  Connect via SimpleFIN
+                </button>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
                     setEnableBankingOpen(true);
                   }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm whitespace-nowrap text-text-secondary hover:bg-hover hover:text-text transition-colors"
+                  className="flex items-center gap-2 w-full px-3 py-2 max-md:min-h-11 text-left text-sm whitespace-nowrap text-text-secondary hover:bg-hover hover:text-text transition-colors"
                 >
                   <Euro size={14} className="shrink-0" />
                   Connect via Enable Banking
