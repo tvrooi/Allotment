@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.88
+
+- **Fix: the sidebar's account list could crash when a balance crossed zero.** It read the hidden-balances setting only for overdrawn accounts, which React doesn't allow; it now reads it for every account.
+- **A linter checks every change.** ESLint now runs in CI on the app and server code, with React's hook rules and accessibility checks. Its first run found the sidebar bug above, along with unused code (including a report query on Cash Flow that fetched data nobody used), which is now removed. Accessibility findings are counted and can only go down from here (`lint/README.md`).
+
 ## 0.2.0-up.87
 
 - **More of a first Up import arrives categorised.** Up's categories that the short Australian template had no envelope for now go to the nearest one: taxis and rideshare (Uber) to **Public Transport**, technology (JB Hi-Fi) to **Entertainment**, homeware and repairs (Kmart, Bunnings) to a new **Home & Garden** envelope, and life admin (Service Victoria, Service NSW) to the rego envelope. In the test history that leaves about 1–5% of spending to sort, down from 10–22%. A closer envelope still wins where a budget has one (Ride Share, Electronics, Home Maintenance).
