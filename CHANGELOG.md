@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.94
+
+- **Depreciating assets, behind the scenes.** Tax time can now work out the decline in value of something that loses value over several years, such as a laptop for work, the ATO's two ways (prime cost and diminishing value), including the first year's days held, each year's work-use share, and selling or disposing of it. A financial year can be marked lodged, which locks its asset figures. A purchase is never both claimed outright and depreciated. Assets are kept in backups and appear in a year's deductions, CSV and ZIP. The screens to add and manage assets come in the next release.
+
 ## 0.2.0-up.93
 
 - **Faster Up syncs.** A sync now asks Up only for recent transactions (the two weeks before the newest one) and any that are still pending, instead of your whole history every time, so it makes a couple of requests per account instead of hundreds. A pending transaction that settles weeks later is still picked up. All of Up's history is still checked once a week, on an account's first sync, after **Restore** in Up review, and whenever you choose **Check all history** in Settings → Connected Banks → Up.
