@@ -174,7 +174,11 @@ The user guide for receipts and tax is in `website/docs/tax.mdx`.
     onboarding, an offer to categorise a repayment back to the shared expense's category, remove
     `website/`, freeze Plaid/SimpleFIN/Enable Banking as community supported and show CSV import
     as an option, and dedicated assistant endpoints with their own audit log (replacing F-18's
-    declarative token policy). F-14 now applies only to a provider in use. F-16 is in progress.
+    declarative token policy). F-14 now applies only to a provider in use. F-16 is done:
+    `server/src/services/budgetProperties.test.ts` and `server/src/routes/upSyncProperties.test.ts`
+    (fast-check; `PROPERTY_RUNS=500` searches harder). Owner question from it: the short Australian
+    template has no envelope for Up's taxis, homeware, technology, home maintenance or life-admin
+    categories, so a first Up import typically leaves 15–18% of spending uncategorised.
     Work in feature PRs with tests; the owner reviews and merges.
 
 ## Gotchas learned the hard way
