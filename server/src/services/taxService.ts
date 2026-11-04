@@ -385,7 +385,7 @@ export function claimCandidates(fy: number, today: string) {
 
 /** Financial years with claims, and the current one, newest first */
 export function taxYears(today: string) {
-  const years = new Set([financialYearOf(today), ...assetYears()]);
+  const years = new Set([financialYearOf(today), ...assetYears(today)]);
   for (const r of db
     .select({ date: transactions.date })
     .from(taxClaims)

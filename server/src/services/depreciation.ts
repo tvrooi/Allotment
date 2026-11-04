@@ -129,7 +129,28 @@ export function schedule(terms: AssetTerms, throughFy: number): ScheduleRow[] {
       break;
     }
     rows.push(row);
-    if (value <= 0) break;
+    if (value <= 0) {
+      // Fully declined, but a later disposal still has a balancing adjustment: the whole
+      // termination value, in the disposal year
+      const disposalFy = terms.disposedDate ? financialYearOf(terms.disposedDate) : null;
+      if (disposalFy !== null && disposalFy > fy && disposalFy <= lastFy) {
+        const share_ = terms.yearWorkUse?.[disposalFy] ?? terms.workUseBps;
+        const adjustment = terms.terminationValue ?? 0;
+        rows.push({
+          financialYear: disposalFy,
+          daysHeld: daysHeld(terms, disposalFy),
+          opening: 0,
+          baseValue: terms.method === 'prime_cost' ? terms.cost : 0,
+          decline: 0,
+          workUseBps: share_,
+          deduction: 0,
+          closing: 0,
+          balancingAdjustment: adjustment,
+          balancingTaxable: share(adjustment, share_),
+        });
+      }
+      break;
+    }
   }
   return rows;
 }

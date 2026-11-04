@@ -100,6 +100,19 @@ describe('decline in value', () => {
     expect(dear.balancingAdjustment).toBeGreaterThan(0);
   });
 
+  it('a disposal after the value reaches zero still has its balancing adjustment', () => {
+    // Fully declined by 2028–29 (prime cost, 2 years), sold for $500 in September 2030
+    const sold = { ...laptop('prime_cost'), disposedDate: '2030-09-15', terminationValue: 50_000 };
+    const rows = schedule(sold, 2035);
+    expect(rows.map((r) => r.financialYear)).toEqual([2026, 2027, 2028, 2030]);
+    const last = rows.at(-1)!;
+    expect(last).toMatchObject({ opening: 0, decline: 0, deduction: 0, closing: 0 });
+    expect(last.balancingAdjustment).toBe(50_000);
+    expect(last.balancingTaxable).toBe(40_000);
+    // Not there before the year it happens
+    expect(schedule(sold, 2029).map((r) => r.financialYear)).toEqual([2026, 2027, 2028]);
+  });
+
   it('days held count both ends, and nothing outside the life', () => {
     expect(daysHeld(laptop('prime_cost'), 2026)).toBe(273);
     expect(daysHeld(laptop('prime_cost'), 2025)).toBe(0);

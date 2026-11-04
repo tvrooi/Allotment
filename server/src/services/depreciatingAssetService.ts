@@ -125,6 +125,26 @@ function fullSchedule(row: AssetRow, today = now().slice(0, 10)) {
   return schedule(termsOf(row), Math.max(until, (row.openingFy ?? fyOf(row.startDate)) + 50));
 }
 
+/** Lodged years whose figures for this asset differ between two sets of its terms */
+function lodgedChanges(before: AssetTerms, after: AssetTerms): number[] {
+  const lodged = lodgedYears();
+  if (!lodged.length) return [];
+  const through = Math.max(...lodged);
+  const was = schedule(before, through);
+  const will = schedule(after, through);
+  const rowOf = (rows: ScheduleRow[], fy: number) =>
+    JSON.stringify(rows.find((r) => r.financialYear === fy) ?? null);
+  return lodged.filter((fy) => rowOf(was, fy) !== rowOf(will, fy));
+}
+function refuseLodgedChanges(before: AssetTerms, after: AssetTerms) {
+  const changed = lodgedChanges(before, after);
+  if (changed.length)
+    throw new AssetError(
+      `That would change ${changed.map(fyName).join(', ')}, already lodged. Unlock the year first.`,
+      409,
+    );
+}
+
 /** Lodged years this asset's figures appear in */
 function lodgedIn(row: AssetRow) {
   const years = new Set(fullSchedule(row).map((r) => r.financialYear));
@@ -318,8 +338,9 @@ export function setYearWorkUse(id: string, fy: number, workUseBps: number | null
 export function disposeAsset(id: string, date: string, terminationValue: number) {
   const row = assetRow(id);
   if (date < row.startDate) throw new AssetError('It can’t be disposed of before its start date');
-  if (lodgedIn(row).some((fy) => fy >= fyOf(date)))
-    throw new AssetError(`${fyName(fyOf(date))} is lodged. Unlock the year first.`, 409);
+  // Compared year by year, so moving a disposal out of (or into) a lodged year is refused too
+  const before = termsOf(row);
+  refuseLodgedChanges(before, { ...before, disposedDate: date, terminationValue });
   db.update(depreciatingAssets)
     .set({ disposedDate: date, terminationValue, updatedAt: now() })
     .where(eq(depreciatingAssets.id, id))
@@ -329,11 +350,8 @@ export function disposeAsset(id: string, date: string, terminationValue: number)
 
 export function undisposeAsset(id: string) {
   const row = assetRow(id);
-  if (row.disposedDate && lodgedYears().includes(fyOf(row.disposedDate)))
-    throw new AssetError(
-      `${fyName(fyOf(row.disposedDate))} is lodged. Unlock the year first.`,
-      409,
-    );
+  const before = termsOf(row);
+  refuseLodgedChanges(before, { ...before, disposedDate: null, terminationValue: null });
   db.update(depreciatingAssets)
     .set({ disposedDate: null, terminationValue: null, updatedAt: now() })
     .where(eq(depreciatingAssets.id, id))
@@ -505,13 +523,14 @@ export function assetsForYear(fy: number): YearAsset[] {
   });
 }
 
-/** The first financial year of every asset, for the year picker */
-export function assetYears(): number[] {
+/** Every financial year up to this one with an asset's figures in it, for the year picker */
+export function assetYears(today = now().slice(0, 10)): number[] {
+  const thisFy = fyOf(today);
   return db
-    .select({ start: depreciatingAssets.startDate, opening: depreciatingAssets.openingFy })
+    .select()
     .from(depreciatingAssets)
     .all()
-    .map((r) => r.opening ?? fyOf(r.start));
+    .flatMap((row) => schedule(termsOf(row), thisFy).map((r) => r.financialYear));
 }
 
 /** Purchase transactions that are assets: never claimed outright as well */

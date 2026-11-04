@@ -15,7 +15,7 @@ const { migrate } = await import('drizzle-orm/better-sqlite3/migrator');
 const { db } = await import('../db/index.js');
 const schema = await import('../db/schema.js');
 const { taxRouter } = await import('./tax.js');
-const { claimByRule, claimCandidates, setClaim, taxYear, taxYearArchive, taxYearCsv } =
+const { claimByRule, claimCandidates, setClaim, taxYear, taxYearArchive, taxYearCsv, taxYears } =
   await import('../services/taxService.js');
 const { addDocument, getDocument, linkDocument } = await import('../services/documentService.js');
 const { uploadFromBytes } = await import('../services/fileStore.js');
@@ -217,6 +217,38 @@ describe('depreciating assets (plan phase 1)', () => {
     ).toBe(60_165);
     await send('DELETE', '/lodged/2026');
     expect((await send('PUT', `/assets/${asset.id}`, { cost: 250_000 })).status).toBe(200);
+  });
+
+  it('a disposal can’t be moved out of, or undone in, a lodged year', async () => {
+    const { body: asset } = await send('POST', '/assets', laptop());
+    await send('POST', `/assets/${asset.id}/dispose`, { date: '2027-01-31', terminationValue: 0 });
+    await send('PUT', '/lodged/2026');
+    // Moving it to a later year would turn 2026–27's part year into a full one
+    const moved = await send('POST', `/assets/${asset.id}/dispose`, {
+      date: '2028-01-31',
+      terminationValue: 0,
+    });
+    expect(moved.status).toBe(409);
+    expect(moved.body.error).toMatch(/2026–27/);
+    expect((await send('DELETE', `/assets/${asset.id}/dispose`)).status).toBe(409);
+    expect((await send('GET', `/assets/${asset.id}`)).body.disposedDate).toBe('2027-01-31');
+    // A lodged year it doesn't touch is no reason to refuse
+    await send('DELETE', '/lodged/2026');
+    await send('PUT', '/lodged/2030');
+    expect(
+      (
+        await send('POST', `/assets/${asset.id}/dispose`, {
+          date: '2027-02-28',
+          terminationValue: 0,
+        })
+      ).status,
+    ).toBe(200);
+  });
+
+  it('every year with an asset’s figures is in the year picker, not just its first', async () => {
+    await send('POST', '/assets', laptop({ startDate: '2023-10-01', transactionId: null }));
+    const years = taxYears('2026-11-04').map((y) => y.financialYear);
+    expect(years).toEqual(expect.arrayContaining([2023, 2024, 2025, 2026]));
   });
 
   it('disposal gives a balancing adjustment; a gain is income, never a deduction', async () => {
