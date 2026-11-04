@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.90
+
+- **Light or dark, as your device is.** A new install starts on the **System** theme, so Allotment follows your phone's or computer's light and dark setting. A theme already chosen on a device stays as it is; change it in **Settings → Preferences → Theme**.
+
 ## 0.2.0-up.89
 
 - **A shorter menu.** The sidebar groups **Planning** (Goals, Forecast, Investments, Tax time) and **Tools** (Payees, Rules, Files) under headings you can fold away. **Pay later**, **Household**, **Investments**, **Tax time** and **Files** appear once they hold something, so a new budget's menu starts short. Choose for each one in **Settings → Preferences → Sidebar** (When in use, Always or Hidden); **More features** in the menu leads there. Their pages still open from any link, and the menu always shows the page you're on. The choice is saved with your budget and follows you to every device.
