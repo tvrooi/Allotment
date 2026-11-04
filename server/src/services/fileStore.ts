@@ -142,13 +142,26 @@ export function storeUpload(upload: Upload, mimeType: string, stamp: string) {
     .from(receiptFiles)
     .where(eq(receiptFiles.id, fileId))
     .get();
-  if (known) {
+  if (known && storedFileInfo(fileId)) {
     discardUpload(upload);
     return fileId;
   }
   if (upload.tempPath) {
     mkdirSync(filesDir(), { recursive: true });
     renameSync(upload.tempPath, diskPath(fileId));
+  }
+  if (known) {
+    // Its row is here but its bytes aren't (a video whose file was lost, say, with only the
+    // database recovered): these are the same bytes (the id is their hash), so put them back
+    db.update(receiptFiles)
+      .set({
+        size: upload.size,
+        data: upload.bytes ?? Buffer.alloc(0),
+        onDisk: upload.tempPath ? 1 : 0,
+      })
+      .where(eq(receiptFiles.id, fileId))
+      .run();
+    return fileId;
   }
   db.insert(receiptFiles)
     .values({

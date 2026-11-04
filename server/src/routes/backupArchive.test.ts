@@ -133,6 +133,18 @@ describe('backup with files (audit I-6)', () => {
     expect((await res.json()).files).toEqual({ added: 0, alreadyHere: 2, missing: 0 });
   });
 
+  it('puts back a video whose row survived but whose file on disk was lost', async () => {
+    const ids = await twoFiles();
+    const archive = await download();
+    // Only the database recovered: the files folder is gone
+    rmSync(storedFile(ids.video)!.path!);
+    expect(storedFile(ids.video)).toBeNull();
+    const res = await restore(archive);
+    expect((await res.json()).files).toEqual({ added: 1, alreadyHere: 1, missing: 0 });
+    const video = storedFile(ids.video)!;
+    expect(video.path && existsSync(video.path)).toBeTruthy();
+  });
+
   it('refuses a damaged file, and changes nothing: no budget rows, no stray files', async () => {
     const ids = await twoFiles();
     const archive = await download();
