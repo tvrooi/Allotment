@@ -31,8 +31,11 @@ import {
   previewSchema,
   removeAsset,
   setYearWorkUse,
+  poolAsset,
+  poolRows,
   undisposeAsset,
   unlodgeYear,
+  unpoolAsset,
   updateAsset,
 } from '../services/depreciatingAssetService.js';
 import { disposition } from '../utils/contentDisposition.js';
@@ -195,6 +198,23 @@ taxRouter.post(
 taxRouter.delete(
   '/assets/:id/dispose',
   assetAction((req, res) => res.json(undisposeAsset(id.parse(req.params.id)))),
+);
+
+// The low-value pool (D6): allocate an asset from a year, or take it back out (a correction)
+taxRouter.put(
+  '/assets/:id/pool',
+  assetAction((req, res) => {
+    const { financialYear } = z.object({ financialYear: fy }).parse(req.body);
+    res.json(poolAsset(id.parse(req.params.id), financialYear));
+  }),
+);
+taxRouter.delete(
+  '/assets/:id/pool',
+  assetAction((req, res) => res.json(unpoolAsset(id.parse(req.params.id)))),
+);
+taxRouter.get(
+  '/pool',
+  assetAction((_req, res) => res.json(poolRows())),
 );
 
 // Lodged years lock their asset figures (owner only: never on a token's allowlist)

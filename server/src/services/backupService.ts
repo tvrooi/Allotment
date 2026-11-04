@@ -104,7 +104,7 @@ import { isCurrencyCode } from '../utils/currencies.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 24;
+export const BACKUP_VERSION = 25;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -169,7 +169,7 @@ const TABLES = {
   securityPrices,
   holdings,
   taxLots,
-  // Depreciating assets (format 24), before document links (an asset's records)
+  // Depreciating assets (format 24), before document links (an asset's records); the pool year (format 25)
   depreciatingAssets,
   depreciatingAssetYears,
   taxLodgedYears,

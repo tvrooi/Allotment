@@ -470,6 +470,13 @@
       "when": 1795200000000,
       "tag": "0066_depreciating_assets",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "6",
+      "when": 1795300000000,
+      "tag": "0067_low_value_pool",
+      "breakpoints": true
     }
   ]
 }

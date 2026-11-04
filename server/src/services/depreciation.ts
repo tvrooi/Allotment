@@ -29,6 +29,8 @@ export interface AssetTerms {
   /** A balancing adjustment event (sold, lost, no longer used) and what it brought in */
   disposedDate?: string | null;
   terminationValue?: number | null;
+  /** In the low-value pool from this financial year: its own schedule stops before it */
+  pooledFy?: number | null;
 }
 
 export interface ScheduleRow {
@@ -83,9 +85,11 @@ export function daysHeld(terms: AssetTerms, fy: number): number {
 export function schedule(terms: AssetTerms, throughFy: number): ScheduleRow[] {
   const life = BigInt(terms.effectiveLifeHundredths);
   const firstFy = terms.openingFy ?? financialYearOf(terms.startDate);
-  const lastFy = terms.disposedDate
+  let lastFy = terms.disposedDate
     ? Math.min(throughFy, financialYearOf(terms.disposedDate))
     : throughFy;
+  // Pooled: the pool takes over from that year, disposal included (see poolSchedule)
+  if (terms.pooledFy != null) lastFy = Math.min(lastFy, terms.pooledFy - 1);
   const rows: ScheduleRow[] = [];
   let value = terms.openingFy != null ? (terms.openingAdjustableValue ?? terms.cost) : terms.cost;
   let cumulativeDays = 0;
@@ -120,7 +124,11 @@ export function schedule(terms: AssetTerms, throughFy: number): ScheduleRow[] {
       deduction: share(decline, workUseBps),
       closing: value,
     };
-    if (terms.disposedDate && financialYearOf(terms.disposedDate) === fy) {
+    if (
+      terms.disposedDate &&
+      financialYearOf(terms.disposedDate) === fy &&
+      (terms.pooledFy == null || fy < terms.pooledFy)
+    ) {
       const adjustment = (terms.terminationValue ?? 0) - value;
       row.balancingAdjustment = adjustment;
       row.balancingTaxable = share(adjustment, workUseBps);
@@ -158,3 +166,134 @@ export function schedule(terms: AssetTerms, throughFy: number): ScheduleRow[] {
 /** A year's row (or nothing, outside the asset's life) */
 export const scheduleYear = (terms: AssetTerms, fy: number) =>
   schedule(terms, fy).find((r) => r.financialYear === fy) ?? null;
+
+/** The pool's entry thresholds: under $1,000 */
+export const POOL_LIMIT = 100_000;
+
+/** An asset allocated to the low-value pool (DEPRECIATING-ASSETS-PLAN.md §2, phase 3) */
+export interface PoolEntry {
+  /** low_cost: cost under $1,000, pooled in its first year; low_value: a DV asset whose
+   * opening adjustable value is under $1,000 */
+  kind: 'low_cost' | 'low_value';
+  /** The year it's allocated */
+  fy: number;
+  /** Its taxable share of the cost (low cost) or of the opening adjustable value (low value),
+   * estimated when it's allocated and fixed from then on */
+  amount: number;
+  /** A balancing adjustment event: the taxable share of its termination value, in that year */
+  disposal?: { fy: number; amount: number } | null;
+}
+
+export interface PoolRow {
+  financialYear: number;
+  /** Last year's closing balance */
+  opening: number;
+  lowCostAdded: number;
+  lowValueAdded: number;
+  /** 18.75% of low-cost additions + 37.5% of (opening + low-value additions): the D6 deduction */
+  decline: number;
+  /** Taxable shares of pooled assets' termination values */
+  terminations: number;
+  closing: number;
+  /** Termination values beyond the balance: assessable income */
+  income: number;
+}
+
+/**
+ * The low-value pool year by year, from the first allocation through `throughFy`. The amounts
+ * going in are already taxable shares, so the decline is the deduction. Ends when the balance
+ * reaches zero and nothing more is allocated.
+ */
+export function poolSchedule(entries: PoolEntry[], throughFy: number): PoolRow[] {
+  if (!entries.length) return [];
+  const first = Math.min(...entries.map((e) => e.fy));
+  const lastEntry = Math.max(
+    ...entries.flatMap((e) => (e.disposal ? [e.fy, e.disposal.fy] : [e.fy])),
+  );
+  const rows: PoolRow[] = [];
+  let balance = 0;
+  for (let fy = first; fy <= throughFy; fy++) {
+    const sum = (kind: PoolEntry['kind']) =>
+      entries.filter((e) => e.kind === kind && e.fy === fy).reduce((s, e) => s + e.amount, 0);
+    const lowCostAdded = sum('low_cost');
+    const lowValueAdded = sum('low_value');
+    const terminations = entries
+      .filter((e) => e.disposal?.fy === fy)
+      .reduce((s, e) => s + (e.disposal?.amount ?? 0), 0);
+    if (balance === 0 && !lowCostAdded && !lowValueAdded && !terminations) {
+      if (fy > lastEntry) break;
+      continue;
+    }
+    const opening = balance;
+    const decline =
+      divRound(BigInt(lowCostAdded) * 1_875n, 10_000n) +
+      divRound(BigInt(opening + lowValueAdded) * 375n, 1_000n);
+    let closing = opening + lowCostAdded + lowValueAdded - decline - terminations;
+    let income = 0;
+    if (closing < 0) {
+      income = -closing;
+      closing = 0;
+    }
+    rows.push({
+      financialYear: fy,
+      opening,
+      lowCostAdded,
+      lowValueAdded,
+      decline,
+      terminations,
+      closing,
+      income,
+    });
+    balance = closing;
+  }
+  return rows;
+}
+
+/** What an asset adds to the pool if allocated in `fy`, or why it can't be */
+export function poolEntryFor(
+  terms: AssetTerms,
+  fy: number,
+): { kind: PoolEntry['kind']; amount: number } | { refused: string } {
+  const firstFy = terms.openingFy ?? financialYearOf(terms.startDate);
+  const shareOf = (amount: number) => share(amount, terms.yearWorkUse?.[fy] ?? terms.workUseBps);
+  if (terms.disposedDate && financialYearOf(terms.disposedDate) < fy)
+    return { refused: 'It was disposed of before that year' };
+  if (fy < firstFy) return { refused: 'That is before its first year' };
+  if (terms.cost < POOL_LIMIT && terms.openingFy == null) {
+    if (fy !== firstFy) return { refused: 'A low-cost asset goes into the pool in its first year' };
+    return { kind: 'low_cost', amount: shareOf(terms.cost) };
+  }
+  if (terms.method !== 'diminishing_value')
+    return { refused: 'Only a diminishing value asset can join the pool later' };
+  const before = schedule({ ...terms, pooledFy: null, disposedDate: null }, fy - 1).find(
+    (r) => r.financialYear === fy - 1,
+  );
+  const value =
+    fy === firstFy && terms.openingFy != null
+      ? (terms.openingAdjustableValue ?? terms.cost)
+      : before?.closing;
+  if (value === undefined)
+    return { refused: 'It has no adjustable value at the start of that year' };
+  if (value >= POOL_LIMIT)
+    return { refused: 'Its adjustable value at the start of that year is $1,000 or more' };
+  if (value <= 0) return { refused: 'It has nothing left to decline' };
+  return { kind: 'low_value', amount: shareOf(value) };
+}
+
+/** A pooled asset's entry in the pool, from its terms (null when not pooled, or not allowed) */
+export function poolEntryOf(terms: AssetTerms): PoolEntry | null {
+  if (terms.pooledFy == null) return null;
+  const fy = terms.pooledFy;
+  const entry = poolEntryFor({ ...terms, disposedDate: null }, fy);
+  if ('refused' in entry) return null;
+  const bps = terms.yearWorkUse?.[fy] ?? terms.workUseBps;
+  const disposalFy = terms.disposedDate ? financialYearOf(terms.disposedDate) : null;
+  return {
+    ...entry,
+    fy,
+    disposal:
+      disposalFy !== null && disposalFy >= fy
+        ? { fy: disposalFy, amount: share(terms.terminationValue ?? 0, bps) }
+        : null,
+  };
+}

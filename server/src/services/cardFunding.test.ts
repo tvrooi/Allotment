@@ -341,7 +341,7 @@ describe('card payment reserves', () => {
     entry('purchase', -8000, 'food', { importedId: 'bank:immutable', reconciled: 1 });
     const before = state(),
       backup = createBackup();
-    expect(backup.version).toBe(24);
+    expect(backup.version).toBe(25);
     restoreBackup(parseBackup(backup));
     expect(position()).toMatchObject(before.cards[0]);
     expect(db.select().from(transactions).all()[0]).toMatchObject({

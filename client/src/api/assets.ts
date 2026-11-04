@@ -39,6 +39,10 @@ export interface Asset {
   openingAdjustableValue: number | null;
   disposedDate: string | null;
   terminationValue: number | null;
+  /** In the low-value pool (D6) from this financial year: its own schedule stops before it */
+  pooledFy: number | null;
+  /** Years it could join the pool, and what it would add (its taxable share) */
+  poolOptions: { financialYear: number; kind: PoolKind; amount: number }[];
   yearWorkUse: Record<number, number>;
   schedule: ScheduleRow[];
   /** Lodged years this asset's figures appear in: they can't change until unlocked */
@@ -62,6 +66,21 @@ export interface AssetInput {
   replaceClaim?: boolean;
   openingFy?: number | null;
   openingAdjustableValue?: number | null;
+}
+
+export type PoolKind = 'low_cost' | 'low_value';
+
+export interface PoolRow {
+  financialYear: number;
+  opening: number;
+  lowCostAdded: number;
+  lowValueAdded: number;
+  /** The D6 deduction */
+  decline: number;
+  terminations: number;
+  closing: number;
+  /** Termination values beyond the balance: assessable income */
+  income: number;
 }
 
 export interface Preview {
@@ -97,6 +116,14 @@ export const disposeAsset = (id: string, date: string, terminationValue: number)
   });
 export const undisposeAsset = (id: string) =>
   apiFetch<Asset>(`/tax/assets/${encodeURIComponent(id)}/dispose`, { method: 'DELETE' });
+export const poolAsset = (id: string, financialYear: number) =>
+  apiFetch<Asset>(`/tax/assets/${encodeURIComponent(id)}/pool`, {
+    method: 'PUT',
+    ...json({ financialYear }),
+  });
+export const unpoolAsset = (id: string) =>
+  apiFetch<Asset>(`/tax/assets/${encodeURIComponent(id)}/pool`, { method: 'DELETE' });
+export const poolRows = () => apiFetch<PoolRow[]>('/tax/pool');
 export const lodgedYears = () => apiFetch<number[]>('/tax/lodged');
 export const lodgeYear = (fy: number) => apiFetch<number[]>(`/tax/lodged/${fy}`, { method: 'PUT' });
 export const unlodgeYear = (fy: number) =>

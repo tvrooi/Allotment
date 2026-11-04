@@ -142,7 +142,7 @@ site in `website/` was removed (audit decision I-9).
    to flybudget.org (`client/src/utils/project.ts`); fetch Up incrementally (`filter[since]` plus a
    periodic full sweep) instead of full history on every sync (audit F-10); split the client
    bundle by route (2.28 MB main chunk, audit F-11).
-7. **Depreciating assets on Tax time (phases 1 and 2 built):** owner request of 3 November.
+7. **Depreciating assets on Tax time (phases 1 to 3 built):** owner request of 3 November.
    [docs/DEPRECIATING-ASSETS-PLAN.md](docs/DEPRECIATING-ASSETS-PLAN.md) has the ATO rules
    (prime cost and diminishing value), the design, four phases and five owner decisions (§7).
    The owner took the five decisions on 4 November: low-value pool in phase 3; organise tokens
@@ -156,7 +156,15 @@ site in `website/` was removed (audit decision I-9).
    work use, Records, disposal, removal; lodged-year buttons), asset rows in Deductions, **Depreciate
    instead** on claims over $300 and in the transaction panel (prefill passed as navigation state;
    there is no single-transaction GET), and the `asset` link kind in Files. Test:
-   `e2e/tests/depreciating-assets.spec.ts`. Phase 3 (low-value pool) follows. It uses migration 0066 and backup version 24,
+   `e2e/tests/depreciating-assets.spec.ts`. Phase 3 (up.96) adds the low-value pool (D6):
+   migration 0067 (`depreciating_assets.pooled_fy`), backup version 25, `poolSchedule`,
+   `poolEntryFor` and `poolEntryOf` in `depreciation.ts` (18.75% for low-cost assets in their first
+   year, 37.5% of the opening balance and low-value additions, taxable shares fixed at allocation,
+   termination values off the balance with any excess as income), `PUT`/`DELETE
+/tax/assets/:id/pool`, `GET /tax/pool` (organise tokens may read it; MCP `tax_assets` includes
+   it), D6 in the tax year, CSV, schedule and ZIP. Lodged-year locks compare each lodged year's
+   asset and pool figures before and after any change. Phase 4 (second-element costs, effective
+   life recalculation, a D1 car limit warning) is optional and not planned. It uses migration 0066 and backup version 24,
    and keeps an asset's records as files linked to it (an `asset` link kind).
 8. **Files (up.79) follow-ups:** live since 3 November. Ask the owner to confirm Files lists their
    receipts; confirm the HA app's `/data/flybudget/budget-files/` is created only

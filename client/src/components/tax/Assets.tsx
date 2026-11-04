@@ -23,9 +23,11 @@ import {
   type AssetLabel,
   type AssetMethod,
   type Preview,
+  poolAsset,
+  unpoolAsset,
 } from '../../api/assets';
 import { TAX_LABEL_NAMES } from '../../api/tax';
-import { useAssetMutation, useAssets, useLodgedYears } from '../../hooks/useAssets';
+import { useAssetMutation, useAssets, useLodgedYears, usePool } from '../../hooks/useAssets';
 import { Button } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { CurrencyInput } from '../ui/CurrencyInput';
@@ -136,7 +138,11 @@ export function AssetsTab() {
                     <td>{a.label}</td>
                     <td>{METHOD_NAMES[a.method]}</td>
                     <td className="text-right tabular-nums">{formatCurrency(a.cost)}</td>
-                    <td className="text-right tabular-nums">{formatCurrency(row?.decline ?? 0)}</td>
+                    <td className="text-right tabular-nums">
+                      {a.pooledFy !== null && thisFy >= a.pooledFy
+                        ? 'In the pool'
+                        : formatCurrency(row?.decline ?? 0)}
+                    </td>
                     <td className="text-right tabular-nums">
                       {formatCurrency(row?.deduction ?? 0)}
                     </td>
@@ -150,6 +156,8 @@ export function AssetsTab() {
           </table>
         </section>
       )}
+
+      <PoolSection assets={assets} />
 
       <LodgedYears assets={assets} />
 
@@ -215,6 +223,128 @@ function LodgedYears({ assets }: { assets: Asset[] }) {
           );
         })}
       </ul>
+    </section>
+  );
+}
+
+/** The low-value pool (D6): one balance for every asset in it, year by year */
+function PoolSection({ assets }: { assets: Asset[] }) {
+  const { data: rows = [] } = usePool();
+  if (!rows.length) return null;
+  const pooled = assets.filter((a) => a.pooledFy !== null);
+  return (
+    <section aria-labelledby="pool-heading" className="space-y-2">
+      <h2 id="pool-heading" className="text-sm font-semibold text-text">
+        Low-value pool (D6)
+      </h2>
+      <p className="text-xs text-text-tertiary">
+        {pooled.map((a) => a.name).join(', ')}. Low-cost assets are written down 18.75% in their
+        first year, and the balance 37.5% a year after that.
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[36rem]">
+          <thead>
+            <tr className="text-left text-xs text-text-tertiary">
+              <th className="py-1 font-medium">Year</th>
+              <th className="text-right font-medium">Opening</th>
+              <th className="text-right font-medium">Added</th>
+              <th className="text-right font-medium">Deduction</th>
+              <th className="text-right font-medium">Disposals</th>
+              <th className="text-right font-medium">Closing</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.financialYear} className="border-t border-border-light">
+                <td className="py-1.5">{fyName(r.financialYear)}</td>
+                <td className="text-right tabular-nums">{formatCurrency(r.opening)}</td>
+                <td className="text-right tabular-nums">
+                  {formatCurrency(r.lowCostAdded + r.lowValueAdded)}
+                </td>
+                <td className="text-right tabular-nums">{formatCurrency(r.decline)}</td>
+                <td className="text-right tabular-nums">
+                  {formatCurrency(r.terminations)}
+                  {r.income > 0 && (
+                    <span className="block text-xs text-text-tertiary">
+                      {formatCurrency(r.income)} income
+                    </span>
+                  )}
+                </td>
+                <td className="text-right tabular-nums">{formatCurrency(r.closing)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+/** Allocate an asset to the pool, or take it back out (a correction) */
+function PoolChoice({ asset, onError }: { asset: Asset; onError: (e: unknown) => void }) {
+  const [fy, setFy] = useState(asset.poolOptions[0]?.financialYear ?? 0);
+  const join = useAssetMutation(() => poolAsset(asset.id, fy));
+  const leave = useAssetMutation(() => unpoolAsset(asset.id));
+  if (asset.pooledFy !== null)
+    return (
+      <section
+        aria-label="Low-value pool"
+        className="rounded-md bg-surface-alt p-3 text-sm space-y-2"
+      >
+        <p>
+          In the low-value pool from {fyName(asset.pooledFy)}: its decline is part of the pool’s D6
+          deduction from then on, so it has no schedule of its own after that.
+        </p>
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={leave.isPending}
+          onClick={() => leave.mutateAsync(undefined).catch(onError)}
+        >
+          Take it out of the pool
+        </Button>
+        <p className="text-xs text-text-tertiary">
+          Only to correct a mistake: once pooled, an asset stays pooled.
+        </p>
+      </section>
+    );
+  if (!asset.poolOptions.length) return null;
+  const option = asset.poolOptions.find((o) => o.financialYear === fy) ?? asset.poolOptions[0];
+  return (
+    <section
+      aria-label="Low-value pool"
+      className="rounded-md bg-surface-alt p-3 text-sm space-y-2"
+    >
+      <p>
+        {option.kind === 'low_cost'
+          ? 'It cost under $1,000, so it can go into the low-value pool in its first year (18.75% that year, whatever the date, then 37.5% a year).'
+          : 'Its value is under $1,000, so it can join the low-value pool (37.5% a year).'}{' '}
+        It would add {formatCurrency(option.amount)}, its work-use share. Once you pool a low-cost
+        asset, the ATO expects every later low-cost asset to be pooled too.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        {asset.poolOptions.length > 1 && (
+          <Select
+            aria-label="Pool from"
+            value={fy}
+            onChange={(e) => setFy(Number(e.target.value))}
+            className="w-32"
+          >
+            {asset.poolOptions.map((o) => (
+              <option key={o.financialYear} value={o.financialYear}>
+                {fyName(o.financialYear)}
+              </option>
+            ))}
+          </Select>
+        )}
+        <Button
+          size="sm"
+          disabled={join.isPending}
+          onClick={() => join.mutateAsync(undefined).catch(onError)}
+        >
+          Move to the pool from {fyName(option.financialYear)}
+        </Button>
+      </div>
     </section>
   );
 }
@@ -609,6 +739,10 @@ function AssetDetail({ asset, onClose }: { asset: Asset; onClose: () => void }) 
             </table>
           </section>
 
+          <PoolChoice
+            asset={asset}
+            onError={(err) => setError(err instanceof Error ? err.message : 'That didn’t work')}
+          />
           <FilesSection kind="asset" targetId={asset.id} title="Records" />
           {asset.receipts.length > 0 && (
             <p className="text-xs text-text-tertiary">
