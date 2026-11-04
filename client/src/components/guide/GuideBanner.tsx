@@ -1,16 +1,21 @@
+import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Compass } from 'lucide-react';
 import { GUIDES } from '../../guides';
 import { PAGE_INTROS } from '../../guides/intros';
 import { useGuideProgress, useUpdateGuides } from '../../hooks/useGuides';
 import { useGuideStore } from '../../store/guideStore';
-import { bannerFor } from '../../utils/guides';
+import { bannerFor, bannerSeenUpdate } from '../../utils/guides';
+import type { GuideUpdate } from '../../api/guides';
 import { Button } from '../ui/Button';
 
 /**
  * One line above the page, never over it: where guides are for people who were here before
  * them, or a page's own guide on a first visit. The welcome tour is offered by the Get started
- * checklist (and the demo's bar) instead.
+ * checklist (and the demo's bar) instead, and nothing shows beside that checklist.
+ *
+ * Tour first (audit decision I-7): a page's banner is shown on the first visit only. Leaving
+ * the page without answering counts as seen, and its guide stays under the ? button.
  */
 export function GuideBanner() {
   const { pathname } = useLocation();
@@ -18,8 +23,23 @@ export function GuideBanner() {
   const touring = useGuideStore((s) => !!s.active);
   const start = useGuideStore((s) => s.start);
   const setListOpen = useGuideStore((s) => s.setListOpen);
+  const checklistShown = useGuideStore((s) => s.checklistShown);
   const update = useUpdateGuides();
-  const banner = bannerFor(pathname, progress, GUIDES, touring, PAGE_INTROS);
+  const banner = checklistShown
+    ? null
+    : bannerFor(pathname, progress, GUIDES, touring, PAGE_INTROS);
+  const seen = banner ? bannerSeenUpdate(banner) : null;
+
+  // What to record when the person leaves the page the banner was shown on
+  const shown = useRef<{ path: string; seen: GuideUpdate } | null>(null);
+  const seenKey = seen ? JSON.stringify(seen) : null;
+  useEffect(() => {
+    const last = shown.current;
+    if (last && last.path !== pathname) update.mutate(last.seen);
+    shown.current = seen && seenKey ? { path: pathname, seen } : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, seenKey]);
+
   if (!banner) return null;
 
   let text: string;

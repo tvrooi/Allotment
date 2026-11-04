@@ -209,12 +209,13 @@ site in `website/` was removed (audit decision I-9).
     (fast-check; `PROPERTY_RUNS=500` searches harder). Owner question from it: the short Australian
     template has no envelope for Up's taxis, homeware, technology, home maintenance or life-admin
     categories, so a first Up import typically leaves 15–18% of spending uncategorised.
-    Still open after up.96, in suggested order: I-7 tour-first onboarding (one onboarding surface,
-    F-12); I-11 dedicated assistant endpoints with their own audit log: phase 1 built in up.98
-    (docs/ASSISTANT-ENDPOINTS.md: `/api/assistant`, `auth/assistantPolicy.ts`, migration 0068
-    `assistant_actions`, Settings → Server → Assistant activity); next are phase 2, proposals the
-    owner approves one at a time (first: depreciating asset proposals), and phase 3, checks inside
-    the writing transaction; I-8 offering to categorise a household repayment
+    I-7 is done (up.97): tour first, one onboarding element at a time (docs/GUIDES.md, "Tour
+    first"). Still open, in suggested order: I-11 dedicated assistant endpoints with their own
+    audit log: phase 1 built in up.98 (docs/ASSISTANT-ENDPOINTS.md: `/api/assistant`,
+    `auth/assistantPolicy.ts`, migration 0068 `assistant_actions`, Settings → Server → Assistant
+    activity); next are phase 2, proposals the owner approves one at a time (first: depreciating
+    asset proposals), and phase 3, checks inside the writing transaction; I-8 offering to
+    categorise a household repayment
     back to the shared expense's category; F-11 route splitting and removing `emoji-picker-react`;
     F-13 one service per action family; F-14 deleted-import memory, only for a provider in use;
     then the partly done F-09, F-15, F-19, F-20 and F-24, and F-22, F-23.

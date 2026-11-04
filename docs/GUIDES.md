@@ -9,9 +9,17 @@ learn Allotment where they use it.
   multi-user mode is theirs alone (the gateway routes each signed-in person to their own budget).
 - **Budgets in use before guides** get no tour, tips and page guides off, and a one-time note
   ("New: guides and tips") pointing at the **?** menu and Preferences.
-- **New budgets** get the welcome tour offered once (an inline banner on the dashboard, never an
+- **New budgets** get the welcome tour offered once (in the dashboard's Get started card, never an
   overlay that opens by itself), with tips and page guides on. Nothing else is offered and no
   tip shows until the tour is taken or turned down.
+- **Tour first** (audit decision I-7, F-12): at most one onboarding element above a page's content.
+  - Until the tour is taken or skipped, the Get started card shows only the tour offer (**Show me
+    around**, **Skip the tour**); its steps come after.
+  - While the Get started card shows, the dashboard has no guide banner and no tip
+    (`checklistShown` in `store/guideStore.ts`).
+  - A page's guide banner or intro shows on the first visit only: leaving the page without
+    answering records it as seen (`bannerSeenUpdate`), and the guide stays under **?** → **Guide
+    for this page**. The note for budgets used before guides stays until answered.
 
 ## Server
 
