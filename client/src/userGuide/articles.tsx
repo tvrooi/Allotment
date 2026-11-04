@@ -337,6 +337,37 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
     ],
   },
   {
+    page: 'tax',
+    title: 'Tax time',
+    summary: 'Deductions, receipts and depreciating assets for your Australian return.',
+    sections: [
+      {
+        heading: 'Claims and receipts',
+        body: (
+          <p>
+            Open a transaction and tick <b>Claim as a tax deduction</b>, with its return label and
+            the share that was for work. Add the receipt to the transaction, or keep it in Tax
+            time’s <b>Receipt inbox</b> until the transaction arrives. Download a year’s deductions
+            as a CSV file, or with the receipts in a ZIP, for your return or your tax agent.
+          </p>
+        ),
+      },
+      {
+        heading: 'Assets that lose value over several years',
+        body: (
+          <p>
+            Something over $300 used for work, such as a laptop, is usually claimed as its decline
+            in value over several years. Choose <b>Depreciate instead</b> on the claim, or{' '}
+            <b>Add an asset</b> in Tax time → Assets. Pick the ATO’s prime cost or diminishing value
+            method after comparing them; Allotment works out each year’s part. Keep its records
+            under the asset, record it when you sell it or stop using it, and lock a year once it’s
+            lodged.
+          </p>
+        ),
+      },
+    ],
+  },
+  {
     page: 'currencies',
     title: 'Currencies',
     summary: 'Accounts in another currency.',
