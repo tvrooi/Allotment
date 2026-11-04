@@ -4,7 +4,12 @@ import { Link } from 'react-router-dom';
 import { Download, Upload } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
-import { restoreBackup } from '../../api/backup';
+import {
+  restoreBackup,
+  restoreBackupArchive,
+  type ArchiveRestoreResult,
+  type RestoreResult,
+} from '../../api/backup';
 import { IS_DEMO, downloadFromApi } from '../../demo/demoApi';
 import { YnabImportModal } from '../transactions/YnabImportModal';
 import { decimalSeparator, useAmountStyle } from '../../utils/currency';
@@ -20,7 +25,12 @@ export function DataExport() {
   const [to, setTo] = useState('');
   const decimalComma = decimalSeparator(useAmountStyle().format) === ',';
   const fileInput = useRef<HTMLInputElement>(null);
-  const [pending, setPending] = useState<{ name: string; data: unknown } | null>(null);
+  // A JSON backup is read here; a backup with files (a ZIP) goes to the server as it is
+  const [pending, setPending] = useState<
+    | { name: string; data: unknown; archive?: undefined }
+    | { name: string; archive: File; data?: undefined }
+    | null
+  >(null);
   const [restoring, setRestoring] = useState(false);
   const [showYnab, setShowYnab] = useState(false);
   const [restoreMessage, setRestoreMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -31,6 +41,16 @@ export function DataExport() {
     e.target.value = ''; // allow choosing the same file again
     if (!file) return;
     setRestoreMessage(null);
+    // A ZIP by its first bytes ("PK\x03\x04"), whatever the file is called
+    const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+    if (head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04) {
+      if (IS_DEMO) {
+        setRestoreMessage({ ok: false, text: 'A backup with files needs the Allotment app.' });
+        return;
+      }
+      setPending({ name: file.name, archive: file });
+      return;
+    }
     try {
       setPending({ name: file.name, data: JSON.parse(await file.text()) });
     } catch {
@@ -42,12 +62,20 @@ export function DataExport() {
     if (!pending) return;
     setRestoring(true);
     try {
-      const result = await restoreBackup(pending.data);
+      const result: RestoreResult | ArchiveRestoreResult = pending.archive
+        ? await restoreBackupArchive(pending.archive)
+        : await restoreBackup(pending.data);
       const count = result.restored.transactions ?? 0;
+      const files = 'files' in result ? (result as ArchiveRestoreResult).files : null;
       setRestoreMessage({
         ok: true,
         text:
-          `Restored ${pending.name} (${count.toLocaleString()} transactions).` +
+          `Restored ${pending.name} (${count.toLocaleString()} transactions` +
+          (files
+            ? `, ${(files.added + files.alreadyHere).toLocaleString()} file${files.added + files.alreadyHere === 1 ? '' : 's'}` +
+              (files.missing ? `; ${files.missing.toLocaleString()} not in the ZIP` : '')
+            : '') +
+          ').' +
           (result.safetyCopy
             ? ` Your previous data was saved as ${result.safetyCopy} next to the database.`
             : ''),
@@ -142,33 +170,55 @@ export function DataExport() {
           <p className="text-xs text-text-tertiary mt-0.5">
             Download a JSON backup of your budget: accounts, transactions, budgets, categories,
             payees, rules, recurring transactions, goals, reports, dashboards, receipt details and
-            tax claims. It doesn’t include the files themselves (receipt photos, PDFs, documents and
-            videos in Files) or bank connection credentials: the files stay in this installation,
-            and a Home Assistant backup of the app or a copy of its data folder keeps them. To keep
-            your files somewhere else too, use <strong>Files → Download all</strong>.
+            tax claims. <strong>Download Backup</strong> is that alone, as JSON.{' '}
+            {!IS_DEMO && (
+              <>
+                <strong>Backup with files</strong> is a ZIP of the same backup plus every file
+                (receipt photos, PDFs, documents and videos in Files), so another installation gets
+                them too.{' '}
+              </>
+            )}
+            Neither holds bank connection credentials, passwords or the encryption key.
           </p>
         </div>
-        <button
-          onClick={() => {
-            download(`${API_BASE}/backup`);
-          }}
-          className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-surface bg-text-secondary rounded-md hover:opacity-90 transition-colors"
-        >
-          <Download size={14} /> Download Backup
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              download(`${API_BASE}/backup`);
+            }}
+            className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-surface bg-text-secondary rounded-md hover:opacity-90 transition-colors"
+          >
+            <Download size={14} /> Download Backup
+          </button>
+          {!IS_DEMO && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                download('/api/backup-archive');
+              }}
+            >
+              <Download size={14} /> Backup with files (.zip)
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="bg-surface-alt rounded-lg p-5 space-y-4">
         <div>
           <h3 className="text-sm font-medium text-text">Restore from Backup</h3>
           <p className="text-xs text-text-tertiary mt-0.5">
-            Replace all of your data with a backup file. A copy of your current data is saved first.
+            Replace all of your data with a backup file: a JSON backup, or a backup with files
+            (.zip), whose files are checked before anything changes. A copy of your current data is
+            saved first.
           </p>
         </div>
         <input
           ref={fileInput}
           type="file"
-          accept="application/json,.json"
+          accept={
+            IS_DEMO ? 'application/json,.json' : 'application/json,.json,application/zip,.zip'
+          }
           className="hidden"
           aria-label="Backup file"
           onChange={chooseBackup}
