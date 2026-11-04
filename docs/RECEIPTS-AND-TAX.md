@@ -22,7 +22,7 @@ Allotment takes the upload, paste, inbox, matching and attachment ideas, and (si
 - **Email forwarding** would need an inbound mail service exposed to the internet, which a private,
   self-hosted budget should not run.
 - **Server-side AI parsing** would send receipts to a third party. Allotment can instead read
-  photos with a model on the owner's own Ollama server (§5, since 0.2.0-up.44).
+  photos with a model the owner chooses (§5, since 0.2.0-up.44; cloud providers since up.98).
 
 The owner types a receipt's details and line items, and matching and splitting use those.
 
@@ -144,15 +144,21 @@ records, not only tax evidence.
 - **Unmatch** keeps what was added to the transaction. Deleting a receipt never deletes a
   transaction; deleting a transaction makes its receipts unmatched.
 - **Backups:** format 19 adds `receiptLineItems`; format 18 backups restore with no line items.
-- **Reading photos with a local model** (`receiptReader.ts`, since 0.2.0-up.44):
-  - **Off by default.** Settings → _Read receipts automatically_: an Ollama address (http or
-    https, no path or credentials; redirects are refused) and a model. On Home Assistant, the
-    Ollama app's address on the internal network is shown in its documentation (`http://<app-hostname>:11434`), so no port needs opening. **Check** lists
-    the server's models and which can read images (`vision`).
-  - **What is sent:** the photo (JPEG, PNG, WebP; not PDF or HEIC), only to that address, with a
-    prompt naming the spending categories. The request asks for JSON in a fixed schema
-    (`format`), `temperature: 0`, `think: false` (a thinking model is slow on a CPU) and
-    `keep_alive: 5m`, and an 8192-token context (`num_ctx`; Ollama's 4096 default can cut a
+- **Reading photos with a model** (`receiptReader.ts`, since 0.2.0-up.44; providers since up.98):
+  - **Off by default.** Settings → _Read receipts automatically_ → _Who reads them_
+    (`budget_settings.receipt_reader_provider`, migration 0068):
+    - **A model server on your own network** (`local`): an address speaking the Ollama API
+      (http or https, no path or credentials; redirects are refused) and a model. **Check** lists
+      the server's models and which can read images (`vision`). Use the server's internal address.
+    - **Anthropic** (`/v1/messages`) or **OpenAI** (`/v1/chat/completions`) with the owner's own
+      API key and a model name (suggested `claude-haiku-5-5` and `gpt-5-mini`; any vision model
+      works). The key is write-only: `receipt_reader_secrets`, encrypted like bank tokens, never
+      returned by the API, never in backups or exports. A Claude or ChatGPT subscription doesn't
+      include API use; each photo is billed to the key, typically a fraction of a cent.
+  - **What is sent:** the photo (JPEG, PNG, WebP; not PDF or HEIC), only to the chosen provider, with a
+    prompt naming the spending categories. The answer is JSON (`jsonIn` allows a code fence
+    around it). For a local server the request also sets the schema (`format`), `temperature: 0`, `think: false` (a thinking model is slow on a CPU) and
+    `keep_alive: 5m`, and an 8192-token context (`num_ctx`; a 4096 default can cut a
     photo off), so the model leaves memory a few minutes after the last receipt.
   - **What is kept:** a sensible positive amount in cents, a real date from 2000 to tomorrow, a
     category only if it matches a spending category by name; anything else is null.
@@ -187,5 +193,5 @@ records, not only tax evidence.
 - Lodging with the ATO. myTax has no import, so the CSV is for you or your tax agent.
 - Uploading receipts from the read-only assistant.
 
-Receipts are read only by a model on the owner's own Ollama server (§5). The assistant route
+Receipts are read only by the model the owner chose (§5). The assistant route
 would need an owner-approved exception to the token allowlist, which has not been made.

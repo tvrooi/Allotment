@@ -68,18 +68,24 @@ export interface ReceiptSettings {
   addTag: boolean;
 }
 
-/** Reading receipts with a local Ollama model */
+export type ReaderProvider = 'local' | 'anthropic' | 'openai';
+
+/** Reading receipts with a model the owner chooses. The API key is write-only. */
 export interface ReaderSettings {
   enabled: boolean;
+  provider: ReaderProvider;
   url: string | null;
   model: string | null;
+  hasKey: boolean;
 }
 
-export interface OllamaModel {
+export type ReaderChange = Partial<Omit<ReaderSettings, 'hasKey'>> & { apiKey?: string | null };
+
+export interface ServerModel {
   name: string;
   size: number | null;
   parameters: string | null;
-  /** Whether it can read images; null when Ollama doesn't say */
+  /** Whether it can read images; null when the server doesn't say */
   vision: boolean | null;
 }
 
@@ -217,10 +223,10 @@ export const setReceiptSettings = (change: Partial<ReceiptSettings>) =>
   });
 
 export const getReaderSettings = () => apiFetch<ReaderSettings>('/receipts/reader');
-export const setReaderSettings = (change: Partial<ReaderSettings>) =>
+export const setReaderSettings = (change: ReaderChange) =>
   apiFetch<ReaderSettings>('/receipts/reader', { method: 'PUT', body: JSON.stringify(change) });
 export const readerModels = (url: string) =>
-  apiFetch<{ url: string; models: OllamaModel[] }>('/receipts/reader/models', {
+  apiFetch<{ url: string; models: ServerModel[] }>('/receipts/reader/models', {
     method: 'POST',
     body: JSON.stringify({ url }),
   });

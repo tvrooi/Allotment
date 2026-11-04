@@ -166,7 +166,7 @@ export function indexText(id: string, force = false) {
       const file = storedFile(doc.fileId);
       if (!file?.data) return setText(id, null, 'failed');
       try {
-        const text = (await transcribePhoto(file.data.toString('base64')))
+        const text = (await transcribePhoto(file.data.toString('base64'), doc.mimeType))
           .trim()
           .slice(0, MAX_TEXT);
         setText(id, text || null, text ? 'read' : 'none');

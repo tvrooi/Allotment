@@ -199,7 +199,7 @@ export function useSetReaderSettings() {
   });
 }
 
-/** The models on an Ollama server (checks the address too) */
+/** The models on the owner's model server (checks the address too) */
 export const useReaderModels = () => useMutation({ mutationFn: api.readerModels });
 
 export function useReadReceipt() {

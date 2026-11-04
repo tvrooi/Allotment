@@ -23,7 +23,8 @@ import {
 } from '../services/receiptMatching.js';
 import { disposition } from '../utils/contentDisposition.js';
 import {
-  listOllamaModels,
+  listServerModels,
+  PROVIDERS,
   queueRead,
   readIfEnabled,
   readerSettings,
@@ -98,7 +99,7 @@ receiptsRouter.put(
   ),
 );
 
-// Reading receipts with a local Ollama model: its address, model and whether it is on
+// Reading receipts with the owner's chosen model: provider, address or key, model, on or off
 receiptsRouter.get(
   '/reader',
   action((_req, res) => res.json(readerSettings())),
@@ -111,12 +112,19 @@ receiptsRouter.put(
         z
           .object({
             enabled: z.boolean(),
+            provider: z.enum(PROVIDERS),
             url: z.string().trim().max(300).nullable(),
+            apiKey: z
+              .string()
+              .trim()
+              .max(400)
+              .regex(/^[\x21-\x7e]*$/, 'That is not an API key')
+              .nullable(),
             model: z
               .string()
               .trim()
               .max(120)
-              .regex(/^[\w.\-:/]+$/, 'That is not an Ollama model name')
+              .regex(/^[\w.\-:/]+$/, 'That is not a model name')
               .nullable(),
           })
           .partial()
@@ -126,14 +134,14 @@ receiptsRouter.put(
     ),
   ),
 );
-// The models on an Ollama server, to check the address and choose one
+// The models on the owner's model server, to check the address and choose one
 receiptsRouter.post('/reader/models', async (req, res, next) => {
   try {
     const { url } = z
       .object({ url: z.string().trim().min(1).max(300) })
       .strict()
       .parse(req.body);
-    res.json(await listOllamaModels(url));
+    res.json(await listServerModels(url));
   } catch (error) {
     if (error instanceof z.ZodError)
       return res.status(400).json({ error: error.issues.map((i) => i.message).join('; ') });

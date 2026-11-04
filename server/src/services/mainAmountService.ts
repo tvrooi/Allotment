@@ -44,6 +44,7 @@ export function getBudgetSettings(): BudgetSettings {
       receiptAddNotes: 1,
       receiptAddTag: 1,
       receiptReaderEnabled: 0,
+      receiptReaderProvider: 'local',
       receiptReaderUrl: null,
       receiptReaderModel: null,
       filesCapMb: null,

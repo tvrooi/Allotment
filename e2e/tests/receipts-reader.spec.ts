@@ -3,8 +3,8 @@ import type { AddressInfo } from 'node:net';
 import { test, expect, open, isoDay } from './fixtures';
 import { SAMPLE_RECEIPT_PNG } from '../../server/src/services/receiptSample';
 
-// Reading receipts with a local Ollama model (docs/RECEIPTS-AND-TAX.md §5), against a mock
-// Ollama. Made-up receipts only.
+// Reading receipts with a model server (docs/RECEIPTS-AND-TAX.md §5), against a mock
+// Ollama-API server. Made-up receipts only.
 
 let ollama: Server;
 let base = '';
@@ -77,9 +77,9 @@ test('a photo is read by the local model, filled in and matched', async ({ page,
   // Off, and can't be turned on until there's an address and a model
   await expect(reading).not.toBeChecked();
   await expect(reading).toBeDisabled();
-  await settings.getByLabel('Ollama address').fill(`${base}/`);
+  await settings.getByLabel('Server address').fill(`${base}/`);
   await settings.getByRole('button', { name: 'Check' }).click();
-  await expect(settings.getByLabel('Ollama address')).toHaveValue(base);
+  await expect(settings.getByLabel('Server address')).toHaveValue(base);
   await settings.getByLabel('Model').selectOption('qwen3-vl:4b-instruct');
   await expect(settings.getByRole('option', { name: 'qwen2.5:3b (text only)' })).toBeAttached();
   await expect(reading).toBeEnabled();
