@@ -580,6 +580,8 @@ export const depreciatingAssets = sqliteTable(
     /** A balancing adjustment event, and what it brought in */
     disposedDate: text('disposed_date'),
     terminationValue: integer('termination_value'),
+    /** In the low-value pool (D6) from this financial year (migration 0067) */
+    pooledFy: integer('pooled_fy'),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
   },

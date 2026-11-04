@@ -23,6 +23,7 @@ import {
   assetScheduleRows,
   assetYears,
   assetsForYear,
+  poolForYear,
 } from './depreciatingAssetService.js';
 
 export class TaxError extends Error {
@@ -236,15 +237,20 @@ export function taxYear(fy: number) {
   });
   // Decline in value of depreciating assets (DEPRECIATING-ASSETS-PLAN.md): on their own labels
   const assets = assetsForYear(fy);
+  // The low-value pool's decline is D6, as one amount for every asset in it
+  const pool = poolForYear(fy);
   const totals = TAX_LABEL_KEYS.map((label) => {
     const mine = claims.filter((c) => c.label === label);
     const mineAssets = assets.filter((a) => a.label === label);
+    const pooled = label === 'D6' && pool ? pool : null;
     return {
       label,
       name: TAX_LABELS[label].name,
-      count: mine.length + mineAssets.length,
+      count: mine.length + mineAssets.length + (pooled?.assets.length ?? 0),
       total:
-        mine.reduce((s, c) => s + c.claim, 0) + mineAssets.reduce((s, a) => s + a.deduction, 0),
+        mine.reduce((s, c) => s + c.claim, 0) +
+        mineAssets.reduce((s, a) => s + a.deduction, 0) +
+        (pooled?.row.decline ?? 0),
     };
   }).filter((t) => t.count > 0);
   const workRelated = claims
@@ -253,6 +259,9 @@ export function taxYear(fy: number) {
   const missing = [
     ...claims.filter((c) => c.receipts.length === 0 && c.files.length === 0),
     ...assets.filter((a) => a.receipts.length === 0 && a.files.length === 0),
+    ...(pool?.assets ?? [])
+      .filter((a) => a.receipts.length === 0 && a.files.length === 0)
+      .map(() => ({ label: 'D6' as const })),
   ];
   const notes: string[] = [];
   if (
@@ -266,7 +275,7 @@ export function taxYear(fy: number) {
     notes.push(
       'Items costing more than $300 are usually claimed as decline in value over several years, not all at once.',
     );
-  const assetIncome = assets.reduce((s, a) => s + a.income, 0);
+  const assetIncome = assets.reduce((s, a) => s + a.income, 0) + (pool?.row.income ?? 0);
   if (assetIncome > 0)
     notes.push(
       `Disposing of assets for more than their adjustable value brought in $${(assetIncome / 100).toFixed(2)} of assessable income (a balancing adjustment). It is income, not a deduction.`,
@@ -282,8 +291,12 @@ export function taxYear(fy: number) {
     to,
     claims,
     assets,
+    pool,
     totals,
-    total: claims.reduce((s, c) => s + c.claim, 0) + assets.reduce((s, a) => s + a.deduction, 0),
+    total:
+      claims.reduce((s, c) => s + c.claim, 0) +
+      assets.reduce((s, a) => s + a.deduction, 0) +
+      (pool?.row.decline ?? 0),
     assetIncome,
     workRelatedTotal: workRelated,
     missingReceipts: missing.length,
@@ -456,6 +469,27 @@ export function taxYearCsv(fy: number) {
       a.receipts.map((r) => r.fileName).join('; '),
       a.files.map((f) => f.fileName).join('; '),
     ]),
+    ...(year.pool
+      ? [
+          [
+            null,
+            'D6',
+            TAX_LABELS.D6.name,
+            `Low-value pool: ${year.pool.assets.map((a) => a.name).join('; ')}`,
+            null,
+            null,
+            dollars(year.pool.row.decline),
+            null,
+            dollars(year.pool.row.decline),
+            year.pool.row.income
+              ? `Termination values over the pool balance: ${dollars(year.pool.row.income)} assessable income`
+              : null,
+            null,
+            year.pool.assets.flatMap((a) => a.receipts.map((r) => r.fileName)).join('; '),
+            year.pool.assets.flatMap((a) => a.files.map((f) => f.fileName)).join('; '),
+          ],
+        ]
+      : []),
   ];
   return { name: year.name, csv: lines.map((l) => l.map(csvCell).join(',')).join('\r\n') + '\r\n' };
 }
@@ -467,7 +501,7 @@ export function taxYearArchive(fy: number) {
   const files: { name: string; data: Uint8Array }[] = [
     { name: `deductions-${name.replace('–', '-')}.csv`, data: Buffer.from(csv, 'utf8') },
   ];
-  if (year.assets.length) {
+  if (year.assets.length || year.pool) {
     const schedule =
       assetScheduleRows(fy)
         .map((l) => l.map(csvCell).join(','))
@@ -483,6 +517,13 @@ export function taxYearArchive(fy: number) {
     ...year.assets.map((a) => ({
       date: a.startDate,
       label: a.label,
+      payeeName: a.name,
+      receipts: a.receipts,
+      files: a.files,
+    })),
+    ...(year.pool?.assets ?? []).map((a) => ({
+      date: `${fy}-07-01`,
+      label: 'D6',
       payeeName: a.name,
       receipts: a.receipts,
       files: a.files,

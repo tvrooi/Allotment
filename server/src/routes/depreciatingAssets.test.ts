@@ -268,7 +268,7 @@ describe('depreciating assets (plan phase 1)', () => {
     expect((await send('DELETE', `/assets/${asset.id}/dispose`)).body.disposedDate).toBeNull();
   });
 
-  it('travels with a backup (format 24), file links included; a format 23 backup restores', async () => {
+  it('travels with a backup (format 25), file links included; a format 23 backup restores', async () => {
     const { body: asset } = await send('POST', '/assets', laptop());
     const doc = addDocument({
       upload: uploadFromBytes(Buffer.from('Invoice\n')),
@@ -277,7 +277,7 @@ describe('depreciating assets (plan phase 1)', () => {
     linkDocument(doc.id, 'asset', asset.id);
     await send('PUT', '/lodged/2026');
     const backup = JSON.parse(JSON.stringify(createBackup()));
-    expect(backup.version).toBe(24);
+    expect(backup.version).toBe(25);
     expect(backup.depreciatingAssets).toHaveLength(1);
     db.delete(depreciatingAssets).run();
     restoreBackup(parseBackup(backup));
@@ -297,6 +297,7 @@ describe('depreciating assets (plan phase 1)', () => {
   it('an organise token may read assets, and nothing more', () => {
     expect(tokenAllows('organise', 'GET', '/tax/assets', undefined)).toBe(true);
     expect(tokenAllows('organise', 'GET', '/tax/assets/abc', undefined)).toBe(true);
+    expect(tokenAllows('organise', 'GET', '/tax/pool', undefined)).toBe(true);
     for (const [method, p] of [
       ['POST', '/tax/assets'],
       ['POST', '/tax/assets/preview'],
@@ -305,10 +306,140 @@ describe('depreciating assets (plan phase 1)', () => {
       ['POST', '/tax/assets/abc/dispose'],
       ['PUT', '/tax/assets/abc/years/2026'],
       ['PUT', '/tax/lodged/2026'],
+      ['PUT', '/tax/assets/abc/pool'],
+      ['DELETE', '/tax/assets/abc/pool'],
       ['GET', '/tax/years/2026/assets/csv'],
     ])
       expect(tokenAllows('organise', method, p, {}), `${method} ${p}`).toBe(false);
     expect(tokenAllows('read', 'GET', '/tax/assets', undefined)).toBe(false);
     expect(tokenAllows('categorise', 'GET', '/tax/assets', undefined)).toBe(false);
+  });
+
+  describe('the low-value pool (phase 3)', () => {
+    // A $800 headset (low cost) and the laptop on diminishing value (low value from 2027–28)
+    const headset = () =>
+      send(
+        'POST',
+        '/assets',
+        laptop({
+          name: 'Headset',
+          cost: 80_000,
+          method: 'diminishing_value',
+          effectiveLifeHundredths: 300,
+          workUseBps: 10_000,
+          transactionId: null,
+        }),
+      );
+
+    it('pools a low-cost asset in its first year: D6 in the tax year, its CSV and schedule', async () => {
+      const { body: asset } = await headset();
+      expect(asset.poolOptions).toEqual([
+        { financialYear: 2026, kind: 'low_cost', amount: 80_000 },
+      ]);
+      const wrongYear = await send('PUT', `/assets/${asset.id}/pool`, { financialYear: 2027 });
+      expect(wrongYear.status).toBe(400);
+      const pooled = await send('PUT', `/assets/${asset.id}/pool`, { financialYear: 2026 });
+      expect(pooled.status).toBe(200);
+      expect(pooled.body).toMatchObject({ pooledFy: 2026, schedule: [], poolOptions: [] });
+
+      const year = taxYear(2026);
+      expect(year.assets).toEqual([]);
+      expect(year.pool?.row).toMatchObject({ lowCostAdded: 80_000, decline: 15_000 });
+      expect(year.totals.find((t) => t.label === 'D6')).toMatchObject({ count: 1, total: 15_000 });
+      expect(year.total).toBe(15_000);
+      expect(taxYearCsv(2026).csv).toMatch(/Low-value pool: Headset/);
+      expect(await (await fetch(`${base}/years/2026/assets/csv`)).text()).toMatch(
+        /Low-value pool \(D6\)[\s\S]*Headset,Low-cost asset/,
+      );
+      expect((await send('GET', '/pool')).body.map((r: { decline: number }) => r.decline)).toEqual([
+        15_000,
+      ]);
+      expect(taxYears('2027-11-04').map((y) => y.financialYear)).toEqual(
+        expect.arrayContaining([2026, 2027]),
+      );
+
+      // Taken back out: a correction, refused once a pool year is lodged
+      await send('PUT', '/lodged/2026');
+      expect((await send('DELETE', `/assets/${asset.id}/pool`)).status).toBe(409);
+      // Its cost carries into the lodged pool year too
+      expect((await send('PUT', `/assets/${asset.id}`, { cost: 70_000 })).status).toBe(409);
+      await send('DELETE', '/lodged/2026');
+      expect((await send('DELETE', `/assets/${asset.id}/pool`)).body.pooledFy).toBeNull();
+    });
+
+    it('a pooled asset sold for less than the balance stays with the pool’s later deductions', async () => {
+      const { body: asset } = await headset();
+      await send('PUT', `/assets/${asset.id}/pool`, { financialYear: 2026 });
+      await send('POST', `/assets/${asset.id}/dispose`, {
+        date: '2027-08-01',
+        terminationValue: 10_000,
+      });
+      // 2028–29: what it left in the balance is still deducted, and still has its records
+      const year = taxYear(2028);
+      expect(year.pool?.row.decline).toBeGreaterThan(0);
+      expect(year.pool?.assets.map((a) => a.name)).toEqual(['Headset']);
+      expect(year.totals.find((t) => t.label === 'D6')).toMatchObject({
+        count: 1,
+        total: year.pool?.row.decline,
+      });
+    });
+
+    it('a diminishing value asset joins once it is worth under $1,000; others in the pool are protected by lodging', async () => {
+      const { body: dv } = await send('POST', '/assets', laptop({ method: 'diminishing_value' }));
+      const refused = await send('PUT', `/assets/${dv.id}/pool`, { financialYear: 2026 });
+      expect(refused.status).toBe(400);
+      const pooled = await send('PUT', `/assets/${dv.id}/pool`, { financialYear: 2027 });
+      expect(pooled.status).toBe(200);
+      expect(pooled.body.schedule.map((r: { financialYear: number }) => r.financialYear)).toEqual([
+        2026,
+      ]);
+      expect(taxYear(2027).pool?.row).toMatchObject({ lowValueAdded: 48_394, decline: 18_148 });
+
+      // Lodging 2027–28 protects the pool: a new pooled asset that year would change it
+      const { body: hs } = await send(
+        'POST',
+        '/assets',
+        laptop({
+          name: 'Headset',
+          cost: 80_000,
+          startDate: '2027-08-01',
+          workUseBps: 10_000,
+          transactionId: null,
+        }),
+      );
+      await send('PUT', '/lodged/2027');
+      expect((await send('PUT', `/assets/${hs.id}/pool`, { financialYear: 2027 })).status).toBe(
+        409,
+      );
+      // Disposing a pooled asset in a lodged year too
+      expect(
+        (
+          await send('POST', `/assets/${dv.id}/dispose`, {
+            date: '2028-01-01',
+            terminationValue: 10_000,
+          })
+        ).status,
+      ).toBe(409);
+      // A disposal before it joined the pool is refused outright
+      await send('DELETE', '/lodged/2027');
+      expect(
+        (
+          await send('POST', `/assets/${dv.id}/dispose`, {
+            date: '2027-03-01',
+            terminationValue: 0,
+          })
+        ).status,
+      ).toBe(400);
+      const sold = await send('POST', `/assets/${dv.id}/dispose`, {
+        date: '2028-01-01',
+        terminationValue: 100_000,
+      });
+      expect(sold.status).toBe(200);
+      // 80% of $1,000 is more than the balance: the excess is income, in the notes
+      const year = taxYear(2027);
+      expect(year.pool?.row.income).toBeGreaterThan(0);
+      expect(year.assetIncome).toBe(year.pool?.row.income);
+      expect(year.notes.join(' ')).toMatch(/assessable income/);
+    });
   });
 });

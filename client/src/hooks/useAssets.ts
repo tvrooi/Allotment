@@ -23,3 +23,6 @@ export function useAssetMutation<A>(fn: (args: A) => Promise<unknown>) {
   const refresh = useRefresh();
   return useMutation({ mutationFn: fn, onSuccess: () => refresh() });
 }
+
+/** The low-value pool (D6) year by year, through this financial year */
+export const usePool = () => useQuery({ queryKey: ['tax', 'pool'], queryFn: api.poolRows });

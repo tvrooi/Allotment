@@ -73,3 +73,40 @@ test('a claim over $300 is depreciated instead, then locked once its year is lod
     page.getByRole('dialog', { name: 'Edit Work laptop' }).getByLabel('Prime cost'),
   ).toBeDisabled();
 });
+
+test('a low-cost asset goes into the low-value pool: D6 in Deductions', async ({ page }) => {
+  await open(page, '/tax?tab=assets');
+  await page.getByRole('button', { name: 'Add an asset' }).click();
+  const form = page.getByRole('dialog', { name: 'Add an asset' });
+  await form.getByLabel('Name').fill('Headset');
+  await form.getByLabel('Cost', { exact: true }).fill('800');
+  await form.getByLabel('Start date (first used or installed ready for use)').fill(isoDay());
+  await form.getByLabel('Effective life (years)').fill('3');
+  await form.getByRole('button', { name: 'Add asset' }).click();
+
+  const detail = page.getByRole('dialog', { name: 'Headset' });
+  const pool = detail.getByRole('region', { name: 'Low-value pool' });
+  await expect(pool).toContainText('under $1,000');
+  await pool.getByRole('button', { name: /Move to the pool from/ }).click();
+  await expect(pool).toContainText('In the low-value pool from');
+  // Taken out (a correction) and put back, without reopening it
+  await pool.getByRole('button', { name: 'Take it out of the pool' }).click();
+  await pool.getByRole('button', { name: /Move to the pool from/ }).click();
+  await expect(pool).toContainText('In the low-value pool from');
+  await detail.getByRole('button', { name: 'Close' }).click();
+
+  // 18.75% of $800 in its first year
+  const section = page.getByRole('region', { name: 'Low-value pool (D6)' });
+  await expect(section).toContainText('$150');
+  // Only pooled assets, and still a year to lock
+  await expect(
+    page.getByRole('region', { name: 'Lodged years' }).getByRole('button').first(),
+  ).toBeVisible();
+  await page.getByRole('tab', { name: 'Deductions' }).click();
+  await expect(page.getByRole('region', { name: 'Decline in value' })).toContainText(
+    'Low-value pool',
+  );
+  await expect(page.getByRole('region', { name: 'Totals by label' })).toContainText(
+    'Low-value pool deduction',
+  );
+});

@@ -137,6 +137,11 @@ export interface TaxYear {
   claims: TaxYearClaim[];
   /** Depreciating assets' decline in value this year (DEPRECIATING-ASSETS-PLAN.md) */
   assets: TaxYearAsset[];
+  /** The low-value pool's year (D6), when there's anything in it */
+  pool: {
+    row: import('./assets').PoolRow;
+    assets: { assetId: string; name: string; added: number }[];
+  } | null;
   /** Balancing adjustments that are assessable income, not deductions */
   assetIncome: number;
   totals: { label: TaxLabel; name: string; count: number; total: number }[];

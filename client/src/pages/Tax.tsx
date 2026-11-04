@@ -11,6 +11,7 @@ import {
   taxYearArchiveUrl,
   taxYearCsvUrl,
   type Receipt,
+  type TaxYear,
   type TaxYearAsset,
 } from '../api/tax';
 import {
@@ -111,7 +112,7 @@ function Deductions() {
             ))}
           </Select>
         </label>
-        {year && (year.claims.length > 0 || year.assets.length > 0) && (
+        {year && (year.claims.length > 0 || year.assets.length > 0 || year.pool) && (
           <div className="flex gap-2 ml-auto">
             <a href={taxYearCsvUrl(year.financialYear)} download>
               <Button variant="secondary">
@@ -153,7 +154,7 @@ function Deductions() {
               {n}
             </p>
           ))}
-          {year.claims.length === 0 && year.assets.length === 0 ? (
+          {year.claims.length === 0 && year.assets.length === 0 && !year.pool ? (
             <p className="text-sm text-text-secondary">
               Nothing claimed in {year.name} yet. Open a transaction and tick{' '}
               <em>Claim as a tax deduction</em>, or make a rule that claims matching payments as
@@ -273,7 +274,9 @@ function Deductions() {
                   </table>
                 </section>
               )}
-              {year.assets.length > 0 && <YearAssets assets={year.assets} />}
+              {(year.assets.length > 0 || year.pool) && (
+                <YearAssets assets={year.assets} pool={year.pool} />
+              )}
             </>
           )}
           <p className="text-xs text-text-tertiary">
@@ -290,7 +293,7 @@ function Deductions() {
 const ASSET_LABEL_SET = new Set<string>(ASSET_LABELS);
 
 /** This year's decline in value of depreciating assets, alongside the claims */
-function YearAssets({ assets }: { assets: TaxYearAsset[] }) {
+function YearAssets({ assets, pool }: { assets: TaxYearAsset[]; pool: TaxYear['pool'] }) {
   return (
     <section aria-label="Decline in value" className="overflow-x-auto">
       <h2 className="text-sm font-semibold text-text mb-1">Decline in value</h2>
@@ -336,6 +339,23 @@ function YearAssets({ assets }: { assets: TaxYearAsset[] }) {
               </td>
             </tr>
           ))}
+          {pool && (
+            <tr className="border-t border-border-light align-top">
+              <td className="py-2">
+                <Link to="/tax?tab=assets" className="text-brand-600 hover:text-brand-700">
+                  Low-value pool
+                </Link>
+                <span className="block text-xs text-text-tertiary">
+                  {pool.assets.map((a) => a.name).join(', ')}
+                </span>
+              </td>
+              <td className="py-2">D6</td>
+              <td className="py-2 text-right tabular-nums">{formatCurrency(pool.row.decline)}</td>
+              <td className="py-2 text-right tabular-nums">—</td>
+              <td className="py-2 text-right tabular-nums">{formatCurrency(pool.row.decline)}</td>
+              <td className="py-2 pl-4" />
+            </tr>
+          )}
         </tbody>
       </table>
     </section>

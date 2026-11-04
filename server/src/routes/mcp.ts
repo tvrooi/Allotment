@@ -950,11 +950,13 @@ const ACTION_TOOLS: ActionTool[] = [
     scope: 'organise',
     readOnly: true,
     description:
-      'Depreciating assets on Tax time: each with its method, cost, start date, effective life, taxable-use share and year-by-year decline in value (amounts in cents; financial year 2025 = 2025–26). Read only: never creates, edits or disposes of an asset.',
+      'Depreciating assets on Tax time: each with its method, cost, start date, effective life, taxable-use share and year-by-year decline in value, and the low-value pool (D6) year by year (amounts in cents; financial year 2025 = 2025–26). Read only: never creates, edits, pools or disposes of an asset.',
     properties: {},
     run: async (ctx) => {
       const r = await api(ctx, '/tax/assets');
-      return r.ok ? { assets: r.data } : { error: r.error };
+      if (!r.ok) return { error: r.error };
+      const pool = await api(ctx, '/tax/pool');
+      return { assets: r.data, pool: pool.ok ? pool.data : [] };
     },
   },
   {

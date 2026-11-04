@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.96
+
+- **The low-value pool (D6).** An asset that cost under $1,000 can go into the low-value pool in its first year, and a diminishing value asset can join once its value falls under $1,000: open it in Tax time → Assets and choose **Move to the pool**. The pool is written down 18.75% for assets added that year and 37.5% of its balance, on each asset's work-use share; selling a pooled asset reduces the balance (anything over it is income). Tax time → Assets shows the pool year by year, and Deductions, its totals, CSV and ZIP include the D6 deduction. Lodged years stay locked: a change that would alter a lodged year's asset or pool figures is refused until it is unlocked.
+- Backups now use format 25 (they keep each asset's pool year). Older backups still restore.
+
 ## 0.2.0-up.95
 
 - **Depreciating assets on Tax time.** A new **Assets** tab keeps things that lose value over several years, such as a laptop for work. Add one, compare the ATO's two methods (prime cost and diminishing value) side by side, and pick one; suggested effective lives for common items link to the ATO's table. Each asset shows its year-by-year schedule, lets you change a year's work-use share, keeps its records (warranty, invoice) as files, and records when you sell it or stop using it. Lock a year once it's lodged so its figures stay as lodged.

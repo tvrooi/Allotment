@@ -182,7 +182,7 @@ records, not only tax evidence.
 - Email forwarding, and reading PDFs as receipts (only photos are read; Files finds a PDF's text
   for search only).
 - Working-from-home hours (the fixed rate per hour), car logbooks and cents per kilometre.
-- The low-value pool calculation (planned: [DEPRECIATING-ASSETS-PLAN.md](DEPRECIATING-ASSETS-PLAN.md) phase 3). Depreciating assets themselves are on Tax time → Assets.
+- Depreciation's optional extras ([DEPRECIATING-ASSETS-PLAN.md](DEPRECIATING-ASSETS-PLAN.md) phase 4): second-element costs, effective life recalculation, and a car cost limit warning. Depreciating assets and the low-value pool are on Tax time → Assets.
 - Income, tax withheld, tax offsets and an estimated refund.
 - Lodging with the ATO. myTax has no import, so the CSV is for you or your tax agent.
 - Uploading receipts from the read-only assistant.
