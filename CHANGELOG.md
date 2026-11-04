@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.92
+
+- **Backup with files.** Settings → Data now has **Backup with files (.zip)**: the same backup as **Download Backup**, plus every file in Files (receipt photos, PDFs, documents and videos). **Restore Backup…** takes it too, on this installation or a new one, and checks every file before it changes anything: a damaged ZIP restores nothing. Bank connection credentials, passwords and the encryption key are never in a backup.
+
 ## 0.2.0-up.91
 
 - **Up first, any bank by CSV.** Plaid, SimpleFIN and Enable Banking are now marked **community supported**: they keep working, but only Up is checked with every release. Wherever a bank connection is offered (Welcome, **Settings → Connected Banks**, **Add account** in the menu), importing your bank's CSV files is offered too, and works with every bank.

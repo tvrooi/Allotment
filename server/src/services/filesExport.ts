@@ -1,6 +1,6 @@
 // Every file in Files as one ZIP (docs/FILES.md §5): the files under files/, named by date and
-// name, and files.csv saying what each is, its labels and what it is linked to. JSON backups
-// carry no files, so this is how files move to another installation.
+// name, and files.csv saying what each is, its labels and what it is linked to: the files for
+// people. A backup with files (backupArchive.ts) is the one Allotment restores.
 import { createReadStream } from 'node:fs';
 import type { Response } from 'express';
 import { asc } from 'drizzle-orm';

@@ -53,7 +53,17 @@ mention, and there are no paid plans: storage is the owner's own disk, with an o
   receipt.
 - **JSON backups** (format 23) carry documents, links and labels, not bytes. Restored on the same
   installation every file is found by its hash; elsewhere a document says its file is not on this
-  installation (`hasFile: false`). **Download all** (§5) is how the files themselves move.
+  installation (`hasFile: false`).
+- **Backup with files** (Settings → Data, audit decision I-6, `services/backupArchive.ts`,
+  `GET /api/backup-archive`): a ZIP of `backup.json` (the JSON backup, unchanged) and
+  `files/<sha256>` for every file a document or receipt refers to, streamed (a video is read from
+  disk as it is written; up to 4 GB, ZIP's limit). Restoring it (`POST /api/backup-archive/restore`,
+  the ZIP as the body) saves the upload beside the files, checks every file against its name's
+  hash and stores the missing ones, and only then replaces the budget with `restoreBackup`. A
+  damaged file, or a budget that won't restore, changes nothing, and the files this restore
+  added are removed again. The storage limit doesn't apply to a restore. Not in the in-browser
+  demo, and no access token reaches either route. **Download all** (§5) stays the way to get the
+  files out by name, for people.
 - **Limit:** Files → Storage → **Set a limit** (`budget_settings.files_cap_mb`, null = none). An
   upload that would take the stored bytes over it is refused. The same bytes stored again take no
   more room, and aren't counted again.
