@@ -1,4 +1,4 @@
-import { and, eq, like, max } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import {
   accounts,
@@ -40,34 +40,39 @@ export const FULL_SWEEP_MS = 7 * 86_400_000;
 const addDays = (day: string, days: number) =>
   new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
-/** The first day an incremental sync covers for this account; null when it needs a full sweep */
-export function incrementalStart(accountId: string, upAccountId: string): string | null {
-  const newest = db
-    .select({ day: max(transactions.date) })
-    .from(transactions)
-    .where(
-      and(
-        eq(transactions.accountId, accountId),
-        like(transactions.importedId, `up:${upAccountId}:%`),
-      ),
-    )
-    .get()?.day;
-  if (!newest) return null;
-  let start = addDays(newest, -WINDOW_DAYS);
+/**
+ * The first day an incremental sync covers for this account; null when it needs a full sweep.
+ * Worked out from what Up reported (the stored observations), never from the register, whose
+ * dates the owner may change: moving a row into the future must not push the window past what
+ * is actually new at Up.
+ */
+export function incrementalStart(
+  accountId: string,
+  today = new Date().toISOString().slice(0, 10),
+): string | null {
+  let newest: string | null = null;
+  let oldestHold: string | null = null;
   for (const record of db
-    .select({ sourceJson: upSourceRecords.sourceJson })
+    .select({ sourceJson: upSourceRecords.sourceJson, seenInLatest: upSourceRecords.seenInLatest })
     .from(upSourceRecords)
-    .where(and(eq(upSourceRecords.accountId, accountId), eq(upSourceRecords.seenInLatest, 1)))
+    .where(eq(upSourceRecords.accountId, accountId))
     .all()) {
+    let seen: { status?: string; createdAt?: string };
     try {
-      const seen = JSON.parse(record.sourceJson) as { status?: string; createdAt?: string };
-      const day = seen.createdAt?.slice(0, 10);
-      if (seen.status === 'HELD' && day && day < start) start = day;
+      seen = JSON.parse(record.sourceJson);
     } catch {
       return null;
     }
+    const day = seen.createdAt?.slice(0, 10);
+    if (!day) return null;
+    if (!newest || day > newest) newest = day;
+    if (record.seenInLatest && seen.status === 'HELD' && (!oldestHold || day < oldestHold))
+      oldestHold = day;
   }
-  return start;
+  if (!newest) return null;
+  // Up never reports a transaction from the future; a clock running ahead mustn't either
+  const start = addDays(newest < today ? newest : today, -WINDOW_DAYS);
+  return oldestHold && oldestHold < start ? oldestHold : start;
 }
 const dollars = (cents: number) =>
   `$${Math.floor(cents / 100).toLocaleString('en-AU')}.${String(cents % 100).padStart(2, '0')}`;
@@ -191,7 +196,7 @@ async function runSync(forceFull: boolean): Promise<UpSyncResult> {
           !mapping.fullSyncedAt ||
           Date.parse(now) - Date.parse(mapping.fullSyncedAt) > FULL_SWEEP_MS
             ? null
-            : incrementalStart(accountId, mapping.upAccountId);
+            : incrementalStart(accountId);
         const fullSweep = coveredFrom === null;
         const history = fullSweep
           ? await getUpTransactions(connection.accessToken, mapping.upAccountId)

@@ -109,6 +109,22 @@ describe('incremental Up sync (audit F-10)', () => {
     expect(imported()).toEqual(['up:spending:new', 'up:spending:old', 'up:spending:recent']);
   });
 
+  it("a row's date changed in the register doesn't move the window (it follows Up's own dates)", async () => {
+    await connect([row('recent', -2_000, '2026-10-20')]);
+    // The owner moves the imported row far into the future
+    db.update(transactions)
+      .set({ date: '2027-03-01' })
+      .where(eq(transactions.importedId, 'up:spending:recent'))
+      .run();
+    mock.clearRequests();
+    mock.setHistory('spending', [
+      row('recent', -2_000, '2026-10-20'),
+      row('new', -3_000, '2026-10-22'),
+    ]);
+    expect((await syncUp()).added).toBe(1);
+    expect(decodeURIComponent(spendingRequests()[0])).toContain('filter[since]=2026-10-05');
+  });
+
   it('rows older than the window are not taken as gone from Up', async () => {
     await connect([row('old', -1_000, '2026-06-01'), row('recent', -2_000, '2026-10-20')]);
     await syncUp();
