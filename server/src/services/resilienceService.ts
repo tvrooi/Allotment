@@ -39,6 +39,7 @@ import {
   type PrioritiesInput,
   type ReviewSnapshot,
 } from './resilienceConfig.js';
+import { bankVerifiedAccountIds } from './bankVerified.js';
 
 // Phase 7: an optional priorities profile (7A), a resilience view that partitions the
 // shared funding resources (7B), a resume-after-a-lapse review with reminders (7E), and an
@@ -439,12 +440,14 @@ export function resumeState(today = todayIso()) {
         )
         .all().length
     : null;
+  // Accounts a bank sync just checked against the bank aren't asked about (bankVerified.ts)
+  const verified = bankVerifiedAccountIds();
   const unreconciledAccounts = db
     .select()
     .from(accounts)
     .where(personalBudgetAccount)
     .all()
-    .filter((a) => !a.closedAt && LIQUID_ACCOUNT_TYPES.includes(a.type))
+    .filter((a) => !a.closedAt && LIQUID_ACCOUNT_TYPES.includes(a.type) && !verified.has(a.id))
     .filter(
       (a) =>
         !!db

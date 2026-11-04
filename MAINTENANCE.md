@@ -105,6 +105,10 @@ CI, container vulnerability scans and Scorecard remain active. No upstream CLA w
 ## Current limits
 
 - Up imports settled AUD transactions; startup/manual sync and opt-in server polling with backoff, no webhooks.
+- Supported banks: Up, and CSV/CAMT files from any bank. Plaid, SimpleFIN and Enable Banking are
+  community supported (audit decision I-10): kept working and labelled so in the app, but not
+  tested against a real bank each release. Bring one up to Up's safeguards (deleted-import memory,
+  audit F-14, and the like) only once it is in use.
 - One owner password and one Up token per budget; no multi-user separation.
 - Remote desktop budgets require the server to be reachable; no full offline merge.
 - Mac signing/notarization is optional until configured. Unsigned Mac, Windows and Linux builds check for releases in the app and offer installer downloads; automatic installation requires a verified Developer ID signed Mac build.

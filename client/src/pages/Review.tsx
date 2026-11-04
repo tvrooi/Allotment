@@ -120,7 +120,10 @@ function StepDetail({ id, guide }: { id: api.GuideStepId; guide: api.GuideState 
   if (id === 'balances')
     return (
       <>
-        <p>Compare each balance with your bank, then reconcile it.</p>
+        <p>
+          Compare each balance with your bank, then reconcile it. Up accounts that matched Up at the
+          last sync are already checked.
+        </p>
         {guide.balances.length === 0 && <p>No cash or card accounts in the budget yet.</p>}
         <ul className="space-y-1">
           {guide.balances.map((b) => (
@@ -131,6 +134,9 @@ function StepDetail({ id, guide }: { id: api.GuideStepId; guide: api.GuideState 
                   {formatCurrency(b.balance)}
                   {b.currency ? ` ${b.currency}` : ''}
                 </Private>
+                {b.bankVerified && (
+                  <span className="text-xs text-positive">Matches Up at the last sync</span>
+                )}
                 {b.unreconciled > 0 && (
                   <Link
                     to={`/accounts/${b.accountId}/reconcile`}

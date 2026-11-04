@@ -26,6 +26,7 @@ import { todayIso } from './mainAmountService.js';
 import { billCoverage, paydays, PaydayError } from './paydayService.js';
 import { paydayConfigSchema } from './paydayConfig.js';
 import { computeOccurrenceDates, type RecurrenceDefinition } from '../utils/recurrence.js';
+import { bankVerifiedAccountIds } from './bankVerified.js';
 
 // Buffer (6F), review (6G) and the guided setup (6G) are read-only views over the shared
 // funding service: every total here is a figure fundingState already reports, broken down
@@ -396,6 +397,7 @@ export function guideState(today = todayIso()) {
     .where(personalBudgetAccount)
     .all()
     .filter((a) => !a.closedAt && LIQUID_ACCOUNT_TYPES.includes(a.type));
+  const verified = bankVerifiedAccountIds();
   const balances = accountRows.map((a) => {
     const rows = db
       .select()
@@ -408,7 +410,9 @@ export function guideState(today = todayIso()) {
       name: a.name,
       currency: a.currency,
       balance: a.startingBalance + sum(rows.map((r) => r.amount)),
-      unreconciled: rows.filter((r) => !r.reconciled).length,
+      // An account the last bank sync found equal to the bank needs no reconciling (bankVerified.ts)
+      unreconciled: verified.has(a.id) ? 0 : rows.filter((r) => !r.reconciled).length,
+      bankVerified: verified.has(a.id),
     };
   });
 

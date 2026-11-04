@@ -59,8 +59,8 @@ test('a new server asks for a password and the setup code', async ({ baseURL }) 
 });
 
 test('the signed-in owner uses the app, with real page URLs', async ({ baseURL }) => {
-  await owner.getByText('Use another bank or add accounts by hand').click();
-  await owner.getByRole('button', { name: /Add accounts manually/ }).click();
+  await owner.getByText('Another bank: CSV files, or a community-supported connection').click();
+  await owner.getByRole('button', { name: /Any bank: CSV files/ }).click();
   const dialog = owner.getByRole('dialog', { name: 'Add Account' });
   await dialog.getByRole('textbox', { name: 'Account name' }).fill('Credit Union');
   await dialog.getByRole('button', { name: 'Add Account' }).click();

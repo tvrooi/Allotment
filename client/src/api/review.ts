@@ -100,6 +100,8 @@ export interface GuideState {
     currency: string | null;
     balance: number;
     unreconciled: number;
+    /** The last bank sync found the register equal to the bank: nothing to reconcile */
+    bankVerified?: boolean;
   }[];
   nextIncome: string | null;
   needsUntil: string;

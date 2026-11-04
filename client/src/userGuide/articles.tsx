@@ -130,8 +130,11 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         heading: 'Other banks',
         body: (
           <p>
-            Allotment also connects through Plaid, SimpleFIN and Enable Banking (Europe), or reads
-            CSV files from any bank. See <L to="transactions">Transactions</L> for importing files.
+            Any bank: add the account and import the CSV files your bank exports (see{' '}
+            <L to="transactions">Transactions</L>). Allotment can also connect through Plaid,
+            SimpleFIN and Enable Banking (Europe). Those are community supported: they work, but
+            only Up is checked with every release, so if one stops working for your bank, CSV files
+            still do.
           </p>
         ),
       },

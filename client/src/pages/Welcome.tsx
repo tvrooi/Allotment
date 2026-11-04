@@ -16,6 +16,7 @@ import { Button } from '../components/ui/Button';
 import { PlaidLogo, SimplefinLogo } from '../components/ui/BankLogos';
 import { BrandName } from '../components/ui/BrandName';
 import { YnabImportModal } from '../components/transactions/YnabImportModal';
+import { CommunitySupportedNote } from '../components/banks/CommunitySupported';
 
 interface OptionProps {
   icon: React.ReactNode;
@@ -29,7 +30,7 @@ interface OptionProps {
   onClick: () => void;
 }
 
-/** Another way to add accounts, under "Use another bank or add accounts by hand" */
+/** Another way to add accounts, under "Another bank: CSV files, or a community-supported connection" */
 function SetupOption({ icon, title, tag, time, description, action, onClick }: OptionProps) {
   return (
     <button
@@ -164,7 +165,7 @@ export default function WelcomePage() {
 
           <details className="group mt-6 text-left">
             <summary className="mx-auto w-fit list-none cursor-pointer text-sm font-medium text-text-secondary hover:text-text max-md:min-h-11 flex items-center gap-1">
-              Use another bank or add accounts by hand
+              Another bank: CSV files, or a community-supported connection
               <ChevronRight
                 size={14}
                 aria-hidden
@@ -174,13 +175,14 @@ export default function WelcomePage() {
             <div className="grid gap-3 mt-4 grid-cols-1 sm:grid-cols-2">
               <SetupOption
                 icon={<PencilLine size={20} className="text-text-secondary" />}
-                title="Add accounts manually"
-                tag="No bank link"
+                title="Any bank: CSV files"
+                tag="Do it yourself"
                 time="~1 min each"
-                description="Add each account and its balance yourself, then import CSV files from your bank or enter transactions by hand."
-                action="Add manually"
+                description="Add each account and its balance, then import the CSV files your bank exports (or enter transactions by hand). Works with every bank."
+                action="Add an account"
                 onClick={() => setShowManual(true)}
               />
+              <CommunitySupportedNote className="sm:col-span-2 mt-1" />
               <SetupOption
                 icon={<PlaidLogo size={24} className="text-text" />}
                 title="Connect with Plaid"

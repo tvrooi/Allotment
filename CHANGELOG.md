@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.91
+
+- **Up first, any bank by CSV.** Plaid, SimpleFIN and Enable Banking are now marked **community supported**: they keep working, but only Up is checked with every release. Wherever a bank connection is offered (Welcome, **Settings → Connected Banks**, **Add account** in the menu), importing your bank's CSV files is offered too, and works with every bank.
+- **Review no longer asks you to reconcile what Up just checked.** Right after an Up sync, an Up account whose register matches Up's balance isn't counted under "Reconcile accounts with your bank"; Review says it matches Up instead. Nothing is marked reconciled for you, and adding or deleting a transaction by hand brings the request back.
+
 ## 0.2.0-up.90
 
 - **Light or dark, as your device is.** A new install starts on the **System** theme, so Allotment follows your phone's or computer's light and dark setting. A theme already chosen on a device stays as it is; change it in **Settings → Preferences → Theme**.
