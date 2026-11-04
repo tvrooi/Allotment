@@ -168,7 +168,13 @@ describe('category templates', () => {
   it('uses the Australian template in Australian time zones or when asked', () => {
     const names = (t: ReturnType<typeof categoryTemplate>) =>
       t.flatMap((g) => g.categories.map((c) => c.name));
-    expect(names(categoryTemplate(undefined, 'Australia/Melbourne'))).toContain('Rego & CTP');
+    expect(names(categoryTemplate(undefined, 'Australia/Brisbane'))).toContain('Rego & CTP');
+    // A state's own words where they differ: Victoria (TAC, owners corporation), NSW (green slip)
+    const vic = names(categoryTemplate(undefined, 'Australia/Melbourne'));
+    expect(vic).toEqual(expect.arrayContaining(['Rego & TAC', 'Council Rates & Owners Corp']));
+    expect(vic).not.toContain('Rego & CTP');
+    expect(names(categoryTemplate('au', 'Australia/Sydney'))).toContain('Rego & Green Slip');
+    expect(names(categoryTemplate(undefined, 'Australia/Adelaide'))).toContain('Rego & CTP');
     expect(names(categoryTemplate(undefined, 'America/New_York'))).toContain('HOA Fees');
     expect(names(categoryTemplate('au', 'UTC'))).toContain('Private Health Insurance');
     // Afterpay purchases are recorded as payment plans with their real category

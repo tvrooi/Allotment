@@ -40,11 +40,11 @@ test('the first Up import arrives categorised, and the rest is sorted a payee at
 
   const sort = dialog.getByRole('region', { name: 'Sort your first import' });
   await expect(sort).toBeVisible();
-  // Up's categories were used: under a quarter of spending is left, and none of it is pay or
-  // transfers. The mock history counts back from today, and the short Australian template has no
-  // envelope for some of Up's categories, so the share moves by day (about 10% to 22%).
+  // Up's categories were used: under 15% of spending is left, and none of it is pay or transfers.
+  // The mock history counts back from today; with the general template (e2e's) the share Up's map
+  // leaves runs about 3% to 7% by day.
   const before = await summary(api);
-  expect(before.share).toBeLessThan(0.25);
+  expect(before.share).toBeLessThan(0.15);
   const groceries = (await api.transactions()).filter((t) => t.payeeName === 'Coles');
   // The mock history counts back from today, so how many Coles trips it has varies by day
   expect(groceries.length).toBeGreaterThan(0);
@@ -111,11 +111,11 @@ test('the first Up import arrives categorised, and the rest is sorted a payee at
   // Without "future", only the existing rows move
   await sort.getByLabel('Also apply to future transactions').uncheck();
   // From the keyboard: type to narrow, Enter picks the first match
-  await sort.getByLabel('Category for Service NSW').click();
+  await sort.getByLabel('Category for Service Victoria').click();
   await page.keyboard.type('Miscellan');
   await page.keyboard.press('Enter');
-  await expect(sort.getByLabel('Category for Service NSW')).toHaveCount(0);
-  expect((await payees()).find((p) => p.name === 'Service NSW')!.defaultCategoryId).toBeNull();
+  await expect(sort.getByLabel('Category for Service Victoria')).toHaveCount(0);
+  expect((await payees()).find((p) => p.name === 'Service Victoria')!.defaultCategoryId).toBeNull();
 
   await sort.getByRole('button', { name: 'Skip for now' }).click();
   await expect(dialog).toBeHidden();

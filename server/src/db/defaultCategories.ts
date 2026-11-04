@@ -166,6 +166,7 @@ const defaultGroups: {
 
 /**
  * Australian households, kept short (about 20 envelopes): rent or a mortgage, rates and strata,
+ * home and garden (Kmart, Bunnings),
  * rego and CTP, private health. Afterpay and Zip are accounts with payment plans
  * (docs/PAYMENT-PLANS.md), not a spending category. Icons are Lucide icon names.
  */
@@ -187,6 +188,7 @@ const australianGroups: typeof defaultGroups = [
       { name: 'Mortgage', icon: 'Landmark', budgetType: 'fixed' },
       { name: 'Council Rates & Strata', icon: 'Building2', budgetType: 'non_monthly' },
       { name: 'Contents & Home Insurance', icon: 'Shield', budgetType: 'non_monthly' },
+      { name: 'Home & Garden', icon: 'Hammer', budgetType: 'flexible' },
     ],
   },
   {
@@ -247,24 +249,64 @@ const australianGroups: typeof defaultGroups = [
  */
 export const HOUSING_CATEGORIES = {
   rent: ['Rent'],
-  own: ['Mortgage', 'Council Rates & Strata', 'Property Tax', 'HOA Fees', 'Home Maintenance'],
+  own: [
+    'Mortgage',
+    'Council Rates & Strata',
+    'Council Rates & Owners Corp',
+    'Property Tax',
+    'HOA Fees',
+    'Home Maintenance',
+  ],
 };
+
+/**
+ * A few envelopes go by another name in some states, so a new budget uses the words of the place
+ * it starts in (its time zone when it is created; existing budgets are never renamed). Victoria
+ * pays the TAC charge with its rego and calls strata an owners corporation; New South Wales buys a
+ * green slip. Elsewhere, and on a server without an Australian state's zone, the general names.
+ */
+type AustralianState = 'vic' | 'nsw';
+const STATE_BY_ZONE: Record<string, AustralianState> = {
+  'Australia/Melbourne': 'vic',
+  'Australia/Victoria': 'vic',
+  'Australia/Sydney': 'nsw',
+  'Australia/NSW': 'nsw',
+  'Australia/Broken_Hill': 'nsw',
+  'Australia/Yancowinna': 'nsw',
+};
+const STATE_NAMES: Record<AustralianState, Record<string, string>> = {
+  vic: { 'Rego & CTP': 'Rego & TAC', 'Council Rates & Strata': 'Council Rates & Owners Corp' },
+  nsw: { 'Rego & CTP': 'Rego & Green Slip' },
+};
+/** Every state's name for an envelope, the general one first (for Up's category map) */
+export const stateNames = (name: string) => [
+  name,
+  ...Object.values(STATE_NAMES).flatMap((names) => (names[name] ? [names[name]] : [])),
+];
+function forState(groups: typeof defaultGroups, timeZone: string | undefined) {
+  const names = STATE_NAMES[STATE_BY_ZONE[timeZone ?? '']];
+  if (!names) return groups;
+  return groups.map((g) => ({
+    ...g,
+    categories: g.categories.map((c) => ({ ...c, name: names[c.name] ?? c.name })),
+  }));
+}
 
 /**
  * The template for a new budget: Allotment is made for Australians, so the Australian one,
  * unless FLYBUDGET_CATEGORY_TEMPLATE=default (or a server outside Australia whose time zone
  * says so, e.g. America/New_York) asks for the general one. A server on UTC, like most Docker
- * hosts, gets the Australian one.
+ * hosts, gets the Australian one. An Australian state's zone picks that state's names (forState).
  */
 export function categoryTemplate(
   env = process.env.FLYBUDGET_CATEGORY_TEMPLATE,
   timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
 ) {
-  if (env === 'au') return australianGroups;
+  if (env === 'au') return forState(australianGroups, timeZone);
   if (env === 'default') return defaultGroups;
   const outsideAustralia =
     !!timeZone && timeZone.includes('/') && !timeZone.startsWith('Australia/');
-  return outsideAustralia ? defaultGroups : australianGroups;
+  return outsideAustralia ? defaultGroups : forState(australianGroups, timeZone);
 }
 
 /**

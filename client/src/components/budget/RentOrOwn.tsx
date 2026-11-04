@@ -6,7 +6,14 @@ import { setCategoryHidden } from '../../api/categories';
 /** Categories only renters need, and ones only owners need (server/src/db/defaultCategories.ts) */
 const ONLY_FOR = {
   rent: ['Rent'],
-  own: ['Mortgage', 'Council Rates & Strata', 'Property Tax', 'HOA Fees', 'Home Maintenance'],
+  own: [
+    'Mortgage',
+    'Council Rates & Strata',
+    'Council Rates & Owners Corp',
+    'Property Tax',
+    'HOA Fees',
+    'Home Maintenance',
+  ],
 };
 const SKIP_KEY = 'budget-rent-or-own-skipped';
 

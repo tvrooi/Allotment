@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.87
+
+- **More of a first Up import arrives categorised.** Up's categories that the short Australian template had no envelope for now go to the nearest one: taxis and rideshare (Uber) to **Public Transport**, technology (JB Hi-Fi) to **Entertainment**, homeware and repairs (Kmart, Bunnings) to a new **Home & Garden** envelope, and life admin (Service Victoria, Service NSW) to the rego envelope. In the test history that leaves about 1–5% of spending to sort, down from 10–22%. A closer envelope still wins where a budget has one (Ride Share, Electronics, Home Maintenance).
+- **Envelopes in your state's words.** A new budget created in Victoria starts with **Rego & TAC** and **Council Rates & Owners Corp**, and one in New South Wales with **Rego & Green Slip**; elsewhere the names stay **Rego & CTP** and **Council Rates & Strata**. The state comes from the time zone where the budget is created. Existing budgets keep their envelopes and names: to use the new mapping, add a **Home & Garden** envelope, or rename one, in **Settings → Categories**.
+
 ## 0.2.0-up.86
 
 - **A new budget starts the day you connect Up.** Connecting Up mid-month used to count the month's earlier spending against empty envelopes: the first thing Review asked was to cover overspent envelopes, and Ready to assign showed more than the accounts held. A new budget now starts on the day of its first connection. Spending earlier that month stays in your accounts, the register and reports, but isn't overspending, so Ready to assign is the money you have. The Up dialog says so, with **Count all of _month_ instead**, and **Settings → Budget** shows the start day and can count the whole month. Existing budgets are unchanged.

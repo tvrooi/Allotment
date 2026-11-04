@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { categories, categoryGroups } from '../db/schema.js';
+import { stateNames } from '../db/defaultCategories.js';
 
 /**
  * Up's own category slugs, each mapped to the names it could have in Allotment's category
@@ -9,6 +10,9 @@ import { categories, categoryGroups } from '../db/schema.js';
  * has. Unclear matches are left out: an uncategorised row is better than a confidently wrong one.
  * Up's parent categories (good-life, home, personal, transport) are too broad to map, and so are
  * lottery-and-gambling, tobacco-and-vaping, cycling and utilities (water, gas and power together).
+ * The short Australian template's nearest envelopes come last (owner decision, 4 November 2026):
+ * rideshare is getting around, technology is mostly entertainment, homeware and repairs are Home &
+ * Garden, and life admin (Service NSW and the like) is mostly rego and licences.
  */
 const UP_CATEGORY_NAMES: Record<string, string[]> = {
   groceries: ['Groceries'],
@@ -26,15 +30,15 @@ const UP_CATEGORY_NAMES: Record<string, string[]> = {
   'events-and-gigs': ['Entertainment'],
   hobbies: ['Hobbies'],
   'holidays-and-travel': ['Holidays', 'Vacation'],
-  'homeware-and-appliances': ['Home Goods', 'Home Maintenance'],
+  'homeware-and-appliances': ['Home Goods', 'Home Maintenance', 'Home & Garden'],
   internet: ['Internet', 'Phone & Internet'],
-  'maintenance-and-improvements': ['Home Maintenance', 'Home Improvement'],
+  'maintenance-and-improvements': ['Home Maintenance', 'Home Improvement', 'Home & Garden'],
   pets: ['Pet Food & Supplies'],
   'rates-and-insurance': ['Contents & Home Insurance', 'Home Insurance'],
   'rent-and-mortgage': ['Rent', 'Rent / Mortgage'],
   'hair-and-beauty': ['Personal Care', 'Clothing & Personal Care'],
   'health-and-medical': ['GP & Specialists', 'Medical & Chemist', 'Doctor / Medical'],
-  technology: ['Electronics'],
+  technology: ['Electronics', 'Entertainment'],
   'clothing-and-accessories': ['Clothing', 'Clothing & Personal Care'],
   'education-and-student-loans': ['Tuition', 'Student Loans'],
   'fitness-and-wellbeing': ['Fitness', 'Gym / Fitness'],
@@ -47,7 +51,9 @@ const UP_CATEGORY_NAMES: Record<string, string[]> = {
   parking: ['Tolls & Parking', 'Parking'],
   'public-transport': ['Public Transport', 'Public Transit'],
   'car-repayments': ['Loan Repayments', 'Car Payment'],
-  'taxis-and-share-cars': ['Rideshare & Taxis', 'Ride Share'],
+  'taxis-and-share-cars': ['Rideshare & Taxis', 'Ride Share', 'Public Transport'],
+  // Service Victoria, Service NSW and the like: each state's name for the rego envelope
+  'life-admin': stateNames('Rego & CTP'),
   'toll-roads': ['Tolls & Parking'],
 };
 

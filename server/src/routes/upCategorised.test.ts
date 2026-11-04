@@ -23,11 +23,10 @@ import { startUpMock, UP_TEST_TOKEN } from '../test/upMock.js';
 let mock: Awaited<ReturnType<typeof startUpMock>>;
 let server: Server;
 let base: string;
-// The rich history counts back 90 days from today, and the short Australian template (the default
-// since 0.2.0-up.83) has no envelope for some of Up's categories (Uber, Kmart, JB Hi-Fi, Bunnings,
-// Service NSW), so they stay uncategorised on purpose. The share left moves with the 90-day window:
-// 9.6% to 21.6% over October to early December 2026, mostly 15–18%. The old "under 15%" passed only
-// on some days. The tests now say "under a quarter", and run on a fixed day so the data is stable.
+// The rich history counts back 90 days from today, so what it holds moves with the calendar. Before
+// Up's taxis, technology, homeware, repairs and life-admin categories mapped to the short Australian
+// template's nearest envelopes (0.2.0-up.87), the share left uncategorised ran 9.6% to 21.6% by day;
+// now it is 1.4% to 4.9% over September to December 2026. A fixed day keeps the data stable anyway.
 const TODAY = new Date('2026-11-03T05:00:00Z');
 beforeAll(async () => {
   vi.useFakeTimers({ toFake: ['Date'] });
@@ -89,7 +88,7 @@ const categoryName = (id: string | null) =>
 const isTransfer = (notes: string | null) => !!notes?.includes('Up internal transfer');
 
 describe('first Up sync uses Up’s own categories', () => {
-  it('leaves under a quarter of spending uncategorised, and maps to the budget’s names', async () => {
+  it('leaves under 15% of spending uncategorised, and maps to the budget’s names', async () => {
     await firstSync();
     const spending = db
       .select()
@@ -98,7 +97,7 @@ describe('first Up sync uses Up’s own categories', () => {
       .filter((t) => t.amount < 0 && !isTransfer(t.notes));
     expect(spending.length).toBeGreaterThan(100);
     const missing = spending.filter((t) => !t.categoryId);
-    expect(missing.length / spending.length).toBeLessThan(0.25);
+    expect(missing.length / spending.length).toBeLessThan(0.15);
     const by = (payee: string) => [
       ...new Set(
         spending.filter((t) => t.payeeName === payee).map((t) => categoryName(t.categoryId)),
@@ -108,8 +107,12 @@ describe('first Up sync uses Up’s own categories', () => {
     expect(by('Ray White Property Mgmt')).toEqual(['Rent']);
     expect(by('Transport for NSW Opal')).toEqual(['Public Transport']);
     expect(by('Netflix')).toEqual(['Subscriptions']);
-    // Up's category with no counterpart here stays for the owner to sort
-    expect(by('Service NSW')).toEqual([null]);
+    // The short template's nearest envelopes (owner decision, 4 November 2026)
+    expect(by('Uber')).toEqual(['Public Transport']);
+    expect(by('Kmart')).toEqual(['Home & Garden']);
+    expect(by('Service Victoria')).toEqual(['Rego & CTP']);
+    // A row Up gave no category stays for the owner to sort
+    expect(by('Amazon AU')).toEqual([null]);
   });
 
   it('never categorises transfers or pay from Up', async () => {
@@ -202,7 +205,7 @@ describe('what is left after the import', () => {
     expect(all.uncategorisedIncomeCount).toBeGreaterThanOrEqual(6);
     expect(all.categorisedIncome).toBe(0);
     expect(all.share).toBeGreaterThan(0);
-    expect(all.share).toBeLessThan(0.25);
+    expect(all.share).toBeLessThan(0.15);
     const live = await (await fetch(`${base}/reports/uncategorised-summary`)).json();
     expect(live.uncategorisedSpending).toBe(all.uncategorisedSpending);
     const empty = await (
