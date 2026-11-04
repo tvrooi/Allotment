@@ -5,10 +5,31 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 4 November 2026.
+Last updated: 4 November 2026 (after up.96).
 
 ## State
 
+- **Receipt providers and learned Up categories (up.97):** owner request of 4 November. The receipt
+  reader takes a provider (`budget_settings.receipt_reader_provider`, migration 0068): `local` (any
+  server speaking the Ollama API), `anthropic` or `openai` with the owner's API key in
+  `receipt_reader_secrets` (encrypted, write-only, not in `TABLES` so never backed up).
+  `askImage` in `receiptReader.ts` is the one place a photo is sent. Up records now keep Up's
+  category slug (`up_source_records.up_category`); `learnUpCategories` in `upCategoryMap.ts` turns
+  the owner's own categorising (at least 3 rows, 80% in one visible envelope) into the slug's
+  fallback, ahead of the name list. Older records get their slug at the next full sweep (weekly,
+  or **Check all history**). Tests: `receiptReader.test.ts` (cloud providers),
+  `upCategoryMap.test.ts`, e2e `receipts-reader.spec.ts`.
+- **4 November releases (up.87 to up.96, all merged with green CI and published):** up.87 Up
+  categories mapped to state-aware envelope names (`forState`, a Home & Garden envelope); up.88
+  ESLint in CI (`lint/`, warning cap 271, 270 since up.97) and the sidebar crash fix; up.89 sidebar groups with
+  progressive disclosure (`utils/navFeatures.ts`, migration 0064); up.90 System theme by default;
+  `website/` removed; up.91 Plaid, SimpleFIN and Enable Banking marked community supported with
+  CSV import offered everywhere (I-10) and Review not asking to reconcile Up accounts that matched
+  Up (F-17, `services/bankVerified.ts`); up.92 backup with files (I-6, `services/backupArchive.ts`);
+  up.93 incremental Up sync (F-10, #133, migration 0065: the 14 days before the newest date Up
+  reported plus open holds, a weekly full sweep, **Check all history**); up.94 to up.96 depreciating
+  assets phases 1 to 3 (#134, #135, #136: Tax time → Assets, **Depreciate instead**, lodged-year
+  locks, the low-value pool; migrations 0066 and 0067, backup format 25; see Open items 7).
 - **Full audit and Stage 1 fixes (up.85, up.86):** an owner-requested repository, architecture, financial, security and UX audit on 3 November is in [docs/AUDIT-2026-11.md](docs/AUDIT-2026-11.md) (findings F-01–F-24, roadmap, owner decisions I-1–I-11; the status table at its top says what has landed). Owner decisions taken: left to spend excludes savings (I-1), a new budget starts the day it connects Up (I-2), bank deletes warn and offer Restore (I-3). **up.85 (#122, released):** `client/src/utils/ledgerViews.ts` lists every ledger-derived query; the global `MutationCache.onSuccess` in `main.tsx` refreshes them after any save, and `setAfterUndoChange` in `store/undoStore.ts` after Undo/Redo (e2e `freshness.spec.ts`). `utils/leftToSpend.ts` leaves out Savings-type envelopes and goals' categories (`savingsCategoryIds`), and the dashboard card says what it leaves out; the full template's Savings and the demo's Emergency Fund are type `savings`, and the demo trip goal saves in Holidays. `AssignBlockError` lists Up rows deleted here, with Restore (`GET /up/review`, `POST /up/review/restore`; e2e in `assign-block.spec.ts`), and the delete confirmations say assigning pauses. `utils/fundingStatus.ts` names only the real causes on the Ready to assign hero. Full Backup copy says file bytes aren't in it. `config.ts` `unprotectedBindError`: the server refuses `FLYBUDGET_HOST` beyond loopback outside server mode and the desktop app. **up.86 (#123, merged 3 November; its tag and release follow main CI, check before relying on it):** `budget_settings.budget_start_day` (migration 0063, additive, CHECKed; backup format unchanged). The shared `budgetStartDay` SQL in `services/balances.ts` uses it, so envelope activity, card funding and the guards all honour a mid-month start without engine changes. `startBudgetIfNew` (called by `POST /up/map-accounts`) starts a new budget today; the Up dialog's `FreshStartNote` offers "Count all of _month_ instead"; Settings → Budget start shows and changes the day; `GET/PUT /budget/start` carry `{ month, day }`. Tests: `readyToAssign.test.ts`, `budgetFunding.test.ts`, `budgetService.test.ts`, `budgetEngine.test.ts` (generator includes a day start), e2e `first-import.spec.ts`. Neither release has been installed on the live app by these sessions.
 - **UX review (up.83):** owner-requested teardown in `docs/UX-REVIEW.md`, implemented except #7 (the sidebar's item count). Pull to refresh is back on phones as an in-app gesture (`hooks/usePullToRefresh.ts`, `components/layout/PullToRefresh.tsx`: refetches active queries) because `html, body` keep `overscroll-behavior: none`. The demo is an Australian Up budget (`server/src/demo/demoBudget.ts`: AUD, Spending/Rainy Day/Holiday/2Up keyed `checking`/`savings`/`holiday`/`card`, fortnightly pay and rent, every envelope funded to stay ≥ $0 and a $300 buffer; property test in `demoBudget.test.ts`) with a pretend Up connection in `server/src/browser/app.ts`; its links go to GitHub (`DemoBanner.tsx`). Category and goal icons are Lucide names (`client/src/utils/categoryIcons.ts`, emoji mapped at render time, no data migration); the short Australian template is the default unless the time zone is outside Australia (`db/defaultCategories.ts`), and `upCategoryMap.ts` knows its merged names. Allotment's own guide is `client/src/userGuide/articles.tsx` at `/guide`; `upstreamDocsUrl` remains only for Enable Banking's setup. Welcome redirects only from `/` and `/dashboard` (`AppShell.tsx`). Review's `utils/reviewNext.ts` drives both "Do this next" and the sidebar badge. First-visit intros: `guides/intros.ts` (seen under `intro.*` ids). Transactions bulk actions need **Select all** (`SelectionSummary.tsx`).
 - **Menu bars and buttons (up.82):** owner-requested review after a Settings tab bar on a phone could be dragged up and down (a tab's `-mb-px` hung 1px out of an `overflow-x-auto` row, and `overflow-x` alone makes a row scroll vertically too). Every sideways row now uses the `scroll-row` utility (`index.css`: `overflow-y: hidden`, `overscroll-behavior-x: contain`, no scrollbar, focus ring drawn inside); the underline overlap moved from the tabs to the row. Long rows use `ScrollCue` (fade, arrow, wheel scrolls it sideways, `activeKey` keeps the open tab in view). `role="tablist"` rows use `components/ui/tabList.ts` (arrow keys, roving tabindex). Drop-down menus use `hooks/useMenuKeyboard.ts` (focus first item, arrows, Escape returns focus, outside press or focus leaving closes; a nested menu counts as inside). `html, body` have `overscroll-behavior: none` (the frame never bounces; pull to refresh is off). The global button cursor moved into `@layer base`, so `cursor-grab` and disabled cursors apply. Checks: `e2e/tests/menus.spec.ts`, and the tab-bar tests in `e2e/tests/phone/polish-phone.spec.ts`.
@@ -40,7 +61,7 @@ Last updated: 4 November 2026.
 - **Switchers (up.62):** Up can link to a non-empty AUD account from a cut-over date (`up_account_mappings.cutover_date`/`cutover_difference`, `services/upCutover.ts`, sync filters rows before it, never changes existing rows, no opening-balance row; overlap candidates get `up_source_records.review_state = 'overlap'` + `overlap_transaction_id`, listed in `UpReview`, `POST /up/review/overlap/delete-old` refuses reconciled rows; tests `routes/upCutover.test.ts`). CSV import has Category/Category group roles with a mapping step (`ImportCategories.tsx`; rows carry `categoryId`, `keepUserCategory`), a YNAB register importer (`YnabImportModal.tsx`; accounts + categories), `accounts.balance_as_of` keeps a typed "balance as of today" through older imports (`/transactions/import/confirm`, `routes/importSwitchers.test.ts`), the register jumps to the imported dates. e2e `switchers.spec.ts`. Not built: YNAB plan export (assigned amounts); transfer detection in YNAB files.
 - **Multi-user on live (29 October):** `multi_user` turned on after a full cold HA backup ("Before FlyBudget multi_user on", which includes the app). The gateway started healthy and printed a setup code in the app's Log. The owner still has to sign in with that code to claim the existing budget as administrator, then add their partner from Settings → Server → People.
 - **Live:** `0.2.0-up.83` (UX review: Up-first onboarding, Australian demo, in-app guide, pull to refresh) installed on 3 November around 22:20 local time on the catalog app `24ff2149_flybudget_up` (source commit `1868d92`), after app-only cold backups `41046965` ("Before Allotment 0.2.0-up.83") and `4feb9762` ("Before Allotment 0.2.0-up.83 (final)"), both at up.82, password-protected, no failed apps. Catalog sync run by hand, store reloaded, only Allotment updated (Cloudflared, Matter Server and Music Assistant left alone). Both budgets started, no errors in the log, and `/api/health` answers ok with the allowed host. Client and demo changes, no migrations. Not verified from here: that the budget opens (the app has its own password). Before it: `0.2.0-up.82` (menu bars and buttons) installed on 3 November around 18:55 local time on the catalog app `24ff2149_flybudget_up` (source commit `69e10e9`), after app-only cold backup `dfb3353b` ("Before Allotment 0.2.0-up.82", app at up.81, no failed apps). Catalog sync run by hand, store reloaded, only Allotment updated (Cloudflared, Matter Server and Music Assistant left alone). Both budgets started and `/api/health` answers ok. Client only, no migrations. Before it: `0.2.0-up.81` (the temporary token permission removed) installed on 3 November around 16:30 local time on the catalog app `24ff2149_flybudget_up` (source commit `772ff0a`), after app-only cold backups `72c60c86` (with the recorded Tricount history) and `0e7b3a6e` ("Before Allotment 0.2.0-up.81 (final)"), both at up.80 with no failed apps. Catalog sync run by hand, store reloaded, only Allotment updated (Cloudflared, Matter Server and Music Assistant left alone). Both budgets started, `/api/health` ok, the household reads 198 entries, and the organise token is refused a household entry (403) and no longer lists `record_household_entries`. Before it: `0.2.0-up.80` (repayments paid ahead; the temporary token permission used for the owner's Tricount history) installed on 3 November around 14:55 local time on the catalog app `24ff2149_flybudget_up` (source commit `5d1d2f6`), after app-only cold backups `9fe2a6c0` and `ae3511bc` ("Before Allotment 0.2.0-up.80 (final)", app at up.79, no failed apps). Catalog sync run by hand for `v0.2.0-up.80`, store reloaded, app updated in place: both budgets started, `/api/health` ok, household data readable through the token. Before it: `0.2.0-up.79` (Files; also brings up.76 household pictures, up.77 the "Share with…" menu and up.78 the household repayment fixes) installed on 3 November around 13:45 local time on the catalog app `24ff2149_flybudget_up` (source commit `66c5612`), straight from up.75: up.76–up.78 had not reached the store yet. Before it: app-only cold backups `08d658a3` (13:07, before the catalog could promote up.77), `ccc6e626` (13:32, after #112 merged) and `514f1f29` (13:44, "Before Allotment 0.2.0-up.79 (final)"), all with the app at up.75 and no failed apps. These were made with `hassio.backup_partial` through ha-mcp and are not password-protected, unlike the earlier ones. The catalog sync was run by hand for `v0.2.0-up.79`, the store reloaded and only Allotment updated in place (Cloudflared, Matter Server and Music Assistant updates left alone). Options unchanged; it started with "Allotment multi-user gateway on port 3001: 2 budget(s) running", no errors in the log, and `/api/health` answers `ok` (with the allowed host; the bare internal address gets "Forbidden host", as it should). Migrations 0061 (household logo) and 0062 (Files: one document per existing receipt) run before the server listens, so both budgets starting means they applied. Not verified from here: signing in and the bank connection (the app has its own password); the owner should open the budget and check **Files** shows their receipts. Earlier: up.75 (3 November, backup `d0c0268c`; client only), up.74 (3 November, backup `c0f934b4`; the owner's own May–October rent share recorded by their assistant), up.73 (2 November, backup `07e53a3a`; Juno's and Zephyr's 12 linked rent contributions recorded), up.72 (2 November, backup `2bedcb50`), up.71 (2 November, backup `abf156aa`), up.70 (1 November, backup `25aa02c9`), up.69 (1 November, backup `8177cdce`; client only), up.68 (31 October, backup `9b50febd`; migration 0058, guides and tips), up.67 (backup `eede7265`), up.66 (backup `285cc1e6`), up.65 (30 October, backup `60d27495`), up.64 (backups `a56b814d`, `c183d5ce`), up.62, up.61 and up.59.
-- **Live Home Assistant app:** installed from the catalog repository (not the old `local_flybudget_up`), with **Auto update on**. It runs `0.2.0-up.83` since 3 November; confirm the installed app identity and version before updating.
+- **Live Home Assistant app:** installed from the catalog repository (not the old `local_flybudget_up`), with **Auto update on**. On 4 November it was found on `0.2.0-up.92`: auto update had moved it from up.83 through the catalog without a "Before" backup (the nightly full backup `ac00bd40`, app at up.83, covers that step). Then app-only backup `3f064315` ("Before Allotment 0.2.0-up.96", app at up.92, no failed apps, not password-protected) was taken at 06:37 UTC, the catalog sync for `v0.2.0-up.96` run by hand (catalog commit `f109ef7`), and only Allotment updated in place (OS, Matter Server and Music Assistant left alone). It runs `0.2.0-up.96` (source commit `eeb69c1`): both budgets started, so migrations 0064 to 0067 applied, and `/api/health` answers ok with the allowed host. Not verified from here: that the budget opens (the app has its own password). Confirm the installed app identity and version before updating.
   A completed release reaches it through the catalog sync (MAINTENANCE.md, step 5) and then its
   auto-update. Before relying on that, verify the installed version afterwards, and take a cold
   backup first when you update it by hand.
@@ -53,7 +74,7 @@ Last updated: 4 November 2026.
 | HECS-HELP and Student Start-up Loan: CPI indexation, compulsory repayment bands, extra payments | #53 / up.41  | `docs/LONG-TERM-FORECAST.md`, `docs/FORECASTS.md`                  | forecast services and the debt UI                                                                     |
 | Receipts, receipt inbox, tax deductions (ATO labels, FY exports)                                | #54 / up.42  | `docs/RECEIPTS-AND-TAX.md` §1–4                                    | `receiptService.ts`, `taxService.ts`, `routes/receipts.ts`, `routes/tax.ts`                           |
 | Receipts tab (Monarch parity): matching, autosplit, Split by items                              | #55 / up.43  | `docs/RECEIPTS-AND-TAX.md` §5                                      | `receiptMatching.ts`, `client/src/components/receipts/`                                               |
-| Reading receipts with local Ollama                                                              | #56 / up.44  | `docs/RECEIPTS-AND-TAX.md` §5, "Reading photos with a local model" | `receiptReader.ts`, `receiptSample.ts`                                                                |
+| Reading receipts with a chosen model                                                            | #56 / up.44  | `docs/RECEIPTS-AND-TAX.md` §5, "Reading photos with a local model" | `receiptReader.ts`, `receiptSample.ts`                                                                |
 | Overspending resets each month (YNAB), card funding month by month                              | #57 / up.45  | `docs/ENVELOPE-FUNDING.md`, `docs/CARD-PAYMENTS.md`                | `budgetService.ts` (`rollOver`), `cardFunding.ts`                                                     |
 | Ready to assign follows YNAB: signed envelopes, cash vs credit overspending, month-aware guard  | #61 / up.47  | `docs/ENVELOPE-FUNDING.md` (Ready to Assign)                       | `budgetService.ts` (`fundingState`), `budgetMoves.ts` (`fundedWrite`), `readyToAssign.test.ts`        |
 | Category merge keeps assignments; groups with history can't be deleted                          | #64 / up.49  | `docs/research/actual-flybudget-gaps.md` (ACT-01)                  | `routes/categories.ts` (`mergeCategory`), `categoryMerge.test.ts`                                     |
@@ -70,19 +91,8 @@ site in `website/` was removed (audit decision I-9).
 
 - **Hardware:** Home Assistant OS on an x86-64 mini PC with an Intel Alder Lake-N (N100-class) CPU
   and 16 GB RAM. About 4.6 GiB is in normal use; Frigate is the largest user and takes a lot of CPU.
-- **Ollama app** (community repository): Allotment reaches it on Home Assistant's internal network
-  at the hostname shown in the Ollama app's documentation, `http://<app-hostname>:11434`. Keep the
-  actual address out of the repository. The model for receipts is `qwen3-vl:4b-instruct`. The
-  plain `qwen3-vl:4b` tag is a thinking variant, slower on a CPU; it is also installed, using about
-  3.3 GB, and can be removed if the owner agrees.
-  - `OLLAMA_KV_CACHE_TYPE` was changed from `q8_0` to `f16`: `q8_0` with flash attention off stopped
-    any model loading.
-  - Recommended to the owner but not confirmed as applied: `OLLAMA_KEEP_ALIVE` 300 (it was −1),
-    `OLLAMA_CONTEXT_LENGTH` 8192, `OLLAMA_NO_CLOUD` on. Allotment sends `keep_alive` and `num_ctx`
-    itself either way.
-  - Measured: taking in even a small image takes about 75 s on this CPU. Allow 2–4 minutes a photo.
-- **Home Assistant's own Ollama integration** uses the same model with "Think before responding"
-  off and a keep-alive of 300.
+- **Receipt reading:** the owner chooses the provider in Allotment (up.97). A local model on this
+  CPU took 2–4 minutes a photo, so a cloud provider with the owner's own key is the suggested choice.
 
 ## Tools another session will have
 
@@ -92,8 +102,7 @@ site in `website/` was removed (audit decision I-9).
 - **Home Assistant:** the owner's "HASS via Cloudfared" connector (ha-mcp) can read entities and
   history, list apps with memory and CPU statistics, read app logs, change app options, restart apps,
   proxy app APIs and create backups (`ha_manage_backup`).
-  - It stops every request after 30 s. A long Ollama request (downloading a model, reading an image)
-    times out there, although an Ollama download resumes if you call it again.
+  - It stops every request after 30 s, so long app API calls time out there.
   - The Allotment app has no ingress and its own password, so a session cannot call Allotment through
     the connector. The owner tests it in the app, for example with **Try a sample receipt**.
 - **Local browser tests:** Chromium is under `/opt/pw-browsers/` (see Gotchas for the build
@@ -103,13 +112,12 @@ site in `website/` was removed (audit decision I-9).
 ## Open items (pick up here)
 
 1. **Confirm the live app after each release:** version, health, and that the budget opens. In
-   November, check the October deficits no longer carry. Ask the owner to press **Try a sample
-   receipt** with `qwen3-vl:4b-instruct` and report what it got right and how long it took.
+   November, check the October deficits no longer carry. Ask the owner to choose a receipt
+   provider (Anthropic or OpenAI key) and press **Try a sample receipt**.
    Auto update is on: take the cold backup before the store sees a new release.
-2. **Security, waiting on the owner's decision:** the Ollama app publishes port 11434 on the host.
-   Its log showed requests from public internet addresses, and Ollama has no authentication. The fix
-   is to clear the app's 11434 port mapping, since Allotment uses the internal address. Do that only
-   after checking that Home Assistant's Ollama integration uses the internal address too.
+2. **Owner's own setup, outside Allotment:** any local model server the owner keeps should not be
+   published on the host's ports; Allotment needs only an internal address, or none with a cloud
+   provider.
 3. **Multi-user (separate budgets per person):** built in `0.2.0-up.48` (`server/src/gateway/`,
    `docs/MULTI-USER-PLAN.md`, `homeassistant/DOCS.md`) and turned on live on 29 October (see
    State). Confirm the owner has signed in with the setup code and their budget opened with its
@@ -131,18 +139,17 @@ site in `website/` was removed (audit decision I-9).
    - Investments deferrals (sales, dividends, franking); receipts §6 (PDF reading, email
      forwarding, logbooks, depreciation, WFH hours).
    - `docs/DEVELOPMENT.md`'s pending legacy cleanup of `recurring_transactions`.
-5. **Optional, the owner's call:** remove the unused `qwen3-vl:4b` thinking model; try a larger
-   receipt model (`qwen2.5vl:7b`) with **Try a sample receipt** if accuracy matters more than speed.
+5. **Receipt providers (up.97) follow-ups:** a structured-output request for Anthropic (today it
+   is asked for JSON and `jsonIn` finds it); a cost note per read if the owner wants one.
 6. **Left from the 31 October review**, rechecked by the 3 November audit. Fixed: Ready to assign
    above cash after a first Up import (up.86, a new budget starts that day), and the demo's
    negative Ready to assign (up.83). Partly superseded: Up's Saver transfers net to zero
    uncategorised when both legs are mapped; they still need reviewing as transfers, and one
    reviewed "link the transfers Up reported" list is still a candidate (owner rule: no silent
    links). Still open: the Settings → Server self-hosting link and Enable Banking's guide link go
-   to flybudget.org (`client/src/utils/project.ts`); fetch Up incrementally (`filter[since]` plus a
-   periodic full sweep) instead of full history on every sync (audit F-10); split the client
-   bundle by route (2.28 MB main chunk, audit F-11).
-7. **Depreciating assets on Tax time (phases 1 to 3 built):** owner request of 3 November.
+   to flybudget.org (`client/src/utils/project.ts`); split the client bundle by route (2.28 MB
+   main chunk, audit F-11). Done: incremental Up fetch (F-10, up.93).
+7. **Depreciating assets on Tax time (phases 1 to 3 released, up.94 to up.96):** owner request of 3 November.
    [docs/DEPRECIATING-ASSETS-PLAN.md](docs/DEPRECIATING-ASSETS-PLAN.md) has the ATO rules
    (prime cost and diminishing value), the design, four phases and five owner decisions (§7).
    The owner took the five decisions on 4 November: low-value pool in phase 3; organise tokens
@@ -164,8 +171,10 @@ site in `website/` was removed (audit decision I-9).
 /tax/assets/:id/pool`, `GET /tax/pool` (organise tokens may read it; MCP `tax_assets` includes
    it), D6 in the tax year, CSV, schedule and ZIP. Lodged-year locks compare each lodged year's
    asset and pool figures before and after any change. Phase 4 (second-element costs, effective
-   life recalculation, a D1 car limit warning) is optional and not planned. It uses migration 0066 and backup version 24,
-   and keeps an asset's records as files linked to it (an `asset` link kind).
+   life recalculation, a D1 car limit warning) is optional and not planned. An asset's records
+   are files linked to it (an `asset` link kind). Still to do: once live, ask the owner to try
+   it on a real purchase; the assistant's proposal flow waits for audit decision I-11's
+   endpoints.
 8. **Files (up.79) follow-ups:** live since 3 November. Ask the owner to confirm Files lists their
    receipts; confirm the HA app's `/data/flybudget/budget-files/` is created only
    once a video over 25 MB is added. Not built: an email inbox (deliberately), files for tokens,
@@ -194,9 +203,16 @@ site in `website/` was removed (audit decision I-9).
     warning cap as accessibility warnings are fixed) and so is I-4 (sidebar groups and optional
     features, `client/src/utils/navFeatures.ts`, migration 0064). F-16 is done:
     `server/src/services/budgetProperties.test.ts` and `server/src/routes/upSyncProperties.test.ts`
-    (fast-check; `PROPERTY_RUNS=500` searches harder). Owner question from it: the short Australian
-    template has no envelope for Up's taxis, homeware, technology, home maintenance or life-admin
-    categories, so a first Up import typically leaves 15–18% of spending uncategorised.
+    (fast-check; `PROPERTY_RUNS=500` searches harder). The short template's missing envelopes were
+    answered by up.87's nearest-envelope names and up.97's learning from the owner's own choices;
+    Up slugs with no sensible envelope (pets, gambling, tobacco, cycling, parking) stay
+    uncategorised until the owner's habit teaches them.
+    Still open after up.96, in suggested order: I-7 tour-first onboarding (one onboarding surface,
+    F-12); I-11 dedicated assistant endpoints with their own audit log (replaces F-18; also unlocks
+    assistant proposals for depreciating assets); I-8 offering to categorise a household repayment
+    back to the shared expense's category; F-11 route splitting and removing `emoji-picker-react`;
+    F-13 one service per action family; F-14 deleted-import memory, only for a provider in use;
+    then the partly done F-09, F-15, F-19, F-20 and F-24, and F-22, F-23.
     Work in feature PRs with tests; the owner reviews and merges.
 
 ## Gotchas learned the hard way
@@ -231,7 +247,7 @@ site in `website/` was removed (audit decision I-9).
   every Tailwind utility whatever its specificity: the unlayered `* { scrollbar-width: thin }` kept
   `ScrollCue`'s `[scrollbar-width:none]` from applying until up.75.
 
-10. **When a household person joins Allotment** (owner's note, 3 November): once the other person in the
+11. **When a household person joins Allotment** (owner's note, 3 November): once the other person in the
     owner's two-person household has their own Allotment, entries they paid will need linking to their
     bank payments on their side too. Today a household entry links only the owner's payments; design how a member's own budget links
-    theirs before he joins.
+    theirs before they join.

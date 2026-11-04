@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { categories, categoryGroups } from '../db/schema.js';
+import { categories, categoryGroups, transactions, upSourceRecords } from '../db/schema.js';
 import { stateNames } from '../db/defaultCategories.js';
 
 /**
@@ -28,7 +28,7 @@ const UP_CATEGORY_NAMES: Record<string, string[]> = {
     'Entertainment',
   ],
   'events-and-gigs': ['Entertainment'],
-  hobbies: ['Hobbies'],
+  hobbies: ['Hobbies', 'Entertainment'],
   'holidays-and-travel': ['Holidays', 'Vacation'],
   'homeware-and-appliances': ['Home Goods', 'Home Maintenance', 'Home & Garden'],
   internet: ['Internet', 'Phone & Internet'],
@@ -45,13 +45,15 @@ const UP_CATEGORY_NAMES: Record<string, string[]> = {
   'gifts-and-charity': ['Gifts'],
   investments: ['Investments'],
   'mobile-phone': ['Mobile', 'Phone & Internet', 'Phone'],
-  'news-magazines-and-books': ['Books & Supplies'],
+  'news-magazines-and-books': ['Books & Supplies', 'Entertainment'],
   'car-insurance-and-maintenance': ['Car Insurance', 'Car Insurance & Servicing'],
   fuel: ['Fuel', 'Gas / Fuel'],
   parking: ['Tolls & Parking', 'Parking'],
   'public-transport': ['Public Transport', 'Public Transit'],
   'car-repayments': ['Loan Repayments', 'Car Payment'],
   'taxis-and-share-cars': ['Rideshare & Taxis', 'Ride Share', 'Public Transport'],
+  // Water, gas and power together: the short template's envelope is mostly that
+  utilities: ['Utilities', 'Electricity & Gas'],
   // Service Victoria, Service NSW and the like: each state's name for the rego envelope
   'life-admin': stateNames('Rego & CTP'),
   'toll-roads': ['Tolls & Parking'],
@@ -69,7 +71,37 @@ export function mapUpCategory(slug: string | null | undefined, byName: Map<strin
   return null;
 }
 
-/** Looks the budget's categories up once per sync. Income categories are never a target. */
+/** Rows the owner's own choices must agree on before a slug is learned */
+export const LEARN_MIN_ROWS = 3;
+/** Share of those rows that must be in one category */
+export const LEARN_MIN_SHARE = 0.8;
+
+/**
+ * Pure: what the owner's own categorising says about each Up slug. A slug is learned only when
+ * at least LEARN_MIN_ROWS categorised rows carry it and LEARN_MIN_SHARE of them share one
+ * category; a split habit (groceries sometimes Groceries, sometimes Household) teaches nothing.
+ */
+export function learnUpCategories(counts: { slug: string; categoryId: string; n: number }[]) {
+  const bySlug = new Map<string, { total: number; best: string; bestN: number }>();
+  for (const { slug, categoryId, n } of counts) {
+    const s = bySlug.get(slug) ?? { total: 0, best: categoryId, bestN: 0 };
+    s.total += n;
+    if (n > s.bestN) Object.assign(s, { best: categoryId, bestN: n });
+    bySlug.set(slug, s);
+  }
+  const learned = new Map<string, string>();
+  for (const [slug, s] of bySlug)
+    if (s.total >= LEARN_MIN_ROWS && s.bestN / s.total >= LEARN_MIN_SHARE)
+      learned.set(slug, s.best);
+  return learned;
+}
+
+/**
+ * Looks the budget's categories up once per sync. Income categories are never a target.
+ * The owner's own habit for a slug (learnUpCategories over Up rows already categorised, hidden
+ * envelopes left out) comes first, then the name list above. Either way it is only a last-resort
+ * hint for new rows, after rules and the payee's default.
+ */
 export function upCategoryResolver() {
   const byName = new Map<string, string>();
   for (const c of db
@@ -82,5 +114,27 @@ export function upCategoryResolver() {
     const key = c.name.trim().toLowerCase();
     if (!byName.has(key)) byName.set(key, c.id);
   }
-  return (slug: string | null | undefined) => mapUpCategory(slug, byName);
+  const learned = learnUpCategories(
+    db
+      .select({
+        slug: upSourceRecords.upCategory,
+        categoryId: transactions.categoryId,
+        n: sql<number>`count(*)`,
+      })
+      .from(upSourceRecords)
+      .innerJoin(transactions, eq(transactions.id, upSourceRecords.transactionId))
+      .innerJoin(categories, eq(categories.id, transactions.categoryId))
+      .innerJoin(categoryGroups, eq(categories.groupId, categoryGroups.id))
+      .where(
+        and(
+          isNotNull(upSourceRecords.upCategory),
+          eq(categoryGroups.isIncome, 0),
+          eq(categories.hidden, 0),
+        ),
+      )
+      .groupBy(upSourceRecords.upCategory, transactions.categoryId)
+      .all() as { slug: string; categoryId: string; n: number }[],
+  );
+  return (slug: string | null | undefined) =>
+    (slug ? learned.get(slug) : null) ?? mapUpCategory(slug, byName);
 }

@@ -5,7 +5,7 @@
   "type": "module",
   "description": "ESLint for the client and server (audit F-08). Its own package: typescript-eslint needs TypeScript's JavaScript API, which TypeScript 7 doesn't have, so TypeScript 6 here only parses.",
   "scripts": {
-    "lint": "cd .. && eslint -c lint/eslint.config.js --max-warnings=271 client/src server/src",
+    "lint": "cd .. && eslint -c lint/eslint.config.js --max-warnings=270 client/src server/src",
     "lint:report": "cd .. && eslint -c lint/eslint.config.js client/src server/src"
   },
   "devDependencies": {

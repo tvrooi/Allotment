@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { knownUpCategories, mapUpCategory } from './upCategoryMap.js';
+import { knownUpCategories, learnUpCategories, mapUpCategory } from './upCategoryMap.js';
 import { upImportRows, upTransactionSchema } from './upTransactions.js';
 import { upMockTransaction } from '../test/upMock.js';
 import { payInterval } from './importTidy.js';
@@ -97,5 +97,26 @@ describe('pay interval', () => {
     const short = every('2026-01-01', 14, 4);
     short.splice(2, 1);
     expect(payInterval(short)).toBeNull();
+  });
+});
+
+describe('Learning Up categories from the owner', () => {
+  it('learns a slug only from a clear habit over enough rows', () => {
+    const learned = learnUpCategories([
+      { slug: 'pets', categoryId: 'vet', n: 4 },
+      { slug: 'utilities', categoryId: 'power', n: 2 },
+      { slug: 'groceries', categoryId: 'food', n: 6 },
+      { slug: 'groceries', categoryId: 'household', n: 4 },
+      { slug: 'cycling', categoryId: 'transport', n: 9 },
+      { slug: 'cycling', categoryId: 'fun', n: 1 },
+    ]);
+    expect(learned.get('pets')).toBe('vet');
+    expect(learned.has('utilities')).toBe(false); // too few rows
+    expect(learned.has('groceries')).toBe(false); // split habit, 60%
+    expect(learned.get('cycling')).toBe('transport'); // 90%
+  });
+
+  it('maps utilities to the short template envelope', () => {
+    expect(mapUpCategory('utilities', names('Electricity & Gas'))).toBe('id:Electricity & Gas');
   });
 });
