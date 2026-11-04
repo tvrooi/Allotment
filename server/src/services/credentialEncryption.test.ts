@@ -1,7 +1,12 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { db } from '../db/index.js';
-import { plaidConfig, plaidItems, simplefinConnections } from '../db/schema.js';
+import {
+  plaidConfig,
+  plaidItems,
+  receiptReaderSecrets,
+  simplefinConnections,
+} from '../db/schema.js';
 import { encryptStoredCredentials } from './credentialEncryption.js';
 
 // vitest.config.ts runs server tests against an in-memory DB with a test key
@@ -27,14 +32,19 @@ describe('encryptStoredCredentials', () => {
         `insert into simplefin_connections (id, access_url, connection_name) values ('sf', 'https://user:pass@bridge.simplefin.org/simplefin', 'SF')`,
       )
       .run();
+    // A receipt reader API key saved while encryption was off
+    db.$client
+      .prepare(`insert into receipt_reader_secrets (id, api_key) values (1, 'sk-mock-receipt-key')`)
+      .run();
   });
 
   it('encrypts plaintext credentials already in the database', () => {
-    expect(encryptStoredCredentials()).toBe(3);
+    expect(encryptStoredCredentials()).toBe(4);
     for (const [table, column] of [
       ['plaid_config', 'secret'],
       ['plaid_items', 'access_token'],
       ['simplefin_connections', 'access_url'],
+      ['receipt_reader_secrets', 'api_key'],
     ]) {
       const [{ v }] = raw(table, column);
       expect(v.startsWith('enc:v1:'), `${table}.${column}`).toBe(true);
@@ -47,6 +57,7 @@ describe('encryptStoredCredentials', () => {
   it('still reads the original values through the app', () => {
     expect(db.select().from(plaidConfig).get()?.secret).toBe('plaid-secret');
     expect(db.select().from(plaidItems).get()?.accessToken).toBe('access-sandbox-abc');
+    expect(db.select().from(receiptReaderSecrets).get()?.apiKey).toBe('sk-mock-receipt-key');
     expect(db.select().from(simplefinConnections).get()?.accessUrl).toBe(
       'https://user:pass@bridge.simplefin.org/simplefin',
     );

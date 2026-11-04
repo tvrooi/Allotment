@@ -22,7 +22,7 @@ Allotment takes the upload, paste, inbox, matching and attachment ideas, and (si
 - **Email forwarding** would need an inbound mail service exposed to the internet, which a private,
   self-hosted budget should not run.
 - **Server-side AI parsing** would send receipts to a third party. Allotment can instead read
-  photos with a model the owner chooses (§5, since 0.2.0-up.44; cloud providers since up.97).
+  photos with a model the owner chooses (§5, since 0.2.0-up.44; cloud providers since up.98).
 
 The owner types a receipt's details and line items, and matching and splitting use those.
 
@@ -144,7 +144,7 @@ records, not only tax evidence.
 - **Unmatch** keeps what was added to the transaction. Deleting a receipt never deletes a
   transaction; deleting a transaction makes its receipts unmatched.
 - **Backups:** format 19 adds `receiptLineItems`; format 18 backups restore with no line items.
-- **Reading photos with a model** (`receiptReader.ts`, since 0.2.0-up.44; providers since up.97):
+- **Reading photos with a model** (`receiptReader.ts`, since 0.2.0-up.44; providers since up.98):
   - **Off by default.** Settings → _Read receipts automatically_ → _Who reads them_
     (`budget_settings.receipt_reader_provider`, migration 0068):
     - **A model server on your own network** (`local`): an address speaking the Ollama API
