@@ -15,6 +15,24 @@ describe('Up category mapping', () => {
     );
     expect(mapUpCategory('fuel', names('Gas / Fuel'))).toBe('id:Gas / Fuel');
   });
+  it("maps to the short Australian template's nearest envelopes when the closer names are missing", () => {
+    const au = names('Public Transport', 'Entertainment', 'Home & Garden', 'Rego & CTP');
+    expect(mapUpCategory('taxis-and-share-cars', au)).toBe('id:Public Transport');
+    expect(mapUpCategory('technology', au)).toBe('id:Entertainment');
+    expect(mapUpCategory('homeware-and-appliances', au)).toBe('id:Home & Garden');
+    expect(mapUpCategory('maintenance-and-improvements', au)).toBe('id:Home & Garden');
+    expect(mapUpCategory('life-admin', au)).toBe('id:Rego & CTP');
+    // A Victorian or New South Wales budget names that envelope its own way
+    expect(mapUpCategory('life-admin', names('Rego & TAC'))).toBe('id:Rego & TAC');
+    expect(mapUpCategory('life-admin', names('Rego & Green Slip'))).toBe('id:Rego & Green Slip');
+    // A closer name still wins where the budget has it (the general template)
+    expect(mapUpCategory('taxis-and-share-cars', names('Ride Share', 'Public Transport'))).toBe(
+      'id:Ride Share',
+    );
+    expect(mapUpCategory('technology', names('Electronics', 'Entertainment'))).toBe(
+      'id:Electronics',
+    );
+  });
   it('leaves a row uncategorised for no category, an unknown slug or a missing Allotment name', () => {
     expect(mapUpCategory(null, names('Groceries'))).toBeNull();
     expect(mapUpCategory('a-category-up-adds-later', names('Groceries'))).toBeNull();
