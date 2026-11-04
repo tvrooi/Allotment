@@ -6,6 +6,7 @@ import { formatMoney } from '../../utils/currency';
 import { Input, Select } from '../ui/Input';
 import type { Transaction } from '../../types';
 import { ASSET_LABELS, type AssetLabel } from '../../api/assets';
+import { purchaseCost } from '../../utils/purchaseCost';
 import { useAssets } from '../../hooks/useAssets';
 import type { AssetPrefill } from './Assets';
 
@@ -51,10 +52,13 @@ export function TaxClaimSection({ tx, currency }: { tx: Transaction; currency: s
         on Tax time.
       </p>
     );
+  const budgetCost = purchaseCost(tx);
+  // Over $300 (by the account's own amount while the budget's value is missing)
+  const overLimit = (budgetCost ?? -tx.amount) > 30_000;
   const prefill: AssetPrefill = {
     transactionId: tx.id,
     name: tx.payeeName ?? 'Asset',
-    cost: -tx.amount,
+    cost: budgetCost ?? 0,
     date: tx.date,
     claimed: !!claim,
     ...(claim && ASSET_LABELS.includes(claim.label as AssetLabel)
@@ -62,15 +66,20 @@ export function TaxClaimSection({ tx, currency }: { tx: Transaction; currency: s
       : {}),
     ...(claim ? { workUseBps: claim.workUseBps } : {}),
   };
-  const depreciate = (
-    <Link
-      to="/tax?tab=assets"
-      state={{ asset: prefill }}
-      className="text-xs font-medium text-brand-600 hover:text-brand-700"
-    >
-      Depreciate as an asset instead
-    </Link>
-  );
+  const depreciate =
+    budgetCost === null ? (
+      <span className="text-xs text-text-tertiary">
+        To depreciate it, give it a value in your budget&rsquo;s currency first.
+      </span>
+    ) : (
+      <Link
+        to="/tax?tab=assets"
+        state={{ asset: prefill }}
+        className="text-xs font-medium text-brand-600 hover:text-brand-700"
+      >
+        Depreciate as an asset instead
+      </Link>
+    );
 
   const store = (change: Partial<{ label: TaxLabel; workUseBps: number; notes: string | null }>) =>
     save.mutate({
@@ -99,7 +108,7 @@ export function TaxClaimSection({ tx, currency }: { tx: Transaction; currency: s
         />
         Claim as a tax deduction
       </label>
-      {!claim && -tx.amount > 30_000 && <p className="pl-6">{depreciate}</p>}
+      {!claim && overLimit && <p className="pl-6">{depreciate}</p>}
       {claim && (
         <div className="space-y-2 pl-6">
           <Select
@@ -144,7 +153,7 @@ export function TaxClaimSection({ tx, currency }: { tx: Transaction; currency: s
               No receipt yet. The ATO expects one once your work expenses pass $300 for the year.
             </p>
           )}
-          {-tx.amount > 30_000 && claim.label !== 'D1' && (
+          {overLimit && claim.label !== 'D1' && (
             <p className="text-xs text-text-tertiary">
               Over $300: usually claimed as decline in value over several years. Check with your tax
               agent. {depreciate}
