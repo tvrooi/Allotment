@@ -100,7 +100,8 @@ mention, and there are no paid plans: storage is the owner's own disk, with an o
 
 ## 4. Links
 
-- **Kinds:** transaction, category, goal and account (`LINK_TARGETS` in `documentService.ts`).
+- **Kinds:** transaction, category, goal, account and asset (a depreciating asset's records,
+  DEPRECIATING-ASSETS-PLAN.md; migration 0066) (`LINK_TARGETS` in `documentService.ts`).
   Adding a kind is one nullable foreign-key column on `document_links` (an additive migration, with
   `ON DELETE CASCADE` and a partial unique index) and one entry in `LINK_TARGETS`. The
   depreciating assets plan adds `asset` this way

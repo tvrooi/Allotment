@@ -1,6 +1,6 @@
 # Plan: depreciating assets on the Tax time page
 
-Status: **plan, not built; owner decisions taken, ready for phase 1.** Owner request, 3 November 2026: add depreciating assets to the Tax
+Status: **phase 1 built (server: calculation, storage, routes, tax year, exports, backups, token read; 0.2.0-up.94); phases 2 and 3 follow.** Owner request, 3 November 2026: add depreciating assets to the Tax
 tab, worked out by the ATO's two methods (prime cost and diminishing value). This extends
 [RECEIPTS-AND-TAX.md](RECEIPTS-AND-TAX.md) §4, and replaces the "Depreciation schedules" line in
 its §6 "Not built" once it ships. Record keeping, not tax advice, like the rest of Tax time.

@@ -335,6 +335,9 @@ const TAX_READ = [
   /^\/tax\/years\/\d{4}$/,
   /^\/tax\/years\/\d{4}\/candidates$/,
   /^\/tax\/claims(\/[^/]+)?$/,
+  // Depreciating assets, read only (owner decision 2, DEPRECIATING-ASSETS-PLAN.md §7): changes
+  // are the owner's, or later an assistant's proposal the owner approves (audit I-11)
+  /^\/tax\/assets(\/[^/]+)?$/,
 ];
 const TAX_CLAIM_PATH = /^\/tax\/claims\/([^/]+)$/i;
 /** A claim's label, work-use share and notes, as the tax route takes them */
