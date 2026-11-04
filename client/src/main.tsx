@@ -25,9 +25,13 @@ if (window.__PLATFORM__ === 'darwin' || navigator.userAgent.includes(' FlyBudget
 
 const queryClient = new QueryClient({
   mutationCache: new MutationCache({
-    // Whatever a save changed, every page showing ledger figures follows it (utils/ledgerViews.ts)
-    onSuccess: () => {
+    // Whatever a save changed, every page showing ledger figures follows it (utils/ledgerViews.ts),
+    // and so does the menu's idea of which optional features are in use (utils/navFeatures.ts).
+    // A guides save already returns the new state, so it doesn't refetch it.
+    onSuccess: (_data, _variables, _context, mutation) => {
       void invalidateLedgerViews(queryClient);
+      if (mutation.options.mutationKey?.[0] !== 'guides')
+        void queryClient.invalidateQueries({ queryKey: ['guides'] });
     },
   }),
   defaultOptions: {
@@ -36,7 +40,12 @@ const queryClient = new QueryClient({
 });
 
 // Undo and redo call the API directly, not through a mutation
-setAfterUndoChange(() => invalidateLedgerViews(queryClient));
+setAfterUndoChange(() =>
+  Promise.all([
+    invalidateLedgerViews(queryClient),
+    queryClient.invalidateQueries({ queryKey: ['guides'] }),
+  ]).then(() => undefined),
+);
 
 const render = () =>
   createRoot(document.getElementById('root')!).render(

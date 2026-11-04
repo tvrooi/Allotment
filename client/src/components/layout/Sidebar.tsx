@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Landmark,
@@ -23,14 +23,19 @@ import {
   EyeOff,
   CalendarClock,
   FolderOpen,
+  ChevronDown,
+  Plus,
 } from 'lucide-react';
-import { usePreferencesStore } from '../../store/preferencesStore';
+import { usePreferencesStore, type NavGroup } from '../../store/preferencesStore';
 import { useSafeModeStore } from '../../store/safeModeStore';
 import { SidebarAccountList } from './SidebarAccountList';
 import { ServerStatus } from './ServerStatus';
 import { useNextSteps } from '../../hooks/useNextSteps';
 import { HelpMenu } from '../guide/HelpMenu';
 import { BrandName } from '../ui/BrandName';
+import { useGuideProgress } from '../../hooks/useGuides';
+import { featureShown, hiddenFeatureCount } from '../../utils/navFeatures';
+import type { NavFeature } from '../../api/guides';
 import logoUrl from '/logo.png';
 
 interface NavItemProps {
@@ -74,6 +79,65 @@ function NavItem({ to, icon, label, collapsed, badge }: NavItemProps) {
         </span>
       )}
     </NavLink>
+  );
+}
+
+interface SectionItem {
+  to: string;
+  icon: React.ReactNode;
+  label: string;
+}
+
+/**
+ * A heading that folds its links away (remembered on this device). A folded group still lists
+ * the page you're on. In the collapsed rail the heading is a thin rule and every link shows.
+ */
+function NavSection({
+  group,
+  label,
+  collapsed,
+  items,
+}: {
+  group: NavGroup;
+  label: string;
+  collapsed: boolean;
+  items: (SectionItem | false)[];
+}) {
+  const { pathname } = useLocation();
+  const folded = usePreferencesStore((s) => !!s.navGroupsFolded[group]);
+  const setFolded = usePreferencesStore((s) => s.setNavGroupFolded);
+  const listId = `nav-group-${group}`;
+  const listed = items.filter((i): i is SectionItem => !!i);
+  const visible =
+    collapsed || !folded
+      ? listed
+      : listed.filter((i) => pathname === i.to || pathname.startsWith(`${i.to}/`));
+  return (
+    <div className="pt-3">
+      {collapsed ? (
+        <div aria-hidden className="mx-3 mb-2 border-t border-sidebar-border" />
+      ) : (
+        <button
+          type="button"
+          aria-expanded={!folded}
+          aria-controls={listId}
+          onClick={() => setFolded(group, !folded)}
+          className="w-full flex items-center gap-1 px-3 py-1 max-md:min-h-11 rounded-md text-2xs font-semibold uppercase tracking-wide text-sidebar-text hover:text-sidebar-text-hi hover:bg-sidebar-hover"
+        >
+          {label}
+          <ChevronDown
+            size={12}
+            aria-hidden
+            className={`ml-auto transition-transform ${folded ? '-rotate-90' : ''}`}
+          />
+        </button>
+      )}
+      <div id={listId} role="group" aria-label={label} className="mt-1 space-y-1">
+        {visible.map((i) => (
+          <NavItem key={i.to} to={i.to} icon={i.icon} label={i.label} collapsed={collapsed} />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -137,6 +201,10 @@ export function Sidebar() {
 /** The sidebar's links, account list and footer, shared by the desktop sidebar and the phone drawer. */
 function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?: () => void }) {
   const reviewCount = useNextSteps().length;
+  const { pathname } = useLocation();
+  const { data: progress, isError } = useGuideProgress();
+  const shown = (feature: NavFeature) => featureShown(feature, progress, pathname, isError);
+  const hiddenCount = hiddenFeatureCount(progress, pathname, isError);
   const sidebarMode = usePreferencesStore((s) => s.sidebarMode);
   const setSidebarMode = usePreferencesStore((s) => s.setSidebarMode);
   const pinned = sidebarMode === 'persistent';
@@ -186,8 +254,9 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
 
       {/* Navigation and accounts share a scroll area on short screens. */}
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-        {/* Primary nav */}
-        <nav data-guide="nav.main" className="pt-4 px-3 space-y-1">
+        {/* Primary nav: the everyday pages, then Planning and Tools (audit decision I-4).
+            Optional features appear once they hold something or are turned on (navFeatures.ts). */}
+        <nav data-guide="nav.main" aria-label="Main" className="pt-4 px-3 space-y-1">
           <NavItem
             to="/dashboard"
             icon={<LayoutDashboard size={18} />}
@@ -225,18 +294,22 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
             label="Recurring"
             collapsed={!isExpanded}
           />
-          <NavItem
-            to="/payment-plans"
-            icon={<CalendarClock size={18} />}
-            label="Pay later"
-            collapsed={!isExpanded}
-          />
-          <NavItem
-            to="/household"
-            icon={<House size={18} />}
-            label="Household"
-            collapsed={!isExpanded}
-          />
+          {shown('pay-later') && (
+            <NavItem
+              to="/payment-plans"
+              icon={<CalendarClock size={18} />}
+              label="Pay later"
+              collapsed={!isExpanded}
+            />
+          )}
+          {shown('household') && (
+            <NavItem
+              to="/household"
+              icon={<House size={18} />}
+              label="Household"
+              collapsed={!isExpanded}
+            />
+          )}
           <NavItem
             to="/reports"
             icon={<BarChart3 size={18} />}
@@ -249,31 +322,48 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
             label="Cash Flow"
             collapsed={!isExpanded}
           />
-          <NavItem to="/goals" icon={<Target size={18} />} label="Goals" collapsed={!isExpanded} />
-          <NavItem
-            to="/forecast"
-            icon={<TrendingUp size={18} />}
-            label="Forecast"
+          <NavSection
+            group="planning"
+            label="Planning"
             collapsed={!isExpanded}
+            items={[
+              { to: '/goals', icon: <Target size={18} />, label: 'Goals' },
+              { to: '/forecast', icon: <TrendingUp size={18} />, label: 'Forecast' },
+              shown('investments') && {
+                to: '/investments',
+                icon: <CandlestickChart size={18} />,
+                label: 'Investments',
+              },
+              shown('tax') && { to: '/tax', icon: <Receipt size={18} />, label: 'Tax time' },
+            ]}
           />
-          <NavItem
-            to="/investments"
-            icon={<CandlestickChart size={18} />}
-            label="Investments"
+          <NavSection
+            group="tools"
+            label="Tools"
             collapsed={!isExpanded}
+            items={[
+              { to: '/payees', icon: <Users size={18} />, label: 'Payees' },
+              { to: '/rules', icon: <Zap size={18} />, label: 'Rules' },
+              shown('files') && { to: '/files', icon: <FolderOpen size={18} />, label: 'Files' },
+            ]}
           />
-          <NavItem
-            to="/tax"
-            icon={<Receipt size={18} />}
-            label="Tax time"
-            collapsed={!isExpanded}
-          />
-          <NavItem
-            to="/files"
-            icon={<FolderOpen size={18} />}
-            label="Files"
-            collapsed={!isExpanded}
-          />
+          {hiddenCount > 0 && (
+            <Link
+              to="/settings?tab=preferences"
+              state={{ focus: 'sidebar-features' }}
+              title={!isExpanded ? 'More features' : undefined}
+              className="flex items-center gap-3 py-2 max-md:min-h-11 px-3 rounded-md text-xs text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi"
+            >
+              <Plus size={18} aria-hidden />
+              <span
+                className={`truncate transition-opacity duration-200 ${
+                  isExpanded ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                More features ({hiddenCount})
+              </span>
+            </Link>
+          )}
         </nav>
 
         {/* Account list */}
@@ -287,9 +377,10 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
       </div>
 
       {/* Footer nav */}
-      <nav className="shrink-0 py-3 px-3 border-t border-sidebar-border space-y-1">
-        <NavItem to="/payees" icon={<Users size={18} />} label="Payees" collapsed={!isExpanded} />
-        <NavItem to="/rules" icon={<Zap size={18} />} label="Rules" collapsed={!isExpanded} />
+      <nav
+        aria-label="Settings"
+        className="shrink-0 py-3 px-3 border-t border-sidebar-border space-y-1"
+      >
         <NavItem
           to="/settings"
           icon={<Settings size={18} />}

@@ -1,3 +1,4 @@
+import { SidebarFeatureSettings } from './SidebarFeatureSettings';
 import { useState } from 'react';
 import {
   usePreferencesStore,
@@ -177,6 +178,7 @@ export function PreferencesPanel() {
             </button>
           ))}
         </div>
+        <SidebarFeatureSettings />
       </div>
 
       <SafeModeSettings />

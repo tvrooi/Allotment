@@ -6,7 +6,7 @@ import type { Server } from 'http';
 import type { AddressInfo } from 'net';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { db } from '../db/index.js';
-import { guideProgress } from '../db/schema.js';
+import { documents, guideProgress, householdGroups } from '../db/schema.js';
 import { guidesRouter } from './guides.js';
 import { tokenAllows } from '../auth/accessTokens.js';
 import { BACKUP_TABLES } from '../services/backupService.js';
@@ -43,7 +43,44 @@ describe('guide progress', () => {
       guidesNotice: false,
       seenGuides: {},
       dismissedTips: [],
+      navFeatures: {},
+      featuresInUse: [],
     });
+  });
+
+  it('keeps a sidebar choice per optional feature, and forgets one set back to auto', async () => {
+    await send('PUT', '', { navFeatures: { investments: 'shown', files: 'hidden' } });
+    const { body } = await send('PUT', '', { navFeatures: { files: 'auto', tax: 'hidden' } });
+    expect(body.navFeatures).toEqual({ investments: 'shown', tax: 'hidden' });
+    // Reset brings the guides back, not the menu
+    expect((await send('POST', '/reset')).body.navFeatures).toEqual(body.navFeatures);
+    for (const bad of [
+      { navFeatures: { budget: 'hidden' } },
+      { navFeatures: { tax: 'maybe' } },
+      { navFeatures: 'all' },
+    ])
+      expect((await send('PUT', '', bad)).status).toBe(400);
+  });
+
+  it('says which optional features hold something', async () => {
+    db.insert(householdGroups).values({ id: 'h', name: 'Home', currency: 'AUD' }).run();
+    db.insert(documents)
+      .values({
+        id: 'd',
+        fileId: 'f',
+        fileName: 'Lease.pdf',
+        mimeType: 'application/pdf',
+        size: 1,
+        createdAt: '2026-11-04',
+        updatedAt: '2026-11-04',
+      })
+      .run();
+    try {
+      expect((await send('GET')).body.featuresInUse).toEqual(['household', 'files']);
+    } finally {
+      db.delete(documents).run();
+      db.delete(householdGroups).run();
+    }
   });
 
   it('adds seen guides and dismissed tips to what is there', async () => {

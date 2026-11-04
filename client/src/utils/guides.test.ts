@@ -150,7 +150,18 @@ describe('progress', () => {
       tipsEnabled: false,
       seenGuides: { welcome: 2, budget: 1 },
       dismissedTips: ['a', 'b'],
+      navFeatures: {},
+      featuresInUse: undefined,
     });
+    // Sidebar choices: set, replaced, or forgotten with 'auto'; what's in use is the server's
+    const menu = {
+      ...fresh,
+      navFeatures: { tax: 'hidden' as const },
+      featuresInUse: ['files' as const],
+    };
+    expect(
+      applyGuideUpdate(menu, { navFeatures: { tax: 'auto', investments: 'shown' } }),
+    ).toMatchObject({ navFeatures: { investments: 'shown' }, featuresInUse: ['files'] });
   });
 
   it('closing the welcome tour records whether it was finished', () => {
