@@ -472,7 +472,7 @@ export function matchReturningAccounts(
 
 // The OAuth `state` sent to the bank and back. The desktop app and `npm run dev` get the
 // bank's redirect through a static page on flybudget.org, which forwards it to this
-// computer: the port tells it where (website/static/bank-callback/relay.js reads it).
+// computer: the port tells it where (relay.js reads it; a copy is e2e/fixtures/bank-callback/).
 const STATE_RE = /^fb1\.(\d{1,5})\.([A-Za-z0-9_-]{32,128})$/;
 
 export function makeState(port: number, random: string): string {

@@ -9,8 +9,8 @@ name: Release
 # Manual runs on a branch and PRs only validate packaging; a dispatch on a tested version
 # tag publishes, including recovery of a failed release. No custom PAT is required.
 #
-# File names don't include the version, so the website can link to
-# releases/latest/download/<file> (see website/src/pages/download.tsx):
+# File names don't include the version, so links can point at
+# releases/latest/download/<file>:
 #   Allotment-Windows-Setup.exe
 #   Allotment-macOS-arm64.dmg, Allotment-macOS-x64.dmg
 #   Allotment-Linux-x86_64.AppImage, Allotment-Linux-arm64.AppImage

@@ -266,8 +266,8 @@ each proposal in the app before anything is saved. No tool writes an asset direc
    version 24.
 2. **UI:** the Assets tab, the form with both-method preview, the asset page with its Records
    (`FilesSection`), disposal, lodged years, "Depreciate instead", the transaction panel action,
-   the **Asset** link choice in Files, guides, the user guides (`website/docs/tax.mdx`,
-   `website/docs/files.mdx`) and docs (this file, FILES.md §4 and §8).
+   the **Asset** link choice in Files, guides, Allotment's guide (`client/src/userGuide`) and docs
+   (this file, FILES.md §4 and §8).
 3. **Low-value pool (D6):** allocating low-cost or low-value assets, one pool across years
    (18.75% for a low-cost asset added this year, 37.5% for a low-value asset's opening
    adjustable value in its first pooled year, and 37.5% of the previous year's closing balance),

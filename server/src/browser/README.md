@@ -1,7 +1,8 @@
 # The in-browser demo
 
-The website's **Try the demo** button opens the real Allotment app with a sample budget, running
-entirely in the visitor's browser. There is no demo server: the server's own routes run in a Web
+The in-browser demo is the real Allotment app with a sample budget, running entirely in the
+visitor's browser. It's a static build any host can serve at `/demo/`; this repository no longer
+publishes one (the upstream website that did was removed, audit decision I-9). There is no demo server: the server's own routes run in a Web
 Worker, on SQLite compiled to WebAssembly ([sql.js](https://github.com/sql-js/sql.js)). Every
 visitor gets a private copy that disappears when they close the tab, and nothing is sent anywhere.
 
@@ -27,8 +28,8 @@ visitor gets a private copy that disappears when they close the tab, and nothing
 - `../demo/demoBudget.ts` is the budget itself (pure: rows from today's date, the same every time
   for the same day), `../demo/loadDemoBudget.ts` loads it, and `../demo/logos.ts` holds the logos,
   drawn by `client/scripts/generate-demo-logos.mjs`.
-- `website/scripts/build-demo.mjs` builds it into `website/static/demo/` before `docusaurus build`,
-  so the site serves it at `/demo/`.
+- `cd client && npx vite build --mode demo --outDir <dir>` builds it; serve `<dir>` at `/demo/`
+  with the headers in `DEMO_HEADERS` (`e2e/global-setup.ts` does exactly this for the tests).
 
 ## Privacy and security
 
@@ -42,11 +43,11 @@ The demo is public, so it's built so that nothing a visitor types can reach anyo
   credentials. CSV imports, backups and restores run in the worker; downloads are saved from the
   page (`downloadFromApi`). The e2e tests check that no request leaves `/demo/`.
 - **The same strict CSP as the app**: only the demo's own files, plus WebAssembly for SQLite.
-  The page carries it in a `<meta>` tag (`demoPage` in `client/vite.config.ts`), and
-  `website/static/_headers` sends it as a header with `frame-ancestors 'none'`, `X-Frame-Options`
-  and `no-referrer` on hosts that read that file. Keep the two in sync.
+  The page carries it in a `<meta>` tag (`demoPage` in `client/vite.config.ts`), and a host
+  should send it as a header with `frame-ancestors 'none'`, `X-Frame-Options` and `no-referrer`
+  (`DEMO_HEADERS` in `e2e/global-setup.ts`). Keep the two in sync.
 - **No storage that outlives the tab**: preferences go to `sessionStorage` in the demo (not the
-  website's `localStorage`), and are reset by "Start over". The offline copy, waiting
+  host site's `localStorage`), and are reset by "Start over". The offline copy, waiting
   transactions and the service worker are off (the demo build doesn't even ship `sw.js`).
 
 ## Working on it

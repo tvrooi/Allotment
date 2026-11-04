@@ -4,7 +4,7 @@ Status: built (0.2.0-up.79). A document library kept with the budget, after Pock
 [Files](https://www.pocketsmith.com/features/files/): bills, warranties, insurance policies,
 receipts and photos or videos of what you own, each linked to what it belongs to.
 
-User guide: [website/docs/files.mdx](../website/docs/files.mdx). Receipts, matching and tax:
+Receipts, matching and tax:
 [RECEIPTS-AND-TAX.md](RECEIPTS-AND-TAX.md).
 
 ## 1. What PocketSmith does, and what we take from it

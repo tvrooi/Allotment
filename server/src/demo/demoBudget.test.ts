@@ -13,7 +13,7 @@ import { buildDemoBudget } from './demoBudget.js';
 import { loadDemoBudget } from './loadDemoBudget.js';
 import { listTransferSuggestions } from '../services/transferService.js';
 
-// The website demo's budget (see ../browser/README.md) has to look finished whatever day
+// The in-browser demo's budget (see ../browser/README.md) has to look finished whatever day
 // someone opens it: these check it for any "today".
 
 const anyDay = fc.date({

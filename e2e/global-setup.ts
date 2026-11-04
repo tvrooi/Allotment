@@ -30,8 +30,8 @@ import { startUpMock } from './mockUp';
 //
 // Settings the tests need are passed on through environment variables.
 //
-// It also builds the in-browser demo (`--mode demo`, the website's "Try the demo") and serves
-// it as static files under /demo/, like the website does.
+// It also builds the in-browser demo (`--mode demo`) and serves it as static files under
+// /demo/, as a static host would.
 //
 // Tests can also stop and restart the desktop server (to check how the app behaves
 // while it can't reach it) through a small control server on 127.0.0.1:CONTROL_PORT,
@@ -176,28 +176,23 @@ const MIME: Record<string, string> = {
 };
 
 /**
- * The headers website/static/_headers gives /demo/* (the website's host sends them), so the
- * tests run the demo under the same policy.
+ * The headers a host should send with the demo: the same strict policy the app's own server
+ * sends (server/src/middleware/security.ts), so the tests run the demo under it. The demo page
+ * also carries this CSP, minus frame-ancestors, in a <meta> tag (client/vite.config.ts).
  */
-function demoHeaders(): Record<string, string> {
-  const file = path.join(root, 'website', 'static', '_headers');
-  const headers: Record<string, string> = {};
-  let inDemo = false;
-  for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
-    if (!line.trim() || line.startsWith('#')) continue;
-    if (!/^\s/.test(line)) {
-      inDemo = line.trim() === '/demo/*';
-      continue;
-    }
-    const colon = line.indexOf(':');
-    if (inDemo && colon > 0) headers[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
-  }
-  return headers;
-}
+const DEMO_HEADERS: Record<string, string> = {
+  'Content-Security-Policy':
+    "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'no-referrer',
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+};
 
-/** Serves the demo build at /demo/, as static files (the website's host does the same). */
+/** Serves the demo build at /demo/, as static files, as a static host would. */
 function startDemoServer(root: string): Promise<http.Server> {
-  const headers = demoHeaders();
+  const headers = DEMO_HEADERS;
   const server = http.createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (!url.pathname.startsWith('/demo/')) {

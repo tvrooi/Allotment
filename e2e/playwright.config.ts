@@ -4,7 +4,7 @@ import { DEMO_PORT, DESKTOP_PORT, MULTI_USER_PORT, SERVER_PORT } from './ports';
 // End-to-end tests: real browser, real server, throwaway databases (see global-setup.ts).
 //   npm test                      run everything
 //   npm test -- --project=desktop only the desktop-app suite
-//   npm test -- --project=demo    only the website demo
+//   npm test -- --project=demo    only the in-browser demo
 //   E2E_SKIP_BUILD=1 npm test     reuse the client builds from the last run
 //   E2E_SERVER_LOGS=1 npm test    show the servers' logs
 
@@ -46,7 +46,7 @@ export default defineConfig({
         hasTouch: true,
       },
     },
-    // The website's in-browser demo: the app with its API in a Web Worker, on a sample budget
+    // The in-browser demo: the app with its API in a Web Worker, on a sample budget
     {
       name: 'demo',
       testMatch: /\/tests\/demo\/.*\.spec\.ts$/,

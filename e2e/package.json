@@ -6,8 +6,7 @@
   "scripts": {
     "test": "playwright test",
     "test:ui": "playwright test --ui",
-    "report": "playwright show-report",
-    "screenshots": "node screenshots.ts"
+    "report": "playwright show-report"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",

@@ -44,7 +44,7 @@ function apiPath(input: RequestInfo | URL): string | null {
 
 /** Starts the demo's worker and sends every API request there. */
 export function startDemoApi() {
-  // Earlier versions of the demo kept its preferences in the website's localStorage
+  // Earlier versions of the demo kept its preferences in the host site's localStorage
   try {
     localStorage.removeItem('budget-preferences');
   } catch {

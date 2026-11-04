@@ -51,7 +51,7 @@ export const enableBankingRouter = Router();
 /**
  * The desktop app and `npm run dev` run on http://localhost, which Enable Banking doesn't
  * accept as a redirect URL: this static page forwards the bank's redirect to 127.0.0.1 on
- * the user's computer (website/static/bank-callback/).
+ * the user's computer (a copy for tests: e2e/fixtures/bank-callback/).
  */
 export const RELAY_REDIRECT_URL = 'https://flybudget.org/bank-callback/';
 
