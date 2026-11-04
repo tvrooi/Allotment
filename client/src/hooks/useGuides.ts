@@ -22,6 +22,8 @@ export function useGuideProgress() {
 export function useUpdateGuides() {
   const qc = useQueryClient();
   return useMutation({
+    // main.tsx's refresh after saves skips guides' own (they return the new state)
+    mutationKey: QK,
     mutationFn: (update: GuideUpdate) => guidesApi.updateGuideProgress(update),
     onMutate: async (update) => {
       await qc.cancelQueries({ queryKey: QK });
@@ -39,6 +41,7 @@ export function useUpdateGuides() {
 export function useResetGuides() {
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: QK,
     mutationFn: guidesApi.resetGuideProgress,
     onSuccess: (saved) => qc.setQueryData(QK, saved),
   });

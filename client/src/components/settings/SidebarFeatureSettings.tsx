@@ -21,11 +21,15 @@ export function SidebarFeatureSettings() {
   const heading = useRef<HTMLHeadingElement>(null);
   const location = useLocation();
   const focusHere = (location.state as { focus?: string } | null)?.focus === 'sidebar-features';
+  // Once per visit from "More features": not again on every choice, which would take focus away
+  // from the button just pressed (each choice updates `progress`)
+  const focusedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!focusHere || !heading.current) return;
+    if (!focusHere || !heading.current || focusedFor.current === location.key) return;
+    focusedFor.current = location.key;
     heading.current.scrollIntoView({ block: 'center' });
     heading.current.focus();
-  }, [focusHere, progress]);
+  }, [focusHere, progress, location.key]);
 
   if (isError) return null;
   return (
