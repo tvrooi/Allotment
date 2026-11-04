@@ -110,7 +110,7 @@ NULL`) stops it without rewriting a transaction or an assignment.
   payment), and only open checking, savings or cash accounts in the personal budget.
 - Targets, auto-assign, goals and the annual overview count `transferred` with `budgeted`.
   The assignment guard and Move money are unchanged: `budgeted` is still only stored assignments.
-- Read-only tokens can't set the link (`categoryManageAllows` lists the fields they may edit).
+- Read-only tokens can't set the link (`categoryManageAllows` in `auth/assistantPolicy.ts` lists the fields they may edit).
 - Reports still leave internal transfers out.
 
 ## Resources

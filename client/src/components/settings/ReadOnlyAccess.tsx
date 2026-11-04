@@ -8,6 +8,7 @@ import { formatDay } from '../../utils/dates';
 import {
   createAccessToken,
   getAccessTokens,
+  getAssistantActivity,
   getChangeSets,
   revokeAccessToken,
   redoChangeSet,
@@ -192,6 +193,7 @@ export function ReadOnlyAccess() {
         </ul>
       )}
       <AssistantChanges />
+      <AssistantActivity />
       <ConfirmModal
         isOpen={revoking !== null}
         onClose={() => setRevoking(null)}
@@ -267,6 +269,72 @@ function AssistantChanges() {
       </ul>
       {(undo.error ?? redo.error) && (
         <p className="text-xs text-negative mt-2">{(undo.error ?? redo.error)?.message}</p>
+      )}
+    </div>
+  );
+}
+
+const OUTCOMES = {
+  applied: { label: 'Done', className: 'text-positive' },
+  failed: { label: 'Not done', className: 'text-text-tertiary' },
+  refused: { label: 'Refused', className: 'text-negative' },
+} as const;
+
+/**
+ * Everything a token asked to change, newest first: done, not done (the app's own rules said
+ * no) or refused (not something a token may do). Audit decision I-11.
+ */
+function AssistantActivity() {
+  const { data } = useQuery({
+    queryKey: ['assistant-activity'],
+    queryFn: () => getAssistantActivity(50),
+  });
+  const [open, setOpen] = useState(false);
+  const actions = data?.actions ?? [];
+  if (!actions.length) return null;
+  const summaries = new Map((data?.policy ?? []).map((p) => [p.name, p.summary]));
+  const refused = actions.filter((a) => a.outcome === 'refused').length;
+  return (
+    <div className="mt-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-xs font-semibold text-text-secondary">Assistant activity</h3>
+          <p className="text-xs text-text-tertiary mt-0.5">
+            Every change a token asked for, with what happened.
+            {refused ? ` ${refused} refused recently.` : ''}
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {open ? 'Hide' : 'Show'}
+        </Button>
+      </div>
+      {open && (
+        <ul aria-label="Assistant activity" className="mt-2 divide-y divide-border-light">
+          {actions.map((a) => {
+            const outcome = OUTCOMES[a.outcome];
+            return (
+              <li key={a.id} className="py-2">
+                <p className="text-sm text-text">
+                  {a.tokenName}: {(a.action && summaries.get(a.action)) ?? `${a.method} ${a.path}`}
+                  {a.tool ? (
+                    <span className="text-text-tertiary"> ({a.tool.replaceAll('_', ' ')})</span>
+                  ) : null}
+                </p>
+                <p className="text-xs text-text-tertiary">
+                  <span className={`font-medium ${outcome.className}`}>{outcome.label}</span>
+                  {' · '}
+                  {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}
+                  {a.reason ? ` · ${a.reason}` : ''}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );

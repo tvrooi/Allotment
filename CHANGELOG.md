@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.98
+
+- **Assistant activity.** Every change an assistant asks for with an access token now goes through one checked door and is logged: Settings → Server → Read-only access → **Assistant activity** lists each request (done, not done, or refused) with the token, the tool and when. What a token may do hasn't changed. If you call the API yourself with a categorise or organise token, send writes to the same path under `/api/assistant` (for example `PUT /api/assistant/transactions/:id`); MCP tools do this for you.
+
 ## 0.2.0-up.96
 
 - **The low-value pool (D6).** An asset that cost under $1,000 can go into the low-value pool in its first year, and a diminishing value asset can join once its value falls under $1,000: open it in Tax time → Assets and choose **Move to the pool**. The pool is written down 18.75% for assets added that year and 37.5% of its balance, on each asset's work-use share; selling a pooled asset reduces the balance (anything over it is income). Tax time → Assets shows the pool year by year, and Deductions, its totals, CSV and ZIP include the D6 deduction. Lodged years stay locked: a change that would alter a lodged year's asset or pool figures is refused until it is unlocked.

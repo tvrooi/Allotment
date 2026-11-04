@@ -240,6 +240,15 @@ test('an organise token proposes a rule that waits for the owner to turn it on',
   // Enabling is the owner's
   const ruleId = JSON.parse(proposed.result.content[0].text).rule.id;
   expect((await api.put(`/api/rules/${ruleId}`, { data: { enabled: true } })).status()).toBe(403);
+  // Every token write goes through the assistant endpoints, which refuse it too, and log both
+  expect(
+    (await api.put(`/api/assistant/rules/${ruleId}`, { data: { enabled: true } })).status(),
+  ).toBe(403);
+  await owner.goto(`${baseURL}/settings?tab=server`);
+  await section.getByRole('button', { name: 'Show' }).click();
+  const activity = section.getByRole('list', { name: 'Assistant activity' });
+  await expect(activity.getByText('Organiser: Propose a rule, saved disabled')).toBeVisible();
+  await expect(activity.getByText('Refused').first()).toBeVisible();
 
   await owner.goto(`${baseURL}/rules`);
   await expect(owner.getByText('Proposed by Organiser')).toBeVisible();

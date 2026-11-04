@@ -101,6 +101,11 @@ curl -H "Authorization: Bearer $FLYBUDGET_READONLY_TOKEN" \
 
 Amounts are integer minor units (cents); a negative transaction amount is money out.
 
+A categorise or organise token sends its writes to the assistant endpoints: the same path under
+`/api/assistant`, for example `PUT /api/assistant/transactions/:id`. Writes straight to a route
+are refused. Each one is checked and logged; the owner sees them in Settings → Server → Read-only
+access → **Assistant activity**. See [ASSISTANT-ENDPOINTS.md](ASSISTANT-ENDPOINTS.md).
+
 ### MCP
 
 The server offers an MCP (Model Context Protocol) endpoint at `/api/mcp`, using Streamable

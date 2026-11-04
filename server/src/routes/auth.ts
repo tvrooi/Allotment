@@ -1,3 +1,4 @@
+import type { AssistantGrant } from './assistant.js';
 import {
   bearerToken,
   looksLikeAccessToken,
@@ -280,7 +281,12 @@ export const requireSession: RequestHandler = (req, res, next) => {
   if (looksLikeAccessToken(bearer)) {
     const token = verifyAccessToken(bearer);
     if (!token) return void res.status(401).json({ error: 'Invalid or expired access token' });
-    if (!tokenAllows(token.scope, req.method, req.path, req.body)) {
+    // A write the assistant endpoints checked and logged (routes/assistant.ts): once, for
+    // exactly the method and path they allowed
+    const grant = res.locals.assistantGrant as AssistantGrant | undefined;
+    const granted = !!grant && grant.method === req.method && grant.path === req.path;
+    if (granted) delete res.locals.assistantGrant;
+    if (!granted && !tokenAllows(token.scope, req.method, req.path, req.body)) {
       return void res.status(403).json({
         error:
           token.scope === 'categorise'

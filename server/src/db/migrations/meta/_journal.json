@@ -477,6 +477,13 @@
       "when": 1795300000000,
       "tag": "0067_low_value_pool",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "6",
+      "when": 1795400000000,
+      "tag": "0068_assistant_actions",
+      "breakpoints": true
     }
   ]
 }

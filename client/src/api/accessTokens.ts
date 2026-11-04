@@ -58,3 +58,31 @@ export const redoChangeSet = (id: string) =>
   apiFetch<{ reapplied: number; skipped: string[] }>(`/change-sets/${id}/redo`, {
     method: 'POST',
   });
+
+/** One write a token asked for, allowed or refused (server: routes/assistant.ts, audit I-11) */
+export interface AssistantAction {
+  id: string;
+  createdAt: string;
+  tokenId: string | null;
+  tokenName: string;
+  scope: AccessTokenScope;
+  /** The policy row that allowed it; null when refused by the policy */
+  action: string | null;
+  tool: string | null;
+  method: string;
+  path: string;
+  outcome: 'refused' | 'applied' | 'failed';
+  status: number | null;
+  reason: string | null;
+}
+
+export interface AssistantPolicyRow {
+  name: string;
+  scope: 'categorise' | 'organise';
+  summary: string;
+}
+
+export const getAssistantActivity = (limit = 50) =>
+  apiFetch<{ actions: AssistantAction[]; policy: AssistantPolicyRow[] }>(
+    `/assistant/activity?limit=${limit}`,
+  );

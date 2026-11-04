@@ -27,6 +27,7 @@ const { authRouter, requireSession } = await import('./auth.js');
 const { createSession, setInitialPassword, SESSION_COOKIE } = await import('../auth/sessions.js');
 const { accessTokensRouter } = await import('./accessTokens.js');
 const { mcpRouter } = await import('./mcp.js');
+const { assistantRouter } = await import('./assistant.js');
 const { accountsRouter } = await import('./accounts.js');
 const { transactionsRouter } = await import('./transactions.js');
 const { categoriesRouter } = await import('./categories.js');
@@ -85,6 +86,7 @@ beforeAll(async () => {
   app.use('/api/households', householdsRouter);
   app.use('/api/access-tokens', accessTokensRouter);
   app.use('/api/mcp', mcpRouter);
+  app.use('/api/assistant', assistantRouter);
   app.use(errorHandler);
   server = await new Promise<Server>((r) => {
     const s = app.listen(0, '127.0.0.1', () => r(s));
@@ -252,9 +254,9 @@ describe('categorising with change sets', () => {
     await call('POST', `/change-sets/${data.changeSetId}/undo`);
     expect(categoryOf('r1')).toBe('coffee');
     // A token can't redo, and a row edited since the undo keeps the edit
-    expect((await call('POST', `/change-sets/${data.changeSetId}/redo`, { token })).status).toBe(
-      403,
-    );
+    expect(
+      (await call('POST', `/assistant/change-sets/${data.changeSetId}/redo`, { token })).status,
+    ).toBe(403);
     db.update(transactions).set({ categoryId: null }).where(eq(transactions.id, 'r2')).run();
     const redo = await call('POST', `/change-sets/${data.changeSetId}/redo`);
     expect(redo.body).toEqual({ reapplied: 1, skipped: ['r2'] });
@@ -292,11 +294,16 @@ describe('tax deductions', () => {
     });
     expect(again.data.results[0].error).toMatch(/Already claimed/);
     // The API refuses the same directly: replacing, removing, future rows, CSV and receipts
-    expect((await call('PUT', '/tax/claims/t1', { token }, { label: 'D1' })).status).toBe(403);
+    expect((await call('PUT', '/assistant/tax/claims/t1', { token }, { label: 'D1' })).status).toBe(
+      403,
+    );
     expect((await call('DELETE', '/tax/claims/t1', { token })).status).toBe(403);
-    expect((await call('PUT', '/tax/claims/later', { token }, { label: 'D5' })).status).toBe(403);
     expect(
-      (await call('PUT', '/tax/claims/t2', { token }, { label: 'D5', receipt: 'x' })).status,
+      (await call('PUT', '/assistant/tax/claims/later', { token }, { label: 'D5' })).status,
+    ).toBe(403);
+    expect(
+      (await call('PUT', '/assistant/tax/claims/t2', { token }, { label: 'D5', receipt: 'x' }))
+        .status,
     ).toBe(403);
     expect((await call('GET', '/tax/years/2025/csv', { token })).status).toBe(403);
     expect((await call('GET', '/tax/years/2025/archive', { token })).status).toBe(403);
@@ -319,7 +326,9 @@ describe('tax deductions', () => {
     for (const scope of ['read', 'categorise'] as const) {
       const token = await newToken(scope);
       expect(await toolNames(token)).not.toContain('claim_tax_deductions');
-      expect((await call('PUT', '/tax/claims/t2', { token }, { label: 'D5' })).status).toBe(403);
+      expect(
+        (await call('PUT', '/assistant/tax/claims/t2', { token }, { label: 'D5' })).status,
+      ).toBe(403);
       expect((await call('GET', '/tax/years/2025', { token })).status).toBe(403);
     }
   });
@@ -338,11 +347,19 @@ describe('organise tokens', () => {
     const ruleId = proposed.data.rule.id;
     expect(proposed.data.rule).toMatchObject({ enabled: false, proposedBy: 'Assistant organise' });
     // A token can't enable, reorder or delete a rule
-    expect((await call('PUT', `/rules/${ruleId}`, { token }, { enabled: true })).status).toBe(403);
+    expect(
+      (await call('PUT', `/assistant/rules/${ruleId}`, { token }, { enabled: true })).status,
+    ).toBe(403);
     expect((await call('DELETE', `/rules/${ruleId}`, { token })).status).toBe(403);
     expect(
-      (await call('POST', '/rules', { token }, { conditions, actions: proposed.data.rule.actions }))
-        .status,
+      (
+        await call(
+          'POST',
+          '/assistant/rules',
+          { token },
+          { conditions, actions: proposed.data.rule.actions },
+        )
+      ).status,
     ).toBe(403);
     const edited = await tool(token, 'update_proposed_rule', {
       rule_id: ruleId,
@@ -384,7 +401,9 @@ describe('organise tokens', () => {
       category_id: 'coffee',
     });
     expect(ok.data.payee.defaultCategoryId).toBe('coffee');
-    expect((await call('PUT', '/payees/cafe', { token }, { name: 'Renamed' })).status).toBe(403);
+    expect(
+      (await call('PUT', '/assistant/payees/cafe', { token }, { name: 'Renamed' })).status,
+    ).toBe(403);
     expect(db.select().from(payees).where(eq(payees.id, 'cafe')).get()!.name).toBe('Mock Cafe');
   });
 
@@ -422,8 +441,12 @@ describe('organise tokens', () => {
       tokenName: 'Assistant organise',
     });
     const id = data.proposal.id;
-    expect((await call('POST', `/budget-proposals/${id}/apply`, { token })).status).toBe(403);
-    expect((await call('POST', `/budget-proposals/${id}/dismiss`, { token })).status).toBe(403);
+    expect((await call('POST', `/assistant/budget-proposals/${id}/apply`, { token })).status).toBe(
+      403,
+    );
+    expect(
+      (await call('POST', `/assistant/budget-proposals/${id}/dismiss`, { token })).status,
+    ).toBe(403);
     expect((await tool(token, 'list_budget_proposals')).data[0].id).toBe(id);
     expect((await call('POST', `/budget-proposals/${id}/dismiss`)).body).toEqual({ ok: true });
   });
@@ -441,7 +464,8 @@ describe('organise tokens', () => {
     expect(typeof coffee.transactionCount).toBe('number');
     await tool(token, 'hide_category', { id: 'coffee', hidden: false });
     expect(
-      (await call('POST', '/budget-proposals', { token }, { month: '2026-10', rows: [] })).status,
+      (await call('POST', '/assistant/budget-proposals', { token }, { month: '2026-10', rows: [] }))
+        .status,
     ).toBe(403);
   });
 
@@ -450,15 +474,27 @@ describe('organise tokens', () => {
     const logo = 'data:image/png;base64,iVBORw0KGgo=';
     const other = 'data:image/png;base64,AAAA';
     const saved = () => db.select().from(payees).where(eq(payees.id, 'shop')).get()?.logo;
-    expect((await call('PUT', '/payees/shop', { token }, { logo })).status).toBe(200);
+    expect((await call('PUT', '/assistant/payees/shop', { token }, { logo })).status).toBe(200);
     expect(saved()).toBe(logo);
-    expect((await call('PUT', '/payees/shop', { token }, { logo: other })).status).toBe(200);
+    expect((await call('PUT', '/assistant/payees/shop', { token }, { logo: other })).status).toBe(
+      200,
+    );
     expect(saved()).toBe(other);
-    expect((await call('PUT', '/payees/shop', { token }, { logo: null })).status).toBe(403);
-    expect((await call('PUT', '/payees/shop', { token }, { logo, name: 'X' })).status).toBe(403);
+    expect((await call('PUT', '/assistant/payees/shop', { token }, { logo: null })).status).toBe(
+      403,
+    );
     expect(
-      (await call('PUT', '/payees/shop', { token }, { logo: 'data:image/svg+xml;base64,AAAA' }))
-        .status,
+      (await call('PUT', '/assistant/payees/shop', { token }, { logo, name: 'X' })).status,
+    ).toBe(403);
+    expect(
+      (
+        await call(
+          'PUT',
+          '/assistant/payees/shop',
+          { token },
+          { logo: 'data:image/svg+xml;base64,AAAA' },
+        )
+      ).status,
     ).toBe(403);
     expect(saved()).toBe(other);
     db.update(payees).set({ logo: null }).where(eq(payees.id, 'shop')).run();
@@ -473,9 +509,9 @@ describe('organise tokens', () => {
       db.select().from(householdGroups).where(eq(householdGroups.id, 'logo-house')).get()?.logo;
     for (const scope of ['read', 'categorise', 'organise'] as const) {
       const token = await newToken(scope);
-      expect((await call('PUT', '/households/logo-house/logo', { token }, { logo })).status).toBe(
-        403,
-      );
+      expect(
+        (await call('PUT', '/assistant/households/logo-house/logo', { token }, { logo })).status,
+      ).toBe(403);
     }
     expect(saved()).toBeNull();
     expect((await call('PUT', '/households/logo-house/logo', {}, { logo })).status).toBe(200);
@@ -485,13 +521,22 @@ describe('organise tokens', () => {
 
   it('a categorise token reaches none of the organise writes', async () => {
     const token = await newToken('categorise');
-    expect((await call('POST', '/rules/test', { token }, { conditions: [] })).status).toBe(403);
     expect(
-      (await call('PUT', '/payees/cafe', { token }, { logo: 'data:image/png;base64,AAAA' })).status,
+      (await call('POST', '/assistant/rules/test', { token }, { conditions: [] })).status,
     ).toBe(403);
-    expect((await call('PUT', '/payees/cafe', { token }, { defaultCategoryId: null })).status).toBe(
-      403,
-    );
+    expect(
+      (
+        await call(
+          'PUT',
+          '/assistant/payees/cafe',
+          { token },
+          { logo: 'data:image/png;base64,AAAA' },
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (await call('PUT', '/assistant/payees/cafe', { token }, { defaultCategoryId: null })).status,
+    ).toBe(403);
   });
 });
 
@@ -608,7 +653,9 @@ describe('household tools', () => {
       payerId: 'ana',
       transactionId: 'ana1',
     };
-    expect((await call('POST', '/households/flat/events', { token }, body)).status).toBe(403);
+    expect((await call('POST', '/assistant/households/flat/events', { token }, body)).status).toBe(
+      403,
+    );
   });
 
   it('an organise token records only contributions linked to a household deposit', async () => {
@@ -652,7 +699,9 @@ describe('household tools', () => {
         transactionId: 'rent1',
       },
     ])
-      expect((await call('POST', '/households/flat/events', { token }, body)).status).toBe(403);
+      expect(
+        (await call('POST', '/assistant/households/flat/events', { token }, body)).status,
+      ).toBe(403);
     const snapshot = (await call('GET', '/households/flat')).body;
     const recorded = snapshot.events.filter((e: { kind: string }) => e.kind === 'contribution');
     expect(recorded).toHaveLength(2);
@@ -741,8 +790,14 @@ describe('household tools', () => {
       [read, { amount: 1000, payerId: 'me' }],
     ] as const)
       expect(
-        (await call('POST', '/households/flat/events', { token: auth }, { ...body, ...extra }))
-          .status,
+        (
+          await call(
+            'POST',
+            '/assistant/households/flat/events',
+            { token: auth },
+            { ...body, ...extra },
+          )
+        ).status,
       ).toBe(403);
     const over = await tool(token, 'record_own_household_contribution', {
       household_id: 'flat',
@@ -798,7 +853,7 @@ describe('past household expenses and repayments', () => {
         { ...entry, kind: 'settlement', recipientId: 'p-ed', advance: true },
       ])
         expect(
-          (await call('POST', '/households/pair/events', { token }, body)).status,
+          (await call('POST', '/assistant/households/pair/events', { token }, body)).status,
           `${scope} ${body.kind}`,
         ).toBe(403);
     }

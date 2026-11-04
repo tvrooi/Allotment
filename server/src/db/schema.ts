@@ -1090,6 +1090,28 @@ export const assistantChangeSets = sqliteTable('assistant_change_sets', {
   undoneAt: text('undone_at'),
 });
 
+/**
+ * Every write an access token asked for through the assistant endpoints (audit decision I-11):
+ * allowed or refused, with the action the policy matched. Not in backups.
+ */
+export const assistantActions = sqliteTable('assistant_actions', {
+  id: text('id').primaryKey(),
+  createdAt: text('created_at').notNull(),
+  tokenId: text('token_id'),
+  tokenName: text('token_name').notNull(),
+  scope: text('scope').notNull(),
+  /** The policy entry that allowed it; null when nothing matched */
+  action: text('action'),
+  /** The MCP tool that asked, when it said */
+  tool: text('tool'),
+  method: text('method').notNull(),
+  path: text('path').notNull(),
+  /** refused (by the policy), applied (the route answered under 400) or failed (it didn't) */
+  outcome: text('outcome').notNull(),
+  status: integer('status'),
+  reason: text('reason'),
+});
+
 export const assistantChangeEntries = sqliteTable(
   'assistant_change_entries',
   {
