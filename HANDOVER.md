@@ -175,7 +175,7 @@ site in `website/` was removed (audit decision I-9).
     onboarding, an offer to categorise a repayment back to the shared expense's category, remove
     `website/`, freeze Plaid/SimpleFIN/Enable Banking as community supported and show CSV import
     as an option, and dedicated assistant endpoints with their own audit log (replacing F-18's
-    declarative token policy). F-14 now applies only to a provider in use. I-10 is done (`components/banks/CommunitySupported.tsx`; policy in MAINTENANCE.md, Current limits). F-08 is done (ESLint, `lint/README.md`; lower its
+    declarative token policy). F-14 now applies only to a provider in use. I-10 is done (`components/banks/CommunitySupported.tsx`; policy in MAINTENANCE.md, Current limits). F-17 is done: Review doesn't ask to reconcile an Up account that matched Up at the last sync (`services/bankVerified.ts`, derived, no rows changed). F-08 is done (ESLint, `lint/README.md`; lower its
     warning cap as accessibility warnings are fixed) and so is I-4 (sidebar groups and optional
     features, `client/src/utils/navFeatures.ts`, migration 0064). F-16 is done:
     `server/src/services/budgetProperties.test.ts` and `server/src/routes/upSyncProperties.test.ts`
