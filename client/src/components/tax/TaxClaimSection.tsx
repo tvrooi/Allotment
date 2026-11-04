@@ -5,6 +5,9 @@ import { useClaim, useReceipts, useRemoveClaim, useSetClaim } from '../../hooks/
 import { formatMoney } from '../../utils/currency';
 import { Input, Select } from '../ui/Input';
 import type { Transaction } from '../../types';
+import { ASSET_LABELS, type AssetLabel } from '../../api/assets';
+import { useAssets } from '../../hooks/useAssets';
+import type { AssetPrefill } from './Assets';
 
 /**
  * Claim a transaction as a tax deduction: its return label and the share of it that was for
@@ -15,6 +18,7 @@ export function TaxClaimSection({ tx, currency }: { tx: Transaction; currency: s
   const { data: receipts = [] } = useReceipts({ transactionId: tx.parentTransactionId ?? tx.id });
   const save = useSetClaim();
   const remove = useRemoveClaim();
+  const { data: assets = [], isLoading: assetsLoading } = useAssets();
   const [percent, setPercent] = useState('100');
   const [notes, setNotes] = useState('');
   // Ticks at once; the saved claim follows
@@ -31,7 +35,42 @@ export function TaxClaimSection({ tx, currency }: { tx: Transaction; currency: s
         To claim part of this split as a tax deduction, open the part from the register.
       </p>
     );
-  if (tx.transferTransactionId || isLoading) return null;
+  if (tx.transferTransactionId || isLoading || assetsLoading) return null;
+  // Depreciated over several years instead: never claimed outright as well
+  const asset = assets.find((a) => a.transactionId === tx.id);
+  if (asset)
+    return (
+      <p className="text-sm">
+        Depreciated as{' '}
+        <Link
+          to={`/tax?tab=assets&asset=${encodeURIComponent(asset.id)}`}
+          className="font-medium text-brand-600 hover:text-brand-700"
+        >
+          {asset.name}
+        </Link>{' '}
+        on Tax time.
+      </p>
+    );
+  const prefill: AssetPrefill = {
+    transactionId: tx.id,
+    name: tx.payeeName ?? 'Asset',
+    cost: -tx.amount,
+    date: tx.date,
+    claimed: !!claim,
+    ...(claim && ASSET_LABELS.includes(claim.label as AssetLabel)
+      ? { label: claim.label as AssetLabel }
+      : {}),
+    ...(claim ? { workUseBps: claim.workUseBps } : {}),
+  };
+  const depreciate = (
+    <Link
+      to="/tax?tab=assets"
+      state={{ asset: prefill }}
+      className="text-xs font-medium text-brand-600 hover:text-brand-700"
+    >
+      Depreciate as an asset instead
+    </Link>
+  );
 
   const store = (change: Partial<{ label: TaxLabel; workUseBps: number; notes: string | null }>) =>
     save.mutate({
@@ -60,6 +99,7 @@ export function TaxClaimSection({ tx, currency }: { tx: Transaction; currency: s
         />
         Claim as a tax deduction
       </label>
+      {!claim && -tx.amount > 30_000 && <p className="pl-6">{depreciate}</p>}
       {claim && (
         <div className="space-y-2 pl-6">
           <Select
@@ -107,7 +147,7 @@ export function TaxClaimSection({ tx, currency }: { tx: Transaction; currency: s
           {-tx.amount > 30_000 && claim.label !== 'D1' && (
             <p className="text-xs text-text-tertiary">
               Over $300: usually claimed as decline in value over several years. Check with your tax
-              agent.
+              agent. {depreciate}
             </p>
           )}
           <Link to="/tax" className="text-xs font-medium text-brand-600 hover:text-brand-700">

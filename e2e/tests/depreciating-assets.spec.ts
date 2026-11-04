@@ -1,0 +1,75 @@
+import { test, expect, open, isoDay } from './fixtures';
+
+// Depreciating assets on Tax time (docs/DEPRECIATING-ASSETS-PLAN.md, phase 2). Mock data only.
+
+test('a claim over $300 is depreciated instead, then locked once its year is lodged', async ({
+  page,
+  api,
+}) => {
+  const card = await api.createAccount('Card', 0, 'credit');
+  await api.createTransaction({
+    accountId: card.id,
+    date: isoDay(),
+    amount: -199_900,
+    payeeName: 'Laptop Store',
+  });
+
+  // Claimed outright first, as people do
+  await open(page, `/accounts/${card.id}`);
+  await page.getByTestId('transaction-row').filter({ hasText: 'Laptop Store' }).focus();
+  await page.keyboard.press('Enter');
+  const panel = page.getByRole('complementary', { name: 'Transaction details' });
+  await panel.getByLabel('Claim as a tax deduction').check();
+  await expect(panel.getByLabel('Tax return label')).toHaveValue('D5');
+
+  // Over $300: Deductions offers to depreciate it instead
+  await open(page, '/tax');
+  const claims = page.getByRole('region', { name: 'Claims' });
+  await expect(claims).toContainText('Laptop Store');
+  await claims.getByRole('link', { name: 'Depreciate instead' }).click();
+
+  const form = page.getByRole('dialog', { name: 'Add an asset' });
+  await expect(form.getByRole('note')).toContainText('claimed outright now');
+  await expect(form.getByLabel('Name')).toHaveValue('Laptop Store');
+  await form.getByLabel('Name').fill('Work laptop');
+  await form.getByRole('button', { name: 'laptop 2 years' }).click();
+  await expect(form.getByLabel('Effective life (years)')).toHaveValue('2');
+  // Both methods previewed side by side before choosing
+  await expect(form.getByRole('table', { name: 'Diminishing value' })).toBeVisible();
+  await expect(form.getByRole('table', { name: 'Prime cost' })).toBeVisible();
+  await form.getByLabel('Prime cost').check();
+  await form.getByRole('button', { name: 'Depreciate instead' }).click();
+
+  const detail = page.getByRole('dialog', { name: 'Work laptop' });
+  await expect(detail.getByText('Prime cost')).toBeVisible();
+  await expect(detail.getByRole('region', { name: 'Schedule' })).toBeVisible();
+  await expect(detail.getByRole('region', { name: 'Records' })).toBeVisible();
+  await detail.getByRole('button', { name: 'Close' }).click();
+
+  // The claim is replaced: Deductions shows the decline in value, not the outright claim
+  await page.getByRole('tab', { name: 'Deductions' }).click();
+  await expect(page.getByRole('region', { name: 'Decline in value' })).toContainText('Work laptop');
+  await expect(page.getByRole('region', { name: 'Claims' })).toHaveCount(0);
+
+  // The transaction says where it went
+  await open(page, `/accounts/${card.id}`);
+  await page.getByTestId('transaction-row').filter({ hasText: 'Laptop Store' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(panel.getByText('Depreciated as')).toBeVisible();
+  await expect(panel.getByLabel('Claim as a tax deduction')).toHaveCount(0);
+
+  // Lodging the year locks the method
+  await open(page, '/tax?tab=assets');
+  const lodged = page.getByRole('region', { name: 'Lodged years' });
+  const year = lodged.getByRole('button').first();
+  await year.click();
+  await expect(year).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Work laptop' }).click();
+  await page
+    .getByRole('dialog', { name: 'Work laptop' })
+    .getByRole('button', { name: 'Edit' })
+    .click();
+  await expect(
+    page.getByRole('dialog', { name: 'Edit Work laptop' }).getByLabel('Prime cost'),
+  ).toBeDisabled();
+});

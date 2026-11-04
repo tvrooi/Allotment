@@ -5,7 +5,7 @@ import { apiFetch } from './client';
 
 export type FileKind =
   'image' | 'pdf' | 'document' | 'spreadsheet' | 'presentation' | 'text' | 'video';
-export type LinkKind = 'transaction' | 'category' | 'goal' | 'account';
+export type LinkKind = 'transaction' | 'category' | 'goal' | 'account' | 'asset';
 
 export interface FileLink {
   kind: LinkKind;

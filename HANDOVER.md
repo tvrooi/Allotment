@@ -142,7 +142,7 @@ site in `website/` was removed (audit decision I-9).
    to flybudget.org (`client/src/utils/project.ts`); fetch Up incrementally (`filter[since]` plus a
    periodic full sweep) instead of full history on every sync (audit F-10); split the client
    bundle by route (2.28 MB main chunk, audit F-11).
-7. **Depreciating assets on Tax time (planned, not built):** owner request of 3 November.
+7. **Depreciating assets on Tax time (phases 1 and 2 built):** owner request of 3 November.
    [docs/DEPRECIATING-ASSETS-PLAN.md](docs/DEPRECIATING-ASSETS-PLAN.md) has the ATO rules
    (prime cost and diminishing value), the design, four phases and five owner decisions (§7).
    The owner took the five decisions on 4 November: low-value pool in phase 3; organise tokens
@@ -151,7 +151,12 @@ site in `website/` was removed (audit decision I-9).
    short built-in list of effective lives with ATO links (phase 2); out of scope confirmed.
    Phase 1 (server) is built: `services/depreciation.ts` (pure), `depreciatingAssetService.ts`,
    routes under `/tax/assets` and `/tax/lodged`, migration 0066, backup version 24, MCP `tax_assets`
-   (read only). Phases 2 (UI) and 3 (low-value pool) follow. It uses migration 0066 and backup version 24,
+   (read only). Phase 2 (up.95) adds the screens: Tax time → **Assets** (`client/src/components/tax/Assets.tsx`:
+   list, add/edit with both methods previewed and suggested lives, detail with schedule, per-year
+   work use, Records, disposal, removal; lodged-year buttons), asset rows in Deductions, **Depreciate
+   instead** on claims over $300 and in the transaction panel (prefill passed as navigation state;
+   there is no single-transaction GET), and the `asset` link kind in Files. Test:
+   `e2e/tests/depreciating-assets.spec.ts`. Phase 3 (low-value pool) follows. It uses migration 0066 and backup version 24,
    and keeps an asset's records as files linked to it (an `asset` link kind).
 8. **Files (up.79) follow-ups:** live since 3 November. Ask the owner to confirm Files lists their
    receipts; confirm the HA app's `/data/flybudget/budget-files/` is created only

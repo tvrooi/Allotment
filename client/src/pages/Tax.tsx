@@ -6,7 +6,13 @@ import { ReceiptDrop, ReceiptThumb } from '../components/tax/ReceiptsSection';
 import { Button } from '../components/ui/Button';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { Input, Select } from '../components/ui/Input';
-import { receiptFileUrl, taxYearArchiveUrl, taxYearCsvUrl, type Receipt } from '../api/tax';
+import {
+  receiptFileUrl,
+  taxYearArchiveUrl,
+  taxYearCsvUrl,
+  type Receipt,
+  type TaxYearAsset,
+} from '../api/tax';
 import {
   useDeleteReceipt,
   useReceiptMatches,
@@ -19,6 +25,8 @@ import {
 import { formatCurrency } from '../utils/currency';
 import { formatDay } from '../utils/dates';
 import { onTabListKeyDown } from '../components/ui/tabList';
+import { AssetsTab, type AssetPrefill } from '../components/tax/Assets';
+import { ASSET_LABELS, type AssetLabel } from '../api/assets';
 
 // Tax time (docs/RECEIPTS-AND-TAX.md): a financial year's deductions by return label, with
 // their receipts, and the inbox of receipts not yet matched to a transaction. Record keeping
@@ -26,12 +34,13 @@ import { onTabListKeyDown } from '../components/ui/tabList';
 
 const TABS = [
   { id: 'deductions', label: 'Deductions' },
+  { id: 'assets', label: 'Assets' },
   { id: 'inbox', label: 'Receipt inbox' },
 ] as const;
 
 export default function TaxPage() {
   const [params, setParams] = useSearchParams();
-  const tab = params.get('tab') === 'inbox' ? 'inbox' : 'deductions';
+  const tab = TABS.find((t) => t.id === params.get('tab'))?.id ?? 'deductions';
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 pt-4 max-md:px-4 border-b border-border shrink-0">
@@ -71,7 +80,7 @@ export default function TaxPage() {
         </div>
       </div>
       <div className="flex-1 overflow-y-auto px-6 py-5 max-md:px-4">
-        {tab === 'inbox' ? <Inbox /> : <Deductions />}
+        {tab === 'inbox' ? <Inbox /> : tab === 'assets' ? <AssetsTab /> : <Deductions />}
       </div>
     </div>
   );
@@ -102,7 +111,7 @@ function Deductions() {
             ))}
           </Select>
         </label>
-        {year && year.claims.length > 0 && (
+        {year && (year.claims.length > 0 || year.assets.length > 0) && (
           <div className="flex gap-2 ml-auto">
             <a href={taxYearCsvUrl(year.financialYear)} download>
               <Button variant="secondary">
@@ -144,7 +153,7 @@ function Deductions() {
               {n}
             </p>
           ))}
-          {year.claims.length === 0 ? (
+          {year.claims.length === 0 && year.assets.length === 0 ? (
             <p className="text-sm text-text-secondary">
               Nothing claimed in {year.name} yet. Open a transaction and tick{' '}
               <em>Claim as a tax deduction</em>, or make a rule that claims matching payments as
@@ -169,75 +178,102 @@ function Deductions() {
                   </tbody>
                 </table>
               </section>
-              <section aria-label="Claims" className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[44rem]">
-                  <thead>
-                    <tr className="text-left text-xs text-text-tertiary">
-                      <th className="py-1.5 font-medium">Date</th>
-                      <th className="font-medium">Payee</th>
-                      <th className="font-medium">Label</th>
-                      <th className="text-right font-medium">Cost</th>
-                      <th className="text-right font-medium">Work use</th>
-                      <th className="text-right font-medium">Claim</th>
-                      <th className="font-medium pl-4">Receipts</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {year.claims.map((c) => (
-                      <tr key={c.transactionId} className="border-t border-border-light align-top">
-                        <td className="py-2 whitespace-nowrap">{formatDay(c.date)}</td>
-                        <td className="py-2">
-                          {c.payeeName ?? '—'}
-                          {(c.notes || c.categoryName) && (
-                            <span className="block text-xs text-text-tertiary">
-                              {c.notes ?? c.categoryName}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2">{c.label}</td>
-                        <td className="py-2 text-right tabular-nums">{formatCurrency(c.cost)}</td>
-                        <td className="py-2 text-right tabular-nums">{c.workUseBps / 100}%</td>
-                        <td className="py-2 text-right tabular-nums">
-                          {formatCurrency(c.claim)}
-                          {c.overImmediateLimit && (
-                            <span className="block text-xs text-caution">Over $300</span>
-                          )}
-                        </td>
-                        <td className="py-2 pl-4">
-                          {c.receipts.length || c.files.length ? (
-                            <>
-                              {c.receipts.map((r) => (
-                                <a
-                                  key={r.id}
-                                  href={receiptFileUrl(r.id)}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="flex items-center gap-1 text-brand-600 hover:text-brand-700"
-                                >
-                                  <Paperclip size={12} />
-                                  <span className="truncate max-w-40">{r.fileName}</span>
-                                </a>
-                              ))}
-                              {c.files.map((f) => (
-                                <Link
-                                  key={f.id}
-                                  to={`/files?file=${encodeURIComponent(f.id)}`}
-                                  className="flex items-center gap-1 text-brand-600 hover:text-brand-700"
-                                >
-                                  <FolderOpen size={12} />
-                                  <span className="truncate max-w-40">{f.fileName}</span>
-                                </Link>
-                              ))}
-                            </>
-                          ) : (
-                            <span className="text-xs text-negative">None</span>
-                          )}
-                        </td>
+              {year.claims.length > 0 && (
+                <section aria-label="Claims" className="overflow-x-auto">
+                  <table className="w-full text-sm min-w-[44rem]">
+                    <thead>
+                      <tr className="text-left text-xs text-text-tertiary">
+                        <th className="py-1.5 font-medium">Date</th>
+                        <th className="font-medium">Payee</th>
+                        <th className="font-medium">Label</th>
+                        <th className="text-right font-medium">Cost</th>
+                        <th className="text-right font-medium">Work use</th>
+                        <th className="text-right font-medium">Claim</th>
+                        <th className="font-medium pl-4">Receipts</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </section>
+                    </thead>
+                    <tbody>
+                      {year.claims.map((c) => (
+                        <tr
+                          key={c.transactionId}
+                          className="border-t border-border-light align-top"
+                        >
+                          <td className="py-2 whitespace-nowrap">{formatDay(c.date)}</td>
+                          <td className="py-2">
+                            {c.payeeName ?? '—'}
+                            {(c.notes || c.categoryName) && (
+                              <span className="block text-xs text-text-tertiary">
+                                {c.notes ?? c.categoryName}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2">{c.label}</td>
+                          <td className="py-2 text-right tabular-nums">{formatCurrency(c.cost)}</td>
+                          <td className="py-2 text-right tabular-nums">{c.workUseBps / 100}%</td>
+                          <td className="py-2 text-right tabular-nums">
+                            {formatCurrency(c.claim)}
+                            {c.overImmediateLimit && (
+                              <span className="block text-xs text-caution">
+                                Over $300 ·{' '}
+                                <Link
+                                  to="/tax?tab=assets"
+                                  state={{
+                                    asset: {
+                                      transactionId: c.transactionId,
+                                      name: c.payeeName ?? 'Asset',
+                                      cost: c.cost,
+                                      date: c.date,
+                                      claimed: true,
+                                      label: (ASSET_LABEL_SET.has(c.label)
+                                        ? c.label
+                                        : 'D5') as AssetLabel,
+                                      workUseBps: c.workUseBps,
+                                    } satisfies AssetPrefill,
+                                  }}
+                                  className="underline hover:text-text"
+                                >
+                                  Depreciate instead
+                                </Link>
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 pl-4">
+                            {c.receipts.length || c.files.length ? (
+                              <>
+                                {c.receipts.map((r) => (
+                                  <a
+                                    key={r.id}
+                                    href={receiptFileUrl(r.id)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="flex items-center gap-1 text-brand-600 hover:text-brand-700"
+                                  >
+                                    <Paperclip size={12} />
+                                    <span className="truncate max-w-40">{r.fileName}</span>
+                                  </a>
+                                ))}
+                                {c.files.map((f) => (
+                                  <Link
+                                    key={f.id}
+                                    to={`/files?file=${encodeURIComponent(f.id)}`}
+                                    className="flex items-center gap-1 text-brand-600 hover:text-brand-700"
+                                  >
+                                    <FolderOpen size={12} />
+                                    <span className="truncate max-w-40">{f.fileName}</span>
+                                  </Link>
+                                ))}
+                              </>
+                            ) : (
+                              <span className="text-xs text-negative">None</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </section>
+              )}
+              {year.assets.length > 0 && <YearAssets assets={year.assets} />}
             </>
           )}
           <p className="text-xs text-text-tertiary">
@@ -248,6 +284,61 @@ function Deductions() {
         </>
       )}
     </div>
+  );
+}
+
+const ASSET_LABEL_SET = new Set<string>(ASSET_LABELS);
+
+/** This year's decline in value of depreciating assets, alongside the claims */
+function YearAssets({ assets }: { assets: TaxYearAsset[] }) {
+  return (
+    <section aria-label="Decline in value" className="overflow-x-auto">
+      <h2 className="text-sm font-semibold text-text mb-1">Decline in value</h2>
+      <table className="w-full text-sm min-w-[44rem]">
+        <thead>
+          <tr className="text-left text-xs text-text-tertiary">
+            <th className="py-1.5 font-medium">Asset</th>
+            <th className="font-medium">Label</th>
+            <th className="text-right font-medium">Decline</th>
+            <th className="text-right font-medium">Work use</th>
+            <th className="text-right font-medium">Deduction</th>
+            <th className="font-medium pl-4">Records</th>
+          </tr>
+        </thead>
+        <tbody>
+          {assets.map((a) => (
+            <tr key={a.assetId} className="border-t border-border-light align-top">
+              <td className="py-2">
+                <Link
+                  to={`/tax?tab=assets&asset=${encodeURIComponent(a.assetId)}`}
+                  className="text-brand-600 hover:text-brand-700"
+                >
+                  {a.name}
+                </Link>
+                {a.disposedDate && (
+                  <span className="block text-xs text-text-tertiary">
+                    Disposed {formatDay(a.disposedDate)}
+                    {a.row.balancingAdjustment !== undefined &&
+                      ` · balancing adjustment ${formatCurrency(a.row.balancingAdjustment)}`}
+                  </span>
+                )}
+              </td>
+              <td className="py-2">{a.label}</td>
+              <td className="py-2 text-right tabular-nums">{formatCurrency(a.row.decline)}</td>
+              <td className="py-2 text-right tabular-nums">{a.row.workUseBps / 100}%</td>
+              <td className="py-2 text-right tabular-nums">{formatCurrency(a.deduction)}</td>
+              <td className="py-2 pl-4">
+                {a.receipts.length || a.files.length ? (
+                  `${a.receipts.length + a.files.length} file${a.receipts.length + a.files.length === 1 ? '' : 's'}`
+                ) : (
+                  <span className="text-xs text-negative">None</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
   );
 }
 
