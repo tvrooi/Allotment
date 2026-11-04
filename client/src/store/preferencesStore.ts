@@ -139,7 +139,9 @@ export function migratePreferences(persisted: unknown, version: number): unknown
 export const usePreferencesStore = create<PreferencesState>()(
   persist(
     (set) => ({
-      theme: 'light',
+      // Follows the device's light or dark setting (audit decision I-5). A theme saved on a device
+      // before this stays as it is: a stored Light may well have been chosen
+      theme: 'system',
       currencySymbol: '$',
       amountFormat: 'auto',
       symbolPosition: 'auto',
