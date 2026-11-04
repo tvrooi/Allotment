@@ -9,7 +9,7 @@ import {
   categoryGroups,
   cardFunding,
 } from '../db/schema.js';
-import { eq, and, sql, isNull, inArray, getTableColumns } from 'drizzle-orm';
+import { eq, and, sql, inArray, getTableColumns } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import {

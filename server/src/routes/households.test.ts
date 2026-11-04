@@ -6,15 +6,7 @@ import type { Server } from 'http';
 import type { AddressInfo } from 'net';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { db } from '../db/index.js';
-import {
-  accounts,
-  transactions,
-  categories,
-  categoryGroups,
-  payees,
-  schedules,
-  scheduleOccurrences,
-} from '../db/schema.js';
+import { accounts, transactions, payees, schedules, scheduleOccurrences } from '../db/schema.js';
 import { transactionsRouter } from './transactions.js';
 import { householdsRouter } from './households.js';
 import { accountsRouter } from './accounts.js';

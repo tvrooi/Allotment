@@ -20,8 +20,10 @@ import { useHideBalances } from '../../utils/safeMode';
 const MENU_HEIGHT = 228;
 
 function AccountRow({ account }: { account: Account }) {
-  // Hidden balances aren't coloured either: red would say which are overdrawn
-  const isNegative = account.balance < 0 && !useHideBalances();
+  // Hidden balances aren't coloured either: red would say which are overdrawn. The hook runs on
+  // every render: called only for negative balances, a balance crossing zero broke hook order.
+  const hidden = useHideBalances();
+  const isNegative = account.balance < 0 && !hidden;
   return (
     <NavLink
       to={`/accounts/${account.id}`}

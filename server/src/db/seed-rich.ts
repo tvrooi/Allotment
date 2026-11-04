@@ -951,7 +951,8 @@ for (let mi = 0; mi < 24; mi++) {
     scheduleId: rec['House Cleaner'],
     ...cr(),
   });
-  if (!isCurrentMonth || true) {
+  // Every month, the current one included
+  {
     insertTx({
       accountId: acct['Primary Checking'],
       date: d(24),

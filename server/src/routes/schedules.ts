@@ -632,7 +632,7 @@ schedulesRouter.get('/:id/occurrences', (req, res) => {
   const from = typeof req.query.from === 'string' ? req.query.from : undefined;
   const to = typeof req.query.to === 'string' ? req.query.to : undefined;
 
-  let conditions = [eq(scheduleOccurrences.scheduleId, req.params.id)];
+  const conditions = [eq(scheduleOccurrences.scheduleId, req.params.id)];
   if (from) conditions.push(gte(scheduleOccurrences.expectedDate, from));
   if (to) conditions.push(lte(scheduleOccurrences.expectedDate, to));
 

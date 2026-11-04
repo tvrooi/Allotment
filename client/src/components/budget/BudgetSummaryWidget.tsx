@@ -165,7 +165,6 @@ export function BudgetSummaryWidget({
   funding,
   expenseAvailable,
   toBeBudgeted,
-  carryOver,
   incomePlanned,
   incomeEarned,
   expensesPlanned,

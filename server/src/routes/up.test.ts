@@ -3,7 +3,7 @@ import express from 'express';
 import type { Server } from 'http';
 import type { AddressInfo } from 'net';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db, sqlite } from '../db/index.js';
 import {
   accounts,
@@ -16,7 +16,7 @@ import { upRouter } from './up.js';
 import { createBackup, parseBackup, restoreBackup } from '../services/backupService.js';
 import { linkTransfer } from '../services/transferService.js';
 import { syncUp, syncUpIfDue, nextUpSyncAt, setUpConnecting } from '../services/upSyncService.js';
-import { getUpTransactions, validateUpPage } from '../services/upService.js';
+import { validateUpPage } from '../services/upService.js';
 import { startUpMock, UP_TEST_TOKEN, upMockTransaction } from '../test/upMock.js';
 import { roundUpDays } from '../services/upReviewService.js';
 

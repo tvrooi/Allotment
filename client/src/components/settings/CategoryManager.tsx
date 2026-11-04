@@ -357,7 +357,6 @@ function SortableGroupCard(
 function Section({
   title,
   groups,
-  onCreateGroup,
   editingId,
   addingCategoryGroupId,
   addingGroupSection,

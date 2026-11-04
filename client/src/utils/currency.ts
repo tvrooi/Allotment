@@ -336,7 +336,7 @@ const groupDigits = (whole: string, group: string) => whole.replace(/\B(?=(\d{3}
 function withSymbol(number: string, negative: boolean, style: AmountStyle): string {
   const sign = negative ? '-' : '';
   return style.position === 'after'
-    ? `${sign}${number} ${style.symbol}`
+    ? `${sign}${number}\u00a0${style.symbol}`
     : `${sign}${style.symbol}${style.space ? ' ' : ''}${number}`;
 }
 

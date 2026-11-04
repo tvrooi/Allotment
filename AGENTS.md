@@ -28,6 +28,7 @@ Keep this file and CLAUDE.md identical.
 - Container: package with `python3 homeassistant/package.py --out /tmp/<new-dir>`, build its
   `flybudget_up` directory, then `node homeassistant/smoke-test.cjs <image>` (disposable data only).
 - Browser integration: `cd e2e && npm test -- --project=desktop tests/up.spec.ts`.
+- Lint: `cd lint && npm ci && npm run lint` (errors fail; warnings are capped, lint/README.md).
 - Format changed files with Prettier; CI runs full type/unit/browser/build checks.
 - Dependencies use lockfiles and `.npmrc` with install scripts disabled. Do not disable that guard.
 

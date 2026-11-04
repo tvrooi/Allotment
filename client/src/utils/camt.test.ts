@@ -92,7 +92,6 @@ const text = fc
 const ref = fc.option(fc.oneof(fc.stringMatching(/^[A-Z0-9]{1,3}$/), fc.constant('NONREF')), {
   nil: null,
 });
-const realRef = (r: string | null) => (r === 'NONREF' ? null : r);
 const part = fc.record<Part>({
   cents: fc.integer({ min: 1, max: 10_000_000 }),
   name: text,

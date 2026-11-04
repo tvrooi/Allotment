@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { AlertTriangle, Download, Trash2 } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { ExternalLink } from '../ui/ExternalLink';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { CurrencySelect } from '../currency/CurrencySelect';
 import { useCanSave } from '../../hooks/useConnection';

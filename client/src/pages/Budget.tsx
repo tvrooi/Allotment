@@ -29,7 +29,7 @@ import {
 } from '../utils/currency';
 import { BudgetSummaryWidget } from '../components/budget/BudgetSummaryWidget';
 import { BudgetEditPopover } from '../components/budget/BudgetEditPopover';
-import { Button, ButtonLink } from '../components/ui/Button';
+import { Button } from '../components/ui/Button';
 import { targetLabel } from '../utils/targets';
 import { FundTargets } from '../components/budget/FundTargets';
 import { AutoAssign } from '../components/budget/AutoAssign';

@@ -11,7 +11,6 @@ import { cashFlowSelection, cashFlowTransactionsLink } from '../utils/cashFlowSe
 import { Link } from 'react-router-dom';
 import { MerchantBreakdown } from '../components/reports/MerchantBreakdown';
 import { downloadCsv } from '../utils/exportCsv';
-import { usePreferencesStore } from '../store/preferencesStore';
 import { chartColors } from '../utils/chartColors';
 import { Button } from '../components/ui/Button';
 import { MonthRangePicker } from '../components/ui/MonthRangePicker';
@@ -212,7 +211,6 @@ function fitLayerScale(amounts: number[], avail: number): number {
 function buildSankeyGraph(
   incomeData: IncomeByCategoryItem[],
   spendingData: SpendingByCat[],
-  showIcons: boolean,
 ): SankeyGraph | null {
   const validIncome = incomeData.filter((c) => c.totalReceived > 0);
   const validSpending = spendingData.filter((c) => c.totalSpent > 0);
@@ -510,7 +508,6 @@ function useContainerSize(ref: React.RefObject<HTMLDivElement | null>) {
 }
 
 function SankeyDiagram({ from, to, selectedNode, onNodeClick }: SankeyDiagramProps) {
-  const showIcons = usePreferencesStore((s) => s.showCategoryIcons);
   const { data: incomeData = [], isLoading: il } = useIncomeByCategory(from, to);
   const { data: spendingData = [], isLoading: sl } = useSpendingByCategory(from, to);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -519,8 +516,8 @@ function SankeyDiagram({ from, to, selectedNode, onNodeClick }: SankeyDiagramPro
   const [tooltip, setTooltip] = useState<{ x: number; y: number; node: SankeyNode } | null>(null);
 
   const graph = useMemo(
-    () => buildSankeyGraph(incomeData, spendingData, showIcons),
-    [incomeData, spendingData, showIcons],
+    () => buildSankeyGraph(incomeData, spendingData),
+    [incomeData, spendingData],
   );
 
   // Height derived from the graph itself: the most crowded column gets one MIN_SLOT row
@@ -825,15 +822,7 @@ function SankeyDiagram({ from, to, selectedNode, onNodeClick }: SankeyDiagramPro
 
 // ─── Tooltip Content ─────────────────────────────────────────────────────────
 
-function SankeyTooltip({
-  node,
-  totalIncome,
-  totalExpenses,
-}: {
-  node: SankeyNode;
-  totalIncome: number;
-  totalExpenses: number;
-}) {
+function SankeyTooltip({ node }: { node: SankeyNode; totalIncome: number; totalExpenses: number }) {
   const n = node;
   const amt = formatCurrency(n.amount);
 
@@ -922,13 +911,12 @@ const pct = (n: number | undefined) =>
  * and a category (or "All of …") to list its transactions below.
  */
 function CashFlowList({ from, to, selectedNode, onNodeClick }: SankeyDiagramProps) {
-  const showIcons = usePreferencesStore((s) => s.showCategoryIcons);
   const { data: incomeData = [], isLoading: il } = useIncomeByCategory(from, to);
   const { data: spendingData = [], isLoading: sl } = useSpendingByCategory(from, to);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const graph = useMemo(
-    () => buildSankeyGraph(incomeData, spendingData, showIcons),
-    [incomeData, spendingData, showIcons],
+    () => buildSankeyGraph(incomeData, spendingData),
+    [incomeData, spendingData],
   );
 
   if (il || sl)
@@ -1087,7 +1075,6 @@ function CashFlowList({ from, to, selectedNode, onNodeClick }: SankeyDiagramProp
 // ─── Page Component ──────────────────────────────────────────────────────────
 
 export default function CashFlowPage() {
-  const showIcons = usePreferencesStore((s) => s.showCategoryIcons);
   const today = new Date();
   const [preset, setPreset] = useState<Preset>('6m');
   const [from, setFrom] = useState(() => format(subMonths(today, 5), 'yyyy-MM'));
@@ -1123,7 +1110,6 @@ export default function CashFlowPage() {
     setSelectedNode(null);
   }, [from, to]);
 
-  const { data: incData = [] } = useIncomeByCategory(from, to);
   const { data: spData = [] } = useSpendingByCategory(from, to);
 
   // Headline totals and savings rate use the shared definition (utils/reportSummary.ts):
