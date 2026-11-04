@@ -190,8 +190,14 @@ function LodgedYears({ assets }: { assets: Asset[] }) {
   const { data: lodged = [] } = useLodgedYears();
   const lodge = useAssetMutation(lodgeYear);
   const unlodge = useAssetMutation(unlodgeYear);
+  const { data: pool = [] } = usePool();
+  // Every year with figures to lock: assets' own schedules and the low-value pool's
   const years = [
-    ...new Set([...assets.flatMap((a) => a.schedule.map((r) => r.financialYear)), ...lodged]),
+    ...new Set([
+      ...assets.flatMap((a) => a.schedule.map((r) => r.financialYear)),
+      ...pool.map((r) => r.financialYear),
+      ...lodged,
+    ]),
   ]
     .filter((fy) => fy <= fyOf(today()))
     .sort((a, b) => b - a);
@@ -283,7 +289,8 @@ function PoolSection({ assets }: { assets: Asset[] }) {
 /** Allocate an asset to the pool, or take it back out (a correction) */
 function PoolChoice({ asset, onError }: { asset: Asset; onError: (e: unknown) => void }) {
   const [fy, setFy] = useState(asset.poolOptions[0]?.financialYear ?? 0);
-  const join = useAssetMutation(() => poolAsset(asset.id, fy));
+  // The year shown is the one sent: `fy` can be stale once options change (after unpooling)
+  const join = useAssetMutation((year: number) => poolAsset(asset.id, year));
   const leave = useAssetMutation(() => unpoolAsset(asset.id));
   if (asset.pooledFy !== null)
     return (
@@ -340,7 +347,7 @@ function PoolChoice({ asset, onError }: { asset: Asset; onError: (e: unknown) =>
         <Button
           size="sm"
           disabled={join.isPending}
-          onClick={() => join.mutateAsync(undefined).catch(onError)}
+          onClick={() => join.mutateAsync(option.financialYear).catch(onError)}
         >
           Move to the pool from {fyName(option.financialYear)}
         </Button>

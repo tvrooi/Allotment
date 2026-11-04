@@ -662,7 +662,8 @@ export function poolForYear(fy: number): YearPool | null {
   if (!row) return null;
   const pooled = rows.flatMap((asset, i) => {
     const entry = poolEntryOf(terms[i]);
-    if (!entry || entry.fy > fy || (entry.disposal && entry.disposal.fy < fy)) return [];
+    // A disposed asset stays listed: what it left in the balance is still being deducted
+    if (!entry || entry.fy > fy) return [];
     return [{ asset, entry }];
   });
   const evidenceOf = evidence(pooled.map((p) => p.asset));

@@ -89,11 +89,19 @@ test('a low-cost asset goes into the low-value pool: D6 in Deductions', async ({
   await expect(pool).toContainText('under $1,000');
   await pool.getByRole('button', { name: /Move to the pool from/ }).click();
   await expect(pool).toContainText('In the low-value pool from');
+  // Taken out (a correction) and put back, without reopening it
+  await pool.getByRole('button', { name: 'Take it out of the pool' }).click();
+  await pool.getByRole('button', { name: /Move to the pool from/ }).click();
+  await expect(pool).toContainText('In the low-value pool from');
   await detail.getByRole('button', { name: 'Close' }).click();
 
   // 18.75% of $800 in its first year
   const section = page.getByRole('region', { name: 'Low-value pool (D6)' });
   await expect(section).toContainText('$150');
+  // Only pooled assets, and still a year to lock
+  await expect(
+    page.getByRole('region', { name: 'Lodged years' }).getByRole('button').first(),
+  ).toBeVisible();
   await page.getByRole('tab', { name: 'Deductions' }).click();
   await expect(page.getByRole('region', { name: 'Decline in value' })).toContainText(
     'Low-value pool',

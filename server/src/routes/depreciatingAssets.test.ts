@@ -367,6 +367,23 @@ describe('depreciating assets (plan phase 1)', () => {
       expect((await send('DELETE', `/assets/${asset.id}/pool`)).body.pooledFy).toBeNull();
     });
 
+    it('a pooled asset sold for less than the balance stays with the pool’s later deductions', async () => {
+      const { body: asset } = await headset();
+      await send('PUT', `/assets/${asset.id}/pool`, { financialYear: 2026 });
+      await send('POST', `/assets/${asset.id}/dispose`, {
+        date: '2027-08-01',
+        terminationValue: 10_000,
+      });
+      // 2028–29: what it left in the balance is still deducted, and still has its records
+      const year = taxYear(2028);
+      expect(year.pool?.row.decline).toBeGreaterThan(0);
+      expect(year.pool?.assets.map((a) => a.name)).toEqual(['Headset']);
+      expect(year.totals.find((t) => t.label === 'D6')).toMatchObject({
+        count: 1,
+        total: year.pool?.row.decline,
+      });
+    });
+
     it('a diminishing value asset joins once it is worth under $1,000; others in the pool are protected by lodging', async () => {
       const { body: dv } = await send('POST', '/assets', laptop({ method: 'diminishing_value' }));
       const refused = await send('PUT', `/assets/${dv.id}/pool`, { financialYear: 2026 });
