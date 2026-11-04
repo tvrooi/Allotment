@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { format, subMonths } from 'date-fns';
 import { LayoutGrid } from 'lucide-react';
 import SummaryStats from '../components/dashboard/SummaryStats';
@@ -22,6 +22,7 @@ import { usePreferencesStore } from '../store/preferencesStore';
 import { HOME_CARDS, normalizeLayout, visibleCards, type HomeCardId } from '../utils/homeCards';
 import { Tip } from '../components/guide/Tip';
 import { TIPS } from '../guides';
+import { useGuideStore } from '../store/guideStore';
 import { OnboardingContext } from '../components/dashboard/onboarding';
 import { DashboardStatus } from '../components/dashboard/DashboardStatus';
 
@@ -66,6 +67,17 @@ export default function Dashboard() {
   const cards = visibleCards(layout);
   const [customizing, setCustomizing] = useState(false);
   const [onboarding, setOnboarding] = useState(false);
+  // While the Get started card shows, it is this page's one onboarding element: the guide
+  // banner above the page and the tip stay out of its way (audit decision I-7)
+  const setChecklistShown = useGuideStore((s) => s.setChecklistShown);
+  const onChecklistChange = useCallback(
+    (visible: boolean) => {
+      setOnboarding(visible);
+      setChecklistShown(visible);
+    },
+    [setChecklistShown],
+  );
+  useEffect(() => () => setChecklistShown(false), [setChecklistShown]);
 
   return (
     <OnboardingContext.Provider value={onboarding}>
@@ -87,15 +99,17 @@ export default function Dashboard() {
         <div className="empty:hidden">
           <Reminder />
         </div>
+        {!onboarding && (
+          <div className="empty:hidden">
+            <Tip
+              tip={TIPS.safeModeKey}
+              desktopOnly
+              className="rounded-lg border border-border-light p-4"
+            />
+          </div>
+        )}
         <div className="empty:hidden">
-          <Tip
-            tip={TIPS.safeModeKey}
-            desktopOnly
-            className="rounded-lg border border-border-light p-4"
-          />
-        </div>
-        <div className="empty:hidden">
-          <GettingStarted currentMonth={currentMonth} onVisibleChange={setOnboarding} />
+          <GettingStarted currentMonth={currentMonth} onVisibleChange={onChecklistChange} />
         </div>
 
         {cards.length === 0 ? (
