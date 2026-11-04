@@ -114,12 +114,31 @@ export interface TaxYearClaim extends TaxClaim {
   overImmediateLimit: boolean;
 }
 
+export interface TaxYearAsset {
+  assetId: string;
+  name: string;
+  label: TaxLabel;
+  method: 'prime_cost' | 'diminishing_value';
+  cost: number;
+  startDate: string;
+  disposedDate: string | null;
+  row: { decline: number; workUseBps: number; deduction: number; balancingAdjustment?: number };
+  deduction: number;
+  income: number;
+  receipts: { id: string; fileName: string }[];
+  files: { id: string; fileName: string }[];
+}
+
 export interface TaxYear {
   financialYear: number;
   name: string;
   from: string;
   to: string;
   claims: TaxYearClaim[];
+  /** Depreciating assets' decline in value this year (DEPRECIATING-ASSETS-PLAN.md) */
+  assets: TaxYearAsset[];
+  /** Balancing adjustments that are assessable income, not deductions */
+  assetIncome: number;
   totals: { label: TaxLabel; name: string; count: number; total: number }[];
   total: number;
   workRelatedTotal: number;

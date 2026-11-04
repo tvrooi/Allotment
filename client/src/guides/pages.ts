@@ -284,7 +284,7 @@ export const investmentsGuide: Guide = {
 
 export const taxGuide: Guide = {
   id: 'tax',
-  version: 1,
+  version: 2,
   title: 'Tax time',
   summary: 'Deductions, the receipts that prove them, and exports for your return.',
   page: '/tax',
@@ -302,8 +302,8 @@ export const taxGuide: Guide = {
       target: 'tax.year',
     },
     {
-      title: 'Receipt inbox',
-      body: 'Add receipts as you get them, then match each one to its transaction when it arrives.',
+      title: 'Assets and the receipt inbox',
+      body: 'Assets keeps things that lose value over several years, such as a work laptop, and works out the part you claim each year. The receipt inbox holds receipts until each is matched to its transaction.',
       route: '/tax',
       target: 'tax.tabs',
     },

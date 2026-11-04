@@ -24,6 +24,7 @@ import { Button } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { Input, Select } from '../ui/Input';
 import { Modal } from '../ui/Modal';
+import { useAssets } from '../../hooks/useAssets';
 import { Private } from '../ui/Private';
 import { FilePreview, formatBytes } from './FileParts';
 
@@ -33,6 +34,7 @@ const KIND_NOUNS: Record<LinkKind, string> = {
   category: 'Category',
   goal: 'Goal',
   account: 'Account',
+  asset: 'Asset',
 };
 
 /** Where a link goes in the app */
@@ -40,6 +42,7 @@ function linkTarget(link: FileLink) {
   if (link.kind === 'category') return `/budget/category/${encodeURIComponent(link.id)}`;
   if (link.kind === 'account') return `/accounts/${encodeURIComponent(link.id)}`;
   if (link.kind === 'goal') return '/goals';
+  if (link.kind === 'asset') return `/tax?tab=assets&asset=${encodeURIComponent(link.id)}`;
   return `/transactions?search=${encodeURIComponent(link.label)}`;
 }
 
@@ -71,6 +74,7 @@ function AddLink({ doc, onDone }: { doc: StoredDocument; onDone: () => void }) {
   const { data: groups = [] } = useCategories();
   const { data: goals = [] } = useGoals();
   const { data: accounts = [] } = useAccounts();
+  const { data: assets = [] } = useAssets();
   const { data: found = [], isFetching } = useQuery({
     queryKey: ['files', 'link-search', q],
     queryFn: () => getTransactions({ search: q, limit: 20 }),
@@ -85,17 +89,20 @@ function AddLink({ doc, onDone }: { doc: StoredDocument; onDone: () => void }) {
   return (
     <div className="space-y-2 rounded-md border border-border-light p-3">
       <div className="flex gap-1 flex-wrap" role="group" aria-label="Link to">
-        {(Object.keys(KIND_NOUNS) as LinkKind[]).map((k) => (
-          <Button
-            key={k}
-            size="sm"
-            variant={kind === k ? 'primary' : 'ghost'}
-            aria-pressed={kind === k}
-            onClick={() => setKind(k)}
-          >
-            {KIND_NOUNS[k]}
-          </Button>
-        ))}
+        {(Object.keys(KIND_NOUNS) as LinkKind[])
+          // Assets appear once there are any, on Tax time
+          .filter((k) => k !== 'asset' || assets.length > 0)
+          .map((k) => (
+            <Button
+              key={k}
+              size="sm"
+              variant={kind === k ? 'primary' : 'ghost'}
+              aria-pressed={kind === k}
+              onClick={() => setKind(k)}
+            >
+              {KIND_NOUNS[k]}
+            </Button>
+          ))}
         <Button size="sm" variant="ghost" className="ml-auto" onClick={onDone} aria-label="Cancel">
           <X size={14} />
         </Button>
@@ -164,6 +171,12 @@ function AddLink({ doc, onDone }: { doc: StoredDocument; onDone: () => void }) {
           {kind === 'account' &&
             accounts.map((a) => (
               <option key={a.id} value={a.id} disabled={linked.has(`account:${a.id}`)}>
+                {a.name}
+              </option>
+            ))}
+          {kind === 'asset' &&
+            assets.map((a) => (
+              <option key={a.id} value={a.id} disabled={linked.has(`asset:${a.id}`)}>
                 {a.name}
               </option>
             ))}
@@ -363,7 +376,8 @@ export function FileDetailModal({ id, onClose }: { id: string | null; onClose: (
             </div>
             {doc.links.length === 0 && !adding && (
               <p className="text-xs text-text-tertiary">
-                Not linked to anything yet. Link it to transactions, categories, goals or accounts.
+                Not linked to anything yet. Link it to transactions, categories, goals, accounts or
+                assets.
               </p>
             )}
             <ul className="space-y-1.5">

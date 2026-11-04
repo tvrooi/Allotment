@@ -105,7 +105,8 @@ mention, and there are no paid plans: storage is the owner's own disk, with an o
   Adding a kind is one nullable foreign-key column on `document_links` (an additive migration, with
   `ON DELETE CASCADE` and a partial unique index) and one entry in `LINK_TARGETS`. The
   depreciating assets plan adds `asset` this way
-  ([DEPRECIATING-ASSETS-PLAN.md](DEPRECIATING-ASSETS-PLAN.md) §3.1).
+  ([DEPRECIATING-ASSETS-PLAN.md](DEPRECIATING-ASSETS-PLAN.md) §3.1). A file's **Link** offers
+  Asset once there is one; an asset's Records on Tax time → Assets lists and adds its files.
 - A file belongs to the whole transaction: a link to a split part goes to its parent.
 - **Deleting what a file is linked to** removes only the link (`ON DELETE CASCADE` on the link,
   never the document). **Merging a category** moves its files' links to the category it joins

@@ -29,6 +29,7 @@ export type DocsPage =
   | 'reports'
   | 'rules'
   | 'goals'
+  | 'tax'
   | 'currencies'
   | 'backups';
 
