@@ -11,6 +11,8 @@ export type AmountFormat = 'dot' | 'comma' | 'space' | 'apostrophe';
 /** Whether the currency symbol goes before (€12.50) or after (12,50 €) the amount */
 export type SymbolPosition = 'before' | 'after';
 export type SidebarMode = 'persistent' | 'auto-hide';
+/** The sidebar's foldable groups (components/layout/Sidebar.tsx) */
+export type NavGroup = 'planning' | 'tools';
 /** What Safe mode hides: balances and totals (wealth), or every amount */
 export type SafeModeLevel = 'balances' | 'all';
 /** How one currency's amounts are shown, when its own convention isn't wanted */
@@ -35,6 +37,8 @@ interface PreferencesState {
   dateFormat: DateFormatOption;
   savingsGoal: number;
   sidebarMode: SidebarMode;
+  /** Sidebar groups folded on this device (Planning, Tools); missing = open */
+  navGroupsFolded: Partial<Record<NavGroup, boolean>>;
   showMerchantIcons: boolean;
   showCategoryIcons: boolean;
   showAccountIcons: boolean;
@@ -64,6 +68,7 @@ interface PreferencesState {
   setDateFormat: (format: DateFormatOption) => void;
   setSavingsGoal: (goal: number) => void;
   setSidebarMode: (mode: SidebarMode) => void;
+  setNavGroupFolded: (group: NavGroup, folded: boolean) => void;
   setShowMerchantIcons: (show: boolean) => void;
   setShowCategoryIcons: (show: boolean) => void;
   setShowAccountIcons: (show: boolean) => void;
@@ -142,6 +147,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       dateFormat: dateFormatForLocale(),
       savingsGoal: 20,
       sidebarMode: 'persistent',
+      navGroupsFolded: {},
       showMerchantIcons: true,
       showCategoryIcons: true,
       showAccountIcons: true,
@@ -166,6 +172,8 @@ export const usePreferencesStore = create<PreferencesState>()(
       setDateFormat: (dateFormat) => set({ dateFormat }),
       setSavingsGoal: (savingsGoal) => set({ savingsGoal }),
       setSidebarMode: (sidebarMode) => set({ sidebarMode }),
+      setNavGroupFolded: (group, folded) =>
+        set((s) => ({ navGroupsFolded: { ...s.navGroupsFolded, [group]: folded } })),
       setShowMerchantIcons: (showMerchantIcons) => set({ showMerchantIcons }),
       setShowCategoryIcons: (showCategoryIcons) => set({ showCategoryIcons }),
       setShowAccountIcons: (showAccountIcons) => set({ showAccountIcons }),

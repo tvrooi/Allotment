@@ -77,7 +77,24 @@ export function applyGuideUpdate(progress: GuideProgress, update: GuideUpdate): 
     guidesNotice: update.guidesNotice === false ? false : progress.guidesNotice,
     seenGuides,
     dismissedTips: [...new Set([...progress.dismissedTips, ...(update.dismissedTips ?? [])])],
+    navFeatures: mergeNavFeatures(progress.navFeatures ?? {}, update.navFeatures),
+    featuresInUse: progress.featuresInUse,
   };
+}
+
+function mergeNavFeatures(
+  current: NonNullable<GuideProgress['navFeatures']>,
+  update: GuideUpdate['navFeatures'],
+): NonNullable<GuideProgress['navFeatures']> {
+  const next = { ...current };
+  for (const [feature, choice] of Object.entries(update ?? {}) as [
+    keyof typeof next,
+    'shown' | 'hidden' | 'auto',
+  ][]) {
+    if (choice === 'auto') delete next[feature];
+    else next[feature] = choice;
+  }
+  return next;
 }
 
 /** What finishing or leaving a guide records */

@@ -1492,6 +1492,8 @@ export const guideProgress = sqliteTable('guide_progress', {
   seenGuides: text('seen_guides').notNull().default('{}'),
   /** JSON: tip ids dismissed */
   dismissedTips: text('dismissed_tips').notNull().default('[]'),
+  /** JSON: { [optional sidebar feature]: 'shown' | 'hidden' }; none = shown once in use (0064) */
+  navFeatures: text('nav_features').notNull().default('{}'),
   updatedAt: text('updated_at')
     .notNull()
     .default(sql`(datetime('now'))`),
