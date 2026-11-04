@@ -31,7 +31,8 @@ export async function startUpMock(port = 0) {
   let mode = 'normal';
   let calls = 0;
   let richData: ReturnType<typeof richUpHistory> | undefined;
-  const histories = new Map<string, ReturnType<typeof upMockTransaction>[]>();
+  // Served as JSON as given: any rows in Up's shape (upTransactions.ts), mock-built or not
+  const histories = new Map<string, unknown[]>();
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url!, 'http://localhost');
     const send = (body: unknown, status = 200) => {
@@ -222,7 +223,7 @@ export async function startUpMock(port = 0) {
       richData = undefined;
       histories.clear();
     },
-    setHistory: (id: string, rows: ReturnType<typeof upMockTransaction>[]) => {
+    setHistory: (id: string, rows: unknown[]) => {
       histories.set(id, rows);
     },
     calls: () => calls,
