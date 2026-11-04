@@ -431,6 +431,10 @@ export const documentLinks = sqliteTable(
     categoryId: text('category_id').references(() => categories.id, { onDelete: 'cascade' }),
     goalId: text('goal_id').references(() => goals.id, { onDelete: 'cascade' }),
     accountId: text('account_id').references(() => accounts.id, { onDelete: 'cascade' }),
+    /** A depreciating asset's records (migration 0066) */
+    assetId: text('asset_id').references((): AnySQLiteColumn => depreciatingAssets.id, {
+      onDelete: 'cascade',
+    }),
     createdAt: text('created_at').notNull(),
   },
   (table) => [
@@ -447,6 +451,9 @@ export const documentLinks = sqliteTable(
     uniqueIndex('document_links_account_idx')
       .on(table.accountId, table.documentId)
       .where(sql`account_id IS NOT NULL`),
+    uniqueIndex('document_links_asset_idx')
+      .on(table.assetId, table.documentId)
+      .where(sql`asset_id IS NOT NULL`),
   ],
 );
 
@@ -537,6 +544,69 @@ export const taxClaims = sqliteTable('tax_claims', {
   notes: text('notes'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
+});
+
+/**
+ * Depreciating assets on Tax time (docs/DEPRECIATING-ASSETS-PLAN.md, migration 0066). Records
+ * for the tax return only: the purchase stays an expense in its category, and nothing here
+ * changes a transaction or the budget.
+ */
+export const depreciatingAssets = sqliteTable(
+  'depreciating_assets',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    notes: text('notes'),
+    /** Return label: D1–D5 or D15 (D6, the low-value pool, comes later) */
+    label: text('label').notNull(),
+    /** prime_cost | diminishing_value; can't change once a lodged year includes the asset */
+    method: text('method').notNull(),
+    cost: integer('cost').notNull(),
+    /** Start time: first used or installed ready for use; 10 May 2006 or later */
+    startDate: text('start_date').notNull(),
+    purchaseDate: text('purchase_date'),
+    /** Effective life in hundredths of a year (2.5 years = 250) */
+    effectiveLifeHundredths: integer('effective_life_hundredths').notNull(),
+    /** Default taxable-use share, basis points */
+    workUseBps: integer('work_use_bps').notNull(),
+    /** $300 or less, depreciated because it is part of a set or identical items over $300 */
+    partOfSet: integer('part_of_set').notNull().default(0),
+    transactionId: text('transaction_id').references(() => transactions.id, {
+      onDelete: 'set null',
+    }),
+    /** Already depreciated elsewhere: its adjustable value at the start of this financial year */
+    openingFy: integer('opening_fy'),
+    openingAdjustableValue: integer('opening_adjustable_value'),
+    /** A balancing adjustment event, and what it brought in */
+    disposedDate: text('disposed_date'),
+    terminationValue: integer('termination_value'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => [
+    uniqueIndex('depreciating_assets_transaction_idx')
+      .on(table.transactionId)
+      .where(sql`transaction_id IS NOT NULL`),
+  ],
+);
+
+/** A year's own taxable-use share for an asset, where it differs from the asset's */
+export const depreciatingAssetYears = sqliteTable(
+  'depreciating_asset_years',
+  {
+    assetId: text('asset_id')
+      .notNull()
+      .references(() => depreciatingAssets.id, { onDelete: 'cascade' }),
+    financialYear: integer('financial_year').notNull(),
+    workUseBps: integer('work_use_bps').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.assetId, table.financialYear] })],
+);
+
+/** Financial years the owner lodged: their asset figures can no longer change */
+export const taxLodgedYears = sqliteTable('tax_lodged_years', {
+  financialYear: integer('financial_year').primaryKey(),
+  lodgedAt: text('lodged_at').notNull(),
 });
 
 export const transactionTags = sqliteTable(

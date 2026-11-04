@@ -149,7 +149,9 @@ site in `website/` was removed (audit decision I-9).
    read assets, and an assistant's changes are proposals the owner approves one at a time
    (through audit decision I-11's endpoints; read only until they exist); lodged years lock; a
    short built-in list of effective lives with ATO links (phase 2); out of scope confirmed.
-   Phase 1 is ready to start. It uses migration 0066 (0063 to 0065 are taken) and backup version 24,
+   Phase 1 (server) is built: `services/depreciation.ts` (pure), `depreciatingAssetService.ts`,
+   routes under `/tax/assets` and `/tax/lodged`, migration 0066, backup version 24, MCP `tax_assets`
+   (read only). Phases 2 (UI) and 3 (low-value pool) follow. It uses migration 0066 and backup version 24,
    and keeps an asset's records as files linked to it (an `asset` link kind).
 8. **Files (up.79) follow-ups:** live since 3 November. Ask the owner to confirm Files lists their
    receipts; confirm the HA app's `/data/flybudget/budget-files/` is created only

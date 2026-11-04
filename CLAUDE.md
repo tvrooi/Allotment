@@ -50,7 +50,7 @@ Keep this file and CLAUDE.md identical.
   apply a category-only rule to uncategorised past rows, set payee default categories, set or replace
   a payee logo (never remove one), link only server-suggested transfers,
   suggest assignments that only the owner applies, claim past unclaimed transactions as tax
-  deductions (never replace or remove a claim), and record a household contribution linked to a
+  deductions (never replace or remove a claim), read depreciating assets (never change one), and record a household contribution linked to a
   past deposit into that household's account for its exact amount and date (never expenses,
   settlements, edits or removals), and record the owner's own unlinked contribution up to what
   the owner owes the household account (never anyone else's, never into credit). Token category changes are undoable change sets;

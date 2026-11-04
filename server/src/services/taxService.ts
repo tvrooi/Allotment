@@ -5,6 +5,7 @@
 import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, lte, notInArray } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import {
+  depreciatingAssets,
   documentLinks,
   documents,
   accounts,
@@ -17,6 +18,12 @@ import {
 import { mainAmount } from './balances.js';
 import { extensionOf } from './receiptMeta.js';
 import { zip } from '../utils/zip.js';
+import {
+  assetPurchaseIds,
+  assetScheduleRows,
+  assetYears,
+  assetsForYear,
+} from './depreciatingAssetService.js';
 
 export class TaxError extends Error {
   constructor(
@@ -76,6 +83,13 @@ export function setClaim(
   if (!tx) throw new TaxError('Transaction not found', 404);
   if (tx.isParent) throw new TaxError('Claim the parts of a split transaction, not the whole');
   if (tx.transfer) throw new TaxError('A transfer between your accounts is not an expense');
+  // Never claimed outright and depreciated as well (DEPRECIATING-ASSETS-PLAN.md §3.3)
+  const asset = db
+    .select({ name: depreciatingAssets.name })
+    .from(depreciatingAssets)
+    .where(eq(depreciatingAssets.transactionId, transactionId))
+    .get();
+  if (asset) throw new TaxError(`This is depreciated as “${asset.name}”`, 409);
   if (!TAX_LABEL_KEYS.includes(input.label)) throw new TaxError('Unknown tax return label');
   const workUseBps = input.workUseBps ?? 10_000;
   if (!Number.isInteger(workUseBps) || workUseBps < 1 || workUseBps > 10_000)
@@ -220,19 +234,26 @@ export function taxYear(fy: number) {
         cost > IMMEDIATE_DEDUCTION_LIMIT,
     };
   });
+  // Decline in value of depreciating assets (DEPRECIATING-ASSETS-PLAN.md): on their own labels
+  const assets = assetsForYear(fy);
   const totals = TAX_LABEL_KEYS.map((label) => {
     const mine = claims.filter((c) => c.label === label);
+    const mineAssets = assets.filter((a) => a.label === label);
     return {
       label,
       name: TAX_LABELS[label].name,
-      count: mine.length,
-      total: mine.reduce((s, c) => s + c.claim, 0),
+      count: mine.length + mineAssets.length,
+      total:
+        mine.reduce((s, c) => s + c.claim, 0) + mineAssets.reduce((s, a) => s + a.deduction, 0),
     };
   }).filter((t) => t.count > 0);
   const workRelated = claims
     .filter((c) => TAX_LABELS[c.label]?.workRelated && c.label !== 'D1')
     .reduce((s, c) => s + c.claim, 0);
-  const missing = claims.filter((c) => c.receipts.length === 0 && c.files.length === 0);
+  const missing = [
+    ...claims.filter((c) => c.receipts.length === 0 && c.files.length === 0),
+    ...assets.filter((a) => a.receipts.length === 0 && a.files.length === 0),
+  ];
   const notes: string[] = [];
   if (
     workRelated > WRITTEN_EVIDENCE_THRESHOLD &&
@@ -245,14 +266,25 @@ export function taxYear(fy: number) {
     notes.push(
       'Items costing more than $300 are usually claimed as decline in value over several years, not all at once.',
     );
+  const assetIncome = assets.reduce((s, a) => s + a.income, 0);
+  if (assetIncome > 0)
+    notes.push(
+      `Disposing of assets for more than their adjustable value brought in $${(assetIncome / 100).toFixed(2)} of assessable income (a balancing adjustment). It is income, not a deduction.`,
+    );
+  if (assets.some((a) => a.disposedDate && a.row.workUseBps < 10_000))
+    notes.push(
+      'A disposed asset was partly for private use: any capital gain or loss on the private share is outside what Allotment works out.',
+    );
   return {
     financialYear: fy,
     name: financialYearName(fy),
     from,
     to,
     claims,
+    assets,
     totals,
-    total: claims.reduce((s, c) => s + c.claim, 0),
+    total: claims.reduce((s, c) => s + c.claim, 0) + assets.reduce((s, a) => s + a.deduction, 0),
+    assetIncome,
     workRelatedTotal: workRelated,
     missingReceipts: missing.length,
     notes,
@@ -322,6 +354,7 @@ export function claimCandidates(fy: number, today: string) {
         lt(transactions.amount, 0),
         claimable,
         notInArray(transactions.id, claimed),
+        notInArray(transactions.id, assetPurchaseIds),
       ),
     )
     .orderBy(asc(transactions.date))
@@ -352,7 +385,7 @@ export function claimCandidates(fy: number, today: string) {
 
 /** Financial years with claims, and the current one, newest first */
 export function taxYears(today: string) {
-  const years = new Set([financialYearOf(today)]);
+  const years = new Set([financialYearOf(today), ...assetYears()]);
   for (const r of db
     .select({ date: transactions.date })
     .from(taxClaims)
@@ -406,6 +439,23 @@ export function taxYearCsv(fy: number) {
       c.receipts.map((r) => r.fileName).join('; '),
       c.files.map((f) => f.fileName).join('; '),
     ]),
+    ...year.assets.map((a) => [
+      a.startDate,
+      a.label,
+      TAX_LABELS[a.label]?.name ?? a.label,
+      `Decline in value: ${a.name}`,
+      null,
+      null,
+      dollars(a.row.decline),
+      (a.row.workUseBps / 100).toFixed(2),
+      dollars(a.deduction),
+      a.row.balancingAdjustment === undefined
+        ? null
+        : `Disposed ${a.disposedDate}; balancing adjustment ${dollars(a.row.balancingAdjustment)}`,
+      null,
+      a.receipts.map((r) => r.fileName).join('; '),
+      a.files.map((f) => f.fileName).join('; '),
+    ]),
   ];
   return { name: year.name, csv: lines.map((l) => l.map(csvCell).join(',')).join('\r\n') + '\r\n' };
 }
@@ -417,7 +467,28 @@ export function taxYearArchive(fy: number) {
   const files: { name: string; data: Uint8Array }[] = [
     { name: `deductions-${name.replace('–', '-')}.csv`, data: Buffer.from(csv, 'utf8') },
   ];
-  const ids = [...new Set(year.claims.flatMap((c) => c.receipts.map((r) => r.id)))];
+  if (year.assets.length) {
+    const schedule =
+      assetScheduleRows(fy)
+        .map((l) => l.map(csvCell).join(','))
+        .join('\r\n') + '\r\n';
+    files.push({
+      name: `depreciation-${name.replace('–', '-')}.csv`,
+      data: Buffer.from(schedule, 'utf8'),
+    });
+  }
+  // Assets' evidence goes in with the claims': the purchase's receipts, the asset's files
+  const owners = [
+    ...year.claims,
+    ...year.assets.map((a) => ({
+      date: a.startDate,
+      label: a.label,
+      payeeName: a.name,
+      receipts: a.receipts,
+      files: a.files,
+    })),
+  ];
+  const ids = [...new Set(owners.flatMap((c) => c.receipts.map((r) => r.id)))];
   const rows = ids.length
     ? db
         .select({
@@ -434,7 +505,7 @@ export function taxYearArchive(fy: number) {
   const byId = new Map(rows.map((r) => [r.id, r]));
   const used = new Set<string>();
   const names = new Set<string>();
-  for (const c of year.claims) {
+  for (const c of owners) {
     c.receipts.forEach((r) => {
       const file = byId.get(r.id);
       if (!file || used.has(r.id)) return;
@@ -457,7 +528,7 @@ export function taxYearArchive(fy: number) {
     });
   }
   // Files linked to claimed transactions, from the database (a video on disk is left out)
-  const docIds = [...new Set(year.claims.flatMap((c) => c.files.map((f) => f.id)))];
+  const docIds = [...new Set(owners.flatMap((c) => c.files.map((f) => f.id)))];
   const docRows = docIds.length
     ? db
         .select({ id: documents.id, mimeType: documents.mimeType, data: receiptFiles.data })
@@ -468,7 +539,7 @@ export function taxYearArchive(fy: number) {
     : [];
   const docById = new Map(docRows.map((d) => [d.id, d]));
   const usedDocs = new Set<string>();
-  for (const c of year.claims)
+  for (const c of owners)
     for (const f of c.files) {
       const file = docById.get(f.id);
       if (!file || usedDocs.has(f.id)) continue;

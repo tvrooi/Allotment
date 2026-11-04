@@ -8,6 +8,7 @@ import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import {
   accounts,
+  depreciatingAssets,
   categories,
   documentLinks,
   documents,
@@ -48,7 +49,9 @@ export const MAX_DOCUMENTS = 50_000;
 type TargetLabel = { label: string; date?: string; amount?: number; accountName?: string };
 
 /** A target that is a row with a name: exists, and its name */
-function named(table: typeof categories | typeof goals | typeof accounts) {
+function named(
+  table: typeof categories | typeof goals | typeof accounts | typeof depreciatingAssets,
+) {
   return {
     resolve: (id: string) =>
       db.select({ id: table.id }).from(table).where(eq(table.id, id)).get()?.id ?? null,
@@ -112,6 +115,8 @@ const LINK_TARGETS = {
   category: { column: documentLinks.categoryId, noun: 'Category', ...named(categories) },
   goal: { column: documentLinks.goalId, noun: 'Goal', ...named(goals) },
   account: { column: documentLinks.accountId, noun: 'Account', ...named(accounts) },
+  /** A depreciating asset's records: invoice, warranty, photos (DEPRECIATING-ASSETS-PLAN.md) */
+  asset: { column: documentLinks.assetId, noun: 'Asset', ...named(depreciatingAssets) },
 } as const;
 
 export type LinkKind = keyof typeof LINK_TARGETS;
