@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import express from 'express';
 import type { Server } from 'http';
 import type { AddressInfo } from 'net';
@@ -23,7 +23,15 @@ import { startUpMock, UP_TEST_TOKEN } from '../test/upMock.js';
 let mock: Awaited<ReturnType<typeof startUpMock>>;
 let server: Server;
 let base: string;
+// The rich history counts back 90 days from today, and the short Australian template (the default
+// since 0.2.0-up.83) has no envelope for some of Up's categories (Uber, Kmart, JB Hi-Fi, Bunnings,
+// Service NSW), so they stay uncategorised on purpose. The share left moves with the 90-day window:
+// 9.6% to 21.6% over October to early December 2026, mostly 15–18%. The old "under 15%" passed only
+// on some days. The tests now say "under a quarter", and run on a fixed day so the data is stable.
+const TODAY = new Date('2026-11-03T05:00:00Z');
 beforeAll(async () => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(TODAY);
   migrate(db, { migrationsFolder: 'src/db/migrations' });
   mock = await startUpMock();
   process.env.FLYBUDGET_UP_API = mock.base;
@@ -37,6 +45,7 @@ beforeAll(async () => {
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 afterAll(async () => {
+  vi.useRealTimers();
   await mock.close();
   server.close();
   delete process.env.FLYBUDGET_UP_API;
@@ -80,7 +89,7 @@ const categoryName = (id: string | null) =>
 const isTransfer = (notes: string | null) => !!notes?.includes('Up internal transfer');
 
 describe('first Up sync uses Up’s own categories', () => {
-  it('leaves under 15% of spending uncategorised, and maps to the budget’s names', async () => {
+  it('leaves under a quarter of spending uncategorised, and maps to the budget’s names', async () => {
     await firstSync();
     const spending = db
       .select()
@@ -89,7 +98,7 @@ describe('first Up sync uses Up’s own categories', () => {
       .filter((t) => t.amount < 0 && !isTransfer(t.notes));
     expect(spending.length).toBeGreaterThan(100);
     const missing = spending.filter((t) => !t.categoryId);
-    expect(missing.length / spending.length).toBeLessThan(0.15);
+    expect(missing.length / spending.length).toBeLessThan(0.25);
     const by = (payee: string) => [
       ...new Set(
         spending.filter((t) => t.payeeName === payee).map((t) => categoryName(t.categoryId)),
@@ -193,7 +202,7 @@ describe('what is left after the import', () => {
     expect(all.uncategorisedIncomeCount).toBeGreaterThanOrEqual(6);
     expect(all.categorisedIncome).toBe(0);
     expect(all.share).toBeGreaterThan(0);
-    expect(all.share).toBeLessThan(0.15);
+    expect(all.share).toBeLessThan(0.25);
     const live = await (await fetch(`${base}/reports/uncategorised-summary`)).json();
     expect(live.uncategorisedSpending).toBe(all.uncategorisedSpending);
     const empty = await (
