@@ -305,7 +305,6 @@ const RENT = 115_000;
 export function buildDemoBudget(today: Date): DemoBudget {
   const rand = seededRandom(20260929);
   const between = (min: number, max: number) => Math.round(min + rand() * (max - min));
-  const chance = (p: number) => rand() < p;
   const pick = <T>(items: readonly T[]): T => items[Math.floor(rand() * items.length)];
 
   const ymd = (d: Date) => format(d, 'yyyy-MM-dd');

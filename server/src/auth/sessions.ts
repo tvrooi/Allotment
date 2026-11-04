@@ -91,7 +91,6 @@ const MAX_USER_AGENT_LENGTH = 256;
 
 /** A user agent header made safe to store and show: no control characters, capped. */
 export function cleanUserAgent(userAgent: string | undefined): string | null {
-  // eslint-disable-next-line no-control-regex
   const cleaned = (userAgent ?? '').replace(/[\u0000-\u001f\u007f-\u009f]/g, '').trim();
   return cleaned ? cleaned.slice(0, MAX_USER_AGENT_LENGTH) : null;
 }

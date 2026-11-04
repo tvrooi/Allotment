@@ -1,0 +1,20 @@
+{
+  "name": "flybudget-lint",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "description": "ESLint for the client and server (audit F-08). Its own package: typescript-eslint needs TypeScript's JavaScript API, which TypeScript 7 doesn't have, so TypeScript 6 here only parses.",
+  "scripts": {
+    "lint": "cd .. && eslint -c lint/eslint.config.js --max-warnings=271 client/src server/src",
+    "lint:report": "cd .. && eslint -c lint/eslint.config.js client/src server/src"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.14.0",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.1"
+  }
+}

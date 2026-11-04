@@ -175,7 +175,7 @@ describe('currency helpers (property-based)', () => {
         const s = formatAmount(cents, style);
         expect(unformat(s, style)).toBe(cents);
         expect(s.startsWith('-')).toBe(cents < 0);
-        if (style.position === 'after') expect(s.endsWith(` ${style.symbol}`)).toBe(true);
+        if (style.position === 'after') expect(s.endsWith(`\u00a0${style.symbol}`)).toBe(true);
         else expect(s.replace('-', '').startsWith(style.symbol)).toBe(true);
       }),
     );

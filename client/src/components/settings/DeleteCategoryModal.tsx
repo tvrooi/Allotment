@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { usePreferencesStore } from '../../store/preferencesStore';
 import type { CategoryGroup } from '../../types';
 
 interface Props {
@@ -26,7 +25,6 @@ export function DeleteCategoryModal({
   hasAssignments,
   groups,
 }: Props) {
-  const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
   const [reassignTo, setReassignTo] = useState('');
   // Income and expense categories only merge within their own kind
   const sourceIsIncome =

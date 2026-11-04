@@ -12,7 +12,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function PayeePicker({ value, payeeName, onChange, payees, onClose }: Props) {
+export function PayeePicker({ value, onChange, payees, onClose }: Props) {
   const [query, setQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);

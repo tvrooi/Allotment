@@ -1,4 +1,3 @@
-import { usePreferencesStore } from '../../store/preferencesStore';
 import type { Account, CategoryGroup } from '../../types';
 
 interface Props {
@@ -24,7 +23,6 @@ export function CategorySelect({
   fieldClassName,
   label = 'Category',
 }: Props) {
-  const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
   const transferAccounts = accounts?.filter((a) => a.id !== currentAccountId && !a.closedAt) ?? [];
 
   return (

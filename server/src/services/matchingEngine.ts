@@ -113,7 +113,7 @@ function scoreMatch(
 
   if (daysDiff > schedule.dateFlexibility) return { score: 0, payeeScore: 0 };
 
-  let dateScore = Math.max(0, 30 - daysDiff * 5);
+  const dateScore = Math.max(0, 30 - daysDiff * 5);
 
   let amountScore = 0;
   const amountDiff = Math.abs(tx.amount - occ.expectedAmount);

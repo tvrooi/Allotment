@@ -29,7 +29,7 @@ export function BankFedNotice({ accountId, onUseAccount, switched }: Props) {
     );
   if (!account?.bankLinked) return null;
 
-  async function useCash() {
+  async function switchToCash() {
     setError('');
     if (cash) return onUseAccount(cash.id);
     try {
@@ -53,7 +53,7 @@ export function BankFedNotice({ accountId, onUseAccount, switched }: Props) {
         </span>
         <button
           type="button"
-          onClick={() => void useCash()}
+          onClick={() => void switchToCash()}
           className="underline font-medium cursor-pointer"
         >
           {cash ? 'Use Cash instead' : 'Use a new Cash account instead'}

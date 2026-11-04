@@ -241,7 +241,6 @@ describe('cleanUserAgent / resolveVersion', () => {
         const cleaned = cleanUserAgent(ua);
         if (cleaned === null) return;
         expect(cleaned.length).toBeLessThanOrEqual(256);
-        // eslint-disable-next-line no-control-regex
         expect(cleaned).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/);
       }),
     );
