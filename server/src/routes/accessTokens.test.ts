@@ -19,6 +19,7 @@ const { createAccessToken } = await import('../auth/accessTokens.js');
 const { BACKUP_TABLES } = await import('../services/backupService.js');
 const { accessTokensRouter } = await import('./accessTokens.js');
 const { mcpRouter } = await import('./mcp.js');
+const { assistantDispatch, assistantRouter } = await import('./assistant.js');
 const { accountsRouter } = await import('./accounts.js');
 const { transactionsRouter } = await import('./transactions.js');
 const { categoriesRouter } = await import('./categories.js');
@@ -38,7 +39,9 @@ beforeAll(async () => {
   const app = express();
   app.use(hostGuard, originGuard, express.json());
   app.use('/api/auth', authRouter);
+  app.use(assistantDispatch);
   app.use('/api', requireSession);
+  app.use('/api/assistant', assistantRouter);
   app.use('/api/accounts', accountsRouter);
   app.use('/api/transactions', transactionsRouter);
   app.use('/api/categories', categoriesRouter);
@@ -58,13 +61,16 @@ afterAll(() => server.close());
 async function call(
   method: string,
   path: string,
-  auth: { token?: string; session?: boolean } = {},
+  auth: { token?: string; session?: boolean; direct?: boolean } = {},
   body?: unknown,
 ) {
   const headers: Record<string, string> = { 'content-type': 'application/json' };
   if (auth.token) headers.authorization = `Bearer ${auth.token}`;
   if (auth.session) headers.cookie = cookie;
-  const res = await fetch(base + path, {
+  // An access token writes only through the assistant endpoint (audit decision I-11)
+  const via =
+    auth.token && method !== 'GET' && path !== '/mcp' && !auth.direct ? '/assistant/do' : '';
+  const res = await fetch(base + via + path, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),

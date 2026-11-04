@@ -868,6 +868,45 @@ export const upSourceRecords = sqliteTable(
   (table) => [index('up_source_review').on(table.reviewState, table.lastSeenAt)],
 );
 
+/** Audit decision I-11: each write an access token made (migration 0069; not backed up) */
+export const assistantActions = sqliteTable(
+  'assistant_actions',
+  {
+    id: text('id').primaryKey(),
+    tokenId: text('token_id').notNull(),
+    tokenName: text('token_name').notNull(),
+    /** A name from services/assistantActions.ts ACTIONS */
+    action: text('action').notNull(),
+    method: text('method').notNull(),
+    path: text('path').notNull(),
+    /** The request body, long strings shortened */
+    detail: text('detail'),
+    /** The HTTP status it ended with; null if the connection dropped first */
+    status: integer('status'),
+    createdAt: text('created_at').notNull(),
+  },
+  (table) => [index('assistant_actions_created').on(table.createdAt)],
+);
+
+/** Changes an assistant proposed that only the owner applies (migration 0069; not backed up) */
+export const assistantProposals = sqliteTable('assistant_proposals', {
+  id: text('id').primaryKey(),
+  tokenId: text('token_id').notNull(),
+  tokenName: text('token_name').notNull(),
+  /** 'asset.create' | 'asset.update' */
+  kind: text('kind').notNull(),
+  /** The thing it changes (an asset id for asset.update) */
+  targetId: text('target_id'),
+  payload: text('payload').notNull(),
+  note: text('note'),
+  status: text('status').notNull().default('pending'),
+  /** What applying it made (the new asset's id) */
+  resultId: text('result_id'),
+  error: text('error'),
+  createdAt: text('created_at').notNull(),
+  decidedAt: text('decided_at'),
+});
+
 /** The receipt reader's cloud API key (one row, encrypted, never backed up or exported) */
 export const receiptReaderSecrets = sqliteTable('receipt_reader_secrets', {
   id: integer('id').primaryKey(),

@@ -5,6 +5,7 @@ import { Copy, KeyRound } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { formatDay } from '../../utils/dates';
+import { formatCurrency } from '../../utils/currency';
 import {
   createAccessToken,
   getAccessTokens,
@@ -12,6 +13,11 @@ import {
   revokeAccessToken,
   redoChangeSet,
   undoChangeSet,
+  applyAssistantProposal,
+  declineAssistantProposal,
+  getAssistantLog,
+  getAssistantProposals,
+  type AssistantProposal,
   type AccessToken,
   type AccessTokenScope,
   type CreatedAccessToken,
@@ -191,7 +197,9 @@ export function ReadOnlyAccess() {
           ))}
         </ul>
       )}
+      <AssistantProposals />
       <AssistantChanges />
+      <AssistantActivity />
       <ConfirmModal
         isOpen={revoking !== null}
         onClose={() => setRevoking(null)}
@@ -269,5 +277,116 @@ function AssistantChanges() {
         <p className="text-xs text-negative mt-2">{(undo.error ?? redo.error)?.message}</p>
       )}
     </div>
+  );
+}
+
+/** What a proposed asset says, in words */
+function describeProposal(p: AssistantProposal) {
+  const a = p.payload as {
+    name?: string;
+    cost?: number;
+    method?: string;
+    effectiveLifeHundredths?: number;
+    workUseBps?: number;
+  };
+  const parts = [
+    a.cost !== undefined && formatCurrency(a.cost),
+    a.method && (a.method === 'prime_cost' ? 'prime cost' : 'diminishing value'),
+    a.effectiveLifeHundredths !== undefined && `${a.effectiveLifeHundredths / 100} years`,
+    a.workUseBps !== undefined && `${a.workUseBps / 100}% work use`,
+  ].filter(Boolean);
+  const what = p.kind === 'asset.create' ? 'New asset' : 'Change to an asset';
+  return `${what}${a.name ? `: ${a.name}` : ''}${parts.length ? ` (${parts.join(', ')})` : ''}`;
+}
+
+/** Changes an assistant proposed (audit decision I-11); nothing changes until the owner applies */
+function AssistantProposals() {
+  const qc = useQueryClient();
+  const { data: proposals = [] } = useQuery({
+    queryKey: ['assistant-proposals'],
+    queryFn: getAssistantProposals,
+  });
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: ['assistant-proposals'] });
+    void qc.invalidateQueries({ queryKey: ['tax'] });
+  };
+  const apply = useMutation({ mutationFn: applyAssistantProposal, onSettled: refresh });
+  const decline = useMutation({ mutationFn: declineAssistantProposal, onSettled: refresh });
+  const busy = apply.isPending || decline.isPending;
+  if (!proposals.length) return null;
+  return (
+    <div className="mt-4">
+      <h3 className="text-xs font-semibold text-text-secondary">Waiting for you</h3>
+      <p className="text-xs text-text-tertiary mt-0.5">
+        An assistant proposed these. Nothing changes until you apply one; Tax time → Assets shows
+        the result.
+      </p>
+      <ul aria-label="Assistant proposals" className="mt-2 divide-y divide-border-light">
+        {proposals.map((p) => (
+          <li key={p.id} className="flex items-center gap-3 py-2">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-text">{describeProposal(p)}</p>
+              <p className="text-xs text-text-tertiary">
+                {p.tokenName}, {formatDistanceToNow(new Date(p.createdAt), { addSuffix: true })}
+                {p.note ? ` · ${p.note}` : ''}
+              </p>
+              {p.error && <p className="text-xs text-negative">{p.error}</p>}
+            </div>
+            <Button
+              size="sm"
+              aria-label={`Apply: ${describeProposal(p)}`}
+              disabled={busy}
+              onClick={() => apply.mutate(p.id)}
+            >
+              Apply
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              aria-label={`Decline: ${describeProposal(p)}`}
+              disabled={busy}
+              onClick={() => decline.mutate(p.id)}
+            >
+              Decline
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** Every change a token asked for, allowed or refused (audit decision I-11) */
+function AssistantActivity() {
+  const [open, setOpen] = useState(false);
+  const { data: log = [] } = useQuery({
+    queryKey: ['assistant-log'],
+    queryFn: getAssistantLog,
+    enabled: open,
+  });
+  return (
+    <details className="mt-4" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+      <summary className="text-xs font-semibold text-text-secondary cursor-pointer">
+        Assistant activity
+      </summary>
+      <p className="text-xs text-text-tertiary mt-1">
+        Every change an access token asked for, newest first, including the ones it was refused.
+      </p>
+      {open && !log.length && <p className="text-xs text-text-tertiary mt-2">Nothing yet.</p>}
+      <ul aria-label="Assistant activity" className="mt-2 divide-y divide-border-light">
+        {log.map((a) => (
+          <li key={a.id} className="py-1.5 text-xs">
+            <span className="text-text">{a.label}</span>
+            <span className="text-text-tertiary">
+              {' '}
+              · {a.tokenName} · {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}
+            </span>
+            {a.status !== null && a.status >= 400 && (
+              <span className="text-negative"> · refused</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }

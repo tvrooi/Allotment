@@ -15,6 +15,7 @@ import { HouseholdSharing } from '../components/household/HouseholdSharing';
 import { HouseholdIcon } from '../components/household/HouseholdIcon';
 import { CombinedHousehold } from '../components/household/CombinedHousehold';
 import { RecurringBills } from '../components/household/RecurringBills';
+import { RepaymentCategoryOffers } from '../components/household/RepaymentCategoryOffers';
 import type { HouseholdSplit, SharedRecurringBill } from '../api/households';
 
 type Group = {
@@ -509,6 +510,12 @@ export default function HouseholdPage() {
                   </div>
                 )}
               </section>
+
+              <RepaymentCategoryOffers
+                key={`offers-${state.group.id}`}
+                groupId={state.group.id}
+                currency={state.group.currency}
+              />
 
               <RecurringBills
                 key={`recurring-${state.group.id}`}

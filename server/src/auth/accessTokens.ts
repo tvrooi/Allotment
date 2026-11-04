@@ -492,6 +492,15 @@ export function ownContributionAllows(method: string, rawPath: string, body: unk
 }
 
 /** Whether a token with this scope may make this request (path relative to /api) */
+/**
+ * An organise token may propose changes the owner applies (audit decision I-11,
+ * services/assistantActions.ts), and read its proposals; it never applies or declines one.
+ */
+export function assistantProposalAllows(method: string, rawPath: string) {
+  const path = rawPath.toLowerCase().replace(/\/+$/, '');
+  return path === '/assistant/proposals' && (method === 'POST' || method === 'GET');
+}
+
 export function tokenAllows(scope: TokenScope, method: string, path: string, body: unknown) {
   if (readOnlyAllows(method, path)) return true;
   if (!canCategorise(scope)) return false;
@@ -501,6 +510,7 @@ export function tokenAllows(scope: TokenScope, method: string, path: string, bod
     categoryManageAllows(method, path, body) ||
     (scope === 'organise' &&
       (organiseAllows(method, path, body) ||
+        assistantProposalAllows(method, path) ||
         taxClaimAllows(method, path, body) ||
         householdContributionAllows(method, path, body) ||
         ownContributionAllows(method, path, body)))

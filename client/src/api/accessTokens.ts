@@ -58,3 +58,35 @@ export const redoChangeSet = (id: string) =>
   apiFetch<{ reapplied: number; skipped: string[] }>(`/change-sets/${id}/redo`, {
     method: 'POST',
   });
+
+/** Audit decision I-11: each write an access token made, newest first (owner only) */
+export interface AssistantAction {
+  id: string;
+  tokenName: string;
+  action: string;
+  label: string;
+  method: string;
+  path: string;
+  detail: string | null;
+  status: number | null;
+  createdAt: string;
+}
+export const getAssistantLog = () => apiFetch<AssistantAction[]>('/assistant/log?limit=100');
+
+/** A change an assistant proposed that only the owner applies */
+export interface AssistantProposal {
+  id: string;
+  tokenName: string;
+  kind: 'asset.create' | 'asset.update';
+  targetId: string | null;
+  payload: Record<string, unknown>;
+  note: string | null;
+  status: 'pending' | 'applied' | 'declined';
+  error: string | null;
+  createdAt: string;
+}
+export const getAssistantProposals = () => apiFetch<AssistantProposal[]>('/assistant/proposals');
+export const applyAssistantProposal = (id: string) =>
+  apiFetch<AssistantProposal>(`/assistant/proposals/${id}/apply`, { method: 'POST' });
+export const declineAssistantProposal = (id: string) =>
+  apiFetch<AssistantProposal>(`/assistant/proposals/${id}/decline`, { method: 'POST' });

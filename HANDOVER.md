@@ -9,6 +9,22 @@ Last updated: 4 November 2026 (after up.98).
 
 ## State
 
+- **Assistant endpoint and repayment categories (up.99):** audit decisions I-11 and I-8. A token
+  writes only through `/api/assistant/do/<path>`: `assistantDispatch` (`routes/assistant.ts`, mounted
+  before `requireSession`) rewrites it to `/api/<path>` and sets `res.locals.viaAssistant`; only that
+  flag lets `requireSession` accept a token write, and only for a named action in
+  `services/assistantActions.ts` ACTIONS. Each is logged in `assistant_actions` (migration 0069; not
+  backed up) with its final status, refused ones too. `assistant_proposals` holds asset proposals
+  (`asset.create`/`asset.update`, MCP `propose_tax_asset`, at most 50 pending) that only the owner
+  applies (`/api/assistant/proposals/:id/apply|decline`). The scope predicates in
+  `auth/accessTokens.ts` are unchanged and still decide each write; F-18's declarative table is the
+  ACTIONS list. MCP's `callApi` sends non-GET requests through the endpoint. UI: **Waiting for you**
+  and **Assistant activity** in `ReadOnlyAccess.tsx`. I-8: `GET /households/:id/category-offers`
+  (`services/householdCategoryOffers.ts`) lists settlements to you linked to an uncategorised
+  deposit, with the repayer's shares of your categorised expenses in the year before by category;
+  `RepaymentCategoryOffers.tsx` on the Household page categorises the deposit with a normal
+  transaction update. Tests: `routes/assistantTools.test.ts` (I-11 cases),
+  `routes/householdCategoryOffers.test.ts`, e2e server-mode and `household.spec.ts`.
 - **Receipt providers and learned Up categories (up.98):** owner request of 4 November. The receipt
   reader takes a provider (`budget_settings.receipt_reader_provider`, migration 0068): `local` (any
   server speaking the Ollama API), `anthropic` or `openai` with the owner's API key in
@@ -173,8 +189,7 @@ site in `website/` was removed (audit decision I-9).
    asset and pool figures before and after any change. Phase 4 (second-element costs, effective
    life recalculation, a D1 car limit warning) is optional and not planned. An asset's records
    are files linked to it (an `asset` link kind). Still to do: once live, ask the owner to try
-   it on a real purchase; the assistant's proposal flow waits for audit decision I-11's
-   endpoints.
+   it on a real purchase; the assistant proposes assets with `propose_tax_asset` (up.99).
 8. **Files (up.79) follow-ups:** live since 3 November. Ask the owner to confirm Files lists their
    receipts; confirm the HA app's `/data/flybudget/budget-files/` is created only
    once a video over 25 MB is added. Not built: an email inbox (deliberately), files for tokens,
@@ -208,9 +223,7 @@ site in `website/` was removed (audit decision I-9).
     Up slugs with no sensible envelope (pets, gambling, tobacco, cycling, parking) stay
     uncategorised until the owner's habit teaches them.
     I-7 is done (up.97): tour first, one onboarding element at a time (docs/GUIDES.md, "Tour
-    first"). Still open, in suggested order: I-11 dedicated assistant endpoints with their own audit log (replaces F-18; also unlocks
-    assistant proposals for depreciating assets); I-8 offering to categorise a household repayment
-    back to the shared expense's category; F-11 route splitting and removing `emoji-picker-react`;
+    first"). I-11 and I-8 are done (up.99). Still open, in suggested order: F-11 route splitting and removing `emoji-picker-react`;
     F-13 one service per action family; F-14 deleted-import memory, only for a provider in use;
     then the partly done F-09, F-15, F-19, F-20 and F-24, and F-22, F-23.
     Work in feature PRs with tests; the owner reviews and merges.

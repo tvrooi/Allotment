@@ -21,12 +21,14 @@ const {
   householdPoolAccounts,
   householdRecurringBills,
   schedules,
+  depreciatingAssets,
 } = await import('../db/schema.js');
 const { hostGuard, originGuard, errorHandler } = await import('../middleware/security.js');
 const { authRouter, requireSession } = await import('./auth.js');
 const { createSession, setInitialPassword, SESSION_COOKIE } = await import('../auth/sessions.js');
 const { accessTokensRouter } = await import('./accessTokens.js');
 const { mcpRouter } = await import('./mcp.js');
+const { assistantDispatch, assistantRouter } = await import('./assistant.js');
 const { accountsRouter } = await import('./accounts.js');
 const { transactionsRouter } = await import('./transactions.js');
 const { categoriesRouter } = await import('./categories.js');
@@ -72,7 +74,9 @@ beforeAll(async () => {
   const app = express();
   app.use(hostGuard, originGuard, express.json());
   app.use('/api/auth', authRouter);
+  app.use(assistantDispatch);
   app.use('/api', requireSession);
+  app.use('/api/assistant', assistantRouter);
   app.use('/api/accounts', accountsRouter);
   app.use('/api/transactions', transactionsRouter);
   app.use('/api/categories', categoriesRouter);
@@ -93,11 +97,19 @@ beforeAll(async () => {
 });
 afterAll(() => server.close());
 
-async function call(method: string, path: string, auth: { token?: string } = {}, body?: unknown) {
+async function call(
+  method: string,
+  path: string,
+  auth: { token?: string; direct?: boolean } = {},
+  body?: unknown,
+) {
   const headers: Record<string, string> = { 'content-type': 'application/json' };
   if (auth.token) headers.authorization = `Bearer ${auth.token}`;
   else headers.cookie = cookie;
-  const res = await fetch(base + path, {
+  // An access token writes only through the assistant endpoint (audit decision I-11)
+  const via =
+    auth.token && method !== 'GET' && path !== '/mcp' && !auth.direct ? '/assistant/do' : '';
+  const res = await fetch(base + via + path, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -853,5 +865,91 @@ describe('tax claim candidates', () => {
     const read = await newToken('read');
     expect(await toolNames(read)).not.toContain('tax_claim_candidates');
     expect((await call('GET', '/tax/years/2025/candidates', { token: read })).status).toBe(403);
+  });
+});
+
+describe('the assistant endpoint and its log (audit decision I-11)', () => {
+  it('refuses a token writing to an app route directly, and logs writes through the endpoint', async () => {
+    const token = await newToken('categorise', 'I-11 categorise');
+    const direct = await call(
+      'PUT',
+      '/transactions/g1',
+      { token, direct: true },
+      { categoryId: 'groceries' },
+    );
+    expect(direct.status).toBe(403);
+    expect(direct.body.error).toContain('/api/assistant/do');
+    // Through the assistant endpoint the same write is allowed and logged
+    const ok = await call('PUT', '/transactions/g1', { token }, { categoryId: 'groceries' });
+    expect(ok.status).toBe(200);
+    const refused = await call('PUT', '/transactions/g1', { token }, { notes: 'not allowed' });
+    expect(refused.status).toBe(403);
+    const unnamed = await call('POST', '/backup/restore', { token }, {});
+    expect(unnamed.status).toBe(403);
+    expect(unnamed.body.error).toBe('An assistant cannot do this');
+    const log = await call('GET', '/assistant/log');
+    expect(log.status).toBe(200);
+    const mine = log.body.filter((a: { tokenName: string }) => a.tokenName === 'I-11 categorise');
+    expect(mine.map((a: { action: string; status: number }) => [a.action, a.status])).toEqual([
+      ['set-category', 403],
+      ['set-category', 200],
+    ]);
+    expect(mine[1].detail).toBe('{"categoryId":"groceries"}');
+    // Only the owner reads the log
+    expect((await call('GET', '/assistant/log', { token })).status).toBe(403);
+  });
+
+  it('lets an organise token propose an asset that only the owner applies or declines', async () => {
+    const token = await newToken('organise', 'I-11 organise');
+    const asset = {
+      name: 'Work laptop',
+      label: 'D5',
+      method: 'prime_cost',
+      cost: 180_000,
+      startDate: PAST,
+      effectiveLifeHundredths: 200,
+      workUseBps: 8_000,
+    };
+    const { data, isError } = await tool(token, 'propose_tax_asset', {
+      asset,
+      note: 'From the receipt',
+    });
+    expect(isError).toBeFalsy();
+    const id = data.proposed.id as string;
+    expect(data.proposed).toMatchObject({ kind: 'asset.create', status: 'pending' });
+    expect((await call('POST', `/assistant/proposals/${id}/apply`, { token })).status).toBe(403);
+    expect((await call('GET', '/tax/assets')).body).toHaveLength(0);
+    const applied = await call('POST', `/assistant/proposals/${id}/apply`);
+    expect(applied.status).toBe(200);
+    expect(applied.body).toMatchObject({ status: 'applied' });
+    const assets = (await call('GET', '/tax/assets')).body;
+    expect(assets).toHaveLength(1);
+    expect(assets[0]).toMatchObject({ name: 'Work laptop', id: applied.body.resultId });
+    expect((await call('POST', `/assistant/proposals/${id}/decline`)).status).toBe(409);
+
+    // An incomplete one stays pending with the reason; declining it changes nothing
+    const bad = await tool(token, 'propose_tax_asset', { asset: { name: 'Desk' } });
+    const badId = bad.data.proposed.id as string;
+    const tried = await call('POST', `/assistant/proposals/${badId}/apply`);
+    expect(tried.status).toBe(400);
+    expect((await call('GET', '/assistant/proposals')).body[0]).toMatchObject({
+      id: badId,
+      status: 'pending',
+    });
+    expect((await call('POST', `/assistant/proposals/${badId}/decline`)).body.status).toBe(
+      'declined',
+    );
+    expect((await call('GET', '/tax/assets')).body).toHaveLength(1);
+    db.delete(depreciatingAssets).run();
+
+    // A categorise token can't propose, and the owner doesn't propose to themself
+    const cat = await newToken('categorise', 'I-11 categorise');
+    expect(
+      (await call('POST', '/assistant/proposals', { token: cat }, { kind: 'asset.create', asset }))
+        .status,
+    ).toBe(403);
+    expect(
+      (await call('POST', '/assistant/proposals', {}, { kind: 'asset.create', asset })).status,
+    ).toBe(400);
   });
 });
