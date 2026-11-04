@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { PREFERENCES_VERSION, dateFormatForLocale, migratePreferences } from './preferencesStore';
+import {
+  PREFERENCES_VERSION,
+  dateFormatForLocale,
+  migratePreferences,
+  usePreferencesStore,
+} from './preferencesStore';
 
 describe('migratePreferences', () => {
   it('keeps 1,234.56 with the symbol first for installs from before the amount format', () => {
@@ -45,5 +50,16 @@ describe('dateFormatForLocale', () => {
   it('keeps the written-out US style for US English and unknown languages', () => {
     expect(dateFormatForLocale('en-US')).toBe('MMM d, yyyy');
     expect(dateFormatForLocale('not a locale')).toBe('MMM d, yyyy');
+  });
+});
+
+describe('theme', () => {
+  it('a new install follows the device (System)', () => {
+    expect(usePreferencesStore.getInitialState().theme).toBe('system');
+  });
+
+  it('keeps a theme saved on this device', () => {
+    for (const theme of ['light', 'dark'])
+      expect(migratePreferences({ theme }, PREFERENCES_VERSION)).toEqual({ theme });
   });
 });
