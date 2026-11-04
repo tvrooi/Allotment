@@ -4,6 +4,7 @@ import {
   tokenAllows,
   verifyAccessToken,
 } from '../auth/accessTokens.js';
+import { assistantAction, finishAction, startAction } from '../services/assistantActions.js';
 import { Router, type Request, type RequestHandler, type Response } from 'express';
 import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
@@ -280,6 +281,23 @@ export const requireSession: RequestHandler = (req, res, next) => {
   if (looksLikeAccessToken(bearer)) {
     const token = verifyAccessToken(bearer);
     if (!token) return void res.status(401).json({ error: 'Invalid or expired access token' });
+    // Audit decision I-11: a token writes only through /api/assistant/do, as a named action,
+    // and every such write (allowed or not) is logged for the owner (services/assistantActions.ts)
+    const writes =
+      req.method !== 'GET' &&
+      req.method !== 'HEAD' &&
+      req.path.toLowerCase().replace(/\/+$/, '') !== '/mcp';
+    if (writes) {
+      const action = res.locals.viaAssistant ? assistantAction(req.method, req.path) : null;
+      if (!action)
+        return void res.status(403).json({
+          error: res.locals.viaAssistant
+            ? 'An assistant cannot do this'
+            : 'An access token makes changes only through the assistant endpoint, /api/assistant/do',
+        });
+      const logId = startAction(token.id, action.name, req.method, req.path, req.body);
+      res.on('finish', () => finishAction(logId, res.statusCode));
+    }
     if (!tokenAllows(token.scope, req.method, req.path, req.body)) {
       return void res.status(403).json({
         error:

@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.99
+
+- **See everything an assistant does.** Settings → Server → Read-only access → **Assistant activity** lists every change an access token asked for, newest first, including the ones it was refused. Behind it, a token can only make changes through one assistant endpoint, as a named action; it can no longer write to the app's routes directly. Existing assistants using Allotment's MCP server keep working unchanged.
+- **Assistants can propose depreciating assets.** An organise token's assistant can propose a new asset, or a change to one, from a receipt or purchase. It waits under **Waiting for you** in the same settings section until you choose Apply or Decline; applying runs the same checks as your own change, including locked lodged years.
+- **Categorise repayments back to what they paid for.** When someone in your household repays you, the Household page offers to categorise the deposit to the category of what they owed you for (for example Groceries), so your reports show your share rather than the whole bill. Nothing changes until you press Categorise, and the household's balances never change.
+
 ## 0.2.0-up.98
 
 - **Read receipts with Claude or ChatGPT.** Settings → Read receipts automatically now asks who reads them: a model server on your own network (as before), Anthropic (Claude) or OpenAI (ChatGPT) with your own API key. A cheap model is suggested (Claude Haiku or GPT mini); a receipt usually costs a fraction of a cent. The key is stored encrypted, is never shown again, and is left out of backups and exports. A Claude or ChatGPT subscription doesn't include API use: create a key in Anthropic's or OpenAI's console.

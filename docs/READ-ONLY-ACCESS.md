@@ -101,6 +101,25 @@ curl -H "Authorization: Bearer $FLYBUDGET_READONLY_TOKEN" \
 
 Amounts are integer minor units (cents); a negative transaction amount is money out.
 
+### The assistant endpoint (writes)
+
+Since 0.2.0-up.99 (audit decision I-11) a token never writes to the app's routes directly. A
+write the token's scope allows goes to the same path under `/api/assistant/do`, for example
+`PUT /api/assistant/do/transactions/<id>` with `{"categoryId": "..."}`. Only the named actions in
+`server/src/services/assistantActions.ts` are accepted there; the scope rules below
+(`server/src/auth/accessTokens.ts`) still decide each one, and the target route still applies its
+own checks. Every write a token asks for, allowed or refused, is logged: **Settings → Server →
+Read-only access → Assistant activity** (owner only, `GET /api/assistant/log`). The MCP server
+does this for you.
+
+Changes the owner must approve arrive as proposals: an organise token may
+`POST /api/assistant/do/assistant/proposals` (MCP `propose_tax_asset`) to propose a new
+depreciating asset or a change to one. Nothing changes until the owner chooses **Apply** under
+**Waiting for you** in the same settings section (`POST /api/assistant/proposals/:id/apply` or
+`/decline`, owner only). Applying runs the same checks as the owner's own change, including
+lodged-year locks; a refusal keeps it waiting with the reason. Neither the log nor proposals are
+in backups.
+
 ### MCP
 
 The server offers an MCP (Model Context Protocol) endpoint at `/api/mcp`, using Streamable
