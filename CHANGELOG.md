@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.89
+
+- **A shorter menu.** The sidebar groups **Planning** (Goals, Forecast, Investments, Tax time) and **Tools** (Payees, Rules, Files) under headings you can fold away. **Pay later**, **Household**, **Investments**, **Tax time** and **Files** appear once they hold something, so a new budget's menu starts short. Choose for each one in **Settings → Preferences → Sidebar** (When in use, Always or Hidden); **More features** in the menu leads there. Their pages still open from any link, and the menu always shows the page you're on. The choice is saved with your budget and follows you to every device.
+
 ## 0.2.0-up.88
 
 - **Fix: the sidebar's account list could crash when a balance crossed zero.** It read the hidden-balances setting only for overdrawn accounts, which React doesn't allow; it now reads it for every account.
