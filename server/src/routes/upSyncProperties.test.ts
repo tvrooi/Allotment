@@ -315,7 +315,9 @@ describe('Up sync properties (audit F-16)', () => {
               saver: [...h.saver, ...added.saver],
             };
             serve(next);
-            const result = await syncUp();
+            // New rows here may be dated anywhere in history: a full sweep finds every one (an
+            // incremental sync covers recent rows and open holds; upIncremental.test.ts)
+            const result = await syncUp({ full: true });
             expect(result.errors).toEqual([]);
             expect(result.added).toBe(expectedImports(added).length);
             const after = snapshot();

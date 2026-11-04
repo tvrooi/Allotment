@@ -50,10 +50,16 @@ async function getPage(url: URL, token: string): Promise<unknown> {
   }
 }
 
-async function pages<T>(path: string, token: string, schema: z.ZodType<T>): Promise<T[]> {
+async function pages<T>(
+  path: string,
+  token: string,
+  schema: z.ZodType<T>,
+  filters: Record<string, string> = {},
+): Promise<T[]> {
   const base = process.env.FLYBUDGET_UP_API || API;
   let url: URL | null = new URL(path, base.endsWith('/') ? base : base + '/');
   url.searchParams.set('page[size]', '100');
+  for (const [key, value] of Object.entries(filters)) url.searchParams.set(key, value);
   const pageSchema = z.object({
     data: z.array(schema).max(MAX_ROWS),
     links: z.object({ next: z.string().nullable() }),
@@ -76,6 +82,17 @@ async function pages<T>(path: string, token: string, schema: z.ZodType<T>): Prom
 }
 
 export const getUpAccounts = (token: string) => pages('accounts', token, upAccountSchema);
-// Read all history, including holds, so old settlements and restored backups are never missed.
-export const getUpTransactions = (token: string, accountId: string) =>
-  pages(`accounts/${encodeURIComponent(accountId)}/transactions`, token, upTransactionSchema);
+/**
+ * An account's transactions, holds included. With no filter, all history (a full sweep); `since`
+ * (RFC 3339) limits it to rows created from then on, and `status: 'HELD'` to the open holds,
+ * whatever their age (upSyncService.ts, audit F-10).
+ */
+export const getUpTransactions = (
+  token: string,
+  accountId: string,
+  filter: { since?: string; status?: 'HELD' } = {},
+) =>
+  pages(`accounts/${encodeURIComponent(accountId)}/transactions`, token, upTransactionSchema, {
+    ...(filter.since ? { 'filter[since]': filter.since } : {}),
+    ...(filter.status ? { 'filter[status]': filter.status } : {}),
+  });

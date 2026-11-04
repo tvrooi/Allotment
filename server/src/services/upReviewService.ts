@@ -45,6 +45,11 @@ export function observeUpAccount(
   overlaps: Map<string, string> = new Map(),
   /** The account's first sync: what arrives then is the starting history, not a change to review */
   firstSync = false,
+  /**
+   * An incremental sync fetched only rows created from this day on (plus open holds): an older
+   * record it didn't see is just outside the window, not gone from Up. Null = a full sweep.
+   */
+  coveredFrom: string | null = null,
 ) {
   const seen = new Set<string>();
   for (const tx of history) {
@@ -113,6 +118,7 @@ export function observeUpAccount(
     .where(eq(upSourceRecords.accountId, accountId))
     .all()) {
     if (seen.has(old.importedId) || !old.seenInLatest) continue;
+    if (coveredFrom && observation(old.sourceJson).createdAt.slice(0, 10) < coveredFrom) continue;
     db.update(upSourceRecords)
       .set({
         seenInLatest: 0,

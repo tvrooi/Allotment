@@ -322,10 +322,11 @@ upRouter.post('/map-accounts', (req, res) => {
   res.json({ mapped: parsed.data.mappings.length, budgetStartMonth, budgetStartDay });
 });
 
-upRouter.post('/sync', async (_req, res) => {
+upRouter.post('/sync', async (req, res) => {
   if (!db.select({ id: upConnections.id }).from(upConnections).get())
     return res.status(404).json({ error: 'Connect Up first.' });
-  res.json(await syncUp());
+  // { full: true }: check all of Up's history now, not only recent rows (upSyncService.ts)
+  res.json(await syncUp({ full: req.body?.full === true }));
 });
 
 upRouter.delete('/connection', (_req, res) => {
@@ -465,7 +466,8 @@ upRouter.post('/review/restore', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: 'Choose a deleted transaction.' });
   if (!restoreDeletedUpImport(parsed.data.accountId, parsed.data.importedId))
     return res.status(404).json({ error: 'It was already restored. Refresh the list.' });
-  const sync = await syncUp();
+  // A full sweep: the restored row may be older than an incremental sync's window
+  const sync = await syncUp({ full: true });
   res.json({ restored: true, sync });
 });
 upRouter.post('/cutover/opening-balance', (req, res) => {
