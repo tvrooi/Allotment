@@ -1,7 +1,7 @@
 import { test as base, expect, type Page } from '@playwright/test';
 import fs from 'fs';
 
-// The website's "Try the demo" (client built with `--mode demo`, served under /demo/): the
+// The in-browser demo (client built with `--mode demo`, served under /demo/): the
 // real app, with the server's routes running in a Web Worker on a sample budget. Nothing
 // here talks to an Allotment server.
 
@@ -59,7 +59,7 @@ test('the demo opens on a finished budget, and every page works', async ({ page 
   expect(requests.filter((p) => !p.startsWith('/demo/'))).toEqual([]);
 });
 
-test('the banner leads back to the website: its homepage and the download page', async ({
+test('the banner leads back to the project: its homepage and the download page', async ({
   page,
 }) => {
   await openDemo(page);
@@ -248,7 +248,7 @@ test("the demo's preferences stay in the tab, and Start over resets them", async
   await page.getByRole('button', { name: 'Dark', exact: true }).click();
   await expect(page.locator('html')).toHaveClass(/dark/);
 
-  // Not in the website's localStorage, which would outlive the tab
+  // Not in the host site's localStorage, which would outlive the tab
   const stored = await page.evaluate(() => ({
     local: localStorage.getItem('budget-preferences'),
     session: sessionStorage.getItem('budget-preferences'),
@@ -265,7 +265,7 @@ test('the demo runs under a strict Content Security Policy', async ({ page }) =>
   // The blocked request below logs a CSP error, as it should
   test.info().annotations.push({ type: 'allow-page-errors' });
   const response = await page.goto('/demo/');
-  // From the host (website/static/_headers)…
+  // From the host (DEMO_HEADERS in global-setup.ts, what a static host should send)…
   const headers = response!.headers();
   expect(headers['content-security-policy']).toContain("frame-ancestors 'none'");
   expect(headers['content-security-policy']).toContain("connect-src 'self'");

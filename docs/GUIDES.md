@@ -1,7 +1,7 @@
 # Guides and tips
 
 In-app guides (a highlighted walkthrough, one element at a time) and one-line tips, so people
-learn Allotment where they use it. User guide: `website/docs/guides.mdx`.
+learn Allotment where they use it.
 
 ## Owner decisions
 

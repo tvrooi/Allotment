@@ -146,15 +146,17 @@ test("the bank's redirect needs its state, and nothing else gets through without
   expect(other.status()).toBe(401);
 });
 
+// A copy of the relay page upstream FlyBudget hosts at flybudget.org/bank-callback/ (Allotment
+// links to it, RELAY_REDIRECT_URL in server/src/routes/enableBanking.ts)
 const relayDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  '../../website/static/bank-callback',
+  '../fixtures/bank-callback',
 );
 
 test('the flybudget.org relay page sends the bank login to Allotment on this computer', async ({
   page,
 }) => {
-  // Served from the website's files, as Cloudflare Pages would
+  // Served from the copy, as the upstream host would
   await page.route('https://flybudget.org/bank-callback/**', (route) => {
     const file = new URL(route.request().url()).pathname.endsWith('relay.js')
       ? 'relay.js'

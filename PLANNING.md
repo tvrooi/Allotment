@@ -14,7 +14,7 @@ This document gives the big picture: goals, architecture, what has shipped and w
 
 - [`CLAUDE.md`](CLAUDE.md) / [`AGENTS.md`](AGENTS.md): detailed conventions, security model and per-feature notes
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): how to contribute (outside contributors accept the [CLA](CLA.md))
-- [`website/docs/`](website/docs/): the user guide
+- [`client/src/userGuide/`](client/src/userGuide/): Allotment's guide, served by the app at `/guide`
 
 ---
 
@@ -38,7 +38,6 @@ budgeting-project/
 ├── client/     # React web app (also loaded by Electron and the demo)
 ├── server/     # Express API + SQLite (also runs in a Web Worker for the demo)
 ├── electron/   # Electron main + preload: starts the server, opens the window
-├── website/    # Docusaurus site: user guide, tour, blog, download page, demo
 ├── e2e/        # Playwright tests (desktop, phone, server mode, demo)
 ├── docker/     # Helper scripts for the Docker image (backup, reset password)
 ├── Dockerfile  # Self-hosted image (ghcr.io/dtymoszenko/flybudget)

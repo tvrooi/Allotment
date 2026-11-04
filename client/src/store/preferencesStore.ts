@@ -194,7 +194,7 @@ export const usePreferencesStore = create<PreferencesState>()(
     }),
     {
       name: PREFERENCES_KEY,
-      // The demo (website "Try the demo") shares the website's storage: keep its preferences
+      // The demo shares its host site's storage: keep its preferences
       // in this tab only, so they're gone with the demo budget when the tab closes
       storage: createJSONStorage(() => (IS_DEMO ? sessionStorage : localStorage)),
       version: PREFERENCES_VERSION,

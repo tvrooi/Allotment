@@ -4,7 +4,7 @@ import { db, databasePath } from './index.js';
 import { categoryGroups, transactions } from './schema.js';
 import { loadDemoBudget } from '../demo/loadDemoBudget.js';
 
-// Loads the website demo's budget (src/demo) into a new, empty database, e.g. to work on
+// Loads the in-browser demo's budget (src/demo) into a new, empty database, e.g. to work on
 // the demo or take screenshots: DB_PATH=demo.db npm run db:seed-demo
 migrate(db, { migrationsFolder: 'src/db/migrations' });
 const [{ groups }] = db.select({ groups: count() }).from(categoryGroups).all();

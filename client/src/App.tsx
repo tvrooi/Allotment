@@ -30,7 +30,7 @@ import CashFlowPage from './pages/CashFlow';
 import CategoryDetailPage from './pages/CategoryDetail';
 import { useSafeMode } from './utils/safeMode';
 
-// electron loads via file:// and the demo is a static page under /demo/ on the website, so
+// electron loads via file:// and the demo is a static page under /demo/ on its host, so
 // both use hash routing
 const isElectron = Boolean((window as any).__API_BASE__);
 const Router = isElectron || IS_DEMO ? HashRouter : BrowserRouter;

@@ -38,9 +38,9 @@ function demoServerModules(): Plugin {
 
 /**
  * The demo's Content Security Policy, like the one the server sends the app (helmet in
- * server/src/middleware/security.ts), plus WebAssembly for the worker's SQLite. The website's
- * host sends the same policy as a header (website/static/_headers), with frame-ancestors,
- * which only works as a header.
+ * server/src/middleware/security.ts), plus WebAssembly for the worker's SQLite. A host should
+ * send the same policy as a header, with frame-ancestors, which only works as a header
+ * (DEMO_HEADERS in e2e/global-setup.ts, which the tests serve it with).
  */
 const DEMO_CSP = [
   "default-src 'self'",
@@ -57,7 +57,7 @@ const DEMO_CSP = [
 ].join('; ');
 
 /**
- * The demo's page: the same strict CSP as the app (it runs on the website, whose host may not
+ * The demo's page: the same strict CSP as the app (its static host may not
  * send one), no referrer, and no service worker file (the demo never registers one).
  */
 function demoPage(): Plugin {
@@ -111,7 +111,7 @@ export default defineConfig(({ mode }) => ({
     tailwindcss(),
     ...(mode === 'demo' ? [demoServerModules(), demoPage()] : [withoutDemoWorker()]),
   ],
-  // The desktop app loads files from disk and the demo lives under /demo/ on the website,
+  // The desktop app loads files from disk and the demo lives under /demo/ on its host,
   // so both use relative paths
   base: mode === 'electron' || mode === 'demo' ? './' : '/',
   define: { __FLYBUDGET_VERSION__: JSON.stringify(version) },

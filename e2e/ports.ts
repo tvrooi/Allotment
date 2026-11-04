@@ -3,7 +3,7 @@ export const DESKTOP_PORT = 3171;
 export const SERVER_PORT = 3172;
 /** Test-only control server (global-setup.ts) that stops and starts the desktop server */
 export const CONTROL_PORT = 3173;
-/** Static server for the in-browser demo build (served under /demo/, like the website) */
+/** Static server for the in-browser demo build (served under /demo/, as a static host would) */
 export const DEMO_PORT = 3174;
 /** Stand-in for Enable Banking's API (mockEnableBanking.ts), used by the desktop server */
 export const ENABLE_BANKING_MOCK_PORT = 3175;
