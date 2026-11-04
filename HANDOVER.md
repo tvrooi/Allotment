@@ -5,11 +5,11 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 4 November 2026 (after up.96).
+Last updated: 4 November 2026 (after up.98).
 
 ## State
 
-- **Receipt providers and learned Up categories (up.97):** owner request of 4 November. The receipt
+- **Receipt providers and learned Up categories (up.98):** owner request of 4 November. The receipt
   reader takes a provider (`budget_settings.receipt_reader_provider`, migration 0068): `local` (any
   server speaking the Ollama API), `anthropic` or `openai` with the owner's API key in
   `receipt_reader_secrets` (encrypted, write-only, not in `TABLES` so never backed up).
@@ -21,7 +21,7 @@ Last updated: 4 November 2026 (after up.96).
   `upCategoryMap.test.ts`, e2e `receipts-reader.spec.ts`.
 - **4 November releases (up.87 to up.96, all merged with green CI and published):** up.87 Up
   categories mapped to state-aware envelope names (`forState`, a Home & Garden envelope); up.88
-  ESLint in CI (`lint/`, warning cap 271, 270 since up.97) and the sidebar crash fix; up.89 sidebar groups with
+  ESLint in CI (`lint/`, warning cap 271, 270 since up.98) and the sidebar crash fix; up.89 sidebar groups with
   progressive disclosure (`utils/navFeatures.ts`, migration 0064); up.90 System theme by default;
   `website/` removed; up.91 Plaid, SimpleFIN and Enable Banking marked community supported with
   CSV import offered everywhere (I-10) and Review not asking to reconcile Up accounts that matched
@@ -91,7 +91,7 @@ site in `website/` was removed (audit decision I-9).
 
 - **Hardware:** Home Assistant OS on an x86-64 mini PC with an Intel Alder Lake-N (N100-class) CPU
   and 16 GB RAM. About 4.6 GiB is in normal use; Frigate is the largest user and takes a lot of CPU.
-- **Receipt reading:** the owner chooses the provider in Allotment (up.97). A local model on this
+- **Receipt reading:** the owner chooses the provider in Allotment (up.98). A local model on this
   CPU took 2–4 minutes a photo, so a cloud provider with the owner's own key is the suggested choice.
 
 ## Tools another session will have
@@ -139,7 +139,7 @@ site in `website/` was removed (audit decision I-9).
    - Investments deferrals (sales, dividends, franking); receipts §6 (PDF reading, email
      forwarding, logbooks, depreciation, WFH hours).
    - `docs/DEVELOPMENT.md`'s pending legacy cleanup of `recurring_transactions`.
-5. **Receipt providers (up.97) follow-ups:** a structured-output request for Anthropic (today it
+5. **Receipt providers (up.98) follow-ups:** a structured-output request for Anthropic (today it
    is asked for JSON and `jsonIn` finds it); a cost note per read if the owner wants one.
 6. **Left from the 31 October review**, rechecked by the 3 November audit. Fixed: Ready to assign
    above cash after a first Up import (up.86, a new budget starts that day), and the demo's
@@ -204,11 +204,11 @@ site in `website/` was removed (audit decision I-9).
     features, `client/src/utils/navFeatures.ts`, migration 0064). F-16 is done:
     `server/src/services/budgetProperties.test.ts` and `server/src/routes/upSyncProperties.test.ts`
     (fast-check; `PROPERTY_RUNS=500` searches harder). The short template's missing envelopes were
-    answered by up.87's nearest-envelope names and up.97's learning from the owner's own choices;
+    answered by up.87's nearest-envelope names and up.98's learning from the owner's own choices;
     Up slugs with no sensible envelope (pets, gambling, tobacco, cycling, parking) stay
     uncategorised until the owner's habit teaches them.
-    Still open after up.96, in suggested order: I-7 tour-first onboarding (one onboarding surface,
-    F-12); I-11 dedicated assistant endpoints with their own audit log (replaces F-18; also unlocks
+    I-7 is done (up.97): tour first, one onboarding element at a time (docs/GUIDES.md, "Tour
+    first"). Still open, in suggested order: I-11 dedicated assistant endpoints with their own audit log (replaces F-18; also unlocks
     assistant proposals for depreciating assets); I-8 offering to categorise a household repayment
     back to the shared expense's category; F-11 route splitting and removing `emoji-picker-react`;
     F-13 one service per action family; F-14 deleted-import memory, only for a provider in use;

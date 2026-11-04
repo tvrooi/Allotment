@@ -1,9 +1,13 @@
 # Changes
 
-## 0.2.0-up.97
+## 0.2.0-up.98
 
 - **Read receipts with Claude or ChatGPT.** Settings → Read receipts automatically now asks who reads them: a model server on your own network (as before), Anthropic (Claude) or OpenAI (ChatGPT) with your own API key. A cheap model is suggested (Claude Haiku or GPT mini); a receipt usually costs a fraction of a cent. The key is stored encrypted, is never shown again, and is left out of backups and exports. A Claude or ChatGPT subscription doesn't include API use: create a key in Anthropic's or OpenAI's console.
 - **Up categories learn from you.** When you have put at least three Up transactions of one Up category into the same envelope (four times out of five or more), new transactions in that Up category go there too, after your rules and payee defaults. Up's water, gas and power category now lands in Electricity & Gas on the short Australian template, hobbies and books in Entertainment.
+
+## 0.2.0-up.97
+
+- **Tour first.** A new budget's Get started card now leads with the two-minute tour: **Show me around** or **Skip the tour**, and the first steps follow. Only one thing at a time is offered above a page: no guide note or tip appears beside the Get started list, and a page's "First time here?" note shows on your first visit only. Its guide stays under the **?** button.
 
 ## 0.2.0-up.96
 

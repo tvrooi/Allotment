@@ -133,6 +133,49 @@ export default function GettingStarted({
   if (!visible) return null;
   const nextStep = steps.find((s) => !s.done);
 
+  // Tour first (audit decision I-7): until the welcome tour is taken or skipped, it is the one
+  // thing a new budget is offered. The steps come after it.
+  if (offerTour) {
+    return (
+      <Card padding="none" className="overflow-hidden">
+        <div className="flex items-start gap-3 px-5 py-4">
+          <Compass size={20} className="text-brand-600 shrink-0 mt-0.5" aria-hidden />
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-semibold text-text">Get started with Allotment</h2>
+            <p className="text-sm text-text-tertiary mt-0.5">
+              Start with a two-minute tour of where everything is. Your first steps come next.
+            </p>
+            <div className="flex flex-wrap items-center gap-2 mt-3">
+              <button
+                type="button"
+                onClick={() => startGuide('welcome')}
+                className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium bg-brand-600 text-brand-contrast hover:bg-brand-700 max-md:min-h-11"
+              >
+                Show me around
+                <span className="font-normal opacity-80 max-md:hidden">· 2 min</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => updateGuides.mutate({ welcomeTour: 'dismissed' })}
+                className="rounded-md px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text hover:bg-hover max-md:min-h-11"
+              >
+                Skip the tour
+              </button>
+            </div>
+          </div>
+          <button
+            onClick={() => setHidden(true)}
+            aria-label="Hide getting started"
+            title="Hide getting started"
+            className="p-1.5 -mr-1.5 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md text-text-tertiary hover:bg-hover hover:text-text"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card padding="none" className="overflow-hidden">
       <div className="flex items-start justify-between gap-3 px-5 pt-4">
@@ -142,16 +185,6 @@ export default function GettingStarted({
             {doneCount} of {steps.length} done. Each step brings more of your dashboard to life.
           </p>
         </div>
-        {offerTour && (
-          <button
-            type="button"
-            onClick={() => startGuide('welcome')}
-            className="ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-brand-600 hover:bg-brand-50 max-md:min-h-11"
-          >
-            <Compass size={14} aria-hidden /> Show me around
-            <span className="text-text-tertiary font-normal max-md:hidden">· 2 min</span>
-          </button>
-        )}
         <button
           onClick={() => setHidden(true)}
           aria-label="Hide getting started"
