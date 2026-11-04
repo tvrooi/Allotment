@@ -1,14 +1,20 @@
 # Plan: depreciating assets on the Tax time page
 
-Status: **plan, not built.** Owner request, 3 November 2026: add depreciating assets to the Tax
+Status: **plan, not built; owner decisions taken, ready for phase 1.** Owner request, 3 November 2026: add depreciating assets to the Tax
 tab, worked out by the ATO's two methods (prime cost and diminishing value). This extends
 [RECEIPTS-AND-TAX.md](RECEIPTS-AND-TAX.md) §4, and replaces the "Depreciation schedules" line in
 its §6 "Not built" once it ships. Record keeping, not tax advice, like the rest of Tax time.
 
 Amended 3 November 2026 for [Files](FILES.md) (0.2.0-up.79), which this builds on: an asset's
 records (invoice, warranty, photos, a valuation) are files in Files linked to the asset, through a
-new `asset` link kind. Files took migration 0062 and backup version 23, so this plan uses 0063
-and 24.
+new `asset` link kind. Files took migration 0062 and backup version 23, and the budget start day
+(0.2.0-up.86) took 0063, so this plan uses 0064 and backup version 24 (up.86 kept version 23).
+Take the next free numbers when it is built.
+
+Owner decisions taken 4 November 2026 (§7): the low-value pool is phase 3; organise tokens may read
+assets, and any change an assistant wants is a proposal the owner approves one by one; past years
+lock once lodged; a short built-in list of suggested effective lives with ATO links; and the
+out-of-scope list is confirmed.
 
 ## 1. What exists today
 
@@ -78,7 +84,7 @@ From the ATO's [Guide to depreciating assets 2026][guide] and
 
 ## 3. Design
 
-### 3.1 Data (migration 0063, additive; the next free number when built)
+### 3.1 Data (migration 0064, additive; the next free number when built)
 
 `depreciating_assets`
 
@@ -198,9 +204,12 @@ Worked example: a laptop costing $2,400, start time 1 October 2026, effective li
   an older backup leave them empty. `document_links.asset_id` travels with `documentLinks`, which
   is already backed up; a version 23 backup has no `assetId` and restores as it is. Data export:
   the same.
-- **Tokens:** nothing new by default. The new routes are not on the allowlist. Owner decision 2
-  covers read access. Files stay off the allowlist either way (FILES.md §3): a token that may read
-  assets sees how many files each has, never the files.
+- **Tokens (decision 2):** an organise token may read `GET /tax/assets` and `GET /tax/assets/:id`.
+  It never creates, edits, disposes of or removes an asset directly: an assistant's change is a
+  proposal that the owner approves or declines one at a time, through the dedicated assistant
+  endpoints and their audit log (audit decision I-11, `docs/AUDIT-2026-11.md`). Until those exist,
+  tokens read only. Files stay off the allowlist (FILES.md §3): a token that may read assets sees
+  how many files each has, never the files.
 
 ### 3.4 Client
 
@@ -242,14 +251,15 @@ title="Records" />` for the invoice, warranty, photos or a valuation, above a re
 - Hooks and API in `hooks/useTax.ts` and `api/tax.ts`. React Query invalidates the tax year when
   an asset changes, and `['files']` when one is deleted (its links go).
 
-### 3.5 MCP (only with owner approval, decision 2)
+### 3.5 MCP (decision 2, approved)
 
-A read-only `tax_assets` tool, listing assets and this year's schedule rows. No tool creates,
-edits or disposes of an asset.
+A `tax_assets` read tool, listing assets and this year's schedule rows. Later, with the assistant
+endpoints of audit decision I-11, a tool may propose a new asset or a change; the owner approves
+each proposal in the app before anything is saved. No tool writes an asset directly.
 
 ## 4. Phases (one PR and release each)
 
-1. **Calculation and storage (server only):** `depreciation.ts` with tests, migration 0063
+1. **Calculation and storage (server only):** `depreciation.ts` with tests, migration 0064
    (with `document_links.asset_id`), the service, routes, the `asset` link kind, the
    double-counting guards, `taxYear` and CSV/ZIP integration (asset evidence), and backup
    version 24.
@@ -265,9 +275,12 @@ edits or disposes of an asset.
 4. **Optional, later:**
    - second-element costs (an upgrade added to an asset's cost);
    - effective life recalculation;
-   - a warning for the car cost limit on D1;
-   - suggested effective lives for common work items, such as laptops and phones, each linked to
-     the ATO table.
+   - a warning for the car cost limit on D1.
+
+   Suggested effective lives (decision 4) moved into phase 2: the form offers a short built-in
+   list for common work items (laptops, phones, monitors, desks, office chairs), each with a link
+   to the ATO's effective life table and the year it was checked; the owner can always type their
+   own.
 
 ## 5. Tests
 
@@ -290,7 +303,8 @@ edits or disposes of an asset.
   - CSV and ZIP contents, with formula cells neutralised;
   - a backup round trip at version 24 with an asset's file links, with version 23 and 22
     backups restoring;
-  - the new routes not reachable with any token (until decision 2), and `/files` still not;
+  - an organise token can read `GET /tax/assets[/:id]` but every writing asset route refuses it;
+    a read-only token reaches none; `/files` still not;
   - Files: linking a file to an asset (and to a missing one, 404), `GET /files?linkKind=asset`,
     `GET /files/counts?kind=asset`, deleting an asset keeping its files, and an asset with only a
     linked file (no receipt) counting as evidenced in `taxYear`, with that file in the ZIP
@@ -311,18 +325,19 @@ Each app phase follows CLAUDE.md:
 - after main CI passes, Publish tested main;
 - a cold backup including the encryption key before the live HA app takes the release.
 
-Migration 0063 only adds tables and one nullable column, so existing claims, transactions, files
+Migration 0064 only adds tables and one nullable column, so existing claims, transactions, files
 and budgets are untouched.
 
-## 7. Owner decisions
+## 7. Owner decisions (taken 4 November 2026)
 
-1. **Low-value pool:** as phase 3 (recommended), or in the first release?
-2. **Assistant access:** should organise tokens read assets (`GET /tax/assets[/:id]` on the
-   allowlist and an MCP `tax_assets` read)? Recommended: reading only, never writing.
-3. **Lodged-year lock:** add it (recommended), or let past years recalculate freely?
-4. **Suggested effective lives:** a short built-in list with ATO links, or none (recommended for
-   now, since the ATO revises them)?
-5. **Out of scope, confirm:** rental property capital works and depreciation (the rental
+1. **Low-value pool:** phase 3, after the first release (as recommended).
+2. **Assistant access:** organise tokens may read assets (`GET /tax/assets[/:id]` on the
+   allowlist, MCP `tax_assets`). Writes are never direct: an assistant may propose a change, and
+   the owner approves each one. Proposals wait for the dedicated assistant endpoints with their
+   own audit log (audit decision I-11); until then tokens read only.
+3. **Lodged-year lock:** added (as recommended).
+4. **Suggested effective lives:** a short built-in list with ATO links, in phase 2.
+5. **Out of scope, confirmed:** rental property capital works and depreciation (the rental
    schedule), business assets (simplified depreciation and instant asset write-off), car
    logbooks, and capital gains on the private share.
 
