@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.95
+
+- **Depreciating assets on Tax time.** A new **Assets** tab keeps things that lose value over several years, such as a laptop for work. Add one, compare the ATO's two methods (prime cost and diminishing value) side by side, and pick one; suggested effective lives for common items link to the ATO's table. Each asset shows its year-by-year schedule, lets you change a year's work-use share, keeps its records (warranty, invoice) as files, and records when you sell it or stop using it. Lock a year once it's lodged so its figures stay as lodged.
+- **Depreciate instead.** A claim over $300 in **Deductions**, or in a transaction's details, offers **Depreciate instead**: the asset replaces the outright claim in one step. Each year's decline in value appears in Deductions, its totals and exports.
+- **Files can be linked to an asset**, and Allotment's guide has a **Tax time** page.
+
 ## 0.2.0-up.94
 
 - **Depreciating assets, behind the scenes.** Tax time can now work out the decline in value of something that loses value over several years, such as a laptop for work, the ATO's two ways (prime cost and diminishing value), including the first year's days held, each year's work-use share, and selling or disposing of it. A financial year can be marked lodged, which locks its asset figures. A purchase is never both claimed outright and depreciated. Assets are kept in backups and appear in a year's deductions, CSV and ZIP. The screens to add and manage assets come in the next release.
