@@ -1,11 +1,17 @@
-// Reading receipts with a local Ollama vision model (docs/RECEIPTS-AND-TAX.md §5). Off until the
-// owner turns it on and names the Ollama address and model. The photo goes only to that address
-// (on a home server, typically the Home Assistant Ollama app), never anywhere else. What the model
+// Reading receipts with a vision model the owner chooses (docs/RECEIPTS-AND-TAX.md §5): a model
+// server on their own network (the Ollama API), Anthropic or OpenAI with their own API key. Off
+// until the owner turns it on. The photo goes only to the provider they chose. What the model
 // reads only fills fields that are still empty, and then the receipt is matched like a typed one.
 import { asc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../db/index.js';
-import { categories, categoryGroups, receiptFiles, receipts } from '../db/schema.js';
+import {
+  categories,
+  categoryGroups,
+  receiptFiles,
+  receiptReaderSecrets,
+  receipts,
+} from '../db/schema.js';
 import { getBudgetSettings, updateBudgetSettings } from './mainAmountService.js';
 import { lineItems, type LineItemInput } from './receiptMatching.js';
 import { ReceiptError, updateReceipt } from './receiptService.js';
@@ -13,103 +19,245 @@ import { SAMPLE_RECEIPT, SAMPLE_RECEIPT_PNG } from './receiptSample.js';
 
 /** A photo on a CPU can take minutes; give up after this long */
 const READ_TIMEOUT_MS = 10 * 60 * 1000;
-/** Free the model's memory a few minutes after the last receipt (the Ollama app keeps it forever) */
+/** Free a local model's memory a few minutes after the last receipt */
 const KEEP_ALIVE = '5m';
 /**
  * Room for a photo (a receipt can be a few thousand image tokens), the prompt and the answer.
- * Ollama's default is 4096 (2048 in older versions), which can cut an image off.
+ * A local server's default is often 4096 or less, which can cut an image off.
  */
 const CONTEXT_TOKENS = 8192;
-/** Largest reply accepted from Ollama */
+/** Largest reply accepted from a model */
 const MAX_REPLY_BYTES = 256 * 1024;
 const READABLE = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
+export const PROVIDERS = ['local', 'anthropic', 'openai'] as const;
+export type Provider = (typeof PROVIDERS)[number];
+const PROVIDER_NAME: Record<Provider, string> = {
+  local: 'The model server',
+  anthropic: 'Anthropic',
+  openai: 'OpenAI',
+};
+
+function apiKey() {
+  return db.select().from(receiptReaderSecrets).get()?.apiKey ?? null;
+}
+
+/** What the owner chose. The API key itself is never sent back, only whether there is one. */
 export function readerSettings() {
   const s = getBudgetSettings();
+  const provider = (PROVIDERS as readonly string[]).includes(s.receiptReaderProvider)
+    ? (s.receiptReaderProvider as Provider)
+    : 'local';
   return {
     enabled: s.receiptReaderEnabled === 1,
+    provider,
     url: s.receiptReaderUrl,
     model: s.receiptReaderModel,
+    hasKey: !!apiKey(),
   };
 }
 
-/** An Ollama address: http(s), a host, no credentials, no path beyond a trailing slash */
-export function cleanOllamaUrl(raw: string) {
+/** Whether the chosen provider has everything it needs */
+function ready(s: ReturnType<typeof readerSettings>) {
+  if (!s.model) return false;
+  return s.provider === 'local' ? !!s.url : s.hasKey;
+}
+
+/** A model server address: http(s), a host, no credentials, no path beyond a trailing slash */
+export function cleanServerUrl(raw: string) {
   let url: URL;
   try {
     url = new URL(raw.trim());
   } catch {
-    throw new ReceiptError('That is not an address, e.g. http://ollama-host:11434');
+    throw new ReceiptError('That is not an address, e.g. http://model-server:11434');
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:')
-    throw new ReceiptError('The Ollama address must start with http:// or https://');
+    throw new ReceiptError('The server address must start with http:// or https://');
   if (url.username || url.password)
-    throw new ReceiptError('The Ollama address must not contain a user name or password');
+    throw new ReceiptError('The server address must not contain a user name or password');
   if (url.search || url.hash || (url.pathname !== '/' && url.pathname !== ''))
-    throw new ReceiptError('Give only the Ollama address, without a path');
+    throw new ReceiptError('Give only the server address, without a path');
   return url.origin;
 }
 
 export function updateReaderSettings(change: {
   enabled?: boolean;
+  provider?: Provider;
   url?: string | null;
   model?: string | null;
+  /** Write-only; null or empty removes it */
+  apiKey?: string | null;
 }) {
   const patch: Record<string, unknown> = {};
   if (change.enabled !== undefined) patch.receiptReaderEnabled = change.enabled ? 1 : 0;
+  if (change.provider !== undefined) patch.receiptReaderProvider = change.provider;
   if (change.url !== undefined)
-    patch.receiptReaderUrl = change.url ? cleanOllamaUrl(change.url) : null;
+    patch.receiptReaderUrl = change.url ? cleanServerUrl(change.url) : null;
   if (change.model !== undefined) patch.receiptReaderModel = change.model?.trim() || null;
+  if (change.apiKey !== undefined) {
+    const key = change.apiKey?.trim();
+    if (key)
+      db.insert(receiptReaderSecrets)
+        .values({ id: 1, apiKey: key })
+        .onConflictDoUpdate({
+          target: receiptReaderSecrets.id,
+          set: { apiKey: key, updatedAt: new Date().toISOString() },
+        })
+        .run();
+    else db.delete(receiptReaderSecrets).run();
+  }
   if (Object.keys(patch).length) updateBudgetSettings(patch);
   const s = readerSettings();
-  if (s.enabled && (!s.url || !s.model)) {
+  if (s.enabled && !ready(s)) {
     updateBudgetSettings({ receiptReaderEnabled: 0 });
-    throw new ReceiptError('Choose the Ollama address and a model before turning reading on');
+    throw new ReceiptError(
+      s.provider === 'local'
+        ? 'Choose the server address and a model before turning reading on'
+        : 'Add your API key and a model before turning reading on',
+    );
   }
-  return s;
+  return readerSettings();
 }
 
-async function ollama(base: string, path: string, init: RequestInit & { timeoutMs: number }) {
-  const { timeoutMs, ...rest } = init;
+async function callModel(
+  who: string,
+  url: string,
+  init: RequestInit & { timeoutMs: number; headers?: Record<string, string> },
+) {
+  const { timeoutMs, headers, ...rest } = init;
   let res: Response;
   try {
-    res = await fetch(`${base}${path}`, {
+    res = await fetch(url, {
       ...rest,
-      // An address the owner chose; never follow it somewhere else
+      // An address the owner chose (or the provider's own); never follow it somewhere else
       redirect: 'error',
       signal: AbortSignal.timeout(timeoutMs),
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...headers },
     });
   } catch (e) {
     const name = (e as Error).name;
     throw new ReceiptError(
       name === 'TimeoutError' || name === 'AbortError'
-        ? 'Ollama took too long to answer'
-        : `Ollama could not be reached at ${base}`,
+        ? `${who} took too long to answer`
+        : `${who} could not be reached at ${new URL(url).origin}`,
       502,
     );
   }
   const text = await res.text();
-  if (text.length > MAX_REPLY_BYTES) throw new ReceiptError('Ollama sent too long a reply', 502);
+  if (text.length > MAX_REPLY_BYTES) throw new ReceiptError(`${who} sent too long a reply`, 502);
   let body: unknown;
   try {
     body = JSON.parse(text);
   } catch {
-    throw new ReceiptError('Ollama sent a reply that is not JSON', 502);
+    throw new ReceiptError(`${who} sent a reply that is not JSON`, 502);
   }
   if (!res.ok) {
     const error = (body as { error?: unknown })?.error;
-    throw new ReceiptError(
-      `Ollama: ${typeof error === 'string' ? error.slice(0, 200) : `error ${res.status}`}`,
-      502,
-    );
+    const message =
+      typeof error === 'string'
+        ? error
+        : typeof (error as { message?: unknown })?.message === 'string'
+          ? (error as { message: string }).message
+          : `error ${res.status}`;
+    throw new ReceiptError(`${who}: ${message.slice(0, 200)}`, 502);
   }
   return body;
 }
 
-/** The models on an Ollama server, and which of them can read images */
-export async function listOllamaModels(rawUrl: string) {
-  const base = cleanOllamaUrl(rawUrl);
+const ollama = (
+  base: string,
+  path: string,
+  init: Omit<RequestInit, 'headers'> & { timeoutMs: number },
+) => callModel(PROVIDER_NAME.local, `${base}${path}`, init);
+
+/**
+ * Ask the chosen model about one photo and return its text answer. `schema`, when given, asks
+ * for JSON in that shape (the local server and OpenAI enforce it; Anthropic is asked to).
+ */
+async function askImage(
+  s: ReturnType<typeof readerSettings>,
+  text: string,
+  image: string,
+  mimeType: string,
+  schema?: object,
+) {
+  const model = s.model!;
+  if (s.provider === 'anthropic') {
+    const body = (await callModel('Anthropic', 'https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      timeoutMs: READ_TIMEOUT_MS,
+      headers: { 'x-api-key': apiKey() ?? '', 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model,
+        max_tokens: 4096,
+        temperature: 0,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: mimeType, data: image } },
+              { type: 'text', text },
+            ],
+          },
+        ],
+      }),
+    })) as { content?: { type?: string; text?: unknown }[] };
+    const answer = body.content?.find((c) => c.type === 'text')?.text;
+    if (typeof answer !== 'string') throw new ReceiptError('Anthropic sent no answer', 502);
+    return answer;
+  }
+  if (s.provider === 'openai') {
+    const body = (await callModel('OpenAI', 'https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      timeoutMs: READ_TIMEOUT_MS,
+      headers: { Authorization: `Bearer ${apiKey() ?? ''}` },
+      body: JSON.stringify({
+        model,
+        ...(schema && { response_format: { type: 'json_object' } }),
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text },
+              { type: 'image_url', image_url: { url: `data:${mimeType};base64,${image}` } },
+            ],
+          },
+        ],
+      }),
+    })) as { choices?: { message?: { content?: unknown } }[] };
+    const answer = body.choices?.[0]?.message?.content;
+    if (typeof answer !== 'string') throw new ReceiptError('OpenAI sent no answer', 502);
+    return answer;
+  }
+  const body = (await ollama(s.url!, '/api/chat', {
+    method: 'POST',
+    timeoutMs: READ_TIMEOUT_MS,
+    body: JSON.stringify({
+      model,
+      stream: false,
+      // A "thinking" model would reason at length first; reading a receipt needs none of it
+      think: false,
+      keep_alive: KEEP_ALIVE,
+      ...(schema && { format: schema }),
+      options: { temperature: 0, num_ctx: CONTEXT_TOKENS },
+      messages: [{ role: 'user', content: text, images: [image] }],
+    }),
+  })) as { message?: { content?: unknown } };
+  const answer = body.message?.content;
+  if (typeof answer !== 'string') throw new ReceiptError('The model server sent no answer', 502);
+  return answer;
+}
+
+/** The JSON object in a model's answer, allowing for a code fence or a sentence around it */
+export function jsonIn(answer: string) {
+  const start = answer.indexOf('{');
+  const end = answer.lastIndexOf('}');
+  return JSON.parse(start >= 0 && end > start ? answer.slice(start, end + 1) : answer);
+}
+
+/** The models on the owner's model server, and which of them can read images */
+export async function listServerModels(rawUrl: string) {
+  const base = cleanServerUrl(rawUrl);
   const body = z
     .object({
       models: z.array(
@@ -128,7 +276,7 @@ export async function listOllamaModels(rawUrl: string) {
       name: m.name,
       size: m.size ?? null,
       parameters: m.details?.parameter_size ?? null,
-      // Older Ollama versions don't say; then the owner decides
+      // Older servers don't say; then the owner decides
       vision: m.capabilities ? m.capabilities.includes('vision') : null,
     })),
   };
@@ -315,26 +463,18 @@ function categoryChoices() {
 }
 
 /** Send one photo (base64) to the model and return what it read, made safe to store */
-async function askModel(url: string, model: string, image: string) {
+async function askModel(s: ReturnType<typeof readerSettings>, image: string, mimeType: string) {
   const choices = categoryChoices();
-  const body = (await ollama(url, '/api/chat', {
-    method: 'POST',
-    timeoutMs: READ_TIMEOUT_MS,
-    body: JSON.stringify({
-      model,
-      stream: false,
-      // A "thinking" model would reason at length first; reading a receipt needs none of it
-      think: false,
-      keep_alive: KEEP_ALIVE,
-      format: REPLY_SCHEMA,
-      options: { temperature: 0, num_ctx: CONTEXT_TOKENS },
-      messages: [{ role: 'user', content: prompt(choices.names), images: [image] }],
-    }),
-  })) as { message?: { content?: unknown } };
-  const content = body.message?.content;
-  if (typeof content !== 'string') throw new ReceiptError('Ollama sent no answer', 502);
+  const answer = await askImage(
+    s,
+    `${prompt(choices.names)}\nReply with one JSON object with exactly these keys: ` +
+      'merchant, date, total, subtotal, tax, tip, items (each item: description, amount, category).',
+    image,
+    mimeType,
+    REPLY_SCHEMA,
+  );
   try {
-    return parseReply(JSON.parse(content), choices.byName);
+    return parseReply(jsonIn(answer), choices.byName);
   } catch {
     throw new ReceiptError('The model did not answer in the expected form', 502);
   }
@@ -356,7 +496,7 @@ function setStatus(id: string, readStatus: string | null, readError: string | nu
  */
 export async function readReceiptNow(id: string) {
   const s = readerSettings();
-  if (!s.enabled || !s.url || !s.model) throw new ReceiptError('Reading receipts is turned off');
+  if (!s.enabled || !ready(s)) throw new ReceiptError('Reading receipts is turned off');
   const row = db.select().from(receipts).where(eq(receipts.id, id)).get();
   if (!row) throw new ReceiptError('Receipt not found', 404);
   const file = db.select().from(receiptFiles).where(eq(receiptFiles.id, row.fileId)).get();
@@ -365,7 +505,7 @@ export async function readReceiptNow(id: string) {
     throw new ReceiptError('Only photos (JPEG, PNG, WebP) can be read, not PDFs or HEIC');
 
   const { read: parsed, notes } = checkRead(
-    await askModel(s.url, s.model, Buffer.from(file.data as Buffer).toString('base64')),
+    await askModel(s, Buffer.from(file.data as Buffer).toString('base64'), file.mimeType),
   );
 
   // The owner's typed details win; a receipt edited while it was being read keeps its edits
@@ -407,7 +547,7 @@ export function queueRead(id: string) {
 /** After an upload: read it if reading is on and it is a photo */
 export function readIfEnabled(id: string, mimeType: string) {
   const s = readerSettings();
-  if (s.enabled && s.url && s.model && READABLE.has(mimeType)) queueRead(id);
+  if (s.enabled && ready(s) && READABLE.has(mimeType)) queueRead(id);
 }
 
 /** On startup: receipts left waiting when the server stopped are read again */
@@ -419,7 +559,7 @@ export function resumePendingReads() {
     .all();
   const s = readerSettings();
   for (const r of waiting) {
-    if (s.enabled && s.url && s.model) queueRead(r.id);
+    if (s.enabled && ready(s)) queueRead(r.id);
     else setStatus(r.id, null);
   }
   return waiting.length;
@@ -451,15 +591,15 @@ export const sampleRead = () => sample;
  */
 export function startSampleRead() {
   const s = readerSettings();
-  if (!s.url || !s.model) throw new ReceiptError('Choose the Ollama address and a model first');
+  if (!ready(s)) throw new ReceiptError('Choose the provider and a model first');
   if (sample?.status === 'running') return sample;
-  const { url, model } = s;
+  const model = s.model!;
   const startedAt = new Date().toISOString();
   sample = { status: 'running', model, startedAt };
   const began = Date.now();
   chain = chain.then(async () => {
     try {
-      const read = await askModel(url, model, SAMPLE_RECEIPT_PNG);
+      const read = await askModel(s, SAMPLE_RECEIPT_PNG, 'image/png');
       const norm = (t: string | null) => (t ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
       const items = SAMPLE_RECEIPT.items.filter((want) =>
         read.items.some(
@@ -501,41 +641,25 @@ export function readsSettled() {
 
 // ─── Reading any photo's text, for searching Files (fileText.ts) ─────────────
 
-/** Whether the local model is set up to read photos */
+/** Whether the chosen model is set up to read photos */
 export function canReadPhotos() {
   const s = readerSettings();
-  return s.enabled && !!s.url && !!s.model;
+  return s.enabled && ready(s);
 }
 
 export const isReadablePhoto = (mimeType: string) => READABLE.has(mimeType);
 
-/** Every word on a photo, as plain text, from the local model (never anywhere else) */
-export async function transcribePhoto(image: string) {
+/** Every word on a photo, as plain text, from the chosen model (never anywhere else) */
+export async function transcribePhoto(image: string, mimeType = 'image/png') {
   const s = readerSettings();
-  if (!s.enabled || !s.url || !s.model) throw new ReceiptError('Reading receipts is turned off');
-  const body = (await ollama(s.url, '/api/chat', {
-    method: 'POST',
-    timeoutMs: READ_TIMEOUT_MS,
-    body: JSON.stringify({
-      model: s.model,
-      stream: false,
-      think: false,
-      keep_alive: KEEP_ALIVE,
-      options: { temperature: 0, num_ctx: CONTEXT_TOKENS },
-      messages: [
-        {
-          role: 'user',
-          content:
-            'Write out all the text you can read in this image, as plain text, line by line. ' +
-            'Write nothing else. If there is no text, answer with nothing.',
-          images: [image],
-        },
-      ],
-    }),
-  })) as { message?: { content?: unknown } };
-  const content = body.message?.content;
-  if (typeof content !== 'string') throw new ReceiptError('Ollama sent no answer', 502);
-  return content;
+  if (!s.enabled || !ready(s)) throw new ReceiptError('Reading receipts is turned off');
+  return askImage(
+    s,
+    'Write out all the text you can read in this image, as plain text, line by line. ' +
+      'Write nothing else. If there is no text, answer with nothing.',
+    image,
+    mimeType,
+  );
 }
 
 /** Run a model task after the reads already waiting (one model, one task at a time) */

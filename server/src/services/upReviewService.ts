@@ -96,6 +96,7 @@ export function observeUpAccount(
         sourceJson,
         reviewState,
         overlapTransactionId: overlaps.get(importedId) ?? null,
+        upCategory: tx.relationships.category?.data?.id ?? null,
         lastSeenAt: now,
       })
       .onConflictDoUpdate({
@@ -107,6 +108,7 @@ export function observeUpAccount(
           previousJson: changed ? (old?.previousJson ?? old?.sourceJson) : old?.previousJson,
           revision: (old?.revision ?? 1) + (changed ? 1 : 0),
           seenInLatest: 1,
+          upCategory: tx.relationships.category?.data?.id ?? null,
           lastSeenAt: now,
         },
       })

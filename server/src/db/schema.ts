@@ -861,10 +861,21 @@ export const upSourceRecords = sqliteTable(
     seenInLatest: integer('seen_in_latest').notNull().default(1),
     /** Review state 'overlap': the older, non-Up row this import may duplicate. */
     overlapTransactionId: text('overlap_transaction_id'),
+    /** Up's own category slug for the row (migration 0068); learning only, never shown */
+    upCategory: text('up_category'),
     lastSeenAt: text('last_seen_at').notNull(),
   },
   (table) => [index('up_source_review').on(table.reviewState, table.lastSeenAt)],
 );
+
+/** The receipt reader's cloud API key (one row, encrypted, never backed up or exported) */
+export const receiptReaderSecrets = sqliteTable('receipt_reader_secrets', {
+  id: integer('id').primaryKey(),
+  apiKey: encryptedText('api_key').notNull(),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
 
 export const simplefinConnections = sqliteTable('simplefin_connections', {
   id: text('id').primaryKey(),
@@ -1152,8 +1163,10 @@ export const budgetSettings = sqliteTable('budget_settings', {
   receiptAddNotes: integer('receipt_add_notes').notNull().default(1),
   /** Receipts: tag a matched transaction "Receipt" */
   receiptAddTag: integer('receipt_add_tag').notNull().default(1),
-  /** Read receipts with a local Ollama model (off until the owner turns it on) */
+  /** Read receipts with a model (off until the owner turns it on) */
   receiptReaderEnabled: integer('receipt_reader_enabled').notNull().default(0),
+  /** Which model reads them: 'local' (the owner's own server), 'anthropic' or 'openai' */
+  receiptReaderProvider: text('receipt_reader_provider').notNull().default('local'),
   receiptReaderUrl: text('receipt_reader_url'),
   receiptReaderModel: text('receipt_reader_model'),
   /** Files: the most the library may hold, in MB; null = no limit beyond the disk */

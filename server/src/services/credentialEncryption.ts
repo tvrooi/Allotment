@@ -6,6 +6,7 @@ import {
   enableBankingConnections,
   plaidConfig,
   plaidItems,
+  receiptReaderSecrets,
   simplefinConnections,
   upConnections,
 } from '../db/schema.js';
@@ -14,7 +15,8 @@ import { secretCipher } from '../db/secretCrypto.js';
 const notEncrypted = (column: SQLiteColumn): SQL => sql`${column} not like 'enc:v1:%'`;
 
 /**
- * Encrypts bank credentials stored before encryption was enabled. Reading a
+ * Encrypts bank credentials, and the receipt reader's API key, stored before encryption was
+ * enabled. Reading a
  * plaintext value and writing it back runs it through the encrypted column type.
  * Returns the number of rows encrypted.
  */
@@ -78,6 +80,17 @@ export function encryptStoredCredentials(): number {
       tx.update(enableBankingConnections)
         .set({ sessionId: row.sessionId })
         .where(eq(enableBankingConnections.id, row.id))
+        .run();
+      count++;
+    }
+    for (const row of tx
+      .select()
+      .from(receiptReaderSecrets)
+      .where(notEncrypted(receiptReaderSecrets.apiKey))
+      .all()) {
+      tx.update(receiptReaderSecrets)
+        .set({ apiKey: row.apiKey })
+        .where(eq(receiptReaderSecrets.id, row.id))
         .run();
       count++;
     }

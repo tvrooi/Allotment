@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Reading receipts with a local Ollama model (docs/RECEIPTS-AND-TAX.md §5). Ollama is mocked;
+// Reading receipts with a chosen model (docs/RECEIPTS-AND-TAX.md §5). The model is mocked;
 // made-up receipts only.
 
 const { migrate } = await import('drizzle-orm/better-sqlite3/migrator');
@@ -21,8 +21,10 @@ const {
 const { addReceipt, updateReceipt } = await import('./receiptService.js');
 const {
   checkRead,
-  cleanOllamaUrl,
-  listOllamaModels,
+  jsonIn,
+  transcribePhoto,
+  cleanServerUrl,
+  listServerModels,
   parseReply,
   queueRead,
   readIfEnabled,
@@ -101,22 +103,30 @@ const coles = {
 
 describe('settings', () => {
   it('keeps only an http(s) address with no path or credentials', () => {
-    expect(cleanOllamaUrl(' http://76e1-ollama:11434/ ')).toBe('http://76e1-ollama:11434');
-    expect(cleanOllamaUrl('https://ollama.example')).toBe('https://ollama.example');
-    expect(() => cleanOllamaUrl('ftp://host')).toThrow('http:// or https://');
-    expect(() => cleanOllamaUrl('http://user:pw@host')).toThrow('user name or password');
-    expect(() => cleanOllamaUrl('http://host/api/chat')).toThrow('without a path');
-    expect(() => cleanOllamaUrl('nonsense')).toThrow('not an address');
+    expect(cleanServerUrl(' http://76e1-ollama:11434/ ')).toBe('http://76e1-ollama:11434');
+    expect(cleanServerUrl('https://ollama.example')).toBe('https://ollama.example');
+    expect(() => cleanServerUrl('ftp://host')).toThrow('http:// or https://');
+    expect(() => cleanServerUrl('http://user:pw@host')).toThrow('user name or password');
+    expect(() => cleanServerUrl('http://host/api/chat')).toThrow('without a path');
+    expect(() => cleanServerUrl('nonsense')).toThrow('not an address');
   });
 
   it('is off by default, and turns on only with an address and a model', () => {
-    expect(updateReaderSettings({})).toEqual({ enabled: false, url: null, model: null });
+    expect(updateReaderSettings({})).toEqual({
+      enabled: false,
+      provider: 'local',
+      url: null,
+      model: null,
+      hasKey: false,
+    });
     expect(() => updateReaderSettings({ enabled: true })).toThrow('address and a model');
     expect(updateReaderSettings({}).enabled).toBe(false);
     expect(turnOn()).toEqual({
       enabled: true,
+      provider: 'local',
       url: 'http://ollama.local:11434',
       model: 'qwen3-vl:4b',
+      hasKey: false,
     });
   });
 
@@ -134,7 +144,7 @@ describe('settings', () => {
         ),
     );
     vi.stubGlobal('fetch', fetch);
-    const out = await listOllamaModels('http://ollama.local:11434');
+    const out = await listServerModels('http://ollama.local:11434');
     expect(fetch.mock.calls[0][0]).toBe('http://ollama.local:11434/api/tags');
     expect(out.models.map((m) => [m.name, m.vision])).toEqual([
       ['qwen3-vl:4b-instruct', true],
@@ -143,15 +153,15 @@ describe('settings', () => {
     ]);
   });
 
-  it('says plainly when Ollama cannot be reached', async () => {
+  it('says plainly when the model server cannot be reached', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => {
         throw new TypeError('fetch failed');
       }),
     );
-    await expect(listOllamaModels('http://nowhere:11434')).rejects.toThrow(
-      'Ollama could not be reached at http://nowhere:11434',
+    await expect(listServerModels('http://nowhere:11434')).rejects.toThrow(
+      'The model server could not be reached at http://nowhere:11434',
     );
   });
 });
@@ -357,7 +367,7 @@ describe('reading a receipt', () => {
     await readsSettled();
     expect(db.select().from(receipts).where(eq(receipts.id, second.id)).get()).toMatchObject({
       readStatus: 'failed',
-      readError: 'Ollama: model not found',
+      readError: 'The model server: model not found',
       total: null,
     });
   });
@@ -390,7 +400,7 @@ describe('reading a receipt', () => {
 
 describe('trying a model on the sample receipt', () => {
   it('reads the made-up receipt in the background and says what it got right', async () => {
-    expect(() => startSampleRead()).toThrow('address and a model');
+    expect(() => startSampleRead()).toThrow('provider and a model');
     turnOn();
     const fetch = ollamaSays({
       merchant: 'Sample Grocer',
@@ -424,6 +434,65 @@ describe('trying a model on the sample receipt', () => {
     );
     startSampleRead();
     await readsSettled();
-    expect(sampleRead()).toMatchObject({ status: 'failed', error: 'Ollama: out of memory' });
+    expect(sampleRead()).toMatchObject({
+      status: 'failed',
+      error: 'The model server: out of memory',
+    });
+  });
+});
+
+describe('cloud providers', () => {
+  afterEach(() => updateReaderSettings({ enabled: false, provider: 'local', apiKey: null }));
+
+  it('needs a key, never returns it, and sends the photo to Anthropic', async () => {
+    updateReaderSettings({ provider: 'anthropic', model: 'claude-haiku-5-5' });
+    expect(() => updateReaderSettings({ enabled: true })).toThrow('API key');
+    const s = updateReaderSettings({ enabled: true, apiKey: ' sk-ant-test ' });
+    expect(s).toMatchObject({ enabled: true, provider: 'anthropic', hasKey: true });
+    expect(JSON.stringify(s)).not.toContain('sk-ant-test');
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      void init;
+      return new Response(
+        JSON.stringify({
+          content: [{ type: 'text', text: '```json\n{"merchant":"Bakery"}\n```' }],
+        }),
+        { status: 200 },
+      );
+    });
+    vi.stubGlobal('fetch', fetch);
+    expect((await transcribePhoto('aGk=', 'image/jpeg')).length).toBeGreaterThan(0);
+    const [url, init] = fetch.mock.calls[0];
+    expect(url).toBe('https://api.anthropic.com/v1/messages');
+    expect((init.headers as Record<string, string>)['x-api-key']).toBe('sk-ant-test');
+    const body = JSON.parse(init.body as string);
+    expect(body.model).toBe('claude-haiku-5-5');
+    expect(body.messages[0].content[0].source).toEqual({
+      type: 'base64',
+      media_type: 'image/jpeg',
+      data: 'aGk=',
+    });
+  });
+
+  it('sends the photo to OpenAI with the key as a bearer token', async () => {
+    updateReaderSettings({ provider: 'openai', model: 'gpt-5-mini', apiKey: 'sk-test' });
+    updateReaderSettings({ enabled: true });
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      void init;
+      return new Response(JSON.stringify({ choices: [{ message: { content: 'RECEIPT' } }] }), {
+        status: 200,
+      });
+    });
+    vi.stubGlobal('fetch', fetch);
+    expect(await transcribePhoto('aGk=', 'image/png')).toBe('RECEIPT');
+    const [url, init] = fetch.mock.calls[0];
+    expect(url).toBe('https://api.openai.com/v1/chat/completions');
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer sk-test');
+    expect(JSON.parse(init.body as string).messages[0].content[1].image_url.url).toBe(
+      'data:image/png;base64,aGk=',
+    );
+  });
+
+  it('finds the JSON in an answer wrapped in a code fence', () => {
+    expect(jsonIn('Here it is:\n```json\n{"a":1}\n```')).toEqual({ a: 1 });
   });
 });

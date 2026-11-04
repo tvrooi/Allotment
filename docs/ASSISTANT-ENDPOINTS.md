@@ -55,7 +55,7 @@ Rules for the table:
 
 ## The audit log
 
-`assistant_actions` (migration 0068), written by `services/assistantLog.ts`: time, token id and
+`assistant_actions` (migration 0069), written by `services/assistantLog.ts`: time, token id and
 name, scope, row name, MCP tool, method, path, outcome (`refused`, `applied`, `failed`), status
 and reason. No request bodies are kept. The newest 5,000 rows are kept. It is a security log:
 never in backups, and no token can read it.

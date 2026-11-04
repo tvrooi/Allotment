@@ -1,8 +1,13 @@
 # Changes
 
-## 0.2.0-up.98
+## 0.2.0-up.99
 
 - **Assistant activity.** Every change an assistant asks for with an access token now goes through one checked door and is logged: Settings → Server → Read-only access → **Assistant activity** lists each request (done, not done, or refused) with the token, the tool and when. What a token may do hasn't changed. If you call the API yourself with a categorise or organise token, send writes to the same path under `/api/assistant` (for example `PUT /api/assistant/transactions/:id`); MCP tools do this for you.
+
+## 0.2.0-up.98
+
+- **Read receipts with Claude or ChatGPT.** Settings → Read receipts automatically now asks who reads them: a model server on your own network (as before), Anthropic (Claude) or OpenAI (ChatGPT) with your own API key. A cheap model is suggested (Claude Haiku or GPT mini); a receipt usually costs a fraction of a cent. The key is stored encrypted, is never shown again, and is left out of backups and exports. A Claude or ChatGPT subscription doesn't include API use: create a key in Anthropic's or OpenAI's console.
+- **Up categories learn from you.** When you have put at least three Up transactions of one Up category into the same envelope (four times out of five or more), new transactions in that Up category go there too, after your rules and payee defaults. Up's water, gas and power category now lands in Electricity & Gas on the short Australian template, hobbies and books in Entertainment.
 
 ## 0.2.0-up.97
 

@@ -253,9 +253,23 @@ function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   );
 }
 
+const CLOUD: Record<'anthropic' | 'openai', { name: string; model: string; keys: string }> = {
+  anthropic: {
+    name: 'Anthropic (Claude)',
+    model: 'claude-haiku-5-5',
+    keys: 'https://console.anthropic.com/settings/keys',
+  },
+  openai: {
+    name: 'OpenAI (ChatGPT)',
+    model: 'gpt-5-mini',
+    keys: 'https://platform.openai.com/api-keys',
+  },
+};
+
 /**
- * Reading receipts with a local Ollama model, e.g. the Ollama app on Home Assistant. The photo
- * goes only to this address. Off until an address and a model that can read images are chosen.
+ * Reading receipts with a model the owner chooses: a model server on their own network, or
+ * Anthropic or OpenAI with their own API key. The photo goes only to that provider. Off until
+ * the provider has what it needs.
  */
 function ReaderSettingsSection() {
   const { data } = useReaderSettings();
@@ -263,6 +277,7 @@ function ReaderSettingsSection() {
   const models = useReaderModels();
   const [url, setUrl] = useState('');
   const [model, setModel] = useState('');
+  const [key, setKey] = useState('');
   const [error, setError] = useState<string | null>(null);
   // Ticks at once; the saved setting follows (or it goes back, with the reason)
   const [on, setOn] = useState(false);
@@ -272,6 +287,9 @@ function ReaderSettingsSection() {
     setModel(data.model ?? '');
     setOn(data.enabled);
   }, [data]);
+  const provider = data?.provider ?? 'local';
+  const cloud = provider === 'local' ? null : CLOUD[provider];
+  const ready = !!data?.model && (provider === 'local' ? !!data.url : data.hasKey);
   const found = models.data?.models ?? [];
   const choices = [...found].sort((a, b) => Number(b.vision === true) - Number(a.vision === true));
   async function apply(change: Parameters<typeof save.mutateAsync>[0]) {
@@ -290,75 +308,165 @@ function ReaderSettingsSection() {
       <div>
         <p className="text-sm font-medium">Read receipts automatically</p>
         <p className="text-xs text-text-tertiary">
-          A vision model on your own Ollama server fills in a photo's merchant, date, amounts and
-          items, then the receipt is matched as usual. Fields you typed are never replaced. The
-          photo goes only to this address. Photos only, not PDFs.
+          A vision model fills in a photo's merchant, date, amounts and items, then the receipt is
+          matched as usual. Fields you typed are never replaced. Photos only, not PDFs.
         </p>
       </div>
-      <label className="block text-xs font-medium text-text-secondary space-y-1">
-        <span className="block">Ollama address</span>
-        <div className="flex gap-2">
-          <Input
-            aria-label="Ollama address"
-            placeholder="http://ollama-host:11434"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-          />
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={!url.trim() || models.isPending}
-            onClick={async () => {
-              setError(null);
-              try {
-                const out = await models.mutateAsync(url);
-                setUrl(out.url);
-                await save.mutateAsync({ url: out.url });
-              } catch (e) {
-                setError((e as Error).message);
+      <div className="block text-xs font-medium text-text-secondary space-y-1">
+        <span className="block">Who reads them</span>
+        <Select
+          aria-label="Who reads them"
+          value={provider}
+          onChange={(e) => {
+            const next = e.target.value as typeof provider;
+            setOn(false);
+            void apply({
+              provider: next,
+              enabled: false,
+              model: next === 'local' ? null : CLOUD[next].model,
+            });
+          }}
+        >
+          <option value="local">A model server on your own network</option>
+          <option value="anthropic">{CLOUD.anthropic.name}</option>
+          <option value="openai">{CLOUD.openai.name}</option>
+        </Select>
+      </div>
+      {cloud ? (
+        <>
+          <p className="text-xs text-caution">
+            Each photo is sent to {cloud.name.split(' ')[0]} and billed to your API key (usually a
+            fraction of a cent). A Claude or ChatGPT subscription doesn't include API use; create a
+            key at{' '}
+            <a className="underline" href={cloud.keys} target="_blank" rel="noreferrer">
+              {new URL(cloud.keys).host}
+            </a>
+            .
+          </p>
+          <label className="block text-xs font-medium text-text-secondary space-y-1">
+            <span className="block">
+              API key {data?.hasKey && '(saved; type a new one to replace it)'}
+            </span>
+            <div className="flex gap-2">
+              <Input
+                aria-label="API key"
+                type="password"
+                autoComplete="off"
+                placeholder={data?.hasKey ? '••••••••' : 'Paste your API key'}
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+              />
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!key.trim() || save.isPending}
+                onClick={async () => {
+                  await apply({ apiKey: key.trim() });
+                  setKey('');
+                }}
+              >
+                Save
+              </Button>
+              {data?.hasKey && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setOn(false);
+                    void apply({ apiKey: null, enabled: false });
+                  }}
+                >
+                  Remove
+                </Button>
+              )}
+            </div>
+          </label>
+          <div className="block text-xs font-medium text-text-secondary space-y-1">
+            <span className="block">Model</span>
+            <Input
+              aria-label="Model"
+              placeholder={cloud.model}
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              onBlur={() =>
+                model.trim() !== (data?.model ?? '') && void apply({ model: model.trim() || null })
               }
-            }}
-          >
-            {models.isPending ? 'Checking…' : 'Check'}
-          </Button>
-        </div>
-      </label>
-      {found.length > 0 && (
-        <label className="block text-xs font-medium text-text-secondary space-y-1">
-          <span className="block">Model</span>
-          <Select
-            aria-label="Model"
-            value={model}
-            onChange={(e) => {
-              setModel(e.target.value);
-              void apply({ model: e.target.value || null });
-            }}
-          >
-            <option value="">Choose a model…</option>
-            {choices.map((m) => (
-              <option key={m.name} value={m.name}>
-                {m.name}
-                {m.vision === true ? ' (reads images)' : m.vision === false ? ' (text only)' : ''}
-              </option>
-            ))}
-          </Select>
-        </label>
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="block text-xs font-medium text-text-secondary space-y-1">
+            <span className="block">Server address (Ollama API)</span>
+            <div className="flex gap-2">
+              <Input
+                aria-label="Server address"
+                placeholder="http://model-server:11434"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+              />
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!url.trim() || models.isPending}
+                onClick={async () => {
+                  setError(null);
+                  try {
+                    const out = await models.mutateAsync(url);
+                    setUrl(out.url);
+                    await save.mutateAsync({ url: out.url });
+                  } catch (e) {
+                    setError((e as Error).message);
+                  }
+                }}
+              >
+                {models.isPending ? 'Checking…' : 'Check'}
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs text-text-tertiary">The photo goes only to this address.</p>
+          {found.length > 0 && (
+            <label className="block text-xs font-medium text-text-secondary space-y-1">
+              <span className="block">Model</span>
+              <Select
+                aria-label="Model"
+                value={model}
+                onChange={(e) => {
+                  setModel(e.target.value);
+                  void apply({ model: e.target.value || null });
+                }}
+              >
+                <option value="">Choose a model…</option>
+                {choices.map((m) => (
+                  <option key={m.name} value={m.name}>
+                    {m.name}
+                    {m.vision === true
+                      ? ' (reads images)'
+                      : m.vision === false
+                        ? ' (text only)'
+                        : ''}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          )}
+          {models.isSuccess && !found.some((m) => m.vision) && (
+            <p className="text-xs text-caution">
+              No model on this server can read images. Add a vision model to it first.
+            </p>
+          )}
+          {data?.model && !found.length && (
+            <p className="text-xs text-text-tertiary">Model: {data.model}</p>
+          )}
+        </>
       )}
-      {models.isSuccess && !found.some((m) => m.vision) && (
-        <p className="text-xs text-caution">
-          No model here can read images. Add one in Ollama first, for example qwen3-vl:4b-instruct.
-        </p>
-      )}
-      {data?.model && !found.length && (
-        <p className="text-xs text-text-tertiary">Model: {data.model}</p>
-      )}
-      {data?.url && data?.model && <SampleCheck onError={setError} />}
+      {ready && <SampleCheck onError={setError} />}
       <label className="flex items-start gap-2 text-sm">
         <input
           type="checkbox"
           className="mt-1"
           checked={on}
-          disabled={!on && (!data?.url || !data?.model)}
+          disabled={!on && !ready}
           onChange={async (e) => {
             const enabled = e.target.checked;
             setOn(enabled);
