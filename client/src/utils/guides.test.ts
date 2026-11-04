@@ -5,6 +5,7 @@ import type { Guide } from '../guides/types';
 import {
   applyGuideUpdate,
   bannerFor,
+  bannerSeenUpdate,
   guideClosedUpdate,
   guideForPage,
   guideStatus,
@@ -117,6 +118,17 @@ describe('which banner a page shows', () => {
       updated: true,
     });
     expect(bannerFor('/budget', { ...toured, pageGuidesEnabled: false }, GUIDES, false)).toBeNull();
+  });
+
+  it('records a page’s banner as seen once the page is left (tour first, I-7)', () => {
+    expect(bannerSeenUpdate({ kind: 'page', guide: budget, updated: false })).toEqual({
+      seenGuides: { budget: budget.version },
+    });
+    expect(bannerSeenUpdate({ kind: 'intro', id: 'intro.payees', text: 'x' })).toEqual({
+      seenGuides: { 'intro.payees': 1 },
+    });
+    // The note for people who were here before guides waits for an answer
+    expect(bannerSeenUpdate({ kind: 'notice' })).toBeNull();
   });
 
   it('finds a guide by page, not by prefix', () => {

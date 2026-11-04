@@ -1,4 +1,14 @@
+import type { Page } from '@playwright/test';
 import { test, expect, open } from './fixtures';
+
+/** Guide progress isn't reset between tests: a new budget's tour offer may still be there */
+async function skipTourIfOffered(page: Page) {
+  const skip = page.getByRole('button', { name: 'Skip the tour' });
+  await expect(
+    skip.or(page.getByRole('progressbar', { name: 'Getting started progress' })),
+  ).toBeVisible();
+  if (await skip.isVisible()) await skip.click();
+}
 
 // What a new user sees: a getting started checklist on the dashboard, and empty cards
 // and pages that say what goes there with a button to add the first one.
@@ -9,6 +19,8 @@ test('the getting started checklist tracks progress and can be hidden', async ({
 
   const checklist = page.getByRole('heading', { name: 'Get started with Allotment' });
   await expect(checklist).toBeVisible();
+  // A new budget is offered the tour first (I-7); skipping it brings the steps
+  await skipTourIfOffered(page);
   await expect(page.getByText('0 of 5 done')).toBeVisible();
 
   await page.getByRole('main').getByRole('button', { name: 'Add account' }).click();
@@ -31,6 +43,7 @@ test('empty dashboard cards link to where their data comes from', async ({ page,
   await open(page, '/dashboard');
 
   await expect(page.getByText('No transactions yet')).toBeVisible();
+  await skipTourIfOffered(page);
   await expect(page.getByText('Track your bills and pay')).toBeVisible();
   // While the Get started checklist shows, it holds the next steps: the cards don't repeat them
   await expect(page.getByRole('link', { name: 'Add a transaction' })).toHaveCount(0);

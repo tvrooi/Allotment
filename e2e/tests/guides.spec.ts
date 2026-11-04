@@ -21,11 +21,13 @@ test('a new budget is offered the welcome tour, which walks through the basics',
   api,
 }) => {
   await open(page, '/dashboard');
-  // The tour is offered in the Get started checklist, not a banner of its own
+  // Tour first (I-7): the Get started card offers the tour alone, the steps come after it,
+  // and no banner or tip joins it
   const banner = page.getByRole('region', { name: 'Guide' });
   await expect(page.getByRole('heading', { name: 'Get started with Allotment' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Skip the tour' })).toBeVisible();
+  await expect(page.getByRole('progressbar', { name: 'Getting started progress' })).toHaveCount(0);
   await expect(banner).toBeHidden();
-  // Tips wait until the tour is decided
   await expect(page.getByRole('note', { name: 'Tip' })).toHaveCount(0);
 
   await page.getByRole('button', { name: /Show me around/ }).click();
@@ -63,7 +65,12 @@ test('a new budget is offered the welcome tour, which walks through the basics',
 
   const progress = await api.call('GET', '/guides');
   expect(progress).toMatchObject({ welcomeTour: 'done', seenGuides: { welcome: 1 } });
-  // Now the dashboard says what it's for, once
+  // Now the steps show, still on their own
+  await expect(page.getByRole('progressbar', { name: 'Getting started progress' })).toBeVisible();
+  await expect(banner).toBeHidden();
+  await expect(page.getByRole('note', { name: 'Tip' })).toHaveCount(0);
+  // Once the checklist is put away, the dashboard says what it's for, once
+  await page.getByRole('button', { name: 'Hide getting started' }).click();
   await expect(banner).toContainText('Your home page');
   await banner.getByRole('button', { name: 'Got it' }).click();
   await expect(banner).toBeHidden();
@@ -78,8 +85,13 @@ test('leaving the tour, tips and a page’s own guide', async ({ page, api }) =>
   await expect(page.getByRole('dialog')).toBeHidden();
   expect(await api.call('GET', '/guides')).toMatchObject({ welcomeTour: 'dismissed' });
 
-  // Now the dashboard says what it's for; one thing at a time, so its tip waits for that
+  // The steps take the tour's place; one thing at a time, so no banner or tip joins them
   const intro = page.getByRole('region', { name: 'Guide' });
+  await expect(page.getByRole('progressbar', { name: 'Getting started progress' })).toBeVisible();
+  await expect(intro).toBeHidden();
+  await expect(page.getByRole('note', { name: 'Tip' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Hide getting started' }).click();
+  // Then the dashboard says what it's for, and its tip waits for that
   await expect(intro).toContainText('Your home page');
   await expect(page.getByRole('note', { name: 'Tip' })).toHaveCount(0);
   await intro.getByRole('button', { name: 'Got it' }).click();
@@ -106,6 +118,18 @@ test('leaving the tour, tips and a page’s own guide', async ({ page, api }) =>
     'intro.dashboard': 1,
     budget: 1,
   });
+
+  // A page's guide is offered on the first visit only: leaving without answering steps it
+  // back to the ? button
+  await open(page, '/accounts');
+  await expect(banner).toContainText('First time here?');
+  await open(page, '/rules');
+  await expect
+    .poll(async () => (await api.call('GET', '/guides')).seenGuides)
+    .toMatchObject({ accounts: GUIDES.find((g) => g.id === 'accounts')!.version });
+  await open(page, '/accounts');
+  await expect(page.getByRole('heading', { level: 1, name: 'Accounts' })).toBeVisible();
+  await expect(banner).toBeHidden();
 });
 
 test('guides can be found again, and tips turned off', async ({ page, api }) => {

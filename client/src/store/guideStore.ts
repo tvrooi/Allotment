@@ -9,6 +9,12 @@ interface GuideUiState {
   listOpen: boolean;
   /** The one tip a page shows at a time */
   shownTip: string | null;
+  /**
+   * The dashboard's Get started card is showing. It is that page's onboarding, so no guide
+   * banner or tip joins it (audit decision I-7: one onboarding element at a time).
+   */
+  checklistShown: boolean;
+  setChecklistShown: (shown: boolean) => void;
   start: (guideId: string) => void;
   goTo: (step: number) => void;
   stop: () => void;
@@ -21,6 +27,8 @@ export const useGuideStore = create<GuideUiState>()((set) => ({
   active: null,
   listOpen: false,
   shownTip: null,
+  checklistShown: false,
+  setChecklistShown: (checklistShown) => set({ checklistShown }),
   start: (guideId) => set({ active: { guideId, step: 0 }, listOpen: false }),
   goTo: (step) => set((s) => (s.active ? { active: { ...s.active, step } } : {})),
   stop: () => set({ active: null }),

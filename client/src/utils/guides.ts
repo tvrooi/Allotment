@@ -55,6 +55,17 @@ export function bannerFor(
     : { kind: 'page', guide, updated: status === 'updated', intro: intro?.text };
 }
 
+/**
+ * What leaving a page records for the banner it showed: page guides and intros are offered on
+ * the first visit only, then wait under the ? button. The note for people who used Allotment
+ * before guides stays until it is answered.
+ */
+export function bannerSeenUpdate(banner: Banner): GuideUpdate | null {
+  if (banner.kind === 'intro') return { seenGuides: { [banner.id]: 1 } };
+  if (banner.kind === 'page') return { seenGuides: { [banner.guide.id]: banner.guide.version } };
+  return null;
+}
+
 /** Tips wait until a new person has taken or turned down the welcome tour: one thing at a time */
 export function tipVisible(id: string, progress: GuideProgress | undefined): boolean {
   return (
