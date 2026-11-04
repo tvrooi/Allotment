@@ -37,12 +37,12 @@ export function UpSettings() {
   const [result, setResult] = useState<UpSyncResult | null>(null);
   const canSave = useCanSave();
   const refresh = useRefreshUp();
-  async function sync() {
+  async function sync(full = false) {
     setBusy(true);
     setError(null);
     setResult(null);
     try {
-      setResult(await syncUp());
+      setResult(await syncUp({ full }));
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not sync Up.');
@@ -55,7 +55,8 @@ export function UpSettings() {
       <p className="text-xs text-text-secondary">
         Connect directly to Up in Australia with a personal access token. No bank-feed subscription
         is required. Sync runs at startup and with Sync Now. Optional background sync runs on your
-        server, including when this window is closed.
+        server, including when this window is closed. Each sync fetches recent transactions; all of
+        Up's history is checked once a week, or now with Check all history.
       </p>
       {isLoading && <Loader2 size={20} className="animate-spin" />}
       {connection && (
@@ -143,9 +144,12 @@ export function UpSettings() {
             </p>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={sync} disabled={!canSave || busy}>
+            <Button variant="secondary" onClick={() => sync()} disabled={!canSave || busy}>
               {busy ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Sync
               Now
+            </Button>
+            <Button variant="ghost" onClick={() => sync(true)} disabled={!canSave || busy}>
+              Check all history
             </Button>
             <Button
               variant="secondary"

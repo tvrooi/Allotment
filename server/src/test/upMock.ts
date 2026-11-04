@@ -30,6 +30,19 @@ export function upMockTransaction(
 export async function startUpMock(port = 0) {
   let mode = 'normal';
   let calls = 0;
+  /** Every request's path and query, for asserting what a sync asked Up for */
+  const requests: string[] = [];
+  /** Up's filter[since] (created from then on) and filter[status], as the real API applies them */
+  const filtered = (rows: unknown[], url: URL) => {
+    const since = url.searchParams.get('filter[since]');
+    const status = url.searchParams.get('filter[status]');
+    return rows.filter((row) => {
+      const a = (row as { attributes: { createdAt: string; status: string } }).attributes;
+      return (
+        (!since || Date.parse(a.createdAt) >= Date.parse(since)) && (!status || a.status === status)
+      );
+    });
+  };
   let richData: ReturnType<typeof richUpHistory> | undefined;
   // Served as JSON as given: any rows in Up's shape (upTransactions.ts), mock-built or not
   const histories = new Map<string, unknown[]>();
@@ -62,6 +75,7 @@ export async function startUpMock(port = 0) {
     }
     if (req.headers.authorization !== `Bearer ${UP_TEST_TOKEN}`) return send({}, 401);
     calls++;
+    requests.push(url.pathname + url.search);
     if (mode === 'unauthorized') return send({}, 401);
     if (mode === 'rate-limit') return send({}, 429);
     if (mode === 'malformed') return send({ data: [{ id: 1 }] });
@@ -85,7 +99,7 @@ export async function startUpMock(port = 0) {
       const account = /^\/accounts\/(spending|saver)\/transactions$/.exec(url.pathname)?.[1];
       if (account)
         return send({
-          data: rich.transactions[account as 'spending' | 'saver'],
+          data: filtered(rich.transactions[account as 'spending' | 'saver'], url),
           links: { next: null },
         });
       return send({}, 404);
@@ -93,7 +107,7 @@ export async function startUpMock(port = 0) {
     const overridden = [...histories].find(
       ([id]) => url.pathname === `/accounts/${id}/transactions`,
     );
-    if (overridden) return send({ data: overridden[1], links: { next: null } });
+    if (overridden) return send({ data: filtered(overridden[1], url), links: { next: null } });
     // Synthetic shape with no separate spending-side round-up debit: the purchase settles
     // after the first sync and the account balance includes its round-up.
     const implicit = mode.startsWith('implicit-round-ups');
@@ -227,6 +241,10 @@ export async function startUpMock(port = 0) {
       histories.set(id, rows);
     },
     calls: () => calls,
+    requests: () => [...requests],
+    clearRequests: () => {
+      requests.length = 0;
+    },
     close: () =>
       new Promise<void>((resolve, reject) =>
         server.close((err) => (err ? reject(err) : resolve())),

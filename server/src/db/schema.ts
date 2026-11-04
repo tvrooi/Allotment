@@ -767,6 +767,8 @@ export const upAccountMappings = sqliteTable('up_account_mappings', {
   cutoverDate: text('cutover_date'),
   /** Bank balance at the cut-over minus the register's, at the last sync (0 = they agree). */
   cutoverDifference: integer('cutover_difference'),
+  /** When this account last had a full sweep of Up's history (audit F-10); null = never (0065) */
+  fullSyncedAt: text('full_synced_at'),
 });
 
 // Bank observations are separate from the editable/reconciled ledger. No credentials or raw payloads.

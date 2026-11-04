@@ -456,6 +456,13 @@
       "when": 1795000000000,
       "tag": "0064_nav_features",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "6",
+      "when": 1795100000000,
+      "tag": "0065_up_full_sync",
+      "breakpoints": true
     }
   ]
 }

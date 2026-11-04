@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, like, max } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import {
   accounts,
@@ -6,6 +6,7 @@ import {
   upAccountMappings,
   upConnections,
   upDeletedImports,
+  upSourceRecords,
 } from '../db/schema.js';
 import { upCategoryResolver } from './upCategoryMap.js';
 import { buildRuleContext, insertNewTransaction, loadRules } from './ruleService.js';
@@ -28,6 +29,46 @@ import {
 } from './upService.js';
 
 export const UP_CONNECTION_ID = 'default';
+
+// Incremental sync (audit F-10). Between full sweeps a sync asks Up only for rows created in the
+// last WINDOW_DAYS before the newest imported one, and for every open hold. A hold settles under
+// its original creation date, so the window also reaches back to the oldest hold still open. A
+// full sweep runs on an account's first sync, after FULL_SWEEP_MS, and on request.
+export const WINDOW_DAYS = 14;
+export const FULL_SWEEP_MS = 7 * 86_400_000;
+
+const addDays = (day: string, days: number) =>
+  new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+
+/** The first day an incremental sync covers for this account; null when it needs a full sweep */
+export function incrementalStart(accountId: string, upAccountId: string): string | null {
+  const newest = db
+    .select({ day: max(transactions.date) })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.accountId, accountId),
+        like(transactions.importedId, `up:${upAccountId}:%`),
+      ),
+    )
+    .get()?.day;
+  if (!newest) return null;
+  let start = addDays(newest, -WINDOW_DAYS);
+  for (const record of db
+    .select({ sourceJson: upSourceRecords.sourceJson })
+    .from(upSourceRecords)
+    .where(and(eq(upSourceRecords.accountId, accountId), eq(upSourceRecords.seenInLatest, 1)))
+    .all()) {
+    try {
+      const seen = JSON.parse(record.sourceJson) as { status?: string; createdAt?: string };
+      const day = seen.createdAt?.slice(0, 10);
+      if (seen.status === 'HELD' && day && day < start) start = day;
+    } catch {
+      return null;
+    }
+  }
+  return start;
+}
 const dollars = (cents: number) =>
   `$${Math.floor(cents / 100).toLocaleString('en-AU')}.${String(cents % 100).padStart(2, '0')}`;
 /** The day before a cut-over, as a person would say it */
@@ -57,15 +98,17 @@ export const setUpConnecting = (value: boolean) => {
 export const isUpSyncing = () => inFlight !== null;
 
 /** Sharing the promise prevents startup and two Sync clicks from importing twice. */
-export function syncUp(): Promise<UpSyncResult> {
-  if (inFlight) return inFlight;
+/** `full`: sweep all of Up's history (restoring a deleted row, "Check all history") */
+export function syncUp(options: { full?: boolean } = {}): Promise<UpSyncResult> {
+  // A full sweep asked for while a quick sync runs follows it, rather than being skipped
+  if (inFlight) return options.full ? inFlight.then(() => syncUp(options)) : inFlight;
   if (connecting)
     return Promise.resolve({
       added: 0,
       skipped: 0,
       errors: ['Wait for the Up connection to finish.'],
     });
-  inFlight = runSync()
+  inFlight = runSync(!!options.full)
     .catch(() => {
       // A damaged encrypted token can fail before runSync reaches its request handler.
       // Persist backoff without selecting/decrypting that token again or exposing an error payload.
@@ -103,7 +146,7 @@ export function syncUp(): Promise<UpSyncResult> {
   return inFlight;
 }
 
-async function runSync(): Promise<UpSyncResult> {
+async function runSync(forceFull: boolean): Promise<UpSyncResult> {
   const result: UpSyncResult = { added: 0, skipped: 0, errors: [], notices: [] };
   const connection = db
     .select()
@@ -140,8 +183,27 @@ async function runSync(): Promise<UpSyncResult> {
           throw new UpError(
             'An Up account is no longer available. Reconnect to refresh the account list.',
           );
-        // Fetch and validate the WHOLE account before any writes or balance changes.
-        const history = await getUpTransactions(connection.accessToken, mapping.upAccountId);
+        // Fetch and validate everything this sync covers before any writes or balance changes:
+        // the whole account on a full sweep, else the recent window plus every open hold
+        const coveredFrom =
+          forceFull ||
+          !mapping.initializedAt ||
+          !mapping.fullSyncedAt ||
+          Date.parse(now) - Date.parse(mapping.fullSyncedAt) > FULL_SWEEP_MS
+            ? null
+            : incrementalStart(accountId, mapping.upAccountId);
+        const fullSweep = coveredFrom === null;
+        const history = fullSweep
+          ? await getUpTransactions(connection.accessToken, mapping.upAccountId)
+          : [
+              // A day early: Up's times carry +10:00 or +11:00, and a row's date is its own
+              ...(await getUpTransactions(connection.accessToken, mapping.upAccountId, {
+                since: `${addDays(coveredFrom, -1)}T00:00:00+10:00`,
+              })),
+              ...(await getUpTransactions(connection.accessToken, mapping.upAccountId, {
+                status: 'HELD',
+              })),
+            ];
         const unique = [...new Map(history.map((t) => [t.id, t])).values()];
         const cutover = mapping.cutoverDate;
         // Linked to an account with history: Up's rows before the cut-over are never imported
@@ -254,7 +316,12 @@ async function runSync(): Promise<UpSyncResult> {
           // Establish an opening balance only for an empty register. Later discrepancies
           // need review, not an invisible historical adjustment that hides missing postings.
           let cutoverDifference: number | null = null;
-          if (cutover) {
+          if (cutover && !fullSweep) {
+            // The difference at the cut-over needs every row since it: the last full sweep's
+            // stands until the next one
+            if ((mapping.cutoverDifference ?? 0) === 0 && startingBalance !== local.startingBalance)
+              balanceMismatch = true;
+          } else if (cutover) {
             // Bank balance at the cut-over, from today's balance and Up's later rows, against the
             // register's. Shown, never adjusted: the owner reconciles or fixes the history.
             const after = rows.reduce((sum, r) => sum + r.amount, 0);
@@ -278,12 +345,14 @@ async function runSync(): Promise<UpSyncResult> {
             mapping.upAccountId,
             overlaps,
             !mapping.initializedAt,
+            coveredFrom,
           );
           db.update(upAccountMappings)
             .set({
               initializedAt: mapping.initializedAt ?? now,
               settledBalance: target,
-              ...(cutover ? { cutoverDifference } : {}),
+              ...(cutover && fullSweep ? { cutoverDifference } : {}),
+              ...(fullSweep ? { fullSyncedAt: now } : {}),
             })
             .where(eq(upAccountMappings.id, mapping.id))
             .run();

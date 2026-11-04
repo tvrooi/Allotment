@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.93
+
+- **Faster Up syncs.** A sync now asks Up only for recent transactions (the two weeks before the newest one) and any that are still pending, instead of your whole history every time, so it makes a couple of requests per account instead of hundreds. A pending transaction that settles weeks later is still picked up. All of Up's history is still checked once a week, on an account's first sync, after **Restore** in Up review, and whenever you choose **Check all history** in Settings → Connected Banks → Up.
+
 ## 0.2.0-up.92
 
 - **Backup with files.** Settings → Data now has **Backup with files (.zip)**: the same backup as **Download Backup**, plus every file in Files (receipt photos, PDFs, documents and videos). **Restore Backup…** takes it too, on this installation or a new one, and checks every file before it changes anything: a damaged ZIP restores nothing. Bank connection credentials, passwords and the encryption key are never in a backup.

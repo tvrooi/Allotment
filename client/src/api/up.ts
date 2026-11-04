@@ -55,7 +55,12 @@ export const mapUpAccounts = (mappings: UpMappingChoice[]) =>
     method: 'POST',
     body: JSON.stringify({ mappings }),
   });
-export const syncUp = () => apiFetch<UpSyncResult>('/up/sync', { method: 'POST' });
+/** `full`: check all of Up's history, not only recent rows and open holds (weekly by itself) */
+export const syncUp = (options: { full?: boolean } = {}) =>
+  apiFetch<UpSyncResult>('/up/sync', {
+    method: 'POST',
+    ...(options.full ? { body: JSON.stringify({ full: true }) } : {}),
+  });
 export const disconnectUp = () => apiFetch<void>('/up/connection', { method: 'DELETE' });
 
 export const setUpPolling = (pollIntervalMinutes: number) =>

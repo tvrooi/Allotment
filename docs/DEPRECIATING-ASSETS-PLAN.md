@@ -8,7 +8,8 @@ its §6 "Not built" once it ships. Record keeping, not tax advice, like the rest
 Amended 3 November 2026 for [Files](FILES.md) (0.2.0-up.79), which this builds on: an asset's
 records (invoice, warranty, photos, a valuation) are files in Files linked to the asset, through a
 new `asset` link kind. Files took migration 0062 and backup version 23, and the budget start day
-(0.2.0-up.86) took 0063 and the sidebar's features (0.2.0-up.89) 0064, so this plan uses 0065 and
+(0.2.0-up.86) took 0063, the sidebar's features (0.2.0-up.89) 0064 and Up's full sweeps (0.2.0-up.93)
+0065, so this plan uses 0066 and
 backup version 24 (neither changed the backup format).
 Take the next free numbers when it is built.
 
@@ -85,7 +86,7 @@ From the ATO's [Guide to depreciating assets 2026][guide] and
 
 ## 3. Design
 
-### 3.1 Data (migration 0065, additive; the next free number when built)
+### 3.1 Data (migration 0066, additive; the next free number when built)
 
 `depreciating_assets`
 
@@ -260,7 +261,7 @@ each proposal in the app before anything is saved. No tool writes an asset direc
 
 ## 4. Phases (one PR and release each)
 
-1. **Calculation and storage (server only):** `depreciation.ts` with tests, migration 0065
+1. **Calculation and storage (server only):** `depreciation.ts` with tests, migration 0066
    (with `document_links.asset_id`), the service, routes, the `asset` link kind, the
    double-counting guards, `taxYear` and CSV/ZIP integration (asset evidence), and backup
    version 24.
@@ -326,7 +327,7 @@ Each app phase follows CLAUDE.md:
 - after main CI passes, Publish tested main;
 - a cold backup including the encryption key before the live HA app takes the release.
 
-Migration 0065 only adds tables and one nullable column, so existing claims, transactions, files
+Migration 0066 only adds tables and one nullable column, so existing claims, transactions, files
 and budgets are untouched.
 
 ## 7. Owner decisions (taken 4 November 2026)
