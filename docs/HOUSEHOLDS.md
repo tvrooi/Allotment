@@ -42,6 +42,12 @@ two-person household is 50/50. A rule action, **Share with household**, does the
 as they import (or when the rule is applied to existing transactions), and never fails an
 import: a payment the household checks refuse is left unshared.
 
+Every way of sharing (the Share action, a bill's **Share** list, a bill shared as its payments
+arrive, a rule) goes through one function, `householdService.sharePayments` (audit F-13): the
+same checks, the same refusal messages and the same result for each payment, which is who owes
+what (`{ ok, eventId, amount, shares }`) or why not. `POST /households/:id/share` with
+`preview: true` runs exactly those checks and records nothing.
+
 **A household's picture** (**Household → Sharing → Picture**) shows next to every payment
 shared with it, in the register, on phone cards and in the transaction details; without one, the
 household's initial shows on a coloured square (households are square, merchants round). It is
@@ -218,6 +224,15 @@ this page does not create duplicate debits or initiate payments. Enter separate
 bill occurrences for later quarters/months; estimates do not generate bank activity.
 
 ## Reports and portability
+
+**Categorising a repayment** (audit decision I-8, `services/householdCategoryOffers.ts`): someone
+repaying you shows in your personal reports as an uncategorised deposit next to the whole bill you
+paid. The Household page's **Categorise repayments** lists each repayment to you linked to an
+uncategorised deposit, with the categories of what that person owed you for in the year before
+(their shares of expenses you paid, largest first). **Categorise** sets the deposit's category, a
+normal transaction edit, so your reports show your share; **Not now** hides it on this device.
+Nothing is changed without that press, and the household ledger never changes
+(`GET /households/:id/category-offers`).
 
 Select **My share** or **Household**, with optional date bounds. Scope persists on
 this device and appears in the heading and downloaded JSON statement. Gross and

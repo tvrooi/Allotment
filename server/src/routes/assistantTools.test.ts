@@ -886,17 +886,26 @@ describe('the assistant endpoint and its log (audit decision I-11)', () => {
     expect(refused.status).toBe(403);
     const unnamed = await call('POST', '/backup/restore', { token }, {});
     expect(unnamed.status).toBe(403);
-    expect(unnamed.body.error).toBe('An assistant cannot do this');
-    const log = await call('GET', '/assistant/log');
+    const log = await call('GET', '/assistant/activity');
     expect(log.status).toBe(200);
-    const mine = log.body.filter((a: { tokenName: string }) => a.tokenName === 'I-11 categorise');
-    expect(mine.map((a: { action: string; status: number }) => [a.action, a.status])).toEqual([
-      ['set-category', 403],
-      ['set-category', 200],
+    const mine = log.body.actions.filter(
+      (a: { tokenName: string }) => a.tokenName === 'I-11 categorise',
+    );
+    expect(
+      mine.map((a: { action: string | null; outcome: string; status: number }) => [
+        a.action,
+        a.outcome,
+        a.status,
+      ]),
+    ).toEqual([
+      [null, 'refused', 403],
+      [null, 'refused', 403],
+      ['categorise_transaction', 'applied', 200],
     ]);
-    expect(mine[1].detail).toBe('{"categoryId":"groceries"}');
+    // No request bodies are kept
+    expect(JSON.stringify(mine)).not.toContain('groceries');
     // Only the owner reads the log
-    expect((await call('GET', '/assistant/log', { token })).status).toBe(403);
+    expect((await call('GET', '/assistant/activity', { token })).status).toBe(403);
   });
 
   it('lets an organise token propose an asset that only the owner applies or declines', async () => {

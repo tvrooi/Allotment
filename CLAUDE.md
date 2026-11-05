@@ -44,8 +44,8 @@ Keep this file and CLAUDE.md identical.
   marker, and learns it through its user agent (`electron/macWindow.ts`), never a bridge.
   HTTPS away from home; never bypass TLS errors.
 - Read-only access tokens (`server/src/auth/accessTokens.ts`) reach only an allowlist of side-effect-free
-  GET routes plus the MCP endpoint. Token writes go only through `/api/assistant/do` as named,
-  logged actions (`services/assistantActions.ts`); changes needing approval are owner-applied proposals. Never add a writing, settings, backup, auth or bank route. Owner-approved
+  GET routes plus the MCP endpoint. Token writes go only through `/api/assistant/do`, each a row of the
+  policy table (`auth/assistantPolicy.ts`, docs/ASSISTANT-ENDPOINTS.md), logged; changes needing approval are owner-applied proposals. Never add a writing, settings, backup, auth or bank route. Owner-approved
   exceptions: a `categorise` token may set `categoryId` alone on past transactions and create/edit categories;
   an `organise` token may also propose rules (created disabled, never enabled/reordered/deleted by a token),
   apply a category-only rule to uncategorised past rows, set payee default categories, set or replace

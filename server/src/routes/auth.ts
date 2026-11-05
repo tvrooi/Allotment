@@ -1,10 +1,16 @@
 import {
   bearerToken,
+  canCategorise,
   looksLikeAccessToken,
   tokenAllows,
   verifyAccessToken,
 } from '../auth/accessTokens.js';
-import { assistantAction, finishAction, startAction } from '../services/assistantActions.js';
+import { assistantActionFor } from '../auth/assistantPolicy.js';
+import { finishAssistantAction, logAssistantAction } from '../services/assistantLog.js';
+
+/** Header the MCP endpoint adds to say which tool is asking, for the assistant log */
+export const ASSISTANT_TOOL_HEADER = 'x-flybudget-assistant-tool';
+const TOOL_NAME = /^[a-z0-9_]{1,64}$/;
 import { Router, type Request, type RequestHandler, type Response } from 'express';
 import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
@@ -281,24 +287,60 @@ export const requireSession: RequestHandler = (req, res, next) => {
   if (looksLikeAccessToken(bearer)) {
     const token = verifyAccessToken(bearer);
     if (!token) return void res.status(401).json({ error: 'Invalid or expired access token' });
-    // Audit decision I-11: a token writes only through /api/assistant/do, as a named action,
-    // and every such write (allowed or not) is logged for the owner (services/assistantActions.ts)
+    // Audit decision I-11 (docs/ASSISTANT-ENDPOINTS.md): a token writes only through
+    // /api/assistant/do (assistantDispatch marks those, nothing else can), as a row of the policy
+    // table, and every such write, allowed or refused, is logged for the owner
     const writes =
       req.method !== 'GET' &&
       req.method !== 'HEAD' &&
       req.path.toLowerCase().replace(/\/+$/, '') !== '/mcp';
     if (writes) {
-      const action = res.locals.viaAssistant ? assistantAction(req.method, req.path) : null;
-      if (!action)
+      // A read-only token reaches no write at all; nothing to log
+      if (!canCategorise(token.scope))
+        return void res.status(403).json({ error: 'A read-only access token cannot do this' });
+      if (!res.locals.viaAssistant)
         return void res.status(403).json({
-          error: res.locals.viaAssistant
-            ? 'An assistant cannot do this'
-            : 'An access token makes changes only through the assistant endpoint, /api/assistant/do',
+          error:
+            'An access token makes changes only through the assistant endpoint, /api/assistant/do',
         });
-      const logId = startAction(token.id, action.name, req.method, req.path, req.body);
-      res.on('finish', () => finishAction(logId, res.statusCode));
-    }
-    if (!tokenAllows(token.scope, req.method, req.path, req.body)) {
+      const toolHeader = req.headers[ASSISTANT_TOOL_HEADER];
+      const tool = typeof toolHeader === 'string' && TOOL_NAME.test(toolHeader) ? toolHeader : null;
+      const action = assistantActionFor(token.scope, req.method, req.path, req.body);
+      const entry = {
+        tokenId: token.id,
+        scope: token.scope,
+        tool,
+        method: req.method,
+        path: req.path,
+      };
+      if (!action) {
+        const error =
+          token.scope === 'categorise'
+            ? 'This access token can only read, set the category of past transactions, and create or edit categories'
+            : token.scope === 'organise'
+              ? 'An access token cannot make this change'
+              : 'A read-only access token cannot do this';
+        logAssistantAction({
+          ...entry,
+          action: null,
+          outcome: 'refused',
+          status: 403,
+          reason: error,
+        });
+        return void res.status(403).json({ error });
+      }
+      const logId = logAssistantAction({ ...entry, action: action.name, outcome: 'failed' });
+      // The route's own refusal, if any, for the log
+      let reason: string | null = null;
+      const json = res.json.bind(res);
+      res.json = (body: unknown) => {
+        if (res.statusCode >= 400 && body && typeof body === 'object' && 'error' in body)
+          reason = String((body as { error: unknown }).error);
+        return json(body);
+      };
+      res.on('finish', () => finishAssistantAction(logId, res.statusCode, reason));
+      res.locals.assistantAction = action.name;
+    } else if (!tokenAllows(token.scope, req.method, req.path)) {
       return void res.status(403).json({
         error:
           token.scope === 'categorise'
@@ -310,6 +352,11 @@ export const requireSession: RequestHandler = (req, res, next) => {
     res.locals.accessTokenScope = token.scope;
     return next();
   }
+  // The assistant endpoint is for access tokens; the owner makes changes in the app
+  if (res.locals.viaAssistant)
+    return void res
+      .status(403)
+      .json({ error: 'The assistant endpoint is for access tokens; the owner uses the app' });
   if (gatewaySecret) {
     if (fromGateway(req)) return next();
     return void res.status(401).json({ error: 'Login required' });

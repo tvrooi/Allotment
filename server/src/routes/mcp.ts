@@ -5,6 +5,7 @@ import { appVersion } from '../utils/version.js';
 import { db } from '../db/index.js';
 import { taxClaims, transactions } from '../db/schema.js';
 import { asScope, canCategorise, type TokenScope } from '../auth/accessTokens.js';
+import { ASSISTANT_TOOL_HEADER } from './auth.js';
 import { recordChangeSet, type ChangeEntry } from '../services/changeSets.js';
 import { todayIso } from '../services/mainAmountService.js';
 import { TAX_LABEL_KEYS, TAX_LABELS } from '../services/taxService.js';
@@ -437,6 +438,8 @@ const MAX_BULK = 1000;
 interface Context {
   req: Request;
   tokenId?: string;
+  /** The tool being called, named in the assistant log */
+  tool?: string;
 }
 /** A tool that runs its own steps, each one a request made with the caller's token */
 interface ActionTool {
@@ -457,7 +460,7 @@ const isId = (v: unknown): v is string => typeof v === 'string' && !!v && v.leng
 
 /** A JSON request to this server's API as the caller; `error` is the API's message */
 async function api(ctx: Context, path: string, method = 'GET', body?: unknown) {
-  const { status, text } = await callApi(ctx.req, path, method, body);
+  const { status, text } = await callApi(ctx.req, path, method, body, ctx.tool);
   let data: unknown = null;
   try {
     data = text ? JSON.parse(text) : null;
@@ -1160,7 +1163,7 @@ function rpcError(id: unknown, code: number, message: string) {
 }
 
 /** One request to this server's API, as the caller (same token, same checks) */
-async function callApi(req: Request, path: string, method = 'GET', body?: unknown) {
+async function callApi(req: Request, path: string, method = 'GET', body?: unknown, tool?: string) {
   const apiRoot = req.baseUrl.replace(/\/mcp$/, '');
   // Writes go through the assistant endpoint, which names and logs them (audit decision I-11)
   const via = method === 'GET' ? '' : '/assistant/do';
@@ -1169,6 +1172,7 @@ async function callApi(req: Request, path: string, method = 'GET', body?: unknow
     headers: {
       authorization: req.headers.authorization ?? '',
       accept: 'application/json',
+      ...(tool ? { [ASSISTANT_TOOL_HEADER]: tool } : {}),
       ...(body === undefined ? {} : { 'content-type': 'application/json' }),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -1261,7 +1265,7 @@ async function handle(ctx: Context, scope: TokenScope, message: Record<string, u
       const missing = (tool.required ?? []).filter((k) => args[k] === undefined);
       if (missing.length) return rpcError(id, -32602, `Missing arguments: ${missing.join(', ')}`);
       if ('run' in tool) {
-        const result = await tool.run(ctx, args);
+        const result = await tool.run({ ...ctx, tool: tool.name }, args);
         return rpcResult(id, {
           content: [{ type: 'text', text: cut(JSON.stringify(result)) }],
           isError: 'error' in result,
@@ -1270,7 +1274,7 @@ async function handle(ctx: Context, scope: TokenScope, message: Record<string, u
       const write =
         'write' in tool ? (tool.write as (typeof CATEGORY_TOOLS)[number]['write']) : null;
       const { status, text } = write
-        ? await callApi(ctx.req, tool.path(args), write.method, write.body(args))
+        ? await callApi(ctx.req, tool.path(args), write.method, write.body(args), tool.name)
         : await callApi(ctx.req, tool.path(args));
       const shaped =
         status < 400 && 'transform' in tool && tool.transform ? tool.transform(text, args) : text;

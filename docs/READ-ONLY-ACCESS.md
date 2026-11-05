@@ -106,10 +106,10 @@ Amounts are integer minor units (cents); a negative transaction amount is money 
 Since 0.2.0-up.99 (audit decision I-11) a token never writes to the app's routes directly. A
 write the token's scope allows goes to the same path under `/api/assistant/do`, for example
 `PUT /api/assistant/do/transactions/<id>` with `{"categoryId": "..."}`. Only the named actions in
-`server/src/services/assistantActions.ts` are accepted there; the scope rules below
-(`server/src/auth/accessTokens.ts`) still decide each one, and the target route still applies its
+the policy table, `server/src/auth/assistantPolicy.ts` (docs/ASSISTANT-ENDPOINTS.md), are
+accepted there, each with its own check, and the target route still applies its
 own checks. Every write a token asks for, allowed or refused, is logged: **Settings → Server →
-Read-only access → Assistant activity** (owner only, `GET /api/assistant/log`). The MCP server
+Read-only access → Assistant activity** (owner only, `GET /api/assistant/activity`; no request bodies are kept, the newest 5,000 rows). The MCP server
 does this for you.
 
 Changes the owner must approve arrive as proposals: an organise token may

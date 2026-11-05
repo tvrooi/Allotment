@@ -59,19 +59,33 @@ export const redoChangeSet = (id: string) =>
     method: 'POST',
   });
 
-/** Audit decision I-11: each write an access token made, newest first (owner only) */
+/** One write a token asked for, allowed or refused (server: routes/assistant.ts, audit I-11) */
 export interface AssistantAction {
   id: string;
+  createdAt: string;
+  tokenId: string | null;
   tokenName: string;
-  action: string;
-  label: string;
+  scope: AccessTokenScope;
+  /** The policy row that allowed it; null when refused by the policy */
+  action: string | null;
+  tool: string | null;
   method: string;
   path: string;
-  detail: string | null;
+  outcome: 'refused' | 'applied' | 'failed';
   status: number | null;
-  createdAt: string;
+  reason: string | null;
 }
-export const getAssistantLog = () => apiFetch<AssistantAction[]>('/assistant/log?limit=100');
+
+export interface AssistantPolicyRow {
+  name: string;
+  scope: 'categorise' | 'organise';
+  summary: string;
+}
+
+export const getAssistantActivity = (limit = 50) =>
+  apiFetch<{ actions: AssistantAction[]; policy: AssistantPolicyRow[] }>(
+    `/assistant/activity?limit=${limit}`,
+  );
 
 /** A change an assistant proposed that only the owner applies */
 export interface AssistantProposal {

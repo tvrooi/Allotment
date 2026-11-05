@@ -110,7 +110,7 @@ NULL`) stops it without rewriting a transaction or an assignment.
   payment), and only open checking, savings or cash accounts in the personal budget.
 - Targets, auto-assign, goals and the annual overview count `transferred` with `budgeted`.
   The assignment guard and Move money are unchanged: `budgeted` is still only stored assignments.
-- Read-only tokens can't set the link (`categoryManageAllows` lists the fields they may edit).
+- Read-only tokens can't set the link (`categoryManageAllows` in `auth/assistantPolicy.ts` lists the fields they may edit).
 - Reports still leave internal transfers out.
 
 ## Resources
@@ -147,6 +147,17 @@ exchange rates mark the assessment incomplete and block new funding and moves.
 The service uses account balances valued as of the assessment date and stored
 transaction conversions for category activity. A foreign account's revaluation therefore
 lands in Ready to Assign, the one place currency movements change; it is not earned salary.
+
+## Planned assigning (one path)
+
+Auto-assign, **Fund targets**, payday plans and assistant suggestions each decide what to add;
+`services/fundingPlan.ts` does the rest the same way for all of them (audit F-13): `planFunding`
+caps the additions at money unassigned today, in budget order, in one preview format (`rows` with
+`proposed` and `shortfall`, `total`, `shortfall`, `complete`, `revision`); `applyFundingPlan`
+rebuilds the plan inside the funded write and refuses one that differs from what was previewed
+(409); `addAssigned` is the single write that adds to a month's assignment. On desktop Budget they
+sit together in one **Assign** menu (`components/budget/AssignMenu.tsx`); on phones in the More menu.
+Move money and typing an assignment stay on the envelope (below).
 
 ## Moves, coverage and undo
 

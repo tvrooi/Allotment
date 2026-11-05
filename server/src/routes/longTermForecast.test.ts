@@ -28,6 +28,7 @@ const { accessTokensRouter } = await import('./accessTokens.js');
 const { exportRouter } = await import('./export.js');
 const { forecastRouter } = await import('./forecast.js');
 const { mcpRouter } = await import('./mcp.js');
+const { assistantRouter } = await import('./assistant.js');
 const { transactionsRouter } = await import('./transactions.js');
 const { BACKUP_TABLES } = await import('../services/backupService.js');
 
@@ -50,6 +51,7 @@ beforeAll(async () => {
   app.use('/api/transactions', transactionsRouter);
   app.use('/api/access-tokens', accessTokensRouter);
   app.use('/api/mcp', mcpRouter);
+  app.use('/api/assistant', assistantRouter);
   app.use(errorHandler);
   server = await new Promise<Server>((r) => {
     const s = app.listen(0, '127.0.0.1', () => r(s));

@@ -1,24 +1,25 @@
 import { Router, type RequestHandler, type Response } from 'express';
 import { z } from 'zod';
+import { ASSISTANT_ACTIONS } from '../auth/assistantPolicy.js';
+import { listAssistantActions } from '../services/assistantLog.js';
 import {
   ASSISTANT_DO,
   ProposalError,
   applyAssistantProposal,
   createAssistantProposal,
   declineAssistantProposal,
-  listActions,
   listAssistantProposals,
   proposalSchema,
 } from '../services/assistantActions.js';
 
-// Audit decision I-11 (services/assistantActions.ts). The owner reads the assistant's activity
+// Audit decision I-11 (docs/ASSISTANT-ENDPOINTS.md). The owner reads the assistant's activity
 // and decides its proposals here; an organise token may only create proposals, and only
-// through /api/assistant/do (auth/accessTokens.ts).
+// through /api/assistant/do (the policy row propose_change, auth/assistantPolicy.ts).
 
 /**
  * Before routing: a request to /api/assistant/do/<path> is handled as /api/<path>, marked as
  * having come through the assistant endpoint. Only this flag (set here, never from a header)
- * lets an access token write; requireSession checks the named action, the scope rules and logs it.
+ * lets an access token write; requireSession finds its policy row and logs it.
  */
 export const assistantDispatch: RequestHandler = (req, res, next) => {
   if (req.path === ASSISTANT_DO || req.path.startsWith(`${ASSISTANT_DO}/`)) {
@@ -46,9 +47,18 @@ const ownerOnly: RequestHandler = (_req, res, next) =>
     ? void res.status(403).json({ error: 'Only the owner can do this' })
     : next();
 
-assistantRouter.get('/log', ownerOnly, (req, res) =>
-  res.json(listActions(Number(req.query.limit) || 200)),
-);
+/** The owner's view: recent requests and the policy they were checked against */
+assistantRouter.get('/activity', ownerOnly, (req, res) => {
+  const limit = Number(req.query.limit ?? 100);
+  const offset = Number(req.query.offset ?? 0);
+  res.json({
+    actions: listAssistantActions(
+      Number.isFinite(limit) ? limit : 100,
+      Number.isFinite(offset) ? offset : 0,
+    ),
+    policy: ASSISTANT_ACTIONS.map(({ name, scope, summary }) => ({ name, scope, summary })),
+  });
+});
 assistantRouter.get('/proposals', (req, res) =>
   res.json(listAssistantProposals(req.query.status === 'all' ? undefined : 'pending')),
 );

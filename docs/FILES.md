@@ -156,8 +156,9 @@ and a receipt's merchant and notes (`LIKE`, with `%` and `_` taken literally).
   - PDFs best effort: the text drawn by each page's content streams (Flate-compressed or plain).
     Text drawn in a font's own encoding can't be read without the font, so it is left out rather
     than stored as nonsense.
-- **Photos** are read only by the owner's local model, when reading receipts is turned on
-  (RECEIPTS-AND-TAX.md §5): **Read its text** sends the photo, only to that Ollama address, with a
+- **Photos** are read only by the model the owner chose, when reading receipts is turned on
+  (RECEIPTS-AND-TAX.md §5): **Read its text** sends the photo, only to that provider (their own
+  model server, Anthropic or OpenAI), with a
   prompt to write out its words. It queues behind receipt reads, one at a time. With reading off,
   photos are found by name, description and labels only.
 - `text_status`: null (not read yet), `pending`, `read`, `none` (nothing found) or `failed`.

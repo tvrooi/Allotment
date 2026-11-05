@@ -498,6 +498,13 @@
       "when": 1795600000000,
       "tag": "0070_deleted_import_details",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "6",
+      "when": 1795700000000,
+      "tag": "0071_assistant_log_policy",
+      "breakpoints": true
     }
   ]
 }

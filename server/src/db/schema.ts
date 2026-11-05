@@ -868,22 +868,34 @@ export const upSourceRecords = sqliteTable(
   (table) => [index('up_source_review').on(table.reviewState, table.lastSeenAt)],
 );
 
-/** Audit decision I-11: each write an access token made (migration 0069; not backed up) */
+/**
+ * Every write an access token asked for through the assistant endpoint (audit decision I-11,
+ * docs/ASSISTANT-ENDPOINTS.md): allowed or refused, with the policy row it matched. Migration
+ * 0069, columns from 0071. A security log: the newest 5,000 rows, never in backups.
+ */
 export const assistantActions = sqliteTable(
   'assistant_actions',
   {
     id: text('id').primaryKey(),
     tokenId: text('token_id').notNull(),
     tokenName: text('token_name').notNull(),
-    /** A name from services/assistantActions.ts ACTIONS */
+    /** The policy row (auth/assistantPolicy.ts) it matched; '' when none did (refused) */
     action: text('action').notNull(),
     method: text('method').notNull(),
     path: text('path').notNull(),
-    /** The request body, long strings shortened */
+    /** No longer written: no request bodies are kept (0071 cleared what up.99 kept) */
     detail: text('detail'),
     /** The HTTP status it ended with; null if the connection dropped first */
     status: integer('status'),
     createdAt: text('created_at').notNull(),
+    /** The token's scope when it asked */
+    scope: text('scope').notNull().default(''),
+    /** The MCP tool that asked, when it said */
+    tool: text('tool'),
+    /** refused (by the policy), applied (the route answered under 400) or failed (it didn't) */
+    outcome: text('outcome').notNull().default('applied'),
+    /** Why it was refused or failed */
+    reason: text('reason'),
   },
   (table) => [index('assistant_actions_created').on(table.createdAt)],
 );

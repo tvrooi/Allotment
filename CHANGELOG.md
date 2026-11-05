@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.101
+
+- **Clearer assistant activity.** Settings → Server → Read-only access → **Assistant activity** now says, for every change an assistant asked for, what it was in plain words, which tool asked, and whether it was done, not done (the app's own rules said no, with why) or refused. It keeps no copy of what was sent, and only the newest 5,000 entries; entries kept by up.99 and up.100 lose theirs.
+- Behind it, each kind of change an assistant may make is one entry in a single policy list with its own check, so nothing else can get through. Assistants using Allotment's MCP server need no change.
+
 ## 0.2.0-up.100
 
 - **Faster first load.** Allotment now loads only the Dashboard, Budget and Transactions up front; every other page loads the first time you open it. The app's main download is about 44% smaller, which matters most on a phone or away from home.
