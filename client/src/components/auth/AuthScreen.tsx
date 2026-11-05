@@ -9,7 +9,7 @@ export function AuthScreen({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-surface-alt px-4">
+    <div className="min-h-screen flex items-center justify-center bg-surface-alt px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       {/* macOS desktop app (the reconnect screen): the window has no title bar, so this strip moves it */}
       <div aria-hidden className="hidden mac-window:block fixed inset-x-0 top-0 h-10 drag-region" />
       <div className="w-full max-w-sm bg-surface rounded-xl border border-border-light shadow-card p-8">
