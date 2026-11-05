@@ -6,7 +6,7 @@ Read only the files relevant to the request. Do not read the entire repository o
 Detailed upstream architecture: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md), on demand.
 Release process and known limitations: [MAINTENANCE.md](MAINTENANCE.md).
 Current state, live setup and where to pick up: [HANDOVER.md](HANDOVER.md). Update it as work lands.
-Keep this file and CLAUDE.md identical.
+Keep AGENTS.md and CLAUDE.md byte-identical (Codex reads one, Claude Code the other).
 
 ## Where to work
 
@@ -88,3 +88,125 @@ Up sync runs at startup/manual Sync Now, with opt-in server polling and backoff;
 Bank-source review never rewrites ledger rows. Desktop in-app updates require a verified Developer ID
 signed Mac build; unsigned builds offer installer downloads from inside the app. Signing/notarization
 is optional until configured; see docs/DESKTOP-UPDATES.md.
+
+## Review guidelines
+
+Used by automatic PR review (Codex). Security-specific checks are in [SECURITY.md](SECURITY.md)
+under "Security review guidelines"; apply both. CI already runs types, Prettier, unit, browser and
+build checks, so comment on what CI cannot see. Do not comment on formatting or style.
+
+**Report format.** One finding per problem: file and line, what breaks (a concrete input, state or
+caller, not "could be an issue"), and how you checked it. Rank **P0** money or data loss, a secret or
+auth exposure, a migration that can lose or skip data; **P1** wrong behaviour, a broken invariant,
+new behaviour without a test, a second copy of logic that already exists; **P2** staleness: dead code,
+drifted docs, duplicated lists. If you cannot verify something, say so rather than guess. If the
+change is sound, say so briefly.
+
+**How to check.**
+
+1. Read each changed function whole, then its callers. When a contract changes (route path or body,
+   response shape, schema column, helper signature, query key, enum or scope value), search for every
+   other use: `client/src`, `server/src` (including `routes/mcp.ts` and `server/src/browser/`), the
+   demo budget, `e2e/`, docs. A change that updates one of several sites is P1.
+2. Find the sibling paths. This app reaches one effect many ways: manual entry, CSV import, backup
+   restore, the Up, Plaid, SimpleFIN and Enable Banking syncs, the owner versus an access token
+   (`/api/assistant/do`), desktop versus server mode versus multi-user gateway, the real server versus
+   the in-browser demo worker. A rule, guard or fix on one path must hold on the rest.
+3. Run the narrowest relevant check from "Verification" above when the diff touches its area, rather
+   than reading code and assuming. A claim in the PR body must match what the diff does.
+4. Ask what the next 50 changes will do to this one: does it add a place that every future change must
+   remember to update?
+
+**Correctness.**
+
+- Money is integer minor units of the account's currency; no floats, `parseFloat` or `Number()` on
+  amounts, and conversion only at UI boundaries (`client/src/utils/currency.ts`). Splits: the parent
+  holds the total, children the parts, and totals never count both (`isParent`, `inAccountBalance`).
+- Dates are real `YYYY-MM-DD` (`isoDate`, `isoMonth`); never build date math on a regex-valid string.
+- Writes to transactions, balances, transfers, households and the budget go through the shared
+  helpers and services, in one DB transaction when several rows change. A write that bypasses them
+  skips reconciled-row, split, transfer, household and payment-envelope rules.
+- Never overwrite reconciled or user-edited rows from a sync. Synced imports keep stable IDs so a
+  re-run adds nothing, and an owner-deleted import stays deleted (`deletedImportIds`). Transfers are
+  suggested for review, never linked by guess.
+- PUT schemas must not be `createSchema.partial()` when the create schema has `.default()`s (Zod 4
+  applies the defaults and resets unsent fields). Request bodies are validated with Zod before any
+  DB access, with caps on sizes, counts and ranges.
+- Failures reach the client as generic JSON (422/409 for bank errors, never 502-504, which the client
+  reads as "server down"); details are logged server side. No `catch` that silently drops a failed
+  write or sync, and no fallback that makes bad data look fine.
+- Rules read old formats on read and write only the current one. Preferences changes bump
+  `PREFERENCES_VERSION` with a migration step.
+
+**Database and data.**
+
+- Migrations are additive and numbered in sequence: `server/src/db/migrations/NNNN_name.sql`, the
+  matching `schema.ts` change, and a `_journal.json` entry with the next `idx`, the same `tag` and a
+  `when` larger than the previous one (drizzle skips an entry whose `when` is not newer). Statements
+  are separated by `--> statement-breakpoint`. A shipped migration is never edited. DROP, rename,
+  type change or a backfill that rewrites rows is P0 unless it is its own reviewed migration, is
+  idempotent and keeps the data; check it on a populated database as well as an empty one
+  (`loanDetails.test.ts` shows how a test applies the migrations).
+- A new table or column is in `BACKUP_TABLES` (`services/backupService.ts`) and survives export and
+  restore, or the PR says why not (secrets, tokens, the assistant log, file bytes are deliberately
+  excluded). Restoring an older backup that lacks the new field must still work.
+- New queries on large tables (transactions) are indexed, bounded and not run per row (N+1). Lists
+  have caps or paging. Nothing heavy runs synchronously in a request handler.
+
+**Staleness and drift** (the main long-term risk; check every PR for these).
+
+- One implementation per behaviour. Reuse the existing service or helper (`fundingPlan.ts`,
+  `householdService.sharePayments`, `transactionHelpers.ts`, `safeFetch`, `escapeCsv`, the
+  `client/src/utils/currency.ts` and `dates.ts` formatters, `isoDate`). A parallel version of logic
+  that exists is P1 even if it works today. If a helper almost fits, extend it.
+- A change removes what it replaces: unused exports, routes, hooks, types, components, query keys,
+  flags, guide text, demo-budget entries and test fixtures. No commented-out code, no `TODO` or
+  `any` or `eslint-disable`/`@ts-ignore` without a reason on the line, no compatibility shim with no
+  caller. Lint warnings are capped (`--max-warnings` in `lint/package.json`): the number goes down or
+  stays, never up.
+- Lists and constants live in one place and are imported, not retyped (account types exist on both
+  sides, so both must change together; route and scope names, `TABLES`, tab and storage keys).
+  Prose docs name where a list lives instead of copying it. New code does not hard-code a version,
+  count, date or hostname that will rot.
+- Docs and code move together in the same PR: the matching `docs/*.md`, `HANDOVER.md` State,
+  `docs/ASSISTANT-ENDPOINTS.md` and its policy table, `docs/READ-ONLY-ACCESS.md`, `README.md`,
+  `UP-SUPPORT.md`, `MAINTENANCE.md`, and the `AGENTS.md` / `CLAUDE.md` pair when a rule changes. A
+  doc that still describes removed or renamed behaviour is P2; an unconditional claim a change has
+  made false is P1. Comments say why, and are updated when the code under them changes.
+- New server routers are mounted in `server/src/index.ts` and `server/src/browser/app.ts` (Node-only
+  code stays out of modules the demo loads; new Express features also need `expressShim.ts`). New
+  client pages are `lazy()` in `client/src/App.tsx`. New features appear in the demo budget leanly.
+- New dependencies are justified, small and maintained, with lockfile updated, no install scripts and
+  no weakening of `.npmrc`. GitHub Actions are pinned to a commit SHA. Native or Electron-coupled
+  packages are not bundled into routine updates.
+- Dependency, CI and workflow edits are reviewed for what they could execute (secrets in
+  `pull_request` jobs, `permissions`, untrusted input in `run:` steps).
+- Stored identifiers keep `flybudget` and renaming them strands data; user-visible text says
+  Allotment. Flag a rename of either kind.
+
+**Tests.**
+
+- New behaviour and every bug fix come with a test that fails without the change. Server logic uses
+  Vitest, with property-based invariants (fast-check) where the logic is arithmetic or ordering; UI
+  flows use Playwright (`e2e/`), selecting by role or label. Tests use mock bank data and disposable
+  budgets, never real data.
+- A test must not be skipped, loosened, retried or made to sleep to pass. Do not accept a changed
+  expectation without a reason in the PR. Time, randomness and shared state are injected or reset, so
+  tests do not depend on today's date, order or leftover rows.
+- Security and policy changes carry both the allowed case and the nearest refusal
+  (`assistantPolicy.test.ts` is the model).
+
+**Client.**
+
+- Mutations invalidate the queries they affect. Save buttons respect the connection state
+  (`useCanSave`, `<SavingPausedHint />`; `useAddTransaction()` for new transactions). Money inputs are
+  `type="text" inputMode="decimal"` through `CurrencyInput`, never `type="number"`; displayed dates go
+  through `utils/dates.ts`.
+- Interactive controls have accessible names; layouts hold at 390 px with no sideways scroll; the
+  demo and offline modes keep working.
+
+**Releases.** An app change runs `npm run release:prepare -- <next-version>`, which sets
+`package.json`, `package-lock.json` and `homeassistant/config.yaml` together, and adds a matching
+`CHANGELOG.md` entry; check that all three agree and that the version is not already tagged. A
+documentation-only change leaves the version alone. Tags are never moved. A PR keeps to one
+purpose: unrelated reformatting or drive-by refactors are P2, because they hide the real change.
