@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNotNull, lt } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNotNull, lt, ne } from 'drizzle-orm';
 import { format, subDays } from 'date-fns';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -164,10 +164,21 @@ export const eventSchema = z.object({
     .default([]),
 });
 
+/**
+ * FNV-1a of a key: where equal remainders start taking the spare cent (SPL-06). The key is the
+ * linked bank payment when there is one, so sharing it again after Undo gives the same split.
+ */
+function spareCentOffset(id: string) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 0x01000193) >>> 0;
+  return h;
+}
+
 /** Records one event (expense, contribution, settlement or refund) after every check; returns its id */
 export function recordEvent(groupId: string, raw: unknown): string {
   const state = snapshot(groupId);
   const input = eventSchema.parse(raw);
+  const id = nanoid();
   const member = (id: string | null) => id !== null && state.people.some((p) => p.id === id);
   if (
     (input.payerId && !member(input.payerId)) ||
@@ -211,7 +222,11 @@ export function recordEvent(groupId: string, raw: unknown): string {
       throw new Error('Exact shares must equal the expense');
     if (input.mode === 'percentage' && values.reduce((a, b) => a + b, 0) !== 10000)
       throw new Error('Percentage shares must total 10000 basis points');
-    const amounts = input.mode === 'exact' ? values : allocateShares(amount, values);
+    // The spare cent starts at a place taken from the new id, so it doesn't always land on the first person
+    const amounts =
+      input.mode === 'exact'
+        ? values
+        : allocateShares(amount, values, spareCentOffset(input.transactionId ?? id));
     portions = input.shares.map((s, i) => ({ personId: s.personId, amount: amounts[i] }));
     if (input.payerId === null) {
       if (!state.poolAccountIds.length)
@@ -317,7 +332,7 @@ export function recordEvent(groupId: string, raw: unknown): string {
       throw new Error('Bank payment is already linked');
   }
   const row = {
-    id: nanoid(),
+    id,
     groupId: state.group.id,
     kind: input.kind,
     date: input.date,
@@ -765,7 +780,7 @@ export function unshareRecurringBill(groupId: string, scheduleId: string) {
   return snapshot(groupId);
 }
 
-/** Days back that money received is checked against what people owe */
+/** Days back that money received or paid is checked against what people owe */
 const REPAYMENT_DAYS = 120;
 export const words = (s: string) =>
   s
@@ -778,6 +793,8 @@ export const words = (s: string) =>
  * - `settlement`: money into your personal accounts whose payee has the name of someone who owes
  *   people (for things someone paid themselves), up to what they owe and what you're owed. What
  *   people owe the household account isn't owed to you, so it never counts here.
+ * - `payment`: money out of your personal accounts whose payee has the name of someone you owe
+ *   for things they paid themselves, up to what you owe and what they're owed.
  * - `contribution`: money into a household account, not linked yet, from someone in the
  *   household (their name in the payee), or a transfer from one of your own accounts.
  */
@@ -786,6 +803,8 @@ export function repaymentSuggestions(groupId: string, today: string) {
   const self = state.people.find((p) => p.isSelf)!;
   const owedToSelf = state.direct[self.id] ?? 0;
   const debtors = state.people.filter((p) => !p.isSelf && (state.direct[p.id] ?? 0) < 0);
+  const creditors = state.people.filter((p) => !p.isSelf && (state.direct[p.id] ?? 0) > 0);
+  const owedBySelf = -owedToSelf;
   const since = addDaysIso(today, -REPAYMENT_DAYS);
   const linked = new Set(
     db
@@ -798,7 +817,13 @@ export function repaymentSuggestions(groupId: string, today: string) {
   const recent = db
     .select()
     .from(transactions)
-    .where(and(gte(transactions.date, since), gte(transactions.amount, 1)))
+    // Money out is only looked at when you owe someone, to match your own repayment to them
+    .where(
+      and(
+        gte(transactions.date, since),
+        owedBySelf > 0 ? ne(transactions.amount, 0) : gte(transactions.amount, 1),
+      ),
+    )
     .all()
     .filter((t) => t.date <= today && !t.isParent && !t.parentTransactionId && !linked.has(t.id));
   const named = (t: (typeof recent)[number], among: typeof state.people) => {
@@ -815,7 +840,12 @@ export function repaymentSuggestions(groupId: string, today: string) {
   const settlements =
     debtors.length && owedToSelf > 0
       ? recent
-          .filter((t) => !t.transferTransactionId && !state.poolAccountIds.includes(t.accountId))
+          .filter(
+            (t) =>
+              t.amount > 0 &&
+              !t.transferTransactionId &&
+              !state.poolAccountIds.includes(t.accountId),
+          )
           .flatMap((t) => {
             const person = named(t, debtors);
             if (!person) return [];
@@ -842,8 +872,35 @@ export function repaymentSuggestions(groupId: string, today: string) {
     // From one of your own accounts: not this household's, and not another household's either
     return !!other && !poolGroupOf(other.accountId) && !linked.has(t.transferTransactionId);
   };
+  // The mirror case: money you paid out to a housemate you owe, from a personal account
+  const payments =
+    creditors.length && owedBySelf > 0
+      ? recent
+          .filter(
+            (t) =>
+              t.amount < 0 &&
+              !t.transferTransactionId &&
+              !state.poolAccountIds.includes(t.accountId),
+          )
+          .flatMap((t) => {
+            const person = named(t, creditors);
+            if (!person) return [];
+            const owed = state.direct[person.id] ?? 0;
+            if (-t.amount > owedBySelf || -t.amount > owed) return [];
+            return [
+              {
+                kind: 'payment' as const,
+                ...base(t),
+                amount: -t.amount,
+                personId: person.id,
+                personName: person.name,
+                owes: owedBySelf,
+              },
+            ];
+          })
+      : [];
   const contributions = recent
-    .filter((t) => state.poolAccountIds.includes(t.accountId))
+    .filter((t) => t.amount > 0 && state.poolAccountIds.includes(t.accountId))
     .flatMap((t) => {
       const person = ownLeg(t)
         ? self
@@ -864,7 +921,9 @@ export function repaymentSuggestions(groupId: string, today: string) {
         },
       ];
     });
-  return [...settlements, ...contributions].sort((a, b) => b.date.localeCompare(a.date));
+  return [...settlements, ...payments, ...contributions].sort((a, b) =>
+    b.date.localeCompare(a.date),
+  );
 }
 
 /**

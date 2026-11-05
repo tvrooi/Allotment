@@ -451,8 +451,8 @@ test('picks payments in the register and shares just those, split equally', asyn
   const dinnerEvent = state.events.find(
     (e: { transactionId: string }) => e.transactionId === dinner.id,
   );
-  // Equal split, largest remainder: the odd cent goes to the first person
-  expect(dinnerEvent.shares.map((s: { amount: number }) => s.amount)).toEqual([3001, 3000]);
+  // Equal split, largest remainder: the odd cent goes to one of them, not always the first
+  expect(dinnerEvent.shares.map((s: { amount: number }) => s.amount).sort()).toEqual([3000, 3001]);
 });
 
 test('lists recurring bills shared with housemates, with shares and one-click sharing', async ({
@@ -673,4 +673,41 @@ test('a rent with fixed amounts from the household account shows what each owes 
   const sharing = page.getByRole('region', { name: 'Sharing' });
   await sharing.getByRole('button', { name: 'Record your contribution' }).click();
   await expect(page.getByText(/^owes the household account A?\$1,200$/)).toHaveCount(0);
+});
+
+test('lists who should pay whom and records a suggested repayment in one click', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Joint', 0, 'checking', { currency: 'AUD' });
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: account.id,
+    people: ['Me', 'Alex', 'Sam'],
+    selfIndex: 0,
+  });
+  const alex = group.people.find((p: any) => p.name === 'Alex');
+  // Alex paid $90 for all three: Me and Sam each owe Alex $30
+  await api.call('POST', `/households/${group.group.id}/events`, {
+    kind: 'expense',
+    date: '2026-10-21',
+    description: 'Groceries',
+    amount: 9000,
+    payerId: alex.id,
+    shares: group.people.map((p: any) => ({ personId: p.id, value: 1 })),
+  });
+  await open(page, '/household');
+  const list = page.getByRole('list', { name: 'Suggested repayments' });
+  await expect(list.getByText('You pay Alex A$30')).toBeVisible();
+  await expect(list.getByText('Sam pays Alex A$30')).toBeVisible();
+  await page.getByRole('button', { name: 'Record: Sam pays Alex A$30' }).click();
+  await expect(list.getByText('Sam pays Alex A$30')).toHaveCount(0);
+  await expect(list.getByText('You pay Alex A$30')).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await page.getByRole('button', { name: 'Record: You pay Alex A$30' }).click();
+  await expect(page.getByRole('list', { name: 'Suggested repayments' })).toHaveCount(0);
 });

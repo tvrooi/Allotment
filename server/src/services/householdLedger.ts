@@ -1,5 +1,8 @@
-/** Exact largest-remainder allocation; input order breaks ties and is saved with the expense. */
-export function allocateShares(amount: number, weights: number[]): number[] {
+/**
+ * Exact largest-remainder allocation. Input order breaks ties, starting `offset` places along
+ * (wrapping), so a caller can rotate who gets the spare cent. The result is saved with the expense.
+ */
+export function allocateShares(amount: number, weights: number[], offset = 0): number[] {
   if (
     !Number.isSafeInteger(amount) ||
     amount < 0 ||
@@ -11,9 +14,14 @@ export function allocateShares(amount: number, weights: number[]): number[] {
   const total = weights.reduce((s, w) => s + BigInt(w), 0n);
   const products = weights.map((w) => BigInt(amount) * BigInt(w));
   const result = products.map((p) => Number(p / total));
+  const n = weights.length;
+  const start = ((offset % n) + n) % n;
+  const rank = (i: number) => (i - start + n) % n;
   const order = products
     .map((p, i) => ({ i, remainder: p % total }))
-    .sort((a, b) => (a.remainder === b.remainder ? a.i - b.i : a.remainder > b.remainder ? -1 : 1));
+    .sort((a, b) =>
+      a.remainder === b.remainder ? rank(a.i) - rank(b.i) : a.remainder > b.remainder ? -1 : 1,
+    );
   for (let left = amount - result.reduce((s, v) => s + v, 0), i = 0; left > 0; left--, i++)
     result[order[i].i]++;
   return result;
@@ -62,5 +70,39 @@ export function householdLedger(people: { id: string }[], events: Event[], share
   }
   const balances = zero();
   for (const id of Object.keys(balances)) balances[id] = toPool[id] + direct[id];
-  return { balances, pool, toPool, direct };
+  return {
+    balances,
+    pool,
+    toPool,
+    direct,
+    settlements: suggestSettlements(people, direct),
+    poolOwed: people
+      .filter((p) => toPool[p.id] < 0)
+      .map((p) => ({ personId: p.id, amount: -toPool[p.id] })),
+  };
+}
+
+/**
+ * Who should pay whom to clear the `direct` balances: at most n - 1 transfers, each bounded by
+ * both people's balance, so every one passes the settlement check. Debtors and creditors are
+ * paired in person order, so recording one transfer leaves the rest unchanged. Same idea as
+ * Spliit's getSuggestedReimbursements (MIT), written against these types.
+ */
+export function suggestSettlements(people: { id: string }[], direct: Record<string, number>) {
+  const creditors = people
+    .map((p) => ({ id: p.id, left: direct[p.id] ?? 0 }))
+    .filter((c) => c.left > 0);
+  const debtors = people
+    .map((p) => ({ id: p.id, left: -(direct[p.id] ?? 0) }))
+    .filter((d) => d.left > 0);
+  const transfers: { fromId: string; toId: string; amount: number }[] = [];
+  for (let c = 0, d = 0; c < creditors.length && d < debtors.length;) {
+    const amount = Math.min(creditors[c].left, debtors[d].left);
+    transfers.push({ fromId: debtors[d].id, toId: creditors[c].id, amount });
+    creditors[c].left -= amount;
+    debtors[d].left -= amount;
+    if (!creditors[c].left) c++;
+    if (!debtors[d].left) d++;
+  }
+  return transfers;
 }

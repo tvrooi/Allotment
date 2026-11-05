@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.106
+
+- **Settle up on the Household page.** Under **People & balances**, a new **Settle up** list says who should pay whom to clear what people owe each other for things they paid themselves, for example "You pay Alex $30" and "Sam pays Alex $30", in at most one fewer repayments than there are people. **Record** saves one as a repayment in one click. What people owe the household account is listed separately ("Sam puts $x into the household account") and never as a repayment between people.
+- **Your own repayments are matched too.** When you owe a housemate and one of your bank payments names them, **Household → Sharing** now offers **Record your repayment to …**, and Settle up offers **Link payment** instead of **Record**, so the same payment isn't entered twice.
+- **The spare cent moves around.** An equal split that doesn't divide evenly (for example $100 three ways) no longer always gives the extra cent to the first person. Which person gets it now varies from entry to entry. Entries already saved don't change, and refunds still reverse the original shares exactly.
+
 ## 0.2.0-up.105
 
 - **Easier to use with a screen reader or a thumb.** Budget and a category's page now have a proper heading, every icon-only button says what it does (the report builder's back link and group expanders, saved-report delete, cancel in the category picker), and the dashboard's period menus and the Add transaction date are labelled. Faded text on disabled rules is gone: a rule that is off now says **Off: turn it on to use it.** Placeholder and empty-state text that was too pale to read is darker. On a phone, the buttons in Settings → categories, the dashboard's recent transactions (now the same cards as the register), payee pictures, Review links, cash flow presets, the year view's months and the Files filters are at least 44 px.

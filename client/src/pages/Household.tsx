@@ -15,6 +15,8 @@ import { HouseholdSharing } from '../components/household/HouseholdSharing';
 import { HouseholdIcon } from '../components/household/HouseholdIcon';
 import { CombinedHousehold } from '../components/household/CombinedHousehold';
 import { RecurringBills } from '../components/household/RecurringBills';
+import { SettleUp } from '../components/household/SettleUp';
+import type { SettleUpTransfer } from '../api/households';
 import { RepaymentCategoryOffers } from '../components/household/RepaymentCategoryOffers';
 import type { HouseholdSplit, SharedRecurringBill } from '../api/households';
 
@@ -58,6 +60,9 @@ type State = {
   toPool: Record<string, number>;
   /** For things people paid themselves, and repayments: negative = owes the people who paid */
   direct: Record<string, number>;
+  /** Who should pay whom to clear `direct`, and what people owe the household account */
+  settlements: SettleUpTransfer[];
+  poolOwed: { personId: string; amount: number }[];
   pool: number;
   cash: number;
   unreserved: number;
@@ -487,6 +492,14 @@ export default function HouseholdPage() {
                       until you change it in Household settings.
                     </p>
                   )}
+                <SettleUp
+                  key={`settle-${state.group.id}`}
+                  groupId={state.group.id}
+                  currency={state.group.currency}
+                  people={state.people}
+                  settlements={state.settlements ?? []}
+                  poolOwed={state.poolOwed ?? []}
+                />
                 {hasPool && (
                   <div className="mt-3 grid gap-2 sm:grid-cols-3 text-xs text-text-tertiary">
                     <p className="bg-surface-alt rounded-lg p-2.5">

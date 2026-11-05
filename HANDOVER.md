@@ -5,10 +5,15 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 5 November 2026 (after up.105).
+Last updated: 5 November 2026 (up.106 in review).
 
 ## State
 
+- **Settle up (up.106, SPL-01, SPL-02, SPL-06; no migration):** the Household page lists who should pay whom
+  (`suggestSettlements` in `householdLedger.ts`, from the `direct` balances; `poolOwed` listed apart), each
+  with **Record** or **Link payment**; `repaymentSuggestions` has a `payment` kind for your own outgoing
+  repayments; the spare cent of an uneven equal split starts at a place taken from the event id. The
+  combined-household view has no settle-up list yet.
 - **Stage 2 quality (up.105, no migration):** F-15, F-09, F-20, F-24 and F-19's G.2 items.
   _F-15:_ `lint/rules/icon-only-control.js` (an error: a button or link of only an icon needs an
   `aria-label`; jsx-a11y's own rule never saw lucide icons) found and fixed four nameless controls;
