@@ -20,6 +20,8 @@ export const LEDGER_VIEW_KEYS = [
   'payday',
   'card-funding',
   'goals',
+  // A household's breakdown by category follows the categories of its linked payments
+  'households',
 ] as const;
 
 export function invalidateLedgerViews(qc: QueryClient) {

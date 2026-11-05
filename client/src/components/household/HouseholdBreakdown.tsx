@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { getHouseholdStatement } from '../../api/households';
-import { formatCentsAxis, formatMoney } from '../../utils/currency';
+import { currencyAmountStyle, formatAxisAmount, formatMoney } from '../../utils/currency';
 import { chartColors } from '../../utils/chartColors';
 import { CurrencyTooltip, monthLabel } from '../reports/ChartHelpers';
 
@@ -77,7 +77,9 @@ export function HouseholdBreakdown({ groupId, currency, from, to, scope }: Props
                       tickLine={false}
                     />
                     <YAxis
-                      tickFormatter={(n: number) => formatCentsAxis(n)}
+                      tickFormatter={(n: number) =>
+                        formatAxisAmount(n, currencyAmountStyle(currency))
+                      }
                       axisLine={false}
                       tickLine={false}
                       width={48}
