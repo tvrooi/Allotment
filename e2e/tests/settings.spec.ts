@@ -142,8 +142,26 @@ test.describe('preferences', () => {
     // The dark theme is applied to the page and remembered
     await page.getByRole('main').getByRole('button', { name: 'Dark', exact: true }).click();
     await expect(page.locator('html')).toHaveClass(/dark/);
+    // The browser chrome and iPhone status bar take the dark header colour
+    const themeColour = () =>
+      page.evaluate(() => ({
+        meta: document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.content,
+        header: getComputedStyle(document.documentElement)
+          .getPropertyValue('--color-sidebar-bg')
+          .trim(),
+      }));
+    const dark = await themeColour();
+    expect(dark.meta).toBe(dark.header);
     await page.reload();
     await expect(page.locator('html')).toHaveClass(/dark/);
+    expect((await themeColour()).meta).toBe(dark.meta);
+    // Back to light, the status bar follows
+    await page.getByRole('button', { name: 'Preferences' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Light', exact: true }).click();
+    await expect(page.locator('html')).not.toHaveClass(/dark/);
+    const light = await themeColour();
+    expect(light.meta).toBe(light.header);
+    expect(light.meta).not.toBe(dark.meta);
   });
 
   test('amounts and dates the European way, typed with a decimal comma', async ({ page, api }) => {

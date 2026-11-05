@@ -50,7 +50,9 @@ export function AppShell() {
   if (isPhone) return <PhoneShell />;
 
   return (
-    <div className="flex h-screen bg-page overflow-hidden">
+    // A landscape iPhone is wide enough for this layout, so it keeps clear of the notch and
+    // home bar too (viewport-fit=cover in index.html); elsewhere the insets are 0
+    <div className="flex h-screen bg-page overflow-hidden pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)]">
       <SkipToContent />
       <Sidebar />
       <div className="flex-1 min-w-0 flex flex-col">
@@ -139,8 +141,9 @@ function PhoneShell() {
     <div className="flex flex-col h-dvh bg-page overflow-hidden">
       <SidebarDrawer open={open} onClose={close} />
       <div inert={open} className="flex-1 min-h-0 flex flex-col">
-        {/* macOS desktop app (a narrow window): clear of the traffic lights, and moves the window */}
-        <header className="shrink-0 flex items-center gap-2 h-12 px-2 mac-window:pl-20 mac-window:drag-region bg-sidebar-bg border-b border-sidebar-border">
+        {/* macOS desktop app (a narrow window): clear of the traffic lights, and moves the window.
+            iPhone home-screen app: the header runs up behind the status bar and notch. */}
+        <header className="shrink-0 flex items-center gap-2 box-content h-12 pt-[env(safe-area-inset-top)] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] mac-window:pl-20 mac-window:drag-region bg-sidebar-bg border-b border-sidebar-border">
           <button
             ref={menuButton}
             onClick={() => setOpen(true)}
@@ -161,7 +164,10 @@ function PhoneShell() {
         <GuideBanner />
         <div className="relative flex-1 min-h-0 flex flex-col">
           <PullToRefresh scroller={phoneMain} />
-          <main ref={phoneMain} className="flex-1 min-h-0 overflow-y-auto">
+          <main
+            ref={phoneMain}
+            className="flex-1 min-h-0 overflow-y-auto pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
+          >
             <Outlet />
           </main>
         </div>
