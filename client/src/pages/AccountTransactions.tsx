@@ -36,7 +36,7 @@ export default function AccountTransactionsPage() {
         icon={<Landmark size={26} />}
         title="Account not found"
         description="It may have been closed or deleted, or the link is out of date."
-        actions={<ButtonLink to="/accounts">Go to Accounts</ButtonLink>}
+        actions={<ButtonLink to="/accounts">Go to accounts</ButtonLink>}
       />
     );
   }

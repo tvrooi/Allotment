@@ -32,13 +32,13 @@ directory, then starts Allotment as the unprivileged Node user.
 
 ## 2. Connect Up
 
-In Allotment, choose **Connect Up** on the welcome screen, or open **Settings → Connected Banks →
+In Allotment, choose **Connect Up** on the welcome screen, or open **Settings → Connected banks →
 Up → Connect Up**. Create a personal access token at [Up's developer portal](https://api.up.com.au/)
 and paste it directly into Allotment. For each Up account choose **Create a new account**, or link
 an AUD account you already have (one with history links from a cut-over date), then **Save & Sync**.
 Your other devices use that server connection; you do not enter a token on each device.
 
-Up sync runs on app startup or **Sync Now**. In Settings → Connected Banks → Up, opt in to
+Up sync runs on app startup or **Sync Now**. In Settings → Connected banks → Up, opt in to
 background sync every 15, 30, 60 or 240 minutes; failures delay retries. It defaults off. Opening a
 browser does not restart the server. Only settled transactions are imported. Review internal
 transfers and Round Ups in the register.

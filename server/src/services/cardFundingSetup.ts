@@ -205,7 +205,7 @@ export function previewCardAssignment(
           'Reconcile account balance discrepancies before funding a card payment.',
         );
       if (after.reserved > before.reserved && after.unassigned < 0)
-        throw new BudgetError('Insufficient unassigned money for this payment funding');
+        throw new BudgetError('Not enough Ready to assign money for this payment funding');
       throw new FundingPreviewRollback({
         month,
         accountId,

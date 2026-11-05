@@ -113,7 +113,7 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={editGoal ? 'Edit Goal' : 'Add Goal'} size="sm">
+    <Modal isOpen={isOpen} onClose={onClose} title={editGoal ? 'Edit goal' : 'Add goal'} size="sm">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-text-secondary">Name</label>
@@ -254,7 +254,7 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
             Cancel
           </Button>
           <Button type="submit" disabled={saving || !name.trim() || targetAmount <= 0}>
-            {editGoal ? 'Save' : 'Add Goal'}
+            {editGoal ? 'Save' : 'Add goal'}
           </Button>
         </div>
       </form>

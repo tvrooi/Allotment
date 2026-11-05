@@ -48,7 +48,7 @@ export function UpdateValueModal({ account, onClose, initialValue }: Props) {
   }
 
   return (
-    <Modal isOpen onClose={onClose} title={liability ? 'Update Balance' : 'Update Value'} size="sm">
+    <Modal isOpen onClose={onClose} title={liability ? 'Update balance' : 'Update value'} size="sm">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1">

@@ -38,7 +38,7 @@ const FILE_ENTRY = /^files\/([0-9a-f]{64})$/;
 
 const README = `Allotment backup with files
 
-backup.json  the budget, exactly as Settings > Data > Full Backup saves it
+backup.json  the budget, exactly as Settings > Data > Full backup saves it
 files/       every stored file (receipts, documents, photos, videos), named by its SHA-256
 
 Restore it in Settings > Data > Restore. Bank connections, passwords and the encryption key are
@@ -76,7 +76,7 @@ export async function writeBackupArchive(res: Response) {
   const total = json.length + files.reduce((sum, f) => sum + f.info!.size, 0);
   if (total > MAX_ARCHIVE_BYTES)
     throw new BackupArchiveError(
-      'The files take more than 4 GB, too many for one ZIP. Download Full Backup and copy the data folder instead (docs/FILES.md).',
+      'The files take more than 4 GB, too many for one ZIP. Download Full backup and copy the data folder instead (docs/FILES.md).',
       413,
     );
 

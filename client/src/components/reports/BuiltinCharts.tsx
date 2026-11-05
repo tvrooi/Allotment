@@ -195,7 +195,7 @@ export function NetWorthChart({
             <Area
               type="monotone"
               dataKey="netWorth"
-              name="Net Worth"
+              name="Net worth"
               stroke={chartColors.brand}
               strokeWidth={2.5}
               fill="url(#gNet)"

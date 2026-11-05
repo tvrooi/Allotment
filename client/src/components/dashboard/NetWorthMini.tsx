@@ -132,7 +132,7 @@ export default function NetWorthMini() {
     <Card>
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <p className="text-sm font-medium text-text-secondary">Net Worth</p>
+          <p className="text-sm font-medium text-text-secondary">Net worth</p>
           <p
             className={`text-4xl max-md:text-3xl font-semibold tracking-tight tabular-nums mt-2 break-words ${latest >= 0 || hide ? 'text-text' : 'text-negative'}`}
           >
@@ -165,7 +165,7 @@ export default function NetWorthMini() {
             aria-label="Net worth period"
             value={preset}
             onChange={(e) => setPreset(e.target.value as Preset)}
-            className="text-sm border border-border rounded-lg px-3 py-1.5 bg-surface text-text cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-600"
+            className="text-sm max-md:min-h-11 border border-border rounded-lg px-3 py-1.5 bg-surface text-text cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-600"
           >
             {PRESETS.map((p) => (
               <option key={p.value} value={p.value}>
@@ -200,7 +200,7 @@ export default function NetWorthMini() {
                 <Area
                   type="monotone"
                   dataKey="netWorth"
-                  name="Net Worth"
+                  name="Net worth"
                   stroke={chartColors.brand}
                   strokeWidth={2}
                   fill="url(#gNetMini)"

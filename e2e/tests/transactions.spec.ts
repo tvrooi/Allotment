@@ -167,7 +167,7 @@ test.describe('account register', () => {
     // Rows open with the keyboard too
     await row(page, 'Streamflix').focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByText('Transaction Details')).toBeVisible();
+    await expect(page.getByText('Transaction details')).toBeVisible();
     const panel = page.getByRole('complementary', { name: 'Transaction details' });
 
     // Category via the searchable picker
@@ -189,7 +189,7 @@ test.describe('account register', () => {
         categoryId: (await api.category('Streaming Services')).id,
       });
     await page.getByRole('button', { name: 'Close details' }).click();
-    await expect(page.getByText('Transaction Details')).toBeHidden();
+    await expect(page.getByText('Transaction details')).toBeHidden();
   });
 
   test('deletes a transaction after confirming', async ({ page, api }) => {
@@ -202,7 +202,7 @@ test.describe('account register', () => {
     });
     await open(page, `/accounts/${checking.id}`);
     await row(page, 'Oops Store').click();
-    await page.getByRole('button', { name: 'Delete Transaction' }).click();
+    await page.getByRole('button', { name: 'Delete transaction' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
     await expect(page.getByText('No transactions yet')).toBeVisible();
     expect(await api.balance(checking.id)).toBe(100_000);
@@ -223,11 +223,11 @@ test.describe('account register', () => {
       payeeName: 'Old Bookshop',
     });
     await open(page, `/accounts/${checking.id}`);
-    // "This Month" by default: the 2020 purchase is hidden
+    // "This month" by default: the 2020 purchase is hidden
     await expect(page.getByRole('button', { name: 'Coffee Corner', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Old Bookshop', exact: true })).toBeHidden();
 
-    await page.getByRole('button', { name: 'All Time' }).click();
+    await page.getByRole('button', { name: 'All time' }).click();
     await expect(page.getByText('2 transactions')).toBeVisible();
     await page.getByPlaceholder('Search payee or notes…').fill('book');
     await expect(page.getByText('1 transaction', { exact: true })).toBeVisible();
@@ -306,8 +306,8 @@ test('the Add transaction dialog makes transfers too', async ({ page, api }) => 
   await dialog.getByRole('button', { name: /^Category:/ }).click();
   await dialog.getByRole('button', { name: 'Transfer: Rainy Day Savings' }).click();
 
-  // A transfer is named after the other account, so it needs no merchant
-  await expect(dialog.getByText('Merchant')).toBeHidden();
+  // A transfer is named after the other account, so it needs no payee
+  await expect(dialog.getByText('Payee *')).toBeHidden();
   await dialog.getByRole('button', { name: 'Add transaction' }).click();
   await expect(dialog).toBeHidden();
 
@@ -560,7 +560,7 @@ test.describe('long histories', () => {
     const { checking } = await setup(api);
     await seedDaily(api, checking.id, 650);
     await open(page, `/accounts/${checking.id}`);
-    await page.getByRole('button', { name: 'All Time' }).click();
+    await page.getByRole('button', { name: 'All time' }).click();
 
     await expect(page.getByText('650 transactions', { exact: true })).toBeVisible();
     await expect(page.getByText('Showing 300 of 650 transactions')).toBeVisible();
@@ -576,7 +576,7 @@ test.describe('long histories', () => {
     const { checking } = await setup(api);
     await seedDaily(api, checking.id, 650);
     await open(page, `/accounts/${checking.id}`);
-    await page.getByRole('button', { name: 'All Time' }).click();
+    await page.getByRole('button', { name: 'All time' }).click();
     await expect(row(page, 'Shop 649')).toHaveCount(0);
 
     await page.getByPlaceholder('Search payee or notes…').fill('Shop 649');

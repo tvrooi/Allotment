@@ -9,14 +9,14 @@ for (const phone of [false, true]) {
     const category = await api.category('Groceries');
     await api.call('PUT', `/budget/${thisMonth()}/${category.id}`, { budgeted: 20000 });
     await open(page, '/goals');
-    await page.getByRole('button', { name: 'Add Goal' }).first().click();
+    await page.getByRole('button', { name: 'Add goal' }).first().click();
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Name', { exact: true }).fill('Trip');
     await dialog.getByLabel('Target', { exact: true }).fill('500');
     await dialog.getByLabel('Target', { exact: true }).press('Tab');
     await dialog.getByLabel('Progress source').selectOption(category.id);
     await expect(dialog.getByLabel('Saved so far')).toHaveCount(0);
-    await dialog.getByRole('button', { name: 'Add Goal' }).click();
+    await dialog.getByRole('button', { name: 'Add goal' }).click();
     await expect(dialog).toBeHidden();
     await expect(page.getByText('Category funded: Groceries', { exact: true })).toBeVisible();
     await expect(

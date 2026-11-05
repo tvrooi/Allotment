@@ -134,7 +134,7 @@ export function BudgetEditPopover({
             </ResponsiveContainer>
           </div>
         ) : (
-          <p className="text-xs text-text-disabled text-center py-6">No history available</p>
+          <p className="text-xs text-text-tertiary text-center py-6">No history available</p>
         )}
       </div>
 

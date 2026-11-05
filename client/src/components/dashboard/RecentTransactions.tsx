@@ -5,6 +5,8 @@ import { useCategories } from '../../hooks/useCategories';
 import { useAccounts } from '../../hooks/useAccounts';
 import { usePayees } from '../../hooks/usePayees';
 import { TransactionRow } from '../transactions/TransactionRow';
+import { TransactionCard } from '../transactions/TransactionCard';
+import { useIsPhone } from '../../hooks/useIsPhone';
 import { Plus, Receipt, Upload } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { EmptyState } from '../ui/EmptyState';
@@ -17,6 +19,7 @@ export default function RecentTransactions() {
   const { data: accounts = [] } = useAccounts();
   const { data: payees = [] } = usePayees();
   const navigate = useNavigate();
+  const isPhone = useIsPhone();
 
   const categoryMap = useMemo(() => {
     const map = new Map<string, { name: string; icon: string | null }>();
@@ -49,10 +52,11 @@ export default function RecentTransactions() {
   return (
     <Card padding="none" className="h-full flex flex-col">
       <div className="flex items-center justify-between px-5 pt-4 pb-3">
-        <h3 className="text-sm font-semibold text-text">Recent Transactions</h3>
+        <h2 className="text-sm font-semibold text-text">Recent transactions</h2>
         <Link
           to="/transactions"
-          className="text-xs text-brand-600 hover:text-brand-700 font-medium"
+          aria-label="View all transactions"
+          className="text-xs text-brand-600 hover:text-brand-700 font-medium max-md:min-h-11 max-md:inline-flex max-md:items-center"
         >
           View all
         </Link>
@@ -85,21 +89,34 @@ export default function RecentTransactions() {
         />
       ) : (
         <div>
-          {transactions.map((tx) => (
-            <TransactionRow
-              key={tx.id}
-              tx={tx}
-              categoryEntry={tx.categoryId ? (categoryMap.get(tx.categoryId) ?? null) : null}
-              categoryMap={categoryMap}
-              groups={groups as CategoryGroup[]}
-              payees={payees}
-              accountName={accountInfoMap.get(tx.accountId)?.name}
-              accountType={accountInfoMap.get(tx.accountId)?.type}
-              accountLogo={accountInfoMap.get(tx.accountId)?.logo}
-              isSelected={false}
-              onOpenDetail={() => navigate('/transactions')}
-            />
-          ))}
+          {transactions.map((tx) =>
+            isPhone ? (
+              // A phone gets the register's card: one tap target, not the desktop row's controls
+              <TransactionCard
+                key={tx.id}
+                tx={tx}
+                categoryEntry={tx.categoryId ? (categoryMap.get(tx.categoryId) ?? null) : null}
+                payees={payees}
+                accountName={accountInfoMap.get(tx.accountId)?.name}
+                isSelected={false}
+                onOpenDetail={() => navigate('/transactions')}
+              />
+            ) : (
+              <TransactionRow
+                key={tx.id}
+                tx={tx}
+                categoryEntry={tx.categoryId ? (categoryMap.get(tx.categoryId) ?? null) : null}
+                categoryMap={categoryMap}
+                groups={groups as CategoryGroup[]}
+                payees={payees}
+                accountName={accountInfoMap.get(tx.accountId)?.name}
+                accountType={accountInfoMap.get(tx.accountId)?.type}
+                accountLogo={accountInfoMap.get(tx.accountId)?.logo}
+                isSelected={false}
+                onOpenDetail={() => navigate('/transactions')}
+              />
+            ),
+          )}
         </div>
       )}
     </Card>

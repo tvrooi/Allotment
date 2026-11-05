@@ -146,7 +146,7 @@ export default function ReconcilePage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-text-secondary">Statement Balance</label>
+              <label className="text-sm font-medium text-text-secondary">Statement balance</label>
               <AmountFields report={report}>
                 <CurrencyInput
                   currency={account.currency}
@@ -176,7 +176,7 @@ export default function ReconcilePage() {
             </div>
 
             <Button onClick={startStep2} disabled={isLoading || !statementValid} className="w-full">
-              Start Reconciliation
+              Start reconciliation
             </Button>
           </div>
         </div>
@@ -263,7 +263,7 @@ export default function ReconcilePage() {
                         {formatDay(tx.date)}
                       </td>
                       <td className="px-4 py-2 text-sm text-text">
-                        {tx.payeeName ?? <span className="text-text-disabled italic">—</span>}
+                        {tx.payeeName ?? <span className="text-text-tertiary italic">—</span>}
                       </td>
                       <td
                         className={`px-4 py-2 text-sm text-right tabular-nums font-medium ${tx.amount < 0 ? 'text-text' : 'text-positive'}`}
@@ -290,13 +290,13 @@ export default function ReconcilePage() {
         <div className="w-64 shrink-0 border-l border-border flex flex-col max-sm:order-1 max-sm:w-full max-sm:border-l-0 max-sm:border-b">
           <div className="flex-1 px-5 py-6 space-y-5 max-sm:grid max-sm:grid-cols-3 max-sm:gap-3 max-sm:space-y-0 max-sm:py-4">
             <div>
-              <p className="text-xs text-text-tertiary mb-0.5">Selected Balance</p>
+              <p className="text-xs text-text-tertiary mb-0.5">Selected balance</p>
               <p className="text-xl max-sm:text-base font-semibold text-text tabular-nums">
                 {formatMoney(selectedBalance, account.currency)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-text-tertiary mb-0.5">Statement Balance</p>
+              <p className="text-xs text-text-tertiary mb-0.5">Statement balance</p>
               <p className="text-xl max-sm:text-base font-semibold text-text tabular-nums">
                 {formatMoney(statementBalance, account.currency)}
               </p>
@@ -351,7 +351,7 @@ export default function ReconcilePage() {
                 disabled={!allChecked || save.isPending}
                 className="w-full"
               >
-                Create Adjustment
+                Create adjustment
               </Button>
             )}
             <button

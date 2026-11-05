@@ -29,11 +29,11 @@ export default function SaveReportModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isUpdating ? 'Update Report' : 'Save Report'}
+      title={isUpdating ? 'Update report' : 'Save report'}
       size="sm"
     >
       <form onSubmit={handleSubmit}>
-        <label className="block text-sm font-medium text-text-secondary mb-1">Report Name</label>
+        <label className="block text-sm font-medium text-text-secondary mb-1">Report name</label>
         <Input
           type="text"
           value={name}

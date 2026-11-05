@@ -28,8 +28,8 @@ interface Props {
 export function MerchantSelect({
   value,
   onChange,
-  placeholder = 'Search merchants...',
-  label = 'Merchant',
+  placeholder = 'Search payees...',
+  label = 'Payee',
 }: Props) {
   const { data: payees = [] } = usePayees();
   const createPayee = useCreatePayee();
@@ -108,7 +108,7 @@ export function MerchantSelect({
           {query.trim() && !exactMatch && !canSave && (
             // New merchants are made on the server, so offline only existing ones can be picked
             <p className="px-3 py-2.5 text-xs text-caution border-t border-border-light">
-              New merchants can be added once Allotment reconnects.
+              New payees can be added once Allotment reconnects.
             </p>
           )}
           {query.trim() && !exactMatch && canSave && (
@@ -124,7 +124,7 @@ export function MerchantSelect({
               className="w-full text-left px-3 py-2.5 text-sm text-brand-600 font-medium flex items-center gap-1.5 hover:bg-surface-alt cursor-pointer border-t border-border-light"
             >
               <Plus size={14} />
-              Create new merchant: &ldquo;{query.trim()}&rdquo;
+              Create new payee: &ldquo;{query.trim()}&rdquo;
             </button>
           )}
         </div>

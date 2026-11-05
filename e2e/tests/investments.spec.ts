@@ -52,7 +52,7 @@ test('records a priced holding without touching the balance until asked', async 
 
   await expect(page.getByText(/worth A?\$790(\.00)? less than the recorded balance/)).toBeVisible();
   await page.getByRole('button', { name: 'Record as value' }).click();
-  dialog = page.getByRole('dialog', { name: 'Update Value' });
+  dialog = page.getByRole('dialog', { name: 'Update value' });
   await expect(dialog).toContainText('adjustment dated today');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect.poll(() => api.balance(account.id)).toBe(21000);

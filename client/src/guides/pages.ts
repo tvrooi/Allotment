@@ -31,7 +31,7 @@ export const accountsGuide: Guide = {
     },
     {
       title: 'Bring in transactions automatically',
-      body: 'Connect Up under Settings → Connected Banks and its settled transactions are imported for you.',
+      body: 'Connect Up under Settings → Connected banks and its settled transactions are imported for you.',
       route: '/accounts',
     },
   ],
@@ -359,7 +359,7 @@ export const reportsGuide: Guide = {
     },
     {
       title: 'Your own report',
-      body: 'Custom Report builds a chart from the data you choose.',
+      body: 'Custom report builds a chart from the data you choose.',
       route: '/reports',
       target: 'reports.custom',
     },
@@ -381,7 +381,7 @@ export const settingsGuide: Guide = {
     },
     {
       title: 'Connect Up',
-      body: 'Under Connected Banks, connect Up and its settled transactions are imported for you, without duplicates. Your token is stored encrypted.',
+      body: 'Under Connected banks, connect Up and its settled transactions are imported for you, without duplicates. Your token is stored encrypted.',
       route: '/settings',
     },
     {

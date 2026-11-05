@@ -82,7 +82,7 @@ function HistoryChart({
       onClick={() => onBarClick(null)}
     >
       <h2 className="text-sm font-semibold text-text mb-3">
-        {isIncome ? 'Income History' : 'Spending History'}
+        {isIncome ? 'Income history' : 'Spending history'}
       </h2>
       {hasData ? (
         <div ref={xAxis.ref}>
@@ -131,7 +131,7 @@ function HistoryChart({
         </div>
       ) : (
         <div className="h-[200px] flex items-center justify-center">
-          <p className="text-sm text-text-disabled">No history available</p>
+          <p className="text-sm text-text-tertiary">No history available</p>
         </div>
       )}
     </div>
@@ -244,7 +244,7 @@ function SummaryWidget({
     <div className="bg-surface rounded-lg shadow-card border border-border-light p-4">
       <h2 className="text-sm font-semibold text-text mb-3">Summary</h2>
       {!stats ? (
-        <p className="text-sm text-text-disabled py-6 text-center">No data</p>
+        <p className="text-sm text-text-tertiary py-6 text-center">No data</p>
       ) : (
         <div className="border-t border-border-light pt-3 space-y-2.5">
           {rows.map((row) => (
@@ -298,10 +298,10 @@ export default function CategoryDetailPage() {
             Budget
           </Link>
           <ChevronRight size={14} className="text-text-tertiary" />
-          <span className="font-semibold text-text inline-flex items-center gap-1.5">
+          <h1 className="font-semibold text-text inline-flex items-center gap-1.5">
             {showCategoryIcons && <CategoryIcon icon={cat?.icon} size={15} />}
             {categoryName}
-          </span>
+          </h1>
         </div>
       </div>
 

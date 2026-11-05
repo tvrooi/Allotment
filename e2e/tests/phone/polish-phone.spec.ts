@@ -29,7 +29,7 @@ test('the reconcile list fills the screen under the summary', async ({ page, api
   const list = await box(table);
   // The list is as wide as the screen, not squeezed beside the summary
   expect(list.width).toBeGreaterThanOrEqual(WIDTH * 0.9);
-  const summary = await box(page.getByText('Selected Balance'));
+  const summary = await box(page.getByText('Selected balance'));
   expect(summary.y, 'summary is above the list').toBeLessThan(list.y);
   // Payee names are readable, and the buttons are reachable
   const payee = await box(table.getByText('Corner Grocery'));
@@ -133,7 +133,7 @@ test('the Transactions period tabs show they scroll, and none is cut off', async
   await api.createAccount('Everyday', 100_000);
   await open(page, '/transactions');
   const tabs = page.getByRole('button', {
-    name: /^(This Month|Last Month|Last 3 Months|This Year|All Time|Custom)$/,
+    name: /^(This month|Last month|Last 3 months|This year|All time|Custom)$/,
   });
   const bar = page.getByTestId('scroll-cue').first();
   // The row scrolls without a scrollbar of its own: the global thin scrollbar used to win
@@ -229,7 +229,7 @@ test('Settings opened on a later tab shows that tab whole', async ({ page, api }
   await api.createAccount('Everyday', 100_000);
   await open(page, '/settings?tab=connections');
   const bar = page.getByTestId('scroll-cue').first();
-  const tab = bar.getByRole('button', { name: 'Connected Banks' });
+  const tab = bar.getByRole('button', { name: 'Connected banks' });
   await expect(tab).toHaveAttribute('aria-current', 'page');
   // Clear of the fade at either edge, not half hidden under it
   const t = await box(tab);

@@ -5,10 +5,43 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 5 November 2026 (after up.104).
+Last updated: 5 November 2026 (after up.105).
 
 ## State
 
+- **Stage 2 quality (up.105, no migration):** F-15, F-09, F-20, F-24 and F-19's G.2 items.
+  _F-15:_ `lint/rules/icon-only-control.js` (an error: a button or link of only an icon needs an
+  `aria-label`; jsx-a11y's own rule never saw lucide icons) found and fixed four nameless controls;
+  Budget's month title is the page `h1` ("Budget, November 2026" to a screen reader) and Category
+  detail's name is its `h1`; dashboard widget titles are `h2`. Text colours were already above 4.5:1
+  (`lint/tokens/contrast.test.js` reads `index.css` and keeps both themes there); the failures were
+  `text-text-disabled` used for readable text (now `text-tertiary`) and `opacity-50` on disabled
+  rules (now the words "Off: turn it on to use it."). Phone targets are 44 px in Settings →
+  categories (`CategoryManager`), the dashboard (its recent transactions use `TransactionCard` on a
+  phone), `PayeeIcon`, Review, cash flow presets, year view and Files. Not done: the 115
+  `label-has-associated-control` warnings (most inputs have an `aria-label` already, so they are
+  named; the labels just don't focus them), and `RowMenu`/`ContextMenu` focus warnings. The warning
+  cap stays at 270.
+  _F-09:_ "Ready to assign" is the only name (UI, server error messages, e2e), "Payee" replaces
+  "Merchant" where a payee is picked or shown (component names such as `MerchantSelect` and the
+  `showMerchantIcons` preference key keep their names; receipts and payment plans keep Merchant).
+  `lint/terms/terms.test.js` fails a retired name; the table is in docs/GLOSSARY.md. The hero
+  already named only non-zero causes (`fundingStatus.test.ts`) and zero rows were already neutral;
+  a scan of the demo found no zero shown in the caution or negative colour.
+  _F-20:_ sentence case across `client/src` UI strings (the rule is in docs/BRAND.md, "Writing");
+  default category names such as "Bank Fees" are data and unchanged. Dates in `PaydayPlan`,
+  `ImportModal`, `Household`, `UpReview` and others go through `formatDay`, which now returns an
+  unparseable value as it came instead of throwing; `formatDayTime` shows moments.
+  _F-24:_ `E2E_CHROMIUM_PATH` replaces the uncommitted local config; the `macWindow` test holds
+  the event loop open itself (Node 22 cancelled it); lint's `npm test` is in CI.
+  _F-19 (G.2):_ `docs/DEVELOPMENT.md` Welcome and `recurring_transactions` text, Settings → Server's
+  self-hosting link (now this repo's Start here), HANDOVER's local-browser and Saver-transfer notes.
+  `SECURITY.md` and the backup copy were already fixed.
+  _Release state:_ up.105 is the version this PR ships; the live app was on up.104 (#147, the iPhone
+  header fix) when it merged. Installing up.105 on the live app follows the standing steps in
+  CLAUDE.md (verify identity, cold backup with the key, update, verify health); nobody has done it.
+  Check the live version before assuming. _Next:_ Stage 3 of the audit roadmap (section H), then the
+  115 `label-has-associated-control` warnings if the cap should come down.
 - **Stage 1 follow-up (up.103, migrations 0072 and 0073, backup format 26):** the rest of SEC-01 and
   FINX-02.
   _SEC-01 import history:_ `import_batches` (one row per confirmed file import: account, file name,
@@ -202,8 +235,9 @@ site in `website/` was removed (audit decision I-9).
   - The Allotment app has no ingress and its own password, so a session cannot call Allotment through
     the connector. The owner tests it in the app, for example with **Try a sample receipt**.
 - **Local browser tests:** Chromium is under `/opt/pw-browsers/` (see Gotchas for the build
-  number). Create `e2e/playwright.local-browser.config.ts`, which spreads the base config and sets
-  `use.launchOptions.executablePath` to it. Add it to `.git/info/exclude` and never commit it. Run `npm run build --prefix client` before e2e, or the tests use a stale build.
+  number). Point Playwright at it with `E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium-<build>/chrome-linux64/chrome`
+  (read by `e2e/playwright.config.ts`; nothing to create or exclude). Without `E2E_SKIP_BUILD`
+  the run builds the client itself, so it never uses a stale build.
 
 ## Open items (pick up here)
 
@@ -239,11 +273,13 @@ site in `website/` was removed (audit decision I-9).
    is asked for JSON and `jsonIn` finds it); a cost note per read if the owner wants one.
 6. **Left from the 31 October review**, rechecked by the 3 November audit. Fixed: Ready to assign
    above cash after a first Up import (up.86, a new budget starts that day), and the demo's
-   negative Ready to assign (up.83). Partly superseded: Up's Saver transfers net to zero
-   uncategorised when both legs are mapped; they still need reviewing as transfers, and one
+   negative Ready to assign (up.83). Partly superseded: Up's Saver transfers count as
+   uncategorised spending only when one leg is unmapped (with both legs on budget they net to
+   zero); they still need reviewing as transfers, and one
    reviewed "link the transfers Up reported" list is still a candidate (owner rule: no silent
-   links). Still open: the Settings → Server self-hosting link and Enable Banking's guide link go
-   to flybudget.org (`client/src/utils/project.ts`). Done: incremental Up fetch (F-10, up.93),
+   links). Settings → Server's self-hosting link now opens this repository's
+   Start here guide; only Enable Banking's setup link still goes to flybudget.org
+   (`client/src/utils/project.ts`). Done: incremental Up fetch (F-10, up.93),
    route splitting (F-11, up.100).
 7. **Depreciating assets on Tax time (phases 1 to 3 released, up.94 to up.96):** owner request of 3 November.
    [docs/DEPRECIATING-ASSETS-PLAN.md](docs/DEPRECIATING-ASSETS-PLAN.md) has the ATO rules
@@ -304,13 +340,26 @@ site in `website/` was removed (audit decision I-9).
     Up slugs with no sensible envelope (pets, gambling, tobacco, cycling, parking) stay
     uncategorised until the owner's habit teaches them.
     I-7 is done (up.97): tour first, one onboarding element at a time (docs/GUIDES.md, "Tour
-    first"). I-11 and I-8 are done (up.99), F-11, F-13 and F-14 (up.100). Still open: the partly done F-09,
-    F-15, F-19, F-20 and F-24. F-22 and F-23 are done (up.102).
+    first"). I-11 and I-8 are done (up.99), F-11, F-13 and F-14 (up.100). F-22 and F-23 are done (up.102). F-09, F-15, F-19, F-20
+    and F-24 are done (up.105; what is left of each is under State).
     Work in feature PRs with tests; the owner reviews and merges.
 
 ## Gotchas learned the hard way
 
 - After a squash merge, start new work from a fresh branch off `origin/main`.
+- A bulk rewrite of UI text (casing, renaming a term) also hits strings the code compares. In up.105
+  a sentence-case pass changed `Property Tax`, `HOA Fees`, `Home Maintenance` and `Bank Fees` in
+  `RentOrOwn.tsx` and `PlanCard.tsx`; they are stored category names matched exactly. A server test
+  (`defaultCategories.test.ts`) now checks both lookups against the seed. After any such pass, search
+  for the old text in `server/src` and the tests too: it found three server tests that matched the
+  old "Insufficient unassigned money" message, and case-sensitive regexes in e2e.
+- CI type-checks `e2e/` (`cd e2e && npx tsc --noEmit`) before any shard runs, and runs the whole
+  server suite. A Playwright run alone catches neither, so run both before pushing a test change.
+- Playwright matches names case-insensitively and by substring unless `exact: true` or a regex is
+  used. Making two labels identical (for example "Net worth" as a widget title and a summary label)
+  can turn a passing `getByText(..., { exact: true })` into a strict-mode violation.
+- `E2E_SKIP_BUILD=1` reuses the client built by the last run, so after changing UI text run once
+  without it.
 - **CI passed** reports _failure_ when a newer push cancels a run. Check the jobs: a `cancelled` e2e
   job on a superseded commit is not a real failure.
 - CI's e2e runs as four shards, `e2e (1/4)` … `e2e (4/4)`, split by file. Reproduce a failure
@@ -333,8 +382,8 @@ site in `website/` was removed (audit decision I-9).
   `utils/ledgerViews.ts`). Code that calls an API function directly instead of through a mutation
   (as `FreshStartNote` and `AssignBlockError` do) must call `invalidateLedgerViews(qc)` itself.
 - Local e2e: Playwright 1.64 expects Chromium build 1248, but the cloud container has 1243 at
-  `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`. Point the local config's `executablePath` there, and add it
-  to `.git/info/exclude` yourself in a fresh clone. Kill leftover servers on ports 3171–3180 after
+  `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`. Set `E2E_CHROMIUM_PATH` to it (see Tools).
+  Kill leftover servers on ports 3171–3180 after
   an aborted run, or the next global setup fails with "No setup code in the server log".
 - Global rules in `client/src/index.css` belong in an `@layer` (usually `base`). Unlayered CSS beats
   every Tailwind utility whatever its specificity: the unlayered `* { scrollbar-width: thin }` kept

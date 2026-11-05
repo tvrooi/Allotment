@@ -25,17 +25,17 @@ import { PrivateSection } from '../ui/Private';
 
 export const BUILTIN_REPORTS: Record<BuiltinWidgetType, { label: string; description: string }> = {
   summary: { label: 'Summary', description: 'Income, expenses and monthly averages' },
-  'net-worth': { label: 'Net Worth', description: 'Assets, liabilities and net worth over time' },
+  'net-worth': { label: 'Net worth', description: 'Assets, liabilities and net worth over time' },
   'income-expenses': {
     label: 'Income & Expenses',
     description: 'Money in vs. money out each month',
   },
-  spending: { label: 'Spending by Category', description: 'Where your money went, by category' },
+  spending: { label: 'Spending by category', description: 'Where your money went, by category' },
   'spending-trends': {
-    label: 'Spending Trends',
+    label: 'Spending trends',
     description: 'How spending in your biggest categories changes over time',
   },
-  calendar: { label: 'Transaction Calendar', description: 'Money in and out on each day' },
+  calendar: { label: 'Transaction calendar', description: 'Money in and out on each day' },
 };
 
 export const BUILTIN_TYPES = Object.keys(BUILTIN_REPORTS) as BuiltinWidgetType[];
@@ -52,10 +52,10 @@ export function useSummaryCards(from: string, to: string): StatCard[] {
     const expNet = ieData.reduce((s, d) => s + d.expenseNet, 0);
     const txCount = ieData.reduce((s, d) => s + d.expenseCount, 0);
     return [
-      { label: 'Total Income', ...incomeFigure(totalInc) },
-      { label: 'Total Expenses', ...expenseFigure(expNet) },
-      { label: 'Avg Monthly Expenses', ...expenseFigure(expNet / monthsToAverage(ieData)) },
-      { label: 'Avg Per Transaction', ...expenseFigure(txCount > 0 ? expNet / txCount : 0) },
+      { label: 'Total income', ...incomeFigure(totalInc) },
+      { label: 'Total expenses', ...expenseFigure(expNet) },
+      { label: 'Avg monthly expenses', ...expenseFigure(expNet / monthsToAverage(ieData)) },
+      { label: 'Avg per transaction', ...expenseFigure(txCount > 0 ? expNet / txCount : 0) },
     ];
   }, [ieData]);
 }

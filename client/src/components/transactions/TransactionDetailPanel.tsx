@@ -207,7 +207,7 @@ export function TransactionDetailPanel({
       className="w-96 max-md:w-screen max-md:max-w-full max-md:border-l-0 shrink-0 border-l border-border bg-surface flex flex-col h-full max-md:pt-[env(safe-area-inset-top)] max-md:pb-[env(safe-area-inset-bottom)]"
     >
       <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-        <span className="text-sm font-medium text-text-secondary">Transaction Details</span>
+        <span className="text-sm font-medium text-text-secondary">Transaction details</span>
         <button
           onClick={onClose}
           aria-label="Close details"
@@ -508,7 +508,7 @@ export function TransactionDetailPanel({
         {!isReconciled && (
           <Button variant="danger" onClick={() => setShowDeleteConfirm(true)} className="w-full">
             <Trash2 size={14} />
-            Delete Transaction
+            Delete transaction
           </Button>
         )}
       </div>
@@ -544,10 +544,10 @@ export function TransactionDetailPanel({
 
       <ConfirmModal
         isOpen={showDeleteConfirm}
-        title="Delete Transaction"
+        title="Delete transaction"
         message={
           tx.importedId?.startsWith('up:')
-            ? 'Delete this transaction? Up still has it, so it stays deleted when Up syncs and this account’s balance won’t match Up’s. Until it does, assigning money pauses. The Budget page and Up review (Settings → Connected Banks → Up) can restore it.'
+            ? 'Delete this transaction? Up still has it, so it stays deleted when Up syncs and this account’s balance won’t match Up’s. Until it does, assigning money pauses. The Budget page and Up review (Settings → Connected banks → Up) can restore it.'
             : 'Are you sure you want to delete this transaction? This action cannot be undone.'
         }
         confirmLabel="Delete"

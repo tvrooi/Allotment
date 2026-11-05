@@ -3,7 +3,7 @@ import type { ChartType, ReportMode } from '../../types';
 
 const MODE_LABELS: Record<ReportMode, string> = {
   total: 'Total',
-  time: 'Over Time',
+  time: 'Over time',
 };
 
 const CHART_TYPES: { id: ChartType; icon: typeof BarChart3; label: string; modes: ReportMode[] }[] =

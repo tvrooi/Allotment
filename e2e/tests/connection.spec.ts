@@ -140,11 +140,14 @@ test('the sidebar shows where the data lives and links to Settings → Server', 
   await expect(page.getByRole('heading', { name: 'Where your data lives' })).toBeVisible();
   await expect(page.getByRole('main').getByText('On this computer', { exact: true })).toBeVisible();
   const guide = page.getByRole('link', { name: 'Read the self-hosting guide' });
-  await expect(guide).toHaveAttribute('href', 'https://flybudget.org/community/self-hosting');
+  await expect(guide).toHaveAttribute(
+    'href',
+    'https://github.com/tvrooi/Allotment/blob/main/docs/START-HERE.md',
+  );
   await expect(guide).toHaveAttribute('target', '_blank');
   await expect(guide).toHaveAttribute('rel', 'noopener noreferrer');
   await page.getByRole('button', { name: 'Make a backup first' }).click();
-  await expect(page.getByRole('button', { name: 'Download Backup' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Download backup' })).toBeVisible();
 });
 
 test('server details are only for the app itself', async ({ playwright, baseURL, api }) => {

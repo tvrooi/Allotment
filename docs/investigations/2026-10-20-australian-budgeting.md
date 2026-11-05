@@ -58,7 +58,7 @@ I found no merchant photograph/logo field or merchant image endpoint in Up's pub
 
 Fortnightly pay is compatible with envelope budgeting. The missing convenience is funding categories on paydays rather than manually translating every goal into a monthly amount.
 
-**Correction to the initial premise:** Allotment already has `biweekly` schedules, labelled “Every 2 Weeks”. YNAB documents using fortnightly income within a monthly plan, while its current target documentation says a dedicated biweekly target is unavailable. These are different capabilities: receiving income every 14 days, repeating a transaction, and calculating category funding per payday. [YNAB: pay cycles](https://support.ynab.com/en_us/how-to-adjust-your-plan-on-any-pay-cycle-HkpGZdW1o), [YNAB: target types](https://support.ynab.com/en_us/getting-started-with-targets-ryAEP08xC)
+**Correction to the initial premise:** Allotment already has `biweekly` schedules, labelled “Every 2 weeks”. YNAB documents using fortnightly income within a monthly plan, while its current target documentation says a dedicated biweekly target is unavailable. These are different capabilities: receiving income every 14 days, repeating a transaction, and calculating category funding per payday. [YNAB: pay cycles](https://support.ynab.com/en_us/how-to-adjust-your-plan-on-any-pay-cycle-HkpGZdW1o), [YNAB: target types](https://support.ynab.com/en_us/getting-started-with-targets-ryAEP08xC)
 
 Add a **Payday plan** with an anchor payday, expected take-home pay, every-14-days recurrence, optional adjusted payment dates and several funding methods:
 
@@ -291,7 +291,7 @@ are flagged, never treated as proof of deletion/reversal. Changes are compared a
 bank observations, not against user edits. The first observation of existing history establishes
 a baseline; it cannot recover bank corrections from before that observation.
 
-Settings → Connected Banks → Up includes a paginated review queue. Acknowledgement means
+Settings → Connected banks → Up includes a paginated review queue. Acknowledgement means
 **keep the local record** and uses a revision check to reject stale review actions. It is not
 an action to apply bank corrections. Reconciled rows, categories, splits, notes, amounts, bank IDs
 and opening balances remain intact. Review history/observations survive JSON backup/restore

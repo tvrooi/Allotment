@@ -67,7 +67,7 @@ export default function TransactionsPage() {
       <div className="px-6 pt-4 max-md:px-4 border-b border-border shrink-0">
         <div className="flex items-center justify-between">
           <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
-            {view === 'receipts' ? 'Receipts' : 'All Transactions'}
+            {view === 'receipts' ? 'Receipts' : 'All transactions'}
           </h1>
           <div className="flex items-center gap-2">
             {view === 'all' && <SavedViewsMenu />}

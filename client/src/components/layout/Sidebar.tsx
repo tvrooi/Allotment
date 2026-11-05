@@ -319,7 +319,7 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
           <NavItem
             to="/cash-flow"
             icon={<Workflow size={18} />}
-            label="Cash Flow"
+            label="Cash flow"
             collapsed={!isExpanded}
           />
           <NavSection

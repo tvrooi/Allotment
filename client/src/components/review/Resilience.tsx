@@ -160,7 +160,7 @@ export function ResilienceCard({ data }: { data: api.ResilienceState }) {
                     ['Flexibility reserve', p.flexibility],
                     ['Other envelopes', p.other],
                     ['Spent beyond envelopes', p.overspent],
-                    ['Unassigned', p.unassigned],
+                    ['Ready to assign', p.unassigned],
                   ] as const
                 )
                   .filter(([name, value]) => value !== 0 || name !== 'Spent beyond envelopes')
@@ -378,7 +378,10 @@ export function ExtraIncome({ resilience }: { resilience: api.ResilienceState })
         await api.applyIncome(s, preview);
         setPreview(null);
         setTransaction('');
-        setMessage({ tone: 'ok', text: 'Assigned to your reserve. The rest stays unassigned.' });
+        setMessage({
+          tone: 'ok',
+          text: 'Assigned to your reserve. The rest stays in Ready to assign.',
+        });
         for (const key of FUNDING_VIEWS) await qc.invalidateQueries({ queryKey: [key] });
       }
     } catch (err) {
@@ -477,7 +480,7 @@ export function ExtraIncome({ resilience }: { resilience: api.ResilienceState })
             <p>To the reserve: {formatCurrency(preview.proposed)}</p>
             {preview.shortfall > 0 && (
               <p className="text-caution">
-                {formatCurrency(preview.shortfall)} more than is unassigned today; only{' '}
+                {formatCurrency(preview.shortfall)} more than is ready to assign today; only{' '}
                 {formatCurrency(preview.proposed)} can be assigned.
               </p>
             )}

@@ -68,7 +68,7 @@ export default function BudgetProgress({ currentMonth }: Props) {
     <Card>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-text">Budget</h3>
+          <h2 className="text-sm font-semibold text-text">Budget</h2>
           <Link to="/budget" className="text-sm text-text-tertiary hover:text-text-secondary">
             {monthLabel}
           </Link>

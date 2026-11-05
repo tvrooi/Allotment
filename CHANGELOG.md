@@ -1,5 +1,13 @@
 # Changes
 
+## 0.2.0-up.105
+
+- **Easier to use with a screen reader or a thumb.** Budget and a category's page now have a proper heading, every icon-only button says what it does (the report builder's back link and group expanders, saved-report delete, cancel in the category picker), and the dashboard's period menus and the Add transaction date are labelled. Faded text on disabled rules is gone: a rule that is off now says **Off: turn it on to use it.** Placeholder and empty-state text that was too pale to read is darker. On a phone, the buttons in Settings → categories, the dashboard's recent transactions (now the same cards as the register), payee pictures, Review links, cash flow presets, the year view's months and the Files filters are at least 44 px.
+- **One name for each thing.** **Ready to assign** is now the only name for money with no job yet (it was also Unassigned and Left to assign), and **Payee** replaces Merchant wherever you pick or read who was paid (receipts and payment plans keep their shop's name as Merchant). The words are listed in docs/GLOSSARY.md.
+- **Consistent capitals and dates.** Headings, buttons and labels use sentence case ("Cash flow", "Add account", "Connected banks"). Dates that showed as 2026-11-05 in imports, Payday, Household and Up now follow your Date Format, and Up's last-synced times do too.
+- Settings → Server's self-hosting link opens this project's Start here guide, not the upstream site's page, which uses different names.
+- Behind it: a lint rule that fails a nameless icon button, tests that keep every text colour at the 4.5:1 contrast in both themes and that keep the retired names out, a browser setting (`E2E_CHROMIUM_PATH`) for tests on a machine whose Chromium differs from Playwright's, and a desktop test that no longer fails under Node 22.
+
 ## 0.2.0-up.104
 
 - **No gap at the top on iPhone.** Added to the Home Screen, Allotment left an empty band between the status bar and its header. The header now reaches up behind the clock and battery in the header's own colour, light or dark, and pages, the menu, sign-in and messages keep clear of the notch and the home bar. Safari's toolbar also takes the header colour. If you had already added Allotment to your Home Screen, remove it and add it again so iOS picks this up.

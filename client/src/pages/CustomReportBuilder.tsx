@@ -113,12 +113,13 @@ export default function CustomReportBuilder() {
         <div className="flex items-center gap-3">
           <Link
             to={dashboardPageId ? `/reports?dashboard=${dashboardPageId}` : '/reports'}
+            aria-label="Back to reports"
             className="text-text-tertiary hover:text-text-secondary transition-colors"
           >
             <ArrowLeft size={16} />
           </Link>
           <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
-            {reportName || 'Custom Report'}
+            {reportName || 'Custom report'}
           </h1>
           <SavedReportsList activeId={id} />
         </div>

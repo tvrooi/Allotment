@@ -31,7 +31,7 @@ const tabs = [
   { id: 'budget', label: 'Budget', icon: CalendarRange },
   // Phase 9 transaction tags
   { id: 'tags', label: 'Tags', icon: Tag },
-  { id: 'connections', label: 'Connected Banks', icon: Link2 },
+  { id: 'connections', label: 'Connected banks', icon: Link2 },
   // The budget's currency, exchange rates and how each currency is written
   { id: 'currencies', label: 'Currencies', icon: Coins },
   // Optional financial priorities and category purposes (phase 7A)

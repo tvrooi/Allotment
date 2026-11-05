@@ -3,7 +3,7 @@ import { test, expect, open, isoDay } from './fixtures';
 // Phase 8 planning views on mock data: merchant breakdown, the annual overview and goal
 // navigation derived from the goal's category.
 
-test('Cash Flow groups spending by merchant with the same total and drills into it', async ({
+test('Cash flow groups spending by merchant with the same total and drills into it', async ({
   page,
   api,
 }) => {
@@ -21,8 +21,8 @@ test('Cash Flow groups spending by merchant with the same total and drills into 
   await open(page, '/cash-flow');
   await page.getByRole('button', { name: '1M', exact: true }).click();
   await expect(page.getByText('91.8%', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Merchants', exact: true }).click();
-  const merchants = page.getByRole('list', { name: 'Merchants' });
+  await page.getByRole('button', { name: 'Payees', exact: true }).click();
+  const merchants = page.getByRole('list', { name: 'Payees' });
   await expect(merchants.getByRole('button')).toHaveCount(2);
   await expect(merchants.getByRole('button').first()).toContainText('Mock grocer');
   await expect(page.getByText('$165 total')).toBeVisible();

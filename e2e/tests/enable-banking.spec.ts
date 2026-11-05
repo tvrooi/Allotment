@@ -84,7 +84,7 @@ test('connects a European bank, syncs it, reconnects and disconnects', async ({
     // The bank's access ends
     await mock('expire');
     await page.getByRole('button', { name: 'Sync now' }).click();
-    await expect(page.getByText('Login Required')).toBeVisible();
+    await expect(page.getByText('Login required')).toBeVisible();
     await mock('renew');
 
     // Reconnect, with the redirect not reaching Allotment: paste the address instead

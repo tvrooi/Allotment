@@ -94,7 +94,7 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
   }
 
   return (
-    <Modal isOpen={!!category} onClose={onClose} title="Edit Category" size="sm">
+    <Modal isOpen={!!category} onClose={onClose} title="Edit category" size="sm">
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label className="block text-sm font-medium text-text mb-1.5">Icon & Name</label>
@@ -150,7 +150,7 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
 
         {!isIncome && (
           <div>
-            <label className="block text-sm font-medium text-text mb-2">Budget Type</label>
+            <label className="block text-sm font-medium text-text mb-2">Budget type</label>
             <div className="space-y-2">
               {BUDGET_TYPE_OPTIONS.map((opt) => (
                 <label

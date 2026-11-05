@@ -672,9 +672,10 @@ export default function BudgetPage() {
       >
         <div className="flex flex-wrap gap-3 max-md:gap-2 items-center justify-between">
           <div className="flex items-center gap-1">
-            <span className="text-lg font-semibold text-text">
-              {format(monthDate, 'MMMM yyyy')}
-            </span>
+            <h1 className="text-lg font-semibold text-text">
+              <span className="sr-only">Budget, </span>
+              <span>{format(monthDate, 'MMMM yyyy')}</span>
+            </h1>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {!isPhone && (
@@ -958,7 +959,7 @@ export default function BudgetPage() {
 
                     {/* Total Income row */}
                     <tr className="bg-surface border-y border-border">
-                      <td className="py-2 px-4 text-sm font-bold text-text">Total Income</td>
+                      <td className="py-2 px-4 text-sm font-bold text-text">Total income</td>
                       <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text-secondary">
                         {formatCurrency(incomeTotals.budgeted)}
                       </td>
@@ -1017,7 +1018,7 @@ export default function BudgetPage() {
 
                     {/* Total Expenses row */}
                     <tr className="bg-surface border-y border-border">
-                      <td className="py-2 px-4 text-sm font-bold text-text">Total Expenses</td>
+                      <td className="py-2 px-4 text-sm font-bold text-text">Total expenses</td>
                       <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text-secondary">
                         {formatCurrency(expenseTotals.budgeted)}
                       </td>
