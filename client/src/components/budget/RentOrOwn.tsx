@@ -3,16 +3,19 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCategories } from '../../hooks/useCategories';
 import { setCategoryHidden } from '../../api/categories';
 
-/** Categories only renters need, and ones only owners need (server/src/db/defaultCategories.ts) */
+/**
+ * Categories only renters need, and ones only owners need. These are the stored names in
+ * server/src/db/defaultCategories.ts, matched exactly: keep their capitals (`lint/terms` checks).
+ */
 const ONLY_FOR = {
   rent: ['Rent'],
   own: [
     'Mortgage',
     'Council Rates & Strata',
     'Council Rates & Owners Corp',
-    'Property tax',
-    'HOA fees',
-    'Home maintenance',
+    'Property Tax',
+    'HOA Fees',
+    'Home Maintenance',
   ],
 };
 const SKIP_KEY = 'budget-rent-or-own-skipped';
