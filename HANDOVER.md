@@ -39,13 +39,12 @@ Last updated: 4 November 2026 (after up.98).
 - **Assistant endpoint and repayment categories (up.99):** audit decisions I-11 and I-8. A token
   writes only through `/api/assistant/do/<path>`: `assistantDispatch` (`routes/assistant.ts`, mounted
   before `requireSession`) rewrites it to `/api/<path>` and sets `res.locals.viaAssistant`; only that
-  flag lets `requireSession` accept a token write, and only for a named action in
-  `services/assistantActions.ts` ACTIONS. Each is logged in `assistant_actions` (migration 0069; not
-  backed up) with its final status, refused ones too. `assistant_proposals` holds asset proposals
+  flag lets `requireSession` accept a token write, and only for a row of the policy table
+  (since up.101 `auth/assistantPolicy.ts`; up.99 had its own action list). Each is logged in
+  `assistant_actions` (migration 0069, 0071; not backed up), refused ones too. `assistant_proposals` holds asset proposals
   (`asset.create`/`asset.update`, MCP `propose_tax_asset`, at most 50 pending) that only the owner
   applies (`/api/assistant/proposals/:id/apply|decline`). The scope predicates in
-  `auth/accessTokens.ts` are unchanged and still decide each write; F-18's declarative table is the
-  ACTIONS list. MCP's `callApi` sends non-GET requests through the endpoint. UI: **Waiting for you**
+  `auth/accessTokens.ts` moved into that table in up.101; it is F-18's declarative table. MCP's `callApi` sends non-GET requests through the endpoint. UI: **Waiting for you**
   and **Assistant activity** in `ReadOnlyAccess.tsx`. I-8: `GET /households/:id/category-offers`
   (`services/householdCategoryOffers.ts`) lists settlements to you linked to an uncategorised
   deposit, with the repayer's shares of your categorised expenses in the year before by category;
