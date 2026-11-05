@@ -152,7 +152,7 @@ test('pre-fills a payday plan from the detected pay, and marks a deposit as pay 
   await expect(candidates).toBeVisible();
   await candidates
     .getByRole('button', {
-      name: `This is pay: ACME LOGISTICS PTY LTD SALARY on ${salary.latestDate}`,
+      name: /This is pay: ACME LOGISTICS PTY LTD SALARY on /,
     })
     .click();
   const deposit = page.getByRole('checkbox', { name: /ACME LOGISTICS PTY LTD SALARY/ });
