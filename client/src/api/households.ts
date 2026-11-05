@@ -273,3 +273,19 @@ export interface HouseholdActivityLine {
 
 export const getHouseholdActivity = (groupId: string) =>
   apiFetch<HouseholdActivityLine[]>(`/households/${groupId}/activity`);
+
+/** Spending in a household by month, person and category (SPL-05), as the statement lists it */
+export interface HouseholdBreakdown {
+  byMonth: { month: string; household: number; myShare: number }[];
+  /** `paid` less `share` is `net`; spending the household account paid has no person (null) */
+  byPerson: { personId: string | null; name: string; paid: number; share: number; net: number }[];
+  byCategory: { categoryId: string | null; name: string; household: number; myShare: number }[];
+}
+
+export const getHouseholdStatement = (groupId: string, from: string, to: string) => {
+  const query = new URLSearchParams();
+  if (from) query.set('from', from);
+  if (to) query.set('to', to);
+  const text = query.toString();
+  return apiFetch<HouseholdBreakdown>(`/households/${groupId}/statement${text ? `?${text}` : ''}`);
+};

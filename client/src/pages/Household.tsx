@@ -18,6 +18,7 @@ import { RecurringBills } from '../components/household/RecurringBills';
 import { SettleUp } from '../components/household/SettleUp';
 import type { SettleUpTransfer } from '../api/households';
 import { EditEntry } from '../components/household/EditEntry';
+import { HouseholdBreakdown } from '../components/household/HouseholdBreakdown';
 import { ActivityLog } from '../components/household/ActivityLog';
 import { RepaymentCategoryOffers } from '../components/household/RepaymentCategoryOffers';
 import type { HouseholdSplit, SharedRecurringBill } from '../api/households';
@@ -615,6 +616,15 @@ export default function HouseholdPage() {
                   </div>
                 )}
               </section>
+
+              <HouseholdBreakdown
+                key={`breakdown-${state.group.id}`}
+                groupId={state.group.id}
+                currency={state.group.currency}
+                from={from}
+                to={to}
+                scope={scope}
+              />
 
               <div
                 className={`grid gap-4 items-start ${hasPool || state.bills.length > 0 ? 'lg:grid-cols-2' : ''}`}

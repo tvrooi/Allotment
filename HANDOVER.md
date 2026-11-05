@@ -5,10 +5,19 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 5 November 2026 (up.106 in review).
+Last updated: 5 November 2026 (up.108 in review).
 
 ## State
 
+- **Household reports (up.108, SPL-05; no migration):** `householdBreakdown`
+  (`services/householdReport.ts`) returns `byMonth`, `byPerson` (paid, share, paid less share; the
+  household account is its own line) and `byCategory` (from the linked bank payment's category,
+  else Uncategorised); the statement route returns them (and so does the MCP `household_statement`
+  tool) and `HouseholdBreakdown.tsx` shows them under the spending list. The page's own total
+  and table still come from the loaded events. Tests: `routes/householdReport.test.ts`
+  (fast-check: every breakdown adds to the total), e2e `household.spec.ts`. Not built: a
+  `category_id` on household entries, per-person monthly stacks, CSV (SPL-07). With this the
+  household group (A2 to A4) is done.
 - **Edit entries and household activity (up.107, SPL-03, SPL-04; migration 0074, backup format 27):**
   `updateEvent` / `removeEvent` in `householdService.ts` (one write path: it deletes the entry's
   shares and row and re-runs `recordEvent` under the same id, inside the route's transaction),
@@ -277,7 +286,7 @@ site in `website/` was removed (audit decision I-9).
      table, BUD-10 inspector and notes. BUD-01 fixed in up.46.
    - Household splitting backlog from the Spliit comparison in
      `docs/research/spliit-household-gaps.md`: SPL-01, SPL-02, SPL-06 (up.106) and SPL-03, SPL-04
-     (up.107) are built; SPL-05 household reports is next, then the P3 items.
+     (up.107) and SPL-05 (up.108) are built; the P3 items (SPL-07 to SPL-09) wait for demand.
    - Transaction detail has no previous/next (Monarch backlog P1).
    - Future-month money moves; money age (deliberately not built, see BUDGET-REVIEW.md).
    - Investments deferrals (sales, dividends, franking); receipts §6 (PDF reading, email
