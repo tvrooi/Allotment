@@ -60,7 +60,8 @@ test.describe('reports', () => {
       'Spending trends',
       'Transaction calendar',
     ]) {
-      await expect(main.getByText(widget, { exact: true })).toBeVisible();
+      // "Net worth" is also a summary figure's label, so more than one match is fine
+      await expect(main.getByText(widget, { exact: true }).first()).toBeVisible();
     }
   });
 
