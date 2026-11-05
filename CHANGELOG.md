@@ -4,7 +4,7 @@
 
 - **Faster first load.** Allotment now loads only the Dashboard, Budget and Transactions up front; every other page loads the first time you open it. The app's main download is about 44% smaller, which matters most on a phone or away from home.
 - **One Assign menu.** On Budget, **Assign** gathers Auto-assign, Fund targets and Until next payday. Each still shows what every envelope would get before anything changes. Behind them, all planned assigning (including an assistant's suggestions) now uses the same plan and the same write, and every way of sharing a payment with a household gives the same checks and messages.
-- **Deleted bank transactions stay deleted for every bank.** Deleting a transaction that Enable Banking, SimpleFIN or Plaid brought in now keeps the next sync from bringing it back, as Up already did. Settings → Connected Banks lists them, with Restore.
+- **Deleted bank transactions stay deleted for every bank.** Deleting a transaction that Enable Banking, SimpleFIN or Plaid brought in now keeps the next sync from bringing it back, as Up already did. Settings → Connected Banks lists them, in each account's own currency, with Restore, which puts the transaction straight back.
 
 ## 0.2.0-up.99
 

@@ -30,8 +30,10 @@ const { db } = await import('../db/index.js');
 const { accounts, simplefinAccountMappings, simplefinConnections, transactions, upDeletedImports } =
   await import('../db/schema.js');
 const { syncSimplefinConnection } = await import('./simplefinSyncService.js');
-const { deleteTransactionByOwner, deletedSyncedImports, restoreDeletedImport, isSyncedImport } =
+const { deleteTransactionByOwner, deletedSyncedImports, isSyncedImport } =
   await import('./transactionHelpers.js');
+
+const { restoreDeletedImport } = await import('./deletedImportRestore.js');
 
 beforeAll(() => {
   migrate(db, { migrationsFolder: './src/db/migrations' });
@@ -96,9 +98,27 @@ describe('deleted bank imports (audit F-14)', () => {
       .values({ accountId: 'acct', importedId: 'up:x:1', deletedAt: new Date().toISOString() })
       .run();
     expect(deletedSyncedImports()).toHaveLength(1);
-    expect(restoreDeletedImport('acct', 'up:x:1')).toBe(false);
-    expect(restoreDeletedImport('acct', 'simplefin:sf-acct:t1')).toBe(true);
+    expect(restoreDeletedImport('acct', 'up:x:1')).toBeNull();
+    // Recreated from what was kept, even when the bank no longer sends it (Plaid's cursor,
+    // Enable Banking's window): here the bank has dropped it
+    const sent = bank.accounts[0].transactions.splice(0, 1);
+    expect(restoreDeletedImport('acct', 'simplefin:sf-acct:t1')).toEqual({ recreated: true });
+    expect(imported()).toEqual(['simplefin:sf-acct:t1', 'simplefin:sf-acct:t2']);
+    const back = db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.importedId, 'simplefin:sf-acct:t1'))
+      .get()!;
+    expect(back).toMatchObject({ amount: -500, date: row.date, payeeName: 'Mock Cafe' });
+    // ...and the bank sending it again never adds it twice
+    bank.accounts[0].transactions.unshift(...sent);
     await syncSimplefinConnection('conn');
     expect(imported()).toEqual(['simplefin:sf-acct:t1', 'simplefin:sf-acct:t2']);
+    expect(restoreDeletedImport('acct', 'simplefin:sf-acct:t1')).toBeNull();
+    // An older deletion with no details kept is only forgotten
+    db.insert(upDeletedImports)
+      .values({ accountId: 'acct', importedId: 'plaid:old', deletedAt: new Date().toISOString() })
+      .run();
+    expect(restoreDeletedImport('acct', 'plaid:old')).toEqual({ recreated: false });
   });
 });

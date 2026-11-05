@@ -1602,6 +1602,8 @@ export const upDeletedImports = sqliteTable(
     date: text('date'),
     amount: integer('amount'),
     description: text('description'),
+    importedPayee: text('imported_payee'),
+    notes: text('notes'),
   },
   (t) => [primaryKey({ columns: [t.accountId, t.importedId] })],
 );

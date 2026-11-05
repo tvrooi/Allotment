@@ -1,4 +1,5 @@
-import { deletedSyncedImports, restoreDeletedImport } from '../services/transactionHelpers.js';
+import { deletedSyncedImports } from '../services/transactionHelpers.js';
+import { restoreDeletedImport } from '../services/deletedImportRestore.js';
 import { householdEvents } from '../db/schema.js';
 import { Router, type Response } from 'express';
 import { db } from '../db/index.js';
@@ -208,9 +209,9 @@ transactionsRouter.post('/deleted-imports/restore', (req, res) => {
     .strict()
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Choose a deleted transaction' });
-  if (!restoreDeletedImport(parsed.data.accountId, parsed.data.importedId))
-    return res.status(404).json({ error: 'That transaction is not deleted' });
-  res.json({ restored: true });
+  const restored = restoreDeletedImport(parsed.data.accountId, parsed.data.importedId);
+  if (!restored) return res.status(404).json({ error: 'That transaction is not deleted' });
+  res.json({ restored: true, ...restored });
 });
 
 transactionsRouter.get('/summary', (req, res) => {

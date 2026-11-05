@@ -1,6 +1,6 @@
 import { db } from '../db/index.js';
 import { accounts, payees, transactions, householdEvents, upDeletedImports } from '../db/schema.js';
-import { and, desc, eq, inArray, like, not } from 'drizzle-orm';
+import { desc, eq, inArray, like, not } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { unlinkOccurrenceByTransactionId } from './matchingEngine.js';
 import { refreshMainAmounts } from './mainAmountService.js';
@@ -122,6 +122,7 @@ export function deletedSyncedImports() {
     .select({
       accountId: upDeletedImports.accountId,
       accountName: accounts.name,
+      currency: accounts.currency,
       importedId: upDeletedImports.importedId,
       deletedAt: upDeletedImports.deletedAt,
       date: upDeletedImports.date,
@@ -134,19 +135,6 @@ export function deletedSyncedImports() {
     .orderBy(desc(upDeletedImports.deletedAt))
     .limit(200)
     .all();
-}
-
-/** Forgets a deleted synced import (not Up's), so the next sync brings it back */
-export function restoreDeletedImport(accountId: string, importedId: string) {
-  if (isUpImport(importedId)) return false;
-  return (
-    db
-      .delete(upDeletedImports)
-      .where(
-        and(eq(upDeletedImports.accountId, accountId), eq(upDeletedImports.importedId, importedId)),
-      )
-      .run().changes > 0
-  );
 }
 
 /**
@@ -164,6 +152,8 @@ export function deleteTransactionByOwner(row: {
   date?: string;
   amount?: number;
   payeeName?: string | null;
+  importedPayee?: string | null;
+  notes?: string | null;
 }) {
   db.transaction((tx) => {
     if (isSyncedImport(row.importedId))
@@ -175,6 +165,8 @@ export function deleteTransactionByOwner(row: {
           date: row.date ?? null,
           amount: row.amount ?? null,
           description: row.payeeName ?? null,
+          importedPayee: row.importedPayee ?? null,
+          notes: row.notes ?? null,
         })
         .onConflictDoNothing()
         .run();

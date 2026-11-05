@@ -18,9 +18,12 @@ Last updated: 4 November 2026 (after up.98).
   target funding, payday plans and budget proposals; desktop Budget has one **Assign** menu
   (`components/budget/AssignMenu.tsx`; phones keep the More menu). F-14: `deleteTransactionByOwner`
   remembers every synced import (`isSyncedImport`: `up:`, `eb:`, `simplefin:`, `plaid:`) in
-  `up_deleted_imports` (name kept; migration 0070 adds `date`, `amount`, `description`); the
+  `up_deleted_imports` (name kept; migration 0070 adds what the row was: date, amount, payee,
+  imported payee, notes); the
   Enable Banking, SimpleFIN and Plaid syncs skip them (`deletedImportIds`); Up review still lists only
-  Up's, `GET /transactions/deleted-imports` and `POST …/restore` the others, shown in Settings →
+  Up's, `GET /transactions/deleted-imports` and `POST …/restore` the others (Restore recreates the
+  row from those details, `services/deletedImportRestore.ts`, since Plaid's cursor and Enable
+  Banking's window would never send it again; an older deletion without them is only forgotten), shown in Settings →
   Connected Banks (`DeletedBankImports.tsx`). Tests: `deletedImports.test.ts`, `householdShare.test.ts`,
   `fundingPlan.test.ts`, e2e `budget.spec.ts`, `targets.spec.ts`.
 - **Assistant endpoint and repayment categories (up.99):** audit decisions I-11 and I-8. A token
