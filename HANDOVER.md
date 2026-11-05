@@ -9,6 +9,14 @@ Last updated: 4 November 2026 (after up.98).
 
 ## State
 
+- **Review guidelines (documentation only, no release):** `AGENTS.md` (and its identical copy
+  `CLAUDE.md`) gained a `## Review guidelines` section and `SECURITY.md` a "Security review
+  guidelines" section; Codex's automatic PR review reads both (repository settings → Code review).
+  They cover how to check a diff, correctness and database rules, staleness and drift, tests, and
+  the security model. `SECURITY.md` was also brought up to date (repository and attestation names, Up,
+  Enable Banking, access tokens, receipt reader; removed the unverifiable CodeQL claim and the dead
+  upstream website link). When a protection, outbound service, stored secret, token scope or route
+  exception changes, update the matching `SECURITY.md` section in the same PR.
 - **Assistant policy table and log (up.101, PR #140 merged onto up.99's endpoint):** two sessions
   built I-11 in parallel. Kept from up.99: the `/api/assistant/do` endpoint (`assistantDispatch`
   rewrite plus `res.locals.viaAssistant`), proposals, migration 0069's tables. From #140: the policy
