@@ -1,3 +1,4 @@
+import { deletedSyncedImports, restoreDeletedImport } from '../services/transactionHelpers.js';
 import { householdEvents } from '../db/schema.js';
 import { Router, type Response } from 'express';
 import { db } from '../db/index.js';
@@ -198,6 +199,20 @@ const importRowsSchema = z.array(importRowSchema).max(100_000);
 // GET /transactions — excludes split children; attaches children array to parents.
 // The selection is shared with the summary and the filtered export (services/transactionSelection.ts).
 // GET /transactions/summary — count, money in/out and date span of the same selection. Reads only.
+// Audit F-14: synced bank rows the owner deleted (other than Up's, which Up review lists), and
+// forgetting one so the next sync imports it again
+transactionsRouter.get('/deleted-imports', (_req, res) => res.json(deletedSyncedImports()));
+transactionsRouter.post('/deleted-imports/restore', (req, res) => {
+  const parsed = z
+    .object({ accountId: z.string().min(1).max(64), importedId: z.string().min(1).max(300) })
+    .strict()
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Choose a deleted transaction' });
+  if (!restoreDeletedImport(parsed.data.accountId, parsed.data.importedId))
+    return res.status(404).json({ error: 'That transaction is not deleted' });
+  res.json({ restored: true });
+});
+
 transactionsRouter.get('/summary', (req, res) => {
   const selection = parseSelection(req.query as Record<string, unknown>);
   if (!selection.success) return res.status(400).json({ error: selection.error.flatten() });

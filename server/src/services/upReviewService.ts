@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, like, sql } from 'drizzle-orm';
 import { createHash } from 'crypto';
 import { db } from '../db/index.js';
 import { accountTransactionSum } from './balances.js';
@@ -208,6 +208,7 @@ export function upReview(offset = 0) {
 /**
  * Up transactions the owner deleted here that Up still has (`up_deleted_imports`), newest first,
  * with what Up last reported about each. Restoring one lets the next sync import it again.
+ * Other providers' deletions are listed by GET /transactions/deleted-imports (audit F-14).
  */
 export function deletedUpImports() {
   return db
@@ -219,6 +220,7 @@ export function deletedUpImports() {
     })
     .from(upDeletedImports)
     .innerJoin(accounts, eq(accounts.id, upDeletedImports.accountId))
+    .where(like(upDeletedImports.importedId, 'up:%'))
     .orderBy(desc(upDeletedImports.deletedAt), upDeletedImports.importedId)
     .limit(200)
     .all()

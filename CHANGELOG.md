@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.100
+
+- **Faster first load.** Allotment now loads only the Dashboard, Budget and Transactions up front; every other page loads the first time you open it. The app's main download is about 44% smaller, which matters most on a phone or away from home.
+- **One Assign menu.** On Budget, **Assign** gathers Auto-assign, Fund targets and Until next payday. Each still shows what every envelope would get before anything changes. Behind them, all planned assigning (including an assistant's suggestions) now uses the same plan and the same write, and every way of sharing a payment with a household gives the same checks and messages.
+- **Deleted bank transactions stay deleted for every bank.** Deleting a transaction that Enable Banking, SimpleFIN or Plaid brought in now keeps the next sync from bringing it back, as Up already did. Settings → Connected Banks lists them, with Restore.
+
 ## 0.2.0-up.99
 
 - **See everything an assistant does.** Settings → Server → Read-only access → **Assistant activity** lists every change an access token asked for, newest first, including the ones it was refused. Behind it, a token can only make changes through one assistant endpoint, as a named action; it can no longer write to the app's routes directly. Existing assistants using Allotment's MCP server keep working unchanged.

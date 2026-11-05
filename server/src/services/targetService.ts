@@ -1,14 +1,8 @@
-import { and, eq } from 'drizzle-orm';
-import { nanoid } from 'nanoid';
+import { eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import {
-  budgetMonths,
-  cardFunding,
-  categories,
-  categoryGroups,
-  categoryTargets,
-} from '../db/schema.js';
-import { budgetGroups, fundingRevision, fundingState } from './budgetService.js';
+import { cardFunding, categories, categoryGroups, categoryTargets } from '../db/schema.js';
+import { budgetGroups } from './budgetService.js';
+import { applyFundingPlan, planFunding } from './fundingPlan.js';
 import { BudgetError } from './budgetMoves.js';
 import { addMonthsTo, monthsBetween, perPeriodNeed } from './fundingMath.js';
 import { todayIso } from './mainAmountService.js';
@@ -153,32 +147,19 @@ export function saveTarget(categoryId: string, input: TargetInput, today = today
 /** Proposed assignments for underfunded targets, in budget order, capped at money that is
  * actually unassigned today. Expected income never counts. */
 export function previewTargetFunding(month: string, today = todayIso()) {
-  const state = fundingState(today);
-  let remaining = state.available;
-  const rows = budgetWithTargets(month, today)
+  const needs = budgetWithTargets(month, today)
     .filter((g) => !g.isIncome)
     .flatMap((g) => g.categories)
     .filter((c) => c.target && c.target.underfunded > 0)
-    .map((c) => {
-      const proposed = Math.min(c.target!.underfunded, remaining);
-      remaining -= proposed;
-      return {
-        categoryId: c.id,
-        name: c.name,
-        underfunded: c.target!.underfunded,
-        proposed,
-        shortfall: c.target!.underfunded - proposed,
-      };
-    });
-  return {
-    month,
-    complete: state.complete,
-    available: state.available,
-    total: rows.reduce((s, r) => s + r.proposed, 0),
-    shortfall: rows.reduce((s, r) => s + r.shortfall, 0),
-    rows,
-    revision: fundingRevision(),
-  };
+    .map((c) => ({
+      categoryId: c.id,
+      name: c.name,
+      underfunded: c.target!.underfunded,
+      need: c.target!.underfunded,
+    }));
+  const plan = planFunding(month, needs, today);
+  // The preview's format before F-13 had no `need` (it is `underfunded` here)
+  return { ...plan, rows: plan.rows.map(({ need: _need, ...r }) => r) };
 }
 
 /** Adds exactly the previewed amounts to the month's assignments, once, in one transaction. */
@@ -188,34 +169,11 @@ export function applyTargetFunding(
   expected: { categoryId: string; proposed: number }[],
   fundedWrite: (action: () => void) => void,
 ) {
-  let applied = 0;
-  fundedWrite(() => {
-    const preview = previewTargetFunding(month);
-    if (
-      revision !== preview.revision ||
-      JSON.stringify(preview.rows.map((r) => [r.categoryId, r.proposed])) !==
-        JSON.stringify(expected.map((r) => [r.categoryId, r.proposed]))
-    )
-      throw new BudgetError('Your budget changed. Review the target funding again.', 409);
-    if (!preview.complete)
-      throw new BudgetError('Add missing exchange rates before assigning money.');
-    for (const row of preview.rows) {
-      if (!row.proposed) continue;
-      const existing = db
-        .select()
-        .from(budgetMonths)
-        .where(and(eq(budgetMonths.month, month), eq(budgetMonths.categoryId, row.categoryId)))
-        .get();
-      const budgeted = (existing?.budgeted ?? 0) + row.proposed;
-      db.insert(budgetMonths)
-        .values({ id: nanoid(), month, categoryId: row.categoryId, budgeted })
-        .onConflictDoUpdate({
-          target: [budgetMonths.month, budgetMonths.categoryId],
-          set: { budgeted },
-        })
-        .run();
-      applied += row.proposed;
-    }
-  });
-  return { month, applied, revision: fundingRevision() };
+  return applyFundingPlan(
+    () => previewTargetFunding(month),
+    revision,
+    expected,
+    'Your budget changed. Review the target funding again.',
+    fundedWrite,
+  );
 }

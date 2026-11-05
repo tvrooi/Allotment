@@ -21,6 +21,7 @@ import type { SimplefinSetupResult } from '../../types';
 import { IS_DEMO } from '../../demo/demoApi';
 import { NotInDemo } from '../demo/NotInDemo';
 import { UpSettings } from '../up/UpSettings';
+import { DeletedBankImports } from './DeletedBankImports';
 import { useUpConnection } from '../../hooks/useUp';
 import { formatDistanceToNow } from 'date-fns';
 import { CommunitySupportedNote } from '../banks/CommunitySupported';
@@ -363,6 +364,7 @@ function ConnectedAccountsSettings() {
         }}
         initialSetupResult={sfSetupResult}
       />
+      <DeletedBankImports />
     </div>
   );
 }

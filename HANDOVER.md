@@ -9,6 +9,20 @@ Last updated: 4 November 2026 (after up.98).
 
 ## State
 
+- **Audit F-11, F-13, F-14 (up.100):** F-11: `client/src/App.tsx` lazy-loads every page except
+  Dashboard, Budget and Transactions, each in its own `Suspense` inside the shell; main chunk 2,327 kB
+  to 1,266 kB (634 to 354 kB gzip); `emoji-picker-react` removed. F-13: `householdService.sharePayments`
+  is the only share path (the Share action, `shareBillPayments`, `autoShareBillPayment`, rules), one
+  result format with who owes what, `preview: true` on `POST /households/:id/share` records nothing;
+  `services/fundingPlan.ts` (`planFunding`, `applyFundingPlan`, `addAssigned`) backs auto-assign,
+  target funding, payday plans and budget proposals; desktop Budget has one **Assign** menu
+  (`components/budget/AssignMenu.tsx`; phones keep the More menu). F-14: `deleteTransactionByOwner`
+  remembers every synced import (`isSyncedImport`: `up:`, `eb:`, `simplefin:`, `plaid:`) in
+  `up_deleted_imports` (name kept; migration 0070 adds `date`, `amount`, `description`); the
+  Enable Banking, SimpleFIN and Plaid syncs skip them (`deletedImportIds`); Up review still lists only
+  Up's, `GET /transactions/deleted-imports` and `POST …/restore` the others, shown in Settings →
+  Connected Banks (`DeletedBankImports.tsx`). Tests: `deletedImports.test.ts`, `householdShare.test.ts`,
+  `fundingPlan.test.ts`, e2e `budget.spec.ts`, `targets.spec.ts`.
 - **Assistant endpoint and repayment categories (up.99):** audit decisions I-11 and I-8. A token
   writes only through `/api/assistant/do/<path>`: `assistantDispatch` (`routes/assistant.ts`, mounted
   before `requireSession`) rewrites it to `/api/<path>` and sets `res.locals.viaAssistant`; only that
@@ -163,8 +177,8 @@ site in `website/` was removed (audit decision I-9).
    uncategorised when both legs are mapped; they still need reviewing as transfers, and one
    reviewed "link the transfers Up reported" list is still a candidate (owner rule: no silent
    links). Still open: the Settings → Server self-hosting link and Enable Banking's guide link go
-   to flybudget.org (`client/src/utils/project.ts`); split the client bundle by route (2.28 MB
-   main chunk, audit F-11). Done: incremental Up fetch (F-10, up.93).
+   to flybudget.org (`client/src/utils/project.ts`). Done: incremental Up fetch (F-10, up.93),
+   route splitting (F-11, up.100).
 7. **Depreciating assets on Tax time (phases 1 to 3 released, up.94 to up.96):** owner request of 3 November.
    [docs/DEPRECIATING-ASSETS-PLAN.md](docs/DEPRECIATING-ASSETS-PLAN.md) has the ATO rules
    (prime cost and diminishing value), the design, four phases and five owner decisions (§7).
@@ -223,9 +237,8 @@ site in `website/` was removed (audit decision I-9).
     Up slugs with no sensible envelope (pets, gambling, tobacco, cycling, parking) stay
     uncategorised until the owner's habit teaches them.
     I-7 is done (up.97): tour first, one onboarding element at a time (docs/GUIDES.md, "Tour
-    first"). I-11 and I-8 are done (up.99). Still open, in suggested order: F-11 route splitting and removing `emoji-picker-react`;
-    F-13 one service per action family; F-14 deleted-import memory, only for a provider in use;
-    then the partly done F-09, F-15, F-19, F-20 and F-24, and F-22, F-23.
+    first"). I-11 and I-8 are done (up.99), F-11, F-13 and F-14 (up.100). Still open: the partly done F-09,
+    F-15, F-19, F-20 and F-24, and F-22, F-23.
     Work in feature PRs with tests; the owner reviews and merges.
 
 ## Gotchas learned the hard way
