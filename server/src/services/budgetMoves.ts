@@ -164,7 +164,7 @@ function assignable(months: string[], today: string) {
   let deferred = 0;
   for (const m of months) {
     const end = monthBounds(m).to;
-    const state = fundingState(end < today ? end : today, m);
+    const state = fundingState(end < today ? end : today, m, today);
     result.push({
       month: m,
       value:

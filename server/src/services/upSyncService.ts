@@ -27,6 +27,7 @@ import {
   upSettledBalance,
   UpError,
 } from './upService.js';
+import { addDaysIso, todayIso } from '../utils/date.js';
 
 export const UP_CONNECTION_ID = 'default';
 
@@ -37,8 +38,7 @@ export const UP_CONNECTION_ID = 'default';
 export const WINDOW_DAYS = 14;
 export const FULL_SWEEP_MS = 7 * 86_400_000;
 
-const addDays = (day: string, days: number) =>
-  new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+const addDays = addDaysIso;
 
 /**
  * The first day an incremental sync covers for this account; null when it needs a full sweep.
@@ -46,10 +46,7 @@ const addDays = (day: string, days: number) =>
  * dates the owner may change: moving a row into the future must not push the window past what
  * is actually new at Up.
  */
-export function incrementalStart(
-  accountId: string,
-  today = new Date().toISOString().slice(0, 10),
-): string | null {
+export function incrementalStart(accountId: string, today = todayIso()): string | null {
   let newest: string | null = null;
   let oldestHold: string | null = null;
   for (const record of db

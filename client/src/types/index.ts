@@ -264,13 +264,25 @@ export interface TransferLinkResult {
   created: boolean;
 }
 
+/** A transaction already in the account that an imported row looks like (SEC-01) */
+export interface PossibleImportDuplicate {
+  transactionId: string;
+  date: string;
+  payeeName: string | null;
+  /** Typed by hand, brought in by a bank sync, posted by a schedule, or from an earlier file */
+  source: 'manual' | 'synced' | 'scheduled' | 'file';
+}
+
 export interface ImportPreviewRow {
   date: string;
   amount: number;
   payeeName: string | null;
   notes: string | null;
   importedId: string;
+  /** The same import id is already in the account: skipped on import */
   isDuplicate: boolean;
+  /** A different row with the same amount near the same day: left unticked, never skipped */
+  possibleDuplicate?: PossibleImportDuplicate | null;
 }
 
 export type BudgetType = 'fixed' | 'flexible' | 'non_monthly' | 'savings';

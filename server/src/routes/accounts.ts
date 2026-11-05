@@ -45,6 +45,7 @@ import {
   statementAccountSchema,
   storeImportSettings,
 } from '../utils/importSettings.js';
+import { addMonthsIso, todayIso } from '../utils/date.js';
 
 export const accountsRouter = Router();
 
@@ -207,9 +208,7 @@ accountsRouter.get('/sync-status', (_req, res) => {
 });
 
 accountsRouter.get('/balances-ago', (_req, res) => {
-  const oneMonthAgo = new Date();
-  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-  const cutoff = oneMonthAgo.toISOString().slice(0, 10);
+  const cutoff = addMonthsIso(todayIso(), -1);
 
   const rows = db.select().from(accounts).where(isNull(accounts.closedAt)).all();
   const sums = db

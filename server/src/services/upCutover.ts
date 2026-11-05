@@ -3,6 +3,7 @@ import { db } from '../db/index.js';
 import { accounts, transactions, upAccountMappings } from '../db/schema.js';
 import { insertNewTransaction } from './ruleService.js';
 import { inAccountBalance } from './balances.js';
+import { addDaysIso, isIsoDay } from '../utils/date.js';
 
 // Linking Up to an account that already has history. Up rows before the cut-over are never
 // imported; rows near it, or that look like a row already there, are imported and flagged for
@@ -13,9 +14,7 @@ const DAY = 86_400_000;
 export const CUTOVER_WINDOW_DAYS = 3;
 export const MATCH_DAYS = 2;
 
-export const isValidDay = (value: string) =>
-  /^\d{4}-\d{2}-\d{2}$/.test(value) &&
-  new Date(value + 'T00:00:00Z').toISOString().slice(0, 10) === value;
+export const isValidDay = isIsoDay;
 
 const dayNumber = (day: string) => Math.round(Date.parse(day + 'T00:00:00Z') / DAY);
 
@@ -121,8 +120,7 @@ export function refreshCutoverDifference(accountId: string): number | null {
 export class CutoverError extends Error {}
 
 /** The day before a cut-over: where the history ends and the opening balance belongs */
-export const dayBefore = (cutover: string) =>
-  new Date(Date.parse(cutover + 'T00:00:00Z') - 86_400_000).toISOString().slice(0, 10);
+export const dayBefore = (cutover: string) => addDaysIso(cutover, -1);
 
 /**
  * Owner-confirmed: settle the difference between the register and Up's balance on the day

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import {
+  currencyAmountStyle,
   amountPlaceholder,
   amountStyle,
   currencyConvention,
@@ -304,6 +305,31 @@ describe('amounts in other currencies', () => {
     expect(parseAmount('1,234', yen)).toBe(1_234);
     expect(parseAmount('1.234.567', yen)).toBe(1_234_567);
     expect(parseAmount('¥1,500', yen)).toBe(1_500);
+  });
+
+  // Upstream d8e53ac (audit F-23): a currency written as its code needs a space before the
+  // number, whether the symbol is the code itself or one the owner typed in
+  it('keeps a space between a currency code and the amount', () => {
+    const prefs = {
+      amountFormat: 'dot' as const,
+      symbolPosition: 'auto' as const,
+      currencySymbol: '$',
+      currencyStyles: {},
+    };
+    const written = (currency: string, own?: { symbol?: string; position?: 'before' | 'after' }) =>
+      formatAmount(
+        1250,
+        currencyAmountStyle(
+          currency,
+          { ...prefs, currencyStyles: own ? { [currency]: own } : {} },
+          'AUD',
+        ),
+      ).replace('\u00a0', ' ');
+    expect(written('AUD', { symbol: 'AUD', position: 'before' })).toBe('AUD 12.50');
+    expect(written('NZD', { symbol: 'NZD', position: 'before' })).toBe('NZD 12.50');
+    expect(written('EUR', { symbol: 'EUR', position: 'after' })).toBe('12.50 EUR');
+    // A symbol that is not letters stays tight
+    expect(written('USD', { symbol: 'US$', position: 'before' })).toBe('US$12.50');
   });
 
   it("puts each currency's symbol where its country does", () => {

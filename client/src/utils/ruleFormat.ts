@@ -10,6 +10,7 @@ import type {
   RuleSplitPart,
 } from '../types';
 import { formatDay } from './dates';
+import { todayIso } from './calendarDay';
 
 const TEXT_OPS: RuleConditionOp[] = [
   'is',
@@ -94,7 +95,7 @@ export const ACTION_TYPES: Array<{ value: RuleAction['type']; label: string }> =
   { value: 'claim_tax_deduction', label: 'Claim as tax deduction' },
 ];
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = todayIso;
 const isTextField = (f: RuleConditionField) =>
   f === 'payee_name' || f === 'imported_payee' || f === 'notes';
 

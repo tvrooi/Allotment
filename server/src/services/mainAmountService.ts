@@ -16,6 +16,7 @@ import {
 } from '../db/schema.js';
 import { isCurrencyCode, isForeign, minorUnits } from '../utils/currencies.js';
 import { allocate, convertMinor } from '../utils/money.js';
+import { todayIso } from '../utils/date.js';
 import { buildRateBook, type RateBook } from './exchangeRates.js';
 import {
   SAME_CURRENCY,
@@ -180,11 +181,8 @@ export function convertAmount(
   }
 }
 
-/** Today as `YYYY-MM-DD` on this machine */
-export const todayIso = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+/** Today as `YYYY-MM-DD` on this machine (the one in utils/date.ts, kept importable from here) */
+export { todayIso };
 
 /**
  * A balance in the budget's currency at the latest rate (as of `date`, default today), for

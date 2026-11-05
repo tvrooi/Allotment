@@ -1,9 +1,9 @@
 import { and, eq, gte, isNotNull, lte, sql } from 'drizzle-orm';
-import { addDays, differenceInCalendarDays, parseISO } from 'date-fns';
 import { db } from '../db/index.js';
 import { categories, categoryGroups, payees, transactions } from '../db/schema.js';
 import { mainAmount, reportedBudgetActivity } from './balances.js';
 import { todayIso } from './mainAmountService.js';
+import { addDaysIso, daysBetweenIso } from '../utils/date.js';
 
 // What is still uncategorised after an import, and where pay comes from. Read-only: the
 // client changes categories through the payee and bulk-edit routes, which can be undone.
@@ -104,9 +104,7 @@ const STALE_DAYS = 62;
 export function payInterval(dates: string[]) {
   const days = [...new Set(dates)].sort();
   if (days.length < 3) return null;
-  const gaps = days
-    .slice(1)
-    .map((d, i) => differenceInCalendarDays(parseISO(d), parseISO(days[i])));
+  const gaps = days.slice(1).map((d, i) => daysBetweenIso(days[i], d));
   for (const c of CLASSES) {
     const fit = gaps.filter((g) => g >= c.min && g <= c.max).length;
     // Allow one missed or shifted deposit in a longer run
@@ -149,7 +147,7 @@ export function detectSalary(today = todayIso()): SalaryGuess | null {
   } | null = null;
   for (const [payeeId, list] of byPayee) {
     const recent = [...list].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12);
-    if (differenceInCalendarDays(parseISO(today), parseISO(recent[0].date)) > STALE_DAYS) continue;
+    if (daysBetweenIso(recent[0].date, today) > STALE_DAYS) continue;
     const cls = payInterval(recent.map((r) => r.date));
     if (!cls) continue;
     const amounts = recent.map((r) => r.amount).sort((a, b) => a - b);
@@ -175,4 +173,4 @@ export function detectSalary(today = todayIso()): SalaryGuess | null {
   };
 }
 
-const addIso = (day: string, n: number) => addDays(parseISO(day), n).toISOString().slice(0, 10);
+const addIso = addDaysIso;

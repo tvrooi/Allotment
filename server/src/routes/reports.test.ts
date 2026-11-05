@@ -25,6 +25,29 @@ describe('dayRange (property-based)', () => {
     );
   });
 
+  // Audit F-23 (upstream 2fec002): walking local midnights lost a day where the clocks change
+  // at midnight. Node reads TZ again when it is assigned, so each zone is tried in turn.
+  it.each([
+    ['America/Havana', '2026-03-05', '2026-03-12'],
+    ['Asia/Beirut', '2026-03-26', '2026-04-02'],
+    ['America/Montevideo', '2014-10-02', '2014-10-09'],
+    ['Australia/Sydney', '2026-10-01', '2026-10-08'],
+    ['America/Sao_Paulo', '2018-11-01', '2018-11-08'],
+  ])('lists every day across a clock change in %s', (zone, from, to) => {
+    const previous = process.env.TZ;
+    process.env.TZ = zone;
+    try {
+      const days = dayRange(from, to);
+      expect(days).toHaveLength(8);
+      expect(new Set(days).size).toBe(8);
+      expect(days[0]).toBe(from);
+      expect(days.at(-1)).toBe(to);
+    } finally {
+      if (previous === undefined) delete process.env.TZ;
+      else process.env.TZ = previous;
+    }
+  });
+
   it('is empty when `to` is before `from`', () => {
     fc.assert(
       fc.property(arbDay, fc.integer({ min: 1, max: 100 }), (start, back) => {

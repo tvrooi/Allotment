@@ -27,6 +27,7 @@ import { Private } from '../ui/Private';
 import { SortUncategorised } from '../review/SortUncategorised';
 import { setBudgetStart } from '../../api/budget';
 import { format, parseISO } from 'date-fns';
+import { addDaysIso, todayIso } from '../../utils/calendarDay';
 
 /**
  * A new budget connecting its first bank starts today (server: startBudgetIfNew), so this
@@ -98,15 +99,8 @@ function linkBlockedReason(
   return 'No account can be linked here.';
 }
 
-const todayLocal = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-const dayBefore = (day: string) => {
-  const d = new Date(day + 'T00:00:00Z');
-  d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().slice(0, 10);
-};
+const todayLocal = todayIso;
+const dayBefore = (day: string) => addDaysIso(day, -1);
 
 const STEP =
   'w-5 h-5 shrink-0 rounded-full bg-brand-600 text-brand-contrast text-2xs font-semibold flex items-center justify-center mt-0.5';
@@ -146,9 +140,7 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
   const refresh = useRefreshUp();
   const dayAfter = (day?: string | null) => {
     if (!day) return todayLocal();
-    const d = new Date(day + 'T00:00:00Z');
-    d.setUTCDate(d.getUTCDate() + 1);
-    return d.toISOString().slice(0, 10);
+    return addDaysIso(day, 1);
   };
   // A different account chosen: one with history needs a cut-over, starting the day after its newest row
   const chooseAccount = (upAccountId: string, accountId: string) => {

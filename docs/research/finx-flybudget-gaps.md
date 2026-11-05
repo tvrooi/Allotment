@@ -43,6 +43,8 @@ So the overlap with FlyBudget is narrow, and most of FinX is behind FlyBudget. T
 
 ## P2 · FINX-01: schedule occurrences and auto-create run only at server start
 
+> **Status (up.102):** built (`server/src/services/scheduleTimer.ts`, hourly, after the startup syncs and any Up sync in progress; `scheduleTimer.test.ts`).
+
 - **FinX:** a daily recurring job registered at boot, first run at 02:00, then every 24 hours ([server.js#L236](https://github.com/IT-BAER/finx/blob/9c89557/server.js#L236)), through a small interval scheduler ([services/scheduler.js#L53](https://github.com/IT-BAER/finx/blob/9c89557/services/scheduler.js#L53)). A manual admin trigger exists (`routes/recurring-tools.js`).
   The job itself is weak (see "Where FlyBudget leads"), but it runs without a restart.
 - **FlyBudget today:** [`ensureOccurrencesForAll`](../../server/src/index.ts#L252) (90 days ahead) and [`autoCreateDueScheduled`](../../server/src/index.ts#L286) are called once, from `runStartupTasks`, after the bank sync. The only other caller of auto-create is `POST /api/schedules/auto-create` ([routes](../../server/src/routes/schedules.ts#L272)), which nothing in `client/src` calls. The only repeating timers in the server are the session cleanup, the exchange-rate fetch and [Up polling](../../server/src/services/upSyncService.ts#L271).

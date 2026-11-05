@@ -99,6 +99,14 @@ const pendingSaves = new Map<string, Promise<void>>();
 /** The most rows one import may send (the server's limit) */
 const MAX_IMPORT_ROWS = 100_000;
 
+/** Where a row the file may repeat came from, for "Looks like X on <day>, ..." */
+const DUPLICATE_SOURCE = {
+  manual: 'entered by hand',
+  synced: 'from your bank',
+  scheduled: 'posted by a schedule',
+  file: 'from an earlier import',
+} as const;
+
 export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
   const [step, setStep] = useState<Step>('upload');
   // Amounts are read in the account's currency (no decimals for yen)
@@ -253,7 +261,14 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
       setSkippedEntries(camtSkipped);
       setFileRows(rows);
       setPreviewRows(preview);
-      setExcluded(new Set(preview.map((r, i) => (r.isDuplicate ? i : -1)).filter((i) => i >= 0)));
+      // Exact repeats and lookalikes both start unticked: the person decides on a lookalike
+      setExcluded(
+        new Set(
+          preview
+            .map((r, i) => (r.isDuplicate || r.possibleDuplicate ? i : -1))
+            .filter((i) => i >= 0),
+        ),
+      );
       setStep('preview');
     } catch (e: unknown) {
       if (load === loadId.current) setError(e instanceof Error ? e.message : 'Preview failed');
@@ -915,6 +930,8 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
             <p className="text-sm text-text-secondary">
               {previewRows.length} transactions found.{' '}
               {previewRows.filter((r) => r.isDuplicate).length} duplicates detected.{' '}
+              {previewRows.filter((r) => r.possibleDuplicate && !r.isDuplicate).length > 0 &&
+                `${previewRows.filter((r) => r.possibleDuplicate && !r.isDuplicate).length} look like transactions already in this account (unticked: tick one to import it anyway). `}
               {previewRows.length - excluded.size} will be imported.
               {skippedEntries > 0 && ` ${entriesLeftOut}`}
             </p>
@@ -980,7 +997,7 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
                   {previewRows.map((row, i) => (
                     <tr
                       key={i}
-                      className={`border-t border-border-light ${excluded.has(i) ? 'opacity-40' : ''} ${row.isDuplicate ? 'bg-caution-subtle' : ''}`}
+                      className={`border-t border-border-light ${excluded.has(i) ? (row.possibleDuplicate && !row.isDuplicate ? 'opacity-80' : 'opacity-40') : ''} ${row.isDuplicate || row.possibleDuplicate ? 'bg-caution-subtle' : ''}`}
                     >
                       <td className="px-2 py-1.5">
                         <input
@@ -992,12 +1009,26 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
                         />
                       </td>
                       <td className="px-2 py-1.5 text-xs text-text-secondary">{row.date}</td>
-                      <td className="px-2 py-1.5 text-xs text-text flex items-center gap-1">
-                        {row.payeeName ?? '—'}
-                        {row.isDuplicate && (
-                          <span className="text-[10px] px-1 py-0.5 bg-caution-subtle text-caution rounded">
-                            duplicate
-                          </span>
+                      <td className="px-2 py-1.5 text-xs text-text">
+                        <div className="flex items-center gap-1">
+                          {row.payeeName ?? '—'}
+                          {row.isDuplicate && (
+                            <span className="text-[10px] px-1 py-0.5 bg-caution-subtle text-caution rounded">
+                              duplicate
+                            </span>
+                          )}
+                          {!row.isDuplicate && row.possibleDuplicate && (
+                            <span className="text-[10px] px-1 py-0.5 bg-caution-subtle text-caution rounded">
+                              may already be here
+                            </span>
+                          )}
+                        </div>
+                        {!row.isDuplicate && row.possibleDuplicate && (
+                          <div className="text-[10px] text-caution mt-0.5">
+                            Looks like {row.possibleDuplicate.payeeName ?? 'a transaction'} on{' '}
+                            {formatDay(row.possibleDuplicate.date)},{' '}
+                            {DUPLICATE_SOURCE[row.possibleDuplicate.source]}.
+                          </div>
                         )}
                       </td>
                       {categoryUses.length > 0 && (
@@ -1065,6 +1096,15 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
                     starting balance in Edit account, or reconcile.
                   </p>
                 )
+              )}
+              {!!result.possibleDuplicates && (
+                <p className="text-xs text-caution mt-2" role="status">
+                  {result.possibleDuplicates === 1
+                    ? '1 imported transaction looks'
+                    : `${result.possibleDuplicates} imported transactions look`}{' '}
+                  like ones this account already had. Check the register for repeats and delete any
+                  that are.
+                </p>
               )}
               {onImported && fileRows.length > 0 && (
                 <p className="text-xs text-text-tertiary mt-2">

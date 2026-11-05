@@ -1,5 +1,12 @@
 # Changes
 
+## 0.2.0-up.102
+
+- **File imports warn about repeats.** When a statement file covers days an account already has, the preview now flags each row that looks like a transaction already there: the same amount within three days, with a payee that doesn't contradict it. That catches rows you typed by hand, rows a bank sync brought in, rows a schedule posted and an earlier import of the same period in another format. Flagged rows start unticked, say what they look like ("Looks like Woolworths on 2 Nov, entered by hand"), and import if you tick them. Nothing is skipped without you choosing. The finished screen counts any flagged rows that you did import.
+- **Scheduled transactions no longer wait for a restart.** Recurring items set to auto-create, and the 90 days of upcoming occurrences, were only topped up when Allotment started. Now they are checked every hour while the server is running, after the startup bank syncs and never while an Up sync is in progress. A bill due today posts within the hour.
+- **Dates count the same in every time zone.** One date helper now does all day-by-day arithmetic. This fixes a lookback that came out one day short in Sydney, a household bill due-date check and a month-ago balance that used the UTC day instead of yours, and the daily net-worth report, which lost a day in zones whose clocks change at midnight (it is now tested in Sydney, UTC, Montevideo, Havana and Beirut). A lint rule stops the pattern coming back.
+- A currency written as its code (for example AUD or EUR) keeps a space before the number; this was checked and is now covered by a test.
+
 ## 0.2.0-up.101
 
 - **Clearer assistant activity.** Settings → Server → Read-only access → **Assistant activity** now says, for every change an assistant asked for, what it was in plain words, which tool asked, and whether it was done, not done (the app's own rules said no, with why) or refused. It keeps no copy of what was sent, and only the newest 5,000 entries; entries kept by up.99 and up.100 lose theirs.

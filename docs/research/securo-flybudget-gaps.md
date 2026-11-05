@@ -14,8 +14,8 @@ describes rendered behaviour, layout quality or performance; where a claim depen
 behaviour it says so.
 
 This is a proposed backlog, not authorization to implement it. Line references describe the commits
-above. Gaps already ticketed against Actual ([ACT-*](actual-flybudget-gaps.md)) or YNAB
-([BUD-*](ynab-flybudget-budget-gaps.md)) are referenced, not repeated.
+above. Gaps already ticketed against Actual ([ACT-\*](actual-flybudget-gaps.md)) or YNAB
+([BUD-\*](ynab-flybudget-budget-gaps.md)) are referenced, not repeated.
 
 ## Summary
 
@@ -50,6 +50,8 @@ CAMT and CSV), a Ctrl/Cmd+K command palette (`ACT-08`; Securo has `command-palet
 `generate-recurring`, so it is not ahead).
 
 ## P1 · SEC-01: file import cannot see manual or synced duplicates, and cannot be undone
+
+> **Status (up.102):** the duplicate half is built (`server/src/services/importDuplicates.ts`, flagged in the import preview and never skipped). Import history and "undo this file" are not built.
 
 - **Securo:** `import_transactions` checks each incoming row against existing rows in the account by
   external id (OFX FITID) plus date, amount and type, else by date, amount, type and either

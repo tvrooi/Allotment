@@ -119,7 +119,7 @@ export function budgetGroups(month: string, today = todayIso()) {
  * whose carry has already reset, so this month's cash overspending shows up there. A past
  * month shows what it closed with: later months' assignments take only what it had left.
  */
-export function fundingState(asOf = todayIso(), month = asOf.slice(0, 7)) {
+export function fundingState(asOf = todayIso(), month = asOf.slice(0, 7), today = todayIso()) {
   const asOfMonth = asOf.slice(0, 7);
   const { groups, card, ledger: l } = assessment(asOfMonth, asOf);
   const enrolledCards = new Set(card.positions.map((p) => p.accountId));
@@ -157,7 +157,7 @@ export function fundingState(asOf = todayIso(), month = asOf.slice(0, 7)) {
   // Before later months' assignments: a past month's own closing position, which the
   // assignment guard checks (budgetMoves.ts fundedWrite)
   const unassignedBeforeLater = resources - envelopes;
-  const past = asOfMonth < todayIso().slice(0, 7);
+  const past = asOfMonth < today.slice(0, 7);
   const laterDeduction = past
     ? Math.min(futureAssigned, Math.max(0, unassignedBeforeLater))
     : futureAssigned;
@@ -196,7 +196,7 @@ export function fundingState(asOf = todayIso(), month = asOf.slice(0, 7)) {
 export function budgetSummary(month: string, today = todayIso()) {
   const end = monthBounds(month).to;
   const asOf = end < today ? end : today;
-  const state = fundingState(asOf, month);
+  const state = fundingState(asOf, month, today);
   const groups = budgetGroups(month, today);
   const income = groups
     .filter((g) => g.isIncome)

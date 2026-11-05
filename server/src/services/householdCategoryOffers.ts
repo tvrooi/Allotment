@@ -12,6 +12,7 @@ import {
   householdShares as shares,
   transactions,
 } from '../db/schema.js';
+import { addDaysIso } from '../utils/date.js';
 
 /** How far back the repayer's shares count when suggesting a category */
 const LOOKBACK_DAYS = 365;
@@ -93,9 +94,7 @@ export function repaymentCategoryOffers(groupId: string) {
   return repayments.flatMap((r) => {
     const deposit = deposits.get(r.transactionId!);
     if (!deposit || deposit.categoryId || deposit.amount <= 0) return [];
-    const from = new Date(Date.parse(`${r.date}T00:00:00Z`) - LOOKBACK_DAYS * 86_400_000)
-      .toISOString()
-      .slice(0, 10);
+    const from = addDaysIso(r.date, -LOOKBACK_DAYS);
     const totals = new Map<string, { categoryId: string; name: string; amount: number }>();
     for (const e of paid) {
       if (e.date > r.date || e.date < from) continue;

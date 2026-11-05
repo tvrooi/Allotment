@@ -47,6 +47,7 @@ import {
   getBudgetSettings,
 } from '../services/mainAmountService.js';
 import { accountTypeSchema, defaultOffBudget } from '../utils/accountTypes.js';
+import { addDaysIso, todayIso } from '../utils/date.js';
 
 export const upRouter = Router();
 let settingUp = false;
@@ -485,8 +486,9 @@ upRouter.post('/cutover/opening-balance', (req, res) => {
   }
 });
 upRouter.get('/round-ups', (_req, res) => {
-  // Bank-local dates can be a day ahead/behind UTC; include an extra day at this boundary.
-  const since = new Date(Date.now() - 91 * 86400_000).toISOString().slice(0, 10);
+  // Bank-local dates can be a day ahead/behind; 91 days back from today is always at or before
+  // the start of the 90-day view
+  const since = addDaysIso(todayIso(), -91);
   res.json({ since, days: roundUpDays(since) });
 });
 
