@@ -503,7 +503,7 @@ export function createGateway(o: GatewayOptions) {
   });
 
   app.use('/api', (req, res) => {
-    // An access token (Settings → Server → Read-only access) goes to the budget that issued it,
+    // An access token (Settings → Server → Access tokens) goes to the budget that issued it,
     // which checks it. The gateway's secret is never added to these requests.
     const routed = ROUTED_TOKEN.exec(BEARER.exec(req.headers.authorization ?? '')?.[1] ?? '');
     if (routed) {

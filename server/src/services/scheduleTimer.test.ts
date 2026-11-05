@@ -171,4 +171,32 @@ describe('startScheduleTimer', () => {
     vi.advanceTimersByTime(SCHEDULE_TICK_MS * 3);
     expect(ticks).toBe(3);
   });
+
+  it('runs follow-up work after every tick, reports its failure, and never overlaps itself', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+    vi.setSystemTime(at(2026, 10, 15, 8));
+    const errors: unknown[] = [];
+    let calls = 0;
+    let release!: () => void;
+    const stop = startScheduleTimer({
+      afterTick: () => {
+        calls++;
+        if (calls === 1) return new Promise<void>((resolve) => (release = resolve));
+        return Promise.reject(new Error('no notify service'));
+      },
+      onError: (e) => errors.push(e),
+    });
+    try {
+      vi.advanceTimersByTime(SCHEDULE_TICK_MS * 3); // the first call is still in flight
+      expect(calls).toBe(1);
+      release();
+      await vi.advanceTimersByTimeAsync(SCHEDULE_TICK_MS);
+      expect(calls).toBe(2);
+      expect(errors).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(SCHEDULE_TICK_MS); // a failure does not stop it
+      expect(calls).toBe(3);
+    } finally {
+      stop();
+    }
+  });
 });

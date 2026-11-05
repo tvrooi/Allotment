@@ -49,6 +49,8 @@ export function getBudgetSettings(): BudgetSettings {
       receiptReaderUrl: null,
       receiptReaderModel: null,
       filesCapMb: null,
+      reminderNotifyService: null,
+      reminderShowDetails: 0,
       updatedAt: new Date(0).toISOString(),
     }
   );

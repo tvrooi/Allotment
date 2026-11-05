@@ -69,7 +69,7 @@ and reason. No request bodies are kept. The newest 5,000 rows are kept. It is a 
 never in backups, and no token can read it.
 
 The owner reads it at `GET /api/assistant/activity` (`limit`, `offset`; with the policy rows'
-summaries) and in **Settings → Server → Read-only access → Assistant activity**.
+summaries) and in **Settings → Server → Access tokens → Assistant activity**.
 
 ## Phases
 

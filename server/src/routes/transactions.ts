@@ -66,6 +66,13 @@ import {
   matchExistingRows,
   takenImportedIds,
 } from '../services/importDuplicates.js';
+import {
+  ImportBatchError,
+  createImportBatch,
+  finishImportBatch,
+  listImportBatches,
+  undoImportBatch,
+} from '../services/importBatches.js';
 
 export const transactionsRouter = Router();
 transactionsRouter.use((req, res, next) => {
@@ -714,11 +721,16 @@ transactionsRouter.post('/import/preview', (req, res) => {
 // POST /transactions/import/confirm — insert non-duplicate rows
 transactionsRouter.post('/import/confirm', (req, res) => {
   const parsed = z
-    .object({ accountId: z.string().max(64), rows: importRowsSchema })
+    .object({
+      accountId: z.string().max(64),
+      rows: importRowsSchema,
+      // Shown in the import history; the name of the file the person chose
+      fileName: z.string().trim().max(200).optional(),
+    })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const { accountId, rows } = parsed.data;
+  const { accountId, rows, fileName } = parsed.data;
   const account = db.select().from(accounts).where(eq(accounts.id, accountId)).get();
   if (!account) {
     return res.status(404).json({ error: 'Account not found' });
@@ -764,6 +776,7 @@ transactionsRouter.post('/import/confirm', (req, res) => {
         .from(transactions)
         .where(and(eq(transactions.accountId, accountId), eq(transactions.reconciled, 1)))
         .get();
+    const batchId = createImportBatch(accountId, fileName || null);
     for (const row of rows) {
       const dup = db
         .select()
@@ -785,6 +798,7 @@ transactionsRouter.post('/import/confirm', (req, res) => {
           notes: row.notes ?? null,
           categoryId: row.categoryId ?? null,
           importedId: row.importedId,
+          importBatchId: batchId,
         },
         ruleOpts,
       );
@@ -796,8 +810,12 @@ transactionsRouter.post('/import/confirm', (req, res) => {
         .set({ startingBalance: account.startingBalance - historical })
         .where(eq(accounts.id, accountId))
         .run();
+    // The cutoff is kept whenever this import was holding the balance, even if the older rows
+    // happened to sum to zero: undoing only some of them (the rest were worked on) still needs it
+    finishImportBatch(batchId, imported, keepsBalance ? account.balanceAsOf : null);
     return {
       imported,
+      importBatchId: imported > 0 ? batchId : null,
       possibleDuplicates,
       balanceBefore,
       startingBalanceAdjusted: historical !== 0,
@@ -806,6 +824,25 @@ transactionsRouter.post('/import/confirm', (req, res) => {
   });
 
   res.json({ ...outcome, skipped: rows.length - outcome.imported });
+});
+
+// GET /transactions/import/batches — file imports that still have rows in their account (SEC-01)
+transactionsRouter.get('/import/batches', (req, res) => {
+  const accountId = typeof req.query.accountId === 'string' ? req.query.accountId : undefined;
+  res.json(listImportBatches(accountId));
+});
+
+// DELETE /transactions/import/batches/:id — "undo this file": removes the rows that import added,
+// except those the person has worked on (reconciled, reviewed, transfers, hand splits, household
+// shares, attached files). The answer lists what was kept and why, and carries the removed rows in
+// the import's own shape so the client's Undo can bring them back through /import/confirm.
+transactionsRouter.delete('/import/batches/:id', (req, res) => {
+  try {
+    res.json(undoImportBatch(req.params.id));
+  } catch (err) {
+    if (err instanceof ImportBatchError) return res.status(err.status).json({ error: err.message });
+    throw err;
+  }
 });
 
 // POST /transactions/import/link-transfers — after a multi-account import (YNAB), link the two

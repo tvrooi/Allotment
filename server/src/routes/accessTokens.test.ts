@@ -134,6 +134,13 @@ describe('what a token can reach', () => {
       ['GET', '/up/status'],
       ['GET', '/accounts/mock/import-settings'],
       ['GET', '/dashboards'],
+      // Reminder settings name a notify service on the owner's phone (FINX-02, I-11)
+      ['GET', '/reminders'],
+      ['PUT', '/reminders'],
+      ['POST', '/reminders/test'],
+      // Import history and "undo this file" (SEC-01) are the owner's
+      ['GET', '/transactions/import/batches'],
+      ['DELETE', '/transactions/import/batches/x'],
     ];
     for (const [method, path] of denied) {
       expect((await call(method, path, { token }, method === 'GET' ? undefined : {})).status).toBe(

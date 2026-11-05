@@ -98,6 +98,10 @@ export function regenerateFutureOccurrences(scheduleId: string): void {
     .all()
     .filter((o) => o.scheduledDate > today);
 
+  // An edit remakes these occurrences; one already reminded about must not be reminded again
+  const reminded = new Map(
+    futureOccs.filter((o) => o.remindedAt).map((o) => [o.scheduledDate, o.remindedAt!]),
+  );
   for (const occ of futureOccs) {
     db.delete(scheduleOccurrences).where(eq(scheduleOccurrences.id, occ.id)).run();
   }
@@ -105,6 +109,16 @@ export function regenerateFutureOccurrences(scheduleId: string): void {
   db.update(schedules).set({ occurrenceHorizon: today }).where(eq(schedules.id, scheduleId)).run();
 
   ensureOccurrences(scheduleId, previousHorizon);
+  for (const [scheduledDate, remindedAt] of reminded)
+    db.update(scheduleOccurrences)
+      .set({ remindedAt })
+      .where(
+        and(
+          eq(scheduleOccurrences.scheduleId, scheduleId),
+          eq(scheduleOccurrences.scheduledDate, scheduledDate),
+        ),
+      )
+      .run();
 }
 
 export function autoCreateDueScheduled(today = todayIso()): number {

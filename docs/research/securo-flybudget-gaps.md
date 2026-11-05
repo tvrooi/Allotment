@@ -51,7 +51,7 @@ CAMT and CSV), a Ctrl/Cmd+K command palette (`ACT-08`; Securo has `command-palet
 
 ## P1 · SEC-01: file import cannot see manual or synced duplicates, and cannot be undone
 
-> **Status (up.102):** the duplicate half is built (`server/src/services/importDuplicates.ts`, flagged in the import preview and never skipped). Import history and "undo this file" are not built.
+> **Status (up.103):** built. The duplicate half is `server/src/services/importDuplicates.ts` (flagged in the import preview, never skipped, up.102). Import history and "undo this file" are `services/importBatches.ts`: each import is a batch, undo keeps rows the person has worked on and says why, and the removed rows can be put back. It is not a change set: a change set records token category changes, and the undo here is an explicit button with its own re-import.
 
 - **Securo:** `import_transactions` checks each incoming row against existing rows in the account by
   external id (OFX FITID) plus date, amount and type, else by date, amount, type and either

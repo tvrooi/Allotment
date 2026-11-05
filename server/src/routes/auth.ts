@@ -279,7 +279,7 @@ function fromGateway(req: Request) {
 /** In server mode, every API request except health and login needs a valid session. */
 export const requireSession: RequestHandler = (req, res, next) => {
   if (!serverMode || req.path === '/health' || req.path.startsWith('/auth/')) return next();
-  // An access token (Settings → Server → Read-only access): reading the budget's own data,
+  // An access token (Settings → Server → Access tokens): reading the budget's own data,
   // plus, for a categorise token, setting past transactions' categories and editing categories
   // (auth/accessTokens.ts). It never stands in for a login. Other
   // bearer tokens (a JWT forwarded by a sign-in proxy) are left alone: the session decides.

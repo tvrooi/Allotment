@@ -85,6 +85,9 @@ import {
 } from './services/scheduleService.js';
 import { addDaysIso, todayIso } from './utils/date.js';
 import { OCCURRENCE_HORIZON_DAYS, startScheduleTimer } from './services/scheduleTimer.js';
+import { createRemindersRouter } from './routes/reminders.js';
+import { sendDueReminders } from './services/reminderService.js';
+import { canNotify, homeAssistantNotify } from './gateway/notify.js';
 
 const app = express();
 
@@ -146,6 +149,7 @@ app.use('/api/dashboards', dashboardsRouter);
 app.use('/api/households', householdsRouter);
 app.use('/api/payment-plans', paymentPlansRouter);
 app.use('/api/schedules', schedulesRouter);
+app.use('/api/reminders', createRemindersRouter());
 app.use('/api/goals', goalsRouter);
 app.use('/api/payday', paydayRouter);
 app.use('/api/forecast', forecastRouter);
@@ -325,7 +329,13 @@ function runStartupTasks(): () => void {
 
   // FINX-01: and then hourly, so a server that stays up keeps its schedules current. The timer
   // waits for the startup syncs, and for any Up sync in progress, before it creates anything.
-  return startScheduleTimer({ ready: bankSyncDone, busy: isUpSyncing });
+  // FINX-02: the same timer sends bill reminders, where Home Assistant can deliver them
+  const notify = homeAssistantNotify();
+  return startScheduleTimer({
+    ready: bankSyncDone,
+    busy: isUpSyncing,
+    afterTick: () => (canNotify() ? sendDueReminders(notify) : Promise.resolve()),
+  });
 }
 
 // Auto-start unless bundled for Electron production (where main.ts calls startServer directly)

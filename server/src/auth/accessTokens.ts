@@ -159,8 +159,11 @@ const READABLE = [
   '/change-sets',
   '/budget-proposals',
 ];
-/** Under a readable path, but bank-connection data: never for a token */
-const UNREADABLE = [/^\/accounts\/[^/]+\/import-settings$/i];
+/**
+ * Under a readable path, but never for a token: bank-connection data, and the file import
+ * history, whose file names can carry a bank or account number (SEC-01)
+ */
+const UNREADABLE = [/^\/accounts\/[^/]+\/import-settings$/i, /^\/transactions\/import\/batches$/i];
 export const MCP_PATH = '/mcp';
 
 /** Whether a read-only token may make this request (path relative to /api) */

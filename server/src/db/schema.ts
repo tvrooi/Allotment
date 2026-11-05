@@ -86,6 +86,29 @@ export const payees = sqliteTable('payees', {
     .default(sql`(datetime('now'))`),
 });
 
+/** One confirmed file import into an account (SEC-01): what it was and what it added */
+export const importBatches = sqliteTable(
+  'import_batches',
+  {
+    id: text('id').primaryKey(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    fileName: text('file_name'),
+    /** Rows the import added (not the ones it skipped as already there) */
+    rowCount: integer('row_count').notNull(),
+    /**
+     * When the import moved the account's starting balance to keep today's balance (rows dated
+     * on or before this day), that day. Taking the file back out puts those rows' amounts back.
+     */
+    adjustedThrough: text('adjusted_through'),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (t) => [index('import_batches_account').on(t.accountId)],
+);
+
 export const transactions = sqliteTable(
   'transactions',
   {
@@ -126,11 +149,16 @@ export const transactions = sqliteTable(
      * forecasts and reconciliation still count it. A split's parts follow their parent.
      */
     hiddenFromReports: integer('hidden_from_reports').notNull().default(0),
+    /** The file import that added it (SEC-01); null for anything else, and after "undo this file" */
+    importBatchId: text('import_batch_id').references(() => importBatches.id, {
+      onDelete: 'set null',
+    }),
     createdAt: text('created_at')
       .notNull()
       .default(sql`(datetime('now'))`),
   },
   (table) => [
+    index('transactions_import_batch_idx').on(table.importBatchId),
     index('transactions_account_date_idx').on(table.accountId, table.date),
     index('transactions_category_idx').on(table.categoryId),
     index('transactions_date_idx').on(table.date),
@@ -273,6 +301,8 @@ export const schedules = sqliteTable(
     occurrenceHorizon: text('occurrence_horizon'),
     /** "Still active": occurrences missed on or before this date don't suggest it ended */
     confirmedActiveAt: text('confirmed_active_at'),
+    /** Days before an occurrence to send a Home Assistant reminder (FINX-02); null = none */
+    reminderDays: integer('reminder_days'),
     createdAt: text('created_at')
       .notNull()
       .default(sql`(datetime('now'))`),
@@ -305,6 +335,8 @@ export const scheduleOccurrences = sqliteTable(
     matchConfidence: integer('match_confidence'),
     skippedAt: text('skipped_at'),
     paidAt: text('paid_at'),
+    /** When its reminder went out (FINX-02): once per occurrence */
+    remindedAt: text('reminded_at'),
     createdAt: text('created_at')
       .notNull()
       .default(sql`(datetime('now'))`),
@@ -1108,7 +1140,7 @@ export const sessions = sqliteTable('sessions', {
 });
 
 /**
- * Read-only access tokens (Settings → Server → Read-only access): for tools such as an AI
+ * Read-only access tokens (Settings → Server → Access tokens): for tools such as an AI
  * assistant or an MCP client to read the budget. Only the SHA-256 of a token is stored; the
  * token itself is shown once. They never write and are never part of a backup.
  */
@@ -1200,6 +1232,10 @@ export const budgetSettings = sqliteTable('budget_settings', {
   receiptReaderModel: text('receipt_reader_model'),
   /** Files: the most the library may hold, in MB; null = no limit beyond the disk */
   filesCapMb: integer('files_cap_mb'),
+  /** Home Assistant notify service that gets bill reminders, without "notify."; null = off */
+  reminderNotifyService: text('reminder_notify_service'),
+  /** 1 = reminders name the bill and amount (a lock screen shows them); 0 = generic text */
+  reminderShowDetails: integer('reminder_show_details').notNull().default(0),
   updatedAt: text('updated_at')
     .notNull()
     .default(sql`(datetime('now'))`),

@@ -48,6 +48,7 @@ import {
   type CategoryChoice,
 } from './ImportCategories';
 import { YnabImportModal } from './YnabImportModal';
+import { ImportHistory, UndoImportInline } from './ImportHistory';
 import { formatDay } from '../../utils/dates';
 import { formatMoney } from '../../utils/currency';
 import { minorUnits } from '../../utils/currencies';
@@ -142,6 +143,8 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
   const [excluded, setExcluded] = useState<Set<number>>(new Set());
   const [skippedRows, setSkippedRows] = useState<SkippedRow[]>([]);
   const [result, setResult] = useState<ImportResult | null>(null);
+  // The chosen file's name, kept with the import so the history can say which file it was
+  const [fileName, setFileName] = useState<string | null>(null);
   // The rows as built from the file (with their category labels), and the choices for those
   const [fileRows, setFileRows] = useState<ImportRow[]>([]);
   const [pending, setPending] = useState<{ rows: ImportRow[]; skipped: SkippedRow[] } | null>(null);
@@ -184,6 +187,7 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
     setExcluded(new Set());
     setSkippedRows([]);
     setResult(null);
+    setFileName(null);
     setFileRows([]);
     setPending(null);
     setChoices({});
@@ -314,6 +318,7 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
   async function readFile(file: File, load: number) {
     const buffer = await file.arrayBuffer();
     if (load !== loadId.current) return;
+    setFileName(file.name);
 
     // Decoded like the whole file would be, so a UTF-16 statement is recognized too
     const start = decodeCsvBytes(buffer.slice(0, 4096), 'auto');
@@ -557,7 +562,7 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
       setResolving(false);
     }
     confirmMutation.mutate(
-      { accountId, rows },
+      { accountId, rows, fileName },
       {
         onSuccess: (data) => {
           rememberSettings(); // the import happened, even if the dialog was closed meanwhile
@@ -681,6 +686,8 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
             />
           </div>
         )}
+
+        {step === 'upload' && <ImportHistory accountId={accountId} currency={currency} />}
 
         {step === 'statement' && (
           <div className="space-y-4">
@@ -1113,6 +1120,20 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
                 </p>
               )}
             </div>
+            {result.importBatchId && (
+              <div className="flex flex-col items-center gap-2 text-center">
+                <p className="text-xs text-text-tertiary">Wrong file or wrong account?</p>
+                <UndoImportInline
+                  accountId={accountId}
+                  currency={currency}
+                  target={{
+                    id: result.importBatchId,
+                    label: fileName || 'this file',
+                    rows: result.imported,
+                  }}
+                />
+              </div>
+            )}
             <Button onClick={handleClose}>Done</Button>
           </div>
         )}

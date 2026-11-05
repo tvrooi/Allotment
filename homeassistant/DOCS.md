@@ -62,6 +62,15 @@ You can bookmark it or add it to your phone's home screen. All these devices rea
 same server database. Choosing **Use this computer** in the desktop app opens a separate local
 budget; changing locations does not migrate or merge an existing budget.
 
+## Bill reminders
+
+Allotment can send a Home Assistant notification a few days before a bill or payday. In
+**Settings → Server → Reminders**, enter a notify service such as `mobile_app_my_phone` (without
+`notify.`) and use **Send a test**. Then give each schedule a lead under **Recurring → Remind me**.
+Reminders are off until you do both, go out once per occurrence in the daytime, and only say how
+many items are due unless you tick **Include the name and amount**. They need the app to run with
+its own single budget (see the multi-user note below).
+
 ## Reach it away from home
 
 HTTP is fine on a trusted home network but is not encrypted, so do not expose port 3001 to the
@@ -125,8 +134,10 @@ a budget only they can open, each with their own password.
   then sends a code there through the Home Assistant Companion app (six digits, for 10
   minutes). The administrator's code, valid for 24 hours, is also written to the app's **Log**. For anyone else, the administrator
   chooses **Reset password**, and the code appears in the **Log** for them to pass on.
-- **Read-only access tokens** and the assistant (MCP) connection work per person: each token
+- **Access tokens** and the assistant (MCP) connection work per person: each token
   reaches only the budget that created it.
+- **Bill reminders** are not available in a multi-user setup: each person's budget has no way to
+  reach Home Assistant's notifications (only the gateway does, for password codes).
 - **Bank connections** (Enable Banking) work per person: the bank sends you back to the budget
   that started the login.
 - **Memory:** each budget uses roughly 100 to 150 MB while the app runs.

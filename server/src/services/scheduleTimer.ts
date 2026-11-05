@@ -40,6 +40,11 @@ export interface ScheduleTimerOptions {
   /** True while a bank sync is running: the tick waits for the next hour instead */
   busy?: () => boolean;
   intervalMs?: number;
+  /**
+   * Runs after each tick, for work that waits on the network (bill reminders, FINX-02). Its
+   * failure is reported like a tick's, and a run still in progress is not started twice.
+   */
+  afterTick?: () => Promise<unknown>;
   onResult?: (result: ScheduleTickResult) => void;
   onError?: (error: unknown) => void;
 }
@@ -50,6 +55,7 @@ export function startScheduleTimer(options: ScheduleTimerOptions = {}): () => vo
     ready,
     busy = () => false,
     intervalMs = SCHEDULE_TICK_MS,
+    afterTick,
     onResult = (r) => {
       if (r.ensured > 0) console.log(`Ensured ${r.ensured} new occurrence(s)`);
       if (r.created > 0) console.log(`Auto-created ${r.created} scheduled transaction(s)`);
@@ -66,6 +72,7 @@ export function startScheduleTimer(options: ScheduleTimerOptions = {}): () => vo
       started = true; // a failed bank sync must not stop schedules for good
     },
   );
+  let following = false;
   const timer = setInterval(() => {
     if (stopped || !started || busy()) return;
     try {
@@ -73,6 +80,13 @@ export function startScheduleTimer(options: ScheduleTimerOptions = {}): () => vo
     } catch (err) {
       onError(err);
     }
+    if (!afterTick || following) return;
+    following = true;
+    afterTick()
+      .catch(onError)
+      .finally(() => {
+        following = false;
+      });
   }, intervalMs);
   timer.unref();
   return () => {

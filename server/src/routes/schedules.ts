@@ -14,6 +14,7 @@ import {
   todayIso,
   valueToday,
 } from '../services/mainAmountService.js';
+import { MAX_REMINDER_DAYS } from '../services/reminderService.js';
 import { discoverSchedules, createDiscoveredSchedules } from '../services/scheduleDiscovery.js';
 import { endSchedule, possiblyEndedIds, reopenSchedule } from '../services/scheduleActivity.js';
 import {
@@ -92,6 +93,8 @@ const scheduleFields = {
   autoCreate: z.number().int().min(0).max(1),
   /** "Still active": misses up to this date don't make it look ended */
   confirmedActiveAt: isoDate.nullable().optional(),
+  /** Days before an occurrence to send a Home Assistant reminder (FINX-02); null = none */
+  reminderDays: z.number().int().min(0).max(MAX_REMINDER_DAYS).nullable().optional(),
 };
 
 const ruleMatchesType = (s: { recurrenceType?: string; recurrenceRule?: { type: string } }) =>
@@ -332,6 +335,7 @@ schedulesRouter.post('/', (req, res) => {
     status: data.status,
     autoCreate: data.autoCreate,
     autoCreateFrom: data.autoCreate ? today : null,
+    reminderDays: data.reminderDays ?? null,
     source: 'manual' as const,
     occurrenceHorizon: null,
     createdAt: now,

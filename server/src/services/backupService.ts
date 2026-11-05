@@ -38,6 +38,7 @@ import {
   upSourceRecords,
   upDeletedImports,
   enableBankingAccountMappings,
+  importBatches,
   transactions,
   receipts,
   receiptLineItems,
@@ -104,7 +105,7 @@ import { isCurrencyCode } from '../utils/currencies.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 25;
+export const BACKUP_VERSION = 26;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -118,6 +119,8 @@ const TABLES = {
   categoryTargets,
   payees,
   schedules,
+  // File imports (format 26), before the transactions that name them
+  importBatches,
   transactions,
   // Files' and receipts' details and claims; the files themselves stay on this installation
   documents,

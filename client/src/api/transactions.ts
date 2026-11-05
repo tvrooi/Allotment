@@ -200,12 +200,47 @@ export interface ImportResult {
   balance: number;
   /** Its starting balance moved so a balance typed as "today's" stayed true */
   startingBalanceAdjusted: boolean;
+  /** The import's entry in the history, for "undo this file"; null when nothing was added */
+  importBatchId?: string | null;
 }
 
-export const importConfirm = (accountId: string, rows: ImportRow[]) =>
+export const importConfirm = (accountId: string, rows: ImportRow[], fileName?: string | null) =>
   apiFetch<ImportResult>('/transactions/import/confirm', {
     method: 'POST',
-    body: JSON.stringify({ accountId, rows: rows.map(toApiRow) }),
+    body: JSON.stringify({
+      accountId,
+      rows: rows.map(toApiRow),
+      ...(fileName ? { fileName } : {}),
+    }),
+  });
+
+/** A file import that still has rows in its account (SEC-01) */
+export interface ImportBatch {
+  id: string;
+  accountId: string;
+  accountName: string;
+  fileName: string | null;
+  createdAt: string;
+  rowCount: number;
+  remaining: number;
+}
+
+export const getImportBatches = (accountId: string) =>
+  apiFetch<ImportBatch[]>(
+    `/transactions/import/batches?accountId=${encodeURIComponent(accountId)}`,
+  );
+
+export interface UndoImportResult {
+  /** The rows taken out, in the shape an import takes, so they can be put back */
+  removed: ImportRow[];
+  /** Rows left because they were worked on since, and why */
+  kept: { id: string; date: string; amount: number; payeeName: string | null; reason: string }[];
+  balanceRestored: boolean;
+}
+
+export const undoImportBatch = (id: string) =>
+  apiFetch<UndoImportResult>(`/transactions/import/batches/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
   });
 
 // ─── Phase 9: review, report visibility and tags ──────────────────────────────

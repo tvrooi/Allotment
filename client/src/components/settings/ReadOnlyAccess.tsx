@@ -23,8 +23,8 @@ import {
   type CreatedAccessToken,
 } from '../../api/accessTokens';
 
-// Settings → Server → Read-only access: tokens that let another tool, such as an AI assistant
-// or an MCP client, read this budget. They can't sign in, download backups or see bank
+// Settings → Server → Access tokens: tokens that let another tool, such as an AI assistant
+// or an MCP client, read this budget, and with a wider scope change parts of it. They can't sign in, download backups or see bank
 // connections. A categorise token can also set past transactions' categories and edit
 // categories; an organise token can also propose rules (disabled until enabled here, in Rules),
 // set payee default categories and logos, link suggested transfers and claim past transactions
@@ -71,16 +71,17 @@ export function ReadOnlyAccess() {
 
   return (
     <section className="pt-6 border-t border-border-light">
-      <h2 className="text-sm font-semibold text-text">Read-only access</h2>
+      <h2 className="text-sm font-semibold text-text">Access tokens</h2>
       <p className="text-xs text-text-tertiary mt-1">
-        Let another tool, such as an AI assistant, read this budget with a token. A token can only
-        read: it can't change anything, sign in, download backups or see bank connections. A{' '}
-        <em>read and categorise</em> token can also set the category of past transactions and create
-        or edit categories. A <em>read, categorise and organise</em> token can also propose rules
-        (they stay off until you turn them on in Rules), set payee default categories, set payee
-        logos, link transfers the app suggests and claim past transactions as tax deductions (it
-        never changes or removes a claim). A token expires, you can revoke it here, and changing the
-        password revokes them all.
+        Let another tool, such as an AI assistant, use this budget with a token. A{' '}
+        <em>read only</em> token can only read. A <em>read and categorise</em> token can also set
+        the category of past transactions and create or edit categories. A{' '}
+        <em>read, categorise and organise</em> token can also propose rules (they stay off until you
+        turn them on in Rules), set payee default categories and logos, link transfers the app
+        suggests, suggest budget assignments that only you apply, claim past transactions as tax
+        deductions (it never changes or removes a claim) and record household contributions. No
+        token can sign in, download backups or see bank connections. A token expires, you can revoke
+        it here, and changing the password revokes them all.
       </p>
 
       <form
