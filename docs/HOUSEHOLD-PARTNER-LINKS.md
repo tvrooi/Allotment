@@ -1,6 +1,6 @@
 # Linking a partner's own payments to household entries
 
-Status: **design only, 5 November 2026. Nothing is built.** It answers HANDOVER open item 11
+Status: **design only, 5 November 2026; approach B chosen. Nothing is built.** It answers HANDOVER open item 11
 (owner's note of 3 November) and waits on the decisions at the end. No code, migration or version
 change comes with this page.
 
@@ -128,6 +128,10 @@ nearest day first). E2E: two signed-in people in a combined household, the claim
 registers.
 
 ## Decisions for the owner
+
+**Answered 5 November 2026:** 1 is B (a claim row in the partner's budget); 2 is anyone; 3 is
+settlements as well as expenses; 6 is kept hidden. **Still open** (the recommendation stands until
+the owner says otherwise): 4, 5, 7, 8 and 9.
 
 1. **Which option?** B (a claim row in the partner's budget) is recommended. A is the cheapest and
    what happens if nothing is built.
