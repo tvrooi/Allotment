@@ -57,11 +57,14 @@ function AmountInput({
   closed,
   saving,
   error,
+  picked,
   onDraft,
   onSave,
   onCancel,
 }: {
   cents: number;
+  /** An amount chosen from the popover: shown in the field, so a refusal and a retry mean it */
+  picked: { cents: number } | null;
   label: string;
   /** The save is on its way: the typed amount stays, locked, until the server answers */
   saving: boolean;
@@ -77,6 +80,12 @@ function AmountInput({
   const [raw, setRaw] = useState(centsToInput(cents));
   const [invalid, setInvalid] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (picked) {
+      setRaw(centsToInput(picked.cents));
+      setInvalid(false);
+    }
+  }, [picked]);
   // A refused save puts the cursor back in the field, so the amount can be corrected
   useEffect(() => {
     if (error) {
@@ -172,10 +181,12 @@ function CategoryRow({
   const closed = useRef(false);
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [picked, setPicked] = useState<{ cents: number } | null>(null);
   const inFlight = useRef(false);
   function startEdit() {
     closed.current = false;
     setFailure(null);
+    setPicked(null);
     setDraft(cat.budgeted);
     onStartEdit(cat.id);
   }
@@ -197,6 +208,8 @@ function CategoryRow({
   // A quick amount saves straight away
   function pick(cents: number) {
     closed.current = true;
+    setDraft(cents);
+    setPicked({ cents });
     void commit(cents);
   }
   const quickAmounts = isIncome
@@ -269,6 +282,7 @@ function CategoryRow({
                 closed={closed}
                 saving={saving}
                 error={failure}
+                picked={picked}
                 onDraft={setDraft}
                 onSave={(c) => void commit(c)}
                 onCancel={onCancel}
@@ -675,13 +689,18 @@ export default function BudgetPage() {
     setEditingId(null);
     setPutRestNote(null);
   }
+  const monthRef = useRef(selectedMonth);
+  monthRef.current = selectedMonth;
   // Resolves to why the amount was refused, or null once the server has saved it. The editor
   // closes only on success, so a refused amount is still there to correct.
   async function handleSave(categoryId: string, budgeted: number): Promise<string | null> {
     if (switchingMonth) return 'This month is still loading. Try again in a moment.';
+    const month = selectedMonth;
     try {
-      await setBudgetMutation.mutateAsync({ month: selectedMonth, categoryId, budgeted });
-      setEditingId(null);
+      await setBudgetMutation.mutateAsync({ month, categoryId, budgeted });
+      // Close only the editor this save came from: another opened while it was on its way, or in
+      // another month, keeps what is typed in it
+      if (monthRef.current === month) setEditingId((now) => (now === categoryId ? null : now));
       return null;
     } catch (e) {
       return e instanceof Error && e.message ? e.message : 'Could not save. Try again.';
