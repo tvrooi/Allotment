@@ -37,6 +37,11 @@ Last updated: 5 November 2026 (after up.105).
   _F-19 (G.2):_ `docs/DEVELOPMENT.md` Welcome and `recurring_transactions` text, Settings → Server's
   self-hosting link (now this repo's Start here), HANDOVER's local-browser and Saver-transfer notes.
   `SECURITY.md` and the backup copy were already fixed.
+  _Release state:_ up.105 is the version this PR ships; the live app was on up.104 (#147, the iPhone
+  header fix) when it merged. Installing up.105 on the live app follows the standing steps in
+  CLAUDE.md (verify identity, cold backup with the key, update, verify health); nobody has done it.
+  Check the live version before assuming. _Next:_ Stage 3 of the audit roadmap (section H), then the
+  115 `label-has-associated-control` warnings if the cap should come down.
 - **Stage 1 follow-up (up.103, migrations 0072 and 0073, backup format 26):** the rest of SEC-01 and
   FINX-02.
   _SEC-01 import history:_ `import_batches` (one row per confirmed file import: account, file name,
@@ -342,6 +347,19 @@ site in `website/` was removed (audit decision I-9).
 ## Gotchas learned the hard way
 
 - After a squash merge, start new work from a fresh branch off `origin/main`.
+- A bulk rewrite of UI text (casing, renaming a term) also hits strings the code compares. In up.105
+  a sentence-case pass changed `Property Tax`, `HOA Fees`, `Home Maintenance` and `Bank Fees` in
+  `RentOrOwn.tsx` and `PlanCard.tsx`; they are stored category names matched exactly. A server test
+  (`defaultCategories.test.ts`) now checks both lookups against the seed. After any such pass, search
+  for the old text in `server/src` and the tests too: it found three server tests that matched the
+  old "Insufficient unassigned money" message, and case-sensitive regexes in e2e.
+- CI type-checks `e2e/` (`cd e2e && npx tsc --noEmit`) before any shard runs, and runs the whole
+  server suite. A Playwright run alone catches neither, so run both before pushing a test change.
+- Playwright matches names case-insensitively and by substring unless `exact: true` or a regex is
+  used. Making two labels identical (for example "Net worth" as a widget title and a summary label)
+  can turn a passing `getByText(..., { exact: true })` into a strict-mode violation.
+- `E2E_SKIP_BUILD=1` reuses the client built by the last run, so after changing UI text run once
+  without it.
 - **CI passed** reports _failure_ when a newer push cancels a run. Check the jobs: a `cancelled` e2e
   job on a superseded commit is not a real failure.
 - CI's e2e runs as four shards, `e2e (1/4)` … `e2e (4/4)`, split by file. Reproduce a failure
