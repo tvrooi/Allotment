@@ -33,6 +33,7 @@ import { Button } from '../components/ui/Button';
 import { targetLabel } from '../utils/targets';
 import { FundTargets } from '../components/budget/FundTargets';
 import { AutoAssign } from '../components/budget/AutoAssign';
+import { AssignMenu } from '../components/budget/AssignMenu';
 import { SpentBar } from '../components/budget/SpentBar';
 import { PhoneBudget } from '../components/budget/PhoneBudget';
 import { PaydayPlan } from '../components/budget/PaydayPlan';
@@ -684,23 +685,13 @@ export default function BudgetPage() {
                   onMonth={() => setPaydayView(false)}
                   onPayday={() => setPaydayView(true)}
                 />
-                <Button
-                  size="sm"
-                  onClick={() => autoAssignRef.current?.open()}
+                <AssignMenu
                   disabled={!canSaveBudget}
-                >
-                  Auto-assign
-                </Button>
-                {underfundedCount > 0 && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => fundTargetsRef.current?.open()}
-                    disabled={!canSaveBudget}
-                  >
-                    Fund targets ({underfundedCount})
-                  </Button>
-                )}
+                  underfundedCount={underfundedCount}
+                  onAutoAssign={() => autoAssignRef.current?.open()}
+                  onFundTargets={() => fundTargetsRef.current?.open()}
+                  onPayday={() => setPaydayView(true)}
+                />
               </>
             )}
             <AutoAssign ref={autoAssignRef} month={selectedMonth} hideButton />

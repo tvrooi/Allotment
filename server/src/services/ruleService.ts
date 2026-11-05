@@ -8,7 +8,7 @@ import {
   tags,
   transactions,
 } from '../db/schema.js';
-import { autoShareBillPayment, shareTransaction } from './householdService.js';
+import { autoShareBillPayment, sharePayments } from './householdService.js';
 import { claimByRule, claimedIds } from './taxService.js';
 import { scheduleReceiptMatching } from './receiptMatching.js';
 import { and, desc, eq, inArray, isNull, ne } from 'drizzle-orm';
@@ -439,13 +439,7 @@ export function applyRules(opts: PlanOptions & { transactionIds: string[] }): nu
  * link) simply isn't shared, so an import never fails because of it.
  */
 function shareByRule(groupId: string, transactionId: string) {
-  try {
-    shareTransaction(groupId, transactionId);
-  } catch (error) {
-    console.warn(
-      `Rule could not share a transaction with the household: ${error instanceof Error ? error.message : error}`,
-    );
-  }
+  sharePayments(groupId, [transactionId], { source: 'rule' });
 }
 
 /** Transactions a set of conditions matches (for the rule editor's live preview) */

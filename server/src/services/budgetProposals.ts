@@ -1,9 +1,8 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import {
   accessTokens,
-  budgetMonths,
   budgetProposals,
   cardFunding,
   categories,
@@ -11,6 +10,7 @@ import {
 } from '../db/schema.js';
 import { BudgetError, fundedWrite } from './budgetMoves.js';
 import { fundingState } from './budgetService.js';
+import { addAssigned } from './fundingPlan.js';
 import { todayIso } from './mainAmountService.js';
 import { addMonthsTo } from './fundingMath.js';
 
@@ -137,20 +137,7 @@ export function applyProposal(id: string) {
     for (const r of rows) {
       if (!db.select().from(categories).where(eq(categories.id, r.categoryId)).get())
         throw new BudgetError('A suggested category no longer exists. Dismiss this suggestion.');
-      const existing =
-        db
-          .select()
-          .from(budgetMonths)
-          .where(and(eq(budgetMonths.month, p.month), eq(budgetMonths.categoryId, r.categoryId)))
-          .get()?.budgeted ?? 0;
-      const budgeted = existing + r.amount;
-      db.insert(budgetMonths)
-        .values({ id: nanoid(), month: p.month, categoryId: r.categoryId, budgeted })
-        .onConflictDoUpdate({
-          target: [budgetMonths.month, budgetMonths.categoryId],
-          set: { budgeted },
-        })
-        .run();
+      addAssigned(p.month, r.categoryId, r.amount);
     }
     db.update(budgetProposals)
       .set({ status: 'applied', decidedAt: new Date().toISOString() })

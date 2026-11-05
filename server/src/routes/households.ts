@@ -30,7 +30,7 @@ import {
   shareBillPayments,
   repaymentSuggestions,
   shareRecurringBills,
-  shareTransaction,
+  sharePayments,
   sharedExport,
   snapshot,
   splitSchema,
@@ -266,6 +266,8 @@ householdsRouter.post('/:id/share', (req, res) => {
     .object({
       transactionIds: z.array(z.string().min(1).max(64)).min(1).max(500),
       split: splitSchema.optional(),
+      /** Check and show who would owe what, recording nothing */
+      preview: z.boolean().optional(),
     })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
@@ -274,20 +276,12 @@ householdsRouter.post('/:id/share', (req, res) => {
   } catch (error) {
     return res.status(404).json({ error: error instanceof Error ? error.message : 'Not found' });
   }
-  const results = parsed.data.transactionIds.map((transactionId) => {
-    try {
-      const eventId = db.transaction(() =>
-        shareTransaction(req.params.id, transactionId, parsed.data.split),
-      );
-      return { transactionId, ok: true, eventId };
-    } catch (error) {
-      return {
-        transactionId,
-        ok: false,
-        error: error instanceof Error ? error.message : 'Could not share',
-      };
-    }
+  const results = sharePayments(req.params.id, parsed.data.transactionIds, {
+    split: parsed.data.split,
+    source: 'manual',
+    preview: parsed.data.preview,
   });
+  if (parsed.data.preview) return res.json({ results });
   res.json({
     shared: results.filter((r) => r.ok).length,
     results,

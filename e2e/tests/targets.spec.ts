@@ -26,7 +26,8 @@ for (const phone of [false, true])
       await page.getByRole('button', { name: 'More budget actions' }).click();
       await page.getByRole('menuitem', { name: 'Fund targets (1)' }).click();
     } else {
-      await page.getByRole('button', { name: 'Fund targets (1)' }).click();
+      await page.getByRole('button', { name: 'Assign', exact: true }).click();
+      await page.getByRole('menuitem', { name: /Fund targets \(1\)/ }).click();
     }
     const preview = page.getByRole('region', { name: 'Target funding preview' });
     await expect(preview).toContainText('$500 is unassigned today');
@@ -38,5 +39,10 @@ for (const phone of [false, true])
       .poll(async () => (await api.call('GET', `/budget/${thisMonth()}/summary`)).totalBudgeted)
       .toBe(30000);
     await expect(page.getByRole('button', { name: /Fund targets/ })).toHaveCount(0);
+    if (!phone) {
+      await page.getByRole('button', { name: 'Assign', exact: true }).click();
+      await expect(page.getByRole('menuitem', { name: /Fund targets/ })).toHaveCount(0);
+      await page.keyboard.press('Escape');
+    }
     await expect(page.getByText('Target funded').first()).toBeVisible();
   });

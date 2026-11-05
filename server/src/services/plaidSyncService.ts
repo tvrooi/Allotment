@@ -7,7 +7,7 @@ import { buildRuleContext, insertNewTransaction, loadRules } from './ruleService
 import { currencyContext, refreshMainAmounts } from './mainAmountService.js';
 import { minorUnits } from '../utils/currencies.js';
 import { accountTransactionSum } from './balances.js';
-import { deleteTransactionRow } from './transactionHelpers.js';
+import { deletedImportIds, deleteTransactionRow } from './transactionHelpers.js';
 import { syncedTransferChange } from './transferService.js';
 
 export interface SyncResult {
@@ -71,7 +71,8 @@ export async function syncPlaidItem(plaidItemId: string): Promise<SyncResult> {
           ),
         )
         .get();
-      if (existing) continue;
+      // Deleted here by the owner: it stays deleted (audit F-14)
+      if (existing || deletedImportIds(mapping.accountId).has(importedId)) continue;
 
       insertNewTransaction(
         {

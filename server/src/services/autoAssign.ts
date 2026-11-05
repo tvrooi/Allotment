@@ -1,9 +1,5 @@
-import { and, eq } from 'drizzle-orm';
-import { nanoid } from 'nanoid';
-import { db } from '../db/index.js';
-import { budgetMonths } from '../db/schema.js';
-import { budgetGroups, fundingRevision, fundingState } from './budgetService.js';
-import { BudgetError } from './budgetMoves.js';
+import { budgetGroups } from './budgetService.js';
+import { applyFundingPlan, planFunding } from './fundingPlan.js';
 import { addMonthsTo } from './fundingMath.js';
 import { todayIso } from './mainAmountService.js';
 import { budgetWithTargets } from './targetService.js';
@@ -63,23 +59,7 @@ function needs(month: string, strategy: AutoAssignStrategy, today: string) {
 /** Proposed additions for `strategy`, capped at money actually unassigned today. Expected
  * income never counts. */
 export function previewAutoAssign(month: string, strategy: AutoAssignStrategy, today = todayIso()) {
-  const state = fundingState(today);
-  let remaining = state.available;
-  const rows = needs(month, strategy, today).map((r) => {
-    const proposed = Math.min(r.need, remaining);
-    remaining -= proposed;
-    return { ...r, proposed, shortfall: r.need - proposed };
-  });
-  return {
-    month,
-    strategy,
-    complete: state.complete,
-    available: state.available,
-    total: rows.reduce((s, r) => s + r.proposed, 0),
-    shortfall: rows.reduce((s, r) => s + r.shortfall, 0),
-    rows,
-    revision: fundingRevision(),
-  };
+  return { strategy, ...planFunding(month, needs(month, strategy, today), today) };
 }
 
 /** Adds exactly the previewed amounts to the month's assignments, once, in one transaction. */
@@ -90,34 +70,11 @@ export function applyAutoAssign(
   expected: { categoryId: string; proposed: number }[],
   fundedWrite: (action: () => void) => void,
 ) {
-  let applied = 0;
-  fundedWrite(() => {
-    const preview = previewAutoAssign(month, strategy);
-    if (
-      revision !== preview.revision ||
-      JSON.stringify(preview.rows.map((r) => [r.categoryId, r.proposed])) !==
-        JSON.stringify(expected.map((r) => [r.categoryId, r.proposed]))
-    )
-      throw new BudgetError('Your budget changed. Review auto-assign again.', 409);
-    if (!preview.complete)
-      throw new BudgetError('Add missing exchange rates before assigning money.');
-    for (const row of preview.rows) {
-      if (!row.proposed) continue;
-      const existing = db
-        .select()
-        .from(budgetMonths)
-        .where(and(eq(budgetMonths.month, month), eq(budgetMonths.categoryId, row.categoryId)))
-        .get();
-      const budgeted = (existing?.budgeted ?? 0) + row.proposed;
-      db.insert(budgetMonths)
-        .values({ id: nanoid(), month, categoryId: row.categoryId, budgeted })
-        .onConflictDoUpdate({
-          target: [budgetMonths.month, budgetMonths.categoryId],
-          set: { budgeted },
-        })
-        .run();
-      applied += row.proposed;
-    }
-  });
-  return { month, applied, revision: fundingRevision() };
+  return applyFundingPlan(
+    () => previewAutoAssign(month, strategy),
+    revision,
+    expected,
+    'Your budget changed. Review auto-assign again.',
+    fundedWrite,
+  );
 }
