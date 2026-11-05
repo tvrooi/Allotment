@@ -17,7 +17,7 @@ to manage your budget.
 5. Choose **Connect to server**. The app saves the address and restarts.
 6. Sign in with your Allotment password. If this is the first connection, enter the setup code
    from the Home Assistant app's Log tab and create that password in the desktop window.
-7. Connect Up in **Settings → Connected Banks**. The token is kept on the Home Assistant server.
+7. Connect Up in **Settings → Connected banks**. The token is kept on the Home Assistant server.
 
 The app remembers the server and its login session between launches (sessions can expire or be
 revoked). Other devices use the same server: another desktop, or its URL in a browser

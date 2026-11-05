@@ -15,8 +15,11 @@ export const WEBSITE_URL = 'https://flybudget.org';
 /** Where people report bugs and ask for features */
 export const ISSUES_URL = 'https://github.com/tvrooi/Allotment/issues';
 
-/** How to run Allotment on your own server (linked from Settings → Server) */
-export const SELF_HOSTING_URL = `${WEBSITE_URL}/community/self-hosting`;
+/**
+ * How to run Allotment on your own server (linked from Settings → Server): this fork's own
+ * Start here guide. The upstream site's self-hosting page uses different image and data names.
+ */
+export const SELF_HOSTING_URL = `${SOURCE_CODE_URL}/blob/main/docs/START-HERE.md`;
 
 /** A page of Allotment's guide (/guide/<page>), e.g. `<GuideLink page="budgeting">` */
 export type DocsPage =

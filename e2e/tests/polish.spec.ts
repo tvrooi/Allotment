@@ -100,7 +100,7 @@ test.describe('last month', () => {
     await open(page, '/transactions');
     await expect(page.getByText('1 transaction', { exact: true })).toBeVisible();
     // 1: the period. 2 and 3: the search box
-    await page.getByRole('button', { name: 'Last Month', exact: true }).click();
+    await page.getByRole('button', { name: 'Last month', exact: true }).click();
     await expect(page.getByText('2 transactions', { exact: true })).toBeVisible();
     await page.getByPlaceholder('Search payee or notes…').fill('Market');
     await expect(page.getByText('1 transaction', { exact: true })).toBeVisible();
@@ -108,14 +108,14 @@ test.describe('last month', () => {
     await expect(page.getByRole('button', { name: 'Market this month' })).toHaveCount(0);
   });
 
-  test('Reports has a Last Month preset', async ({ page, api }) => {
+  test('Reports has a Last month preset', async ({ page, api }) => {
     await api.createAccount('Everyday', 100_000);
     await open(page, '/reports');
-    const preset = page.getByRole('button', { name: 'Last Month', exact: true });
+    const preset = page.getByRole('button', { name: 'Last month', exact: true });
     await preset.click();
     await expect(preset).toHaveAttribute('aria-pressed', 'true');
     await page.reload();
-    await expect(page.getByRole('button', { name: 'Last Month', exact: true })).toHaveAttribute(
+    await expect(page.getByRole('button', { name: 'Last month', exact: true })).toHaveAttribute(
       'aria-pressed',
       'true',
     );

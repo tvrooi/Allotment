@@ -324,7 +324,7 @@ export default function InvestmentsPage() {
                 description="Add an investment, retirement or crypto account, then record what it holds here."
                 actions={
                   <Link to="/accounts">
-                    <Button>Go to Accounts</Button>
+                    <Button>Go to accounts</Button>
                   </Link>
                 }
               />

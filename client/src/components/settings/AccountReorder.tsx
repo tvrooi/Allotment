@@ -145,7 +145,7 @@ export function AccountReorder() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-sm font-semibold text-text">Account Order</h2>
+        <h2 className="text-sm font-semibold text-text">Account order</h2>
         <p className="text-xs text-text-tertiary mt-0.5">
           Drag to reorder accounts in the sidebar.
         </p>
@@ -171,12 +171,12 @@ export function AccountReorder() {
         </section>
       )}
       <AccountSection
-        title="On Budget"
+        title="On budget"
         accounts={onBudget}
         onReorder={(ids) => reorderAccounts.mutate([...ids, ...offBudget.map((a) => a.id)])}
       />
       <AccountSection
-        title="Off Budget"
+        title="Off budget"
         accounts={offBudget}
         onReorder={(ids) => reorderAccounts.mutate([...onBudget.map((a) => a.id), ...ids])}
       />

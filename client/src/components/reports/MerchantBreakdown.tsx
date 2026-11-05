@@ -90,12 +90,12 @@ export function MerchantBreakdown({ from, to }: Props) {
     <div>
       <div className="bg-surface rounded-lg shadow-card border border-border-light p-3">
         <div className="flex items-center justify-between px-3 pb-2">
-          <h2 className="text-sm font-semibold text-text">Spending by merchant</h2>
+          <h2 className="text-sm font-semibold text-text">Spending by payee</h2>
           <span className="text-xs text-text-tertiary tabular-nums">
             {formatCurrency(total)} total
           </span>
         </div>
-        <ul aria-label="Merchants">{spent.map(row)}</ul>
+        <ul aria-label="Payees">{spent.map(row)}</ul>
         {refunded.length > 0 && (
           <>
             <p className="px-3 pt-3 pb-1 text-xs text-text-tertiary">
@@ -123,7 +123,7 @@ export function MerchantBreakdown({ from, to }: Props) {
                 })}
                 className="text-xs text-brand-600 hover:text-brand-700"
               >
-                Open in Transactions
+                Open in transactions
               </Link>
               <button
                 onClick={() => setSelected(null)}

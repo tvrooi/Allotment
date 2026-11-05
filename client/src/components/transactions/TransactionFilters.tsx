@@ -23,11 +23,11 @@ import {
 } from '../../utils/transactionFilters';
 
 const DATE_PRESETS: { value: DatePreset; label: string }[] = [
-  { value: 'this-month', label: 'This Month' },
-  { value: 'last-month', label: 'Last Month' },
-  { value: 'last-3', label: 'Last 3 Months' },
-  { value: 'this-year', label: 'This Year' },
-  { value: 'all', label: 'All Time' },
+  { value: 'this-month', label: 'This month' },
+  { value: 'last-month', label: 'Last month' },
+  { value: 'last-3', label: 'Last 3 months' },
+  { value: 'this-year', label: 'This year' },
+  { value: 'all', label: 'All time' },
   { value: 'custom', label: 'Custom' },
 ];
 

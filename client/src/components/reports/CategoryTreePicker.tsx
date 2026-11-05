@@ -84,8 +84,11 @@ export default function CategoryTreePicker({
         <div key={g.id}>
           <div className="flex items-center gap-1 py-0.5">
             <button
+              type="button"
               onClick={() => toggleExpand(g.id)}
-              className="text-text-tertiary hover:text-text-secondary p-0.5"
+              aria-label={`${g.name} categories`}
+              aria-expanded={expanded.has(g.id)}
+              className="text-text-tertiary hover:text-text-secondary p-1.5 -m-1 max-md:p-3 max-md:-m-2.5"
             >
               {expanded.has(g.id) ? (
                 <ChevronDown className="w-3 h-3" />

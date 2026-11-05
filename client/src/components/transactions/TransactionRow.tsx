@@ -201,7 +201,7 @@ export function TransactionRow({
                   <CategoryIcon icon={categoryEntry.icon} size={15} />
                 )}
                 <span
-                  className={`text-sm truncate ${categoryEntry ? 'text-text-secondary' : 'text-text-disabled'}`}
+                  className={`text-sm truncate ${categoryEntry ? 'text-text-secondary' : 'text-text-tertiary'}`}
                 >
                   {categoryEntry?.name ?? '—'}
                 </span>
@@ -307,10 +307,10 @@ export function TransactionRow({
                     <span className="text-xs text-text-tertiary truncate">{childCat.name}</span>
                   </>
                 ) : (
-                  <span className="text-xs text-text-disabled">&mdash;</span>
+                  <span className="text-xs text-text-tertiary">&mdash;</span>
                 )}
                 {child.notes && (
-                  <span className="text-xs text-text-disabled truncate ml-2">{child.notes}</span>
+                  <span className="text-xs text-text-tertiary truncate ml-2">{child.notes}</span>
                 )}
               </div>
               <span

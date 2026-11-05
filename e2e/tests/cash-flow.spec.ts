@@ -1,6 +1,6 @@
 import { test, expect, open, isoDay } from './fixtures';
 
-test('Cash Flow clicks scope transactions to the category, group and chart range', async ({
+test('Cash flow clicks scope transactions to the category, group and chart range', async ({
   page,
   api,
 }) => {

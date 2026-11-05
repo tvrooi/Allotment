@@ -70,10 +70,10 @@ export function AddAccountModal({ isOpen, onClose }: Props) {
   }
 
   const amountLabel = info.liability
-    ? 'Amount Owed'
+    ? 'Amount owed'
     : info.group === 'property'
-      ? 'Current Value'
-      : 'Current Balance';
+      ? 'Current value'
+      : 'Current balance';
   const amountHint = info.liability
     ? 'What you owe as of today.'
     : info.group === 'property'
@@ -81,12 +81,12 @@ export function AddAccountModal({ isOpen, onClose }: Props) {
       : "Enter your balance as of today. Importing older history later won't change it.";
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Add Account" size="sm">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Add account" size="sm">
       <AmountFields report={report}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
-              Account Name
+              Account name
             </label>
             <input
               type="text"
@@ -183,7 +183,7 @@ export function AddAccountModal({ isOpen, onClose }: Props) {
               disabled={!name.trim() || !amountValid || createAccount.isPending || !canSave}
               className="px-4 py-2 text-sm font-medium text-brand-contrast bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {createAccount.isPending ? 'Adding…' : 'Add Account'}
+              {createAccount.isPending ? 'Adding…' : 'Add account'}
             </button>
           </div>
         </form>

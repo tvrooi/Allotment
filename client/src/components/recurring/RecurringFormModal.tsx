@@ -189,7 +189,7 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={editItem ? 'Edit Recurring' : 'Add Recurring'}
+      title={editItem ? 'Edit recurring' : 'Add recurring'}
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -208,7 +208,7 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
-              {amountType === 'variable' ? 'Estimated Amount' : 'Amount'}
+              {amountType === 'variable' ? 'Estimated amount' : 'Amount'}
             </label>
             <CurrencyInput value={amount} onChange={setAmount} aria-label="Amount" />
           </div>
@@ -245,7 +245,7 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
 
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1">
-            Amount Precision
+            Amount precision
           </label>
           <div className="flex gap-1">
             {AMOUNT_TYPE_OPTIONS.map((opt) => (
@@ -305,7 +305,7 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">Start Date</label>
+            <label className="block text-sm font-medium text-text-secondary mb-1">Start date</label>
             <Input
               type="date"
               aria-label="Start date"
@@ -422,7 +422,7 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
               {showWeekendAdjust && (
                 <div>
                   <label className="block text-xs font-medium text-text-secondary mb-1">
-                    Weekend Adjustment
+                    Weekend adjustment
                   </label>
                   <Select
                     aria-label="Weekend adjustment"
@@ -471,7 +471,7 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
             disabled={!name || amount === 0 || !canSave}
             className="px-4 py-2 text-sm font-medium text-brand-contrast bg-brand-600 rounded-md hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {editItem ? 'Save Changes' : 'Add Recurring'}
+            {editItem ? 'Save changes' : 'Add recurring'}
           </button>
         </div>
       </form>

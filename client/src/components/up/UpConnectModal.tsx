@@ -442,7 +442,7 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
             {freshStart && <FreshStartNote day={freshStart} />}
             {result.errors.length > 0 && (
               <p role="alert" className="text-sm text-negative">
-                {result.errors.join(' ')} Retry using Sync Now in Connected Banks.
+                {result.errors.join(' ')} Retry using Sync Now in Connected banks.
               </p>
             )}
             {result.added > 0 ? (

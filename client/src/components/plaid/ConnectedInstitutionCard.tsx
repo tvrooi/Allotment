@@ -148,7 +148,7 @@ export function ConnectedInstitutionCard({ item }: Props) {
         isOpen={showDisconnect}
         onClose={() => setShowDisconnect(false)}
         onConfirm={handleDisconnect}
-        title="Disconnect Institution"
+        title="Disconnect institution"
         message={`Are you sure you want to disconnect ${item.institutionName}? This revokes Allotment's access to this bank at Plaid. Your existing accounts and transactions will not be deleted.`}
         confirmLabel="Disconnect"
         danger

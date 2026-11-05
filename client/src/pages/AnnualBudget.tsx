@@ -31,7 +31,7 @@ function MonthHeader({
             type="button"
             onClick={() => onOpen(m.month)}
             title={`Open ${format(parseISO(`${m.month}-01`), 'MMMM yyyy')} in the budget`}
-            className={`hover:text-brand-600 ${m.planned ? 'italic text-text-tertiary' : ''}`}
+            className={`hover:text-brand-600 max-md:min-h-11 max-md:min-w-11 ${m.planned ? 'italic text-text-tertiary' : ''}`}
           >
             {monthLabel(m.month)}
           </button>
@@ -163,7 +163,9 @@ export default function AnnualBudget() {
                     >
                       Category
                     </th>
-                    <th scope="col" className="px-3 py-2 text-left font-medium" />
+                    <th scope="col" className="px-3 py-2 text-left font-medium">
+                      <span className="sr-only">Measure</span>
+                    </th>
                     <MonthHeader months={data.months} onOpen={openMonth} />
                     <th scope="col" className="px-3 py-2 text-right font-medium">
                       Year

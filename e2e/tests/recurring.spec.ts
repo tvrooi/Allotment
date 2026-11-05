@@ -36,7 +36,7 @@ test.describe('recurring', () => {
     await open(page, '/recurring');
     await page.getByRole('main').getByRole('button', { name: 'Add recurring' }).first().click();
 
-    const dialog = page.getByRole('dialog', { name: 'Add Recurring' });
+    const dialog = page.getByRole('dialog', { name: 'Add recurring' });
     await dialog.getByRole('textbox', { name: 'Name' }).fill('Streaming Plus');
     await typeAmount(dialog.getByRole('textbox', { name: 'Amount' }), '15.99');
     await expect(dialog.getByRole('button', { name: 'Expense' })).toHaveAttribute(
@@ -46,7 +46,7 @@ test.describe('recurring', () => {
     await dialog.getByRole('combobox', { name: 'Frequency' }).selectOption('monthly');
     await dialog.getByRole('combobox', { name: 'Account' }).selectOption({ label: 'Checking' });
     await dialog.getByRole('textbox', { name: 'Start date' }).fill(isoDay(1));
-    await dialog.getByRole('button', { name: 'Add Recurring' }).click();
+    await dialog.getByRole('button', { name: 'Add recurring' }).click();
     await expect(dialog).toBeHidden();
 
     const [schedule] = await api.call<any[]>('GET', '/schedules');
@@ -70,7 +70,7 @@ test.describe('recurring', () => {
     await api.createAccount('Savings', 100_000, 'savings');
     await open(page, '/recurring');
     await page.getByRole('main').getByRole('button', { name: 'Add recurring' }).first().click();
-    const dialog = page.getByRole('dialog', { name: 'Add Recurring' });
+    const dialog = page.getByRole('dialog', { name: 'Add recurring' });
     const name = dialog.getByRole('textbox', { name: 'Name' });
     const account = dialog.getByRole('combobox', { name: 'Account' });
 
@@ -80,7 +80,7 @@ test.describe('recurring', () => {
 
     // A brand-new payee (creating it refreshes the payee list)
     await dialog.getByRole('textbox', { name: 'Payee' }).fill('Iron Temple Gym');
-    await dialog.getByRole('button', { name: /Create new merchant/ }).click();
+    await dialog.getByRole('button', { name: /Create new payee/ }).click();
     await expect(dialog.getByRole('textbox', { name: 'Payee' })).toHaveValue('Iron Temple Gym');
     await expect(name).toHaveValue('Gym membership');
     await expect(account).toHaveValue(/.+/);
@@ -97,7 +97,7 @@ test.describe('recurring', () => {
     await expect(account.locator('option:checked')).toHaveText('Savings');
     await expect(dialog.getByRole('textbox', { name: 'Payee' })).toHaveValue('Iron Temple Gym');
 
-    await dialog.getByRole('button', { name: 'Add Recurring' }).click();
+    await dialog.getByRole('button', { name: 'Add recurring' }).click();
     await expect(dialog).toBeHidden();
     const [schedule] = await api.call<any[]>('GET', '/schedules');
     expect(schedule).toMatchObject({ name: 'Gym membership', amount: -4_500 });

@@ -85,7 +85,7 @@ function PlaidSetupModalDialog({ isOpen, onClose, onConfigured }: Props) {
                 type="text"
                 value={clientId}
                 onChange={(e) => setClientId(e.target.value)}
-                placeholder="Enter your Plaid Client ID"
+                placeholder="Enter your Plaid client ID"
                 className="w-full text-sm border border-border rounded-md px-3 py-2 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
               />
             </div>
@@ -95,7 +95,7 @@ function PlaidSetupModalDialog({ isOpen, onClose, onConfigured }: Props) {
                 type="password"
                 value={secret}
                 onChange={(e) => setSecret(e.target.value)}
-                placeholder="Enter your Plaid Secret"
+                placeholder="Enter your Plaid secret"
                 className="w-full text-sm border border-border rounded-md px-3 py-2 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
               />
             </div>
@@ -110,7 +110,7 @@ function PlaidSetupModalDialog({ isOpen, onClose, onConfigured }: Props) {
                     <Loader2 size={16} className="animate-spin" /> Saving...
                   </>
                 ) : (
-                  'Save Credentials'
+                  'Save credentials'
                 )}
               </Button>
             </div>
@@ -127,12 +127,12 @@ function PlaidSetupModalDialog({ isOpen, onClose, onConfigured }: Props) {
           <div className="w-16 h-16 rounded-full bg-positive-subtle flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 size={32} className="text-positive" />
           </div>
-          <h3 className="text-sm font-semibold text-text">Plaid Configured</h3>
+          <h3 className="text-sm font-semibold text-text">Plaid configured</h3>
           <p className="text-xs text-text-secondary mt-1">
             Your credentials have been saved. You can now connect your bank.
           </p>
           <Button onClick={handleContinue} className="mt-6">
-            Connect Bank
+            Connect bank
           </Button>
         </div>
       )}

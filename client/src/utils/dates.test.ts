@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { format, parse } from 'date-fns';
-import { formatAsOfDay, formatDay, formatShortDay, formatWeekday, shortDayPattern } from './dates';
+import {
+  formatAsOfDay,
+  formatDay,
+  formatDayTime,
+  formatShortDay,
+  formatWeekday,
+  shortDayPattern,
+} from './dates';
 import type { DateFormatOption } from '../store/preferencesStore';
 
 const PATTERNS: DateFormatOption[] = [
@@ -53,5 +60,18 @@ describe('formatAsOfDay', () => {
     expect(formatAsOfDay('2026-09-31', 'yyyy-MM-dd')).toBe('2026-09-30');
     expect(formatAsOfDay('2026-02-31', 'yyyy-MM-dd')).toBe('2026-02-28');
     expect(formatAsOfDay('2026-10-21', 'yyyy-MM-dd')).toBe('2026-10-21');
+  });
+});
+
+describe('dates that do not parse (audit F-20)', () => {
+  it('are shown as they came instead of throwing while the page draws', () => {
+    expect(formatDay('not a date', 'dd/MM/yyyy')).toBe('not a date');
+    expect(formatDay('', 'dd/MM/yyyy')).toBe('');
+    expect(formatDayTime('soon', 'dd/MM/yyyy')).toBe('soon');
+  });
+
+  it('formatDayTime is the day in the preference, then the time', () => {
+    expect(formatDayTime(new Date(2026, 0, 5, 14, 30), 'dd/MM/yyyy')).toBe('05/01/2026, 2:30 pm');
+    expect(formatDayTime(new Date(2026, 0, 5, 0, 5), 'MMM d, yyyy')).toBe('Jan 5, 2026, 12:05 am');
   });
 });

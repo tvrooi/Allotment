@@ -150,10 +150,10 @@ test('pre-fills a payday plan from the detected pay, and marks a deposit as pay 
   // No pay is marked as income yet: the recent deposits can be, right here
   const candidates = page.getByRole('group', { name: 'Recent deposits without a category' });
   await expect(candidates).toBeVisible();
+  // Newest first, so the first is the latest salary (the date in the name follows the Date Format)
   await candidates
-    .getByRole('button', {
-      name: `This is pay: ACME LOGISTICS PTY LTD SALARY on ${salary.latestDate}`,
-    })
+    .getByRole('button', { name: /This is pay: ACME LOGISTICS PTY LTD SALARY on / })
+    .first()
     .click();
   const deposit = page.getByRole('checkbox', { name: /ACME LOGISTICS PTY LTD SALARY/ });
   await expect(deposit).toBeChecked();
@@ -198,7 +198,7 @@ test('forecast and reports say when uncategorised spending is left out', async (
   await expect(page.getByRole('status', { name: 'Uncategorised spending' })).toContainText('$400');
   // No categorised income: no "Income $0" or green expenses, a pointer to sort instead
   await expect(page.getByText('These totals need categories')).toBeVisible();
-  await expect(page.getByText('Total Income', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Total income', { exact: true })).toHaveCount(0);
 
   // Once the pay has a category, the totals come back
   const pay = await api.category('Paychecks');
@@ -206,7 +206,7 @@ test('forecast and reports say when uncategorised spending is left out', async (
   await api.call('PUT', `/transactions/${employer.id}`, { categoryId: pay.id });
   // The change was made behind the page's back, so load it afresh
   await page.reload();
-  await expect(page.getByText('Total Income', { exact: true })).toBeVisible();
+  await expect(page.getByText('Total income', { exact: true })).toBeVisible();
   await expect(page.getByText('These totals need categories')).toHaveCount(0);
 });
 

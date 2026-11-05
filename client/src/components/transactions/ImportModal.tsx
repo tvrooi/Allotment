@@ -631,7 +631,7 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
       <Modal
         isOpen={isOpen && !showYnab}
         onClose={handleClose}
-        title="Import Transactions"
+        title="Import transactions"
         size="lg"
       >
         {error && (
@@ -983,7 +983,9 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
               <table className="w-full text-sm border-collapse">
                 <thead className="sticky top-0 bg-surface-alt">
                   <tr>
-                    <th className="px-2 py-1.5 text-left text-xs font-medium text-text-tertiary w-8"></th>
+                    <th className="px-2 py-1.5 text-left text-xs font-medium text-text-tertiary w-8">
+                      <span className="sr-only">Include</span>
+                    </th>
                     <th className="px-2 py-1.5 text-left text-xs font-medium text-text-tertiary">
                       Date
                     </th>
@@ -1011,11 +1013,13 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
                           type="checkbox"
                           checked={!excluded.has(i)}
                           onChange={() => toggleExclude(i)}
-                          aria-label={`Import ${row.payeeName ?? 'row'} on ${row.date}`}
+                          aria-label={`Import ${row.payeeName ?? 'row'} on ${formatDay(row.date)}`}
                           className="w-3.5 h-3.5 accent-brand-600"
                         />
                       </td>
-                      <td className="px-2 py-1.5 text-xs text-text-secondary">{row.date}</td>
+                      <td className="px-2 py-1.5 text-xs text-text-secondary">
+                        {formatDay(row.date)}
+                      </td>
                       <td className="px-2 py-1.5 text-xs text-text">
                         <div className="flex items-center gap-1">
                           {row.payeeName ?? '—'}

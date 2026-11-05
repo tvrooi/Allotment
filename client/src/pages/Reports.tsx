@@ -75,7 +75,7 @@ export default function ReportsPage() {
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-brand-contrast bg-brand-600 rounded-md hover:bg-brand-700 shadow-xs transition-colors"
               >
                 <Plus size={13} />
-                Custom Report
+                Custom report
               </Link>
             </div>
           )}

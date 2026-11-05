@@ -307,7 +307,7 @@ function DayCell({
         className={`relative flex h-full ${showAmounts ? 'flex-col justify-between p-1.5' : 'items-center justify-center'}`}
       >
         <span
-          className={`text-2xs tabular-nums ${future ? 'text-text-disabled' : 'text-text'} ${
+          className={`text-2xs tabular-nums ${future ? 'text-text-tertiary' : 'text-text'} ${
             day === today ? 'font-semibold' : ''
           }`}
         >

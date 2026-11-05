@@ -157,7 +157,7 @@ describe('assignment suggestions', () => {
     db.insert(budgetMonths)
       .values({ id: 'b', month: '2026-10', categoryId: 'groceries', budgeted: 10000 })
       .run();
-    expect(() => applyProposal(p.id)).toThrow(/Insufficient/);
+    expect(() => applyProposal(p.id)).toThrow(/Not enough Ready to assign/);
     expect(db.select().from(budgetMonths).all()).toHaveLength(1);
     expect(dismissProposal(p.id)).toEqual({ ok: true });
     expect(listProposals()[0].status).toBe('dismissed');

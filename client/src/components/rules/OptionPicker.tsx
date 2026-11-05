@@ -77,7 +77,7 @@ export function OptionPicker(props: Props) {
         }}
         className={buttonClass}
       >
-        <span className={`flex-1 truncate ${summary ? '' : 'text-text-disabled'}`}>
+        <span className={`flex-1 truncate ${summary ? '' : 'text-text-tertiary'}`}>
           {summary ?? placeholder}
         </span>
         <ChevronDown size={13} className="shrink-0 text-text-tertiary" />

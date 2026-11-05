@@ -30,7 +30,7 @@ function ynabStyleCsv(days = 30) {
 
 async function importFile(page: import('@playwright/test').Page, body: string) {
   await page.getByRole('button', { name: 'Import CSV' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Import Transactions' });
+  const dialog = page.getByRole('dialog', { name: 'Import transactions' });
   await dialog.getByLabel('Bank file').setInputFiles({
     name: 'register.csv',
     mimeType: 'text/csv',
@@ -64,7 +64,7 @@ test('imports the categories in a YNAB-style CSV and shows what came in', async 
   await expect(dialog).toContainText('30 imported');
   await dialog.getByRole('button', { name: 'Done' }).click();
 
-  // The register jumps to the imported dates, not an empty "This Month"
+  // The register jumps to the imported dates, not an empty "This month"
   await expect(page.getByTestId('transaction-row').first()).toBeVisible();
   const txs = await api.transactions(`?account_id=${account.id}&from=2000-01-01`);
   expect(txs).toHaveLength(30);
@@ -86,10 +86,10 @@ test('a balance typed as "today" is still that balance after importing older his
   await open(page, '/dashboard');
   await page.getByText('Another bank: CSV files, or a community-supported connection').click();
   await page.getByRole('button', { name: /Any bank: CSV files/ }).click();
-  const add = page.getByRole('dialog', { name: 'Add Account' });
+  const add = page.getByRole('dialog', { name: 'Add account' });
   await add.getByRole('textbox', { name: 'Account name' }).fill('Everyday');
-  await add.getByRole('textbox', { name: 'Current Balance' }).fill('1500');
-  await add.getByRole('button', { name: 'Add Account' }).click();
+  await add.getByRole('textbox', { name: 'Current balance' }).fill('1500');
+  await add.getByRole('button', { name: 'Add account' }).click();
   await expect.poll(async () => (await api.accounts()).length).toBe(1);
   const [account] = await api.accounts();
   expect(account.balance).toBe(150_000);

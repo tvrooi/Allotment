@@ -23,7 +23,7 @@ export default function MatchSuggestionsPanel() {
         </span>
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-1 underline underline-offset-2 hover:opacity-80 cursor-pointer"
+          className="flex items-center gap-1 max-md:min-h-11 underline underline-offset-2 hover:opacity-80 cursor-pointer"
         >
           {expanded ? 'Hide' : 'Review now'}
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}

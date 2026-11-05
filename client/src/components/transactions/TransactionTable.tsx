@@ -677,7 +677,7 @@ export function TransactionTable({
           isOpen={showImport}
           onClose={() => setShowImport(false)}
           accountId={accountId}
-          // Show what came in, not an empty "This Month"
+          // Show what came in, not an empty "This month"
           onImported={({ from, to }) =>
             setFilters((f) => ({ ...f, datePreset: 'custom', from, to }))
           }

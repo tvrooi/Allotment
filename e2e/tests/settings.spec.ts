@@ -60,7 +60,7 @@ test.describe('categories', () => {
 
   test('changes a category icon in the edit dialog', async ({ page, api }) => {
     await page.getByRole('button', { name: 'Edit Parking' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Edit Category' });
+    const dialog = page.getByRole('dialog', { name: 'Edit category' });
     await dialog.getByRole('button', { name: 'Change icon' }).click();
     await pickIcon(page, 'Dog');
 
@@ -72,7 +72,7 @@ test.describe('categories', () => {
   test('renames a category from the keyboard', async ({ page, api }) => {
     await page.getByRole('button', { name: 'Edit Parking' }).focus();
     await page.keyboard.press('Enter');
-    const dialog = page.getByRole('dialog', { name: 'Edit Category' });
+    const dialog = page.getByRole('dialog', { name: 'Edit category' });
     await dialog.getByRole('textbox', { name: 'Category name' }).fill('Parking & Tolls');
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('button', { name: 'Edit Parking & Tolls' })).toBeVisible();
@@ -93,7 +93,7 @@ test.describe('categories', () => {
 
     await page.getByRole('button', { name: 'Edit Parking' }).click();
     await page
-      .getByRole('dialog', { name: 'Edit Category' })
+      .getByRole('dialog', { name: 'Edit category' })
       .getByRole('button', { name: 'Delete' })
       .click();
     const dialog = page.getByRole('dialog', { name: 'Merge into another category' });
@@ -124,7 +124,7 @@ test.describe('categories', () => {
     await page.reload();
 
     await page.getByRole('button', { name: 'Delete group Pets' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Delete Group' });
+    const dialog = page.getByRole('dialog', { name: 'Delete group' });
     await expect(dialog).toContainText(
       'still has categories with transactions or assigned money: Vet',
     );
@@ -257,9 +257,9 @@ test.describe('goals', () => {
   test('adds a savings goal and shows its progress', async ({ page, api }) => {
     const savings = await api.createAccount('Savings', 0, 'savings');
     await open(page, '/goals');
-    await page.getByRole('main').getByRole('button', { name: 'Add Goal' }).first().click();
+    await page.getByRole('main').getByRole('button', { name: 'Add goal' }).first().click();
 
-    const dialog = page.getByRole('dialog', { name: 'Add Goal' });
+    const dialog = page.getByRole('dialog', { name: 'Add goal' });
     await dialog.getByRole('textbox', { name: 'Name' }).fill('Emergency Fund');
     await dialog.getByRole('textbox', { name: 'Target', exact: true }).fill('10000');
     await dialog.getByRole('textbox', { name: 'Saved so far' }).fill('2500');
@@ -272,7 +272,7 @@ test.describe('goals', () => {
       'true',
     );
     await dialog.getByRole('button', { name: 'Colour #059669' }).click();
-    await dialog.getByRole('button', { name: 'Add Goal' }).click();
+    await dialog.getByRole('button', { name: 'Add goal' }).click();
     await expect(dialog).toBeHidden();
 
     await expect(page.getByRole('main')).toContainText('Emergency Fund');

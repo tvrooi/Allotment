@@ -32,7 +32,7 @@ export function SimplefinConfigForm({ onSetupComplete }: Props) {
             <Link2 size={20} className="text-brand-contrast" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-text">Set Up Bank Sync</h3>
+            <h3 className="text-sm font-semibold text-text">Set up bank sync</h3>
             <p className="text-xs text-text-secondary mt-1 leading-relaxed">
               Connect your bank accounts to automatically import transactions using SimpleFIN
               Bridge. The service costs $1.50/month paid directly to SimpleFIN.
@@ -51,7 +51,7 @@ export function SimplefinConfigForm({ onSetupComplete }: Props) {
 
       <form onSubmit={handleSubmit} className="bg-surface-alt rounded-lg p-5 space-y-4">
         <div>
-          <label className="block text-xs font-medium text-text-tertiary mb-1">Setup Token</label>
+          <label className="block text-xs font-medium text-text-tertiary mb-1">Setup token</label>
           <input
             type="text"
             value={token}

@@ -32,7 +32,7 @@ export default function SavedReportsList({ activeId }: Props) {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-text-secondary bg-surface border border-border rounded-md hover:bg-surface-alt transition-colors"
       >
-        {activeReport ? activeReport.name : 'Saved Reports'}
+        {activeReport ? activeReport.name : 'Saved reports'}
         <ChevronDown className="w-3.5 h-3.5 text-text-tertiary" />
       </button>
 
@@ -57,7 +57,8 @@ export default function SavedReportsList({ activeId }: Props) {
                   e.stopPropagation();
                   deleteMutation.mutate(r.id);
                 }}
-                className="opacity-0 group-hover:opacity-100 p-1 text-text-tertiary hover:text-negative transition-all"
+                aria-label={`Delete ${r.name}`}
+                className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-1 text-text-tertiary hover:text-negative transition-all"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>

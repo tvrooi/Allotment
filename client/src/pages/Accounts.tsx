@@ -176,7 +176,7 @@ export default function AccountsPage() {
           <UpSyncBadge />
         </div>
         <Button size="sm" onClick={() => setAddOpen(true)} data-guide="accounts.add">
-          <Plus size={14} /> Add Account
+          <Plus size={14} /> Add account
         </Button>
       </div>
 

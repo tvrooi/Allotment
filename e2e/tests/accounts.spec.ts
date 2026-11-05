@@ -6,11 +6,11 @@ test.describe('accounts', () => {
     await page.getByText('Another bank: CSV files, or a community-supported connection').click();
     await page.getByRole('button', { name: /Any bank: CSV files/ }).click();
 
-    const dialog = page.getByRole('dialog', { name: 'Add Account' });
+    const dialog = page.getByRole('dialog', { name: 'Add account' });
     await dialog.getByRole('textbox', { name: 'Account name' }).fill('Chase Checking');
     await dialog.getByRole('combobox', { name: 'Account type' }).selectOption('checking');
-    await dialog.getByRole('textbox', { name: 'Current Balance' }).fill('1234.56');
-    await dialog.getByRole('button', { name: 'Add Account' }).click();
+    await dialog.getByRole('textbox', { name: 'Current balance' }).fill('1234.56');
+    await dialog.getByRole('button', { name: 'Add account' }).click();
 
     await expect
       .poll(async () => (await api.accounts()).map((a) => a.name))
@@ -49,19 +49,19 @@ test.describe('accounts', () => {
     await expect(main.getByText('No credit cards or loans yet.')).toBeVisible();
 
     await main.getByRole('link', { name: 'Add account' }).click();
-    await expect(page.getByRole('dialog', { name: 'Add Account' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Add account' })).toBeVisible();
   });
 
   test('investments, property and loans default to off budget', async ({ page, api }) => {
     await api.createAccount('Checking', 0);
     await open(page, '/accounts');
-    await page.getByRole('main').getByRole('button', { name: 'Add Account' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Add Account' });
+    await page.getByRole('main').getByRole('button', { name: 'Add account' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Add account' });
     await dialog.getByRole('textbox', { name: 'Account name' }).fill('Home');
     await dialog.getByRole('combobox', { name: 'Account type' }).selectOption('real_estate');
     await expect(dialog.getByRole('checkbox', { name: /Off budget/ })).toBeChecked();
-    await dialog.getByRole('textbox', { name: 'Current Value' }).fill('350000');
-    await dialog.getByRole('button', { name: 'Add Account' }).click();
+    await dialog.getByRole('textbox', { name: 'Current value' }).fill('350000');
+    await dialog.getByRole('button', { name: 'Add account' }).click();
     await expect(dialog).toBeHidden();
 
     await expect
@@ -72,18 +72,18 @@ test.describe('accounts', () => {
   test("a starting balance that isn't an amount can't be created as 0", async ({ page, api }) => {
     await api.createAccount('Checking', 0);
     await open(page, '/accounts');
-    await page.getByRole('main').getByRole('button', { name: 'Add Account' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Add Account' });
+    await page.getByRole('main').getByRole('button', { name: 'Add account' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Add account' });
     await dialog.getByRole('textbox', { name: 'Account name' }).fill('Girokonto');
-    const balance = dialog.getByRole('textbox', { name: 'Current Balance' });
+    const balance = dialog.getByRole('textbox', { name: 'Current balance' });
     await balance.fill('1.234.5');
     // Refused as soon as it's typed, before the field is left
-    await expect(dialog.getByRole('button', { name: 'Add Account' })).toBeDisabled();
+    await expect(dialog.getByRole('button', { name: 'Add account' })).toBeDisabled();
     await balance.press('Enter');
     await expect(dialog).toBeVisible();
 
     await balance.fill('1.234,50');
-    await dialog.getByRole('button', { name: 'Add Account' }).click();
+    await dialog.getByRole('button', { name: 'Add account' }).click();
     await expect(dialog).toBeHidden();
     await expect
       .poll(async () => (await api.accounts()).find((a) => a.name === 'Girokonto')?.balance)
@@ -100,7 +100,7 @@ test.describe('accounts', () => {
     });
     await open(page, `/accounts/${account.id}`);
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'Edit Account' });
+    const dialog = page.getByRole('dialog', { name: 'Edit account' });
     await dialog.getByRole('textbox', { name: 'Account name' }).fill('Joint Checking');
     await dialog.getByRole('button', { name: 'Save' }).click();
 
@@ -113,7 +113,7 @@ test.describe('accounts', () => {
     const account = await api.createAccount('Checking', 10_000);
     await open(page, `/accounts/${account.id}`);
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'Edit Account' });
+    const dialog = page.getByRole('dialog', { name: 'Edit account' });
     await typeAmount(dialog.getByRole('textbox', { name: 'Starting balance' }), '500');
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect.poll(() => api.balance(account.id)).toBe(50_000);
@@ -126,7 +126,7 @@ test.describe('accounts', () => {
     const account = await api.createAccount('Checking', 10_000);
     await open(page, `/accounts/${account.id}`);
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'Edit Account' });
+    const dialog = page.getByRole('dialog', { name: 'Edit account' });
     const field = dialog.getByRole('textbox', { name: 'Starting balance' });
     await typeAmount(field, '12.5.0');
     await expect(field).toHaveAttribute('aria-invalid', 'true');
@@ -144,12 +144,12 @@ test.describe('accounts', () => {
     await open(page, `/accounts/${account.id}`);
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page
-      .getByRole('dialog', { name: 'Edit Account' })
-      .getByRole('button', { name: 'Close Account' })
+      .getByRole('dialog', { name: 'Edit account' })
+      .getByRole('button', { name: 'Close account' })
       .click();
     await page
-      .getByRole('dialog', { name: 'Close Account' })
-      .getByRole('button', { name: 'Close Account' })
+      .getByRole('dialog', { name: 'Close account' })
+      .getByRole('button', { name: 'Close account' })
       .click();
 
     await expect.poll(async () => (await api.accounts()).map((a) => a.name)).toEqual(['Keep Me']);
@@ -163,7 +163,7 @@ test.describe('accounts', () => {
     const brokerage = await api.createAccount('Brokerage', 1_000_000, 'investment');
     await open(page, `/accounts/${brokerage.id}`);
     await page.getByRole('button', { name: 'Update value' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Update Value' });
+    const dialog = page.getByRole('dialog', { name: 'Update value' });
     await typeAmount(dialog.getByRole('textbox', { name: 'Value today' }), '10500');
     await dialog.getByRole('button', { name: /Save|Update/ }).click();
 
@@ -174,8 +174,8 @@ test.describe('accounts', () => {
     // A change in value isn't money earned or spent: reports leave it out
     await open(page, '/reports');
     const main = page.getByRole('main');
-    await expect(main).toContainText(/\$0\s*Total Income/);
-    await expect(main).toContainText(/\$0\s*Total Expenses/);
+    await expect(main).toContainText(/\$0\s*Total income/);
+    await expect(main).toContainText(/\$0\s*Total expenses/);
   });
 
   test('the accounts page totals assets and liabilities', async ({ page, api }) => {
@@ -184,7 +184,7 @@ test.describe('accounts', () => {
     await api.createAccount('Car Loan', -1_200_000, 'auto_loan');
     await open(page, '/accounts');
     const main = page.getByRole('main');
-    await expect(main).toContainText(/Net Worth\s*-\$9,450/);
+    await expect(main).toContainText(/Net worth\s*-\$9,450/);
     await expect(main).toContainText(/Assets\s*\$3,000/);
     await expect(main).toContainText(/Liabilities\s*-\$12,450/);
     await expect(main).toContainText(/Loans\s*-\$12,000/);

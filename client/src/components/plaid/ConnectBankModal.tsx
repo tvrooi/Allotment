@@ -113,14 +113,14 @@ function ConnectBankModalDialog({ isOpen, onClose }: Props) {
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Connect Bank Account" size="lg">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Connect bank account" size="lg">
       {step === 'link' && (
         <div className="space-y-5">
           <div className="text-center py-4">
             <div className="w-16 h-16 rounded-lg bg-brand-50 flex items-center justify-center mx-auto mb-4">
               <Building2 size={32} className="text-brand-600" />
             </div>
-            <h3 className="text-sm font-semibold text-text">Connect Your Financial Institution</h3>
+            <h3 className="text-sm font-semibold text-text">Connect your financial institution</h3>
             <p className="text-xs text-text-secondary mt-2 max-w-sm mx-auto leading-relaxed">
               Securely link your bank accounts to automatically import transactions and keep your
               balances up to date.
@@ -196,7 +196,7 @@ function ConnectBankModalDialog({ isOpen, onClose }: Props) {
       {step === 'syncing' && (
         <div className="text-center py-10">
           <Loader2 size={40} className="animate-spin text-brand-500 mx-auto mb-4" />
-          <h3 className="text-sm font-semibold text-text">Syncing Transactions</h3>
+          <h3 className="text-sm font-semibold text-text">Syncing transactions</h3>
           <p className="text-xs text-text-secondary mt-1">
             Importing your transactions. This may take a moment...
           </p>
@@ -208,7 +208,7 @@ function ConnectBankModalDialog({ isOpen, onClose }: Props) {
           <div className="w-16 h-16 rounded-full bg-positive-subtle flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 size={32} className="text-positive" />
           </div>
-          <h3 className="text-sm font-semibold text-text">Connection Complete</h3>
+          <h3 className="text-sm font-semibold text-text">Connection complete</h3>
           {syncSummary && (
             <p className="text-xs text-text-secondary mt-1">
               Imported {syncSummary.added} transaction{syncSummary.added !== 1 ? 's' : ''} across{' '}
@@ -280,7 +280,7 @@ function AccountMappingCard({
               : 'bg-surface text-text-secondary border border-border hover:bg-surface-alt'
           }`}
         >
-          Create New
+          Create new
         </button>
         <button
           onClick={() => onChange({ action: 'link' })}
@@ -291,7 +291,7 @@ function AccountMappingCard({
               : 'bg-surface text-text-secondary border border-border hover:bg-surface-alt disabled:opacity-40 disabled:cursor-not-allowed'
           }`}
         >
-          Link Existing
+          Link existing
         </button>
         <button
           onClick={() => onChange({ action: 'skip' })}

@@ -72,11 +72,17 @@ test('anything less certain keeps the normal title bar', async () => {
     async () => {
       throw new TypeError('fetch failed'); // unreachable, TLS error or a redirect
     },
-    // Too slow: the window opens with the normal title bar instead of waiting
+    // Too slow: the window opens with the normal title bar instead of waiting. The request
+    // holds the event loop open itself: AbortSignal.timeout's timer doesn't (Node 22 then
+    // cancels the test as "Promise resolution is still pending"; Node 24 happens to cope).
     (_url, init) =>
-      new Promise((_resolve, reject) =>
-        init.signal.addEventListener('abort', () => reject(init.signal.reason)),
-      ),
+      new Promise((_resolve, reject) => {
+        const keepAlive = setTimeout(() => {}, 10_000);
+        init.signal.addEventListener('abort', () => {
+          clearTimeout(keepAlive);
+          reject(init.signal.reason);
+        });
+      }),
   ];
   for (const request of cases)
     assert.equal(await serverDrawsMacWindow('https://budget.example/', request, 50), false);

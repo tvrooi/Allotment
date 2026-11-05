@@ -50,7 +50,7 @@ auditable), then **SPL-05** and **SPL-07**. The P3 items wait for demand.
 
 ## Findings
 
-### SPL-01 (built in 0.2.0-up.105): suggested settlements — who pays whom
+### SPL-01 (built in 0.2.0-up.106): suggested settlements — who pays whom
 
 - **Spliit:** `getSuggestedReimbursements` ([`src/lib/balances.ts`](https://github.com/spliit-app/spliit/blob/73478ed/src/lib/balances.ts))
   turns net balances into at most _n − 1_ transfers. Balances are sorted creditors-first, then by
@@ -86,7 +86,7 @@ auditable), then **SPL-05** and **SPL-07**. The P3 items wait for demand.
 - **Licence:** Spliit is MIT, compatible with AGPL-3.0. The algorithm is ~40 lines; reimplement it
   against Allotment's types and cite the source in a comment rather than copying the file.
 
-### SPL-02 (built in 0.2.0-up.105): one-click "record this settlement", and matching outgoing repayments
+### SPL-02 (built in 0.2.0-up.106): one-click "record this settlement", and matching outgoing repayments
 
 - **Spliit:** each suggestion has **Mark as paid**, which opens the expense form pre-filled as a
   reimbursement (`?reimbursement=yes&from=…&to=…&amount=…`, read in `expense-form.tsx`).
@@ -153,7 +153,7 @@ auditable), then **SPL-05** and **SPL-07**. The P3 items wait for demand.
      from the budget's categories; it never changes envelope figures.
   3. Render with the existing report chart components.
 
-### SPL-06 (built in 0.2.0-up.105): rotate the spare cent
+### SPL-06 (built in 0.2.0-up.106): rotate the spare cent
 
 - **Spliit:** `apportion` in `src/lib/shares.ts` uses largest remainder, but ties rotate from an FNV-1a
   hash of the expense id, so equal splits don't always give the extra cent to the same participant;
@@ -244,7 +244,7 @@ auditable), then **SPL-05** and **SPL-07**. The P3 items wait for demand.
 - **Follow-up:** SPL-01's settle-up list should use `direct` for "who pays whom", and list `toPool`
   shortfalls as "put $x into the household account" rather than as transfers between people.
 
-### Built in 0.2.0-up.105 (SPL-01, SPL-02, SPL-06)
+### Built in 0.2.0-up.106 (SPL-01, SPL-02, SPL-06)
 
 - `suggestSettlements` (`householdLedger.ts`) pairs the `direct` balances in person order, so
   recording one leaves the rest unchanged; `snapshot()` returns `settlements` and `poolOwed`.

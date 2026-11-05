@@ -41,7 +41,7 @@ function ConnectedAccountsDemo() {
   return (
     <div className="space-y-5 max-w-xl">
       <div>
-        <h2 className="text-sm font-semibold text-text">Connected Banks</h2>
+        <h2 className="text-sm font-semibold text-text">Connected banks</h2>
         <p className="text-xs text-text-tertiary mt-0.5">
           Automatically import transactions from your financial institutions.
         </p>
@@ -104,7 +104,7 @@ function ConnectedAccountsSettings() {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-sm font-semibold text-text">Connected Banks</h2>
+        <h2 className="text-sm font-semibold text-text">Connected banks</h2>
         <p className="text-xs text-text-tertiary mt-0.5">
           Automatically import transactions from your financial institutions. Any other bank: import
           its CSV files from the account's page.
@@ -216,7 +216,7 @@ function ConnectedAccountsSettings() {
           ) : null}
 
           <div className="bg-surface-alt rounded-lg p-5 space-y-3">
-            <h3 className="text-sm font-medium text-text">Plaid Configuration</h3>
+            <h3 className="text-sm font-medium text-text">Plaid configuration</h3>
             {!plaidConfigured && (
               <p className="text-xs text-text-tertiary">
                 Enter your Plaid API credentials to enable bank connections.
@@ -269,7 +269,7 @@ function ConnectedAccountsSettings() {
           ) : null}
 
           <div className="bg-surface-alt rounded-lg p-5 space-y-3">
-            <h3 className="text-sm font-medium text-text">SimpleFIN Configuration</h3>
+            <h3 className="text-sm font-medium text-text">SimpleFIN configuration</h3>
             {sfConnections.length === 0 && (
               <p className="text-xs text-text-tertiary">
                 Enter your SimpleFIN setup token to enable bank connections.
@@ -340,7 +340,7 @@ function ConnectedAccountsSettings() {
           ) : null}
 
           <div className="bg-surface-alt rounded-lg p-5 space-y-3">
-            <h3 className="text-sm font-medium text-text">Enable Banking Application</h3>
+            <h3 className="text-sm font-medium text-text">Enable Banking application</h3>
             <EnableBankingSetupForm
               onConfigured={() => {
                 // First setup: go straight on to connecting a bank

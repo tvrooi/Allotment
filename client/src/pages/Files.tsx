@@ -241,7 +241,7 @@ export default function FilesPage() {
                   type="button"
                   aria-current={view === v.id ? 'page' : undefined}
                   onClick={() => set({ view: v.id || null })}
-                  className={`w-full max-md:w-auto flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-left ${view === v.id ? 'bg-brand-50 text-brand-700 font-medium' : 'text-text-secondary hover:bg-hover'}`}
+                  className={`w-full max-md:w-auto flex items-center gap-2 rounded-md px-2.5 py-1.5 max-md:min-h-11 text-sm text-left ${view === v.id ? 'bg-brand-50 text-brand-700 font-medium' : 'text-text-secondary hover:bg-hover'}`}
                 >
                   {v.id === 'starred' ? <Star size={14} /> : <FolderOpen size={14} />}
                   {v.label}
@@ -258,7 +258,7 @@ export default function FilesPage() {
                       type="button"
                       aria-current={tag === t.id ? 'page' : undefined}
                       onClick={() => set({ tag: tag === t.id ? null : t.id })}
-                      className={`w-full max-md:w-auto flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-left ${tag === t.id ? 'bg-brand-50 text-brand-700 font-medium' : 'text-text-secondary hover:bg-hover'}`}
+                      className={`w-full max-md:w-auto flex items-center gap-2 rounded-md px-2.5 py-1.5 max-md:min-h-11 text-sm text-left ${tag === t.id ? 'bg-brand-50 text-brand-700 font-medium' : 'text-text-secondary hover:bg-hover'}`}
                     >
                       <TagIcon size={13} style={{ color: t.color }} />
                       <span className="truncate">{t.name}</span>

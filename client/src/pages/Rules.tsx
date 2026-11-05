@@ -118,8 +118,14 @@ function RuleRow({
       <button
         type="button"
         onClick={onEdit}
-        className={`flex-1 min-w-0 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5 text-left cursor-pointer ${rule.enabled || rule.proposedBy ? '' : 'opacity-50'}`}
+        className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5 text-left cursor-pointer"
       >
+        {/* Said in words, not by dimming: faded text fails contrast (audit F-15) */}
+        {!rule.enabled && !rule.proposedBy && (
+          <p className="md:col-span-2 text-xs font-medium text-text-secondary">
+            Off: turn it on to use it.
+          </p>
+        )}
         {rule.proposedBy && !rule.enabled && (
           <p className="md:col-span-2 text-xs text-caution">
             Proposed by {rule.proposedBy}: review it, then turn it on to accept it.

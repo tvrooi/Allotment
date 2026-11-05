@@ -24,9 +24,9 @@ test('the getting started checklist tracks progress and can be hidden', async ({
   await expect(page.getByText('0 of 5 done')).toBeVisible();
 
   await page.getByRole('main').getByRole('button', { name: 'Add account' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add Account' });
+  const dialog = page.getByRole('dialog', { name: 'Add account' });
   await dialog.getByRole('textbox', { name: 'Account name' }).fill('Everyday Checking');
-  await dialog.getByRole('button', { name: 'Add Account' }).click();
+  await dialog.getByRole('button', { name: 'Add account' }).click();
 
   await expect(page.getByText('1 of 5 done')).toBeVisible();
   expect((await api.accounts()).map((a) => a.name)).toEqual(['Everyday Checking']);
