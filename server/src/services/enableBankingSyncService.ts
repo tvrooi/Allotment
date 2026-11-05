@@ -36,6 +36,7 @@ import {
   suggestAccountType,
   type SkippedCounts,
 } from './enableBankingTransactions.js';
+import { utcDayIso } from '../utils/date.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Later syncs ask again for this many days before the last booking, for late bookings */
@@ -45,7 +46,7 @@ const LINKED_START_DAYS = 7;
 /** Startup syncs skip a connection synced more recently: banks allow ~4 unattended a day */
 export const UNATTENDED_MIN_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
-const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+const isoDay = utcDayIso;
 const dayMs = (date: string) => Date.parse(`${date}T00:00:00Z`);
 
 export interface DiscoveredAccount {

@@ -12,6 +12,7 @@ import { csvCell } from './taxService.js';
 import { extensionOf } from './receiptMeta.js';
 import { ZipWriter } from '../utils/zip.js';
 import { disposition } from '../utils/contentDisposition.js';
+import { todayIso } from '../utils/date.js';
 
 export class FilesExportError extends Error {
   constructor(
@@ -71,7 +72,7 @@ export async function exportAllFiles(res: Response) {
       'Receipt',
     ],
   ];
-  const stamp = new Date().toISOString().slice(0, 10);
+  const stamp = todayIso();
   res.setHeader('Content-Type', 'application/zip');
   res.setHeader('Content-Disposition', disposition(false, `allotment-files-${stamp}.zip`));
   res.setHeader('Cache-Control', 'no-store');

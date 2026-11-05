@@ -16,12 +16,9 @@ import { UpConnectModal } from './UpConnectModal';
 import { formatDay } from '../../utils/dates';
 import { formatMoney } from '../../utils/currency';
 import { UpReview } from './UpReview';
+import { addDaysIso } from '../../utils/calendarDay';
 
-const dayBefore = (day: string) => {
-  const d = new Date(day + 'T00:00:00Z');
-  d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().slice(0, 10);
-};
+const dayBefore = (day: string) => addDaysIso(day, -1);
 export function UpSettings() {
   const { data: connection, isLoading, error: loadError } = useUpConnection();
   const [showConnect, setShowConnect] = useState(false);

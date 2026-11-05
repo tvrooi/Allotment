@@ -61,6 +61,11 @@ import {
   refreshMainAmounts,
 } from '../services/mainAmountService.js';
 import { isForeign } from '../utils/currencies.js';
+import {
+  existingRowsNear,
+  matchExistingRows,
+  takenImportedIds,
+} from '../services/importDuplicates.js';
 
 export const transactionsRouter = Router();
 transactionsRouter.use((req, res, next) => {
@@ -689,21 +694,21 @@ transactionsRouter.post('/import/preview', (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const { accountId, rows } = parsed.data;
-  const importedIds = rows.map((r) => r.importedId);
-  const existingSet = new Set<string | null>();
+  const existingSet = takenImportedIds(
+    accountId,
+    rows.map((r) => r.importedId),
+  );
 
-  if (importedIds.length) {
-    const existing = db
-      .select({ importedId: transactions.importedId })
-      .from(transactions)
-      .where(
-        and(eq(transactions.accountId, accountId), inArray(transactions.importedId, importedIds)),
-      )
-      .all();
-    for (const e of existing) existingSet.add(e.importedId);
-  }
-
-  res.json(rows.map((row) => ({ ...row, isDuplicate: existingSet.has(row.importedId) })));
+  // SEC-01: rows with a different id that look like ones the account already has (typed by hand,
+  // synced, scheduled, or an earlier file). Flagged for the person to untick, never skipped.
+  const similar = matchExistingRows(rows, existingRowsNear(accountId, rows), existingSet);
+  res.json(
+    rows.map((row, i) => ({
+      ...row,
+      isDuplicate: existingSet.has(row.importedId),
+      possibleDuplicate: existingSet.has(row.importedId) ? null : similar[i],
+    })),
+  );
 });
 
 // POST /transactions/import/confirm — insert non-duplicate rows
@@ -738,6 +743,17 @@ transactionsRouter.post('/import/confirm', (req, res) => {
     let imported = 0;
     let historical = 0;
     const balanceBefore = account.startingBalance + accountTransactionSum(accountId);
+    // SEC-01: counted before anything is inserted, so the rows of this file can't match each
+    // other. The rows still import; the answer tells the person how many to look at.
+    const taken = takenImportedIds(
+      accountId,
+      rows.map((r) => r.importedId),
+    );
+    const possibleDuplicates = matchExistingRows(
+      rows,
+      existingRowsNear(accountId, rows),
+      taken,
+    ).filter(Boolean).length;
     // Typed as "today's balance": older rows must not change it. Not for a bank-fed account
     // (the bank decides) or one with reconciled rows (those were agreed with a statement).
     const keepsBalance =
@@ -782,6 +798,7 @@ transactionsRouter.post('/import/confirm', (req, res) => {
         .run();
     return {
       imported,
+      possibleDuplicates,
       balanceBefore,
       startingBalanceAdjusted: historical !== 0,
       balance: account.startingBalance - historical + accountTransactionSum(accountId),

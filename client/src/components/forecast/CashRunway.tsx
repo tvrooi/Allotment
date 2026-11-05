@@ -32,6 +32,7 @@ import {
 import { formatDay } from '../../utils/dates';
 import { downloadCsv } from '../../utils/exportCsv';
 import { onTabListKeyDown } from '../ui/tabList';
+import { addDaysIso, todayIso } from '../../utils/calendarDay';
 
 const COLORS = [chartColors.brand, chartColors.caution, chartColors.positive];
 const KIND_LABEL: Record<api.ForecastEvent['kind'], string> = {
@@ -56,11 +57,7 @@ const DEFAULT_SCENARIOS: api.ForecastScenarioInput[] = [
   incomePauses: [],
   costChanges: [],
 }));
-const addDays = (date: string, days: number) => {
-  const d = new Date(`${date}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-};
+const addDays = addDaysIso;
 /** Life-event templates (phase 7C): they only prefill the scenario; nothing is saved. */
 const TEMPLATES: {
   label: string;
@@ -547,7 +544,7 @@ export function CashRunway() {
   });
   const { data: goalRows = [] } = useGoals();
   const goalOptions = goalRows.map((g) => ({ id: g.id, name: g.name }));
-  const today = data?.today ?? new Date().toISOString().slice(0, 10);
+  const today = data?.today ?? todayIso();
   const scenario = data?.scenarios[Math.min(selected, (data?.scenarios.length ?? 1) - 1)];
   const baseline = data?.scenarios[0];
   const compared = !!scenario && !!baseline && scenario !== baseline;

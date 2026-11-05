@@ -1,5 +1,6 @@
 import { format, startOfMonth, endOfMonth, subMonths, startOfYear } from 'date-fns';
 import type { TransactionQueryParams } from '../types';
+import { isIsoDay } from './calendarDay';
 
 // The register's filters, and how they travel in the URL so reload, back and drill-down
 // links keep them (docs/MONARCH-DEVELOPMENT-PHASE.md, "Scope and drill-down"). The URL uses
@@ -157,11 +158,7 @@ export function activeFilterCount(f: FilterState): number {
   ].filter(Boolean).length;
 }
 
-const isDay = (s: string | null): s is string => {
-  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
-  const d = new Date(`${s}T00:00:00Z`);
-  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
-};
+const isDay = isIsoDay;
 const ids = (s: string | null) => (s ? s.split(',').filter(Boolean).slice(0, 500) : []);
 const tristate = (s: string | null): Tristate => (s === '1' ? 'yes' : s === '0' ? 'no' : 'all');
 const amount = (s: string | null) => (s !== null && /^\d{1,13}$/.test(s) ? Number(s) : null);

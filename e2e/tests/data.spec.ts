@@ -83,6 +83,58 @@ test.describe('CSV import', () => {
     expect(await api.transactions(`?account_id=${checking.id}&from=2025-01-01`)).toHaveLength(5);
   });
 
+  // SEC-01: a statement that covers days the account already has
+  test('flags statement rows that match transactions typed by hand, and leaves the choice', async ({
+    page,
+    api,
+  }) => {
+    const checking = await api.createAccount('Checking', 0);
+    // The hardware store purchase was typed in the day it happened
+    await api.createTransaction({
+      accountId: checking.id,
+      date: '2025-01-17',
+      amount: -8_999,
+      payeeName: 'Hardware Store',
+    });
+    await open(page, `/accounts/${checking.id}`);
+    const dialog = await importCsv(page, BANK_CSV);
+    await dialog.getByRole('button', { name: 'Preview' }).click();
+
+    await expect(dialog).toContainText('4 transactions found. 0 duplicates detected.');
+    await expect(dialog).toContainText('1 look like transactions already in this account');
+    await expect(dialog).toContainText('3 will be imported.');
+    await expect(dialog).toContainText('may already be here');
+    await expect(dialog).toContainText('Looks like Hardware Store on');
+    await expect(dialog).toContainText('entered by hand');
+    const flagged = dialog.getByRole('checkbox', { name: /Import Hardware Store on 2025-01-17/ });
+    await expect(flagged).not.toBeChecked();
+
+    // Leave it out: only the other three arrive
+    await dialog.getByRole('button', { name: 'Import 3 Transactions' }).click();
+    await expect(dialog).toContainText('3 imported, 0 skipped');
+    await dialog.getByRole('button', { name: 'Done' }).click();
+    expect(await api.transactions(`?account_id=${checking.id}&from=2025-01-01`)).toHaveLength(4);
+  });
+
+  test('imports a flagged row when the person ticks it', async ({ page, api }) => {
+    const checking = await api.createAccount('Checking', 0);
+    await api.createTransaction({
+      accountId: checking.id,
+      date: '2025-01-17',
+      amount: -8_999,
+      payeeName: 'Hardware Store',
+    });
+    await open(page, `/accounts/${checking.id}`);
+    const dialog = await importCsv(page, BANK_CSV);
+    await dialog.getByRole('button', { name: 'Preview' }).click();
+    await dialog.getByRole('checkbox', { name: /Import Hardware Store on 2025-01-17/ }).check();
+    await dialog.getByRole('button', { name: 'Import 4 Transactions' }).click();
+    await expect(dialog).toContainText('4 imported, 0 skipped');
+    await expect(dialog).toContainText('1 imported transaction looks like ones this account');
+    await dialog.getByRole('button', { name: 'Done' }).click();
+    expect(await api.transactions(`?account_id=${checking.id}&from=2025-01-01`)).toHaveLength(5);
+  });
+
   test('reads European exports: semicolons, day-first dates and decimal commas', async ({
     page,
     api,
@@ -342,35 +394,40 @@ test.describe('CSV import', () => {
   test('warns when a statement is for another account than last time', async ({ page, api }) => {
     const checking = await api.createAccount('Girokonto', 0);
     await open(page, `/accounts/${checking.id}`);
-    const statementFor = (iban: string, ref: string) => `<?xml version="1.0" encoding="UTF-8"?>
+    const statementFor = (
+      iban: string,
+      ref: string,
+      day: string,
+    ) => `<?xml version="1.0" encoding="UTF-8"?>
 <Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02"><BkToCstmrStmt><Stmt>
   <Acct><Id><IBAN>${iban}</IBAN></Id></Acct>
   <Ntry><AcctSvcrRef>${ref}</AcctSvcrRef><Amt Ccy="EUR">10.00</Amt><CdtDbtInd>DBIT</CdtDbtInd>
-    <Sts>BOOK</Sts><BookgDt><Dt>2025-02-03</Dt></BookgDt></Ntry>
+    <Sts>BOOK</Sts><BookgDt><Dt>${day}</Dt></BookgDt></Ntry>
 </Stmt></BkToCstmrStmt></Document>`;
-    const importStatement = async (iban: string, ref: string) => {
+    // A different day each time: the same amount within 3 days would be flagged as a repeat
+    const importStatement = async (iban: string, ref: string, day: string) => {
       await page.getByRole('button', { name: 'Import CSV' }).click();
       const dialog = page.getByRole('dialog', { name: 'Import Transactions' });
       await dialog.getByLabel('Bank file').setInputFiles({
         name: 'statement.xml',
         mimeType: 'application/xml',
-        buffer: Buffer.from(statementFor(iban, ref), 'utf8'),
+        buffer: Buffer.from(statementFor(iban, ref, day), 'utf8'),
       });
       await expect(dialog).toContainText('1 transactions found.');
       return dialog;
     };
 
-    let dialog = await importStatement('DE89370400440532013000', 'B1');
+    let dialog = await importStatement('DE89370400440532013000', 'B1', '2025-02-03');
     await expect(dialog.getByRole('alert')).toHaveCount(0);
     await dialog.getByRole('button', { name: 'Import 1 Transactions' }).click();
     await dialog.getByRole('button', { name: 'Done' }).click();
 
     // The same account written in groups of four is the same account
-    dialog = await importStatement('DE89 3704 0044 0532 0130 00', 'B2');
+    dialog = await importStatement('DE89 3704 0044 0532 0130 00', 'B2', '2025-03-03');
     await expect(dialog.getByRole('alert')).toHaveCount(0);
     await dialog.getByRole('button', { name: 'Close' }).click();
 
-    dialog = await importStatement('NL91ABNA0417164300', 'B3');
+    dialog = await importStatement('NL91ABNA0417164300', 'B3', '2025-04-03');
     await expect(dialog.getByRole('alert')).toContainText(
       'This statement is for account NL91ABNA0417164300, but the last statement imported into ' +
         'this account was for DE89370400440532013000.',

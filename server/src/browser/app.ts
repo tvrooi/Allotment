@@ -32,6 +32,7 @@ import { prioritiesRouter } from '../routes/priorities.js';
 import { guidesRouter } from '../routes/guides.js';
 import { currencyRouter } from '../routes/currency.js';
 import { DEMO_UP_ACCOUNTS } from '../demo/demoBudget.js';
+import { addDaysIso, todayIso } from '../utils/date.js';
 
 /** Answer for anything that needs a real server: bank connections, sign-in. */
 const NOT_IN_DEMO = "This isn't available in the demo. Download Allotment to use it.";
@@ -75,9 +76,7 @@ app.get('/up/connection', (_req, res) => {
   });
 });
 app.get('/up/review', (_req, res) => res.json({ total: 0, pending: 0, items: [], deleted: [] }));
-app.get('/up/round-ups', (_req, res) =>
-  res.json({ since: new Date(Date.now() - 91 * 86400_000).toISOString().slice(0, 10), days: [] }),
-);
+app.get('/up/round-ups', (_req, res) => res.json({ since: addDaysIso(todayIso(), -91), days: [] }));
 app.get('/up/round-up-check', (_req, res) => res.json([]));
 app.get('/enable-banking/status', (_req, res) =>
   res.json({

@@ -28,6 +28,7 @@ import {
 import { ZipWriter } from '../utils/zip.js';
 import { readZipFileEntry, zipFileEntries, zipFileEntryStream } from '../utils/zipFile.js';
 import { disposition } from '../utils/contentDisposition.js';
+import { todayIso } from '../utils/date.js';
 
 /** ZIP's own limit (no ZIP64), with room for names and the index */
 export const MAX_ARCHIVE_BYTES = 4_000_000_000;
@@ -79,7 +80,7 @@ export async function writeBackupArchive(res: Response) {
       413,
     );
 
-  const stamp = new Date().toISOString().slice(0, 10);
+  const stamp = todayIso();
   res.setHeader('Content-Type', 'application/zip');
   res.setHeader('Content-Disposition', disposition(false, `allotment-backup-${stamp}.zip`));
   res.setHeader('Cache-Control', 'no-store');

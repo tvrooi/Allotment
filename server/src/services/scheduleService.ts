@@ -3,7 +3,6 @@ import { bankLinked } from './accountIntegrity.js';
 import { schedules, scheduleOccurrences, transactions, payees, accounts } from '../db/schema.js';
 import { eq, and, isNull } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { format, parseISO, addDays } from 'date-fns';
 import {
   computeOccurrenceDates,
   buildRecurrenceRule,
@@ -14,6 +13,7 @@ import {
 } from '../utils/recurrence.js';
 import { linkOccurrenceToTransaction } from './matchingEngine.js';
 import { refreshMainAmounts } from './mainAmountService.js';
+import { addDaysIso, daysBetweenIso, todayIso } from '../utils/date.js';
 
 export function ensureOccurrences(scheduleId: string, throughDate: string): number {
   const schedule = db.select().from(schedules).where(eq(schedules.id, scheduleId)).get();
@@ -22,7 +22,7 @@ export function ensureOccurrences(scheduleId: string, throughDate: string): numb
 
   const rule: RecurrenceRule = JSON.parse(schedule.recurrenceRule);
   const rangeStart = schedule.occurrenceHorizon
-    ? format(addDays(parseISO(schedule.occurrenceHorizon), 1), 'yyyy-MM-dd')
+    ? addDaysIso(schedule.occurrenceHorizon, 1)
     : schedule.startDate;
 
   if (rangeStart > throughDate) return 0;
@@ -83,7 +83,7 @@ export function regenerateFutureOccurrences(scheduleId: string): void {
   const schedule = db.select().from(schedules).where(eq(schedules.id, scheduleId)).get();
   if (!schedule) return;
 
-  const today = format(new Date(), 'yyyy-MM-dd');
+  const today = todayIso();
   const previousHorizon = schedule.occurrenceHorizon || today;
 
   const futureOccs = db
@@ -107,8 +107,7 @@ export function regenerateFutureOccurrences(scheduleId: string): void {
   ensureOccurrences(scheduleId, previousHorizon);
 }
 
-export function autoCreateDueScheduled(): number {
-  const today = format(new Date(), 'yyyy-MM-dd');
+export function autoCreateDueScheduled(today = todayIso()): number {
   const activeSchedules = db
     .select()
     .from(schedules)
@@ -203,7 +202,7 @@ export function migrateOccurrencesFromLegacy(): number {
 
   if (toMigrate.length === 0) return 0;
 
-  const horizon = format(addDays(new Date(), 90), 'yyyy-MM-dd');
+  const horizon = addDaysIso(todayIso(), 90);
   let totalCreated = 0;
 
   for (const schedule of toMigrate) {
@@ -234,9 +233,7 @@ export function migrateOccurrencesFromLegacy(): number {
 
       for (const tx of linkedTxns) {
         if (usedTxnIds.has(tx.id)) continue;
-        const occDate = parseISO(pair.scheduledDate);
-        const txDate = parseISO(tx.date);
-        const dist = Math.abs(occDate.getTime() - txDate.getTime()) / (24 * 60 * 60 * 1000);
+        const dist = Math.abs(daysBetweenIso(pair.scheduledDate, tx.date));
         if (dist <= flexibility && dist < bestDist) {
           bestDist = dist;
           bestTx = tx;

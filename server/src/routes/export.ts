@@ -15,6 +15,7 @@ import { sql } from 'drizzle-orm';
 import { minorUnits } from '../utils/currencies.js';
 import { minorToDecimal } from '../utils/money.js';
 import { budgetCurrency, hasForeignAccounts } from '../services/mainAmountService.js';
+import { todayIso } from '../utils/date.js';
 
 export const exportRouter = Router();
 
@@ -137,7 +138,7 @@ exportRouter.get('/transactions/csv', (req, res) => {
 });
 
 exportRouter.get('/backup', (_req, res) => {
-  const dateStr = new Date().toISOString().slice(0, 10);
+  const dateStr = todayIso();
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', `attachment; filename="budget-backup-${dateStr}.json"`);
   res.json(createBackup());

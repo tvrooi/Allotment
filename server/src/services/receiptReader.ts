@@ -16,6 +16,7 @@ import { getBudgetSettings, updateBudgetSettings } from './mainAmountService.js'
 import { lineItems, type LineItemInput } from './receiptMatching.js';
 import { ReceiptError, updateReceipt } from './receiptService.js';
 import { SAMPLE_RECEIPT, SAMPLE_RECEIPT_PNG } from './receiptSample.js';
+import { addDaysIso, isIsoDay, localDayIso } from '../utils/date.js';
 
 /** A photo on a CPU can take minutes; give up after this long */
 const READ_TIMEOUT_MS = 10 * 60 * 1000;
@@ -357,10 +358,8 @@ export function toCents(dollars: number | null | undefined) {
 
 /** A real calendar date from 2000 to tomorrow, or null */
 export function toDate(text: string | null | undefined, today = new Date()) {
-  if (!text || !/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
-  const d = new Date(`${text}T00:00:00Z`);
-  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== text) return null;
-  const tomorrow = new Date(today.getTime() + 86_400_000).toISOString().slice(0, 10);
+  if (!isIsoDay(text)) return null;
+  const tomorrow = addDaysIso(localDayIso(today), 1);
   return text >= '2000-01-01' && text <= tomorrow ? text : null;
 }
 

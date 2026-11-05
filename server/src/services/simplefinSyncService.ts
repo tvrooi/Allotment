@@ -18,6 +18,7 @@ import { buildRuleContext, insertNewTransaction, loadRules } from './ruleService
 import { bankCurrency, currencyContext } from './mainAmountService.js';
 import { minorUnits } from '../utils/currencies.js';
 import { accountTransactionSum } from './balances.js';
+import { todayIso, utcDayIso } from '../utils/date.js';
 
 export interface SimplefinSyncResult {
   connectionId: string;
@@ -89,10 +90,7 @@ export async function syncSimplefinConnection(connectionId: string): Promise<Sim
         if (existing || deleted(mapping.accountId).has(importedId)) continue;
 
         const amount = simpleFinAmountToCents(tx.amount, minor);
-        const date =
-          tx.posted > 0
-            ? new Date(tx.posted * 1000).toISOString().split('T')[0]
-            : new Date().toISOString().split('T')[0];
+        const date = tx.posted > 0 ? utcDayIso(tx.posted * 1000) : todayIso();
         // Bank-supplied text: strip control characters and cap the length
         const payeeName =
           tx.description

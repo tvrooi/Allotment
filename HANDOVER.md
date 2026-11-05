@@ -5,10 +5,30 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 4 November 2026 (after up.98).
+Last updated: 5 November 2026 (after up.102).
 
 ## State
 
+- **Stage 1 correctness (up.102, built on #140's up.101):** four items from the competitor
+  comparisons and the audit.
+  _SEC-01:_ `services/importDuplicates.ts` (`matchExistingRows`, `existingRowsNear`,
+  `takenImportedIds`) finds a file row that an existing row of the account may repeat: same
+  amount, dated within 3 days, payee not contradicting (shared word, one starts the other, or
+  either blank), each existing row claimed once, nearest day first. `POST
+/transactions/import/preview` adds `possibleDuplicate` (`manual`/`synced`/`scheduled`/`file`);
+  `/import/confirm` adds `possibleDuplicates`. The import dialog unticks these rows and says what
+  they look like; nothing is skipped without the person's choice. Not built: tagging rows with the
+  import that made them and "undo this file" (the rest of SEC-01).
+  _FINX-01:_ `services/scheduleTimer.ts` runs `ensureOccurrencesForAll` (90 days ahead) then
+  `autoCreateDueScheduled` every hour (unref'd; waits for the startup bank syncs and for
+  `isUpSyncing()`); `index.ts` starts it and stops it when the server closes. Tests use fake timers.
+  _F-22:_ `server/src/utils/date.ts` (`addDaysIso`, `addMonthsIso`, `daysBetweenIso`, `eachDayIso`,
+  `isIsoDay`, `todayIso`, `localDayIso`, `utcDayIso`) and the client's `utils/calendarDay.ts`; the
+  ESLint rule `no-restricted-syntax` in `lint/eslint.config.js` rejects `toISOString()` cut down to
+  a date in production code (tests are exempt). `fundingState` takes a `today` argument for `past`.
+  _F-23:_ `dayRange` is `eachDayIso`; `date.test.ts` runs the helpers in child processes for UTC,
+  Sydney, Montevideo, Havana and Beirut. Currency-code spacing needed no change, only a test.
+  No migration. Check the live app after updating that a bill due today posts within the hour.
 - **Assistant policy table and log (up.101, PR #140 merged onto up.99's endpoint):** two sessions
   built I-11 in parallel. Kept from up.99: the `/api/assistant/do` endpoint (`assistantDispatch`
   rewrite plus `res.locals.viaAssistant`), proposals, migration 0069's tables. From #140: the policy
@@ -220,10 +240,11 @@ site in `website/` was removed (audit decision I-9).
    receipts; confirm the HA app's `/data/flybudget/budget-files/` is created only
    once a video over 25 MB is added. Not built: an email inbox (deliberately), files for tokens,
    video thumbnails, OCR of scanned PDFs.
-9. **Next fixes from the competitor comparisons** (`docs/research/`, PR #63), not picked up yet:
-   SEC-01 file-import duplicates against manual and synced rows (P1), FINX-01 schedule occurrences
-   and auto-create only at server start (run them on a timer), then ACT-03 hold for next month,
-   ACT-04 per-category overspending rollover and ACT-05 month quick fills. Check the code first:
+9. **Next fixes from the competitor comparisons** (`docs/research/`, PR #63): SEC-01 duplicates
+   and FINX-01 the schedule timer are done (up.102). Not picked up yet: SEC-01's import history
+   and "undo this file" (an additive `import_batches` table; it must refuse reconciled rows and
+   be undoable), FINX-02 reminders on the new timer, then ACT-03 hold for next month, ACT-04
+   per-category overspending rollover and ACT-05 month quick fills. Check the code first:
    later releases may have covered parts of them.
 
 10. **Audit roadmap, next round** ([docs/AUDIT-2026-11.md](docs/AUDIT-2026-11.md) section H): Stage 1
@@ -250,7 +271,7 @@ site in `website/` was removed (audit decision I-9).
     uncategorised until the owner's habit teaches them.
     I-7 is done (up.97): tour first, one onboarding element at a time (docs/GUIDES.md, "Tour
     first"). I-11 and I-8 are done (up.99), F-11, F-13 and F-14 (up.100). Still open: the partly done F-09,
-    F-15, F-19, F-20 and F-24, and F-22, F-23.
+    F-15, F-19, F-20 and F-24. F-22 and F-23 are done (up.102).
     Work in feature PRs with tests; the owner reviews and merges.
 
 ## Gotchas learned the hard way

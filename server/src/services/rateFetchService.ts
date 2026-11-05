@@ -18,6 +18,7 @@ import {
 } from './mainAmountService.js';
 import { fetch, type Response } from 'undici';
 import { readTextLimited, safeFetch } from './safeFetch.js';
+import { addDaysIso } from '../utils/date.js';
 
 /** Frankfurter's public server */
 export const DEFAULT_RATES_URL = 'https://api.frankfurter.dev/v1';
@@ -123,12 +124,6 @@ function earliestNeeded(budget: string): string {
     .get();
   return row?.d ?? todayIso();
 }
-
-const addDaysIso = (iso: string, days: number) => {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-};
 
 /** The ranges to download: before the oldest stored rate (a week early, for weekends) and after the newest */
 function rangesNeeded(quotes: string[], from: string, to: string): Array<[string, string]> {

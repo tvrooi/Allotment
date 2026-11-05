@@ -22,6 +22,7 @@ import {
 } from '../db/schema.js';
 import { allocateShares, householdLedger } from './householdLedger.js';
 import { accountTransactionSum } from './balances.js';
+import { addDaysIso, todayIso } from '../utils/date.js';
 
 // Household groups (docs/HOUSEHOLDS.md): the state of one group, and recording an event with
 // every check the ledger relies on. Shared by the households routes, quick sharing from the
@@ -136,7 +137,7 @@ export function snapshot(id: string) {
                   ? 'needs review'
                   : b.reserved >= b.amount
                     ? 'funded'
-                    : b.dueDate <= new Date().toISOString().slice(0, 10)
+                    : b.dueDate <= todayIso()
                       ? 'due'
                       : 'shortfall',
       };
@@ -785,9 +786,7 @@ export function repaymentSuggestions(groupId: string, today: string) {
   const self = state.people.find((p) => p.isSelf)!;
   const owedToSelf = state.direct[self.id] ?? 0;
   const debtors = state.people.filter((p) => !p.isSelf && (state.direct[p.id] ?? 0) < 0);
-  const since = new Date(Date.parse(today) - REPAYMENT_DAYS * 86_400_000)
-    .toISOString()
-    .slice(0, 10);
+  const since = addDaysIso(today, -REPAYMENT_DAYS);
   const linked = new Set(
     db
       .select({ id: events.transactionId })

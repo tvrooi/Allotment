@@ -188,7 +188,13 @@ function assessment(month: string, today = todayIso()) {
 export function legacyBudgetGroups(month: string, today = todayIso()) {
   return assessment(month, today).groups;
 }
-export function legacyFundingState(asOf = todayIso(), month = asOf.slice(0, 7)) {
+// `today` is a parameter like the engine's (audit F-22): whether a month is past follows the day
+// the figures are asked for, not the wall clock
+export function legacyFundingState(
+  asOf = todayIso(),
+  month = asOf.slice(0, 7),
+  today = todayIso(),
+) {
   const asOfMonth = asOf.slice(0, 7);
   const { groups, card } = assessment(asOfMonth, asOf);
   const enrolledCards = new Set(card.positions.map((p) => p.accountId));
@@ -288,7 +294,7 @@ export function legacyFundingState(asOf = todayIso(), month = asOf.slice(0, 7)) 
   // Before later months' assignments: a past month's own closing position, which the
   // assignment guard checks (budgetMoves.ts fundedWrite)
   const unassignedBeforeLater = resources - envelopes;
-  const past = asOfMonth < todayIso().slice(0, 7);
+  const past = asOfMonth < today.slice(0, 7);
   const laterDeduction = past
     ? Math.min(futureAssigned, Math.max(0, unassignedBeforeLater))
     : futureAssigned;
@@ -330,7 +336,7 @@ export function legacyFundingState(asOf = todayIso(), month = asOf.slice(0, 7)) 
 export function legacyBudgetSummary(month: string, today = todayIso()) {
   const end = monthBounds(month).to;
   const asOf = end < today ? end : today;
-  const state = legacyFundingState(asOf, month);
+  const state = legacyFundingState(asOf, month, today);
   const groups = legacyBudgetGroups(month, today);
   const income = groups
     .filter((g) => g.isIncome)
@@ -391,7 +397,7 @@ function legacyVerdict(action: () => void): string | null {
     let deferred = 0;
     for (const m of months) {
       const end = monthBounds(m).to;
-      const state = legacyFundingState(end < today ? end : today, m);
+      const state = legacyFundingState(end < today ? end : today, m, today);
       result.push({
         month: m,
         value:
@@ -734,6 +740,26 @@ describe('one-pass engine against the previous engine', () => {
       expect(fundingState(), `seed ${seed}`).toEqual(legacyFundingState());
     }
   }, 300_000);
+
+  // Audit F-22: "is this month past" was read from the wall clock, so asking for August's figures
+  // as of 20 August in November counted August as closed and took only what it had left of the
+  // later months' assignments
+  it('treats a month as past by the day it is asked for, not the wall clock', () => {
+    for (let seed = 1; seed <= 5; seed++) {
+      clearAll();
+      generate(seed);
+      for (const month of MONTHS) {
+        const current = budgetSummary(month, `${month}-20`);
+        expect(current.laterDeduction, `seed ${seed}, ${month} as the current month`).toBe(
+          current.futureAssigned,
+        );
+        const later = budgetSummary(month, '2099-01-15');
+        expect(later.laterDeduction, `seed ${seed}, ${month} long past`).toBe(
+          Math.min(later.futureAssigned, Math.max(0, later.unassignedBeforeLater)),
+        );
+      }
+    }
+  }, 120_000);
 
   it('serves the same figures from a rebuilt ledger as from a warm one', () => {
     generate(7);

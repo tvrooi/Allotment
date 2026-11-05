@@ -193,6 +193,8 @@ export const importPreview = (accountId: string, rows: ImportRow[]) =>
 export interface ImportResult {
   imported: number;
   skipped: number;
+  /** Imported rows that look like ones the account already had (SEC-01) */
+  possibleDuplicates?: number;
   /** The account's balance before and after (minor units) */
   balanceBefore: number;
   balance: number;

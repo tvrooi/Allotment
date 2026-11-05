@@ -37,6 +37,7 @@ import { Modal } from '../ui/Modal';
 import { FilesSection } from '../files/FilesSection';
 import { formatCurrency } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
+import { todayIso as today } from '../../utils/calendarDay';
 
 // Tax time → Assets (docs/DEPRECIATING-ASSETS-PLAN.md, phase 2): things that lose value over
 // several years, each with its decline in value worked out the ATO's two ways. Record keeping
@@ -47,7 +48,6 @@ const METHOD_NAMES: Record<AssetMethod, string> = {
   diminishing_value: 'Diminishing value',
 };
 const pct = (bps: number) => `${(bps / 100).toFixed(bps % 100 ? 2 : 0)}%`;
-const today = () => new Date().toISOString().slice(0, 10);
 
 /** What "Depreciate instead" or a transaction's details hand over */
 export type AssetPrefill = {

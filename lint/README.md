@@ -8,6 +8,10 @@ cd lint && npm ci && npm run lint
 
 - **Errors fail CI.** That covers JavaScript and typescript-eslint's recommended rules, and the
   React rules of hooks (a hook called conditionally or in a callback).
+- **Calendar days.** `toISOString()` cut down to a date (`.slice`, `.substring`, `.split`) is an
+  error in production code (audit F-22): it is the UTC day, a day behind in Sydney's morning.
+  Use `utils/date.ts` on the server and `utils/calendarDay.ts` in the client (`addDaysIso`,
+  `todayIso`, `localDayIso`, `utcDayIso`). Tests are exempt: they build UTC dates on purpose.
 - **Warnings are a burn-down.** These are accessibility (jsx-a11y, audit F-15), `any` outside
   tests, and hook dependency lists. `npm run lint` allows at most the current number
   (`--max-warnings` in `package.json`), so new code can't add any. When you fix some, lower the

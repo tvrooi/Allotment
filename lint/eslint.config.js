@@ -44,6 +44,25 @@ export default tseslint.config(
     },
   },
   {
+    // Audit F-22. `toISOString()` is the UTC instant, so cutting it down to a date gives the
+    // previous day for the morning hours east of UTC (Sydney), and `addDays(parseISO(day), n)`
+    // read back through it came out a day short. A calendar day goes through utils/date.ts
+    // (server) or utils/calendarDay.ts (client): addDaysIso, todayIso, localDayIso, utcDayIso.
+    files: ['server/src/**/*.ts', 'client/src/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.{ts,tsx}', 'server/src/test/**', 'client/src/test/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "CallExpression[callee.property.name=/^(slice|substring|substr|split)$/][callee.object.callee.property.name='toISOString']",
+          message:
+            'toISOString() cut down to a date is the UTC day, not the calendar day (audit F-22). Use todayIso, localDayIso, utcDayIso or addDaysIso from utils/date (server) or utils/calendarDay (client).',
+        },
+      ],
+    },
+  },
+  {
     files: ['**/*.test.{ts,tsx}', 'server/src/test/**', 'client/src/test/**'],
     rules: { '@typescript-eslint/no-explicit-any': 'off' },
   },

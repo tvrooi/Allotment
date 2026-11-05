@@ -61,7 +61,7 @@ import { guidesRouter } from './routes/guides.js';
 import { plaidRouter } from './routes/plaid.js';
 import { simplefinRouter } from './routes/simplefin.js';
 import { upRouter } from './routes/up.js';
-import { syncUp, startUpPolling } from './services/upSyncService.js';
+import { syncUp, startUpPolling, isUpSyncing } from './services/upSyncService.js';
 import { enableBankingCallback, enableBankingRouter } from './routes/enableBanking.js';
 import { serverRouter } from './routes/server.js';
 import { currencyRouter, setRateDownloader } from './routes/currency.js';
@@ -83,7 +83,8 @@ import {
   ensureOccurrencesForAll,
   autoCreateDueScheduled,
 } from './services/scheduleService.js';
-import { format, addDays } from 'date-fns';
+import { addDaysIso, todayIso } from './utils/date.js';
+import { OCCURRENCE_HORIZON_DAYS, startScheduleTimer } from './services/scheduleTimer.js';
 
 const app = express();
 
@@ -221,9 +222,10 @@ export async function startServer(port: number | string): Promise<void> {
           60 * 60 * 1000,
         ).unref();
       }
-      runStartupTasks();
+      const stopScheduleTimer = runStartupTasks();
       const stopUpPolling = startUpPolling();
       server.once('close', stopUpPolling);
+      server.once('close', stopScheduleTimer);
       resolve();
     });
     server.on('error', (err) => console.error('Server error:', err));
@@ -239,7 +241,7 @@ function runStartupTask(name: string, task: () => void) {
   }
 }
 
-function runStartupTasks() {
+function runStartupTasks(): () => void {
   runStartupTask('Default categories', () => {
     const categoriesSeeded = seedDefaultCategories();
     if (categoriesSeeded > 0) console.log(`Created ${categoriesSeeded} default categories`);
@@ -284,8 +286,7 @@ function runStartupTasks() {
   setInterval(() => void fetchRatesIfDue(), 6 * 60 * 60 * 1000).unref();
 
   runStartupTask('Schedule occurrences', () => {
-    const horizon = format(addDays(new Date(), 90), 'yyyy-MM-dd');
-    const ensured = ensureOccurrencesForAll(horizon);
+    const ensured = ensureOccurrencesForAll(addDaysIso(todayIso(), OCCURRENCE_HORIZON_DAYS));
     if (ensured > 0) console.log(`Ensured ${ensured} new occurrence(s)`);
   });
 
@@ -321,6 +322,10 @@ function runStartupTasks() {
       if (scheduled > 0) console.log(`Auto-created ${scheduled} scheduled transaction(s)`);
     }),
   );
+
+  // FINX-01: and then hourly, so a server that stays up keeps its schedules current. The timer
+  // waits for the startup syncs, and for any Up sync in progress, before it creates anything.
+  return startScheduleTimer({ ready: bankSyncDone, busy: isUpSyncing });
 }
 
 // Auto-start unless bundled for Electron production (where main.ts calls startServer directly)

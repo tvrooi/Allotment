@@ -3,7 +3,7 @@ import { db } from '../db/index.js';
 import { transactions, accounts, categories, categoryGroups, payees } from '../db/schema.js';
 import { eq, and, gte, lte, sql, inArray, lt, isNull } from 'drizzle-orm';
 import type { Request, Response } from 'express';
-import { monthBounds } from '../utils/date.js';
+import { daysBetweenIso, eachDayIso, monthBounds } from '../utils/date.js';
 import { detectSalary, uncategorisedSummary } from '../services/importTidy.js';
 import { isLiabilityType } from '../utils/accountTypes.js';
 import { isMonth, isRealDate } from '../utils/validation.js';
@@ -67,18 +67,13 @@ function monthRange(from: string, to: string): string[] {
   return months;
 }
 
+/**
+ * Every day from `from` to `to` inclusive. Calendar-day arithmetic, not a walk over local
+ * midnights: in a zone whose clocks change at midnight, stepping a local `Date` by a day can
+ * skip a day or repeat one, which drew a gap or a duplicate in the daily net worth.
+ */
 export function dayRange(from: string, to: string): string[] {
-  const days: string[] = [];
-  const d = new Date(from + 'T00:00:00');
-  const end = new Date(to + 'T00:00:00');
-  while (d <= end) {
-    // Local date parts: toISOString() is UTC, which is the previous day east of UTC
-    days.push(
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
-    );
-    d.setDate(d.getDate() + 1);
-  }
-  return days;
+  return eachDayIso(from, to);
 }
 
 reportsRouter.get('/net-worth', (req, res) => {
@@ -93,7 +88,7 @@ reportsRouter.get('/net-worth', (req, res) => {
       !isRealDate(q.from) ||
       !isRealDate(q.to) ||
       q.from > q.to ||
-      Date.parse(q.to) - Date.parse(q.from) > MAX_DAYS * 86_400_000
+      daysBetweenIso(q.from, q.to) > MAX_DAYS
     ) {
       return res.status(400).json({ error: 'Expected `from` and `to` as YYYY-MM-DD' });
     }
