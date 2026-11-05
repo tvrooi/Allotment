@@ -164,7 +164,10 @@ export const eventSchema = z.object({
     .default([]),
 });
 
-/** FNV-1a of the event id: where equal remainders start taking the spare cent (SPL-06) */
+/**
+ * FNV-1a of a key: where equal remainders start taking the spare cent (SPL-06). The key is the
+ * linked bank payment when there is one, so sharing it again after Undo gives the same split.
+ */
 function spareCentOffset(id: string) {
   let h = 0x811c9dc5;
   for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 0x01000193) >>> 0;
@@ -221,7 +224,9 @@ export function recordEvent(groupId: string, raw: unknown): string {
       throw new Error('Percentage shares must total 10000 basis points');
     // The spare cent starts at a place taken from the new id, so it doesn't always land on the first person
     const amounts =
-      input.mode === 'exact' ? values : allocateShares(amount, values, spareCentOffset(id));
+      input.mode === 'exact'
+        ? values
+        : allocateShares(amount, values, spareCentOffset(input.transactionId ?? id));
     portions = input.shares.map((s, i) => ({ personId: s.personId, amount: amounts[i] }));
     if (input.payerId === null) {
       if (!state.poolAccountIds.length)

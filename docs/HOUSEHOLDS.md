@@ -163,8 +163,9 @@ the MCP endpoint belong to one budget and never reach a combined register.
 Record a shared expense with a date, total, payer and participants. Choose equal,
 percentage (integer basis points, 10000 = 100%), weight or exact dollar shares.
 Allocations are saved in cents. Equal/weighted rounding uses the largest remainder. When
-shares tie, the spare cent starts at a place taken from the new entry's id, so it doesn't
-always land on the first person. For $100 split three ways one person is saved with $33.34
+shares tie, the spare cent starts at a place taken from the linked bank payment (or the new
+entry's id when there is none), so it doesn't always land on the first person, and sharing the
+same payment again after Undo gives the same split. For $100 split three ways one person is saved with $33.34
 and the others $33.33; which one varies from entry to entry. Saved shares never move. Exact
 mode can move the residual cent. A refund reverses the original shares exactly.
 

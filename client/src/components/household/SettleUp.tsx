@@ -79,8 +79,8 @@ export function SettleUp({ groupId, currency, people, settlements, poolOwed }: P
     <div className="mt-4">
       <h3 className="text-xs font-semibold text-text-secondary">Settle up</h3>
       <p className="text-xs text-text-tertiary">
-        The fewest repayments that clear what people owe each other for things they paid themselves.
-        Nothing is recorded until you click.
+        Repayments that clear what people owe each other for things they paid themselves. Nothing is
+        recorded until you click.
       </p>
       {error && (
         <p role="alert" className="text-xs text-negative mt-1">

@@ -412,4 +412,38 @@ describe('splitting an amount that does not divide evenly', () => {
     // 30 expenses with the spare cent always on one person has a chance of about 1 in 10^14
     expect(withSpare.size).toBeGreaterThan(1);
   });
+
+  it('gives the same split when the same payment is shared again after it was removed', async () => {
+    db.insert(accounts).values({ id: 'redo', name: 'Redo account', type: 'checking' }).run();
+    const created = (
+      await call('', {
+        name: 'Redo',
+        currency: 'AUD',
+        accountId: 'redo',
+        people: ['Me', 'Ana'],
+        selfIndex: 0,
+      })
+    ).data;
+    const redo = created.group.id;
+    // 6001 cents split two ways: the spare cent goes to one of them, whichever ids come up
+    for (let i = 0; i < 12; i++) {
+      tx(`odd-${i}`, 'mine', -6001, `Odd ${i}`);
+      const sharesOf = async () => {
+        const state = (await call(`/${redo}/share`, { transactionIds: [`odd-${i}`] })).data;
+        return state;
+      };
+      await sharesOf();
+      const first = (await call(`/${redo}`)).data.events.find(
+        (e: { transactionId: string }) => e.transactionId === `odd-${i}`,
+      );
+      const before = first.shares.map((s: { amount: number }) => s.amount);
+      await call(`/${redo}/events/${first.id}`, undefined, 'DELETE');
+      await sharesOf();
+      const again = (await call(`/${redo}`)).data.events.find(
+        (e: { transactionId: string }) => e.transactionId === `odd-${i}`,
+      );
+      expect(again.id).not.toBe(first.id);
+      expect(again.shares.map((s: { amount: number }) => s.amount)).toEqual(before);
+    }
+  });
 });
