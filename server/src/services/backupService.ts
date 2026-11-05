@@ -11,6 +11,7 @@ import {
   householdShares,
   householdBills,
   householdRecurringBills,
+  householdActivity,
   paymentPlans,
   paymentPlanInstalments,
   paymentPlanDismissals,
@@ -105,7 +106,7 @@ import { isCurrencyCode } from '../utils/currencies.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 26;
+export const BACKUP_VERSION = 27;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -165,6 +166,7 @@ const TABLES = {
   householdShares,
   householdBills,
   householdRecurringBills,
+  householdActivity,
   paymentPlans,
   paymentPlanInstalments,
   paymentPlanDismissals,

@@ -17,6 +17,8 @@ import { CombinedHousehold } from '../components/household/CombinedHousehold';
 import { RecurringBills } from '../components/household/RecurringBills';
 import { SettleUp } from '../components/household/SettleUp';
 import type { SettleUpTransfer } from '../api/households';
+import { EditEntry } from '../components/household/EditEntry';
+import { ActivityLog } from '../components/household/ActivityLog';
 import { RepaymentCategoryOffers } from '../components/household/RepaymentCategoryOffers';
 import type { HouseholdSplit, SharedRecurringBill } from '../api/households';
 
@@ -37,6 +39,8 @@ type Entry = {
   description: string;
   amount: number;
   payerId: string | null;
+  recipientId: string | null;
+  reversesId: string | null;
   transactionId: string | null;
   billId: string | null;
   reviewReason: string | null;
@@ -149,6 +153,7 @@ export default function HouseholdPage() {
       setAddingPerson(false);
       setEditingBill('');
       setDeletingBill('');
+      setEditingEntry(null);
       setId(data.group.id);
       await cache.invalidateQueries({ queryKey: ['households'] });
       // A combined household shows this ledger too
@@ -166,6 +171,7 @@ export default function HouseholdPage() {
   const [editingBill, setEditingBill] = useState('');
   const [deletingBill, setDeletingBill] = useState('');
   const [showHistory, setShowHistory] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
   const money = (n: number) => formatMoney(n, state?.group.currency ?? 'AUD');
   const hasPool = (state?.group.poolAccountIds.length ?? 0) > 0;
   function submit(
@@ -1148,7 +1154,19 @@ export default function HouseholdPage() {
                               )}
                             </td>
                             <td className="py-2 pr-3 text-right tabular-nums">{money(e.amount)}</td>
-                            <td className="py-2 text-right">
+                            <td className="py-2 text-right whitespace-nowrap">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={mutation.isPending}
+                                aria-label={`Edit ${e.description}`}
+                                onClick={() => {
+                                  setError('');
+                                  setEditingEntry(e);
+                                }}
+                              >
+                                Edit
+                              </Button>
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -1171,6 +1189,7 @@ export default function HouseholdPage() {
                   </div>
                 )}
               </section>
+              <ActivityLog key={`activity-${state.group.id}`} groupId={state.group.id} />
               <h2 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary pt-2">
                 Household settings
               </h2>
@@ -1184,6 +1203,26 @@ export default function HouseholdPage() {
           )}
         </div>
       </div>
+      {editingEntry && state && (
+        <EditEntry
+          key={editingEntry.id}
+          entry={editingEntry}
+          people={state.people}
+          currency={state.group.currency}
+          hasPool={!!state.group.accountId}
+          descriptionOnly={state.events.some((x) => x.reversesId === editingEntry.id)}
+          saving={mutation.isPending}
+          error={error}
+          onClose={() => setEditingEntry(null)}
+          onSave={(body) =>
+            mutation.mutate({
+              path: `/households/${selected}/events/${editingEntry.id}`,
+              method: 'PUT',
+              body,
+            })
+          }
+        />
+      )}
       <Modal isOpen={creating} onClose={() => setCreating(false)} title="New household">
         {createForm}
       </Modal>

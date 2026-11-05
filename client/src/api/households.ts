@@ -260,3 +260,16 @@ export const editHouseholdBill = (groupId: string, billId: string, changes: Bill
   });
 export const deleteHouseholdBill = (groupId: string, billId: string) =>
   apiFetch<unknown>(`/households/${groupId}/bills/${billId}`, { method: 'DELETE' });
+
+/** A line of a household's activity log (SPL-04), newest first */
+export interface HouseholdActivityLine {
+  id: string;
+  time: string;
+  kind: 'created' | 'edited' | 'removed' | 'settled' | 'auto_shared';
+  eventId: string | null;
+  summary: string;
+  source: 'owner' | 'rule' | 'recurring_bill';
+}
+
+export const getHouseholdActivity = (groupId: string) =>
+  apiFetch<HouseholdActivityLine[]>(`/households/${groupId}/activity`);

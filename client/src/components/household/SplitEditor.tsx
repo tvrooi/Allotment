@@ -20,6 +20,8 @@ interface Props {
   /** The amount the bill is expected to be, to compare fixed amounts with */
   expected?: number;
   currency?: string;
+  /** The save button's words; the default saves a split */
+  saveLabel?: string;
   onSave: (split: HouseholdSplit | null) => void;
   onCancel?: () => void;
 }
@@ -39,6 +41,7 @@ export function SplitEditor({
   allowFixed,
   expected,
   currency = 'AUD',
+  saveLabel = 'Save split',
   onSave,
   onCancel,
 }: Props) {
@@ -115,7 +118,7 @@ export function SplitEditor({
       )}
       <div className="flex gap-2">
         <Button size="sm" variant="secondary" onClick={save} disabled={saving}>
-          Save split
+          {saveLabel}
         </Button>
         {onCancel && (
           <Button size="sm" variant="ghost" onClick={onCancel}>

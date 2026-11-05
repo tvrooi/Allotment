@@ -33,8 +33,8 @@ who changed what, and explaining where the shared money went. Those are the reco
 | ------ | -------- | --------------------------------------------------------------------------------------------- | ------ |
 | SPL-01 | Built    | Balances say who owes, but not **who should pay whom** (no settle-up plan)                    | S      |
 | SPL-02 | Built    | A suggested settlement can't be recorded in one click, and outgoing repayments aren't matched | S      |
-| SPL-03 | P2       | Expenses can't be **edited**; a typo means remove and re-enter                                | M      |
-| SPL-04 | P2       | No household **activity log** (who added, changed or removed what, and when)                  | M      |
+| SPL-03 | Built    | Expenses can't be **edited**; a typo means remove and re-enter                                | M      |
+| SPL-04 | Built    | No household **activity log** (who added, changed or removed what, and when)                  | M      |
 | SPL-05 | P2       | Household reporting is two totals: no breakdown by month, category or person                  | M      |
 | SPL-06 | Built    | Equal-split rounding always gives the spare cent to the same person                           | XS     |
 | SPL-07 | P3       | Statement is JSON only; no CSV for housemates who don't use Allotment                         | XS     |
@@ -105,7 +105,7 @@ auditable), then **SPL-05** and **SPL-07**. The P3 items wait for demand.
 - **Tests:** service tests for the outgoing suggestion bounds; e2e on the Household page recording a
   suggestion and seeing the list shrink.
 
-### SPL-03 (P2): edit an expense in place
+### SPL-03 (built in 0.2.0-up.107): edit an expense in place
 
 - **Spliit:** `updateExpense` (`src/lib/api.ts`) validates participants, rewrites the expense and its
   `paidFor` rows, and logs `UPDATE_EXPENSE`.
@@ -124,7 +124,7 @@ auditable), then **SPL-05** and **SPL-07**. The P3 items wait for demand.
 - **Tests:** editing a split keeps Σ shares = amount; an edit that would make a later settlement exceed
   its balance is refused; an edited linked expense keeps its transaction link.
 
-### SPL-04 (P2): household activity log
+### SPL-04 (built in 0.2.0-up.107): household activity log
 
 - **Spliit:** an `Activity` table (`groupId`, `time`, `activityType`, `participantId`, `expenseId`,
   `data`) written by every create/update/delete, shown on the group's **Activity** tab.
@@ -256,6 +256,18 @@ auditable), then **SPL-05** and **SPL-07**. The P3 items wait for demand.
   use offset 0 and can differ by a cent from what auto-sharing saves.
 - **Not done:** the combined-household view (`CombinedHousehold.tsx`) has no settle-up list; it
   only has net balances, and it would be read-only.
+
+### Built in 0.2.0-up.107 (SPL-03, SPL-04)
+
+- `updateEvent` and `removeEvent` (`householdService.ts`), `PUT` and `DELETE /households/:id/events/:eventId`,
+  `GET /households/:id/activity`; migration 0074 `household_activity`; backup version 27.
+  Behaviour and rules: [HOUSEHOLDS.md](../HOUSEHOLDS.md), "Editing an entry, and the activity log".
+- Differences from the recommendation: the date of an unlinked entry can change as well as its
+  amount; a bank-linked entry's date and amount stay locked; a settlement edit is re-checked, and
+  so is every later repayment. The log keeps 500 lines per household. Entries removed by Stop
+  sharing and Undo are logged too, because they use the same removal.
+- **Not done:** editing a settlement's "paid ahead" flag (an edit to an advance repayment that
+  exceeds what is owed is refused), and activity for bills, people and splits settings.
 
 ## Not recommended
 
