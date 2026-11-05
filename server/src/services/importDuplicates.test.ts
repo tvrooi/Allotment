@@ -94,6 +94,19 @@ describe('matchExistingRows', () => {
     expect(m[0]).not.toBeNull(); // first in file order when equally near
   });
 
+  // A statement full of equal amounts must not build every file-row x existing-row pair
+  it('pairs thousands of identical rows one to one, in file order', () => {
+    const rows = Array.from({ length: 4_000 }, (_, i) =>
+      file('2026-11-02', -450, 'Coffee', `f${i}`),
+    );
+    const existing = Array.from({ length: 1_000 }, () => have('2026-11-02', -450, 'Coffee'));
+    const m = matchExistingRows(rows, existing);
+    expect(m.filter(Boolean)).toHaveLength(1_000);
+    expect(m.slice(0, 1_000).every(Boolean)).toBe(true);
+    expect(m.slice(1_000).every((x) => x === null)).toBe(true);
+    expect(new Set(m.slice(0, 1_000).map((x) => x!.transactionId)).size).toBe(1_000);
+  });
+
   it('pairs the nearest day first', () => {
     const near = have('2026-11-03', -450, 'Coffee');
     const far = have('2026-11-01', -450, 'Coffee');

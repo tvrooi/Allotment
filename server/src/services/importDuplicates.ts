@@ -121,36 +121,38 @@ export function matchExistingRows(
     else byAmountDay.set(key, [e]);
   }
 
-  const existingTokens = new Map<string, string[]>();
-  const pairs: Array<{ row: number; existing: ExistingRow; distance: number; score: number }> = [];
-  fileRows.forEach((row, i) => {
-    if (exact.has(row.importedId)) return;
-    const wanted = tokens(row.payeeName);
-    for (let offset = -DUPLICATE_WINDOW_DAYS; offset <= DUPLICATE_WINDOW_DAYS; offset++) {
-      const candidates = byAmountDay.get(`${row.amount}|${addDaysIso(row.date, offset)}`);
-      if (!candidates) continue;
-      for (const e of candidates) {
-        let theirs = existingTokens.get(e.id);
-        if (!theirs) existingTokens.set(e.id, (theirs = tokens(e.payeeName, e.importedPayee)));
-        const score = payeeScore(wanted, theirs);
-        if (score !== null) pairs.push({ row: i, existing: e, distance: Math.abs(offset), score });
-      }
-    }
-  });
-
-  // Nearest day first, then the closest payee, then file order: a stable, explainable pairing
-  pairs.sort((a, b) => a.distance - b.distance || a.score - b.score || a.row - b.row);
+  // Nearest day first, then the closest payee, then file order: a stable, explainable pairing.
+  // Done as passes over (days apart, payee score) rather than by listing every possible pair and
+  // sorting them, which grows with rows x rows when a statement is full of equal amounts. A
+  // claimed row leaves its bucket, so each file row only ever scans rows still free.
+  const wanted = fileRows.map((r) => tokens(r.payeeName));
+  const theirs = new Map<string, string[]>();
   const result: Array<PossibleDuplicate | null> = fileRows.map(() => null);
-  const used = new Set<string>();
-  for (const p of pairs) {
-    if (result[p.row] || used.has(p.existing.id)) continue;
-    used.add(p.existing.id);
-    result[p.row] = {
-      transactionId: p.existing.id,
-      date: p.existing.date,
-      payeeName: p.existing.payeeName ?? p.existing.importedPayee,
-      source: sourceOf(p.existing.importedId),
-    };
+  for (let distance = 0; distance <= DUPLICATE_WINDOW_DAYS; distance++) {
+    const offsets = distance === 0 ? [0] : [-distance, distance];
+    for (const score of [0, 1, 2]) {
+      fileRows.forEach((row, i) => {
+        if (result[i] || exact.has(row.importedId)) return;
+        for (const offset of offsets) {
+          const bucket = byAmountDay.get(`${row.amount}|${addDaysIso(row.date, offset)}`);
+          if (!bucket) continue;
+          for (let k = 0; k < bucket.length; k++) {
+            const e = bucket[k];
+            let tokensOf = theirs.get(e.id);
+            if (!tokensOf) theirs.set(e.id, (tokensOf = tokens(e.payeeName, e.importedPayee)));
+            if (payeeScore(wanted[i], tokensOf) !== score) continue;
+            bucket.splice(k, 1);
+            result[i] = {
+              transactionId: e.id,
+              date: e.date,
+              payeeName: e.payeeName ?? e.importedPayee,
+              source: sourceOf(e.importedId),
+            };
+            return;
+          }
+        }
+      });
+    }
   }
   return result;
 }
