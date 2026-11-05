@@ -250,7 +250,7 @@ const TOOLS: Tool[] = [
   {
     name: 'household_statement',
     description:
-      "A household's gross spending and your personal share for a date range, with balances and events.",
+      "A household's gross spending and your personal share for a date range, by month, person and category, with balances and events.",
     properties: {
       household_id: { type: 'string', description: 'From list_households' },
       from: { ...day, description: 'First day, inclusive' },

@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.108
+
+- **Household spending by month, person and category.** On the Household page, **Spending by month, person and category** (under the spending list) uses the same date range and shows spending by month (with a chart), what each person paid against their share of it, and spending by category taken from the category of each entry's linked bank payment, with entries that have none under Uncategorised. Repayments and money put into the household account are not counted as spending. The household statement, and the assistant's `household_statement` tool, return the same three breakdowns.
+
 ## 0.2.0-up.107
 
 - **Edit a household entry where it is.** On the Household page, **Edit** next to an entry in the history changes its description, and, when it isn't linked to a bank payment, its date, amount, who paid and how it's split. Refunds and the bank link stay attached. An entry linked to a bank payment keeps that payment's date and amount, and an expense with a refund changes its description only. A change that would leave a later repayment larger than what was owed is refused with the reason, and nothing changes.
