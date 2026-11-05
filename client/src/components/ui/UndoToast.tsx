@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Check, Info, Undo2, Redo2, X } from 'lucide-react';
+import { AlertTriangle, Check, Info, Undo2, Redo2, X } from 'lucide-react';
 import { useUndoStore } from '../../store/undoStore';
 
 export function UndoToast() {
@@ -12,14 +12,16 @@ export function UndoToast() {
   useEffect(() => {
     if (!message) return;
     // Something just done stays a little longer, so there's time to undo it
-    const t = setTimeout(clearToast, action === 'done' ? 6000 : 4000);
+    const t = setTimeout(clearToast, action === 'done' ? 6000 : action === 'error' ? 8000 : 4000);
     return () => clearTimeout(t);
   }, [message, action, clearToast]);
 
   if (!message) return null;
 
   const icon =
-    action === 'undo' ? (
+    action === 'error' ? (
+      <AlertTriangle size={14} />
+    ) : action === 'undo' ? (
       <Undo2 size={14} />
     ) : action === 'redo' ? (
       <Redo2 size={14} />
@@ -31,11 +33,13 @@ export function UndoToast() {
   const text =
     action === 'undo' ? `Undid: ${message}` : action === 'redo' ? `Redid: ${message}` : message;
   // After an undo, offer Redo; after a redo or something just done, offer Undo
-  const button = action === 'undo' ? 'Redo' : action === 'note' ? null : 'Undo';
+  const button =
+    action === 'undo' ? 'Redo' : action === 'note' || action === 'error' ? null : 'Undo';
 
   return (
     <div
-      aria-live="polite"
+      role={action === 'error' ? 'alert' : undefined}
+      aria-live={action === 'error' ? 'assertive' : 'polite'}
       data-testid="undo-toast"
       className="pointer-events-auto flex items-center gap-3 bg-text text-surface rounded-lg shadow-lg px-4 py-2.5 text-sm"
     >

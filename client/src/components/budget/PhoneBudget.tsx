@@ -7,7 +7,7 @@ import { BudgetAmountSheet } from './BudgetAmountSheet';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { useCanSave } from '../../hooks/useConnection';
 import { formatCurrency } from '../../utils/currency';
-import { categoryFigures, splitCategories } from '../../utils/budgetFigures';
+import { availability, categoryFigures, splitCategories } from '../../utils/budgetFigures';
 import { TransferredNote } from './TransferredNote';
 import { ExpectedNote } from './ExpectedNote';
 import type { BudgetCategory } from '../../types';
@@ -23,7 +23,8 @@ export interface PhoneBudgetSection {
 interface Props {
   sections: PhoneBudgetSection[];
   month: string;
-  onSave: (categoryId: string, cents: number) => void;
+  /** Resolves to why the save was refused, or null once it has been saved */
+  onSave: (categoryId: string, cents: number) => Promise<string | null>;
   onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
   /** Nothing is planned this month yet: list every category, so there's something to plan */
   showAll?: boolean;
@@ -160,9 +161,16 @@ function CategoryCard({
 }) {
   const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
   const canSave = useCanSave();
-  const { actual, remaining } = categoryFigures(cat, isIncome);
+  const { actual } = categoryFigures(cat, isIncome);
+  const { kind, remaining, caption } = availability(cat, isIncome);
   const pill =
-    remaining > 0 ? 'bg-positive/20' : remaining < 0 ? 'bg-negative/20' : 'bg-surface-alt';
+    kind === 'overspent'
+      ? 'bg-negative/20'
+      : kind === 'short' || kind === 'carried'
+        ? 'bg-caution/20'
+        : remaining > 0
+          ? 'bg-positive/20'
+          : 'bg-surface-alt';
 
   return (
     // relative: keeps the sr-only text inside the card, or it's placed against the page and
@@ -180,14 +188,20 @@ function CategoryCard({
           className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-medium tabular-nums text-text ${pill}`}
         >
           {formatCurrency(remaining)}
-          <span className="sr-only"> {isIncome ? 'remaining' : 'available'}</span>
+          <span className="sr-only">
+            {' '}
+            {isIncome ? 'remaining' : 'available'}
+            {caption ? `, ${caption.toLowerCase()}` : ''}
+          </span>
         </span>
       </div>
+      {caption && <p className="mt-1 text-right text-xs text-text-tertiary">{caption}</p>}
       <SpentBar
         spent={isIncome ? actual : cat.spent}
         budgeted={cat.budgeted + (cat.transferred ?? 0)}
         isIncome={isIncome}
         expected={cat.expected}
+        covered={kind !== 'overspent'}
         className="h-1.5 w-full mt-2"
       />
       <TransferredNote cat={cat} className="mt-1" />

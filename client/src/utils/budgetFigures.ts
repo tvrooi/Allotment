@@ -14,6 +14,31 @@ export function categoryFigures(cat: BudgetCategory, isIncome: boolean) {
   return { actual, remaining: isIncome ? Math.max(raw, 0) : cat.balance };
 }
 
+/**
+ * What an envelope's Available figure means, for the desktop table, the phone cards and the
+ * progress bar. Wording and colour only: the arithmetic is `categoryFigures`. The progress bar
+ * compares spending with this month's assignment, so spending above it can still be fully
+ * covered by money carried in: that is `carried`, not a deficit. Only a negative balance is
+ * `overspent`.
+ */
+export type AvailabilityKind = 'overspent' | 'short' | 'carried' | 'available' | 'zero';
+
+export function availability(
+  cat: BudgetCategory,
+  isIncome: boolean,
+): { kind: AvailabilityKind; remaining: number; caption: string | null } {
+  const { remaining } = categoryFigures(cat, isIncome);
+  if (isIncome) return { kind: remaining > 0 ? 'available' : 'zero', remaining, caption: null };
+  if (remaining < 0) return { kind: 'overspent', remaining, caption: 'Overspent' };
+  if (remaining === 0) return { kind: 'zero', remaining, caption: null };
+  if (cat.target && cat.target.underfunded > 0)
+    return { kind: 'short', remaining, caption: 'Short of target' };
+  const funded = cat.budgeted + (cat.transferred ?? 0);
+  if (cat.carryOver > 0 && cat.spent > funded)
+    return { kind: 'carried', remaining, caption: 'Covered by carried funds' };
+  return { kind: 'available', remaining, caption: null };
+}
+
 /** A category with nothing planned and no activity is "inactive" and tucked away. */
 export function isActiveCategory(cat: BudgetCategory, isIncome: boolean) {
   return (

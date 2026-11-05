@@ -43,7 +43,7 @@ The task is to improve access, explanation and consistency around them, with exp
 
 ## P1 · BUD-02: show save progress and failed undo clearly
 
-**Status: open.**
+**Status: done in 0.2.0-up.109** (`Budget.tsx` `handleSave`, `undoStore.ts`).
 
 - **Evidence / status:** Source-confirmed feedback gap; latency and animation quality have not been measured against YNAB.
   [Manual save](../../client/src/pages/Budget.tsx#L487) closes immediately, refetches on success and renders errors at line 581.
@@ -58,7 +58,7 @@ The task is to improve access, explanation and consistency around them, with exp
 
 ## P1 · BUD-03: make availability states explain their meaning
 
-**Status: open.**
+**Status: done in 0.2.0-up.109** (`availability()` in `utils/budgetFigures.ts`; cash versus card shortfall wording is not part of it).
 
 - **Evidence / status:** Source-confirmed simplified state model; `LIVE-03` verified target progress/shortfall and `LIVE-05`/`LIVE-06` verified overspending and overassignment states. Remaining color combinations need the companion test matrix.
   [Available pills](../../client/src/pages/Budget.tsx#L112) use only positive, negative and zero balance.

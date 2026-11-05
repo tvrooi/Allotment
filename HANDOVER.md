@@ -5,10 +5,20 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 5 November 2026 (up.108 in review).
+Last updated: 5 November 2026 (up.109 in review).
 
 ## State
 
+- **Save and undo feedback, availability states (up.109, BUD-02, BUD-03; client only, no migration):**
+  `handleSave` in `pages/Budget.tsx` resolves to the refusal reason or `null`; the row's editor
+  (and the phone `BudgetAmountSheet`) closes only on `null`, shows **Saving…**, ignores a second
+  Enter while a save is in flight, and keeps the typed amount with **Not saved. <reason>** after a
+  refusal. `undoStore.ts` reports a failed undo or redo as an `error` toast; a 409 (the budget moved
+  on) drops the stale command, anything else keeps it for another try. `availability()` in
+  `utils/budgetFigures.ts` names Overspent, Short of target and Covered by carried funds for the
+  desktop table, phone cards and `SpentBar` (`covered`, amber instead of red). Tests:
+  `undoStore.test.ts`, `budgetFigures.test.ts`, e2e `budget.spec.ts`. Next in the Budgeting group: B2
+  (ACT-04 per-category overspending carry).
 - **Household reports (up.108, SPL-05; no migration):** `householdBreakdown`
   (`services/householdReport.ts`) returns `byMonth`, `byPerson` (paid, share, paid less share; the
   household account is its own line) and `byCategory` (from the linked bank payment's category,
@@ -280,8 +290,8 @@ site in `website/` was removed (audit decision I-9).
 4. **Gaps found in the 26 October audit** (not built or not documented):
    - User guide pages missing for shipped features: payday plans, resilience/budget
      review, card payments, the long-term forecast (super, HECS-HELP) and Move money.
-   - YNAB budget backlog in `docs/research/ynab-flybudget-budget-gaps.md` (PR #41): BUD-02 save
-     and undo feedback, BUD-03 availability states, BUD-05 keyboard/expressions, BUD-06 row moves
+   - YNAB budget backlog in `docs/research/ynab-flybudget-budget-gaps.md` (PR #41): BUD-02 and
+     BUD-03 are done (up.109); BUD-05 keyboard/expressions, BUD-06 row moves
      and returning money to unassigned, BUD-07 selected-category funding, BUD-09 card rows in the
      table, BUD-10 inspector and notes. BUD-01 fixed in up.46.
    - Household splitting backlog from the Spliit comparison in

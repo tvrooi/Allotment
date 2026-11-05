@@ -240,6 +240,29 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         ),
       },
       {
+        heading: 'What Available is telling you',
+        body: (
+          <p>
+            Red <b>Overspent</b> means the envelope is below $0. <b>Covered by carried funds</b>{' '}
+            means you spent more than you assigned this month, but money carried in from earlier
+            pays for it, so nothing is wrong. <b>Short of target</b> means there’s money in the
+            envelope but not yet what its target needs. The words are there so you don’t have to
+            rely on the colour.
+          </p>
+        ),
+      },
+      {
+        heading: 'If a change is refused',
+        body: (
+          <p>
+            An amount is saved only when the server says so. If it’s refused, for example because it
+            is more than you have to assign, the amount stays in the box with the reason beside it,
+            so you can fix it. Undo works the same way: if something changed since, it says so and
+            leaves your figures alone.
+          </p>
+        ),
+      },
+      {
         heading: 'Paid fortnightly',
         body: (
           <p>
