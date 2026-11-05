@@ -397,4 +397,7 @@ site in `website/` was removed (audit decision I-9).
 11. **When a household person joins Allotment** (owner's note, 3 November): once the other person in the
     owner's two-person household has their own Allotment, entries they paid will need linking to their
     bank payments on their side too. Today a household entry links only the owner's payments; design how a member's own budget links
-    theirs before they join.
+    theirs before they join. _Design written 5 November 2026:_ `docs/HOUSEHOLD-PARTNER-LINKS.md`
+    (recommends a claim row in the partner's budget, nothing copied between budgets). Owner chose
+    that approach (anyone may enter "Alex paid"; settlements too; claims kept hidden on Stop
+    combining); decisions 4, 5, 7, 8 and 9 on that page are still open; no code built.
