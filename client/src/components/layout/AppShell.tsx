@@ -50,7 +50,9 @@ export function AppShell() {
   if (isPhone) return <PhoneShell />;
 
   return (
-    <div className="flex h-screen bg-page overflow-hidden">
+    // A landscape iPhone is wide enough for this layout, so it keeps clear of the notch and
+    // home bar too (viewport-fit=cover in index.html); elsewhere the insets are 0
+    <div className="flex h-screen bg-page overflow-hidden pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)]">
       <SkipToContent />
       <Sidebar />
       <div className="flex-1 min-w-0 flex flex-col">
