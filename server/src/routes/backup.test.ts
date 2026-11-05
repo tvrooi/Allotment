@@ -55,7 +55,7 @@ const backup = async () => {
 describe('backup and restore', () => {
   it('backs up every table', async () => {
     const data = await backup();
-    expect(data).toMatchObject({ format: 'flybudget-backup', version: 25 });
+    expect(data).toMatchObject({ format: 'flybudget-backup', version: 26 });
     for (const table of BACKUP_TABLES) expect(Array.isArray(data[table])).toBe(true);
   });
 
@@ -138,6 +138,46 @@ describe('backup and restore', () => {
     const res = await send('POST', '/export/restore', file);
     expect(res.status).toBe(400);
     expect(await backup()).toEqual(before);
+  });
+
+  it('keeps which file import added each row (SEC-01), and restores a backup from before that', async () => {
+    const { body: account } = await send('POST', '/accounts', {
+      name: 'Imported',
+      type: 'checking',
+      startingBalance: 0,
+    });
+    const imported = await send('POST', '/transactions/import/confirm', {
+      accountId: account.id,
+      fileName: 'statement.csv',
+      rows: [{ date: '2026-10-01', amount: -500, payeeName: 'Cafe', importedId: 'backup-1' }],
+    });
+    const before = await backup();
+    expect(before.importBatches).toEqual([
+      expect.objectContaining({ id: imported.body.importBatchId, fileName: 'statement.csv' }),
+    ]);
+    expect(before.transactions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          importedId: 'backup-1',
+          importBatchId: imported.body.importBatchId,
+        }),
+      ]),
+    );
+    expect((await send('POST', '/export/restore', before)).status).toBe(200);
+    expect(await backup()).toEqual(before);
+
+    // A backup made before import history has neither the table nor the column
+    const old = structuredClone(before);
+    delete old.importBatches;
+    for (const t of old.transactions) delete t.importBatchId;
+    expect((await send('POST', '/export/restore', old)).status).toBe(200);
+    const after = await backup();
+    expect(after.importBatches).toEqual([]);
+    expect(after.transactions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ importedId: 'backup-1', importBatchId: null }),
+      ]),
+    );
   });
 
   it('accepts backups made before the format was versioned', async () => {

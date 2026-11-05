@@ -1,4 +1,6 @@
-# Read-only access and MCP
+# Access tokens and MCP
+
+(The file keeps its name so links stay valid. A token is read only unless you choose a wider scope.)
 
 A self-hosted Allotment server (including the Home Assistant app) can give another tool,
 such as an AI assistant, **read-only** access to the budget with a token. The tool can read
@@ -17,6 +19,8 @@ deductions.
 - **Never:** any other write (`POST`, `PUT`, `PATCH`, `DELETE`); sign-in or session routes; server
   settings; full backups or restores; bank connections (Up, Plaid, SimpleFIN, Enable
   Banking); dashboard layouts; or managing tokens. These return 403.
+- A token cannot read **import history** (`GET /api/transactions/import/batches`): its file names
+  can carry a bank or account number. Like the bank import settings, it is the owner's.
 - A token is not a login. It doesn't open the app in a browser, and a browser never sends it
   by itself.
 - **Read and categorise** tokens can also set the category of a past transaction (dated today or
@@ -65,7 +69,7 @@ deductions.
     other way, such as through a shared saver that isn't a household account. Never for anyone
     else. Owner-approved on 2 November 2026.
 - **Change sets:** every category change made over MCP is saved as a change set, listed in
-  **Settings → Server → Read-only access** with **Undo** (`GET /api/change-sets`,
+  **Settings → Server → Access tokens** with **Undo** (`GET /api/change-sets`,
   `POST /api/change-sets/:id/undo`). Undo puts back the previous category (even none) only
   where the transaction still has the category the change set gave it and isn't reconciled. A
   token sees and undoes only its own change sets; you can undo any. You can also **Redo** an
@@ -74,14 +78,14 @@ deductions.
   reconciled.
 - Tokens are 256-bit random values starting with `fbro_`. The server stores only their
   SHA-256, as it does for login sessions. A token is shown once when it is created.
-- Every token expires (7, 30 or 90 days), can be revoked in **Settings → Server → Read-only
-  access**, and **changing the password revokes them all**. At most 10 can be active.
+- Every token expires (7, 30 or 90 days), can be revoked in **Settings → Server → Access
+  tokens**, and **changing the password revokes them all**. At most 10 can be active.
 - Tokens are never part of a backup.
 - Desktop-only installs have no tokens: their API is private to the app.
 
 ## Creating a token
 
-1. Open **Settings → Server → Read-only access**.
+1. Open **Settings → Server → Access tokens**.
 2. Name the token after the tool that will use it, choose when it expires, and select
    **Create token**.
 3. Copy the token. It is not shown again. Keep it as a secret: in a password manager, or as an
@@ -109,7 +113,7 @@ write the token's scope allows goes to the same path under `/api/assistant/do`, 
 the policy table, `server/src/auth/assistantPolicy.ts` (docs/ASSISTANT-ENDPOINTS.md), are
 accepted there, each with its own check, and the target route still applies its
 own checks. Every write a token asks for, allowed or refused, is logged: **Settings → Server →
-Read-only access → Assistant activity** (owner only, `GET /api/assistant/activity`; no request bodies are kept, the newest 5,000 rows). The MCP server
+Access tokens → Assistant activity** (owner only, `GET /api/assistant/activity`; no request bodies are kept, the newest 5,000 rows). The MCP server
 does this for you.
 
 Changes the owner must approve arrive as proposals: an organise token may

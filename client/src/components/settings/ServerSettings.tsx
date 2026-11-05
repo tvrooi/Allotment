@@ -1,4 +1,5 @@
 import { ReadOnlyAccess } from './ReadOnlyAccess';
+import { ReminderSettings } from './ReminderSettings';
 import { PeopleSettings } from './PeopleSettings';
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
@@ -382,7 +383,7 @@ function SelfHostedSettings() {
       setConfirm('');
       setMessage({
         ok: true,
-        text: 'Password changed. Other devices have been signed out and read-only tokens revoked.',
+        text: 'Password changed. Other devices have been signed out and access tokens revoked.',
       });
     } catch (err) {
       setMessage({ ok: false, text: (err as Error).message });
@@ -397,6 +398,7 @@ function SelfHostedSettings() {
       {auth?.multiUser && <PeopleSettings status={auth} />}
       <SignedInDevices />
       <ReadOnlyAccess />
+      <ReminderSettings />
       <OfflineCopySettings />
 
       <section className="pt-6 border-t border-border-light max-w-md">

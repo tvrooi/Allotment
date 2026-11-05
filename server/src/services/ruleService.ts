@@ -106,6 +106,8 @@ export type NewTransactionInput = {
   notes: string | null;
   categoryId: string | null;
   importedId: string | null;
+  /** The file import this row belongs to (SEC-01), so "undo this file" can find it */
+  importBatchId?: string | null;
   /** Chosen by the device for a transaction saved offline, so sending it twice can't duplicate it */
   id?: string;
   /** A balance correction (reconciliation, "Update value"): not categorized by rules */
@@ -177,6 +179,7 @@ export function insertNewTransaction(input: NewTransactionInput, opts: InsertOpt
     transferTransactionId: null,
     parentTransactionId: null,
     importedId: input.importedId,
+    importBatchId: input.importBatchId ?? null,
     // What it's worth in the budget's currency, when its account has another
     ...newRowValue(tx, opts.currencies ?? currencyContext()),
     createdAt: now,

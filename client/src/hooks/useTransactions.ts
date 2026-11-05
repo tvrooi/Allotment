@@ -215,12 +215,38 @@ export function useCreateTransfer() {
 export function useImportConfirm() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ accountId, rows }: { accountId: string; rows: txApi.ImportRow[] }) =>
-      txApi.importConfirm(accountId, rows),
+    mutationFn: ({
+      accountId,
+      rows,
+      fileName,
+    }: {
+      accountId: string;
+      rows: txApi.ImportRow[];
+      fileName?: string | null;
+    }) => txApi.importConfirm(accountId, rows, fileName),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['transactions'] });
       qc.invalidateQueries({ queryKey: ['review'] });
       qc.invalidateQueries({ queryKey: ['accounts'] });
+      qc.invalidateQueries({ queryKey: ['import-batches'] });
     },
+  });
+}
+
+/** The account's file imports, newest first (SEC-01) */
+export function useImportBatches(accountId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['import-batches', accountId],
+    queryFn: () => txApi.getImportBatches(accountId),
+    enabled,
+  });
+}
+
+/** Takes a file import's rows back out (the ledger views refresh on any mutation, main.tsx) */
+export function useUndoImport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => txApi.undoImportBatch(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['import-batches'] }),
   });
 }

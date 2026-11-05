@@ -97,7 +97,7 @@ test('changing the password signs out other browsers', async ({ browser, baseURL
   await owner.getByRole('button', { name: 'Change password' }).click();
   await expect(
     owner.getByText(
-      'Password changed. Other devices have been signed out and read-only tokens revoked.',
+      'Password changed. Other devices have been signed out and access tokens revoked.',
     ),
   ).toBeVisible();
 
@@ -164,12 +164,29 @@ test('Settings → Server shows the security check and signed-in devices', async
   await phone.context().close();
 });
 
+test('bill reminders say they need Home Assistant, and a schedule cannot ask for one here', async ({
+  baseURL,
+}) => {
+  await owner.goto(`${baseURL}/settings?tab=server`);
+  const section = owner.getByRole('heading', { name: 'Reminders' }).locator('..');
+  await expect(section).toContainText('not available here');
+  await expect(section.getByLabel('Notify service')).toHaveCount(0);
+
+  await owner.goto(`${baseURL}/recurring`);
+  await owner.getByRole('main').getByRole('button', { name: 'Add recurring' }).first().click();
+  const lead = owner.getByLabel('Remind me');
+  await expect(lead).toBeDisabled();
+  await expect(owner.getByRole('dialog')).toContainText(
+    'Reminders need Allotment to run as a Home Assistant app',
+  );
+});
+
 test('a read-only access token reads the budget, over the API and MCP, until revoked', async ({
   playwright,
   baseURL,
 }) => {
   await owner.goto(`${baseURL}/settings?tab=server`);
-  const section = owner.getByRole('heading', { name: 'Read-only access' }).locator('..');
+  const section = owner.getByRole('heading', { name: 'Access tokens' }).locator('..');
   await section.getByPlaceholder('e.g. Claude').fill('Assistant');
   await section.getByRole('button', { name: 'Create token' }).click();
   const token = (await section.getByRole('status').locator('code').first().textContent())!;
@@ -211,7 +228,7 @@ test('an organise token proposes a rule that waits for the owner to turn it on',
   baseURL,
 }) => {
   await owner.goto(`${baseURL}/settings?tab=server`);
-  const section = owner.getByRole('heading', { name: 'Read-only access' }).locator('..');
+  const section = owner.getByRole('heading', { name: 'Access tokens' }).locator('..');
   await section.getByPlaceholder('e.g. Claude').fill('Organiser');
   await section.getByLabel('Access').selectOption('organise');
   await section.getByRole('button', { name: 'Create token' }).click();

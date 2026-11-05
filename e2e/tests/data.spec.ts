@@ -135,6 +135,62 @@ test.describe('CSV import', () => {
     expect(await api.transactions(`?account_id=${checking.id}&from=2025-01-01`)).toHaveLength(5);
   });
 
+  // SEC-01: take a file back out
+  test('undoes an import from its last step, and puts the rows back', async ({ page, api }) => {
+    const checking = await api.createAccount('Checking', 0);
+    await open(page, `/accounts/${checking.id}`);
+    const dialog = await importCsv(page, BANK_CSV);
+    await dialog.getByRole('button', { name: 'Preview' }).click();
+    await dialog.getByRole('button', { name: 'Import 4 Transactions' }).click();
+    await expect(dialog).toContainText('4 imported, 0 skipped');
+
+    await dialog.getByRole('button', { name: 'Undo import bank-export.csv' }).click();
+    await page
+      .getByRole('dialog', { name: 'Undo this import?' })
+      .getByRole('button', { name: 'Remove them' })
+      .click();
+    await expect(dialog).toContainText('Removed 4 transactions from bank-export.csv');
+    expect(await api.transactions(`?account_id=${checking.id}&from=2025-01-01`)).toHaveLength(0);
+
+    await dialog.getByRole('button', { name: 'Put them back' }).click();
+    await expect(dialog).toContainText('Put 4 transactions back');
+    expect(await api.transactions(`?account_id=${checking.id}&from=2025-01-01`)).toHaveLength(4);
+  });
+
+  test('lists earlier imports and undoes one, keeping what was typed by hand', async ({
+    page,
+    api,
+  }) => {
+    const checking = await api.createAccount('Checking', 0);
+    await api.createTransaction({
+      accountId: checking.id,
+      date: '2025-02-01',
+      amount: -1_000,
+      payeeName: 'Typed by hand',
+    });
+    await open(page, `/accounts/${checking.id}`);
+    let dialog = await importCsv(page, BANK_CSV);
+    await dialog.getByRole('button', { name: 'Preview' }).click();
+    await dialog.getByRole('button', { name: 'Import 4 Transactions' }).click();
+    await dialog.getByRole('button', { name: 'Done' }).click();
+
+    await page.getByRole('button', { name: 'Import CSV' }).click();
+    dialog = page.getByRole('dialog', { name: 'Import Transactions' });
+    await expect(dialog).toContainText('Earlier imports');
+    await expect(dialog).toContainText('bank-export.csv');
+    await expect(dialog).toContainText('4 of 4 transactions in this account');
+    await dialog.getByRole('button', { name: 'Undo import bank-export.csv' }).click();
+    await page
+      .getByRole('dialog', { name: 'Undo this import?' })
+      .getByRole('button', { name: 'Remove them' })
+      .click();
+    await expect(dialog).toContainText('Removed 4 transactions from bank-export.csv');
+    // The file's row is gone from the list, and only the typed one is left
+    await expect(dialog.getByText('4 of 4 transactions in this account')).toHaveCount(0);
+    const left = await api.transactions(`?account_id=${checking.id}&from=2025-01-01`);
+    expect(left.map((t) => t.payeeName)).toEqual(['Typed by hand']);
+  });
+
   test('reads European exports: semicolons, day-first dates and decimal commas', async ({
     page,
     api,

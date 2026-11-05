@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useReminderSettings } from '../../hooks/useReminders';
 import { useFormReset } from '../../hooks/useFormReset';
 import { Modal } from '../ui/Modal';
 import { Input, Select } from '../ui/Input';
@@ -27,6 +28,11 @@ interface Props {
   /** A new item filled in from elsewhere (Find recurring's "Add anyway") */
   draft?: ScheduleDraft | null;
 }
+
+/** How many days ahead a reminder can be asked for from the form (the server allows up to 30) */
+const REMINDER_LEADS = [0, 1, 3, 7];
+const leadLabel = (days: number) =>
+  days === 0 ? 'On the day' : days === 1 ? '1 day before' : `${days} days before`;
 
 const AMOUNT_TYPE_OPTIONS: { value: AmountType; label: string }[] = [
   { value: 'exact', label: 'Exact' },
@@ -63,6 +69,8 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
   });
   const [notes, setNotes] = useState('');
   const [autoCreate, setAutoCreate] = useState(false);
+  const [reminderDays, setReminderDays] = useState<number | null>(null);
+  const reminders = useReminderSettings().data;
   const [showAdvanced, setShowAdvanced] = useState(false);
   // The payee box keeps its own text: a new one for every reset, so nothing carries over
   const [resets, setResets] = useState(0);
@@ -94,6 +102,7 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
       };
       setNotes(editItem.notes || '');
       setAutoCreate(Boolean(editItem.autoCreate));
+      setReminderDays(editItem.reminderDays ?? null);
       setShowAdvanced(editItem.weekendAdjust !== 'none' || editItem.dateFlexibility !== 3);
     } else if (draft) {
       setName(draft.name);
@@ -111,6 +120,7 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
       pendingDefaults.current = { account: false, payee: false };
       setNotes('');
       setAutoCreate(false);
+      setReminderDays(null);
       setShowAdvanced(draft.dateFlexibility !== 3);
     } else {
       setName('');
@@ -128,6 +138,7 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
       setPayeeValue({ id: null, name: '' });
       setNotes('');
       setAutoCreate(false);
+      setReminderDays(null);
       setShowAdvanced(false);
     }
   });
@@ -167,6 +178,7 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
       payeeId: payeeValue.id || null,
       notes: notes || null,
       autoCreate: autoCreate ? 1 : 0,
+      reminderDays,
     });
   }
 
@@ -355,6 +367,40 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
             />
             <span className="text-sm text-text-secondary">Auto-create transactions</span>
           </label>
+        </div>
+
+        <div>
+          <label
+            htmlFor="schedule-reminder"
+            className="block text-sm font-medium text-text-secondary mb-1"
+          >
+            Remind me
+          </label>
+          <select
+            id="schedule-reminder"
+            value={reminderDays ?? ''}
+            onChange={(e) => setReminderDays(e.target.value === '' ? null : Number(e.target.value))}
+            // Off, or a reminder that could never be sent: the choice is kept but not offered
+            disabled={!reminders?.available || !reminders.service}
+            className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface text-text focus:border-brand-600 focus:outline-none disabled:opacity-60"
+          >
+            <option value="">Don't remind me</option>
+            {REMINDER_LEADS.map((d) => (
+              <option key={d} value={d}>
+                {leadLabel(d)}
+              </option>
+            ))}
+            {reminderDays !== null && !REMINDER_LEADS.includes(reminderDays) && (
+              <option value={reminderDays}>{leadLabel(reminderDays)}</option>
+            )}
+          </select>
+          {(!reminders?.available || !reminders.service) && (
+            <p className="text-xs text-text-tertiary mt-1">
+              {reminders?.available
+                ? 'Choose a notify service in Settings, Server, Reminders first.'
+                : 'Reminders need Allotment to run as a Home Assistant app.'}
+            </p>
+          )}
         </div>
 
         <p className="text-xs text-text-tertiary">

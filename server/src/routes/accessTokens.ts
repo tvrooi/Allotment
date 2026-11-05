@@ -11,7 +11,7 @@ import {
   revokeAllAccessTokens,
 } from '../auth/accessTokens.js';
 
-// Settings → Server → Read-only access. Managing tokens needs a signed-in session: a read-only
+// Settings → Server → Access tokens. Managing tokens needs a signed-in session: a read-only
 // token can't reach these routes (auth/accessTokens.ts readOnlyAllows).
 
 export const accessTokensRouter = Router();

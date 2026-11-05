@@ -5,10 +5,36 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 5 November 2026 (after up.102).
+Last updated: 5 November 2026 (after up.103).
 
 ## State
 
+- **Stage 1 follow-up (up.103, migrations 0072 and 0073, backup format 26):** the rest of SEC-01 and
+  FINX-02.
+  _SEC-01 import history:_ `import_batches` (one row per confirmed file import: account, file name,
+  rows added, `adjusted_through`) and `transactions.import_batch_id`. `/import/confirm` takes an
+  optional `fileName` and answers `importBatchId`; `GET /transactions/import/batches?accountId=`
+  lists imports that still have rows; `DELETE /transactions/import/batches/:id`
+  (`services/importBatches.ts`) removes the file's rows except reconciled, reviewed, transfer-linked,
+  hand-split, household-shared and file-attached ones, which it returns as `kept` with a reason,
+  puts the starting balance back when the import had moved it, and returns the removed rows in the
+  import's shape so the client's **Put them back** re-imports them. Not a change set (those are for
+  token category changes); the undo is the explicit button and its re-import. Tokens cannot read the
+  history (`UNREADABLE` in `auth/accessTokens.ts`). Client: `ImportHistory.tsx`, in the import
+  dialog's first and last steps.
+  _FINX-02 reminders:_ `schedules.reminder_days` (null = off), `schedule_occurrences.reminded_at`,
+  `budget_settings.reminder_notify_service` / `reminder_show_details`.
+  `services/reminderService.ts` (`sendDueReminders`) runs from the schedule timer's `afterTick`
+  (`index.ts`, only when `canNotify()`): one message per tick for occurrences within their lead,
+  08:00 to 20:59 local, generic text unless the owner opted into names and amounts, marked after a
+  successful send (a failure is retried next hour; `regenerateFutureOccurrences` keeps the mark).
+  `routes/reminders.ts` (`GET/PUT /api/reminders`, `POST /api/reminders/test`; owner only);
+  client `ReminderSettings.tsx` (Settings → Server) and a "Remind me" select in
+  `RecurringFormModal.tsx`. Single-budget Home Assistant only: a multi-user budget has no
+  Supervisor token, so reminders there would need the gateway to send (not built). The
+  positive path (a real notify service) is covered by server tests with a stub, not e2e.
+  Settings → Server's token section is now "Access tokens" (it was "Read-only access" although
+  categorise and organise tokens write).
 - **Stage 1 correctness (up.102, built on #140's up.101):** four items from the competitor
   comparisons and the audit.
   _SEC-01:_ `services/importDuplicates.ts` (`matchExistingRows`, `existingRowsNear`,
@@ -249,9 +275,9 @@ site in `website/` was removed (audit decision I-9).
    once a video over 25 MB is added. Not built: an email inbox (deliberately), files for tokens,
    video thumbnails, OCR of scanned PDFs.
 9. **Next fixes from the competitor comparisons** (`docs/research/`, PR #63): SEC-01 duplicates
-   and FINX-01 the schedule timer are done (up.102). Not picked up yet: SEC-01's import history
-   and "undo this file" (an additive `import_batches` table; it must refuse reconciled rows and
-   be undoable), FINX-02 reminders on the new timer, then ACT-03 hold for next month, ACT-04
+   and FINX-01 the schedule timer are done (up.102), as are SEC-01's import history and "undo
+   this file" and FINX-02 reminders (up.103; reminders for multi-user budgets, through the gateway,
+   are not built). Not picked up yet: ACT-03 hold for next month, ACT-04
    per-category overspending rollover and ACT-05 month quick fills. Check the code first:
    later releases may have covered parts of them.
 
