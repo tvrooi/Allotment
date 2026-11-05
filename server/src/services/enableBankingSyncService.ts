@@ -1,3 +1,4 @@
+import { deletedImportIds } from './transactionHelpers.js';
 import { and, eq, gte, isNull, lte, max, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
@@ -315,6 +316,8 @@ function syncMapping(
       .all()
       .map((r) => r.importedId),
   );
+  // Deleted here by the owner: the bank still sends it, but it stays deleted (audit F-14)
+  for (const id of deletedImportIds(mapping.accountId)) known.add(id);
   const fresh = mapped.filter((tx) => !known.has(tx.importedId));
 
   let latest = mapping.lastBookedDate;

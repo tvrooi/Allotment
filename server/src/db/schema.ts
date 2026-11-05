@@ -1610,6 +1610,12 @@ export const upDeletedImports = sqliteTable(
       .references(() => accounts.id, { onDelete: 'cascade' }),
     importedId: text('imported_id').notNull(),
     deletedAt: text('deleted_at').notNull(),
+    /** What the row was, to recognise it (migration 0070; null for older deletions) */
+    date: text('date'),
+    amount: integer('amount'),
+    description: text('description'),
+    importedPayee: text('imported_payee'),
+    notes: text('notes'),
   },
   (t) => [primaryKey({ columns: [t.accountId, t.importedId] })],
 );

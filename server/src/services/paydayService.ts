@@ -7,6 +7,8 @@ import { and, eq, lte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { db } from '../db/index.js';
+import { BudgetError } from './budgetMoves.js';
+import { addAssigned } from './fundingPlan.js';
 import {
   accounts,
   budgetMonths,
@@ -399,22 +401,12 @@ export function applyPayday(planId: string, request: PaydayRequest, previewKey: 
     };
     for (const row of preview.rows) {
       if (!row.allocated) continue;
-      const existing = db
-        .select()
-        .from(budgetMonths)
-        .where(
-          and(eq(budgetMonths.month, preview.month), eq(budgetMonths.categoryId, row.categoryId)),
-        )
-        .get();
-      const budgeted = (existing?.budgeted ?? 0) + row.allocated;
-      if (!Number.isSafeInteger(budgeted) || Math.abs(budgeted) > 1e13)
-        throw new PaydayError('Category allocation is too large');
-      if (existing)
-        db.update(budgetMonths).set({ budgeted }).where(eq(budgetMonths.id, existing.id)).run();
-      else
-        db.insert(budgetMonths)
-          .values({ id: nanoid(), month: preview.month, categoryId: row.categoryId, budgeted })
-          .run();
+      try {
+        addAssigned(preview.month, row.categoryId, row.allocated);
+      } catch (e) {
+        if (e instanceof BudgetError) throw new PaydayError('Category allocation is too large');
+        throw e;
+      }
     }
     db.insert(paydayFundingEvents).values(event).run();
     for (const transactionId of request.incomeIds)

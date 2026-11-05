@@ -1,34 +1,54 @@
+import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from 'react';
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import { AuthGate } from './components/auth/AuthGate';
 import { IS_DEMO } from './demo/demoApi';
-import WelcomePage from './pages/Welcome';
-import HouseholdPage from './pages/Household';
-import PaymentPlansPage from './pages/PaymentPlans';
 import DashboardPage from './pages/Dashboard';
-import AccountsPage from './pages/Accounts';
-import AccountTransactionsPage from './pages/AccountTransactions';
 import BudgetPage from './pages/Budget';
-import AnnualBudgetPage from './pages/AnnualBudget';
 import TransactionsPage from './pages/Transactions';
-import ReportsPage from './pages/Reports';
-import CustomReportBuilder from './pages/CustomReportBuilder';
-import ReportWidgetView from './pages/ReportWidgetView';
-import PayeesPage from './pages/Payees';
-import RulesPage from './pages/Rules';
-import ReconcilePage from './pages/ReconcilePage';
-import RecurringTransactionsPage from './pages/RecurringTransactions';
-import SettingsPage from './pages/Settings';
-import GoalsPage from './pages/Goals';
-import ForecastPage from './pages/Forecast';
-import InvestmentsPage from './pages/Investments';
-import TaxPage from './pages/Tax';
-import FilesPage from './pages/Files';
-import ReviewPage from './pages/Review';
-import GuidePage from './pages/Guide';
-import CashFlowPage from './pages/CashFlow';
-import CategoryDetailPage from './pages/CategoryDetail';
 import { useSafeMode } from './utils/safeMode';
+
+// Audit F-11: only the three pages people open first are in the main bundle; every other page
+// is its own chunk, loaded when it is first opened. The app shell stays drawn while it loads.
+const WelcomePage = lazy(() => import('./pages/Welcome'));
+const HouseholdPage = lazy(() => import('./pages/Household'));
+const PaymentPlansPage = lazy(() => import('./pages/PaymentPlans'));
+const AccountsPage = lazy(() => import('./pages/Accounts'));
+const AccountTransactionsPage = lazy(() => import('./pages/AccountTransactions'));
+const AnnualBudgetPage = lazy(() => import('./pages/AnnualBudget'));
+const ReportsPage = lazy(() => import('./pages/Reports'));
+const CustomReportBuilder = lazy(() => import('./pages/CustomReportBuilder'));
+const ReportWidgetView = lazy(() => import('./pages/ReportWidgetView'));
+const PayeesPage = lazy(() => import('./pages/Payees'));
+const RulesPage = lazy(() => import('./pages/Rules'));
+const ReconcilePage = lazy(() => import('./pages/ReconcilePage'));
+const RecurringTransactionsPage = lazy(() => import('./pages/RecurringTransactions'));
+const SettingsPage = lazy(() => import('./pages/Settings'));
+const GoalsPage = lazy(() => import('./pages/Goals'));
+const ForecastPage = lazy(() => import('./pages/Forecast'));
+const InvestmentsPage = lazy(() => import('./pages/Investments'));
+const TaxPage = lazy(() => import('./pages/Tax'));
+const FilesPage = lazy(() => import('./pages/Files'));
+const ReviewPage = lazy(() => import('./pages/Review'));
+const GuidePage = lazy(() => import('./pages/Guide'));
+const CashFlowPage = lazy(() => import('./pages/CashFlow'));
+const CategoryDetailPage = lazy(() => import('./pages/CategoryDetail'));
+
+function PageLoading() {
+  return (
+    <div role="status" aria-live="polite" className="p-6 text-sm text-text-tertiary">
+      Loading…
+    </div>
+  );
+}
+/** A lazily loaded page, with its own loading state inside the app shell */
+function page(Page: LazyExoticComponent<ComponentType>) {
+  return (
+    <Suspense fallback={<PageLoading />}>
+      <Page />
+    </Suspense>
+  );
+}
 
 // electron loads via file:// and the demo is a static page under /demo/ on its host, so
 // both use hash routing
@@ -43,37 +63,37 @@ export default function App() {
     <AuthGate>
       <Router>
         <Routes>
-          <Route path="/welcome" element={<WelcomePage />} />
+          <Route path="/welcome" element={page(WelcomePage)} />
           <Route element={<AppShell />}>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/budget" element={<BudgetPage />} />
-            <Route path="/budget/year" element={<AnnualBudgetPage />} />
-            <Route path="/budget/year/:year" element={<AnnualBudgetPage />} />
-            <Route path="/budget/category/:id" element={<CategoryDetailPage />} />
-            <Route path="/accounts" element={<AccountsPage />} />
-            <Route path="/accounts/:id/reconcile" element={<ReconcilePage />} />
-            <Route path="/accounts/:id" element={<AccountTransactionsPage />} />
+            <Route path="/budget/year" element={page(AnnualBudgetPage)} />
+            <Route path="/budget/year/:year" element={page(AnnualBudgetPage)} />
+            <Route path="/budget/category/:id" element={page(CategoryDetailPage)} />
+            <Route path="/accounts" element={page(AccountsPage)} />
+            <Route path="/accounts/:id/reconcile" element={page(ReconcilePage)} />
+            <Route path="/accounts/:id" element={page(AccountTransactionsPage)} />
             <Route path="/transactions" element={<TransactionsPage />} />
-            <Route path="/household" element={<HouseholdPage />} />
-            <Route path="/payment-plans" element={<PaymentPlansPage />} />
-            <Route path="/recurring" element={<RecurringTransactionsPage />} />
-            <Route path="/cash-flow" element={<CashFlowPage />} />
-            <Route path="/reports" element={<ReportsPage />} />
-            <Route path="/reports/custom" element={<CustomReportBuilder />} />
-            <Route path="/reports/custom/:id" element={<CustomReportBuilder />} />
-            <Route path="/reports/widget/:id" element={<ReportWidgetView />} />
-            <Route path="/payees" element={<PayeesPage />} />
-            <Route path="/rules" element={<RulesPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/goals" element={<GoalsPage />} />
-            <Route path="/forecast" element={<ForecastPage />} />
-            <Route path="/investments" element={<InvestmentsPage />} />
-            <Route path="/tax" element={<TaxPage />} />
-            <Route path="/files" element={<FilesPage />} />
-            <Route path="/review" element={<ReviewPage />} />
-            <Route path="/guide" element={<GuidePage />} />
-            <Route path="/guide/:page" element={<GuidePage />} />
+            <Route path="/household" element={page(HouseholdPage)} />
+            <Route path="/payment-plans" element={page(PaymentPlansPage)} />
+            <Route path="/recurring" element={page(RecurringTransactionsPage)} />
+            <Route path="/cash-flow" element={page(CashFlowPage)} />
+            <Route path="/reports" element={page(ReportsPage)} />
+            <Route path="/reports/custom" element={page(CustomReportBuilder)} />
+            <Route path="/reports/custom/:id" element={page(CustomReportBuilder)} />
+            <Route path="/reports/widget/:id" element={page(ReportWidgetView)} />
+            <Route path="/payees" element={page(PayeesPage)} />
+            <Route path="/rules" element={page(RulesPage)} />
+            <Route path="/settings" element={page(SettingsPage)} />
+            <Route path="/goals" element={page(GoalsPage)} />
+            <Route path="/forecast" element={page(ForecastPage)} />
+            <Route path="/investments" element={page(InvestmentsPage)} />
+            <Route path="/tax" element={page(TaxPage)} />
+            <Route path="/files" element={page(FilesPage)} />
+            <Route path="/review" element={page(ReviewPage)} />
+            <Route path="/guide" element={page(GuidePage)} />
+            <Route path="/guide/:page" element={page(GuidePage)} />
           </Route>
         </Routes>
       </Router>

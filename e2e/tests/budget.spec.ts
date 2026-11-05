@@ -240,7 +240,8 @@ test('overspending is covered from the amount editor or by auto-assign', async (
   await page.getByRole('button', { name: 'Cover $120 overspent' }).click();
   await expect(page.getByRole('button', { name: /^Planned for Groceries: \$120/ })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Auto-assign' }).click();
+  await page.getByRole('button', { name: 'Assign', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Auto-assign/ }).click();
   const preview = page.getByRole('region', { name: 'Auto-assign preview' });
   await expect(preview).toContainText('Electric');
   await expect(preview).not.toContainText('Groceries');

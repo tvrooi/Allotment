@@ -1,6 +1,6 @@
 import { db } from '../db/index.js';
-import { payees, transactions, householdEvents, upDeletedImports } from '../db/schema.js';
-import { eq, inArray } from 'drizzle-orm';
+import { accounts, payees, transactions, householdEvents, upDeletedImports } from '../db/schema.js';
+import { desc, eq, inArray, like, not } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { unlinkOccurrenceByTransactionId } from './matchingEngine.js';
 import { refreshMainAmounts } from './mainAmountService.js';
@@ -94,24 +94,79 @@ export function deleteTransactionRow(row: { id: string; transferTransactionId: s
 export const isUpImport = (importedId: string | null | undefined): importedId is string =>
   !!importedId && importedId.startsWith('up:');
 
+/** Import ids of the bank feeds that sync on their own: Up, Enable Banking, SimpleFIN, Plaid */
+const SYNCED_PREFIXES = ['up:', 'eb:', 'simplefin:', 'plaid:'];
+
+/**
+ * A row a bank sync brought in, which the next sync would bring back after a delete unless it
+ * is remembered (audit F-14). File imports aren't: importing a file again is a deliberate act.
+ */
+export const isSyncedImport = (importedId: string | null | undefined): importedId is string =>
+  !!importedId && SYNCED_PREFIXES.some((p) => importedId.startsWith(p));
+
+/** The synced imports the owner deleted from this account, which its syncs must skip */
+export function deletedImportIds(accountId: string) {
+  return new Set(
+    db
+      .select({ importedId: upDeletedImports.importedId })
+      .from(upDeletedImports)
+      .where(eq(upDeletedImports.accountId, accountId))
+      .all()
+      .map((d) => d.importedId),
+  );
+}
+
+/** Deleted synced imports other than Up's (Up review lists those), newest first */
+export function deletedSyncedImports() {
+  return db
+    .select({
+      accountId: upDeletedImports.accountId,
+      accountName: accounts.name,
+      currency: accounts.currency,
+      importedId: upDeletedImports.importedId,
+      deletedAt: upDeletedImports.deletedAt,
+      date: upDeletedImports.date,
+      amount: upDeletedImports.amount,
+      description: upDeletedImports.description,
+    })
+    .from(upDeletedImports)
+    .innerJoin(accounts, eq(accounts.id, upDeletedImports.accountId))
+    .where(not(like(upDeletedImports.importedId, 'up:%')))
+    .orderBy(desc(upDeletedImports.deletedAt))
+    .limit(200)
+    .all();
+}
+
 /**
  * Deletes a transaction because its owner asked to (the register's Delete and bulk delete).
- * An Up import is remembered (`up_deleted_imports`), so the next sync doesn't import it again;
- * Up review lists it to restore. Syncs and other internal clean-ups use deleteTransactionRow.
+ * A synced bank import is remembered (`up_deleted_imports`, despite its name for every synced
+ * provider since F-14), so the next sync doesn't import it again; Up review lists Up's to
+ * restore, `GET /transactions/deleted-imports` the others. Syncs and other internal clean-ups
+ * use deleteTransactionRow.
  */
 export function deleteTransactionByOwner(row: {
   id: string;
   accountId: string;
   importedId: string | null;
   transferTransactionId: string | null;
+  date?: string;
+  amount?: number;
+  payeeName?: string | null;
+  importedPayee?: string | null;
+  notes?: string | null;
 }) {
   db.transaction((tx) => {
-    if (isUpImport(row.importedId))
+    if (isSyncedImport(row.importedId))
       tx.insert(upDeletedImports)
         .values({
           accountId: row.accountId,
           importedId: row.importedId,
           deletedAt: new Date().toISOString(),
+          date: row.date ?? null,
+          amount: row.amount ?? null,
+          description: row.payeeName ?? null,
+          importedPayee: row.importedPayee ?? null,
+          notes: row.notes ?? null,
         })
         .onConflictDoNothing()
         .run();

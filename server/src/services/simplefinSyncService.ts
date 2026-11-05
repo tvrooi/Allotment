@@ -1,3 +1,4 @@
+import { deletedImportIds } from './transactionHelpers.js';
 import { db } from '../db/index.js';
 import {
   simplefinConnections,
@@ -58,6 +59,13 @@ export async function syncSimplefinConnection(connectionId: string): Promise<Sim
     const mappingBySfId = new Map(mappings.map((m) => [m.simplefinAccountId, m]));
 
     const ruleOpts = { rules: loadRules(), ctx: buildRuleContext(), currencies: currencyContext() };
+    // Rows the owner deleted here stay deleted (audit F-14), looked up once per account
+    const deletedByAccount = new Map<string, Set<string>>();
+    const deleted = (accountId: string) => {
+      if (!deletedByAccount.has(accountId))
+        deletedByAccount.set(accountId, deletedImportIds(accountId));
+      return deletedByAccount.get(accountId)!;
+    };
     for (const sfAccount of data.accounts) {
       const mapping = mappingBySfId.get(sfAccount.id);
       if (!mapping || !mapping.accountId || !mapping.isEnabled) continue;
@@ -78,7 +86,7 @@ export async function syncSimplefinConnection(connectionId: string): Promise<Sim
             ),
           )
           .get();
-        if (existing) continue;
+        if (existing || deleted(mapping.accountId).has(importedId)) continue;
 
         const amount = simpleFinAmountToCents(tx.amount, minor);
         const date =

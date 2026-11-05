@@ -584,20 +584,68 @@ export function updateRecurringBill(
 }
 
 /** Shares a bill's payments with the bill's own split (or the default). Each is checked alone. */
-export function shareBillPayments(groupId: string, scheduleId: string, transactionIds: string[]) {
-  const split = parseSplit(billLink(groupId, scheduleId).splitJson) ?? undefined;
+/** Where a share came from: the Share action, a bill's payments, a bill shared as it arrives, a rule */
+export type ShareSource = 'manual' | 'bill' | 'auto-bill' | 'rule';
+export type ShareResult =
+  | {
+      transactionId: string;
+      ok: true;
+      /** The entry recorded; null for a preview, which records nothing */
+      eventId: string | null;
+      amount: number;
+      shares: { personId: string; amount: number }[];
+    }
+  | { transactionId: string; ok: false; error: string };
+
+class PreviewOnly extends Error {}
+
+/**
+ * Audit F-13: the one way to share bank payments with a household, whatever asked for it. Each
+ * payment is recorded on its own (one refused never stops the rest) through shareTransaction,
+ * so every path has the same checks and the same refusal messages, and the same result: who
+ * owes what. `preview` runs exactly the same checks and records nothing.
+ */
+export function sharePayments(
+  groupId: string,
+  transactionIds: string[],
+  options: { split?: DefaultSplit; source: ShareSource; preview?: boolean },
+): ShareResult[] {
   return transactionIds.map((transactionId) => {
+    let result: ShareResult | null = null;
     try {
-      const eventId = db.transaction(() => shareTransaction(groupId, transactionId, split));
-      return { transactionId, ok: true, eventId };
+      db.transaction(() => {
+        const eventId = shareTransaction(groupId, transactionId, options.split);
+        const event = db.select().from(events).where(eq(events.id, eventId)).get()!;
+        result = {
+          transactionId,
+          ok: true,
+          eventId: options.preview ? null : eventId,
+          amount: event.amount,
+          shares: db
+            .select({ personId: shares.personId, amount: shares.amount })
+            .from(shares)
+            .where(eq(shares.eventId, eventId))
+            .all(),
+        };
+        if (options.preview) throw new PreviewOnly();
+      });
+      return result!;
     } catch (error) {
-      return {
-        transactionId,
-        ok: false,
-        error: error instanceof Error ? error.message : 'Could not share',
-      };
+      if (error instanceof PreviewOnly) return result!;
+      const message = error instanceof Error ? error.message : 'Could not share';
+      // Shared without anyone watching: say why in the log, never fail the import
+      if (options.source === 'auto-bill' || options.source === 'rule')
+        console.warn(
+          `Could not share a payment with the household (${options.source}): ${message}`,
+        );
+      return { transactionId, ok: false, error: message };
     }
   });
+}
+
+export function shareBillPayments(groupId: string, scheduleId: string, transactionIds: string[]) {
+  const split = parseSplit(billLink(groupId, scheduleId).splitJson) ?? undefined;
+  return sharePayments(groupId, transactionIds, { split, source: 'bill' });
 }
 
 /**
@@ -628,15 +676,10 @@ export function autoShareBillPayment(tx: {
     .all()
     .find((b) => b.from! <= tx.date);
   if (!bill) return false;
-  try {
-    shareTransaction(bill.groupId, tx.id, parseSplit(bill.splitJson) ?? undefined);
-    return true;
-  } catch (error) {
-    console.warn(
-      `Could not share a bill payment with the household: ${error instanceof Error ? error.message : error}`,
-    );
-    return false;
-  }
+  return sharePayments(bill.groupId, [tx.id], {
+    split: parseSplit(bill.splitJson) ?? undefined,
+    source: 'auto-bill',
+  })[0].ok;
 }
 
 const personName = z.string().trim().min(1).max(200);
