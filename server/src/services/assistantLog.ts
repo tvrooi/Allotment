@@ -2,6 +2,7 @@ import { desc, eq, lt } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import { accessTokens, assistantActions } from '../db/schema.js';
+import { ASSISTANT_ACTIONS } from '../auth/assistantPolicy.js';
 
 // The assistant audit log (audit decision I-11, docs/ASSISTANT-ENDPOINTS.md): one row for every
 // write an access token asked for, allowed or refused. The owner reads it in Settings → Server →
@@ -41,7 +42,8 @@ export function logAssistantAction(entry: AssistantLogEntry, now = new Date()): 
       tokenId: entry.tokenId,
       tokenName,
       scope: entry.scope,
-      action: entry.action,
+      // The column predates refusals being logged without a row: '' means none matched
+      action: entry.action ?? '',
       tool: entry.tool,
       method: entry.method,
       path: entry.path.slice(0, 500),
@@ -78,13 +80,33 @@ function prune() {
     db.delete(assistantActions).where(lt(assistantActions.createdAt, oldest.createdAt)).run();
 }
 
-/** The newest rows first */
+const SUMMARY = new Map(ASSISTANT_ACTIONS.map((a) => [a.name, a.summary]));
+
+/** The newest rows first, each with what its policy row lets an assistant do */
 export function listAssistantActions(limit = 100, offset = 0) {
   return db
-    .select()
+    .select({
+      id: assistantActions.id,
+      createdAt: assistantActions.createdAt,
+      tokenId: assistantActions.tokenId,
+      tokenName: assistantActions.tokenName,
+      scope: assistantActions.scope,
+      action: assistantActions.action,
+      tool: assistantActions.tool,
+      method: assistantActions.method,
+      path: assistantActions.path,
+      outcome: assistantActions.outcome,
+      status: assistantActions.status,
+      reason: assistantActions.reason,
+    })
     .from(assistantActions)
     .orderBy(desc(assistantActions.createdAt), desc(assistantActions.id))
     .limit(Math.min(Math.max(limit, 1), 500))
     .offset(Math.max(offset, 0))
-    .all();
+    .all()
+    .map((a) => ({
+      ...a,
+      action: a.action || null,
+      summary: (a.action && SUMMARY.get(a.action)) || null,
+    }));
 }

@@ -868,6 +868,57 @@ export const upSourceRecords = sqliteTable(
   (table) => [index('up_source_review').on(table.reviewState, table.lastSeenAt)],
 );
 
+/**
+ * Every write an access token asked for through the assistant endpoint (audit decision I-11,
+ * docs/ASSISTANT-ENDPOINTS.md): allowed or refused, with the policy row it matched. Migration
+ * 0069, columns from 0071. A security log: the newest 5,000 rows, never in backups.
+ */
+export const assistantActions = sqliteTable(
+  'assistant_actions',
+  {
+    id: text('id').primaryKey(),
+    tokenId: text('token_id').notNull(),
+    tokenName: text('token_name').notNull(),
+    /** The policy row (auth/assistantPolicy.ts) it matched; '' when none did (refused) */
+    action: text('action').notNull(),
+    method: text('method').notNull(),
+    path: text('path').notNull(),
+    /** No longer written: no request bodies are kept (0071 cleared what up.99 kept) */
+    detail: text('detail'),
+    /** The HTTP status it ended with; null if the connection dropped first */
+    status: integer('status'),
+    createdAt: text('created_at').notNull(),
+    /** The token's scope when it asked */
+    scope: text('scope').notNull().default(''),
+    /** The MCP tool that asked, when it said */
+    tool: text('tool'),
+    /** refused (by the policy), applied (the route answered under 400) or failed (it didn't) */
+    outcome: text('outcome').notNull().default('applied'),
+    /** Why it was refused or failed */
+    reason: text('reason'),
+  },
+  (table) => [index('assistant_actions_created').on(table.createdAt)],
+);
+
+/** Changes an assistant proposed that only the owner applies (migration 0069; not backed up) */
+export const assistantProposals = sqliteTable('assistant_proposals', {
+  id: text('id').primaryKey(),
+  tokenId: text('token_id').notNull(),
+  tokenName: text('token_name').notNull(),
+  /** 'asset.create' | 'asset.update' */
+  kind: text('kind').notNull(),
+  /** The thing it changes (an asset id for asset.update) */
+  targetId: text('target_id'),
+  payload: text('payload').notNull(),
+  note: text('note'),
+  status: text('status').notNull().default('pending'),
+  /** What applying it made (the new asset's id) */
+  resultId: text('result_id'),
+  error: text('error'),
+  createdAt: text('created_at').notNull(),
+  decidedAt: text('decided_at'),
+});
+
 /** The receipt reader's cloud API key (one row, encrypted, never backed up or exported) */
 export const receiptReaderSecrets = sqliteTable('receipt_reader_secrets', {
   id: integer('id').primaryKey(),
@@ -1099,28 +1150,6 @@ export const assistantChangeSets = sqliteTable('assistant_change_sets', {
     .notNull()
     .default(sql`(datetime('now'))`),
   undoneAt: text('undone_at'),
-});
-
-/**
- * Every write an access token asked for through the assistant endpoints (audit decision I-11):
- * allowed or refused, with the action the policy matched. Not in backups.
- */
-export const assistantActions = sqliteTable('assistant_actions', {
-  id: text('id').primaryKey(),
-  createdAt: text('created_at').notNull(),
-  tokenId: text('token_id'),
-  tokenName: text('token_name').notNull(),
-  scope: text('scope').notNull(),
-  /** The policy entry that allowed it; null when nothing matched */
-  action: text('action'),
-  /** The MCP tool that asked, when it said */
-  tool: text('tool'),
-  method: text('method').notNull(),
-  path: text('path').notNull(),
-  /** refused (by the policy), applied (the route answered under 400) or failed (it didn't) */
-  outcome: text('outcome').notNull(),
-  status: integer('status'),
-  reason: text('reason'),
 });
 
 export const assistantChangeEntries = sqliteTable(

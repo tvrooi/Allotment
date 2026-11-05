@@ -19,7 +19,7 @@ const { createAccessToken } = await import('../auth/accessTokens.js');
 const { BACKUP_TABLES } = await import('../services/backupService.js');
 const { accessTokensRouter } = await import('./accessTokens.js');
 const { mcpRouter } = await import('./mcp.js');
-const { assistantRouter } = await import('./assistant.js');
+const { assistantDispatch, assistantRouter } = await import('./assistant.js');
 const { accountsRouter } = await import('./accounts.js');
 const { transactionsRouter } = await import('./transactions.js');
 const { categoriesRouter } = await import('./categories.js');
@@ -39,7 +39,9 @@ beforeAll(async () => {
   const app = express();
   app.use(hostGuard, originGuard, express.json());
   app.use('/api/auth', authRouter);
+  app.use(assistantDispatch);
   app.use('/api', requireSession);
+  app.use('/api/assistant', assistantRouter);
   app.use('/api/accounts', accountsRouter);
   app.use('/api/transactions', transactionsRouter);
   app.use('/api/categories', categoriesRouter);
@@ -48,7 +50,6 @@ beforeAll(async () => {
   app.use('/api/dashboards', dashboardsRouter);
   app.use('/api/access-tokens', accessTokensRouter);
   app.use('/api/mcp', mcpRouter);
-  app.use('/api/assistant', assistantRouter);
   app.use(errorHandler);
   server = await new Promise<Server>((r) => {
     const s = app.listen(0, '127.0.0.1', () => r(s));
@@ -60,13 +61,16 @@ afterAll(() => server.close());
 async function call(
   method: string,
   path: string,
-  auth: { token?: string; session?: boolean } = {},
+  auth: { token?: string; session?: boolean; direct?: boolean } = {},
   body?: unknown,
 ) {
   const headers: Record<string, string> = { 'content-type': 'application/json' };
   if (auth.token) headers.authorization = `Bearer ${auth.token}`;
   if (auth.session) headers.cookie = cookie;
-  const res = await fetch(base + path, {
+  // An access token writes only through the assistant endpoint (audit decision I-11)
+  const via =
+    auth.token && method !== 'GET' && path !== '/mcp' && !auth.direct ? '/assistant/do' : '';
+  const res = await fetch(base + via + path, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -283,12 +287,9 @@ describe('categorise tokens', () => {
     const { token, id } = created.body as { token: string; id: string };
     const read = await newToken();
 
-    // REST: exactly a category on a past transaction, through the assistant endpoints only
+    // REST: exactly a category on a past transaction
     expect(
       (await call('PUT', '/transactions/past', { token }, { categoryId: 'rent' })).status,
-    ).toBe(403);
-    expect(
-      (await call('PUT', '/assistant/transactions/past', { token }, { categoryId: 'rent' })).status,
     ).toBe(200);
     expect(categoryOf('past')).toBe('rent');
     const refused: [string, string, unknown][] = [
@@ -302,21 +303,12 @@ describe('categorise tokens', () => {
       ['PUT', '/accounts/mock', { name: 'x' }],
       ['PUT', '/transactions/%E0%A4%A', { categoryId: 'rent' }],
     ];
-    // Refused by the assistant policy, and never taken straight by the route
-    for (const [method, path, body] of refused) {
-      expect((await call(method, `/assistant${path}`, { token }, body)).status).toBe(403);
+    for (const [method, path, body] of refused)
       expect((await call(method, path, { token }, body)).status).toBe(403);
-    }
     // A read token still can't categorise
     expect(
-      (
-        await call(
-          'PUT',
-          '/assistant/transactions/past',
-          { token: read.token },
-          { categoryId: 'food' },
-        )
-      ).status,
+      (await call('PUT', '/transactions/past', { token: read.token }, { categoryId: 'food' }))
+        .status,
     ).toBe(403);
     expect(categoryOf('past')).toBe('rent');
 
@@ -431,8 +423,7 @@ describe('categorise tokens and categories', () => {
       (await tool(read.token, 'create_category', { groupId, name: 'X' })).body.error.code,
     ).toBe(-32602);
     expect(
-      (await call('POST', '/assistant/categories', { token: read.token }, { groupId, name: 'X' }))
-        .status,
+      (await call('POST', '/categories', { token: read.token }, { groupId, name: 'X' })).status,
     ).toBe(403);
 
     // Direct requests: no deleting, reordering, flipping a group's income flag or extra fields,
@@ -450,11 +441,8 @@ describe('categorise tokens and categories', () => {
       ['PUT', `/categories/${coffee.id}`, { linkedAccountId: 'mock' }],
       ['POST', '/categories', { groupId, name: 'x', id: 'chosen' }],
     ];
-    // Refused by the assistant policy, and never taken straight by the route
-    for (const [method, path, body] of refused) {
-      expect((await call(method, `/assistant${path}`, { token }, body)).status).toBe(403);
+    for (const [method, path, body] of refused)
       expect((await call(method, path, { token }, body)).status).toBe(403);
-    }
   });
 
   it('cannot read bank import settings in any letter case', async () => {

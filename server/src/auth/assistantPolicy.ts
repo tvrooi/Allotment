@@ -422,6 +422,14 @@ export const ASSISTANT_ACTIONS: readonly AssistantAction[] = [
     summary: 'Record your own contribution, up to what you owe',
     allows: ownContributionAllows,
   },
+  {
+    name: 'propose_change',
+    scope: 'organise',
+    summary: 'Propose a depreciating asset or a change to one, for the owner to apply',
+    // The proposals route validates the proposal; applying one is the owner's
+    allows: (method, path) =>
+      method === 'POST' && path.toLowerCase().replace(/\/+$/, '') === '/assistant/proposals',
+  },
 ];
 
 export const scopeMay = (scope: TokenScope, action: AssistantAction) =>

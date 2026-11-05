@@ -198,20 +198,18 @@ export function taxReadAllows(method: string, rawPath: string): boolean {
 
 // ─── Writes ──────────────────────────────────────────────────────────────────
 
-/**
- * Where a token's writes go (audit decision I-11, docs/ASSISTANT-ENDPOINTS.md): only the
- * assistant endpoints, which check each one against the policy table (auth/assistantPolicy.ts),
- * log it, and pass an allowed one on to its route. No general route takes a token's write.
- */
-export const ASSISTANT_PREFIX = '/assistant/';
+/** An organise token may read its own proposals' state (services/assistantActions.ts) */
+const PROPOSALS_PATH = '/assistant/proposals';
 
 /**
- * Whether a token with this scope may make this request (path relative to /api). A write
- * passes here only into the assistant endpoints, which decide it.
+ * Whether a token with this scope may make this request (path relative to /api). Only reads:
+ * a token's writes go through the assistant endpoint, /api/assistant/do (routes/assistant.ts),
+ * where requireSession checks each against the policy table (auth/assistantPolicy.ts) and logs
+ * it (audit decision I-11, docs/ASSISTANT-ENDPOINTS.md). No general route takes a token's write.
  */
 export function tokenAllows(scope: TokenScope, method: string, path: string, _body?: unknown) {
   if (readOnlyAllows(method, path)) return true;
-  if (!canCategorise(scope)) return false;
-  if (scope === 'organise' && taxReadAllows(method, path)) return true;
-  return (method === 'POST' || method === 'PUT') && path.toLowerCase().startsWith(ASSISTANT_PREFIX);
+  if (scope !== 'organise') return false;
+  if (taxReadAllows(method, path)) return true;
+  return method === 'GET' && path.toLowerCase().replace(/\/+$/, '') === PROPOSALS_PATH;
 }

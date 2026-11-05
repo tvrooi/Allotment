@@ -242,7 +242,7 @@ test('an organise token proposes a rule that waits for the owner to turn it on',
   expect((await api.put(`/api/rules/${ruleId}`, { data: { enabled: true } })).status()).toBe(403);
   // Every token write goes through the assistant endpoints, which refuse it too, and log both
   expect(
-    (await api.put(`/api/assistant/rules/${ruleId}`, { data: { enabled: true } })).status(),
+    (await api.put(`/api/assistant/do/rules/${ruleId}`, { data: { enabled: true } })).status(),
   ).toBe(403);
   await owner.goto(`${baseURL}/settings?tab=server`);
   await section.getByRole('button', { name: 'Show' }).click();

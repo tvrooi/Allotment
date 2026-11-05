@@ -15,7 +15,7 @@ const { db } = await import('../db/index.js');
 const { accounts, assistantActions, categories, categoryGroups, transactions } =
   await import('../db/schema.js');
 const { hostGuard, originGuard, errorHandler } = await import('../middleware/security.js');
-const { authRouter, requireSession } = await import('./auth.js');
+const { authRouter, requireSession, ASSISTANT_TOOL_HEADER } = await import('./auth.js');
 const { createSession, setInitialPassword, SESSION_COOKIE } = await import('../auth/sessions.js');
 const { tokenAllows } = await import('../auth/accessTokens.js');
 const { ASSISTANT_ACTIONS } = await import('../auth/assistantPolicy.js');
@@ -23,7 +23,7 @@ const { BACKUP_TABLES } = await import('../services/backupService.js');
 const { MAX_LOG_ROWS, logAssistantAction, listAssistantActions } =
   await import('../services/assistantLog.js');
 const { accessTokensRouter } = await import('./accessTokens.js');
-const { assistantRouter, ASSISTANT_TOOL_HEADER } = await import('./assistant.js');
+const { assistantDispatch, assistantRouter } = await import('./assistant.js');
 const { transactionsRouter } = await import('./transactions.js');
 const { categoriesRouter } = await import('./categories.js');
 const { payeesRouter } = await import('./payees.js');
@@ -49,6 +49,7 @@ beforeAll(async () => {
   const app = express();
   app.use(hostGuard, originGuard, express.json());
   app.use('/api/auth', authRouter);
+  app.use(assistantDispatch);
   app.use('/api', requireSession);
   app.use('/api/transactions', transactionsRouter);
   app.use('/api/categories', categoriesRouter);
@@ -118,6 +119,7 @@ describe('the policy table', () => {
       'claim_tax_deduction',
       'household_contribution',
       'own_household_contribution',
+      'propose_change',
     ]);
     expect(ASSISTANT_ACTIONS.filter((a) => a.scope === 'categorise').map((a) => a.name)).toEqual([
       'categorise_transaction',
@@ -126,7 +128,7 @@ describe('the policy table', () => {
     ]);
   });
 
-  it('no general route takes a token’s write; only the assistant endpoints do', () => {
+  it('no general route takes a token’s write; only the assistant endpoint does', async () => {
     const writes: [string, string, unknown][] = [
       ['PUT', '/transactions/past', { categoryId: 'groceries' }],
       ['POST', '/categories', { groupId: 'g', name: 'X' }],
@@ -141,12 +143,17 @@ describe('the policy table', () => {
     ];
     for (const scope of ['read', 'categorise', 'organise'] as const) {
       for (const [method, path, body] of writes) {
+        // tokenAllows answers reads only: every write is the policy table's, through /do
         expect(tokenAllows(scope, method, path, body), `${scope} ${method} ${path}`).toBe(false);
-        expect(tokenAllows(scope, method, `/assistant${path}`, body)).toBe(scope !== 'read');
       }
-      // Only writes go to the assistant endpoints; the log is the owner's
+      // The log is the owner's
       expect(tokenAllows(scope, 'GET', '/assistant/activity', undefined)).toBe(false);
-      expect(tokenAllows(scope, 'DELETE', '/assistant/transactions/past', undefined)).toBe(false);
+    }
+    const { token } = await newToken('organise', 'Direct');
+    for (const [method, path, body] of writes) {
+      const res = await call(method, path, { token }, body);
+      expect(res.status, `${method} ${path}`).toBe(403);
+      expect(String(res.body.error)).toContain('/api/assistant/do');
     }
   });
 });
@@ -156,7 +163,7 @@ describe('the assistant endpoints', () => {
     const { token, id } = await newToken('categorise', 'Sorter');
     const res = await call(
       'PUT',
-      '/assistant/transactions/past',
+      '/assistant/do/transactions/past',
       { token, tool: 'categorise_transactions' },
       { categoryId: 'groceries' },
     );
@@ -180,7 +187,7 @@ describe('the assistant endpoints', () => {
     const { token } = await newToken('categorise');
     const res = await call(
       'PUT',
-      '/assistant/transactions/past',
+      '/assistant/do/transactions/past',
       { token, tool: 'Not A Tool Name!' },
       { categoryId: 'groceries', notes: 'x' },
     );
@@ -200,7 +207,7 @@ describe('the assistant endpoints', () => {
       (
         await call(
           'PUT',
-          '/assistant/transactions/past',
+          '/assistant/do/transactions/past',
           { token: read.token },
           { categoryId: 'g' },
         )
@@ -213,7 +220,7 @@ describe('the assistant endpoints', () => {
     const { token } = await newToken('categorise');
     const res = await call(
       'PUT',
-      '/assistant/transactions/done',
+      '/assistant/do/transactions/done',
       { token },
       { categoryId: 'groceries' },
     );
@@ -228,18 +235,18 @@ describe('the assistant endpoints', () => {
 
   it('grant exactly one route: a path can’t be stacked or swapped', async () => {
     const { token } = await newToken('organise');
-    // The policy sees /assistant/transactions/past, which matches no row
+    // Rewritten once: the policy sees /assistant/do/transactions/past, which matches no row
     expect(
       (
         await call(
           'PUT',
-          '/assistant/assistant/transactions/past',
+          '/assistant/do/assistant/do/transactions/past',
           { token },
           { categoryId: 'groceries' },
         )
       ).status,
     ).toBe(403);
-    expect(latest()).toMatchObject({ outcome: 'refused', path: '/assistant/transactions/past' });
+    expect(latest()).toMatchObject({ outcome: 'refused', path: '/assistant/do/transactions/past' });
   });
 
   it('are for tokens: the owner uses the app, and only the owner reads the log', async () => {
@@ -247,7 +254,7 @@ describe('the assistant endpoints', () => {
       (
         await call(
           'PUT',
-          '/assistant/transactions/past',
+          '/assistant/do/transactions/past',
           { session: true },
           { categoryId: 'groceries' },
         )
@@ -277,7 +284,9 @@ describe('the audit log', () => {
           .values({
             id: `old-${i}`,
             createdAt: new Date(start + i * 1000).toISOString(),
+            tokenId: 'old',
             tokenName: 'Old',
+            action: '',
             scope: 'organise',
             method: 'PUT',
             path: '/x',

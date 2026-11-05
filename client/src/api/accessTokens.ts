@@ -86,3 +86,21 @@ export const getAssistantActivity = (limit = 50) =>
   apiFetch<{ actions: AssistantAction[]; policy: AssistantPolicyRow[] }>(
     `/assistant/activity?limit=${limit}`,
   );
+
+/** A change an assistant proposed that only the owner applies */
+export interface AssistantProposal {
+  id: string;
+  tokenName: string;
+  kind: 'asset.create' | 'asset.update';
+  targetId: string | null;
+  payload: Record<string, unknown>;
+  note: string | null;
+  status: 'pending' | 'applied' | 'declined';
+  error: string | null;
+  createdAt: string;
+}
+export const getAssistantProposals = () => apiFetch<AssistantProposal[]>('/assistant/proposals');
+export const applyAssistantProposal = (id: string) =>
+  apiFetch<AssistantProposal>(`/assistant/proposals/${id}/apply`, { method: 'POST' });
+export const declineAssistantProposal = (id: string) =>
+  apiFetch<AssistantProposal>(`/assistant/proposals/${id}/decline`, { method: 'POST' });

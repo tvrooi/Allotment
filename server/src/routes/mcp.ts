@@ -5,7 +5,7 @@ import { appVersion } from '../utils/version.js';
 import { db } from '../db/index.js';
 import { taxClaims, transactions } from '../db/schema.js';
 import { asScope, canCategorise, type TokenScope } from '../auth/accessTokens.js';
-import { ASSISTANT_TOOL_HEADER } from './assistant.js';
+import { ASSISTANT_TOOL_HEADER } from './auth.js';
 import { recordChangeSet, type ChangeEntry } from '../services/changeSets.js';
 import { todayIso } from '../services/mainAmountService.js';
 import { TAX_LABEL_KEYS, TAX_LABELS } from '../services/taxService.js';
@@ -963,6 +963,28 @@ const ACTION_TOOLS: ActionTool[] = [
     },
   },
   {
+    name: 'propose_tax_asset',
+    scope: 'organise',
+    description:
+      "Propose a new depreciating asset, or a change to one (give asset_id), for the owner to apply or decline in Settings → Server → Assistant. Nothing changes until the owner applies it. Fields as tax_assets returns them: name, label (D1–D5, D15), method (prime_cost or diminishing_value), cost and openingAdjustableValue in cents, startDate (YYYY-MM-DD), effectiveLifeHundredths (3 years = 300), workUseBps (100% = 10000), purchaseDate, transactionId, replaceClaim (true to replace that purchase's outright claim), notes. A new asset needs name, label, method, cost, startDate, effectiveLifeHundredths and workUseBps.",
+    properties: {
+      asset_id: idString,
+      asset: { type: 'object' },
+      note: { type: 'string', maxLength: 1000 },
+    },
+    required: ['asset'],
+    run: async (ctx, a) => {
+      const body =
+        a.asset_id === undefined
+          ? { kind: 'asset.create', asset: a.asset, note: a.note }
+          : { kind: 'asset.update', assetId: a.asset_id, asset: a.asset, note: a.note };
+      const r = await api(ctx, '/assistant/proposals', 'POST', body);
+      return r.ok
+        ? { proposed: r.data, next: 'The owner applies or declines it in Allotment.' }
+        : { error: r.error };
+    },
+  },
+  {
     name: 'tax_claim',
     scope: 'organise',
     readOnly: true,
@@ -1140,14 +1162,12 @@ function rpcError(id: unknown, code: number, message: string) {
   return { jsonrpc: '2.0', id: id ?? null, error: { code, message } };
 }
 
-/**
- * One request to this server's API, as the caller (same token, same checks). A write goes to
- * the assistant endpoints, which check it against the policy and log it (routes/assistant.ts).
- */
+/** One request to this server's API, as the caller (same token, same checks) */
 async function callApi(req: Request, path: string, method = 'GET', body?: unknown, tool?: string) {
   const apiRoot = req.baseUrl.replace(/\/mcp$/, '');
-  const route = method === 'GET' || method === 'HEAD' ? path : `/assistant${path}`;
-  const res = await fetch(`http://127.0.0.1:${req.socket.localPort}${apiRoot}${route}`, {
+  // Writes go through the assistant endpoint, which names and logs them (audit decision I-11)
+  const via = method === 'GET' ? '' : '/assistant/do';
+  const res = await fetch(`http://127.0.0.1:${req.socket.localPort}${apiRoot}${via}${path}`, {
     method,
     headers: {
       authorization: req.headers.authorization ?? '',
@@ -1170,7 +1190,7 @@ const BASICS =
 const INSTRUCTIONS: Record<TokenScope, string> = {
   read: `Read-only access to an Allotment budget. ${BASICS}`,
   categorise: `Read access to an Allotment budget, plus setting the category of past transactions (categorise_transactions, categorise_by_payee) and creating and editing categories and groups; nothing else can change. ${BASICS} Start from uncategorised_payees. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before categorising.`,
-  organise: `Read access to an Allotment budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers, suggesting assignments the owner applies, claiming past transactions as tax deductions (tax_years, tax_deductions, tax_claim_candidates, claim_tax_deductions; never replacing or removing a claim), reading depreciating assets (tax_assets), recording household contributions linked to deposits into a household account (household_bill_reconciliation, record_household_contributions), and your own unlinked contribution up to what you owe the household account (record_own_household_contribution). ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
+  organise: `Read access to an Allotment budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers, suggesting assignments the owner applies, claiming past transactions as tax deductions (tax_years, tax_deductions, tax_claim_candidates, claim_tax_deductions; never replacing or removing a claim), reading depreciating assets (tax_assets) and proposing new ones or changes the owner applies (propose_tax_asset), recording household contributions linked to deposits into a household account (household_bill_reconciliation, record_household_contributions), and your own unlinked contribution up to what you owe the household account (record_own_household_contribution). ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
 };
 
 const schemaOf = (t: { properties?: Record<string, unknown>; required?: string[] }) => ({

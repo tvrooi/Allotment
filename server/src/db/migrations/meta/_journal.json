@@ -489,7 +489,14 @@
       "idx": 69,
       "version": "6",
       "when": 1795500000000,
-      "tag": "0069_assistant_actions",
+      "tag": "0069_assistant_log_proposals",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "6",
+      "when": 1795700000000,
+      "tag": "0071_assistant_log_policy",
       "breakpoints": true
     }
   ]

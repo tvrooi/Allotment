@@ -5,14 +5,19 @@ import { Copy, KeyRound } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { formatDay } from '../../utils/dates';
+import { formatCurrency } from '../../utils/currency';
 import {
   createAccessToken,
   getAccessTokens,
-  getAssistantActivity,
   getChangeSets,
   revokeAccessToken,
   redoChangeSet,
   undoChangeSet,
+  applyAssistantProposal,
+  declineAssistantProposal,
+  getAssistantActivity,
+  getAssistantProposals,
+  type AssistantProposal,
   type AccessToken,
   type AccessTokenScope,
   type CreatedAccessToken,
@@ -192,6 +197,7 @@ export function ReadOnlyAccess() {
           ))}
         </ul>
       )}
+      <AssistantProposals />
       <AssistantChanges />
       <AssistantActivity />
       <ConfirmModal
@@ -270,6 +276,82 @@ function AssistantChanges() {
       {(undo.error ?? redo.error) && (
         <p className="text-xs text-negative mt-2">{(undo.error ?? redo.error)?.message}</p>
       )}
+    </div>
+  );
+}
+
+/** What a proposed asset says, in words */
+function describeProposal(p: AssistantProposal) {
+  const a = p.payload as {
+    name?: string;
+    cost?: number;
+    method?: string;
+    effectiveLifeHundredths?: number;
+    workUseBps?: number;
+  };
+  const parts = [
+    a.cost !== undefined && formatCurrency(a.cost),
+    a.method && (a.method === 'prime_cost' ? 'prime cost' : 'diminishing value'),
+    a.effectiveLifeHundredths !== undefined && `${a.effectiveLifeHundredths / 100} years`,
+    a.workUseBps !== undefined && `${a.workUseBps / 100}% work use`,
+  ].filter(Boolean);
+  const what = p.kind === 'asset.create' ? 'New asset' : 'Change to an asset';
+  return `${what}${a.name ? `: ${a.name}` : ''}${parts.length ? ` (${parts.join(', ')})` : ''}`;
+}
+
+/** Changes an assistant proposed (audit decision I-11); nothing changes until the owner applies */
+function AssistantProposals() {
+  const qc = useQueryClient();
+  const { data: proposals = [] } = useQuery({
+    queryKey: ['assistant-proposals'],
+    queryFn: getAssistantProposals,
+  });
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: ['assistant-proposals'] });
+    void qc.invalidateQueries({ queryKey: ['tax'] });
+  };
+  const apply = useMutation({ mutationFn: applyAssistantProposal, onSettled: refresh });
+  const decline = useMutation({ mutationFn: declineAssistantProposal, onSettled: refresh });
+  const busy = apply.isPending || decline.isPending;
+  if (!proposals.length) return null;
+  return (
+    <div className="mt-4">
+      <h3 className="text-xs font-semibold text-text-secondary">Waiting for you</h3>
+      <p className="text-xs text-text-tertiary mt-0.5">
+        An assistant proposed these. Nothing changes until you apply one; Tax time → Assets shows
+        the result.
+      </p>
+      <ul aria-label="Assistant proposals" className="mt-2 divide-y divide-border-light">
+        {proposals.map((p) => (
+          <li key={p.id} className="flex items-center gap-3 py-2">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-text">{describeProposal(p)}</p>
+              <p className="text-xs text-text-tertiary">
+                {p.tokenName}, {formatDistanceToNow(new Date(p.createdAt), { addSuffix: true })}
+                {p.note ? ` · ${p.note}` : ''}
+              </p>
+              {p.error && <p className="text-xs text-negative">{p.error}</p>}
+            </div>
+            <Button
+              size="sm"
+              aria-label={`Apply: ${describeProposal(p)}`}
+              disabled={busy}
+              onClick={() => apply.mutate(p.id)}
+            >
+              Apply
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              aria-label={`Decline: ${describeProposal(p)}`}
+              disabled={busy}
+              onClick={() => decline.mutate(p.id)}
+            >
+              Decline
+            </Button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

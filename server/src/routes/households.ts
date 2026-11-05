@@ -2,6 +2,7 @@ import { Router, type Response } from 'express';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
+import { repaymentCategoryOffers } from '../services/householdCategoryOffers.js';
 import { db } from '../db/index.js';
 import {
   accounts,
@@ -118,6 +119,13 @@ householdsRouter.post('/', (req, res) =>
   ),
 );
 householdsRouter.get('/:id', (req, res) => run(res, () => snapshot(req.params.id)));
+// Audit decision I-8: repayments to you that could be categorised back to what they paid for
+householdsRouter.get('/:id/category-offers', (req, res) =>
+  run(res, () => {
+    snapshot(req.params.id); // refuses an unknown household
+    return repaymentCategoryOffers(req.params.id);
+  }),
+);
 // For a combined household (gateway/sharing.ts): the record the other person sees, which the
 // gateway asks for with its secret. Less than GET /:id, which the owner can already read.
 householdsRouter.get('/:id/shared-export', (req, res) =>

@@ -40,7 +40,7 @@ import { accessTokensRouter } from './routes/accessTokens.js';
 import { changeSetsRouter } from './routes/changeSets.js';
 import { budgetProposalsRouter } from './routes/budgetProposals.js';
 import { mcpRouter } from './routes/mcp.js';
-import { assistantRouter } from './routes/assistant.js';
+import { assistantDispatch, assistantRouter } from './routes/assistant.js';
 import { rulesRouter } from './routes/rules.js';
 import { reportsRouter } from './routes/reports.js';
 import { RESTORE_PATH, exportRouter } from './routes/export.js';
@@ -118,6 +118,7 @@ app.get(BANK_CALLBACK_PATH, bankCallbackRateLimit, enableBankingCallback);
 // Server mode: login routes, then a valid session is required for the rest of the API
 // Behind the multi-user gateway, it signs people in; this budget's own login stays closed
 if (!gatewaySecret) app.use('/api/auth', authRouter);
+app.use(assistantDispatch);
 app.use('/api', requireSession);
 
 // Kept minimal: anyone who can reach the server may call it (health checks, reconnecting)

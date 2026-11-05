@@ -1,42 +1,54 @@
-import { Router, type Request, type Response, type NextFunction } from 'express';
-import { asScope } from '../auth/accessTokens.js';
-import { ASSISTANT_ACTIONS, assistantActionFor } from '../auth/assistantPolicy.js';
+import { Router, type RequestHandler, type Response } from 'express';
+import { z } from 'zod';
+import { ASSISTANT_ACTIONS } from '../auth/assistantPolicy.js';
+import { listAssistantActions } from '../services/assistantLog.js';
 import {
-  finishAssistantAction,
-  listAssistantActions,
-  logAssistantAction,
-} from '../services/assistantLog.js';
+  ASSISTANT_DO,
+  ProposalError,
+  applyAssistantProposal,
+  createAssistantProposal,
+  declineAssistantProposal,
+  listAssistantProposals,
+  proposalSchema,
+} from '../services/assistantActions.js';
 
-// The assistant endpoints (audit decision I-11, docs/ASSISTANT-ENDPOINTS.md). An access token's
-// writes come here, never to a general route: POST or PUT /api/assistant/<route path>. Each one
-// is checked against the policy table (auth/assistantPolicy.ts) and logged. An allowed one is
-// handed to its route in this process with a one-time grant for exactly that method and path
-// (routes/auth.ts, requireSession), so the route applies all its own rules as it does for the
-// owner. The owner reads the log here; no token can.
+// Audit decision I-11 (docs/ASSISTANT-ENDPOINTS.md). The owner reads the assistant's activity
+// and decides its proposals here; an organise token may only create proposals, and only
+// through /api/assistant/do (the policy row propose_change, auth/assistantPolicy.ts).
+
+/**
+ * Before routing: a request to /api/assistant/do/<path> is handled as /api/<path>, marked as
+ * having come through the assistant endpoint. Only this flag (set here, never from a header)
+ * lets an access token write; requireSession finds its policy row and logs it.
+ */
+export const assistantDispatch: RequestHandler = (req, res, next) => {
+  if (req.path === ASSISTANT_DO || req.path.startsWith(`${ASSISTANT_DO}/`)) {
+    req.url = `/api${req.url.slice(ASSISTANT_DO.length)}`;
+    res.locals.viaAssistant = true;
+  }
+  next();
+};
 
 export const assistantRouter = Router();
 
-/** Header the MCP endpoint adds to say which tool is asking, for the log */
-export const ASSISTANT_TOOL_HEADER = 'x-flybudget-assistant-tool';
-const TOOL_NAME = /^[a-z0-9_]{1,64}$/;
-
-/** A write the policy allowed, for requireSession to let through once */
-export interface AssistantGrant {
-  method: string;
-  path: string;
+function answer(res: Response, action: () => unknown, status = 200) {
+  try {
+    res.status(status).json(action());
+  } catch (error) {
+    if (error instanceof z.ZodError)
+      return void res.status(400).json({ error: error.issues.map((i) => i.message).join('; ') });
+    if (!(error instanceof ProposalError)) throw error;
+    res.status(error.status).json({ error: error.message });
+  }
 }
 
-/** Express's application dispatch, present at runtime */
-interface Dispatcher {
-  handle: (req: Request, res: Response, next: NextFunction) => void;
-}
-
-const tokenOf = (res: Response) =>
-  typeof res.locals.accessTokenId === 'string' ? res.locals.accessTokenId : undefined;
+const ownerOnly: RequestHandler = (_req, res, next) =>
+  res.locals.accessTokenId
+    ? void res.status(403).json({ error: 'Only the owner can do this' })
+    : next();
 
 /** The owner's view: recent requests and the policy they were checked against */
-assistantRouter.get('/activity', (req, res) => {
-  if (tokenOf(res)) return void res.status(403).json({ error: 'Only the owner can see this' });
+assistantRouter.get('/activity', ownerOnly, (req, res) => {
   const limit = Number(req.query.limit ?? 100);
   const offset = Number(req.query.offset ?? 0);
   res.json({
@@ -47,61 +59,24 @@ assistantRouter.get('/activity', (req, res) => {
     policy: ASSISTANT_ACTIONS.map(({ name, scope, summary }) => ({ name, scope, summary })),
   });
 });
-
-assistantRouter.use((req: Request, res: Response, next: NextFunction) => {
-  if (req.method !== 'POST' && req.method !== 'PUT') return next();
-  const tokenId = tokenOf(res);
-  if (!tokenId) {
-    return void res
-      .status(403)
-      .json({ error: 'The assistant endpoints are for access tokens; the owner uses the app' });
-  }
-  const scope = asScope(res.locals.accessTokenScope);
-  const path = req.path;
-  const toolHeader = req.headers[ASSISTANT_TOOL_HEADER];
-  const tool = typeof toolHeader === 'string' && TOOL_NAME.test(toolHeader) ? toolHeader : null;
-  const action = assistantActionFor(scope, req.method, path, req.body);
-  if (!action) {
-    const error =
-      scope === 'categorise'
-        ? 'This access token can only read, set the category of past transactions, and create or edit categories'
-        : 'An access token cannot make this change';
-    logAssistantAction({
-      tokenId,
-      scope,
-      action: null,
-      tool,
-      method: req.method,
-      path,
-      outcome: 'refused',
-      status: 403,
-      reason: error,
-    });
-    return void res.status(403).json({ error });
-  }
-
-  const logId = logAssistantAction({
-    tokenId,
-    scope,
-    action: action.name,
-    tool,
-    method: req.method,
-    path,
-    outcome: 'failed',
-  });
-  // The route's own refusal, if any, for the log
-  let reason: string | null = null;
-  const json = res.json.bind(res);
-  res.json = (body: unknown) => {
-    if (res.statusCode >= 400 && body && typeof body === 'object' && 'error' in body)
-      reason = String((body as { error: unknown }).error);
-    return json(body);
-  };
-  res.on('finish', () => finishAssistantAction(logId, res.statusCode, reason));
-
-  res.locals.assistantGrant = { method: req.method, path } satisfies AssistantGrant;
-  res.locals.assistantAction = action.name;
-  req.url = `/api${req.url}`;
-  // Express's own dispatch (not in its types): the route runs in this process, no new request
-  (req.app as unknown as Dispatcher).handle(req, res, next);
-});
+assistantRouter.get('/proposals', (req, res) =>
+  res.json(listAssistantProposals(req.query.status === 'all' ? undefined : 'pending')),
+);
+assistantRouter.post('/proposals', (req, res) =>
+  answer(
+    res,
+    () => {
+      const tokenId = res.locals.accessTokenId as string | undefined;
+      if (!tokenId)
+        throw new ProposalError('Proposals come from an assistant; make the change yourself', 400);
+      return createAssistantProposal(tokenId, proposalSchema.parse(req.body));
+    },
+    201,
+  ),
+);
+assistantRouter.post('/proposals/:id/apply', ownerOnly, (req, res) =>
+  answer(res, () => applyAssistantProposal(String(req.params.id))),
+);
+assistantRouter.post('/proposals/:id/decline', ownerOnly, (req, res) =>
+  answer(res, () => declineAssistantProposal(String(req.params.id))),
+);
