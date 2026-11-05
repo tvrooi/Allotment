@@ -1,11 +1,21 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import fc from 'fast-check';
 import { db } from '../db/index.js';
-import { accounts, budgetSettings, scheduleOccurrences, schedules } from '../db/schema.js';
+import {
+  accounts,
+  budgetSettings,
+  scheduleOccurrences,
+  schedules,
+  transactions,
+} from '../db/schema.js';
 import { buildRecurrenceRule } from '../utils/recurrence.js';
-import { ensureOccurrences, regenerateFutureOccurrences } from './scheduleService.js';
+import {
+  autoCreateDueScheduled,
+  ensureOccurrences,
+  regenerateFutureOccurrences,
+} from './scheduleService.js';
 import { updateBudgetSettings } from './mainAmountService.js';
 import {
   FIRST_REMINDER_HOUR,
@@ -20,7 +30,7 @@ import {
 beforeAll(() => migrate(db, { migrationsFolder: 'src/db/migrations' }));
 
 beforeEach(() => {
-  for (const table of [scheduleOccurrences, schedules, accounts, budgetSettings])
+  for (const table of [scheduleOccurrences, transactions, schedules, accounts, budgetSettings])
     db.delete(table).run();
   db.insert(accounts)
     .values({
@@ -151,6 +161,42 @@ describe('sendDueReminders', () => {
     const { sent, notify } = setup();
     expect(await sendDueReminders(notify, at(2026, 10, 14, 10))).toBe(1);
     expect(sent).toHaveLength(1);
+  });
+
+  it('still reminds on the day for a bill the timer posts by itself, but not for one paid for real', async () => {
+    // Auto-create bill: the hourly timer posts it after midnight, hours before the morning reminder
+    bill({
+      id: 'auto',
+      name: 'Auto',
+      autoCreate: 1,
+      autoCreateFrom: '2026-10-01',
+      reminderDays: 0,
+    });
+    // A bill someone paid, whether the bank brought it in or it was typed by hand
+    bill({ id: 'paidreal', name: 'Paid', reminderDays: 0 });
+    db.insert(transactions)
+      .values({
+        id: 'bank-row',
+        accountId: 'everyday',
+        date: '2026-10-15',
+        amount: -150_000,
+        importedId: 'up:acct:tx',
+      })
+      .run();
+    db.update(scheduleOccurrences)
+      .set({ status: 'paid', matchedTransactionId: 'bank-row', matchType: 'automatic' })
+      .where(
+        and(
+          eq(scheduleOccurrences.scheduleId, 'paidreal'),
+          eq(scheduleOccurrences.scheduledDate, '2026-10-15'),
+        ),
+      )
+      .run();
+    expect(autoCreateDueScheduled('2026-10-15')).toBeGreaterThanOrEqual(1);
+    const { sent, notify } = setup({ details: true });
+    expect(await sendDueReminders(notify, at(2026, 10, 15, 9))).toBe(1);
+    expect(sent[0].message).toBe('Auto: -$1,500.00 today');
+    expect(await sendDueReminders(notify, at(2026, 10, 15, 10))).toBe(0);
   });
 
   it('does not remind again after an edit remakes the occurrences', async () => {

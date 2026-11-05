@@ -288,6 +288,30 @@ describe('undo this file', () => {
     expect(inAccount(a)).toHaveLength(0);
   });
 
+  it('still puts the balance right when the older rows sum to zero and only some are removed', async () => {
+    const a = await newAccount('Net zero', 100_000);
+    db.update(accounts).set({ balanceAsOf: '2026-11-01' }).where(eq(accounts.id, a)).run();
+    const imported = await importFile(
+      a,
+      [row('2026-10-01', -500, 'Out'), row('2026-10-02', 500, 'In')],
+      'zero.csv',
+    );
+    const balance = () => {
+      const start = db.select().from(accounts).where(eq(accounts.id, a)).get()!.startingBalance;
+      return start + inAccount(a).reduce((sum, t) => sum + t.amount, 0);
+    };
+    expect(balance()).toBe(100_000);
+    // The person reviewed the +500 row, so undo keeps it and removes the -500 one
+    const kept = inAccount(a).find((t) => t.payeeName === 'In')!;
+    db.update(transactions)
+      .set({ reviewedAt: '2026-11-02T00:00:00.000Z' })
+      .where(eq(transactions.id, kept.id))
+      .run();
+    await call('DELETE', `/transactions/import/batches/${imported.body.importBatchId}`);
+    expect(inAccount(a)).toHaveLength(1);
+    expect(balance()).toBe(100_000);
+  });
+
   it('does not touch the starting balance when the import had not moved it', async () => {
     const a = await newAccount('No move', 5_000);
     const imported = await importFile(a, [row('2026-10-01', -500, 'Plain')], 'f.csv');

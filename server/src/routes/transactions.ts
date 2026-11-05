@@ -810,7 +810,9 @@ transactionsRouter.post('/import/confirm', (req, res) => {
         .set({ startingBalance: account.startingBalance - historical })
         .where(eq(accounts.id, accountId))
         .run();
-    finishImportBatch(batchId, imported, historical !== 0 ? account.balanceAsOf : null);
+    // The cutoff is kept whenever this import was holding the balance, even if the older rows
+    // happened to sum to zero: undoing only some of them (the rest were worked on) still needs it
+    finishImportBatch(batchId, imported, keepsBalance ? account.balanceAsOf : null);
     return {
       imported,
       importBatchId: imported > 0 ? batchId : null,

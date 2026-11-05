@@ -11,9 +11,9 @@
 //     and amounts, because a lock screen shows the message to whoever is holding the phone;
 //   - one message per tick however many items are due, and none overnight;
 //   - a failed send marks nothing, so the next hour tries again, and is logged by the timer.
-import { and, asc, eq, gte, isNotNull, isNull, lte } from 'drizzle-orm';
+import { and, asc, eq, gte, isNotNull, isNull, like, lte, or } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { accounts, scheduleOccurrences, schedules } from '../db/schema.js';
+import { accounts, scheduleOccurrences, schedules, transactions } from '../db/schema.js';
 import { minorUnits } from '../utils/currencies.js';
 import { addDaysIso, daysBetweenIso, localDayIso } from '../utils/date.js';
 import type { Notify } from '../gateway/notify.js';
@@ -34,7 +34,7 @@ export interface DueReminder {
   daysAway: number;
 }
 
-/** Pending occurrences that have come within their schedule's lead and not been reminded yet */
+/** Occurrences that have come within their schedule's lead, unpaid or just auto-posted, not yet reminded */
 export function dueReminders(today: string): DueReminder[] {
   const rows = db
     .select({
@@ -48,11 +48,18 @@ export function dueReminders(today: string): DueReminder[] {
     .from(scheduleOccurrences)
     .innerJoin(schedules, eq(schedules.id, scheduleOccurrences.scheduleId))
     .leftJoin(accounts, eq(accounts.id, schedules.accountId))
+    .leftJoin(transactions, eq(transactions.id, scheduleOccurrences.matchedTransactionId))
     .where(
       and(
         eq(schedules.status, 'active'),
         isNotNull(schedules.reminderDays),
-        eq(scheduleOccurrences.status, 'pending'),
+        // Pending, or posted by the schedule itself (an auto-create bill is "paid" the moment the
+        // timer creates it, which is before the morning's reminder). A payment from the bank or by
+        // hand is a real payment: nothing left to remind about.
+        or(
+          eq(scheduleOccurrences.status, 'pending'),
+          and(eq(scheduleOccurrences.status, 'paid'), like(transactions.importedId, 'schedule:%')),
+        ),
         isNull(scheduleOccurrences.remindedAt),
         gte(scheduleOccurrences.expectedDate, today),
         lte(scheduleOccurrences.expectedDate, addDaysIso(today, MAX_REMINDER_DAYS)),

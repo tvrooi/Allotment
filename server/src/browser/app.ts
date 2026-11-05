@@ -142,6 +142,12 @@ app.put('/currency/download', (req, res, next) => {
 });
 app.use('/currency', currencyRouter as unknown as ShimRouter);
 
+// Bill reminders need Home Assistant's notifications (routes/reminders.ts): never in the demo,
+// which answers the settings read with "not available" so the recurring form can say so
+app.get('/reminders', (_req, res) =>
+  res.json({ available: false, service: null, showDetails: false }),
+);
+app.use('/reminders', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
 app.use('/plaid', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
 app.use('/simplefin', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
 app.use('/up', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
