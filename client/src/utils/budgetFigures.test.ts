@@ -1,25 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { categoryFigures, isActiveCategory, splitCategories } from './budgetFigures';
+import { availability, categoryFigures, isActiveCategory, splitCategories } from './budgetFigures';
 import type { BudgetCategory } from '../types';
 
 const cents = fc.integer({ min: -10_000_000, max: 10_000_000 });
 const category = fc
   .record({ budgeted: cents, spent: fc.nat(10_000_000), carryOver: cents, received: cents })
-  .map(({ budgeted, spent, carryOver, received }): BudgetCategory => ({
-    id: 'c',
-    groupId: 'g',
-    name: 'Category',
-    icon: null,
-    budgetType: null,
-    sortOrder: 0,
-    createdAt: '',
-    budgeted,
-    spent,
-    carryOver,
-    // The server's balance: carry-over + planned + this month's activity
-    balance: carryOver + budgeted + received,
-  }));
+  .map(
+    ({ budgeted, spent, carryOver, received }): BudgetCategory => ({
+      id: 'c',
+      groupId: 'g',
+      name: 'Category',
+      icon: null,
+      budgetType: null,
+      sortOrder: 0,
+      createdAt: '',
+      budgeted,
+      spent,
+      carryOver,
+      // The server's balance: carry-over + planned + this month's activity
+      balance: carryOver + budgeted + received,
+    }),
+  );
 
 describe('categoryFigures (property-based)', () => {
   it('a transfer into a linked account funds the envelope without being activity', () => {
@@ -150,5 +152,67 @@ describe('expected recurring debits', () => {
     const expecting = { ...empty, expected: 5000 };
     expect(isActiveCategory(expecting, false)).toBe(true);
     expect(categoryFigures(expecting, false)).toEqual(categoryFigures(empty, false));
+  });
+});
+
+describe('availability', () => {
+  const base: BudgetCategory = {
+    id: 'c',
+    groupId: 'g',
+    name: 'Groceries',
+    icon: null,
+    budgetType: null,
+    sortOrder: 0,
+    createdAt: '',
+    budgeted: 0,
+    spent: 0,
+    carryOver: 0,
+    balance: 0,
+  };
+  const target = (underfunded: number) =>
+    ({ underfunded }) as unknown as NonNullable<BudgetCategory['target']>;
+
+  it('a $600 carry + $100 assigned − $500 spent is $200 available, covered, not a deficit', () => {
+    const cat = { ...base, carryOver: 60_000, budgeted: 10_000, spent: 50_000, balance: 20_000 };
+    expect(availability(cat, false)).toEqual({
+      kind: 'carried',
+      remaining: 20_000,
+      caption: 'Covered by carried funds',
+    });
+  });
+
+  it('names each state in words, not only colour', () => {
+    expect(availability({ ...base, balance: -500, spent: 500 }, false).caption).toBe('Overspent');
+    expect(availability({ ...base, balance: 0 }, false)).toMatchObject({ kind: 'zero' });
+    expect(availability({ ...base, balance: 300, budgeted: 300 }, false)).toMatchObject({
+      kind: 'available',
+      caption: null,
+    });
+    expect(
+      availability({ ...base, balance: 300, budgeted: 300, target: target(100) }, false),
+    ).toMatchObject({
+      kind: 'short',
+      caption: 'Short of target',
+    });
+  });
+
+  it('an overspent envelope with a target is still overspent', () => {
+    const cat = { ...base, balance: -100, spent: 100, target: target(50) };
+    expect(availability(cat, false).kind).toBe('overspent');
+  });
+
+  it('income never reads as overspent or short', () => {
+    expect(availability({ ...base, budgeted: 500, balance: 200 }, true).kind).toBe('available');
+    expect(availability({ ...base, budgeted: 500, balance: 1000 }, true).kind).toBe('zero');
+  });
+
+  it('only a negative balance is overspent, and the amount is categoryFigures remaining', () => {
+    fc.assert(
+      fc.property(category, (cat) => {
+        const a = availability(cat, false);
+        expect(a.remaining).toBe(categoryFigures(cat, false).remaining);
+        expect(a.kind === 'overspent').toBe(cat.balance < 0);
+      }),
+    );
   });
 });

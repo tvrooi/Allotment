@@ -8,6 +8,22 @@ export interface UndoCommand {
 
 const MAX_STACK = 50;
 
+/**
+ * The server refused because the data moved on since the command was recorded (a competing
+ * edit): running it again can only fail the same way, so the command is dropped.
+ */
+const isConflict = (e: unknown) => (e as { status?: number } | null)?.status === 409;
+
+function failure(verb: 'undo' | 'redo', cmd: UndoCommand, e: unknown) {
+  const reason = e instanceof Error && e.message ? e.message : 'Try again.';
+  return {
+    toastMessage: `Couldn't ${verb} ${cmd.description.toLowerCase()}. ${reason} ${
+      isConflict(e) ? 'It changed since, so nothing was touched.' : 'Nothing was changed.'
+    }`,
+    toastAction: 'error' as const,
+  };
+}
+
 /** Runs after every undo or redo that succeeds (main.tsx refreshes the ledger views) */
 let afterChange: () => unknown = () => {};
 export const setAfterUndoChange = (fn: () => unknown) => {
@@ -18,8 +34,11 @@ interface UndoState {
   undoStack: UndoCommand[];
   redoStack: UndoCommand[];
   toastMessage: string | null;
-  /** undo/redo: what was just undone or redone; done: an action that Undo reverses; note: a message */
-  toastAction: 'undo' | 'redo' | 'done' | 'note' | null;
+  /**
+   * undo/redo: what was just undone or redone; done: an action that Undo reverses; note: a message;
+   * error: an undo or redo that did not happen, and why
+   */
+  toastAction: 'undo' | 'redo' | 'done' | 'note' | 'error' | null;
 }
 
 interface UndoActions {
@@ -57,8 +76,12 @@ export const useUndoStore = create<UndoState & UndoActions>((set, get) => ({
         toastMessage: cmd.description,
         toastAction: 'undo',
       });
-    } catch {
-      set((s) => ({ undoStack: [...s.undoStack, cmd] }));
+    } catch (e) {
+      // A conflict leaves the current figures as they are and forgets the stale command
+      set((s) => ({
+        ...(isConflict(e) ? {} : { undoStack: [...s.undoStack, cmd] }),
+        ...failure('undo', cmd, e),
+      }));
     }
   },
 
@@ -75,8 +98,11 @@ export const useUndoStore = create<UndoState & UndoActions>((set, get) => ({
         toastMessage: cmd.description,
         toastAction: 'redo',
       });
-    } catch {
-      set((s) => ({ redoStack: [...s.redoStack, cmd] }));
+    } catch (e) {
+      set((s) => ({
+        ...(isConflict(e) ? {} : { redoStack: [...s.redoStack, cmd] }),
+        ...failure('redo', cmd, e),
+      }));
     }
   },
 

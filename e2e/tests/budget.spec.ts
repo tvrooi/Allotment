@@ -56,6 +56,63 @@ test.describe('budget', () => {
     expect((await api.call('GET', `/budget/${thisMonth()}/summary`)).toBeBudgeted).toBe(0);
   });
 
+  test('a refused amount stays in the field with its reason, and a save in flight is shown', async ({
+    page,
+    api,
+  }) => {
+    test.info().annotations.push({
+      type: 'allow-page-errors',
+      description: 'Expected refusal to assign more than is ready to assign',
+    });
+    const checking = await api.createAccount('Checking', 0);
+    const paychecks = await api.category('Paychecks');
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: 100_000,
+      payeeName: 'Employer',
+      categoryId: paychecks.id,
+    });
+    await open(page, '/budget');
+    await plan(page, 'Groceries', '1000');
+    await expect(toBeBudgeted(page)).toContainText('$0');
+
+    // Delay the answers so the saving state can be seen, and count what is sent
+    let puts = 0;
+    await page.route('**/api/budget/*/*', async (route) => {
+      if (route.request().method() === 'PUT') {
+        puts++;
+        await new Promise((r) => setTimeout(r, 400));
+      }
+      await route.continue();
+    });
+
+    const showInactive = page.getByRole('button', { name: /^Show \d+ inactive/ });
+    const restaurants = page.getByRole('button', { name: /^Planned for Restaurants:/ });
+    while (!(await restaurants.isVisible()) && (await showInactive.count()) > 0) {
+      await showInactive.first().click();
+    }
+    await restaurants.click();
+    const input = page.getByRole('textbox', { name: 'Planned for Restaurants' });
+    await input.fill('50');
+    await input.press('Enter');
+    await expect(page.getByText('Saving…')).toBeVisible();
+    await expect(input).toHaveAttribute('readonly', '');
+
+    // Refused: the amount is still there to correct, with the reason beside it
+    await expect(page.getByText(/^Not saved\./)).toBeVisible();
+    await expect(input).toHaveValue('50');
+    await expect(input).toBeFocused();
+    expect(puts).toBe(1);
+    expect((await api.call('GET', `/budget/${thisMonth()}/summary`)).toBeBudgeted).toBe(0);
+
+    // Corrected to what can be afforded, it saves and the editor closes
+    await input.fill('0');
+    await input.press('Enter');
+    await expect(input).toHaveCount(0);
+    expect(puts).toBe(2);
+  });
+
   test('spending shows against its categories, including split parts', async ({ page, api }) => {
     const checking = await api.createAccount('Checking', 100_000);
     const groceries = await api.category('Groceries');

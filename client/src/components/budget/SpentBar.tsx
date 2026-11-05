@@ -7,6 +7,7 @@ export function SpentBar({
   budgeted,
   isIncome,
   expected = 0,
+  covered = false,
   className = 'h-[3px] w-[90%] mt-1',
 }: {
   spent: number;
@@ -14,6 +15,8 @@ export function SpentBar({
   isIncome?: boolean;
   /** Positive cents still expected to be spent this month */
   expected?: number;
+  /** Spending above the assignment is paid for by money carried in: a caution, not a deficit */
+  covered?: boolean;
   className?: string;
 }) {
   if (budgeted <= 0 && spent <= 0 && expected <= 0) return null;
@@ -25,6 +28,8 @@ export function SpentBar({
   if (isIncome || ratio < 0.8 || ratio === 1) {
     color = 'bg-positive';
   } else if (ratio < 1) {
+    color = 'bg-caution';
+  } else if (covered) {
     color = 'bg-caution';
   } else {
     color = 'bg-negative';

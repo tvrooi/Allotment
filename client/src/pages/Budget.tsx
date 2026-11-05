@@ -2,7 +2,7 @@ import { CardPayments } from '../components/budget/CardPayments';
 import { CategoryIcon } from '../components/ui/CategoryIcon';
 import { MoneyMoves } from '../components/budget/MoneyMoves';
 import { AssistantSuggestions } from '../components/budget/AssistantSuggestions';
-import { useState, useRef, useMemo, type ElementRef } from 'react';
+import { useState, useRef, useMemo, useEffect, type ElementRef } from 'react';
 import { Link } from 'react-router-dom';
 import { format, parseISO, addMonths, subMonths } from 'date-fns';
 import {
@@ -40,7 +40,7 @@ import { PaydayPlan } from '../components/budget/PaydayPlan';
 import { MissingRatesBanner } from '../components/currency/MissingRatesBanner';
 import { useIsPhone } from '../hooks/useIsPhone';
 import { useCanSave } from '../hooks/useConnection';
-import { categoryFigures, splitCategories } from '../utils/budgetFigures';
+import { availability, categoryFigures, splitCategories } from '../utils/budgetFigures';
 import { TransferredNote } from '../components/budget/TransferredNote';
 import { ExpectedNote } from '../components/budget/ExpectedNote';
 import type { BudgetCategory, BudgetGroup, BudgetType } from '../types';
@@ -55,12 +55,18 @@ function AmountInput({
   cents,
   label,
   closed,
+  saving,
+  error,
   onDraft,
   onSave,
   onCancel,
 }: {
   cents: number;
   label: string;
+  /** The save is on its way: the typed amount stays, locked, until the server answers */
+  saving: boolean;
+  /** Why the last save was refused; the typed amount stays to correct */
+  error: string | null;
   /** Set once the editor has already saved or cancelled, so leaving the field does nothing */
   closed: { current: boolean };
   /** The amount typed so far, or null while it isn't readable */
@@ -70,42 +76,67 @@ function AmountInput({
 }) {
   const [raw, setRaw] = useState(centsToInput(cents));
   const [invalid, setInvalid] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  // A refused save puts the cursor back in the field, so the amount can be corrected
+  useEffect(() => {
+    if (error) {
+      input.current?.focus();
+      input.current?.select();
+    }
+  }, [error]);
 
   return (
-    <input
-      autoFocus
-      aria-label={label}
-      type="text"
-      inputMode="decimal"
-      value={raw}
-      onChange={(e) => {
-        setRaw(e.target.value);
-        setInvalid(false);
-        onDraft(isUnreadableAmount(e.target.value) ? null : parseCents(e.target.value));
-      }}
-      aria-invalid={invalid || undefined}
-      title={invalid ? UNREADABLE_AMOUNT : undefined}
-      // Select the amount so typing replaces it
-      onFocus={(e) => e.target.select()}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          // Text that isn't an amount stays open to fix, rather than saving 0
-          if (isUnreadableAmount(raw)) setInvalid(true);
-          else (e.target as HTMLInputElement).blur();
-        }
-        if (e.key === 'Escape') {
-          closed.current = true;
-          onCancel();
-        }
-      }}
-      onBlur={() => {
-        if (closed.current) return;
-        // Left with text that isn't an amount: keep the planned amount it had
-        if (isUnreadableAmount(raw)) onCancel();
-        else onSave(parseCents(raw));
-      }}
-      className={`w-28 text-right tabular-nums text-sm bg-surface border rounded-md px-2 py-0.5 focus:outline-none focus:ring-1 ${invalid ? 'border-negative focus:ring-negative' : 'border-brand-500 focus:ring-brand-600'}`}
-    />
+    <>
+      <input
+        ref={input}
+        autoFocus
+        readOnly={saving}
+        aria-busy={saving || undefined}
+        aria-label={label}
+        type="text"
+        inputMode="decimal"
+        value={raw}
+        onChange={(e) => {
+          setRaw(e.target.value);
+          setInvalid(false);
+          onDraft(isUnreadableAmount(e.target.value) ? null : parseCents(e.target.value));
+        }}
+        aria-invalid={invalid || !!error || undefined}
+        aria-describedby={error ? 'planned-save-error' : undefined}
+        title={invalid ? UNREADABLE_AMOUNT : undefined}
+        // Select the amount so typing replaces it
+        onFocus={(e) => e.target.select()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            // Text that isn't an amount stays open to fix, rather than saving 0
+            if (isUnreadableAmount(raw)) setInvalid(true);
+            else (e.target as HTMLInputElement).blur();
+          }
+          if (e.key === 'Escape') {
+            closed.current = true;
+            onCancel();
+          }
+        }}
+        onBlur={() => {
+          if (closed.current) return;
+          // Left with text that isn't an amount: keep the planned amount it had
+          if (isUnreadableAmount(raw)) onCancel();
+          else onSave(parseCents(raw));
+        }}
+        className={`w-28 text-right tabular-nums text-sm bg-surface border rounded-md px-2 py-0.5 focus:outline-none focus:ring-1 read-only:opacity-60 ${invalid || error ? 'border-negative focus:ring-negative' : 'border-brand-500 focus:ring-brand-600'}`}
+      />
+      {saving && (
+        <span role="status" className="block text-xs text-text-tertiary mt-0.5">
+          Saving…
+        </span>
+      )}
+      {error && (
+        // The page-level alert above the table carries the full explanation and fixes
+        <span id="planned-save-error" className="block max-w-56 text-xs text-negative mt-0.5">
+          Not saved. {error}
+        </span>
+      )}
+    </>
   );
 }
 
@@ -115,7 +146,8 @@ interface CategoryRowProps {
   editingId: string | null;
   month: string;
   onStartEdit: (id: string) => void;
-  onSave: (cents: number) => void;
+  /** Resolves to why the save was refused, or null once it has been saved */
+  onSave: (cents: number) => Promise<string | null>;
   onCancel: () => void;
   onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
 }
@@ -134,18 +166,38 @@ function CategoryRow({
   // Offline: amounts can't be saved, so they can't be edited (and an open editor closes)
   const canSave = useCanSave();
   const isEditing = editingId === cat.id && canSave;
-  const { actual, remaining } = categoryFigures(cat, isIncome);
+  const { actual } = categoryFigures(cat, isIncome);
+  const { kind, remaining, caption } = availability(cat, isIncome);
   const [draft, setDraft] = useState<number | null>(cat.budgeted);
   const closed = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const inFlight = useRef(false);
   function startEdit() {
     closed.current = false;
+    setFailure(null);
     setDraft(cat.budgeted);
     onStartEdit(cat.id);
   }
-  // A quick amount saves straight away and closes the editor
+  // The editor closes only once the server has saved: a refused amount stays in the field, with
+  // the reason, and a second Enter while the first is on its way sends nothing
+  async function commit(cents: number) {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setSaving(true);
+    setFailure(null);
+    const refused = await onSave(cents);
+    inFlight.current = false;
+    setSaving(false);
+    if (refused !== null) {
+      closed.current = false;
+      setFailure(refused);
+    }
+  }
+  // A quick amount saves straight away
   function pick(cents: number) {
     closed.current = true;
-    onSave(cents);
+    void commit(cents);
   }
   const quickAmounts = isIncome
     ? []
@@ -172,10 +224,12 @@ function CategoryRow({
   // overspent), plain grey for $0
   let remainingClass: string;
   const pillBase = 'font-semibold rounded-full px-2.5 py-0.5 text-text';
-  if (remaining > 0) {
-    remainingClass = `${pillBase} bg-positive/20`;
-  } else if (remaining < 0) {
+  if (kind === 'overspent') {
     remainingClass = `${pillBase} bg-negative/20`;
+  } else if (kind === 'short' || kind === 'carried') {
+    remainingClass = `${pillBase} bg-caution/20`;
+  } else if (remaining > 0) {
+    remainingClass = `${pillBase} bg-positive/20`;
   } else {
     remainingClass = 'px-2.5 py-0.5 text-text-tertiary';
   }
@@ -194,6 +248,7 @@ function CategoryRow({
           budgeted={cat.budgeted + (cat.transferred ?? 0)}
           isIncome={isIncome}
           expected={cat.expected}
+          covered={kind !== 'overspent'}
         />
         <TransferredNote cat={cat} className="mt-0.5" />
         {cat.target && (
@@ -212,20 +267,24 @@ function CategoryRow({
                 cents={cat.budgeted}
                 label={isIncome ? `Expected from ${cat.name}` : `Planned for ${cat.name}`}
                 closed={closed}
+                saving={saving}
+                error={failure}
                 onDraft={setDraft}
-                onSave={onSave}
+                onSave={(c) => void commit(c)}
                 onCancel={onCancel}
               />
-              <BudgetEditPopover
-                categoryId={cat.id}
-                isIncome={isIncome}
-                currentAmount={cat.budgeted}
-                draftAmount={draft}
-                quickAmounts={quickAmounts}
-                month={month}
-                onPick={pick}
-                onApplyBulk={(cents, expected) => onApplyBulk(cat.id, cents, expected)}
-              />
+              {!saving && !failure && (
+                <BudgetEditPopover
+                  categoryId={cat.id}
+                  isIncome={isIncome}
+                  currentAmount={cat.budgeted}
+                  draftAmount={draft}
+                  quickAmounts={quickAmounts}
+                  month={month}
+                  onPick={pick}
+                  onApplyBulk={(cents, expected) => onApplyBulk(cat.id, cents, expected)}
+                />
+              )}
             </>
           ) : (
             <button
@@ -260,6 +319,7 @@ function CategoryRow({
         <span className={`tabular-nums text-sm inline-block ${remainingClass}`}>
           {formatCurrency(remaining)}
         </span>
+        {caption && <span className="block text-xs text-text-tertiary mt-0.5">{caption}</span>}
       </td>
     </tr>
   );
@@ -270,7 +330,7 @@ interface IncomeGroupProps {
   editingId: string | null;
   month: string;
   onStartEdit: (id: string) => void;
-  onSave: (categoryId: string, cents: number) => void;
+  onSave: (categoryId: string, cents: number) => Promise<string | null>;
   onCancel: () => void;
   onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
   /** Nothing is planned this month yet: list every category, so there's something to plan */
@@ -377,7 +437,7 @@ interface BudgetTypeSectionProps {
   editingId: string | null;
   month: string;
   onStartEdit: (id: string) => void;
-  onSave: (categoryId: string, cents: number) => void;
+  onSave: (categoryId: string, cents: number) => Promise<string | null>;
   onCancel: () => void;
   onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
   showAll: boolean;
@@ -615,10 +675,17 @@ export default function BudgetPage() {
     setEditingId(null);
     setPutRestNote(null);
   }
-  function handleSave(categoryId: string, budgeted: number) {
-    if (switchingMonth) return;
-    setBudgetMutation.mutate({ month: selectedMonth, categoryId, budgeted });
-    setEditingId(null);
+  // Resolves to why the amount was refused, or null once the server has saved it. The editor
+  // closes only on success, so a refused amount is still there to correct.
+  async function handleSave(categoryId: string, budgeted: number): Promise<string | null> {
+    if (switchingMonth) return 'This month is still loading. Try again in a moment.';
+    try {
+      await setBudgetMutation.mutateAsync({ month: selectedMonth, categoryId, budgeted });
+      setEditingId(null);
+      return null;
+    } catch (e) {
+      return e instanceof Error && e.message ? e.message : 'Could not save. Try again.';
+    }
   }
 
   function handleApplyBulk(categoryId: string, budgeted: number, expected: Record<string, number>) {

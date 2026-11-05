@@ -21,7 +21,8 @@ interface Props {
   isIncome: boolean;
   month: string;
   onClose: () => void;
-  onSave: (categoryId: string, cents: number) => void;
+  /** Resolves to why the save was refused, or null once it has been saved */
+  onSave: (categoryId: string, cents: number) => Promise<string | null>;
   /** Sets the amount for this month and the 11 after it */
   onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
 }
@@ -74,12 +75,15 @@ function SheetBody({
   const [review, setReview] = useState<number | null>(null);
   // Shown after Save with text that isn't an amount, until the text changes
   const [invalid, setInvalid] = useState(false);
+  // The sheet closes once the server has saved; a refused amount stays here with its reason
+  const [saving, setSaving] = useState(false);
+  const [refused, setRefused] = useState<string | null>(null);
   const { data: history } = useCategoryHistory(category.id, month);
   const canSave = useCanSave();
 
-  function save(e: React.FormEvent) {
+  async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSave) return;
+    if (!canSave || saving) return;
     if (isUnreadableAmount(raw)) {
       setInvalid(true);
       return;
@@ -87,8 +91,12 @@ function SheetBody({
     const cents = Math.abs(parseCents(raw));
     // Twelve months are only overwritten after their preview is reviewed below.
     if (allYear) return setReview(cents);
-    onSave(category.id, cents);
-    onClose();
+    setSaving(true);
+    setRefused(null);
+    const reason = await onSave(category.id, cents);
+    setSaving(false);
+    if (reason === null) onClose();
+    else setRefused(reason);
   }
 
   const suggestions = [
@@ -112,7 +120,9 @@ function SheetBody({
           onChange={(e) => {
             setRaw(e.target.value);
             setInvalid(false);
+            setRefused(null);
           }}
+          readOnly={saving}
           placeholder={amountPlaceholder()}
           aria-invalid={invalid || undefined}
           aria-describedby={invalid ? 'planned-amount-hint' : undefined}
@@ -173,13 +183,18 @@ function SheetBody({
         />
       )}
 
+      {refused && (
+        <p role="status" className="text-sm text-negative">
+          Not saved. {refused}
+        </p>
+      )}
       <SavingPausedHint />
       <div className="flex gap-2">
         <Button type="button" variant="secondary" className="min-h-11 flex-1" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="submit" className="min-h-11 flex-1" disabled={!canSave}>
-          Save
+        <Button type="submit" className="min-h-11 flex-1" disabled={!canSave || saving}>
+          {saving ? 'Saving…' : 'Save'}
         </Button>
       </div>
     </form>
