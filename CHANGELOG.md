@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.104
+
+- **No gap at the top on iPhone.** Added to the Home Screen, Allotment left an empty band between the status bar and its header. The header now reaches up behind the clock and battery in the header's own colour, light or dark, and pages, the menu, sign-in and messages keep clear of the notch and the home bar. Safari's toolbar also takes the header colour. If you had already added Allotment to your Home Screen, remove it and add it again so iOS picks this up.
+
 ## 0.2.0-up.103
 
 - **Take a file import back out.** Every import into an account is now remembered. When you open **Import CSV**, **Earlier imports** lists each file with how many of its transactions are still there, and **Undo this import** removes exactly those. Anything you have reconciled, marked reviewed, linked as a transfer, split, shared with a household or attached a file to is kept, and the result lists what was kept and why. If the import had moved the starting balance to keep today's balance, it is moved back. **Put them back** re-imports what was removed. The last step of an import offers the same Undo. A backup now includes the history (backup format 26); older backups restore without it.

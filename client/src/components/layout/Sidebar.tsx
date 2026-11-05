@@ -469,7 +469,7 @@ export function SidebarDrawer({ open, onClose }: { open: boolean; onClose: () =>
         inert={!open}
         // Hidden once closed (so nothing inside can be reached), but only after sliding out;
         // visible straight away when opening, so focus can move in
-        className={`fixed inset-y-0 left-0 z-50 w-[232px] max-w-[85vw] overflow-hidden duration-200 ${
+        className={`fixed inset-y-0 left-0 z-50 w-[232px] max-w-[85vw] overflow-hidden duration-200 bg-sidebar-bg pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${
           open
             ? 'visible translate-x-0 shadow-xl transition-[translate]'
             : 'invisible -translate-x-full transition-[translate,visibility]'

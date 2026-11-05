@@ -2,6 +2,12 @@ import { usePreferencesStore, type Theme } from '../store/preferencesStore';
 
 function setDark(dark: boolean) {
   document.documentElement.classList.toggle('dark', dark);
+  // The browser and iPhone status bar take the header colour, read from the theme's own token
+  const headerColour = getComputedStyle(document.documentElement)
+    .getPropertyValue('--color-sidebar-bg')
+    .trim();
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (meta && headerColour) meta.content = headerColour;
 }
 
 function apply(theme: Theme) {

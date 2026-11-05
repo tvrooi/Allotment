@@ -91,7 +91,7 @@ export default function WelcomePage() {
   }
 
   return (
-    <div className="h-dvh overflow-y-auto bg-page">
+    <div className="h-dvh overflow-y-auto bg-page pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       {/* macOS desktop app: the window has no title bar, so this strip moves it */}
       <div
         aria-hidden
