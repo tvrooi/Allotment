@@ -88,7 +88,7 @@ test('no button, link or select on the main pages is nameless', async ({ page, a
             el.getAttribute('aria-labelledby') ??
             el.textContent ??
             '';
-          const labelled = (el as HTMLElement).labels?.length;
+          const labelled = (el as HTMLSelectElement).labels?.length;
           return !label.trim() && !labelled;
         })
         .map((el) => el.outerHTML.slice(0, 120)),
