@@ -9,6 +9,16 @@ Last updated: 4 November 2026 (after up.98).
 
 ## State
 
+- **Assistant policy table and log (up.101, PR #140 merged onto up.99's endpoint):** two sessions
+  built I-11 in parallel. Kept from up.99: the `/api/assistant/do` endpoint (`assistantDispatch`
+  rewrite plus `res.locals.viaAssistant`), proposals, migration 0069's tables. From #140: the policy
+  table `auth/assistantPolicy.ts` (`ASSISTANT_ACTIONS`, named rows with scope, summary and check;
+  `propose_change` added for proposals), `services/assistantLog.ts` (outcome refused/applied/failed,
+  reason, MCP tool from `x-flybudget-assistant-tool`, no bodies, newest 5,000 rows),
+  `GET /api/assistant/activity` and its settings view, and docs/ASSISTANT-ENDPOINTS.md. #140's own
+  `app.handle` grant and its migration were dropped (0069 had shipped); migration 0071 adds the
+  columns and clears the bodies up.99 kept. `tokenAllows` answers reads only; `requireSession`
+  checks writes against the table. Tests: `routes/assistant.test.ts`, `assistantTools.test.ts`.
 - **Audit F-11, F-13, F-14 (up.100):** F-11: `client/src/App.tsx` lazy-loads every page except
   Dashboard, Budget and Transactions, each in its own `Suspense` inside the shell; main chunk 2,327 kB
   to 1,266 kB (634 to 354 kB gzip); `emoji-picker-react` removed. F-13: `householdService.sharePayments`

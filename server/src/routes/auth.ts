@@ -304,8 +304,7 @@ export const requireSession: RequestHandler = (req, res, next) => {
             'An access token makes changes only through the assistant endpoint, /api/assistant/do',
         });
       const toolHeader = req.headers[ASSISTANT_TOOL_HEADER];
-      const tool =
-        typeof toolHeader === 'string' && TOOL_NAME.test(toolHeader) ? toolHeader : null;
+      const tool = typeof toolHeader === 'string' && TOOL_NAME.test(toolHeader) ? toolHeader : null;
       const action = assistantActionFor(token.scope, req.method, req.path, req.body);
       const entry = {
         tokenId: token.id,
@@ -321,7 +320,13 @@ export const requireSession: RequestHandler = (req, res, next) => {
             : token.scope === 'organise'
               ? 'An access token cannot make this change'
               : 'A read-only access token cannot do this';
-        logAssistantAction({ ...entry, action: null, outcome: 'refused', status: 403, reason: error });
+        logAssistantAction({
+          ...entry,
+          action: null,
+          outcome: 'refused',
+          status: 403,
+          reason: error,
+        });
         return void res.status(403).json({ error });
       }
       const logId = logAssistantAction({ ...entry, action: action.name, outcome: 'failed' });
