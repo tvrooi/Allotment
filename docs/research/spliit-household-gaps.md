@@ -35,7 +35,7 @@ who changed what, and explaining where the shared money went. Those are the reco
 | SPL-02 | Built    | A suggested settlement can't be recorded in one click, and outgoing repayments aren't matched | S      |
 | SPL-03 | Built    | Expenses can't be **edited**; a typo means remove and re-enter                                | M      |
 | SPL-04 | Built    | No household **activity log** (who added, changed or removed what, and when)                  | M      |
-| SPL-05 | P2       | Household reporting is two totals: no breakdown by month, category or person                  | M      |
+| SPL-05 | Built    | Household reporting is two totals: no breakdown by month, category or person                  | M      |
 | SPL-06 | Built    | Equal-split rounding always gives the spare cent to the same person                           | XS     |
 | SPL-07 | P3       | Statement is JSON only; no CSV for housemates who don't use Allotment                         | XS     |
 | SPL-08 | P3       | Household is single-currency; no per-expense original currency for travel                     | L      |
@@ -138,7 +138,7 @@ auditable), then **SPL-05** and **SPL-07**. The P3 items wait for demand.
   $84.10'". Add it to backups (bump the backup version; older backups restore with an empty log).
   Auto-sharing from rules and recurring bills is silent today, so the log also makes those visible.
 
-### SPL-05 (P2): household spending reports
+### SPL-05 (built in 0.2.0-up.108): household spending reports
 
 - **Spliit:** the stats page (`src/lib/totals.ts`, `monthly-spending.ts`, `stats/*.tsx`) shows group
   total, what you paid, your share, spending by category, a monthly stacked chart, spending by
@@ -268,6 +268,18 @@ auditable), then **SPL-05** and **SPL-07**. The P3 items wait for demand.
   sharing and Undo are logged too, because they use the same removal.
 - **Not done:** editing a settlement's "paid ahead" flag (an edit to an advance repayment that
   exceeds what is owed is refused), and activity for bills, people and splits settings.
+
+### Built in 0.2.0-up.108 (SPL-05)
+
+- `householdBreakdown` (`services/householdReport.ts`) is added to `GET /households/:id/statement`
+  as `byMonth`, `byPerson` and `byCategory`; the Household page's **Spending by month, person and
+  category** section shows them. Behaviour: [HOUSEHOLDS.md](../HOUSEHOLDS.md), "Reports and
+  portability".
+- Differences from the recommendation: no `category_id` column on `household_events` (step 2) and
+  so no migration: an entry with no linked payment is Uncategorised. Add it only if people want to
+  categorise hand-entered entries. The month chart is the existing report chart helpers with
+  recharts; the other two breakdowns are tables.
+- **Not done:** a per-person monthly stack, recurring spend, and a CSV export (SPL-07).
 
 ## Not recommended
 

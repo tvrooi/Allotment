@@ -22,7 +22,8 @@ export const TOOLTIP_CLASS = 'bg-surface border border-border rounded-md shadow-
 
 /**
  * One line per series at the hovered point. `summary` adds a bold line below them (e.g. a total
- * or net); `hideZero` drops series with no value, for charts with many stacked groups.
+ * or net); `hideZero` drops series with no value, for charts with many stacked groups; `format`
+ * writes the amounts for a chart whose currency isn't the budget's.
  */
 export function CurrencyTooltip({
   active,
@@ -31,6 +32,7 @@ export function CurrencyTooltip({
   labelFormatter,
   summary,
   hideZero,
+  format = formatCurrency,
 }: any) {
   if (!active || !payload?.length) return null;
   const rows = hideZero ? payload.filter((p: any) => Number(p.value) !== 0) : payload;
@@ -42,12 +44,12 @@ export function CurrencyTooltip({
       </p>
       {rows.map((p: any) => (
         <p key={p.name} className="text-xs font-medium" style={{ color: p.color }}>
-          {p.name}: {formatCurrency(p.value)}
+          {p.name}: {format(p.value)}
         </p>
       ))}
       {extra && (
         <p className="text-xs font-semibold text-text mt-1 pt-1 border-t border-border-light">
-          {extra.label}: {formatCurrency(extra.value)}
+          {extra.label}: {format(extra.value)}
         </p>
       )}
     </div>

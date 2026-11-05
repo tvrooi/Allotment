@@ -14,6 +14,7 @@ import {
   householdPoolAccounts as poolAccountsTable,
   schedules,
 } from '../db/schema.js';
+import { householdBreakdown } from '../services/householdReport.js';
 import { billReconciliation } from '../services/householdReconciliation.js';
 import {
   addPerson,
@@ -364,19 +365,17 @@ householdsRouter.get('/:id/statement', (req, res) =>
     const to = req.query.to ? date.parse(req.query.to) : '9999-12-31';
     if (from > to) throw new Error('Start date must precede end date');
     const entries = state.events.filter((e) => e.date >= from && e.date <= to);
-    const self = state.people.find((p) => p.isSelf)!;
-    const expenseEntries = entries.filter((e) => e.kind === 'expense' || e.kind === 'refund');
+    const breakdown = householdBreakdown(state, from, to);
     return {
       title: 'Household and personal expense shares',
       currency: state.group.currency,
       from,
       to,
-      householdSpending: expenseEntries.reduce((n, e) => n + e.amount, 0),
-      personalSpending: expenseEntries.reduce(
-        (n, e) =>
-          n + e.shares.filter((s) => s.personId === self.id).reduce((n, s) => n + s.amount, 0),
-        0,
-      ),
+      householdSpending: breakdown.total,
+      personalSpending: breakdown.myShare,
+      byMonth: breakdown.byMonth,
+      byPerson: breakdown.byPerson,
+      byCategory: breakdown.byCategory,
       balances: state.balances,
       events: entries,
     };

@@ -756,3 +756,70 @@ test('edits an entry in place, and the activity log keeps what was changed and r
     true,
   );
 });
+
+test('breaks household spending down by month, person and category', async ({ page, api }) => {
+  const groceries = await api.category('Groceries');
+  const bank = await api.createAccount('My bank', 100000);
+  const payment = await api.createTransaction({
+    accountId: bank.id,
+    date: '2026-09-12',
+    amount: -9000,
+    payeeName: 'Market',
+    categoryId: groceries.id,
+  });
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    people: ['Me', 'Alex', 'Sam'],
+    selfIndex: 0,
+  });
+  const [me, alex, sam] = group.people.map((p: any) => p.id);
+  const shares = [me, alex, sam].map((personId) => ({ personId, value: 1 }));
+  const record = (body: object) =>
+    api.call('POST', `/households/${group.group.id}/events`, {
+      kind: 'expense',
+      mode: 'equal',
+      shares,
+      ...body,
+    });
+  // $90 groceries I paid from my bank; $60 takeaway Alex paid by hand
+  await record({
+    date: '2026-09-12',
+    description: 'Market',
+    amount: 9000,
+    payerId: me,
+    transactionId: payment.id,
+  });
+  await record({ date: '2026-10-04', description: 'Takeaway', amount: 6000, payerId: alex });
+  await api.call('POST', `/households/${group.group.id}/events`, {
+    kind: 'settlement',
+    date: '2026-10-05',
+    description: 'Repayment',
+    amount: 1000,
+    payerId: sam,
+    recipientId: me,
+  });
+
+  await open(page, '/household');
+  await page.getByRole('button', { name: 'Spending by month, person and category' }).click();
+  const section = page.locator('section', {
+    has: page.getByRole('button', { name: 'Spending by month, person and category' }),
+  });
+  const month = (name: string) => section.getByRole('row', { name: new RegExp(name) });
+  await expect(month('Sep 26')).toContainText('A$90');
+  await expect(month('Oct 26')).toContainText('A$60');
+  // Me paid $90 of $150 and owes a third of it: $40 more than their share
+  await expect(section.getByRole('row', { name: /^Me / })).toContainText('A$90');
+  await expect(section.getByRole('row', { name: /^Me / })).toContainText('A$50');
+  await expect(section.getByRole('row', { name: /^Me / })).toContainText('A$40');
+  await expect(section.getByRole('row', { name: /^Groceries / })).toContainText('A$90');
+  await expect(section.getByRole('row', { name: /^Uncategorised / })).toContainText('A$60');
+  // A date range narrows all three
+  await page.getByLabel('From').fill('2026-10-01');
+  await expect(section.getByRole('row', { name: /^Groceries / })).toHaveCount(0);
+  await expect(month('Sep 26')).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+});

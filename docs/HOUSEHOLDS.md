@@ -277,6 +277,17 @@ normal transaction edit, so your reports show your share; **Not now** hides it o
 Nothing is changed without that press, and the household ledger never changes
 (`GET /households/:id/category-offers`).
 
+**Spending by month, person and category** (SPL-05, `services/householdReport.ts`) breaks the
+same range down three ways, from the statement route (`GET /households/:id/statement`, so the
+assistant's `household_statement` returns it too). Only expenses and refunds count; repayments
+and contributions are not spending. _By month_: gross and your share. _By person_: what each
+person paid directly, their share, and paid less share; spending the household account paid
+is listed on its own line and is nobody's payment. _By category_: the category of the bank
+payment an entry is linked to (a household entry has no category of its own), largest first;
+entries with no payment, or a payment with no category, are under Uncategorised, listed last. Each
+breakdown adds up to the same total. It is a report only: nothing here changes a category or a
+budget figure.
+
 Select **My share** or **Household**, with optional date bounds. Scope persists on
 this device and appears in the heading and downloaded JSON statement. Gross and
 personal amounts remain visible together. Current person balances include all

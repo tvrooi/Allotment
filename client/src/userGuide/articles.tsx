@@ -436,6 +436,17 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
           </p>
         ),
       },
+      {
+        heading: 'See where the money went',
+        body: (
+          <p>
+            Under the spending list, <b>Spending by month, person and category</b> uses the same
+            date range. It shows each month, what each person paid compared with their share, and
+            spending by category, taken from the category of the bank payment an entry is linked to.
+            Entries with no payment are under Uncategorised. Repayments aren’t counted as spending.
+          </p>
+        ),
+      },
     ],
   },
   {
