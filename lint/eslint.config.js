@@ -9,6 +9,7 @@ import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 import globals from 'globals';
+import iconOnlyControl from './rules/icon-only-control.js';
 
 export default tseslint.config(
   {
@@ -77,16 +78,44 @@ export default tseslint.config(
   },
   {
     files: ['client/src/**/*.tsx'],
+    ignores: ['**/*.test.tsx'],
+    plugins: { allotment: { rules: { 'icon-only-control': iconOnlyControl } } },
+    rules: { 'allotment/icon-only-control': 'error' },
+  },
+  {
+    files: ['client/src/**/*.tsx'],
     ...jsxA11y.flatConfigs.recommended,
     // Accessibility (audit F-15) is a burn-down: every jsx-a11y finding is a warning, and CI's
     // warning cap (lint/package.json) stops the count growing while it is worked down.
-    rules: Object.fromEntries(
-      Object.entries(jsxA11y.flatConfigs.recommended.rules)
-        .filter(([, setting]) => (Array.isArray(setting) ? setting[0] : setting) !== 'off')
-        .map(([rule, setting]) => [
-          rule,
-          Array.isArray(setting) ? ['warn', ...setting.slice(1)] : 'warn',
-        ]),
-    ),
+    rules: {
+      ...Object.fromEntries(
+        Object.entries(jsxA11y.flatConfigs.recommended.rules)
+          .filter(([, setting]) => (Array.isArray(setting) ? setting[0] : setting) !== 'off')
+          .map(([rule, setting]) => [
+            rule,
+            Array.isArray(setting) ? ['warn', ...setting.slice(1)] : 'warn',
+          ]),
+      ),
+      // Not in the recommended set: a header cell, option or heading with nothing a screen
+      // reader can read. (Icon-only buttons and links are `allotment/icon-only-control`.)
+      'jsx-a11y/control-has-associated-label': [
+        'warn',
+        {
+          depth: 4,
+          ignoreElements: [
+            'audio',
+            'canvas',
+            'embed',
+            'input',
+            'textarea',
+            'tr',
+            'td',
+            'video',
+            'button',
+            'a',
+          ],
+        },
+      ],
+    },
   },
 );

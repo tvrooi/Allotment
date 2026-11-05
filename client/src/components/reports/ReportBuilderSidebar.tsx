@@ -19,12 +19,12 @@ interface Props {
 
 const MODE_OPTIONS: { id: ReportMode; label: string }[] = [
   { id: 'total', label: 'Total' },
-  { id: 'time', label: 'Over Time' },
+  { id: 'time', label: 'Over time' },
 ];
 
 const GROUP_BY_OPTIONS: { id: ReportGroupBy; label: string; modes: ReportMode[] }[] = [
   { id: 'category', label: 'Category', modes: ['total', 'time'] },
-  { id: 'categoryGroup', label: 'Category Group', modes: ['total', 'time'] },
+  { id: 'categoryGroup', label: 'Category group', modes: ['total', 'time'] },
   { id: 'payee', label: 'Payee', modes: ['total', 'time'] },
   { id: 'account', label: 'Account', modes: ['total', 'time'] },
   { id: 'month', label: 'Month', modes: ['total'] },
@@ -75,7 +75,7 @@ export default function ReportBuilderSidebar({ config, onChange }: Props) {
 
   return (
     <div className="w-72 max-md:w-full shrink-0 bg-surface border-r max-md:border-r-0 max-md:border-t border-border overflow-y-auto max-md:overflow-visible p-4 space-y-5">
-      <Section label="Chart Type">
+      <Section label="Chart type">
         <ChartTypeSelector
           value={config.chartType}
           mode={config.mode}
@@ -101,7 +101,7 @@ export default function ReportBuilderSidebar({ config, onChange }: Props) {
         </div>
       </Section>
 
-      <Section label="Group By">
+      <Section label="Group by">
         <select
           aria-label="Group by"
           value={config.groupBy}
@@ -116,7 +116,7 @@ export default function ReportBuilderSidebar({ config, onChange }: Props) {
         </select>
       </Section>
 
-      <Section label="Balance Type">
+      <Section label="Balance type">
         <div className="flex gap-1">
           {BALANCE_OPTIONS.map((b) => (
             <button
@@ -134,7 +134,7 @@ export default function ReportBuilderSidebar({ config, onChange }: Props) {
         </div>
       </Section>
 
-      <Section label="Date Range">
+      <Section label="Date range">
         <div className="flex flex-wrap gap-1 mb-2">
           {DATE_PRESETS.map((p) => (
             <button

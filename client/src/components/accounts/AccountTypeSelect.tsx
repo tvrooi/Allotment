@@ -10,7 +10,7 @@ interface Props {
 export function AccountTypeSelect({ value, onChange }: Props) {
   return (
     <div>
-      <label className="block text-sm font-medium text-text-secondary mb-1">Account Type</label>
+      <label className="block text-sm font-medium text-text-secondary mb-1">Account type</label>
       <select
         aria-label="Account type"
         value={value}

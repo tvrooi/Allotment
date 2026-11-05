@@ -48,8 +48,12 @@ export default function UpcomingBills() {
   return (
     <Card>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-text">Bills and income</h3>
-        <Link to="/recurring" className="text-xs text-brand-600 hover:text-brand-700 font-medium">
+        <h2 className="text-sm font-semibold text-text">Bills and income</h2>
+        <Link
+          to="/recurring"
+          aria-label="View all bills and income"
+          className="text-xs text-brand-600 hover:text-brand-700 font-medium max-md:min-h-11 max-md:inline-flex max-md:items-center"
+        >
           View all
         </Link>
       </div>
@@ -79,9 +83,9 @@ export default function UpcomingBills() {
             { title: 'Income', rows: income, none: 'No pay expected in the next 30 days.' },
           ].map((list) => (
             <section key={list.title} aria-label={list.title}>
-              <h4 className="text-xs font-medium uppercase tracking-wide text-text-tertiary mb-1">
+              <h3 className="text-xs font-medium uppercase tracking-wide text-text-tertiary mb-1">
                 {list.title}
-              </h4>
+              </h3>
               {list.rows.length === 0 ? (
                 <p className="text-xs text-text-tertiary py-2">{list.none}</p>
               ) : (

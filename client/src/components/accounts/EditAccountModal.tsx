@@ -94,7 +94,7 @@ export function EditAccountModal({ account, onClose }: Props) {
 
   return (
     <>
-      <Modal isOpen={!!account} onClose={onClose} title="Edit Account" size="sm">
+      <Modal isOpen={!!account} onClose={onClose} title="Edit account" size="sm">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1.5">Logo</label>
@@ -143,7 +143,7 @@ export function EditAccountModal({ account, onClose }: Props) {
 
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
-              Account Name
+              Account name
             </label>
             <input
               type="text"
@@ -186,7 +186,7 @@ export function EditAccountModal({ account, onClose }: Props) {
 
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
-              Starting Balance
+              Starting balance
             </label>
             <CurrencyInput
               value={startingBalance}
@@ -231,7 +231,7 @@ export function EditAccountModal({ account, onClose }: Props) {
                 disabled={account?.balance !== 0}
                 className="text-sm text-negative hover:underline font-medium transition-colors"
               >
-                Close Account
+                Close account
               </button>
               <button
                 type="button"
@@ -274,9 +274,9 @@ export function EditAccountModal({ account, onClose }: Props) {
         isOpen={confirmClose}
         onClose={() => setConfirmClose(false)}
         onConfirm={handleCloseAccount}
-        title="Close Account"
+        title="Close account"
         message={`Are you sure you want to close "${account?.name}"? It will be hidden from your accounts list.`}
-        confirmLabel="Close Account"
+        confirmLabel="Close account"
         danger
       />
     </>

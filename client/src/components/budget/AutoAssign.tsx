@@ -106,8 +106,8 @@ export const AutoAssign = forwardRef<OpensDialog, { month: string; hideButton?: 
             {preview && (
               <div role="region" aria-label="Auto-assign preview" className="space-y-3">
                 <p className="text-text-secondary">
-                  {formatCurrency(preview.available)} is unassigned today. Expected income is not
-                  counted, and no assignment is lowered. Nothing changes until you apply.
+                  {formatCurrency(preview.available)} is ready to assign today. Expected income is
+                  not counted, and no assignment is lowered. Nothing changes until you apply.
                 </p>
                 {preview.rows.length ? (
                   <ul className="space-y-1 max-h-72 overflow-y-auto">

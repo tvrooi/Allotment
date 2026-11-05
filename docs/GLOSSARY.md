@@ -46,3 +46,18 @@ Back to [Start here](START-HERE.md).
 - **Reconcile:** check that Allotment's balance for an account matches your bank's, and fix the difference.
 - **Transfer:** money moving between your own accounts. It is not income or spending.
 - **Backup (JSON export):** a file of your budget from **Settings → Data**. It never includes your Up token.
+
+## Words in the app
+
+One name for each idea, on every screen, in every message and in these docs. `lint/terms/` fails
+when a retired name comes back. If you add a screen, use the name in the first column.
+
+| Say                 | Not                                        | Notes                                                                                                                                                  |
+| ------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Ready to assign** | Unassigned, Left to assign, To be budgeted | The money in on-budget accounts that has no job yet. YNAB's own name, "To be budgeted", is only read when importing from YNAB.                         |
+| **Payee**           | Merchant                                   | Who a transaction was paid to. A receipt or a payment plan still has a **merchant**: the shop named on that document, which may differ from the payee. |
+
+When something is zero, say so plainly and leave it in the normal text colour: "Overspent $0" is
+not a warning. Red and the caution colour are for amounts above zero that need a decision.
+
+Writing style (sentence case, dates) is in [BRAND.md](BRAND.md#writing).

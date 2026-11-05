@@ -50,3 +50,17 @@ so they cannot find newer releases by themselves. Install the next release once 
 
 Allotment has its own short guide, served by the app at `/guide` (`client/src/userGuide`). Only Enable
 Banking's detailed setup still links to the upstream FlyBudget site, which Allotment is built on.
+
+## Writing
+
+- **Sentence case** for headings, buttons, labels, tabs, dialog titles and table headings: "Cash
+  flow", "Add account", "Total income", "Ready to assign". Proper nouns and product names keep
+  their capitals: Allotment, Up, Saver, Plaid, SimpleFIN, Enable Banking, YNAB, Home Assistant,
+  and program names such as the Age Pension. Acronyms stay upper case (CSV, ID, PDF).
+- **Dates** in records (registers, reviews, "as of", imports) go through `formatDay` in
+  `client/src/utils/dates.ts`, so they follow the person's Date Format preference. Dates in
+  upcoming lists (the dashboard's bills and income) use the short form, `formatShortDay` or
+  `formatWeekday`. Never print a stored `yyyy-MM-dd` value as it is; a moment with a time of day is
+  `formatDayTime`.
+- **Money** is shown through `client/src/utils/currency.ts`, never assembled by hand.
+- **Names for ideas** are in [GLOSSARY.md](GLOSSARY.md#words-in-the-app).

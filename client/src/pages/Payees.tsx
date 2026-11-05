@@ -30,7 +30,7 @@ function MergeModal({
   const selectedPayees = payees.filter((p) => selected.includes(p.id));
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Merge Payees" size="sm">
+    <Modal isOpen={isOpen} onClose={onClose} title="Merge payees" size="sm">
       <div className="space-y-4">
         <p className="text-sm text-text-secondary">
           Choose which payee name to keep. All transactions will be moved to the selected payee.
@@ -311,7 +311,9 @@ export default function PayeesPage() {
                   <th className="px-4 py-2 text-right text-xs font-medium text-text-tertiary">
                     Transactions
                   </th>
-                  <th className="w-12 px-4 py-2" />
+                  <th className="w-12 px-4 py-2">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
@@ -413,7 +415,7 @@ export default function PayeesPage() {
         onConfirm={() => {
           if (deleteId) deletePayee.mutate(deleteId);
         }}
-        title="Delete Payee"
+        title="Delete payee"
         message={`Delete "${deleteTarget?.name}"? This will remove the payee from all their transactions.`}
         confirmLabel="Delete"
         danger

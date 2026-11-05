@@ -57,7 +57,7 @@ export function CategorySelectButton({
               <span className="text-text">{entry.name}</span>
             </>
           ) : (
-            <span className="text-text-disabled">{placeholder}</span>
+            <span className="text-text-tertiary">{placeholder}</span>
           )}
         </span>
         <ChevronDown size={14} className="text-text-tertiary shrink-0" />

@@ -201,8 +201,8 @@ export function PreferencesPanel() {
         {(
           [
             {
-              label: 'Merchant',
-              description: 'Merchant logos (or colored initials) next to merchant names',
+              label: 'Payee',
+              description: 'Payee logos (or coloured initials) next to payee names',
               value: showMerchantIcons,
               setter: setShowMerchantIcons,
             },
@@ -343,7 +343,7 @@ export function PreferencesPanel() {
       </section>
 
       <div className="bg-surface-alt rounded-lg p-5 space-y-4">
-        <h3 className="text-sm font-medium text-text">Date Format</h3>
+        <h3 className="text-sm font-medium text-text">Date format</h3>
         <div className="grid grid-cols-2 gap-2">
           {dateFormats.map((opt) => (
             <button

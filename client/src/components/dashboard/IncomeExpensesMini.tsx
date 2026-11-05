@@ -65,8 +65,12 @@ export default function IncomeExpensesMini({ sixMonthsAgo, currentMonth }: Props
   return (
     <Card>
       <div className="flex items-center justify-between mb-1">
-        <h3 className="text-sm font-semibold text-text">Cash Flow</h3>
-        <Link to="/reports" className="text-xs text-brand-600 hover:text-brand-700 font-medium">
+        <h2 className="text-sm font-semibold text-text">Cash flow</h2>
+        <Link
+          to="/reports"
+          aria-label="View all cash flow reports"
+          className="text-xs text-brand-600 hover:text-brand-700 font-medium max-md:min-h-11 max-md:inline-flex max-md:items-center"
+        >
           View all
         </Link>
       </div>

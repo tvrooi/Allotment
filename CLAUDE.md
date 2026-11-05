@@ -27,8 +27,8 @@ Keep AGENTS.md and CLAUDE.md byte-identical (Codex reads one, Claude Code the ot
 - HA: `node --test homeassistant/ha-launch.test.cjs`; `python3 -m unittest discover -s scripts`.
 - Container: package with `python3 homeassistant/package.py --out /tmp/<new-dir>`, build its
   `flybudget_up` directory, then `node homeassistant/smoke-test.cjs <image>` (disposable data only).
-- Browser integration: `cd e2e && npm test -- --project=desktop tests/up.spec.ts`.
-- Lint: `cd lint && npm ci && npm run lint` (errors fail; warnings are capped, lint/README.md).
+- Browser integration: `cd e2e && npm test -- --project=desktop tests/up.spec.ts` (set `E2E_CHROMIUM_PATH` when the installed Chromium is not the build Playwright wants).
+- Lint: `cd lint && npm ci && npm test && npm run lint` (errors fail; warnings are capped, lint/README.md).
 - Format changed files with Prettier; CI runs full type/unit/browser/build checks.
 - Dependencies use lockfiles and `.npmrc` with install scripts disabled. Do not disable that guard.
 

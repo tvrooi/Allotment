@@ -7,6 +7,12 @@ import { DEMO_PORT, DESKTOP_PORT, MULTI_USER_PORT, SERVER_PORT } from './ports';
 //   npm test -- --project=demo    only the in-browser demo
 //   E2E_SKIP_BUILD=1 npm test     reuse the client builds from the last run
 //   E2E_SERVER_LOGS=1 npm test    show the servers' logs
+//   E2E_CHROMIUM_PATH=/path/to/chrome npm test
+//                                 use that browser, not the build this Playwright version wants
+//                                 (a machine with an older or newer Chromium installed)
+
+// An empty value counts as unset, so `E2E_CHROMIUM_PATH=` in a shell profile can't break a run
+const chromiumPath = process.env.E2E_CHROMIUM_PATH?.trim();
 
 export default defineConfig({
   testDir: './tests',
@@ -21,6 +27,7 @@ export default defineConfig({
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
   use: {
     ...devices['Desktop Chrome'],
+    ...(chromiumPath ? { launchOptions: { executablePath: chromiumPath } } : {}),
     viewport: { width: 1400, height: 900 },
     locale: 'en-US',
     trace: 'retain-on-failure',

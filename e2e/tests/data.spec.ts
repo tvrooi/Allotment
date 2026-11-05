@@ -23,7 +23,7 @@ const GERMAN_CSV =
 
 async function importCsv(page: Page, csv: string, encoding: BufferEncoding = 'utf8') {
   await page.getByRole('button', { name: 'Import CSV' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Import Transactions' });
+  const dialog = page.getByRole('dialog', { name: 'Import transactions' });
   await dialog.getByLabel('Bank file').setInputFiles({
     name: 'bank-export.csv',
     mimeType: 'text/csv',
@@ -106,7 +106,7 @@ test.describe('CSV import', () => {
     await expect(dialog).toContainText('may already be here');
     await expect(dialog).toContainText('Looks like Hardware Store on');
     await expect(dialog).toContainText('entered by hand');
-    const flagged = dialog.getByRole('checkbox', { name: /Import Hardware Store on 2025-01-17/ });
+    const flagged = dialog.getByRole('checkbox', { name: /Import Hardware Store on / });
     await expect(flagged).not.toBeChecked();
 
     // Leave it out: only the other three arrive
@@ -127,7 +127,7 @@ test.describe('CSV import', () => {
     await open(page, `/accounts/${checking.id}`);
     const dialog = await importCsv(page, BANK_CSV);
     await dialog.getByRole('button', { name: 'Preview' }).click();
-    await dialog.getByRole('checkbox', { name: /Import Hardware Store on 2025-01-17/ }).check();
+    await dialog.getByRole('checkbox', { name: /Import Hardware Store on / }).check();
     await dialog.getByRole('button', { name: 'Import 4 Transactions' }).click();
     await expect(dialog).toContainText('4 imported, 0 skipped');
     await expect(dialog).toContainText('1 imported transaction looks like ones this account');
@@ -175,7 +175,7 @@ test.describe('CSV import', () => {
     await dialog.getByRole('button', { name: 'Done' }).click();
 
     await page.getByRole('button', { name: 'Import CSV' }).click();
-    dialog = page.getByRole('dialog', { name: 'Import Transactions' });
+    dialog = page.getByRole('dialog', { name: 'Import transactions' });
     await expect(dialog).toContainText('Earlier imports');
     await expect(dialog).toContainText('bank-export.csv');
     await expect(dialog).toContainText('4 of 4 transactions in this account');
@@ -347,7 +347,7 @@ test.describe('CSV import', () => {
     const lodz = Buffer.from([0xa3, 0xf3, 0x64, 0x9f]);
     const rest = Buffer.from(';-12,50\r\n', 'latin1');
     await page.getByRole('button', { name: 'Import CSV' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Import Transactions' });
+    const dialog = page.getByRole('dialog', { name: 'Import transactions' });
     await dialog.getByLabel('Bank file').setInputFiles({
       name: 'wyciag.csv',
       mimeType: 'text/csv',
@@ -419,7 +419,7 @@ test.describe('CSV import', () => {
 </Stmt></BkToCstmrStmt></Document>`;
     const importStatement = async () => {
       await page.getByRole('button', { name: 'Import CSV' }).click();
-      const dialog = page.getByRole('dialog', { name: 'Import Transactions' });
+      const dialog = page.getByRole('dialog', { name: 'Import transactions' });
       await dialog.getByLabel('Bank file').setInputFiles({
         name: 'statement.xml',
         mimeType: 'application/xml',
@@ -463,7 +463,7 @@ test.describe('CSV import', () => {
     // A different day each time: the same amount within 3 days would be flagged as a repeat
     const importStatement = async (iban: string, ref: string, day: string) => {
       await page.getByRole('button', { name: 'Import CSV' }).click();
-      const dialog = page.getByRole('dialog', { name: 'Import Transactions' });
+      const dialog = page.getByRole('dialog', { name: 'Import transactions' });
       await dialog.getByLabel('Bank file').setInputFiles({
         name: 'statement.xml',
         mimeType: 'application/xml',
@@ -561,7 +561,7 @@ test.describe('CSV import', () => {
     release();
 
     await page.getByRole('button', { name: 'Import CSV' }).click();
-    dialog = page.getByRole('dialog', { name: 'Import Transactions' });
+    dialog = page.getByRole('dialog', { name: 'Import transactions' });
     await expect(dialog).toContainText('Drag and drop a file from your bank');
     // The abandoned file doesn't turn up later either
     await page.waitForTimeout(300);
@@ -592,7 +592,7 @@ test.describe('CSV import', () => {
       .poll(async () => (await api.transactions(`?account_id=${checking.id}`)).length)
       .toBe(4);
     await page.getByRole('button', { name: 'Import CSV' }).click();
-    dialog = page.getByRole('dialog', { name: 'Import Transactions' });
+    dialog = page.getByRole('dialog', { name: 'Import transactions' });
     await expect(dialog).toContainText('Drag and drop a file from your bank');
     await expect(dialog).not.toContainText('Import complete');
   });
@@ -705,7 +705,7 @@ test.describe('export, backup and restore', () => {
     await open(page, '/settings');
     await page.getByRole('button', { name: 'Data' }).click();
     const download = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Download Backup' }).click();
+    await page.getByRole('button', { name: 'Download backup' }).click();
     const backupFile = await (await download).path();
     const backup = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
     expect(backup).toMatchObject({ format: 'flybudget-backup', version: 26 });

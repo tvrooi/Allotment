@@ -279,14 +279,14 @@ export function BudgetSummaryWidget({
         {funding && (
           <div className="px-4 pb-3 text-xs">
             <p className="text-text-tertiary mb-1.5">
-              Unassigned as of {formatAsOfDay(funding.asOf)}
+              Ready to assign as of {formatAsOfDay(funding.asOf)}
             </p>
             <dl className="grid gap-1 mb-2 border-b border-border-light pb-2">
               {(
                 [
                   ['In your accounts, less card debt', funding.resources],
                   ['Held in envelopes', funding.envelopes ?? funding.reserved],
-                  ['Left to assign', toBeBudgeted],
+                  ['Ready to assign', toBeBudgeted],
                 ] as const
               ).map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-2">
@@ -330,7 +330,7 @@ export function BudgetSummaryWidget({
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`pb-1.5 text-xs transition-colors border-b-2 ${
+              className={`pb-1.5 max-md:min-h-11 max-md:px-2 text-xs transition-colors border-b-2 ${
                 activeTab === tab.key
                   ? 'border-text text-text font-semibold'
                   : 'border-transparent text-text-tertiary hover:text-text-secondary'

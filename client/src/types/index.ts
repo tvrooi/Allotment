@@ -60,7 +60,7 @@ export const ACCOUNT_TYPES: AccountTypeInfo[] = [
   },
   {
     value: 'credit',
-    label: 'Credit Card',
+    label: 'Credit card',
     group: 'credit',
     liability: true,
     onBudget: true,
@@ -68,7 +68,7 @@ export const ACCOUNT_TYPES: AccountTypeInfo[] = [
   },
   {
     value: 'line_of_credit',
-    label: 'Line of Credit',
+    label: 'Line of credit',
     group: 'credit',
     liability: true,
     onBudget: true,
@@ -100,7 +100,7 @@ export const ACCOUNT_TYPES: AccountTypeInfo[] = [
   },
   {
     value: 'real_estate',
-    label: 'Real Estate',
+    label: 'Real estate',
     group: 'property',
     liability: false,
     onBudget: false,
@@ -132,7 +132,7 @@ export const ACCOUNT_TYPES: AccountTypeInfo[] = [
   },
   {
     value: 'auto_loan',
-    label: 'Auto Loan',
+    label: 'Auto loan',
     group: 'loans',
     liability: true,
     onBudget: false,
@@ -140,7 +140,7 @@ export const ACCOUNT_TYPES: AccountTypeInfo[] = [
   },
   {
     value: 'student_loan',
-    label: 'Student Loan',
+    label: 'Student loan',
     group: 'loans',
     liability: true,
     onBudget: false,
@@ -148,7 +148,7 @@ export const ACCOUNT_TYPES: AccountTypeInfo[] = [
   },
   {
     value: 'loan',
-    label: 'Other Loan',
+    label: 'Other loan',
     group: 'loans',
     liability: true,
     onBudget: false,
@@ -156,7 +156,7 @@ export const ACCOUNT_TYPES: AccountTypeInfo[] = [
   },
   {
     value: 'other_asset',
-    label: 'Other Asset',
+    label: 'Other asset',
     group: 'other',
     liability: false,
     onBudget: false,
@@ -164,7 +164,7 @@ export const ACCOUNT_TYPES: AccountTypeInfo[] = [
   },
   {
     value: 'other_liability',
-    label: 'Other Liability',
+    label: 'Other liability',
     group: 'other',
     liability: true,
     onBudget: false,
@@ -790,13 +790,13 @@ export type RecurrenceRule =
   | { type: 'yearly'; anchorMonth: number; anchorDay: number };
 
 export const RECURRENCE_TYPE_LABELS: { value: RecurrenceType; label: string }[] = [
-  { value: 'once', label: 'One Time' },
+  { value: 'once', label: 'One time' },
   { value: 'weekly', label: 'Weekly' },
-  { value: 'biweekly', label: 'Every 2 Weeks' },
-  { value: 'semimonthly', label: 'Twice a Month' },
+  { value: 'biweekly', label: 'Every 2 weeks' },
+  { value: 'semimonthly', label: 'Twice a month' },
   { value: 'monthly', label: 'Monthly' },
   { value: 'quarterly', label: 'Quarterly' },
-  { value: 'semiannually', label: 'Every 6 Months' },
+  { value: 'semiannually', label: 'Every 6 months' },
   { value: 'yearly', label: 'Yearly' },
 ];
 

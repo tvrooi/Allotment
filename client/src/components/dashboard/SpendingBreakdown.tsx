@@ -46,8 +46,12 @@ export default function SpendingBreakdown({ currentMonth }: Props) {
   return (
     <Card className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-text">Spending by Category</h3>
-        <Link to="/reports" className="text-xs text-brand-600 hover:text-brand-700 font-medium">
+        <h2 className="text-sm font-semibold text-text">Spending by category</h2>
+        <Link
+          to="/reports"
+          aria-label="View all spending reports"
+          className="text-xs text-brand-600 hover:text-brand-700 font-medium max-md:min-h-11 max-md:inline-flex max-md:items-center"
+        >
           View all
         </Link>
       </div>

@@ -280,7 +280,7 @@ function AdjustModal({
       setDate(today);
       setAmount(0);
       setError(null);
-      const fees = groups.flatMap((g) => g.categories).find((c) => c.name === 'Bank Fees');
+      const fees = groups.flatMap((g) => g.categories).find((c) => c.name === 'Bank fees');
       setCategoryId(kind === 'refund' ? (plan.purchase?.categoryId ?? null) : (fees?.id ?? null));
     }
   }

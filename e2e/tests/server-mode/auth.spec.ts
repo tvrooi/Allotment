@@ -61,9 +61,9 @@ test('a new server asks for a password and the setup code', async ({ baseURL }) 
 test('the signed-in owner uses the app, with real page URLs', async ({ baseURL }) => {
   await owner.getByText('Another bank: CSV files, or a community-supported connection').click();
   await owner.getByRole('button', { name: /Any bank: CSV files/ }).click();
-  const dialog = owner.getByRole('dialog', { name: 'Add Account' });
+  const dialog = owner.getByRole('dialog', { name: 'Add account' });
   await dialog.getByRole('textbox', { name: 'Account name' }).fill('Credit Union');
-  await dialog.getByRole('button', { name: 'Add Account' }).click();
+  await dialog.getByRole('button', { name: 'Add account' }).click();
   await expect(dialog).toBeHidden();
 
   // Server mode uses normal URLs: deep links and reloads work

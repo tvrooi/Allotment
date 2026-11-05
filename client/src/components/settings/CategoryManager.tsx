@@ -109,7 +109,7 @@ function SortableCategoryRow({
       <button
         {...attributes}
         {...listeners}
-        className="text-text-disabled hover:text-text-tertiary cursor-grab active:cursor-grabbing touch-none shrink-0 p-1"
+        className="text-text-disabled hover:text-text-tertiary cursor-grab active:cursor-grabbing touch-none shrink-0 p-1 max-md:min-w-11 max-md:min-h-11 max-md:inline-flex max-md:items-center max-md:justify-center"
         aria-label={`Drag to reorder ${cat.name}`}
       >
         <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
@@ -123,7 +123,7 @@ function SortableCategoryRow({
         type="button"
         onClick={() => onOpenEditModal(cat.id)}
         aria-label={`Edit ${cat.name}`}
-        className="flex-1 min-w-0 flex items-center gap-3 pr-3 py-2.5 text-left cursor-pointer"
+        className="flex-1 min-w-0 flex items-center gap-3 pr-3 py-2.5 max-md:min-h-11 text-left cursor-pointer"
       >
         {showCategoryIcons && (
           <span className="shrink-0 w-7 h-7 flex items-center justify-center">
@@ -212,7 +212,7 @@ function GroupCard({
             <button
               {...dragAttributes}
               {...dragListeners}
-              className="text-text-disabled hover:text-text-tertiary cursor-grab active:cursor-grabbing touch-none shrink-0 -ml-1"
+              className="text-text-disabled hover:text-text-tertiary cursor-grab active:cursor-grabbing touch-none shrink-0 -ml-1 max-md:min-w-11 max-md:min-h-11 max-md:inline-flex max-md:items-center max-md:justify-center"
               aria-label="Drag to reorder group"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
@@ -237,7 +237,7 @@ function GroupCard({
           {!isEditingGroup && (
             <button
               onClick={() => onStartEdit(group.id)}
-              className="text-xs text-text-tertiary hover:text-brand-600 transition-colors"
+              className="text-xs text-text-tertiary hover:text-brand-600 transition-colors max-md:px-2 max-md:min-w-11 max-md:min-h-11 max-md:inline-flex max-md:items-center max-md:justify-center"
             >
               Edit
             </button>
@@ -245,7 +245,7 @@ function GroupCard({
           <button
             onClick={() => onDeleteGroup(group.id)}
             aria-label={`Delete group ${group.name}`}
-            className="text-xs text-text-tertiary hover:text-negative transition-colors"
+            className="text-xs text-text-tertiary hover:text-negative transition-colors max-md:px-2 max-md:min-w-11 max-md:min-h-11 max-md:inline-flex max-md:items-center max-md:justify-center"
           >
             Delete
           </button>
@@ -274,7 +274,7 @@ function GroupCard({
                   ref={newCatEmojiButtonRef}
                   type="button"
                   onClick={() => setShowNewCatEmojiPicker(!showNewCatEmojiPicker)}
-                  className="text-base w-8 h-8 flex items-center justify-center rounded border border-border-light hover:bg-hover transition-colors"
+                  className="text-base w-8 h-8 max-md:w-11 max-md:h-11 flex items-center justify-center rounded border border-border-light hover:bg-hover transition-colors"
                   aria-label="Pick icon"
                   title="Pick icon"
                 >
@@ -304,14 +304,14 @@ function GroupCard({
               onClick={onAddCategorySubmit}
               aria-label="Add category"
               disabled={!newCategoryName.trim()}
-              className="p-1.5 text-positive hover:bg-positive-subtle rounded disabled:opacity-40 transition-colors"
+              className="p-1.5 text-positive hover:bg-positive-subtle rounded disabled:opacity-40 transition-colors max-md:min-w-11 max-md:min-h-11 max-md:inline-flex max-md:items-center max-md:justify-center"
             >
               <Check size={16} />
             </button>
             <button
               onClick={onAddCategoryCancel}
               aria-label="Cancel"
-              className="p-1.5 text-text-tertiary hover:bg-hover rounded transition-colors"
+              className="p-1.5 text-text-tertiary hover:bg-hover rounded transition-colors max-md:min-w-11 max-md:min-h-11 max-md:inline-flex max-md:items-center max-md:justify-center"
             >
               <X size={16} />
             </button>
@@ -322,9 +322,9 @@ function GroupCard({
       {!isAddingCategory && (
         <button
           onClick={() => onAddCategoryStart(group.id)}
-          className="w-full px-4 py-2.5 text-xs text-brand-600 hover:text-brand-700 hover:bg-brand-50/50 transition-colors text-left border-t border-border-light"
+          className="w-full px-4 py-2.5 max-md:min-h-11 text-xs text-brand-600 hover:text-brand-700 hover:bg-brand-50/50 transition-colors text-left border-t border-border-light"
         >
-          Create Category
+          Create category
         </button>
       )}
     </div>
@@ -429,7 +429,7 @@ function Section({
         <h2 className="text-base font-semibold text-text">{title}</h2>
         <button
           onClick={onAddGroupStart}
-          className="text-sm text-brand-600 hover:text-brand-700 transition-colors"
+          className="text-sm text-brand-600 hover:text-brand-700 transition-colors max-md:min-h-11"
         >
           Create group
         </button>
@@ -452,14 +452,14 @@ function Section({
             onClick={onAddGroupSubmit}
             aria-label="Add group"
             disabled={!addingGroupName.trim()}
-            className="p-1.5 text-positive hover:bg-positive-subtle rounded disabled:opacity-40 transition-colors"
+            className="p-1.5 text-positive hover:bg-positive-subtle rounded disabled:opacity-40 transition-colors max-md:min-w-11 max-md:min-h-11 max-md:inline-flex max-md:items-center max-md:justify-center"
           >
             <Check size={16} />
           </button>
           <button
             onClick={onAddGroupCancel}
             aria-label="Cancel"
-            className="p-1.5 text-text-tertiary hover:bg-hover rounded transition-colors"
+            className="p-1.5 text-text-tertiary hover:bg-hover rounded transition-colors max-md:min-w-11 max-md:min-h-11 max-md:inline-flex max-md:items-center max-md:justify-center"
           >
             <X size={16} />
           </button>
@@ -682,7 +682,7 @@ export function CategoryManager() {
           if (deleteGroupId && !groupInUse?.length) deleteGroup.mutate(deleteGroupId);
           setDeleteGroupId(null);
         }}
-        title="Delete Group"
+        title="Delete group"
         message={
           groupInUse?.length
             ? `"${deleteGroupTarget?.name ?? ''}" still has categories with transactions or assigned money: ${groupInUse.join(', ')}. Delete each of those first and move its history into another category, so your past months stay the same.`
@@ -712,7 +712,7 @@ export function CategoryManager() {
         }
         onClose={() => setDeleteCatState(null)}
         onConfirm={() => handleConfirmDeleteCategory()}
-        title="Delete Category"
+        title="Delete category"
         message={`Delete "${deleteCatState?.name ?? ''}"? This cannot be undone.`}
         confirmLabel="Delete"
         danger

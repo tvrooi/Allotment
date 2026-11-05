@@ -178,7 +178,7 @@ export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onC
   if (tx.household && !linked)
     items.push({
       key: 'household',
-      label: 'Open Household',
+      label: 'Open household',
       icon: <ExternalLink size={14} />,
       separatorBefore: true,
       onSelect: () => navigate('/household'),

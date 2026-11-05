@@ -325,6 +325,7 @@ export function CategoryPicker({
                   setShowCreate(false);
                   setNewName('');
                 }}
+                aria-label="Cancel new category"
                 className="p-1.5 text-text-tertiary hover:text-text-secondary"
               >
                 <X size={14} />

@@ -54,7 +54,7 @@ test.describe('payees', () => {
     await page.getByRole('checkbox', { name: 'Select Amazon' }).check();
     await page.getByRole('button', { name: 'Merge 2 payees' }).click();
 
-    const dialog = page.getByRole('dialog', { name: 'Merge Payees' });
+    const dialog = page.getByRole('dialog', { name: 'Merge payees' });
     await dialog.getByRole('radio', { name: /Amazon/ }).check();
     await dialog.getByRole('button', { name: 'Merge' }).click();
 
@@ -102,7 +102,7 @@ test.describe('payees', () => {
     await open(page, '/payees');
     await page.getByRole('button', { name: 'Delete AMZN Mktp' }).click();
     await page
-      .getByRole('dialog', { name: 'Delete Payee' })
+      .getByRole('dialog', { name: 'Delete payee' })
       .getByRole('button', { name: 'Delete' })
       .click();
     await expect(row(page, 'AMZN Mktp')).toBeHidden();

@@ -6,11 +6,11 @@ import { test, expect, open, isoDay } from './fixtures';
 const PAGES: { link: string; route: string; heading?: string }[] = [
   { link: 'Dashboard', route: '/dashboard' },
   { link: 'Accounts', route: '/accounts', heading: 'Accounts' },
-  { link: 'Transactions', route: '/transactions', heading: 'All Transactions' },
+  { link: 'Transactions', route: '/transactions', heading: 'All transactions' },
   { link: 'Budget', route: '/budget' },
   { link: 'Recurring', route: '/recurring', heading: 'Recurring' },
   { link: 'Reports', route: '/reports', heading: 'Reports' },
-  { link: 'Cash Flow', route: '/cash-flow', heading: 'Cash Flow' },
+  { link: 'Cash flow', route: '/cash-flow', heading: 'Cash flow' },
   { link: 'Goals', route: '/goals', heading: 'Goals' },
   { link: 'Payees', route: '/payees', heading: 'Payees' },
   { link: 'Rules', route: '/rules', heading: 'Rules' },

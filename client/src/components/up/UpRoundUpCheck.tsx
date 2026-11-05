@@ -7,6 +7,7 @@ import {
   type UpRoundUpCheck as Check,
 } from '../../api/up';
 import { formatMoney } from '../../utils/currency';
+import { formatDay } from '../../utils/dates';
 import { Button } from '../ui/Button';
 
 const VERDICT: Record<Check['verdict'], string> = {
@@ -63,9 +64,8 @@ export function UpRoundUpCheck({ canSave }: { canSave: boolean }) {
           {c.enabledAt ? (
             <>
               <p>
-                Round-up debits are added on each sync since{' '}
-                {new Date(c.enabledAt).toLocaleDateString()}. Link each one to its Saver credit with
-                the transfer suggestions in the register.
+                Round-up debits are added on each sync since {formatDay(c.enabledAt)}. Link each one
+                to its Saver credit with the transfer suggestions in the register.
               </p>
               <Button
                 size="sm"

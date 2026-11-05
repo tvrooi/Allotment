@@ -72,7 +72,7 @@ test('negative bank balances remain negative when reconciling', async ({ page, a
   await open(page, `/accounts/${account.id}/reconcile`);
   await typeAmount(page.getByRole('textbox', { name: 'Statement balance' }), '-110');
   await page.getByRole('button', { name: 'Start Reconciliation' }).click();
-  await expect(page.getByText('Statement Balance').locator('..')).toContainText('-$110');
+  await expect(page.getByText('Statement balance').locator('..')).toContainText('-$110');
   await page.getByRole('button', { name: 'Create Adjustment' }).click();
   await expect.poll(() => api.balance(account.id)).toBe(-11000);
 });
@@ -81,8 +81,8 @@ test('nonzero accounts cannot be hidden by closing', async ({ page, api }) => {
   const account = await api.createAccount('Checking', 100000);
   await open(page, `/accounts/${account.id}`);
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Edit Account' });
-  await expect(dialog.getByRole('button', { name: 'Close Account' })).toBeDisabled();
+  const dialog = page.getByRole('dialog', { name: 'Edit account' });
+  await expect(dialog.getByRole('button', { name: 'Close account' })).toBeDisabled();
   await expect(dialog.getByText(/Reconcile this account to zero before closing/)).toBeVisible();
 });
 

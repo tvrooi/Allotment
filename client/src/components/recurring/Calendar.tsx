@@ -20,8 +20,8 @@ const CHIP_COLORS: Record<OccurrenceDisplayStatus, string> = {
   due: 'bg-caution-subtle text-caution',
   waiting: 'bg-negative-subtle text-negative',
   paid: 'bg-positive-subtle text-positive',
-  skipped: 'bg-surface-alt text-text-disabled line-through',
-  cancelled: 'bg-surface-alt text-text-disabled line-through',
+  skipped: 'bg-surface-alt text-text-tertiary line-through',
+  cancelled: 'bg-surface-alt text-text-tertiary line-through',
 };
 
 /** Phones: a dot per item instead of a name chip (names don't fit a seventh of a phone) */

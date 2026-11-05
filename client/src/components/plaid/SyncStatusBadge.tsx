@@ -10,7 +10,7 @@ const statusConfig: Record<PlaidSyncStatus, { dot: string; label: string }> = {
   good: { dot: 'bg-positive', label: 'Synced' },
   syncing: { dot: '', label: 'Syncing...' },
   error: { dot: 'bg-negative', label: 'Error' },
-  login_required: { dot: 'bg-caution', label: 'Login Required' },
+  login_required: { dot: 'bg-caution', label: 'Login required' },
 };
 
 export function SyncStatusBadge({ status, className = '' }: Props) {

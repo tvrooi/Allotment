@@ -78,7 +78,7 @@ export function PayeeIcon({
         onMouseLeave={() => setError(null)}
         title={error ?? (logo ? `Change image for ${name}` : `Upload an image for ${name}`)}
         aria-label={logo ? `Change image for ${name}` : `Upload an image for ${name}`}
-        className={`relative block rounded-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${error ? 'ring-2 ring-negative' : ''}`}
+        className={`relative block rounded-full cursor-pointer max-md:p-1.5 max-md:-m-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${error ? 'ring-2 ring-negative' : ''}`}
       >
         {face}
         <span className="absolute inset-0 rounded-full flex items-center justify-center bg-black/50 text-white opacity-0 group-hover/logo:opacity-100 group-focus-within/logo:opacity-100 transition-opacity">
@@ -91,7 +91,7 @@ export function PayeeIcon({
           onClick={() => onLogoChange(null)}
           title="Use initial instead"
           aria-label={`Remove image for ${name}`}
-          className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center bg-surface border border-border text-text-tertiary hover:text-negative opacity-0 group-hover/logo:opacity-100 group-focus-within/logo:opacity-100 transition-opacity cursor-pointer"
+          className="absolute -top-1 -right-1 w-4 h-4 max-md:-top-2 max-md:-right-2 max-md:w-6 max-md:h-6 rounded-full flex items-center justify-center bg-surface border border-border text-text-tertiary hover:text-negative opacity-0 group-hover/logo:opacity-100 group-focus-within/logo:opacity-100 transition-opacity cursor-pointer"
         >
           <X size={10} />
         </button>

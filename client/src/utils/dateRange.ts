@@ -13,12 +13,12 @@ import type { DatePresetCustom, ReportDateRange } from '../types';
 /** Live presets roll forward with today; 'custom' is a frozen range with fixed dates. */
 export const DATE_PRESETS: { id: DatePresetCustom; label: string; long: string }[] = [
   { id: '1m', label: '1M', long: 'This month' },
-  { id: 'last-month', label: 'Last Month', long: 'Last month' },
+  { id: 'last-month', label: 'Last month', long: 'Last month' },
   { id: '3m', label: '3M', long: 'Last 3 months' },
   { id: '6m', label: '6M', long: 'Last 6 months' },
   { id: '12m', label: '12M', long: 'Last 12 months' },
   { id: 'ytd', label: 'YTD', long: 'Year to date' },
-  { id: 'last-year', label: 'Last Year', long: 'Last year' },
+  { id: 'last-year', label: 'Last year', long: 'Last year' },
   { id: 'all', label: 'All', long: 'All time' },
   { id: 'custom', label: 'Custom', long: 'Custom' },
 ];

@@ -346,12 +346,12 @@ function PayCandidates({ onPay }: { onPay: (transactionId: string) => void }) {
         {rows.map((t) => (
           <li key={t.id} className="flex flex-wrap items-center gap-3 text-sm">
             <span className="flex-1 basis-48">
-              {t.date} · {t.payeeName || 'Deposit'} · {formatCurrency(t.amount)}
+              {formatDay(t.date)} · {t.payeeName || 'Deposit'} · {formatCurrency(t.amount)}
             </span>
             <Button
               size="sm"
               variant="secondary"
-              aria-label={`This is pay: ${t.payeeName || 'Deposit'} on ${t.date}`}
+              aria-label={`This is pay: ${t.payeeName || 'Deposit'} on ${formatDay(t.date)}`}
               disabled={!canSave || update.isPending}
               onClick={() =>
                 update.mutate(
@@ -553,7 +553,8 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
                     }}
                   />
                   <span>
-                    {income.date} · {income.name || 'Income'} · {formatCurrency(income.amount)}
+                    {formatDay(income.date)} · {income.name || 'Income'} ·{' '}
+                    {formatCurrency(income.amount)}
                   </span>
                 </label>
               ))}
@@ -647,7 +648,7 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
             )}
             {preview.bills.map((b) => (
               <p key={b.id} className="text-sm py-2">
-                {b.date} · {b.name} · {formatCurrency(b.amount)}
+                {formatDay(b.date)} · {b.name} · {formatCurrency(b.amount)}
                 {b.estimated ? ' (estimate)' : ''}
               </p>
             ))}

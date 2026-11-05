@@ -77,18 +77,18 @@ export default function SummaryStats({ currentMonth }: Props) {
         <StatCard label="Left to spend" value="—" sub="No budget set this month" />
       )}
       <StatCard
-        label="Avg Monthly Income"
+        label="Avg monthly income"
         value={formatCurrency(avgIncome)}
         valueColor={avgIncome > 0 ? 'text-positive' : undefined}
       />
       <StatCard
-        label="Avg Monthly Expenses"
+        label="Avg monthly expenses"
         value={formatCurrency(avgExpenses)}
         // Spending isn't an error: red is kept for overspent and negative balances
       />
       <div className="bg-surface rounded-lg px-6 py-4 max-md:px-4 border border-border-light shadow-card">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <p className="text-xs font-medium text-text-secondary">Savings Rate</p>
+          <p className="text-xs font-medium text-text-secondary">Savings rate</p>
           <select
             aria-label="Savings rate goal"
             value={savingsGoal}

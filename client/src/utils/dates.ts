@@ -14,7 +14,17 @@ const dayFirst = (pattern: DateFormatOption) => pattern.startsWith('dd');
 
 /** A full date: "Jan 5, 2026", "05/01/2026", "05.01.2026", "2026-01-05" */
 export function formatDay(date: DateInput, pattern: DateFormatOption = preference()): string {
-  return format(toDate(date), pattern);
+  const day = toDate(date);
+  // A date a bank file or server gave us that doesn't parse is shown as it came, not thrown on
+  if (Number.isNaN(day.getTime())) return String(date);
+  return format(day, pattern);
+}
+
+/** A moment: the day in the Date Format preference, then the time of day ("5 Jan 2026, 2:30 pm") */
+export function formatDayTime(moment: DateInput, pattern: DateFormatOption = preference()): string {
+  const at = toDate(moment);
+  if (Number.isNaN(at.getTime())) return String(moment);
+  return `${formatDay(at, pattern)}, ${format(at, 'h:mm a').toLowerCase()}`;
 }
 
 /**

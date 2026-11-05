@@ -51,14 +51,14 @@ test.describe('reports', () => {
     // A new budget's reports start on this month
     await expect(main.getByRole('button', { name: '1M', pressed: true })).toBeVisible();
     // Every dollar spent, uncategorized included; no transfer, no double-counted split
-    await expect(main).toContainText(/\$2,000\s*Total Income/);
-    await expect(main).toContainText(/\$52\.50\s*Total Expenses/);
+    await expect(main).toContainText(/\$2,000\s*Total income/);
+    await expect(main).toContainText(/\$52\.50\s*Total expenses/);
     for (const widget of [
-      'Net Worth',
+      'Net worth',
       'Income & Expenses',
-      'Spending by Category',
-      'Spending Trends',
-      'Transaction Calendar',
+      'Spending by category',
+      'Spending trends',
+      'Transaction calendar',
     ]) {
       await expect(main.getByText(widget, { exact: true })).toBeVisible();
     }
@@ -67,8 +67,8 @@ test.describe('reports', () => {
   test('builds, saves and reopens a custom report', async ({ page, api }) => {
     await seed(api);
     await open(page, '/reports');
-    await page.getByRole('link', { name: 'Custom Report' }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Custom Report' })).toBeVisible();
+    await page.getByRole('link', { name: 'Custom report' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Custom report' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Table' }).click();
     await page.getByRole('combobox', { name: 'Group by' }).selectOption('category');
@@ -82,7 +82,7 @@ test.describe('reports', () => {
     await expect(table.getByRole('row', { name: 'Corner Shop $10' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Save' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Save Report' });
+    const dialog = page.getByRole('dialog', { name: 'Save report' });
     await dialog.getByRole('textbox', { name: 'Report name' }).fill('Spending by payee');
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Spending by payee' })).toBeVisible();
@@ -173,7 +173,7 @@ test.describe('frozen months', () => {
     await expect
       .poll(async () => (await api.call<any[]>('GET', '/dashboards'))[0].dateRange)
       .toEqual({ preset: 'custom', from: `${year() - 1}-01`, to: thisMonth() });
-    await expect(main).toContainText(/\$52\.50\s*Total Expenses/);
+    await expect(main).toContainText(/\$52\.50\s*Total expenses/);
 
     // Cancel keeps the months
     await main.getByRole('button', { name: range }).click();
@@ -195,7 +195,7 @@ test.describe('frozen months', () => {
     const card = page
       .getByRole('main')
       .locator('div')
-      .filter({ has: page.getByText('Spending by Category', { exact: true }) })
+      .filter({ has: page.getByText('Spending by category', { exact: true }) })
       .filter({ has: page.getByRole('button', { name: 'Actions' }) })
       .last();
     // Scroll first: the menu closes on scroll, and the scroll from clicking a widget below the

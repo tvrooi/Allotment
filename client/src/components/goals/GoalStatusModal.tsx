@@ -160,7 +160,7 @@ export function GoalStatusModal({
               <p role="status" className="text-xs text-text-secondary">
                 {formatCurrency(available - moveCents)} stays with the goal;{' '}
                 {formatCurrency(moveCents)} moves. Total money is unchanged. To return money to
-                unassigned instead, lower the assignment on the budget.
+                Ready to assign instead, lower the assignment on the budget.
               </p>
             )}
           </fieldset>

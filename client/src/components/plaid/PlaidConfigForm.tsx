@@ -28,7 +28,7 @@ export function PlaidConfigForm() {
             <KeyRound size={20} className="text-brand-contrast" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-text">Set Up Bank Sync</h3>
+            <h3 className="text-sm font-semibold text-text">Set up bank sync</h3>
             <p className="text-xs text-text-secondary mt-1 leading-relaxed">
               Connect your bank accounts to automatically import transactions using Plaid. A
               developer account is free and always includes up to 10 bank connections.
@@ -52,7 +52,7 @@ export function PlaidConfigForm() {
             type="text"
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
-            placeholder="Enter your Plaid Client ID"
+            placeholder="Enter your Plaid client ID"
             className="w-full text-sm border border-border rounded-md px-3 py-2 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
           />
         </div>
@@ -62,13 +62,13 @@ export function PlaidConfigForm() {
             type="password"
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
-            placeholder="Enter your Plaid Secret"
+            placeholder="Enter your Plaid secret"
             className="w-full text-sm border border-border rounded-md px-3 py-2 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
           />
         </div>
         <PlaidEnvironmentSelect value={environment} onChange={setEnvironment} />
         <Button type="submit" disabled={!clientId.trim() || !secret.trim() || configure.isPending}>
-          {configure.isPending ? 'Saving...' : 'Save Credentials'}
+          {configure.isPending ? 'Saving...' : 'Save credentials'}
         </Button>
         {configure.isError && (
           <p className="text-xs text-negative">
