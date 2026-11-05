@@ -48,6 +48,8 @@ export interface CombinedRegister {
   households: { ownerId: string; name: string }[];
   people: { key: string; name: string; isMe: boolean; isPartner: boolean; balance: number }[];
   entries: CombinedEntry[];
+  /** Both households' activity logs, newest first */
+  activity: { time: string; kind: string; summary: string; by: string; mine: boolean }[];
 }
 
 export const getSharing = () => apiFetch<SharingState>('/shared-households');

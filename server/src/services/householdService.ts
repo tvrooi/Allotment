@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNotNull, lt, ne } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNotNull, lt, ne, sql } from 'drizzle-orm';
 import { format, subDays } from 'date-fns';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -17,6 +17,7 @@ import {
   householdBills as bills,
   householdPoolAccounts as poolAccounts,
   householdRecurringBills as recurringBills,
+  householdActivity as activity,
   schedules,
   scheduleOccurrences,
 } from '../db/schema.js';
@@ -174,11 +175,22 @@ function spareCentOffset(id: string) {
   return h;
 }
 
-/** Records one event (expense, contribution, settlement or refund) after every check; returns its id */
-export function recordEvent(groupId: string, raw: unknown): string {
+/** Who made a change, as the household's activity log records it */
+export type ActivitySource = 'owner' | 'rule' | 'recurring_bill';
+
+/**
+ * Records one event (expense, contribution, settlement or refund) after every check; returns its
+ * id. `id` is for an edit, which writes the event again under its own id so refunds and bank
+ * links keep pointing at it, and then logs the edit itself (`log: false`).
+ */
+export function recordEvent(
+  groupId: string,
+  raw: unknown,
+  options: { source?: ActivitySource; id?: string; log?: boolean } = {},
+): string {
   const state = snapshot(groupId);
   const input = eventSchema.parse(raw);
-  const id = nanoid();
+  const id = options.id ?? nanoid();
   const member = (id: string | null) => id !== null && state.people.some((p) => p.id === id);
   if (
     (input.payerId && !member(input.payerId)) ||
@@ -351,7 +363,243 @@ export function recordEvent(groupId: string, raw: unknown): string {
       .values({ id: nanoid(), eventId: row.id, ...p })
       .run(),
   );
+  if (options.log !== false) {
+    const source = options.source ?? 'owner';
+    const who = (personId: string | null) =>
+      state.people.find((p) => p.id === personId)?.name ?? 'The household account';
+    logActivity(
+      state.group.id,
+      row.kind === 'settlement' ? 'settled' : source === 'owner' ? 'created' : 'auto_shared',
+      row.id,
+      row.kind === 'settlement'
+        ? `${who(row.payerId)} repaid ${who(row.recipientId)} ${dollars(row.amount)}`
+        : `${ADDED[row.kind] ?? 'Added'} “${row.description}” (${dollars(Math.abs(row.amount))})`,
+      source,
+    );
+  }
   return row.id;
+}
+
+const ADDED: Record<string, string> = {
+  expense: 'Shared',
+  refund: 'Refunded',
+  contribution: 'Put into the household account:',
+};
+
+/** Lines kept per household; older ones are dropped */
+const ACTIVITY_KEPT = 500;
+
+/** Adds a line to the household's activity log (SPL-04), inside the caller's transaction */
+function logActivity(
+  groupId: string,
+  kind: 'created' | 'edited' | 'removed' | 'settled' | 'auto_shared',
+  eventId: string | null,
+  summary: string,
+  source: ActivitySource,
+) {
+  db.insert(activity)
+    .values({
+      id: nanoid(),
+      groupId,
+      time: new Date().toISOString(),
+      kind,
+      eventId,
+      summary: summary.slice(0, 500),
+      source,
+    })
+    .run();
+  const stale = db
+    .select({ id: activity.id })
+    .from(activity)
+    .where(eq(activity.groupId, groupId))
+    .orderBy(desc(activity.time), desc(sql`rowid`))
+    .limit(100)
+    .offset(ACTIVITY_KEPT)
+    .all();
+  if (stale.length)
+    db.delete(activity)
+      .where(
+        inArray(
+          activity.id,
+          stale.map((r) => r.id),
+        ),
+      )
+      .run();
+}
+
+/** The newest lines of a household's activity log */
+export function householdActivity(groupId: string, limit = 100) {
+  return db
+    .select({
+      id: activity.id,
+      time: activity.time,
+      kind: activity.kind,
+      eventId: activity.eventId,
+      summary: activity.summary,
+      source: activity.source,
+    })
+    .from(activity)
+    .where(eq(activity.groupId, groupId))
+    .orderBy(desc(activity.time), desc(sql`rowid`))
+    .limit(limit)
+    .all();
+}
+
+/** Which repayments were within what was owed at their point in the ledger */
+function validSettlements(state: ReturnType<typeof snapshot>) {
+  const valid = new Set<string>();
+  // Entries run in date order, and within a day what is owed comes before its repayment (ids are
+  // random, so they say nothing about which was recorded first)
+  const ordered = [...state.events].sort(
+    (a, b) =>
+      a.date.localeCompare(b.date) ||
+      Number(a.kind === 'settlement') - Number(b.kind === 'settlement') ||
+      a.id.localeCompare(b.id),
+  );
+  ordered.forEach((e, i) => {
+    if (e.kind !== 'settlement') return;
+    const before = ordered.slice(0, i);
+    const ledger = householdLedger(
+      state.people,
+      before,
+      before.flatMap((x) => x.shares),
+    );
+    const within = (balances: Record<string, number>) =>
+      e.amount <= -(balances[e.payerId!] ?? 0) && e.amount <= (balances[e.recipientId!] ?? 0);
+    if (within(ledger.direct) || within(ledger.balances)) valid.add(e.id);
+  });
+  return valid;
+}
+
+/** Money set aside for bills must stay covered by what the household account holds */
+function assertReservationsCovered(state: ReturnType<typeof snapshot>) {
+  const reserved = state.bills
+    .filter((b) => !state.events.some((e) => e.billId === b.id && e.kind === 'expense'))
+    .reduce((n, b) => n + b.reserved, 0);
+  if (reserved > 0 && state.pool < reserved)
+    throw new Error('Release bill reservations before changing this funding');
+}
+
+/** Only the description of an entry that refunds depend on, or of a refund, can change */
+const descriptionOnly = z.object({ description: name }).strict();
+
+/**
+ * Edits an entry in place (SPL-03), under its own id: description, and for one with no bank
+ * payment its date, amount, payer and split too. It runs every check a new entry runs against
+ * the ledger without it, then makes sure no repayment that was within what was owed now
+ * exceeds it. An entry linked to a bank payment keeps its date and amount; a refund, or an
+ * expense with refunds, changes its description only. Call inside a transaction: a refusal
+ * throws, and the caller rolls the whole edit back.
+ */
+export function updateEvent(
+  groupId: string,
+  eventId: string,
+  raw: unknown,
+  source: ActivitySource = 'owner',
+) {
+  const before = snapshot(groupId);
+  const old = before.events.find((e) => e.id === eventId);
+  if (!old) throw new Error('Event not found');
+  const who = (id: string | null) =>
+    before.people.find((p) => p.id === id)?.name ?? 'the household account';
+  const changes: string[] = [];
+  if (old.kind === 'refund' || before.events.some((e) => e.reversesId === old.id)) {
+    const parsed = descriptionOnly.safeParse(raw);
+    if (!parsed.success)
+      throw new Error('Only the description can change on a refund or an expense with refunds');
+    if (parsed.data.description !== old.description) changes.push('description');
+    db.update(events)
+      .set({ description: parsed.data.description })
+      .where(eq(events.id, old.id))
+      .run();
+  } else {
+    const input = eventSchema.parse(raw);
+    if (input.kind !== old.kind) throw new Error('The kind of an entry cannot change');
+    if (input.transactionId !== old.transactionId)
+      throw new Error('The bank payment of an entry cannot change here');
+    if (old.transactionId && (input.date !== old.date || input.amount !== old.amount))
+      throw new Error('The date and amount of an entry linked to a bank payment cannot change');
+    if (input.description !== old.description) changes.push('description');
+    if (input.date !== old.date) changes.push('date');
+    if (input.amount !== old.amount)
+      changes.push(`amount ${dollars(old.amount)} to ${dollars(input.amount ?? 0)}`);
+    if (input.payerId !== old.payerId)
+      changes.push(`payer ${who(old.payerId)} to ${who(input.payerId)}`);
+    if (input.recipientId !== old.recipientId) changes.push('recipient');
+    db.delete(shares).where(eq(shares.eventId, old.id)).run();
+    db.delete(events).where(eq(events.id, old.id)).run();
+    recordEvent(
+      groupId,
+      // The bill an entry was matched to stays with it
+      // A repayment is checked at its place in the history below, not against today's balances
+      { ...input, billId: old.billId, advance: input.advance || old.kind === 'settlement' },
+      { id: old.id, log: false },
+    );
+    if (old.reviewReason)
+      db.update(events).set({ reviewReason: old.reviewReason }).where(eq(events.id, old.id)).run();
+    const after = snapshot(groupId);
+    const next = after.events.find((e) => e.id === old.id)!;
+    const was = JSON.stringify(old.shares.map((s) => [s.personId, s.amount]).sort());
+    if (was !== JSON.stringify(next.shares.map((s) => [s.personId, s.amount]).sort()))
+      changes.push('split');
+    assertReservationsCovered(after);
+    const stillValid = validSettlements(after);
+    const moved =
+      old.kind === 'settlement' &&
+      (input.date !== old.date ||
+        input.amount !== old.amount ||
+        input.payerId !== old.payerId ||
+        input.recipientId !== old.recipientId);
+    if (moved && !stillValid.has(old.id))
+      throw new Error('Settlement exceeds the outstanding balance');
+    for (const id of validSettlements(before))
+      if (!stillValid.has(id))
+        throw new Error('That would leave a later repayment larger than what is owed');
+  }
+  if (!changes.length) return snapshot(groupId);
+  const now = snapshot(groupId).events.find((e) => e.id === old.id)!;
+  logActivity(
+    groupId,
+    'edited',
+    old.id,
+    `Changed “${now.description}” (${changes.join(', ')})`,
+    source,
+  );
+  return snapshot(groupId);
+}
+
+/**
+ * Removes an entry. A refund must go first, and removing funding the household account has
+ * already spent leaves its payer owing the account again; only money set aside for bills has
+ * to stay covered. Logged, so the line outlasts the entry (SPL-04).
+ */
+export function removeEvent(groupId: string, eventId: string, source: ActivitySource = 'owner') {
+  const state = snapshot(groupId);
+  const event = state.events.find((e) => e.id === eventId);
+  if (!event) throw new Error('Event not found');
+  if (state.events.some((e) => e.reversesId === event.id))
+    throw new Error('Remove its refund first');
+  const retained = state.events.filter((e) => e.id !== event.id);
+  const ledger = householdLedger(
+    state.people,
+    retained,
+    retained.flatMap((e) => e.shares),
+  );
+  const reserved = state.bills
+    .filter((b) => !retained.some((e) => e.billId === b.id && e.kind === 'expense'))
+    .reduce((n, b) => n + b.reserved, 0);
+  if (reserved > 0 && ledger.pool < reserved)
+    throw new Error('Release bill reservations before removing this funding');
+  db.delete(shares).where(eq(shares.eventId, event.id)).run();
+  db.delete(events).where(eq(events.id, event.id)).run();
+  logActivity(
+    groupId,
+    'removed',
+    event.id,
+    `Removed “${event.description}” (${dollars(Math.abs(event.amount))})`,
+    source,
+  );
+  return snapshot(groupId);
 }
 
 /**
@@ -359,7 +607,12 @@ export function recordEvent(groupId: string, raw: unknown): string {
  * account, or by the pool from a pool account, split by `split`, the group's default split,
  * or equally between everyone. Returns the event id.
  */
-export function shareTransaction(groupId: string, transactionId: string, split?: DefaultSplit) {
+export function shareTransaction(
+  groupId: string,
+  transactionId: string,
+  split?: DefaultSplit,
+  source: ActivitySource = 'owner',
+) {
   const state = snapshot(groupId);
   const tx = db.select().from(transactions).where(eq(transactions.id, transactionId)).get();
   if (!tx) throw new Error('Transaction not found');
@@ -371,16 +624,20 @@ export function shareTransaction(groupId: string, transactionId: string, split?:
       `The fixed amounts add up to ${dollars(fixed)}, but this payment is ${dollars(-tx.amount)}`,
     );
   const fromPool = state.poolAccountIds.includes(tx.accountId);
-  return recordEvent(groupId, {
-    kind: 'expense',
-    date: tx.date,
-    description: tx.payeeName?.trim() || 'Shared expense',
-    amount: -tx.amount,
-    payerId: fromPool ? null : state.people.find((p) => p.isSelf)!.id,
-    transactionId: tx.id,
-    mode,
-    shares: shareList,
-  });
+  return recordEvent(
+    groupId,
+    {
+      kind: 'expense',
+      date: tx.date,
+      description: tx.payeeName?.trim() || 'Shared expense',
+      amount: -tx.amount,
+      payerId: fromPool ? null : state.people.find((p) => p.isSelf)!.id,
+      transactionId: tx.id,
+      mode,
+      shares: shareList,
+    },
+    { source },
+  );
 }
 
 const dollars = (cents: number) =>
@@ -630,7 +887,16 @@ export function sharePayments(
     let result: ShareResult | null = null;
     try {
       db.transaction(() => {
-        const eventId = shareTransaction(groupId, transactionId, options.split);
+        const eventId = shareTransaction(
+          groupId,
+          transactionId,
+          options.split,
+          options.source === 'rule'
+            ? 'rule'
+            : options.source === 'auto-bill'
+              ? 'recurring_bill'
+              : 'owner',
+        );
         const event = db.select().from(events).where(eq(events.id, eventId)).get()!;
         result = {
           transactionId,
@@ -981,6 +1247,8 @@ export function sharedExport(id: string) {
           .filter((s) => s.eventId === e.id)
           .map((s) => ({ personId: s.personId, amount: s.amount })),
       })),
+    // What was added, changed, removed or settled (SPL-04): a combined partner sees it too
+    activity: householdActivity(id, 50).map(({ time, kind, summary }) => ({ time, kind, summary })),
   };
 }
 export type SharedExport = ReturnType<typeof sharedExport>;

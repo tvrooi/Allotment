@@ -153,6 +153,13 @@ export function combine(viewerId: string, sides: [Side, Side], notes: HouseholdN
     households: sides.map((s) => ({ ownerId: s.person.id, name: s.data.group.name })),
     people: [...people.values()].map((p) => ({ ...p, balance: balances[p.key] ?? 0 })),
     entries,
+    // Each person's household log, merged: "Alex: Removed “Groceries” ($84.10)"
+    activity: sides
+      .flatMap((s) =>
+        s.data.activity.map((a) => ({ ...a, by: s.person.name, mine: s.person.id === viewerId })),
+      )
+      .sort((a, b) => b.time.localeCompare(a.time))
+      .slice(0, 50),
   };
 }
 

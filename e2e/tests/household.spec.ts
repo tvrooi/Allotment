@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay } from './fixtures';
+import { test, expect, open, isoDay, typeAmount } from './fixtures';
 
 test('records shared expenses, exports personal scope and keeps the bank debit intact', async ({
   page,
@@ -710,4 +710,49 @@ test('lists who should pay whom and records a suggested repayment in one click',
   );
   await page.getByRole('button', { name: 'Record: You pay Alex A$30' }).click();
   await expect(page.getByRole('list', { name: 'Suggested repayments' })).toHaveCount(0);
+});
+
+test('edits an entry in place, and the activity log keeps what was changed and removed', async ({
+  page,
+  api,
+}) => {
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    people: ['Me', 'Alex', 'Sam'],
+    selfIndex: 0,
+  });
+  await api.call('POST', `/households/${group.group.id}/events`, {
+    kind: 'expense',
+    date: '2026-10-21',
+    description: 'Groceries',
+    amount: 9000,
+    payerId: group.people[0].id,
+    shares: group.people.map((p: any) => ({ personId: p.id, value: 1 })),
+  });
+  await open(page, '/household');
+  await page.getByRole('button', { name: /^All contributions, payments & repayments/ }).click();
+  await page.getByRole('button', { name: 'Edit Groceries' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Edit entry' });
+  await dialog.getByLabel('Description').fill('Groceries and bread');
+  await typeAmount(dialog.getByLabel('Amount', { exact: true }), '96.00');
+  await dialog.getByLabel('Split', { exact: true }).selectOption('equal');
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
+  await expect(dialog).toHaveCount(0);
+  const history = page
+    .getByRole('row', { name: /Groceries and bread/ })
+    .filter({ has: page.getByRole('button', { name: 'Remove entry' }) });
+  await expect(history).toContainText('A$96');
+
+  await page.getByRole('button', { name: 'Remove entry' }).click();
+  await expect(history).toHaveCount(0);
+  await page.getByRole('button', { name: 'Activity', exact: true }).click();
+  const log = page.getByRole('list', { name: 'Household activity' });
+  await expect(log.getByText(/^Removed “Groceries and bread”/)).toBeVisible();
+  await expect(log.getByText(/^Changed “Groceries and bread” \(description, amount/)).toBeVisible();
+  await expect(log.getByText(/^Shared “Groceries”/)).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
 });

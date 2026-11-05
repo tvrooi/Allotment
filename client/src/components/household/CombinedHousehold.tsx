@@ -14,7 +14,7 @@ import {
 } from '../../api/sharedHouseholds';
 import { useAuthStatus } from '../../hooks/useServer';
 import { formatMoney } from '../../utils/currency';
-import { formatDay } from '../../utils/dates';
+import { formatDay, formatDayTime } from '../../utils/dates';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Input';
 import { ConfirmModal } from '../ui/ConfirmModal';
@@ -301,6 +301,25 @@ function Register({ linkId }: { linkId: string }) {
           </ul>
         )}
       </div>
+
+      {data.activity.length > 0 && (
+        <div>
+          <h3 className="text-xs font-semibold text-text-secondary">Activity</h3>
+          <ul
+            className="mt-1 divide-y divide-border-light border-t border-border-light"
+            aria-label="Combined household activity"
+          >
+            {data.activity.map((a, i) => (
+              <li key={`${a.time}-${i}`} className="py-2 text-sm">
+                <span className="text-text">{a.summary}</span>
+                <span className="block text-xs text-text-tertiary">
+                  {a.mine ? 'You' : a.by} · {formatDayTime(a.time)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

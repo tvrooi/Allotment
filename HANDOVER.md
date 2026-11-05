@@ -9,6 +9,16 @@ Last updated: 5 November 2026 (up.106 in review).
 
 ## State
 
+- **Edit entries and household activity (up.107, SPL-03, SPL-04; migration 0074, backup format 27):**
+  `updateEvent` / `removeEvent` in `householdService.ts` (one write path: it deletes the entry's
+  shares and row and re-runs `recordEvent` under the same id, inside the route's transaction),
+  `PUT` and `DELETE /households/:id/events/:eventId`, `GET /households/:id/activity`, table
+  `household_activity` (no FK on `event_id`; newest 500 per household). Client: `EditEntry.tsx`
+  (Edit in the history), `ActivityLog.tsx`, the combined register's merged Activity. Tests:
+  `routes/householdEdit.test.ts`, `db/householdActivity.test.ts` (migration on a populated
+  database), `gateway/sharing.test.ts`, e2e `household.spec.ts`. First `households` user-guide page.
+  Not done: the partner-link design (`docs/HOUSEHOLD-PARTNER-LINKS.md`) needs these edit rules
+  ("changed, claim again") before it is built; SPL-05 reports follow.
 - **Settle up (up.106, SPL-01, SPL-02, SPL-06; no migration):** the Household page lists who should pay whom
   (`suggestSettlements` in `householdLedger.ts`, from the `direct` balances; `poolOwed` listed apart), each
   with **Record** or **Link payment**; `repaymentSuggestions` has a `payment` kind for your own outgoing
@@ -259,16 +269,15 @@ site in `website/` was removed (audit decision I-9).
    data, Up sync and access tokens intact. Not built yet: SMTP email codes. Shared households
    are combined households (up.58).
 4. **Gaps found in the 26 October audit** (not built or not documented):
-   - User guide pages missing for shipped features: households, payday plans, resilience/budget
+   - User guide pages missing for shipped features: payday plans, resilience/budget
      review, card payments, the long-term forecast (super, HECS-HELP) and Move money.
    - YNAB budget backlog in `docs/research/ynab-flybudget-budget-gaps.md` (PR #41): BUD-02 save
      and undo feedback, BUD-03 availability states, BUD-05 keyboard/expressions, BUD-06 row moves
      and returning money to unassigned, BUD-07 selected-category funding, BUD-09 card rows in the
      table, BUD-10 inspector and notes. BUD-01 fixed in up.46.
    - Household splitting backlog from the Spliit comparison in
-     `docs/research/spliit-household-gaps.md`: SPL-01 pool-aware "who pays whom" settle-up list and
-     SPL-02 one-click recording with outgoing repayment matching (P1), then SPL-03 in-place edits
-     with SPL-04 an activity log, and SPL-05 household reports.
+     `docs/research/spliit-household-gaps.md`: SPL-01, SPL-02, SPL-06 (up.106) and SPL-03, SPL-04
+     (up.107) are built; SPL-05 household reports is next, then the P3 items.
    - Transaction detail has no previous/next (Monarch backlog P1).
    - Future-month money moves; money age (deliberately not built, see BUDGET-REVIEW.md).
    - Investments deferrals (sales, dividends, franking); receipts §6 (PDF reading, email

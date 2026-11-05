@@ -10,13 +10,10 @@ import {
   transactions,
   householdGroups as groups,
   householdPeople as people,
-  householdEvents as events,
-  householdShares as shares,
   householdBills as bills,
   householdPoolAccounts as poolAccountsTable,
   schedules,
 } from '../db/schema.js';
-import { householdLedger } from '../services/householdLedger.js';
 import { billReconciliation } from '../services/householdReconciliation.js';
 import {
   addPerson,
@@ -24,8 +21,10 @@ import {
   deleteBill,
   editBill,
   poolAccountsOf,
+  householdActivity,
   poolGroupOf,
   recordEvent,
+  removeEvent,
   renamePerson,
   shareBillPayments,
   repaymentSuggestions,
@@ -35,6 +34,7 @@ import {
   snapshot,
   splitSchema,
   unshareRecurringBill,
+  updateEvent,
   updateRecurringBill,
 } from '../services/householdService.js';
 import { todayIso } from '../services/mainAmountService.js';
@@ -383,25 +383,16 @@ householdsRouter.get('/:id/statement', (req, res) =>
   }),
 );
 
+householdsRouter.put('/:id/events/:eventId', (req, res) =>
+  run(res, () => updateEvent(req.params.id, req.params.eventId, req.body)),
+);
 householdsRouter.delete('/:id/events/:eventId', (req, res) =>
+  run(res, () => removeEvent(req.params.id, req.params.eventId)),
+);
+// What was added, changed, removed or settled, newest first
+householdsRouter.get('/:id/activity', (req, res) =>
   run(res, () => {
-    const state = snapshot(req.params.id);
-    const event = state.events.find((e) => e.id === req.params.eventId);
-    if (!event) throw new Error('Event not found');
-    if (state.events.some((e) => e.reversesId === event.id))
-      throw new Error('Remove its refund first');
-    const retained = state.events.filter((e) => e.id !== event.id);
-    const allocations = retained.flatMap((e) => e.shares);
-    const ledger = householdLedger(state.people, retained, allocations);
-    // Removing a contribution the household account has already spent leaves its payer owing
-    // the account again (toPool); only money set aside for bills has to stay covered.
-    const reserved = state.bills
-      .filter((b) => !retained.some((e) => e.billId === b.id && e.kind === 'expense'))
-      .reduce((n, b) => n + b.reserved, 0);
-    if (reserved > 0 && ledger.pool < reserved)
-      throw new Error('Release bill reservations before removing this funding');
-    db.delete(shares).where(eq(shares.eventId, event.id)).run();
-    db.delete(events).where(eq(events.id, event.id)).run();
-    return snapshot(state.group.id);
+    snapshot(req.params.id);
+    return householdActivity(req.params.id);
   }),
 );

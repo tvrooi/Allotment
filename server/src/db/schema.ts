@@ -1361,6 +1361,29 @@ export const householdRecurringBills = sqliteTable(
   (table) => [index('household_recurring_bills_group').on(table.groupId)],
 );
 
+/**
+ * What happened in a household (SPL-04): an entry added, changed, removed or settled, and who
+ * did it. `event_id` has no foreign key so a removed entry keeps its line; `summary` is the
+ * whole sentence at the time, since the entry is gone.
+ */
+export const householdActivity = sqliteTable(
+  'household_activity',
+  {
+    id: text('id').primaryKey(),
+    groupId: text('group_id')
+      .notNull()
+      .references(() => householdGroups.id, { onDelete: 'cascade' }),
+    time: text('time').notNull(),
+    /** created, edited, removed, settled or auto_shared */
+    kind: text('kind').notNull(),
+    eventId: text('event_id'),
+    summary: text('summary').notNull(),
+    /** owner, rule or recurring_bill */
+    source: text('source').notNull().default('owner'),
+  },
+  (table) => [index('household_activity_group_time').on(table.groupId, table.time)],
+);
+
 export const budgetRevision = sqliteTable('budget_revision', {
   id: integer('id').primaryKey(),
   revision: text('revision').notNull(),

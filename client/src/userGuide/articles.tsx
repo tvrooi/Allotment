@@ -385,6 +385,37 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
     ],
   },
   {
+    page: 'households',
+    title: 'Households',
+    summary: 'Share costs with the people you live with, and keep a record of who changed what.',
+    sections: [
+      {
+        heading: 'Fix a mistake without starting again',
+        body: (
+          <p>
+            Under <b>Household</b>, open <b>All contributions, payments &amp; repayments</b> and
+            choose <b>Edit</b> on an entry. You can change its description, and if it isn’t linked
+            to a bank payment, its date, amount, who paid and how it’s split. An entry linked to a
+            bank payment keeps that payment’s date and amount. An expense that has a refund can only
+            change its description. Allotment refuses a change that would leave a repayment larger
+            than what was owed, and says why.
+          </p>
+        ),
+      },
+      {
+        heading: 'See who did what',
+        body: (
+          <p>
+            <b>Activity</b>, below the history, lists what was added, changed, removed or repaid,
+            newest first. An entry you remove keeps its line there. Payments shared by a rule or a
+            shared recurring bill are marked as theirs. If you combine with another Allotment user,
+            their households’ activity is listed with yours.
+          </p>
+        ),
+      },
+    ],
+  },
+  {
     page: 'backups',
     title: 'Backups',
     summary: 'Keep a copy of your budget somewhere safe.',

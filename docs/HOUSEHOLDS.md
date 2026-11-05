@@ -202,10 +202,39 @@ continue without silently erasing the agreed expense.
 Refunds reference the original expense and reverse its saved shares. Partial
 refunds allocate proportionally to the remaining unrefunded shares; the last refund
 reverses the remaining cents exactly. Cumulative over-refunds are rejected. To
-correct a mistaken entry, remove it in the event history and enter the correction.
-Remove dependent refunds first. Removing a contribution the household account has
+correct a mistaken entry, use **Edit** on it in the event history (below), or remove it and
+enter the correction; remove dependent refunds first. Removing a contribution the household account has
 already spent leaves its payer owing the account again; one still needed for bill
 reservations can't be removed until they are released.
+
+## Editing an entry, and the activity log
+
+**Edit** (`PUT /households/:id/events/:eventId`, `updateEvent` in `householdService.ts`) changes
+an entry under its own id, so refunds and the bank link keep pointing at it. The body is a full
+entry, as for a new one; the edit removes the entry's shares and runs `recordEvent`'s checks
+against the ledger without it, all in the route's one database transaction, so a refusal changes
+nothing. Rules:
+
+- The kind and the bank payment never change. An entry linked to a bank payment keeps that
+  payment's date and amount (the existing bank checks), and can change its description, payer and
+  split.
+- A refund, and an expense a refund depends on, change their description only (the body is
+  `{ description }`).
+- Afterwards no repayment that was within what was owed at its place in the ledger may now exceed
+  it (`validSettlements`), and money set aside for bills must stay covered. The bill an entry is
+  matched to stays with it.
+
+**Activity** (`GET /households/:id/activity`, table `household_activity`, migration 0074) records
+a line for each entry added (`created`), repaid (`settled`), shared by a rule or a shared recurring
+bill (`auto_shared`, with its `source`), edited (`edited`, naming what changed) and removed
+(`removed`). A line holds its whole sentence, because the entry may be gone; `event_id` has no
+foreign key for the same reason. The newest 500 lines per household are kept, and the log goes
+with its household. Lines are written inside the same transaction as the change, so a refused or
+previewed change leaves none. It is in backup version 27; older backups restore with an empty log.
+`sharedExport` includes the newest 50, and the combined register merges both households' lines
+(`activity`, each with who made it). Only the owner can read or write it: it is not on any access
+token's allowlist. Removing an entry is `removeEvent`, the same code the Remove entry button and
+Undo use.
 
 ## Advances and shared bills
 

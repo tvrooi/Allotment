@@ -34,6 +34,7 @@ export type DocsPage =
   | 'goals'
   | 'tax'
   | 'currencies'
+  | 'households'
   | 'backups';
 
 /** The same topic in the upstream FlyBudget guide, for setup details Allotment's guide skips */

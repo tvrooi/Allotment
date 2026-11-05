@@ -23,6 +23,13 @@ const tristan: Side = {
   partnerPersonId: 't-partner',
   data: {
     group: { id: 'g1', name: 'Home', currency: 'AUD' },
+    activity: [
+      {
+        time: '2026-10-03T01:00:00.000Z',
+        kind: 'created',
+        summary: 'Shared “Woolworths” ($90.00)',
+      },
+    ],
     people: [
       { id: 't-self', name: 'Me', isSelf: true },
       { id: 't-partner', name: 'Partner', isSelf: false },
@@ -50,6 +57,13 @@ const edward: Side = {
   partnerPersonId: 'e-tristan',
   data: {
     group: { id: 'g2', name: 'Our place', currency: 'AUD' },
+    activity: [
+      {
+        time: '2026-10-04T01:00:00.000Z',
+        kind: 'removed',
+        summary: 'Removed “Groceries” ($84.10)',
+      },
+    ],
     people: [
       { id: 'e-self', name: 'Edward', isSelf: true },
       { id: 'e-tristan', name: 'Tristan', isSelf: false },
@@ -134,6 +148,14 @@ describe('combine', () => {
     };
     const r = combine('T', [tristan, twice], []);
     expect(r.entries.every((e) => e.possibleDuplicate)).toBe(true);
+  });
+
+  it('merges both households’ activity, newest first, naming whose it is', () => {
+    const r = combine('T', [tristan, edward], []);
+    expect(r.activity).toEqual([
+      expect.objectContaining({ by: 'Edward', mine: false, kind: 'removed' }),
+      expect.objectContaining({ by: 'Tristan', mine: true, kind: 'created' }),
+    ]);
   });
 
   it('asks to combine again when a household no longer has the linked person', () => {

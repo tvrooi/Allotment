@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.107
+
+- **Edit a household entry where it is.** On the Household page, **Edit** next to an entry in the history changes its description, and, when it isn't linked to a bank payment, its date, amount, who paid and how it's split. Refunds and the bank link stay attached. An entry linked to a bank payment keeps that payment's date and amount, and an expense with a refund changes its description only. A change that would leave a later repayment larger than what was owed is refused with the reason, and nothing changes.
+- **Household activity.** A new **Activity** list under the history shows what was added, changed, removed or repaid, newest first, and keeps the line for an entry you removed. Payments shared by a rule or a shared recurring bill are marked as theirs. In a combined household, both people's activity is listed together. Your backup now includes it; older backups restore with an empty list.
+
 ## 0.2.0-up.106
 
 - **Settle up on the Household page.** Under **People & balances**, a new **Settle up** list says who should pay whom to clear what people owe each other for things they paid themselves, for example "You pay Alex $30" and "Sam pays Alex $30", in at most one fewer repayments than there are people. **Record** saves one as a repayment in one click. What people owe the household account is listed separately ("Sam puts $x into the household account") and never as a repayment between people.
