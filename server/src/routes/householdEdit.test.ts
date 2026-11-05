@@ -188,6 +188,54 @@ describe('editing an entry in place (SPL-03)', () => {
     expect(allowed.status).toBe(200);
   });
 
+  it('edits a repayment that a later expense has made look too large today', async () => {
+    const h = await newHousehold('Edit history');
+    const two = [h.me, h.ana];
+    const on = (day: string) => ({ date: day, shares: equal(two) });
+    // Me pays $100 for both: Ana owes $50. Ana repays $50. Then Ana pays $100 for both, so
+    // today Me owes Ana $50 and the $50 repayment looks larger than anything Ana owes
+    await call(`/${h.id}/events`, expense(h, 10000, on('2026-10-01')), 'POST');
+    const repaid = (
+      await call(
+        `/${h.id}/events`,
+        {
+          kind: 'settlement',
+          date: '2026-10-02',
+          description: 'Repayment',
+          amount: 5000,
+          payerId: h.ana,
+          recipientId: h.me,
+        },
+        'POST',
+      )
+    ).data;
+    const id = repaid.events.find((e: { kind: string }) => e.kind === 'settlement').id;
+    await call(
+      `/${h.id}/events`,
+      expense(h, 10000, { ...on('2026-10-03'), payerId: h.ana }),
+      'POST',
+    );
+    const body = (amount: number) => ({
+      kind: 'settlement',
+      date: '2026-10-02',
+      description: 'Repayment, bank transfer',
+      amount,
+      payerId: h.ana,
+      recipientId: h.me,
+    });
+    // A new description changes nothing about the money, so it is allowed
+    const renamed = await call(`/${h.id}/events/${id}`, body(5000), 'PUT');
+    expect(renamed.status).toBe(200);
+    expect(renamed.data.events.find((e: { id: string }) => e.id === id).description).toBe(
+      'Repayment, bank transfer',
+    );
+    // A smaller amount is within what Ana owed on 2 October; a larger one is not
+    expect((await call(`/${h.id}/events/${id}`, body(4000), 'PUT')).status).toBe(200);
+    const refused = await call(`/${h.id}/events/${id}`, body(5001), 'PUT');
+    expect(refused.status).toBe(400);
+    expect(refused.data.error).toMatch(/exceeds the outstanding balance/);
+  });
+
   it('refuses a participant from another household and an unknown entry', async () => {
     const h = await newHousehold('Edit one');
     const other = await newHousehold('Edit two');

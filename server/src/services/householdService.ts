@@ -531,7 +531,8 @@ export function updateEvent(
     recordEvent(
       groupId,
       // The bill an entry was matched to stays with it
-      { ...input, billId: old.billId },
+      // A repayment is checked at its place in the history below, not against today's balances
+      { ...input, billId: old.billId, advance: input.advance || old.kind === 'settlement' },
       { id: old.id, log: false },
     );
     if (old.reviewReason)
@@ -543,6 +544,14 @@ export function updateEvent(
       changes.push('split');
     assertReservationsCovered(after);
     const stillValid = validSettlements(after);
+    const moved =
+      old.kind === 'settlement' &&
+      (input.date !== old.date ||
+        input.amount !== old.amount ||
+        input.payerId !== old.payerId ||
+        input.recipientId !== old.recipientId);
+    if (moved && !stillValid.has(old.id))
+      throw new Error('Settlement exceeds the outstanding balance');
     for (const id of validSettlements(before))
       if (!stillValid.has(id))
         throw new Error('That would leave a later repayment larger than what is owed');

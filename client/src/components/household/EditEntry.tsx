@@ -4,6 +4,8 @@ import { Button } from '../ui/Button';
 import { CurrencyInput } from '../ui/CurrencyInput';
 import { Input, Select } from '../ui/Input';
 import { Modal } from '../ui/Modal';
+import { useCanSave } from '../../hooks/useConnection';
+import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { formatMoney } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { SplitEditor } from './SplitEditor';
@@ -53,6 +55,7 @@ export function EditEntry({
   onClose,
 }: Props) {
   const uid = useId();
+  const canSave = useCanSave();
   const [description, setDescription] = useState(entry.description);
   const [date, setDate] = useState(entry.date);
   const [amount, setAmount] = useState(Math.abs(entry.amount));
@@ -172,7 +175,7 @@ export function EditEntry({
                   allowFixed
                   expected={amount}
                   currency={currency}
-                  saving={saving}
+                  saving={saving || !canSave}
                   saveLabel="Save changes"
                   onSave={submit}
                 />
@@ -185,12 +188,13 @@ export function EditEntry({
             {error}
           </p>
         )}
+        <SavingPausedHint />
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
           </Button>
           {(!isExpense || locked) && (
-            <Button type="submit" disabled={saving || !description.trim()}>
+            <Button type="submit" disabled={saving || !canSave || !description.trim()}>
               Save changes
             </Button>
           )}
