@@ -5,10 +5,16 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 5 November 2026 (after up.104).
+Last updated: 5 November 2026 (up.105 in review).
 
 ## State
 
+- **Settle up (up.105, SPL-01, SPL-02, SPL-06; no migration):** the Household page lists who should pay whom
+  (`suggestSettlements` in `householdLedger.ts`, from the `direct` balances; `poolOwed` listed apart), each
+  with **Record** or **Link payment**; `repaymentSuggestions` has a `payment` kind for your own outgoing
+  repayments; the spare cent of an uneven equal split starts at a place taken from the event id. The
+  combined-household view has no settle-up list yet. PR 146 also claims up.104 and needs its version
+  re-prepared when it rebases.
 - **Stage 1 follow-up (up.103, migrations 0072 and 0073, backup format 26):** the rest of SEC-01 and
   FINX-02.
   _SEC-01 import history:_ `import_batches` (one row per confirmed file import: account, file name,

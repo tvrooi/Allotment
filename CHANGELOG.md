@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.105
+
+- **Settle up on the Household page.** Under **People & balances**, a new **Settle up** list says who should pay whom to clear what people owe each other for things they paid themselves, for example "You pay Alex $30" and "Sam pays Alex $30", in as few repayments as possible. **Record** saves one as a repayment in one click. What people owe the household account is listed separately ("Sam puts $x into the household account") and never as a repayment between people.
+- **Your own repayments are matched too.** When you owe a housemate and one of your bank payments names them, **Household → Sharing** now offers **Record your repayment to …**, and Settle up offers **Link payment** instead of **Record**, so the same payment isn't entered twice.
+- **The spare cent moves around.** An equal split that doesn't divide evenly (for example $100 three ways) no longer always gives the extra cent to the first person. Which person gets it now varies from entry to entry. Entries already saved don't change, and refunds still reverse the original shares exactly.
+
 ## 0.2.0-up.104
 
 - **No gap at the top on iPhone.** Added to the Home Screen, Allotment left an empty band between the status bar and its header. The header now reaches up behind the clock and battery in the header's own colour, light or dark, and pages, the menu, sign-in and messages keep clear of the notch and the home bar. Safari's toolbar also takes the header colour. If you had already added Allotment to your Home Screen, remove it and add it again so iOS picks this up.

@@ -21,8 +21,8 @@ export interface HouseholdSummary {
 }
 
 export interface RepaymentSuggestion {
-  /** A repayment to you, or money put into the household account */
-  kind: 'settlement' | 'contribution';
+  /** A repayment to you, your own payment to someone you owe, or money put into the household account */
+  kind: 'settlement' | 'payment' | 'contribution';
   transactionId: string;
   date: string;
   amount: number;
@@ -30,7 +30,7 @@ export interface RepaymentSuggestion {
   notes: string | null;
   personId: string;
   personName: string;
-  /** What they owe you (settlement) or the household account (contribution) */
+  /** What they owe you (settlement), what you owe them (payment) or what they owe the household account (contribution) */
   owes: number;
 }
 
@@ -83,16 +83,52 @@ export const recordRepayment = (groupId: string, s: RepaymentSuggestion, selfId:
             payerId: s.personId,
             transactionId: s.transactionId,
           }
-        : {
-            kind: 'settlement',
-            date: s.date,
-            description: `Repayment from ${s.personName}`,
-            amount: s.amount,
-            payerId: s.personId,
-            recipientId: selfId,
-            transactionId: s.transactionId,
-          },
+        : s.kind === 'payment'
+          ? {
+              kind: 'settlement',
+              date: s.date,
+              description: `Repayment to ${s.personName}`,
+              amount: s.amount,
+              payerId: selfId,
+              recipientId: s.personId,
+              transactionId: s.transactionId,
+            }
+          : {
+              kind: 'settlement',
+              date: s.date,
+              description: `Repayment from ${s.personName}`,
+              amount: s.amount,
+              payerId: s.personId,
+              recipientId: selfId,
+              transactionId: s.transactionId,
+            },
     ),
+  });
+
+/** A suggested transfer between two people (who pays whom), from the household's direct balances */
+export interface SettleUpTransfer {
+  fromId: string;
+  toId: string;
+  amount: number;
+}
+
+/** Records a suggested transfer as a repayment, with no bank payment linked */
+export const recordSettleUp = (
+  groupId: string,
+  t: SettleUpTransfer,
+  names: { from: string; to: string },
+  date: string,
+) =>
+  apiFetch<unknown>(`/households/${groupId}/events`, {
+    method: 'POST',
+    body: JSON.stringify({
+      kind: 'settlement',
+      date,
+      description: `Repayment from ${names.from} to ${names.to}`,
+      amount: t.amount,
+      payerId: t.fromId,
+      recipientId: t.toId,
+    }),
   });
 
 /** Removes one household entry (undoing a share) */

@@ -300,3 +300,116 @@ describe('repayments and contributions alongside other money', () => {
     expect(contributions).toEqual([['mine-in', me]]);
   });
 });
+
+describe('repaying a housemate I owe', () => {
+  it('suggests my own payment to them, within what I owe, and records it', async () => {
+    db.insert(accounts).values({ id: 'cabin', name: 'Cabin account', type: 'checking' }).run();
+    const created = (
+      await call('', {
+        name: 'Cabin',
+        currency: 'AUD',
+        accountId: 'cabin',
+        people: ['Me', 'Kai'],
+        selfIndex: 0,
+      })
+    ).data;
+    const cabin = created.group.id;
+    const [me, kai] = created.people.map((p: { id: string }) => p.id);
+    // Kai paid $100 for both of us: I owe him $50
+    await call(`/${cabin}/events`, {
+      kind: 'expense',
+      date,
+      description: 'Firewood',
+      amount: 10000,
+      payerId: kai,
+      mode: 'equal',
+      shares: [
+        { personId: me, value: 1 },
+        { personId: kai, value: 1 },
+      ],
+    });
+    tx('to-kai', 'mine', -3000, 'Kai Tran');
+    tx('too-much', 'mine', -9000, 'Kai Tran');
+    tx('elsewhere', 'mine', -1000, 'Someone Else');
+    tx('kai-transfer', 'mine', -1000, 'Kai Tran', { transferTransactionId: 'kai-leg' });
+    tx('kai-pool', 'cabin', -1000, 'Kai Tran');
+    const found = (await call(`/${cabin}/repayment-suggestions`)).data;
+    expect(found).toEqual([
+      expect.objectContaining({
+        kind: 'payment',
+        transactionId: 'to-kai',
+        amount: 3000,
+        personId: kai,
+        owes: 5000,
+      }),
+    ]);
+    const state = (await call(`/${cabin}`)).data;
+    expect(state.settlements).toEqual([{ fromId: me, toId: kai, amount: 5000 }]);
+    const recorded = await call(`/${cabin}/events`, {
+      kind: 'settlement',
+      date,
+      description: 'Repayment to Kai',
+      amount: 3000,
+      payerId: me,
+      recipientId: kai,
+      transactionId: 'to-kai',
+    });
+    expect(recorded.status).toBe(201);
+    expect(recorded.data.settlements).toEqual([{ fromId: me, toId: kai, amount: 2000 }]);
+    expect((await call(`/${cabin}/repayment-suggestions`)).data).toEqual([]);
+  });
+
+  it('suggests nothing outgoing when nobody is owed by me', async () => {
+    db.insert(accounts).values({ id: 'quiet', name: 'Quiet account', type: 'checking' }).run();
+    const quiet = (
+      await call('', {
+        name: 'Quiet',
+        currency: 'AUD',
+        accountId: 'quiet',
+        people: ['Me', 'Ola'],
+        selfIndex: 0,
+      })
+    ).data.group.id;
+    tx('to-ola', 'mine', -2000, 'Ola Berg');
+    expect((await call(`/${quiet}/repayment-suggestions`)).data).toEqual([]);
+  });
+});
+
+describe('splitting an amount that does not divide evenly', () => {
+  it("doesn't always give the spare cent to the same person", async () => {
+    db.insert(accounts).values({ id: 'thirds', name: 'Thirds account', type: 'checking' }).run();
+    const created = (
+      await call('', {
+        name: 'Thirds',
+        currency: 'AUD',
+        accountId: 'thirds',
+        people: ['Me', 'Ana', 'Bo'],
+        selfIndex: 0,
+      })
+    ).data;
+    const thirds = created.group.id;
+    const ids = created.people.map((p: { id: string }) => p.id);
+    const withSpare = new Set<string>();
+    for (let i = 0; i < 30; i++) {
+      const state = (
+        await call(`/${thirds}/events`, {
+          kind: 'expense',
+          date,
+          description: `Pizza ${i}`,
+          amount: 10000,
+          payerId: ids[0],
+          mode: 'equal',
+          shares: ids.map((personId: string) => ({ personId, value: 1 })),
+        })
+      ).data;
+      const event = state.events.find(
+        (e: { description: string }) => e.description === `Pizza ${i}`,
+      );
+      const amounts = event.shares.map((s: { amount: number }) => s.amount);
+      expect(amounts.reduce((a: number, b: number) => a + b, 0)).toBe(10000);
+      withSpare.add(event.shares.find((s: { amount: number }) => s.amount === 3334).personId);
+    }
+    // 30 expenses with the spare cent always on one person has a chance of about 1 in 10^14
+    expect(withSpare.size).toBeGreaterThan(1);
+  });
+});

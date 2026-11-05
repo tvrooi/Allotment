@@ -195,7 +195,9 @@ export function HouseholdSharing({ group, people }: Props) {
                       ? s.owes > 0
                         ? `${s.personName} owes the household account ${money(s.owes)}`
                         : `Into the household account from ${s.personName}`
-                      : `${s.personName} owes you ${money(s.owes)}`}
+                      : s.kind === 'payment'
+                        ? `You owe ${s.personName} ${money(s.owes)}`
+                        : `${s.personName} owes you ${money(s.owes)}`}
                     {s.notes ? ` · “${s.notes}”` : ''}
                   </span>
                 </span>
@@ -209,7 +211,9 @@ export function HouseholdSharing({ group, people }: Props) {
                     ? s.personId === self.id
                       ? 'Record your contribution'
                       : `Record ${s.personName}'s contribution`
-                    : `Record ${s.personName}'s repayment`}
+                    : s.kind === 'payment'
+                      ? `Record your repayment to ${s.personName}`
+                      : `Record ${s.personName}'s repayment`}
                 </Button>
               </li>
             ))}

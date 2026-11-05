@@ -78,6 +78,14 @@ The menu is keyboard-operable (arrows, Home/End, Right or Enter opens the sub-me
 Escape goes back, Tab closes) and returns focus to the row. On a phone the sub-menu opens in
 place with **Back**.
 
+**Settle up** (**Household**, under People & balances) lists who should pay whom to clear what
+people owe each other for things they paid themselves: at most one fewer repayment than there
+are people, each within both people's balances. **Record** saves one as a repayment. If one of
+your bank payments, or money you received, already looks like it, the button reads **Link
+payment** and records that instead, so it isn't entered twice. What people owe the household
+account is listed apart as "puts $x into the household account", never as a repayment between
+people. Nothing is recorded without a click.
+
 **Repayment and contribution suggestions** (**Household → Sharing**) list money received in
 the last 120 days that isn't linked yet:
 
@@ -85,6 +93,9 @@ the last 120 days that isn't linked yet:
   things people paid themselves, up to what they owe and what is owed to you. **Record
   repayment** saves it as their settlement to you. What someone owes the household account is
   never counted as owed to you.
+- money out of your personal accounts whose payee contains the name of someone you owe for
+  things they paid themselves, up to what you owe and what they are owed. **Record your
+  repayment to** saves it as your settlement to them.
 - money into a household account whose payee contains the name of someone in the household, or
   a transfer into it from one of your own accounts. **Record contribution** saves it as their
   contribution.
@@ -151,9 +162,11 @@ the MCP endpoint belong to one budget and never reach a combined register.
 
 Record a shared expense with a date, total, payer and participants. Choose equal,
 percentage (integer basis points, 10000 = 100%), weight or exact dollar shares.
-Allocations are saved in cents. Equal/weighted rounding uses the largest remainder,
-with displayed participant order breaking ties. For $100 split three ways the
-saved amounts are $33.34/$33.33/$33.33. Exact mode can move the residual cent.
+Allocations are saved in cents. Equal/weighted rounding uses the largest remainder. When
+shares tie, the spare cent starts at a place taken from the new entry's id, so it doesn't
+always land on the first person. For $100 split three ways one person is saved with $33.34
+and the others $33.33; which one varies from entry to entry. Saved shares never move. Exact
+mode can move the residual cent. A refund reverses the original shares exactly.
 
 A direct payment credits its payer and debits each participant's agreed share.
 Someone else can pay without adding a transaction to your bank register. Select an
