@@ -232,7 +232,7 @@ test.describe('payees', () => {
     await page.getByRole('checkbox', { name: 'Select Corner Grocery' }).check();
     await page.getByRole('checkbox', { name: 'Select Streamflix Premium' }).check();
     await page.getByRole('button', { name: 'Merge 2 payees' }).click();
-    const merge = page.getByRole('dialog', { name: 'Merge Payees' });
+    const merge = page.getByRole('dialog', { name: 'Merge payees' });
     await expectBottomSheet(page, merge);
     await merge.getByRole('radio', { name: /Corner Grocery/ }).check();
     await merge.getByRole('button', { name: 'Merge' }).click();
@@ -243,7 +243,7 @@ test.describe('payees', () => {
     await page.getByRole('button', { name: 'Actions for Corner Grocery' }).click();
     await page.getByRole('menuitem', { name: 'Delete' }).click();
     await page
-      .getByRole('dialog', { name: 'Delete Payee' })
+      .getByRole('dialog', { name: 'Delete payee' })
       .getByRole('button', { name: 'Delete' })
       .click();
     await expect(cards).toHaveCount(0);
@@ -298,8 +298,8 @@ test.describe('dialogs and touch targets', () => {
   test('dialogs open as bottom sheets with a full-size close button', async ({ page, api }) => {
     await api.createAccount('Checking');
     await open(page, '/accounts');
-    await page.getByRole('main').getByRole('button', { name: 'Add Account' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Add Account' });
+    await page.getByRole('main').getByRole('button', { name: 'Add account' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Add account' });
     await expectBottomSheet(page, dialog);
     await expectTouchSize(dialog.getByRole('button', { name: 'Close' }));
     await dialog.getByRole('button', { name: 'Close' }).click();
@@ -311,7 +311,7 @@ test.describe('dialogs and touch targets', () => {
     await open(page, `/accounts/${checking.id}`);
     const menu = page.getByRole('button', { name: 'Open menu' });
     await expectTouchSize(menu);
-    for (const name of ['Add Transaction', 'Import CSV', 'This Month', 'All Time']) {
+    for (const name of ['Add Transaction', 'Import CSV', 'This month', 'All time']) {
       await expectTouchSize(page.getByRole('button', { name, exact: true }));
     }
     await menu.click();
@@ -354,7 +354,7 @@ test('report summary figures fit their card', async ({ page, api }) => {
     categoryId: (await api.category('Paychecks')).id,
   });
   await open(page, '/reports');
-  await expect(page.getByText('Total Expenses')).toBeVisible();
+  await expect(page.getByText('Total expenses')).toBeVisible();
   const clipped = await page.evaluate(() =>
     [...document.querySelectorAll('main p')]
       .filter((p) => /^-?\$[\d,.]+$/.test(p.textContent ?? ''))

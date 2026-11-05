@@ -82,7 +82,7 @@ It does not use real Up credentials.
 - `server/src/services/upTransactions.ts`: validation, exact amounts, dates and balance handling.
 - `server/src/services/upSyncService.ts`: atomic account imports, rules and duplicate detection.
 - `server/src/routes/up.ts`: authenticated setup, mapping, sync and disconnect endpoints.
-- `client/src/components/up/`: setup and Connected Banks UI.
+- `client/src/components/up/`: setup and Connected banks UI.
 
 Tests use a local mock of Up's documented API, never real financial data or credentials. To propose
 a change upstream, read the upstream project's own contribution rules and CLA first; nothing has been

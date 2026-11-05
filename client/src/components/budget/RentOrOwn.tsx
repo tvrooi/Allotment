@@ -10,9 +10,9 @@ const ONLY_FOR = {
     'Mortgage',
     'Council Rates & Strata',
     'Council Rates & Owners Corp',
-    'Property Tax',
-    'HOA Fees',
-    'Home Maintenance',
+    'Property tax',
+    'HOA fees',
+    'Home maintenance',
   ],
 };
 const SKIP_KEY = 'budget-rent-or-own-skipped';

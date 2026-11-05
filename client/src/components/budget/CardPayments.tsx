@@ -155,7 +155,7 @@ export function CardPayments({
               {fundPreview !== null && (
                 <p role="status">
                   Payment availability after assignment: {formatCurrency(fundPreview.available)}.
-                  Shortfall: {formatCurrency(fundPreview.shortfall)}. Unassigned after funding:{' '}
+                  Shortfall: {formatCurrency(fundPreview.shortfall)}. Ready to assign after funding:{' '}
                   {formatCurrency(fundPreview.unassigned)}.
                 </p>
               )}
@@ -234,7 +234,7 @@ export function CardPayments({
               <p>Payment reserve: {formatCurrency(preview.card.available)}</p>
               <p>Unfunded debt: {formatCurrency(preview.card.shortfall)}</p>
               <p>
-                Unassigned before: {formatCurrency(preview.beforeUnassigned)}. After:{' '}
+                Ready to assign before: {formatCurrency(preview.beforeUnassigned)}. After:{' '}
                 {formatCurrency(preview.unassigned)}.
               </p>
               <p>

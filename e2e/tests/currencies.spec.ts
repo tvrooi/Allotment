@@ -12,8 +12,8 @@ const addRate = (api: Api, base: string, quote: string, rate: string, date = iso
 test('a budget with one currency sees nothing new', async ({ page, api }) => {
   await api.createAccount('Checking', 10_000);
   await open(page, '/accounts');
-  await page.getByRole('main').getByRole('button', { name: 'Add Account' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add Account' });
+  await page.getByRole('main').getByRole('button', { name: 'Add account' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add account' });
   // No currency to pick until asked for
   await expect(dialog.getByRole('combobox', { name: 'Currency' })).toHaveCount(0);
   await expect(dialog.getByRole('button', { name: 'Choose a currency' })).toBeVisible();
@@ -35,15 +35,15 @@ test('choosing the budget currency, then adding accounts in others', async ({ pa
 
   // An account in yen: no decimals, typed and shown that way
   await open(page, '/accounts');
-  await page.getByRole('main').getByRole('button', { name: 'Add Account' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add Account' });
+  await page.getByRole('main').getByRole('button', { name: 'Add account' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add account' });
   await dialog.getByRole('textbox', { name: 'Account name' }).fill('Tokyo cash');
   await dialog.getByRole('combobox', { name: 'Currency' }).selectOption('JPY');
-  const balance = dialog.getByRole('textbox', { name: 'Current Balance' });
+  const balance = dialog.getByRole('textbox', { name: 'Current balance' });
   await typeAmount(balance, '12.5');
   await expect(balance).toHaveAttribute('aria-invalid', 'true');
   await typeAmount(balance, '15000');
-  await dialog.getByRole('button', { name: 'Add Account' }).click();
+  await dialog.getByRole('button', { name: 'Add account' }).click();
   await expect(dialog).toBeHidden();
   await expect
     .poll(async () => (await api.accounts()).find((a) => a.name === 'Tokyo cash'))

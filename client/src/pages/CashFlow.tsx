@@ -36,8 +36,8 @@ const PRESETS: { id: Preset; label: string }[] = [
   { id: '1m', label: '1M' },
   { id: '3m', label: '3M' },
   { id: '6m', label: '6M' },
-  { id: 'ytd', label: 'This Year' },
-  { id: 'last-year', label: 'Last Year' },
+  { id: 'ytd', label: 'This year' },
+  { id: 'last-year', label: 'Last year' },
   { id: 'custom', label: 'Custom' },
 ];
 
@@ -236,7 +236,7 @@ function buildSankeyGraph(
 
   // Layer 1: Hub
   const hubNode: SankeyNode = {
-    name: 'Total Income',
+    name: 'Total income',
     nodeType: 'hub',
     amount: totalIncome,
     color: chartColors.brand,
@@ -1161,7 +1161,7 @@ export default function CashFlowPage() {
       <div className="px-6 py-4 border-b border-border shrink-0">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text shrink-0">
-            Cash Flow
+            Cash flow
           </h1>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex flex-wrap gap-0">
@@ -1169,7 +1169,7 @@ export default function CashFlowPage() {
                 <button
                   key={p.id}
                   onClick={() => setPreset(p.id)}
-                  className={`px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors border-b-2 cursor-pointer ${
+                  className={`px-2.5 py-1 max-md:min-h-11 max-md:min-w-11 text-xs font-medium whitespace-nowrap transition-colors border-b-2 cursor-pointer ${
                     preset === p.id
                       ? 'border-brand-600 text-brand-600'
                       : 'border-transparent text-text-tertiary hover:text-text-secondary'
@@ -1210,7 +1210,7 @@ export default function CashFlowPage() {
           {(
             [
               ['category', 'Categories'],
-              ['merchant', 'Merchants'],
+              ['merchant', 'Payees'],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -1302,7 +1302,7 @@ export default function CashFlowPage() {
                   to={cashFlowTransactionsLink(selectedNode, from, to)}
                   className="text-xs text-brand-600 hover:text-brand-700"
                 >
-                  Open in Transactions
+                  Open in transactions
                 </Link>
                 <button
                   onClick={() => setSelectedNode(null)}

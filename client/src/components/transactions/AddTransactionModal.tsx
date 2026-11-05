@@ -16,6 +16,7 @@ import { CategorySelectButton } from './CategorySelectButton';
 import { AccountIcon } from '../accounts/AccountIcon';
 import { useHideBalances } from '../../utils/safeMode';
 import { Private } from '../ui/Private';
+import { formatDay } from '../../utils/dates';
 
 interface Props {
   isOpen: boolean;
@@ -250,7 +251,7 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
                 {otherTyped
                   ? 'As your bank shows it.'
                   : converted?.rate
-                    ? `At the rate on ${converted.date} (${converted.rate}). Change it to what your bank shows.`
+                    ? `At the rate on ${converted.date ? formatDay(converted.date) : 'that day'} (${converted.rate}). Change it to what your bank shows.`
                     : `No rate for this day: type what ${type === 'debit' ? 'arrived' : 'was sent'}.`}
               </p>
             </div>
@@ -259,7 +260,7 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
           {/* Merchant (a transfer has none: it's named after the other account) */}
           {!transferToId && (
             <div>
-              <label className="block text-sm font-medium text-text mb-1">Merchant *</label>
+              <label className="block text-sm font-medium text-text mb-1">Payee *</label>
               <MerchantSelect
                 value={{ id: payeeId, name: payeeName }}
                 onChange={(v) => {
@@ -274,6 +275,7 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
           <div>
             <label className="block text-sm font-medium text-text mb-1">Date *</label>
             <input
+              aria-label="Date"
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
@@ -301,7 +303,7 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
                       <span className="text-text">{selectedAccount.name}</span>
                     </>
                   ) : (
-                    <span className="text-text-disabled">Select account...</span>
+                    <span className="text-text-tertiary">Select account...</span>
                   )}
                 </span>
                 <ChevronDown size={14} className="text-text-tertiary shrink-0" />
@@ -314,7 +316,7 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
                   {onBudgetAccounts.length > 0 && (
                     <>
                       <div className="px-3 py-1.5 text-xs font-medium text-text-tertiary bg-surface-alt">
-                        On Budget
+                        On budget
                       </div>
                       {onBudgetAccounts.map((a) => (
                         <button
@@ -342,7 +344,7 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
                   {offBudgetAccounts.length > 0 && (
                     <>
                       <div className="px-3 py-1.5 text-xs font-medium text-text-tertiary bg-surface-alt">
-                        Off Budget
+                        Off budget
                       </div>
                       {offBudgetAccounts.map((a) => (
                         <button

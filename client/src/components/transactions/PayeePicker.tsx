@@ -79,7 +79,7 @@ export function PayeePicker({ value, onChange, payees, onClose }: Props) {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search merchants..."
+            placeholder="Search payees..."
             className="w-full pl-8 pr-3 py-1.5 text-sm border border-border rounded-md bg-surface text-text focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
           />
         </div>
@@ -87,7 +87,7 @@ export function PayeePicker({ value, onChange, payees, onClose }: Props) {
 
       <div className="overflow-y-auto max-h-72">
         <div className="px-3 py-1.5 text-xs font-medium text-text-tertiary bg-surface-alt">
-          Your merchants
+          Your payees
         </div>
         {filtered.map((p) => {
           const isSelected = p.id === value;
@@ -112,7 +112,7 @@ export function PayeePicker({ value, onChange, payees, onClose }: Props) {
         })}
 
         {filtered.length === 0 && (
-          <div className="px-3 py-4 text-sm text-text-tertiary text-center">No merchants found</div>
+          <div className="px-3 py-4 text-sm text-text-tertiary text-center">No payees found</div>
         )}
       </div>
 
@@ -125,7 +125,7 @@ export function PayeePicker({ value, onChange, payees, onClose }: Props) {
             className="w-full px-3 py-2.5 text-sm text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1.5 hover:bg-hover"
           >
             <Plus size={14} />
-            Create new "{query}" merchant
+            Create new payee "{query}"
           </button>
         </div>
       )}

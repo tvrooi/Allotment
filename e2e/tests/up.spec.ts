@@ -163,9 +163,9 @@ test('a deleted Up transaction stays deleted until it is restored from Up review
 
   await open(page, `/accounts/${everyday.id}`);
   // The mock's history has fixed dates; the register opens on this month
-  await page.getByRole('button', { name: 'All Time' }).click();
+  await page.getByRole('button', { name: 'All time' }).click();
   await page.getByTestId('transaction-row').filter({ hasText: victim.payeeName }).click();
-  await page.getByRole('button', { name: 'Delete Transaction' }).click();
+  await page.getByRole('button', { name: 'Delete transaction' }).click();
   const confirm = page.getByRole('dialog');
   await expect(confirm.getByText('Up still has it, so it stays deleted')).toBeVisible();
   await confirm.getByRole('button', { name: 'Delete' }).click();

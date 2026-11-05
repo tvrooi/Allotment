@@ -171,7 +171,7 @@ test.describe('Safe mode', () => {
 
     // Shown without Safe mode, so the checks below can't pass on an empty chart
     await open(page, `/budget/category/${groceries.id}`);
-    await expect(page.getByRole('heading', { name: 'Spending History' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Spending history' })).toBeVisible();
     await expect.poll(chartAmounts).not.toEqual([]);
 
     await page.keyboard.press('Alt+Shift+H');

@@ -21,7 +21,7 @@ import { ConfirmModal } from '../ui/ConfirmModal';
 import { PayeeIcon } from '../payees/PayeeIcon';
 
 // Household → Combine (multi-user mode only): join this household with one another person
-// keeps in their own budget. Each sees both households' entries, splits and merchants, and
+// keeps in their own budget. Each sees both households' entries, splits and payees, and
 // edits only their own; the one note on each entry is shared and either can edit it.
 
 const card = 'bg-surface rounded-lg shadow-card border border-border-light p-4';
@@ -99,8 +99,8 @@ export function CombinedHousehold({ group, people }: Props) {
       </h2>
       <p className="text-xs text-text-tertiary mt-0.5">
         Join this household with the one another person keeps in their own budget. You each see both
-        households' entries, splits and merchants, and share one note on each entry. Nobody sees
-        your accounts, categories, balances or other transactions, and either of you can stop at any
+        households' entries, splits and payees, and share one note on each entry. Nobody sees your
+        accounts, categories, balances or other transactions, and either of you can stop at any
         time.
       </p>
       {error && (
@@ -337,7 +337,7 @@ function EntryDetail({
         <dd className="text-text">{e.description}</dd>
         {e.merchant && (
           <>
-            <dt>Merchant</dt>
+            <dt>Payee</dt>
             <dd className="text-text">{e.merchant.name}</dd>
           </>
         )}

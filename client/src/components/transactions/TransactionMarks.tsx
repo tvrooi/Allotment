@@ -254,7 +254,7 @@ export function TransactionMarks({ tx }: { tx: Transaction }) {
         <span className="text-sm text-text">
           Hide from reports
           <span className="block text-xs text-text-tertiary">
-            Leaves it out of Cash Flow, spending and income reports and the savings rate. Your
+            Leaves it out of Cash flow, spending and income reports and the savings rate. Your
             balances and budget still count it.
           </span>
         </span>

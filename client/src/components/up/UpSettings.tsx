@@ -13,7 +13,7 @@ import { useCanSave } from '../../hooks/useConnection';
 import { Button } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { UpConnectModal } from './UpConnectModal';
-import { formatDay } from '../../utils/dates';
+import { formatDay, formatDayTime } from '../../utils/dates';
 import { formatMoney } from '../../utils/currency';
 import { UpReview } from './UpReview';
 import { addDaysIso } from '../../utils/calendarDay';
@@ -98,7 +98,7 @@ export function UpSettings() {
           )}
           {connection.lastSyncedAt && (
             <p className="text-xs text-text-tertiary">
-              Last synced: {new Date(connection.lastSyncedAt).toLocaleString()}
+              Last synced: {formatDayTime(connection.lastSyncedAt)}
             </p>
           )}
           <label className="block text-xs text-text-secondary">
@@ -131,8 +131,8 @@ export function UpSettings() {
           </label>
           {connection.nextSyncAt && (
             <p className="text-xs text-text-tertiary">
-              Next background attempt: {new Date(connection.nextSyncAt).toLocaleString()}. Failures
-              delay retries.
+              Next background attempt: {formatDayTime(connection.nextSyncAt)}. Failures delay
+              retries.
             </p>
           )}
           {connection.syncStatus === 'syncing' && (

@@ -111,7 +111,7 @@ CI, container vulnerability scans and Scorecard remain active. No upstream CLA w
 - Supported banks: Up, and CSV/CAMT files from any bank. Plaid, SimpleFIN and Enable Banking are
   community supported (audit decision I-10): kept working and labelled so in the app, but not
   tested against a real bank each release. Since up.100 they share Up's deleted-import memory
-  (audit F-14: a row the owner deletes stays deleted; Settings → Connected Banks restores it);
+  (audit F-14: a row the owner deletes stays deleted; Settings → Connected banks restores it);
   bring one up to Up's other safeguards only once it is in use.
 - One owner password and one Up token per budget; no multi-user separation.
 - Remote desktop budgets require the server to be reachable; no full offline merge.

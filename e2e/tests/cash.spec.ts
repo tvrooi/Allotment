@@ -6,8 +6,8 @@ import { typeAmount } from './fixtures';
 
 async function addCoffee(dialog: import('@playwright/test').Locator) {
   await typeAmount(dialog.getByLabel('Amount', { exact: true }), '14.50');
-  await dialog.getByPlaceholder('Search merchants...').fill('Corner cafe');
-  await dialog.getByRole('button', { name: /Create new merchant/ }).click();
+  await dialog.getByPlaceholder('Search payees...').fill('Corner cafe');
+  await dialog.getByRole('button', { name: /Create new payee/ }).click();
 }
 
 test('a cash purchase goes to a new Cash account, not the linked bank account', async ({

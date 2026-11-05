@@ -830,7 +830,7 @@ export default function HouseholdPage() {
                             )
                             .map((t) => (
                               <option key={t.id} value={t.id}>
-                                {t.date} ·{' '}
+                                {formatDay(t.date)} ·{' '}
                                 {t.payeeName || accounts.find((a) => a.id === t.accountId)?.name} ·{' '}
                                 {money(t.amount)}
                               </option>

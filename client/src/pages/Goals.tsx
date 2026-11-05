@@ -341,7 +341,7 @@ export default function GoalsPage() {
       <div className="px-6 py-4 border-b border-border shrink-0 flex items-center justify-between">
         <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">Goals</h1>
         <Button size="sm" onClick={() => setAddOpen(true)} data-guide="goals.add">
-          <Plus size={14} /> Add Goal
+          <Plus size={14} /> Add goal
         </Button>
       </div>
 
@@ -354,7 +354,7 @@ export default function GoalsPage() {
             learnMore="goals"
             actions={
               <Button onClick={() => setAddOpen(true)}>
-                <Plus size={14} /> Add Goal
+                <Plus size={14} /> Add goal
               </Button>
             }
           />
@@ -452,7 +452,7 @@ export default function GoalsPage() {
         onConfirm={() => {
           if (deleting) deleteGoal.mutate(deleting.id);
         }}
-        title="Delete Goal"
+        title="Delete goal"
         message={`Delete "${deleting?.name ?? ''}"? This cannot be undone.`}
         confirmLabel="Delete"
         danger

@@ -121,7 +121,7 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         body: (
           <p>
             Allotment syncs when it starts and when you choose <b>Sync Now</b> in Settings →
-            Connected Banks. You can also turn on background sync there. Each sync fetches recent
+            Connected banks. You can also turn on background sync there. Each sync fetches recent
             transactions; all of Up's history is checked once a week, or straight away with{' '}
             <b>Check all history</b>. Your token is stored encrypted and is never included in
             backups or exports.
@@ -393,7 +393,7 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         heading: 'Download a backup',
         body: (
           <p>
-            Settings → Data → <b>Download Backup</b> saves your whole budget in one file. Keep it
+            Settings → Data → <b>Download backup</b> saves your whole budget in one file. Keep it
             somewhere other than the computer or Home Assistant it runs on. Your Up token is never
             included.
           </p>

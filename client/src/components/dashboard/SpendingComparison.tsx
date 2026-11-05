@@ -110,17 +110,18 @@ export default function SpendingComparison() {
     <Card>
       <div className="flex items-start justify-between mb-1">
         <div>
-          <h3 className="text-sm font-semibold text-text">
+          <h2 className="text-sm font-semibold text-text">
             Spending{' '}
             <span className="text-text-secondary font-normal tabular-nums">
               {formatCurrency(data.currentTotal)} {data.periodLabel}
             </span>
-          </h3>
+          </h2>
         </div>
         <select
+          aria-label="Compare spending"
           value={mode}
           onChange={(e) => setMode(e.target.value as Mode)}
-          className="text-xs border border-border rounded-lg px-2 py-1.5 bg-surface text-text cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-600 min-w-0 max-w-[200px]"
+          className="text-xs max-md:min-h-11 border border-border rounded-lg px-2 py-1.5 bg-surface text-text cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-600 min-w-0 max-w-[200px]"
         >
           {MODES.map((m) => (
             <option key={m.value} value={m.value}>

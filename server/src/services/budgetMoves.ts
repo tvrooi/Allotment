@@ -225,7 +225,7 @@ export function fundedWrite(action: () => void) {
         worse.complete
           ? worse.month < current
             ? `Not enough money had arrived by the end of ${worse.month}. Assign it in a later month, or move existing money.`
-            : 'Insufficient unassigned money. Reduce an assignment or move existing money.'
+            : 'Not enough Ready to assign money. Reduce an assignment or move existing money.'
           : 'Add missing exchange rates before assigning money.',
       );
   });

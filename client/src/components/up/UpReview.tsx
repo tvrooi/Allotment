@@ -23,7 +23,8 @@ function BankDetails({ source }: { source: UpReviewItem['current'] }) {
         {source.description} · {formatMoney(source.amount, 'AUD')} · {source.status}
       </p>
       <p>
-        Created: {source.createdAt} · Settled: {source.settledAt ?? 'Not settled'}
+        Created: {formatDay(source.createdAt)} · Settled:{' '}
+        {source.settledAt ? formatDay(source.settledAt) : 'Not settled'}
       </p>
       <p>
         Round-up: {formatMoney(-(source.roundUpAmount ?? 0), 'AUD')} · Includes boost:{' '}

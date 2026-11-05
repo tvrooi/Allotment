@@ -352,7 +352,7 @@ function NetWorthDetail({ from, to }: DetailProps) {
   const change = netWorthChange(series);
   const last = series[series.length - 1];
   const stats: StatCard[] = [
-    { label: 'Net Worth', value: formatCurrency(change?.latest ?? 0) },
+    { label: 'Net worth', value: formatCurrency(change?.latest ?? 0) },
     {
       label: 'Change',
       value: change ? formatChange(change.change, change.percent) : formatCurrency(0),
@@ -430,8 +430,8 @@ function IncomeExpensesDetail({ from, to }: DetailProps) {
   const stats: StatCard[] = [
     { label: 'Income', value: formatCurrency(income), tone: 'positive' },
     { label: 'Expenses', value: formatCurrency(expenses), tone: 'negative' },
-    { label: 'Net Savings', value: formatCurrency(net), tone: toneOf(net) },
-    { label: 'Savings Rate', value: rate(income, net), tone: income > 0 ? toneOf(net) : undefined },
+    { label: 'Net savings', value: formatCurrency(net), tone: toneOf(net) },
+    { label: 'Savings rate', value: rate(income, net), tone: income > 0 ? toneOf(net) : undefined },
   ];
 
   return (
@@ -508,10 +508,10 @@ function SpendingDetail({ from, to }: DetailProps) {
   const months = monthCount(from, to);
   const top = rows[0];
   const stats: StatCard[] = [
-    { label: 'Total Spent', value: formatCurrency(total) },
-    { label: 'Monthly Average', value: formatCurrency(Math.round(total / months)) },
+    { label: 'Total spent', value: formatCurrency(total) },
+    { label: 'Monthly average', value: formatCurrency(Math.round(total / months)) },
     {
-      label: 'Biggest Category',
+      label: 'Biggest category',
       value: top ? formatCurrency(top.totalSpent) : '—',
       sub: top?.label,
     },
@@ -724,11 +724,11 @@ function SpendingTrendsDetail({
     null,
   );
   const stats: StatCard[] = [
-    { label: 'Total Spent', value: formatCurrency(selected) },
-    { label: 'Monthly Average', value: formatCurrency(Math.round(selected / months)) },
-    { label: 'Share of All Spending', value: percent(selected, allSpending) },
+    { label: 'Total spent', value: formatCurrency(selected) },
+    { label: 'Monthly average', value: formatCurrency(Math.round(selected / months)) },
+    { label: 'Share of all spending', value: percent(selected, allSpending) },
     {
-      label: 'Biggest Category',
+      label: 'Biggest category',
       value: biggest && biggest.total > 0 ? formatCurrency(biggest.total) : '—',
       sub: biggest && biggest.total > 0 ? biggest.label : undefined,
     },
@@ -929,11 +929,11 @@ function CalendarDetail({ from, to }: DetailProps) {
     differenceInCalendarDays(parseISO(bounds.to), parseISO(bounds.from)) + 1,
   );
   const stats: StatCard[] = [
-    { label: 'Money In', value: formatCurrency(moneyIn), tone: 'positive' },
-    { label: 'Money Out', value: formatCurrency(moneyOut), tone: 'negative' },
+    { label: 'Money in', value: formatCurrency(moneyIn), tone: 'positive' },
+    { label: 'Money out', value: formatCurrency(moneyOut), tone: 'negative' },
     { label: 'Net', value: formatCurrency(net), tone: toneOf(net) },
     {
-      label: 'Daily Average Out',
+      label: 'Daily average out',
       value: formatCurrency(days ? Math.round(moneyOut / days) : 0),
       sub: days ? `Over ${days} ${days === 1 ? 'day' : 'days'}` : undefined,
     },

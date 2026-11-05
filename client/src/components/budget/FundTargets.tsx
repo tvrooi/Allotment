@@ -63,7 +63,7 @@ export const FundTargets = forwardRef<
         {preview && (
           <div className="space-y-3 text-sm" role="region" aria-label="Target funding preview">
             <p className="text-text-secondary">
-              {formatCurrency(preview.available)} is unassigned today. Expected income is not
+              {formatCurrency(preview.available)} is ready to assign today. Expected income is not
               counted. Nothing changes until you apply.
             </p>
             <ul className="space-y-1">

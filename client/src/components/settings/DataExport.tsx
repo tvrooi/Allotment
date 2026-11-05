@@ -103,7 +103,7 @@ export function DataExport() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-sm font-semibold text-text">Data Export</h2>
+        <h2 className="text-sm font-semibold text-text">Data export</h2>
         <p className="text-xs text-text-tertiary mt-0.5">
           Download your data for backup or analysis.
         </p>
@@ -111,7 +111,7 @@ export function DataExport() {
 
       <div className="bg-surface-alt rounded-lg p-5 space-y-4">
         <div>
-          <h3 className="text-sm font-medium text-text">Export Transactions</h3>
+          <h3 className="text-sm font-medium text-text">Export transactions</h3>
           <p className="text-xs text-text-tertiary mt-0.5">
             Download all transactions as a CSV file. Optionally filter by date range.
           </p>
@@ -166,11 +166,11 @@ export function DataExport() {
 
       <div className="bg-surface-alt rounded-lg p-5 space-y-4">
         <div>
-          <h3 className="text-sm font-medium text-text">Full Backup</h3>
+          <h3 className="text-sm font-medium text-text">Full backup</h3>
           <p className="text-xs text-text-tertiary mt-0.5">
             Download a JSON backup of your budget: accounts, transactions, budgets, categories,
             payees, rules, recurring transactions, goals, reports, dashboards, receipt details and
-            tax claims. <strong>Download Backup</strong> is that alone, as JSON.{' '}
+            tax claims. <strong>Download backup</strong> is that alone, as JSON.{' '}
             {!IS_DEMO && (
               <>
                 <strong>Backup with files</strong> is a ZIP of the same backup plus every file
@@ -188,7 +188,7 @@ export function DataExport() {
             }}
             className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-surface bg-text-secondary rounded-md hover:opacity-90 transition-colors"
           >
-            <Download size={14} /> Download Backup
+            <Download size={14} /> Download backup
           </button>
           {!IS_DEMO && (
             <Button
@@ -206,7 +206,7 @@ export function DataExport() {
 
       <div className="bg-surface-alt rounded-lg p-5 space-y-4">
         <div>
-          <h3 className="text-sm font-medium text-text">Restore from Backup</h3>
+          <h3 className="text-sm font-medium text-text">Restore from backup</h3>
           <p className="text-xs text-text-tertiary mt-0.5">
             Replace all of your data with a backup file: a JSON backup, or a backup with files
             (.zip), whose files are checked before anything changes. A copy of your current data is
@@ -229,7 +229,7 @@ export function DataExport() {
           disabled={restoring}
           onClick={() => fileInput.current?.click()}
         >
-          <Upload size={14} /> {restoring ? 'Restoring…' : 'Restore Backup…'}
+          <Upload size={14} /> {restoring ? 'Restoring…' : 'Restore backup…'}
         </Button>
         {restoreMessage && (
           <p

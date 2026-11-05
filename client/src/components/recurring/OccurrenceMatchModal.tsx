@@ -63,7 +63,7 @@ export default function OccurrenceMatchModal({ isOpen, onClose, occurrence }: Pr
   if (!occurrence) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Match to Transaction" size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title="Match to transaction" size="lg">
       <div className="space-y-4">
         <div className="bg-surface-alt rounded-lg px-4 py-3 border border-border-light">
           <p className="text-sm font-medium text-text">{occurrence.scheduleName}</p>

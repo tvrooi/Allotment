@@ -36,7 +36,7 @@ test('the demo opens on a finished budget, and every page works', async ({ page 
 
   for (const [route, text] of [
     ['/budget', 'Contents Insurance'],
-    ['/transactions', 'All Transactions'],
+    ['/transactions', 'All transactions'],
     ['/accounts', 'Synced from Up'],
     ['/recurring', "Riley's pay"],
     ['/reports', 'Where the money goes'],
@@ -51,7 +51,7 @@ test('the demo opens on a finished budget, and every page works', async ({ page 
     // The list opens on This Month, which early in a month may hold only that month's
     // transfers. The fortnightly rent is always in the last three months.
     if (route === '/transactions') {
-      await page.getByRole('button', { name: 'Last 3 Months' }).click();
+      await page.getByRole('button', { name: 'Last 3 months' }).click();
       await expect(page.getByText('Harbourside Realty').first(), route).toBeVisible();
     }
   }
@@ -213,7 +213,7 @@ test('nothing leaves the browser: imports, backups and restores stay in the tab'
 
   // A backup downloads from the tab
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download Backup' }).click();
+  await page.getByRole('button', { name: 'Download backup' }).click();
   const backupFile = await (await download).path();
   const backup = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
   expect(backup).toMatchObject({ format: 'flybudget-backup' });

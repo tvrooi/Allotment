@@ -140,7 +140,7 @@ function StepDetail({ id, guide }: { id: api.GuideStepId; guide: api.GuideState 
                 {b.unreconciled > 0 && (
                   <Link
                     to={`/accounts/${b.accountId}/reconcile`}
-                    className="text-brand-600 hover:text-brand-700 font-medium"
+                    className="text-brand-600 hover:text-brand-700 font-medium max-md:min-h-11 max-md:inline-flex max-md:items-center"
                   >
                     Reconcile ({b.unreconciled})
                   </Link>
@@ -186,10 +186,10 @@ function StepDetail({ id, guide }: { id: api.GuideStepId; guide: api.GuideState 
       <>
         <p>
           {guide.accountIssues?.length
-            ? 'Account balances need reconciliation before unassigned money can be relied on.'
+            ? 'Account balances need reconciliation before Ready to assign can be relied on.'
             : guide.complete
-              ? `${formatCurrency(guide.unassigned)} is unassigned today. Give every dollar you already have a job; money you expect later is assigned when it arrives.`
-              : 'Some exchange rates are missing, so unassigned money is unknown.'}
+              ? `${formatCurrency(guide.unassigned)} is ready to assign today. Give every dollar you already have a job; money you expect later is assigned when it arrives.`
+              : 'Some exchange rates are missing, so Ready to assign is unknown.'}
         </p>
         <ButtonLink size="sm" variant="secondary" to="/budget">
           Open the budget
@@ -209,7 +209,7 @@ function StepDetail({ id, guide }: { id: api.GuideStepId; guide: api.GuideState 
               <span className="text-text">{c.name}</span>
               <Link
                 to={`/budget/category/${c.categoryId}`}
-                className="text-brand-600 hover:text-brand-700 font-medium"
+                className="text-brand-600 hover:text-brand-700 font-medium max-md:min-h-11 max-md:inline-flex max-md:items-center"
               >
                 {c.hasTarget ? 'View target' : 'Set a target'}
               </Link>
@@ -267,7 +267,7 @@ function Uncategorised({
             <span className="tabular-nums text-negative">{formatCurrency(t.amount)}</span>
             <span className="w-48 max-md:w-full">
               <Select
-                aria-label={`Category for ${t.payee ?? 'transaction'} on ${t.date}`}
+                aria-label={`Category for ${t.payee ?? 'transaction'} on ${formatDay(t.date)}`}
                 value=""
                 disabled={!canSave}
                 onChange={(e) => e.target.value && categorise(t.id, e.target.value)}
@@ -340,7 +340,7 @@ function NeedsAttention({ review, group }: { review: api.BudgetReview; group: st
             value={formatCurrency(review.totals.futureCommitments)}
           />
           <Row
-            label="Unassigned"
+            label="Ready to assign"
             value={
               review.accountIssues?.length
                 ? 'Check account balances'

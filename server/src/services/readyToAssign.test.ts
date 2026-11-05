@@ -124,7 +124,7 @@ it('assigns in a past month only money that month had and no later month has use
   assign('food', '2026-09', 10000); // September did have $300
   expect(rta('2026-10')).toBe(20000);
   expect(() => assign('fun', '2026-09', 25000)).toThrow(/end of 2026-09/);
-  expect(() => assign('fun', '2026-10', 25000)).toThrow(/Insufficient/);
+  expect(() => assign('fun', '2026-10', 25000)).toThrow(/Not enough Ready to assign/);
   assign('fun', '2026-10', 20000);
   for (const month of ['2026-10', '2026-11']) expect(rta(month), month).toBe(0);
 });
@@ -169,7 +169,7 @@ it('overspending never blocks assigning what Ready to Assign shows; next month a
   expect(rta('2026-10')).toBe(0);
   expect(rta('2026-11')).toBe(-10000);
   // Money that isn't there is still refused
-  expect(() => assign('fun', '2026-10', 1)).toThrow(/Insufficient/);
+  expect(() => assign('fun', '2026-10', 1)).toThrow(/Not enough Ready to assign/);
 });
 
 // --- From-scratch recompute ---------------------------------------------------------------
