@@ -6,22 +6,20 @@ import type { BudgetCategory } from '../types';
 const cents = fc.integer({ min: -10_000_000, max: 10_000_000 });
 const category = fc
   .record({ budgeted: cents, spent: fc.nat(10_000_000), carryOver: cents, received: cents })
-  .map(
-    ({ budgeted, spent, carryOver, received }): BudgetCategory => ({
-      id: 'c',
-      groupId: 'g',
-      name: 'Category',
-      icon: null,
-      budgetType: null,
-      sortOrder: 0,
-      createdAt: '',
-      budgeted,
-      spent,
-      carryOver,
-      // The server's balance: carry-over + planned + this month's activity
-      balance: carryOver + budgeted + received,
-    }),
-  );
+  .map(({ budgeted, spent, carryOver, received }): BudgetCategory => ({
+    id: 'c',
+    groupId: 'g',
+    name: 'Category',
+    icon: null,
+    budgetType: null,
+    sortOrder: 0,
+    createdAt: '',
+    budgeted,
+    spent,
+    carryOver,
+    // The server's balance: carry-over + planned + this month's activity
+    balance: carryOver + budgeted + received,
+  }));
 
 describe('categoryFigures (property-based)', () => {
   it('a transfer into a linked account funds the envelope without being activity', () => {

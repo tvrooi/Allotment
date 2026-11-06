@@ -87,12 +87,7 @@ export interface BufferState {
   };
 }
 export type GuideStepId =
-  | 'balances'
-  | 'before-income'
-  | 'assign'
-  | 'irregular'
-  | 'before-spending'
-  | 'priorities';
+  'balances' | 'before-income' | 'assign' | 'irregular' | 'before-spending' | 'priorities';
 export interface GuideState {
   accountIssues?: import('../types').BudgetSummary['accountIssues'];
   asOf: string;
@@ -129,12 +124,7 @@ export const getGuide = () => apiFetch<GuideState>('/review/guide');
 
 // Phase 7: resilience (7B), resume and reminders (7E), extra income (7F).
 export type ResilienceStatus =
-  | 'not-set-up'
-  | 'incomplete'
-  | 'below-minimum'
-  | 'below-target'
-  | 'on-target'
-  | 'no-target';
+  'not-set-up' | 'incomplete' | 'below-minimum' | 'below-target' | 'on-target' | 'no-target';
 export interface ResilienceState {
   asOf: string;
   month: string;
