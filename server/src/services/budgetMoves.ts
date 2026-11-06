@@ -6,6 +6,12 @@ import { budgetMonths, budgetMoves, categoryPurposes, financialPriorities } from
 import { budgetGroups, fundingRevision, fundingState } from './budgetService.js';
 import { todayIso } from './mainAmountService.js';
 import { monthBounds } from '../utils/date.js';
+import { budgetWithTargets } from './targetService.js';
+
+/** The destination of a move that gives money back to Ready to assign. Not a category or an
+ * account: nothing is written for it, and `client/src/components/budget/MoneyMoves.tsx` holds
+ * the same value. Only a person's own move may use it (goal changes name a category). */
+export const READY_TO_ASSIGN = 'ready-to-assign';
 
 export class BudgetError extends Error {
   constructor(
@@ -42,19 +48,36 @@ export interface MoveRequest {
   destinationId: string;
   amount: number;
 }
+/** What a move does to a funding target: how much it still asks for before and after. The
+ * requirement doesn't depend on this month's assignment (only on what was carried in), so the
+ * assignment change alone moves `underfunded`. */
+function targetEffect(
+  cat: {
+    target?: { required: number; assigned: number; underfunded: number; paused: boolean } | null;
+  },
+  change: number,
+) {
+  const target = cat.target;
+  // A paused, completed or retired goal's target asks for nothing, whatever a move does
+  if (!target || target.paused) return null;
+  const after = Math.max(0, target.required - (target.assigned + change));
+  return after === target.underfunded ? null : { before: target.underfunded, after };
+}
 export function previewMove(month: string, request: MoveRequest) {
   const { sourceId, destinationId, amount } = request;
+  const toReady = destinationId === READY_TO_ASSIGN;
   if (sourceId === destinationId || !Number.isSafeInteger(amount) || amount <= 0 || amount > 1e13)
     throw new BudgetError('Choose distinct expense categories and a positive amount', 400);
   const today = todayIso();
   if (month > today.slice(0, 7))
     throw new BudgetError('Move existing money in the current or a historical month', 400);
-  const cats = budgetGroups(month, today)
+  const cats = budgetWithTargets(month, today)
     .filter((g) => !g.isIncome)
     .flatMap((g) => g.categories);
   const source = cats.find((c) => c.id === sourceId);
-  const destination = cats.find((c) => c.id === destinationId);
-  if (!source || !destination) throw new BudgetError('Choose existing expense categories', 400);
+  const destination = toReady ? null : cats.find((c) => c.id === destinationId);
+  if (!source || (!toReady && !destination))
+    throw new BudgetError('Choose existing expense categories', 400);
   if (!fundingState(today).complete)
     throw new BudgetError('Add missing exchange rates before moving money');
   // A historical move also changes every subsequent month. Never take money already
@@ -84,19 +107,23 @@ export function previewMove(month: string, request: MoveRequest) {
       throw new BudgetError('Source has insufficient availability; refresh the preview');
   }
   const sourceBefore = assignment(month, sourceId);
-  const destinationBefore = assignment(month, destinationId);
+  // Money given back leaves the source's assignment and nothing else: Ready to assign is what
+  // the accounts hold less the envelopes, so it rises by exactly the amount
+  const destinationBefore = toReady ? 0 : assignment(month, destinationId);
+  const destinationAvailable = destination ? destination.balance : fundingState(today).unassigned;
   return {
     month,
     ...request,
     revision: fundingRevision(),
+    toReady,
     sourceBefore,
     destinationBefore,
     sourceAvailable: source.balance,
-    destinationAvailable: destination.balance,
+    destinationAvailable,
     sourceAfter: source.balance - amount,
-    destinationAfter: destination.balance + amount,
-    // Targets will consume these same balances when category targets ship in 6C–6D.
-    targetNotice: 'Moving money changes the funds available for these purposes.',
+    destinationAfter: destinationAvailable + amount,
+    sourceTarget: targetEffect(source, -amount),
+    destinationTarget: destination ? targetEffect(destination, amount) : null,
     reserveNotice: reserveNotice(month, request, today),
   };
 }
@@ -112,7 +139,8 @@ export function applyMove(month: string, request: MoveRequest, revision: string)
 export function moveWithinTransaction(month: string, request: MoveRequest) {
   const preview = previewMove(month, request);
   write(month, request.sourceId, preview.sourceBefore - request.amount);
-  write(month, request.destinationId, preview.destinationBefore + request.amount);
+  if (!preview.toReady)
+    write(month, request.destinationId, preview.destinationBefore + request.amount);
   const operation = {
     id: nanoid(),
     month,
@@ -264,7 +292,8 @@ export function undoMove(id: string) {
         'Your budget changed after this move. Move money again to adjust it safely.',
       );
     write(operation.month, operation.sourceId, operation.sourceBefore);
-    write(operation.month, operation.destinationId, operation.destinationBefore);
+    if (operation.destinationId !== READY_TO_ASSIGN)
+      write(operation.month, operation.destinationId, operation.destinationBefore);
     db.update(budgetMoves).set({ undone: 1 }).where(eq(budgetMoves.id, id)).run();
     return { id, undone: true };
   });

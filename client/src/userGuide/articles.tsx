@@ -234,8 +234,9 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         heading: 'Overspent?',
         body: (
           <p>
-            An envelope below $0 is red. Use <b>Move money</b> to cover it from another envelope.
-            Plans change: moving money is normal.
+            An envelope below $0 is red. Click its <b>Available</b> figure to cover it from another
+            envelope. Plans change: moving money is normal, and you can give it back to Ready to
+            assign. <L to="move-money">How moving money works</L>.
           </p>
         ),
       },
@@ -310,6 +311,62 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
           <p>
             Choose <b>Until payday</b> on the Budget page to plan just until your next pay, with the
             bills that fall before it.
+          </p>
+        ),
+      },
+    ],
+  },
+  {
+    page: 'move-money',
+    title: 'Move money',
+    summary: 'Cover an overspent envelope, change your mind, or give money back.',
+    sections: [
+      {
+        heading: 'Start from the envelope',
+        body: (
+          <p>
+            On the Budget page, click the <b>Available</b> figure of an envelope (tap it on a
+            phone). If it has money, <b>Move money</b> opens with that envelope as the source: type
+            an amount and choose where it goes. If it is overspent (red), the panel opens with that
+            envelope as the destination and the amount it is short: choose which envelope pays for
+            it. You can also open <b>Move money / Cover overspending</b> yourself and choose both.
+          </p>
+        ),
+      },
+      {
+        heading: 'Preview, then apply',
+        body: (
+          <p>
+            <b>Preview move</b> shows what each side has available afterwards, and what the move
+            does to a funding target: for example, that Groceries would be $50 short of its target
+            instead of fully funded. Nothing is saved until you choose <b>Apply move</b>, and{' '}
+            <b>Cancel</b> leaves everything as it was. Both envelopes change together, and the move
+            can’t take more than the source has, in this month or any month after it. If your budget
+            changed since you previewed (another edit, an import), apply is refused and you preview
+            again.
+          </p>
+        ),
+      },
+      {
+        heading: 'Giving money back to Ready to assign',
+        body: (
+          <p>
+            Choose <b>Ready to assign</b> as the destination to take money out of an envelope
+            without giving it to another one. Ready to assign rises by exactly that amount, and you
+            can assign it to any envelope afterwards, as you would any money that is ready. It is
+            not a category: it never appears in your categories or reports.
+          </p>
+        ),
+      },
+      {
+        heading: 'Undo, and the history',
+        body: (
+          <p>
+            <b>Money move history</b> lists your latest moves, including those that gave money back,
+            and <b>Undo move</b> puts both sides back. Undo works only while nothing else in the
+            budget has changed since the move: after that, move money again to adjust it. Moves in a
+            future month aren’t available. See <L to="budgeting">Budgeting</L> for Ready to assign,
+            and what to do about overspending.
           </p>
         ),
       },

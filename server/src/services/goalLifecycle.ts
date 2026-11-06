@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { db } from '../db/index.js';
 import { goals, goalStatusEvents } from '../db/schema.js';
 import { fundingRevision } from './budgetService.js';
-import { BudgetError, moveWithinTransaction } from './budgetMoves.js';
+import { BudgetError, READY_TO_ASSIGN, moveWithinTransaction } from './budgetMoves.js';
 import { todayIso } from './mainAmountService.js';
 
 // Goals can change (phase 7D). A goal that is not active keeps its funding and its category
@@ -22,7 +22,11 @@ export const statusChangeSchema = z.object({
   expectedUpdatedAt: z.string().min(1).max(64),
   move: z
     .object({
-      destinationId: z.string().min(1).max(64),
+      destinationId: z
+        .string()
+        .min(1)
+        .max(64)
+        .refine((id) => id !== READY_TO_ASSIGN, 'Move goal money to a category'),
       amount: z.number().int().min(1).max(1e13),
       revision: z.string().min(1).max(200),
     })

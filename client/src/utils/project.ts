@@ -28,6 +28,7 @@ export type DocsPage =
   | 'transactions'
   | 'bank-sync'
   | 'budgeting'
+  | 'move-money'
   | 'recurring'
   | 'reports'
   | 'rules'

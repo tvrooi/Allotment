@@ -6,6 +6,7 @@ import { SpentBar } from './SpentBar';
 import { BudgetAmountSheet } from './BudgetAmountSheet';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { useCanSave } from '../../hooks/useConnection';
+import { canMoveIn, useMoveRequest } from '../../store/moveRequestStore';
 import { formatCurrency } from '../../utils/currency';
 import { availability, categoryFigures, splitCategories } from '../../utils/budgetFigures';
 import { TransferredNote } from './TransferredNote';
@@ -56,6 +57,7 @@ export function PhoneBudget({
             section={section}
             showAll={showAll}
             readOnly={readOnly}
+            month={month}
             onEdit={(cat) => setEditing({ cat, isIncome: section.isIncome })}
           />
         );
@@ -84,11 +86,13 @@ function Section({
   section,
   showAll,
   readOnly,
+  month,
   onEdit,
 }: {
   section: PhoneBudgetSection;
   showAll: boolean;
   readOnly: boolean;
+  month: string;
   onEdit: (cat: BudgetCategory) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -128,6 +132,7 @@ function Section({
               cat={cat}
               isIncome={isIncome}
               readOnly={readOnly}
+              month={month}
               onEdit={() => onEdit(cat)}
             />
           ))}
@@ -152,17 +157,21 @@ function CategoryCard({
   cat,
   isIncome,
   readOnly,
+  month,
   onEdit,
 }: {
   cat: BudgetCategory;
   isIncome: boolean;
   readOnly: boolean;
+  month: string;
   onEdit: () => void;
 }) {
   const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
   const canSave = useCanSave();
   const { actual } = categoryFigures(cat, isIncome);
   const { kind, remaining, caption } = availability(cat, isIncome);
+  const askToMove = useMoveRequest((s) => s.ask);
+  const movable = !isIncome && canSave && !readOnly && remaining !== 0 && canMoveIn(month);
   const pill =
     kind === 'overspent'
       ? 'bg-negative/20'
@@ -184,16 +193,34 @@ function CategoryCard({
           {showCategoryIcons && <CategoryIcon icon={cat.icon} size={15} />}
           {cat.name}
         </span>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-medium tabular-nums text-text ${pill}`}
-        >
-          {formatCurrency(remaining)}
-          <span className="sr-only">
-            {' '}
-            {isIncome ? 'remaining' : 'available'}
-            {caption ? `, ${caption.toLowerCase()}` : ''}
+        {movable ? (
+          // Tapping the figure opens Move money with this envelope filled in (BUD-06)
+          <button
+            type="button"
+            onClick={() => askToMove(cat.id, remaining)}
+            aria-label={
+              remaining < 0
+                ? `Cover ${cat.name}: ${formatCurrency(-remaining)} overspent`
+                : `Move money from ${cat.name}: ${formatCurrency(remaining)} available${caption ? `, ${caption.toLowerCase()}` : ''}`
+            }
+            className={`shrink-0 min-h-11 -my-2 rounded-full px-2.5 text-sm font-medium tabular-nums text-text ${pill}`}
+          >
+            {formatCurrency(remaining)}
+            {/* Read as text too (the label above is what a screen reader announces) */}
+            <span className="sr-only"> available</span>
+          </button>
+        ) : (
+          <span
+            className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-medium tabular-nums text-text ${pill}`}
+          >
+            {formatCurrency(remaining)}
+            <span className="sr-only">
+              {' '}
+              {isIncome ? 'remaining' : 'available'}
+              {caption ? `, ${caption.toLowerCase()}` : ''}
+            </span>
           </span>
-        </span>
+        )}
       </div>
       {caption && <p className="mt-1 text-right text-xs text-text-tertiary">{caption}</p>}
       <SpentBar

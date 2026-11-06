@@ -10,14 +10,14 @@ plans, goals and the forecast together.
 
 ## Needs attention (6G review)
 
-| Item                          | Total equals the budget summary's | Resolve it                                       |
-| ----------------------------- | --------------------------------- | ------------------------------------------------ |
-| Uncategorised spending        | `uncategorized`                   | Choose a category inline (latest 100 are listed) |
-| Overspent categories          | `overspent`                       | **Move money** on the page, from a funded one    |
-| Targets underfunded           | each target's `underfunded`       | **Fund targets** (previewed, applied once)       |
-| Card debt without a reserve   | `paymentShortfall` + uncovered    | Card payments on the budget                      |
-| Assigned to later months      | `futureAssigned`                  | Listed by month; it is reserved today            |
-| Unassigned (or over-assigned) | `toBeBudgeted`                    | Assign it, or reduce an assignment               |
+| Item                          | Total equals the budget summary's | Resolve it                                              |
+| ----------------------------- | --------------------------------- | ------------------------------------------------------- |
+| Uncategorised spending        | `uncategorized`                   | Choose a category inline (latest 100 are listed)        |
+| Overspent categories          | `overspent`                       | **Move money** (click its Available), from a funded one |
+| Targets underfunded           | each target's `underfunded`       | **Fund targets** (previewed, applied once)              |
+| Card debt without a reserve   | `paymentShortfall` + uncovered    | Card payments on the budget                             |
+| Assigned to later months      | `futureAssigned`                  | Listed by month; it is reserved today                   |
+| Unassigned (or over-assigned) | `toBeBudgeted`                    | Assign it, or reduce an assignment                      |
 
 A category set to **Keep overspending** (for spending that will be paid back) stays in the
 overspent list, marked `kept`, until its deficit is covered or repaid; see

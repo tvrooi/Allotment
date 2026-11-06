@@ -108,7 +108,7 @@ The task is to improve access, explanation and consistency around them, with exp
 
 ## P2 · BUD-06: row-anchored moves and unassigned-money entry points
 
-**Status: open.**
+**Status: done (up.115): the Available figure opens Move money prefilled (cover a deficit, or move out), Ready to assign is a destination (money given back), the preview shows real target figures and has Cancel, and the guide has a Move money page. Not built: assigning from Ready to assign inside the panel (the planned field does that), and moves in a future month.**
 
 - **Evidence / status:** Atomic move/cover/undo already exists; row-anchored entry and Ready-to-Assign endpoints are missing from this workflow.
   `LIVE-04` verified YNAB moving $50 from groceries $400 → $350 to transport $0 → $50 without changing RTA, then a separate $10 move to RTA that reduced category assignment/Available and increased RTA $10; Undo restored it. Recent Moves has All/Moved/Assigned tabs and dated descriptions. `LIVE-06` verified assignment covering a credit overspend.
