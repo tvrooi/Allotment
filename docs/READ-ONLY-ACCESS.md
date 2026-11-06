@@ -99,7 +99,7 @@ deductions.
 Send the token as a bearer token:
 
 ```sh
-curl -H "Authorization: Bearer $FLYBUDGET_READONLY_TOKEN" \
+curl -H "Authorization: Bearer $ALLOTMENT_TOKEN" \
   https://budget.example.com/api/transactions/summary?from=2026-10-01&to=2026-10-31
 ```
 
@@ -132,7 +132,7 @@ token. For example, Claude Code:
 
 ```sh
 claude mcp add --transport http flybudget https://budget.example.com/api/mcp \
-  --header "Authorization: Bearer $FLYBUDGET_READONLY_TOKEN"
+  --header "Authorization: Bearer $ALLOTMENT_TOKEN"
 ```
 
 It answers at most 300 requests a minute, with at most 20 messages in one JSON-RPC batch.
@@ -197,9 +197,8 @@ The repository's `.mcp.json` declares a `flybudget` server built from two enviro
 variables, and `.claude/settings.json` enables it. Add both to the cloud environment's
 settings, never to a prompt or the repository:
 
-- `FLYBUDGET_URL`: the server's address, without a trailing slash, for example
-  `https://budget.example.com`
-- `FLYBUDGET_READONLY_TOKEN`: the read-only token
+- `ALLOTMENT_URL`: the full MCP endpoint, for example `https://budget.example.com/api/mcp`
+- `ALLOTMENT_TOKEN`: the access token
 
 The server is read when a session starts, so start a new session after adding them; `/mcp`
 shows whether it connected. A claude.ai custom connector can't use this endpoint: connectors

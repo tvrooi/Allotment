@@ -2,9 +2,9 @@
   "mcpServers": {
     "flybudget": {
       "type": "http",
-      "url": "${FLYBUDGET_URL}/api/mcp",
+      "url": "${ALLOTMENT_URL}",
       "headers": {
-        "Authorization": "Bearer ${FLYBUDGET_READONLY_TOKEN}"
+        "Authorization": "Bearer ${ALLOTMENT_TOKEN}"
       }
     }
   }
