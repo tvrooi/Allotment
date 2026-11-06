@@ -15,7 +15,9 @@ import {
   transactions,
 } from '../db/schema.js';
 import { budgetGroups, budgetSummary } from './budgetService.js';
+import { applyAutoAssign, AUTO_ASSIGN_STRATEGIES, previewAutoAssign } from './autoAssign.js';
 import { applyCardSetup, previewCardSetup } from './cardFundingSetup.js';
+import { BudgetError, fundedWrite } from './budgetMoves.js';
 import { ratesChanged } from './mainAmountService.js';
 import { monthBounds } from '../utils/date.js';
 
@@ -527,6 +529,65 @@ describe('budget properties (audit F-16)', () => {
             );
           });
         }),
+        { numRuns: Math.ceil(RUNS / 2) },
+      );
+    },
+    TIMEOUT,
+  );
+
+  it(
+    'a quick fill changes only the chosen envelopes, by exactly what was previewed (ACT-05, BUD-07)',
+    () => {
+      fc.assert(
+        fc.property(
+          scenarioArb,
+          fc.constantFrom(...AUTO_ASSIGN_STRATEGIES),
+          fc.constantFrom('add' as const, 'replace' as const),
+          fc.constantFrom(3 as const, 6 as const, 12 as const),
+          fc.option(fc.subarray(ENVELOPES), { nil: undefined }),
+          (raw, strategy, mode, months, categoryIds) => {
+            baseBudget(raw);
+            const options = { strategy, mode, months, categoryIds };
+            const rows = () =>
+              new Map(
+                db
+                  .select()
+                  .from(budgetMonths)
+                  .all()
+                  .map((r) => [`${r.month}|${r.categoryId}`, r.budgeted]),
+              );
+            const before = rows();
+            const plan = previewAutoAssign(CURRENT, options, TODAY);
+            // Only chosen envelopes; add mode never lowers; lowering stops at zero
+            for (const r of plan.rows) {
+              if (categoryIds) expect(categoryIds).toContain(r.categoryId);
+              if (plan.mode === 'add') expect(r.proposed).toBeGreaterThanOrEqual(0);
+              if (r.proposed < 0)
+                expect(r.assigned + r.proposed, r.categoryId).toBeGreaterThanOrEqual(0);
+            }
+            // Additions are capped at what was ready to assign plus what was taken back
+            const added = plan.rows.reduce((s, r) => s + Math.max(0, r.proposed), 0);
+            const freed = plan.rows.reduce((s, r) => s - Math.min(0, r.proposed), 0);
+            expect(added).toBeLessThanOrEqual(Math.max(0, plan.available) + freed);
+            expect(plan.total).toBe(added - freed);
+            try {
+              applyAutoAssign(CURRENT, options, plan.revision, plan.rows, fundedWrite);
+            } catch (error) {
+              // The funded-write guard refuses a plan that would leave a month short; nothing changes
+              if (!(error instanceof BudgetError)) throw error;
+              expect(rows()).toEqual(before);
+              return;
+            }
+            const after = rows();
+            const changed = new Map(
+              plan.rows.map((r) => [`${CURRENT}|${r.categoryId}`, r.proposed]),
+            );
+            for (const key of new Set([...before.keys(), ...after.keys()]))
+              expect((after.get(key) ?? 0) - (before.get(key) ?? 0), key).toBe(
+                changed.get(key) ?? 0,
+              );
+          },
+        ),
         { numRuns: Math.ceil(RUNS / 2) },
       );
     },

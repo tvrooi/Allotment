@@ -266,6 +266,22 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         ),
       },
       {
+        heading: 'Filling a month quickly',
+        body: (
+          <p>
+            <b>Assign → Auto-assign</b> plans a whole month at once and shows every change before
+            anything is saved. Choose to cover overspending, copy last month’s assignments or
+            spending, use the average of the last 3, 6 or 12 months’ spending (months with no
+            spending count), or <b>Set to zero</b>. <b>Add</b> only tops envelopes up and never
+            lowers one; <b>Replace</b> sets each envelope to the amount, so an envelope that has
+            more gives the difference back to Ready to assign (never below $0 assigned). Untick any
+            envelope to leave it alone: the rest is planned again, because the money is shared out
+            in order. <b>Fund targets</b> has the same ticks. Taking money back can leave an
+            envelope overspent, and the preview says so.
+          </p>
+        ),
+      },
+      {
         heading: 'What Available is telling you',
         body: (
           <p>

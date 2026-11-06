@@ -1,7 +1,7 @@
 // Audit F-13: the one way money is added to envelopes by a planned action. Auto-assign, target
 // funding, payday plans and assistant suggestions each decide what to add; this caps it at
-// money actually unassigned today (planFunding, one preview format), applies exactly what was
-// previewed (applyFundingPlan) and makes the write (addAssigned). Manual assignment and Move
+// money actually unassigned today (planFunding, one preview format, optionally for chosen
+// categories only), applies exactly what was previewed (applyFundingPlan) and makes the write (addAssigned). Manual assignment and Move
 // money stay in budgetMoves.ts, behind the same funded-write guard.
 import { and, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -13,7 +13,8 @@ import { todayIso } from './mainAmountService.js';
 
 export type PlannedRow<T> = T & { proposed: number; shortfall: number };
 
-/** A previewed plan: what each envelope gets, capped at unassigned money, in the given order */
+/** A previewed plan: what each envelope gets (or gives back, when negative), capped at unassigned
+ * money, in the given order */
 export interface FundingPlan<T> {
   month: string;
   /** False while an exchange rate is missing: nothing can be assigned then */
@@ -27,17 +28,24 @@ export interface FundingPlan<T> {
 }
 
 /**
- * Proposed additions for `needs` (in order, each wanting `need` cents), capped at money actually
- * unassigned today. Expected income never counts.
+ * Proposed changes for `needs` (in order, each wanting `need` cents), capped at money actually
+ * unassigned today. Expected income never counts. `only` limits the plan to chosen categories
+ * (BUD-07): the rest are left out before money is shared out, so the cap goes to the chosen ones.
+ * A negative `need` takes money back from an envelope (a replace-mode quick fill); those are
+ * applied first and the money they free can fund the additions in the same plan.
  */
 export function planFunding<T extends { categoryId: string; need: number }>(
   month: string,
   needs: T[],
   today = todayIso(),
+  only?: readonly string[],
 ): FundingPlan<T> {
   const state = fundingState(today);
-  let remaining = state.available;
-  const rows = needs.map((r) => {
+  const chosen = only ? new Set(only) : null;
+  const scoped = chosen ? needs.filter((r) => chosen.has(r.categoryId)) : needs;
+  let remaining = state.available - scoped.reduce((s, r) => s + Math.min(0, r.need), 0);
+  const rows = scoped.map((r) => {
+    if (r.need < 0) return { ...r, proposed: r.need, shortfall: 0 };
     const proposed = Math.max(0, Math.min(r.need, remaining));
     remaining -= proposed;
     return { ...r, proposed, shortfall: r.need - proposed };

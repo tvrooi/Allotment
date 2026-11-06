@@ -89,23 +89,46 @@ export interface TargetFundingPreview {
     shortfall: number;
   }[];
 }
-export const previewTargetFunding = (month: string) =>
-  apiFetch<TargetFundingPreview>(`/budget/${month}/targets/preview`, { method: 'POST' });
-export const applyTargetFunding = (preview: TargetFundingPreview) =>
+/** `categoryIds` limits the plan to those categories; omitted means every underfunded target */
+export const previewTargetFunding = (month: string, categoryIds?: string[]) =>
+  apiFetch<TargetFundingPreview>(`/budget/${month}/targets/preview`, {
+    method: 'POST',
+    body: JSON.stringify({ categoryIds }),
+  });
+export const applyTargetFunding = (preview: TargetFundingPreview, categoryIds?: string[]) =>
   apiFetch<{ applied: number }>(`/budget/${preview.month}/targets/apply`, {
     method: 'POST',
     body: JSON.stringify({
       revision: preview.revision,
       rows: preview.rows.map((r) => ({ categoryId: r.categoryId, proposed: r.proposed })),
+      categoryIds,
     }),
   });
 
 export type AutoAssignStrategy =
-  'underfunded' | 'overspent' | 'assigned_last_month' | 'spent_last_month' | 'average_spent';
+  | 'underfunded'
+  | 'overspent'
+  | 'assigned_last_month'
+  | 'spent_last_month'
+  | 'average_spent'
+  | 'zero';
+/** Add tops envelopes up; replace sets them to the amount, taking money back where they have more */
+export type AutoAssignMode = 'add' | 'replace';
+export const AVERAGE_MONTH_CHOICES = [3, 6, 12] as const;
+export type AverageMonths = (typeof AVERAGE_MONTH_CHOICES)[number];
+
+export interface AutoAssignOptions {
+  strategy: AutoAssignStrategy;
+  mode?: AutoAssignMode;
+  months?: AverageMonths;
+  categoryIds?: string[];
+}
 
 export interface AutoAssignPreview {
   month: string;
   strategy: AutoAssignStrategy;
+  /** The mode the server ran: zero is always a replace; cover overspending and targets only add */
+  mode: AutoAssignMode;
   complete: boolean;
   available: number;
   total: number;
@@ -115,22 +138,25 @@ export interface AutoAssignPreview {
     categoryId: string;
     name: string;
     assigned: number;
+    /** Available in the envelope now, before this plan */
+    balance: number;
     need: number;
+    /** Negative when the plan takes money back */
     proposed: number;
     shortfall: number;
   }[];
 }
 
-export const previewAutoAssign = (month: string, strategy: AutoAssignStrategy) =>
+export const previewAutoAssign = (month: string, options: AutoAssignOptions) =>
   apiFetch<AutoAssignPreview>(`/budget/${month}/auto-assign/preview`, {
     method: 'POST',
-    body: JSON.stringify({ strategy }),
+    body: JSON.stringify(options),
   });
-export const applyAutoAssign = (preview: AutoAssignPreview) =>
+export const applyAutoAssign = (preview: AutoAssignPreview, options: AutoAssignOptions) =>
   apiFetch<{ applied: number }>(`/budget/${preview.month}/auto-assign/apply`, {
     method: 'POST',
     body: JSON.stringify({
-      strategy: preview.strategy,
+      ...options,
       revision: preview.revision,
       rows: preview.rows.map((r) => ({ categoryId: r.categoryId, proposed: r.proposed })),
     }),

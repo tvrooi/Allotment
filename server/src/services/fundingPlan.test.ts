@@ -37,6 +37,41 @@ describe('a funding plan', () => {
     expect(plan.revision).toEqual(expect.any(String));
   });
 
+  it('limits a plan to the chosen categories, which then get the whole cap', () => {
+    const plan = planFunding(
+      '2026-10',
+      [
+        { categoryId: 'rent', need: 80_00 },
+        { categoryId: 'power', need: 90_00 },
+      ],
+      '2026-10-15',
+      ['power'],
+    );
+    expect(plan.rows.map((r) => [r.categoryId, r.proposed, r.shortfall])).toEqual([
+      ['power', 90_00, 0],
+    ]);
+    expect(
+      planFunding('2026-10', [{ categoryId: 'rent', need: 5_00 }], '2026-10-15', []).rows,
+    ).toEqual([]);
+  });
+
+  it('takes money back first, and what it frees can fund a later row', () => {
+    const plan = planFunding(
+      '2026-10',
+      [
+        { categoryId: 'rent', need: 150_00 },
+        { categoryId: 'power', need: -30_00 },
+      ],
+      '2026-10-15',
+    );
+    // $100 ready + $30 freed funds $130 of rent's $150
+    expect(plan.rows.map((r) => [r.categoryId, r.proposed, r.shortfall])).toEqual([
+      ['rent', 130_00, 20_00],
+      ['power', -30_00, 0],
+    ]);
+    expect(plan.total).toBe(100_00);
+  });
+
   it('adds to an assignment, never replacing it', () => {
     addAssigned('2026-10', 'rent', 30_00);
     addAssigned('2026-10', 'rent', 20_00);

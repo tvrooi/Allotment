@@ -196,6 +196,22 @@ rebuilds the plan inside the funded write and refuses one that differs from what
 sit together in one **Assign** menu (`components/budget/AssignMenu.tsx`); on phones in the More menu.
 Move money and typing an assignment stay on the envelope (below).
 
+Auto-assign (`services/autoAssign.ts`) is also the month quick fill (ACT-05). Its strategies are cover
+overspending, underfunded, assigned last month, spent last month, average spent over 3, 6 or 12
+months (months without spending count as zero) and `zero`. The level strategies and `zero` take a
+`mode`: `add` (the default) only tops an envelope up; `replace` sets it to the level, so a negative
+`need` takes money back, never lowering an assignment below zero. `zero` always replaces, and cover
+overspending and underfunded always add (the preview echoes the `mode` that ran). `planFunding`
+applies reductions first, so the money they free can fund the additions in the same plan; the
+funded-write guard still refuses a write that would leave Ready to assign short in any month.
+Taking money back can overspend an envelope, so the preview marks such a row.
+
+Every plan can be limited to chosen categories (BUD-07): `planFunding`'s `only`, sent as
+`categoryIds` on the auto-assign and **Fund targets** preview and apply routes. The scope is part of
+the reviewed plan, since the cap is shared out in order and leaving one envelope out changes the
+others' amounts; apply rebuilds the plan with the same scope and refuses a different one (409). The
+client's `useScopedPlan` and `FundingRows` do the ticking for both dialogs.
+
 ## Moves, coverage and undo
 
 Move money / Cover overspending works on desktop and phone. Choose two distinct

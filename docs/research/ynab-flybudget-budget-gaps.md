@@ -124,7 +124,7 @@ The task is to improve access, explanation and consistency around them, with exp
 
 ## P2 · BUD-07: target cadence and selected-category assignment shortcuts
 
-**Status: open.**
+**Status: selected-category funding and replace-versus-add done (up.112); a new target cadence is not built (no verified semantics).**
 
 - **Evidence / status:** Four target types and reviewed capped funding exist. `LIVE-03` verified a $400 monthly YNAB target with $300 assigned showing 75% and $100 needed; sidebar Underfunded immediately assigned the $100 without a confirmation step.
   `LIVE-03` also verified Weekly $100 Saturday requiring $200 in this October fixture; Yearly $1,200 due 1 November needing $250 beyond $350 assigned; and an undated $1,200 balance target with no Underfunded shortcut.
