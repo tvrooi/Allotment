@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from '../../api/budget';
 import type { BudgetSummary } from '../../types';
@@ -8,6 +8,7 @@ import { formatCurrency, parseCents, isUnreadableAmount } from '../../utils/curr
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { formatAsOfDay } from '../../utils/dates';
+import { cardNotes } from '../../utils/cardRows';
 
 export function CardPayments({
   month,
@@ -73,22 +74,12 @@ export function CardPayments({
           data-testid="card-payment"
         >
           <h3 className="font-semibold">{card.name}</h3>
-          <p>Debt: {formatCurrency(card.debt)}</p>
-          <p>Available for payment: {formatCurrency(card.available)}</p>
-          <p className={card.shortfall ? 'text-negative' : ''}>
-            Payment shortfall: {formatCurrency(card.shortfall)}
-          </p>
-          {card.prepaid > 0 && <p>Prepaid card balance: {formatCurrency(card.prepaid)}</p>}
-          {card.uncoveredPayments > 0 && (
-            <p className="text-negative">
-              Payments without funding: {formatCurrency(card.uncoveredPayments)}
-            </p>
-          )}
-          {card.excessFunding > 0 && (
-            <p>
-              Extra reserve: {formatCurrency(card.excessFunding)}. Use Move money to release it.
-            </p>
-          )}
+          {cardNotes(card, { showZero: true }).map((n) => (
+            <Fragment key={n.key}>
+              <p className={n.tone === 'problem' ? 'text-negative' : ''}>{n.text}</p>
+              {n.key === 'debt' && <p>Available for payment: {formatCurrency(card.available)}</p>}
+            </Fragment>
+          ))}
           <Button
             size="sm"
             variant="secondary"

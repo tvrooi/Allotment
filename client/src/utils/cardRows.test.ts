@@ -39,16 +39,28 @@ describe('cardNotes', () => {
 
   it('shows a funded purchase as debt only', () => {
     expect(cardNotes(position({ debt: 8000, available: 8000 }))).toEqual([
-      { text: 'Debt: $80', tone: 'info' },
+      { key: 'debt', text: 'Debt: $80', tone: 'info' },
     ]);
   });
 
   it('flags a partly funded purchase, with the debt it leaves unfunded', () => {
     const notes = cardNotes(position({ debt: 8000, available: 6000, shortfall: 2000 }));
     expect(notes).toEqual([
-      { text: 'Debt: $80', tone: 'info' },
-      { text: 'Payment shortfall: $20', tone: 'problem' },
+      { key: 'debt', text: 'Debt: $80', tone: 'info' },
+      { key: 'shortfall', text: 'Payment shortfall: $20', tone: 'problem' },
     ]);
+  });
+
+  it('keeps a debt and shortfall of $0 for the sidebar, which always shows both', () => {
+    expect(cardNotes(position(), { showZero: true }).map((n) => n.text)).toEqual([
+      'Debt: $0',
+      'Payment shortfall: $0',
+    ]);
+    // The table's quiet reading is the same notes without the zeros
+    const owing = position({ debt: 5000, shortfall: 5000, prepaid: 100 });
+    expect(cardNotes(owing).map((n) => n.text)).toEqual(
+      cardNotes(owing, { showZero: true }).map((n) => n.text),
+    );
   });
 
   it('keeps unfunded payments, extra reserve and a prepaid balance visible', () => {

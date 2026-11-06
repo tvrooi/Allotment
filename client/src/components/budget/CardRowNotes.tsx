@@ -9,7 +9,7 @@ export function CardRowNotes({ card, className = '' }: { card: CardPosition; cla
     <div className={className} data-testid="card-row-notes">
       {notes.map((n) => (
         <p
-          key={n.text}
+          key={n.key}
           className={`text-xs ${n.tone === 'problem' ? 'text-negative' : 'text-text-tertiary'}`}
         >
           {n.text}

@@ -14,7 +14,7 @@ Last updated: 6 November 2026 (up.116 in review).
   Total expenses (desktop `BudgetTypeSection` with `showAll`, phone `PhoneBudgetSection.always`), found
   with `paymentCategories` in `utils/cardRows.ts` and matched to its `summary.cards` position by
   category (`cardsByCategory`). `cardNotes` and `CardRowNotes` put debt, shortfall, unfunded payments,
-  extra reserve and prepaid balance under the name (wording shared with the sidebar). No server change
+  extra reserve and prepaid balance under the name; the sidebar's `CardPayments` uses the same `cardNotes` (with `showZero`, so its debt and shortfall always show). No server change
   and no second ledger; the envelope is still out of `allExpenseCats` and so out of the expense totals
   and the hero. The sidebar's `CardPayments` keeps Fund debt and the review of unreviewed cards. Tests:
   `utils/cardRows.test.ts`, e2e `card-payments.spec.ts` (desktop and phone: $20 Groceries and $80 on
