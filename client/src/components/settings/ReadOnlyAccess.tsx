@@ -281,8 +281,48 @@ function AssistantChanges() {
   );
 }
 
-/** What a proposed asset says, in words */
+/** What a household correction proposal carries (services/assistantActions.ts) */
+interface HouseholdPayload {
+  household?: string;
+  entries?: {
+    eventId: string;
+    date: string;
+    description: string;
+    amount: number;
+    paidBy: string;
+  }[];
+  bills?: {
+    transactionId: string;
+    date: string;
+    description: string;
+    amount: number;
+    shares: { personId: string; name: string; amount: number | null }[];
+  }[];
+  transfers?: {
+    transactionId: string;
+    date: string;
+    amount: number;
+    account: string;
+    bankDescription: string;
+    otherAccount: string;
+  }[];
+}
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** What a proposal says, in words */
 function describeProposal(p: AssistantProposal) {
+  if (p.kind.startsWith('household.')) {
+    const h = p.payload as HouseholdPayload;
+    const from = h.household ? ` (${h.household})` : '';
+    if (p.kind === 'household.remove_entries')
+      return `Remove ${plural(h.entries?.length ?? 0, 'household entry', 'household entries')}${from}`;
+    if (p.kind === 'household.share_bills') {
+      const total = (h.bills ?? []).reduce((n, b) => n + b.amount, 0);
+      return `Share ${plural(h.bills?.length ?? 0, 'bill', 'bills')} paid from the household account${from}, ${formatCurrency(total)} in all`;
+    }
+    return `Unlink ${plural(h.transfers?.length ?? 0, 'transfer', 'transfers')} that the bank matched wrongly`;
+  }
   const a = p.payload as {
     name?: string;
     cost?: number;
@@ -298,6 +338,30 @@ function describeProposal(p: AssistantProposal) {
   ].filter(Boolean);
   const what = p.kind === 'asset.create' ? 'New asset' : 'Change to an asset';
   return `${what}${a.name ? `: ${a.name}` : ''}${parts.length ? ` (${parts.join(', ')})` : ''}`;
+}
+
+/** Each change a household proposal would make, so the owner sees them before applying */
+function proposalLines(p: AssistantProposal): string[] {
+  if (!p.kind.startsWith('household.')) return [];
+  const h = p.payload as HouseholdPayload;
+  const split = (shares: { name: string; amount: number | null }[]) =>
+    shares.every((s) => s.amount === null)
+      ? `split equally between ${shares.map((s) => s.name).join(', ')}`
+      : shares.map((s) => `${s.name} ${formatCurrency(s.amount ?? 0)}`).join(', ');
+  return [
+    ...(h.entries ?? []).map(
+      (e) =>
+        `${formatDay(e.date)} · ${e.description} · ${formatCurrency(Math.abs(e.amount))} · paid by ${e.paidBy}`,
+    ),
+    ...(h.bills ?? []).map(
+      (b) =>
+        `${formatDay(b.date)} · ${b.description} · ${formatCurrency(b.amount)} · ${split(b.shares)}`,
+    ),
+    ...(h.transfers ?? []).map(
+      (t) =>
+        `${formatDay(t.date)} · ${t.account} ${formatCurrency(t.amount)} “${t.bankDescription}”, now linked to ${t.otherAccount}`,
+    ),
+  ];
 }
 
 /** Changes an assistant proposed (audit decision I-11); nothing changes until the owner applies */
@@ -319,14 +383,26 @@ function AssistantProposals() {
     <div className="mt-4">
       <h3 className="text-xs font-semibold text-text-secondary">Waiting for you</h3>
       <p className="text-xs text-text-tertiary mt-0.5">
-        An assistant proposed these. Nothing changes until you apply one; Tax time → Assets shows
-        the result.
+        An assistant proposed these. Nothing changes until you apply one, and a household proposal
+        is applied whole or not at all.
       </p>
       <ul aria-label="Assistant proposals" className="mt-2 divide-y divide-border-light">
         {proposals.map((p) => (
           <li key={p.id} className="flex items-center gap-3 py-2">
             <div className="flex-1 min-w-0">
               <p className="text-sm text-text">{describeProposal(p)}</p>
+              {proposalLines(p).length > 0 && (
+                <details className="mt-0.5">
+                  <summary className="text-xs text-text-secondary cursor-pointer">
+                    Show what it changes
+                  </summary>
+                  <ul className="mt-1 space-y-0.5 text-xs text-text-secondary break-words">
+                    {proposalLines(p).map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
               <p className="text-xs text-text-tertiary">
                 {p.tokenName}, {formatDistanceToNow(new Date(p.createdAt), { addSuffix: true })}
                 {p.note ? ` · ${p.note}` : ''}

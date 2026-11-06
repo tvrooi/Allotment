@@ -625,7 +625,6 @@ describe('household tools', () => {
 
   it('an organise token records only contributions linked to a household deposit', async () => {
     const token = await newToken('organise');
-    const categorise = await newToken('categorise');
     const { data } = await tool(token, 'record_household_contributions', {
       household_id: 'flat',
       contributions: [
@@ -669,10 +668,8 @@ describe('household tools', () => {
     const snapshot = (await call('GET', '/households/flat')).body;
     const recorded = snapshot.events.filter((e: { kind: string }) => e.kind === 'contribution');
     expect(recorded).toHaveLength(2);
-    // Removing a contribution is a temporary permission (household corrections, below)
     expect(
-      (await call('DELETE', `/households/flat/events/${recorded[0].id}`, { token: categorise }))
-        .status,
+      (await call('DELETE', `/households/flat/events/${recorded[0].id}`, { token })).status,
     ).toBe(403);
     const after = await tool(token, 'household_bill_reconciliation', {
       household_id: 'flat',
@@ -783,7 +780,7 @@ describe('household tools', () => {
   });
 });
 
-describe('household corrections (temporary, owner-approved 6 November 2026)', () => {
+describe('household corrections, proposed for the owner to apply', () => {
   // A flat of three with two household accounts: a bill paid from one, a deposit and a bill the
   // bank matched as the wrong transfers, and a contribution credited to the wrong person
   const T = (id: string, accountId: string, date: string, amount: number, extra = {}) =>
@@ -805,10 +802,8 @@ describe('household corrections (temporary, owner-approved 6 November 2026)', ()
         .values({ id: people[i], groupId: 'fix', name, isSelf: i === 0 ? 1 : 0 })
         .run();
     T('c-dep-ana', 'c-joint', '2026-02-01', 900, { importedPayee: 'Ana Mock' });
-    T('c-dep-ben', 'c-joint', '2026-02-01', 900, { importedPayee: 'Ben Mock' });
     T('c-gas', 'c-joint', '2026-02-05', -900, { payeeName: 'Mock Gas' });
     T('c-personal', 'spend', '2026-02-05', -900, { payeeName: 'Mock Gas' });
-    T('c-future', 'c-joint', '2099-01-01', -900, { payeeName: 'Mock Gas' });
     // The bank matched Ben's deposit to a move out of the second account, and a bill to a
     // deposit into a personal account
     T('c-ben2', 'c-joint', '2026-02-06', 300, {
@@ -824,174 +819,160 @@ describe('household corrections (temporary, owner-approved 6 November 2026)', ()
     // A transfer between two personal accounts
     T('c-p-out', 'spend', '2026-02-08', -100, { transferTransactionId: 'c-p-in' });
     T('c-p-in', 'c-other', '2026-02-08', 100, { transferTransactionId: 'c-p-out' });
-    for (const [tx, payerId] of [
-      ['c-dep-ana', 'c-ben'], // credited to the wrong person
-      ['c-dep-ben', 'c-ben'],
-    ])
-      expect(
-        (
-          await call(
-            'POST',
-            '/households/fix/events',
-            {},
-            {
-              kind: 'contribution',
-              date: '2026-02-01',
-              description: 'Bills',
-              amount: 900,
-              payerId,
-              transactionId: tx,
-            },
-          )
-        ).status,
-      ).toBe(201);
+    // Ana's deposit credited to Ben
+    expect(
+      (
+        await call(
+          'POST',
+          '/households/fix/events',
+          {},
+          {
+            kind: 'contribution',
+            date: '2026-02-01',
+            description: 'Bills',
+            amount: 900,
+            payerId: 'c-ben',
+            transactionId: 'c-dep-ana',
+          },
+        )
+      ).status,
+    ).toBe(201);
   });
   const state = async () => (await call('GET', '/households/fix')).body;
+  const row = (id: string) => db.select().from(transactions).where(eq(transactions.id, id)).get()!;
+  const apply = (id: string, auth: { token?: string } = {}) =>
+    call('POST', `/assistant/proposals/${id}/apply`, auth);
 
-  it('an organise token removes only contributions, and re-records one for the right person', async () => {
+  it('no token removes, shares or unlinks directly', async () => {
+    const token = await newToken('organise');
+    const wrong = (await state()).events[0];
+    expect((await call('DELETE', `/households/fix/events/${wrong.id}`, { token })).status).toBe(
+      403,
+    );
+    expect(
+      (
+        await call(
+          'POST',
+          '/households/fix/events',
+          { token },
+          {
+            kind: 'expense',
+            date: '2026-02-05',
+            description: 'Gas',
+            amount: 900,
+            payerId: null,
+            transactionId: 'c-gas',
+            mode: 'equal',
+            shares: people.map((personId) => ({ personId, value: 1 })),
+          },
+        )
+      ).status,
+    ).toBe(403);
+    expect((await call('POST', '/transactions/c-ben2/unlink-transfer', { token }, {})).status).toBe(
+      403,
+    );
+    expect((await state()).events).toHaveLength(1);
+    expect(row('c-ben2').transferTransactionId).toBe('c-move-out');
+  });
+
+  it('removes entries only when the owner applies, and re-records one for the right person', async () => {
     const token = await newToken('organise');
     const categorise = await newToken('categorise');
     expect(await toolNames(categorise)).not.toContain('remove_household_entries');
-    const before = await state();
-    const wrong = before.events.find(
-      (e: { transactionId: string }) => e.transactionId === 'c-dep-ana',
-    );
-    expect(
-      (await call('DELETE', `/households/fix/events/${wrong.id}`, { token: categorise })).status,
-    ).toBe(403);
-    // A contribution of another household's id is refused
-    expect((await call('DELETE', `/households/flat/events/${wrong.id}`, { token })).status).toBe(
-      403,
-    );
+    const wrong = (await state()).events[0];
+    // An entry of another household is refused when proposed
+    const elsewhere = await tool(token, 'remove_household_entries', {
+      household_id: 'flat',
+      event_ids: [wrong.id],
+    });
+    expect(elsewhere.data.error).toMatch(/not in this household/);
     const { data } = await tool(token, 'remove_household_entries', {
       household_id: 'fix',
       event_ids: [wrong.id],
+      note: 'Ana paid this, not Ben',
     });
-    expect(data).toMatchObject({ removed: 1, refused: 0 });
+    expect(data.next).toMatch(/Nothing has changed yet/);
+    expect(data.proposed).toMatchObject({
+      kind: 'household.remove_entries',
+      status: 'pending',
+      payload: { household: 'Fix', entries: [{ eventId: wrong.id, amount: 900, paidBy: 'Ben' }] },
+    });
+    expect((await state()).events).toHaveLength(1);
+    // The token can't apply its own proposal; the owner can
+    expect((await apply(data.proposed.id, { token })).status).toBe(403);
+    expect((await apply(data.proposed.id)).body).toMatchObject({ status: 'applied' });
+    expect((await state()).events).toHaveLength(0);
     const again = await tool(token, 'record_household_contributions', {
       household_id: 'fix',
       contributions: [{ transaction_id: 'c-dep-ana', person_id: 'c-ana' }],
     });
     expect(again.data.recorded).toBe(1);
-    expect((await state()).balances).toMatchObject({ 'c-ana': 900, 'c-ben': 900 });
+    expect((await state()).balances).toMatchObject({ 'c-ana': 900, 'c-ben': 0 });
   });
 
-  it('removes an expense you paid yourself, never one someone else paid', async () => {
-    const token = await newToken('organise');
-    const categorise = await newToken('categorise');
-    const expense = (payerId: string) =>
-      call(
-        'POST',
-        '/households/fix/events',
-        {},
-        {
-          kind: 'expense',
-          date: '2026-02-09',
-          description: 'Subscription',
-          amount: 300,
-          payerId,
-          mode: 'exact',
-          shares: people.map((personId) => ({ personId, value: 100 })),
-        },
-      );
-    for (const payer of ['c-me', 'c-ana']) expect((await expense(payer)).status).toBe(201);
-    const subs = (await state()).events.filter(
-      (e: { description: string }) => e.description === 'Subscription',
-    );
-    const mine = subs.find((e: { payerId: string }) => e.payerId === 'c-me');
-    const anas = subs.find((e: { payerId: string }) => e.payerId === 'c-ana');
-    expect(
-      (await call('DELETE', `/households/fix/events/${mine.id}`, { token: categorise })).status,
-    ).toBe(403);
-    const { data } = await tool(token, 'remove_household_entries', {
-      household_id: 'fix',
-      event_ids: [mine.id, anas.id],
-    });
-    expect(data).toMatchObject({ removed: 1, refused: 1 });
-    expect(data.results[1].error).toMatch(/Refused/);
-    const left = (await state()).events.filter(
-      (e: { description: string }) => e.description === 'Subscription',
-    );
-    expect(left.map((e: { id: string }) => e.id)).toEqual([anas.id]);
-  });
-
-  it('shares a past payment out of a household account as an expense, never a transfer', async () => {
+  it('shares a bill a household account paid once applied, never a transfer or a personal payment', async () => {
     const token = await newToken('organise');
     const read = await newToken('read');
     expect(await toolNames(read)).not.toContain('record_household_bill_expenses');
-    const body = {
-      kind: 'expense',
-      date: '2026-02-05',
-      description: 'Gas',
-      amount: 900,
-      payerId: null,
-      transactionId: 'c-gas',
-      mode: 'equal',
-      shares: people.map((personId) => ({ personId, value: 1 })),
-    };
-    // Nearest refusals: a personal account, a different amount, a future payment, someone
-    // paying it themselves, a read token
-    for (const [auth, extra] of [
-      [token, { transactionId: 'c-personal' }],
-      [token, { amount: 800 }],
-      [token, { transactionId: 'c-future', date: '2099-01-01' }],
-      [token, { payerId: 'c-me' }],
-      [read, {}],
-    ] as const)
-      expect(
-        (await call('POST', '/households/fix/events', { token: auth }, { ...body, ...extra }))
-          .status,
-      ).toBe(403);
-    // Malformed shares are refused, never recorded as an equal split
-    const malformed = await tool(token, 'record_household_bill_expenses', {
-      household_id: 'fix',
-      expenses: [
-        { transaction_id: 'c-gas', shares: { person_id: 'c-me', amount: 900 } },
-        { transaction_id: 'c-gas', shares: [] },
-        { transaction_id: 'c-gas', shares: [{ person_id: 'c-me', amount: 4.5 }] },
-      ],
-    });
-    expect(malformed.data.recorded).toBe(0);
-    for (const r of malformed.data.results) expect(r.error).toMatch(/shares must be/);
+    for (const [expenses, error] of [
+      [[{ transaction_id: 'c-personal' }], /household's accounts/],
+      [[{ transaction_id: 'c-water' }], /transfer/],
+      [[{ transaction_id: 'c-gas', shares: [{ person_id: 'c-me', amount: 100 }] }], /add up/],
+      [[{ transaction_id: 'c-gas', shares: { person_id: 'c-me', amount: 900 } }], /shares must/],
+      [[{ transaction_id: 'c-gas', shares: [{ person_id: 'c-me', amount: 4.5 }] }], /shares must/],
+    ] as const) {
+      const r = await tool(token, 'record_household_bill_expenses', {
+        household_id: 'fix',
+        expenses,
+      });
+      expect(r.data.error, JSON.stringify(expenses)).toMatch(error);
+    }
     const { data } = await tool(token, 'record_household_bill_expenses', {
       household_id: 'fix',
-      expenses: [{ transaction_id: 'c-gas' }, { transaction_id: 'c-water' }],
+      expenses: [{ transaction_id: 'c-gas', description: 'Gas' }],
     });
-    expect(data.recorded).toBe(1);
-    expect(data.results[1].error).toMatch(/Refused/);
+    expect(data.proposed.payload.bills[0]).toMatchObject({ amount: 900, description: 'Gas' });
+    expect((await state()).events.some((e: { kind: string }) => e.kind === 'expense')).toBe(false);
+    expect((await apply(data.proposed.id)).status).toBe(200);
     const gas = (await state()).events.find(
       (e: { transactionId: string }) => e.transactionId === 'c-gas',
     );
     expect(gas).toMatchObject({ kind: 'expense', payerId: null, amount: 900 });
     expect(gas.shares.map((s: { amount: number }) => s.amount)).toEqual([300, 300, 300]);
-    // An expense is never removed by a token
-    expect((await call('DELETE', `/households/fix/events/${gas.id}`, { token })).status).toBe(403);
+    // Already shared now
+    const twice = await tool(token, 'record_household_bill_expenses', {
+      household_id: 'fix',
+      expenses: [{ transaction_id: 'c-gas' }],
+    });
+    expect(twice.data.error).toMatch(/already shared/);
   });
 
-  it('unlinks only transfers with a side in a household account, then records them', async () => {
+  it('unlinks only household transfers, all or nothing, once the owner applies', async () => {
     const token = await newToken('organise');
-    const categorise = await newToken('categorise');
+    const outside = await tool(token, 'unlink_household_transfers', {
+      transaction_ids: ['c-p-out'],
+    });
+    expect(outside.data.error).toMatch(/side in a household account/);
     expect(
-      (await call('POST', '/transactions/c-ben2/unlink-transfer', { token: categorise }, {}))
-        .status,
-    ).toBe(403);
-    // Not a household account on either side; keeping the pair suggested; not a transfer
-    expect(
-      (await call('POST', '/transactions/c-p-out/unlink-transfer', { token }, {})).status,
-    ).toBe(403);
-    expect(
-      (await call('POST', '/transactions/c-ben2/unlink-transfer', { token }, { dismiss: false }))
-        .status,
-    ).toBe(403);
-    expect((await call('POST', '/transactions/c-gas/unlink-transfer', { token }, {})).status).toBe(
-      403,
-    );
+      (await tool(token, 'unlink_household_transfers', { transaction_ids: ['c-gas'] })).data.error,
+    ).toMatch(/not a transfer/);
     const { data } = await tool(token, 'unlink_household_transfers', {
       transaction_ids: ['c-ben2', 'c-refund-in'],
     });
-    expect(data).toMatchObject({ unlinked: 2, refused: 0 });
-    const row = (id: string) =>
-      db.select().from(transactions).where(eq(transactions.id, id)).get()!;
+    expect(data.proposed.payload.transfers).toHaveLength(2);
+    expect(row('c-ben2').transferTransactionId).toBe('c-move-out');
+    // One refused at apply time (the bill was reconciled since) undoes the whole batch
+    db.update(transactions).set({ reconciled: 1 }).where(eq(transactions.id, 'c-water')).run();
+    const refused = await apply(data.proposed.id);
+    expect(refused.status).toBe(403);
+    expect(row('c-ben2').transferTransactionId).toBe('c-move-out');
+    expect((await call('GET', '/assistant/proposals')).body[0]).toMatchObject({
+      id: data.proposed.id,
+      status: 'pending',
+      error: expect.stringMatching(/Reconciled/),
+    });
+    db.update(transactions).set({ reconciled: 0 }).where(eq(transactions.id, 'c-water')).run();
+    expect((await apply(data.proposed.id)).body).toMatchObject({ status: 'applied', error: null });
     expect(row('c-ben2').transferTransactionId).toBeNull();
     expect(row('c-water').transferTransactionId).toBeNull();
     const contribution = await tool(token, 'record_household_contributions', {
@@ -999,11 +980,6 @@ describe('household corrections (temporary, owner-approved 6 November 2026)', ()
       contributions: [{ transaction_id: 'c-ben2', person_id: 'c-ben' }],
     });
     expect(contribution.data.recorded).toBe(1);
-    const expense = await tool(token, 'record_household_bill_expenses', {
-      household_id: 'fix',
-      expenses: [{ transaction_id: 'c-water', description: 'Water' }],
-    });
-    expect(expense.data.recorded).toBe(1);
   });
 });
 

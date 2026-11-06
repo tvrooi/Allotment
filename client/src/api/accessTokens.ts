@@ -91,7 +91,12 @@ export const getAssistantActivity = (limit = 50) =>
 export interface AssistantProposal {
   id: string;
   tokenName: string;
-  kind: 'asset.create' | 'asset.update';
+  kind:
+    | 'asset.create'
+    | 'asset.update'
+    | 'household.remove_entries'
+    | 'household.share_bills'
+    | 'household.unlink_transfers';
   targetId: string | null;
   payload: Record<string, unknown>;
   note: string | null;

@@ -67,18 +67,7 @@ deductions.
     household's "you" person, dated today or earlier, and at most what you owe the household
     account now, so it can bring you to zero but never into credit. For money you paid some
     other way, such as through a shared saver that isn't a household account. Never for anyone
-    else. Owner-approved on 2 November 2026;
-  - TEMPORARY, owner-approved on 6 November 2026 to correct one household's history and removed
-    in the next release: remove a household contribution (`DELETE /api/households/:id/events/:eventId`
-    on an entry of kind contribution in that household, or an expense the household's "you"
-    person paid themselves, never one the household account or someone else paid, a repayment or a refund);
-    share a past payment out of one of a household's own accounts as an expense the household
-    account paid (`POST /api/households/:id/events` with exactly `kind: "expense"`, `date`,
-    `description`, `amount`, `payerId: null`, `transactionId`, `mode` `equal` or `exact` and
-    `shares`), for exactly that payment's amount and date and never a transfer; and unlink a
-    past transfer with a side in a household account (`POST /api/transactions/:id/unlink-transfer`
-    with an empty body, so the pair isn't suggested again). The household and transfer routes
-    still make all their own checks.
+    else. Owner-approved on 2 November 2026.
 - **Change sets:** every category change made over MCP is saved as a change set, listed in
   **Settings → Server → Access tokens** with **Undo** (`GET /api/change-sets`,
   `POST /api/change-sets/:id/undo`). Undo puts back the previous category (even none) only
@@ -129,11 +118,16 @@ does this for you.
 
 Changes the owner must approve arrive as proposals: an organise token may
 `POST /api/assistant/do/assistant/proposals` (MCP `propose_tax_asset`) to propose a new
-depreciating asset or a change to one. Nothing changes until the owner chooses **Apply** under
-**Waiting for you** in the same settings section (`POST /api/assistant/proposals/:id/apply` or
-`/decline`, owner only). Applying runs the same checks as the owner's own change, including
-lodged-year locks; a refusal keeps it waiting with the reason. Neither the log nor proposals are
-in backups.
+depreciating asset or a change to one, and (owner-requested on 6 November 2026) household
+corrections: removing household entries (MCP `remove_household_entries`), sharing past bills a
+household account paid, linked to their payments (`record_household_bill_expenses`), and
+unlinking past transfers with a side in a household account (`unlink_household_transfers`).
+Nothing changes until the owner chooses **Apply** under **Waiting for you** in the same settings
+section (`POST /api/assistant/proposals/:id/apply` or `/decline`, owner only), which lists every
+item a household proposal would change. Applying runs the same checks as the owner's own change,
+including lodged-year locks; a household proposal is applied whole in one database transaction or
+not at all, and a refusal keeps it waiting with the reason. No token removes, shares or unlinks
+directly. Neither the log nor proposals are in backups.
 
 ### MCP
 
@@ -195,9 +189,9 @@ payee, or failing that a category, already claimed this year or last, with the l
 of that claim) and `record_household_contributions` (up to 50 deposits into a household account
 recorded as the named person's contributions, each linked to its deposit) and
 `record_own_household_contribution` (your own contribution without a bank link, up to what you
-owe the household account). Temporarily (6 November 2026, removed in the next release) it also
-lists `remove_household_entries`, `record_household_bill_expenses` and
-`unlink_household_transfers`. `categorise_by_payee` with
+owe the household account), plus `remove_household_entries`, `record_household_bill_expenses`
+and `unlink_household_transfers`, which only propose household corrections for the owner to
+apply (below). `categorise_by_payee` with
 `set_default: true` also makes the category the payee's default, so later imports get it.
 
 Each read tool call is a `GET` of the server's own API made with the caller's token, so a tool can
