@@ -1,4 +1,7 @@
 import { CardPayments } from '../components/budget/CardPayments';
+import { CardRowNotes } from '../components/budget/CardRowNotes';
+import { cardsByCategory, paymentCategories } from '../utils/cardRows';
+import type { CardPosition } from '../api/budget';
 import { CategoryIcon } from '../components/ui/CategoryIcon';
 import { MoneyMoves } from '../components/budget/MoneyMoves';
 import { canMoveIn, useMoveRequest } from '../store/moveRequestStore';
@@ -160,6 +163,8 @@ interface CategoryRowProps {
   onSave: (cents: number) => Promise<string | null>;
   onCancel: () => void;
   onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
+  /** A card's payment envelope: its position is shown under the name */
+  card?: CardPosition;
 }
 
 function CategoryRow({
@@ -171,6 +176,7 @@ function CategoryRow({
   onSave,
   onCancel,
   onApplyBulk,
+  card,
 }: CategoryRowProps) {
   const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
   // Offline: amounts can't be saved, so they can't be edited (and an open editor closes)
@@ -267,6 +273,7 @@ function CategoryRow({
           covered={kind !== 'overspent'}
         />
         <TransferredNote cat={cat} className="mt-0.5" />
+        {card && <CardRowNotes card={card} className="mt-0.5" />}
         {cat.target && (
           <p
             className={`text-xs mt-0.5 ${cat.target.underfunded ? 'text-caution' : 'text-text-tertiary'}`}
@@ -465,7 +472,6 @@ function IncomeGroupSection({
 }
 
 interface BudgetTypeSectionProps {
-  budgetType: BudgetType;
   label: string;
   categories: BudgetCategory[];
   editingId: string | null;
@@ -475,6 +481,8 @@ interface BudgetTypeSectionProps {
   onCancel: () => void;
   onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
   showAll: boolean;
+  /** Card positions by payment envelope, for the Card payments section */
+  cards?: Map<string, CardPosition>;
 }
 
 function BudgetTypeSection({
@@ -487,6 +495,7 @@ function BudgetTypeSection({
   onCancel,
   onApplyBulk,
   showAll,
+  cards,
 }: BudgetTypeSectionProps) {
   // Once something's planned, a section with no money in it at all starts collapsed
   const [collapsed, setCollapsed] = useState(
@@ -560,6 +569,7 @@ function BudgetTypeSection({
               onSave={(cents) => onSave(cat.id, cents)}
               onCancel={onCancel}
               onApplyBulk={onApplyBulk}
+              card={cards?.get(cat.id)}
             />
           ))}
 
@@ -647,9 +657,22 @@ export default function BudgetPage() {
     [allExpenseCats],
   );
 
+  // A card's payment envelope sits beside the envelopes it reserves cash from (BUD-09). It is
+  // not a spending category, so it stays out of the expense totals above.
+  const cardCategories = useMemo(
+    () => paymentCategories(groups.filter((g) => !g.isIncome).flatMap((g) => g.categories)),
+    [groups],
+  );
+  const cardPositions = useMemo(() => cardsByCategory(summary?.cards), [summary?.cards]);
+
   // The jump field narrows the list to matching categories (inactive ones included)
   const needle = query.trim().toLowerCase();
   const matches = (c: BudgetCategory) => c.name.toLowerCase().includes(needle);
+  const shownCardCategories = useMemo(
+    () => (needle ? cardCategories.filter(matches) : cardCategories),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `matches` only reads `needle`
+    [cardCategories, needle],
+  );
   const shownIncomeGroups = useMemo(
     () =>
       needle
@@ -1008,7 +1031,19 @@ export default function BudgetPage() {
                   isIncome: false,
                   categories: bt.categories,
                 })),
+                ...(shownCardCategories.length
+                  ? [
+                      {
+                        key: 'card-payments',
+                        label: 'Card payments',
+                        isIncome: false,
+                        categories: shownCardCategories,
+                        always: true,
+                      },
+                    ]
+                  : []),
               ]}
+              cards={cardPositions}
               month={selectedMonth}
               onSave={handleSave}
               onApplyBulk={handleApplyBulk}
@@ -1115,7 +1150,6 @@ export default function BudgetPage() {
                     {shownExpensesByType.map((bt) => (
                       <BudgetTypeSection
                         key={bt.key}
-                        budgetType={bt.key}
                         label={bt.label}
                         categories={bt.categories}
                         editingId={editingId}
@@ -1144,6 +1178,21 @@ export default function BudgetPage() {
                       </td>
                     </tr>
                   </>
+                )}
+
+                {shownCardCategories.length > 0 && (
+                  <BudgetTypeSection
+                    label="Card payments"
+                    categories={shownCardCategories}
+                    editingId={editingId}
+                    month={selectedMonth}
+                    onStartEdit={beforeStart ? () => undefined : setEditingId}
+                    onSave={handleSave}
+                    onCancel={() => setEditingId(null)}
+                    onApplyBulk={handleApplyBulk}
+                    showAll
+                    cards={cardPositions}
+                  />
                 )}
 
                 {groups.length === 0 && (

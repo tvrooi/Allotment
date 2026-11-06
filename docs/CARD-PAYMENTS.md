@@ -95,6 +95,16 @@ transaction-category pickers and protected against direct ledger use, deletion,
 reclassification as income and movement outside personal credit-account scope.
 Ordinary categorised card activity and reports remain separate from reserve activity.
 
+## Where it appears
+
+A reviewed card's payment envelope is an ordinary row in the budget table's **Card payments**
+section (desktop) and a card on a phone (BUD-09, `Budget.tsx`, `PhoneBudget.tsx`). Its Assigned,
+Activity and Available are the envelope's own figures from the budget response, and the debt,
+shortfall, unfunded payments, extra reserve and prepaid balance under its name are the same
+`CardPosition`, worded by one function (`cardNotes` in `utils/cardRows.ts`) that the sidebar's
+Card payments panel uses too (`CardRowNotes.tsx` renders it in the table). Nothing is recomputed on the client, and the section stays out of the
+expense totals. Funding and the review of cards not yet set up stay in the sidebar panel.
+
 ## Compatibility and delivery
 
 The additive migration creates no setup, assignments or transactions automatically.

@@ -32,6 +32,14 @@ for (const phone of [false, true])
       ? page.getByTestId('budget-card').filter({ hasText: 'Groceries' })
       : page.locator('tr').filter({ hasText: 'Groceries' });
     await expect(row).toContainText('$20');
+    // The card's payment envelope is a row of the table too (BUD-09): the $80 the purchase
+    // took from Groceries is reserved here, beside Groceries' $20
+    const payment = phone
+      ? page.getByTestId('budget-card').filter({ hasText: 'Daily card payment' })
+      : page.locator('tr').filter({ hasText: 'Daily card payment' });
+    await expect(payment).toContainText('$80');
+    await expect(payment.getByTestId('card-row-notes')).toContainText('Debt: $80');
+    await expect(payment.getByTestId('card-row-notes')).not.toContainText('shortfall');
     const repayment = await api.createTransaction({
       accountId: cash.id,
       date: isoDay(),
@@ -51,6 +59,9 @@ for (const phone of [false, true])
     await page.reload();
     await expect(position).toContainText('Available for payment: $0');
     await expect(position).toContainText('Debt: $0');
+    // The repayment used the reserve up, and did not touch Groceries
+    await expect(payment.getByTestId('card-row-notes')).toHaveCount(0);
+    await expect(row).toContainText('$20');
     expect((await api.transactions()).find((t: any) => t.id === purchase.id).amount).toBe(-8000);
     await api.createTransaction({
       accountId: card.id,
@@ -60,6 +71,7 @@ for (const phone of [false, true])
     });
     await page.reload();
     await expect(position).toContainText('Payment shortfall: $50');
+    await expect(payment.getByTestId('card-row-notes')).toContainText('Payment shortfall: $50');
     await position.getByRole('button', { name: 'Fund debt' }).click();
     await position.getByLabel('Additional funding for Daily card').fill('50');
     await position.getByRole('button', { name: 'Preview funding' }).click();
@@ -69,6 +81,8 @@ for (const phone of [false, true])
     await position.getByRole('button', { name: 'Assign payment funds' }).click();
     await expect(position).toContainText('Available for payment: $50');
     await expect(position).toContainText('Payment shortfall: $0');
+    await expect(payment.getByTestId('card-row-notes')).not.toContainText('shortfall');
+    await expect(payment).toContainText('$50');
     await page.screenshot({
       path: test.info().outputPath(`card-payment${phone ? '-phone' : ''}.png`),
       fullPage: true,

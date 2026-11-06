@@ -162,7 +162,7 @@ The task is to improve access, explanation and consistency around them, with exp
 
 ## P2 · BUD-09: integrate card-payment presentation with the budget table
 
-**Status: open.**
+**Status: done (up.116): each reviewed card's payment envelope is a row of a Card payments section in the budget table and the phone cards, with its debt, shortfall, unfunded payments, extra reserve and prepaid balance under the name, all from the card position the sidebar uses. Presentation only: no second ledger, no server change. Unreviewed cards keep their sidebar review. Not built: a per-row detail view beyond those notes, and including payment envelopes in the expense totals.**
 
 - **Evidence / status:** Payment reserves and reviewed setup already exist; presentation differs. `LIVE-06` verified a funded $10 card purchase reducing groceries $10 and increasing payment reserve $10; assigning $40 to cover credit overspending added $40 to that reserve.
   [Budget](../../client/src/pages/Budget.tsx#L438) excludes payment categories from ordinary expense rows; [CardPayments](../../client/src/components/budget/CardPayments.tsx#L64) shows them in the sidebar.
