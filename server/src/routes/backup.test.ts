@@ -195,4 +195,30 @@ describe('backup and restore', () => {
     const { body } = await send('GET', '/accounts');
     expect(body.map((a: { id: string }) => a.id)).toEqual(['old']);
   });
+
+  it('restores a backup that still names the legacy recurring items (migration 0078)', async () => {
+    const res = await send('POST', '/export/restore', {
+      format: 'flybudget-backup',
+      version: 2,
+      accounts: [{ id: 'old', name: 'Old', type: 'checking', startingBalance: 0 }],
+      recurringTransactions: [{ id: 'r', title: 'Rent', amount: -50000, frequency: 'monthly' }],
+      transactions: [
+        {
+          id: 't',
+          accountId: 'old',
+          date: '2026-01-01',
+          amount: -50000,
+          payeeName: 'Landlord',
+          recurringTransactionId: 'r',
+        },
+      ],
+    });
+    expect(res.status).toBe(200);
+    const data = await backup();
+    expect(data.recurringTransactions).toBeUndefined();
+    expect(data.transactions).toEqual([
+      expect.objectContaining({ id: 't', amount: -50000, scheduleId: null }),
+    ]);
+    expect(data.transactions[0]).not.toHaveProperty('recurringTransactionId');
+  });
 });

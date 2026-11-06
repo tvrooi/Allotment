@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.123
+
+- **An old, unused table is removed.** Recurring items moved to a new format in September, and the old copy has been left behind unused since. Updating removes it and the link each transaction kept to it; your recurring items, their payments and every transaction stay as they are. Take a backup before updating as usual: backups never held the old table, so any backup, older ones included, restores as before.
+
 ## 0.2.0-up.122
 
 - **Enable Banking's setup steps are in Allotment's own guide.** The new **Enable Banking (Europe)** page of the guide explains what you need, setting up your own free application (a Production application, the redirect URL, the .pem key and linking your accounts), connecting your bank, pasting the address back if your bank can't return you to Allotment, and reconnecting when the bank's access ends. The setup form's **Step-by-step guide** and **How syncing works** after a sync now open that page inside Allotment, closing the dialog, instead of the upstream FlyBudget website, and **Connecting Up** links to it under Other banks. The server's warning about an unconfigured reverse proxy now points to Allotment's Start here guide. No link in the app goes to flybudget.org any more.
