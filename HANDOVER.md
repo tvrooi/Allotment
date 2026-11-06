@@ -27,7 +27,9 @@ Last updated: 6 November 2026 (up.116 in review).
   `routes/budgetNotes.test.ts`, `accessTokens.test.ts` (token refused, read allowed), e2e
   `budget-inspector.spec.ts`. Docs: ENVELOPE-FUNDING.md "Typing assignments" and "The inspector and
   notes", Budgeting guide page. Not built: one amount typed into several envelopes, group/account
-  notes. Next: B8 (reviewed list for Up Saver transfers).
+  notes. Next: B8 (reviewed list for Up Saver transfers), then B9 (housemate money is not
+  income in Recurring, the Dashboard and the forecast; plan in
+  [docs/HOUSEMATE-MONEY-PLAN.md](docs/HOUSEMATE-MONEY-PLAN.md)).
 - **Card payments in the budget table (up.116, BUD-09; client only, no migration):** every payment
   envelope (`paymentAccountId` on the budget categories) is a row of a **Card payments** section after
   Total expenses (desktop `BudgetTypeSection` with `showAll`, phone `PhoneBudgetSection.always`), found
@@ -383,6 +385,9 @@ site in `website/` was removed (audit decision I-9).
    - Household splitting backlog from the Spliit comparison in
      `docs/research/spliit-household-gaps.md`: SPL-01, SPL-02, SPL-06 (up.106) and SPL-03, SPL-04
      (up.107) and SPL-05 (up.108) are built; the P3 items (SPL-07 to SPL-09) wait for demand.
+   - B9, after B8: housemates' deposits into a household account show as Income in Recurring,
+     on the Dashboard ("Next pay") and in parts of the forecast. Plan:
+     `docs/HOUSEMATE-MONEY-PLAN.md` (owner's choice: net against the bill).
    - Transaction detail has no previous/next (Monarch backlog P1).
    - Future-month money moves; money age (deliberately not built, see BUDGET-REVIEW.md).
    - Investments deferrals (sales, dividends, franking); receipts §6 (PDF reading, email
