@@ -145,8 +145,8 @@ export function saveTarget(categoryId: string, input: TargetInput, today = today
 }
 
 /** Proposed assignments for underfunded targets, in budget order, capped at money that is
- * actually unassigned today. Expected income never counts. */
-export function previewTargetFunding(month: string, today = todayIso()) {
+ * actually unassigned today. Expected income never counts. `only` funds just those categories. */
+export function previewTargetFunding(month: string, today = todayIso(), only?: string[]) {
   const needs = budgetWithTargets(month, today)
     .filter((g) => !g.isIncome)
     .flatMap((g) => g.categories)
@@ -157,7 +157,7 @@ export function previewTargetFunding(month: string, today = todayIso()) {
       underfunded: c.target!.underfunded,
       need: c.target!.underfunded,
     }));
-  const plan = planFunding(month, needs, today);
+  const plan = planFunding(month, needs, today, only);
   // The preview's format before F-13 had no `need` (it is `underfunded` here)
   return { ...plan, rows: plan.rows.map(({ need: _need, ...r }) => r) };
 }
@@ -168,9 +168,10 @@ export function applyTargetFunding(
   revision: string,
   expected: { categoryId: string; proposed: number }[],
   fundedWrite: (action: () => void) => void,
+  only?: string[],
 ) {
   return applyFundingPlan(
-    () => previewTargetFunding(month),
+    () => previewTargetFunding(month, undefined, only),
     revision,
     expected,
     'Your budget changed. Review the target funding again.',

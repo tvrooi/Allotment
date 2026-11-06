@@ -442,6 +442,64 @@ test('overspending is covered from the amount editor or by auto-assign', async (
     .toBe(20_000);
 });
 
+test('a quick fill can leave envelopes out, and Replace or Set to zero takes money back', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Checking', 100_000);
+  for (const [name, amount] of [
+    ['Groceries', -12_000],
+    ['Electric', -8_000],
+  ] as const) {
+    const category = await api.category(name);
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount,
+      payeeName: name,
+      categoryId: category.id,
+    });
+  }
+  await open(page, '/budget');
+  await page.getByRole('button', { name: 'Assign', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Auto-assign/ }).click();
+  const preview = page.getByRole('region', { name: 'Auto-assign preview' });
+  await expect(preview).toContainText('Groceries');
+  await expect(preview).toContainText('Electric');
+  // Leave Groceries out: the rest is planned again without it. Until that answer arrives the
+  // shown plan still includes Groceries, so Apply must not be offered
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route('**/auto-assign/preview', async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.getByRole('checkbox', { name: 'Include Groceries' }).uncheck();
+  await expect(page.getByRole('button', { name: /^Assign \$/ })).toBeDisabled();
+  release();
+  await expect(preview.getByText('left out')).toBeVisible();
+  await page.unroute('**/auto-assign/preview');
+  await expect(page.getByRole('button', { name: 'Assign $80' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Assign $80' }).click();
+  await expect(preview).toBeHidden();
+  const budgeted = async (name: string) =>
+    (await api.call('GET', `/budget/${thisMonth()}`))
+      .flatMap((g: { categories: { name: string; budgeted: number }[] }) => g.categories)
+      .find((c: { name: string }) => c.name === name)?.budgeted;
+  await expect.poll(() => budgeted('Electric')).toBe(8_000);
+  expect(await budgeted('Groceries')).toBe(0);
+
+  // Set to zero takes the $80 back, and says so
+  await page.getByRole('button', { name: 'Assign', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Auto-assign/ }).click();
+  await page.getByRole('radio', { name: /Set to zero/ }).check();
+  await expect(preview).toContainText('take back $80');
+  await expect(preview).toContainText('will be overspent');
+  await page.getByRole('button', { name: 'Take back $80' }).click();
+  await expect(preview).toBeHidden();
+  await expect.poll(() => budgeted('Electric')).toBe(0);
+});
+
 test('a recurring bill shows as expected in its category before it is debited', async ({
   page,
   api,

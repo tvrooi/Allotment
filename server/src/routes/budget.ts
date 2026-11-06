@@ -45,7 +45,9 @@ import {
 } from '../services/targetService.js';
 import { categoryTargets } from '../db/schema.js';
 import {
+  AUTO_ASSIGN_MODES,
   AUTO_ASSIGN_STRATEGIES,
+  AVERAGE_MONTH_CHOICES,
   applyAutoAssign,
   previewAutoAssign,
 } from '../services/autoAssign.js';
@@ -438,56 +440,61 @@ budgetRouter.delete('/category/:categoryId/target', (req, res) => {
   db.delete(categoryTargets).where(eq(categoryTargets.categoryId, req.params.categoryId)).run();
   res.status(204).send();
 });
-const strategySchema = z.object({ strategy: z.enum(AUTO_ASSIGN_STRATEGIES) });
+/** Category ids a plan is limited to (BUD-07); omitted means every category */
+const categoryScope = z.array(z.string().min(1).max(64)).max(2_000).optional();
+const reviewedRows = z
+  .array(z.object({ categoryId: z.string().min(1).max(64), proposed: cents }))
+  .max(10_000);
+const autoAssignSchema = z.object({
+  strategy: z.enum(AUTO_ASSIGN_STRATEGIES),
+  mode: z.enum(AUTO_ASSIGN_MODES).optional(),
+  months: z.literal([...AVERAGE_MONTH_CHOICES]).optional(),
+  categoryIds: categoryScope,
+});
 budgetRouter.post('/:month/auto-assign/preview', (req, res) => {
-  const parsed = strategySchema.safeParse(req.body);
+  const parsed = autoAssignSchema.safeParse(req.body);
   if (!isMonth(req.params.month) || !parsed.success)
     return res.status(400).json({ error: 'Choose a month and an auto-assign option' });
-  res.json(previewAutoAssign(req.params.month, parsed.data.strategy));
+  res.json(previewAutoAssign(req.params.month, parsed.data));
 });
 budgetRouter.post('/:month/auto-assign/apply', (req, res, next) => {
-  const parsed = strategySchema
-    .extend({
-      revision: z.string().min(1).max(200),
-      rows: z
-        .array(z.object({ categoryId: z.string().min(1).max(64), proposed: cents }))
-        .max(10_000),
-    })
+  const parsed = autoAssignSchema
+    .extend({ revision: z.string().min(1).max(200), rows: reviewedRows })
     .safeParse(req.body);
   if (!isMonth(req.params.month) || !parsed.success)
     return res.status(400).json({ error: 'Preview auto-assign first' });
+  const { revision, rows, ...options } = parsed.data;
   try {
-    res.json(
-      applyAutoAssign(
-        req.params.month,
-        parsed.data.strategy,
-        parsed.data.revision,
-        parsed.data.rows,
-        fundedWrite,
-      ),
-    );
+    res.json(applyAutoAssign(req.params.month, options, revision, rows, fundedWrite));
   } catch (error) {
     if (error instanceof BudgetError)
       return res.status(error.status).json({ error: error.message, details: error.details });
     next(error);
   }
 });
-budgetRouter.post('/:month/targets/preview', (req, res) =>
-  res.json(previewTargetFunding(req.params.month)),
-);
+budgetRouter.post('/:month/targets/preview', (req, res) => {
+  const parsed = z.object({ categoryIds: categoryScope }).safeParse(req.body ?? {});
+  if (!parsed.success) return res.status(400).json({ error: 'Choose which categories to fund' });
+  res.json(previewTargetFunding(req.params.month, undefined, parsed.data.categoryIds));
+});
 budgetRouter.post('/:month/targets/apply', (req, res, next) => {
   const parsed = z
     .object({
       revision: z.string().min(1).max(200),
-      rows: z
-        .array(z.object({ categoryId: z.string().min(1).max(64), proposed: cents }))
-        .max(10_000),
+      rows: reviewedRows,
+      categoryIds: categoryScope,
     })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Preview target funding first' });
   try {
     res.json(
-      applyTargetFunding(req.params.month, parsed.data.revision, parsed.data.rows, fundedWrite),
+      applyTargetFunding(
+        req.params.month,
+        parsed.data.revision,
+        parsed.data.rows,
+        fundedWrite,
+        parsed.data.categoryIds,
+      ),
     );
   } catch (error) {
     if (error instanceof BudgetError)

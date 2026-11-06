@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.112
+
+- **Month quick fills, and choosing which envelopes to fill.** **Assign → Auto-assign** can now use the average of the last 3, 6 or 12 months' spending (months with no spending count), and **Set to zero** clears the month's assignments. For copying last month's assignments or spending, or an average, you choose **Add** (only top envelopes up, as before) or **Replace** (set each envelope to that amount, giving the difference back to Ready to assign; an assignment never goes below $0). Every row now has a tick: untick an envelope to leave it out and the rest is planned again, in **Fund targets** too. The preview shows what each row takes back or adds, and marks an envelope that taking money back would leave overspent. Nothing changes until you apply, and the same checks as typing an amount still apply.
+
 ## 0.2.0-up.111
 
 - **Hold money for next month.** In the current month, **Hold money…** under Ready to assign sets aside part of what's ready to assign for the month after. It leaves Ready to assign now, so the month can reach $0 and read fully budgeted while next month's pay is still in your account, and it comes back when next month starts. Held money can't be given to a category (this month's or a later one) until then; you can only hold what is ready to assign, and **Change hold** or **Release hold** puts it back. Nothing is spent or moved: it is a note about those dollars, shown in the working under Ready to assign as **Held for next month**. Your backup includes holds; older backups restore with none. An access token can't set one.
