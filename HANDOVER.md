@@ -5,11 +5,25 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 6 November 2026 (up.111 in review).
+Last updated: 6 November 2026 (up.113 in review).
 
 ## State
 
-- **Temporary household corrections (up.112):** owner-approved on 6 November 2026, to correct one household's history (rent counted twice, bills paid from its accounts never shared, deposits matched as the wrong transfers). Three organise rows in `auth/assistantPolicy.ts`: `household_remove_contribution` (DELETE a contribution entry), `household_pool_expense` (an expense the household account paid, linked to a past non-transfer payment out of its account, exact amount and date), `household_unlink_transfer` (unlink a past transfer with a side in a household account, empty body so the pair is dismissed). MCP `remove_household_contributions`, `record_household_bill_expenses`, `unlink_household_transfers`. Tests: the "household corrections" describe in `routes/assistantTools.test.ts`. **Remove in the next release** (restore the token DELETE refusal in "an organise token records only contributions…" and add an every-token refusal case, as up.81 did). The owner installs up.112 in Home Assistant with a cold backup; this session could not reach Home Assistant.
+- **Temporary household corrections (up.113):** owner-approved on 6 November 2026, to correct one household's history (rent counted twice, bills paid from its accounts never shared, deposits matched as the wrong transfers). Three organise rows in `auth/assistantPolicy.ts`: `household_remove_contribution` (DELETE a contribution entry), `household_pool_expense` (an expense the household account paid, linked to a past non-transfer payment out of its account, exact amount and date), `household_unlink_transfer` (unlink a past transfer with a side in a household account, empty body so the pair is dismissed). MCP `remove_household_contributions`, `record_household_bill_expenses`, `unlink_household_transfers`. Tests: the "household corrections" describe in `routes/assistantTools.test.ts`. **Remove in the next release** (restore the token DELETE refusal in "an organise token records only contributions…" and add an every-token refusal case, as up.81 did). The owner installs up.113 in Home Assistant with a cold backup; this session could not reach Home Assistant.
+- **Month quick fills and selected-category funding (up.112, ACT-05, BUD-07; no migration):** auto-assign
+  (`services/autoAssign.ts`) already had assigned/spent last month and a 3-month average (add only);
+  up.112 adds `zero`, 6 and 12-month averages (`months`), a `mode` of `add` or `replace` (a negative
+  `need` takes money back, never below a zero assignment) and a `categoryIds` scope. `planFunding`
+  in `fundingPlan.ts` takes `only` and applies reductions first; **Fund targets** takes the same
+  `categoryIds`. The scope is part of the reviewed plan (apply rebuilds with it; a different scope is a
+  409). Client: `useScopedPlan` and `FundingRows` (ticks) in both dialogs; the Auto-assign dialog has
+  Add/Replace, a months select and **Set to zero**. Tests: `routes/targets.test.ts`,
+  `fundingPlan.test.ts`, `budgetProperties.test.ts` (random strategy, mode and scope), e2e
+  `budget.spec.ts`. Docs: ENVELOPE-FUNDING.md "Planned assigning", Budgeting guide page. Not built:
+  Actual's copy-until-year-end and single-category copy, a new target cadence (BUD-07 asks only if
+  verified), a "fund selected" action from ticked rows in the budget table itself (the ticks are in
+  the dialogs). Next: B5 (BUD-06 moving rows, returning money to Ready to assign, the Move money
+  guide page).
 - **Hold for next month (up.111, ACT-03; migration 0076, backup format 28):** table `budget_holds`
   (`month` primary key, `amount`; triggers bump `budget_revision`), loaded into the ledger
   (`holdMonths`, `holdTotals`, `heldFrom`, `holdAt` in `budgetLedger.ts`). `fundingState` subtracts
@@ -315,8 +329,8 @@ site in `website/` was removed (audit decision I-9).
    - User guide pages missing for shipped features: payday plans, resilience/budget
      review, card payments, the long-term forecast (super, HECS-HELP) and Move money.
    - YNAB budget backlog in `docs/research/ynab-flybudget-budget-gaps.md` (PR #41): BUD-02 and
-     BUD-03 are done (up.109); BUD-05 keyboard/expressions, BUD-06 row moves
-     and returning money to unassigned, BUD-07 selected-category funding, BUD-09 card rows in the
+     BUD-03 are done (up.109) and BUD-07 (up.112); BUD-05 keyboard/expressions, BUD-06 row moves
+     and returning money to unassigned, BUD-09 card rows in the
      table, BUD-10 inspector and notes. BUD-01 fixed in up.46.
    - Household splitting backlog from the Spliit comparison in
      `docs/research/spliit-household-gaps.md`: SPL-01, SPL-02, SPL-06 (up.106) and SPL-03, SPL-04
@@ -371,8 +385,8 @@ site in `website/` was removed (audit decision I-9).
    and FINX-01 the schedule timer are done (up.102), as are SEC-01's import history and "undo
    this file" and FINX-02 reminders (up.103; reminders for multi-user budgets, through the gateway,
    are not built). ACT-04 per-category overspending is done (up.110) and so is ACT-03 hold for
-   next month (up.111). Not picked up yet: ACT-05 month quick fills. Check the code first:
-   later releases may have covered parts of them.
+   next month (up.111); ACT-05 month quick fills and BUD-07 selected-category funding are done
+   (up.112).
 
 10. **Audit roadmap, next round** ([docs/AUDIT-2026-11.md](docs/AUDIT-2026-11.md) section H): Stage 1
     leftovers are financial property tests across transfers, cards, splits, linked envelopes and

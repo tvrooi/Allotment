@@ -369,4 +369,180 @@ describe('auto-assign', () => {
     expect((await apply()).status).toBe(409);
     expect((await preview('overspent')).rows).toEqual([]);
   });
+
+  const postPreview = async (body: Record<string, unknown>) =>
+    (await call('POST', '/2026-10/auto-assign/preview', body)).body;
+
+  it('replace mode copies, averages or clears a month, lowering an assignment only to zero', async () => {
+    assign('food', '2026-09', 30000);
+    assign('food', '2026-10', 50000);
+    assign('gifts', '2026-09', 5000);
+    assign('gifts', '2026-10', 8000);
+    assign('rego', '2026-10', 7000);
+    spend('f9', 'food', '2026-09-10', -25000);
+    // Adding never lowers: food already has more than last month
+    expect((await postPreview({ strategy: 'assigned_last_month' })).rows).toEqual([]);
+    // Replacing makes this month match last month, including lowering and clearing
+    const copy = await postPreview({ strategy: 'assigned_last_month', mode: 'replace' });
+    expect(copy.mode).toBe('replace');
+    expect(
+      copy.rows.map((r: { categoryId: string; proposed: number }) => [r.categoryId, r.proposed]),
+    ).toEqual([
+      ['rego', -7000],
+      ['food', -20000],
+      ['gifts', -3000],
+    ]);
+    // Taking money back raises Ready to assign by the same amount
+    expect(copy.total).toBe(-30000);
+    // Zero clears every assignment, whatever mode is asked for, and never goes below zero
+    const zero = await postPreview({ strategy: 'zero' });
+    expect(zero.mode).toBe('replace');
+    expect(
+      zero.rows.map((r: { proposed: number }) => r.proposed).sort((a: number, b: number) => a - b),
+    ).toEqual([-50000, -8000, -7000]);
+    // Cover overspending and target funding can only add
+    expect((await postPreview({ strategy: 'overspent', mode: 'replace' })).mode).toBe('add');
+    // Taking back is applied and the month is left as previewed
+    const applied = await call('POST', '/2026-10/auto-assign/apply', {
+      strategy: 'zero',
+      revision: zero.revision,
+      rows: zero.rows,
+    });
+    expect(applied.body).toMatchObject({ applied: -65000 });
+    expect(
+      db
+        .select()
+        .from(budgetMonths)
+        .all()
+        .filter((r) => r.month === '2026-10' && r.budgeted !== 0),
+    ).toEqual([]);
+    expect(
+      db
+        .select()
+        .from(budgetMonths)
+        .all()
+        .find((r) => r.month === '2026-09' && r.categoryId === 'food')?.budgeted,
+    ).toBe(30000);
+  });
+
+  it('does not take an assignment below zero to offset a transfer into a linked account', async () => {
+    db.insert(accounts)
+      .values({ id: 'saver', name: 'Saver', type: 'savings', createdAt: '2020-01-01' })
+      .run();
+    db.insert(categories)
+      .values({ id: 'goal', name: 'goal', groupId: 'bills', linkedAccountId: 'saver' })
+      .run();
+    db.insert(transactions)
+      .values([
+        {
+          id: 'out',
+          accountId: 'cash',
+          date: '2026-10-02',
+          amount: -20000,
+          transferTransactionId: 'in',
+        },
+        {
+          id: 'in',
+          accountId: 'saver',
+          date: '2026-10-02',
+          amount: 20000,
+          transferTransactionId: 'out',
+        },
+      ])
+      .run();
+    assign('goal', '2026-10', 5000);
+    const zero = await postPreview({ strategy: 'zero', categoryIds: ['goal'] });
+    // $200 already arrived by transfer, so the $50 assignment goes to zero and no further
+    expect(zero.rows).toEqual([expect.objectContaining({ categoryId: 'goal', proposed: -5000 })]);
+  });
+
+  it('Set to zero clears the assignment whatever transfers moved through a linked account', async () => {
+    db.insert(accounts)
+      .values({ id: 'saver', name: 'Saver', type: 'savings', createdAt: '2020-01-01' })
+      .run();
+    db.insert(categories)
+      .values({ id: 'goal', name: 'goal', groupId: 'bills', linkedAccountId: 'saver' })
+      .run();
+    // $200 left the saver this month
+    db.insert(transactions)
+      .values([
+        {
+          id: 'out',
+          accountId: 'saver',
+          date: '2026-10-02',
+          amount: -20000,
+          transferTransactionId: 'in',
+        },
+        {
+          id: 'in',
+          accountId: 'cash',
+          date: '2026-10-02',
+          amount: 20000,
+          transferTransactionId: 'out',
+        },
+      ])
+      .run();
+    assign('goal', '2026-10', 5000);
+    const zero = await postPreview({ strategy: 'zero', categoryIds: ['goal'] });
+    expect(zero.rows).toEqual([expect.objectContaining({ categoryId: 'goal', proposed: -5000 })]);
+  });
+
+  it('averages over 3, 6 or 12 months, counting months without spending', async () => {
+    spend('a', 'food', '2026-09-10', -30000);
+    spend('b', 'food', '2026-05-10', -60000);
+    spend('c', 'food', '2025-12-10', -120000);
+    const need = async (months?: number) =>
+      (await postPreview({ strategy: 'average_spent', months })).rows[0]?.need;
+    expect(await need()).toBe(10000); // $300 over 3 months
+    expect(await need(6)).toBe(15000); // $300 + $600 over 6 months (Apr to Sep)
+    expect(await need(12)).toBe(17500); // $2,100 over Oct 2025 to Sep 2026
+    expect(
+      (await call('POST', '/2026-10/auto-assign/preview', { strategy: 'average_spent', months: 4 }))
+        .status,
+    ).toBe(400);
+  });
+
+  it('can be limited to chosen categories, for auto-assign and for target funding', async () => {
+    spend('i', 'insurance', '2026-10-05', -12000);
+    spend('r', 'rego', '2026-10-06', -3000);
+    const all = await postPreview({ strategy: 'overspent' });
+    expect(all.rows).toHaveLength(2);
+    const only = await postPreview({ strategy: 'overspent', categoryIds: ['rego'] });
+    expect(only.rows).toEqual([expect.objectContaining({ categoryId: 'rego', proposed: 3000 })]);
+    expect(only.total).toBe(3000);
+    // The reviewed scope is part of the apply: a different scope changes the plan, so it is refused
+    const body = { strategy: 'overspent', revision: only.revision, rows: only.rows };
+    expect((await call('POST', '/2026-10/auto-assign/apply', body)).status).toBe(409);
+    const applied = await call('POST', '/2026-10/auto-assign/apply', {
+      ...body,
+      categoryIds: ['rego'],
+    });
+    expect(applied.body).toMatchObject({ applied: 3000 });
+    expect(
+      db
+        .select()
+        .from(budgetMonths)
+        .all()
+        .map((r) => r.categoryId),
+    ).toEqual(['rego']);
+
+    await target('food', { type: 'monthly', amount: 20000 });
+    await target('gifts', { type: 'monthly', amount: 10000 });
+    const targets = (await call('POST', '/2026-10/targets/preview', { categoryIds: ['gifts'] }))
+      .body;
+    expect(targets.rows).toEqual([
+      expect.objectContaining({ categoryId: 'gifts', proposed: 10000 }),
+    ]);
+    const fund = await call('POST', '/2026-10/targets/apply', {
+      revision: targets.revision,
+      rows: targets.rows,
+      categoryIds: ['gifts'],
+    });
+    expect(fund.body).toMatchObject({ applied: 10000 });
+    expect(
+      (await call('POST', '/2026-10/targets/preview')).body.rows.map(
+        (r: { categoryId: string }) => r.categoryId,
+      ),
+    ).toEqual(['food']);
+  });
 });

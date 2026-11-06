@@ -131,6 +131,8 @@ so this is not a case for copying Actual wholesale.
 
 ## P2 · ACT-05: month-level quick fills
 
+**Status: done in up.112** (Auto-assign: add or replace, 3/6/12-month averages, set to zero, chosen categories). Not built: copy until year end and the per-category single-month copy.
+
 - **Actual:** the month menu offers copy last month's budget, set to zero, 3-, 6- and 12-month
   averages, copy until year end, and a per-category "copy single previous month" (`copyPreviousMonth`,
   `setZero`, `set3MonthAvg`, `copyUntilYearEnd` in `actions.ts` lines 217–700). Each is one undoable
