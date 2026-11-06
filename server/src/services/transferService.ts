@@ -229,9 +229,16 @@ export interface LinkResult {
   created: boolean;
 }
 
-/** Links two existing transactions as the two sides of one transfer */
-export function linkTransfer(id: string, otherId: string): LinkResult {
-  return db.transaction(() => linkRows(id, otherId));
+/**
+ * Links two existing transactions as the two sides of one transfer. `guard` is an access
+ * token's policy check (auth/assistantPolicy.ts: only a pair the server suggests), run again
+ * inside the transaction.
+ */
+export function linkTransfer(id: string, otherId: string, guard?: () => void): LinkResult {
+  return db.transaction(() => {
+    guard?.();
+    return linkRows(id, otherId);
+  });
 }
 
 /** Makes `row` one side of a transfer. The bank's text stays in importedPayee for rules */

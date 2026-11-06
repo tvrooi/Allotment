@@ -67,50 +67,66 @@ export const financialYearName = (fy: number) => `${fy}–${String(fy + 1).slice
 
 const now = () => new Date().toISOString();
 
-/** Claim a transaction (or part of one, by work-use share). Replaces an earlier claim. */
+/**
+ * Claims a transaction (or part of one, by work-use share), or replaces its claim (the owner). `guard` is an access token's policy
+ * check (auth/assistantPolicy.ts: an unclaimed past transaction), run again inside the
+ * transaction; with it the claim is only ever inserted, so even a wrong check can't replace a
+ * claim (docs/ASSISTANT-PHASE-3.md, owner decision 4).
+ */
 export function setClaim(
   transactionId: string,
   input: { label: TaxLabel; workUseBps?: number; notes?: string | null },
+  { guard }: { guard?: () => void } = {},
 ) {
-  const tx = db
-    .select({
-      id: transactions.id,
-      isParent: transactions.isParent,
-      transfer: transactions.transferTransactionId,
-    })
-    .from(transactions)
-    .where(eq(transactions.id, transactionId))
-    .get();
-  if (!tx) throw new TaxError('Transaction not found', 404);
-  if (tx.isParent) throw new TaxError('Claim the parts of a split transaction, not the whole');
-  if (tx.transfer) throw new TaxError('A transfer between your accounts is not an expense');
-  // Never claimed outright and depreciated as well (DEPRECIATING-ASSETS-PLAN.md §3.3)
-  const asset = db
-    .select({ name: depreciatingAssets.name })
-    .from(depreciatingAssets)
-    .where(eq(depreciatingAssets.transactionId, transactionId))
-    .get();
-  if (asset) throw new TaxError(`This is depreciated as “${asset.name}”`, 409);
-  if (!TAX_LABEL_KEYS.includes(input.label)) throw new TaxError('Unknown tax return label');
-  const workUseBps = input.workUseBps ?? 10_000;
-  if (!Number.isInteger(workUseBps) || workUseBps < 1 || workUseBps > 10_000)
-    throw new TaxError('The work-use share must be between 0.01% and 100%');
-  const stamp = now();
-  db.insert(taxClaims)
-    .values({
+  return db.transaction(() => {
+    guard?.();
+    const tx = db
+      .select({
+        id: transactions.id,
+        isParent: transactions.isParent,
+        transfer: transactions.transferTransactionId,
+      })
+      .from(transactions)
+      .where(eq(transactions.id, transactionId))
+      .get();
+    if (!tx) throw new TaxError('Transaction not found', 404);
+    if (tx.isParent) throw new TaxError('Claim the parts of a split transaction, not the whole');
+    if (tx.transfer) throw new TaxError('A transfer between your accounts is not an expense');
+    // Never claimed outright and depreciated as well (DEPRECIATING-ASSETS-PLAN.md §3.3)
+    const asset = db
+      .select({ name: depreciatingAssets.name })
+      .from(depreciatingAssets)
+      .where(eq(depreciatingAssets.transactionId, transactionId))
+      .get();
+    if (asset) throw new TaxError(`This is depreciated as “${asset.name}”`, 409);
+    if (!TAX_LABEL_KEYS.includes(input.label)) throw new TaxError('Unknown tax return label');
+    const workUseBps = input.workUseBps ?? 10_000;
+    if (!Number.isInteger(workUseBps) || workUseBps < 1 || workUseBps > 10_000)
+      throw new TaxError('The work-use share must be between 0.01% and 100%');
+    const stamp = now();
+    const insert = db.insert(taxClaims).values({
       transactionId,
       label: input.label,
       workUseBps,
       notes: input.notes ?? null,
       createdAt: stamp,
       updatedAt: stamp,
-    })
-    .onConflictDoUpdate({
-      target: taxClaims.transactionId,
-      set: { label: input.label, workUseBps, notes: input.notes ?? null, updatedAt: stamp },
-    })
-    .run();
-  return getClaim(transactionId);
+    });
+    const written = guard
+      ? insert.onConflictDoNothing().run()
+      : insert
+          .onConflictDoUpdate({
+            target: taxClaims.transactionId,
+            set: { label: input.label, workUseBps, notes: input.notes ?? null, updatedAt: stamp },
+          })
+          .run();
+    if (written.changes === 0)
+      throw new TaxError(
+        'This transaction is already claimed; only the owner changes a claim',
+        409,
+      );
+    return getClaim(transactionId);
+  });
 }
 
 /** A claim a rule makes on import: never replaces one you set, and skips what can't be claimed */

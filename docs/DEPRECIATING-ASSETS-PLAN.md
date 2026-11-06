@@ -28,7 +28,7 @@ out-of-scope list is confirmed.
   value over several years", but nothing helps the owner do that.
 - `client/src/pages/Tax.tsx` has two tabs, **Deductions** and **Receipt inbox**, selected by
   `?tab=`. The transaction panel has `TaxClaimSection`.
-- Tokens: organise tokens may read the tax years and add claims (`taxClaimAllows`, now a row in `auth/assistantPolicy.ts`); MCP has
+- Tokens: organise tokens may read the tax years and add claims (the `claim_tax_deduction` row in `auth/assistantPolicy.ts`); MCP has
   `tax_years`, `tax_deductions`, `tax_claim_candidates` and `claim_tax_deductions`.
 - **Files** ([FILES.md](FILES.md)): `documents` (every stored file, receipts included),
   `document_links` (one row per link, one nullable foreign-key column per kind of target:

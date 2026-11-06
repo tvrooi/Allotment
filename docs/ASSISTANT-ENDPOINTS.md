@@ -18,13 +18,17 @@ assistant endpoints with their own audit log, instead of exceptions carved into 
    owner gets 403 from the assistant endpoint too: they use the app.
 4. With the mark, `requireSession` finds the request's row in the policy table,
    `ASSISTANT_ACTIONS` in `auth/assistantPolicy.ts`. Each row has a stable name, the narrowest
-   scope that may use it, an owner-facing summary and the check it makes (body shape, the row's
-   date, the rule's actions, the server's own transfer suggestions and so on). No row: 403, logged
-   as **refused**.
+   scope that may use it, an owner-facing summary, `matches` (method, path and body shape; reads
+   nothing) and, for a row whose rule depends on the budget, `check` (the transaction's date, an
+   existing claim, the rule's state, the server's own transfer suggestions and so on). No row
+   matches: 403, logged as **refused**. A row matches but its check refuses: 403 with the check's
+   reason, logged as **refused** under that row.
 5. With a row, the request is logged and passed on to its route, which applies all its own
-   rules, as it does for the owner (reconciled rows, split parents, transfers, household links).
-   When the route answers, the log row records **applied** (under 400) or **failed**, with the
-   route's error.
+   rules, as it does for the owner (split parents, transfers, household links). A row with a
+   check runs it again as the first step inside the write's own database transaction
+   (`assistantGuard`, since 0.2.0-up.127): if the budget changed after step 4, the write is
+   refused with "This changed before it could be saved: …", nothing is written, and the log row
+   records **refused**. Otherwise, when the route answers, the log row records **applied** (under 400) or **failed**, with the route's error.
 
 Up to 0.2.0-up.100 the log kept the request body and the endpoint used `services/assistantActions.ts`'s
 own action names; PR #140's policy table and log replaced them, with migration 0071 clearing the
@@ -57,9 +61,13 @@ Rules for the table:
 - Every row is an owner-approved exception (CLAUDE.md, docs/READ-ONLY-ACCESS.md). Never add a
   writing, settings, backup, auth or bank row.
 - Never rename a row: names are stored in the log.
-- A new row needs an allowed case and the nearest refusal through `/api/assistant`
-  (`routes/assistantTools.test.ts`, `routes/accessTokens.test.ts`), and its name added to the list
-  in `routes/assistant.test.ts`.
+- A new row needs an allowed case and the nearest refusal in `auth/assistantPolicy.test.ts`
+  (with a refusal inside the write when it has a `check`; that file fails until it does), tool
+  tests through `/api/assistant` (`routes/assistantTools.test.ts`, `routes/accessTokens.test.ts`),
+  and its name added to the list in `routes/assistant.test.ts`.
+- A row whose rule reads the budget has a `check`, and the service that writes calls
+  `assistantGuard(res.locals)` first inside its transaction. A row without one decides from the
+  request alone.
 
 ## The audit log
 
@@ -87,7 +95,8 @@ summaries) and in **Settings → Server → Access tokens → Assistant activity
    `record_household_bill_expenses` and `unlink_household_transfers`. Each holds up to 50 items,
    is checked when proposed, lists every item for the owner, and is applied whole in one database
    transaction through the household and transfer services, or not at all.
-3. **Checks inside the write:** move each row's check into the service that writes, inside its
-   transaction, so the check and the write can't be separated (F-18's TOCTOU note). Today the
-   routes re-validate and better-sqlite3 runs each synchronous handler without interleaving.
-   Design, options and owner decisions: [ASSISTANT-PHASE-3.md](ASSISTANT-PHASE-3.md) (not built).
+3. **Done (0.2.0-up.127): checks inside the write.** Each row whose rule depends on the budget
+   runs its check again inside the write's transaction, so the check and the write can't be
+   separated (F-18's TOCTOU note); a token's claim is only ever inserted; the reconciled-row rule
+   for tokens moved from the transactions route into `categorise_transaction`'s check. Design and
+   the owner's decisions: [ASSISTANT-PHASE-3.md](ASSISTANT-PHASE-3.md).

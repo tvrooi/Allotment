@@ -93,18 +93,19 @@ export class ChangeSetError extends Error {
 
 /** Puts back the previous categories; `tokenId` limits it to that token's own change sets */
 export function undoChangeSet(id: string, tokenId?: string) {
-  const set = db.select().from(assistantChangeSets).where(eq(assistantChangeSets.id, id)).get();
-  if (!set || (tokenId && set.tokenId !== tokenId))
-    throw new ChangeSetError('Change set not found', 404);
-  if (set.undoneAt) throw new ChangeSetError('This change set was already undone', 409);
-  const entries = db
-    .select()
-    .from(assistantChangeEntries)
-    .where(eq(assistantChangeEntries.changeSetId, id))
-    .all();
   let restored = 0;
   const skipped: string[] = [];
+  // Whose it is and whether it was undone are read in the transaction that undoes it
   db.transaction((tx) => {
+    const set = tx.select().from(assistantChangeSets).where(eq(assistantChangeSets.id, id)).get();
+    if (!set || (tokenId && set.tokenId !== tokenId))
+      throw new ChangeSetError('Change set not found', 404);
+    if (set.undoneAt) throw new ChangeSetError('This change set was already undone', 409);
+    const entries = tx
+      .select()
+      .from(assistantChangeEntries)
+      .where(eq(assistantChangeEntries.changeSetId, id))
+      .all();
     for (const e of entries) {
       const row = tx
         .select({ categoryId: transactions.categoryId, reconciled: transactions.reconciled })

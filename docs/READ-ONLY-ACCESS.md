@@ -113,7 +113,9 @@ write the token's scope allows goes to the same path under `/api/assistant/do`, 
 `PUT /api/assistant/do/transactions/<id>` with `{"categoryId": "..."}`. Only the named actions in
 the policy table, `server/src/auth/assistantPolicy.ts` (docs/ASSISTANT-ENDPOINTS.md), are
 accepted there, each with its own check, and the target route still applies its
-own checks. Every write a token asks for, allowed or refused, is logged: **Settings → Server →
+own checks. A check that depends on the budget (a date, an existing claim, a rule's state) runs
+again inside the write's own database transaction, so nothing can change in between; if
+something did, the write is refused and logged as refused (0.2.0-up.127). Every write a token asks for, allowed or refused, is logged: **Settings → Server →
 Access tokens → Assistant activity** (owner only, `GET /api/assistant/activity`; no request bodies are kept, the newest 5,000 rows). The MCP server
 does this for you.
 

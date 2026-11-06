@@ -1,3 +1,4 @@
+import { assistantGuard } from '../auth/assistantPolicy.js';
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import { accessTokens, rules } from '../db/schema.js';
@@ -161,7 +162,7 @@ rulesRouter.post('/apply', (req, res) => {
     .extend({ transactionIds: z.array(id).max(100_000) })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  res.json({ updated: applyRules(parsed.data) });
+  res.json({ updated: applyRules(parsed.data, assistantGuard(res.locals)) });
 });
 
 // Reorder rules — body: { ids: string[] } in desired order.
@@ -206,9 +207,13 @@ rulesRouter.put('/:id', (req, res) => {
   // A token never enables a rule (auth/accessTokens.ts); the owner enabling one accepts it
   if (proposer(res.locals)) delete update.enabled;
   else if (parsed.data.enabled) update.proposedBy = null;
-  if (Object.keys(update).length) {
-    db.update(rules).set(update).where(eq(rules.id, req.params.id)).run();
-  }
+  // An access token's policy check (only a rule that is still disabled) runs again here
+  const guard = assistantGuard(res.locals);
+  db.transaction(() => {
+    guard?.();
+    if (Object.keys(update).length)
+      db.update(rules).set(update).where(eq(rules.id, req.params.id)).run();
+  });
   const updated = db.select().from(rules).where(eq(rules.id, req.params.id)).get();
   if (!updated) return res.status(404).json({ error: 'Not found' });
   res.json(parseRuleRow(updated));

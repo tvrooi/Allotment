@@ -1,9 +1,10 @@
 # Assistant endpoints, phase 3: checks inside the write
 
-Status: **design only, 6 November 2026. Nothing is built.** It plans phase 3 of
-[ASSISTANT-ENDPOINTS.md](ASSISTANT-ENDPOINTS.md) (the remaining F-18 note in
-[AUDIT-2026-11.md](AUDIT-2026-11.md)) and waits on the owner decisions at the end. No code,
-migration or version change comes with this page.
+Status: **built in 0.2.0-up.127.** Designed on 6 November 2026; the owner took every
+recommendation the same day (see "Owner decisions"). Phase 3 of
+[ASSISTANT-ENDPOINTS.md](ASSISTANT-ENDPOINTS.md), the remaining F-18 note in
+[AUDIT-2026-11.md](AUDIT-2026-11.md). The section "What is true today" describes the code before
+up.127.
 
 ## The problem
 
@@ -94,10 +95,12 @@ is invisible at the call site and misses writes outside a transaction. Rejected.
    path, parsed body) in `res.locals`. `assistantGuard(res)` (`routes/assistant.ts`) returns
    nothing for the owner, or a function that re-runs the row's `check` and throws
    `AssistantRefusal` (403). Owner requests are unchanged.
-3. **The services.** Each write listed above takes an optional `guard` and calls it first inside its
-   transaction: the transactions PUT, `PUT /rules/:id`, `applyRules`, `linkTransfer`, `setClaim`,
-   `recordEvent`, `undoChangeSet`, `createAssistantProposal`. `setClaim` and `recordEvent` gain a
-   `db.transaction`; `applyRules` plans inside its transaction. These also benefit the owner.
+3. **The services.** Each budget-reading row's write calls the guard first inside its
+   transaction: the transactions PUT, `PUT /rules/:id`, `applyRules`, `linkTransfer`, `setClaim`
+   and the household route's `POST /:id/events` (whose `run` already wraps `recordEvent` in a
+   transaction). `setClaim` gains a `db.transaction`; `applyRules` plans inside its transaction.
+   `undoChangeSet` and `createAssistantProposal` take no guard (their rows have no check) but read
+   ownership and the 50 cap inside the transaction that writes. These also hold for the owner.
 4. **The header rule.** The reconciled-row refusal leaves `routes/transactions.ts` and becomes part
    of `categorise_transaction`'s check, so no general route asks whether the caller is a token.
 5. **The log.** A refusal from the guard is logged as `refused` (today `finishAssistantAction`
@@ -111,11 +114,13 @@ is invisible at the call site and misses writes outside a transaction. Rejected.
   allowed case and the nearest refusal, moved from or pointing at the existing route tests, and a
   test that every row with a `check` has an interleaving case below.
 - **Interleaving, per budget-reading row:** the test app mounts a middleware between
-  `requireSession` and the routers that changes the budget after the early check: dates the
-  transaction tomorrow, adds a claim, enables the rule, dismisses the suggested pair, changes the
-  deposit's amount, records a contribution that clears what you owe, fills the 50 proposals. Each
-  must answer 403, change nothing and log `refused`. Each fails without the change (the write goes
-  through today).
+  `requireSession` and the routers that changes the budget after the early check: reconciles the
+  transaction or dates it in the future, enables the rule, adds a second action to the rule,
+  changes a transfer leg's amount so the pair is no longer suggested, adds the owner's claim,
+  changes the deposit's amount, records a contribution that clears what you owe. Each must answer
+  403, change nothing and log `refused`. Each fails without the change (the write goes through).
+  The service-side reads († above) can't be interleaved from outside the service, since nothing
+  in it awaits; their existing tests still pass.
 - **Owner unchanged:** the owner's same writes still succeed (including replacing a claim).
 - Existing allowed and refused cases in `assistant.test.ts`, `assistantTools.test.ts` and
   `accessTokens.test.ts` keep passing unchanged; MCP tools need no change.
@@ -127,6 +132,9 @@ from `npm run release:prepare`, a CHANGELOG entry. No user guide page: owners se
 only `refused` in **Assistant activity** where a write lost a race.
 
 ## Owner decisions
+
+Taken on 6 November 2026: the owner endorsed every recommendation below. Decision 5's follow-up
+(the MCP change-set race) is not built yet.
 
 1. **Option A, B or C.** Recommended: A.
 2. **Run the check twice, or move it.** Recommended: twice (early in `requireSession` and inside the

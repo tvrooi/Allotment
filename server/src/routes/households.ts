@@ -1,3 +1,5 @@
+import { assistantGuard } from '../auth/assistantPolicy.js';
+import { AssistantRefusal } from '../auth/assistantRefusal.js';
 import { Router, type Response } from 'express';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -57,6 +59,8 @@ function run(res: Response, fn: () => unknown, status = 200) {
     const result = db.transaction(fn);
     res.status(status).json(result);
   } catch (error) {
+    // Answered 403 by the error handler, with its reason
+    if (error instanceof AssistantRefusal) throw error;
     res
       .status(400)
       .json({ error: error instanceof Error ? error.message : 'Invalid household entry' });
@@ -136,6 +140,9 @@ householdsRouter.post('/:id/events', (req, res) =>
   run(
     res,
     () => {
+      // An access token's contribution check (auth/assistantPolicy.ts) runs again inside the
+      // same transaction as the entry it allows
+      assistantGuard(res.locals)?.();
       recordEvent(req.params.id, req.body);
       return snapshot(req.params.id);
     },

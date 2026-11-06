@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.127
+
+- **An assistant's changes are checked again at the moment they're saved.** When an assistant using an access token makes a change (setting a category, editing or applying a rule it proposed, linking a suggested transfer, claiming a tax deduction, recording a household contribution), the rule that allows it is now checked a second time inside the same save, not only before it. If something changed in between (you reconciled the transaction, enabled the rule, claimed the deduction yourself, or the deposit's amount changed), the assistant's change is refused, nothing is saved, and **Settings → Server → Access tokens → Assistant activity** lists it as refused with the reason "This changed before it could be saved". An assistant's tax claim can now only ever add a claim, never replace one, even by mistake. Your own changes in the app work as before.
+
 ## 0.2.0-up.126
 
 - **Field names are joined to their fields everywhere else too.** Adding or editing an account, updating an account's value, goals, recurring items, categories, payment plans, saved reports and dashboard names, the export dates, password change, Plaid and SimpleFIN setup, a transaction's value in your main currency, and editing several transactions at once: clicking a field's name now puts the cursor in that field, and screen readers read each field with the name shown above it. A name over a row of buttons (an account's logo, a goal's icon and colour, a recurring item's type and amount precision, a category's budget type) now names that group of buttons for screen readers. Nothing about what the forms save has changed.

@@ -1,3 +1,4 @@
+import { assistantGuard } from '../auth/assistantPolicy.js';
 import { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
 import {
@@ -124,7 +125,11 @@ const claim = z
 taxRouter.put(
   '/claims/:transactionId',
   action((req, res) =>
-    res.json(setClaim(id.parse(req.params.transactionId), claim.parse(req.body))),
+    res.json(
+      setClaim(id.parse(req.params.transactionId), claim.parse(req.body), {
+        guard: assistantGuard(res.locals),
+      }),
+    ),
   ),
 );
 

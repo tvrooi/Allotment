@@ -1,3 +1,4 @@
+import { assistantGuard } from '../auth/assistantPolicy.js';
 import { deletedSyncedImports } from '../services/transactionHelpers.js';
 import { restoreDeletedImport } from '../services/deletedImportRestore.js';
 import { householdEvents } from '../db/schema.js';
@@ -646,7 +647,11 @@ transactionsRouter.post('/transfers/link', (req, res) => {
   const parsed = pairSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   transferAction(res, () =>
-    linkTransfer(parsed.data.transactionId, parsed.data.otherTransactionId),
+    linkTransfer(
+      parsed.data.transactionId,
+      parsed.data.otherTransactionId,
+      assistantGuard(res.locals),
+    ),
   );
 });
 
@@ -924,9 +929,6 @@ transactionsRouter.put('/:id', (req, res) => {
       error:
         'This transaction came from your bank feed, so it stays in that account. To record it elsewhere, add it to the other account and delete this one.',
     });
-  // Access tokens (assistants) keep the old rule: they never touch a reconciled row at all
-  if (existing.reconciled === 1 && /^bearer /i.test(req.headers.authorization ?? ''))
-    return res.status(403).json({ error: 'Cannot modify a reconciled transaction' });
   if (
     existing.parentTransactionId &&
     (changes('accountId') || changes('date') || changes('amount'))
@@ -983,8 +985,11 @@ transactionsRouter.put('/:id', (req, res) => {
     return res.status(403).json({ error: 'Cannot modify a reconciled transfer counterpart' });
   }
   const { mainAmount, ...fields } = data;
+  // An access token's policy check (never a reconciled row, only a past one) runs again here
+  const guard = assistantGuard(res.locals);
 
   db.transaction((tx) => {
+    guard?.();
     if (Object.keys(fields).length) {
       tx.update(transactions).set(fields).where(eq(transactions.id, existing.id)).run();
     }

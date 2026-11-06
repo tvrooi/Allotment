@@ -3,8 +3,9 @@ import type { Server } from 'http';
 import type { AddressInfo } from 'net';
 
 // The assistant endpoints and their audit log (audit decision I-11, docs/ASSISTANT-ENDPOINTS.md).
-// Each policy row's allowed case and nearest refusal are in assistantTools.test.ts and
-// accessTokens.test.ts, through the same endpoints; this file covers the endpoints themselves.
+// Each policy row's allowed case and nearest refusal are in auth/assistantPolicy.test.ts (with
+// the check run again inside the write), assistantTools.test.ts and accessTokens.test.ts; this
+// file covers the endpoints themselves.
 process.env.FLYBUDGET_SERVER_MODE = 'true';
 process.env.FLYBUDGET_ALLOWED_HOSTS = 'budget.example.com';
 
@@ -218,9 +219,10 @@ describe('the assistant endpoints', () => {
 
   it('log the route’s own refusal as failed, with its reason', async () => {
     const { token } = await newToken('categorise');
+    // A reconciled row is the policy's refusal (assistantPolicy.test.ts); a missing one the route's
     const res = await call(
       'PUT',
-      '/assistant/do/transactions/done',
+      '/assistant/do/transactions/gone',
       { token },
       { categoryId: 'groceries' },
     );
