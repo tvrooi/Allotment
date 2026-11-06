@@ -70,7 +70,8 @@ deductions.
     else. Owner-approved on 2 November 2026;
   - TEMPORARY, owner-approved on 6 November 2026 to correct one household's history and removed
     in the next release: remove a household contribution (`DELETE /api/households/:id/events/:eventId`
-    on an entry of kind contribution in that household, never an expense, repayment or refund);
+    on an entry of kind contribution in that household, or an expense the household's "you"
+    person paid themselves, never one the household account or someone else paid, a repayment or a refund);
     share a past payment out of one of a household's own accounts as an expense the household
     account paid (`POST /api/households/:id/events` with exactly `kind: "expense"`, `date`,
     `description`, `amount`, `payerId: null`, `transactionId`, `mode` `equal` or `exact` and
@@ -195,7 +196,7 @@ of that claim) and `record_household_contributions` (up to 50 deposits into a ho
 recorded as the named person's contributions, each linked to its deposit) and
 `record_own_household_contribution` (your own contribution without a bank link, up to what you
 owe the household account). Temporarily (6 November 2026, removed in the next release) it also
-lists `remove_household_contributions`, `record_household_bill_expenses` and
+lists `remove_household_entries`, `record_household_bill_expenses` and
 `unlink_household_transfers`. `categorise_by_payee` with
 `set_default: true` also makes the category the payee's default, so later imports get it.
 

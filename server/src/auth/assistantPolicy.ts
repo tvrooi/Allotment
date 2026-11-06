@@ -1,7 +1,14 @@
 import { eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../db/index.js';
-import { householdEvents, householdGroups, rules, taxClaims, transactions } from '../db/schema.js';
+import {
+  householdEvents,
+  householdGroups,
+  householdPeople,
+  rules,
+  taxClaims,
+  transactions,
+} from '../db/schema.js';
 import { listTransferSuggestions } from '../services/transferService.js';
 import {
   poolAccountsOf,
@@ -346,22 +353,48 @@ function decoded(parts: string[]) {
   }
 }
 
+/** The household entry a DELETE /households/:id/events/:eventId names, if it is in that household */
+function eventInPath(method: string, rawPath: string) {
+  const match = HOUSEHOLD_EVENT_PATH.exec(rawPath.replace(/\/+$/, ''));
+  if (method !== 'DELETE' || !match) return undefined;
+  const ids = decoded([match[1], match[2]]);
+  if (!ids) return undefined;
+  const event = db
+    .select({
+      groupId: householdEvents.groupId,
+      kind: householdEvents.kind,
+      payerId: householdEvents.payerId,
+    })
+    .from(householdEvents)
+    .where(eq(householdEvents.id, ids[1]))
+    .get();
+  return event && event.groupId === ids[0] ? event : undefined;
+}
+
 /**
  * TEMPORARY. Whether an organise token may remove a household contribution: only an entry of
  * kind contribution in that household, never an expense, repayment or refund. The household
  * route still refuses a removal that would uncover money set aside for bills, and logs it.
  */
 function householdRemoveContributionAllows(method: string, rawPath: string): boolean {
-  const match = HOUSEHOLD_EVENT_PATH.exec(rawPath.replace(/\/+$/, ''));
-  if (method !== 'DELETE' || !match) return false;
-  const ids = decoded([match[1], match[2]]);
-  if (!ids) return false;
-  const event = db
-    .select({ groupId: householdEvents.groupId, kind: householdEvents.kind })
-    .from(householdEvents)
-    .where(eq(householdEvents.id, ids[1]))
+  return eventInPath(method, rawPath)?.kind === 'contribution';
+}
+
+/**
+ * TEMPORARY. Whether an organise token may remove an expense you paid yourself and shared, such
+ * as one that was never shared with these people: only the household's "you" person as payer,
+ * so the others only ever owe you less. Never one the household account or someone else paid,
+ * a repayment or a refund; the route refuses an expense that has a refund.
+ */
+function householdRemoveOwnExpenseAllows(method: string, rawPath: string): boolean {
+  const event = eventInPath(method, rawPath);
+  if (event?.kind !== 'expense' || !event.payerId) return false;
+  const payer = db
+    .select({ groupId: householdPeople.groupId, isSelf: householdPeople.isSelf })
+    .from(householdPeople)
+    .where(eq(householdPeople.id, event.payerId))
     .get();
-  return !!event && event.groupId === ids[0] && event.kind === 'contribution';
+  return !!payer && payer.groupId === event.groupId && payer.isSelf === 1;
 }
 
 /** An expense the household account paid, linked to that payment, split equally or exactly */
@@ -547,6 +580,12 @@ export const ASSISTANT_ACTIONS: readonly AssistantAction[] = [
     scope: 'organise',
     summary: 'Remove a household contribution (temporary)',
     allows: householdRemoveContributionAllows,
+  },
+  {
+    name: 'household_remove_own_expense',
+    scope: 'organise',
+    summary: 'Remove an expense you paid yourself from a household (temporary)',
+    allows: householdRemoveOwnExpenseAllows,
   },
   {
     name: 'household_pool_expense',

@@ -1153,12 +1153,12 @@ const ACTION_TOOLS: ActionTool[] = [
     },
   },
   // TEMPORARY (owner-approved 6 November 2026 to correct one household's history; removed in
-  // the next release): the household_remove_contribution, household_pool_expense and
-  // household_unlink_transfer rows of auth/assistantPolicy.ts
+  // the next release): the household_remove_contribution, household_remove_own_expense,
+  // household_pool_expense and household_unlink_transfer rows of auth/assistantPolicy.ts
   {
-    name: 'remove_household_contributions',
+    name: 'remove_household_entries',
     scope: 'organise',
-    description: `TEMPORARY. Removes household contributions by entry id (from household), up to ${MAX_CORRECTIONS} at once, such as a deposit credited to the wrong person (then record it again with record_household_contributions) or money that wasn't anyone's contribution. Only contributions: never expenses, repayments or refunds. The household's activity log keeps a line for each. Confirm the list with the user first.`,
+    description: `TEMPORARY. Removes household entries by id (from household), up to ${MAX_CORRECTIONS} at once: contributions, such as a deposit credited to the wrong person (then record it again with record_household_contributions) or money that wasn't anyone's contribution, and expenses you paid yourself that aren't shared with these people. Never an expense the household account or someone else paid, a repayment or a refund. The household's activity log keeps a line for each. Confirm the list with the user first.`,
     properties: {
       household_id: { ...idString, description: 'From list_households' },
       event_ids: { type: 'array', minItems: 1, maxItems: MAX_CORRECTIONS, items: idString },
@@ -1186,7 +1186,7 @@ const ACTION_TOOLS: ActionTool[] = [
           error: r.ok
             ? undefined
             : r.status === 403
-              ? 'Refused: only a contribution in this household can be removed'
+              ? 'Refused: only a contribution, or an expense you paid yourself, in this household'
               : r.error,
         });
       }
@@ -1384,7 +1384,7 @@ const BASICS =
 const INSTRUCTIONS: Record<TokenScope, string> = {
   read: `Read-only access to an Allotment budget. ${BASICS}`,
   categorise: `Read access to an Allotment budget, plus setting the category of past transactions (categorise_transactions, categorise_by_payee) and creating and editing categories and groups; nothing else can change. ${BASICS} Start from uncategorised_payees. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before categorising.`,
-  organise: `Read access to an Allotment budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers, suggesting assignments the owner applies, claiming past transactions as tax deductions (tax_years, tax_deductions, tax_claim_candidates, claim_tax_deductions; never replacing or removing a claim), reading depreciating assets (tax_assets) and proposing new ones or changes the owner applies (propose_tax_asset), recording household contributions linked to deposits into a household account (household_bill_reconciliation, record_household_contributions), and your own unlinked contribution up to what you owe the household account (record_own_household_contribution). Temporarily, to correct a household's history: removing contributions, sharing bills a household account paid, and unlinking wrong transfers into household accounts (remove_household_contributions, record_household_bill_expenses, unlink_household_transfers). ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
+  organise: `Read access to an Allotment budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers, suggesting assignments the owner applies, claiming past transactions as tax deductions (tax_years, tax_deductions, tax_claim_candidates, claim_tax_deductions; never replacing or removing a claim), reading depreciating assets (tax_assets) and proposing new ones or changes the owner applies (propose_tax_asset), recording household contributions linked to deposits into a household account (household_bill_reconciliation, record_household_contributions), and your own unlinked contribution up to what you owe the household account (record_own_household_contribution). Temporarily, to correct a household's history: removing contributions and your own unshared expenses, sharing bills a household account paid, and unlinking wrong transfers into household accounts (remove_household_entries, record_household_bill_expenses, unlink_household_transfers). ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
 };
 
 const schemaOf = (t: { properties?: Record<string, unknown>; required?: string[] }) => ({

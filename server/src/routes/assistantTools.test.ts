@@ -851,7 +851,7 @@ describe('household corrections (temporary, owner-approved 6 November 2026)', ()
   it('an organise token removes only contributions, and re-records one for the right person', async () => {
     const token = await newToken('organise');
     const categorise = await newToken('categorise');
-    expect(await toolNames(categorise)).not.toContain('remove_household_contributions');
+    expect(await toolNames(categorise)).not.toContain('remove_household_entries');
     const before = await state();
     const wrong = before.events.find(
       (e: { transactionId: string }) => e.transactionId === 'c-dep-ana',
@@ -863,7 +863,7 @@ describe('household corrections (temporary, owner-approved 6 November 2026)', ()
     expect((await call('DELETE', `/households/flat/events/${wrong.id}`, { token })).status).toBe(
       403,
     );
-    const { data } = await tool(token, 'remove_household_contributions', {
+    const { data } = await tool(token, 'remove_household_entries', {
       household_id: 'fix',
       event_ids: [wrong.id],
     });
@@ -874,6 +874,45 @@ describe('household corrections (temporary, owner-approved 6 November 2026)', ()
     });
     expect(again.data.recorded).toBe(1);
     expect((await state()).balances).toMatchObject({ 'c-ana': 900, 'c-ben': 900 });
+  });
+
+  it('removes an expense you paid yourself, never one someone else paid', async () => {
+    const token = await newToken('organise');
+    const categorise = await newToken('categorise');
+    const expense = (payerId: string) =>
+      call(
+        'POST',
+        '/households/fix/events',
+        {},
+        {
+          kind: 'expense',
+          date: '2026-02-09',
+          description: 'Subscription',
+          amount: 300,
+          payerId,
+          mode: 'exact',
+          shares: people.map((personId) => ({ personId, value: 100 })),
+        },
+      );
+    for (const payer of ['c-me', 'c-ana']) expect((await expense(payer)).status).toBe(201);
+    const subs = (await state()).events.filter(
+      (e: { description: string }) => e.description === 'Subscription',
+    );
+    const mine = subs.find((e: { payerId: string }) => e.payerId === 'c-me');
+    const anas = subs.find((e: { payerId: string }) => e.payerId === 'c-ana');
+    expect(
+      (await call('DELETE', `/households/fix/events/${mine.id}`, { token: categorise })).status,
+    ).toBe(403);
+    const { data } = await tool(token, 'remove_household_entries', {
+      household_id: 'fix',
+      event_ids: [mine.id, anas.id],
+    });
+    expect(data).toMatchObject({ removed: 1, refused: 1 });
+    expect(data.results[1].error).toMatch(/Refused/);
+    const left = (await state()).events.filter(
+      (e: { description: string }) => e.description === 'Subscription',
+    );
+    expect(left.map((e: { id: string }) => e.id)).toEqual([anas.id]);
   });
 
   it('shares a past payment out of a household account as an expense, never a transfer', async () => {

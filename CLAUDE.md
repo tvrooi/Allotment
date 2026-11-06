@@ -56,7 +56,8 @@ Keep AGENTS.md and CLAUDE.md byte-identical (Codex reads one, Claude Code the ot
   settlements, edits or removals), and record the owner's own unlinked contribution up to what
   the owner owes the household account (never anyone else's, never into credit). TEMPORARY (owner-approved
   6 November 2026 to correct one household's history; remove in the next release): an `organise` token
-  may also remove a household contribution (never an expense, repayment or refund), share a past payment
+  may also remove a household contribution or an expense the owner paid themselves (never one the
+  household account or someone else paid, a repayment or a refund), share a past payment
   out of a household's own account as an expense that account paid, for its exact amount and date (never
   a transfer), and unlink a past transfer with a side in a household account. Token category changes are undoable change sets;
   only the owner redoes one.

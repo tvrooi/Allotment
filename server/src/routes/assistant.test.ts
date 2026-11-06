@@ -120,6 +120,7 @@ describe('the policy table', () => {
       'household_contribution',
       'own_household_contribution',
       'household_remove_contribution',
+      'household_remove_own_expense',
       'household_pool_expense',
       'household_unlink_transfer',
       'propose_change',
