@@ -5,10 +5,20 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 5 November 2026 (up.109 in review).
+Last updated: 5 November 2026 (up.110 in review).
 
 ## State
 
+- **Keep overspending (up.110, ACT-04; migration 0075, no backup bump):** `categories.keep_overspending`
+  (owner only, Settings → Categories → Edit; `categoryEditSchema` in `routes/categories.ts`, not in
+  the token policy's `CATEGORY_FIELDS`). `budgetLedger.ts` sets `resets` false for such a category
+  (a separate `expense` flag keeps linked-account transfers working), `cardFunding.ts` skips its
+  `poolAt` reset (`keepsOverspending`), and `fundingState` holds a deficit carried into a later
+  month as spent cash (`cash`). The deficit still counts in `overspent`; Review marks it `kept`.
+  Tests: `routes/keepOverspending.test.ts`, `budgetProperties.test.ts` (random kept sets),
+  `cardFunding.test.ts`, `accessTokens.test.ts` (refusal), `budgetFigures.test.ts`, e2e
+  `settings.spec.ts`. Docs: ENVELOPE-FUNDING.md "overspending rule", Budgeting guide page. Next in
+  the Budgeting group: B3 (ACT-03 hold for next month).
 - **Save and undo feedback, availability states (up.109, BUD-02, BUD-03; client only, no migration):**
   `handleSave` in `pages/Budget.tsx` resolves to the refusal reason or `null`; the row's editor
   (and the phone `BudgetAmountSheet`) closes only on `null`, shows **Saving…**, ignores a second
@@ -17,8 +27,7 @@ Last updated: 5 November 2026 (up.109 in review).
   on) drops the stale command, anything else keeps it for another try. `availability()` in
   `utils/budgetFigures.ts` names Overspent, Short of target and Covered by carried funds for the
   desktop table, phone cards and `SpentBar` (`covered`, amber instead of red). Tests:
-  `undoStore.test.ts`, `budgetFigures.test.ts`, e2e `budget.spec.ts`. Next in the Budgeting group: B2
-  (ACT-04 per-category overspending carry).
+  `undoStore.test.ts`, `budgetFigures.test.ts`, e2e `budget.spec.ts`. B2 (ACT-04) followed in up.110.
 - **Household reports (up.108, SPL-05; no migration):** `householdBreakdown`
   (`services/householdReport.ts`) returns `byMonth`, `byPerson` (paid, share, paid less share; the
   household account is its own line) and `byCategory` (from the linked bank payment's category,
@@ -346,8 +355,8 @@ site in `website/` was removed (audit decision I-9).
 9. **Next fixes from the competitor comparisons** (`docs/research/`, PR #63): SEC-01 duplicates
    and FINX-01 the schedule timer are done (up.102), as are SEC-01's import history and "undo
    this file" and FINX-02 reminders (up.103; reminders for multi-user budgets, through the gateway,
-   are not built). Not picked up yet: ACT-03 hold for next month, ACT-04
-   per-category overspending rollover and ACT-05 month quick fills. Check the code first:
+   are not built). ACT-04 per-category overspending is done (up.110). Not picked up yet: ACT-03 hold for
+   next month and ACT-05 month quick fills. Check the code first:
    later releases may have covered parts of them.
 
 10. **Audit roadmap, next round** ([docs/AUDIT-2026-11.md](docs/AUDIT-2026-11.md) section H): Stage 1

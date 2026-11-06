@@ -194,6 +194,18 @@ describe('availability', () => {
     });
   });
 
+  it('names an overspending carried in by a category that keeps it, and still reads as overspent', () => {
+    const kept = { ...base, keepOverspending: 1, carryOver: -5_000, balance: -5_000 };
+    expect(availability(kept, false)).toEqual({
+      kind: 'overspent',
+      remaining: -5_000,
+      caption: 'Overspending kept',
+    });
+    // The month it happens it is plain overspending, and a category that resets never says kept
+    expect(availability({ ...kept, carryOver: 0 }, false).caption).toBe('Overspent');
+    expect(availability({ ...kept, keepOverspending: 0 }, false).caption).toBe('Overspent');
+  });
+
   it('an overspent envelope with a target is still overspent', () => {
     const cat = { ...base, balance: -100, spent: 100, target: target(50) };
     expect(availability(cat, false).kind).toBe('overspent');

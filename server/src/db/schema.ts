@@ -69,6 +69,9 @@ export const categories = sqliteTable('categories', {
   linkedAccountId: text('linked_account_id').references(() => accounts.id, {
     onDelete: 'set null',
   }),
+  /** 1 = an overspent month's deficit carries into the next instead of starting it at zero,
+   * for spending that will be paid back (budgetLedger.ts rollOver). Expense categories only. */
+  keepOverspending: integer('keep_overspending').notNull().default(0),
 });
 
 export const payees = sqliteTable('payees', {

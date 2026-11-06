@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.110
+
+- **Keep overspending, for money you'll be paid back.** In **Settings → Categories → Edit**, a category can now **Keep overspending**. Normally an envelope that ends a month overspent starts the next at $0 and the money comes out of Ready to assign. With this on, the deficit carries into the next month instead, so Ready to assign isn't reduced until you assign money to cover it or the repayment arrives and you give it that category (then it's back to $0). The budget reads **Overspending kept** on that envelope, and Review still lists it as overspent, marked **kept until repaid**. Card purchases that no envelope money backed stay card debt until the money that covers the deficit arrives, which then reserves them on the card payment. It is off for every existing category, income and card payment categories can't use it, and an access token can't turn it on. Your backup includes the setting; older backups restore with it off.
+
 ## 0.2.0-up.109
 
 - **A refused budget amount stays in the box.** Typing an amount for an envelope no longer closes the box before the server has answered. It shows **Saving…** while the request is on its way (a second Enter sends nothing more), and if the amount is refused, for example because it is more than you have to assign, the box stays open with what you typed and **Not saved** plus the reason. On a phone, the sheet stays open the same way. Nothing says it saved until it has.

@@ -446,6 +446,8 @@ describe('categorise tokens and categories', () => {
       ['PUT', `/categories/${coffee.id}`, { name: 'x', sortOrder: 9 }],
       // Linking an envelope to an account changes what it holds: owner only
       ['PUT', `/categories/${coffee.id}`, { linkedAccountId: 'mock' }],
+      // Keeping an overspent month's deficit changes what Ready to assign means: owner only
+      ['PUT', `/categories/${coffee.id}`, { keepOverspending: 1 }],
       ['POST', '/categories', { groupId, name: 'x', id: 'chosen' }],
     ];
     for (const [method, path, body] of refused)

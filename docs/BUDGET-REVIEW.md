@@ -19,6 +19,10 @@ plans, goals and the forecast together.
 | Assigned to later months      | `futureAssigned`                  | Listed by month; it is reserved today            |
 | Unassigned (or over-assigned) | `toBeBudgeted`                    | Assign it, or reduce an assignment               |
 
+A category set to **Keep overspending** (for spending that will be paid back) stays in the
+overspent list, marked `kept`, until its deficit is covered or repaid; see
+[the overspending rule](ENVELOPE-FUNDING.md#the-overspending-rule).
+
 Missing exchange rates mark the review incomplete. A reconciled transaction cannot be
 categorised from here, as anywhere else in the app.
 

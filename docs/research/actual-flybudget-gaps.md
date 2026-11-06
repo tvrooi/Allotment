@@ -113,6 +113,10 @@ so this is not a case for copying Actual wholesale.
 
 ## P2 · ACT-04: keep overspending in a category
 
+> **Built in 0.2.0-up.110:** `categories.keep_overspending`, see
+> [ENVELOPE-FUNDING.md](../ENVELOPE-FUNDING.md#the-overspending-rule). The notes below are the
+> original gap.
+
 - **Actual:** **Rollover overspending** per category: a negative balance carries into the next month
   instead of resetting, and is excluded from `last-month-overspent` (`carryover-<id>` in
   `envelope.ts`; `setCategoryCarryover`, `actions.ts` line 703). Used for reimbursable expenses.

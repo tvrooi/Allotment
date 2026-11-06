@@ -33,7 +33,8 @@ export interface BudgetReview {
     accountName: string | null;
   }[];
   uncategorisedCount: number;
-  deficits: GroupedItem[];
+  /** `kept`: the category keeps its overspending on purpose (reimbursable spending) */
+  deficits: (GroupedItem & { kept: boolean })[];
   targetShortfalls: (GroupedItem & { dueDate: string | null })[];
   commitments: { month: string; amount: number; categories: GroupedItem[] }[];
   cards: {

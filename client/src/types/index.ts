@@ -299,6 +299,8 @@ export interface Category {
   hidden?: number;
   /** The account this envelope follows: transfers into it fund the envelope */
   linkedAccountId?: string | null;
+  /** 1 = an overspent month's deficit carries into the next instead of starting it at zero */
+  keepOverspending?: number;
   /** With `?usage=1` (getCategoriesWithUsage) */
   transactionCount?: number;
   lastUsedDate?: string | null;
@@ -402,6 +404,8 @@ export interface BudgetCategory {
   paymentAccountId?: string | null;
   /** The account this envelope follows (linked envelopes) */
   linkedAccountId?: string | null;
+  /** 1 = keeps an overspent month's deficit for the next month (reimbursable spending) */
+  keepOverspending?: number;
   budgeted: number;
   /** Net transfers into the linked account this month: in the envelope like an assignment */
   transferred?: number;

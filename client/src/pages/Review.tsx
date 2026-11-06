@@ -379,6 +379,9 @@ function NeedsAttention({ review, group }: { review: api.BudgetReview; group: st
                 <li key={d.categoryId} className="flex justify-between gap-2">
                   <Link to={`/budget/category/${d.categoryId}`} className="text-text">
                     {d.name} <span className="text-xs text-text-tertiary">{d.groupName}</span>
+                    {d.kept && (
+                      <span className="ml-1 text-xs text-text-tertiary">· kept until repaid</span>
+                    )}
                   </Link>
                   <span className="tabular-nums text-negative">{formatCurrency(-d.amount)}</span>
                 </li>

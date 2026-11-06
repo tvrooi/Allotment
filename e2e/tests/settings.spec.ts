@@ -69,6 +69,28 @@ test.describe('categories', () => {
     await expect.poll(async () => (await api.category('Parking'))?.icon).toBe('Dog');
   });
 
+  test('keeps a category’s overspending, and an income category can’t', async ({ page, api }) => {
+    await page.getByRole('button', { name: 'Edit Parking' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Edit category' });
+    const keep = dialog.getByRole('checkbox', { name: /Keep overspending/ });
+    await expect(keep).not.toBeChecked();
+    await keep.check();
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(dialog).toBeHidden();
+    await expect.poll(async () => (await api.category('Parking'))?.keepOverspending).toBe(1);
+
+    // It is still on when the dialog is opened again, and can be turned off
+    await page.getByRole('button', { name: 'Edit Parking' }).click();
+    await expect(keep).toBeChecked();
+    await keep.uncheck();
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect.poll(async () => (await api.category('Parking'))?.keepOverspending).toBe(0);
+
+    // Income has no envelope to overspend
+    await page.getByRole('button', { name: 'Edit Paychecks' }).click();
+    await expect(dialog.getByRole('checkbox', { name: /Keep overspending/ })).toHaveCount(0);
+  });
+
   test('renames a category from the keyboard', async ({ page, api }) => {
     await page.getByRole('button', { name: 'Edit Parking' }).focus();
     await page.keyboard.press('Enter');

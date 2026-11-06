@@ -165,6 +165,7 @@ export function useUpdateCategory() {
         icon?: string;
         budgetType?: string | null;
         linkedAccountId?: string | null;
+        keepOverspending?: 0 | 1;
       };
     }) => categoriesApi.updateCategory(id, data),
     onMutate: async ({ id }) => {
@@ -173,8 +174,8 @@ export function useUpdateCategory() {
     },
     onSuccess: (_, { id, data }, ctx) => {
       qc.invalidateQueries({ queryKey: ['categories'] });
-      // A linked account changes what the envelope holds
-      if ('linkedAccountId' in data) refreshFunding(qc);
+      // A linked account, or keeping overspending, changes what the envelope holds
+      if ('linkedAccountId' in data || 'keepOverspending' in data) refreshFunding(qc);
       if (!ctx?.old) return;
       const snapshot = ctx.old;
       useUndoStore.getState().push({
@@ -187,6 +188,9 @@ export function useUpdateCategory() {
             budgetType: snapshot.budgetType,
             ...('linkedAccountId' in data
               ? { linkedAccountId: snapshot.linkedAccountId ?? null }
+              : {}),
+            ...('keepOverspending' in data
+              ? { keepOverspending: snapshot.keepOverspending === 1 ? (1 as const) : (0 as const) }
               : {}),
           });
           qc.invalidateQueries({ queryKey: ['categories'] });

@@ -91,7 +91,10 @@ type CardFunding = ReturnType<typeof calculateCardFunding>;
 /** One category's months, from the budget start on */
 interface CategoryHistory {
   category: CategoryRow;
-  /** An expense envelope that ends a month overspent starts the next at zero (see rollOver) */
+  /** An expense envelope (not income, not a card payment): the only kind that follows an account */
+  expense: boolean;
+  /** An expense envelope that ends a month overspent starts the next at zero (see rollOver),
+   * unless its category keeps its overspending (reimbursables) */
   resets: boolean;
   /** Assignments by month, for months from the budget start */
   assigned: Map<string, number>;
@@ -143,7 +146,8 @@ export interface Ledger {
  * expense envelope that ends a month overspent starts the next month at zero: the money was
  * already spent from the accounts, so resources (and therefore what's left to assign) already
  * show it, and the deficit isn't carried forward forever. Positive balances roll over. Card
- * payment categories and income categories keep a running total.
+ * payment categories, income categories and categories set to keep their overspending (for
+ * money that will be paid back) keep a running total.
  */
 export function rollOver(months: Map<string, number>, resets: boolean): number {
   let carry = 0;
@@ -182,7 +186,11 @@ function build(): Ledger {
       category.id,
       {
         category,
-        resets: !incomeGroups.has(category.groupId) && !paymentIds.has(category.id),
+        expense: !incomeGroups.has(category.groupId) && !paymentIds.has(category.id),
+        resets:
+          !incomeGroups.has(category.groupId) &&
+          !paymentIds.has(category.id) &&
+          !category.keepOverspending,
         assigned: new Map(),
         activity: new Map(),
         transferred: new Map(),
@@ -209,7 +217,7 @@ function build(): Ledger {
   // Only an expense envelope follows its account (the categories route allows no other)
   for (const r of linkedTransfers()) {
     const history = envelopes.get(r.categoryId);
-    if (history?.resets) history.transferred.set(r.month, r.total);
+    if (history?.expense) history.transferred.set(r.month, r.total);
   }
   for (const history of envelopes.values()) {
     const months = [
@@ -438,6 +446,32 @@ function carryInto(l: Ledger, h: CategoryHistory, month: string, today: string):
     carry = settle(carry, h.assigned.get(m)!, h.resets);
   }
   return carry;
+}
+
+/**
+ * How much of the deficit a category that keeps its overspending carries into `month` is cash
+ * already spent, as opposed to a negative assignment in a later month (a release of money that
+ * was never there). `balance` is its Available at the end of `fromMonth`, the month spending is
+ * known up to. Later assignments can only cover the cash part, never add to it.
+ */
+export function cashDeficitInto(
+  l: Ledger,
+  categoryId: string,
+  balance: number,
+  fromMonth: string,
+  month: string,
+): number {
+  const h = l.envelopes.get(categoryId);
+  if (!h || h.resets) return 0;
+  let carry = balance;
+  let cash = Math.max(0, -balance);
+  for (const m of h.assignedMonths) {
+    if (m <= fromMonth) continue;
+    if (m >= month) break;
+    carry += h.assigned.get(m)!;
+    cash = Math.min(cash, Math.max(0, -carry));
+  }
+  return cash;
 }
 
 /**

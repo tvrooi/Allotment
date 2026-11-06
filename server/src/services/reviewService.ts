@@ -90,6 +90,8 @@ export function reviewState(today = todayIso()) {
       groupId: c.groupId,
       groupName: c.groupName,
       amount: -c.balance,
+      // Carried from earlier months on purpose (reimbursable spending); still counted as overspent
+      kept: c.keepOverspending === 1,
     }));
   const targetShortfalls = cats
     .filter((c) => c.target && c.target.underfunded > 0)

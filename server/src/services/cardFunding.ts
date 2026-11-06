@@ -10,7 +10,13 @@ import {
 import { convertAmount, currencyContext, type CurrencyContext } from './mainAmountService.js';
 
 /** An expense category's balance, and optionally its net change (assigned + activity) by month */
-type Category = { id: string; balance: number; months?: Map<string, number> };
+type Category = {
+  id: string;
+  balance: number;
+  months?: Map<string, number>;
+  /** Keeps a deficit into later months instead of starting each month at zero */
+  keepsOverspending?: boolean;
+};
 export interface CardPosition {
   accountId: string;
   categoryId: string;
@@ -189,8 +195,8 @@ export function calculateCardFunding(
   // Assignments and cash activity take priority as of the requested date. Retrospective
   // funding changes how much of a purchase is cash-backed, without generating ledger rows.
   // Within a month, all of its assignments and cash activity back its card purchases. Like the
-  // envelopes, a category that ends a month overspent starts the next at zero, so an old cash
-  // deficit doesn't block new purchases and a later assignment doesn't fund an earlier month's.
+  // envelopes, a category that ends a month overspent starts the next at zero (unless it keeps
+  // its overspending), so an old cash deficit doesn't block new purchases and a later assignment doesn't fund an earlier month's.
   const base = new Map(
     expenseCategories
       .filter((c) => !paymentIds.has(c.id))
@@ -208,6 +214,7 @@ export function calculateCardFunding(
       const m = t.date.slice(0, 7);
       months.set(m, (months.get(m) ?? 0) - amount(t));
     }
+  const keeping = new Set(expenseCategories.filter((c) => c.keepsOverspending).map((c) => c.id));
   const pool = new Map<string, { month: string; value: number }>();
   // A dropped deficit first comes from the category's unfunded card purchases. A later refund
   // of those reduces the debt (and its shortfall) but must not refill the envelope as well.
@@ -219,26 +226,6 @@ export function calculateCardFunding(
       deficit -= dropped;
     }
   };
-  const poolAt = (id: string, month: string) => {
-    const p = pool.get(id) ?? { month: '', value: 0 };
-    pool.set(id, p);
-    const reset = () => {
-      if (p.value < 0) discard(id, -p.value);
-      p.value = Math.max(0, p.value);
-    };
-    const months = base.get(id) ?? new Map<string, number>();
-    const due = [...months.keys()].filter((m) => m > p.month && m <= month).sort();
-    for (const m of due) {
-      reset();
-      p.value += months.get(m)!;
-      p.month = m;
-    }
-    if (p.month < month) {
-      reset();
-      p.month = month;
-    }
-    return p;
-  };
   for (const s of states) s.native = s.account?.startingBalance ?? 0;
   const add = (categoryId: string, date: string, value: number) => {
     if (value) adjustments.push({ categoryId, date, amount: value });
@@ -246,6 +233,48 @@ export function calculateCardFunding(
   const reserve = (s: (typeof states)[number], date: string, value: number) => {
     s.reserve += value;
     add(s.mapping.categoryId, date, value);
+  };
+  // Money that brings a kept category's carried deficit back toward zero first repays cash
+  // overspending, then stands behind the earlier card purchases it left unfunded: they now have
+  // an envelope's cash behind them, so the card payment reserves it (it is not left to be
+  // assigned again).
+  const cover = (id: string, month: string, funds: number, deficit: number) => {
+    const open = (st: (typeof states)[number]) =>
+      Math.max(0, (st.unfunded.get(id) ?? 0) - (st.discarded.get(id) ?? 0));
+    const owed = states.reduce((sum, st) => sum + open(st), 0);
+    let toCard = Math.min(Math.max(0, funds - Math.max(0, deficit - owed)), deficit, owed);
+    for (const st of states) {
+      const paid = Math.min(toCard, open(st));
+      if (!paid) continue;
+      st.unfunded.set(id, (st.unfunded.get(id) ?? 0) - paid);
+      st.funded += paid;
+      reserve(st, `${month}-01`, paid);
+      toCard -= paid;
+    }
+  };
+  const poolAt = (id: string, month: string) => {
+    const p = pool.get(id) ?? { month: '', value: 0 };
+    pool.set(id, p);
+    const reset = () => {
+      // A category that keeps its overspending carries the deficit, so what explains it stays open
+      if (keeping.has(id)) return;
+      if (p.value < 0) discard(id, -p.value);
+      p.value = Math.max(0, p.value);
+    };
+    const months = base.get(id) ?? new Map<string, number>();
+    const due = [...months.keys()].filter((m) => m > p.month && m <= month).sort();
+    for (const m of due) {
+      reset();
+      const net = months.get(m)!;
+      if (keeping.has(id) && net > 0 && p.value < 0) cover(id, m, net, -p.value);
+      p.value += net;
+      p.month = m;
+    }
+    if (p.month < month) {
+      reset();
+      p.month = month;
+    }
+    return p;
   };
   const money = (native: number, s: (typeof states)[number], date: string) => {
     const value = convertAmount(native, s.account?.currency ?? ctx.budget, ctx.budget, date, ctx);

@@ -156,6 +156,36 @@ describe('card payment reserves', () => {
     expect(position()).toMatchObject({ available: 0, shortfall: 8000 });
     expect(state()).toMatchObject({ reserved: 5000, unassigned: 95000 });
   });
+  it('keeps an unfunded card purchase as card debt, not cash, when the category keeps its overspending', () => {
+    setup();
+    db.update(cardFunding).set({ startDate: '2026-09-01' }).run();
+    db.update(categories).set({ keepOverspending: 1 }).where(eq(categories.id, 'food')).run();
+    entry('september', -8000, 'food', { date: '2026-09-15' });
+    // The deficit carries into October, and what explains it stays open: it is card debt, so
+    // resources leave it out and Ready to assign is not charged for it twice
+    expect(cat()).toMatchObject({ carryOver: -8000, balance: -8000 });
+    expect(position()).toMatchObject({ debt: 8000, available: 0, shortfall: 8000 });
+    expect(state()).toMatchObject({ resources: 100000, envelopes: 0, unassigned: 100000 });
+    // A month ahead agrees
+    expect(fundingState(date, '2026-11')).toMatchObject({ envelopes: 0, unassigned: 100000 });
+  });
+  it('funds a kept card purchase when its deficit is covered, so the money is not assigned twice', () => {
+    setup();
+    db.update(cardFunding).set({ startDate: '2026-09-01' }).run();
+    db.update(categories).set({ keepOverspending: 1 }).where(eq(categories.id, 'food')).run();
+    entry('september', -8000, 'food', { date: '2026-09-15' });
+    expect(position()).toMatchObject({ debt: 8000, available: 0, shortfall: 8000 });
+    // October's assignment brings the envelope back to zero: it now stands behind the purchase
+    assign('food', 8000);
+    expect(cat()).toMatchObject({ carryOver: -8000, balance: 0 });
+    expect(position()).toMatchObject({ available: 8000, shortfall: 0 });
+    expect(state()).toMatchObject({ resources: 100000, unassigned: 92000 });
+    // Half of it covers half: cash overspending is repaid before card purchases are funded
+    db.delete(budgetMonths).run();
+    assign('food', 3000);
+    expect(position()).toMatchObject({ available: 3000, shortfall: 5000 });
+    expect(state()).toMatchObject({ unassigned: 97000 });
+  });
   it('lets a refund of an unfunded purchase from last month reduce the debt without refilling the envelope', () => {
     setup();
     db.update(cardFunding).set({ startDate: '2026-09-01' }).run();
