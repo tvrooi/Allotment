@@ -46,6 +46,7 @@ export const updateCategory = (
     icon?: string;
     budgetType?: string | null;
     linkedAccountId?: string | null;
+    keepOverspending?: 0 | 1;
   },
 ) => apiFetch<Category>(`/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 

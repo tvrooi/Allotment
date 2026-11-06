@@ -40,6 +40,7 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
   const [groupId, setGroupId] = useState('');
   const [budgetType, setBudgetType] = useState<BudgetType>('flexible');
   const [linkedAccountId, setLinkedAccountId] = useState('');
+  const [keepOverspending, setKeepOverspending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { data: accounts } = useAccounts();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -53,6 +54,7 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
     setGroupId(category.groupId);
     setBudgetType((category.budgetType as BudgetType) ?? 'flexible');
     setLinkedAccountId(category.linkedAccountId ?? '');
+    setKeepOverspending(category.keepOverspending === 1);
     setError(null);
     setShowEmojiPicker(false);
   });
@@ -81,6 +83,8 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
       data.budgetType = budgetType;
     if (!isIncome && (linkedAccountId || null) !== (category.linkedAccountId ?? null))
       data.linkedAccountId = linkedAccountId || null;
+    if (!isIncome && keepOverspending !== (category.keepOverspending === 1))
+      data.keepOverspending = keepOverspending ? 1 : 0;
 
     if (Object.keys(data).length > 0) {
       try {
@@ -201,6 +205,28 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
               Money you transfer into this account from another budget account goes into this
               envelope, as if you had assigned it. Moving money back out takes it out again.
             </p>
+          </div>
+        )}
+
+        {!isIncome && (
+          <div className="flex items-start gap-3 text-sm">
+            <input
+              id="keep-overspending"
+              type="checkbox"
+              checked={keepOverspending}
+              onChange={(e) => setKeepOverspending(e.target.checked)}
+              className="mt-0.5 accent-brand-600"
+            />
+            <div>
+              <label htmlFor="keep-overspending" className="block font-medium text-text">
+                Keep overspending
+              </label>
+              <p className="text-xs text-text-tertiary">
+                For spending that will be paid back. An overspent month carries into the next
+                instead of starting at zero, and Ready to assign is not reduced until you assign
+                money to cover it or the repayment arrives.
+              </p>
+            </div>
           </div>
         )}
 

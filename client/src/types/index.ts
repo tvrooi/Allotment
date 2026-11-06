@@ -19,7 +19,13 @@ export type AccountType =
   | 'other_liability';
 
 export type AccountGroup =
-  'cash' | 'credit' | 'investments' | 'super' | 'property' | 'loans' | 'other';
+  | 'cash'
+  | 'credit'
+  | 'investments'
+  | 'super'
+  | 'property'
+  | 'loans'
+  | 'other';
 
 export interface AccountTypeInfo {
   value: AccountType;
@@ -299,6 +305,8 @@ export interface Category {
   hidden?: number;
   /** The account this envelope follows: transfers into it fund the envelope */
   linkedAccountId?: string | null;
+  /** 1 = an overspent month's deficit carries into the next instead of starting it at zero */
+  keepOverspending?: number;
   /** With `?usage=1` (getCategoriesWithUsage) */
   transactionCount?: number;
   lastUsedDate?: string | null;
@@ -402,6 +410,8 @@ export interface BudgetCategory {
   paymentAccountId?: string | null;
   /** The account this envelope follows (linked envelopes) */
   linkedAccountId?: string | null;
+  /** 1 = keeps an overspent month's deficit for the next month (reimbursable spending) */
+  keepOverspending?: number;
   budgeted: number;
   /** Net transfers into the linked account this month: in the envelope like an assignment */
   transferred?: number;
@@ -619,7 +629,15 @@ export type ReportMode = 'total' | 'time';
 export type ReportGroupBy = 'category' | 'categoryGroup' | 'payee' | 'account' | 'month';
 export type BalanceType = 'expense' | 'income' | 'net';
 export type DatePresetCustom =
-  '1m' | 'last-month' | '3m' | '6m' | '12m' | 'ytd' | 'last-year' | 'all' | 'custom';
+  | '1m'
+  | 'last-month'
+  | '3m'
+  | '6m'
+  | '12m'
+  | 'ytd'
+  | 'last-year'
+  | 'all'
+  | 'custom';
 
 /** `preset: 'custom'` is frozen to `from`/`to`; other presets are live, relative to today. */
 export interface ReportDateRange {
@@ -670,7 +688,12 @@ export interface DashboardPage {
 }
 
 export type BuiltinWidgetType =
-  'summary' | 'net-worth' | 'income-expenses' | 'spending' | 'spending-trends' | 'calendar';
+  | 'summary'
+  | 'net-worth'
+  | 'income-expenses'
+  | 'spending'
+  | 'spending-trends'
+  | 'calendar';
 
 interface WidgetBase {
   id: string;
@@ -776,7 +799,12 @@ export type ScheduleStatus = 'active' | 'paused' | 'canceled';
 export type ScheduleSource = 'manual' | 'detected';
 export type WeekendAdjust = 'none' | 'before' | 'after' | 'closest';
 export type OccurrenceDisplayStatus =
-  'upcoming' | 'due' | 'waiting' | 'paid' | 'skipped' | 'cancelled';
+  | 'upcoming'
+  | 'due'
+  | 'waiting'
+  | 'paid'
+  | 'skipped'
+  | 'cancelled';
 export type MatchType = 'automatic' | 'manual';
 
 export type RecurrenceRule =

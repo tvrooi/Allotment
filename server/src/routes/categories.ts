@@ -35,9 +35,13 @@ const categorySchema = z.object({
   hidden: z.union([z.literal(0), z.literal(1)]).optional(),
 });
 
-/** Editing a category may also link it to an account (never on create, never by a token) */
+/**
+ * Editing a category may also link it to an account, or keep its overspending into the next
+ * month (neither on create, neither by a token: both change what Ready to assign means)
+ */
 const categoryEditSchema = categorySchema.partial().extend({
   linkedAccountId: z.string().min(1).max(64).nullable().optional(),
+  keepOverspending: z.union([z.literal(0), z.literal(1)]).optional(),
 });
 
 /** Account types an envelope can follow: cash the budget counts, not card debt */
@@ -263,6 +267,15 @@ categoriesRouter.put('/:id', (req, res) => {
       linked !== current.linkedAccountId,
     );
     if (error) return res.status(409).json({ error });
+  }
+  if (parsed.data.keepOverspending === 1) {
+    const group = db
+      .select()
+      .from(categoryGroups)
+      .where(eq(categoryGroups.id, parsed.data.groupId ?? current.groupId))
+      .get();
+    if (group?.isIncome)
+      return res.status(409).json({ error: 'Only an expense category can keep its overspending' });
   }
   if (Object.keys(parsed.data).length) {
     db.update(categories).set(parsed.data).where(eq(categories.id, req.params.id)).run();

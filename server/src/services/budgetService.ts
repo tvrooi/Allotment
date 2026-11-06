@@ -35,6 +35,7 @@ function cardAt(l: Ledger, asOf: string) {
         .map((c) => ({
           id: c.id,
           balance: c.balance,
+          keepsOverspending: c.keepOverspending === 1,
           // Month by month, so funding follows the same monthly reset as the envelopes
           get months() {
             return new Map(c.history()).set(
@@ -136,11 +137,18 @@ export function fundingState(asOf = todayIso(), month = asOf.slice(0, 7), today 
   const reserved = viewed.reduce((s, c) => s + Math.max(0, c.balance), 0) + futureAssigned;
   // What each envelope holds of the accounts' money. A deficit is cash already spent, except
   // the part unfunded card purchases explain: that is card debt, outside resources. In a later
-  // month only a negative assignment can leave a deficit, and a release is not received cash.
+  // month only a negative assignment can leave a deficit, and a release is not received cash,
+  // unless the category keeps its overspending: then the deficit carried in is cash already spent.
+  const cash = (c: (typeof cats)[number]) =>
+    viewMonth > asOfMonth
+      ? c.carryOver < 0
+        ? c.carryOver + Math.max(0, c.budgeted)
+        : Math.max(0, c.balance)
+      : c.balance;
   const credit = (c: (typeof cats)[number]) =>
-    Math.min(Math.max(0, -c.balance), card.unfunded.get(c.id) ?? 0);
+    Math.min(Math.max(0, -cash(c)), card.unfunded.get(c.id) ?? 0);
   const held = (c: (typeof cats)[number]) =>
-    c.paymentAccountId || viewMonth > asOfMonth ? Math.max(0, c.balance) : c.balance + credit(c);
+    c.paymentAccountId ? Math.max(0, c.balance) : cash(c) + credit(c);
   const envelopes = viewed.reduce((s, c) => s + held(c), 0);
   const cashOverspent = viewed.reduce((s, c) => s + Math.max(0, -held(c)), 0);
   const {

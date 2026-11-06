@@ -88,8 +88,19 @@ function baseBudget(raw: Raw) {
     .run();
   db.insert(categories)
     .values([
-      ...EXPENSES.map((id) => ({ id, name: id, groupId: 'expense' })),
-      { id: LINKED, name: 'Saver goal', groupId: 'expense', linkedAccountId: 'saver' },
+      ...EXPENSES.map((id) => ({
+        id,
+        name: id,
+        groupId: 'expense',
+        keepOverspending: raw.kept.includes(id) ? 1 : 0,
+      })),
+      {
+        id: LINKED,
+        name: 'Saver goal',
+        groupId: 'expense',
+        linkedAccountId: 'saver',
+        keepOverspending: raw.kept.includes(LINKED) ? 1 : 0,
+      },
       { id: 'salary', name: 'Salary', groupId: 'income' },
     ])
     .run();
@@ -118,6 +129,8 @@ interface Raw {
   start: { month: string; day: string | null } | null;
   txns: Row[];
   assigned: { month: string; categoryId: string; budgeted: number }[];
+  /** Envelopes that keep an overspent month's deficit instead of starting the next at zero */
+  kept: string[];
 }
 
 const day = (month: string, d: number) => `${month}-${String(d).padStart(2, '0')}`;
@@ -192,6 +205,7 @@ const scenarioArb = fc
       }),
       { maxLength: 14 },
     ),
+    kept: fc.subarray(ENVELOPES),
   })
   .map((s): Raw => {
     const ids = [...PERSONAL, ...OUTSIDE];
@@ -208,6 +222,7 @@ const scenarioArb = fc
       },
       txns: [],
       assigned: [],
+      kept: s.kept,
     };
     const created = new Map(raw.accounts.map((a) => [a.id, a.createdAt]));
     // Accounts open with their first transaction, as in readyToAssign.test.ts
@@ -344,20 +359,30 @@ function recompute(raw: Raw, month: string) {
       .filter((a) => a.categoryId === c && a.month === m)
       .reduce((s, a) => s + a.budgeted, 0);
 
-  // Each envelope month by month: a month that ends below zero starts the next at zero
+  // Each envelope month by month: a month that ends below zero starts the next at zero, unless
+  // the envelope keeps its overspending
   const available = new Map<string, number>();
+  const carriedIn = new Map<string, number>();
   for (const c of ENVELOPES) {
     let avail = 0;
-    for (const m of MONTHS.filter((m) => m >= startMonth && m <= month))
-      avail = Math.max(0, avail) + assignedIn(c, m) + transferred(c, m) + activity(c, m);
+    for (const m of MONTHS.filter((m) => m >= startMonth && m <= month)) {
+      carriedIn.set(c, raw.kept.includes(c) ? avail : Math.max(0, avail));
+      avail = carriedIn.get(c)! + assignedIn(c, m) + transferred(c, m) + activity(c, m);
+    }
     available.set(c, avail);
   }
   // A later month than today's holds only what its envelopes hold: there a deficit can only be
-  // a negative assignment, which releases no received cash
+  // a negative assignment, which releases no received cash. A deficit carried in by an envelope
+  // that keeps its overspending is cash already spent, so it stays.
   const later = month > CURRENT;
-  const held = (v: number) => (later ? Math.max(0, v) : v);
-  const envelopes = [...available.values()].reduce((s, v) => s + held(v), 0);
-  const cashOverspent = [...available.values()].reduce((s, v) => s + Math.max(0, -held(v)), 0);
+  const held = (c: string) => {
+    const v = available.get(c)!;
+    if (!later) return v;
+    const carry = carriedIn.get(c) ?? 0;
+    return carry < 0 ? carry + Math.max(0, assignedIn(c, month)) : Math.max(0, v);
+  };
+  const envelopes = ENVELOPES.reduce((s, c) => s + held(c), 0);
+  const cashOverspent = ENVELOPES.reduce((s, c) => s + Math.max(0, -held(c)), 0);
   const futureAssigned = raw.assigned
     .filter((a) => a.month > month)
     .reduce((s, a) => s + Math.max(0, a.budgeted), 0);

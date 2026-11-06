@@ -156,6 +156,19 @@ describe('card payment reserves', () => {
     expect(position()).toMatchObject({ available: 0, shortfall: 8000 });
     expect(state()).toMatchObject({ reserved: 5000, unassigned: 95000 });
   });
+  it('keeps an unfunded card purchase as card debt, not cash, when the category keeps its overspending', () => {
+    setup();
+    db.update(cardFunding).set({ startDate: '2026-09-01' }).run();
+    db.update(categories).set({ keepOverspending: 1 }).where(eq(categories.id, 'food')).run();
+    entry('september', -8000, 'food', { date: '2026-09-15' });
+    // The deficit carries into October, and what explains it stays open: it is card debt, so
+    // resources leave it out and Ready to assign is not charged for it twice
+    expect(cat()).toMatchObject({ carryOver: -8000, balance: -8000 });
+    expect(position()).toMatchObject({ debt: 8000, available: 0, shortfall: 8000 });
+    expect(state()).toMatchObject({ resources: 100000, envelopes: 0, unassigned: 100000 });
+    // A month ahead agrees
+    expect(fundingState(date, '2026-11')).toMatchObject({ envelopes: 0, unassigned: 100000 });
+  });
   it('lets a refund of an unfunded purchase from last month reduce the debt without refilling the envelope', () => {
     setup();
     db.update(cardFunding).set({ startDate: '2026-09-01' }).run();

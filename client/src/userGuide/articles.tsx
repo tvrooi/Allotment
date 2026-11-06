@@ -240,6 +240,19 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         ),
       },
       {
+        heading: 'Spending you’ll be paid back for',
+        body: (
+          <p>
+            Normally an envelope that ends the month overspent starts the next one at $0, and the
+            money you spent comes out of Ready to assign. For spending someone will pay back, such
+            as a work expense, open the category (<b>Settings → Categories → Edit</b>) and tick{' '}
+            <b>Keep overspending</b>. Its deficit then carries into the next month and Ready to
+            assign isn’t reduced. When the repayment arrives and you give it that category, the
+            envelope is back to $0. Review still lists it as overspent, marked as kept until repaid.
+          </p>
+        ),
+      },
+      {
         heading: 'What Available is telling you',
         body: (
           <p>

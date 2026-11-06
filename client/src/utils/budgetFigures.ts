@@ -29,7 +29,13 @@ export function availability(
 ): { kind: AvailabilityKind; remaining: number; caption: string | null } {
   const { remaining } = categoryFigures(cat, isIncome);
   if (isIncome) return { kind: remaining > 0 ? 'available' : 'zero', remaining, caption: null };
-  if (remaining < 0) return { kind: 'overspent', remaining, caption: 'Overspent' };
+  if (remaining < 0)
+    return {
+      kind: 'overspent',
+      remaining,
+      // An overspent month the category keeps for repayment, carried in from an earlier one
+      caption: cat.keepOverspending === 1 && cat.carryOver < 0 ? 'Overspending kept' : 'Overspent',
+    };
   if (remaining === 0) return { kind: 'zero', remaining, caption: null };
   if (cat.target && cat.target.underfunded > 0)
     return { kind: 'short', remaining, caption: 'Short of target' };
