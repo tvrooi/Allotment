@@ -415,6 +415,8 @@ export interface BudgetCategory {
   /** Recurring debits still expected this month (positive cents; expense categories only) */
   expected?: number;
   expectedItems?: ExpectedDebit[];
+  /** The owner's note on this category (BUD-10), the same in every month; '' for none */
+  note?: string;
 }
 
 export interface ExpectedDebit {

@@ -6,6 +6,8 @@ import {
   budgetSettings,
   exchangeRates,
   budgetMonths,
+  budgetMonthNotes,
+  categoryNotes,
   categories,
   categoryGroups,
   customReports,
@@ -58,6 +60,8 @@ export function loadDemoBudget(today: Date): void {
     insert(dashboardPages, demo.dashboardPages);
     insert(dashboardWidgets, demo.dashboardWidgets);
     insert(goals, demo.goals);
+    insert(budgetMonthNotes, demo.budgetMonthNotes);
+    insert(categoryNotes, demo.categoryNotes);
   });
 
   // Recurring items get their occurrences the way the app makes them (three months ahead,

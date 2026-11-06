@@ -19,6 +19,8 @@ import {
   budgetSettings,
   exchangeRates,
   budgetHolds,
+  budgetMonthNotes,
+  categoryNotes,
   budgetMonths,
   budgetMoves,
   categories,
@@ -107,7 +109,7 @@ import { isCurrencyCode } from '../utils/currencies.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 28;
+export const BACKUP_VERSION = 29;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -139,6 +141,9 @@ const TABLES = {
   budgetMoves,
   // Money held for the next month (format 28)
   budgetHolds,
+  // Notes on months and categories (format 29)
+  budgetMonthNotes,
+  categoryNotes,
   rules,
   tags,
   transactionTags,

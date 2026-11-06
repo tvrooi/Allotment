@@ -213,6 +213,58 @@ the reviewed plan, since the cap is shared out in order and leaving one envelope
 others' amounts; apply rebuilds the plan with the same scope and refuses a different one (409). The
 client's `useScopedPlan` and `FundingRows` do the ticking for both dialogs.
 
+## Typing assignments (BUD-05)
+
+The desktop table's Assigned editor and the phone sheet read what is typed with
+`readAmountExpression` (`client/src/utils/amountExpression.ts`):
+
+- **Sums.** `+ - * /` (and `×`, `÷`) with brackets and the usual order: `100+50` saves $150, `150*2`
+  $300. Each number is read like any amount, in the budget's currency and separators (`12,50+1` with
+  a decimal comma). Worked in exact fractions (BigInt), rounded once to the minor unit, half away
+  from zero; no `eval`, no floats.
+- **Never relative.** A sum doesn't start from what the field held: `+50` saves $50, like typing 50.
+  One that starts with `*` or `/` (`*2`) is refused rather than guessed. Malformed sums, dividing by
+  zero and results beyond the server's bound are unreadable: the editor stays open, marked invalid.
+- **Plain amounts are unchanged.** Text with no operator between two numbers goes to
+  `readTypedAmount` as before (`-50`, `(50)`, `$1,234.50`).
+- **Signs agree.** An assignment can be negative on both desktop and phone (the phone used to drop
+  the sign), and the editor opens with the sign (`assignmentToInput`), so saving an unchanged
+  negative assignment keeps it.
+- **Keys (desktop).** Enter saves and closes; Escape cancels; Down or Tab saves and opens the next
+  envelope the table shows, Up or Shift+Tab the one before. Rows not on the page (collapsed
+  sections, inactive rows, the filter's misses) are skipped, because the neighbour is read from the
+  rendered rows (`tr[data-budget-row]`). An unchanged amount isn't saved again (no empty undo step).
+  A refused save keeps the editor open with its reason and doesn't move. With no row that way, an
+  arrow saves and closes and Tab saves and leaves the table.
+
+Not built: one typed amount applied to several selected envelopes at once (a batch write needs its
+own reviewed endpoint); Fund targets from a selection covers the common case.
+
+## The inspector and notes (BUD-10)
+
+`BudgetInspector.tsx` sits at the top of the sidebar (after Ready to assign on a phone). Ticking
+envelopes changes no money.
+
+- **Nothing ticked:** the month, with every expense envelope's Carried in, Assigned, Activity and
+  Available (`selectionFigures` in `utils/budgetFigures.ts`, so Assigned and Activity match the
+  Total expenses row), and the month's note.
+- **One ticked:** that envelope's figures, its availability caption and target, its note, Fund
+  target when it is short, and a link to its history and transactions.
+- **Several ticked:** only their sums, their names, and **Fund N targets**, which opens Fund targets
+  with only those ticked (`useScopedPlan.load(fetch, only)`; the others stay listed, unticked).
+  Card payment rows have no tick.
+
+**Notes.** `budget_month_notes` (one per month) and `category_notes` (one per category, the same in
+every month, deleted with its category), migration 0077, backup format 29. `services/budgetNotes.ts`
+is the one writer: `PUT /budget/:month/note` and `PUT /budget/category/:categoryId/note` (`{ note }`,
+at most 2,000 characters, trimmed, empty removes it); `GET /budget/:month/note`, and each category
+in `GET /budget/:month` carries `note`. Neither table has a `budget_revision` trigger: a note moves
+no money, so it never makes a funding preview stale. Owner only: an access token can read notes
+(GET under `/budget`) but never write them (`accessTokens.test.ts`). `NoteField.tsx` saves when the
+field is left, so ticking another envelope or closing the phone sheet keeps what was typed; a
+refused save keeps the text with the reason. On a phone, a category's note is in its amount sheet.
+The demo budget has one of each. The older, unused `budget_months.notes` column stays unread.
+
 ## Moves, coverage and undo
 
 Move money / Cover overspending works on desktop and phone. Choose two distinct

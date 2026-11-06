@@ -352,7 +352,7 @@ describe('receipts without a transaction yet', () => {
       lineItems: [{ description: 'Milk', amount: 100, categoryId: 'groceries' }],
     });
     const backup = createBackup() as Record<string, unknown>;
-    expect(backup.version).toBe(28);
+    expect(backup.version).toBe(29);
     expect(backup.receiptLineItems).toHaveLength(1);
   });
 });

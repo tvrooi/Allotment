@@ -21,6 +21,13 @@ import { budgetSummary, fundingRevision, fundingState } from '../services/budget
 import { withExpectedDebits } from '../services/expectedDebits.js';
 import { annualOverview } from '../services/annualOverview.js';
 import { setHold } from '../services/budgetHolds.js';
+import {
+  MAX_NOTE_LENGTH,
+  monthNote,
+  setCategoryNote,
+  setMonthNote,
+  withCategoryNotes,
+} from '../services/budgetNotes.js';
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import {
@@ -144,12 +151,37 @@ budgetRouter.put('/start', (req, res) => {
 // Each expense category also lists the recurring debits still expected this month
 budgetRouter.get('/:month', (req, res) =>
   res.json(
-    withExpectedDebits(
-      withHistoricActivity(budgetWithTargets(req.params.month), req.params.month),
-      req.params.month,
+    withCategoryNotes(
+      withExpectedDebits(
+        withHistoricActivity(budgetWithTargets(req.params.month), req.params.month),
+        req.params.month,
+      ),
     ),
   ),
 );
+
+// Notes (BUD-10): free text that moves no money. Before /:month/:categoryId, which would read
+// "note" as a category
+const noteSchema = z.object({ note: z.string().max(MAX_NOTE_LENGTH) });
+budgetRouter.get('/:month/note', (req, res) =>
+  res.json({ month: req.params.month, note: monthNote(req.params.month) }),
+);
+budgetRouter.put('/:month/note', (req, res) => {
+  const parsed = noteSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  res.json(setMonthNote(req.params.month, parsed.data.note));
+});
+budgetRouter.put('/category/:categoryId/note', (req, res, next) => {
+  const parsed = noteSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    res.json(setCategoryNote(req.params.categoryId, parsed.data.note));
+  } catch (error) {
+    if (error instanceof BudgetError)
+      return res.status(error.status).json({ error: error.message });
+    next(error);
+  }
+});
 
 // Hold money for the next month (ACT-03); before /:month/:categoryId, which would read "hold"
 // as a category

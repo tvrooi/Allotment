@@ -20,6 +20,32 @@ export function useBudgetSummary(month: string) {
   });
 }
 
+export function useMonthNote(month: string) {
+  return useQuery({
+    queryKey: ['budget-note', month],
+    queryFn: () => budgetApi.getMonthNote(month),
+  });
+}
+
+/** Saves a month's note (BUD-10). A note moves no money, so only the note is refetched */
+export function useSetMonthNote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ month, note }: { month: string; note: string }) =>
+      budgetApi.setMonthNote(month, note),
+    onSuccess: (saved) => qc.setQueryData(['budget-note', saved.month], saved),
+  });
+}
+
+/** Saves a category's note, shown in every month's budget (the global mutation cache refetches
+ * the budget, main.tsx) */
+export function useSetCategoryNote() {
+  return useMutation({
+    mutationFn: ({ categoryId, note }: { categoryId: string; note: string }) =>
+      budgetApi.setCategoryNote(categoryId, note),
+  });
+}
+
 export function useSetBudget() {
   const qc = useQueryClient();
   return useMutation({

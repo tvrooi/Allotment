@@ -1394,6 +1394,22 @@ export const budgetHolds = sqliteTable('budget_holds', {
   createdAt: text('created_at').notNull(),
 });
 
+/** BUD-10: the owner's note on a budget month (migration 0077). Moves no money. */
+export const budgetMonthNotes = sqliteTable('budget_month_notes', {
+  month: text('month').primaryKey(),
+  note: text('note').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+/** BUD-10: the owner's note on a category, kept from month to month (migration 0077) */
+export const categoryNotes = sqliteTable('category_notes', {
+  categoryId: text('category_id')
+    .primaryKey()
+    .references(() => categories.id, { onDelete: 'cascade' }),
+  note: text('note').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export const budgetRevision = sqliteTable('budget_revision', {
   id: integer('id').primaryKey(),
   revision: text('revision').notNull(),

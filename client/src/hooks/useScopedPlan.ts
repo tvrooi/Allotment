@@ -23,7 +23,9 @@ export function useScopedPlan<P extends { rows: PlanRow[] }>() {
   // Only the latest request may set the preview, so a slower earlier answer can't replace it
   const latest = useRef(0);
 
-  async function load(fetchPlan: (categoryIds?: string[]) => Promise<P>) {
+  /** Opens the plan for every category it touches, or ticked only for `only` (the envelopes
+   * selected in the budget table, BUD-10): the rest stay listed, unticked, to add back */
+  async function load(fetchPlan: (categoryIds?: string[]) => Promise<P>, only?: string[]) {
     const request = ++latest.current;
     setError(null);
     setPending(false);
@@ -31,10 +33,18 @@ export function useScopedPlan<P extends { rows: PlanRow[] }>() {
     try {
       const plan = await fetchPlan(undefined);
       if (request !== latest.current) return;
+      const ids = plan.rows.map((r) => r.categoryId);
+      const scoped = only && ids.filter((id) => only.includes(id));
+      if (scoped && !scoped.length) {
+        setError('None of these envelopes needs money for its target.');
+        return;
+      }
+      const shown = scoped && scoped.length < ids.length ? await fetchPlan(scoped) : plan;
+      if (request !== latest.current) return;
       setCandidates(plan.rows.map((r) => ({ categoryId: r.categoryId, name: r.name })));
-      setChecked(new Set(plan.rows.map((r) => r.categoryId)));
-      setScope(undefined);
-      setPreview(plan);
+      setChecked(new Set(scoped ?? ids));
+      setScope(shown === plan ? undefined : scoped);
+      setPreview(shown);
     } catch (err) {
       if (request === latest.current)
         setError(err instanceof Error ? err.message : 'Could not preview.');

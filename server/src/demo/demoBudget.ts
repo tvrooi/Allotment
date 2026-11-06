@@ -27,6 +27,8 @@ import type {
   dashboardPages,
   dashboardWidgets,
   goals,
+  budgetMonthNotes,
+  categoryNotes,
   payees,
   rules,
   schedules,
@@ -69,6 +71,9 @@ export interface DemoBudget {
   dashboardPages: Row<typeof dashboardPages>[];
   dashboardWidgets: Row<typeof dashboardWidgets>[];
   goals: Row<typeof goals>[];
+  /** A note on this month and one on an envelope (BUD-10) */
+  budgetMonthNotes: Row<typeof budgetMonthNotes>[];
+  categoryNotes: Row<typeof categoryNotes>[];
 }
 
 // ─── Random numbers ────────────────────────────────────────────────────────────
@@ -340,6 +345,8 @@ export function buildDemoBudget(today: Date): DemoBudget {
     dashboardPages: [],
     dashboardWidgets: [],
     goals: [],
+    budgetMonthNotes: [],
+    categoryNotes: [],
   };
   const budgetTypes = {} as Record<CategoryKey, BudgetType | undefined>;
   GROUPS.forEach((group, gi) => {
@@ -1521,5 +1528,16 @@ export function buildDemoBudget(today: Date): DemoBudget {
   widget('year', 'custom-report', 6, 4, 6, 4, { reportId: 'demo-report-topPayees' });
   widget('year', 'calendar', 0, 8, 12, 4, { meta: { name: 'Every day this year' } });
 
+  const notedAt = today.toISOString();
+  result.budgetMonthNotes.push({
+    month: currentMonth,
+    note: 'Rego is due soon: keep Rego & CTP topped up.',
+    updatedAt: notedAt,
+  });
+  result.categoryNotes.push({
+    categoryId: cat.groceries,
+    note: 'The warehouse run is split with the household.',
+    updatedAt: notedAt,
+  });
   return result;
 }

@@ -306,6 +306,30 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         ),
       },
       {
+        heading: 'Typing amounts',
+        body: (
+          <p>
+            You can type a sum in an envelope’s amount: <b>100+50</b> saves $150 and <b>150*2</b>{' '}
+            saves $300. A sum doesn’t add to what was there, so <b>+50</b> saves $50. On a computer,
+            press <b>Enter</b> to save, <b>Esc</b> to cancel, and the <b>down arrow</b> or{' '}
+            <b>Tab</b> to save and go to the next envelope (<b>up arrow</b> or <b>Shift+Tab</b> for
+            the one before). Envelopes you’ve hidden or filtered out are skipped.
+          </p>
+        ),
+      },
+      {
+        heading: 'The inspector and notes',
+        body: (
+          <p>
+            Beside the table, the inspector shows the whole month until you tick envelopes. Tick one
+            to see its figures, its target and its note; tick several to see their totals and fund
+            just their targets. Ticking never moves money. Write a note for the month there, or for
+            an envelope when it’s ticked (on a phone, in the envelope’s amount sheet). A note saves
+            when you leave the box, and an envelope’s note stays the same every month.
+          </p>
+        ),
+      },
+      {
         heading: 'Cards in the budget',
         body: (
           <p>

@@ -25,6 +25,24 @@ export const setHold = (month: string, amount: number) =>
     { method: 'PUT', body: JSON.stringify({ amount }) },
   );
 
+/** The longest note the server keeps (services/budgetNotes.ts) */
+export const MAX_NOTE_LENGTH = 2000;
+
+/** The owner's note on a month (BUD-10); '' for none */
+export const getMonthNote = (month: string) =>
+  apiFetch<{ month: string; note: string }>(`/budget/${month}/note`);
+export const setMonthNote = (month: string, note: string) =>
+  apiFetch<{ month: string; note: string }>(`/budget/${month}/note`, {
+    method: 'PUT',
+    body: JSON.stringify({ note }),
+  });
+/** The owner's note on a category, the same in every month; '' removes it */
+export const setCategoryNote = (categoryId: string, note: string) =>
+  apiFetch<{ categoryId: string; note: string }>(`/budget/category/${categoryId}/note`, {
+    method: 'PUT',
+    body: JSON.stringify({ note }),
+  });
+
 export interface CategoryHistory {
   categoryId: string;
   isIncome: boolean;

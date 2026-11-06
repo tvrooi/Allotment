@@ -214,9 +214,9 @@ so this is not a case for copying Actual wholesale.
 
 - **Actual:** the budget shows as many months side by side as the width allows; notes on
   categories, groups, months and accounts (`components/Notes.tsx`); merge categories.
-- **FlyBudget:** one month at a time. `budget_months.notes` exists
-  ([schema.ts](../../server/src/db/schema.ts#L144)) but nothing reads or writes it. Category merge is
-  ACT-01.
+- **FlyBudget:** one month at a time. Month and category notes since up.117 (BUD-10:
+  `budget_month_notes`, `category_notes`); notes on groups and accounts aren't built, and the old
+  `budget_months.notes` column stays unread. Category merge is ACT-01.
 - Related: `BUD-04`, `BUD-10` (inspector and notes).
 
 ## P3 · ACT-12: rule capabilities

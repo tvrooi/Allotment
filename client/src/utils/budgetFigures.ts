@@ -125,3 +125,22 @@ export function splitCategories(
   const hidden = inactive.filter((c) => !topUp.has(c));
   return { shown, hidden };
 }
+
+/**
+ * The inspector's figures for some expense envelopes (BUD-10): each is the sum of the table's own
+ * figures for those rows, so a selection reconciles with the table, and nothing is counted that
+ * isn't selected. `available` is `carriedIn + assigned + transferred + activity`.
+ */
+export function selectionFigures(cats: BudgetCategory[]) {
+  return cats.reduce(
+    (sum, c) => ({
+      carriedIn: sum.carriedIn + c.carryOver,
+      assigned: sum.assigned + c.budgeted,
+      transferred: sum.transferred + (c.transferred ?? 0),
+      activity: sum.activity + categoryFigures(c, false).actual,
+      available: sum.available + categoryFigures(c, false).remaining,
+      underfunded: sum.underfunded + (c.target?.underfunded ?? 0),
+    }),
+    { carriedIn: 0, assigned: 0, transferred: 0, activity: 0, available: 0, underfunded: 0 },
+  );
+}
