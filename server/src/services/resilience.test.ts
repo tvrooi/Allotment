@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import {
   accounts,
+  budgetHolds,
   budgetMonths,
   budgetMoves,
   budgetSettings,
@@ -26,6 +27,7 @@ import {
 } from '../db/schema.js';
 import { fundingRevision, fundingState } from './budgetService.js';
 import { applyMove, previewMove } from './budgetMoves.js';
+import { setHold } from './budgetHolds.js';
 import { previewTargetFunding, saveTarget } from './targetService.js';
 import { incomeOptions, previewPayday } from './paydayService.js';
 import { reviewState, bufferState } from './reviewService.js';
@@ -110,6 +112,7 @@ beforeEach(() => {
     reviewCompletions,
     goalStatusEvents,
     goals,
+    budgetHolds,
     budgetMoves,
     categoryPurposes,
     financialPriorities,
@@ -249,6 +252,7 @@ describe('7B resilience', () => {
       flexibility: 600_000,
       other: 0,
       overspent: 0,
+      held: 0,
       unassigned: 0,
     });
     const { unassigned, ...buckets } = r.partition!;
@@ -256,6 +260,18 @@ describe('7B resilience', () => {
     expect(r.essentials).toMatchObject({ monthly: 300_000, source: 'measured' });
     expect(r.coverageTenths).toBe(20);
     expect(r.status).toBe('no-target');
+  });
+
+  it('shows money held for next month, so the partition still adds up to resources', () => {
+    flex();
+    // $1,000 more arrives, uncategorised: ready to assign
+    tx('2026-10-10', 100_000, null);
+    expect(resilienceState().partition).toMatchObject({ held: 0, unassigned: 100_000 });
+    setHold(MONTH, 30_000);
+    const r = resilienceState();
+    expect(r.partition).toMatchObject({ held: 30_000, unassigned: 70_000 });
+    const { unassigned, ...buckets } = r.partition!;
+    expect(Object.values(buckets).reduce((s, v) => s + v, 0) + unassigned).toBe(r.resources);
   });
 
   it('follows money moves, not bank location', () => {

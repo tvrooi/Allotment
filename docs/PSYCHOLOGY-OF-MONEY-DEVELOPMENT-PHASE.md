@@ -134,7 +134,8 @@ Acceptance:
 Book basis: chapters 5, 7, 9, 10 and 13.
 
 The Review page's **Resilience** card partitions `fundingState.resources` exactly,
-using each expense category's positive availability plus its future assignments:
+using each expense category's positive availability plus its future assignments (money
+held for next month, ACT-03, is its own line, shown only while there is a hold):
 
 1. Card payment reserves.
 2. Committed bill reserves (categories with date or recurring targets).

@@ -284,6 +284,8 @@ export function resilienceState(today = todayIso()) {
       ? {
           ...buckets,
           overspent: state.cashOverspent ? -state.cashOverspent : 0,
+          // Held for the next month is neither assigned nor ready to assign (ACT-03)
+          held: state.held,
           unassigned: state.unassigned,
         }
       : null,

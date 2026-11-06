@@ -6,6 +6,7 @@ import type { BudgetSummary } from '../../types';
 import { formatCurrency } from '../../utils/currency';
 import { Button } from '../ui/Button';
 import { CurrencyInput } from '../ui/CurrencyInput';
+import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 
 /**
  * Hold part of this month's Ready to assign for the next month (ACT-03). Held money leaves
@@ -14,6 +15,8 @@ import { CurrencyInput } from '../ui/CurrencyInput';
  */
 export function HoldMoney({ summary }: { summary: BudgetSummary }) {
   const canSave = useCanSave();
+  // Text that isn't an amount stays in the field, which keeps the amount it had before
+  const { allValid, report } = useAmountValidity();
   const held = summary.holdAmount ?? 0;
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(0);
@@ -62,7 +65,9 @@ export function HoldMoney({ summary }: { summary: BudgetSummary }) {
         <form className="grid gap-2 text-left" onSubmit={(e) => e.preventDefault()}>
           <div className="grid gap-1 font-medium text-text-secondary">
             <span aria-hidden>Amount to hold for next month</span>
-            <CurrencyInput aria-label="Amount to hold" value={amount} onChange={setAmount} />
+            <AmountFields report={report}>
+              <CurrencyInput aria-label="Amount to hold" value={amount} onChange={setAmount} />
+            </AmountFields>
           </div>
           <p className="text-text-tertiary">
             Up to {formatCurrency(room)}. It leaves Ready to assign now and comes back when next
@@ -71,7 +76,7 @@ export function HoldMoney({ summary }: { summary: BudgetSummary }) {
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
-              disabled={!canSave || busy}
+              disabled={!canSave || busy || !allValid}
               onClick={() => {
                 setTried(true);
                 if (amount > 0 && amount <= room) mutation.mutate(amount);

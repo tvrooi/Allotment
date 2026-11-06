@@ -283,6 +283,11 @@ test.describe('budget', () => {
     await page.getByRole('button', { name: 'Hold money…' }).click();
     // More than is ready to assign can't be held
     const amount = page.getByRole('textbox', { name: 'Amount to hold' });
+    // Text that isn't an amount can't hold the amount that was there before
+    await amount.clear();
+    await amount.fill('abc');
+    await amount.blur();
+    await expect(page.getByRole('button', { name: 'Hold', exact: true })).toBeDisabled();
     await amount.clear();
     await amount.fill('1500');
     await amount.blur();
