@@ -201,11 +201,13 @@ function CategoryCard({
             aria-label={
               remaining < 0
                 ? `Cover ${cat.name}: ${formatCurrency(-remaining)} overspent`
-                : `Move money from ${cat.name}: ${formatCurrency(remaining)} available`
+                : `Move money from ${cat.name}: ${formatCurrency(remaining)} available${caption ? `, ${caption.toLowerCase()}` : ''}`
             }
             className={`shrink-0 min-h-11 -my-2 rounded-full px-2.5 text-sm font-medium tabular-nums text-text ${pill}`}
           >
             {formatCurrency(remaining)}
+            {/* Read as text too (the label above is what a screen reader announces) */}
+            <span className="sr-only"> available</span>
           </button>
         ) : (
           <span
