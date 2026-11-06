@@ -35,7 +35,11 @@ to **Reconcile**. Allotment never adjusts the balance by itself.
   minutes, with backoff after failures). It fetches full history on every sync, so large accounts
   can take time or hit Up's rate limit.
 - Internal transfers use Allotment's existing transfer-review flow. Link the two sides in the
-  register before relying on income and spending reports.
+  register before relying on income and spending reports. Up names the account at the other end
+  of a transfer (to or from a Saver, for example) but not the other transaction, so a sync links
+  nothing. Those pairs are listed first under **Up reported these** in the register's
+  **Possible transfers → Review**, and only with a row in the account Up named; you tick and
+  link each one.
 - Round-ups: Up attaches round-up details to a purchase, but does not link it to the Saver credit.
   **Round-up accounting check** (Settings → Connected banks → Up) compares each account's register
   with Up's settled balance. When the register is higher by exactly the round-ups settled since

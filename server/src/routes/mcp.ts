@@ -181,7 +181,7 @@ const TOOLS: Tool[] = [
   {
     name: 'transfer_suggestions',
     description:
-      'Pairs of existing transactions that look like one transfer between two of your accounts (the same amount out and in within a few days) but are not linked. Linked, they stop counting as spending and income.',
+      'Pairs of existing transactions that look like one transfer between two of your accounts (the same amount out and in within a few days) but are not linked. Linked, they stop counting as spending and income. reported: true when Up named the other account (a row from Up pairs only with a row in that account).',
     properties: { account_id: { type: 'string', description: 'Only pairs touching this account' } },
     path: (a) => `/transactions/transfers/suggestions${query(a, ['account_id'])}`,
   },

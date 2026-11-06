@@ -24,6 +24,11 @@ export interface TransferCandidate {
   currency?: string | null;
   /** What it's worth in the budget's currency (null while its rate is missing) */
   value?: number | null;
+  /**
+   * The account the bank said the other side is in (Up reports a transfer's other account).
+   * Such a row is only suggested with a row in that account.
+   */
+  reportedAccountId?: string | null;
 }
 
 export interface TransferMatch {
@@ -31,6 +36,8 @@ export interface TransferMatch {
   inflowId: string;
   /** Days between the two dates */
   days: number;
+  /** The bank reported this pair's accounts as the two ends of a transfer */
+  reported: boolean;
 }
 
 /** The order-independent key of a pair, as stored for dismissed suggestions */
@@ -79,8 +86,20 @@ export function couldBeTransfer(
 
 type Edge = TransferMatch & { outDate: string; gap: number };
 
+/**
+ * Whether the bank's report allows this pair (a row the bank placed can only pair with a row in
+ * the account it named), and whether the bank reported it
+ */
+function bankReport(a: TransferCandidate, b: TransferCandidate) {
+  const allowed =
+    (!a.reportedAccountId || a.reportedAccountId === b.accountId) &&
+    (!b.reportedAccountId || b.reportedAccountId === a.accountId);
+  return { allowed, reported: allowed && !!(a.reportedAccountId || b.reportedAccountId) };
+}
+
 function compareEdges(a: Edge, b: Edge): number {
   return (
+    Number(b.reported) - Number(a.reported) ||
     a.days - b.days ||
     a.gap - b.gap ||
     a.outDate.localeCompare(b.outDate) ||
@@ -93,8 +112,9 @@ function compareEdges(a: Edge, b: Edge): number {
  * Pairs each outflow with an inflow of the same amount in another account, at most `maxDays`
  * apart (in another currency: the same value, within CROSS_CURRENCY_TOLERANCE). Every
  * transaction is in at most one pair; closer dates win, then closer values, and ties are
- * broken by date and id, so the result doesn't depend on the order of `candidates`. Pairs
- * whose `pairKey` is in `dismissed` are never suggested.
+ * broken by date and id, so the result doesn't depend on the order of `candidates`. A row whose
+ * bank reported the other side's account pairs only with a row there, and pairs the bank
+ * reported win over the rest. Pairs whose `pairKey` is in `dismissed` are never suggested.
  */
 export function findTransferMatches(
   candidates: readonly TransferCandidate[],
@@ -134,10 +154,13 @@ export function findTransferMatches(
       const inflow = inflows[i].tx;
       if (inflow.accountId === out.accountId || !couldBeTransfer(out, inflow, maxDays)) continue;
       if (dismissed.has(pairKey(out.id, inflow.id))) continue;
+      const { allowed, reported } = bankReport(out, inflow);
+      if (!allowed) continue;
       edges.push({
         outflowId: out.id,
         inflowId: inflow.id,
         days: Math.abs(inflows[i].day - day),
+        reported,
         outDate: out.date,
         gap: sameCurrency(out, inflow) ? 0 : valueGap(out, inflow)!,
       });
@@ -157,11 +180,11 @@ export function findTransferMatches(
   edges.sort(compareEdges);
   const used = new Set<string>();
   const matches: TransferMatch[] = [];
-  for (const { outflowId, inflowId, days } of edges) {
+  for (const { outflowId, inflowId, days, reported } of edges) {
     if (used.has(outflowId) || used.has(inflowId)) continue;
     used.add(outflowId);
     used.add(inflowId);
-    matches.push({ outflowId, inflowId, days });
+    matches.push({ outflowId, inflowId, days, reported });
   }
   return matches;
 }

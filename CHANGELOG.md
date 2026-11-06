@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.118
+
+- **Review the transfers Up reported.** Up says which account a transfer went to or came from (your Spending account to a Saver, for example), though not which transaction is the other side. Allotment now uses that: in an account's **Possible transfers → Review**, pairs Up reported come first under **Up reported these**, and the banner says how many there are. A transaction from Up is only ever paired with one in the account Up named, so a payment of the same amount into another account on the same day is no longer offered in its place. As before, a sync links nothing: you tick each pair that is right and choose **Link**, or **Not a transfer**.
+
 ## 0.2.0-up.117
 
 - **Type sums and move between envelopes from the keyboard.** An envelope's amount can be a sum: **100+50** saves $150 and **150\*2** saves $300, in your currency's separators. A sum doesn't add to what was there, so **+50** saves $50, and one that can't be worked out (such as **\*2** or **100+**) stays in the box to fix instead of saving. On a computer, the **down arrow** or **Tab** saves and goes to the next envelope shown, the **up arrow** or **Shift+Tab** to the one before, **Enter** saves and **Esc** cancels; hidden and filtered-out envelopes are skipped. A negative assignment now opens with its minus sign, so saving it unchanged keeps it, and the phone keeps a minus sign as the computer does.

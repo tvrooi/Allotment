@@ -1,7 +1,14 @@
 import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { db, sqlite } from '../db/index.js';
-import { accounts, transactions, transferMatchDismissals, householdEvents } from '../db/schema.js';
+import {
+  accounts,
+  transactions,
+  transferMatchDismissals,
+  householdEvents,
+  upAccountMappings,
+  upSourceRecords,
+} from '../db/schema.js';
 import { restoreBankPayee } from './transactionHelpers.js';
 import { personalBudgetAccount } from './balances.js';
 import {
@@ -102,6 +109,39 @@ function loadCandidates(accountId?: string): TransferCandidate[] {
     }));
 }
 
+/**
+ * For each imported row Up reported as a transfer, the budget account Up named as the other
+ * side (Up's `transferAccount`, kept in the source record). Up names only the account, never the
+ * other transaction, so the pair is still found by matching and the owner links it.
+ */
+function upReportedAccounts(): Map<string, string> {
+  const local = new Map(
+    db
+      .select({ up: upAccountMappings.upAccountId, local: upAccountMappings.accountId })
+      .from(upAccountMappings)
+      .all()
+      .filter((m) => m.local)
+      .map((m) => [m.up, m.local!]),
+  );
+  const out = new Map<string, string>();
+  if (!local.size) return out;
+  const rows = db
+    .select({ transactionId: transactions.id, sourceJson: upSourceRecords.sourceJson })
+    .from(upSourceRecords)
+    .innerJoin(transactions, eq(transactions.importedId, upSourceRecords.importedId))
+    .where(sql`${upSourceRecords.sourceJson} like '%"transferAccountId":"%'`)
+    .all();
+  for (const row of rows) {
+    const reported = (JSON.parse(row.sourceJson) as { transferAccountId?: unknown })
+      .transferAccountId;
+    // An Up account not linked to the budget: nothing here can be its other side, so leave
+    // the row to ordinary matching
+    const accountId = typeof reported === 'string' ? local.get(reported) : undefined;
+    if (accountId) out.set(row.transactionId, accountId);
+  }
+  return out;
+}
+
 function loadDismissed(): Set<string> {
   return new Set(
     db
@@ -142,6 +182,8 @@ export interface TransferSuggestion {
   outflow: TransactionRow;
   inflow: TransactionRow;
   days: number;
+  /** The bank (Up) reported this pair's accounts as the two ends of a transfer */
+  reported: boolean;
 }
 
 /**
@@ -149,7 +191,12 @@ export interface TransferSuggestion {
  * With `accountId`, only pairs with one side in that account.
  */
 export function listTransferSuggestions(accountId?: string): TransferSuggestion[] {
-  const matches = findTransferMatches(loadCandidates(), loadDismissed());
+  const reported = upReportedAccounts();
+  const candidates = loadCandidates().map((c) => ({
+    ...c,
+    reportedAccountId: reported.get(c.id) ?? null,
+  }));
+  const matches = findTransferMatches(candidates, loadDismissed());
   if (!matches.length) return [];
   const ids = matches.flatMap((m) => [m.outflowId, m.inflowId]);
   const rows = new Map<string, TransactionRow>();
@@ -161,7 +208,12 @@ export function listTransferSuggestions(accountId?: string): TransferSuggestion[
     }
   }
   return matches
-    .map((m) => ({ outflow: rows.get(m.outflowId)!, inflow: rows.get(m.inflowId)!, days: m.days }))
+    .map((m) => ({
+      outflow: rows.get(m.outflowId)!,
+      inflow: rows.get(m.inflowId)!,
+      days: m.days,
+      reported: m.reported,
+    }))
     .filter(
       (s) => !accountId || s.outflow.accountId === accountId || s.inflow.accountId === accountId,
     )

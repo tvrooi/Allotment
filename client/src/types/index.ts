@@ -252,6 +252,8 @@ export interface TransferSuggestion {
   inflow: Transaction;
   /** Days between the two dates */
   days: number;
+  /** Up reported this pair's accounts as the two ends of a transfer (still linked only by you) */
+  reported: boolean;
 }
 
 /** Answer to linking or making a transfer: both sides, and how they were before */

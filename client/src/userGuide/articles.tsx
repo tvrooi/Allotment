@@ -188,7 +188,9 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
           <p>
             Money moving between your own accounts, like Spending to a Saver, is a transfer, not
             spending. When Allotment spots the same amount leaving one account and arriving in
-            another, it suggests linking them. It never guesses on its own.
+            another, it suggests linking them. It never guesses on its own. Up says which account a
+            transfer went to, so those pairs come first, under <b>Up reported these</b> in{' '}
+            <b>Review</b>; tick the ones that are right and choose <b>Link</b>.
           </p>
         ),
       },
