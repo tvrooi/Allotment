@@ -90,3 +90,4 @@ summaries) and in **Settings → Server → Access tokens → Assistant activity
 3. **Checks inside the write:** move each row's check into the service that writes, inside its
    transaction, so the check and the write can't be separated (F-18's TOCTOU note). Today the
    routes re-validate and better-sqlite3 runs each synchronous handler without interleaving.
+   Design, options and owner decisions: [ASSISTANT-PHASE-3.md](ASSISTANT-PHASE-3.md) (not built).

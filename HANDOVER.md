@@ -5,10 +5,16 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 6 November 2026 (up.123 in review).
+Last updated: 6 November 2026 (up.126 released; assistant phase 3 design in review).
 
 ## State
 
+- **Assistant endpoints, phase 3 (design only, D1 of the Larger features group; no code):**
+  [docs/ASSISTANT-PHASE-3.md](docs/ASSISTANT-PHASE-3.md) plans running each budget-reading policy
+  row's check again inside its write's database transaction (F-18's TOCTOU note). No gap opens
+  today (every step is synchronous), but nothing enforces that, and the token-only limits are
+  checked only in the policy. Recommends option A (one predicate per row, run early and through a
+  guard inside the write), with six owner decisions waiting.
 - **Legacy recurring table dropped (up.123, C4 of the Polish and help group; migration 0078, no
   backup version change):** `0078_drop_legacy_recurring` drops `transactions_recurring_idx`, then
   `transactions.recurring_transaction_id`, then `recurring_transactions` (column first, so no
