@@ -7,6 +7,7 @@ import { leftToSpend as figureLeftToSpend, savingsCategoryIds } from '../../util
 import { useGoals } from '../../hooks/useGoals';
 import { Private } from '../ui/Private';
 import { UpSyncBadge } from '../up/UpSyncBadge';
+import { groupOccurrences } from '../recurring/scheduleFormat';
 
 /**
  * The dashboard's opening line: what's left to spend this month, and when the next pay arrives,
@@ -25,8 +26,9 @@ export function DashboardStatus({ currentMonth }: { currentMonth: string }) {
 
   // Savings envelopes (Savings categories, goals' categories) aren't spending money
   const { left, planned } = figureLeftToSpend(budget, savingsCategoryIds(goals));
-  const nextPay = occurrences.find(
-    (o) => o.expectedAmount > 0 && (o.displayStatus === 'upcoming' || o.displayStatus === 'due'),
+  // The owner's own money in: a housemate's rent day into a household account isn't pay
+  const nextPay = groupOccurrences(occurrences).income.find(
+    (o) => o.displayStatus === 'upcoming' || o.displayStatus === 'due',
   );
   const payday = nextPay ? format(parseISO(nextPay.expectedDate), 'EEE d MMM') : null;
 

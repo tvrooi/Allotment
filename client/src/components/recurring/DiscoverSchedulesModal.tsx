@@ -3,7 +3,7 @@ import { format, parseISO } from 'date-fns';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { useDiscoverSchedules, useCreateDiscoveredSchedules } from '../../hooks/useSchedules';
-import { formatScheduleAmount } from './scheduleFormat';
+import { discoveredHouseholdLabel, formatScheduleAmount } from './scheduleFormat';
 import { nearMissReason } from '../../utils/nearMiss';
 import { formatDay } from '../../utils/dates';
 import type { DiscoveredSchedule, NearMiss } from '../../types';
@@ -149,6 +149,7 @@ export default function DiscoverSchedulesModal({ isOpen, onClose, onAddAnyway }:
                     <p className="text-xs text-text-tertiary">
                       {item.transactionIds.length} past · since{' '}
                       {format(parseISO(item.startDate), 'MMM yyyy')}
+                      {item.household && ` · ${discoveredHouseholdLabel(item.household)}`}
                     </p>
                   </div>
                   <span className="text-sm text-text-secondary truncate">{item.accountName}</span>
@@ -156,9 +157,13 @@ export default function DiscoverSchedulesModal({ isOpen, onClose, onAddAnyway }:
                     {describe(item)}
                   </span>
                   <span
-                    className={`text-sm font-medium tabular-nums text-right ${item.amount > 0 ? 'text-positive' : 'text-text'}`}
+                    className={`text-sm font-medium tabular-nums text-right ${item.amount > 0 && !item.household ? 'text-positive' : 'text-text'}`}
                   >
-                    {formatScheduleAmount(item.amount, item.amountType)}
+                    {formatScheduleAmount(
+                      item.amount,
+                      item.amountType,
+                      item.amount > 0 && !item.household,
+                    )}
                   </span>
                 </div>
               );
@@ -184,7 +189,10 @@ export default function DiscoverSchedulesModal({ isOpen, onClose, onAddAnyway }:
                     {m.payeeName}
                     <span className="font-normal text-text-tertiary"> · {m.accountName}</span>
                   </p>
-                  <p className="text-xs text-text-secondary">{nearMissReason(m)}</p>
+                  <p className="text-xs text-text-secondary">
+                    {nearMissReason(m)}
+                    {m.household && ` · ${discoveredHouseholdLabel(m.household)}`}
+                  </p>
                   <p className="text-xs text-text-tertiary">
                     {m.count} in the last 4 months · latest {formatDay(m.lastDate)}
                   </p>

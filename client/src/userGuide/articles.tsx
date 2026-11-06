@@ -442,6 +442,17 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
           <p>Allotment can look through your history for things that repeat and suggest them.</p>
         ),
       },
+      {
+        heading: 'Shared houses',
+        body: (
+          <p>
+            Money your housemates put into a household account is never your income: Monthly keeps
+            it under <b>Household account</b>, out of your totals, and the dashboard&rsquo;s next
+            pay is only your own. A bill the household shares counts at your share, such as
+            &ldquo;Your share of Rent&rdquo;, with the full amount beside it.
+          </p>
+        ),
+      },
     ],
   },
   {

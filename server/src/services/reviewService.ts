@@ -9,8 +9,6 @@ import {
   scheduleOccurrences,
   schedules,
   transactions,
-  categories,
-  categoryGroups,
 } from '../db/schema.js';
 import {
   LIQUID_ACCOUNT_TYPES,
@@ -27,6 +25,7 @@ import { billCoverage, paydays, PaydayError } from './paydayService.js';
 import { paydayConfigSchema } from './paydayConfig.js';
 import { computeOccurrenceDates, type RecurrenceDefinition } from '../utils/recurrence.js';
 import { bankVerifiedAccountIds } from './bankVerified.js';
+import { incomeCategoryIds, isPersonalIncomeSchedule, scheduleScopes } from './scheduleScope.js';
 
 // Buffer (6F), review (6G) and the guided setup (6G) are read-only views over the shared
 // funding service: every total here is a figure fundingState already reports, broken down
@@ -349,18 +348,12 @@ function nextIncomeDate(today: string) {
     const next = paydays(plan, day(today, 1), day(today, 45))[0];
     if (next) dates.push(next.expectedDate);
   }
-  const incomeIds = new Set(
-    db
-      .select({ id: categories.id })
-      .from(categories)
-      .innerJoin(categoryGroups, eq(categoryGroups.id, categories.groupId))
-      .where(eq(categoryGroups.isIncome, 1))
-      .all()
-      .map((c) => c.id),
-  );
-  for (const schedule of db.select().from(schedules).where(eq(schedules.status, 'active')).all()) {
-    if (schedule.amount <= 0 || !schedule.categoryId || !incomeIds.has(schedule.categoryId))
-      continue;
+  const incomeIds = incomeCategoryIds();
+  const active = db.select().from(schedules).where(eq(schedules.status, 'active')).all();
+  const scopes = scheduleScopes(active);
+  for (const schedule of active) {
+    // A housemate's deposit into a household account is never the next pay
+    if (!isPersonalIncomeSchedule(schedule, scopes.get(schedule.id), incomeIds)) continue;
     const handled = new Set(
       db
         .select()

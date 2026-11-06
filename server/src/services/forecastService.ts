@@ -27,6 +27,7 @@ import type { PaydayConfig } from './paydayConfig.js';
 import { computeOccurrenceDates, type RecurrenceDefinition } from '../utils/recurrence.js';
 import { possiblyEndedIds } from './scheduleActivity.js';
 import type { ForecastRequest, ForecastScenario } from './forecastConfig.js';
+import { incomeCategoryIds, isPersonalIncomeSchedule, scheduleScopes } from './scheduleScope.js';
 
 // Read-only projection. Every input comes from the same definitions as the budget and
 // payday planner: personal on-budget liquid accounts, pending schedule occurrences,
@@ -65,18 +66,6 @@ function personalAccountIds() {
       .where(personalBudgetAccount)
       .all()
       .map((a) => a.id),
-  );
-}
-
-function incomeCategoryIds() {
-  return new Set(
-    db
-      .select({ id: categories.id })
-      .from(categories)
-      .innerJoin(categoryGroups, eq(categories.groupId, categoryGroups.id))
-      .where(eq(categoryGroups.isIncome, 1))
-      .all()
-      .map((c) => c.id),
   );
 }
 
@@ -135,6 +124,7 @@ function scheduledEvents(
 ) {
   const personal = personalAccountIds();
   const incomeIds = incomeCategoryIds();
+  const scopes = scheduleScopes();
   const ctx = currencyContext();
   const accountRows = db.select().from(accounts).all();
   const events: ForecastEvent[] = [];
@@ -147,14 +137,17 @@ function scheduledEvents(
       endedNames.push(schedule.name);
       continue;
     }
+    const scope = scopes.get(schedule.id);
+    // A housemate's deposit saved without an account isn't the owner's cash (scheduleScope.ts)
+    if (scope?.kind === 'household' && !schedule.accountId) continue;
     // Same scope as bill coverage: a schedule without an account belongs to the budget.
     const fromPersonal = !schedule.accountId || personal.has(schedule.accountId);
     const toPersonal = !!schedule.transferAccountId && personal.has(schedule.transferAccountId);
     // Internal transfers net to zero; the far side of the budget boundary is not personal cash.
     if (fromPersonal === toPersonal) continue;
     const sign = fromPersonal ? 1 : -1;
-    const isIncome =
-      sign * schedule.amount > 0 && !!schedule.categoryId && incomeIds.has(schedule.categoryId);
+    // Household money is never income, even in an Income category
+    const isIncome = isPersonalIncomeSchedule(schedule, scope, incomeIds, sign * schedule.amount);
     if (isIncome && incomeSource === 'payday') {
       notes.add(
         'Scheduled income is excluded because payday plans supply expected pay; switch the income source to use schedules.',

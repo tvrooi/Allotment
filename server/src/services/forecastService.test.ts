@@ -17,6 +17,7 @@ import {
   householdGroups,
   householdPeople,
   paydayPlans,
+  payees,
   scheduleOccurrences,
   schedules,
   transactions,
@@ -406,6 +407,42 @@ describe('household shares', () => {
     expect(
       forecast({ horizonDays: 14 }).scenarios[0].events.some((e) => e.kind === 'household'),
     ).toBe(false);
+  });
+
+  it("never counts a housemate's deposit as income, in the household account or without one", () => {
+    db.insert(payees).values({ id: 'sam-payee', name: 'Sam Rent' }).onConflictDoNothing().run();
+    // Recorded once as Sam's contribution, so the payee is known to be a housemate's
+    tx('sam-in', '2026-10-01', 80000, {
+      accountId: 'joint',
+      categoryId: null,
+      payeeId: 'sam-payee',
+    });
+    db.insert(householdEvents)
+      .values({
+        id: 'c1',
+        groupId: 'hh',
+        kind: 'contribution',
+        date: '2026-10-01',
+        description: 'Sam',
+        amount: 80000,
+        payerId: 'sam',
+        transactionId: 'sam-in',
+      })
+      .run();
+    const income = { categoryId: 'salary', payeeId: 'sam-payee' };
+    schedule('pool-deposit', 80000, '2026-10-27', { ...income, accountId: 'joint' });
+    schedule('no-account', 80000, '2026-10-28', { ...income, accountId: null });
+    // Scheduled income counts only when schedules, not payday plans, supply pay
+    const run = () => forecast({ horizonDays: 14, incomeSource: 'schedules' }).scenarios[0].events;
+    const events = run();
+    expect(events.filter((e) => e.description === 'pool-deposit')).toEqual([]);
+    expect(events.filter((e) => e.description === 'no-account')).toEqual([]);
+    // The nearest case still counts: a no-account deposit from anyone else is personal income
+    schedule('bonus', 50000, '2026-10-30', { categoryId: 'salary', accountId: null });
+    expect(run().find((e) => e.description === 'bonus')).toMatchObject({
+      kind: 'income',
+      amount: 50000,
+    });
   });
 });
 

@@ -7,16 +7,75 @@ import {
   parseISO,
   startOfMonth,
 } from 'date-fns';
-import { RECURRENCE_TYPE_LABELS, type AmountType, type ScheduleOccurrence } from '../../types';
+import {
+  RECURRENCE_TYPE_LABELS,
+  type AmountType,
+  type DiscoveredHousehold,
+  type ScheduleOccurrence,
+  type ScheduleScope,
+} from '../../types';
 import type { RecurringBadgeStatus } from './StatusBadge';
 
 export const FREQ_LABEL = new Map(RECURRENCE_TYPE_LABELS.map((f) => [f.value, f.label]));
 
+/** Money in that is the owner's: household money in (a housemate's share) is not income */
+export const isIncomeAmount = (amount: number, scope?: ScheduleScope) =>
+  amount > 0 && scope?.kind !== 'household';
+
 /** Actual-style amount: `~` prefix when not exact, `+` prefix for income. */
-export function formatScheduleAmount(amount: number, amountType: AmountType): string {
+export function formatScheduleAmount(
+  amount: number,
+  amountType: AmountType,
+  income = amount > 0,
+): string {
   const approx = amountType !== 'exact' ? '~' : '';
-  const sign = amount > 0 ? '+' : '';
+  const sign = income ? '+' : '';
   return `${approx}${sign}${formatCurrency(Math.abs(amount))}`;
+}
+
+/** What a household item is, in a few words: "Contribution from Juno · 2Up" */
+export function householdLabel(scope: ScheduleScope | undefined): string | null {
+  if (scope?.kind !== 'household') return null;
+  if (scope.role === 'bill') return `Shared bill · ${scope.groupName}`;
+  return `${scope.personName ? `Contribution from ${scope.personName}` : 'Contribution'} · ${scope.groupName}`;
+}
+
+/** A discovered item in a household's account: "Household contribution · 2Up" */
+export const discoveredHouseholdLabel = (h: DiscoveredHousehold) =>
+  `${h.role === 'bill' ? 'Household bill' : 'Household contribution'} · ${h.groupName}`;
+
+/**
+ * Recurring occurrences by whose money they are, for every view of them (Recurring → Monthly,
+ * the dashboard): `income` is the owner's money in, `expenses` the owner's money out plus their
+ * share of each household bill (a copy of the occurrence at the share, with `shareOf` the full
+ * amount), and `household` the household's own items in full, bills and contributions.
+ * Housemates' money is never income, and a shared bill never counts at its full amount.
+ */
+export function groupOccurrences(occurrences: ScheduleOccurrence[]) {
+  const sorted = [...occurrences].sort((a, b) => a.expectedDate.localeCompare(b.expectedDate));
+  const income: ScheduleOccurrence[] = [];
+  const expenses: ScheduleOccurrence[] = [];
+  const household: ScheduleOccurrence[] = [];
+  for (const o of sorted) {
+    const scope = o.scope;
+    if (scope?.kind !== 'household') {
+      (o.expectedAmount > 0 ? income : expenses).push(o);
+      continue;
+    }
+    household.push(o);
+    if (scope.role !== 'bill') continue;
+    const gross = Math.abs(o.expectedAmount);
+    const share = Math.min(gross, scope.myShare ?? gross);
+    if (share > 0)
+      expenses.push({
+        ...o,
+        scheduleName: `Your share of ${o.scheduleName} (${scope.groupName})`,
+        expectedAmount: -share,
+        matchedAmount: null,
+        shareOf: gross,
+      });
+  }
+  return { income, expenses, household };
 }
 
 // ─── Upcoming length (port of Actual Budget's getUpcomingDays) ───────────────

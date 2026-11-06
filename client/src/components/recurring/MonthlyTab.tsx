@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, parseISO } from 'date-fns';
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   List,
@@ -22,7 +23,7 @@ import { formatCurrency } from '../../utils/currency';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { usePreferencesStore } from '../../store/preferencesStore';
-import { getUpcomingDays } from './scheduleFormat';
+import { getUpcomingDays, groupOccurrences } from './scheduleFormat';
 import type { Schedule, ScheduleOccurrence } from '../../types';
 
 interface Props {
@@ -113,16 +114,23 @@ export default function MonthlyTab({
   const accountMap = useMemo(() => new Map(accounts.map((a) => [a.id, a.name])), [accounts]);
   const recMap = useMemo(() => new Map(allRecurring.map((r) => [r.id, r])), [allRecurring]);
 
-  const { income, expenses } = useMemo(() => {
-    const sorted = [...occurrences].sort((a, b) => a.expectedDate.localeCompare(b.expectedDate));
-    return {
-      income: sorted.filter((o) => o.expectedAmount > 0),
-      expenses: sorted.filter((o) => o.expectedAmount <= 0),
-    };
-  }, [occurrences]);
+  // Housemates' money isn't income, and a shared bill counts at the owner's share
+  const { income, expenses, household } = useMemo(
+    () => groupOccurrences(occurrences),
+    [occurrences],
+  );
+  const [showHousehold, setShowHousehold] = useState(false);
 
   const incomeTotals = useMemo(() => computeTotals(income), [income]);
   const expenseTotals = useMemo(() => computeTotals(expenses), [expenses]);
+  const householdIn = useMemo(
+    () => computeTotals(household.filter((o) => o.expectedAmount > 0)),
+    [household],
+  );
+  const householdOut = useMemo(
+    () => computeTotals(household.filter((o) => o.expectedAmount <= 0)),
+    [household],
+  );
 
   // After a calendar day click, scroll the list to that day's first row
   useEffect(() => {
@@ -154,7 +162,7 @@ export default function MonthlyTab({
         </div>
         {items.map((occ) => (
           <RecurringItemRow
-            key={occ.id}
+            key={`${occ.id}${occ.shareOf ? ':share' : ''}`}
             occurrence={occ}
             upcomingDays={upcomingDays}
             highlighted={highlightDate === occ.expectedDate}
@@ -301,6 +309,30 @@ export default function MonthlyTab({
         <div className="bg-surface rounded-lg shadow-card border border-border-light overflow-hidden">
           {renderSection('Income', income)}
           {renderSection('Expenses', expenses)}
+          {household.length > 0 && (
+            <section aria-label="Household account">
+              <button
+                type="button"
+                aria-expanded={showHousehold}
+                onClick={() => setShowHousehold((v) => !v)}
+                className="w-full flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 max-md:px-4 py-2.5 max-md:min-h-11 bg-surface-alt border-y border-border-light text-left cursor-pointer hover:bg-hover"
+              >
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary">
+                  {showHousehold ? (
+                    <ChevronDown size={14} aria-hidden />
+                  ) : (
+                    <ChevronRight size={14} aria-hidden />
+                  )}
+                  Household account
+                </span>
+                <span className="text-xs text-text-tertiary tabular-nums">
+                  {formatCurrency(householdIn.total)} put in · {formatCurrency(householdOut.total)}{' '}
+                  in bills · not in your totals
+                </span>
+              </button>
+              {showHousehold && renderSection('Household', household)}
+            </section>
+          )}
         </div>
       )}
     </div>

@@ -4,6 +4,7 @@ import { categories, categoryGroups, payees, transactions } from '../db/schema.j
 import { mainAmount, reportedBudgetActivity } from './balances.js';
 import { todayIso } from './mainAmountService.js';
 import { addDaysIso, daysBetweenIso } from '../utils/date.js';
+import { housematePayees } from './scheduleScope.js';
 
 // What is still uncategorised after an import, and where pay comes from. Read-only: the
 // client changes categories through the payee and bulk-edit routes, which can be undone.
@@ -137,8 +138,12 @@ export function detectSalary(today = todayIso()): SalaryGuess | null {
       ),
     )
     .all();
+  // A housemate's repeating transfer (recorded as their money in a household) is never pay
+  const housemates = housematePayees();
   const byPayee = new Map<string, typeof rows>();
-  for (const r of rows) byPayee.set(r.payeeId!, [...(byPayee.get(r.payeeId!) ?? []), r]);
+  for (const r of rows)
+    if (!housemates.has(r.payeeId!))
+      byPayee.set(r.payeeId!, [...(byPayee.get(r.payeeId!) ?? []), r]);
   let best: {
     payeeId: string;
     median: number;

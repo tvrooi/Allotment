@@ -1,7 +1,14 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { db } from '../db/index.js';
-import { accounts, schedules, transactions } from '../db/schema.js';
+import {
+  accounts,
+  categories,
+  categoryGroups,
+  householdGroups,
+  schedules,
+  transactions,
+} from '../db/schema.js';
 import { discoverSchedules, isNotABill } from './scheduleDiscovery.js';
 
 // The recurring finder offers bills and pay, never money moving between accounts, cash taken
@@ -11,6 +18,9 @@ beforeAll(() => migrate(db, { migrationsFolder: 'src/db/migrations' }));
 beforeEach(() => {
   db.delete(schedules).run();
   db.delete(transactions).run();
+  db.delete(householdGroups).run();
+  db.delete(categories).run();
+  db.delete(categoryGroups).run();
   db.delete(accounts).run();
   db.insert(accounts)
     .values({ id: 'spend', name: 'Spending', type: 'checking', startingBalance: 0 })
@@ -57,6 +67,45 @@ describe('recurring finder', () => {
 
     const names = discoverSchedules().found.map((f) => f.payeeName);
     expect(names.sort()).toEqual(['ACME Pay', 'Landlord']);
+  });
+});
+
+describe('recurring finder in a household account', () => {
+  it("offers a housemate's deposit as a household contribution, never in an Income category", () => {
+    db.insert(accounts)
+      .values({ id: 'pool', name: '2Up', type: 'checking', startingBalance: 0 })
+      .run();
+    db.insert(householdGroups)
+      .values({ id: 'hh', name: 'Home', currency: 'AUD', accountId: 'pool' })
+      .run();
+    db.insert(categoryGroups)
+      .values([
+        { id: 'in', name: 'Income', isIncome: 1 },
+        { id: 'out', name: 'Bills' },
+      ])
+      .run();
+    db.insert(categories)
+      .values([
+        { id: 'pay', name: 'Pay', groupId: 'in' },
+        { id: 'rent', name: 'Rent', groupId: 'out' },
+      ])
+      .run();
+    monthly('Juno Rent', 80_000, { accountId: 'pool', categoryId: 'pay' });
+    monthly('Landlord', -240_000, { accountId: 'pool', categoryId: 'rent' });
+    // The same deposit into a personal account is ordinary pay, category kept
+    monthly('ACME Pay', 320_000, { categoryId: 'pay' });
+
+    const found = new Map(discoverSchedules().found.map((f) => [f.payeeName, f]));
+    expect(found.get('Juno Rent')).toMatchObject({
+      categoryId: null,
+      household: { groupId: 'hh', groupName: 'Home', role: 'contribution' },
+    });
+    expect(found.get('Landlord')).toMatchObject({
+      categoryId: 'rent',
+      household: { groupId: 'hh', role: 'bill' },
+    });
+    expect(found.get('ACME Pay')).toMatchObject({ categoryId: 'pay' });
+    expect(found.get('ACME Pay')!.household).toBeUndefined();
   });
 });
 
