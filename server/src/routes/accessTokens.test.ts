@@ -308,6 +308,8 @@ describe('categorise tokens', () => {
       ['POST', '/transactions/bulk', { selection: {}, changes: { categoryId: 'rent' } }],
       ['DELETE', '/transactions/past', undefined],
       ['PUT', '/accounts/mock', { name: 'x' }],
+      // Holding money for next month changes what Ready to assign means: owner only
+      ['PUT', `/budget/${today.slice(0, 7)}/hold`, { amount: 1 }],
       ['PUT', '/transactions/%E0%A4%A', { categoryId: 'rent' }],
     ];
     for (const [method, path, body] of refused)

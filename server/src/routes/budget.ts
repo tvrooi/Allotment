@@ -20,6 +20,7 @@ import { withHistoricActivity } from '../services/historicActivity.js';
 import { budgetSummary, fundingRevision, fundingState } from '../services/budgetService.js';
 import { withExpectedDebits } from '../services/expectedDebits.js';
 import { annualOverview } from '../services/annualOverview.js';
+import { setHold } from '../services/budgetHolds.js';
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import {
@@ -147,6 +148,22 @@ budgetRouter.get('/:month', (req, res) =>
     ),
   ),
 );
+
+// Hold money for the next month (ACT-03); before /:month/:categoryId, which would read "hold"
+// as a category
+budgetRouter.put('/:month/hold', (req, res, next) => {
+  const parsed = z
+    .object({ amount: cents.min(0), revision: z.string().optional() })
+    .safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    res.json(setHold(req.params.month, parsed.data.amount, parsed.data.revision));
+  } catch (error) {
+    if (error instanceof BudgetError)
+      return res.status(error.status).json({ error: error.message, details: error.details });
+    next(error);
+  }
+});
 
 // Existing overcommitments survive; new reservations require existing resources.
 budgetRouter.put('/:month/:categoryId', (req, res, next) => {

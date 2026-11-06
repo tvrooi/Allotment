@@ -4,6 +4,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { db } from '../db/index.js';
 import {
   accounts,
+  budgetHolds,
   budgetMonths,
   budgetMoves,
   budgetSettings,
@@ -50,6 +51,7 @@ afterAll(() => vi.useRealTimers());
 
 function reset() {
   for (const table of [
+    budgetHolds,
     budgetMoves,
     cardFunding,
     transactions,
@@ -114,6 +116,10 @@ function baseBudget(raw: Raw) {
     db.insert(budgetMonths)
       .values({ id: `${a.categoryId}:${a.month}`, ...a })
       .run();
+  for (const h of raw.holds)
+    db.insert(budgetHolds)
+      .values({ ...h, createdAt: `${h.month}-01T00:00:00.000Z` })
+      .run();
 }
 
 // --- Scenarios -------------------------------------------------------------------------------
@@ -131,6 +137,8 @@ interface Raw {
   assigned: { month: string; categoryId: string; budgeted: number }[];
   /** Envelopes that keep an overspent month's deficit instead of starting the next at zero */
   kept: string[];
+  /** Money held in a month for the next (ACT-03), written directly like the assignments */
+  holds: { month: string; amount: number }[];
 }
 
 const day = (month: string, d: number) => `${month}-${String(d).padStart(2, '0')}`;
@@ -206,6 +214,10 @@ const scenarioArb = fc
       { maxLength: 14 },
     ),
     kept: fc.subarray(ENVELOPES),
+    holds: fc.array(
+      fc.record({ m: fc.integer({ min: 0, max: 5 }), units: fc.integer({ min: 1, max: 300 }) }),
+      { maxLength: 3 },
+    ),
   })
   .map((s): Raw => {
     const ids = [...PERSONAL, ...OUTSIDE];
@@ -223,6 +235,7 @@ const scenarioArb = fc
       txns: [],
       assigned: [],
       kept: s.kept,
+      holds: [],
     };
     const created = new Map(raw.accounts.map((a) => [a.id, a.createdAt]));
     // Accounts open with their first transaction, as in readyToAssign.test.ts
@@ -296,6 +309,11 @@ const scenarioArb = fc
       });
     }
     raw.assigned = [...assigned.values()];
+    // One hold a month, none before the budget start
+    const holds = new Map<string, number>();
+    for (const h of s.holds)
+      if (!raw.start || MONTHS[h.m] >= raw.start.month) holds.set(MONTHS[h.m], h.units * 101);
+    raw.holds = [...holds].map(([month, amount]) => ({ month, amount }));
     return raw;
   });
 
@@ -396,14 +414,20 @@ function recompute(raw: Raw, month: string) {
     .reduce((s, a) => s + Math.max(0, a.budgeted), 0);
   const pool = resources - envelopes;
   // A past month shows what it closed with; later assignments take only what it had left
-  const laterDeduction =
-    month < CURRENT ? Math.min(futureAssigned, Math.max(0, pool)) : futureAssigned;
+  const closed = (amount: number) =>
+    month < CURRENT ? Math.min(amount, Math.max(0, pool)) : amount;
+  const laterDeduction = closed(futureAssigned);
+  // Money held for the next month stays out of Ready to assign in the month it was held in and
+  // the months before it, on top of what later months take
+  const heldInOrAfter = raw.holds.filter((h) => h.month >= month).reduce((s, h) => s + h.amount, 0);
+  const heldBack = closed(futureAssigned + heldInOrAfter) - laterDeduction;
   return {
     resources,
     envelopes,
     cashOverspent,
     laterDeduction,
-    readyToAssign: pool - laterDeduction,
+    heldBack,
+    readyToAssign: pool - laterDeduction - heldBack,
     available,
   };
 }
@@ -447,6 +471,7 @@ describe('budget properties (audit F-16)', () => {
             expect(summary.resources, `${label} resources`).toBe(expected.resources);
             expect(summary.envelopes, `${label} envelopes`).toBe(expected.envelopes);
             expect(summary.laterDeduction, `${label} later`).toBe(expected.laterDeduction);
+            expect(summary.held, `${label} held back`).toBe(expected.heldBack);
             expect(summary.toBeBudgeted, `${label} ready to assign`).toBe(expected.readyToAssign);
             // No reviewed card: every deficit is cash overspending
             expect(summary.cashOverspent, `${label} cash overspent`).toBe(expected.cashOverspent);
@@ -457,16 +482,52 @@ describe('budget properties (audit F-16)', () => {
             const actual = availableOf(month);
             for (const c of ENVELOPES)
               expect(actual.get(c), `${label} ${c}`).toBe(expected.available.get(c));
-            // Conservation: every dollar is in an envelope, taken by a later month, or ready to assign
-            expect(summary.toBeBudgeted + summary.envelopes + summary.laterDeduction).toBe(
-              summary.resources,
-            );
+            // Conservation: every dollar is in an envelope, taken by a later month, held for the
+            // next month, or ready to assign
+            expect(
+              summary.toBeBudgeted + summary.envelopes + summary.laterDeduction + summary.held,
+            ).toBe(summary.resources);
             for (const [key, value] of Object.entries(summary))
               if (typeof value === 'number')
                 expect(Number.isSafeInteger(value), `${label} ${key}`).toBe(true);
           }
         }),
         { numRuns: RUNS },
+      );
+    },
+    TIMEOUT,
+  );
+
+  it(
+    'holding money for the next month only moves Ready to assign between months (ACT-03)',
+    () => {
+      fc.assert(
+        fc.property(scenarioArb, (raw) => {
+          baseBudget(raw);
+          const withHolds = MONTHS.map((month) => budgetSummary(month));
+          db.delete(budgetHolds).run();
+          MONTHS.forEach((month, i) => {
+            const held = withHolds[i];
+            const none = budgetSummary(month);
+            const heldAfter = raw.holds
+              .filter((h) => h.month >= month)
+              .reduce((s, h) => s + h.amount, 0);
+            // A hold never touches an envelope or the money in the accounts...
+            expect(held.resources, `${month} resources`).toBe(none.resources);
+            expect(held.envelopes, `${month} envelopes`).toBe(none.envelopes);
+            expect(held.laterDeduction, `${month} later`).toBe(none.laterDeduction);
+            // ...it only takes Ready to assign, never more than was held or more than there was
+            expect(none.toBeBudgeted - held.toBeBudgeted, `${month} moved`).toBe(held.held);
+            expect(held.held, `${month} held`).toBeGreaterThanOrEqual(0);
+            expect(held.held, `${month} within holds`).toBeLessThanOrEqual(heldAfter);
+            // A month after the last hold is released and unchanged
+            if (!heldAfter) expect(held.toBeBudgeted, `${month} released`).toBe(none.toBeBudgeted);
+            expect(held.holdAmount, `${month} hold`).toBe(
+              raw.holds.find((h) => h.month === month)?.amount ?? 0,
+            );
+          });
+        }),
+        { numRuns: Math.ceil(RUNS / 2) },
       );
     },
     TIMEOUT,

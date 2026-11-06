@@ -3,6 +3,7 @@ import { alias } from 'drizzle-orm/sqlite-core';
 import { db } from '../db/index.js';
 import {
   accounts,
+  budgetHolds,
   budgetMonths,
   budgetRevision,
   cardFunding,
@@ -129,6 +130,9 @@ export interface Ledger {
   /** Assigned money by month (any category that is not income) and what lies after each */
   laterMonths: string[];
   laterTotals: number[];
+  /** Months holding money for the next (ACT-03) and what is held in them and every month after */
+  holdMonths: string[];
+  holdTotals: number[];
   accounts: AccountHistory[];
   ctx: CurrencyContext;
   /** Received activity by date: uncategorized spending, and rows still awaiting a rate */
@@ -317,6 +321,18 @@ function build(): Ledger {
     days.missing.push(days.missing.at(-1)! + r.missing);
   }
 
+  // Holds, like assignments, count from the budget start on
+  const holdRows = db
+    .select()
+    .from(budgetHolds)
+    .orderBy(budgetHolds.month)
+    .all()
+    .filter((r) => r.month >= startMonth && r.amount > 0);
+  const holdMonths = holdRows.map((r) => r.month);
+  const holdTotals = new Array<number>(holdRows.length + 1).fill(0);
+  for (let i = holdRows.length - 1; i >= 0; i--)
+    holdTotals[i] = holdTotals[i + 1] + holdRows[i].amount;
+
   return {
     startMonth,
     groups,
@@ -325,6 +341,8 @@ function build(): Ledger {
     paymentAccounts: new Map(mappings.map((m) => [m.categoryId, m.accountId])),
     laterMonths,
     laterTotals,
+    holdMonths,
+    holdTotals,
     accounts: accountHistories,
     ctx,
     days,
@@ -336,7 +354,7 @@ function build(): Ledger {
 
 // The ledger is rebuilt when fundingRevision() changes: it combines today with a revision
 // that SQLite triggers bump on every write to the tables this reads (transactions, accounts,
-// budget_months, categories and groups, exchange rates, budget settings, card funding and the
+// budget_months, budget_holds, categories and groups, exchange rates, budget settings, card funding and the
 // household tables behind personalBudgetAccount). A write inside a transaction bumps it
 // immediately, so a rolled-back or restored change is never served from before the write.
 // The rate book is kept in memory by mainAmountService, so its version is part of the key too.
@@ -554,4 +572,15 @@ export function activityAt(l: Ledger, asOf: string) {
 /** Positive assignments to expense categories in months after `month` */
 export function assignedAfter(l: Ledger, month: string): number {
   return l.laterTotals[countThrough(l.laterMonths, month, (m) => m)];
+}
+
+/** Money held for the next month in `month` and every month after it (ACT-03). A hold is
+ * released from the month after it was made, so a month before it still sets it aside. */
+export function heldFrom(l: Ledger, month: string): number {
+  return l.holdTotals[lowerBound(l.holdMonths, month, (m) => m)];
+}
+/** What was held in `month` itself for the month after it (ACT-03) */
+export function holdAt(l: Ledger, month: string): number {
+  const i = lowerBound(l.holdMonths, month, (m) => m);
+  return l.holdMonths[i] === month ? l.holdTotals[i] - l.holdTotals[i + 1] : 0;
 }

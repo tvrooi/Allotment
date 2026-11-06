@@ -171,7 +171,7 @@ function assignable(months: string[], today: string) {
         deferred +
         (m < current
           ? state.unassignedBeforeLater
-          : state.unassignedBeforeLater - state.futureAssigned),
+          : state.unassignedBeforeLater - state.futureAssigned - state.held),
       complete: state.complete,
     });
     deferred += state.cashOverspent;

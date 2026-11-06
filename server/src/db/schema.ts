@@ -1387,6 +1387,13 @@ export const householdActivity = sqliteTable(
   (table) => [index('household_activity_group_time').on(table.groupId, table.time)],
 );
 
+/** Money held in a month for the next (ACT-03): Ready to assign leaves it until the month ends */
+export const budgetHolds = sqliteTable('budget_holds', {
+  month: text('month').primaryKey(),
+  amount: integer('amount').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
 export const budgetRevision = sqliteTable('budget_revision', {
   id: integer('id').primaryKey(),
   revision: text('revision').notNull(),
