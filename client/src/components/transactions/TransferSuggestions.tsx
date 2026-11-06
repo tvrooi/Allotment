@@ -41,6 +41,10 @@ export function TransferSuggestions({ accountId, accountName }: Props) {
 
   const ticked = suggestions.filter((s) => !unticked.has(keyOf(s)));
   const count = suggestions.length;
+  // Up names a transfer's other account (not the other transaction): those pairs come first,
+  // under their own heading, and are linked only when the owner ticks and links them
+  const reported = suggestions.filter((s) => s.reported);
+  const matched = suggestions.filter((s) => !s.reported);
 
   function toggle(s: TransferSuggestion) {
     const key = keyOf(s);
@@ -85,7 +89,9 @@ export function TransferSuggestions({ accountId, accountName }: Props) {
                 {count} possible transfer{count === 1 ? '' : 's'} between your accounts.
               </span>{' '}
               <span className="text-text-secondary">
-                The same amount left one account and arrived in another within a few days.
+                {reported.length > 0
+                  ? `${reported.length} reported by Up. Check each before linking.`
+                  : 'The same amount left one account and arrived in another within a few days.'}
               </span>
               {notice && (
                 <span role="status" className="block text-text-secondary">
@@ -122,24 +128,49 @@ export function TransferSuggestions({ accountId, accountName }: Props) {
             spending or income. Untick any that aren&apos;t transfers, or choose{' '}
             <span className="font-medium">Not a transfer</span> so they aren&apos;t suggested again.
           </p>
-          <ul className="divide-y divide-border-light border border-border-light rounded-lg max-h-[50vh] overflow-y-auto">
-            {suggestions.map((s) => (
-              <SuggestionRow
-                key={keyOf(s)}
-                suggestion={s}
-                accountName={accountName}
-                checked={!unticked.has(keyOf(s))}
-                onToggle={() => toggle(s)}
-                onDismiss={() =>
-                  dismiss.mutate({
-                    transactionId: s.outflow.id,
-                    otherTransactionId: s.inflow.id,
-                  })
-                }
-                disabled={!canSave}
-              />
+          {[
+            {
+              title: 'Up reported these',
+              hint: 'Up names the account money moved to, not the transaction, so check each pair before linking it.',
+              rows: reported,
+            },
+            {
+              title: reported.length ? 'Other possible transfers' : null,
+              hint: reported.length
+                ? 'The same amount left one account and arrived in another within a few days.'
+                : null,
+              rows: matched,
+            },
+          ]
+            .filter((group) => group.rows.length > 0)
+            .map((group) => (
+              <section key={group.title ?? 'matched'} aria-label={group.title ?? undefined}>
+                {group.title && (
+                  <>
+                    <h3 className="text-sm font-medium text-text">{group.title}</h3>
+                    <p className="text-xs text-text-secondary mb-2">{group.hint}</p>
+                  </>
+                )}
+                <ul className="divide-y divide-border-light border border-border-light rounded-lg max-h-[40vh] overflow-y-auto">
+                  {group.rows.map((s) => (
+                    <SuggestionRow
+                      key={keyOf(s)}
+                      suggestion={s}
+                      accountName={accountName}
+                      checked={!unticked.has(keyOf(s))}
+                      onToggle={() => toggle(s)}
+                      onDismiss={() =>
+                        dismiss.mutate({
+                          transactionId: s.outflow.id,
+                          otherTransactionId: s.inflow.id,
+                        })
+                      }
+                      disabled={!canSave}
+                    />
+                  ))}
+                </ul>
+              </section>
             ))}
-          </ul>
           {linkMany.isError && (
             <p role="alert" className="text-sm text-negative">
               Couldn&apos;t link the transfers. Please try again.

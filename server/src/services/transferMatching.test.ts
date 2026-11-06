@@ -100,7 +100,70 @@ describe('findTransferMatches', () => {
       { id: 'same-account', accountId: 'checking', date: '2024-03-01', amount: 10_000 },
       { id: 'too-late', accountId: 'savings', date: '2024-03-08', amount: 10_000 },
     ];
-    expect(findTransferMatches(rows)).toEqual([{ outflowId: 'out', inflowId: 'near', days: 1 }]);
+    expect(findTransferMatches(rows)).toEqual([
+      { outflowId: 'out', inflowId: 'near', days: 1, reported: false },
+    ]);
+  });
+});
+
+describe('transfers the bank reported', () => {
+  // Rows the bank placed: each names a random account (or none) as the other side
+  const arbReported = arbRows.chain((rows) =>
+    fc
+      .array(fc.option(fc.constantFrom('checking', 'savings', 'card'), { nil: null }), {
+        minLength: rows.length,
+        maxLength: rows.length,
+      })
+      .map((reported) => rows.map((r, i) => ({ ...r, reportedAccountId: reported[i] }))),
+  );
+
+  it('pairs a row the bank placed only with a row in the account it named', () => {
+    fc.assert(
+      fc.property(arbReported, (rows) => {
+        const byId = new Map(rows.map((r) => [r.id, r]));
+        for (const m of findTransferMatches(rows)) {
+          const out = byId.get(m.outflowId)!;
+          const inflow = byId.get(m.inflowId)!;
+          if (out.reportedAccountId) expect(inflow.accountId).toBe(out.reportedAccountId);
+          if (inflow.reportedAccountId) expect(out.accountId).toBe(inflow.reportedAccountId);
+          expect(m.reported).toBe(!!(out.reportedAccountId || inflow.reportedAccountId));
+        }
+      }),
+    );
+  });
+
+  it('is unchanged by reports when no row has one', () => {
+    fc.assert(
+      fc.property(arbRows, (rows) => {
+        const none = rows.map((r) => ({ ...r, reportedAccountId: null }));
+        expect(findTransferMatches(none)).toEqual(findTransferMatches(rows));
+      }),
+    );
+  });
+
+  it('prefers the side in the reported account over a closer row elsewhere', () => {
+    const rows: TransferCandidate[] = [
+      {
+        id: 'out',
+        accountId: 'spending',
+        date: '2024-03-01',
+        amount: -10_000,
+        reportedAccountId: 'saver',
+      },
+      { id: 'decoy', accountId: 'card', date: '2024-03-01', amount: 10_000 },
+      {
+        id: 'saver-side',
+        accountId: 'saver',
+        date: '2024-03-03',
+        amount: 10_000,
+        reportedAccountId: 'spending',
+      },
+    ];
+    expect(findTransferMatches(rows)).toEqual([
+      { outflowId: 'out', inflowId: 'saver-side', days: 2, reported: true },
+    ]);
+    // Even with the reported side gone, the decoy is never offered
+    expect(findTransferMatches(rows.slice(0, 2))).toEqual([]);
   });
 });
 
@@ -207,6 +270,6 @@ describe('transfers between currencies', () => {
         value: 8_330,
       },
     ]);
-    expect(matches).toEqual([{ outflowId: 'a', inflowId: 'b', days: 1 }]);
+    expect(matches).toEqual([{ outflowId: 'a', inflowId: 'b', days: 1, reported: false }]);
   });
 });

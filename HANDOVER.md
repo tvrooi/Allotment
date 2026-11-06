@@ -9,6 +9,23 @@ Last updated: 6 November 2026 (up.116 in review).
 
 ## State
 
+- **Reviewed list of the transfers Up reported (up.118, B8; no migration):** Up's
+  `transferAccount` (kept in `up_source_records.source_json` as `transferAccountId`) names the
+  other account of a transfer, not the other transaction. `upReportedAccounts`
+  (`transferService.ts`) maps it through `up_account_mappings` to a budget account and sets
+  `reportedAccountId` on the candidate; `findTransferMatches` (`transferMatching.ts`) then pairs
+  such a row only with a row in that account and sorts reported pairs first, and each suggestion
+  carries `reported`. An Up account not linked to the budget leaves its rows to ordinary matching.
+  `bestCounterpart` (the owner's explicit "Transfer: account") ignores reports. The register's
+  `TransferSuggestions` lists reported pairs under **Up reported these**, then **Other possible
+  transfers**; the owner ticks and links as before, and the sync links nothing. Organise tokens
+  link only server suggestions (`assistantPolicy.ts`), so the narrower pairing applies to them
+  too. Tests: `transferMatching.test.ts` (properties: a reported row pairs only into the named
+  account, no reports change nothing), `routes/upReportedTransfers.test.ts` (through the Up mock
+  and the routes, with a same-day decoy in another account), e2e `up-transfers.spec.ts`. Docs:
+  UP-SUPPORT.md, the Transactions guide page, MCP `transfer_suggestions`. Not built: offering a
+  pair Up reported when the other side is outside the five-day window. Next: B9 (housemate money
+  is not income; [docs/HOUSEMATE-MONEY-PLAN.md](docs/HOUSEMATE-MONEY-PLAN.md)).
 - **Keyboard entry, sums, the inspector and notes (up.117, BUD-05, BUD-10; migration 0077,
   backup format 29):** `readAmountExpression` (`client/src/utils/amountExpression.ts`) reads the
   desktop Assigned editor and the phone sheet: `+ - * /` with brackets in exact BigInt fractions,
@@ -27,9 +44,7 @@ Last updated: 6 November 2026 (up.116 in review).
   `routes/budgetNotes.test.ts`, `accessTokens.test.ts` (token refused, read allowed), e2e
   `budget-inspector.spec.ts`. Docs: ENVELOPE-FUNDING.md "Typing assignments" and "The inspector and
   notes", Budgeting guide page. Not built: one amount typed into several envelopes, group/account
-  notes. Next: B8 (reviewed list for Up Saver transfers), then B9 (housemate money is not
-  income in Recurring, the Dashboard and the forecast; plan in
-  [docs/HOUSEMATE-MONEY-PLAN.md](docs/HOUSEMATE-MONEY-PLAN.md)).
+  notes. Next: B8 (done in up.118), then B9.
 - **Card payments in the budget table (up.116, BUD-09; client only, no migration):** every payment
   envelope (`paymentAccountId` on the budget categories) is a row of a **Card payments** section after
   Total expenses (desktop `BudgetTypeSection` with `showAll`, phone `PhoneBudgetSection.always`), found
@@ -385,7 +400,7 @@ site in `website/` was removed (audit decision I-9).
    - Household splitting backlog from the Spliit comparison in
      `docs/research/spliit-household-gaps.md`: SPL-01, SPL-02, SPL-06 (up.106) and SPL-03, SPL-04
      (up.107) and SPL-05 (up.108) are built; the P3 items (SPL-07 to SPL-09) wait for demand.
-   - B9, after B8: housemates' deposits into a household account show as Income in Recurring,
+   - B9 (B8 is done, up.118): housemates' deposits into a household account show as Income in Recurring,
      on the Dashboard ("Next pay") and in parts of the forecast. Plan:
      `docs/HOUSEMATE-MONEY-PLAN.md` (owner's choice: net against the bill).
    - Transaction detail has no previous/next (Monarch backlog P1).
@@ -399,9 +414,8 @@ site in `website/` was removed (audit decision I-9).
    above cash after a first Up import (up.86, a new budget starts that day), and the demo's
    negative Ready to assign (up.83). Partly superseded: Up's Saver transfers count as
    uncategorised spending only when one leg is unmapped (with both legs on budget they net to
-   zero); they still need reviewing as transfers, and one
-   reviewed "link the transfers Up reported" list is still a candidate (owner rule: no silent
-   links). Settings → Server's self-hosting link now opens this repository's
+   zero); they still need reviewing as transfers; up.118 lists the pairs Up reported first in the
+   register's review, for the owner to link (owner rule: no silent links). Settings → Server's self-hosting link now opens this repository's
    Start here guide; only Enable Banking's setup link still goes to flybudget.org
    (`client/src/utils/project.ts`). Done: incremental Up fetch (F-10, up.93),
    route splitting (F-11, up.100).
