@@ -305,7 +305,7 @@ export const requireSession: RequestHandler = (req, res, next) => {
         });
       const toolHeader = req.headers[ASSISTANT_TOOL_HEADER];
       const tool = typeof toolHeader === 'string' && TOOL_NAME.test(toolHeader) ? toolHeader : null;
-      const action = assistantActionFor(token.scope, req.method, req.path, req.body);
+      const decision = assistantActionFor(token.scope, req.method, req.path, req.body);
       const entry = {
         tokenId: token.id,
         scope: token.scope,
@@ -313,22 +313,31 @@ export const requireSession: RequestHandler = (req, res, next) => {
         method: req.method,
         path: req.path,
       };
-      if (!action) {
+      if (!decision || decision.refusal !== undefined) {
         const error =
-          token.scope === 'categorise'
+          decision?.refusal ??
+          (token.scope === 'categorise'
             ? 'This access token can only read, set the category of past transactions, and create or edit categories'
             : token.scope === 'organise'
               ? 'An access token cannot make this change'
-              : 'A read-only access token cannot do this';
+              : 'A read-only access token cannot do this');
         logAssistantAction({
           ...entry,
-          action: null,
+          action: decision?.action.name ?? null,
           outcome: 'refused',
           status: 403,
           reason: error,
         });
         return void res.status(403).json({ error });
       }
+      const { action } = decision;
+      // The write runs the row's check again inside its transaction (assistantGuard,
+      // docs/ASSISTANT-PHASE-3.md), on the request as it was checked here
+      if (action.check)
+        res.locals.assistantPending = {
+          action,
+          request: { method: req.method, path: req.path, body: structuredClone(req.body) },
+        };
       const logId = logAssistantAction({ ...entry, action: action.name, outcome: 'failed' });
       // The route's own refusal, if any, for the log
       let reason: string | null = null;
@@ -338,7 +347,14 @@ export const requireSession: RequestHandler = (req, res, next) => {
           reason = String((body as { error: unknown }).error);
         return json(body);
       };
-      res.on('finish', () => finishAssistantAction(logId, res.statusCode, reason));
+      res.on('finish', () =>
+        finishAssistantAction(
+          logId,
+          res.statusCode,
+          (res.locals.assistantRefusal as string | undefined) ?? reason,
+          res.locals.assistantRefusal !== undefined,
+        ),
+      );
       res.locals.assistantAction = action.name;
     } else if (!tokenAllows(token.scope, req.method, req.path)) {
       return void res.status(403).json({

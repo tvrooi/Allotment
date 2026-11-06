@@ -56,11 +56,19 @@ export function logAssistantAction(entry: AssistantLogEntry, now = new Date()): 
   return id;
 }
 
-/** What the route answered for an allowed request */
-export function finishAssistantAction(id: string, status: number, reason?: string | null) {
+/**
+ * What the route answered for an allowed request. `refused` when the row's check, run again
+ * inside the write (assistantGuard), refused it.
+ */
+export function finishAssistantAction(
+  id: string,
+  status: number,
+  reason?: string | null,
+  refused = false,
+) {
   db.update(assistantActions)
     .set({
-      outcome: status < 400 ? 'applied' : 'failed',
+      outcome: refused ? 'refused' : status < 400 ? 'applied' : 'failed',
       status,
       reason: reason?.slice(0, REASON_CHARS) ?? null,
     })

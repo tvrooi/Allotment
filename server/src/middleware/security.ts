@@ -3,6 +3,7 @@ import type { ErrorRequestHandler, RequestHandler } from 'express';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
 import { allowedHosts, serverMode, trustProxy } from '../config.js';
+import { AssistantRefusal } from '../auth/assistantRefusal.js';
 
 // Locally (desktop app, `npm run dev`) the API has no login: it's protected by
 // only answering the app itself. These guards stop other websites open in the
@@ -224,6 +225,9 @@ export const apiNotFound: RequestHandler = (_req, res) => {
  */
 export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   if (res.headersSent) return next(err);
+  // The assistant's own refusal: its reason is for the assistant (and the owner's log)
+  if (err instanceof AssistantRefusal)
+    return void res.status(err.status).json({ error: err.message });
   const status = typeof err?.status === 'number' && err.status >= 400 ? err.status : 500;
   // Fixed format string, and the path JSON-escaped so it can't forge log lines
   if (status >= 500) console.error('Error on %s %s:', req.method, JSON.stringify(req.path), err);

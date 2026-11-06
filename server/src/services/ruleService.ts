@@ -390,11 +390,19 @@ export function planRules(opts: PlanOptions): PlannedChange[] {
   });
 }
 
-/** Apply the planned changes for the given transactions (recomputed here, never trusted from the client) */
-export function applyRules(opts: PlanOptions & { transactionIds: string[] }): number {
-  const plan = planRules(opts);
-  const rows = new Map(candidates(opts).map((t) => [t.id, t]));
-  db.transaction(() => {
+/**
+ * Apply the planned changes for the given transactions (recomputed here, never trusted from the
+ * client), planned inside the transaction that applies them. `guard` is an access token's
+ * policy check (auth/assistantPolicy.ts: a category-only rule, past rows), run again first.
+ */
+export function applyRules(
+  opts: PlanOptions & { transactionIds: string[] },
+  guard?: () => void,
+): number {
+  return db.transaction(() => {
+    guard?.();
+    const plan = planRules(opts);
+    const rows = new Map(candidates(opts).map((t) => [t.id, t]));
     for (const p of plan) {
       const t = rows.get(p.transactionId)!;
       const split = p.changes.split;
@@ -432,8 +440,8 @@ export function applyRules(opts: PlanOptions & { transactionIds: string[] }): nu
       // The parts share the whole's budget-currency value
       if (split) refreshMainAmounts([t.id]);
     }
+    return plan.length;
   });
-  return plan.length;
 }
 
 /**

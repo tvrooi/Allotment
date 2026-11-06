@@ -5,10 +5,27 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 6 November 2026 (up.123 in review).
+Last updated: 6 November 2026 (up.127 in review: assistant phase 3).
 
 ## State
 
+- **Assistant endpoints, phase 3 (up.127, D1 of the Larger features group; server only, no
+  migration):** each row of the policy table now has `matches` (request only) and, for the seven
+  rows whose rule reads the budget, `check`. `requireSession` runs both and keeps the request in
+  `res.locals.assistantPending`; the write calls `assistantGuard(res.locals)` first inside its
+  own transaction (transactions PUT, `PUT /rules/:id`, `applyRules`, `linkTransfer`, `setClaim`,
+  household `POST /:id/events`), which runs the check again and throws `AssistantRefusal`
+  (`auth/assistantRefusal.ts`, 403 through `errorHandler`, logged `refused`, "This changed before
+  it could be saved: …"). A matched row whose check refuses at the first run answers with the
+  check's reason, logged under that row. The tokens' reconciled-row rule moved from the
+  transactions route into `categorise_transaction`'s check; with a guard `setClaim` only inserts;
+  `undoChangeSet` and `createAssistantProposal` read ownership and the 50 cap inside their
+  transactions. Owner took all six recommendations of docs/ASSISTANT-PHASE-3.md on 6 November;
+  decision 5's follow-up (MCP change sets record the category read before an awaited PUT, so undo
+  can restore a stale one) is not built. Test: `auth/assistantPolicy.test.ts` (each budget-reading
+  row's allowed case, early refusal and refusal after a middleware changes the budget between the
+  check and the write; request-only rows' allowed and nearest refusal with database reads
+  forbidden; every row is in one of the two lists).
 - **Legacy recurring table dropped (up.123, C4 of the Polish and help group; migration 0078, no
   backup version change):** `0078_drop_legacy_recurring` drops `transactions_recurring_idx`, then
   `transactions.recurring_transaction_id`, then `recurring_transactions` (column first, so no

@@ -83,31 +83,34 @@ export type ProposalInput = z.infer<typeof proposalSchema>;
 const MAX_PENDING = 50;
 
 export function createAssistantProposal(tokenId: string, input: ProposalInput) {
-  const pending = db
-    .select({ id: assistantProposals.id })
-    .from(assistantProposals)
-    .where(eq(assistantProposals.status, 'pending'))
-    .all().length;
-  if (pending >= MAX_PENDING)
-    throw new ProposalError(
-      `There are already ${MAX_PENDING} proposals waiting for the owner`,
-      409,
-    );
-  const { targetId, payload } = proposalContent(input);
-  const proposalId = nanoid();
-  const row = {
-    id: proposalId,
-    tokenId,
-    tokenName: tokenName(tokenId),
-    kind: input.kind,
-    targetId,
-    payload: JSON.stringify(payload),
-    note: input.note ?? null,
-    status: 'pending',
-    createdAt: new Date().toISOString(),
-  };
-  db.insert(assistantProposals).values(row).run();
-  return getProposal(proposalId);
+  // Counted in the transaction that inserts, so the cap holds (docs/ASSISTANT-PHASE-3.md)
+  return db.transaction(() => {
+    const pending = db
+      .select({ id: assistantProposals.id })
+      .from(assistantProposals)
+      .where(eq(assistantProposals.status, 'pending'))
+      .all().length;
+    if (pending >= MAX_PENDING)
+      throw new ProposalError(
+        `There are already ${MAX_PENDING} proposals waiting for the owner`,
+        409,
+      );
+    const { targetId, payload } = proposalContent(input);
+    const proposalId = nanoid();
+    const row = {
+      id: proposalId,
+      tokenId,
+      tokenName: tokenName(tokenId),
+      kind: input.kind,
+      targetId,
+      payload: JSON.stringify(payload),
+      note: input.note ?? null,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+    db.insert(assistantProposals).values(row).run();
+    return getProposal(proposalId);
+  });
 }
 
 // ─── Household corrections ───────────────────────────────────────────────────
