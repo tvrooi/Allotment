@@ -619,6 +619,12 @@ export default function BudgetPage() {
   const setBudgetMutation = useSetBudget();
   const setBulkMutation = useSetBudgetBulk();
   const isPhone = useIsPhone();
+  // On a phone the filter hides the sidebar that holds Move money, so a row asking for it
+  // ends the filter; the panel then shows
+  const moveRequested = useMoveRequest((s) => s.request !== null);
+  useEffect(() => {
+    if (moveRequested && isPhone) setQuery('');
+  }, [moveRequested, isPhone]);
 
   const monthDate = useMemo(() => parseISO(`${selectedMonth}-01`), [selectedMonth]);
 

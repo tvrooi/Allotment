@@ -123,6 +123,20 @@ for (const phone of [false, true]) {
     await expect(cardOf('Groceries')).toContainText('$350');
     expect((await api.call('GET', `/budget/${month}/summary`)).overspent).toBe(0);
 
+    // A request is used once: changing month and coming back doesn't reopen it
+    await page.getByRole('button', { name: 'Next month' }).click();
+    await page.getByRole('button', { name: 'Previous month' }).click();
+    await expect(cardOf('Groceries')).toContainText('$350');
+    await expect(page.getByLabel('Move amount')).toBeHidden();
+
+    // On a phone, a filtered list still shows the panel when a row asks for it
+    if (phone) {
+      await page.getByLabel('Find a category').fill('Grocer');
+      await page.getByRole('button', { name: 'Move money from Groceries: $350 available' }).click();
+      await expect(page.getByLabel('Move from')).toHaveValue(food.id);
+      await page.getByLabel('Find a category').fill('');
+    }
+
     // Give $10 back from Groceries: the preview, a cancel that writes nothing, then the move
     const before = await ready();
     await page.getByRole('button', { name: 'Move money from Groceries: $350 available' }).click();

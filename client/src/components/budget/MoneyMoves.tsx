@@ -61,6 +61,7 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
   const panel = useRef<HTMLElement>(null);
   const amountField = useRef<HTMLInputElement>(null);
   const request = useMoveRequest((s) => s.request);
+  const clearRequest = useMoveRequest((s) => s.clear);
   const [handled, setHandled] = useState(0);
   // A row asked for this panel (its Available figure was clicked): open it with that envelope
   // filled in, show it, and put the cursor where the person goes next
@@ -83,7 +84,10 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
     if (!request || request.id !== handled) return;
     panel.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
     if (request.mode === 'from') amountField.current?.focus({ preventScroll: true });
-  }, [request, handled]);
+    clearRequest();
+  }, [request, handled, clearRequest]);
+  // Leaving the page with a request unread (the month changes, or another page opens) drops it
+  useEffect(() => clearRequest, [clearRequest]);
   const history = useQuery({
     queryKey: ['budget-moves'],
     queryFn: () => apiFetch<Operation[]>('/budget/moves/history'),

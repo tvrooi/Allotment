@@ -52,11 +52,14 @@ export interface MoveRequest {
  * requirement doesn't depend on this month's assignment (only on what was carried in), so the
  * assignment change alone moves `underfunded`. */
 function targetEffect(
-  cat: { target?: { required: number; assigned: number; underfunded: number } | null },
+  cat: {
+    target?: { required: number; assigned: number; underfunded: number; paused: boolean } | null;
+  },
   change: number,
 ) {
   const target = cat.target;
-  if (!target) return null;
+  // A paused, completed or retired goal's target asks for nothing, whatever a move does
+  if (!target || target.paused) return null;
   const after = Math.max(0, target.required - (target.assigned + change));
   return after === target.underfunded ? null : { before: target.underfunded, after };
 }

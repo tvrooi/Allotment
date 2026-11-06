@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 /**
  * A budget row asking the Move money panel to open with its envelope filled in (BUD-06): money
  * to move out of an envelope that has some (`from`), or an overspent one to cover (`cover`, the
- * amount is what it is short). The panel reads this once; `id` makes a second click on the same
+ * amount is what it is short). The panel reads it once and clears it; `id` makes a second click on the same
  * row count as a new request.
  */
 export interface MoveRequest {
@@ -18,11 +18,14 @@ export interface MoveRequest {
 interface MoveRequestState {
   request: MoveRequest | null;
   ask: (categoryId: string, available: number) => void;
+  /** The panel has taken the request: it must not be replayed by a remount or a later visit */
+  clear: () => void;
 }
 
 let next = 0;
 export const useMoveRequest = create<MoveRequestState>((set) => ({
   request: null,
+  clear: () => set({ request: null }),
   ask: (categoryId, available) =>
     set({
       request: {

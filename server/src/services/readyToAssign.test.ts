@@ -10,6 +10,7 @@ import {
   budgetMoves,
   budgetSettings,
   categoryTargets,
+  goals,
 } from '../db/schema.js';
 import { budgetGroups, budgetSummary } from './budgetService.js';
 import {
@@ -40,6 +41,7 @@ beforeEach(() => {
     budgetMoves,
     transactions,
     budgetMonths,
+    goals,
     categoryTargets,
     categories,
     categoryGroups,
@@ -242,6 +244,24 @@ it('reports what a move does to each funding target, and nothing when it changes
   expect(none.destinationTarget).toBeNull();
   // Rent was short of its target by $200; taking $10 more makes that $300 and Fun has none
   expect(none.sourceTarget).toEqual({ before: 20000, after: 21000 });
+});
+
+it('a paused goal’s target asks for nothing, so a move never reports a shortfall for it', () => {
+  account('cash', '2026-09-01');
+  txn('cash', '2026-09-05', 100000, 'salary'); // the money is carried into October
+  db.insert(categoryTargets)
+    .values({ categoryId: 'food', type: 'monthly', amount: 50000, createdMonth: '2026-10' })
+    .run();
+  db.insert(goals)
+    .values({ id: 'g', name: 'g', targetAmount: 50000, categoryId: 'food', status: 'paused' })
+    .run();
+  assign('food', '2026-09', 30000);
+  const preview = previewMove('2026-10', {
+    sourceId: 'food',
+    destinationId: READY_TO_ASSIGN,
+    amount: 1000,
+  });
+  expect(preview.sourceTarget).toBeNull();
 });
 
 it('cash overspending is red in its month and comes out of the next month only', () => {
