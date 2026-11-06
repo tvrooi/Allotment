@@ -99,6 +99,18 @@ describe('groupOccurrences', () => {
   });
 });
 
+describe('a paid shared bill', () => {
+  it("counts the owner's share of what was actually paid", () => {
+    const water = {
+      ...occ('Water', -10_000, household('bill', { myShare: 5_000 })),
+      displayStatus: 'paid' as const,
+      matchedAmount: -12_000,
+    };
+    const [share] = groupOccurrences([water]).expenses;
+    expect(share).toMatchObject({ expectedAmount: -5_000, matchedAmount: -6_000 });
+  });
+});
+
 describe('household amounts', () => {
   it('shows a contribution without the income sign', () => {
     const scope = household('contribution');

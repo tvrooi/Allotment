@@ -138,8 +138,10 @@ function scheduledEvents(
       continue;
     }
     const scope = scopes.get(schedule.id);
-    // A housemate's deposit saved without an account isn't the owner's cash (scheduleScope.ts)
-    if (scope?.kind === 'household' && !schedule.accountId) continue;
+    // A housemate's deposit saved without an account isn't the owner's cash (scheduleScope.ts);
+    // an account-less shared bill still is, as it was before it was shared
+    if (scope?.kind === 'household' && scope.role === 'contribution' && !schedule.accountId)
+      continue;
     // Same scope as bill coverage: a schedule without an account belongs to the budget.
     const fromPersonal = !schedule.accountId || personal.has(schedule.accountId);
     const toPersonal = !!schedule.transferAccountId && personal.has(schedule.transferAccountId);

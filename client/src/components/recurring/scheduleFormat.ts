@@ -66,12 +66,17 @@ export function groupOccurrences(occurrences: ScheduleOccurrence[]) {
     if (scope.role !== 'bill') continue;
     const gross = Math.abs(o.expectedAmount);
     const share = Math.min(gross, scope.myShare ?? gross);
+    // A payment that differed from the expected amount: the same part of what was paid
+    const paidShare =
+      o.matchedAmount === null || !gross
+        ? null
+        : -Math.round((share * Math.abs(o.matchedAmount)) / gross);
     if (share > 0)
       expenses.push({
         ...o,
         scheduleName: `Your share of ${o.scheduleName} (${scope.groupName})`,
         expectedAmount: -share,
-        matchedAmount: null,
+        matchedAmount: paidShare,
         shareOf: gross,
       });
   }

@@ -16,6 +16,7 @@ import {
   householdEvents,
   householdGroups,
   householdPeople,
+  householdRecurringBills,
   paydayPlans,
   payees,
   scheduleOccurrences,
@@ -108,6 +109,7 @@ afterAll(() => {
 beforeEach(() => {
   for (const table of [
     categoryPurposes,
+    householdRecurringBills,
     householdBills,
     householdEvents,
     householdPeople,
@@ -439,6 +441,13 @@ describe('household shares', () => {
     expect(events.filter((e) => e.description === 'no-account')).toEqual([]);
     // The nearest case still counts: a no-account deposit from anyone else is personal income
     schedule('bonus', 50000, '2026-10-30', { categoryId: 'salary', accountId: null });
+    // A bill shared with the household but saved without an account is still the owner's cash
+    schedule('shared-water', -6000, '2026-10-29', { accountId: null, categoryId: 'house' });
+    db.insert(householdRecurringBills).values({ scheduleId: 'shared-water', groupId: 'hh' }).run();
+    expect(run().find((e) => e.description === 'shared-water')).toMatchObject({
+      kind: 'bill',
+      amount: -6000,
+    });
     expect(run().find((e) => e.description === 'bonus')).toMatchObject({
       kind: 'income',
       amount: 50000,
