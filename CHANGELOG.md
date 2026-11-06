@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.113
+
+- **A temporary assistant permission to correct a household's history.** Approved by the owner on 6 November 2026, for one household where rent was counted twice, bills paid from its accounts were never shared, and some deposits were matched to the wrong transfers. For this release only, an assistant with a **Read, categorise and organise** token may remove a household contribution, or an expense you paid yourself that you don't share with those people (never an expense the household account or someone else paid, a repayment or a refund), share a past bill paid from a household account as an expense, for exactly that payment's amount and date, and unlink a transfer that touches a household account so the deposit or bill can be recorded properly. Everything else stays the owner's, the household's activity list records each change, and **Assistant activity** in Settings logs every request. The next release removes the permission.
+
 ## 0.2.0-up.112
 
 - **Month quick fills, and choosing which envelopes to fill.** **Assign → Auto-assign** can now use the average of the last 3, 6 or 12 months' spending (months with no spending count), and **Set to zero** clears the month's assignments. For copying last month's assignments or spending, or an average, you choose **Add** (only top envelopes up, as before) or **Replace** (set each envelope to that amount, giving the difference back to Ready to assign; an assignment never goes below $0). Every row now has a tick: untick an envelope to leave it out and the rest is planned again, in **Fund targets** too. The preview shows what each row takes back or adds, and marks an envelope that taking money back would leave overspent. Nothing changes until you apply, and the same checks as typing an amount still apply.

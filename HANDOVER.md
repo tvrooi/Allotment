@@ -5,10 +5,11 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 6 November 2026 (up.112 in review).
+Last updated: 6 November 2026 (up.113 in review).
 
 ## State
 
+- **Temporary household corrections (up.113):** owner-approved on 6 November 2026, to correct one household's history (rent counted twice, bills paid from its accounts never shared, deposits matched as the wrong transfers). Four organise rows in `auth/assistantPolicy.ts`: `household_remove_contribution` (DELETE a contribution entry), `household_remove_own_expense` (DELETE an expense the household's `isSelf` person paid), `household_pool_expense` (an expense the household account paid, linked to a past non-transfer payment out of its account, exact amount and date), `household_unlink_transfer` (unlink a past transfer with a side in a household account, empty body so the pair is dismissed). MCP `remove_household_entries`, `record_household_bill_expenses`, `unlink_household_transfers`. Tests: the "household corrections" describe in `routes/assistantTools.test.ts`. **Remove in the next release** (restore the token DELETE refusal in "an organise token records only contributions…" and add an every-token refusal case, as up.81 did). The owner installs up.113 in Home Assistant with a cold backup; this session could not reach Home Assistant.
 - **Month quick fills and selected-category funding (up.112, ACT-05, BUD-07; no migration):** auto-assign
   (`services/autoAssign.ts`) already had assigned/spent last month and a 3-month average (add only);
   up.112 adds `zero`, 6 and 12-month averages (`months`), a `mode` of `add` or `replace` (a negative

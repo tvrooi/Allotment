@@ -432,6 +432,8 @@ const MAX_CLAIMS = 100;
 const labelHelp = TAX_LABEL_KEYS.map((k) => `${k} ${TAX_LABELS[k].name}`).join('; ');
 /** Most contributions one record_household_contributions call records */
 const MAX_CONTRIBUTIONS = 50;
+/** Most rows one household correction call handles (TEMPORARY tools) */
+const MAX_CORRECTIONS = 50;
 /** Most transactions categorise_by_payee or apply_rule changes in one call */
 const MAX_BULK = 1000;
 
@@ -1150,6 +1152,198 @@ const ACTION_TOOLS: ActionTool[] = [
       return { recorded: done, refused: results.length - done, results };
     },
   },
+  // TEMPORARY (owner-approved 6 November 2026 to correct one household's history; removed in
+  // the next release): the household_remove_contribution, household_remove_own_expense,
+  // household_pool_expense and household_unlink_transfer rows of auth/assistantPolicy.ts
+  {
+    name: 'remove_household_entries',
+    scope: 'organise',
+    description: `TEMPORARY. Removes household entries by id (from household), up to ${MAX_CORRECTIONS} at once: contributions, such as a deposit credited to the wrong person (then record it again with record_household_contributions) or money that wasn't anyone's contribution, and expenses you paid yourself that aren't shared with these people. Never an expense the household account or someone else paid, a repayment or a refund. The household's activity log keeps a line for each. Confirm the list with the user first.`,
+    properties: {
+      household_id: { ...idString, description: 'From list_households' },
+      event_ids: { type: 'array', minItems: 1, maxItems: MAX_CORRECTIONS, items: idString },
+    },
+    required: ['household_id', 'event_ids'],
+    run: async (ctx, a) => {
+      const ids = a.event_ids;
+      if (
+        !isId(a.household_id) ||
+        !Array.isArray(ids) ||
+        !ids.length ||
+        ids.length > MAX_CORRECTIONS
+      )
+        return { error: `Give a household id and 1 to ${MAX_CORRECTIONS} entry ids` };
+      const results = [];
+      for (const id of ids) {
+        if (!isId(id)) {
+          results.push({ eventId: id, ok: false, error: 'Give an entry id' });
+          continue;
+        }
+        const r = await api(ctx, `/households/${seg(a.household_id)}/events/${seg(id)}`, 'DELETE');
+        results.push({
+          eventId: id,
+          ok: r.ok,
+          error: r.ok
+            ? undefined
+            : r.status === 403
+              ? 'Refused: only a contribution, or an expense you paid yourself, in this household'
+              : r.error,
+        });
+      }
+      const done = results.filter((r) => r.ok).length;
+      return { removed: done, refused: results.length - done, results };
+    },
+  },
+  {
+    name: 'record_household_bill_expenses',
+    scope: 'organise',
+    description: `TEMPORARY. Shares past payments out of a household's own accounts (bills it paid) as expenses the household account paid, each linked to its payment with the payment's exact amount and date. Split equally between everyone unless you give each person's exact share in cents adding up to the payment. Up to ${MAX_CORRECTIONS} at once. Never a transfer (unlink a wrong one first), a personal account, or a payment already shared. Confirm the list with the user first.`,
+    properties: {
+      household_id: { ...idString, description: 'From list_households' },
+      expenses: {
+        type: 'array',
+        minItems: 1,
+        maxItems: MAX_CORRECTIONS,
+        items: {
+          type: 'object',
+          properties: {
+            transaction_id: { ...idString, description: 'The payment out of a household account' },
+            description: { type: 'string', minLength: 1, maxLength: 200 },
+            shares: {
+              type: 'array',
+              description: 'Optional: each person’s exact share in cents, adding up to the payment',
+              items: {
+                type: 'object',
+                properties: { person_id: idString, amount: { type: 'integer', minimum: 0 } },
+                required: ['person_id', 'amount'],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ['transaction_id'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['household_id', 'expenses'],
+    run: async (ctx, a) => {
+      const rows = a.expenses;
+      if (
+        !isId(a.household_id) ||
+        !Array.isArray(rows) ||
+        !rows.length ||
+        rows.length > MAX_CORRECTIONS
+      )
+        return { error: `Give a household id and 1 to ${MAX_CORRECTIONS} expenses` };
+      const state = await api(ctx, `/households/${seg(a.household_id)}`);
+      if (!state.ok) return { error: state.error };
+      const people = (state.data as { people: { id: string }[] }).people;
+      const results = [];
+      for (const row of rows as Args[]) {
+        const id = row?.transaction_id;
+        if (!isId(id)) {
+          results.push({ transactionId: id, ok: false, error: 'Give a transaction id' });
+          continue;
+        }
+        if (row.description !== undefined && typeof row.description !== 'string') {
+          results.push({ transactionId: id, ok: false, error: 'description must be text' });
+          continue;
+        }
+        const tx = db
+          .select({
+            date: transactions.date,
+            amount: transactions.amount,
+            payeeName: transactions.payeeName,
+          })
+          .from(transactions)
+          .where(eq(transactions.id, id))
+          .get();
+        if (!tx || tx.amount >= 0) {
+          results.push({ transactionId: id, ok: false, error: tx ? 'Not money out' : 'Not found' });
+          continue;
+        }
+        // Equal only when no shares are given: malformed shares are refused, never split equally
+        const given = row.shares;
+        const validShares =
+          Array.isArray(given) &&
+          given.length > 0 &&
+          (given as Args[]).every(
+            (s) => isId(s?.person_id) && Number.isInteger(s?.amount) && (s.amount as number) >= 0,
+          );
+        if (given !== undefined && !validShares) {
+          results.push({
+            transactionId: id,
+            ok: false,
+            error: 'shares must be a list of { person_id, amount } in whole cents',
+          });
+          continue;
+        }
+        const exact = given === undefined ? null : (given as Args[]);
+        const r = await api(ctx, `/households/${seg(a.household_id)}/events`, 'POST', {
+          kind: 'expense',
+          date: tx.date,
+          description:
+            (row.description as string | undefined)?.trim() || tx.payeeName?.trim() || 'Bill',
+          amount: -tx.amount,
+          payerId: null,
+          transactionId: id,
+          mode: exact ? 'exact' : 'equal',
+          shares: exact
+            ? exact.map((s) => ({ personId: s?.person_id, value: s?.amount }))
+            : people.map((p) => ({ personId: p.id, value: 1 })),
+        });
+        results.push({
+          transactionId: id,
+          ok: r.ok,
+          error: r.ok
+            ? undefined
+            : r.status === 403
+              ? 'Refused: only a past payment out of this household’s accounts, not a transfer'
+              : r.error,
+        });
+      }
+      const done = results.filter((r) => r.ok).length;
+      return { recorded: done, refused: results.length - done, results };
+    },
+  },
+  {
+    name: 'unlink_household_transfers',
+    scope: 'organise',
+    description: `TEMPORARY. Unlinks past transfers that have a side in a household's account ("Not a transfer"), up to ${MAX_CORRECTIONS} at once, for a bill or someone's deposit the bank matched as the wrong transfer. The pair isn't suggested again; link the right pair with transfer_suggestions and link_transfer. Refused for reconciled transfers and ones with a household entry on either side (remove that first). Confirm each with the user first.`,
+    properties: {
+      transaction_ids: {
+        type: 'array',
+        minItems: 1,
+        maxItems: MAX_CORRECTIONS,
+        items: { ...idString, description: 'Either side of the transfer' },
+      },
+    },
+    required: ['transaction_ids'],
+    run: async (ctx, a) => {
+      const ids = a.transaction_ids;
+      if (!Array.isArray(ids) || !ids.length || ids.length > MAX_CORRECTIONS)
+        return { error: `Give 1 to ${MAX_CORRECTIONS} transaction ids` };
+      const results = [];
+      for (const id of ids) {
+        if (!isId(id)) {
+          results.push({ transactionId: id, ok: false, error: 'Give a transaction id' });
+          continue;
+        }
+        const r = await api(ctx, `/transactions/${seg(id)}/unlink-transfer`, 'POST', {});
+        results.push({
+          transactionId: id,
+          ok: r.ok,
+          error: r.ok
+            ? undefined
+            : r.status === 403
+              ? 'Refused: only a past transfer with a side in a household account'
+              : r.error,
+        });
+      }
+      const done = results.filter((r) => r.ok).length;
+      return { unlinked: done, refused: results.length - done, results };
+    },
+  },
 ];
 
 const offered = (scope: TokenScope, tool: ActionTool) =>
@@ -1190,7 +1384,7 @@ const BASICS =
 const INSTRUCTIONS: Record<TokenScope, string> = {
   read: `Read-only access to an Allotment budget. ${BASICS}`,
   categorise: `Read access to an Allotment budget, plus setting the category of past transactions (categorise_transactions, categorise_by_payee) and creating and editing categories and groups; nothing else can change. ${BASICS} Start from uncategorised_payees. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before categorising.`,
-  organise: `Read access to an Allotment budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers, suggesting assignments the owner applies, claiming past transactions as tax deductions (tax_years, tax_deductions, tax_claim_candidates, claim_tax_deductions; never replacing or removing a claim), reading depreciating assets (tax_assets) and proposing new ones or changes the owner applies (propose_tax_asset), recording household contributions linked to deposits into a household account (household_bill_reconciliation, record_household_contributions), and your own unlinked contribution up to what you owe the household account (record_own_household_contribution). ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
+  organise: `Read access to an Allotment budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers, suggesting assignments the owner applies, claiming past transactions as tax deductions (tax_years, tax_deductions, tax_claim_candidates, claim_tax_deductions; never replacing or removing a claim), reading depreciating assets (tax_assets) and proposing new ones or changes the owner applies (propose_tax_asset), recording household contributions linked to deposits into a household account (household_bill_reconciliation, record_household_contributions), and your own unlinked contribution up to what you owe the household account (record_own_household_contribution). Temporarily, to correct a household's history: removing contributions and your own unshared expenses, sharing bills a household account paid, and unlinking wrong transfers into household accounts (remove_household_entries, record_household_bill_expenses, unlink_household_transfers). ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
 };
 
 const schemaOf = (t: { properties?: Record<string, unknown>; required?: string[] }) => ({
