@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.122
+
+- **Enable Banking's setup steps are in Allotment's own guide.** The new **Enable Banking (Europe)** page of the guide explains what you need, setting up your own free application (a Production application, the redirect URL, the .pem key and linking your accounts), connecting your bank, pasting the address back if your bank can't return you to Allotment, and reconnecting when the bank's access ends. The setup form's **Step-by-step guide** and **How syncing works** after a sync now open that page inside Allotment, closing the dialog, instead of the upstream FlyBudget website, and **Connecting Up** links to it under Other banks. The server's warning about an unconfigured reverse proxy now points to Allotment's Start here guide. No link in the app goes to flybudget.org any more.
+
 ## 0.2.0-up.121
 
 - **Four new pages in the guide.** **Payday plans** (setting one up, each kind of funding rule, what happens on payday, undo), **Card payments** (setting a card up, what a purchase and a repayment do, and a reserve that's short), **Budget review** (coming back after a break, what needs attention, guided setup, the flexibility reserve, the cash runway and extra income) and **Long-term forecast** (starting a plan, life events, super, HECS-HELP and other study loans, today's dollars and the simulation). Each page now links to the guide page that explains it: **How payday plans work** under Budget → Until payday, **How card payments work** in the Card payments panel, **How the review works** on Review and **How the long-term forecast works** on Forecast, as do Tax time, Reports, Household, Settings → Data and the Up settings for their own pages.

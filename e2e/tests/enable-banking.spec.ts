@@ -129,6 +129,34 @@ test('connects a European bank, syncs it, reconnects and disconnects', async ({
   }
 });
 
+test("the setup links to Allotment's own Enable Banking guide and closes the dialog", async ({
+  page,
+  api,
+}) => {
+  // With an account the budget opens instead of Welcome, so the sidebar's Add account is there
+  await api.createAccount('Everyday');
+  await open(page, '/budget');
+  await page.getByRole('button', { name: 'Add account' }).click();
+  await page.getByRole('button', { name: 'Connect via Enable Banking' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Connect a European bank' });
+  await dialog.getByRole('link', { name: 'Step-by-step guide' }).click();
+  // The sidebar keeps the dialog mounted, so following the link has to close it
+  await expect(dialog).toBeHidden();
+  await expect(page).toHaveURL(/\/guide\/enable-banking$/);
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Enable Banking (Europe)' }),
+  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Set up your application' })).toBeVisible();
+
+  // Settings shows the same form, with the same link
+  await open(page, '/settings?tab=connections');
+  await page.getByRole('button', { name: 'Enable Banking' }).click();
+  await expect(page.getByRole('link', { name: 'Step-by-step guide' })).toHaveAttribute(
+    'href',
+    /\/guide\/enable-banking$/,
+  );
+});
+
 test("the bank's redirect needs its state, and nothing else gets through without the token", async ({
   request,
 }) => {

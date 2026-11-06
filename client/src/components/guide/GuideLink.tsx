@@ -9,14 +9,17 @@ import type { DocsPage } from '../../utils/project';
 export function GuideLink({
   page,
   className = '',
+  onClick,
   children,
 }: {
   page?: DocsPage;
   className?: string;
+  /** For a link inside a dialog: close it, or it stays open over the guide */
+  onClick?: () => void;
   children: ReactNode;
 }) {
   return (
-    <Link to={page ? `/guide/${page}` : '/guide'} className={className}>
+    <Link to={page ? `/guide/${page}` : '/guide'} className={className} onClick={onClick}>
       {children}
     </Link>
   );
