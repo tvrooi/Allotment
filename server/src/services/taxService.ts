@@ -69,8 +69,8 @@ const now = () => new Date().toISOString();
 
 /**
  * Claims a transaction (or part of one, by work-use share), or replaces its claim (the owner). `guard` is an access token's policy
- * check (auth/assistantPolicy.ts: an unclaimed past transaction), run again inside the
- * transaction; with it the claim is only ever inserted, so even a wrong check can't replace a
+ * check (auth/assistantPolicy.ts: an unclaimed past transaction), run again inside a
+ * transaction of its own; with it the claim is only ever inserted, so even a wrong check can't replace a
  * claim (docs/ASSISTANT-PHASE-3.md, owner decision 4).
  */
 export function setClaim(
@@ -78,7 +78,7 @@ export function setClaim(
   input: { label: TaxLabel; workUseBps?: number; notes?: string | null },
   { guard }: { guard?: () => void } = {},
 ) {
-  return db.transaction(() => {
+  const write = () => {
     guard?.();
     const tx = db
       .select({
@@ -126,7 +126,11 @@ export function setClaim(
         409,
       );
     return getClaim(transactionId);
-  });
+  };
+  // Rules and imports claim inside their own transaction, and the demo's sql.js can't nest one
+  // (it opens a root transaction with a plain BEGIN), so only a token's claim, which comes
+  // straight from the tax route, opens its own
+  return guard ? db.transaction(write) : write();
 }
 
 /** A claim a rule makes on import: never replaces one you set, and skips what can't be claimed */

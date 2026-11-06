@@ -32,7 +32,7 @@ const { ASSISTANT_ACTIONS } = await import('./assistantPolicy.js');
 const { CHANGED_BEFORE_SAVING } = await import('./assistantRefusal.js');
 const { listAssistantActions } = await import('../services/assistantLog.js');
 const { recordEvent, snapshot } = await import('../services/householdService.js');
-const { setClaim } = await import('../services/taxService.js');
+const { claimByRule, setClaim } = await import('../services/taxService.js');
 const { accessTokensRouter } = await import('../routes/accessTokens.js');
 const { assistantDispatch, assistantRouter } = await import('../routes/assistant.js');
 const { transactionsRouter } = await import('../routes/transactions.js');
@@ -351,6 +351,21 @@ describe('rows that read the budget check again inside the write', () => {
     expect(
       (await call('PUT', '/transactions/cat2', null, { categoryId: 'coffee' })).body.categoryId,
     ).toBe('coffee');
+  });
+
+  it('only a token’s claim opens a transaction; rules and imports claim inside theirs', () => {
+    // The demo's sql.js opens a root transaction with a plain BEGIN, so a claim a rule makes
+    // inside applyRules or an import (insertNewTransaction) must not open another
+    const opened = vi.spyOn(db, 'transaction');
+    try {
+      claimByRule('claim2', 'D4');
+      setClaim('claim2', { label: 'D2' });
+      expect(opened).not.toHaveBeenCalled();
+      expect(() => setClaim('claim2', { label: 'D4' }, { guard: () => {} })).toThrow();
+      expect(opened).toHaveBeenCalledTimes(1);
+    } finally {
+      opened.mockRestore();
+    }
   });
 
   it('a token’s claim is only ever inserted, even if a check were wrong', () => {
