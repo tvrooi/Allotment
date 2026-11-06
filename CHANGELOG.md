@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.114
+
+- **Household corrections now wait for your approval.** An assistant with a **Read, categorise and organise** token can propose removing household entries, sharing bills paid from a household account, or unlinking transfers the bank matched wrongly into a household account, but no longer makes those changes itself. Each request arrives as one proposal under **Settings → Server → Access tokens → Waiting for you**, where **Show what it changes** lists every entry, bill or transfer with its date, amount and people. Nothing changes until you choose **Apply**, and then all of it happens or none: if anything is refused, nothing changes and the proposal keeps waiting with the reason. **Decline** discards it. This replaces the temporary permission in 0.2.0-up.113.
+
 ## 0.2.0-up.113
 
 - **A temporary assistant permission to correct a household's history.** Approved by the owner on 6 November 2026, for one household where rent was counted twice, bills paid from its accounts were never shared, and some deposits were matched to the wrong transfers. For this release only, an assistant with a **Read, categorise and organise** token may remove a household contribution, or an expense you paid yourself that you don't share with those people (never an expense the household account or someone else paid, a repayment or a refund), share a past bill paid from a household account as an expense, for exactly that payment's amount and date, and unlink a transfer that touches a household account so the deposit or bill can be recorded properly. Everything else stays the owner's, the household's activity list records each change, and **Assistant activity** in Settings logs every request. The next release removes the permission.
