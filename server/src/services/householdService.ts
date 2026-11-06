@@ -47,7 +47,8 @@ export const splitSchema = z.object({
 });
 export type DefaultSplit = z.infer<typeof splitSchema>;
 
-function parseSplit(json: string | null): DefaultSplit | null {
+/** A stored split, or null when there is none or it no longer parses */
+export function parseSplit(json: string | null): DefaultSplit | null {
   if (!json) return null;
   try {
     return splitSchema.parse(JSON.parse(json));
@@ -650,6 +651,27 @@ function splitOrEqual(split: DefaultSplit | null, members: { id: string }[]) {
     : { mode: 'equal' as const, shares: members.map((p) => ({ personId: p.id, value: 1 })) };
 }
 
+/**
+ * What everyone's share of a bill of `amount` cents comes to with a split (the default when
+ * null, else equal). Fixed amounts are each person's set part whatever the amount; `fixedTotal`
+ * is what they add up to (null for other splits). Shared by the Household page's recurring
+ * bills and by Recurring's "your share" (scheduleScope.ts).
+ */
+export function billShares(split: DefaultSplit | null, members: { id: string }[], amount: number) {
+  const { mode, shares: weights } = splitOrEqual(split, members);
+  const values = weights.map((w) => (mode === 'equal' ? 1 : w.value));
+  const amounts =
+    mode === 'exact'
+      ? values
+      : amount && values.some((v) => v > 0)
+        ? allocateShares(amount, values)
+        : [];
+  return {
+    shares: weights.map((w, i) => ({ personId: w.personId, amount: amounts[i] ?? 0 })),
+    fixedTotal: mode === 'exact' ? values.reduce((n, v) => n + v, 0) : null,
+  };
+}
+
 /** Days back a shared recurring bill looks for payments by its payee */
 const BILL_PAYMENT_DAYS = 180;
 /** Payments listed per shared recurring bill, newest first */
@@ -684,7 +706,6 @@ function sharedRecurringBills(
     const schedule = db.select().from(schedules).where(eq(schedules.id, link.scheduleId)).get();
     if (!schedule) return [];
     const ownSplit = parseSplit(link.splitJson);
-    const { mode, shares: weights } = splitOrEqual(ownSplit ?? split, members);
     const next = db
       .select({
         date: scheduleOccurrences.expectedDate,
@@ -701,13 +722,7 @@ function sharedRecurringBills(
       .orderBy(scheduleOccurrences.expectedDate)
       .get();
     const amount = Math.abs(next?.amount ?? schedule.amount);
-    const values = weights.map((w) => (mode === 'equal' ? 1 : w.value));
-    const amounts =
-      mode === 'exact'
-        ? values
-        : amount && values.some((v) => v > 0)
-          ? allocateShares(amount, values)
-          : [];
+    const { shares: billShareRows, fixedTotal } = billShares(ownSplit ?? split, members, amount);
     const matchedIds = db
       .select({ id: scheduleOccurrences.matchedTransactionId })
       .from(scheduleOccurrences)
@@ -756,9 +771,9 @@ function sharedRecurringBills(
         /** Its own split; null = the household's default split */
         split: ownSplit,
         autoShareFrom: link.autoShareFrom,
-        shares: weights.map((w, i) => ({ personId: w.personId, amount: amounts[i] ?? 0 })),
+        shares: billShareRows,
         /** What fixed amounts add up to (null for other splits); payments must equal it */
-        fixedTotal: mode === 'exact' ? values.reduce((n, v) => n + v, 0) : null,
+        fixedTotal,
         payments,
       },
     ];
@@ -1054,6 +1069,12 @@ export const words = (s: string) =>
     .split(/[^\p{L}\p{N}]+/u)
     .filter((w) => w.length > 1);
 
+/** The first of `among` with a word of their name in a payee's text (two letters or more) */
+export function personNamedIn<P extends { name: string }>(text: string, among: P[]) {
+  const payee = new Set(words(text));
+  return among.find((p) => words(p.name).some((w) => payee.has(w)));
+}
+
 /**
  * Money received that looks like it settles something, for the owner to confirm one by one:
  * - `settlement`: money into your personal accounts whose payee has the name of someone who owes
@@ -1092,10 +1113,8 @@ export function repaymentSuggestions(groupId: string, today: string) {
     )
     .all()
     .filter((t) => t.date <= today && !t.isParent && !t.parentTransactionId && !linked.has(t.id));
-  const named = (t: (typeof recent)[number], among: typeof state.people) => {
-    const payee = new Set(words(`${t.payeeName ?? ''} ${t.importedPayee ?? ''}`));
-    return among.find((p) => words(p.name).some((w) => payee.has(w)));
-  };
+  const named = (t: (typeof recent)[number], among: typeof state.people) =>
+    personNamedIn(`${t.payeeName ?? ''} ${t.importedPayee ?? ''}`, among);
   const base = (t: (typeof recent)[number]) => ({
     transactionId: t.id,
     date: t.date,

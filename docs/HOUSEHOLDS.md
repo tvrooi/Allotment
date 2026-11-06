@@ -304,6 +304,50 @@ Cross-currency household conversion, invitations, individual logins, collaborati
 permissions, automatic Up bill-definition imports and Tricount sync are outside
 this private AUD ledger. Agreed shares are entered explicitly.
 
-**Planned (B9):** Recurring, the Dashboard and the forecast will treat housemates' deposits into a
-household account as contributions, never income, and show a shared bill at your share. See
-[HOUSEMATE-MONEY-PLAN.md](HOUSEMATE-MONEY-PLAN.md).
+## Recurring and the dashboard
+
+Housemates' money is never the owner's income, and a shared bill counts in personal figures at
+the owner's share only (owner's decision, 6 November 2026: net against the bill). One server
+helper, `scheduleScopes` in `server/src/services/scheduleScope.ts`, gives every recurring item a
+**scope**, returned as `scope` by `GET /schedules`, `GET /schedules/:id` and
+`GET /schedules/occurrences`:
+
+- **personal**: an item in a personal budget account, or with no account.
+- **household**, with the household and a role:
+  - `bill`: money out of a household (pool) account, or a recurring item shared with the
+    household on its page, wherever it is paid from. `myShare` is the owner's cents of the
+    expected amount, from the bill's own split or the household's default (`billShares` in
+    `householdService.ts`, the same sums as the Household page's recurring bills).
+  - `contribution`: money into a household account, or the owner's own transfer into one. The
+    person is the owner for their own transfer, else the housemate the payee was recorded as, else
+    the one whose name is in the payee or the item's name (`personNamedIn`, shared with the
+    repayment suggestions).
+  - A deposit into a personal account, or with no account, is a housemate's contribution only
+    when its payee was already recorded as that housemate's money: a contribution, or a
+    settlement paid to the owner (`housematePayees`). This is learned from what the owner
+    recorded, never guessed from a name.
+- **off_budget**: an item in any other off-budget account.
+
+Where it is used:
+
+- **Recurring → Monthly** has three sections: **Income** (the owner's money in), **Expenses**
+  (the owner's money out, plus "Your share of Rent (2Up)" for each household bill, with the full
+  amount beside it), and **Household account**, collapsed, with the bills in full and each
+  contribution. The summary totals cover the first two only. The grouping is
+  `groupOccurrences` in `client/src/components/recurring/scheduleFormat.ts`.
+- **All recurring** marks household items with the household's icon, and a contribution isn't
+  shown as green "+" income. **Find recurring** labels a household account's items "Household
+  bill" or "Household contribution", and never gives a deposit into one an Income category.
+- **Dashboard**: "Bills and income" lists a household bill at the owner's share, marked as shared;
+  "Next pay" is the owner's own income only.
+- **Forecast** and **Review** (`isPersonalIncomeSchedule`): household money is never expected
+  pay. A housemate's deposit saved without an account isn't forecast at all; one into a personal
+  account still counts as cash coming in, but not as income. Household bill shares in the
+  forecast are unchanged (`includeHousehold`), so the owner's transfer into the household
+  account and their share of the rent aren't both counted.
+- **Salary offer** (`detectSalary`): a payee recorded as a housemate's money is never offered as
+  pay.
+
+Nothing is stored: scope is worked out when read, so there is no migration or backup change.
+Not built: a household in the demo budget, and preferring the payday plan's next date for the
+dashboard's "Next pay".

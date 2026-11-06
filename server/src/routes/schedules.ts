@@ -16,6 +16,7 @@ import {
 } from '../services/mainAmountService.js';
 import { MAX_REMINDER_DAYS } from '../services/reminderService.js';
 import { discoverSchedules, createDiscoveredSchedules } from '../services/scheduleDiscovery.js';
+import { scheduleScopes } from '../services/scheduleScope.js';
 import { endSchedule, possiblyEndedIds, reopenSchedule } from '../services/scheduleActivity.js';
 import {
   ensureOccurrences,
@@ -194,6 +195,9 @@ schedulesRouter.get('/occurrences', (req, res) => {
     }
   }
 
+  const scopes = scheduleScopes([
+    ...new Map(rows.map((r) => [r.schedule.id, r.schedule])).values(),
+  ]);
   const result = rows.map(({ occ, schedule }) => {
     const matchedTx = occ.matchedTransactionId ? matchedTxMap.get(occ.matchedTransactionId) : null;
     return {
@@ -207,6 +211,7 @@ schedulesRouter.get('/occurrences', (req, res) => {
       schedulePayeeId: schedule.payeeId,
       matchedAmount: matchedTx?.amount ?? null,
       matchedDate: matchedTx?.date ?? null,
+      scope: scopes.get(schedule.id) ?? { kind: 'personal' },
     };
   });
 
@@ -300,7 +305,14 @@ schedulesRouter.get('/', (req, res) => {
     .orderBy(schedules.name)
     .all();
   const ended = possiblyEndedIds();
-  res.json(rows.map((s) => ({ ...s, possiblyEnded: ended.has(s.id) })));
+  const scopes = scheduleScopes(rows);
+  res.json(
+    rows.map((s) => ({
+      ...s,
+      possiblyEnded: ended.has(s.id),
+      scope: scopes.get(s.id) ?? { kind: 'personal' },
+    })),
+  );
 });
 
 // POST / — create schedule
@@ -365,7 +377,11 @@ schedulesRouter.get('/:id', (req, res) => {
     .all()
     .map((o) => ({ ...o, displayStatus: deriveDisplayStatus(o.status, o.expectedDate) }));
 
-  res.json({ ...schedule, occurrences: recentOccs });
+  res.json({
+    ...schedule,
+    scope: scheduleScopes([schedule]).get(schedule.id) ?? { kind: 'personal' },
+    occurrences: recentOccs,
+  });
 });
 
 // PUT /:id — update schedule

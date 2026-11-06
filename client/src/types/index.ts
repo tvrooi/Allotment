@@ -839,8 +839,36 @@ export interface Schedule {
   reminderDays: number | null;
   /** The last two occurrences went by unpaid (GET /schedules only) */
   possiblyEnded?: boolean;
+  /** Whose money it is (GET /schedules and GET /schedules/:id) */
+  scope?: ScheduleScope;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Whose money a recurring item is (server/src/services/scheduleScope.ts). Household money
+ * (a bill a household account pays or shares, a housemate's contribution) is never income.
+ */
+export type ScheduleScope =
+  | { kind: 'personal' }
+  | {
+      kind: 'household';
+      groupId: string;
+      groupName: string;
+      role: 'bill' | 'contribution';
+      /** A bill: the owner's cents of the expected amount */
+      myShare: number | null;
+      /** A contribution: who it's from, when known */
+      personId: string | null;
+      personName: string | null;
+    }
+  | { kind: 'off_budget' };
+
+/** A discovered item in a household's account: its bill, or money put into it */
+export interface DiscoveredHousehold {
+  groupId: string;
+  groupName: string;
+  role: 'bill' | 'contribution';
 }
 
 export interface ScheduleWithOccurrences extends Schedule {
@@ -869,6 +897,10 @@ export interface ScheduleOccurrence {
   schedulePayeeId: string | null;
   matchedAmount: number | null;
   matchedDate: string | null;
+  /** Whose money it is (GET /schedules/occurrences) */
+  scope?: ScheduleScope;
+  /** A row for the owner's share of a household bill (groupOccurrences): the bill's full amount */
+  shareOf?: number;
 }
 
 export interface ScheduleSummary {
@@ -891,6 +923,7 @@ export interface DiscoveredSchedule {
   exactDate: boolean;
   categoryId: string | null;
   transactionIds: string[];
+  household?: DiscoveredHousehold;
 }
 
 export type NearMissReason = 'amounts_vary' | 'too_few' | 'dates_drift' | 'mixed_signs';
@@ -910,6 +943,7 @@ export interface NearMiss {
   minAmount: number;
   maxAmount: number;
   categoryId: string | null;
+  household?: DiscoveredHousehold;
 }
 
 export interface MatchSuggestion {

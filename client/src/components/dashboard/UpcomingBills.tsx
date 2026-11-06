@@ -9,6 +9,7 @@ import { EmptyState } from '../ui/EmptyState';
 import { ButtonLink } from '../ui/Button';
 import { useSchedules } from '../../hooks/useSchedules';
 import { formatShortDay } from '../../utils/dates';
+import { groupOccurrences } from '../recurring/scheduleFormat';
 
 export default function UpcomingBills() {
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -27,9 +28,11 @@ export default function UpcomingBills() {
       ),
     [occurrences],
   );
-  // Money going out and money coming in, listed apart: pay isn't a bill
-  const bills = pending.filter((o) => o.expectedAmount < 0).slice(0, 4);
-  const income = pending.filter((o) => o.expectedAmount > 0).slice(0, 3);
+  // Money going out and money coming in, listed apart: pay isn't a bill. A household bill shows
+  // the owner's share, and housemates' money is neither
+  const grouped = groupOccurrences(pending);
+  const bills = grouped.expenses.filter((o) => o.expectedAmount < 0).slice(0, 4);
+  const income = grouped.income.slice(0, 3);
   const upcoming = [...bills, ...income];
 
   if (isLoading) {
@@ -120,6 +123,7 @@ function UpcomingRow({ occ }: { occ: Occurrence }) {
         </p>
         <p className="text-xs text-text-tertiary">
           {formatShortDay(occ.expectedDate)}
+          {occ.shareOf ? ` · Shared, ${formatCurrency(occ.shareOf)} in all` : ''}
           {isWaiting
             ? ` · ${Math.abs(daysUntil)}d overdue`
             : daysUntil === 0

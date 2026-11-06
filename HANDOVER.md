@@ -9,6 +9,24 @@ Last updated: 6 November 2026 (up.116 in review).
 
 ## State
 
+- **Housemate money is not income (up.119, B9; no migration):** `scheduleScopes`
+  (`server/src/services/scheduleScope.ts`) gives each recurring item a scope: personal, household
+  (`bill` with the owner's `myShare` from `billShares`, or `contribution` with the person, from
+  the owner's own transfer, a payee recorded as a housemate's money (`housematePayees`), or the
+  name via `personNamedIn`), or off budget. `GET /schedules`, `/schedules/:id` and
+  `/schedules/occurrences` return `scope`. Client: `groupOccurrences` (`scheduleFormat.ts`) feeds
+  Recurring → Monthly (Income, Expenses with "Your share of Rent (2Up)", and a collapsed
+  **Household account** out of the totals), the dashboard's Bills and income and its "Next pay";
+  All recurring shows the household icon and no "+" on contributions; Find recurring labels
+  household items and never gives a pool deposit an Income category. Server: forecast and Review
+  use `isPersonalIncomeSchedule` (one `incomeCategoryIds`, moved from forecastService and the copy
+  in reviewService); a housemate's no-account deposit isn't forecast; `detectSalary` skips
+  housemate payees. Tests: `scheduleScope.test.ts` (with `detectSalary`), `forecastService.test.ts`,
+  `reviewService.test.ts`, `scheduleDiscovery.test.ts`, client `scheduleFormat.test.ts`, e2e
+  `housemate-money.spec.ts`. Docs: HOUSEHOLDS.md "Recurring and the dashboard" (the plan file is
+  deleted), the Bills and pay guide page. Not built: a household in the demo budget; preferring
+  the payday plan's date for "Next pay"; the unused `GET /schedules/summary` still sums by sign.
+  Next: the Budgeting PR list is done; pick up from Open items.
 - **Reviewed list of the transfers Up reported (up.118, B8; no migration):** Up's
   `transferAccount` (kept in `up_source_records.source_json` as `transferAccountId`) names the
   other account of a transfer, not the other transaction. `upReportedAccounts`
@@ -24,8 +42,8 @@ Last updated: 6 November 2026 (up.116 in review).
   account, no reports change nothing), `routes/upReportedTransfers.test.ts` (through the Up mock
   and the routes, with a same-day decoy in another account), e2e `up-transfers.spec.ts`. Docs:
   UP-SUPPORT.md, the Transactions guide page, MCP `transfer_suggestions`. Not built: offering a
-  pair Up reported when the other side is outside the five-day window. Next: B9 (housemate money
-  is not income; [docs/HOUSEMATE-MONEY-PLAN.md](docs/HOUSEMATE-MONEY-PLAN.md)).
+  pair Up reported when the other side is outside the five-day window. Next: B9 (done in
+  up.119).
 - **Keyboard entry, sums, the inspector and notes (up.117, BUD-05, BUD-10; migration 0077,
   backup format 29):** `readAmountExpression` (`client/src/utils/amountExpression.ts`) reads the
   desktop Assigned editor and the phone sheet: `+ - * /` with brackets in exact BigInt fractions,
@@ -400,9 +418,8 @@ site in `website/` was removed (audit decision I-9).
    - Household splitting backlog from the Spliit comparison in
      `docs/research/spliit-household-gaps.md`: SPL-01, SPL-02, SPL-06 (up.106) and SPL-03, SPL-04
      (up.107) and SPL-05 (up.108) are built; the P3 items (SPL-07 to SPL-09) wait for demand.
-   - B9 (B8 is done, up.118): housemates' deposits into a household account show as Income in Recurring,
-     on the Dashboard ("Next pay") and in parts of the forecast. Plan:
-     `docs/HOUSEMATE-MONEY-PLAN.md` (owner's choice: net against the bill).
+   - B9 is done (up.119): housemates' money is never income; see HOUSEHOLDS.md "Recurring and
+     the dashboard". The Budgeting group's PR list (B1 to B9) is complete.
    - Transaction detail has no previous/next (Monarch backlog P1).
    - Future-month money moves; money age (deliberately not built, see BUDGET-REVIEW.md).
    - Investments deferrals (sales, dividends, franking); receipts §6 (PDF reading, email

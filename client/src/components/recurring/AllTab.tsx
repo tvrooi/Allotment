@@ -17,6 +17,8 @@ import { useIsPhone } from '../../hooks/useIsPhone';
 import {
   FREQ_LABEL,
   formatScheduleAmount,
+  householdLabel,
+  isIncomeAmount,
   getUpcomingDays,
   occurrenceBadgeStatus,
   describeUpcomingLength,
@@ -26,6 +28,7 @@ import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import type { Schedule, ScheduleOccurrence } from '../../types';
 import { formatDay } from '../../utils/dates';
+import { HouseholdIcon } from '../household/HouseholdIcon';
 
 const GRID =
   'grid grid-cols-[minmax(0,1.6fr)_minmax(0,1.2fr)_minmax(0,1.2fr)_110px_130px_120px_120px_32px] items-center gap-4';
@@ -131,7 +134,12 @@ export default function AllTab({
         r.schedule.name,
         r.payeeName,
         r.accountName,
-        formatScheduleAmount(r.schedule.amount, r.schedule.amountType),
+        formatScheduleAmount(
+          r.schedule.amount,
+          r.schedule.amountType,
+          isIncomeAmount(r.schedule.amount, r.schedule.scope),
+        ),
+        householdLabel(r.schedule.scope) ?? '',
         statusLabel(r.status),
         r.nextDate ? formatDay(r.nextDate) : '',
         FREQ_LABEL.get(r.schedule.recurrenceType) ?? '',
@@ -198,11 +206,23 @@ export default function AllTab({
     const amount = (
       <span
         className={`text-sm font-medium tabular-nums text-right whitespace-nowrap ${
-          muted ? 'text-text-tertiary' : s.amount > 0 ? 'text-positive' : 'text-text'
+          muted
+            ? 'text-text-tertiary'
+            : isIncomeAmount(s.amount, s.scope)
+              ? 'text-positive'
+              : 'text-text'
         }`}
       >
-        {formatScheduleAmount(s.amount, s.amountType)}
+        {formatScheduleAmount(s.amount, s.amountType, isIncomeAmount(s.amount, s.scope))}
       </span>
+    );
+    const household = s.scope?.kind === 'household' ? s.scope : null;
+    const badge = household && (
+      <HouseholdIcon
+        name={household.groupName}
+        size="xs"
+        title={householdLabel(household) ?? undefined}
+      />
     );
     const nextDate = r.nextDate ? formatDay(r.nextDate) : '—';
     const frequency = FREQ_LABEL.get(s.recurrenceType) ?? s.recurrenceType;
@@ -219,9 +239,10 @@ export default function AllTab({
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline justify-between gap-3">
               <p
-                className={`text-sm font-medium truncate ${muted ? 'text-text-tertiary' : 'text-text'}`}
+                className={`flex items-center gap-1.5 min-w-0 text-sm font-medium ${muted ? 'text-text-tertiary' : 'text-text'}`}
               >
-                {s.name}
+                {badge}
+                <span className="truncate">{s.name}</span>
               </p>
               {amount}
             </div>
@@ -247,10 +268,11 @@ export default function AllTab({
         className={`${GRID} px-5 py-2.5 border-b border-border-light hover:bg-hover transition-colors cursor-pointer`}
       >
         <span
-          className={`text-sm font-medium truncate ${muted ? 'text-text-tertiary' : 'text-text'}`}
+          className={`flex items-center gap-1.5 min-w-0 text-sm font-medium ${muted ? 'text-text-tertiary' : 'text-text'}`}
           title={s.name}
         >
-          {s.name}
+          {badge}
+          <span className="truncate">{s.name}</span>
         </span>
         <span className="text-sm text-text-secondary truncate">{r.payeeName || '—'}</span>
         <span className="text-sm text-text-secondary truncate">{r.accountName || '—'}</span>

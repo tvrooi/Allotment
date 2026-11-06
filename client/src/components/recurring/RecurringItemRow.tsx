@@ -4,7 +4,13 @@ import type { ScheduleOccurrence } from '../../types';
 import StatusBadge from './StatusBadge';
 import RowMenu, { type RowMenuItem } from '../ui/RowMenu';
 import { useIsPhone } from '../../hooks/useIsPhone';
-import { FREQ_LABEL, formatScheduleAmount, occurrenceBadgeStatus } from './scheduleFormat';
+import {
+  FREQ_LABEL,
+  formatScheduleAmount,
+  householdLabel,
+  isIncomeAmount,
+  occurrenceBadgeStatus,
+} from './scheduleFormat';
 import { formatShortDay } from '../../utils/dates';
 
 /** Shared with the section header in MonthlyTab so columns line up. */
@@ -78,13 +84,27 @@ export default function RecurringItemRow({
   const amount = (
     <p
       className={`text-sm font-medium tabular-nums whitespace-nowrap ${
-        isMuted ? 'text-text-tertiary' : occ.expectedAmount > 0 ? 'text-positive' : 'text-text'
+        isMuted
+          ? 'text-text-tertiary'
+          : isIncomeAmount(occ.expectedAmount, occ.scope)
+            ? 'text-positive'
+            : 'text-text'
       }`}
     >
-      {formatScheduleAmount(occ.expectedAmount, occ.amountType)}
+      {formatScheduleAmount(
+        occ.expectedAmount,
+        occ.amountType,
+        isIncomeAmount(occ.expectedAmount, occ.scope),
+      )}
     </p>
   );
-  const frequency = FREQ_LABEL.get(occ.recurrenceType) ?? occ.recurrenceType;
+  // A share row names the full bill; a household row says what it is
+  const detail = occ.shareOf
+    ? `${formatCurrency(occ.shareOf)} in all`
+    : (householdLabel(occ.scope) ?? null);
+  const frequency = [FREQ_LABEL.get(occ.recurrenceType) ?? occ.recurrenceType, detail]
+    .filter(Boolean)
+    .join(' · ');
 
   // Phones: a card. Name and amount on top; date, account and status below
   if (isPhone) {

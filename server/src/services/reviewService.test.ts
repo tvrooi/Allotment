@@ -12,6 +12,7 @@ import {
   categories,
   categoryGroups,
   categoryTargets,
+  householdGroups,
   paydayFundingReceipts,
   paydayFundingEvents,
   paydayPlans,
@@ -51,6 +52,7 @@ beforeAll(() => {
 afterAll(() => vi.useRealTimers());
 beforeEach(() => {
   for (const table of [
+    householdGroups,
     categoryTargets,
     paydayFundingReceipts,
     paydayFundingEvents,
@@ -277,6 +279,33 @@ describe('guided setup (6G)', () => {
       .where(eq(budgetMonths.id, 'rent:2026-10'))
       .run();
     expect(step('before-income').status).toBe('done');
+  });
+  it("doesn't take a housemate's deposit into a household account as the next pay", () => {
+    db.insert(accounts)
+      .values({ id: 'pool', name: '2Up', type: 'checking', createdAt: '2026-06-01' })
+      .run();
+    db.insert(householdGroups)
+      .values({ id: 'hh', name: 'Home', currency: 'AUD', accountId: 'pool' })
+      .run();
+    const deposit = (id: string, accountId: string, anchorDay: number) =>
+      db
+        .insert(schedules)
+        .values({
+          id,
+          name: id,
+          amount: 80000,
+          recurrenceType: 'monthly',
+          recurrenceRule: JSON.stringify({ type: 'monthly', interval: 1, anchorDay }),
+          startDate: `2026-10-${anchorDay}`,
+          accountId,
+          categoryId: 'salary',
+        })
+        .run();
+    deposit('juno-rent', 'pool', 24);
+    expect(guideState().nextIncome).toBeNull();
+    // The same deposit into the owner's own account is expected pay
+    deposit('pay', 'cash', 27);
+    expect(guideState().nextIncome).toBe('2026-10-27');
   });
   it('derives every step from the budget', () => {
     expect(step('balances').status).toBe('todo');

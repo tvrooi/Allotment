@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.119
+
+- **Housemates' money isn't your income.** When housemates pay their share into a household account (a 2Up, say), Recurring no longer counts it as your income, and the dashboard's **Next pay** is only ever your own pay. Recurring → **Monthly** now has three parts: **Income** and **Expenses** are yours, and a bill the household shares shows there at your share, such as "Your share of Rent (Home)" with the full amount beside it; **Household account**, folded away, lists the household's bills in full and what each person puts in, and isn't in your totals. **All recurring** marks household items with the household's picture, and **Find recurring** labels them "Household bill" or "Household contribution" without putting a housemate's deposit in an Income category. The forecast and Review never take household money as expected pay, and Allotment no longer offers a housemate's regular transfer as your salary once you've recorded it as theirs.
+
 ## 0.2.0-up.118
 
 - **Review the transfers Up reported.** Up says which account a transfer went to or came from (your Spending account to a Saver, for example), though not which transaction is the other side. Allotment now uses that: in an account's **Possible transfers → Review**, pairs Up reported come first under **Up reported these**, and the banner says how many there are. A transaction from Up is only ever paired with one in the account Up named, so a payment of the same amount into another account on the same day is no longer offered in its place. As before, a sync links nothing: you tick each pair that is right and choose **Link**, or **Not a transfer**.

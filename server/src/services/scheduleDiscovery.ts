@@ -37,6 +37,8 @@ import {
 import { ensureOccurrences } from './scheduleService.js';
 import { linkOccurrenceToTransaction } from './matchingEngine.js';
 import { listTransferSuggestions } from './transferService.js';
+import { poolGroupOf } from './householdService.js';
+import { incomeCategoryIds } from './scheduleScope.js';
 
 const DATE_WINDOW = 2; // ±days, Actual's approx-date bound
 const OCCURRENCES_TO_MATCH = 3;
@@ -79,6 +81,14 @@ export interface DiscoveredSchedule {
   exactDate: boolean;
   categoryId: string | null;
   transactionIds: string[];
+  /** Set when the account is a household's: its bill, or money put into it (never income) */
+  household?: DiscoveredHousehold;
+}
+
+export interface DiscoveredHousehold {
+  groupId: string;
+  groupName: string;
+  role: 'bill' | 'contribution';
 }
 
 export type NearMissReason = 'amounts_vary' | 'too_few' | 'dates_drift' | 'mixed_signs';
@@ -99,6 +109,7 @@ export interface NearMiss {
   minAmount: number;
   maxAmount: number;
   categoryId: string | null;
+  household?: DiscoveredHousehold;
 }
 
 /** Actual's getApproxNumberThreshold: 7.5% of the amount. */
@@ -419,6 +430,25 @@ export function discoverSchedules(): { found: DiscoveredSchedule[]; nearMisses: 
     if (!cur || c.rank > cur.rank) best.set(c.payeeKey, c);
   }
 
+  const pools = new Map(
+    openAccounts.flatMap((a) => {
+      const group = poolGroupOf(a.id);
+      return group ? [[a.id, { groupId: group.id, groupName: group.name }] as const] : [];
+    }),
+  );
+  const incomeIds = incomeCategoryIds();
+  /** A household account's item: its household, and no Income category on money put in */
+  const scoped = (accountId: string, amount: number, categoryId: string | null) => {
+    const pool = pools.get(accountId);
+    if (!pool) return { categoryId };
+    const role = amount < 0 ? ('bill' as const) : ('contribution' as const);
+    return {
+      categoryId:
+        role === 'contribution' && categoryId && incomeIds.has(categoryId) ? null : categoryId,
+      household: { ...pool, role },
+    };
+  };
+
   const today = fmt(new Date());
   const found: DiscoveredSchedule[] = [];
   for (const c of best.values()) {
@@ -449,8 +479,8 @@ export function discoverSchedules(): { found: DiscoveredSchedule[]; nearMisses: 
       recurrenceRule: c.pattern.rule,
       startDate,
       exactDate: c.exactDate,
-      categoryId: commonCategory(matched),
       transactionIds: matched.map((t) => t.id),
+      ...scoped(c.accountId, c.amount, commonCategory(matched)),
     });
   }
 
@@ -484,7 +514,7 @@ export function discoverSchedules(): { found: DiscoveredSchedule[]; nearMisses: 
         amount: latest.amount,
         minAmount: Math.min(...amounts),
         maxAmount: Math.max(...amounts),
-        categoryId: commonCategory(list),
+        ...scoped(accountId, latest.amount, commonCategory(list)),
       });
     }
   }
