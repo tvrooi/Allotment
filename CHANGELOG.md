@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.120
+
+- **Previous and next in a transaction's details.** The details panel (a full-screen sheet on a phone) now has **Previous transaction** and **Next transaction** buttons beside **Close**, so you can work through a list without closing and reopening each one. They follow the list you're looking at, in its order, with your search and filters applied, and go past the rows shown so far when there are more. At the first or last transaction the button is greyed out. Anything you typed is saved to its own transaction before the next one opens, and moving between transactions changes nothing on its own. The buttons work from the keyboard, are 44 pixels square on a phone, and closing the details puts the keyboard back on the row you were looking at.
+
 ## 0.2.0-up.119
 
 - **Housemates' money isn't your income.** When housemates pay their share into a household account (a 2Up, say), Recurring no longer counts it as your income, and the dashboard's **Next pay** is only ever your own pay. Recurring → **Monthly** now has three parts: **Income** and **Expenses** are yours, and a bill the household shares shows there at your share, such as "Your share of Rent (Home)" with the full amount beside it; **Household account**, folded away, lists the household's bills in full and what each person puts in, and isn't in your totals. **All recurring** marks household items with the household's picture, and **Find recurring** labels them "Household bill" or "Household contribution" without putting a housemate's deposit in an Income category. The forecast and Review never take household money as expected pay, and Allotment no longer offers a housemate's regular transfer as your salary once you've recorded it as theirs.

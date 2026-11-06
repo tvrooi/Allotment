@@ -183,6 +183,17 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         ),
       },
       {
+        heading: 'Working through the list',
+        body: (
+          <p>
+            Click a transaction (or tap it on a phone) to open its details. Use the up and down
+            arrows beside <b>Close</b> to open the one above or below without closing the panel.
+            They follow the list as you see it, search and filters included. What you typed is saved
+            before the next one opens.
+          </p>
+        ),
+      },
+      {
         heading: 'Transfers',
         body: (
           <p>

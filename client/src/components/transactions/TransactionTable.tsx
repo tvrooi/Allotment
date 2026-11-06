@@ -44,6 +44,10 @@ import { formatDay, formatDayLong } from '../../utils/dates';
 /** Rows drawn at a time: every match is loaded, but drawing thousands at once is slow */
 const ROWS_PER_PAGE = 300;
 
+/** A register row or phone card, found by its transaction (rows carry data-tx-id) */
+const rowElement = (id: string) =>
+  document.querySelector<HTMLElement>(`[data-tx-id="${CSS.escape(id)}"]`);
+
 interface Props {
   budgetReport?: boolean;
   accountId?: string;
@@ -287,6 +291,30 @@ export function TransactionTable({
     return result;
   }, [groupedByDate, shownRows]);
   const hiddenRows = transactions.length - visibleGroups.reduce((sum, g) => sum + g.txs.length, 0);
+
+  // Previous and next walk the same rows the register lists, in its order (filters and search
+  // included), drawing more rows when the next one isn't shown yet. Opening a row writes nothing.
+  const detailIndex = selectedTx ? transactions.indexOf(selectedTx) : -1;
+  const stepTo = (index: number) => {
+    const target = transactions[index];
+    if (!target) return undefined;
+    return () => {
+      if (index >= shownRows) setShown({ params, rows: index + 1 });
+      setDetailId(target.id);
+    };
+  };
+  const openPrevious = detailIndex > 0 ? stepTo(detailIndex - 1) : undefined;
+  const openNext = detailIndex >= 0 ? stepTo(detailIndex + 1) : undefined;
+  // Keep the open row in sight beside the panel
+  useEffect(() => {
+    if (detailId && !overlay) rowElement(detailId)?.scrollIntoView({ block: 'nearest' });
+  }, [detailId, overlay]);
+  // Closing returns the keyboard to the row whose details were open
+  const closeDetail = () => {
+    const id = detailId;
+    setDetailId(null);
+    if (id) rowElement(id)?.focus();
+  };
   // What sharing accepts: money out that isn't a transfer or a split's parent
   const shareable = (t: (typeof transactions)[number]) =>
     t.amount < 0 && !t.isParent && !t.transferTransactionId;
@@ -638,7 +666,9 @@ export function TransactionTable({
                 accountName={accountInfoMap.get(panelTx.accountId)?.name}
                 accountType={accountInfoMap.get(panelTx.accountId)?.type}
                 accountLogo={accountInfoMap.get(panelTx.accountId)?.logo}
-                onClose={() => setDetailId(null)}
+                onPrevious={openPrevious}
+                onNext={openNext}
+                onClose={closeDetail}
               />
             </div>
           </div>
@@ -688,10 +718,7 @@ export function TransactionTable({
         panelTx &&
         overlay &&
         createPortal(
-          <div
-            className="fixed inset-0 z-50 flex justify-end cursor-pointer"
-            onClick={() => setDetailId(null)}
-          >
+          <div className="fixed inset-0 z-50 flex justify-end cursor-pointer" onClick={closeDetail}>
             <div
               className={`absolute inset-0 bg-black/20 transition-opacity duration-200 ${panelVisible ? 'opacity-100' : 'opacity-0'}`}
             />
@@ -709,7 +736,9 @@ export function TransactionTable({
                 accountName={accountInfoMap.get(panelTx.accountId)?.name}
                 accountType={accountInfoMap.get(panelTx.accountId)?.type}
                 accountLogo={accountInfoMap.get(panelTx.accountId)?.logo}
-                onClose={() => setDetailId(null)}
+                onPrevious={openPrevious}
+                onNext={openNext}
+                onClose={closeDetail}
               />
             </div>
           </div>,

@@ -16,6 +16,8 @@
 
 **Smallest checks:** focused register navigation browser test with mock transactions; `npm run build --prefix client`. No server change is needed if existing detail fetching supports the route.
 
+**Status (6 November 2026, 0.2.0-up.120):** previous/next is built. It walks the register's loaded, filtered rows in their order, is disabled at the first and last row, saves typed edits to their own transaction first, and closing focuses the originating row (e2e `transactions.spec.ts`, `phone/polish-phone.spec.ts`). Still open: a transaction-specific route, so a direct link and Back.
+
 ## P1 · Bulk edits explicitly distinguish unchanged, set and clear
 
 **Evidence:** Edit multiple reveals selection count and keyboard hints; the bulk dialog defaults fields to No change and disables Save until a change. Continued audit: Bulk editing. No bulk save was submitted.
