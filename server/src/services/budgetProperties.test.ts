@@ -618,12 +618,15 @@ describe('budget properties (audit F-16)', () => {
                   .flatMap((g) => g.categories)
                   .map((c) => [c.id, c.balance] as const),
               );
+            // A $0 assignment and no row mean the same: undo writes the old value back, so a
+            // month that had no row for the envelope can end with one at $0
             const rows = () =>
               new Map(
                 db
                   .select()
                   .from(budgetMonths)
                   .all()
+                  .filter((r) => r.budgeted !== 0)
                   .map((r) => [`${r.month}|${r.categoryId}`, r.budgeted]),
               );
             const held = balances().get(source) ?? 0;
