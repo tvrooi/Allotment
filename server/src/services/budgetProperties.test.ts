@@ -17,7 +17,14 @@ import {
 import { budgetGroups, budgetSummary } from './budgetService.js';
 import { applyAutoAssign, AUTO_ASSIGN_STRATEGIES, previewAutoAssign } from './autoAssign.js';
 import { applyCardSetup, previewCardSetup } from './cardFundingSetup.js';
-import { BudgetError, fundedWrite } from './budgetMoves.js';
+import {
+  applyMove,
+  BudgetError,
+  fundedWrite,
+  previewMove,
+  READY_TO_ASSIGN,
+  undoMove,
+} from './budgetMoves.js';
 import { ratesChanged } from './mainAmountService.js';
 import { monthBounds } from '../utils/date.js';
 
@@ -587,6 +594,64 @@ describe('budget properties (audit F-16)', () => {
               expect((after.get(key) ?? 0) - (before.get(key) ?? 0), key).toBe(
                 changed.get(key) ?? 0,
               );
+          },
+        ),
+        { numRuns: Math.ceil(RUNS / 2) },
+      );
+    },
+    TIMEOUT,
+  );
+
+  it(
+    'giving money back to Ready to assign raises it by exactly that amount and undoes cleanly (BUD-06)',
+    () => {
+      fc.assert(
+        fc.property(
+          scenarioArb,
+          fc.constantFrom(...ENVELOPES),
+          fc.double({ min: 0, max: 1, noNaN: true }),
+          (raw, source, share) => {
+            baseBudget(raw);
+            const balances = () =>
+              new Map(
+                budgetGroups(CURRENT)
+                  .flatMap((g) => g.categories)
+                  .map((c) => [c.id, c.balance] as const),
+              );
+            const rows = () =>
+              new Map(
+                db
+                  .select()
+                  .from(budgetMonths)
+                  .all()
+                  .map((r) => [`${r.month}|${r.categoryId}`, r.budgeted]),
+              );
+            const held = balances().get(source) ?? 0;
+            const amount = Math.floor(held * share);
+            if (amount <= 0) return;
+            const request = { sourceId: source, destinationId: READY_TO_ASSIGN, amount };
+            const beforeRows = rows();
+            const beforeBalances = balances();
+            const before = budgetSummary(CURRENT);
+            let operation;
+            try {
+              operation = applyMove(CURRENT, request, previewMove(CURRENT, request).revision);
+            } catch (error) {
+              // Refused (rates missing, an earlier month short of the money): nothing changes
+              if (!(error instanceof BudgetError)) throw error;
+              expect(rows()).toEqual(beforeRows);
+              return;
+            }
+            const after = budgetSummary(CURRENT);
+            expect(after.toBeBudgeted - before.toBeBudgeted, 'Ready to assign').toBe(amount);
+            expect(after.resources).toBe(before.resources);
+            for (const [id, balance] of balances())
+              expect(balance, id).toBe(
+                (beforeBalances.get(id) ?? 0) - (id === source ? amount : 0),
+              );
+            undoMove(operation.id);
+            expect(rows()).toEqual(beforeRows);
+            expect(budgetSummary(CURRENT).toBeBudgeted).toBe(before.toBeBudgeted);
           },
         ),
         { numRuns: Math.ceil(RUNS / 2) },

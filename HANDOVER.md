@@ -5,10 +5,28 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 6 November 2026 (up.114 in review).
+Last updated: 6 November 2026 (up.115 in review).
 
 ## State
 
+- **Row-anchored moves, and giving money back to Ready to assign (up.115, BUD-06; no migration):**
+  the Available figure of an envelope that isn't $0 is a button (desktop table, phone cards) that
+  opens the Move money panel prefilled through `useMoveRequest` (`store/moveRequestStore.ts`): the
+  envelope as the source when it has money, as the destination with its deficit when overspent;
+  never for a future month. `READY_TO_ASSIGN` (`budgetMoves.ts`, mirrored in `MoneyMoves.tsx`) is a
+  move destination only: `previewMove` reports Ready to assign now as its available figure,
+  `moveWithinTransaction` writes only the source's assignment, and `budget_moves.destination_id`
+  keeps the sentinel (no foreign key, so no migration; history and undo name it and undo restores
+  the source alone). `goalLifecycle.ts` refuses it, so a goal's retire-and-move still goes to a
+  category. The preview's generic `targetNotice` is replaced by `sourceTarget` and
+  `destinationTarget` (`targetEffect`: a target's requirement doesn't depend on this month's
+  assignment, so only the change in assignment moves it) and the panel has **Cancel**. Tests:
+  `readyToAssign.test.ts`, `budgetProperties.test.ts` (Ready to assign rises by exactly the amount,
+  nothing else changes, undo restores every row), `resilience.test.ts` (goal refusal), e2e
+  `envelope-funding.spec.ts` (desktop and phone, plus the guide link). Docs: ENVELOPE-FUNDING.md
+  "Moves, coverage and undo", a new **Move money** guide page (`move-money` in `DocsPage` and
+  `userGuide/articles.tsx`). Not built: assigning from Ready to assign inside the panel (the planned
+  field does it), moves in a future month. Next: B6 (BUD-09 card rows in the budget table).
 - **Household corrections as owner-applied proposals (up.114):** owner-requested on 6 November 2026, replacing up.113's temporary direct rows (`household_remove_contribution`, `household_remove_own_expense`, `household_pool_expense`, `household_unlink_transfer`, now gone from `auth/assistantPolicy.ts`; up.113 was used once that day to correct the owner's household, 16 entries removed, 8 transfers unlinked and 5 re-linked, 7 contributions and 9 bills recorded, balances reconciled to the bank). Proposal kinds `household.remove_entries`, `household.share_bills`, `household.unlink_transfers` in `services/assistantActions.ts`: checked when proposed (`proposalContent`), payload lists every item for the owner, applied whole in one `db.transaction` through `removeEvent`, `recordEvent` and `unlinkTransfer` (`applyHouseholdProposal`). MCP `remove_household_entries`, `record_household_bill_expenses`, `unlink_household_transfers` file them through the existing `propose_change` row; **Waiting for you** (`ReadOnlyAccess.tsx`) shows "Show what it changes". Tests: "household corrections, proposed for the owner to apply" in `routes/assistantTools.test.ts` (every token refused directly, the token can't apply, apply-time refusal leaves the batch undone and pending).
 - **Month quick fills and selected-category funding (up.112, ACT-05, BUD-07; no migration):** auto-assign
   (`services/autoAssign.ts`) already had assigned/spent last month and a 3-month average (add only);
@@ -327,11 +345,10 @@ site in `website/` was removed (audit decision I-9).
    are combined households (up.58).
 4. **Gaps found in the 26 October audit** (not built or not documented):
    - User guide pages missing for shipped features: payday plans, resilience/budget
-     review, card payments, the long-term forecast (super, HECS-HELP) and Move money.
+     review, card payments and the long-term forecast (super, HECS-HELP). Move money has one (up.115).
    - YNAB budget backlog in `docs/research/ynab-flybudget-budget-gaps.md` (PR #41): BUD-02 and
-     BUD-03 are done (up.109) and BUD-07 (up.112); BUD-05 keyboard/expressions, BUD-06 row moves
-     and returning money to unassigned, BUD-09 card rows in the
-     table, BUD-10 inspector and notes. BUD-01 fixed in up.46.
+     BUD-03 are done (up.109), BUD-07 (up.112) and BUD-06 (up.115); open: BUD-05
+     keyboard/expressions, BUD-09 card rows in the table, BUD-10 inspector and notes. BUD-01 fixed in up.46.
    - Household splitting backlog from the Spliit comparison in
      `docs/research/spliit-household-gaps.md`: SPL-01, SPL-02, SPL-06 (up.106) and SPL-03, SPL-04
      (up.107) and SPL-05 (up.108) are built; the P3 items (SPL-07 to SPL-09) wait for demand.
@@ -386,7 +403,7 @@ site in `website/` was removed (audit decision I-9).
    this file" and FINX-02 reminders (up.103; reminders for multi-user budgets, through the gateway,
    are not built). ACT-04 per-category overspending is done (up.110) and so is ACT-03 hold for
    next month (up.111); ACT-05 month quick fills and BUD-07 selected-category funding are done
-   (up.112).
+   (up.112); BUD-06 row-anchored moves and returning money to Ready to assign (up.115).
 
 10. **Audit roadmap, next round** ([docs/AUDIT-2026-11.md](docs/AUDIT-2026-11.md) section H): Stage 1
     leftovers are financial property tests across transfers, cards, splits, linked envelopes and

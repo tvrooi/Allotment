@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.115
+
+- **Move money from the envelope, and give money back to Ready to assign.** Click an envelope's **Available** figure (tap it on a phone) and **Move money** opens with it filled in: an envelope with money becomes the source, and an overspent one becomes the destination with the amount it is short, so you only choose the other side. **Ready to assign** is now a destination: it takes money out of an envelope without giving it to another one, and Ready to assign rises by exactly that amount. The preview shows both sides' figures afterwards, now says what the move does to each funding target (for example "Groceries target: still needs $50 (was fully funded)") in place of the old general notice, and has a **Cancel** that writes nothing. Money move history names Ready to assign, and **Undo move** works for it as for any move. A new **Move money** page in the guide explains it. Moves in a future month are still not available, and a goal's retire-and-move still goes to a category only.
+
 ## 0.2.0-up.114
 
 - **Household corrections now wait for your approval.** An assistant with a **Read, categorise and organise** token can propose removing household entries, sharing bills paid from a household account, or unlinking transfers the bank matched wrongly into a household account, but no longer makes those changes itself. Each request arrives as one proposal under **Settings → Server → Access tokens → Waiting for you**, where **Show what it changes** lists every entry, bill or transfer with its date, amount and people. Nothing changes until you choose **Apply**, and then all of it happens or none: if anything is refused, nothing changes and the proposal keeps waiting with the reason. **Decline** discards it. This replaces the temporary permission in 0.2.0-up.113.

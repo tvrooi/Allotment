@@ -26,7 +26,7 @@ import {
   transactions,
 } from '../db/schema.js';
 import { fundingRevision, fundingState } from './budgetService.js';
-import { applyMove, previewMove } from './budgetMoves.js';
+import { applyMove, previewMove, READY_TO_ASSIGN } from './budgetMoves.js';
 import { setHold } from './budgetHolds.js';
 import { previewTargetFunding, saveTarget } from './targetService.js';
 import { incomeOptions, previewPayday } from './paydayService.js';
@@ -44,7 +44,7 @@ import {
   snoozeReminder,
 } from './resilienceService.js';
 import { prioritiesSchema } from './resilienceConfig.js';
-import { changeGoalStatus, goalHistory } from './goalLifecycle.js';
+import { changeGoalStatus, goalHistory, statusChangeSchema } from './goalLifecycle.js';
 import { createBackup, parseBackup, restoreBackup } from './backupService.js';
 import { prioritiesRouter } from '../routes/priorities.js';
 import { reviewRouter } from '../routes/review.js';
@@ -441,6 +441,19 @@ describe('7D goal lifecycle', () => {
     expect(goalHistory('car-goal')).toMatchObject([
       { fromStatus: 'active', toStatus: 'retired', moveId: move!.id },
     ]);
+  });
+
+  it('keeps a goal change to categories: Ready to assign is not a destination there', () => {
+    const body = {
+      status: 'retired',
+      expectedUpdatedAt: 'x',
+      move: { destinationId: READY_TO_ASSIGN, amount: 100, revision: 'r' },
+    };
+    expect(statusChangeSchema.safeParse(body).success).toBe(false);
+    expect(
+      statusChangeSchema.safeParse({ ...body, move: { ...body.move, destinationId: 'rainy' } })
+        .success,
+    ).toBe(true);
   });
 
   it('rejects a stale budget or goal edit with no partial change', () => {

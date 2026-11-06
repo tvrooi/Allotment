@@ -9,9 +9,17 @@ import {
   transactions,
   budgetMoves,
   budgetSettings,
+  categoryTargets,
 } from '../db/schema.js';
 import { budgetGroups, budgetSummary } from './budgetService.js';
-import { applyMove, fundedWrite, previewMove } from './budgetMoves.js';
+import {
+  applyMove,
+  BudgetError,
+  fundedWrite,
+  previewMove,
+  READY_TO_ASSIGN,
+  undoMove,
+} from './budgetMoves.js';
 import { ratesChanged, startBudgetIfNew } from './mainAmountService.js';
 import { monthBounds } from '../utils/date.js';
 import { lt } from 'drizzle-orm';
@@ -32,6 +40,7 @@ beforeEach(() => {
     budgetMoves,
     transactions,
     budgetMonths,
+    categoryTargets,
     categories,
     categoryGroups,
     accounts,
@@ -143,6 +152,96 @@ it('moving money changes exactly those two categories and never Ready to Assign'
   expect(available('2026-10', 'rent')).toBe(0);
   expect(available('2026-10', 'fun')).toBe(before.fun);
   expect(rta('2026-11')).toBe(before.rta); // the covered deficit no longer leaves next month
+});
+
+it('gives money back to Ready to assign, once, and the owner can assign it elsewhere once (BUD-06)', () => {
+  account('cash', '2026-10-01');
+  txn('cash', '2026-10-05', 100000, 'salary');
+  assign('food', '2026-10', 70000);
+  assign('rent', '2026-10', 30000);
+  expect(rta('2026-10')).toBe(0);
+  const request = { sourceId: 'food', destinationId: READY_TO_ASSIGN, amount: 1000 };
+  const preview = previewMove('2026-10', request);
+  // The preview names the figures a person sees: Food's available, and Ready to assign
+  expect(preview).toMatchObject({
+    toReady: true,
+    sourceAfter: 69000,
+    destinationAvailable: 0,
+    destinationAfter: 1000,
+  });
+  // Cancel writes nothing: a preview alone changes no assignment
+  expect(rta('2026-10')).toBe(0);
+  const operation = applyMove('2026-10', request, preview.revision);
+  expect(rta('2026-10')).toBe(1000);
+  expect(available('2026-10', 'food')).toBe(69000);
+  expect(available('2026-10', 'rent')).toBe(30000);
+  // That $10 can be assigned once; a second $10 isn't there
+  assign('fun', '2026-10', 1000);
+  expect(rta('2026-10')).toBe(0);
+  expect(() => assign('fun', '2026-10', 2000)).toThrow(/Not enough Ready to assign/);
+  // No ledger row for the pseudo destination
+  expect(
+    db
+      .select()
+      .from(budgetMonths)
+      .all()
+      .map((r) => r.categoryId)
+      .sort(),
+  ).toEqual(['food', 'fun', 'rent']);
+  // The audit trail keeps what was done, and undo is refused once the budget moved on
+  expect(db.select().from(budgetMoves).get()).toMatchObject({
+    destinationId: READY_TO_ASSIGN,
+    amount: 1000,
+  });
+  expect(() => undoMove(operation.id)).toThrow(/budget changed/);
+});
+
+it('refuses giving back more than the envelope holds, a stale preview, and a future month', () => {
+  account('cash', '2026-10-01');
+  txn('cash', '2026-10-05', 100000, 'salary');
+  assign('food', '2026-10', 5000);
+  const request = { sourceId: 'food', destinationId: READY_TO_ASSIGN, amount: 5001 };
+  expect(() => previewMove('2026-10', request)).toThrow(/insufficient availability/);
+  expect(() => previewMove('2026-11', { ...request, amount: 100 })).toThrow(
+    /current or a historical/,
+  );
+  // Ready to assign is a destination only
+  expect(() =>
+    previewMove('2026-10', { sourceId: READY_TO_ASSIGN, destinationId: 'food', amount: 100 }),
+  ).toThrow(BudgetError);
+  const ok = { ...request, amount: 100 };
+  const { revision } = previewMove('2026-10', ok);
+  assign('rent', '2026-10', 1);
+  expect(() => applyMove('2026-10', ok, revision)).toThrow(/budget changed/);
+  expect(available('2026-10', 'food')).toBe(5000);
+});
+
+it('reports what a move does to each funding target, and nothing when it changes none (BUD-02)', () => {
+  account('cash', '2026-10-01');
+  txn('cash', '2026-10-05', 100000, 'salary');
+  db.insert(categoryTargets)
+    .values([
+      { categoryId: 'food', type: 'monthly', amount: 50000, createdMonth: '2026-10' },
+      { categoryId: 'rent', type: 'monthly', amount: 40000, createdMonth: '2026-10' },
+    ])
+    .run();
+  assign('food', '2026-10', 50000);
+  assign('rent', '2026-10', 20000);
+  const toRent = previewMove('2026-10', { sourceId: 'food', destinationId: 'rent', amount: 5000 });
+  expect(toRent.sourceTarget).toEqual({ before: 0, after: 5000 });
+  expect(toRent.destinationTarget).toEqual({ before: 20000, after: 15000 });
+  // Fun has no target, and giving back money still shows what it does to Food's
+  const back = previewMove('2026-10', {
+    sourceId: 'food',
+    destinationId: READY_TO_ASSIGN,
+    amount: 2000,
+  });
+  expect(back.sourceTarget).toEqual({ before: 0, after: 2000 });
+  expect(back.destinationTarget).toBeNull();
+  const none = previewMove('2026-10', { sourceId: 'rent', destinationId: 'fun', amount: 1000 });
+  expect(none.destinationTarget).toBeNull();
+  // Rent was short of its target by $200; taking $10 more makes that $300 and Fun has none
+  expect(none.sourceTarget).toEqual({ before: 20000, after: 21000 });
 });
 
 it('cash overspending is red in its month and comes out of the next month only', () => {

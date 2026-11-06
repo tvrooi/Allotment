@@ -223,12 +223,35 @@ The assignment pair and durable operation are written in one database transactio
 A database revision changes for relevant writes, even changes later reversed, and
 prevents competing previews from reusing source money.
 
+**From the budget row (BUD-06).** The Available figure of an envelope that isn't $0 is a button in
+the desktop table and the phone cards (`useMoveRequest`, `store/moveRequestStore.ts`): with money
+it opens the panel with that envelope as the source, overspent it opens it as the destination
+with the deficit as the amount. It only prefills the same preview and apply path; nothing is
+written until Apply move. The row buttons are absent for a future month.
+
+**Returning money to Ready to assign.** `READY_TO_ASSIGN` (`budgetMoves.ts`, mirrored in
+`MoneyMoves.tsx`) is accepted as a move's destination only. It is not a category or an account:
+`previewMove` reports Ready to assign now (`fundingState(today).unassigned`) as the destination's
+available figure, `moveWithinTransaction` writes only the source's assignment (the month's
+assignment falls by the amount, so the envelope's available falls by it and Ready to assign rises
+by exactly it), and the `budget_moves` row keeps the sentinel as `destination_id` (no migration:
+that column has no foreign key), so history and undo name it and undo restores the source alone.
+The same availability, current-or-past month, revision and stale-undo rules apply. Assigning it to
+an envelope again is the ordinary guarded assignment. A goal's retire-and-move refuses it
+(`goalLifecycle.ts`), so a goal change still moves money between categories only.
+
+**Target figures.** The preview's `sourceTarget` and `destinationTarget` hold how much a funding
+target still asks for before and after (`targetEffect`; null when there is no target or the move
+doesn't change it). A target's requirement depends on what was carried in, not on this month's
+assignment, so only the assignment change moves it. Tests: `readyToAssign.test.ts`,
+`budgetProperties.test.ts` (Ready to assign rises by exactly the amount, nothing else changes,
+undo restores every row), e2e `envelope-funding.spec.ts`.
+
 History shows the latest 100 operations. Undo restores both assignments atomically
 only if no relevant financial change has intervened. Revision checks are deliberately
 conservative: imports, account/rate changes, category edits and another allocation
 require a new reviewed move. Day changes also invalidate old previews/undo. Category
-goals/targets are not yet linked (6C–6D); moving money changes category funds available
-for their eventual progress calculations.
+targets read the new assignments, and the preview says how a move changes them.
 
 Portable backup version 7 retains operations and accepts older backups. Restore
 invalidates pre-restore undo, even for an exported operation; it cannot overwrite the

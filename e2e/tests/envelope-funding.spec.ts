@@ -76,3 +76,85 @@ for (const phone of [false, true]) {
     await expect(page.getByText('$250', { exact: true }).first()).toBeVisible();
   });
 }
+
+// BUD-06: the Available figure on a row opens Move money with that envelope filled in
+for (const phone of [false, true]) {
+  test(`cover from a row, and give money back to Ready to assign${phone ? ' on phone' : ''}`, async ({
+    page,
+    api,
+  }) => {
+    if (phone) await page.setViewportSize({ width: 390, height: 844 });
+    const account = await api.createAccount('Cash', 0);
+    const food = await api.category('Groceries');
+    const rent = await api.category('Rent / Mortgage');
+    const month = thisMonth();
+    await api.createTransaction({
+      accountId: account.id,
+      date: isoDay(),
+      amount: 100000,
+      categoryId: (await api.category('Paychecks')).id,
+    });
+    await api.call('PUT', `/budget/${month}/${food.id}`, { budgeted: 40000 });
+    await api.call('PUT', `/budget/${month}/${rent.id}`, { budgeted: 10000 });
+    await api.createTransaction({
+      accountId: account.id,
+      date: isoDay(),
+      amount: -15000,
+      categoryId: rent.id,
+    });
+    await open(page, '/budget');
+    const cardOf = (name: string) =>
+      phone
+        ? page.getByTestId('budget-card').filter({ hasText: name })
+        : page.locator('tr').filter({ hasText: name });
+    const preview = page.getByRole('region', { name: 'Money move preview' });
+    const ready = async () => (await api.call('GET', `/budget/${month}/summary`)).toBeBudgeted;
+
+    // Cover Rent: the panel opens with Rent as the destination and its deficit as the amount
+    await page.getByRole('button', { name: 'Cover Rent / Mortgage: $50 overspent' }).click();
+    await expect(page.getByLabel('Move to')).toHaveValue(rent.id);
+    await expect(page.getByLabel('Move amount')).toHaveValue(/^50(\.00)?$/);
+    await page.getByLabel('Move from').selectOption(food.id);
+    await page.getByRole('button', { name: 'Preview move' }).click();
+    await expect(preview).toContainText('From available after move: $350');
+    await expect(preview).toContainText('To available after move: $0');
+    await page.getByRole('button', { name: 'Apply move' }).click();
+    await expect(page.getByText('Money moved.', { exact: true })).toBeVisible();
+    await expect(cardOf('Groceries')).toContainText('$350');
+    expect((await api.call('GET', `/budget/${month}/summary`)).overspent).toBe(0);
+
+    // Give $10 back from Groceries: the preview, a cancel that writes nothing, then the move
+    const before = await ready();
+    await page.getByRole('button', { name: 'Move money from Groceries: $350 available' }).click();
+    await expect(page.getByLabel('Move from')).toHaveValue(food.id);
+    await page.getByLabel('Move to').selectOption({ label: 'Ready to assign' });
+    await page.getByLabel('Move amount').fill('10');
+    await page.getByRole('button', { name: 'Preview move' }).click();
+    await expect(preview).toContainText('From available after move: $340');
+    await expect(preview).toContainText(`Ready to assign after move: $${(before + 1000) / 100}`);
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect(preview).toHaveCount(0);
+    expect(await ready()).toBe(before);
+    await page.getByRole('button', { name: 'Preview move' }).click();
+    await page.getByRole('button', { name: 'Apply move' }).click();
+    await expect(page.getByText('Money moved.', { exact: true })).toBeVisible();
+    await expect(cardOf('Groceries')).toContainText('$340');
+    expect(await ready()).toBe(before + 1000);
+    // The history names Ready to assign, and undo restores Groceries
+    await page.getByText('Money move history', { exact: true }).click();
+    await expect(page.getByText('Groceries → Ready to assign')).toBeVisible();
+    await page.getByRole('button', { name: 'Undo move', exact: true }).first().click();
+    await expect(cardOf('Groceries')).toContainText('$350');
+    expect(await ready()).toBe(before);
+  });
+}
+
+test('Move money has its own guide page, linked from the panel', async ({ page }) => {
+  await open(page, '/budget');
+  await page.getByRole('button', { name: 'Move money / Cover overspending' }).click();
+  await page.getByRole('link', { name: 'How moving money works' }).click();
+  await expect(page).toHaveURL(/#\/guide\/move-money$/);
+  await expect(
+    page.getByRole('heading', { name: 'Giving money back to Ready to assign' }),
+  ).toBeVisible();
+});

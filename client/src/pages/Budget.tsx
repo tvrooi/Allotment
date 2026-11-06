@@ -1,6 +1,7 @@
 import { CardPayments } from '../components/budget/CardPayments';
 import { CategoryIcon } from '../components/ui/CategoryIcon';
 import { MoneyMoves } from '../components/budget/MoneyMoves';
+import { canMoveIn, useMoveRequest } from '../store/moveRequestStore';
 import { AssistantSuggestions } from '../components/budget/AssistantSuggestions';
 import { useState, useRef, useMemo, useEffect, type ElementRef } from 'react';
 import { Link } from 'react-router-dom';
@@ -177,6 +178,8 @@ function CategoryRow({
   const isEditing = editingId === cat.id && canSave;
   const { actual } = categoryFigures(cat, isIncome);
   const { kind, remaining, caption } = availability(cat, isIncome);
+  const askToMove = useMoveRequest((s) => s.ask);
+  const movable = !isIncome && canSave && remaining !== 0 && canMoveIn(month);
   const [draft, setDraft] = useState<number | null>(cat.budgeted);
   const closed = useRef(false);
   const [saving, setSaving] = useState(false);
@@ -330,9 +333,26 @@ function CategoryRow({
         </div>
       </td>
       <td className="py-1.5 pl-3 pr-6 text-right align-top">
-        <span className={`tabular-nums text-sm inline-block ${remainingClass}`}>
-          {formatCurrency(remaining)}
-        </span>
+        {movable ? (
+          // Clicking the figure opens Move money with this envelope filled in (BUD-06)
+          <button
+            type="button"
+            onClick={() => askToMove(cat.id, remaining)}
+            aria-label={
+              remaining < 0
+                ? `Cover ${cat.name}: ${formatCurrency(-remaining)} overspent`
+                : `Move money from ${cat.name}: ${formatCurrency(remaining)} available`
+            }
+            title={remaining < 0 ? 'Cover this overspending' : 'Move money out of this envelope'}
+            className={`tabular-nums text-sm inline-block cursor-pointer hover:ring-1 hover:ring-border focus-visible:ring-2 focus-visible:ring-brand-500 ${remainingClass}`}
+          >
+            {formatCurrency(remaining)}
+          </button>
+        ) : (
+          <span className={`tabular-nums text-sm inline-block ${remainingClass}`}>
+            {formatCurrency(remaining)}
+          </span>
+        )}
         {caption && <span className="block text-xs text-text-tertiary mt-0.5">{caption}</span>}
       </td>
     </tr>
