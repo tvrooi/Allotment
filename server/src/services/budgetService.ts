@@ -7,6 +7,8 @@ import {
   cashDeficitInto,
   envelopeGroups,
   fundingRevision,
+  heldFrom,
+  holdAt,
   ledger,
   receivedActivity,
   receivedSpending,
@@ -117,6 +119,9 @@ export function budgetGroups(month: string, today = todayIso()) {
  * Opening funds take effect on the earlier of account creation and its first transaction,
  * matching bookedValue's date policy. Resources stop at `asOf`, never forecasting wages.
  *
+ * Money held for next month (budget_holds) is not ready to assign until that month starts:
+ * `unassigned` is also less `held` (a past month, as for later assignments, only what it had left).
+ *
  * `month` is the month being viewed (default: asOf's). A later month counts its own envelopes,
  * whose carry has already reset, so this month's cash overspending shows up there. A past
  * month shows what it closed with: later months' assignments take only what it had left.
@@ -170,10 +175,14 @@ export function fundingState(asOf = todayIso(), month = asOf.slice(0, 7), today 
   // assignment guard checks (budgetMoves.ts fundedWrite)
   const unassignedBeforeLater = resources - envelopes;
   const past = asOfMonth < today.slice(0, 7);
-  const laterDeduction = past
-    ? Math.min(futureAssigned, Math.max(0, unassignedBeforeLater))
-    : futureAssigned;
-  const unassigned = unassignedBeforeLater - laterDeduction;
+  const capped = (amount: number) =>
+    past ? Math.min(amount, Math.max(0, unassignedBeforeLater)) : amount;
+  const laterDeduction = capped(futureAssigned);
+  // Money held for the next month (ACT-03) is set aside from this month's Ready to assign, on
+  // top of what later months take, and released in the month after the hold. Money in a hold
+  // can't be assigned to an envelope of any month until then.
+  const holdBack = capped(futureAssigned + heldFrom(l, viewMonth)) - laterDeduction;
+  const unassigned = unassignedBeforeLater - laterDeduction - holdBack;
   return {
     balances,
     cards: card.positions.map((p) => ({ ...p })),
@@ -187,6 +196,7 @@ export function fundingState(asOf = todayIso(), month = asOf.slice(0, 7), today 
     cashOverspent,
     futureAssigned,
     laterDeduction,
+    held: holdBack,
     uncategorized,
     overspent,
     complete,
@@ -226,6 +236,8 @@ export function budgetSummary(month: string, today = todayIso()) {
     totalBudgeted,
     carryOver: state.openingFunds,
     toBeBudgeted: state.unassigned,
+    /** What was held in this month for the next (ACT-03); `held` is the part it takes from Ready to assign */
+    holdAmount: holdAt(ledger(), month),
     budgetStartMonth: budgetStartDate().slice(0, 7) || null,
     /** The first day envelopes count (YYYY-MM-DD), or null for all history */
     budgetStartDay: budgetStartDate() || null,

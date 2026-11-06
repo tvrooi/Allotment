@@ -1170,6 +1170,7 @@ export default function BudgetPage() {
               fixedExpenses={expensesByBudgetType.fixed}
               flexibleExpenses={expensesByBudgetType.flexible}
               nonMonthlyExpenses={expensesByBudgetType.nonMonthly}
+              canHold={!beforeStart && selectedMonth === format(new Date(), 'yyyy-MM')}
               putRest={
                 beforeStart
                   ? undefined

@@ -5,6 +5,7 @@ import { and, eq, gte, lte, lt, sql } from 'drizzle-orm';
 import { db, sqlite } from '../db/index.js';
 import {
   accounts,
+  budgetHolds,
   budgetMonths,
   budgetSettings,
   cardFunding,
@@ -298,7 +299,19 @@ export function legacyFundingState(
   const laterDeduction = past
     ? Math.min(futureAssigned, Math.max(0, unassignedBeforeLater))
     : futureAssigned;
-  const unassigned = unassignedBeforeLater - laterDeduction;
+  // Money held for the next month (ACT-03), read straight from the table
+  const holdsFrom = (from: string) =>
+    db
+      .select()
+      .from(budgetHolds)
+      .all()
+      .filter((h) => h.month >= from && h.month >= budgetStartDate().slice(0, 7) && h.amount > 0)
+      .reduce((s, h) => s + h.amount, 0);
+  const heldTotal = past
+    ? Math.min(futureAssigned + holdsFrom(viewMonth), Math.max(0, unassignedBeforeLater))
+    : futureAssigned + holdsFrom(viewMonth);
+  const holdBack = heldTotal - laterDeduction;
+  const unassigned = unassignedBeforeLater - laterDeduction - holdBack;
   // Balance validation wraps both engines; the oracle below still independently computes
   // every monetary figure. The new guard has dedicated reconciliation regressions.
   const accountIssues = checkAccountIssues(asOf);
@@ -315,6 +328,7 @@ export function legacyFundingState(
     cashOverspent,
     futureAssigned,
     laterDeduction,
+    held: holdBack,
     uncategorized,
     overspent,
     complete,
@@ -354,6 +368,10 @@ export function legacyBudgetSummary(month: string, today = todayIso()) {
     totalBudgeted,
     carryOver: state.openingFunds,
     toBeBudgeted: state.unassigned,
+    holdAmount:
+      month < budgetStartDate().slice(0, 7)
+        ? 0
+        : (db.select().from(budgetHolds).where(eq(budgetHolds.month, month)).get()?.amount ?? 0),
     budgetStartMonth: budgetStartDate().slice(0, 7) || null,
     budgetStartDay: budgetStartDate() || null,
     // Added after the previous engine; not a funding figure, so the oracle reads it from the data
@@ -404,7 +422,7 @@ function legacyVerdict(action: () => void): string | null {
           deferred +
           (m < current
             ? state.unassignedBeforeLater
-            : state.unassignedBeforeLater - state.futureAssigned),
+            : state.unassignedBeforeLater - state.futureAssigned - state.held),
         complete: state.complete,
       });
       deferred += state.cashOverspent;
@@ -473,6 +491,7 @@ function clearAll() {
     householdPoolAccounts,
     householdGroups,
     transactions,
+    budgetHolds,
     budgetMonths,
     categories,
     categoryGroups,
@@ -716,6 +735,12 @@ function generate(seed: number) {
           .values({ id: `b${n++}`, month: m, categoryId, budgeted: int(0, 40) * 1000 - 3000 })
           .run();
       }
+  // Money held for the next month in some of them
+  for (const m of months)
+    if (rand() < 0.3)
+      db.insert(budgetHolds)
+        .values({ month: m, amount: int(1, 30) * 1000, createdAt: `${m}-01T00:00:00.000Z` })
+        .run();
 }
 
 const TODAYS = [TODAY, '2026-08-20', '2026-12-31'];

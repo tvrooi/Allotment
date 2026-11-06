@@ -5,10 +5,25 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 5 November 2026 (up.110 in review).
+Last updated: 6 November 2026 (up.111 in review).
 
 ## State
 
+- **Hold for next month (up.111, ACT-03; migration 0076, backup format 28):** table `budget_holds`
+  (`month` primary key, `amount`; triggers bump `budget_revision`), loaded into the ledger
+  (`holdMonths`, `holdTotals`, `heldFrom`, `holdAt` in `budgetLedger.ts`). `fundingState` subtracts
+  `held` (holds in the viewed month and after it, on top of `laterDeduction`; capped for a past
+  month) from `unassigned`, so a month with a hold can read fully budgeted, and the summary adds
+  `held` and `holdAmount`. `assignable` in `budgetMoves.ts` subtracts it too, so held money can't be
+  assigned to any month. `setHold` (`services/budgetHolds.ts`, `PUT /budget/:month/hold`, registered
+  before `/:month/:categoryId`) holds in the current month only and no more than is ready to assign;
+  owner only (a token's PUT is refused: `accessTokens.test.ts`). Client: `HoldMoney.tsx` under the
+  hero (**Hold money…**, not "Hold for next month…": Playwright's substring match would make it
+  collide with the Next month button), **Held for next month** in the hero's working. Tests:
+  `routes/budgetHolds.test.ts`, `budgetProperties.test.ts` (recompute with random holds, and a
+  hold only moves Ready to assign between months), e2e `budget.spec.ts`. Docs:
+  ENVELOPE-FUNDING.md "Holding money for next month", Budgeting guide page. Not built: automatic
+  hold. Next in the Budgeting group: B4 (ACT-05 month quick fills, BUD-07 selected-category funding).
 - **Keep overspending (up.110, ACT-04; migration 0075, no backup bump):** `categories.keep_overspending`
   (owner only, Settings → Categories → Edit; `categoryEditSchema` in `routes/categories.ts`, not in
   the token policy's `CATEGORY_FIELDS`). `budgetLedger.ts` sets `resets` false for such a category
@@ -17,8 +32,7 @@ Last updated: 5 November 2026 (up.110 in review).
   month as spent cash (`cash`). The deficit still counts in `overspent`; Review marks it `kept`.
   Tests: `routes/keepOverspending.test.ts`, `budgetProperties.test.ts` (random kept sets),
   `cardFunding.test.ts`, `accessTokens.test.ts` (refusal), `budgetFigures.test.ts`, e2e
-  `settings.spec.ts`. Docs: ENVELOPE-FUNDING.md "overspending rule", Budgeting guide page. Next in
-  the Budgeting group: B3 (ACT-03 hold for next month).
+  `settings.spec.ts`. Docs: ENVELOPE-FUNDING.md "overspending rule", Budgeting guide page. B3 (up.111) followed.
 - **Save and undo feedback, availability states (up.109, BUD-02, BUD-03; client only, no migration):**
   `handleSave` in `pages/Budget.tsx` resolves to the refusal reason or `null`; the row's editor
   (and the phone `BudgetAmountSheet`) closes only on `null`, shows **Saving…**, ignores a second
@@ -355,8 +369,8 @@ site in `website/` was removed (audit decision I-9).
 9. **Next fixes from the competitor comparisons** (`docs/research/`, PR #63): SEC-01 duplicates
    and FINX-01 the schedule timer are done (up.102), as are SEC-01's import history and "undo
    this file" and FINX-02 reminders (up.103; reminders for multi-user budgets, through the gateway,
-   are not built). ACT-04 per-category overspending is done (up.110). Not picked up yet: ACT-03 hold for
-   next month and ACT-05 month quick fills. Check the code first:
+   are not built). ACT-04 per-category overspending is done (up.110) and so is ACT-03 hold for
+   next month (up.111). Not picked up yet: ACT-05 month quick fills. Check the code first:
    later releases may have covered parts of them.
 
 10. **Audit roadmap, next round** ([docs/AUDIT-2026-11.md](docs/AUDIT-2026-11.md) section H): Stage 1

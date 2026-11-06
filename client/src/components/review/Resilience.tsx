@@ -15,6 +15,9 @@ import { FUNDING_VIEWS } from '../../utils/fundingViews';
 // resume-after-a-lapse summary with reminders (7E) and the extra-income split (7F). They read
 // the same shared funding figures as the rest of the page.
 
+/** Lines of the partition that are left out while they are $0 */
+const ONLY_WHEN_USED = new Set(['Spent beyond envelopes', 'Held for next month']);
+
 function Row({ label, value, tone }: { label: string; value: string; tone?: 'neg' | 'pos' }) {
   return (
     <div className="flex justify-between gap-3 py-1 text-sm">
@@ -160,10 +163,11 @@ export function ResilienceCard({ data }: { data: api.ResilienceState }) {
                     ['Flexibility reserve', p.flexibility],
                     ['Other envelopes', p.other],
                     ['Spent beyond envelopes', p.overspent],
+                    ['Held for next month', p.held],
                     ['Ready to assign', p.unassigned],
                   ] as const
                 )
-                  .filter(([name, value]) => value !== 0 || name !== 'Spent beyond envelopes')
+                  .filter(([name, value]) => value !== 0 || !ONLY_WHEN_USED.has(name))
                   .map(([name, value]) => (
                     <tr key={name}>
                       <td className="py-0.5">{name}</td>

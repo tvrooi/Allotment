@@ -264,6 +264,61 @@ test.describe('budget', () => {
     await expect(toBeBudgeted(page)).toContainText('$600');
   });
 
+  test('money can be held for next month, so this month reaches fully budgeted', async ({
+    page,
+    api,
+  }) => {
+    const checking = await api.createAccount('Checking', 0);
+    const paychecks = await api.category('Paychecks');
+    const groceries = await api.category('Groceries');
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: 100_000,
+      categoryId: paychecks.id,
+    });
+
+    await open(page, '/budget');
+    await expect(toBeBudgeted(page)).toContainText('$1,000');
+    await page.getByRole('button', { name: 'Hold money…' }).click();
+    // More than is ready to assign can't be held
+    const amount = page.getByRole('textbox', { name: 'Amount to hold' });
+    // Text that isn't an amount can't hold the amount that was there before
+    await amount.clear();
+    await amount.fill('abc');
+    await amount.blur();
+    await expect(page.getByRole('button', { name: 'Hold', exact: true })).toBeDisabled();
+    await amount.clear();
+    await amount.fill('1500');
+    await amount.blur();
+    await expect(page.getByText('That is more than is ready to assign.')).toBeVisible();
+    await amount.clear();
+    await amount.fill('300');
+    await page.getByRole('button', { name: 'Hold', exact: true }).click();
+
+    await expect(page.getByText('$300 held for next month')).toBeVisible();
+    await expect(toBeBudgeted(page)).toContainText('$700');
+    // Held money can't be given to an envelope, but the rest can: the month is fully budgeted
+    await plan(page, 'Groceries', '700');
+    await expect(toBeBudgeted(page)).toContainText('Fully budgeted');
+    const refused = await api.request.put(`/api/budget/${thisMonth()}/${groceries.id}`, {
+      data: { budgeted: 70_100 },
+    });
+    expect(refused.status()).toBe(409);
+
+    // Next month gets the held money back
+    await page.getByRole('button', { name: 'Next month' }).click();
+    await expect(toBeBudgeted(page)).toContainText('$300');
+    await page.getByRole('button', { name: 'Previous month' }).click();
+
+    // Releasing it returns it to this month
+    await page.getByRole('button', { name: 'Change hold' }).click();
+    await page.getByRole('button', { name: 'Release hold' }).click();
+    await expect(toBeBudgeted(page)).toContainText('$300');
+    await expect(page.getByText('held for next month.')).toHaveCount(0);
+    expect((await api.call('GET', `/budget/${thisMonth()}/summary`)).holdAmount).toBe(0);
+  });
+
   test('a category links to its detail page with its transactions', async ({ page, api }) => {
     const checking = await api.createAccount('Checking', 100000);
     const groceries = await api.category('Groceries');

@@ -18,6 +18,13 @@ export const setBudget = (month: string, categoryId: string, budgeted: number, r
     body: JSON.stringify({ budgeted, revision }),
   });
 
+/** Holds this much of the month's Ready to assign for the next month; 0 releases the hold */
+export const setHold = (month: string, amount: number) =>
+  apiFetch<{ month: string; amount: number; previous: number; revision: string }>(
+    `/budget/${month}/hold`,
+    { method: 'PUT', body: JSON.stringify({ amount }) },
+  );
+
 export interface CategoryHistory {
   categoryId: string;
   isIncome: boolean;

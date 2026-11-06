@@ -140,6 +140,8 @@ export interface ResilienceState {
     other: number;
     /** Cash spent beyond envelopes this month, as a negative amount */
     overspent: number;
+    /** Money held for next month: set aside from Ready to assign */
+    held: number;
     unassigned: number;
   } | null;
   flexibility: {

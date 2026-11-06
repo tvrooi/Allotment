@@ -8,6 +8,7 @@ import { formatCurrency, formatMoney } from '../../utils/currency';
 import { Link } from 'react-router-dom';
 import { formatAsOfDay } from '../../utils/dates';
 import { useIsPhone } from '../../hooks/useIsPhone';
+import { HoldMoney } from './HoldMoney';
 
 interface ExpenseBreakdown {
   planned: number;
@@ -34,6 +35,8 @@ interface BudgetSummaryWidgetProps {
     disabled: boolean;
     onPick: (categoryId: string, categoryName: string) => void;
   };
+  /** Hold money for next month (the current month only) */
+  canHold?: boolean;
 }
 
 /** On a phone the working behind Ready to assign folds away, so the envelopes come sooner */
@@ -153,6 +156,9 @@ function SummarySection({
   );
 }
 
+/** Rows of the working that set money aside on purpose, so a figure there isn't a problem */
+const SETTING_ASIDE = new Set(['Assigned in later months', 'Held for next month']);
+
 type Tab = 'summary' | 'income' | 'expenses';
 
 const TABS: { key: Tab; label: string }[] = [
@@ -175,6 +181,7 @@ export function BudgetSummaryWidget({
   flexibleExpenses,
   nonMonthlyExpenses,
   putRest,
+  canHold,
 }: BudgetSummaryWidgetProps) {
   const [activeTab, setActiveTab] = useState<Tab>('summary');
   const isPhone = useIsPhone();
@@ -224,6 +231,9 @@ export function BudgetSummaryWidget({
             </HelpTip>
           </p>
         </div>
+        {canHold && funding && funding.complete && !funding.accountIssues?.length && (
+          <HoldMoney summary={funding} />
+        )}
         {canPutRest && (
           <div className="relative mt-2 text-center">
             <button
@@ -304,6 +314,7 @@ export function BudgetSummaryWidget({
                   ['Overspent envelopes', funding.overspent],
                   ['Uncategorised spending', funding.uncategorized],
                   ['Assigned in later months', funding.laterDeduction ?? funding.futureAssigned],
+                  ['Held for next month', funding.held ?? 0],
                   ['Card payment shortfall', funding.paymentShortfall ?? 0],
                   ['Payments without funding', funding.uncoveredCardPayments ?? 0],
                 ] as const
@@ -311,7 +322,7 @@ export function BudgetSummaryWidget({
                 <div key={label} className="flex justify-between gap-2">
                   <dt className="text-text-secondary">{label}</dt>
                   <dd
-                    className={`tabular-nums ${value > 0 && label !== 'Assigned in later months' ? 'text-negative font-medium' : 'text-text'}`}
+                    className={`tabular-nums ${value > 0 && !SETTING_ASIDE.has(label) ? 'text-negative font-medium' : 'text-text'}`}
                   >
                     {formatCurrency(value)}
                   </dd>

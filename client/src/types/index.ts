@@ -457,6 +457,10 @@ export interface BudgetSummary {
   /** What later months' assignments take from this month's Ready to Assign (a past month
    * gives them only what it had left) */
   laterDeduction?: number;
+  /** What a hold for next month takes from this month's Ready to assign (ACT-03) */
+  held?: number;
+  /** What was held in this month itself for the month after it */
+  holdAmount?: number;
   /** Envelope Available counted against resources: signed, less credit overspending */
   envelopes?: number;
   /** This month's cash overspending, which leaves next month's Ready to Assign */

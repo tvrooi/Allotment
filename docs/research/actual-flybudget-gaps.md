@@ -100,6 +100,10 @@ so this is not a case for copying Actual wholesale.
 
 ## P2 · ACT-03: hold money for next month
 
+> **Built in 0.2.0-up.111:** the manual hold, see
+> [ENVELOPE-FUNDING.md](../ENVELOPE-FUNDING.md#holding-money-for-next-month). Automatic hold is not
+> built. The notes below are the original gap.
+
 - **Actual:** **Hold for next month** takes an amount out of this month's To Budget and adds it to
   the next month's; **Reset next month's buffer** undoes it (`holdForNextMonth`, `resetHold` in
   `ACT …/budget/actions.ts` lines 485–515; `buffered` cells in `envelope.ts`). **Auto hold** does this

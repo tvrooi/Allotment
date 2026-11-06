@@ -21,7 +21,9 @@ plans, goals and the forecast together.
 
 A category set to **Keep overspending** (for spending that will be paid back) stays in the
 overspent list, marked `kept`, until its deficit is covered or repaid; see
-[the overspending rule](ENVELOPE-FUNDING.md#the-overspending-rule).
+[the overspending rule](ENVELOPE-FUNDING.md#the-overspending-rule). Money held for next month
+(ACT-03) is not ready to assign, so a month with a hold can read fully budgeted; see
+[holding money](ENVELOPE-FUNDING.md#holding-money-for-next-month).
 
 Missing exchange rates mark the review incomplete. A reconciled transaction cannot be
 categorised from here, as anywhere else in the app.

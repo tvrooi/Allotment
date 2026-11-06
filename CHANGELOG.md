@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.111
+
+- **Hold money for next month.** In the current month, **Hold money…** under Ready to assign sets aside part of what's ready to assign for the month after. It leaves Ready to assign now, so the month can reach $0 and read fully budgeted while next month's pay is still in your account, and it comes back when next month starts. Held money can't be given to a category (this month's or a later one) until then; you can only hold what is ready to assign, and **Change hold** or **Release hold** puts it back. Nothing is spent or moved: it is a note about those dollars, shown in the working under Ready to assign as **Held for next month**. Your backup includes holds; older backups restore with none. An access token can't set one.
+
 ## 0.2.0-up.110
 
 - **Keep overspending, for money you'll be paid back.** In **Settings → Categories → Edit**, a category can now **Keep overspending**. Normally an envelope that ends a month overspent starts the next at $0 and the money comes out of Ready to assign. With this on, the deficit carries into the next month instead, so Ready to assign isn't reduced until you assign money to cover it or the repayment arrives and you give it that category (then it's back to $0). The budget reads **Overspending kept** on that envelope, and Review still lists it as overspent, marked **kept until repaid**. Card purchases that no envelope money backed stay card debt until the money that covers the deficit arrives, which then reserves them on the card payment. It is off for every existing category, income and card payment categories can't use it, and an access token can't turn it on. Your backup includes the setting; older backups restore with it off.

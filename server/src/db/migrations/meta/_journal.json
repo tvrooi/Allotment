@@ -533,6 +533,13 @@
       "when": 1796100000000,
       "tag": "0075_keep_overspending",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "6",
+      "when": 1796200000000,
+      "tag": "0076_budget_holds",
+      "breakpoints": true
     }
   ]
 }

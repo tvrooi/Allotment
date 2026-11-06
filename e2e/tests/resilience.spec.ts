@@ -43,7 +43,7 @@ for (const phone of [false, true])
     const resilience = await api.call('GET', '/review/resilience');
     expect(resilience.flexibility.available).toBe(600_000);
     const p = resilience.partition;
-    expect(p.card + p.committed + p.goals + p.flexibility + p.other + p.unassigned).toBe(
+    expect(p.card + p.committed + p.goals + p.flexibility + p.other + p.held + p.unassigned).toBe(
       resilience.resources,
     );
 

@@ -65,6 +65,27 @@ deficit forever. The summary reports `cashOverspent` (this month's cash deficits
 to `overspent` (all deficits, including credit). An automatic payday allocation leaves
 enough to cover this month's cash overspending rather than assigning it again.
 
+### Holding money for next month
+
+**Hold for next month (ACT-03).** Money that is ready to assign but not for this month, such as
+pay that covers next month's bills, can be held instead of left unassigned: **Hold money…** under
+Ready to assign, in the current month only (`PUT /budget/:month/hold`, `setHold` in
+`services/budgetHolds.ts`, table `budget_holds` with one row per month, owner only: no access
+token reaches it). A hold is not an assignment: it touches no envelope and no account. In the month
+it was held in and every month before it, `fundingState` subtracts it from Ready to assign
+(`held`, on top of `laterDeduction`), so that month can reach $0 and read fully budgeted; from the
+next month it no longer applies, so the money is ready to assign again there. While held it can't
+be assigned, even to a later month's envelope: `assignable` in `budgetMoves.ts` checks every month
+against `unassignedBeforeLater − futureAssigned − held`, so the one funded-write guard refuses it.
+A hold can only be raised by what is ready to assign now after later assignments (it never makes
+Ready to assign negative), and lowered or released at any time. A past month still shows its hold
+(capped at what it had left, like later assignments), and a hold in a month before the budget start
+is ignored. The identity is now `toBeBudgeted + envelopes + laterDeduction + held = resources`.
+Planned assigning follows without a change: `planFunding` caps at `available`, which is after the
+hold. Tests: `routes/budgetHolds.test.ts` (scenario, guard, backup), `budgetProperties.test.ts` (a
+recompute with random holds, and a hold only moves Ready to assign between months), e2e
+`budget.spec.ts`. Not built: Actual's automatic hold for living on last month's income.
+
 ### Month views
 
 - **The current month and later months** deduct every positive assignment in later
