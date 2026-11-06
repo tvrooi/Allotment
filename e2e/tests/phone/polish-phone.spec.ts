@@ -237,3 +237,36 @@ test('Settings opened on a later tab shows that tab whole', async ({ page, api }
   expect(t.x).toBeGreaterThanOrEqual(s.x + 39);
   expect(t.x + t.width).toBeLessThanOrEqual(s.x + s.width - 39);
 });
+
+test('the detail sheet steps to the previous and next transaction with 44 px buttons', async ({
+  page,
+  api,
+}) => {
+  const acct = await api.createAccount('Everyday', 100_000);
+  for (const [i, payeeName] of ['Corner Grocery', 'Corner Bakery'].entries())
+    await api.createTransaction({
+      accountId: acct.id,
+      date: isoDay(-i),
+      amount: -(1_000 + i * 100),
+      payeeName,
+    });
+  await open(page, `/accounts/${acct.id}`);
+  await page.getByRole('button', { name: 'All time' }).click();
+  await page.getByTestId('transaction-card').filter({ hasText: 'Corner Grocery' }).click();
+
+  const panel = page.getByRole('complementary', { name: 'Transaction details' });
+  const previous = panel.getByRole('button', { name: 'Previous transaction' });
+  const next = panel.getByRole('button', { name: 'Next transaction' });
+  for (const button of [previous, next, panel.getByRole('button', { name: 'Close details' })]) {
+    const { width, height } = await box(button);
+    expect(width).toBeGreaterThanOrEqual(44);
+    expect(height).toBeGreaterThanOrEqual(44);
+  }
+  await expect(previous).toBeDisabled();
+  await next.click();
+  await expect(panel.getByText('Corner Bakery', { exact: true })).toBeVisible();
+  await expect(next).toBeDisabled();
+  await previous.click();
+  await expect(panel.getByText('Corner Grocery', { exact: true })).toBeVisible();
+  expect(await sidewaysOverflow(page)).toEqual([]);
+});

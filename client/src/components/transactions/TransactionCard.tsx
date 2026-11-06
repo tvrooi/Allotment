@@ -68,6 +68,7 @@ export function TransactionCard({
       type="button"
       onClick={() => onOpenDetail(tx.id)}
       data-testid="transaction-card"
+      data-tx-id={tx.id}
       aria-current={isSelected || undefined}
       className={`w-full min-h-14 flex items-center gap-3 px-4 py-2.5 text-left select-none [-webkit-touch-callout:none] border-b border-border-light transition-colors ${
         isSelected ? 'bg-brand-50' : 'bg-surface active:bg-hover'

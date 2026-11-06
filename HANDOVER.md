@@ -5,10 +5,22 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 6 November 2026 (up.116 in review).
+Last updated: 6 November 2026 (up.120 in review).
 
 ## State
 
+- **Previous and next in transaction details (up.120, C1 of the Polish and help group; client
+  only, no migration):** `TransactionDetailPanel` takes `onPrevious`/`onNext` (missing at the first
+  or last row, shown as `aria-disabled` so focus stays on the button); `TransactionTable` steps
+  through its loaded `transactions` in register order (search, filters and scope applied), grows
+  the drawn rows when the next one is past them, scrolls the open row into view beside the desktop
+  panel, and on close focuses the row again (rows and phone cards carry `data-tx-id`). Moving
+  only changes `detailId`; blur saves the date, payee or notes being typed to their own
+  transaction first. 44 px buttons on a phone. Tests: e2e `transactions.spec.ts` ("steps through
+  the listed rows…": filtered list, edits kept, keyboard, focus back to the row) and
+  `phone/polish-phone.spec.ts` (44 px, no sideways scroll). Docs: the Transactions guide page
+  ("Working through the list"), the Monarch backlog ticket. Not built: a link per transaction
+  (the panel is still state, not a route), so Back doesn't close it. Next: C2 (user-guide articles).
 - **Housemate money is not income (up.119, B9; no migration):** `scheduleScopes`
   (`server/src/services/scheduleScope.ts`) gives each recurring item a scope: personal, household
   (`bill` with the owner's `myShare` from `billShares`, or `contribution` with the person, from
@@ -420,7 +432,7 @@ site in `website/` was removed (audit decision I-9).
      (up.107) and SPL-05 (up.108) are built; the P3 items (SPL-07 to SPL-09) wait for demand.
    - B9 is done (up.119): housemates' money is never income; see HOUSEHOLDS.md "Recurring and
      the dashboard". The Budgeting group's PR list (B1 to B9) is complete.
-   - Transaction detail has no previous/next (Monarch backlog P1).
+   - Transaction detail previous/next is built (up.120); a link per transaction is not.
    - Future-month money moves; money age (deliberately not built, see BUDGET-REVIEW.md).
    - Investments deferrals (sales, dividends, franking); receipts §6 (PDF reading, email
      forwarding, logbooks, depreciation, WFH hours).

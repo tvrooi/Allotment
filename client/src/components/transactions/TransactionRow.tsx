@@ -113,6 +113,7 @@ export function TransactionRow({
           }
         }}
         data-testid="transaction-row"
+        data-tx-id={tx.id}
       >
         {/* Payee */}
         <div className="group/payee flex items-center gap-1 flex-[3] max-md:basis-full min-w-0 relative mr-3">

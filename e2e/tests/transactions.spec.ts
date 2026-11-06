@@ -192,6 +192,70 @@ test.describe('account register', () => {
     await expect(page.getByText('Transaction details')).toBeHidden();
   });
 
+  test('steps through the listed rows from the detail panel, keeping edits', async ({
+    page,
+    api,
+  }) => {
+    const { checking } = await setup(api);
+    // Newest first: Grocery, (Streamflix), Bakery, Cafe. A search for "corner" leaves out Streamflix
+    for (const [i, payeeName] of [
+      'Corner Grocery',
+      'Streamflix',
+      'Corner Bakery',
+      'Corner Cafe',
+    ].entries())
+      await api.createTransaction({
+        accountId: checking.id,
+        date: isoDay(-i),
+        amount: -(1_000 + i * 100),
+        payeeName,
+      });
+    await open(page, `/accounts/${checking.id}`);
+    await page.getByRole('button', { name: 'All time' }).click();
+    await page.getByPlaceholder('Search payee or notes…').fill('corner');
+    await expect(page.getByText('3 transactions', { exact: true })).toBeVisible();
+
+    await row(page, 'Corner Grocery').focus();
+    await page.keyboard.press('Enter');
+    const panel = page.getByRole('complementary', { name: 'Transaction details' });
+    const previous = panel.getByRole('button', { name: 'Previous transaction' });
+    const next = panel.getByRole('button', { name: 'Next transaction' });
+    await expect(panel.getByText('Corner Grocery', { exact: true })).toBeVisible();
+    await expect(previous).toBeDisabled();
+
+    // A note typed but not yet saved is saved to its own transaction when moving on
+    await panel.getByRole('textbox', { name: 'Notes' }).fill('bread');
+    await next.click();
+    await expect(panel.getByText('Corner Bakery', { exact: true })).toBeVisible();
+    await expect(panel.getByRole('textbox', { name: 'Notes' })).toHaveValue('');
+
+    // The keyboard reaches both buttons, and focus stays put at the last row
+    await next.focus();
+    await page.keyboard.press('Enter');
+    await expect(panel.getByText('Corner Cafe', { exact: true })).toBeVisible();
+    await expect(next).toBeDisabled();
+    await page.keyboard.press('Enter');
+    await expect(panel.getByText('Corner Cafe', { exact: true })).toBeVisible();
+    await expect(next).toBeFocused();
+    await previous.click();
+    await expect(panel.getByText('Corner Bakery', { exact: true })).toBeVisible();
+
+    // Closing hands the keyboard back to the row that was open
+    await page.keyboard.press('Escape');
+    await expect(panel).toBeHidden();
+    await expect(row(page, 'Corner Bakery')).toBeFocused();
+
+    // Only the typed note was written
+    const saved = await api.transactions(`?account_id=${checking.id}`);
+    const notes = Object.fromEntries(saved.map((t) => [t.payeeName, t.notes]));
+    expect(notes).toEqual({
+      'Corner Grocery': 'bread',
+      Streamflix: null,
+      'Corner Bakery': null,
+      'Corner Cafe': null,
+    });
+  });
+
   test('deletes a transaction after confirming', async ({ page, api }) => {
     const { checking } = await setup(api);
     await api.createTransaction({
