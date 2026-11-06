@@ -157,6 +157,7 @@ function proposalContent(input: ProposalInput): { targetId: string | null; paylo
           kind: e.kind,
           description: e.description,
           amount: e.amount,
+          payerId: e.payerId,
           paidBy: personName(state, e.payerId),
         };
       });
@@ -226,6 +227,7 @@ function proposalContent(input: ProposalInput): { targetId: string | null; paylo
           amount: tx.amount,
           account: accountName(tx.accountId),
           bankDescription: tx.importedPayee ?? tx.payeeName ?? '',
+          otherTransactionId: other.id,
           otherAccount: accountName(other.accountId),
           otherBankDescription: other.importedPayee ?? other.payeeName ?? '',
         };
@@ -239,8 +241,33 @@ function proposalContent(input: ProposalInput): { targetId: string | null; paylo
 function applyHouseholdProposal(kind: string, payload: unknown): string | null {
   return db.transaction(() => {
     if (kind === 'household.remove_entries') {
-      const p = payload as { householdId: string; entries: { eventId: string }[] };
-      for (const e of p.entries) removeEvent(p.householdId, e.eventId);
+      const p = payload as {
+        householdId: string;
+        entries: {
+          eventId: string;
+          date: string;
+          description: string;
+          amount: number;
+          payerId: string | null;
+        }[];
+      };
+      const now = snapshot(p.householdId);
+      for (const e of p.entries) {
+        // Only the entry the owner was shown: one edited since is refused, not removed
+        const current = now.events.find((x) => x.id === e.eventId);
+        if (
+          !current ||
+          current.date !== e.date ||
+          current.description !== e.description ||
+          current.amount !== e.amount ||
+          current.payerId !== e.payerId
+        )
+          throw new ProposalError(
+            `${e.date}: “${e.description}” changed or went since this was proposed`,
+            409,
+          );
+        removeEvent(p.householdId, e.eventId);
+      }
       return p.householdId;
     }
     if (kind === 'household.share_bills') {
@@ -269,8 +296,15 @@ function applyHouseholdProposal(kind: string, payload: unknown): string | null {
       }
       return p.householdId;
     }
-    const p = payload as { transfers: { transactionId: string }[] };
-    for (const t of p.transfers) unlinkTransfer(t.transactionId);
+    const p = payload as {
+      transfers: { transactionId: string; otherTransactionId: string; date: string }[];
+    };
+    for (const t of p.transfers) {
+      // Only the pair the owner was shown: a transaction linked to something else since is refused
+      if (transactionRow(t.transactionId)?.transferTransactionId !== t.otherTransactionId)
+        throw new ProposalError(`${t.date}: that transfer changed since this was proposed`, 409);
+      unlinkTransfer(t.transactionId);
+    }
     return null;
   });
 }
@@ -309,7 +343,7 @@ export function applyAssistantProposal(id: string) {
     }
   } catch (e) {
     const message =
-      e instanceof AssetError || e instanceof TransferError
+      e instanceof AssetError || e instanceof TransferError || e instanceof ProposalError
         ? e.message
         : e instanceof z.ZodError
           ? `The proposal is incomplete: ${e.issues.map((i) => i.path.join('.') || i.message).join(', ')}`
@@ -324,7 +358,9 @@ export function applyAssistantProposal(id: string) {
       .run();
     throw new ProposalError(
       message,
-      e instanceof AssetError || e instanceof TransferError ? e.status : 400,
+      e instanceof AssetError || e instanceof TransferError || e instanceof ProposalError
+        ? e.status
+        : 400,
     );
   }
   db.update(assistantProposals)

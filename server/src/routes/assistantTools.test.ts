@@ -898,8 +898,22 @@ describe('household corrections, proposed for the owner to apply', () => {
       payload: { household: 'Fix', entries: [{ eventId: wrong.id, amount: 900, paidBy: 'Ben' }] },
     });
     expect((await state()).events).toHaveLength(1);
-    // The token can't apply its own proposal; the owner can
+    // The token can't apply its own proposal; the owner can, only as it was shown
     expect((await apply(data.proposed.id, { token })).status).toBe(403);
+    const edited = await call(
+      'PUT',
+      `/households/fix/events/${wrong.id}`,
+      {},
+      { ...wrong, description: 'Bills (edited)' },
+    );
+    expect(edited.status).toBe(200);
+    const stale = await apply(data.proposed.id);
+    expect(stale.status).toBe(409);
+    expect(stale.body.error).toMatch(/changed or went/);
+    expect((await state()).events).toHaveLength(1);
+    expect((await call('PUT', `/households/fix/events/${wrong.id}`, {}, { ...wrong })).status).toBe(
+      200,
+    );
     expect((await apply(data.proposed.id)).body).toMatchObject({ status: 'applied' });
     expect((await state()).events).toHaveLength(0);
     const again = await tool(token, 'record_household_contributions', {
@@ -972,6 +986,20 @@ describe('household corrections, proposed for the owner to apply', () => {
       error: expect.stringMatching(/Reconciled/),
     });
     db.update(transactions).set({ reconciled: 0 }).where(eq(transactions.id, 'c-water')).run();
+    // A transfer linked to something else since is refused, never the new pair unlinked
+    T('c-move-out2', 'c-joint2', '2026-02-06', -300);
+    db.update(transactions)
+      .set({ transferTransactionId: 'c-move-out2' })
+      .where(eq(transactions.id, 'c-ben2'))
+      .run();
+    const stale = await apply(data.proposed.id);
+    expect(stale.status).toBe(409);
+    expect(stale.body.error).toMatch(/changed since/);
+    expect(row('c-ben2').transferTransactionId).toBe('c-move-out2');
+    db.update(transactions)
+      .set({ transferTransactionId: 'c-move-out' })
+      .where(eq(transactions.id, 'c-ben2'))
+      .run();
     expect((await apply(data.proposed.id)).body).toMatchObject({ status: 'applied', error: null });
     expect(row('c-ben2').transferTransactionId).toBeNull();
     expect(row('c-water').transferTransactionId).toBeNull();
