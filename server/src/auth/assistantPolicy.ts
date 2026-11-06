@@ -1,9 +1,13 @@
 import { eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../db/index.js';
-import { householdGroups, rules, taxClaims, transactions } from '../db/schema.js';
+import { householdEvents, householdGroups, rules, taxClaims, transactions } from '../db/schema.js';
 import { listTransferSuggestions } from '../services/transferService.js';
-import { poolAccountsOf, snapshot as householdSnapshot } from '../services/householdService.js';
+import {
+  poolAccountsOf,
+  poolGroupOf,
+  snapshot as householdSnapshot,
+} from '../services/householdService.js';
 import { todayIso } from '../services/mainAmountService.js';
 import { logoSchema } from '../utils/logo.js';
 import type { TokenScope } from './accessTokens.js';
@@ -324,6 +328,121 @@ function ownContributionAllows(method: string, rawPath: string, body: unknown): 
   return owes > 0 && parsed.data.amount <= owes;
 }
 
+// ─── Household corrections (TEMPORARY) ───────────────────────────────────────
+// Owner-approved on 6 November 2026 to correct one household's history (rent counted twice,
+// bills paid from its accounts never shared, deposits matched as the wrong transfers); removed
+// in the next release once that is done (docs/READ-ONLY-ACCESS.md). The owner still adds,
+// edits and removes everything else on the Household page.
+
+const HOUSEHOLD_EVENT_PATH = /^\/households\/([^/]+)\/events\/([^/]+)$/i;
+const UNLINK_TRANSFER_PATH = /^\/transactions\/([^/]+)\/unlink-transfer$/i;
+
+/** Decoded path parameters, or null when one isn't valid percent-encoding */
+function decoded(parts: string[]) {
+  try {
+    return parts.map((p) => decodeURIComponent(p));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * TEMPORARY. Whether an organise token may remove a household contribution: only an entry of
+ * kind contribution in that household, never an expense, repayment or refund. The household
+ * route still refuses a removal that would uncover money set aside for bills, and logs it.
+ */
+function householdRemoveContributionAllows(method: string, rawPath: string): boolean {
+  const match = HOUSEHOLD_EVENT_PATH.exec(rawPath.replace(/\/+$/, ''));
+  if (method !== 'DELETE' || !match) return false;
+  const ids = decoded([match[1], match[2]]);
+  if (!ids) return false;
+  const event = db
+    .select({ groupId: householdEvents.groupId, kind: householdEvents.kind })
+    .from(householdEvents)
+    .where(eq(householdEvents.id, ids[1]))
+    .get();
+  return !!event && event.groupId === ids[0] && event.kind === 'contribution';
+}
+
+/** An expense the household account paid, linked to that payment, split equally or exactly */
+const poolExpenseBody = z
+  .object({
+    kind: z.literal('expense'),
+    date: z.iso.date(),
+    description: z.string().trim().min(1).max(200),
+    amount: z.number().int().min(1),
+    payerId: z.null(),
+    transactionId: z.string().min(1).max(64),
+    mode: z.enum(['equal', 'exact']),
+    shares: z
+      .array(z.object({ personId: z.string().min(1).max(64), value: z.number().int().min(0) }))
+      .min(1)
+      .max(50),
+  })
+  .strict();
+
+/**
+ * TEMPORARY. Whether an organise token may share a past payment out of one of the household's
+ * own accounts as an expense the household account paid: for exactly that payment's amount and
+ * date, never a transfer. recordEvent still checks the people, the split, that the payment
+ * isn't linked already, and the money set aside for other bills.
+ */
+function householdPoolExpenseAllows(method: string, rawPath: string, body: unknown): boolean {
+  const match = HOUSEHOLD_EVENTS_PATH.exec(rawPath.replace(/\/+$/, ''));
+  if (method !== 'POST' || !match) return false;
+  const parsed = poolExpenseBody.safeParse(body);
+  const ids = decoded([match[1]]);
+  if (!parsed.success || !ids) return false;
+  const group = db.select().from(householdGroups).where(eq(householdGroups.id, ids[0])).get();
+  if (!group) return false;
+  const tx = db
+    .select({
+      accountId: transactions.accountId,
+      date: transactions.date,
+      amount: transactions.amount,
+      transferTransactionId: transactions.transferTransactionId,
+    })
+    .from(transactions)
+    .where(eq(transactions.id, parsed.data.transactionId))
+    .get();
+  return (
+    !!tx &&
+    !tx.transferTransactionId &&
+    tx.amount === -parsed.data.amount &&
+    tx.date === parsed.data.date &&
+    tx.date <= todayIso() &&
+    poolAccountsOf(group).includes(tx.accountId)
+  );
+}
+
+/**
+ * TEMPORARY. Whether an organise token may unlink a past transfer that has a side in a
+ * household's account ("Not a transfer"), so a deposit or bill the bank matched as the wrong
+ * transfer can be recorded properly. Only with the route's default of dismissing that pair;
+ * the route still refuses a reconciled transfer or one with a household entry on either side.
+ */
+function householdUnlinkTransferAllows(method: string, rawPath: string, body: unknown): boolean {
+  const match = UNLINK_TRANSFER_PATH.exec(rawPath.replace(/\/+$/, ''));
+  if (method !== 'POST' || !match) return false;
+  if (body !== undefined && !(isObject(body) && Object.keys(body).length === 0)) return false;
+  const ids = decoded([match[1]]);
+  if (!ids) return false;
+  const leg = (id: string) =>
+    db
+      .select({
+        accountId: transactions.accountId,
+        date: transactions.date,
+        transferTransactionId: transactions.transferTransactionId,
+      })
+      .from(transactions)
+      .where(eq(transactions.id, id))
+      .get();
+  const tx = leg(ids[0]);
+  if (!tx?.transferTransactionId || tx.date > todayIso()) return false;
+  const other = leg(tx.transferTransactionId);
+  return [tx, other].some((row) => !!row && !!poolGroupOf(row.accountId));
+}
+
 // ─── The policy table ─────────────────────────────────────────────────────────
 
 export interface AssistantAction {
@@ -421,6 +540,25 @@ export const ASSISTANT_ACTIONS: readonly AssistantAction[] = [
     scope: 'organise',
     summary: 'Record your own contribution, up to what you owe',
     allows: ownContributionAllows,
+  },
+  // TEMPORARY (owner-approved 6 November 2026): household corrections, removed next release
+  {
+    name: 'household_remove_contribution',
+    scope: 'organise',
+    summary: 'Remove a household contribution (temporary)',
+    allows: householdRemoveContributionAllows,
+  },
+  {
+    name: 'household_pool_expense',
+    scope: 'organise',
+    summary: 'Share a payment from a household account as an expense (temporary)',
+    allows: householdPoolExpenseAllows,
+  },
+  {
+    name: 'household_unlink_transfer',
+    scope: 'organise',
+    summary: 'Unlink a transfer with a side in a household account (temporary)',
+    allows: householdUnlinkTransferAllows,
   },
   {
     name: 'propose_change',

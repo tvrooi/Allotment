@@ -32,25 +32,32 @@ bodies already kept.
 
 ## The policy table
 
-| Row                          | Scope      | Allows                                                                   |
-| ---------------------------- | ---------- | ------------------------------------------------------------------------ |
-| `categorise_transaction`     | categorise | `PUT /transactions/:id` with only `categoryId`, on a past transaction    |
-| `manage_categories`          | categorise | create a category or group; edit a category's fields; rename a group     |
-| `undo_change_set`            | categorise | `POST /change-sets/:id/undo` (the route checks it is the token's own)    |
-| `rule_dry_run`               | organise   | `POST /rules/test`, `POST /rules/preview`                                |
-| `propose_rule`               | organise   | `POST /rules` with `enabled: false`                                      |
-| `edit_proposed_rule`         | organise   | `PUT /rules/:id` on a disabled rule, never enabling or reordering it     |
-| `apply_rule`                 | organise   | `POST /rules/apply`: one category-only rule, uncategorised past rows     |
-| `payee_default_category`     | organise   | `PUT /payees/:id` with only `defaultCategoryId`                          |
-| `payee_logo`                 | organise   | `PUT /payees/:id` with only a valid `logo` (never removing one)          |
-| `link_transfer`              | organise   | `POST /transactions/transfers/link` for a pair the server suggests       |
-| `suggest_assignments`        | organise   | `POST /budget-proposals` (applying one is the owner's)                   |
-| `claim_tax_deduction`        | organise   | `PUT /tax/claims/:id` on an unclaimed past transaction                   |
-| `household_contribution`     | organise   | a contribution linked to a past deposit into the household, exact amount |
-| `own_household_contribution` | organise   | your own unlinked contribution, up to what you owe the household account |
-| `propose_change`             | organise   | `POST /assistant/proposals`: a depreciating asset proposal (see Phases)  |
+| Row                             | Scope      | Allows                                                                   |
+| ------------------------------- | ---------- | ------------------------------------------------------------------------ |
+| `categorise_transaction`        | categorise | `PUT /transactions/:id` with only `categoryId`, on a past transaction    |
+| `manage_categories`             | categorise | create a category or group; edit a category's fields; rename a group     |
+| `undo_change_set`               | categorise | `POST /change-sets/:id/undo` (the route checks it is the token's own)    |
+| `rule_dry_run`                  | organise   | `POST /rules/test`, `POST /rules/preview`                                |
+| `propose_rule`                  | organise   | `POST /rules` with `enabled: false`                                      |
+| `edit_proposed_rule`            | organise   | `PUT /rules/:id` on a disabled rule, never enabling or reordering it     |
+| `apply_rule`                    | organise   | `POST /rules/apply`: one category-only rule, uncategorised past rows     |
+| `payee_default_category`        | organise   | `PUT /payees/:id` with only `defaultCategoryId`                          |
+| `payee_logo`                    | organise   | `PUT /payees/:id` with only a valid `logo` (never removing one)          |
+| `link_transfer`                 | organise   | `POST /transactions/transfers/link` for a pair the server suggests       |
+| `suggest_assignments`           | organise   | `POST /budget-proposals` (applying one is the owner's)                   |
+| `claim_tax_deduction`           | organise   | `PUT /tax/claims/:id` on an unclaimed past transaction                   |
+| `household_contribution`        | organise   | a contribution linked to a past deposit into the household, exact amount |
+| `own_household_contribution`    | organise   | your own unlinked contribution, up to what you owe the household account |
+| `household_remove_contribution` | organise   | TEMPORARY: `DELETE /households/:id/events/:eventId` on a contribution    |
+| `household_pool_expense`        | organise   | TEMPORARY: an expense a household account paid, linked to that payment   |
+| `household_unlink_transfer`     | organise   | TEMPORARY: unlink a past transfer with a side in a household account     |
+| `propose_change`                | organise   | `POST /assistant/proposals`: a depreciating asset proposal (see Phases)  |
 
 Organise tokens also read the tax paths (`taxReadAllows`); reads stay on the general routes.
+
+The three TEMPORARY rows were owner-approved on 6 November 2026 to correct one household's
+history (rent counted twice, bills paid from its accounts never shared, deposits matched as the
+wrong transfers) and are removed in the next release.
 
 Rules for the table:
 

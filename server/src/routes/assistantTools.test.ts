@@ -625,6 +625,7 @@ describe('household tools', () => {
 
   it('an organise token records only contributions linked to a household deposit', async () => {
     const token = await newToken('organise');
+    const categorise = await newToken('categorise');
     const { data } = await tool(token, 'record_household_contributions', {
       household_id: 'flat',
       contributions: [
@@ -668,8 +669,10 @@ describe('household tools', () => {
     const snapshot = (await call('GET', '/households/flat')).body;
     const recorded = snapshot.events.filter((e: { kind: string }) => e.kind === 'contribution');
     expect(recorded).toHaveLength(2);
+    // Removing a contribution is a temporary permission (household corrections, below)
     expect(
-      (await call('DELETE', `/households/flat/events/${recorded[0].id}`, { token })).status,
+      (await call('DELETE', `/households/flat/events/${recorded[0].id}`, { token: categorise }))
+        .status,
     ).toBe(403);
     const after = await tool(token, 'household_bill_reconciliation', {
       household_id: 'flat',
@@ -777,6 +780,180 @@ describe('household tools', () => {
       description: 'Rent via saver',
     });
     expect(again.data.error).toMatch(/owe the household account nothing/);
+  });
+});
+
+describe('household corrections (temporary, owner-approved 6 November 2026)', () => {
+  // A flat of three with two household accounts: a bill paid from one, a deposit and a bill the
+  // bank matched as the wrong transfers, and a contribution credited to the wrong person
+  const T = (id: string, accountId: string, date: string, amount: number, extra = {}) =>
+    db
+      .insert(transactions)
+      .values({ id, accountId, date, amount, ...extra })
+      .run();
+  const people = ['c-me', 'c-ana', 'c-ben'];
+  beforeAll(async () => {
+    db.insert(accounts).values({ id: 'c-joint', name: 'Bills', type: 'checking' }).run();
+    db.insert(accounts).values({ id: 'c-joint2', name: 'Bills 2', type: 'savings' }).run();
+    db.insert(accounts).values({ id: 'c-other', name: 'Other', type: 'checking' }).run();
+    db.insert(householdGroups)
+      .values({ id: 'fix', name: 'Fix', currency: 'AUD', accountId: 'c-joint' })
+      .run();
+    db.insert(householdPoolAccounts).values({ groupId: 'fix', accountId: 'c-joint2' }).run();
+    for (const [i, name] of ['Owner', 'Ana', 'Ben'].entries())
+      db.insert(householdPeople)
+        .values({ id: people[i], groupId: 'fix', name, isSelf: i === 0 ? 1 : 0 })
+        .run();
+    T('c-dep-ana', 'c-joint', '2026-02-01', 900, { importedPayee: 'Ana Mock' });
+    T('c-dep-ben', 'c-joint', '2026-02-01', 900, { importedPayee: 'Ben Mock' });
+    T('c-gas', 'c-joint', '2026-02-05', -900, { payeeName: 'Mock Gas' });
+    T('c-personal', 'spend', '2026-02-05', -900, { payeeName: 'Mock Gas' });
+    T('c-future', 'c-joint', '2099-01-01', -900, { payeeName: 'Mock Gas' });
+    // The bank matched Ben's deposit to a move out of the second account, and a bill to a
+    // deposit into a personal account
+    T('c-ben2', 'c-joint', '2026-02-06', 300, {
+      importedPayee: 'Ben Mock',
+      transferTransactionId: 'c-move-out',
+    });
+    T('c-move-out', 'c-joint2', '2026-02-06', -300, { transferTransactionId: 'c-ben2' });
+    T('c-water', 'c-joint', '2026-02-07', -450, {
+      importedPayee: 'Mock Water',
+      transferTransactionId: 'c-refund-in',
+    });
+    T('c-refund-in', 'spend', '2026-02-07', 450, { transferTransactionId: 'c-water' });
+    // A transfer between two personal accounts
+    T('c-p-out', 'spend', '2026-02-08', -100, { transferTransactionId: 'c-p-in' });
+    T('c-p-in', 'c-other', '2026-02-08', 100, { transferTransactionId: 'c-p-out' });
+    for (const [tx, payerId] of [
+      ['c-dep-ana', 'c-ben'], // credited to the wrong person
+      ['c-dep-ben', 'c-ben'],
+    ])
+      expect(
+        (
+          await call(
+            'POST',
+            '/households/fix/events',
+            {},
+            {
+              kind: 'contribution',
+              date: '2026-02-01',
+              description: 'Bills',
+              amount: 900,
+              payerId,
+              transactionId: tx,
+            },
+          )
+        ).status,
+      ).toBe(201);
+  });
+  const state = async () => (await call('GET', '/households/fix')).body;
+
+  it('an organise token removes only contributions, and re-records one for the right person', async () => {
+    const token = await newToken('organise');
+    const categorise = await newToken('categorise');
+    expect(await toolNames(categorise)).not.toContain('remove_household_contributions');
+    const before = await state();
+    const wrong = before.events.find(
+      (e: { transactionId: string }) => e.transactionId === 'c-dep-ana',
+    );
+    expect(
+      (await call('DELETE', `/households/fix/events/${wrong.id}`, { token: categorise })).status,
+    ).toBe(403);
+    // A contribution of another household's id is refused
+    expect((await call('DELETE', `/households/flat/events/${wrong.id}`, { token })).status).toBe(
+      403,
+    );
+    const { data } = await tool(token, 'remove_household_contributions', {
+      household_id: 'fix',
+      event_ids: [wrong.id],
+    });
+    expect(data).toMatchObject({ removed: 1, refused: 0 });
+    const again = await tool(token, 'record_household_contributions', {
+      household_id: 'fix',
+      contributions: [{ transaction_id: 'c-dep-ana', person_id: 'c-ana' }],
+    });
+    expect(again.data.recorded).toBe(1);
+    expect((await state()).balances).toMatchObject({ 'c-ana': 900, 'c-ben': 900 });
+  });
+
+  it('shares a past payment out of a household account as an expense, never a transfer', async () => {
+    const token = await newToken('organise');
+    const read = await newToken('read');
+    expect(await toolNames(read)).not.toContain('record_household_bill_expenses');
+    const body = {
+      kind: 'expense',
+      date: '2026-02-05',
+      description: 'Gas',
+      amount: 900,
+      payerId: null,
+      transactionId: 'c-gas',
+      mode: 'equal',
+      shares: people.map((personId) => ({ personId, value: 1 })),
+    };
+    // Nearest refusals: a personal account, a different amount, a future payment, someone
+    // paying it themselves, a read token
+    for (const [auth, extra] of [
+      [token, { transactionId: 'c-personal' }],
+      [token, { amount: 800 }],
+      [token, { transactionId: 'c-future', date: '2099-01-01' }],
+      [token, { payerId: 'c-me' }],
+      [read, {}],
+    ] as const)
+      expect(
+        (await call('POST', '/households/fix/events', { token: auth }, { ...body, ...extra }))
+          .status,
+      ).toBe(403);
+    const { data } = await tool(token, 'record_household_bill_expenses', {
+      household_id: 'fix',
+      expenses: [{ transaction_id: 'c-gas' }, { transaction_id: 'c-water' }],
+    });
+    expect(data.recorded).toBe(1);
+    expect(data.results[1].error).toMatch(/Refused/);
+    const gas = (await state()).events.find(
+      (e: { transactionId: string }) => e.transactionId === 'c-gas',
+    );
+    expect(gas).toMatchObject({ kind: 'expense', payerId: null, amount: 900 });
+    expect(gas.shares.map((s: { amount: number }) => s.amount)).toEqual([300, 300, 300]);
+    // An expense is never removed by a token
+    expect((await call('DELETE', `/households/fix/events/${gas.id}`, { token })).status).toBe(403);
+  });
+
+  it('unlinks only transfers with a side in a household account, then records them', async () => {
+    const token = await newToken('organise');
+    const categorise = await newToken('categorise');
+    expect(
+      (await call('POST', '/transactions/c-ben2/unlink-transfer', { token: categorise }, {}))
+        .status,
+    ).toBe(403);
+    // Not a household account on either side; keeping the pair suggested; not a transfer
+    expect(
+      (await call('POST', '/transactions/c-p-out/unlink-transfer', { token }, {})).status,
+    ).toBe(403);
+    expect(
+      (await call('POST', '/transactions/c-ben2/unlink-transfer', { token }, { dismiss: false }))
+        .status,
+    ).toBe(403);
+    expect((await call('POST', '/transactions/c-gas/unlink-transfer', { token }, {})).status).toBe(
+      403,
+    );
+    const { data } = await tool(token, 'unlink_household_transfers', {
+      transaction_ids: ['c-ben2', 'c-refund-in'],
+    });
+    expect(data).toMatchObject({ unlinked: 2, refused: 0 });
+    const row = (id: string) =>
+      db.select().from(transactions).where(eq(transactions.id, id)).get()!;
+    expect(row('c-ben2').transferTransactionId).toBeNull();
+    expect(row('c-water').transferTransactionId).toBeNull();
+    const contribution = await tool(token, 'record_household_contributions', {
+      household_id: 'fix',
+      contributions: [{ transaction_id: 'c-ben2', person_id: 'c-ben' }],
+    });
+    expect(contribution.data.recorded).toBe(1);
+    const expense = await tool(token, 'record_household_bill_expenses', {
+      household_id: 'fix',
+      expenses: [{ transaction_id: 'c-water', description: 'Water' }],
+    });
+    expect(expense.data.recorded).toBe(1);
   });
 });
 

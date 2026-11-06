@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.112
+
+- **A temporary assistant permission to correct a household's history.** Approved by the owner on 6 November 2026, for one household where rent was counted twice, bills paid from its accounts were never shared, and some deposits were matched to the wrong transfers. For this release only, an assistant with a **Read, categorise and organise** token may remove a household contribution (never an expense, repayment or refund), share a past bill paid from a household account as an expense, for exactly that payment's amount and date, and unlink a transfer that touches a household account so the deposit or bill can be recorded properly. Everything else stays the owner's, the household's activity list records each change, and **Assistant activity** in Settings logs every request. The next release removes the permission.
+
 ## 0.2.0-up.111
 
 - **Hold money for next month.** In the current month, **Hold money…** under Ready to assign sets aside part of what's ready to assign for the month after. It leaves Ready to assign now, so the month can reach $0 and read fully budgeted while next month's pay is still in your account, and it comes back when next month starts. Held money can't be given to a category (this month's or a later one) until then; you can only hold what is ready to assign, and **Change hold** or **Release hold** puts it back. Nothing is spent or moved: it is a note about those dollars, shown in the working under Ready to assign as **Held for next month**. Your backup includes holds; older backups restore with none. An access token can't set one.

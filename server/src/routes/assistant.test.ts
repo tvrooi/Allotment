@@ -119,6 +119,9 @@ describe('the policy table', () => {
       'claim_tax_deduction',
       'household_contribution',
       'own_household_contribution',
+      'household_remove_contribution',
+      'household_pool_expense',
+      'household_unlink_transfer',
       'propose_change',
     ]);
     expect(ASSISTANT_ACTIONS.filter((a) => a.scope === 'categorise').map((a) => a.name)).toEqual([

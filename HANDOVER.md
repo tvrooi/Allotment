@@ -9,6 +9,7 @@ Last updated: 6 November 2026 (up.111 in review).
 
 ## State
 
+- **Temporary household corrections (up.112):** owner-approved on 6 November 2026, to correct the owner's flat household (rent counted twice through four $4,780 "Cover from Rent" deposits credited to the owner, CovaU, Yarra Valley Water and three OVO payments from the household accounts never shared, Zephyr's and Juno's deposits matched as the wrong transfers). Three organise rows in `auth/assistantPolicy.ts`: `household_remove_contribution` (DELETE a contribution entry), `household_pool_expense` (an expense the household account paid, linked to a past non-transfer payment out of its account, exact amount and date), `household_unlink_transfer` (unlink a past transfer with a side in a household account, empty body so the pair is dismissed). MCP `remove_household_contributions`, `record_household_bill_expenses`, `unlink_household_transfers`. Tests: the "household corrections" describe in `routes/assistantTools.test.ts`. **Remove in the next release** (restore the token DELETE refusal in "an organise token records only contributions…" and add an every-token refusal case, as up.81 did). The owner installs up.112 in Home Assistant with a cold backup; this session could not reach Home Assistant.
 - **Hold for next month (up.111, ACT-03; migration 0076, backup format 28):** table `budget_holds`
   (`month` primary key, `amount`; triggers bump `budget_revision`), loaded into the ledger
   (`holdMonths`, `holdTotals`, `heldFrom`, `holdAt` in `budgetLedger.ts`). `fundingState` subtracts
