@@ -156,8 +156,14 @@ records, not only tax evidence.
       returned by the API, never in backups or exports. A Claude or ChatGPT subscription doesn't
       include API use; each photo is billed to the key, typically a fraction of a cent.
   - **What is sent:** the photo (JPEG, PNG, WebP; not PDF or HEIC), only to the chosen provider, with a
-    prompt naming the spending categories. The answer is JSON (`jsonIn` allows a code fence
-    around it). For a local server the request also sets the schema (`format`), `temperature: 0`, `think: false` (a thinking model is slow on a CPU) and
+    prompt naming the spending categories. The answer is JSON in the reply schema
+    (`REPLY_SCHEMA`). Anthropic is asked for structured output (`output_config.format`, since
+    0.2.0-up.124), so its answer is the schema's JSON and nothing else; the request sends no
+    `temperature` (current Claude models refuse a non-default one) and allows 16,000 tokens,
+    since they think before answering. A refused or cut-off Anthropic answer fails the read
+    instead of being parsed. OpenAI is asked for a JSON object (`response_format`), and
+    `jsonIn` finds the object in an OpenAI or local answer, allowing a code fence around it.
+    For a local server the request also sets the schema (`format`), `temperature: 0`, `think: false` (a thinking model is slow on a CPU) and
     `keep_alive: 5m`, and an 8192-token context (`num_ctx`; a 4096 default can cut a
     photo off), so the model leaves memory a few minutes after the last receipt.
   - **What is kept:** a sensible positive amount in cents, a real date from 2000 to tomorrow, a

@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.124
+
+- **Reading receipts with Claude works with today's models.** When Anthropic reads your receipts, Allotment now asks Claude for its answer in a fixed form (structured output), so the merchant, date, amounts and items always come back in the shape Allotment expects. It also no longer sends a setting that current Claude models, including the suggested **claude-haiku-5-5**, reject with an error, and it gives them room to think before answering. If Claude declines to read a photo, or its answer is cut off, the receipt says so instead of keeping a half-read answer. Local model servers and OpenAI read receipts as before.
+
 ## 0.2.0-up.123
 
 - **An old, unused table is removed.** Recurring items moved to a new format in September, and the old copy has been left behind unused since. Updating removes it and the link each transaction kept to it; your recurring items, their payments and every transaction stay as they are. Take a backup before updating as usual: backups never held the old table, so any backup, older ones included, restores as before.

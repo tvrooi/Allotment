@@ -473,6 +473,76 @@ describe('cloud providers', () => {
     });
   });
 
+  /** Anthropic answering every request with this response body */
+  function anthropicSays(reply: unknown) {
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      void init;
+      return new Response(JSON.stringify(reply), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetch);
+    return fetch;
+  }
+  const anthropicOn = () =>
+    updateReaderSettings({
+      enabled: true,
+      provider: 'anthropic',
+      model: 'claude-haiku-5-5',
+      apiKey: 'sk-ant-test',
+    });
+
+  it('asks Anthropic for structured output in the reply schema, with no temperature', async () => {
+    anthropicOn();
+    const fetch = anthropicSays({
+      stop_reason: 'end_turn',
+      content: [
+        { type: 'thinking', thinking: '' },
+        { type: 'text', text: JSON.stringify({ ...coles, merchant: 'Sample Grocer' }) },
+      ],
+    });
+    startSampleRead();
+    await readsSettled();
+    expect(sampleRead()).toMatchObject({ status: 'done', correct: { merchant: true } });
+    const body = JSON.parse(String(fetch.mock.calls[0][1].body));
+    expect(body).not.toHaveProperty('temperature');
+    expect(body.output_config.format.type).toBe('json_schema');
+    const schema = body.output_config.format.schema;
+    expect(schema.required).toEqual([
+      'merchant',
+      'date',
+      'total',
+      'subtotal',
+      'tax',
+      'tip',
+      'items',
+    ]);
+    // Structured outputs refuse a schema with an open object
+    expect(schema.additionalProperties).toBe(false);
+    expect(schema.properties.items.items.additionalProperties).toBe(false);
+
+    // A plain transcription has no schema to follow
+    expect(await transcribePhoto('aGk=', 'image/png')).toContain('Sample Grocer');
+    expect(JSON.parse(String(fetch.mock.calls[1][1].body))).not.toHaveProperty('output_config');
+  });
+
+  it("never reads an Anthropic answer that was refused or cut off, as it needn't fit the schema", async () => {
+    anthropicOn();
+    const text = JSON.stringify(coles);
+    anthropicSays({ stop_reason: 'refusal', content: [{ type: 'text', text }] });
+    startSampleRead();
+    await readsSettled();
+    expect(sampleRead()).toMatchObject({
+      status: 'failed',
+      error: 'Anthropic declined to read this photo',
+    });
+    anthropicSays({ stop_reason: 'max_tokens', content: [{ type: 'text', text: '{"merchant":' }] });
+    startSampleRead();
+    await readsSettled();
+    expect(sampleRead()).toMatchObject({
+      status: 'failed',
+      error: "Anthropic's answer was cut off before it finished",
+    });
+  });
+
   it('sends the photo to OpenAI with the key as a bearer token', async () => {
     updateReaderSettings({ provider: 'openai', model: 'gpt-5-mini', apiKey: 'sk-test' });
     updateReaderSettings({ enabled: true });

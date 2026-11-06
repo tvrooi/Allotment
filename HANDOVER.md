@@ -22,7 +22,19 @@ Last updated: 6 November 2026 (up.123 in review).
   `foreign_key_check`, and a second run changes nothing; a new database), `routes/backup.test.ts`
   (a backup with `recurringTransactions` and `recurringTransactionId` restores). Docs:
   DEVELOPMENT.md (hand-written migrations note, schedules in the schema summary, occurrence
-  matching), PLANNING.md. Next: C5 (receipt reading structured output).
+  matching), PLANNING.md.
+- **Receipt reading with Anthropic's structured output (up.124, C5 of the Polish and help group;
+  server only, no migration):** `askImage` in `receiptReader.ts` sends the reply schema as
+  `output_config.format` (`json_schema`); `REPLY_SCHEMA` closes both objects
+  (`additionalProperties: false`, which structured outputs require; Ollama takes it too). It no
+  longer sends `temperature: 0`, which current Claude models, the suggested `claude-haiku-5-5`
+  among them, reject with a 400 (so a read with the suggested model failed until now), and
+  `max_tokens` is 16,000 because those models think first. `stop_reason` `refusal` or
+  `max_tokens` fails the read with its own message instead of parsing. Transcription for Files
+  search has no schema and is unchanged; OpenAI and local reads are unchanged (`jsonIn` stays
+  for them). Not built: the optional cost per read (left for the owner to ask for; prices per
+  model would need a list that rots). Tests: `receiptReader.test.ts` (cloud providers). Docs:
+  RECEIPTS-AND-TAX.md §5. Next: C6 (optional lint burn-down).
 - **Enable Banking's setup steps in the guide (up.122, C3 of the Polish and help group; client
   only, no migration):** a new guide page, `enable-banking` (`DOCS_PAGES`, the article after
   Connecting Up), replaces the last flybudget.org help link: the setup form's **Step-by-step
@@ -477,8 +489,8 @@ site in `website/` was removed (audit decision I-9).
    - Investments deferrals (sales, dividends, franking); receipts §6 (PDF reading, email
      forwarding, logbooks, depreciation, WFH hours).
    - The legacy `recurring_transactions` cleanup is done (up.123, migration 0078).
-5. **Receipt providers (up.98) follow-ups:** a structured-output request for Anthropic (today it
-   is asked for JSON and `jsonIn` finds it); a cost note per read if the owner wants one.
+5. **Receipt providers (up.98) follow-ups:** Anthropic's structured output is done (up.124); a
+   cost note per read if the owner wants one.
 6. **Left from the 31 October review**, rechecked by the 3 November audit. Fixed: Ready to assign
    above cash after a first Up import (up.86, a new budget starts that day), and the demo's
    negative Ready to assign (up.83). Partly superseded: Up's Saver transfers count as
