@@ -903,6 +903,17 @@ describe('household corrections (temporary, owner-approved 6 November 2026)', ()
         (await call('POST', '/households/fix/events', { token: auth }, { ...body, ...extra }))
           .status,
       ).toBe(403);
+    // Malformed shares are refused, never recorded as an equal split
+    const malformed = await tool(token, 'record_household_bill_expenses', {
+      household_id: 'fix',
+      expenses: [
+        { transaction_id: 'c-gas', shares: { person_id: 'c-me', amount: 900 } },
+        { transaction_id: 'c-gas', shares: [] },
+        { transaction_id: 'c-gas', shares: [{ person_id: 'c-me', amount: 4.5 }] },
+      ],
+    });
+    expect(malformed.data.recorded).toBe(0);
+    for (const r of malformed.data.results) expect(r.error).toMatch(/shares must be/);
     const { data } = await tool(token, 'record_household_bill_expenses', {
       household_id: 'fix',
       expenses: [{ transaction_id: 'c-gas' }, { transaction_id: 'c-water' }],

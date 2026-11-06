@@ -1262,7 +1262,23 @@ const ACTION_TOOLS: ActionTool[] = [
           results.push({ transactionId: id, ok: false, error: tx ? 'Not money out' : 'Not found' });
           continue;
         }
-        const exact = Array.isArray(row.shares) ? (row.shares as Args[]) : null;
+        // Equal only when no shares are given: malformed shares are refused, never split equally
+        const given = row.shares;
+        const validShares =
+          Array.isArray(given) &&
+          given.length > 0 &&
+          (given as Args[]).every(
+            (s) => isId(s?.person_id) && Number.isInteger(s?.amount) && (s.amount as number) >= 0,
+          );
+        if (given !== undefined && !validShares) {
+          results.push({
+            transactionId: id,
+            ok: false,
+            error: 'shares must be a list of { person_id, amount } in whole cents',
+          });
+          continue;
+        }
+        const exact = given === undefined ? null : (given as Args[]);
         const r = await api(ctx, `/households/${seg(a.household_id)}/events`, 'POST', {
           kind: 'expense',
           date: tx.date,
