@@ -22,6 +22,10 @@ cd lint && npm ci && npm test && npm run lint
   tests, and hook dependency lists. `npm run lint` allows at most the current number
   (`--max-warnings` in `package.json`), so new code can't add any. When you fix some, lower the
   number in the same PR. `npm run lint:report` lists them all without the cap.
+- **Labels.** A `<label>` names its field with `htmlFor` and the field's `id` (`useId`), or by
+  wrapping it. Wrapping a component counts when the component is in `controlComponents` in
+  `eslint.config.js`, which lists only components that render a native field first. Text over a
+  button named by its own value, or over a group of buttons, is not a `<label>`.
 - **Its own package.** typescript-eslint parses with TypeScript's JavaScript API, which TypeScript 7
   (the app's compiler) doesn't have, so TypeScript 6 here only parses. Type checking stays with
   each package's `tsc`. ESLint stays on 9 until eslint-plugin-jsx-a11y supports 10.

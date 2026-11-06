@@ -116,6 +116,14 @@ export default tseslint.config(
           ],
         },
       ],
+      // A label around one of these is already joined to its control: each renders a native
+      // input or select as its first labelable element (components/ui/Input.tsx,
+      // CurrencyInput.tsx, PaydayPlan's MoneyInput, CashRunway's and Budget's AmountInput).
+      // Keep this list to components that do.
+      'jsx-a11y/label-has-associated-control': [
+        'warn',
+        { controlComponents: ['Input', 'Select', 'CurrencyInput', 'MoneyInput', 'AmountInput'] },
+      ],
     },
   },
 );

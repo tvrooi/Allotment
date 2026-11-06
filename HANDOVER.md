@@ -23,6 +23,17 @@ Last updated: 6 November 2026 (up.123 in review).
   (a backup with `recurringTransactions` and `recurringTransactionId` restores). Docs:
   DEVELOPMENT.md (hand-written migrations note, schedules in the schema summary, occurrence
   matching), PLANNING.md.
+- **Labels joined to their fields, part 1 (up.125, C6a of the Polish and help group; client and
+  lint only):** jsx-a11y's `label-has-associated-control` takes `controlComponents` (`Input`,
+  `Select`, `CurrencyInput`, `MoneyInput`, `AmountInput`; each renders a native field first), so
+  the 54 labels that already wrapped one stop warning. The 19 real ones in
+  `components/transactions/` and `ReconcilePage` now have `htmlFor` and an `id` (from `useId`);
+  `CurrencyInput`, `CategorySelect`, `CategorySelectButton`, `MerchantSelect` and `PayeeCombobox`
+  take an optional `id` for it. A caption over a button named by its value (the details panel's
+  Category, Add transaction's Account) or over static text (Recurring) is a `span`/`p`, not a
+  `<label>`: a label would rename the button. Warning cap 270 → 197. Test:
+  `e2e/tests/accessibility.spec.ts` ("every label in the transaction forms points at its field").
+  Next: C6b, the other 42 in accounts, goals, plaid, plans, recurring, reports, settings, simplefin.
 - **Receipt reading with Anthropic's structured output (up.124, C5 of the Polish and help group;
   server only, no migration):** `askImage` in `receiptReader.ts` sends the reply schema as
   `output_config.format` (`json_schema`); `REPLY_SCHEMA` closes both objects
@@ -34,7 +45,7 @@ Last updated: 6 November 2026 (up.123 in review).
   search has no schema and is unchanged; OpenAI and local reads are unchanged (`jsonIn` stays
   for them). Not built: the optional cost per read (left for the owner to ask for; prices per
   model would need a list that rots). Tests: `receiptReader.test.ts` (cloud providers). Docs:
-  RECEIPTS-AND-TAX.md §5. Next: C6 (optional lint burn-down).
+  RECEIPTS-AND-TAX.md §5.
 - **Enable Banking's setup steps in the guide (up.122, C3 of the Polish and help group; client
   only, no migration):** a new guide page, `enable-banking` (`DOCS_PAGES`, the article after
   Connecting Up), replaces the last flybudget.org help link: the setup form's **Step-by-step

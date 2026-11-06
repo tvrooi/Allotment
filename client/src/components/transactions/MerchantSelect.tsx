@@ -18,6 +18,8 @@ interface Props {
   placeholder?: string;
   /** Accessible name of the search box */
   label?: string;
+  /** For a visible <label htmlFor> beside the field */
+  id?: string;
 }
 
 /**
@@ -30,6 +32,7 @@ export function MerchantSelect({
   onChange,
   placeholder = 'Search payees...',
   label = 'Payee',
+  id,
 }: Props) {
   const { data: payees = [] } = usePayees();
   const createPayee = useCreatePayee();
@@ -73,6 +76,7 @@ export function MerchantSelect({
   return (
     <div ref={ref} className="relative">
       <input
+        id={id}
         type="text"
         value={query}
         onChange={(e) => {

@@ -16,6 +16,8 @@ interface Props {
   className?: string;
   allowNegative?: boolean;
   'aria-label'?: string;
+  /** For a visible <label htmlFor> beside the field */
+  id?: string;
   /** The currency the amount is in (an account's); null or left out = the budget's */
   currency?: string | null;
 }
@@ -28,6 +30,7 @@ export function CurrencyInput({
   allowNegative = false,
   'aria-label': ariaLabel,
   currency,
+  id,
 }: Props) {
   const [focused, setFocused] = useState(false);
   const [raw, setRaw] = useState('');
@@ -91,6 +94,7 @@ export function CurrencyInput({
     <>
       <input
         ref={inputRef}
+        id={id}
         // Text, not number: a number field won't take a decimal comma (12,50)
         type="text"
         inputMode="decimal"

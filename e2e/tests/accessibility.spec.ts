@@ -1,3 +1,4 @@
+import type { Locator } from '@playwright/test';
 import { test, expect, open, isoDay } from './fixtures';
 
 // Accessibility fixes from the audit (F-15): every page has a heading, icon-only controls have
@@ -95,6 +96,50 @@ test('no button, link or select on the main pages is nameless', async ({ page, a
     );
     expect(nameless, route).toEqual([]);
   }
+});
+
+/** The text of each visible <label> in `scope` that points at no field */
+const strayLabels = (scope: Locator) =>
+  scope.evaluate((root) =>
+    [...root.querySelectorAll('label')]
+      .filter((el) => el.getBoundingClientRect().width > 0 && !el.control)
+      .map((el) => el.textContent?.trim()),
+  );
+
+test('every label in the transaction forms points at its field', async ({ page, api }) => {
+  const acct = await api.createAccount('Checking', 100_000);
+  await api.createTransaction({
+    accountId: acct.id,
+    date: isoDay(0),
+    amount: -2_500,
+    payeeName: 'Corner Grocery',
+  });
+
+  await open(page, '/transactions?add=1');
+  const dialog = page.getByRole('dialog', { name: 'Add transaction' });
+  await expect(dialog.getByText('Payee *')).toBeVisible();
+  expect(await strayLabels(dialog)).toEqual([]);
+  // Clicking a label's text goes to its field
+  await dialog.getByText('Notes', { exact: true }).click();
+  await expect(dialog.getByPlaceholder('Add a note...')).toBeFocused();
+  await page.keyboard.press('Escape');
+
+  await open(page, `/accounts/${acct.id}`);
+  await page.getByRole('button', { name: 'Add Transaction' }).click();
+  const form = page.getByRole('form', { name: 'New transaction' });
+  expect(await strayLabels(form)).toEqual([]);
+  await form.getByText('Outflow', { exact: true }).click();
+  await expect(form.getByRole('textbox', { name: 'Outflow' })).toBeFocused();
+  await form.getByRole('button', { name: 'Cancel' }).click();
+
+  await page.getByTestId('transaction-row').filter({ hasText: 'Corner Grocery' }).click();
+  const panel = page.getByRole('complementary', { name: 'Transaction details' });
+  await expect(panel.getByText('Notes', { exact: true })).toBeVisible();
+  expect(await strayLabels(panel)).toEqual([]);
+
+  await open(page, `/accounts/${acct.id}/reconcile`);
+  await page.getByText('Statement balance', { exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Statement balance' })).toBeFocused();
 });
 
 test('a disabled rule says so in words, and is not faded', async ({ page, api }) => {

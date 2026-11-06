@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useId } from 'react';
 import { format, isValid as isValidDate, parseISO } from 'date-fns';
 import { MinusCircle, PlusCircle, ChevronDown } from 'lucide-react';
 import { Modal } from '../ui/Modal';
@@ -29,6 +29,7 @@ const inputClass =
 export function AddTransactionModal({ isOpen, onClose }: Props) {
   const [type, setType] = useState<'debit' | 'credit'>('debit');
   const hideBalances = useHideBalances();
+  const fieldId = useId();
   const [amount, setAmount] = useState(0);
   const [payeeName, setPayeeName] = useState('');
   const [payeeId, setPayeeId] = useState<string | null>(null);
@@ -222,8 +223,14 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
 
           {/* Amount */}
           <div>
-            <label className="block text-sm font-medium text-text mb-1">Amount *</label>
+            <label
+              htmlFor={`${fieldId}-amount`}
+              className="block text-sm font-medium text-text mb-1"
+            >
+              Amount *
+            </label>
             <CurrencyInput
+              id={`${fieldId}-amount`}
               value={amount}
               onChange={setAmount}
               aria-label="Amount"
@@ -234,11 +241,15 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
           {/* Between currencies: what the other account sees */}
           {crossCurrency && (
             <div>
-              <label className="block text-sm font-medium text-text mb-1">
+              <label
+                htmlFor={`${fieldId}-other-amount`}
+                className="block text-sm font-medium text-text mb-1"
+              >
                 {type === 'debit' ? 'Amount received' : 'Amount sent'} in {otherName} (
                 {otherCurrency}) *
               </label>
               <CurrencyInput
+                id={`${fieldId}-other-amount`}
                 value={otherAmount}
                 onChange={(v) => {
                   setOtherAmount(v);
@@ -260,8 +271,14 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
           {/* Merchant (a transfer has none: it's named after the other account) */}
           {!transferToId && (
             <div>
-              <label className="block text-sm font-medium text-text mb-1">Payee *</label>
+              <label
+                htmlFor={`${fieldId}-payee`}
+                className="block text-sm font-medium text-text mb-1"
+              >
+                Payee *
+              </label>
               <MerchantSelect
+                id={`${fieldId}-payee`}
                 value={{ id: payeeId, name: payeeName }}
                 onChange={(v) => {
                   setPayeeId(v.id);
@@ -273,8 +290,11 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
 
           {/* Date */}
           <div>
-            <label className="block text-sm font-medium text-text mb-1">Date *</label>
+            <label htmlFor={`${fieldId}-date`} className="block text-sm font-medium text-text mb-1">
+              Date *
+            </label>
             <input
+              id={`${fieldId}-date`}
               aria-label="Date"
               type="date"
               value={date}
@@ -285,7 +305,8 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
 
           {/* Account */}
           <div>
-            <label className="block text-sm font-medium text-text mb-1">{accountLabel} *</label>
+            {/* Not a <label>: the picker is a button named by the account it shows */}
+            <span className="block text-sm font-medium text-text mb-1">{accountLabel} *</span>
             <div ref={accountRef} className="relative">
               <button
                 type="button"
@@ -413,8 +434,14 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
 
           {/* Category */}
           <div>
-            <label className="block text-sm font-medium text-text mb-1">Category</label>
+            <label
+              htmlFor={`${fieldId}-category`}
+              className="block text-sm font-medium text-text mb-1"
+            >
+              Category
+            </label>
             <CategorySelectButton
+              id={`${fieldId}-category`}
               value={categoryId}
               onChange={setCategoryId}
               position="above"
@@ -424,8 +451,14 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
 
           {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-text mb-1">Notes</label>
+            <label
+              htmlFor={`${fieldId}-notes`}
+              className="block text-sm font-medium text-text mb-1"
+            >
+              Notes
+            </label>
             <input
+              id={`${fieldId}-notes`}
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}

@@ -146,9 +146,15 @@ export default function ReconcilePage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-text-secondary">Statement balance</label>
+              <label
+                htmlFor="reconcile-statement-balance"
+                className="text-sm font-medium text-text-secondary"
+              >
+                Statement balance
+              </label>
               <AmountFields report={report}>
                 <CurrencyInput
+                  id="reconcile-statement-balance"
                   currency={account.currency}
                   allowNegative
                   value={statementBalance}
