@@ -223,7 +223,7 @@ export const AutoAssign = forwardRef<OpensDialog, { month: string; hideButton?: 
               >
                 Cancel
               </Button>
-              <Button onClick={apply} disabled={busy || !changes || !canSave}>
+              <Button onClick={apply} disabled={busy || plan.pending || !changes || !canSave}>
                 {total < 0 ? 'Take back' : 'Assign'} {formatCurrency(Math.abs(total))}
               </Button>
             </div>

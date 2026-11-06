@@ -200,7 +200,8 @@ Auto-assign (`services/autoAssign.ts`) is also the month quick fill (ACT-05). It
 overspending, underfunded, assigned last month, spent last month, average spent over 3, 6 or 12
 months (months without spending count as zero) and `zero`. The level strategies and `zero` take a
 `mode`: `add` (the default) only tops an envelope up; `replace` sets it to the level, so a negative
-`need` takes money back, never lowering an assignment below zero. `zero` always replaces, and cover
+`need` takes money back, never lowering an assignment below zero. `zero` always replaces and clears the assignment itself, whatever transfers moved through a linked
+account, and cover
 overspending and underfunded always add (the preview echoes the `mode` that ran). `planFunding`
 applies reductions first, so the money they free can fund the additions in the same plan; the
 funded-write guard still refuses a write that would leave Ready to assign short in any month.

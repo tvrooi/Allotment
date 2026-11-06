@@ -562,6 +562,7 @@ describe('budget properties (audit F-16)', () => {
             for (const r of plan.rows) {
               if (categoryIds) expect(categoryIds).toContain(r.categoryId);
               if (plan.mode === 'add') expect(r.proposed).toBeGreaterThanOrEqual(0);
+              if (strategy === 'zero') expect(r.proposed, r.categoryId).toBeLessThan(0);
               if (r.proposed < 0)
                 expect(r.assigned + r.proposed, r.categoryId).toBeGreaterThanOrEqual(0);
             }

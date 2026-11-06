@@ -86,7 +86,7 @@ function needs(month: string, options: AutoAssignOptions, today: string) {
     const months = Array.from({ length: averageMonths }, (_, i) => previous(i + 1));
     level = (c) =>
       Math.round(months.reduce((s, m) => s + (m.get(c.id)?.spent ?? 0), 0) / averageMonths);
-  } else level = () => 0;
+  } else need = (c) => -Math.max(c.budgeted, 0); // zero clears the assignment itself, not transfers
   if (level) {
     const want = level;
     // Taking money back never lowers an assignment below zero

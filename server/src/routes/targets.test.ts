@@ -456,6 +456,37 @@ describe('auto-assign', () => {
     expect(zero.rows).toEqual([expect.objectContaining({ categoryId: 'goal', proposed: -5000 })]);
   });
 
+  it('Set to zero clears the assignment whatever transfers moved through a linked account', async () => {
+    db.insert(accounts)
+      .values({ id: 'saver', name: 'Saver', type: 'savings', createdAt: '2020-01-01' })
+      .run();
+    db.insert(categories)
+      .values({ id: 'goal', name: 'goal', groupId: 'bills', linkedAccountId: 'saver' })
+      .run();
+    // $200 left the saver this month
+    db.insert(transactions)
+      .values([
+        {
+          id: 'out',
+          accountId: 'saver',
+          date: '2026-10-02',
+          amount: -20000,
+          transferTransactionId: 'in',
+        },
+        {
+          id: 'in',
+          accountId: 'cash',
+          date: '2026-10-02',
+          amount: 20000,
+          transferTransactionId: 'out',
+        },
+      ])
+      .run();
+    assign('goal', '2026-10', 5000);
+    const zero = await postPreview({ strategy: 'zero', categoryIds: ['goal'] });
+    expect(zero.rows).toEqual([expect.objectContaining({ categoryId: 'goal', proposed: -5000 })]);
+  });
+
   it('averages over 3, 6 or 12 months, counting months without spending', async () => {
     spend('a', 'food', '2026-09-10', -30000);
     spend('b', 'food', '2026-05-10', -60000);

@@ -466,9 +466,20 @@ test('a quick fill can leave envelopes out, and Replace or Set to zero takes mon
   const preview = page.getByRole('region', { name: 'Auto-assign preview' });
   await expect(preview).toContainText('Groceries');
   await expect(preview).toContainText('Electric');
-  // Leave Groceries out: the rest is planned again without it
+  // Leave Groceries out: the rest is planned again without it. Until that answer arrives the
+  // shown plan still includes Groceries, so Apply must not be offered
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route('**/auto-assign/preview', async (route) => {
+    await held;
+    await route.continue();
+  });
   await page.getByRole('checkbox', { name: 'Include Groceries' }).uncheck();
+  await expect(page.getByRole('button', { name: /^Assign \$/ })).toBeDisabled();
+  release();
   await expect(preview.getByText('left out')).toBeVisible();
+  await page.unroute('**/auto-assign/preview');
+  await expect(page.getByRole('button', { name: 'Assign $80' })).toBeEnabled();
   await page.getByRole('button', { name: 'Assign $80' }).click();
   await expect(preview).toBeHidden();
   const budgeted = async (name: string) =>

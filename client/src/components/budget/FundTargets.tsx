@@ -89,7 +89,7 @@ export const FundTargets = forwardRef<
               <Button variant="secondary" onClick={plan.reset}>
                 Cancel
               </Button>
-              <Button onClick={apply} disabled={busy || !preview.total || !canSave}>
+              <Button onClick={apply} disabled={busy || plan.pending || !preview.total || !canSave}>
                 Apply {formatCurrency(preview.total)}
               </Button>
             </div>

@@ -9,7 +9,9 @@ interface PlanRow {
  * A funding preview the person can narrow to chosen categories (BUD-07). The first load is for
  * every category the plan touches; unticking one asks the server for a new preview of the rest,
  * because the money is shared out in order and so every other amount can change. `scope` is
- * exactly what the shown preview was made for, so applying sends the same list.
+ * exactly what the shown preview was made for, so applying sends the same list. While that new
+ * preview is on its way `pending` is true and the shown one no longer matches the ticks, so the
+ * dialogs must not offer Apply; a failed request puts the ticks back to match the shown preview.
  */
 export function useScopedPlan<P extends { rows: PlanRow[] }>() {
   const [preview, setPreview] = useState<P | null>(null);
@@ -17,12 +19,14 @@ export function useScopedPlan<P extends { rows: PlanRow[] }>() {
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [scope, setScope] = useState<string[] | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
   // Only the latest request may set the preview, so a slower earlier answer can't replace it
   const latest = useRef(0);
 
   async function load(fetchPlan: (categoryIds?: string[]) => Promise<P>) {
     const request = ++latest.current;
     setError(null);
+    setPending(false);
     setPreview(null);
     try {
       const plan = await fetchPlan(undefined);
@@ -37,9 +41,11 @@ export function useScopedPlan<P extends { rows: PlanRow[] }>() {
     }
   }
   async function toggle(categoryId: string, fetchPlan: (categoryIds?: string[]) => Promise<P>) {
+    const before = checked;
     const next = new Set(checked);
     if (!next.delete(categoryId)) next.add(categoryId);
     setChecked(next);
+    setPending(true);
     const request = ++latest.current;
     setError(null);
     const ids = [...next];
@@ -48,9 +54,13 @@ export function useScopedPlan<P extends { rows: PlanRow[] }>() {
       if (request !== latest.current) return;
       setScope(ids);
       setPreview(plan);
+      setPending(false);
     } catch (err) {
-      if (request === latest.current)
-        setError(err instanceof Error ? err.message : 'Could not preview.');
+      if (request !== latest.current) return;
+      // The shown preview is still the one for the old ticks
+      setChecked(before);
+      setPending(false);
+      setError(err instanceof Error ? err.message : 'Could not preview.');
     }
   }
   function reset() {
@@ -60,6 +70,7 @@ export function useScopedPlan<P extends { rows: PlanRow[] }>() {
     setChecked(new Set());
     setScope(undefined);
     setError(null);
+    setPending(false);
   }
-  return { preview, candidates, checked, scope, error, setError, load, toggle, reset };
+  return { preview, candidates, checked, scope, pending, error, setError, load, toggle, reset };
 }
