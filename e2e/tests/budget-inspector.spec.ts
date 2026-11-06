@@ -185,6 +185,22 @@ test.describe('budget keyboard and inspector', () => {
         return [g.budgeted, g.note];
       })
       .toEqual([6000, 'Split with Sam']);
+    // Changing a note back to what it was when the sheet opened, after saving something else,
+    // is saved too: the sheet compares with its last save, not with the note it opened with
+    await card.getByRole('button', { name: /^Planned for Groceries/ }).click();
+    const amount = sheet.getByRole('textbox', { name: 'Planned for Groceries' });
+    const note = sheet.getByRole('textbox', { name: 'Note for Groceries' });
+    await note.fill('Temporary');
+    await amount.click();
+    await expect(sheet.getByText('Note saved.')).toBeVisible();
+    await expect.poll(async () => (await budgetOf(api)).get('Groceries')!.note).toBe('Temporary');
+    await note.fill('Split with Sam');
+    await amount.click();
+    await expect
+      .poll(async () => (await budgetOf(api)).get('Groceries')!.note)
+      .toBe('Split with Sam');
+    await sheet.getByRole('button', { name: 'Cancel' }).click();
+    await expect(sheet).toBeHidden();
     // Dismissing the sheet keeps a note typed in it
     await card.getByRole('button', { name: /^Planned for Groceries/ }).click();
     await sheet.getByRole('textbox', { name: 'Note for Groceries' }).fill('Split with Sam and Jo');

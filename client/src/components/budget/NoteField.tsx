@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { MAX_NOTE_LENGTH } from '../../api/budget';
 import { useCanSave } from '../../hooks/useConnection';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
@@ -24,13 +24,22 @@ export function NoteField({
   const [draft, setDraft] = useState(note);
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
+  // What the server holds now: the last save that succeeded here, or a newer note from a refetch.
+  // A phone sheet passes the category as it was when the sheet opened, so `note` alone would
+  // stay stale after a save, and clearing the note again would look unchanged and be skipped
+  const saved = useRef(note.trim());
+  useEffect(() => {
+    saved.current = note.trim();
+  }, [note]);
 
   async function save() {
-    if (draft.trim() === note.trim() || !canSave) return;
+    const text = draft.trim();
+    if (text === saved.current || !canSave) return;
     setStatus('saving');
     setError(null);
     try {
       await onSave(draft);
+      saved.current = text;
       setStatus('saved');
     } catch (e) {
       setStatus('error');
