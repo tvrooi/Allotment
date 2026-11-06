@@ -449,6 +449,32 @@ function carryInto(l: Ledger, h: CategoryHistory, month: string, today: string):
 }
 
 /**
+ * How much of the deficit a category that keeps its overspending carries into `month` is cash
+ * already spent, as opposed to a negative assignment in a later month (a release of money that
+ * was never there). `balance` is its Available at the end of `fromMonth`, the month spending is
+ * known up to. Later assignments can only cover the cash part, never add to it.
+ */
+export function cashDeficitInto(
+  l: Ledger,
+  categoryId: string,
+  balance: number,
+  fromMonth: string,
+  month: string,
+): number {
+  const h = l.envelopes.get(categoryId);
+  if (!h || h.resets) return 0;
+  let carry = balance;
+  let cash = Math.max(0, -balance);
+  for (const m of h.assignedMonths) {
+    if (m <= fromMonth) continue;
+    if (m >= month) break;
+    carry += h.assigned.get(m)!;
+    cash = Math.min(cash, Math.max(0, -carry));
+  }
+  return cash;
+}
+
+/**
  * Every category's figures for `month`, counting activity up to the date `today` (later days
  * are still to come). `history` gives the net change of each earlier month, for the card engine.
  */

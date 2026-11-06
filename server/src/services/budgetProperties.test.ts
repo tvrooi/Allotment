@@ -362,24 +362,32 @@ function recompute(raw: Raw, month: string) {
   // Each envelope month by month: a month that ends below zero starts the next at zero, unless
   // the envelope keeps its overspending
   const available = new Map<string, number>();
-  const carriedIn = new Map<string, number>();
+  const byMonth = new Map<string, Map<string, number>>();
   for (const c of ENVELOPES) {
     let avail = 0;
+    const months = new Map<string, number>();
     for (const m of MONTHS.filter((m) => m >= startMonth && m <= month)) {
-      carriedIn.set(c, raw.kept.includes(c) ? avail : Math.max(0, avail));
-      avail = carriedIn.get(c)! + assignedIn(c, m) + transferred(c, m) + activity(c, m);
+      const carriedIn = raw.kept.includes(c) ? avail : Math.max(0, avail);
+      avail = carriedIn + assignedIn(c, m) + transferred(c, m) + activity(c, m);
+      months.set(m, avail);
     }
     available.set(c, avail);
+    byMonth.set(c, months);
   }
   // A later month than today's holds only what its envelopes hold: there a deficit can only be
-  // a negative assignment, which releases no received cash. A deficit carried in by an envelope
-  // that keeps its overspending is cash already spent, so it stays.
+  // a negative assignment, which releases no received cash. An envelope that keeps its
+  // overspending also holds the cash it really overspent by today; later months can only cover
+  // that, and a release after it adds nothing to it.
   const later = month > CURRENT;
   const held = (c: string) => {
     const v = available.get(c)!;
-    if (!later) return v;
-    const carry = carriedIn.get(c) ?? 0;
-    return carry < 0 ? carry + Math.max(0, assignedIn(c, month)) : Math.max(0, v);
+    if (!later || v >= 0) return v;
+    if (!raw.kept.includes(c)) return 0;
+    const months = byMonth.get(c)!;
+    let cash = Math.max(0, -(months.get(CURRENT) ?? 0));
+    for (const m of MONTHS.filter((m) => m > CURRENT && m < month))
+      cash = Math.min(cash, Math.max(0, -(months.get(m) ?? 0)));
+    return -Math.min(cash, -v);
   };
   const envelopes = ENVELOPES.reduce((s, c) => s + held(c), 0);
   const cashOverspent = ENVELOPES.reduce((s, c) => s + Math.max(0, -held(c)), 0);

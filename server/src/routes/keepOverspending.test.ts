@@ -161,6 +161,25 @@ describe('keeping overspending', () => {
     expect(trip('2027-01', '2027-01-05')).toMatchObject({ carryOver: 0, balance: 0 });
   });
 
+  it('does not read a later month’s negative assignment as cash that was spent', async () => {
+    db.delete(transactions).where(like(transactions.categoryId, 'trip')).run();
+    await keep('trip', true);
+    // Nothing is overspent, and a release of $80 is planned for November
+    assign('2026-11', 'trip', -8000);
+    const ready = ['2026-10', '2026-11', '2026-12', '2027-01'].map(rta);
+    expect(new Set(ready).size).toBe(1);
+
+    // A real $50 deficit stays; the release does not add to it, and assigning $60 covers both
+    db.delete(budgetMonths).where(like(budgetMonths.categoryId, 'trip')).run();
+    txn('2026-10-12', -5000, 'trip');
+    const today = rta('2026-10');
+    assign('2026-11', 'trip', -1000);
+    expect(rta('2026-12')).toBe(today);
+    assign('2026-12', 'trip', 6000);
+    expect(trip('2026-12', OCTOBER).balance).toBe(0);
+    expect(rta('2027-01')).toBe(today - 5000);
+  });
+
   it('is listed in Review as overspent and as kept, so the deficit stays disclosed', async () => {
     await keep('trip', true);
     setDate(NOVEMBER);

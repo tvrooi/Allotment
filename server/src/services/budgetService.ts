@@ -4,6 +4,7 @@ import { accountIssues as checkAccounts } from './accountIntegrity.js';
 import {
   activityAt,
   assignedAfter,
+  cashDeficitInto,
   envelopeGroups,
   fundingRevision,
   ledger,
@@ -138,13 +139,16 @@ export function fundingState(asOf = todayIso(), month = asOf.slice(0, 7), today 
   // What each envelope holds of the accounts' money. A deficit is cash already spent, except
   // the part unfunded card purchases explain: that is card debt, outside resources. In a later
   // month only a negative assignment can leave a deficit, and a release is not received cash,
-  // unless the category keeps its overspending: then the deficit carried in is cash already spent.
-  const cash = (c: (typeof cats)[number]) =>
-    viewMonth > asOfMonth
-      ? c.carryOver < 0
-        ? c.carryOver + Math.max(0, c.budgeted)
-        : Math.max(0, c.balance)
-      : c.balance;
+  // unless the category keeps its overspending: then the deficit carried in from spending is
+  // cash already spent (cashDeficitInto), though a later release is still not.
+  const cash = (c: (typeof cats)[number]) => {
+    if (viewMonth <= asOfMonth) return c.balance;
+    if (c.balance >= 0) return c.balance;
+    return (
+      0 -
+      Math.min(-c.balance, cashDeficitInto(l, c.id, balances.get(c.id) ?? 0, asOfMonth, viewMonth))
+    );
+  };
   const credit = (c: (typeof cats)[number]) =>
     Math.min(Math.max(0, -cash(c)), card.unfunded.get(c.id) ?? 0);
   const held = (c: (typeof cats)[number]) =>

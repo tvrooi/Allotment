@@ -226,6 +226,32 @@ export function calculateCardFunding(
       deficit -= dropped;
     }
   };
+  for (const s of states) s.native = s.account?.startingBalance ?? 0;
+  const add = (categoryId: string, date: string, value: number) => {
+    if (value) adjustments.push({ categoryId, date, amount: value });
+  };
+  const reserve = (s: (typeof states)[number], date: string, value: number) => {
+    s.reserve += value;
+    add(s.mapping.categoryId, date, value);
+  };
+  // Money that brings a kept category's carried deficit back toward zero first repays cash
+  // overspending, then stands behind the earlier card purchases it left unfunded: they now have
+  // an envelope's cash behind them, so the card payment reserves it (it is not left to be
+  // assigned again).
+  const cover = (id: string, month: string, funds: number, deficit: number) => {
+    const open = (st: (typeof states)[number]) =>
+      Math.max(0, (st.unfunded.get(id) ?? 0) - (st.discarded.get(id) ?? 0));
+    const owed = states.reduce((sum, st) => sum + open(st), 0);
+    let toCard = Math.min(Math.max(0, funds - Math.max(0, deficit - owed)), deficit, owed);
+    for (const st of states) {
+      const paid = Math.min(toCard, open(st));
+      if (!paid) continue;
+      st.unfunded.set(id, (st.unfunded.get(id) ?? 0) - paid);
+      st.funded += paid;
+      reserve(st, `${month}-01`, paid);
+      toCard -= paid;
+    }
+  };
   const poolAt = (id: string, month: string) => {
     const p = pool.get(id) ?? { month: '', value: 0 };
     pool.set(id, p);
@@ -239,7 +265,9 @@ export function calculateCardFunding(
     const due = [...months.keys()].filter((m) => m > p.month && m <= month).sort();
     for (const m of due) {
       reset();
-      p.value += months.get(m)!;
+      const net = months.get(m)!;
+      if (keeping.has(id) && net > 0 && p.value < 0) cover(id, m, net, -p.value);
+      p.value += net;
       p.month = m;
     }
     if (p.month < month) {
@@ -247,14 +275,6 @@ export function calculateCardFunding(
       p.month = month;
     }
     return p;
-  };
-  for (const s of states) s.native = s.account?.startingBalance ?? 0;
-  const add = (categoryId: string, date: string, value: number) => {
-    if (value) adjustments.push({ categoryId, date, amount: value });
-  };
-  const reserve = (s: (typeof states)[number], date: string, value: number) => {
-    s.reserve += value;
-    add(s.mapping.categoryId, date, value);
   };
   const money = (native: number, s: (typeof states)[number], date: string) => {
     const value = convertAmount(native, s.account?.currency ?? ctx.budget, ctx.budget, date, ctx);

@@ -51,10 +51,13 @@ then carries into the next month (`resets` is false in `budgetLedger.ts`, so `ro
 card engine's `poolAt` leave it alone), and because the envelope still holds the deficit, Ready
 to assign is not reduced by it: Σ Available is unchanged. Assigning to the category covers the
 deficit from Ready to assign; a repayment categorised to it brings it back to zero while the
-cash comes back into resources. In a later month a carried deficit is cash already spent, so it
-stays in `envelopes` (`cash` in `fundingState`); the part unfunded card purchases explain stays
-card debt, as above. The deficit stays disclosed: it still counts in `overspent`, so Review lists
-it (marked `kept`) and the budget is not "resolved" until it is repaid or covered. Only expense
+cash comes back into resources. In a later month only the part of a carried deficit that was
+really spent counts as cash already spent (`cashDeficitInto`, `cash` in `fundingState`): a
+negative assignment in a later month is still a release, not spending. Money that covers a
+kept deficit repays cash overspending first, then the earlier unfunded card purchases, which the
+card payment then reserves (`cover` in `cardFunding.ts`), so the same money is not assigned
+twice. What explains the part not yet covered stays card debt, as above. The deficit stays
+disclosed: it still counts in `overspent`, so Review lists it (marked `kept`) and the budget is not "resolved" until it is repaid or covered. Only expense
 categories can keep it; card payment and income categories already keep a running total.
 
 A one-off such as a loan payout or settlement is therefore deducted once, not carried as a
