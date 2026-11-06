@@ -142,6 +142,51 @@ test('every label in the transaction forms points at its field', async ({ page, 
   await expect(page.getByRole('textbox', { name: 'Statement balance' })).toBeFocused();
 });
 
+test('every label in the account, goal, recurring and category forms points at its field', async ({
+  page,
+  api,
+}) => {
+  const acct = await api.createAccount('Checking', 100_000);
+
+  await open(page, '/accounts');
+  await page.getByRole('main').getByRole('button', { name: 'Add account' }).click();
+  const add = page.getByRole('dialog', { name: 'Add account' });
+  expect(await strayLabels(add)).toEqual([]);
+  await add.getByText('Account type', { exact: true }).click();
+  await expect(add.getByRole('combobox', { name: 'Account type' })).toBeFocused();
+  await page.keyboard.press('Escape');
+
+  await open(page, `/accounts/${acct.id}`);
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  const edit = page.getByRole('dialog', { name: 'Edit account' });
+  expect(await strayLabels(edit)).toEqual([]);
+  // A caption over buttons names their group instead
+  await expect(edit.getByRole('group', { name: 'Logo' })).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await open(page, '/goals');
+  await page.getByRole('button', { name: 'Add goal' }).first().click();
+  const goal = page.getByRole('dialog', { name: 'Add goal' });
+  expect(await strayLabels(goal)).toEqual([]);
+  await expect(goal.getByRole('group', { name: 'Colour' })).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await open(page, '/recurring');
+  await page.getByRole('main').getByRole('button', { name: 'Add recurring' }).first().click();
+  const recurring = page.getByRole('dialog', { name: 'Add recurring' });
+  expect(await strayLabels(recurring)).toEqual([]);
+  await recurring.getByText('Start date', { exact: true }).click();
+  await expect(recurring.getByLabel('Start date')).toBeFocused();
+  await expect(recurring.getByRole('group', { name: 'Type' })).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await open(page, '/settings');
+  await page.getByRole('button', { name: 'Edit Parking' }).click();
+  const category = page.getByRole('dialog', { name: 'Edit category' });
+  expect(await strayLabels(category)).toEqual([]);
+  await expect(category.getByRole('group', { name: 'Budget type' })).toBeVisible();
+});
+
 test('a disabled rule says so in words, and is not faded', async ({ page, api }) => {
   await api.createAccount('Checking');
   await api.call('POST', '/rules', {

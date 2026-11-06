@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { Modal } from '../../ui/Modal';
 import { Input } from '../../ui/Input';
 import { Button } from '../../ui/Button';
@@ -25,6 +25,7 @@ export default function NameModal({
   onSave,
   isOpen = true,
 }: Props) {
+  const fieldId = useId();
   const [name, setName] = useState(initialName);
 
   function handleSubmit(e: React.FormEvent) {
@@ -35,8 +36,14 @@ export default function NameModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
       <form onSubmit={handleSubmit}>
-        <label className="block text-sm font-medium text-text-secondary mb-1">{label}</label>
+        <label
+          htmlFor={`${fieldId}-name`}
+          className="block text-sm font-medium text-text-secondary mb-1"
+        >
+          {label}
+        </label>
         <Input
+          id={`${fieldId}-name`}
           type="text"
           value={name}
           maxLength={100}

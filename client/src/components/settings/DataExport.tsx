@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useId } from 'react';
 import { GuideLink } from '../guide/GuideLink';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -22,6 +22,7 @@ const download = (url: string) =>
   IS_DEMO ? void downloadFromApi(url) : void (window.location.href = url);
 
 export function DataExport() {
+  const fieldId = useId();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const decimalComma = decimalSeparator(useAmountStyle().format) === ',';
@@ -129,8 +130,14 @@ export function DataExport() {
         </div>
         <div className="flex items-end gap-3">
           <div>
-            <label className="block text-xs font-medium text-text-tertiary mb-1">From</label>
+            <label
+              htmlFor={`${fieldId}-from`}
+              className="block text-xs font-medium text-text-tertiary mb-1"
+            >
+              From
+            </label>
             <input
+              id={`${fieldId}-from`}
               type="date"
               value={from}
               onChange={(e) => setFrom(e.target.value)}
@@ -138,8 +145,14 @@ export function DataExport() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-text-tertiary mb-1">To</label>
+            <label
+              htmlFor={`${fieldId}-to`}
+              className="block text-xs font-medium text-text-tertiary mb-1"
+            >
+              To
+            </label>
             <input
+              id={`${fieldId}-to`}
               type="date"
               value={to}
               onChange={(e) => setTo(e.target.value)}

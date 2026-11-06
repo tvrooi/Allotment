@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.126
+
+- **Field names are joined to their fields everywhere else too.** Adding or editing an account, updating an account's value, goals, recurring items, categories, payment plans, saved reports and dashboard names, the export dates, password change, Plaid and SimpleFIN setup, a transaction's value in your main currency, and editing several transactions at once: clicking a field's name now puts the cursor in that field, and screen readers read each field with the name shown above it. A name over a row of buttons (an account's logo, a goal's icon and colour, a recurring item's type and amount precision, a category's budget type) now names that group of buttons for screen readers. Nothing about what the forms save has changed.
+
 ## 0.2.0-up.125
 
 - **Field names in the transaction forms are joined to their fields.** In Add transaction, the new-transaction row of an account, a transaction's details, editing several transactions at once and Reconcile, clicking a field's name (such as **Notes** or **Outflow**) now puts the cursor in that field, and screen readers read each field with the name shown above it. Nothing about what the forms save has changed.

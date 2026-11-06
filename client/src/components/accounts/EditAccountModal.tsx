@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useId } from 'react';
 import { useFormReset } from '../../hooks/useFormReset';
 import { Modal } from '../ui/Modal';
 import { useCanSave } from '../../hooks/useConnection';
@@ -21,6 +21,7 @@ interface Props {
 }
 
 export function EditAccountModal({ account, onClose }: Props) {
+  const fieldId = useId();
   const [name, setName] = useState('');
   const [type, setType] = useState<AccountType>('checking');
   const [startingBalance, setStartingBalance] = useState(0);
@@ -97,8 +98,17 @@ export function EditAccountModal({ account, onClose }: Props) {
       <Modal isOpen={!!account} onClose={onClose} title="Edit account" size="sm">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1.5">Logo</label>
-            <div className="flex items-center gap-3">
+            <span
+              id={`${fieldId}-logo`}
+              className="block text-sm font-medium text-text-secondary mb-1.5"
+            >
+              Logo
+            </span>
+            <div
+              role="group"
+              aria-labelledby={`${fieldId}-logo`}
+              className="flex items-center gap-3"
+            >
               <AccountIcon name={name} type={type} logo={logo} size="lg" force />
               <div className="flex flex-col gap-1.5">
                 <div className="flex gap-2">
@@ -142,10 +152,14 @@ export function EditAccountModal({ account, onClose }: Props) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
+            <label
+              htmlFor={`${fieldId}-name`}
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
               Account name
             </label>
             <input
+              id={`${fieldId}-name`}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -185,10 +199,14 @@ export function EditAccountModal({ account, onClose }: Props) {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
+            <label
+              htmlFor={`${fieldId}-starting-balance`}
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
               Starting balance
             </label>
             <CurrencyInput
+              id={`${fieldId}-starting-balance`}
               value={startingBalance}
               onChange={setStartingBalance}
               allowNegative

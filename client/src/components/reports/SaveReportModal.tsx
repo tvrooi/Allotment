@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
@@ -18,6 +18,7 @@ export default function SaveReportModal({
   initialName = '',
   isUpdating,
 }: Props) {
+  const fieldId = useId();
   const [name, setName] = useState(initialName);
 
   function handleSubmit(e: React.FormEvent) {
@@ -33,8 +34,14 @@ export default function SaveReportModal({
       size="sm"
     >
       <form onSubmit={handleSubmit}>
-        <label className="block text-sm font-medium text-text-secondary mb-1">Report name</label>
+        <label
+          htmlFor={`${fieldId}-name`}
+          className="block text-sm font-medium text-text-secondary mb-1"
+        >
+          Report name
+        </label>
         <Input
+          id={`${fieldId}-name`}
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
