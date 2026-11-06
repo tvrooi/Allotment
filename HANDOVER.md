@@ -5,10 +5,24 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 6 November 2026 (up.121 in review).
+Last updated: 6 November 2026 (up.123 in review).
 
 ## State
 
+- **Legacy recurring table dropped (up.123, C4 of the Polish and help group; migration 0078, no
+  backup version change):** `0078_drop_legacy_recurring` drops `transactions_recurring_idx`, then
+  `transactions.recurring_transaction_id`, then `recurring_transactions` (column first, so no
+  foreign key points at the table). Neither was in `schema.ts` or any backup since 0011 copied
+  them into `schedules` and `transactions.schedule_id`; `parseBackup` reads only schema columns,
+  so an older backup that still names them restores. The index and table drops are `IF EXISTS`;
+  SQLite has no `DROP COLUMN IF EXISTS`, so the column drop relies on the journal running it once,
+  inside the migrator's single transaction. Before installing on the live app, take the usual
+  cold backup: the migration rewrites the `transactions` table. Tests: `db/legacyRecurring.test.ts`
+  (a populated pre-0078 database keeps every transaction, schedule and `schedule_id`, passes
+  `foreign_key_check`, and a second run changes nothing; a new database), `routes/backup.test.ts`
+  (a backup with `recurringTransactions` and `recurringTransactionId` restores). Docs:
+  DEVELOPMENT.md (hand-written migrations note, schedules in the schema summary, occurrence
+  matching), PLANNING.md. Next: C5 (receipt reading structured output).
 - **Enable Banking's setup steps in the guide (up.122, C3 of the Polish and help group; client
   only, no migration):** a new guide page, `enable-banking` (`DOCS_PAGES`, the article after
   Connecting Up), replaces the last flybudget.org help link: the setup form's **Step-by-step
@@ -462,7 +476,7 @@ site in `website/` was removed (audit decision I-9).
    - Future-month money moves; money age (deliberately not built, see BUDGET-REVIEW.md).
    - Investments deferrals (sales, dividends, franking); receipts §6 (PDF reading, email
      forwarding, logbooks, depreciation, WFH hours).
-   - `docs/DEVELOPMENT.md`'s pending legacy cleanup of `recurring_transactions`.
+   - The legacy `recurring_transactions` cleanup is done (up.123, migration 0078).
 5. **Receipt providers (up.98) follow-ups:** a structured-output request for Anthropic (today it
    is asked for JSON and `jsonIn` finds it); a cost note per read if the owner wants one.
 6. **Left from the 31 October review**, rechecked by the 3 November audit. Fixed: Ready to assign

@@ -192,7 +192,6 @@ Open directions. None of these are committed. To discuss or pick something up, o
 - **Multi-device sync:** one budget shared between the desktop app, phones and a server, merging offline changes (see "Keep offline sync possible" in `CLAUDE.md`)
 - **Asset tracking:** automatic valuations for property and vehicle accounts (updated by hand today)
 - **Category goal targets:** save $X in a category by date Y, shown in the budget
-- **Legacy cleanup:** drop the `recurring_transactions` table and `transactions.recurring_transaction_id`, which migration `0011_unified_schedules` left behind, in a migration of its own
 
 ---
 
