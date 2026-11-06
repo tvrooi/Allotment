@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router-dom';
+import { GuideLink } from '../components/guide/GuideLink';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../api/client';
@@ -316,7 +317,13 @@ export default function HouseholdPage() {
                 How this works
               </summary>{' '}
               Shares and repayments are tracked privately, only in your budget. Bank payments keep
-              their full amounts; what others owe you isn’t money you can spend yet.
+              their full amounts; what others owe you isn’t money you can spend yet.{' '}
+              <GuideLink
+                page="households"
+                className="font-medium text-brand-600 hover:text-brand-700"
+              >
+                Read the guide
+              </GuideLink>
             </details>
           </div>
         </div>

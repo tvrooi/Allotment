@@ -1164,7 +1164,7 @@ export default function CashFlowPage() {
             Cash flow
           </h1>
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex flex-wrap gap-0">
+            <div className="flex flex-wrap gap-0" data-guide="cash-flow.period">
               {PRESETS.map((p) => (
                 <button
                   key={p.id}
@@ -1205,6 +1205,7 @@ export default function CashFlowPage() {
         <div
           role="group"
           aria-label="Group spending by"
+          data-guide="cash-flow.group"
           className="inline-flex mt-5 border border-border rounded-md overflow-hidden"
         >
           {(

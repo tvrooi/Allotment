@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { GuideLink } from '../components/guide/GuideLink';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Check, LayoutGrid, Plus } from 'lucide-react';
 import { MissingRatesBanner } from '../components/currency/MissingRatesBanner';
@@ -52,9 +53,17 @@ export default function ReportsPage() {
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 pt-4 border-b border-border shrink-0">
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text shrink-0">
-            Reports
-          </h1>
+          <div className="flex flex-wrap items-center gap-x-4">
+            <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text shrink-0">
+              Reports
+            </h1>
+            <GuideLink
+              page="reports"
+              className="text-sm font-medium text-brand-600 hover:text-brand-700 max-md:min-h-11 inline-flex items-center"
+            >
+              How reports work
+            </GuideLink>
+          </div>
           {active && (
             <div className="flex items-center gap-2 flex-wrap">
               {/* Layout editing is desktop-only; phones get a single stacked column */}

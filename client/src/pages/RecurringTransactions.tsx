@@ -9,6 +9,8 @@ import OccurrenceMatchModal from '../components/recurring/OccurrenceMatchModal';
 import DiscoverSchedulesModal from '../components/recurring/DiscoverSchedulesModal';
 import UpcomingLengthModal from '../components/recurring/UpcomingLengthModal';
 import { Button } from '../components/ui/Button';
+import { Tip } from '../components/guide/Tip';
+import { TIPS } from '../guides';
 import { useOpenFromLink } from '../hooks/useOpenFromLink';
 import {
   useSchedules,
@@ -130,6 +132,10 @@ export default function RecurringTransactionsPage() {
         </div>
       </div>
 
+      <Tip
+        tip={TIPS.findRecurring}
+        className="px-6 max-md:px-4 py-2.5 border-b border-border-light shrink-0"
+      />
       <MatchSuggestionsPanel />
       <PossiblyEndedPanel allRecurring={allRecurring} />
 

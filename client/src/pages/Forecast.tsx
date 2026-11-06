@@ -1,5 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 import { CashRunway } from '../components/forecast/CashRunway';
+import { GuideLink } from '../components/guide/GuideLink';
 import { LongTermForecast } from '../components/longterm/LongTermForecast';
 import { PrivateSection } from '../components/ui/Private';
 import { onTabListKeyDown } from '../components/ui/tabList';
@@ -17,9 +18,19 @@ export default function ForecastPage() {
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 pt-4 max-md:px-4 border-b border-border shrink-0">
-        <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
-          Forecast
-        </h1>
+        <div className="flex flex-wrap items-center justify-between gap-x-4">
+          <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
+            Forecast
+          </h1>
+          {tab === 'long-term' && (
+            <GuideLink
+              page="long-term-forecast"
+              className="text-sm font-medium text-brand-600 hover:text-brand-700 max-md:min-h-11 inline-flex items-center"
+            >
+              How the long-term forecast works
+            </GuideLink>
+          )}
+        </div>
         <div
           data-guide="forecast.tabs"
           className="scroll-row flex gap-1 mt-3 -mb-px"

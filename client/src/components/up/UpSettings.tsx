@@ -1,4 +1,5 @@
 import { SavingPausedHint } from '../connection/SavingPausedHint';
+import { GuideLink } from '../guide/GuideLink';
 import { useState } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { useUpConnection, useRefreshUp } from '../../hooks/useUp';
@@ -53,7 +54,10 @@ export function UpSettings() {
         Connect directly to Up in Australia with a personal access token. No bank-feed subscription
         is required. Sync runs at startup and with Sync Now. Optional background sync runs on your
         server, including when this window is closed. Each sync fetches recent transactions; all of
-        Up's history is checked once a week, or now with Check all history.
+        Up's history is checked once a week, or now with Check all history.{' '}
+        <GuideLink page="bank-sync" className="font-medium text-brand-600 hover:text-brand-700">
+          How connecting Up works
+        </GuideLink>
       </p>
       {isLoading && <Loader2 size={20} className="animate-spin" />}
       {connection && (

@@ -353,7 +353,8 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
             card’s name the row shows what you owe, and in red any part the reserve doesn’t cover.
             When you pay the card from your bank and link the two sides as a transfer, the reserve
             is used up and Groceries stays as it was. Setting up a card, and adding money to its row
-            with <b>Fund debt</b>, are in the Card payments panel beside the table.
+            with <b>Fund debt</b>, are in the Card payments panel beside the table.{' '}
+            <L to="card-payments">More about card payments</L>.
           </p>
         ),
       },
@@ -362,7 +363,7 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         body: (
           <p>
             Choose <b>Until payday</b> on the Budget page to plan just until your next pay, with the
-            bills that fall before it.
+            bills that fall before it. <L to="payday-plans">How payday plans work</L>.
           </p>
         ),
       },
@@ -425,6 +426,181 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
     ],
   },
   {
+    page: 'payday-plans',
+    title: 'Payday plans',
+    summary:
+      'Paid fortnightly? Decide what each pay covers, starting with the bills before the next one.',
+    sections: [
+      {
+        heading: 'What a plan does',
+        body: (
+          <p>
+            A payday plan shares out each fortnightly pay in an order you choose, and shows the
+            bills due before the next pay. It’s optional: your envelopes still live in the monthly
+            budget, and what’s left in them still carries forward. Open <b>Budget</b>, choose{' '}
+            <b>Until payday</b>, then <b>New payday plan</b>.
+          </p>
+        ),
+      },
+      {
+        heading: 'Set it up',
+        body: (
+          <ol>
+            <li>
+              Give it a name, an <b>anchor payday</b> (one real payday: pay repeats every 14 days
+              from it), your usual take-home pay, and what to do when payday falls on a weekend.
+            </li>
+            <li>
+              <b>Add funding rule</b> for each envelope the pay should fill, in order.{' '}
+              <b>Move up</b> changes the order. Bills due before the next pay are covered first,
+              unless you give their envelope a rule of its own to choose where it comes.
+            </li>
+            <li>
+              <b>Save payday plan</b>. If you’re paid by more than one employer, make a plan for
+              each.
+            </li>
+          </ol>
+        ),
+      },
+      {
+        heading: 'Kinds of rule',
+        body: (
+          <ul>
+            <li>
+              <b>Bills until next payday</b>: enough for the bills before the next pay.
+            </li>
+            <li>
+              <b>Fixed per pay</b>: the same amount every payday.
+            </li>
+            <li>
+              <b>Target by date</b>: a balance by a date, shared over the paydays left until then.
+            </li>
+            <li>
+              <b>Smooth monthly cost</b>: a monthly cost spread over the year’s paydays, catching up
+              if a bill needs more sooner.
+            </li>
+            <li>
+              <b>Percentage of pay</b>: a share of the pay you received.
+            </li>
+            <li>
+              <b>Category target</b>: what the envelope’s target still needs this month, shared
+              between this and the month’s other paydays.
+            </li>
+            <li>
+              <b>Remainder</b>: whatever is left, always last.
+            </li>
+          </ul>
+        ),
+      },
+      {
+        heading: 'On payday',
+        body: (
+          <p>
+            Choose the payday, and change its date if the pay came early or late. Under{' '}
+            <b>Income received</b>, tick the pay that arrived. <b>Preview funding</b> shows what
+            each envelope has, what it needs, what this pay adds, and any bill it can’t cover before
+            the next pay. Nothing is saved until <b>Apply funding</b>, which adds the amounts to
+            this month’s budget. Each payday is applied once, and each deposit is used by one plan
+            only. Any part of the pay the plan doesn’t use stays in Ready to assign.
+          </p>
+        ),
+      },
+      {
+        heading: 'Expected pay isn’t money yet',
+        body: (
+          <p>
+            The take-home pay in the plan is only for planning. Only pay that has arrived can be
+            assigned, so you can preview a future payday but not apply it.
+          </p>
+        ),
+      },
+      {
+        heading: 'Undo and history',
+        body: (
+          <p>
+            <b>Funding history</b> lists every payday you applied and what went where. <b>Undo</b>{' '}
+            takes the amounts back out of the envelopes, and lists anything it couldn’t take back.{' '}
+            <b>Archive plan</b> stops using a plan and keeps its history. Editing a plan never
+            changes a payday you already applied. To plan a month instead, see{' '}
+            <L to="budgeting">Budgeting</L>.
+          </p>
+        ),
+      },
+    ],
+  },
+  {
+    page: 'card-payments',
+    title: 'Card payments',
+    summary: 'Keep the cash for what you spend on a credit card, ready for the bill.',
+    sections: [
+      {
+        heading: 'Why a card has its own row',
+        body: (
+          <p>
+            Spending on a credit card doesn’t leave your bank until you pay the card. Once a card is
+            set up for payment funding, Allotment keeps the money for each purchase aside in the
+            card’s row under <b>Card payments</b> on the Budget page, so it’s there when the bill
+            comes.
+          </p>
+        ),
+      },
+      {
+        heading: 'Set up a card',
+        body: (
+          <p>
+            In the <b>Card payments</b> panel beside the budget, choose <b>Review … setup</b> for
+            the card. Enter how much cash to put aside for what you already owe, then{' '}
+            <b>Preview card setup</b>: it shows the debt, the reserve, what isn’t covered yet, and
+            Ready to assign before and after. Nothing changes until <b>Enable payment funding</b>.
+            Your past transactions stay as they are: what you owed on the day is the card’s opening
+            debt.
+          </p>
+        ),
+      },
+      {
+        heading: 'Spending on the card',
+        body: (
+          <p>
+            Give a card purchase its usual category. With $100 in Groceries, an $80 purchase leaves
+            $20 in Groceries and moves $80 into the card’s row. Ready to assign doesn’t change,
+            because the money was already budgeted.
+          </p>
+        ),
+      },
+      {
+        heading: 'Paying the card',
+        body: (
+          <p>
+            When you pay the card from your bank, link the two sides as a transfer. The payment uses
+            up the card’s reserve and lowers what you owe. It isn’t spending: the purchases already
+            were.
+          </p>
+        ),
+      },
+      {
+        heading: 'When the reserve is short',
+        body: (
+          <p>
+            Under the card’s name the row shows what you owe, and in red any part the reserve
+            doesn’t cover, for example purchases from an overspent envelope. <b>Fund debt</b> in the
+            panel adds money from Ready to assign (in the current month, previewed first), or you
+            can <L to="move-money">move money</L> into the card’s row from another envelope. Review
+            lists card debt without a reserve until it’s covered.
+          </p>
+        ),
+      },
+      {
+        heading: 'Cards not set up',
+        body: (
+          <p>
+            Until you set a card up, its purchases count like cash spending, and what you owe on it
+            comes off Ready to assign. Setting it up is optional.
+          </p>
+        ),
+      },
+    ],
+  },
+  {
     page: 'recurring',
     title: 'Bills and pay',
     summary: 'Recurring items show what’s due, and what’s coming in.',
@@ -467,6 +643,103 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
     ],
   },
   {
+    page: 'review',
+    title: 'Budget review',
+    summary: 'A check-up of your budget, and how much room you have if plans change.',
+    sections: [
+      {
+        heading: 'A check-up that changes nothing by itself',
+        body: (
+          <p>
+            <b>Review</b> lists what needs your attention, most urgent first, worked out from your
+            budget as it is now. Nothing changes until you act on an item, and fixing one there
+            updates the budget and the forecast too.
+          </p>
+        ),
+      },
+      {
+        heading: 'Coming back after a break',
+        body: (
+          <p>
+            <b>Resume budgeting</b> says how long since your last review, how many transactions
+            arrived since, what spending has no category, which accounts to reconcile and, with Up
+            connected, the bank changes to look at. Start with today’s plan: you don’t need to sort
+            out old transactions first. <b>Mark review complete</b> saves the date and today’s
+            figures, so next time <b>Since your last review</b> can compare. It moves no money and
+            reconciles nothing.
+          </p>
+        ),
+      },
+      {
+        heading: 'Needs attention',
+        body: (
+          <ul>
+            <li>Spending with no category: choose one right there.</li>
+            <li>
+              Overspent envelopes: <L to="move-money">move money</L> from one that has some.
+            </li>
+            <li>
+              Targets not yet funded: <b>Fund targets</b> previews it first.
+            </li>
+            <li>
+              Card debt without a reserve: see <L to="card-payments">Card payments</L>.
+            </li>
+            <li>Money assigned to later months, which is already spoken for today.</li>
+            <li>Ready to assign that is left over, or below $0.</li>
+          </ul>
+        ),
+      },
+      {
+        heading: 'Guided setup',
+        body: (
+          <p>
+            Six steps for a budget that’s ready for the month: confirm your balances, cover what’s
+            due before your next pay, assign the money you have, prepare for irregular bills, check
+            categories, and move money when priorities change. Each is checked against your budget
+            as it is now, so a step is done when the budget says so.
+          </p>
+        ),
+      },
+      {
+        heading: 'Room to change plans',
+        body: (
+          <p>
+            This part is optional. In <b>Settings → Priorities</b>, mark envelopes as{' '}
+            <b>Essential</b>, <b>Enjoyment</b> or <b>Flexibility reserve</b> (money for no
+            particular deadline), and set a minimum and a comfort target. Review’s{' '}
+            <b>Flexibility and resilience</b> card then shows the reserve you have today and about
+            how many months of essentials it would cover. Super, investments, property, expected pay
+            and money owed to you never count. Move money warns you when a move takes the reserve
+            below its minimum, and still lets you.
+          </p>
+        ),
+      },
+      {
+        heading: 'Next month and how long your cash lasts',
+        body: (
+          <p>
+            <b>Next month and buffer</b> shows what’s already assigned to next month and what its
+            targets still need. Its cash runway estimates how many days your cash would last at your
+            spending over the last three months, assuming no more pay. Money set aside for dated
+            bills and cards isn’t counted, and super and investments never are.
+          </p>
+        ),
+      },
+      {
+        heading: 'Extra income and reminders',
+        body: (
+          <p>
+            Got a bonus or a windfall? Under <b>Extra income</b>, choose the deposit, say what your
+            usual pay is (0 for a windfall) and what share of the extra goes to your flexibility
+            reserve, then <b>Preview split</b> and <b>Apply split</b>. To be reminded to review, set
+            how often in Settings → Priorities; a banner then shows on Review and the dashboard when
+            one is due, and <b>Remind me in a week</b> puts it off.
+          </p>
+        ),
+      },
+    ],
+  },
+  {
     page: 'rules',
     title: 'Rules',
     summary: 'Sort new transactions automatically.',
@@ -500,6 +773,88 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
           <p>
             A goal can follow an account (like an emergency fund in a Saver) or an envelope (like a
             holiday). Give it a target amount and, if you like, a date.
+          </p>
+        ),
+      },
+    ],
+  },
+  {
+    page: 'long-term-forecast',
+    title: 'Long-term forecast',
+    summary: 'Your net worth over the decades, with super, study loans and life events.',
+    sections: [
+      {
+        heading: 'What it shows',
+        body: (
+          <p>
+            <b>Forecast → Long term</b> projects your net worth year by year, from today’s real
+            balances to an age you choose (95 unless you change it). It’s a projection, not a
+            promise, and it never changes your budget. Day-by-day cash for the next months is on the{' '}
+            <b>Cash runway</b> tab.
+          </p>
+        ),
+      },
+      {
+        heading: 'Start a plan',
+        body: (
+          <p>
+            Give the plan a name and your birth year. Everything else starts at a default you can
+            change, and each one says so beside its box (“Assumption, default …”). Income is your
+            take-home pay, from your payday plans or recurring pay; spending starts from your last
+            12 months. You can keep several plans and <b>Compare</b> them.
+          </p>
+        ),
+      },
+      {
+        heading: 'Life events',
+        body: (
+          <p>
+            Add what you expect to happen: buy a home, a new job, a career break, a child, a
+            windfall or one-off expense, a recurring income or expense, retirement, or paying off a
+            loan. Each has its own editor, and <b>Create</b> saves that event on its own. Changes to
+            assumptions, accounts and savings wait until you choose <b>Save changes</b> (or{' '}
+            <b>Discard changes</b>).
+          </p>
+        ),
+      },
+      {
+        heading: 'Super',
+        body: (
+          <p>
+            Every retirement account is treated as super. Your employer’s contributions go in at the
+            super guarantee rate, less contributions tax, and you can add salary sacrifice and your
+            own contributions under <b>Assumptions</b>. Super stays preserved until you retire at
+            your preservation age, or turn 65: until then it grows but can’t cover a shortfall. The
+            chart shows what you could spend (accessible) apart from what’s still locked in super
+            (preserved), and the figures above it show what’s accessible when you retire.
+            Contribution caps are warned about, not enforced. The Age Pension is an amount you type
+            in.
+          </p>
+        ),
+      },
+      {
+        heading: 'HECS-HELP and other study loans',
+        body: (
+          <p>
+            A student loan account is treated as a study loan: no interest, but the debt rises each
+            1 June with indexation, and you repay it through tax once your income passes the
+            threshold. By default your take-home pay already has the repayment taken out, so your
+            cash doesn’t change while the debt lasts, and that money comes back once it’s repaid.
+            The page says the year your study loans are repaid. Add an extra yearly payment under{' '}
+            <b>Accounts</b> to see how much sooner, and how much indexation it saves.
+          </p>
+        ),
+      },
+      {
+        heading: 'Reading the result',
+        body: (
+          <p>
+            <b>Today’s dollars</b> (the default) takes inflation out, so a figure in 30 years reads
+            like money now; <b>Future dollars</b> shows the actual amounts. Pick a year under{' '}
+            <b>See what made up a year</b> for every part of it, adding up to the cent.{' '}
+            <b>Simulation</b> runs your plan through many different market years and shows the
+            chance of success: how often the money lasts. Not modelled: income tax, capital gains
+            tax, the Age Pension means test and a second person.
           </p>
         ),
       },

@@ -60,19 +60,19 @@ describe('guide content', () => {
 
 describe('first-visit intros', () => {
   const intros = {
-    '/payees': { id: 'intro.payees', text: 'Everyone you pay.' },
+    '/dashboard': { id: 'intro.dashboard', text: 'Your home page.' },
     '/budget': { id: 'intro.budget', text: 'Give every dollar a job.' },
   };
   const toured = { ...fresh, welcomeTour: 'done' as const, guidesNotice: false };
 
   it('says what a page without a guide is for, once', () => {
-    expect(bannerFor('/payees', toured, GUIDES, false, intros)).toEqual({
+    expect(bannerFor('/dashboard', toured, GUIDES, false, intros)).toEqual({
       kind: 'intro',
-      id: 'intro.payees',
-      text: 'Everyone you pay.',
+      id: 'intro.dashboard',
+      text: 'Your home page.',
     });
-    const seen = { ...toured, seenGuides: { 'intro.payees': 1 } };
-    expect(bannerFor('/payees', seen, GUIDES, false, intros)).toBeNull();
+    const seen = { ...toured, seenGuides: { 'intro.dashboard': 1 } };
+    expect(bannerFor('/dashboard', seen, GUIDES, false, intros)).toBeNull();
   });
 
   it('leads a page’s own guide with its intro', () => {

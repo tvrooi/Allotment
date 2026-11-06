@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { GuideLink } from '../guide/GuideLink';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Download, Upload } from 'lucide-react';
@@ -178,7 +179,10 @@ export function DataExport() {
                 them too.{' '}
               </>
             )}
-            Neither holds bank connection credentials, passwords or the encryption key.
+            Neither holds bank connection credentials, passwords or the encryption key.{' '}
+            <GuideLink page="backups" className="font-medium text-brand-600 hover:text-brand-700">
+              How backups work
+            </GuideLink>
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
