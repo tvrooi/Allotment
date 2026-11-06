@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useId } from 'react';
 import { useReminderSettings } from '../../hooks/useReminders';
 import { useFormReset } from '../../hooks/useFormReset';
 import { Modal } from '../ui/Modal';
@@ -48,6 +48,7 @@ const WEEKEND_ADJUST_OPTIONS: { value: WeekendAdjust; label: string }[] = [
 ];
 
 export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, draft }: Props) {
+  const fieldId = useId();
   const { data: accounts = [] } = useAccounts();
   const { data: payees = [] } = usePayees();
   const canSave = useCanSave();
@@ -194,8 +195,14 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">Name</label>
+          <label
+            htmlFor={`${fieldId}-name`}
+            className="block text-sm font-medium text-text-secondary mb-1"
+          >
+            Name
+          </label>
           <Input
+            id={`${fieldId}-name`}
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -207,14 +214,27 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
+            <label
+              htmlFor={`${fieldId}-amount`}
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
               {amountType === 'variable' ? 'Estimated amount' : 'Amount'}
             </label>
-            <CurrencyInput value={amount} onChange={setAmount} aria-label="Amount" />
+            <CurrencyInput
+              id={`${fieldId}-amount`}
+              value={amount}
+              onChange={setAmount}
+              aria-label="Amount"
+            />
           </div>
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">Type</label>
-            <div className="flex gap-1 mt-1">
+            <span
+              id={`${fieldId}-type`}
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
+              Type
+            </span>
+            <div role="group" aria-labelledby={`${fieldId}-type`} className="flex gap-1 mt-1">
               <button
                 type="button"
                 onClick={() => setIsExpense(true)}
@@ -244,10 +264,13 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">
+          <span
+            id={`${fieldId}-precision`}
+            className="block text-sm font-medium text-text-secondary mb-1"
+          >
             Amount precision
-          </label>
-          <div className="flex gap-1">
+          </span>
+          <div role="group" aria-labelledby={`${fieldId}-precision`} className="flex gap-1">
             {AMOUNT_TYPE_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
@@ -273,8 +296,14 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">Frequency</label>
+            <label
+              htmlFor={`${fieldId}-frequency`}
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
+              Frequency
+            </label>
             <Select
+              id={`${fieldId}-frequency`}
               aria-label="Frequency"
               value={recurrenceType}
               onChange={(e) => setRecurrenceType(e.target.value as RecurrenceType)}
@@ -287,8 +316,14 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
             </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">Account</label>
+            <label
+              htmlFor={`${fieldId}-account`}
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
+              Account
+            </label>
             <Select
+              id={`${fieldId}-account`}
               aria-label="Account"
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
@@ -305,8 +340,14 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">Start date</label>
+            <label
+              htmlFor={`${fieldId}-start-date`}
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
+              Start date
+            </label>
             <Input
+              id={`${fieldId}-start-date`}
               type="date"
               aria-label="Start date"
               value={startDate}
@@ -315,10 +356,14 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
+            <label
+              htmlFor={`${fieldId}-end-date`}
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
               End Date <span className="text-text-tertiary font-normal">(optional)</span>
             </label>
             <Input
+              id={`${fieldId}-end-date`}
               type="date"
               aria-label="End date"
               value={endDate}
@@ -329,15 +374,30 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">
+          <label
+            htmlFor={`${fieldId}-payee`}
+            className="block text-sm font-medium text-text-secondary mb-1"
+          >
             Payee <span className="text-text-tertiary font-normal">(optional)</span>
           </label>
-          <MerchantSelect key={resets} value={payeeValue} onChange={setPayeeValue} label="Payee" />
+          <MerchantSelect
+            id={`${fieldId}-payee`}
+            key={resets}
+            value={payeeValue}
+            onChange={setPayeeValue}
+            label="Payee"
+          />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">Category</label>
+          <label
+            htmlFor={`${fieldId}-category`}
+            className="block text-sm font-medium text-text-secondary mb-1"
+          >
+            Category
+          </label>
           <CategorySelectButton
+            id={`${fieldId}-category`}
             value={categoryId || null}
             onChange={(id) => setCategoryId(id ?? '')}
             position="above"
@@ -345,10 +405,14 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">
+          <label
+            htmlFor={`${fieldId}-notes`}
+            className="block text-sm font-medium text-text-secondary mb-1"
+          >
             Notes <span className="text-text-tertiary font-normal">(optional)</span>
           </label>
           <Input
+            id={`${fieldId}-notes`}
             type="text"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -421,10 +485,14 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
             <div className="mt-2 space-y-3 pl-2 border-l-2 border-border-light">
               {showWeekendAdjust && (
                 <div>
-                  <label className="block text-xs font-medium text-text-secondary mb-1">
+                  <label
+                    htmlFor={`${fieldId}-weekend`}
+                    className="block text-xs font-medium text-text-secondary mb-1"
+                  >
                     Weekend adjustment
                   </label>
                   <Select
+                    id={`${fieldId}-weekend`}
                     aria-label="Weekend adjustment"
                     value={weekendAdjust}
                     onChange={(e) => setWeekendAdjust(e.target.value as WeekendAdjust)}
@@ -438,11 +506,15 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
                 </div>
               )}
               <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1">
+                <label
+                  htmlFor={`${fieldId}-date-flexibility`}
+                  className="block text-xs font-medium text-text-secondary mb-1"
+                >
                   Date Flexibility{' '}
                   <span className="text-text-tertiary font-normal">(± days for matching)</span>
                 </label>
                 <Input
+                  id={`${fieldId}-date-flexibility`}
                   type="number"
                   aria-label="Date flexibility"
                   value={dateFlexibility}

@@ -122,7 +122,11 @@ export default tseslint.config(
       // Keep this list to components that do.
       'jsx-a11y/label-has-associated-control': [
         'warn',
-        { controlComponents: ['Input', 'Select', 'CurrencyInput', 'MoneyInput', 'AmountInput'] },
+        {
+          controlComponents: ['Input', 'Select', 'CurrencyInput', 'MoneyInput', 'AmountInput'],
+          // A checkbox or radio label's text often sits in a span inside a span
+          depth: 3,
+        },
       ],
     },
   },

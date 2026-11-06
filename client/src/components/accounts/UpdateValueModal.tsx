@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { format } from 'date-fns';
 import { Modal } from '../ui/Modal';
 import { useCanSave } from '../../hooks/useConnection';
@@ -23,6 +23,7 @@ interface Props {
  * by adding a dated adjustment transaction, so net worth history keeps the change.
  */
 export function UpdateValueModal({ account, onClose, initialValue }: Props) {
+  const fieldId = useId();
   const liability = isLiabilityType(account.type);
   // Debts are entered as the positive amount owed
   const current = liability ? -account.balance : account.balance;
@@ -51,10 +52,14 @@ export function UpdateValueModal({ account, onClose, initialValue }: Props) {
     <Modal isOpen onClose={onClose} title={liability ? 'Update balance' : 'Update value'} size="sm">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">
+          <label
+            htmlFor={`${fieldId}-value`}
+            className="block text-sm font-medium text-text-secondary mb-1"
+          >
             {liability ? 'Amount owed today' : 'Value today'}
           </label>
           <CurrencyInput
+            id={`${fieldId}-value`}
             currency={account.currency}
             value={value}
             onChange={setValue}

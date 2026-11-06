@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { Modal } from '../ui/Modal';
 import { useCanSave } from '../../hooks/useConnection';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
@@ -24,6 +24,7 @@ interface Props {
 }
 
 export function AddAccountModal({ isOpen, onClose }: Props) {
+  const fieldId = useId();
   const [name, setName] = useState('');
   const [type, setType] = useState<AccountType>('checking');
   const [amount, setAmount] = useState(0);
@@ -85,10 +86,14 @@ export function AddAccountModal({ isOpen, onClose }: Props) {
       <AmountFields report={report}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
+            <label
+              htmlFor={`${fieldId}-name`}
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
               Account name
             </label>
             <input
+              id={`${fieldId}-name`}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -140,10 +145,14 @@ export function AddAccountModal({ isOpen, onClose }: Props) {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
+            <label
+              htmlFor={`${fieldId}-amount`}
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
               {amountLabel}
             </label>
             <CurrencyInput
+              id={`${fieldId}-amount`}
               value={amount}
               onChange={setAmount}
               aria-label={amountLabel}

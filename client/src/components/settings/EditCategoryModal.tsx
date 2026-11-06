@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useId } from 'react';
 import { useFormReset } from '../../hooks/useFormReset';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -33,6 +33,7 @@ interface Props {
 }
 
 export function EditCategoryModal({ category, groups, isIncome, onClose, onDelete }: Props) {
+  const fieldId = useId();
   const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
   const updateCategory = useUpdateCategory();
   const [name, setName] = useState('');
@@ -101,7 +102,9 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
     <Modal isOpen={!!category} onClose={onClose} title="Edit category" size="sm">
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="block text-sm font-medium text-text mb-1.5">Icon & Name</label>
+          <label htmlFor={`${fieldId}-name`} className="block text-sm font-medium text-text mb-1.5">
+            Icon & Name
+          </label>
           <div className="flex items-center gap-3">
             {showCategoryIcons && (
               <div className="relative shrink-0">
@@ -124,6 +127,7 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
               </div>
             )}
             <input
+              id={`${fieldId}-name`}
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="block w-full rounded-lg border border-border px-3 py-2 text-sm bg-surface text-text focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
@@ -134,8 +138,14 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-text mb-1.5">Group</label>
+          <label
+            htmlFor={`${fieldId}-group`}
+            className="block text-sm font-medium text-text mb-1.5"
+          >
+            Group
+          </label>
           <select
+            id={`${fieldId}-group`}
             aria-label="Group"
             value={groupId}
             onChange={(e) => setGroupId(e.target.value)}
@@ -154,8 +164,13 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
 
         {!isIncome && (
           <div>
-            <label className="block text-sm font-medium text-text mb-2">Budget type</label>
-            <div className="space-y-2">
+            <span
+              id={`${fieldId}-budget-type`}
+              className="block text-sm font-medium text-text mb-2"
+            >
+              Budget type
+            </span>
+            <div role="group" aria-labelledby={`${fieldId}-budget-type`} className="space-y-2">
               {BUDGET_TYPE_OPTIONS.map((opt) => (
                 <label
                   key={opt.value}

@@ -135,8 +135,11 @@ export function BulkEditModal({ params, count, isOpen, onClose }: Props) {
     onChange: (c: Choice<T>) => void,
   ) => (
     <div>
-      <label className={labelCls}>{label}</label>
+      <label className={labelCls} htmlFor={`bulk-${label.toLowerCase().replace(/\W+/g, '-')}`}>
+        {label}
+      </label>
       <select
+        id={`bulk-${label.toLowerCase().replace(/\W+/g, '-')}`}
         aria-label={label}
         className={inputCls}
         value={choice.set ? options.findIndex((o) => o.value === choice.value) : -1}

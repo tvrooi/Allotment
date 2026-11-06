@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { ACCOUNT_GROUPS, ACCOUNT_TYPES, type AccountType } from '../../types';
 import { accountTypeInfo } from '../../utils/accountTypes';
 
@@ -8,10 +9,17 @@ interface Props {
 
 /** Account type picker grouped into Cash, Credit, Investments, Property, Loans and Other */
 export function AccountTypeSelect({ value, onChange }: Props) {
+  const fieldId = useId();
   return (
     <div>
-      <label className="block text-sm font-medium text-text-secondary mb-1">Account type</label>
+      <label
+        htmlFor={`${fieldId}-account-type`}
+        className="block text-sm font-medium text-text-secondary mb-1"
+      >
+        Account type
+      </label>
       <select
+        id={`${fieldId}-account-type`}
         aria-label="Account type"
         value={value}
         onChange={(e) => onChange(e.target.value as AccountType)}

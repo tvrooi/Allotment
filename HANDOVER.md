@@ -23,6 +23,18 @@ Last updated: 6 November 2026 (up.123 in review).
   (a backup with `recurringTransactions` and `recurringTransactionId` restores). Docs:
   DEVELOPMENT.md (hand-written migrations note, schedules in the schema summary, occurrence
   matching), PLANNING.md.
+- **Labels joined to their fields, part 2 (up.126, C6b of the Polish and help group; client and
+  lint only):** the other 42 `label-has-associated-control` warnings (accounts, goals, plaid,
+  plans, recurring, reports, settings, simplefin) and 7 labels lint can't check because their
+  text is an expression (Add account's balance, Update value, a transaction's value in the main
+  currency, Recurring's amount and date flexibility, the dashboard's name dialog, Edit several
+  transactions' tri-state selects) now have `htmlFor` and an `id`. A caption over a row of buttons
+  is a `span` with an id, and the row is `role="group"` with `aria-labelledby` (account logo, goal
+  icon and colour, recurring type and amount precision, category budget type). The rule's `depth`
+  is 3, for checkbox and radio labels whose text sits in nested spans. The jsx-a11y label burn-down
+  is done: no `label-has-associated-control` warnings are left. Warning cap 197 → 155. Test:
+  `e2e/tests/accessibility.spec.ts` ("every label in the account, goal, recurring and category
+  forms points at its field").
 - **Labels joined to their fields, part 1 (up.125, C6a of the Polish and help group; client and
   lint only):** jsx-a11y's `label-has-associated-control` takes `controlComponents` (`Input`,
   `Select`, `CurrencyInput`, `MoneyInput`, `AmountInput`; each renders a native field first), so
@@ -33,7 +45,6 @@ Last updated: 6 November 2026 (up.123 in review).
   Category, Add transaction's Account) or over static text (Recurring) is a `span`/`p`, not a
   `<label>`: a label would rename the button. Warning cap 270 → 197. Test:
   `e2e/tests/accessibility.spec.ts` ("every label in the transaction forms points at its field").
-  Next: C6b, the other 42 in accounts, goals, plaid, plans, recurring, reports, settings, simplefin.
 - **Receipt reading with Anthropic's structured output (up.124, C5 of the Polish and help group;
   server only, no migration):** `askImage` in `receiptReader.ts` sends the reply schema as
   `output_config.format` (`json_schema`); `REPLY_SCHEMA` closes both objects
@@ -251,8 +262,8 @@ Last updated: 6 November 2026 (up.123 in review).
   categories (`CategoryManager`), the dashboard (its recent transactions use `TransactionCard` on a
   phone), `PayeeIcon`, Review, cash flow presets, year view and Files. Not done: the 115
   `label-has-associated-control` warnings (most inputs have an `aria-label` already, so they are
-  named; the labels just don't focus them), and `RowMenu`/`ContextMenu` focus warnings. The warning
-  cap stays at 270.
+  named; the labels just don't focus them; done since, in up.125 and up.126), and
+  `RowMenu`/`ContextMenu` focus warnings. The warning cap stayed at 270.
   _F-09:_ "Ready to assign" is the only name (UI, server error messages, e2e), "Payee" replaces
   "Merchant" where a payee is picked or shown (component names such as `MerchantSelect` and the
   `showMerchantIcons` preference key keep their names; receipts and payment plans keep Merchant).
@@ -272,7 +283,7 @@ Last updated: 6 November 2026 (up.123 in review).
   header fix) when it merged. Installing up.105 on the live app follows the standing steps in
   CLAUDE.md (verify identity, cold backup with the key, update, verify health); nobody has done it.
   Check the live version before assuming. _Next:_ Stage 3 of the audit roadmap (section H), then the
-  115 `label-has-associated-control` warnings if the cap should come down.
+  115 `label-has-associated-control` warnings (cleared in up.125 and up.126).
 - **Stage 1 follow-up (up.103, migrations 0072 and 0073, backup format 26):** the rest of SEC-01 and
   FINX-02.
   _SEC-01 import history:_ `import_batches` (one row per confirmed file import: account, file name,

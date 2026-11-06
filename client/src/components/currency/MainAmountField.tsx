@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { CurrencyInput } from '../ui/CurrencyInput';
 import { useUpdateTransaction } from '../../hooks/useTransactions';
 import { useBudgetCurrency } from '../../hooks/useCurrency';
@@ -19,6 +20,7 @@ const SOURCE_TEXT: Record<string, string> = {
  * budget's currency, so it isn't editable then.
  */
 export function MainAmountField({ tx, disabled }: { tx: Transaction; disabled?: boolean }) {
+  const fieldId = useId();
   const budgetCurrency = useBudgetCurrency();
   const updateTx = useUpdateTransaction();
   // Shown without a sign, like the amount above it
@@ -38,11 +40,15 @@ export function MainAmountField({ tx, disabled }: { tx: Transaction; disabled?: 
 
   return (
     <div>
-      <label className="text-xs font-medium text-text-secondary mb-1.5 block">
+      <label
+        htmlFor={`${fieldId}-value`}
+        className="text-xs font-medium text-text-secondary mb-1.5 block"
+      >
         Value in {budgetCurrency}
       </label>
       {editable ? (
         <CurrencyInput
+          id={`${fieldId}-value`}
           value={value}
           onChange={save}
           currency={budgetCurrency}

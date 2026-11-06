@@ -1,7 +1,7 @@
 import { ReadOnlyAccess } from './ReadOnlyAccess';
 import { ReminderSettings } from './ReminderSettings';
 import { PeopleSettings } from './PeopleSettings';
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import {
   AlertTriangle,
@@ -359,6 +359,7 @@ function SignedInDevices() {
 }
 
 function SelfHostedSettings() {
+  const fieldId = useId();
   const { data: auth } = useAuthStatus();
   const signOut = useSignOut();
   const canSave = useCanSave();
@@ -409,10 +410,14 @@ function SelfHostedSettings() {
         </p>
         <form onSubmit={changePassword} className="space-y-3 mt-4">
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
+            <label
+              htmlFor={`${fieldId}-current-password`}
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
               Current password
             </label>
             <input
+              id={`${fieldId}-current-password`}
               type="password"
               autoComplete="current-password"
               aria-label="Current password"
@@ -422,10 +427,14 @@ function SelfHostedSettings() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
+            <label
+              htmlFor={`${fieldId}-new-password`}
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
               New password
             </label>
             <input
+              id={`${fieldId}-new-password`}
               type="password"
               autoComplete="new-password"
               aria-label="New password"
@@ -435,10 +444,14 @@ function SelfHostedSettings() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
+            <label
+              htmlFor={`${fieldId}-confirm-password`}
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
               Confirm new password
             </label>
             <input
+              id={`${fieldId}-confirm-password`}
               type="password"
               autoComplete="new-password"
               aria-label="Confirm new password"

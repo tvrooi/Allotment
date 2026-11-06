@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { Link2, ExternalLink, Loader2 } from 'lucide-react';
 import { useSetupSimplefin } from '../../hooks/useSimplefin';
 import { Button } from '../ui/Button';
@@ -9,6 +9,7 @@ interface Props {
 }
 
 export function SimplefinConfigForm({ onSetupComplete }: Props) {
+  const fieldId = useId();
   const [token, setToken] = useState('');
   const setup = useSetupSimplefin();
 
@@ -51,8 +52,14 @@ export function SimplefinConfigForm({ onSetupComplete }: Props) {
 
       <form onSubmit={handleSubmit} className="bg-surface-alt rounded-lg p-5 space-y-4">
         <div>
-          <label className="block text-xs font-medium text-text-tertiary mb-1">Setup token</label>
+          <label
+            htmlFor={`${fieldId}-token`}
+            className="block text-xs font-medium text-text-tertiary mb-1"
+          >
+            Setup token
+          </label>
           <input
+            id={`${fieldId}-token`}
             type="text"
             value={token}
             onChange={(e) => setToken(e.target.value)}

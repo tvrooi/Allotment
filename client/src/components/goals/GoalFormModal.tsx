@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Input';
@@ -51,6 +51,7 @@ interface Props {
 }
 
 export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
+  const fieldId = useId();
   const { data: accounts = [] } = useAccounts();
 
   const { data: groups = [] } = useCategories();
@@ -116,8 +117,11 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
     <Modal isOpen={isOpen} onClose={onClose} title={editGoal ? 'Edit goal' : 'Add goal'} size="sm">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-text-secondary">Name</label>
+          <label htmlFor={`${fieldId}-name`} className="text-sm font-medium text-text-secondary">
+            Name
+          </label>
           <input
+            id={`${fieldId}-name`}
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Emergency Fund"
@@ -128,8 +132,11 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-text-secondary">Progress source</label>
+          <label htmlFor={`${fieldId}-source`} className="text-sm font-medium text-text-secondary">
+            Progress source
+          </label>
           <Select
+            id={`${fieldId}-source`}
             aria-label="Progress source"
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
@@ -152,8 +159,14 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text-secondary">Target</label>
+            <label
+              htmlFor={`${fieldId}-target`}
+              className="text-sm font-medium text-text-secondary"
+            >
+              Target
+            </label>
             <CurrencyInput
+              id={`${fieldId}-target`}
               value={targetAmount}
               onChange={setTargetAmount}
               className="w-full"
@@ -162,8 +175,14 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
           </div>
           {!categoryId && (
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-secondary">Saved so far</label>
+              <label
+                htmlFor={`${fieldId}-saved`}
+                className="text-sm font-medium text-text-secondary"
+              >
+                Saved so far
+              </label>
               <CurrencyInput
+                id={`${fieldId}-saved`}
                 value={currentAmount}
                 onChange={setCurrentAmount}
                 className="w-full"
@@ -174,8 +193,11 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-text-secondary">Target date (optional)</label>
+          <label htmlFor={`${fieldId}-date`} className="text-sm font-medium text-text-secondary">
+            Target date (optional)
+          </label>
           <input
+            id={`${fieldId}-date`}
             type="date"
             aria-label="Target date"
             value={targetDate}
@@ -185,10 +207,11 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-text-secondary">
+          <label htmlFor={`${fieldId}-account`} className="text-sm font-medium text-text-secondary">
             Linked account (optional)
           </label>
           <select
+            id={`${fieldId}-account`}
             aria-label="Linked account"
             value={accountId}
             onChange={(e) => setAccountId(e.target.value)}
@@ -206,8 +229,10 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-text-secondary">Icon</label>
-          <div className="flex flex-wrap gap-1.5">
+          <span id={`${fieldId}-icon`} className="text-sm font-medium text-text-secondary">
+            Icon
+          </span>
+          <div role="group" aria-labelledby={`${fieldId}-icon`} className="flex flex-wrap gap-1.5">
             {ICONS.map((i) => (
               <button
                 key={i}
@@ -226,8 +251,10 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-text-secondary">Colour</label>
-          <div className="flex gap-2">
+          <span id={`${fieldId}-colour`} className="text-sm font-medium text-text-secondary">
+            Colour
+          </span>
+          <div role="group" aria-labelledby={`${fieldId}-colour`} className="flex gap-2">
             {COLORS.map((c) => (
               <button
                 key={c}

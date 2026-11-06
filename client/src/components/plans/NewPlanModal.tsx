@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { format } from 'date-fns';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -43,6 +43,7 @@ interface Props {
  * as they arrive from the bank (or, for an earlier purchase, the ones already made now).
  */
 export function NewPlanModal({ isOpen, onClose, provider, earlier, onCreated }: Props) {
+  const fieldId = useId();
   const today = format(new Date(), 'yyyy-MM-dd');
   const { data: accounts = [] } = useAccounts();
   const { data: groups = [] } = useCategories();
@@ -161,8 +162,11 @@ export function NewPlanModal({ isOpen, onClose, provider, earlier, onCreated }: 
             </div>
           </div>
           <div>
-            <label className={label}>Price</label>
+            <label htmlFor={`${fieldId}-price`} className={label}>
+              Price
+            </label>
             <CurrencyInput
+              id={`${fieldId}-price`}
               value={form.total}
               onChange={(v) => set('total', v)}
               aria-label="Price"

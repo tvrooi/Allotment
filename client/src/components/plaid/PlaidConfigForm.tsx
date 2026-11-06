@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { KeyRound, ExternalLink } from 'lucide-react';
 import { useConfigurePlaid } from '../../hooks/usePlaid';
 import { PlaidEnvironmentSelect, type PlaidEnvironment } from './PlaidEnvironmentSelect';
 import { Button } from '../ui/Button';
 
 export function PlaidConfigForm() {
+  const fieldId = useId();
   const [clientId, setClientId] = useState('');
   const [secret, setSecret] = useState('');
   const [environment, setEnvironment] = useState<PlaidEnvironment>('production');
@@ -47,8 +48,14 @@ export function PlaidConfigForm() {
 
       <form onSubmit={handleSubmit} className="bg-surface-alt rounded-lg p-5 space-y-4">
         <div>
-          <label className="block text-xs font-medium text-text-tertiary mb-1">Client ID</label>
+          <label
+            htmlFor={`${fieldId}-client-id`}
+            className="block text-xs font-medium text-text-tertiary mb-1"
+          >
+            Client ID
+          </label>
           <input
+            id={`${fieldId}-client-id`}
             type="text"
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
@@ -57,8 +64,14 @@ export function PlaidConfigForm() {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-text-tertiary mb-1">Secret</label>
+          <label
+            htmlFor={`${fieldId}-secret`}
+            className="block text-xs font-medium text-text-tertiary mb-1"
+          >
+            Secret
+          </label>
           <input
+            id={`${fieldId}-secret`}
             type="password"
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
