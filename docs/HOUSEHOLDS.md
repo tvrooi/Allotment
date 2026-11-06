@@ -303,3 +303,7 @@ backups restore with an empty household ledger. Bank tokens remain excluded.
 Cross-currency household conversion, invitations, individual logins, collaborative
 permissions, automatic Up bill-definition imports and Tricount sync are outside
 this private AUD ledger. Agreed shares are entered explicitly.
+
+**Planned (B9):** Recurring, the Dashboard and the forecast will treat housemates' deposits into a
+household account as contributions, never income, and show a shared bill at your share. See
+[HOUSEMATE-MONEY-PLAN.md](HOUSEMATE-MONEY-PLAN.md).
