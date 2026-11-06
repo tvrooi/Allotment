@@ -306,6 +306,21 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         ),
       },
       {
+        heading: 'Cards in the budget',
+        body: (
+          <p>
+            A credit card you’ve set up for payment funding has its own row under{' '}
+            <b>Card payments</b>. When you spend on the card, the money comes out of the envelope
+            you categorised the purchase to and is held in the card’s row, so a $100 Groceries
+            envelope with an $80 purchase reads $20 for Groceries and $80 on the card. Under the
+            card’s name the row shows what you owe, and in red any part the reserve doesn’t cover.
+            When you pay the card from your bank and link the two sides as a transfer, the reserve
+            is used up and Groceries stays as it was. Setting up a card, and adding money to its row
+            with <b>Fund debt</b>, are in the Card payments panel beside the table.
+          </p>
+        ),
+      },
+      {
         heading: 'Paid fortnightly',
         body: (
           <p>

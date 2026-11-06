@@ -5,10 +5,22 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 6 November 2026 (up.115 in review).
+Last updated: 6 November 2026 (up.116 in review).
 
 ## State
 
+- **Card payments in the budget table (up.116, BUD-09; client only, no migration):** every payment
+  envelope (`paymentAccountId` on the budget categories) is a row of a **Card payments** section after
+  Total expenses (desktop `BudgetTypeSection` with `showAll`, phone `PhoneBudgetSection.always`), found
+  with `paymentCategories` in `utils/cardRows.ts` and matched to its `summary.cards` position by
+  category (`cardsByCategory`). `cardNotes` and `CardRowNotes` put debt, shortfall, unfunded payments,
+  extra reserve and prepaid balance under the name (wording shared with the sidebar). No server change
+  and no second ledger; the envelope is still out of `allExpenseCats` and so out of the expense totals
+  and the hero. The sidebar's `CardPayments` keeps Fund debt and the review of unreviewed cards. Tests:
+  `utils/cardRows.test.ts`, e2e `card-payments.spec.ts` (desktop and phone: $20 Groceries and $80 on
+  the card, linked repayment, shortfall). Docs: CARD-PAYMENTS.md "Where it appears", Budgeting guide
+  page ("Cards in the budget"). Not built: a per-row detail view beyond the notes. Next: B7 (BUD-05
+  keyboard entry and expressions, then BUD-10 inspector and notes).
 - **Row-anchored moves, and giving money back to Ready to assign (up.115, BUD-06; no migration):**
   the Available figure of an envelope that isn't $0 is a button (desktop table, phone cards) that
   opens the Move money panel prefilled through `useMoveRequest` (`store/moveRequestStore.ts`): the
@@ -345,10 +357,10 @@ site in `website/` was removed (audit decision I-9).
    are combined households (up.58).
 4. **Gaps found in the 26 October audit** (not built or not documented):
    - User guide pages missing for shipped features: payday plans, resilience/budget
-     review, card payments and the long-term forecast (super, HECS-HELP). Move money has one (up.115).
+     review, card payments (rows are covered in Budgeting, up.116) and the long-term forecast (super, HECS-HELP). Move money has one (up.115).
    - YNAB budget backlog in `docs/research/ynab-flybudget-budget-gaps.md` (PR #41): BUD-02 and
-     BUD-03 are done (up.109), BUD-07 (up.112) and BUD-06 (up.115); open: BUD-05
-     keyboard/expressions, BUD-09 card rows in the table, BUD-10 inspector and notes. BUD-01 fixed in up.46.
+     BUD-03 are done (up.109), BUD-07 (up.112), BUD-06 (up.115) and BUD-09 (up.116); open: BUD-05
+     keyboard/expressions, BUD-10 inspector and notes. BUD-01 fixed in up.46.
    - Household splitting backlog from the Spliit comparison in
      `docs/research/spliit-household-gaps.md`: SPL-01, SPL-02, SPL-06 (up.106) and SPL-03, SPL-04
      (up.107) and SPL-05 (up.108) are built; the P3 items (SPL-07 to SPL-09) wait for demand.

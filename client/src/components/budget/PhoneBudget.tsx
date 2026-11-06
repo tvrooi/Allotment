@@ -11,6 +11,8 @@ import { formatCurrency } from '../../utils/currency';
 import { availability, categoryFigures, splitCategories } from '../../utils/budgetFigures';
 import { TransferredNote } from './TransferredNote';
 import { ExpectedNote } from './ExpectedNote';
+import { CardRowNotes } from './CardRowNotes';
+import type { CardPosition } from '../../api/budget';
 import type { BudgetCategory } from '../../types';
 import { targetLabel } from '../../utils/targets';
 
@@ -19,6 +21,8 @@ export interface PhoneBudgetSection {
   label: string;
   isIncome: boolean;
   categories: BudgetCategory[];
+  /** List every category, however quiet (a card's payment envelope is always shown) */
+  always?: boolean;
 }
 
 interface Props {
@@ -31,6 +35,8 @@ interface Props {
   showAll?: boolean;
   /** Before the budget start: figures to read, nothing to assign */
   readOnly?: boolean;
+  /** Card positions by payment envelope, shown under the envelope's name */
+  cards?: Map<string, CardPosition>;
 }
 
 /**
@@ -44,6 +50,7 @@ export function PhoneBudget({
   onApplyBulk,
   showAll = false,
   readOnly = false,
+  cards,
 }: Props) {
   const [editing, setEditing] = useState<{ cat: BudgetCategory; isIncome: boolean } | null>(null);
   const firstExpenses = sections.find((s) => !s.isIncome);
@@ -55,9 +62,10 @@ export function PhoneBudget({
           <Section
             key={section.key}
             section={section}
-            showAll={showAll}
+            showAll={showAll || !!section.always}
             readOnly={readOnly}
             month={month}
+            cards={cards}
             onEdit={(cat) => setEditing({ cat, isIncome: section.isIncome })}
           />
         );
@@ -87,12 +95,14 @@ function Section({
   showAll,
   readOnly,
   month,
+  cards,
   onEdit,
 }: {
   section: PhoneBudgetSection;
   showAll: boolean;
   readOnly: boolean;
   month: string;
+  cards?: Map<string, CardPosition>;
   onEdit: (cat: BudgetCategory) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -133,6 +143,7 @@ function Section({
               isIncome={isIncome}
               readOnly={readOnly}
               month={month}
+              card={cards?.get(cat.id)}
               onEdit={() => onEdit(cat)}
             />
           ))}
@@ -158,12 +169,14 @@ function CategoryCard({
   isIncome,
   readOnly,
   month,
+  card,
   onEdit,
 }: {
   cat: BudgetCategory;
   isIncome: boolean;
   readOnly: boolean;
   month: string;
+  card?: CardPosition;
   onEdit: () => void;
 }) {
   const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
@@ -232,6 +245,7 @@ function CategoryCard({
         className="h-1.5 w-full mt-2"
       />
       <TransferredNote cat={cat} className="mt-1" />
+      {card && <CardRowNotes card={card} className="mt-1" />}
       {cat.target && (
         <p
           className={`text-xs mt-1 ${cat.target.underfunded ? 'text-caution' : 'text-text-tertiary'}`}
