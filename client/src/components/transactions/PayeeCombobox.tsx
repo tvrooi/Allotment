@@ -13,9 +13,18 @@ interface Props {
   className?: string;
   /** Replaces the field's own styling (the phone sheet uses full input styling, 16px text) */
   fieldClassName?: string;
+  /** For a visible <label htmlFor> beside the field */
+  id?: string;
 }
 
-export function PayeeCombobox({ value, onChange, payees, className = '', fieldClassName }: Props) {
+export function PayeeCombobox({
+  value,
+  onChange,
+  payees,
+  className = '',
+  fieldClassName,
+  id,
+}: Props) {
   const large = fieldClassName !== undefined;
   const [query, setQuery] = useState(value.name);
   const [open, setOpen] = useState(false);
@@ -55,6 +64,7 @@ export function PayeeCombobox({ value, onChange, payees, className = '', fieldCl
   return (
     <div ref={containerRef} className="relative">
       <input
+        id={id}
         type="text"
         value={query}
         onChange={handleChange}

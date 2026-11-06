@@ -207,9 +207,12 @@ export function BulkEditModal({ params, count, isOpen, onClose }: Props) {
       ) : (
         <div className="space-y-4">
           <div>
-            <label className={labelCls}>Category</label>
+            <label className={labelCls} htmlFor="bulk-category">
+              Category
+            </label>
             <div className="grid grid-cols-[auto_1fr] gap-2">
               <select
+                id="bulk-category"
                 aria-label="Category change"
                 className={`${inputCls} w-auto`}
                 value={draft.category.mode}
@@ -255,9 +258,12 @@ export function BulkEditModal({ params, count, isOpen, onClose }: Props) {
           </div>
 
           <div>
-            <label className={labelCls}>Notes</label>
+            <label className={labelCls} htmlFor="bulk-notes">
+              Notes
+            </label>
             <div className="grid grid-cols-[auto_1fr] gap-2">
               <select
+                id="bulk-notes"
                 aria-label="Notes change"
                 className={`${inputCls} w-auto`}
                 value={!draft.notes.set ? 'keep' : draft.notes.value === null ? 'clear' : 'set'}

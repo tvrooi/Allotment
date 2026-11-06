@@ -3,7 +3,7 @@ import { CategoryIcon } from '../ui/CategoryIcon';
 import { HouseholdIcon } from '../household/HouseholdIcon';
 import { useHouseholds } from '../../hooks/useHouseholds';
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import {
   X,
   Lock,
@@ -97,6 +97,7 @@ export function TransactionDetailPanel({
   const sharedWith = tx.household ? households.find((h) => h.id === tx.household!.id) : undefined;
   const freqMap = new Map(RECURRENCE_TYPE_LABELS.map((f) => [f.value, f.label]));
 
+  const fieldId = useId();
   const [localDate, setLocalDate] = useState(tx.date);
   const [localNotes, setLocalNotes] = useState(tx.notes ?? '');
   const [localPayee, setLocalPayee] = useState({ id: tx.payeeId, name: tx.payeeName ?? '' });
@@ -313,8 +314,14 @@ export function TransactionDetailPanel({
         )}
 
         <div>
-          <label className="text-xs font-medium text-text-secondary mb-1.5 block">Date</label>
+          <label
+            htmlFor={`${fieldId}-date`}
+            className="text-xs font-medium text-text-secondary mb-1.5 block"
+          >
+            Date
+          </label>
           <input
+            id={`${fieldId}-date`}
             type="date"
             aria-label="Date"
             value={localDate}
@@ -329,7 +336,8 @@ export function TransactionDetailPanel({
 
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-medium text-text-secondary block">Category</label>
+            {/* Not a <label>: it captions a split list, a transfer or a button named by its category */}
+            <span className="text-xs font-medium text-text-secondary block">Category</span>
             {canSplit && (
               <button
                 type="button"
@@ -442,9 +450,15 @@ export function TransactionDetailPanel({
 
         {!isTransfer && (
           <div>
-            <label className="text-xs font-medium text-text-secondary mb-1.5 block">Payee</label>
+            <label
+              htmlFor={`${fieldId}-payee`}
+              className="text-xs font-medium text-text-secondary mb-1.5 block"
+            >
+              Payee
+            </label>
             <div onBlur={savePayeeOnBlur}>
               <PayeeCombobox
+                id={`${fieldId}-payee`}
                 value={localPayee}
                 onChange={handlePayeeChange}
                 payees={payees}
@@ -455,8 +469,14 @@ export function TransactionDetailPanel({
         )}
 
         <div>
-          <label className="text-xs font-medium text-text-secondary mb-1.5 block">Notes</label>
+          <label
+            htmlFor={`${fieldId}-notes`}
+            className="text-xs font-medium text-text-secondary mb-1.5 block"
+          >
+            Notes
+          </label>
           <textarea
+            id={`${fieldId}-notes`}
             value={localNotes}
             onChange={(e) => setLocalNotes(e.target.value)}
             onBlur={saveNotes}
@@ -475,9 +495,7 @@ export function TransactionDetailPanel({
 
         {linkedSchedule && (
           <div>
-            <label className="text-xs font-medium text-text-secondary mb-1.5 block">
-              Recurring
-            </label>
+            <p className="text-xs font-medium text-text-secondary mb-1.5">Recurring</p>
             <div className="flex items-center gap-3 px-3 py-2.5 bg-surface-alt rounded-lg border border-border-light">
               <Repeat size={14} className="text-brand-600 shrink-0" />
               <div className="flex-1 min-w-0">

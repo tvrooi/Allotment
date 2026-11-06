@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.125
+
+- **Field names in the transaction forms are joined to their fields.** In Add transaction, the new-transaction row of an account, a transaction's details, editing several transactions at once and Reconcile, clicking a field's name (such as **Notes** or **Outflow**) now puts the cursor in that field, and screen readers read each field with the name shown above it. Nothing about what the forms save has changed.
+
 ## 0.2.0-up.124
 
 - **Reading receipts with Claude works with today's models.** When Anthropic reads your receipts, Allotment now asks Claude for its answer in a fixed form (structured output), so the merchant, date, amounts and items always come back in the shape Allotment expects. It also no longer sends a setting that current Claude models, including the suggested **claude-haiku-5-5**, reject with an error, and it gives them room to think before answering. If Claude declines to read a photo, or its answer is cut off, the receipt says so instead of keeping a half-read answer. Local model servers and OpenAI read receipts as before.

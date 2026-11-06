@@ -11,6 +11,8 @@ interface Props {
   fieldClassName?: string;
   /** Accessible name; defaults to "Category" */
   label?: string;
+  /** For a visible <label htmlFor> beside the field */
+  id?: string;
 }
 
 export function CategorySelect({
@@ -22,11 +24,13 @@ export function CategorySelect({
   className = '',
   fieldClassName,
   label = 'Category',
+  id,
 }: Props) {
   const transferAccounts = accounts?.filter((a) => a.id !== currentAccountId && !a.closedAt) ?? [];
 
   return (
     <select
+      id={id}
       aria-label={label}
       value={value ?? ''}
       onChange={(e) => onChange(e.target.value || null)}

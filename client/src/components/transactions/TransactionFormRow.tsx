@@ -89,6 +89,7 @@ export function TransactionFormRow({
   // way to "-12" is fine)
   const [editing, setEditing] = useState<string | null>(null);
   const amountHintId = useId();
+  const fieldId = useId();
   const amountFields = [
     { name: 'outflow', value: outflow },
     { name: 'inflow', value: inflow },
@@ -244,8 +245,11 @@ export function TransactionFormRow({
     >
       <div className={sheet ? 'grid gap-3' : 'grid grid-cols-4 gap-3 mb-3'}>
         <div>
-          <label className={labelCls}>Date</label>
+          <label className={labelCls} htmlFor={`${fieldId}-date`}>
+            Date
+          </label>
           <input
+            id={`${fieldId}-date`}
             type="date"
             aria-label="Date"
             value={date}
@@ -254,8 +258,11 @@ export function TransactionFormRow({
           />
         </div>
         <div>
-          <label className={labelCls}>Payee</label>
+          <label className={labelCls} htmlFor={`${fieldId}-payee`}>
+            Payee
+          </label>
           <PayeeCombobox
+            id={`${fieldId}-payee`}
             value={payee}
             onChange={setPayee}
             payees={payees}
@@ -263,11 +270,15 @@ export function TransactionFormRow({
           />
         </div>
         <div>
-          <label className={labelCls}>Category</label>
+          {/* In split mode there is no field with this id, and the label points at nothing */}
+          <label className={labelCls} htmlFor={`${fieldId}-category`}>
+            Category
+          </label>
           {splitMode ? (
             <span className="text-sm text-brand-600 font-medium leading-8">Split</span>
           ) : (
             <CategorySelect
+              id={`${fieldId}-category`}
               value={categoryId}
               onChange={setCategoryId}
               groups={groups}
@@ -278,8 +289,11 @@ export function TransactionFormRow({
           )}
         </div>
         <div>
-          <label className={labelCls}>Notes</label>
+          <label className={labelCls} htmlFor={`${fieldId}-notes`}>
+            Notes
+          </label>
           <input
+            id={`${fieldId}-notes`}
             type="text"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -292,8 +306,11 @@ export function TransactionFormRow({
 
       <div className={sheet ? 'grid grid-cols-2 gap-3' : 'flex items-end gap-3'}>
         <div className={sheet ? '' : 'w-28'}>
-          <label className={labelCls}>Outflow</label>
+          <label className={labelCls} htmlFor={`${fieldId}-outflow`}>
+            Outflow
+          </label>
           <input
+            id={`${fieldId}-outflow`}
             type="text"
             inputMode="decimal"
             value={outflow}
@@ -308,8 +325,11 @@ export function TransactionFormRow({
           />
         </div>
         <div className={sheet ? '' : 'w-28'}>
-          <label className={labelCls}>Inflow</label>
+          <label className={labelCls} htmlFor={`${fieldId}-inflow`}>
+            Inflow
+          </label>
           <input
+            id={`${fieldId}-inflow`}
             type="text"
             inputMode="decimal"
             value={inflow}

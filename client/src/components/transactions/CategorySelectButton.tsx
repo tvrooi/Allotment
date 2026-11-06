@@ -14,6 +14,8 @@ interface Props {
   placeholder?: string;
   /** Also offer "Transfer: name" for these accounts (picked as `transfer:<accountId>`) */
   transferAccounts?: { id: string; name: string }[];
+  /** For a visible <label htmlFor> beside the button */
+  id?: string;
 }
 
 /** Category field from the Add transaction workflow: a button that opens the searchable CategoryPicker. */
@@ -23,6 +25,7 @@ export function CategorySelectButton({
   position = 'below',
   placeholder = 'Search categories...',
   transferAccounts,
+  id,
 }: Props) {
   const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
   const { data: groups = [] } = useCategories();
@@ -44,6 +47,7 @@ export function CategorySelectButton({
   return (
     <div className="relative">
       <button
+        id={id}
         type="button"
         onClick={() => setOpen(!open)}
         aria-label={`Category: ${entry?.name ?? placeholder}`}
