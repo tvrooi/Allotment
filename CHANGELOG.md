@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.121
+
+- **Four new pages in the guide.** **Payday plans** (setting one up, each kind of funding rule, what happens on payday, undo), **Card payments** (setting a card up, what a purchase and a repayment do, and a reserve that's short), **Budget review** (coming back after a break, what needs attention, guided setup, the flexibility reserve, the cash runway and extra income) and **Long-term forecast** (starting a plan, life events, super, HECS-HELP and other study loans, today's dollars and the simulation). Each page now links to the guide page that explains it: **How payday plans work** under Budget → Until payday, **How card payments work** in the Card payments panel, **How the review works** on Review and **How the long-term forecast works** on Forecast, as do Tax time, Reports, Household, Settings → Data and the Up settings for their own pages.
+- **Guides for Payees and Cash flow, and three new tips.** Both pages now have a short guide, offered on a first visit and kept under **?** → **Guide for this page**. New one-time tips: on Review, that **Mark review complete** lets the next review show what changed; on Recurring, that **Find recurring** suggests bills and pay from your history; and on the long-term forecast, what today's and future dollars mean. As before, a page shows at most one tip, and none while it offers its guide.
+
 ## 0.2.0-up.120
 
 - **Previous and next in a transaction's details.** The details panel (a full-screen sheet on a phone) now has **Previous transaction** and **Next transaction** buttons beside **Close**, so you can work through a list without closing and reopening each one. They follow the list you're looking at, in its order, with your search and filters applied, and go past the rows shown so far when there are more. At the first or last transaction the button is greyed out. Anything you typed is saved to its own transaction before the next one opens, and moving between transactions changes nothing on its own. The buttons work from the keyboard, are 44 pixels square on a phone, and closing the details puts the keyboard back on the row you were looking at.

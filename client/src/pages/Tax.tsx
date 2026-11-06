@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { GuideLink } from '../components/guide/GuideLink';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Download, FolderOpen, Paperclip, Trash2 } from 'lucide-react';
 import { StatCardRow } from '../components/reports/ChartHelpers';
@@ -50,7 +51,10 @@ export default function TaxPage() {
         </h1>
         <p data-guide="tax.header" className="text-sm text-text-tertiary mt-0.5">
           Deductions you claim and the receipts that prove them, for your Australian tax return.
-          Record keeping, not tax advice.
+          Record keeping, not tax advice.{' '}
+          <GuideLink page="tax" className="font-medium text-brand-600 hover:text-brand-700">
+            How Tax time works
+          </GuideLink>
         </p>
         <div
           data-guide="tax.tabs"

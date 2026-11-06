@@ -1,6 +1,8 @@
 # Long-term forecast: design note
 
-Status: **design only (step 1 of 5). Nothing is built.** This note is for the owner's review before step 2.
+Status: **built** (steps 1 to 5, with Australian super in §22 and study loans in §23); this note began
+as the design for the owner's review, and §18 onwards record what was settled while building it. For
+the person using it, the in-app guide's **Long-term forecast** page explains it in plain words.
 Every default below is an **assumption you can change**, and the UI must show it next to the input
 (for example "Super guarantee rate: 12% — assumption, default 12%"). A forecast is a projection, not a
 promise.

@@ -14,6 +14,18 @@ export const TIPS = {
     id: 'payees.default-category',
     text: 'Give a payee a default category and its new transactions are sorted for you.',
   },
+  reviewComplete: {
+    id: 'review.mark-complete',
+    text: 'Done for now? Mark review complete, and next time Review shows what changed since.',
+  },
+  findRecurring: {
+    id: 'recurring.find',
+    text: 'Find recurring looks through your history for bills and pay that repeat, and suggests them.',
+  },
+  todaysDollars: {
+    id: 'forecast.todays-dollars',
+    text: 'Today’s dollars takes inflation out, so a figure decades away reads like money now. Future dollars shows the actual amounts.',
+  },
   budgetCarry: {
     id: 'budget.carry-forward',
     text: 'What’s left in a category carries into next month, so you can save up for bigger bills.',

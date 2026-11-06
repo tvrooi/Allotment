@@ -6,6 +6,7 @@ import { formatCurrency, centsToInput, parseCents, isUnreadableAmount } from '..
 import { formatDay } from '../../utils/dates';
 import { Input, Select } from '../ui/Input';
 import { Button } from '../ui/Button';
+import { GuideLink } from '../guide/GuideLink';
 import { HelpTip } from '../ui/HelpTip';
 import { useCanSave } from '../../hooks/useConnection';
 import { useCategories } from '../../hooks/useCategories';
@@ -781,6 +782,12 @@ export function PaydayPlan() {
         <Button size="sm" variant="secondary" onClick={() => setEditor('new')}>
           New payday plan
         </Button>
+        <GuideLink
+          page="payday-plans"
+          className="text-sm font-medium text-brand-600 hover:text-brand-700 max-md:min-h-11 inline-flex items-center"
+        >
+          How payday plans work
+        </GuideLink>
       </div>
       {isPending && <p role="status">Loading plans…</p>}
       {error && <p role="alert">{error.message}</p>}

@@ -68,12 +68,21 @@ doesn't touch guide progress, so those specs put it back to a new budget's after
 
 ## Page guides
 
-Every main page has a guide (`guides/budget.ts`, `guides/pages.ts`): Budget, Accounts,
-Transactions, Rules, Recurring, Review, Pay later, Household, Goals, Forecast, Investments, Tax
-time, Reports and Settings (which covers connecting Up). Tips: Dashboard (Safe mode shortcut),
-Transactions (undo), Budget (carry forward), Payees (default category).
+Every main page has a guide (`guides/budget.ts`, `guides/pages.ts`, listed in `PAGE_GUIDES`);
+the dashboard has the welcome tour instead. Tips are in `guides/tips.ts`, one per page at most.
+Never put a list of either in prose here: it drifts.
 
 A step whose element needs data a new budget doesn't have (an Afterpay account, an investment
 account, a household) shows in the middle of the screen. `GuideTour` sets `data-target`
 (`searching`, `found`, `missing`) on its overlay; `guides.spec.ts` walks every page guide and
 checks each step finds its element, and the phone spec walks them all on a phone.
+
+## The user guide
+
+Longer explanations are articles of the guide the app serves at `/guide`
+(`client/src/userGuide/articles.tsx`, one per page in `DOCS_PAGES`, `client/src/utils/project.ts`).
+Each article is linked from the page it explains with `<GuideLink page="…">` (or an empty state's
+`learnMore`). `userGuide/articles.test.ts` fails when a page has no article or an article is linked
+from nowhere in the app; `e2e/tests/user-guide.spec.ts` follows the links. To add one: add the page
+to `DOCS_PAGES`, write the article (a few short sections, words from docs/GLOSSARY.md, only what
+the app really does), and link it from its page.

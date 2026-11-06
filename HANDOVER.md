@@ -5,10 +5,23 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 6 November 2026 (up.120 in review).
+Last updated: 6 November 2026 (up.121 in review).
 
 ## State
 
+- **User-guide articles, page guides and tips (up.121, C2 of the Polish and help group; client
+  only, no migration):** four articles in `client/src/userGuide/articles.tsx`: Payday plans, Card
+  payments, Budget review (resilience) and Long-term forecast (super, HECS-HELP). The guide's pages
+  are one list, `DOCS_PAGES` (`client/src/utils/project.ts`), and `userGuide/articles.test.ts`
+  checks each has one article that some page links to; so every page now links its article
+  (Budget → Until payday, the Card payments panel, Review, Forecast's long-term tab, Tax time,
+  Reports, Household's "How this works", Settings → Data, the Up settings). Page guides for Payees
+  and Cash flow (`guides/pages.ts`, markers `payees.*`, `cash-flow.*`); tips on Review, Recurring
+  and the long-term forecast (`guides/tips.ts`). Tests: `articles.test.ts`, e2e
+  `user-guide.spec.ts` (each link, and the header links at 44 px on a phone); the page-guide
+  walks in `guides.spec.ts` and the phone spec cover the new guides. Docs: GUIDES.md "The user
+  guide", LONG-TERM-FORECAST.md's status line. Not built: articles for Pay later, Investments,
+  Files and Cash flow (their page guides cover them). Next: C3 (Enable Banking's setup steps).
 - **Previous and next in transaction details (up.120, C1 of the Polish and help group; client
   only, no migration):** `TransactionDetailPanel` takes `onPrevious`/`onNext` (missing at the first
   or last row, shown as `aria-disabled` so focus stays on the button); `TransactionTable` steps
@@ -422,8 +435,8 @@ site in `website/` was removed (audit decision I-9).
    data, Up sync and access tokens intact. Not built yet: SMTP email codes. Shared households
    are combined households (up.58).
 4. **Gaps found in the 26 October audit** (not built or not documented):
-   - User guide pages missing for shipped features: payday plans, resilience/budget
-     review, card payments (rows are covered in Budgeting, up.116) and the long-term forecast (super, HECS-HELP). Move money has one (up.115).
+   - User guide pages for payday plans, budget review, card payments and the long-term
+     forecast are written (up.121), and every article is linked from its page.
    - YNAB budget backlog in `docs/research/ynab-flybudget-budget-gaps.md` (PR #41): BUD-02 and
      BUD-03 are done (up.109), BUD-07 (up.112), BUD-06 (up.115), BUD-09 (up.116), and BUD-05 and
      BUD-10 (up.117): the YNAB backlog is built. BUD-01 fixed in up.46.

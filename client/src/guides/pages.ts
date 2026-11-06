@@ -392,6 +392,63 @@ export const settingsGuide: Guide = {
   ],
 };
 
+export const payeesGuide: Guide = {
+  id: 'payees',
+  version: 1,
+  title: 'Payees',
+  summary: 'Who you pay, the category each usually goes in, and tidying names.',
+  page: '/payees',
+  steps: [
+    {
+      title: 'Everyone you pay',
+      body: 'Payees are added for you as you enter or import transactions. Search for one here.',
+      route: '/payees',
+      target: 'payees.search',
+    },
+    {
+      title: 'A default category',
+      body: 'Give a payee a default category and its new transactions are sorted into it for you.',
+      route: '/payees',
+      target: ['payees.default', 'payees.list'],
+    },
+    {
+      title: 'Tidy up names',
+      body: 'Double-click a name to rename it, tick two or more payees to merge them into one, and click a payee’s picture to give it a logo.',
+      phoneBody:
+        'Rename or delete a payee from its ⋮ menu, tick two or more to merge them into one, and tap a payee’s picture to give it a logo.',
+      route: '/payees',
+    },
+  ],
+};
+
+export const cashFlowGuide: Guide = {
+  id: 'cash-flow',
+  version: 1,
+  title: 'Cash flow',
+  summary: 'Money in, where it went, and what was left over, for any period.',
+  page: '/cash-flow',
+  steps: [
+    {
+      title: 'Choose the period',
+      body: 'Pick a month, a few months, a year or your own dates. The totals above show what came in, what went out, and the share you kept.',
+      route: '/cash-flow',
+      target: 'cash-flow.period',
+    },
+    {
+      title: 'Categories or payees',
+      body: 'See where the money went by category, flowing from income into each group of spending, or by payee.',
+      phoneBody: 'See where the money went by category, as a list or a diagram, or by payee.',
+      route: '/cash-flow',
+      target: 'cash-flow.group',
+    },
+    {
+      title: 'The transactions behind it',
+      body: 'Choose any income or spending to list its transactions underneath. Export CSV saves the figures for the period.',
+      route: '/cash-flow',
+    },
+  ],
+};
+
 export const PAGE_GUIDES: Guide[] = [
   accountsGuide,
   transactionsGuide,
@@ -406,5 +463,7 @@ export const PAGE_GUIDES: Guide[] = [
   taxGuide,
   filesGuide,
   reportsGuide,
+  cashFlowGuide,
+  payeesGuide,
   settingsGuide,
 ];

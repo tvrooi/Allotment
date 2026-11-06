@@ -7,6 +7,7 @@ import { useCanSave } from '../../hooks/useConnection';
 import { formatCurrency, parseCents, isUnreadableAmount } from '../../utils/currency';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
+import { GuideLink } from '../guide/GuideLink';
 import { formatAsOfDay } from '../../utils/dates';
 import { cardNotes } from '../../utils/cardRows';
 
@@ -65,7 +66,10 @@ export function CardPayments({
       <h2 className="font-semibold text-text">Card payments</h2>
       <p className="text-xs text-text-secondary">
         Payment reserves as of {summary?.asOf ? formatAsOfDay(summary.asOf) : 'today'}. Record bank
-        repayments as linked transfers.
+        repayments as linked transfers.{' '}
+        <GuideLink page="card-payments" className="font-medium text-brand-600 hover:text-brand-700">
+          How card payments work
+        </GuideLink>
       </p>
       {summary?.cards?.map((card) => (
         <div

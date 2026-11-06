@@ -8,6 +8,9 @@ import { updateTransaction } from '../api/transactions';
 import { useBudget } from '../hooks/useBudget';
 import { useCanSave } from '../hooks/useConnection';
 import { Card } from '../components/ui/Card';
+import { GuideLink } from '../components/guide/GuideLink';
+import { Tip } from '../components/guide/Tip';
+import { TIPS } from '../guides';
 import { ButtonLink } from '../components/ui/Button';
 import { Select } from '../components/ui/Input';
 import { MoneyMoves } from '../components/budget/MoneyMoves';
@@ -568,7 +571,10 @@ export default function ReviewPage() {
           </h1>
           <p className="text-xs text-text-tertiary">
             {review.data ? `As of ${formatDay(review.data.asOf)}` : 'Loading…'} · Nothing here
-            changes until you choose to.
+            changes until you choose to.{' '}
+            <GuideLink page="review" className="font-medium text-brand-600 hover:text-brand-700">
+              How the review works
+            </GuideLink>
           </p>
         </div>
         {review.data && review.data.groups.length > 1 && (
@@ -598,6 +604,7 @@ export default function ReviewPage() {
             <ReminderBanner resume={resume.data} />
           </div>
         )}
+        <Tip tip={TIPS.reviewComplete} className="mb-4 rounded-lg border border-border-light p-4" />
         {/* Afterpay-style payments waiting to be linked to their purchase */}
         <div className="mb-4 empty:hidden">
           <PaymentMatches compact />

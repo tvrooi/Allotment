@@ -21,22 +21,30 @@ export const ISSUES_URL = 'https://github.com/tvrooi/Allotment/issues';
  */
 export const SELF_HOSTING_URL = `${SOURCE_CODE_URL}/blob/main/docs/START-HERE.md`;
 
+/** The pages of Allotment's guide (/guide/<page>); each has one article in `userGuide/articles.tsx` */
+export const DOCS_PAGES = [
+  'getting-started',
+  'accounts',
+  'transactions',
+  'bank-sync',
+  'budgeting',
+  'move-money',
+  'payday-plans',
+  'card-payments',
+  'recurring',
+  'review',
+  'reports',
+  'rules',
+  'goals',
+  'long-term-forecast',
+  'tax',
+  'currencies',
+  'households',
+  'backups',
+] as const;
+
 /** A page of Allotment's guide (/guide/<page>), e.g. `<GuideLink page="budgeting">` */
-export type DocsPage =
-  | 'getting-started'
-  | 'accounts'
-  | 'transactions'
-  | 'bank-sync'
-  | 'budgeting'
-  | 'move-money'
-  | 'recurring'
-  | 'reports'
-  | 'rules'
-  | 'goals'
-  | 'tax'
-  | 'currencies'
-  | 'households'
-  | 'backups';
+export type DocsPage = (typeof DOCS_PAGES)[number];
 
 /** The same topic in the upstream FlyBudget guide, for setup details Allotment's guide skips */
 export const upstreamDocsUrl = (page: DocsPage) => `${WEBSITE_URL}/docs/${page}`;

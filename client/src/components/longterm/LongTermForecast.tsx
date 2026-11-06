@@ -22,6 +22,8 @@ import { SavingsPanel } from './SavingsPanel';
 import { SimulationPanel } from './SimulationPanel';
 import { YearBreakdown } from './YearBreakdown';
 import { ScrollCue } from '../ui/ScrollCue';
+import { Tip } from '../guide/Tip';
+import { TIPS } from '../../guides';
 import { onTabListKeyDown } from '../ui/tabList';
 
 const remember = (key: string, value?: string): string | null => {
@@ -497,6 +499,7 @@ function Editor({
           ))}
         </div>
       </div>
+      <Tip tip={TIPS.todaysDollars} className="rounded-lg border border-border-light p-4" />
       <p className="text-xs text-text-tertiary">
         A projection, not a promise.{' '}
         {mode === 'today'
