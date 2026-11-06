@@ -90,7 +90,7 @@ The task is to improve access, explanation and consistency around them, with exp
 
 ## P2 · BUD-05: predictable keyboard, expression and multi-category assignment
 
-**Status: open.**
+**Status: done (up.117): sums (`100+50`, `150*2`; `+50` is 50, `*2` refused), Enter/Escape/arrows/Tab/Shift+Tab in the desktop table skipping rows not shown, and the same signed reading on phone. Not built: one typed amount applied to several selected envelopes (Fund targets from a selection, BUD-10, covers the common case); the 12-month overwrite stays previewed.**
 
 - **Evidence / status:** Basic inline editing and undo exist; no budget-grid navigation, arithmetic evaluator or selected-category batch flow is implemented in the reviewed page.
   `LIVE-02` verified YNAB `100+50` → 150, `150*2` → 300, ArrowDown selecting/opening the next category, and undo/redo 300 ↔ 150. Literal replacement of $350 with `+50` saved $50; replacement with `*2` saved $2. The original $350 was restored. Tab left the editor; its exact destination was not established.
@@ -177,7 +177,7 @@ The task is to improve access, explanation and consistency around them, with exp
 
 ## P2 · BUD-10: contextual inspector and scoped notes
 
-**Status: open.**
+**Status: done (up.117): an inspector at the top of the sidebar (month with no selection, one envelope, several summed), Fund targets scoped to the selection, month notes and category notes (migration 0077, backup format 29, owner-only writes). Not built: notes on groups or accounts, and a multi-envelope assign action.**
 
 - **Evidence / status:** Summary/history/target information exists in separate surfaces; a selected-category inspector and category/month notes are missing from the reviewed Budget flow.
   `LIVE-01` verified YNAB single-category, multiple-category and no-selection inspector states. `LIVE-08` verified month-note save with OK and category-note blur save after deselection; both survived reload and were restored afterward.

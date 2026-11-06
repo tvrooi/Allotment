@@ -9,6 +9,25 @@ Last updated: 6 November 2026 (up.116 in review).
 
 ## State
 
+- **Keyboard entry, sums, the inspector and notes (up.117, BUD-05, BUD-10; migration 0077,
+  backup format 29):** `readAmountExpression` (`client/src/utils/amountExpression.ts`) reads the
+  desktop Assigned editor and the phone sheet: `+ - * /` with brackets in exact BigInt fractions,
+  `+50` is 50, `*2` and other malformed sums are refused; plain amounts still go to
+  `readTypedAmount`. `assignmentToInput` keeps a negative assignment's sign (the editor used to drop
+  it, and the phone sheet's `Math.abs` is gone). Desktop keys: Enter saves, Escape cancels,
+  Down/Tab and Up/Shift+Tab save and open the neighbouring rendered row (`tr[data-budget-row]`),
+  unchanged amounts aren't re-saved. `BudgetInspector.tsx` at the top of the sidebar: month view
+  (expense totals from `selectionFigures`, month note), one ticked envelope (figures, target, note,
+  history link), several (sums and **Fund N targets**, which opens Fund targets through
+  `useScopedPlan.load(fetch, only)`). Notes: `budget_month_notes` and `category_notes`
+  (`services/budgetNotes.ts`, `PUT /budget/:month/note`, `PUT /budget/category/:id/note`,
+  `GET /budget/:month/note`, `note` on each category of `GET /budget/:month`), no revision trigger,
+  owner-only writes, 2,000 characters; the demo budget has one of each. Tests:
+  `amountExpression.test.ts`, `budgetFigures.test.ts` (selection property),
+  `routes/budgetNotes.test.ts`, `accessTokens.test.ts` (token refused, read allowed), e2e
+  `budget-inspector.spec.ts`. Docs: ENVELOPE-FUNDING.md "Typing assignments" and "The inspector and
+  notes", Budgeting guide page. Not built: one amount typed into several envelopes, group/account
+  notes. Next: B8 (reviewed list for Up Saver transfers).
 - **Card payments in the budget table (up.116, BUD-09; client only, no migration):** every payment
   envelope (`paymentAccountId` on the budget categories) is a row of a **Card payments** section after
   Total expenses (desktop `BudgetTypeSection` with `showAll`, phone `PhoneBudgetSection.always`), found
@@ -359,8 +378,8 @@ site in `website/` was removed (audit decision I-9).
    - User guide pages missing for shipped features: payday plans, resilience/budget
      review, card payments (rows are covered in Budgeting, up.116) and the long-term forecast (super, HECS-HELP). Move money has one (up.115).
    - YNAB budget backlog in `docs/research/ynab-flybudget-budget-gaps.md` (PR #41): BUD-02 and
-     BUD-03 are done (up.109), BUD-07 (up.112), BUD-06 (up.115) and BUD-09 (up.116); open: BUD-05
-     keyboard/expressions, BUD-10 inspector and notes. BUD-01 fixed in up.46.
+     BUD-03 are done (up.109), BUD-07 (up.112), BUD-06 (up.115), BUD-09 (up.116), and BUD-05 and
+     BUD-10 (up.117): the YNAB backlog is built. BUD-01 fixed in up.46.
    - Household splitting backlog from the Spliit comparison in
      `docs/research/spliit-household-gaps.md`: SPL-01, SPL-02, SPL-06 (up.106) and SPL-03, SPL-04
      (up.107) and SPL-05 (up.108) are built; the P3 items (SPL-07 to SPL-09) wait for demand.

@@ -16,6 +16,7 @@ deductions.
   transactions, budget (monthly and yearly), payees, rules, reports and custom reports,
   schedules, goals, payday plans, review, priorities, households, tags, saved views, currency
   and the filtered CSV export. Plus the MCP endpoint, which only reads.
+  The budget's reads include the owner's month and category notes; writing a note is owner only.
 - **Never:** any other write (`POST`, `PUT`, `PATCH`, `DELETE`); sign-in or session routes; server
   settings; full backups or restores; bank connections (Up, Plaid, SimpleFIN, Enable
   Banking); dashboard layouts; or managing tokens. These return 403.

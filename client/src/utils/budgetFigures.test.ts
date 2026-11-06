@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { availability, categoryFigures, isActiveCategory, splitCategories } from './budgetFigures';
+import {
+  availability,
+  categoryFigures,
+  isActiveCategory,
+  selectionFigures,
+  splitCategories,
+} from './budgetFigures';
 import type { BudgetCategory } from '../types';
 
 const cents = fc.integer({ min: -10_000_000, max: 10_000_000 });
@@ -224,5 +230,36 @@ describe('availability', () => {
         expect(a.kind === 'overspent').toBe(cat.balance < 0);
       }),
     );
+  });
+});
+
+describe('selectionFigures (BUD-10, property-based)', () => {
+  const budget = fc
+    .array(fc.tuple(category, fc.nat(1_000_000), fc.boolean()), { maxLength: 12 })
+    .map((rows) =>
+      rows.map(([cat, transferred, picked], i) => ({
+        cat: { ...cat, id: `c${i}`, transferred, balance: cat.balance + transferred },
+        picked,
+      })),
+    );
+
+  it('adds up exactly the selected rows, as the table shows them', () => {
+    fc.assert(
+      fc.property(budget, (rows) => {
+        const picked = rows.filter((r) => r.picked).map((r) => r.cat);
+        const figures = selectionFigures(picked);
+        const sum = (f: (c: BudgetCategory) => number) => picked.reduce((s, c) => s + f(c), 0);
+        expect(figures.assigned).toBe(sum((c) => c.budgeted));
+        expect(figures.activity).toBe(sum((c) => categoryFigures(c, false).actual));
+        expect(figures.available).toBe(sum((c) => availability(c, false).remaining));
+        expect(figures.available).toBe(
+          figures.carriedIn + figures.assigned + figures.transferred + figures.activity,
+        );
+      }),
+    );
+  });
+
+  it('is all zeros for no selection', () => {
+    expect(Object.values(selectionFigures([])).every((v) => v === 0)).toBe(true);
   });
 });

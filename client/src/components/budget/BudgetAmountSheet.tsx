@@ -3,17 +3,17 @@ import { format, parseISO } from 'date-fns';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { BulkPreview } from './BulkPreview';
-import { useCategoryHistory } from '../../hooks/useBudget';
+import { useCategoryHistory, useSetCategoryNote } from '../../hooks/useBudget';
 import { useCanSave } from '../../hooks/useConnection';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import {
   centsToInput,
   formatCurrency,
-  parseCents,
   amountPlaceholder,
-  isUnreadableAmount,
   UNREADABLE_AMOUNT,
 } from '../../utils/currency';
+import { assignmentToInput, readAmountExpression } from '../../utils/amountExpression';
+import { NoteField } from './NoteField';
 import type { BudgetCategory } from '../../types';
 
 interface Props {
@@ -70,7 +70,7 @@ function SheetBody({
   onSave,
   onApplyBulk,
 }: Omit<Props, 'category'> & { category: BudgetCategory }) {
-  const [raw, setRaw] = useState(category.budgeted ? centsToInput(category.budgeted) : '');
+  const [raw, setRaw] = useState(assignmentToInput(category.budgeted));
   const [allYear, setAllYear] = useState(false);
   const [review, setReview] = useState<number | null>(null);
   // Shown after Save with text that isn't an amount, until the text changes
@@ -80,15 +80,17 @@ function SheetBody({
   const [refused, setRefused] = useState<string | null>(null);
   const { data: history } = useCategoryHistory(category.id, month);
   const canSave = useCanSave();
+  const setNote = useSetCategoryNote();
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!canSave || saving) return;
-    if (isUnreadableAmount(raw)) {
+    // A sum (100+50) is worked out; a minus sign means what it does on a desktop (BUD-05)
+    const cents = readAmountExpression(raw);
+    if (cents === null) {
       setInvalid(true);
       return;
     }
-    const cents = Math.abs(parseCents(raw));
     // Twelve months are only overwritten after their preview is reviewed below.
     if (allYear) return setReview(cents);
     setSaving(true);
@@ -182,6 +184,12 @@ function SheetBody({
           }}
         />
       )}
+
+      <NoteField
+        label={`Note for ${category.name}`}
+        note={category.note ?? ''}
+        onSave={(note) => setNote.mutateAsync({ categoryId: category.id, note })}
+      />
 
       {refused && (
         <p role="status" className="text-sm text-negative">

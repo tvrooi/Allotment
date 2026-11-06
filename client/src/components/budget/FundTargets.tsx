@@ -16,7 +16,8 @@ import { FundingRows } from './FundingRows';
 /** Previews assignments for underfunded targets, capped at unassigned money, then applies
  * exactly that preview once. Targets never assign money on their own. */
 export const FundTargets = forwardRef<
-  { open: () => void },
+  /** `open(ids)` starts with only those categories ticked (the budget table's selection) */
+  { open: (categoryIds?: string[]) => void },
   { month: string; groups: BudgetGroup[]; hideButton?: boolean }
 >(function FundTargets({ month, groups, hideButton = false }, ref) {
   const qc = useQueryClient();
@@ -28,7 +29,9 @@ export const FundTargets = forwardRef<
     .flatMap((g) => g.categories)
     .filter((c) => c.target?.underfunded).length;
   const fetchPlan = (categoryIds?: string[]) => previewTargetFunding(month, categoryIds);
-  useImperativeHandle(ref, () => ({ open: () => void plan.load(fetchPlan) }));
+  useImperativeHandle(ref, () => ({
+    open: (categoryIds) => void plan.load(fetchPlan, categoryIds),
+  }));
   async function apply() {
     if (!preview) return;
     setBusy(true);

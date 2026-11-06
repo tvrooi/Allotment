@@ -23,6 +23,7 @@ const { assistantDispatch, assistantRouter } = await import('./assistant.js');
 const { accountsRouter } = await import('./accounts.js');
 const { transactionsRouter } = await import('./transactions.js');
 const { categoriesRouter } = await import('./categories.js');
+const { budgetRouter } = await import('./budget.js');
 const { exportRouter } = await import('./export.js');
 const { reportsRouter } = await import('./reports.js');
 const { dashboardsRouter } = await import('./dashboards.js');
@@ -45,6 +46,7 @@ beforeAll(async () => {
   app.use('/api/accounts', accountsRouter);
   app.use('/api/transactions', transactionsRouter);
   app.use('/api/categories', categoriesRouter);
+  app.use('/api/budget', budgetRouter);
   app.use('/api/export', exportRouter);
   app.use('/api/reports', reportsRouter);
   app.use('/api/dashboards', dashboardsRouter);
@@ -310,10 +312,17 @@ describe('categorise tokens', () => {
       ['PUT', '/accounts/mock', { name: 'x' }],
       // Holding money for next month changes what Ready to assign means: owner only
       ['PUT', `/budget/${today.slice(0, 7)}/hold`, { amount: 1 }],
+      // Notes on the budget are the owner's own words: owner only (BUD-10)
+      ['PUT', `/budget/${today.slice(0, 7)}/note`, { note: 'x' }],
+      ['PUT', '/budget/category/food/note', { note: 'x' }],
       ['PUT', '/transactions/%E0%A4%A', { categoryId: 'rent' }],
     ];
     for (const [method, path, body] of refused)
       expect((await call(method, path, { token }, body)).status).toBe(403);
+    // Reading a month's note is a side-effect-free GET, open to any token
+    expect(
+      (await call('GET', `/budget/${today.slice(0, 7)}/note`, { token: read.token })).status,
+    ).toBe(200);
     // A read token still can't categorise
     expect(
       (await call('PUT', '/transactions/past', { token: read.token }, { categoryId: 'food' }))

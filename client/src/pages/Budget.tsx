@@ -24,13 +24,9 @@ import { usePreferencesStore } from '../store/preferencesStore';
 import { AssignBlockError } from '../components/budget/AssignBlockError';
 import { useCategories } from '../hooks/useCategories';
 import { useBudget, useBudgetSummary, useSetBudget, useSetBudgetBulk } from '../hooks/useBudget';
-import {
-  formatCurrency,
-  parseCents,
-  centsToInput,
-  isUnreadableAmount,
-  UNREADABLE_AMOUNT,
-} from '../utils/currency';
+import { formatCurrency, UNREADABLE_AMOUNT } from '../utils/currency';
+import { assignmentToInput, readAmountExpression } from '../utils/amountExpression';
+import { BudgetInspector } from '../components/budget/BudgetInspector';
 import { BudgetSummaryWidget } from '../components/budget/BudgetSummaryWidget';
 import { BudgetEditPopover } from '../components/budget/BudgetEditPopover';
 import { Button } from '../components/ui/Button';
@@ -64,6 +60,7 @@ function AmountInput({
   picked,
   onDraft,
   onSave,
+  onMove,
   onCancel,
 }: {
   cents: number;
@@ -79,14 +76,17 @@ function AmountInput({
   /** The amount typed so far, or null while it isn't readable */
   onDraft: (c: number | null) => void;
   onSave: (c: number) => void;
+  /** Arrow keys and Tab: save and open the next (1) or previous (-1) envelope. False when there
+   * is none that way, and nothing was done */
+  onMove: (direction: 1 | -1, c: number) => boolean;
   onCancel: () => void;
 }) {
-  const [raw, setRaw] = useState(centsToInput(cents));
+  const [raw, setRaw] = useState(assignmentToInput(cents));
   const [invalid, setInvalid] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (picked) {
-      setRaw(centsToInput(picked.cents));
+      setRaw(assignmentToInput(picked.cents));
       setInvalid(false);
     }
   }, [picked]);
@@ -112,29 +112,50 @@ function AmountInput({
         onChange={(e) => {
           setRaw(e.target.value);
           setInvalid(false);
-          onDraft(isUnreadableAmount(e.target.value) ? null : parseCents(e.target.value));
+          onDraft(readAmountExpression(e.target.value));
         }}
         aria-invalid={invalid || !!error || undefined}
         aria-describedby={error ? 'planned-save-error' : undefined}
         title={invalid ? UNREADABLE_AMOUNT : undefined}
         // Select the amount so typing replaces it
         onFocus={(e) => e.target.select()}
+        // Keys (BUD-05, docs/ENVELOPE-FUNDING.md "Typing assignments"): Enter saves, Escape
+        // cancels, Down or Tab saves and opens the next envelope shown, Up or Shift+Tab the one
+        // before. A sum (100+50) is worked out first; text that isn't one stays open to fix,
+        // rather than saving 0
         onKeyDown={(e) => {
+          if (saving) return;
+          const amount = readAmountExpression(raw);
           if (e.key === 'Enter') {
-            // Text that isn't an amount stays open to fix, rather than saving 0
-            if (isUnreadableAmount(raw)) setInvalid(true);
+            if (amount === null) setInvalid(true);
             else (e.target as HTMLInputElement).blur();
           }
           if (e.key === 'Escape') {
             closed.current = true;
             onCancel();
           }
+          const direction =
+            e.key === 'ArrowDown' || (e.key === 'Tab' && !e.shiftKey)
+              ? 1
+              : e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)
+                ? -1
+                : 0;
+          if (!direction) return;
+          if (amount === null) {
+            e.preventDefault();
+            setInvalid(true);
+            return;
+          }
+          // With nowhere to go, an arrow saves and closes; Tab saves and leaves the table as usual
+          if (onMove(direction, amount)) e.preventDefault();
+          else if (e.key !== 'Tab') (e.target as HTMLInputElement).blur();
         }}
         onBlur={() => {
           if (closed.current) return;
+          const amount = readAmountExpression(raw);
           // Left with text that isn't an amount: keep the planned amount it had
-          if (isUnreadableAmount(raw)) onCancel();
-          else onSave(parseCents(raw));
+          if (amount === null) onCancel();
+          else onSave(amount);
         }}
         className={`w-28 text-right tabular-nums text-sm bg-surface border rounded-md px-2 py-0.5 focus:outline-none focus:ring-1 read-only:opacity-60 ${invalid || error ? 'border-negative focus:ring-negative' : 'border-brand-500 focus:ring-brand-600'}`}
       />
@@ -158,6 +179,9 @@ interface CategoryRowProps {
   isIncome: boolean;
   editingId: string | null;
   month: string;
+  /** Ticked for the inspector (BUD-10); income rows have no tick */
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
   onStartEdit: (id: string) => void;
   /** Resolves to why the save was refused, or null once it has been saved */
   onSave: (cents: number) => Promise<string | null>;
@@ -172,6 +196,8 @@ function CategoryRow({
   isIncome,
   editingId,
   month,
+  selected = false,
+  onToggleSelect,
   onStartEdit,
   onSave,
   onCancel,
@@ -192,17 +218,22 @@ function CategoryRow({
   const [failure, setFailure] = useState<string | null>(null);
   const [picked, setPicked] = useState<{ cents: number } | null>(null);
   const inFlight = useRef(false);
-  function startEdit() {
+  const rowRef = useRef<HTMLTableRowElement>(null);
+  // However the editor opened (a click here, or the keyboard from the row next to it), it
+  // starts from this envelope's amount with nothing left over from an earlier edit
+  useEffect(() => {
+    if (!isEditing) return;
     closed.current = false;
     setFailure(null);
     setPicked(null);
     setDraft(cat.budgeted);
-    onStartEdit(cat.id);
-  }
+    // Only on opening: a refetch while it's open mustn't reset what is being typed
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing]);
   // The editor closes only once the server has saved: a refused amount stays in the field, with
-  // the reason, and a second Enter while the first is on its way sends nothing
-  async function commit(cents: number) {
-    if (inFlight.current) return;
+  // the reason, and a second Enter while the first is on its way sends nothing. True once saved
+  async function commit(cents: number): Promise<boolean> {
+    if (inFlight.current) return false;
     inFlight.current = true;
     setSaving(true);
     setFailure(null);
@@ -213,6 +244,30 @@ function CategoryRow({
       closed.current = false;
       setFailure(refused);
     }
+    return refused === null;
+  }
+  // The envelope above or below as the table shows it: collapsed sections, inactive rows and
+  // the filter's misses aren't on the page, so the keyboard skips them
+  function neighbour(direction: 1 | -1): string | null {
+    const row = rowRef.current;
+    const rows = [...(row?.closest('tbody')?.querySelectorAll('tr[data-budget-row]') ?? [])];
+    const at = row ? rows.indexOf(row) : -1;
+    if (at < 0) return null;
+    return (rows[at + direction] as HTMLElement | undefined)?.dataset.budgetRow ?? null;
+  }
+  function move(direction: 1 | -1, cents: number): boolean {
+    const next = neighbour(direction);
+    if (!next) return false;
+    closed.current = true;
+    // An amount left as it was isn't saved again (no undo step for nothing)
+    if (cents === cat.budgeted) {
+      onStartEdit(next);
+      return true;
+    }
+    void commit(cents).then((saved) => {
+      if (saved) onStartEdit(next);
+    });
+    return true;
   }
   // A quick amount saves straight away
   function pick(cents: number) {
@@ -257,8 +312,21 @@ function CategoryRow({
   }
 
   return (
-    <tr className="border-b border-border-light">
-      <td className="py-1.5 pb-2 pl-10 pr-3">
+    <tr
+      ref={rowRef}
+      data-budget-row={cat.id}
+      className={`border-b border-border-light ${selected ? 'bg-brand-50' : ''}`}
+    >
+      <td className="relative py-1.5 pb-2 pl-10 pr-3">
+        {onToggleSelect && (
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelect(cat.id)}
+            aria-label={`Select ${cat.name}`}
+            className="absolute left-4 top-2.5 h-3.5 w-3.5 accent-brand-600"
+          />
+        )}
         <div className="text-sm text-text">
           {showCategoryIcons && (
             <CategoryIcon icon={cat.icon} size={14} className="mr-1.5 inline" />
@@ -295,6 +363,7 @@ function CategoryRow({
                 picked={picked}
                 onDraft={setDraft}
                 onSave={(c) => void commit(c)}
+                onMove={move}
                 onCancel={onCancel}
               />
               {!saving && !failure && (
@@ -312,7 +381,7 @@ function CategoryRow({
             </>
           ) : (
             <button
-              onClick={startEdit}
+              onClick={() => onStartEdit(cat.id)}
               disabled={!canSave}
               title={canSave ? undefined : 'Saving is paused until Allotment reconnects'}
               aria-label={`${isIncome ? 'Expected from' : 'Planned for'} ${cat.name}: ${formatCurrency(cat.budgeted)}`}
@@ -483,6 +552,9 @@ interface BudgetTypeSectionProps {
   showAll: boolean;
   /** Card positions by payment envelope, for the Card payments section */
   cards?: Map<string, CardPosition>;
+  /** Ticks for the inspector; the Card payments section has none (BUD-10 covers envelopes) */
+  selectedIds?: ReadonlySet<string>;
+  onToggleSelect?: (id: string) => void;
 }
 
 function BudgetTypeSection({
@@ -496,6 +568,8 @@ function BudgetTypeSection({
   onApplyBulk,
   showAll,
   cards,
+  selectedIds,
+  onToggleSelect,
 }: BudgetTypeSectionProps) {
   // Once something's planned, a section with no money in it at all starts collapsed
   const [collapsed, setCollapsed] = useState(
@@ -565,6 +639,8 @@ function BudgetTypeSection({
               isIncome={false}
               editingId={editingId}
               month={month}
+              selected={selectedIds?.has(cat.id) ?? false}
+              onToggleSelect={onToggleSelect}
               onStartEdit={onStartEdit}
               onSave={(cents) => onSave(cat.id, cents)}
               onCancel={onCancel}
@@ -604,6 +680,14 @@ export default function BudgetPage() {
   const [paydayView, setPaydayView] = useState(false);
   const { selectedMonth, setSelectedMonth } = useAppStore();
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Envelopes ticked for the inspector (BUD-10). Ticking changes no money
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
+  const toggleSelected = (id: string) =>
+    setSelectedIds((now) => {
+      const next = new Set(now);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
   const [incomeCollapsed, setIncomeCollapsed] = useState(false);
   const [expensesCollapsed, setExpensesCollapsed] = useState(false);
   const [query, setQuery] = useState('');
@@ -1159,6 +1243,8 @@ export default function BudgetPage() {
                         onCancel={() => setEditingId(null)}
                         onApplyBulk={handleApplyBulk}
                         showAll={showEvery}
+                        selectedIds={selectedIds}
+                        onToggleSelect={toggleSelected}
                       />
                     ))}
 
@@ -1216,8 +1302,18 @@ export default function BudgetPage() {
         <div
           className={`w-80 max-md:w-full shrink-0 border-l max-md:border-l-0 max-md:border-b border-border p-4 self-start max-md:self-stretch sticky max-md:static top-0 ${needle ? 'max-md:hidden' : ''}`}
         >
-          {/* On a phone, Ready to assign comes first: card payments and moves follow it */}
+          {/* On a phone, Ready to assign comes first: the inspector, card payments and moves
+              follow it */}
           <div className="flex flex-col">
+            <div className="max-md:order-last">
+              <BudgetInspector
+                month={selectedMonth}
+                categories={allExpenseCats}
+                selectedIds={selectedIds}
+                onClear={() => setSelectedIds(new Set())}
+                onFundSelected={(ids) => fundTargetsRef.current?.open(ids)}
+              />
+            </div>
             <div className="max-md:order-last">
               <CardPayments
                 key={`cards:${selectedMonth}`}
