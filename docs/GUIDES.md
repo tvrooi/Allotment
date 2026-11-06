@@ -85,4 +85,6 @@ Each article is linked from the page it explains with `<GuideLink page="…">` (
 `learnMore`). `userGuide/articles.test.ts` fails when a page has no article or an article is linked
 from nowhere in the app; `e2e/tests/user-guide.spec.ts` follows the links. To add one: add the page
 to `DOCS_PAGES`, write the article (a few short sections, words from docs/GLOSSARY.md, only what
-the app really does), and link it from its page.
+the app really does), and link it from its page. A link inside a dialog passes `onClick` to close
+it, since some dialogs (the sidebar's) stay mounted across pages. Nothing links to the upstream
+FlyBudget site, whose guide describes a different app; the same test checks that.

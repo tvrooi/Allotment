@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { AlertTriangle, Check, Copy, ExternalLink, FileKey2, Loader2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  BookOpen,
+  Check,
+  Copy,
+  ExternalLink,
+  FileKey2,
+  Loader2,
+} from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useCanSave } from '../../hooks/useConnection';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
@@ -8,12 +16,10 @@ import {
   useEnableBankingStatus,
   useRemoveEnableBankingConfig,
 } from '../../hooks/useEnableBanking';
-import { upstreamDocsUrl } from '../../utils/project';
+import { GuideLink } from '../guide/GuideLink';
 import type { EnableBankingConfigureResult } from '../../types';
 
 const CONTROL_PANEL_URL = 'https://enablebanking.com/cp/applications';
-// Enable Banking's own setup steps are in the upstream FlyBudget guide, which Allotment is built on
-export const ENABLE_BANKING_GUIDE_URL = `${upstreamDocsUrl('bank-sync')}#enable-banking`;
 
 const inputClass =
   'w-full text-sm border border-border rounded-md px-3 py-2 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600';
@@ -64,8 +70,11 @@ const environmentLabel = (env: string | null) =>
  */
 export function EnableBankingSetupForm({
   onConfigured,
+  onOpenGuide,
 }: {
   onConfigured?: (result: EnableBankingConfigureResult) => void;
+  /** Called when the guide link is followed, so a dialog around the form can close */
+  onOpenGuide?: () => void;
 }) {
   const { data: status } = useEnableBankingStatus();
   const configure = useConfigureEnableBanking();
@@ -267,14 +276,13 @@ export function EnableBankingSetupForm({
             Cancel
           </Button>
         )}
-        <a
-          href={ENABLE_BANKING_GUIDE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700 font-medium ml-auto"
+        <GuideLink
+          page="enable-banking"
+          onClick={onOpenGuide}
+          className="inline-flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700 font-medium ml-auto max-md:min-h-11"
         >
-          Step-by-step guide <ExternalLink size={11} />
-        </a>
+          <BookOpen size={11} aria-hidden /> Step-by-step guide
+        </GuideLink>
       </div>
       {configure.isError && (
         <p className="text-xs text-negative" role="alert">

@@ -32,7 +32,8 @@ import type {
 import type { EnableBankingMappingAction } from '../../api/enableBanking';
 import { IS_DEMO } from '../../demo/demoApi';
 import { NotInDemoModal } from '../demo/NotInDemo';
-import { ENABLE_BANKING_GUIDE_URL, EnableBankingSetupForm } from './EnableBankingSetupForm';
+import { EnableBankingSetupForm } from './EnableBankingSetupForm';
+import { GuideLink } from '../guide/GuideLink';
 
 /** Countries Enable Banking connects banks in (the EEA) */
 const COUNTRIES = [
@@ -217,7 +218,7 @@ function ConnectEnableBankingDialog({ isOpen, onClose, reconnect }: Props) {
             Allotment connects to European banks through your own free Enable Banking application.
             Set it up once:
           </p>
-          <EnableBankingSetupForm onConfigured={() => setStep('bank')} />
+          <EnableBankingSetupForm onConfigured={() => setStep('bank')} onOpenGuide={handleClose} />
         </div>
       ) : effectiveStep === 'bank' ? (
         <BankPicker
@@ -829,14 +830,9 @@ function SyncDone({
       <p className="text-2xs text-text-tertiary max-w-sm mx-auto">
         Allotment syncs when it starts and when you click Sync now. Banks allow only a few automatic
         updates a day.{' '}
-        <a
-          href={ENABLE_BANKING_GUIDE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-brand-600"
-        >
+        <GuideLink page="enable-banking" onClick={onClose} className="text-brand-600">
           How syncing works
-        </a>
+        </GuideLink>
       </p>
       <Button onClick={onClose} className="mt-2">
         Done

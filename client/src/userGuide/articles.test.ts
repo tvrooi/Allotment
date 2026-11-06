@@ -30,6 +30,18 @@ describe('the user guide', () => {
     }
   });
 
+  it('no page links to the upstream FlyBudget site: its guide describes a different app', () => {
+    const sources = Object.entries(
+      import.meta.glob<string>('../**/*.{ts,tsx}', {
+        query: '?raw',
+        import: 'default',
+        eager: true,
+      }),
+    ).filter(([path]) => !path.endsWith('articles.test.ts'));
+    const linking = sources.filter(([, text]) => text.includes('flybudget.org')).map(([p]) => p);
+    expect(linking).toEqual([]);
+  });
+
   it('finds an article by its page, and nothing for an unknown one', () => {
     expect(articleFor('payday-plans')?.title).toBe('Payday plans');
     expect(articleFor('long-term-forecast')?.title).toBe('Long-term forecast');

@@ -6,12 +6,6 @@
 export const SOURCE_CODE_URL = 'https://github.com/tvrooi/Allotment';
 export const LICENSE_URL = 'https://www.gnu.org/licenses/agpl-3.0.html';
 
-/**
- * The upstream FlyBudget website, which Allotment is built on. Allotment's own guide is served
- * by the app at /guide (client/src/userGuide); only a few detailed setup pages link upstream.
- */
-export const WEBSITE_URL = 'https://flybudget.org';
-
 /** Where people report bugs and ask for features */
 export const ISSUES_URL = 'https://github.com/tvrooi/Allotment/issues';
 
@@ -27,6 +21,7 @@ export const DOCS_PAGES = [
   'accounts',
   'transactions',
   'bank-sync',
+  'enable-banking',
   'budgeting',
   'move-money',
   'payday-plans',
@@ -45,6 +40,3 @@ export const DOCS_PAGES = [
 
 /** A page of Allotment's guide (/guide/<page>), e.g. `<GuideLink page="budgeting">` */
 export type DocsPage = (typeof DOCS_PAGES)[number];
-
-/** The same topic in the upstream FlyBudget guide, for setup details Allotment's guide skips */
-export const upstreamDocsUrl = (page: DocsPage) => `${WEBSITE_URL}/docs/${page}`;

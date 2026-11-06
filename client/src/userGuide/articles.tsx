@@ -134,10 +134,101 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
           <p>
             Any bank: add the account and import the CSV files your bank exports (see{' '}
             <L to="transactions">Transactions</L>). Allotment can also connect through Plaid,
-            SimpleFIN and Enable Banking (Europe). Those are community supported: they work, but
-            only Up is checked with every release, so if one stops working for your bank, CSV files
-            still do.
+            SimpleFIN and <L to="enable-banking">Enable Banking</L> (Europe). Those are community
+            supported: they work, but only Up is checked with every release, so if one stops working
+            for your bank, CSV files still do.
           </p>
+        ),
+      },
+    ],
+  },
+  {
+    page: 'enable-banking',
+    title: 'Enable Banking (Europe)',
+    summary: 'Connect a bank in Europe through your own free Enable Banking application.',
+    sections: [
+      {
+        heading: 'What you need',
+        body: (
+          <p>
+            A bank in the European Economic Area and a free account with Enable Banking, which
+            connects to banks under Europe’s open banking rules. You make your own application there
+            once; Allotment uses it to read your accounts. It can’t move money. Enable Banking is
+            community supported: if it stops working for your bank, CSV files still do.
+          </p>
+        ),
+      },
+      {
+        heading: 'Set up your application',
+        body: (
+          <ol>
+            <li>
+              In Allotment, open Settings → Connected banks → <b>Enable Banking</b>, or choose{' '}
+              <b>Connect via Enable Banking</b> when you add an account. The setup form shows your
+              redirect URL with a <b>Copy</b> button.
+            </li>
+            <li>
+              Sign up in Enable Banking’s Control Panel at{' '}
+              <span className="font-mono">enablebanking.com/cp/applications</span> and create a{' '}
+              <b>Production</b> application. A Sandbox one only reaches test banks.
+            </li>
+            <li>Paste the redirect URL into the application’s redirect URLs.</li>
+            <li>
+              Save the <b>.pem</b> file your browser downloads. It’s the application’s private key,
+              and Enable Banking can’t show it again.
+            </li>
+            <li>
+              Choose <b>Activate by linking accounts</b> and log in to your bank there. A free
+              application only reaches the accounts you link, so link every account you want in
+              Allotment.
+            </li>
+            <li>
+              Back in Allotment, paste the application ID, choose the .pem file and select{' '}
+              <b>Check and save</b>. Allotment asks Enable Banking whether they work before saving
+              them, and warns you if the redirect URL isn’t on the application yet.
+            </li>
+          </ol>
+        ),
+      },
+      {
+        heading: 'Connect your bank',
+        body: (
+          <ol>
+            <li>Pick your country and your bank, then log in on your bank’s own site.</li>
+            <li>
+              Your bank sends you back and Allotment carries on by itself. If it can’t (on a server
+              without HTTPS, say), copy the whole address from your browser’s address bar and paste
+              it into Allotment.
+            </li>
+            <li>
+              Choose where each bank account goes: an account you already have, or a new one.
+              Accounts you already import statements into are picked for you, and transactions you
+              imported from files are recognised, not added twice.
+            </li>
+          </ol>
+        ),
+      },
+      {
+        heading: 'Keeping it up to date',
+        body: (
+          <ul>
+            <li>
+              Allotment syncs when it starts and when you choose <b>Sync now</b>. Banks allow only a
+              few automatic updates a day.
+            </li>
+            <li>
+              Only booked transactions come in, in the account’s own currency. Pending ones wait
+              until the bank books them.
+            </li>
+            <li>
+              Banks give access for a few months at most (180 days under the rules). Settings →
+              Connected banks says when it ends; choose <b>Reconnect</b> and log in again. Your
+              accounts and history stay as they are.
+            </li>
+            <li>
+              Your private key is stored encrypted and is never included in backups or exports.
+            </li>
+          </ul>
         ),
       },
     ],

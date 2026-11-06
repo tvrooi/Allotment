@@ -206,7 +206,7 @@ export const proxyConfigWarning: RequestHandler = (req, _res, next) => {
     console.warn(
       'Allotment is behind a reverse proxy, but FLYBUDGET_TRUST_PROXY is not set. Set it to ' +
         'the number of proxies in front of Allotment (usually 1) so HTTPS and client ' +
-        'addresses are detected: https://flybudget.org/community/self-hosting',
+        'addresses are detected: https://github.com/tvrooi/Allotment/blob/main/docs/START-HERE.md',
     );
   }
   next();
