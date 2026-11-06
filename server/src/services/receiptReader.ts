@@ -173,7 +173,8 @@ const ollama = (
 
 /**
  * Ask the chosen model about one photo and return its text answer. `schema`, when given, asks
- * for JSON in that shape (the local server and OpenAI enforce it; Anthropic is asked to).
+ * for JSON in that shape: the local server and Anthropic enforce the schema itself (Anthropic
+ * through structured outputs), OpenAI only that the answer is a JSON object.
  */
 async function askImage(
   s: ReturnType<typeof readerSettings>,
@@ -190,8 +191,10 @@ async function askImage(
       headers: { 'x-api-key': apiKey() ?? '', 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model,
-        max_tokens: 4096,
-        temperature: 0,
+        // Current models think before answering, and that counts towards this limit
+        max_tokens: 16_000,
+        // No temperature: current Claude models refuse a non-default one with an error
+        ...(schema && { output_config: { format: { type: 'json_schema', schema } } }),
         messages: [
           {
             role: 'user',
@@ -202,7 +205,12 @@ async function askImage(
           },
         ],
       }),
-    })) as { content?: { type?: string; text?: unknown }[] };
+    })) as { stop_reason?: unknown; content?: { type?: string; text?: unknown }[] };
+    // Either way the answer may not follow the schema, so it is not read at all
+    if (body.stop_reason === 'refusal')
+      throw new ReceiptError('Anthropic declined to read this photo', 502);
+    if (body.stop_reason === 'max_tokens')
+      throw new ReceiptError("Anthropic's answer was cut off before it finished", 502);
     const answer = body.content?.find((c) => c.type === 'text')?.text;
     if (typeof answer !== 'string') throw new ReceiptError('Anthropic sent no answer', 502);
     return answer;
@@ -305,10 +313,13 @@ const REPLY_SCHEMA = {
           category: { type: ['string', 'null'] },
         },
         required: ['description', 'amount', 'category'],
+        additionalProperties: false,
       },
     },
   },
   required: ['merchant', 'date', 'total', 'subtotal', 'tax', 'tip', 'items'],
+  // Anthropic's structured outputs accept a schema only when every object is closed
+  additionalProperties: false,
 };
 
 function prompt(categoryNames: string[]) {
