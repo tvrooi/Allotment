@@ -20,7 +20,11 @@ async function brokenAmounts(page: Page) {
       const box = range.getBoundingClientRect();
       if (box.width === 0) continue;
       if (lines.size > 1) problems.push(`${text} breaks over ${lines.size} lines`);
-      if (box.right > window.innerWidth + 1 || box.left < -1)
+      // A table that scrolls sideways on purpose may hold amounts past the edge (as
+      // overflow.ts allows): those must still be whole, but needn't be on screen
+      const scroller = (el: Element | null): boolean =>
+        !!el && (/auto|scroll/.test(getComputedStyle(el).overflowX) || scroller(el.parentElement));
+      if ((box.right > window.innerWidth + 1 || box.left < -1) && !scroller(node.parentElement))
         problems.push(`${text} runs off screen`);
     }
     return problems;
@@ -55,6 +59,8 @@ for (const width of [320, 390]) {
     await open(page, `/reports/widget/${netWorth.id}`);
     // Assets $1,400,473.07 and liabilities −$1,234,567.89 in the detail's summary tiles
     await expect(page.getByRole('main')).toContainText('1,400,473.07');
+    // Its table too, so the amounts in it are checked whatever order they load in
+    await expect(page.getByRole('main').getByRole('table')).toContainText('165,905.18');
     expect(await brokenAmounts(page)).toEqual([]);
 
     await open(page, '/dashboard');
