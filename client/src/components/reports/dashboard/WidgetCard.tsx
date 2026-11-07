@@ -96,7 +96,11 @@ export default function WidgetCard({ widget, report, pages, dashboardRange, edit
 
   return (
     <div
-      onClick={() => !editing && navigate(openPath)}
+      onClick={(e) => {
+        // A link inside the card (a table row's "View transactions") goes where it points
+        if (editing || (e.target as Element).closest('a[href]')) return;
+        navigate(openPath);
+      }}
       className={`h-full bg-surface rounded-lg border p-3 transition-all @container ${
         editing
           ? 'border-dashed border-brand-300 cursor-move'

@@ -119,6 +119,13 @@ test('a custom report table row opens the transactions that make it up', async (
     },
   });
 
+  // On the dashboard, where the table sits in a card that opens the report when clicked, the
+  // link still goes to Transactions
+  await open(page, '/reports');
+  await page.getByRole('link', { name: 'View transactions: Groceries' }).click();
+  await expect(page).toHaveURL(/transactions/);
+  await expect(page.getByRole('main').getByText(/^Net\s*[−-]\$100(\.00)?$/)).toBeVisible();
+
   await open(page, `/reports/custom/${report.id}`);
   // $40 + the $60 part of the split; the refund is income, not counted against it
   const row = page.getByRole('row').filter({ hasText: 'Groceries' });
