@@ -160,7 +160,7 @@ test.describe('preferences', () => {
   test('persist across reloads', async ({ page, api }) => {
     await api.createAccount('Checking', 123_456);
     await open(page, '/settings');
-    await page.getByRole('button', { name: 'Preferences' }).click();
+    await page.getByRole('tab', { name: 'Preferences' }).click();
     // The dark theme is applied to the page and remembered
     await page.getByRole('main').getByRole('button', { name: 'Dark', exact: true }).click();
     await expect(page.locator('html')).toHaveClass(/dark/);
@@ -178,7 +178,7 @@ test.describe('preferences', () => {
     await expect(page.locator('html')).toHaveClass(/dark/);
     expect((await themeColour()).meta).toBe(dark.meta);
     // Back to light, the status bar follows
-    await page.getByRole('button', { name: 'Preferences' }).click();
+    await page.getByRole('tab', { name: 'Preferences' }).click();
     await page.getByRole('main').getByRole('button', { name: 'Light', exact: true }).click();
     await expect(page.locator('html')).not.toHaveClass(/dark/);
     const light = await themeColour();
@@ -195,7 +195,7 @@ test.describe('preferences', () => {
       payeeName: 'Miete',
     });
     await open(page, '/settings');
-    await page.getByRole('button', { name: 'Preferences' }).click();
+    await page.getByRole('tab', { name: 'Preferences' }).click();
     const main = page.getByRole('main');
     // Automatic follows the browser's language (en-US in the tests)
     await expect(main).toContainText('Example: -$1,234.56');
@@ -253,13 +253,13 @@ test.describe('preferences', () => {
       payeeName: 'Bäckerei',
     });
     await open(page, '/settings');
-    await page.getByRole('button', { name: 'Preferences' }).click();
+    await page.getByRole('tab', { name: 'Preferences' }).click();
     await page
       .getByRole('main')
       .getByRole('group', { name: 'Number format' })
       .getByRole('button', { name: '1.234,56' })
       .click();
-    await page.getByRole('button', { name: 'Data' }).click();
+    await page.getByRole('tab', { name: 'Data' }).click();
     // The Data tab says how the file will be written
     await expect(page.getByRole('main')).toContainText(
       'Amounts are written like -12,50, with semicolons between columns',

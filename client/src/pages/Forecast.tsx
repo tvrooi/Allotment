@@ -3,7 +3,8 @@ import { CashRunway } from '../components/forecast/CashRunway';
 import { GuideLink } from '../components/guide/GuideLink';
 import { LongTermForecast } from '../components/longterm/LongTermForecast';
 import { PrivateSection } from '../components/ui/Private';
-import { onTabListKeyDown } from '../components/ui/tabList';
+import { tabIds } from '../components/ui/tabList';
+import { TabList } from '../components/ui/TabList';
 
 // The Forecast page: the long-term, decades-long view first, with the cash runway (the next
 // 30 days to two years) as its second tab. Neither writes to the budget.
@@ -31,18 +32,18 @@ export default function ForecastPage() {
             </GuideLink>
           )}
         </div>
-        <div
+        <TabList
+          label="Forecast view"
           data-guide="forecast.tabs"
           className="scroll-row flex gap-1 mt-3 -mb-px"
-          role="tablist"
-          aria-label="Forecast view"
-          onKeyDown={onTabListKeyDown}
         >
           {TABS.map((t) => (
             <button
               key={t.id}
               type="button"
               role="tab"
+              id={tabIds('forecast', t.id).tab}
+              aria-controls={tabIds('forecast', t.id).panel}
               aria-selected={tab === t.id}
               tabIndex={tab === t.id ? 0 : -1}
               onClick={() =>
@@ -57,11 +58,17 @@ export default function ForecastPage() {
               {t.label}
             </button>
           ))}
-        </div>
+        </TabList>
       </div>
-      <PrivateSection title="Forecasts are hidden in Safe mode">
-        {tab === 'cash' ? <CashRunway /> : <LongTermForecast />}
-      </PrivateSection>
+      <div
+        role="tabpanel"
+        id={tabIds('forecast', tab).panel}
+        aria-labelledby={tabIds('forecast', tab).tab}
+      >
+        <PrivateSection title="Forecasts are hidden in Safe mode">
+          {tab === 'cash' ? <CashRunway /> : <LongTermForecast />}
+        </PrivateSection>
+      </div>
     </div>
   );
 }

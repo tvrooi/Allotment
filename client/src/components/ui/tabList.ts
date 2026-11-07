@@ -22,3 +22,13 @@ export function onTabListKeyDown(e: KeyboardEvent<HTMLElement>) {
   tabs[next].focus();
   tabs[next].click();
 }
+
+/**
+ * Matching ids for a tab and the panel it shows: the tab gets `id={tab}` and
+ * `aria-controls={panel}`, the panel `role="tabpanel"`, `id={panel}` and
+ * `aria-labelledby={tab}`, so a screen reader names what the content belongs to.
+ */
+export const tabIds = (prefix: string, id: string) => ({
+  tab: `${prefix}-tab-${id}`,
+  panel: `${prefix}-panel-${id}`,
+});

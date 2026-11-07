@@ -19,7 +19,7 @@ Last updated: 7 November 2026 (live app on up.129: D2a email codes, D2b reminder
   Follow-up PRs in order: A (AU-003, 009, 012, 013; 0.2.0-up.132, merged), B amounts on one
   line (AU-008; 0.2.0-up.133, merged), C modal focus (AU-001; 0.2.0-up.134, merged), D save and delete feedback
   (AU-005/006; 0.2.0-up.135, merged), E load errors
-  (AU-004; 0.2.0-up.136, merged), F unsaved drafts (AU-007; 0.2.0-up.137), G tabs (AU-010), H report drill-through (AU-014); AU-002/011
+  (AU-004; 0.2.0-up.136, merged), F unsaved drafts (AU-007; 0.2.0-up.137, merged), G tabs (AU-010; 0.2.0-up.138), H report drill-through (AU-014); AU-002/011
   after task validation. Each finding's heading in the report carries its status.
 
 - **Households, round-ups, Essentials pool and brand icons (up.131; owner-requested 7 November

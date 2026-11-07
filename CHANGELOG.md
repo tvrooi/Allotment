@@ -1,5 +1,12 @@
 # Changes
 
+## 0.2.0-up.138
+
+From the UI and UX audit (`docs/UX-UI-AUDIT.md`, finding AU-010).
+
+- **Recurring and Settings tabs work like the others.** **Monthly** / **All recurring** and the Settings sections are now proper tabs, as on Forecast, Tax and Transactions. Screen readers say which one is open. With the keyboard, Tab reaches the open tab, the Left and Right arrows move between tabs (Home and End go to the first and last), and Tab again goes on to the content. A link to a Settings section still opens it.
+- Screen readers now say which tab the content below belongs to on Recurring, Settings and Forecast.
+
 ## 0.2.0-up.137
 
 From the UI and UX audit (`docs/UX-UI-AUDIT.md`, finding AU-007).

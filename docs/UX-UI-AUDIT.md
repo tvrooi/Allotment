@@ -329,6 +329,8 @@ Test: `e2e/tests/unsaved-drafts.spec.ts`, at desktop and 390 px, including a sav
 
 **P2 · Accessibility / consistency · Shared · Effort M · Confidence High source; keyboard validation incomplete.**
 
+**Status: fixed in 0.2.0-up.138.** One shared `components/ui/TabList.tsx` now gives Recurring, Forecast, Tax and Transactions their tab list, and Settings uses the same pattern through `ScrollCue`: `role="tablist"`, `role="tab"`, `aria-selected`, a roving `tabIndex`, and `components/ui/tabList.ts` `onTabListKeyDown` for the arrow keys, Home and End. Settings, inside `ScrollCue` through its `scrollerProps`, keeps its URL `?tab=` (with `replace`). Recurring, Settings and Forecast label their content `role="tabpanel"`, using `tabIds()` from the same file. Test: `e2e/tests/tabs.spec.ts`, at desktop and 390 px; it fails without the change. Existing tests now find these controls as tabs. The shared `TabList` also cleared four `interactive-supports-focus` lint warnings (the cap is now 152). Still open: Tax and Transactions' panels aren't labelled yet. A screen-reader walkthrough was not done.
+
 - **Reproduce / state:** Compare Recurring Monthly/All recurring, Settings sections and Forecast tabs.
 - **Evidence / source:** `pages/RecurringTransactions.tsx:104` styles buttons without the tab semantics used by Forecast.tsx:35; Settings.tsx:79 uses aria-current on buttons. Captures recurring-390-demo/settings-390-demo/forecast-390-demo show similar visual tab treatments.
 - **Current → impact:** Visually similar controls communicate different selection/navigation models. A styled underline alone is insufficient for assistive technology.

@@ -681,7 +681,7 @@ test.describe('export, backup and restore', () => {
       payeeName: '=HYPERLINK("http://evil.example")',
     });
     await open(page, '/settings');
-    await page.getByRole('button', { name: 'Data' }).click();
+    await page.getByRole('tab', { name: 'Data' }).click();
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download CSV' }).click();
     const csv = fs.readFileSync(await (await download).path(), 'utf8');
@@ -703,7 +703,7 @@ test.describe('export, backup and restore', () => {
     await api.call('POST', '/goals', { name: 'Vacation', targetAmount: 200_000 });
 
     await open(page, '/settings');
-    await page.getByRole('button', { name: 'Data' }).click();
+    await page.getByRole('tab', { name: 'Data' }).click();
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download backup' }).click();
     const backupFile = await (await download).path();
@@ -742,7 +742,7 @@ test.describe('export, backup and restore', () => {
   test('restoring a file that is not a backup changes nothing', async ({ page, api }) => {
     await api.createAccount('Checking', 50_000);
     await open(page, '/settings');
-    await page.getByRole('button', { name: 'Data' }).click();
+    await page.getByRole('tab', { name: 'Data' }).click();
     await page.getByLabel('Backup file').setInputFiles({
       name: 'notes.json',
       mimeType: 'application/json',

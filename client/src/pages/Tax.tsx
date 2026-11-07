@@ -26,9 +26,9 @@ import {
 } from '../hooks/useTax';
 import { formatCurrency } from '../utils/currency';
 import { formatDay } from '../utils/dates';
-import { onTabListKeyDown } from '../components/ui/tabList';
 import { AssetsTab, type AssetPrefill } from '../components/tax/Assets';
 import { ASSET_LABELS, type AssetLabel } from '../api/assets';
+import { TabList } from '../components/ui/TabList';
 
 // Tax time (docs/RECEIPTS-AND-TAX.md): a financial year's deductions by return label, with
 // their receipts, and the inbox of receipts not yet matched to a transaction. Record keeping
@@ -56,12 +56,10 @@ export default function TaxPage() {
             How Tax time works
           </GuideLink>
         </p>
-        <div
+        <TabList
+          label="Tax view"
           data-guide="tax.tabs"
           className="scroll-row flex gap-1 mt-3 -mb-px"
-          role="tablist"
-          aria-label="Tax view"
-          onKeyDown={onTabListKeyDown}
         >
           {TABS.map((t) => (
             <button
@@ -82,7 +80,7 @@ export default function TaxPage() {
               {t.label}
             </button>
           ))}
-        </div>
+        </TabList>
       </div>
       <div className="flex-1 overflow-y-auto px-6 py-5 max-md:px-4">
         {tab === 'inbox' ? <Inbox /> : tab === 'assets' ? <AssetsTab /> : <Deductions />}

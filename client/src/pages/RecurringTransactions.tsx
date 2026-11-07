@@ -19,8 +19,10 @@ import {
   useScheduleOccurrences,
 } from '../hooks/useSchedules';
 import type { Schedule } from '../types';
+import { tabIds } from '../components/ui/tabList';
 import { format, subDays, addDays } from 'date-fns';
 import { nearMissDraft, type ScheduleDraft } from '../utils/nearMiss';
+import { TabList } from '../components/ui/TabList';
 
 const tabs = [
   { id: 'monthly' as const, label: 'Monthly' },
@@ -101,10 +103,20 @@ export default function RecurringTransactionsPage() {
           >
             Recurring
           </h1>
-          <div data-guide="recurring.tabs" className="flex gap-1 self-stretch">
+          <TabList
+            label="Recurring view"
+            data-guide="recurring.tabs"
+            className="flex gap-1 self-stretch"
+          >
             {tabs.map((tab) => (
               <button
                 key={tab.id}
+                type="button"
+                role="tab"
+                id={tabIds('recurring', tab.id).tab}
+                aria-controls={tabIds('recurring', tab.id).panel}
+                aria-selected={activeTab === tab.id}
+                tabIndex={activeTab === tab.id ? 0 : -1}
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-2 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px cursor-pointer ${
                   activeTab === tab.id
@@ -115,7 +127,7 @@ export default function RecurringTransactionsPage() {
                 {tab.label}
               </button>
             ))}
-          </div>
+          </TabList>
         </div>
         <div className="flex items-center gap-2 py-2">
           <Button
@@ -139,7 +151,12 @@ export default function RecurringTransactionsPage() {
       <MatchSuggestionsPanel />
       <PossiblyEndedPanel allRecurring={allRecurring} />
 
-      <div className="flex-1 overflow-y-auto">
+      <div
+        className="flex-1 overflow-y-auto"
+        role="tabpanel"
+        id={tabIds('recurring', activeTab).panel}
+        aria-labelledby={tabIds('recurring', activeTab).tab}
+      >
         {activeTab === 'monthly' && (
           <MonthlyTab
             onEdit={handleEdit}
