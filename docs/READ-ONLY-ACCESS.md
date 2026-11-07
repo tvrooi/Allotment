@@ -147,25 +147,25 @@ It answers at most 300 requests a minute, with at most 20 messages in one JSON-R
 
 Its read tools:
 
-| Tool                                                  | What it reads                                                                                                          |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `list_accounts`, `list_categories`, `list_payees`     | Accounts and balances; the category tree; payees, with the ids other tools take                                        |
-| `list_tags`, `list_rules`, `list_goals`               | Tags with usage counts; categorisation rules; goals and their funding                                                  |
-| `budget_month`, `budget_summary`                      | One month of the envelope budget; available, reserved, overspent and card payment figures                              |
-| `annual_overview`                                     | A calendar year of assignments and activity, with planned months                                                       |
-| `find_transactions`, `transaction_summary`            | Transactions matching the phase 8/9 filters (up to 500); count, money in/out, net, date span                           |
-| `income_vs_expenses`, `spending_by_category`          | Monthly income and spending; spending per category                                                                     |
-| `spending_by_merchant`                                | Spending per payee                                                                                                     |
-| `budget_review`, `financial_resilience`               | The budget review's open items; reserve and months of essentials                                                       |
-| `long_term_plans`, `long_term_plan`                   | Saved long-term forecast plans; one plan's settings, life events and savings splits                                    |
-| `long_term_forecast`, `long_term_compare`             | A plan's year-by-year result; two plans side by side                                                                   |
-| `uncategorised_payees`, `transfer_suggestions`        | Uncategorised transactions grouped by payee; unlinked pairs that look like transfers                                   |
-| `budget_start`, `bank_sync_status`                    | The first budget month; each synced account's bank against register balance and round-ups                              |
-| `list_households`, `household`, `household_statement` | Household groups and pool accounts; one group's people, events and balances; your share, by month, person and category |
-| `household_contribution_suggestions`                  | Deposits that look like someone paying the household or you, not recorded yet                                          |
-| `household_bill_reconciliation`                       | One shared recurring bill person by person: shares owed, matched deposits, what's left to record                       |
-| `list_change_sets`                                    | This token's category changes, each undoable                                                                           |
-| `budget_housekeeping`, `list_budget_proposals`        | Setup problems (budget start, missing round-ups, unknown savers, unused categories); assignment suggestions            |
+| Tool                                                  | What it reads                                                                                                                                                   |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `list_accounts`, `list_categories`, `list_payees`     | Accounts and balances; the category tree; payees, with the ids other tools take                                                                                 |
+| `list_tags`, `list_rules`, `list_goals`               | Tags with usage counts; categorisation rules; goals and their funding                                                                                           |
+| `budget_month`, `budget_summary`                      | One month of the envelope budget; available, reserved, overspent and card payment figures                                                                       |
+| `annual_overview`                                     | A calendar year of assignments and activity, with planned months                                                                                                |
+| `find_transactions`, `transaction_summary`            | Transactions matching the phase 8/9 filters (up to 500); count, money in/out, net, date span                                                                    |
+| `income_vs_expenses`, `spending_by_category`          | Monthly income and spending; spending per category                                                                                                              |
+| `spending_by_merchant`                                | Spending per payee                                                                                                                                              |
+| `budget_review`, `financial_resilience`               | The budget review's open items; reserve and months of essentials                                                                                                |
+| `long_term_plans`, `long_term_plan`                   | Saved long-term forecast plans; one plan's settings, life events and savings splits                                                                             |
+| `long_term_forecast`, `long_term_compare`             | A plan's year-by-year result; two plans side by side                                                                                                            |
+| `uncategorised_payees`, `transfer_suggestions`        | Uncategorised transactions grouped by payee and whose money (personal, household, off budget; housemate payees marked); unlinked pairs that look like transfers |
+| `budget_start`, `bank_sync_status`                    | The first budget month; each synced account's bank against register balance and round-ups                                                                       |
+| `list_households`, `household`, `household_statement` | Household groups and pool accounts; one group's people, events and balances; your share, by month, person and category                                          |
+| `household_contribution_suggestions`                  | Deposits that look like someone paying the household or you, not recorded yet                                                                                   |
+| `household_bill_reconciliation`                       | One shared recurring bill person by person: shares owed, matched deposits, what's left to record                                                                |
+| `list_change_sets`                                    | This token's category changes, each undoable                                                                                                                    |
+| `budget_housekeeping`, `list_budget_proposals`        | Setup problems (budget start, missing round-ups, unknown savers, unused categories, recurring bills with no category); assignment suggestions                   |
 
 `find_transactions` pages with `limit` and `offset`, and `fields` (for example
 `id,date,amount,payeeName,categoryId`) keeps each result short. `bank_sync_status` has no

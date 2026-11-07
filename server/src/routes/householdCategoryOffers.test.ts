@@ -5,7 +5,7 @@ import type { AddressInfo } from 'net';
 import { eq } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { db } from '../db/index.js';
-import { accounts, categories, categoryGroups, transactions } from '../db/schema.js';
+import { accounts, categories, categoryGroups, payees, transactions } from '../db/schema.js';
 import { householdsRouter } from './households.js';
 
 // Audit decision I-8: a repayment to you is offered a category from what the repayer owed you
@@ -107,5 +107,92 @@ describe('categorising a repayment back to what it paid for', () => {
       .run();
     expect((await call(`/${g.group.id}/category-offers`)).data).toEqual([]);
     expect((await call('/missing/category-offers')).status).toBeGreaterThanOrEqual(400);
+  });
+});
+
+describe('categorising your repayment to someone back to what you owed them for', () => {
+  it('offers the categories of your shares of what they paid, from the payees they name', async () => {
+    db.insert(categories).values({ id: 'dining', groupId: 'g', name: 'Restaurants' }).run();
+    db.insert(payees)
+      .values([
+        // A default category wins
+        { id: 'cafe', name: 'Corner Cafe', defaultCategoryId: 'dining' },
+        // Otherwise the category you use most for that payee
+        { id: 'bakery', name: 'Bakery' },
+      ])
+      .run();
+    const mine = (id: string, payeeId: string, categoryId: string) =>
+      db
+        .insert(transactions)
+        .values({ id, accountId: 'mine', date: '2026-09-01', amount: -500, payeeId, categoryId })
+        .run();
+    mine('b1', 'bakery', 'groceries');
+    mine('b2', 'bakery', 'groceries');
+    mine('b3', 'bakery', 'power');
+    db.insert(transactions)
+      .values({
+        id: 'to-sam',
+        accountId: 'mine',
+        date: '2026-10-20',
+        amount: -3500,
+        payeeName: 'Sam',
+      })
+      .run();
+    const g = (
+      await call('', { name: 'Friends', currency: 'AUD', people: ['Me', 'Sam'], selfIndex: 0 })
+    ).data;
+    const [me, sam] = g.people.map((p: { id: string }) => p.id);
+    const half = [
+      { personId: me, value: 1 },
+      { personId: sam, value: 1 },
+    ];
+    // Sam paid these, so none has a bank payment of yours
+    for (const [description, amount] of [
+      ['corner cafe', 4000],
+      ['Bakery', 2000],
+      ['Somewhere unknown', 9000],
+    ] as const)
+      expect(
+        (
+          await call(`/${g.group.id}/events`, {
+            kind: 'expense',
+            date: '2026-10-10',
+            description,
+            amount,
+            payerId: sam,
+            mode: 'weight',
+            shares: half,
+          })
+        ).status,
+      ).toBe(201);
+    const repaid = await call(`/${g.group.id}/events`, {
+      kind: 'settlement',
+      date: '2026-10-20',
+      description: 'Paid Sam back',
+      amount: 3500,
+      payerId: me,
+      recipientId: sam,
+      transactionId: 'to-sam',
+    });
+    expect(repaid.status).toBe(201);
+    const offers = (await call(`/${g.group.id}/category-offers`)).data;
+    expect(offers).toEqual([
+      expect.objectContaining({
+        transactionId: 'to-sam',
+        amount: 3500,
+        direction: 'from_you',
+        payerId: me,
+        personId: sam,
+        candidates: [
+          { categoryId: 'dining', name: 'Restaurants', amount: 2000 },
+          { categoryId: 'groceries', name: 'Groceries', amount: 1000 },
+        ],
+      }),
+    ]);
+    db.update(transactions)
+      .set({ categoryId: 'dining' })
+      .where(eq(transactions.id, 'to-sam'))
+      .run();
+    expect((await call(`/${g.group.id}/category-offers`)).data).toEqual([]);
   });
 });

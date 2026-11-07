@@ -6,13 +6,17 @@ import { Button } from '../ui/Button';
 import { Select } from '../ui/Input';
 import { formatMoney } from '../../utils/currency';
 
-/** A repayment to you whose deposit has no category, with what the repayer owed you for */
+/**
+ * A repayment whose bank row has no category: a deposit from someone who owed you, or your
+ * payment to someone you owed, with what it settled by category
+ */
 interface Offer {
   eventId: string;
   transactionId: string;
   date: string;
   amount: number;
   description: string;
+  direction: 'to_you' | 'from_you';
   candidates: { categoryId: string; name: string; amount: number }[];
 }
 
@@ -26,9 +30,10 @@ function dismissed(): string[] {
 }
 
 /**
- * Audit decision I-8: offer to categorise a repayment back to the shared expense's category, so
- * your personal reports show your share rather than the whole bill plus an uncategorised
- * deposit. Only when you press Categorise; the household ledger never changes.
+ * Audit decision I-8: offer to categorise a repayment back to the shared expenses' category, so
+ * your personal reports show your share: a repayment to you nets against the whole bill you
+ * paid, and your repayment to someone becomes your share of what they paid. Only when you press
+ * Categorise; the household ledger never changes.
  */
 export function RepaymentCategoryOffers({
   groupId,
@@ -68,8 +73,9 @@ export function RepaymentCategoryOffers({
       <div>
         <h2 className="text-sm font-semibold text-text">Categorise repayments</h2>
         <p className="text-xs text-text-tertiary">
-          A repayment in the same category as what it paid for makes your reports show your share,
-          not the whole bill. The household's balances stay as they are.
+          A repayment in the same category as what it paid for makes your reports show your share:
+          money back nets against the whole bill you paid, and money you pay back counts as your
+          share of what they paid. The household's balances stay as they are.
         </p>
       </div>
       <ul className="divide-y divide-border-light">
@@ -79,6 +85,7 @@ export function RepaymentCategoryOffers({
             <li key={o.eventId} className="py-2 flex flex-wrap items-center gap-2">
               <span className="flex-1 min-w-40 text-sm text-text">
                 {o.description}, {formatMoney(o.amount, currency)}
+                {o.direction === 'from_you' && ' (you paid)'}
               </span>
               <Select
                 aria-label={`Category for ${o.description}`}
@@ -88,7 +95,8 @@ export function RepaymentCategoryOffers({
               >
                 {o.candidates.map((c) => (
                   <option key={c.categoryId} value={c.categoryId}>
-                    {c.name} (owed {formatMoney(c.amount, currency)})
+                    {c.name} ({o.direction === 'from_you' ? 'you owed' : 'owed'}{' '}
+                    {formatMoney(c.amount, currency)})
                   </option>
                 ))}
               </Select>

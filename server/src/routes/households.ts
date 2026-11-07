@@ -124,7 +124,8 @@ householdsRouter.post('/', (req, res) =>
   ),
 );
 householdsRouter.get('/:id', (req, res) => run(res, () => snapshot(req.params.id)));
-// Audit decision I-8: repayments to you that could be categorised back to what they paid for
+// Audit decision I-8: repayments, to you or from you, that could be categorised back to what
+// they settled
 householdsRouter.get('/:id/category-offers', (req, res) =>
   run(res, () => {
     snapshot(req.params.id); // refuses an unknown household

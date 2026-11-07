@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { eq } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { db } from '../db/index.js';
 import {
@@ -10,6 +11,7 @@ import {
   householdPeople,
   householdPoolAccounts,
   householdRecurringBills,
+  householdShares,
   payees,
   schedules,
   transactions,
@@ -28,6 +30,7 @@ import { detectSalary } from './importTidy.js';
 beforeAll(() => migrate(db, { migrationsFolder: 'src/db/migrations' }));
 beforeEach(() => {
   for (const table of [
+    householdShares,
     householdEvents,
     householdRecurringBills,
     householdPoolAccounts,
@@ -173,6 +176,52 @@ describe('scheduleScopes', () => {
       .run();
     expect(scopeOf(rent)).toMatchObject({ kind: 'household', role: 'bill', myShare: 120000 });
     expect(scopeOf(internet)).toMatchObject({ kind: 'household', role: 'bill', myShare: 5000 });
+  });
+
+  it('takes the share of a household-account bill from how its latest payment was split', () => {
+    const rent = schedule(-478000, { accountId: 'pool' });
+    // Before anything is shared: the household's default split (the owner's half)
+    expect(scopeOf(rent)).toMatchObject({ role: 'bill', myShare: 239000 });
+    const pay = (id: string, date: string, amount: number, split: [string, number][]) => {
+      db.insert(transactions)
+        .values({ id, accountId: 'pool', date, amount: -amount, scheduleId: rent })
+        .run();
+      db.insert(householdEvents)
+        .values({
+          id: `e-${id}`,
+          groupId: 'hh',
+          kind: 'expense',
+          date,
+          description: 'Rent',
+          amount,
+          transactionId: id,
+        })
+        .run();
+      db.insert(householdShares)
+        .values(
+          split.map(([personId, cents]) => ({
+            id: `${id}-${personId}`,
+            eventId: `e-${id}`,
+            personId,
+            amount: cents,
+          })),
+        )
+        .run();
+    };
+    pay('older', '2026-09-19', 478000, [
+      ['me', 159334],
+      ['juno', 159333],
+      ['kai', 159333],
+    ]);
+    pay('newer', '2026-10-19', 478000, [
+      ['me', 165100],
+      ['juno', 171700],
+      ['kai', 141200],
+    ]);
+    expect(scopeOf(rent)).toMatchObject({ role: 'bill', myShare: 165100 });
+    // A different expected amount scales the same split, in whole cents
+    db.update(schedules).set({ amount: -500000 }).where(eq(schedules.id, rent)).run();
+    expect(scopeOf(rent)).toMatchObject({ myShare: 172699 });
   });
 
   it("treats the owner's own transfer into the household account as their contribution", () => {

@@ -1,7 +1,8 @@
 import { and, eq, gte, lte } from 'drizzle-orm';
 import { addDays, format, parseISO } from 'date-fns';
 import { db } from '../db/index.js';
-import { accounts, scheduleOccurrences, schedules } from '../db/schema.js';
+import { scheduleOccurrences, schedules } from '../db/schema.js';
+import { budgetAccountScope, plansInPersonalBudget } from './balances.js';
 import {
   computeOccurrenceDates,
   type RecurrenceRule,
@@ -23,8 +24,10 @@ export interface ExpectedDebit {
 
 /**
  * Recurring debits still to come in a month, by category: what each envelope should expect to
- * be spent but hasn't been yet. Only active schedules with a category and a negative amount
- * count; transfers and off-budget or closed accounts don't touch envelopes. An occurrence
+ * be spent but hasn't been yet. Only active schedules with a category that the personal budget
+ * plans for count (`plansInPersonalBudget`): a bill a household account pays, a move between
+ * personal accounts, or an off-budget or closed account doesn't touch envelopes, while a
+ * transfer out to a household or off-budget account does. An occurrence
  * stops being expected once it is matched, paid or skipped. Past months expect nothing; the
  * current month still lists overdue ones until they arrive. A projection only: it never writes
  * occurrences or changes the ledger.
@@ -39,19 +42,11 @@ export function expectedDebits(month: string, today = todayIso()): Map<string, E
   const scanFrom = format(addDays(parseISO(from), -7), 'yyyy-MM-dd');
   const scanTo = format(addDays(parseISO(lastDay), 7), 'yyyy-MM-dd');
 
-  const accountRows = new Map(
-    db
-      .select()
-      .from(accounts)
-      .all()
-      .map((a) => [a.id, a]),
-  );
   const ctx = currencyContext();
   const active = db.select().from(schedules).where(eq(schedules.status, 'active')).all();
+  const budgetScope = budgetAccountScope();
   for (const s of active) {
-    if (!s.categoryId || s.amount >= 0 || s.transferAccountId) continue;
-    const account = s.accountId ? accountRows.get(s.accountId) : undefined;
-    if (account && (account.closedAt || account.isOffBudget)) continue;
+    if (!s.categoryId || !plansInPersonalBudget(s, budgetScope)) continue;
 
     let rule: RecurrenceRule;
     try {

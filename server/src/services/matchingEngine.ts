@@ -23,22 +23,47 @@ export function linkOccurrenceToTransaction(
   if (!occ) return;
 
   const now = format(new Date(), 'yyyy-MM-dd');
+  const schedule = db
+    .select({ categoryId: schedules.categoryId, transferAccountId: schedules.transferAccountId })
+    .from(schedules)
+    .where(eq(schedules.id, occ.scheduleId))
+    .get();
 
-  db.update(scheduleOccurrences)
-    .set({
-      status: 'paid',
-      matchedTransactionId: transactionId,
-      matchType,
-      matchConfidence: confidence,
-      paidAt: now,
-    })
-    .where(eq(scheduleOccurrences.id, occurrenceId))
-    .run();
+  db.transaction((tx) => {
+    tx.update(scheduleOccurrences)
+      .set({
+        status: 'paid',
+        matchedTransactionId: transactionId,
+        matchType,
+        matchConfidence: confidence,
+        paidAt: now,
+      })
+      .where(eq(scheduleOccurrences.id, occurrenceId))
+      .run();
 
-  db.update(transactions)
-    .set({ scheduleId: occ.scheduleId })
-    .where(eq(transactions.id, transactionId))
-    .run();
+    tx.update(transactions)
+      .set({ scheduleId: occ.scheduleId })
+      .where(eq(transactions.id, transactionId))
+      .run();
+
+    // The payment takes the recurring item's category when it has none yet, so a matched bill
+    // counts in its envelope instead of leaving it looking underspent. A category already set
+    // (by the owner, a rule or a payee default) is kept, and a split as a whole or a balance
+    // correction never gets one. A transfer takes it only from a recurring transfer.
+    if (schedule?.categoryId)
+      tx.update(transactions)
+        .set({ categoryId: schedule.categoryId })
+        .where(
+          and(
+            eq(transactions.id, transactionId),
+            isNull(transactions.categoryId),
+            eq(transactions.isParent, 0),
+            eq(transactions.isAdjustment, 0),
+            schedule.transferAccountId ? undefined : isNull(transactions.transferTransactionId),
+          ),
+        )
+        .run();
+  });
 }
 
 export function unlinkOccurrence(occurrenceId: string): void {

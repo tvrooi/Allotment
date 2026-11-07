@@ -68,10 +68,23 @@ export interface UncategorisedSummary {
 export const getUncategorisedSummary = (from: string, to: string) =>
   apiFetch<UncategorisedSummary>(`/reports/uncategorised-summary${toQueryString(from, to)}`);
 
-/** Uncategorised transactions grouped by payee, biggest groups first */
+/**
+ * Uncategorised transactions grouped by payee and by whose money they are: the personal budget
+ * first, biggest groups first
+ */
 export interface UncategorisedPayee {
   payeeId: string | null;
   payeeName: string;
+  /** personal: the owner's budget; household: a household account's rows; off_budget */
+  scope: 'personal' | 'household' | 'off_budget';
+  household: { id: string; name: string } | null;
+  /** The owner recorded this payee as a housemate's money: never the owner's income */
+  housemate: {
+    householdId: string;
+    householdName: string;
+    personId: string;
+    personName: string;
+  } | null;
   count: number;
   moneyIn: number;
   moneyOut: number;

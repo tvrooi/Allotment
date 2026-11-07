@@ -6,6 +6,8 @@ import {
   budgetSettings,
   categories,
   categoryGroups,
+  householdGroups,
+  householdPoolAccounts,
   scheduleOccurrences,
   schedules,
   transactions,
@@ -21,6 +23,8 @@ beforeAll(() => migrate(db, { migrationsFolder: 'src/db/migrations' }));
 
 beforeEach(() => {
   for (const table of [
+    householdPoolAccounts,
+    householdGroups,
     scheduleOccurrences,
     schedules,
     transactions,
@@ -49,6 +53,9 @@ beforeEach(() => {
       { id: 'everyday', name: 'Everyday', type: 'checking', createdAt: '2026-01-01' },
       { id: 'saver', name: 'Saver', type: 'savings', createdAt: '2026-01-01' },
       { id: 'old', name: 'Old', type: 'checking', createdAt: '2026-01-01', closedAt: '2026-05-01' },
+      { id: 'pool', name: '2Up', type: 'checking', createdAt: '2026-01-01' },
+      { id: 'pool2', name: '2Up saver', type: 'savings', createdAt: '2026-01-01' },
+      { id: 'super', name: 'Super', type: 'retirement', createdAt: '2026-01-01', isOffBudget: 1 },
     ])
     .run();
 });
@@ -146,6 +153,33 @@ describe('expectedDebits', () => {
     schedule({ accountId: 'old' });
     schedule({ categoryId: null });
     expect(expectedDebits('2026-10', TODAY).size).toBe(0);
+  });
+
+  it('leaves out a bill a household account pays, from either of its accounts', () => {
+    db.insert(householdGroups)
+      .values({ id: 'home', name: 'Home', currency: 'AUD', accountId: 'pool' })
+      .run();
+    db.insert(householdPoolAccounts).values({ groupId: 'home', accountId: 'pool2' }).run();
+    schedule({ name: 'Rent', accountId: 'pool', amount: -478000 });
+    schedule({ name: 'Internet', accountId: 'pool2', amount: -11400 });
+    schedule({ name: 'Super top-up', accountId: 'super' });
+    expect(expectedDebits('2026-10', TODAY).size).toBe(0);
+  });
+
+  it('expects a transfer out of the budget into a household or off-budget account', () => {
+    db.insert(householdGroups)
+      .values({ id: 'home', name: 'Home', currency: 'AUD', accountId: 'pool' })
+      .run();
+    const toHousehold = schedule({
+      name: 'My rent share',
+      transferAccountId: 'pool',
+      amount: -165100,
+    });
+    const toSuper = schedule({ name: 'Super top-up', transferAccountId: 'super' });
+    expect(phone('2026-10').map((d) => [d.scheduleId, d.amount])).toEqual([
+      [toHousehold, 165100],
+      [toSuper, 5000],
+    ]);
   });
 
   it('attaches totals to expense categories only', () => {

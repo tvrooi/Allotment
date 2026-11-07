@@ -270,12 +270,22 @@ bill occurrences for later quarters/months; estimates do not generate bank activ
 
 **Categorising a repayment** (audit decision I-8, `services/householdCategoryOffers.ts`): someone
 repaying you shows in your personal reports as an uncategorised deposit next to the whole bill you
-paid. The Household page's **Categorise repayments** lists each repayment to you linked to an
-uncategorised deposit, with the categories of what that person owed you for in the year before
-(their shares of expenses you paid, largest first). **Categorise** sets the deposit's category, a
-normal transaction edit, so your reports show your share; **Not now** hides it on this device.
-Nothing is changed without that press, and the household ledger never changes
-(`GET /households/:id/category-offers`).
+paid, and your repayment to someone for things they paid shows as uncategorised spending. The
+Household page's **Categorise repayments** lists each repayment linked to an uncategorised bank
+row, either way:
+
+- **To you** (a deposit): the categories of what that person owed you for in the year before
+  (their shares of expenses you paid, largest first).
+- **From you** (a payment, marked "you paid"): the categories of your shares of expenses the
+  person you repaid paid in the year before. Their expense has no bank payment of yours, so its
+  category comes from the payee its description names exactly, ignoring case: that payee's
+  default category, else the spending category you use most for it. An expense whose
+  description names no payee isn't counted.
+
+**Categorise** sets the bank row's category, a normal transaction edit, so your reports show your
+share; **Not now** hides it on this device. Nothing is changed without that press, and the
+household ledger never changes (`GET /households/:id/category-offers`, each offer with
+`direction` `to_you` or `from_you`).
 
 **Spending by month, person and category** (SPL-05, `services/householdReport.ts`) breaks the
 same range down three ways, from the statement route (`GET /households/:id/statement`, so the
@@ -317,7 +327,10 @@ helper, `scheduleScopes` in `server/src/services/scheduleScope.ts`, gives every 
   - `bill`: money out of a household (pool) account, or a recurring item shared with the
     household on its page, wherever it is paid from. `myShare` is the owner's cents of the
     expected amount, from the bill's own split or the household's default (`billShares` in
-    `householdService.ts`, the same sums as the Household page's recurring bills).
+    `householdService.ts`, the same sums as the Household page's recurring bills). A household
+    account's bill that isn't on the recurring bills list takes the owner's part of how its
+    newest payment matched in Recurring was shared, scaled to the expected amount (rent in fixed
+    amounts stays in those amounts); before any is shared, the household's default split.
   - `contribution`: money into a household account, or the owner's own transfer into one. The
     person is the owner for their own transfer, else the housemate the payee was recorded as, else
     the one whose name is in the payee or the item's name (`personNamedIn`, shared with the
@@ -345,6 +358,16 @@ Where it is used:
   account still counts as cash coming in, but not as income. Household bill shares in the
   forecast are unchanged (`includeHousehold`), so the owner's transfer into the household
   account and their share of the rent aren't both counted.
+- **Budget page and payday plan** (`plansInPersonalBudget` in `services/balances.ts`): an
+  envelope expects a recurring payment, and the payday plan funds it, only when it leaves one of
+  the owner's open personal accounts, spent or moved into a household or off-budget account. A
+  bill a household account pays is never expected in a personal envelope; the owner's own
+  transfer into the household account is, in its category.
+- **Uncategorised payees** (`GET /reports/uncategorised-payees`, MCP `uncategorised_payees`):
+  each group has a `scope` (`personal` first, `household` for a household account's rows,
+  `off_budget`) and `housemate` when its payee is recorded as a housemate's money (from
+  `housematePayees`). **Sort your first import** lists `personal` only and doesn't lead with
+  Income categories for a housemate's money.
 - **Salary offer** (`detectSalary`): a payee recorded as a housemate's money is never offered as
   pay.
 

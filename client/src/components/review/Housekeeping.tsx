@@ -21,12 +21,14 @@ const monthLabel = (month: string) => format(parseISO(`${month}-01`), 'MMMM yyyy
 export function Housekeeping() {
   const { data } = useQuery({ queryKey: ['review', 'housekeeping'], queryFn: getHousekeeping });
   if (!data) return null;
-  const { budgetStart, missingRoundUps, unlinkedSavers, unusedCategories } = data;
+  const { budgetStart, missingRoundUps, unlinkedSavers, unusedCategories, uncategorisedRecurring } =
+    data;
   if (
     !budgetStart.suggestion &&
     !missingRoundUps.length &&
     !unlinkedSavers.length &&
-    !unusedCategories
+    !unusedCategories &&
+    !uncategorisedRecurring.length
   )
     return null;
   return (
@@ -55,6 +57,28 @@ export function Housekeeping() {
           </div>
         ))}
         {unlinkedSavers.length > 0 && <SaverItem savers={unlinkedSavers} />}
+        {uncategorisedRecurring.length > 0 && (
+          <div className="text-sm">
+            <p className="font-medium text-text">
+              {uncategorisedRecurring.length} recurring{' '}
+              {uncategorisedRecurring.length === 1 ? 'bill has' : 'bills have'} no category
+            </p>
+            <p className="text-text-secondary">
+              No envelope expects them and your payday plan sets nothing aside for them. Give each
+              one a category in Recurring.
+            </p>
+            <ul aria-label="Recurring bills with no category" className="mt-1 text-text-secondary">
+              {uncategorisedRecurring.map((r) => (
+                <li key={r.id}>
+                  {r.name}: {formatCurrency(-r.amount)}
+                </li>
+              ))}
+            </ul>
+            <Link to="/recurring" className="text-brand-700 underline">
+              Open Recurring
+            </Link>
+          </div>
+        )}
         {unusedCategories > 0 && (
           <div className="text-sm">
             <p className="font-medium text-text">

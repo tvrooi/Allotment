@@ -170,7 +170,7 @@ const TOOLS: Tool[] = [
   {
     name: 'uncategorised_payees',
     description:
-      'Uncategorised transactions grouped by payee (transfers and split parents aside), most frequent first: count, money in and out, net, first and last date, accounts and sample notes. The worklist for categorising; then use categorise_by_payee or find_transactions.',
+      "Uncategorised transactions grouped by payee (transfers and split parents aside): count, money in and out, net, first and last date, accounts and sample notes. Each group has a scope: personal (the owner's budget, listed first, most frequent first), household (rows in a household account, which never touch the personal budget; household names it) or off_budget. housemate is set when the owner already recorded that payee as a housemate's money (a contribution, or a repayment to the owner): that money is never the owner's income, so never give it an Income category; ask the owner. The worklist for categorising; then use categorise_by_payee or find_transactions.",
     properties: {
       from: { ...day, description: 'First day, inclusive' },
       to: { ...day, description: 'Last day, inclusive' },
@@ -220,7 +220,7 @@ const TOOLS: Tool[] = [
   {
     name: 'budget_housekeeping',
     description:
-      "Setup problems that make the budget less useful: no budget start with years of history (suggestion = a month to start from), Up accounts missing round-up debits, uncategorised movements to or from savers that aren't in Allotment (grouped by saver, with ids), and how many categories were never used.",
+      "Setup problems that make the budget less useful: no budget start with years of history (suggestion = a month to start from), Up accounts missing round-up debits, uncategorised movements to or from savers that aren't in Allotment (grouped by saver, with ids), how many categories were never used, and active recurring bills with no category (uncategorisedRecurring), which no envelope expects and no payday plan funds: the owner sets their category in Recurring.",
     path: () => '/review/housekeeping',
   },
   {

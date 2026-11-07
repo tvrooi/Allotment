@@ -1,6 +1,16 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
-import { transactions, accounts, categories, categoryGroups, payees } from '../db/schema.js';
+import {
+  transactions,
+  accounts,
+  categories,
+  categoryGroups,
+  householdGroups,
+  householdPeople,
+  householdPoolAccounts,
+  payees,
+} from '../db/schema.js';
+import { housematePayees } from '../services/scheduleScope.js';
 import { eq, and, gte, lte, sql, inArray, lt, isNull } from 'drizzle-orm';
 import type { Request, Response } from 'express';
 import { daysBetweenIso, eachDayIso, monthBounds } from '../utils/date.js';
@@ -272,18 +282,44 @@ reportsRouter.get('/uncategorised-payees', (req, res) => {
   ];
   if (typeof from === 'string') conditions.push(gte(transactions.date, from));
   if (typeof to === 'string') conditions.push(lte(transactions.date, to));
-  const accountNames = new Map(
+  const accountRows = db
+    .select({ id: accounts.id, name: accounts.name, isOffBudget: accounts.isOffBudget })
+    .from(accounts)
+    .all();
+  const accountNames = new Map(accountRows.map((a) => [a.id, a.name]));
+  // Whose money each row is, so a worklist never mixes the household's in with the owner's:
+  // a household account's rows don't touch the personal budget, and a payee the owner recorded
+  // as a housemate's money is never the owner's income (docs/HOUSEHOLDS.md)
+  const households = new Map(
     db
-      .select({ id: accounts.id, name: accounts.name })
-      .from(accounts)
+      .select({ id: householdGroups.id, name: householdGroups.name })
+      .from(householdGroups)
       .all()
-      .map((a) => [a.id, a.name]),
+      .map((g) => [g.id, g.name]),
   );
+  const poolHousehold = new Map<string, string>();
+  for (const g of db.select().from(householdGroups).all())
+    if (g.accountId) poolHousehold.set(g.accountId, g.id);
+  for (const p of db.select().from(householdPoolAccounts).all())
+    poolHousehold.set(p.accountId, p.groupId);
+  const offBudget = new Set(accountRows.filter((a) => a.isOffBudget).map((a) => a.id));
+  const housemates = housematePayees();
+  const personNames = new Map(
+    db
+      .select({ id: householdPeople.id, name: householdPeople.name })
+      .from(householdPeople)
+      .all()
+      .map((p) => [p.id, p.name]),
+  );
+  type Scope = 'personal' | 'household' | 'off_budget';
+  const scopeRank: Record<Scope, number> = { personal: 0, household: 1, off_budget: 2 };
   const groups = new Map<
     string,
     {
       payeeId: string | null;
       payeeName: string;
+      scope: Scope;
+      household: { id: string; name: string } | null;
       count: number;
       moneyIn: number;
       moneyOut: number;
@@ -306,12 +342,22 @@ reportsRouter.get('/uncategorised-payees', (req, res) => {
     .leftJoin(payees, eq(transactions.payeeId, payees.id))
     .where(and(...conditions))
     .all()) {
-    const key = t.payeeId ?? `name:${t.payeeName}`;
+    const householdId = poolHousehold.get(t.accountId);
+    const scope: Scope = householdId
+      ? 'household'
+      : offBudget.has(t.accountId)
+        ? 'off_budget'
+        : 'personal';
+    const key = `${t.payeeId ?? `name:${t.payeeName}`}|${householdId ?? scope}`;
     let g = groups.get(key);
     if (!g) {
       g = {
         payeeId: t.payeeId,
         payeeName: t.payeeName,
+        scope,
+        household: householdId
+          ? { id: householdId, name: households.get(householdId) ?? '' }
+          : null,
         count: 0,
         moneyIn: 0,
         moneyOut: 0,
@@ -330,18 +376,33 @@ reportsRouter.get('/uncategorised-payees', (req, res) => {
     g.accounts.add(accountNames.get(t.accountId) ?? t.accountId);
     if (t.notes && g.notes.size < 3) g.notes.add(t.notes.slice(0, 80));
   }
+  // The owner's own budget first: that is what categorising changes
   const all = [...groups.values()].sort(
-    (a, b) => b.count - a.count || a.moneyIn + a.moneyOut - (b.moneyIn + b.moneyOut),
+    (a, b) =>
+      scopeRank[a.scope] - scopeRank[b.scope] ||
+      b.count - a.count ||
+      a.moneyIn + a.moneyOut - (b.moneyIn + b.moneyOut),
   );
   res.json({
     payeeCount: all.length,
     transactionCount: all.reduce((s, g) => s + g.count, 0),
-    payees: all.slice(0, limit).map(({ accounts: accts, notes, ...g }) => ({
-      ...g,
-      net: g.moneyIn + g.moneyOut,
-      accounts: [...accts],
-      sampleNotes: [...notes],
-    })),
+    payees: all.slice(0, limit).map(({ accounts: accts, notes, ...g }) => {
+      const recorded = g.payeeId ? housemates.get(g.payeeId) : undefined;
+      return {
+        ...g,
+        net: g.moneyIn + g.moneyOut,
+        accounts: [...accts],
+        sampleNotes: [...notes],
+        housemate: recorded
+          ? {
+              householdId: recorded.groupId,
+              householdName: households.get(recorded.groupId) ?? '',
+              personId: recorded.personId,
+              personName: personNames.get(recorded.personId) ?? '',
+            }
+          : null,
+      };
+    }),
   });
 });
 

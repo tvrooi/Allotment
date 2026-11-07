@@ -8,6 +8,8 @@ import {
   budgetSettings,
   categories,
   categoryGroups,
+  householdGroups,
+  schedules,
   transactions,
 } from '../db/schema.js';
 import { housekeeping } from './housekeeping.js';
@@ -32,6 +34,8 @@ beforeAll(() => {
 afterAll(() => vi.useRealTimers());
 beforeEach(() => {
   for (const table of [
+    schedules,
+    householdGroups,
     budgetProposals,
     transactions,
     budgetMonths,
@@ -92,6 +96,40 @@ describe('housekeeping', () => {
     expect(unusedCategories).toBe(2); // rent and HOA Fees
     db.update(categories).set({ hidden: 1 }).run();
     expect(housekeeping().unusedCategories).toBe(0);
+  });
+});
+
+describe('recurring bills with no category', () => {
+  it('lists personal bills no envelope plans for, and nothing a household account pays', () => {
+    db.insert(accounts).values({ id: 'pool', name: '2Up', type: 'checking' }).run();
+    db.insert(householdGroups)
+      .values({ id: 'home', name: 'Home', currency: 'AUD', accountId: 'pool' })
+      .run();
+    const item = (id: string, values: Partial<typeof schedules.$inferInsert>) =>
+      db
+        .insert(schedules)
+        .values({
+          id,
+          name: id,
+          amount: -1599,
+          recurrenceType: 'monthly',
+          recurrenceRule: JSON.stringify({ type: 'monthly', interval: 1, anchorDay: 1 }),
+          startDate: '2026-01-01',
+          accountId: 'spend',
+          ...values,
+        })
+        .run();
+    item('Streaming', {});
+    item('Gym', { categoryId: 'groceries' });
+    item('Pay', { amount: 300000 });
+    item('Paused', { status: 'paused' });
+    item('Internet', { accountId: 'pool' });
+    item('To saver', { transferAccountId: 'mojo' });
+    item('To household', { transferAccountId: 'pool', amount: -8800 });
+    expect(housekeeping().uncategorisedRecurring).toEqual([
+      { id: 'Streaming', name: 'Streaming', amount: -1599 },
+      { id: 'To household', name: 'To household', amount: -8800 },
+    ]);
   });
 });
 

@@ -1,10 +1,11 @@
-import { and, eq, inArray, isNotNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import {
   accounts,
   categories,
   categoryGroups,
   householdEvents as events,
+  householdShares as eventShares,
   householdGroups as groups,
   householdPeople as people,
   householdPoolAccounts as poolAccounts,
@@ -15,6 +16,7 @@ import {
 } from '../db/schema.js';
 import { personalBudgetAccount } from './balances.js';
 import { billShares, parseSplit, personNamedIn } from './householdService.js';
+import { allocateShares } from './householdLedger.js';
 
 // Whose money a recurring schedule is (docs/HOUSEHOLDS.md "Recurring and the dashboard"). Every
 // view of schedules reads this instead of the sign of the amount, so a housemate's deposit into
@@ -172,6 +174,22 @@ export function scheduleScopes(only?: Schedule[]): Map<string, ScheduleScope> {
     return shares.find((s) => s.personId === self.id)?.amount ?? 0;
   };
   const selfOf = (groupId: string) => membersOf(groupId).find((m) => m.isSelf)?.id ?? null;
+  const recordedSplit = latestRecordedSplits(list.map((s) => s.id));
+  /**
+   * A household-account bill not on the household's recurring bills list: the owner's part of
+   * how its latest payment was actually split (such as rent shared in fixed amounts), scaled to
+   * the expected amount; with no payment shared yet, the household's default split.
+   */
+  const poolBillShare = (groupId: string, s: Schedule) => {
+    const last = recordedSplit.get(s.id);
+    const self = selfOf(groupId);
+    if (!last || last.groupId !== groupId || !self) return ownShare(groupId, null, s.amount);
+    const amounts = allocateShares(
+      Math.abs(s.amount),
+      last.shares.map((x) => x.amount),
+    );
+    return amounts[last.shares.findIndex((x) => x.personId === self)] ?? 0;
+  };
 
   for (const s of list) {
     const link = links.get(s.id);
@@ -186,7 +204,7 @@ export function scheduleScopes(only?: Schedule[]): Map<string, ScheduleScope> {
       );
     } else if (pool) {
       if (s.amount < 0 && !s.transferAccountId) {
-        result.set(s.id, household(pool, 'bill', { myShare: ownShare(pool, null, s.amount) }));
+        result.set(s.id, household(pool, 'bill', { myShare: poolBillShare(pool, s) }));
       } else {
         // Money in (or a transfer either way): from the owner when the other side is theirs,
         // else from the housemate the payee is recorded as, or whose name it has
@@ -217,6 +235,41 @@ export function scheduleScopes(only?: Schedule[]): Map<string, ScheduleScope> {
           : { kind: 'personal' },
       );
     }
+  }
+  return result;
+}
+
+/**
+ * For each schedule, the shares of the newest household expense linked to a payment matched to
+ * it in Recurring: how people really split that bill last time. One query for all schedules.
+ */
+function latestRecordedSplits(scheduleIds: string[]) {
+  const result = new Map<
+    string,
+    { groupId: string; shares: { personId: string; amount: number }[] }
+  >();
+  if (!scheduleIds.length) return result;
+  const latest = new Map<string, { eventId: string; groupId: string }>();
+  for (const row of db
+    .select({ scheduleId: transactions.scheduleId, eventId: events.id, groupId: events.groupId })
+    .from(events)
+    .innerJoin(transactions, eq(transactions.id, events.transactionId))
+    .where(and(eq(events.kind, 'expense'), inArray(transactions.scheduleId, scheduleIds)))
+    .orderBy(desc(events.date), desc(events.id))
+    .all())
+    if (row.scheduleId && !latest.has(row.scheduleId))
+      latest.set(row.scheduleId, { eventId: row.eventId, groupId: row.groupId });
+  if (!latest.size) return result;
+  const eventIds = [...latest.values()].map((l) => l.eventId);
+  const shares = db
+    .select()
+    .from(eventShares)
+    .where(inArray(eventShares.eventId, eventIds))
+    .orderBy(eventShares.personId)
+    .all();
+  for (const [scheduleId, l] of latest) {
+    const own = shares.filter((x) => x.eventId === l.eventId && x.amount > 0);
+    if (own.length) result.set(scheduleId, { groupId: l.groupId, shares: own });
   }
   return result;
 }

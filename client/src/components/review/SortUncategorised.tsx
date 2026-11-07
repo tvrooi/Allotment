@@ -179,7 +179,8 @@ export function SortUncategorised({ onDone }: { onDone?: () => void }) {
     // Up's own transfers between accounts are linked in the register, never given a category
     const isTransfer = (p: (typeof all)[number]) =>
       p.sampleNotes.some((n) => n.includes(TRANSFER_NOTE));
-    return { sortable: all.filter((p) => !isTransfer(p)) };
+    // Only the owner's own budget: a household account's rows never touch it
+    return { sortable: all.filter((p) => p.scope === 'personal' && !isTransfer(p)) };
   }, [list.data]);
   const salaryPayeeId =
     salary.data?.categoryId && salary.data.uncategorisedCount ? salary.data.payeeId : null;
@@ -205,7 +206,9 @@ export function SortUncategorised({ onDone }: { onDone?: () => void }) {
     );
   }
 
-  const incomeFirst = (p: (typeof rows)[number]) => p.moneyIn > 0 && p.moneyOut === 0;
+  // A housemate's money is never the owner's income, so it doesn't lead with Income categories
+  const incomeFirst = (p: (typeof rows)[number]) =>
+    !p.housemate && p.moneyIn > 0 && p.moneyOut === 0;
   const optionGroups = (p: (typeof rows)[number]) =>
     [...groups]
       .filter((g) => g.categories.some((c) => !c.hidden))
@@ -237,6 +240,12 @@ export function SortUncategorised({ onDone }: { onDone?: () => void }) {
               >
                 <div className="min-w-0 flex-1 basis-40">
                   <p className="font-medium text-text truncate">{p.payeeName || 'No payee'}</p>
+                  {p.housemate && (
+                    <p className="text-xs text-text-secondary">
+                      {p.housemate.personName}'s money ({p.housemate.householdName}), not your
+                      income
+                    </p>
+                  )}
                   <p className="text-xs text-text-secondary">
                     {p.count} transaction{p.count === 1 ? '' : 's'} ·{' '}
                     <Private>
