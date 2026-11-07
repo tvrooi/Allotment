@@ -38,6 +38,7 @@ import {
   splitSchema,
   unshareRecurringBill,
   updateEvent,
+  updateGroup,
   updateRecurringBill,
 } from '../services/householdService.js';
 import { todayIso } from '../services/mainAmountService.js';
@@ -246,6 +247,9 @@ householdsRouter.delete('/:id/pool-accounts/:accountId', (req, res) =>
   }),
 );
 // The split a quick share uses (Share with… in the register, rules)
+// Rename a household or make it the one that opens first. Owner only: read-only access
+// tokens never reach this route.
+householdsRouter.put('/:id', (req, res) => run(res, () => updateGroup(req.params.id, req.body)));
 householdsRouter.put('/:id/default-split', (req, res) =>
   run(res, () => {
     const state = snapshot(req.params.id);

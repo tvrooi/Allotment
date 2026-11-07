@@ -823,3 +823,29 @@ test('breaks household spending down by month, person and category', async ({ pa
     true,
   );
 });
+
+test('renames a household and chooses which one opens first', async ({ page }) => {
+  await open(page, '/household');
+  await page.getByLabel('Name', { exact: true }).fill('Home');
+  await page.getByLabel('People, one per line; put yourself first').fill('Me\nAlex');
+  await page.getByRole('button', { name: 'Create household', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'People & balances' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'New household' }).click();
+  const create = page.getByRole('dialog', { name: 'New household' });
+  await create.getByLabel('Name', { exact: true }).fill('Beach house');
+  await create.getByLabel('People, one per line; put yourself first').fill('Me\nSam');
+  await create.getByRole('button', { name: 'Create household', exact: true }).click();
+  const picker = page.getByRole('combobox', { name: 'Household', exact: true });
+  await expect(picker.locator('option:checked')).toHaveText('Beach house');
+
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  const edit = page.getByRole('dialog', { name: 'Edit household' });
+  await edit.getByLabel('Name').fill('Coast house');
+  await edit.getByLabel('Open this household first').check();
+  await edit.getByRole('button', { name: 'Save' }).click();
+  await expect(edit).toBeHidden();
+
+  await open(page, '/household');
+  await expect(picker.locator('option:checked')).toHaveText('Coast house');
+});

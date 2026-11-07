@@ -125,6 +125,15 @@ sharing** takes a bill off the list and leaves its shared payments in the househ
 are in backup version 20 (`household_recurring_bills`, with `split_json` and `auto_share_from`);
 older backups restore without them.
 
+## Editing a household
+
+**Edit** beside the household's name renames it (`PUT /api/households/:id` with `{ name }`); its
+people, entries and balances stay as they are. **Open this household first** makes it the default
+(`{ isDefault: true }`, the `is_default` column, kept in backups): the Household page and the
+sidebar's Household link open it unless the address names another (`?household=`). Only one
+household is the default; with none, the first one opens. Both are owner-only settings, so access
+tokens can't change them; `list_households` shows which one is the default.
+
 ## People
 
 **Add person** under People & balances adds someone with a zero balance. An equal split includes

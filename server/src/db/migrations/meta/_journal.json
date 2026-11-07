@@ -561,6 +561,13 @@
       "when": 1796486400000,
       "tag": "0079_reminders_via_gateway",
       "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "6",
+      "when": 1796572800000,
+      "tag": "0080_household_default",
+      "breakpoints": true
     }
   ]
 }

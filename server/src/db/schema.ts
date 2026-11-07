@@ -1279,6 +1279,8 @@ export const householdGroups = sqliteTable('household_groups', {
   defaultSplitJson: text('default_split_json'),
   /** Custom logo as a small image data URL, shown on shared payments; null = colored initial */
   logo: text('logo'),
+  /** 1 = the household the Household page opens first; at most one, none = the first */
+  isDefault: integer('is_default').notNull().default(0),
 });
 /** More pool accounts for a group (an Up 2Up spending account and its savers, say) */
 export const householdPoolAccounts = sqliteTable(

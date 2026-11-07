@@ -1010,6 +1010,29 @@ export function renamePerson(groupId: string, personId: string, raw: unknown) {
   return snapshot(groupId);
 }
 
+const groupEdit = z
+  .object({
+    name: name.optional(),
+    /** Make this the household that opens first (there is only ever one) */
+    isDefault: z.literal(true).optional(),
+  })
+  .strict();
+
+/** Renames a household or makes it the one that opens first; its entries are unchanged */
+export function updateGroup(groupId: string, raw: unknown) {
+  const state = snapshot(groupId);
+  const input = groupEdit.parse(raw);
+  db.transaction((tx) => {
+    if (input.name !== undefined)
+      tx.update(groups).set({ name: input.name }).where(eq(groups.id, groupId)).run();
+    if (input.isDefault) {
+      tx.update(groups).set({ isDefault: 0 }).run();
+      tx.update(groups).set({ isDefault: 1 }).where(eq(groups.id, groupId)).run();
+    }
+  });
+  return snapshot(state.group.id);
+}
+
 const billEdit = z.object({
   description: name.optional(),
   dueDate: date.optional(),

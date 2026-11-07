@@ -698,6 +698,25 @@ describe('household attribution', () => {
     expect(bill.shares.map((s: any) => s.amount)).toEqual([165100, 165100, 165100]);
   });
 
+  it('renames a household and makes one the default', async () => {
+    const a = await group();
+    const b = await group();
+    const renamed = await call(`/${a.group.id}`, { name: 'Tristan & co' }, 'PUT');
+    expect(renamed.status).toBe(200);
+    expect(renamed.data.group.name).toBe('Tristan & co');
+    expect((await call(`/${a.group.id}`, { name: ' ' }, 'PUT')).status).toBe(400);
+    expect((await call(`/${a.group.id}`, { currency: 'USD' }, 'PUT')).status).toBe(400);
+    expect((await call('/nobody', { name: 'X' }, 'PUT')).status).toBe(400);
+
+    await call(`/${a.group.id}`, { isDefault: true }, 'PUT');
+    await call(`/${b.group.id}`, { isDefault: true }, 'PUT');
+    const listed = (await call('')).data as { id: string; isDefault: number }[];
+    expect(listed.filter((g) => g.isDefault).map((g) => g.id)).toEqual([b.group.id]);
+    expect(
+      (createBackup().householdGroups as any[]).find((g) => g.id === b.group.id),
+    ).toMatchObject({ isDefault: 1 });
+  });
+
   it('adds and renames people, keeping their entries and balance', async () => {
     const g = await group();
     const [me, alex] = g.people;
