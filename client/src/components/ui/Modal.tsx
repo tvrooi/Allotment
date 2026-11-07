@@ -152,8 +152,11 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: Props) 
 
   return createPortal(
     <div
-      // A dialog with another open on top of it can't be reached until that one closes
-      inert={!closing && buried}
+      // A dialog with another open on top of it can't be reached until that one closes. One
+      // fading out is already gone for screen readers and the keyboard, so a dialog opened
+      // straight after it is the only one there
+      inert={closing || buried}
+      aria-hidden={closing || undefined}
       className={`fixed inset-0 z-50 overflow-y-auto ${closing ? 'pointer-events-none' : ''}`}
     >
       <div

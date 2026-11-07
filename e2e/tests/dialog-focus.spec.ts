@@ -41,6 +41,8 @@ for (const phone of [false, true]) {
     }
 
     await page.keyboard.press('Escape');
+    // Gone for screen readers at once, not after its fade-out (no waiting: count() doesn't retry)
+    expect(await page.getByRole('dialog').count()).toBe(0);
     await expect(dialog).toBeHidden();
     await expect(add).toBeFocused();
     await expect(page.locator('#root')).toHaveJSProperty('inert', false);
