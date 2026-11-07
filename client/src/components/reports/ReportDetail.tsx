@@ -4,7 +4,7 @@ import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { Check, ChevronDown, Download, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
-import { StatCard as StatTile } from '../ui/StatCard';
+import { StatCard as StatTile, StatGrid } from '../ui/StatCard';
 import {
   MAX_TREND_CATEGORIES,
   TOP_TREND_CATEGORIES,
@@ -221,7 +221,7 @@ function DetailLayout({
 }) {
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <StatGrid>
         {loading
           ? Array.from({ length: 4 }, (_, i) => (
               <div key={i} className="h-[72px] bg-surface-alt rounded-lg animate-pulse" />
@@ -235,7 +235,7 @@ function DetailLayout({
                 valueColor={s.tone ? TONE_CLASS[s.tone] : undefined}
               />
             ))}
-      </div>
+      </StatGrid>
 
       <Card>
         <div className="flex items-start justify-between gap-3 mb-3">

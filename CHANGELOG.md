@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.133
+
+From the UI and UX audit (`docs/UX-UI-AUDIT.md`, finding AU-008).
+
+- **Large amounts stay on one line.** On a phone, a summary figure such as $165,905.18 could break inside its digits, with the last "8" on its own line, or run off the edge of the screen. Summary tiles on the dashboard, the reports, report details, the forecasts, goals, tax and investments now keep each amount whole. A tile whose amount doesn't fit beside another takes the full row instead. Labels still wrap, and nothing is shortened or made smaller.
+
 ## 0.2.0-up.132
 
 First fixes from the 7 November 2026 UI and UX audit (`docs/UX-UI-AUDIT.md`, findings AU-003, AU-009, AU-012 and AU-013).
