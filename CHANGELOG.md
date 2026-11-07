@@ -6,7 +6,6 @@ From the UI and UX audit (`docs/UX-UI-AUDIT.md`, findings AU-005 and AU-006).
 
 - **A delete that doesn't go through no longer looks like it did.** Deleting a goal, payee or rule now shows **Deleting…** until the server answers, and can't be pressed twice. If it's refused or Allotment can't be reached, the confirmation stays open with the reason, and pressing **Delete** again retries. The confirmations for disconnecting Up or SimpleFIN and deleting a file work the same way.
 - **Saving a report shows that it's saving, and when it didn't.** **Save** and **Update** in the report builder show **Saving…** and can't be pressed twice. If the save is refused, the dialog stays open with the reason and your report name, so you can try again.
-- **A closed dialog is gone straight away for screen readers.** While a dialog fades out it can no longer be found or focused, so a dialog opened straight after it is the only one announced.
 
 ## 0.2.0-up.134
 

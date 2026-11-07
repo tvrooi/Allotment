@@ -241,7 +241,7 @@ Callers that return nothing close straight away, as before. These callers now re
 - Goals, Payees and Rules (`mutateAsync`)
 - Up and SimpleFIN disconnect, and file delete, which already returned one
 
-The other callers still use `mutate` and can move over one at a time. Test: `e2e/tests/confirm-and-save.spec.ts`, covering a refused goal delete with a retry, and a slow payee delete on a phone that is sent once. It fails without the change. Still open: moving focus to the next row after a successful deletion (left over from AU-001). Related fix in the same release: `Modal` makes a dialog that is fading out `inert` and `aria-hidden`, so for its 120 ms exit there are never two dialogs exposed at once. A full local run had shown this race in `long-term-forecast.spec.ts`; `dialog-focus.spec.ts` now asserts it directly.
+The other callers still use `mutate` and can move over one at a time. Test: `e2e/tests/confirm-and-save.spec.ts`, covering a refused goal delete with a retry, and a slow payee delete on a phone that is sent once. It fails without the change. Still open: moving focus to the next row after a successful deletion (left over from AU-001).
 
 - **Reproduce / state:** Goals → first Actions → Delete goal → Delete while DELETE /goals/:id returns 422; 390×844.
 - **Evidence / source:** `delete-failure.json`: dialogs=0, alerts=[], goal still present; `delete-goal-390.png`. `components/ui/ConfirmModal.tsx:39` invokes onConfirm then onClose synchronously; Goals.tsx:452 passes mutate. Other callers include Payees and Rules.
