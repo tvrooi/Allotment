@@ -17,7 +17,7 @@ Last updated: 7 November 2026 (live app on up.129: D2a email codes, D2b reminder
   and its following serial check did not run. Product changes have not been implemented.
   Preserve finding IDs and update the coverage checklist as follow-up work lands.
   Follow-up PRs in order: A (AU-003, 009, 012, 013; 0.2.0-up.132, merged), B amounts on one
-  line (AU-008; 0.2.0-up.133), C modal focus (AU-001), D save and delete feedback (AU-005/006), E load errors
+  line (AU-008; 0.2.0-up.133, merged), C modal focus (AU-001; 0.2.0-up.134), D save and delete feedback (AU-005/006), E load errors
   (AU-004), F unsaved drafts (AU-007), G tabs (AU-010), H report drill-through (AU-014); AU-002/011
   after task validation. Each finding's heading in the report carries its status.
 

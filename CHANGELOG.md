@@ -1,5 +1,14 @@
 # Changes
 
+## 0.2.0-up.134
+
+From the UI and UX audit (`docs/UX-UI-AUDIT.md`, finding AU-001).
+
+- **The keyboard stays in an open dialog.** Pressing Tab or Shift+Tab in a dialog or phone sheet now cycles through its own controls instead of wandering onto the page behind, which can no longer be reached by keyboard or screen reader while the dialog is open.
+- **Closing a dialog puts you back where you were.** Escape, Cancel or saving returns focus to the button that opened it. For a dialog opened from a row's ⋮ menu, that's the row's ⋮ button.
+- **Escape closes one dialog at a time.** With a confirmation open over another dialog (such as **Close account** over **Edit account**), Escape closes only the confirmation and leaves you in the dialog underneath.
+- Messages at the bottom of the screen, such as **Undo**, are still announced and usable while a dialog is open.
+
 ## 0.2.0-up.133
 
 From the UI and UX audit (`docs/UX-UI-AUDIT.md`, finding AU-008).
