@@ -2,15 +2,19 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { canNotify, homeAssistantNotify, NOTIFY_SERVICE, type Notify } from '../gateway/notify.js';
 import { getBudgetSettings, updateBudgetSettings } from '../services/mainAmountService.js';
+import { reminderService } from '../services/reminderService.js';
 
 // Settings → Server → Reminders (FINX-02): which Home Assistant notify service gets bill and
 // payday reminders, and whether they name the bill. Each schedule chooses its own lead.
-// Reminders need the Supervisor token, which only a single-budget Home Assistant app has: a
-// multi-user budget never gets it (the gateway keeps it), and a desktop or Docker install has none.
+// A single-budget Home Assistant app sends them itself with the Supervisor token; a desktop or
+// Docker install has none. Behind the multi-user gateway (`viaGateway`, D2b) a budget only
+// turns them on and off: the gateway sends them to its person's own phone or email, so the
+// budget never names a destination.
 
 export function createRemindersRouter(
   notify: Notify = homeAssistantNotify(),
   available: () => boolean = canNotify,
+  viaGateway = false,
 ) {
   const router = Router();
 
@@ -18,7 +22,9 @@ export function createRemindersRouter(
     const s = getBudgetSettings();
     return {
       available: available(),
-      service: s.reminderNotifyService,
+      viaGateway,
+      enabled: reminderService(s, viaGateway) !== null,
+      service: viaGateway ? null : s.reminderNotifyService,
       showDetails: s.reminderShowDetails === 1,
     };
   };
@@ -26,6 +32,18 @@ export function createRemindersRouter(
   router.get('/', (_req, res) => res.json(state()));
 
   router.put('/', (req, res) => {
+    if (viaGateway) {
+      const parsed = z
+        .object({ enabled: z.boolean(), showDetails: z.boolean() })
+        .strict()
+        .safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: 'Invalid reminders' });
+      updateBudgetSettings({
+        remindersViaGateway: parsed.data.enabled ? 1 : 0,
+        reminderShowDetails: parsed.data.showDetails ? 1 : 0,
+      });
+      return res.json(state());
+    }
     const parsed = z
       .object({
         service: z
@@ -54,9 +72,11 @@ export function createRemindersRouter(
 
   // A test message, so a wrong service name shows up now and not on the day a bill is due
   router.post('/test', async (_req, res) => {
-    const service = getBudgetSettings().reminderNotifyService;
-    if (!available() || !service)
-      return res.status(409).json({ error: 'Choose a notify service first' });
+    const service = reminderService(getBudgetSettings(), viaGateway);
+    if (!available() || service === null)
+      return res
+        .status(409)
+        .json({ error: viaGateway ? 'Turn reminders on first' : 'Choose a notify service first' });
     try {
       await notify(service, 'Allotment: test', 'Bill reminders will arrive here.');
       res.json({ sent: true });

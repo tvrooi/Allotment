@@ -26,6 +26,7 @@ import {
 import { checkSetupCode, clearSetupCode, setupCode } from '../auth/setupCode.js';
 import { parseState } from '../services/enableBankingTransactions.js';
 import { Budgets, ensureKey } from './budgets.js';
+import { delivery } from './delivery.js';
 import { EMAIL_ADDRESS, type Mailer } from './mail.js';
 import { NOTIFY_SERVICE, type Notify } from './notify.js';
 import { sharingRouter } from './sharing.js';
@@ -33,7 +34,6 @@ import {
   HANDED_CODE_TTL_MS,
   NOTIFIED_CODE_TTL_MS,
   SESSION_TTL_MS,
-  type Destination,
   type GatewayStore,
   type Person,
 } from './store.js';
@@ -99,24 +99,7 @@ export function createGateway(o: GatewayOptions) {
   app.disable('x-powered-by');
   app.use(proxyConfigWarning, hostGuard, originGuard, securityHeaders, hstsWhenSecure);
 
-  const canEmail = () => Boolean(o.mail);
-  /** Sends a message to one of a person's destinations: a phone, or an email address */
-  const send = (destination: Destination, address: string, subject: string, text: string) =>
-    destination === 'phone' ? o.notify(address, subject, text) : o.mail!(address, subject, text);
-  /**
-   * Where a person's codes go: the destinations they chose that can be used here. When none
-   * of those can (the administrator turned email off, say), whichever they have that can, so
-   * nobody is locked out by a server setting.
-   */
-  function codeDestinations(p: Person): { to: Destination; address: string }[] {
-    const usable = [
-      p.notifyService && o.canNotify() ? { to: 'phone' as const, address: p.notifyService } : null,
-      p.email && canEmail() ? { to: 'email' as const, address: p.email } : null,
-    ].filter((d) => d !== null);
-    const choice = p.codeChannel ?? 'both';
-    const chosen = usable.filter((d) => choice === 'both' || choice === d.to);
-    return chosen.length ? chosen : usable;
-  }
+  const { canEmail, send, codeTargets } = delivery(o);
 
   const sessionToken = (req: Request) => readCookie(req.headers.cookie, SESSION_COOKIE);
   const signedIn = (req: Request) => store.personForSession(sessionToken(req));
@@ -237,6 +220,7 @@ export function createGateway(o: GatewayOptions) {
         notifyService: person.notifyService,
         email: person.email,
         codeChannel: person.codeChannel,
+        reminderChannel: person.reminderChannel,
       },
     });
   });
@@ -325,7 +309,7 @@ export function createGateway(o: GatewayOptions) {
     const parsed = z.object({ name: z.string().max(200) }).safeParse(req.body);
     const person = parsed.success ? store.personByName(parsed.data.name) : undefined;
     if (person && !person.disabled && person.hasPassword) {
-      const destinations = codeDestinations(person);
+      const destinations = codeTargets(person);
       const allowed =
         person.isAdmin || destinations.length
           ? store.takeCodeSends(person.id, 'reset', [
@@ -344,8 +328,7 @@ export function createGateway(o: GatewayOptions) {
         for (const d of destinations.filter((d) => allowed.includes(d.to)))
           // Not awaited: the answer must take as long for anyone, so it reveals nobody
           void send(
-            d.to,
-            d.address,
+            d,
             d.to === 'email' ? 'Allotment password code' : 'Allotment password reset',
             text,
           ).catch((e) =>
@@ -425,6 +408,7 @@ export function createGateway(o: GatewayOptions) {
     notifyService: p.notifyService,
     email: p.email,
     codeChannel: p.codeChannel,
+    reminderChannel: p.reminderChannel,
   });
   const destinationInput = {
     phone: z.object({ service: notifyServiceSchema }).transform((b) => b.service),
@@ -464,7 +448,7 @@ export function createGateway(o: GatewayOptions) {
           .json({ error: 'A code was sent a moment ago. Wait a minute and try again.' });
       const code = store.issueDestinationCode(person.id, destination, address);
       try {
-        await send(destination, address, texts.subject, texts.text(code));
+        await send({ to: destination, address }, texts.subject, texts.text(code));
       } catch (e) {
         console.error(
           `A confirmation code could not be sent (${destination}):`,
@@ -493,13 +477,18 @@ export function createGateway(o: GatewayOptions) {
       res.json(me(store.person(person.id)!));
     });
   }
-  people.put('/me/code-channel', (req, res) => {
-    const person = res.locals.person as Person;
-    const parsed = z.object({ channel: z.enum(['phone', 'email', 'both']) }).safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ error: 'Choose phone, email or both' });
-    store.setCodeChannel(person.id, parsed.data.channel);
-    res.json(me(store.person(person.id)!));
-  });
+  // Where codes go, and where this person's budget's reminders go: phone, email or both
+  for (const [path, of] of [
+    ['code-channel', 'codes'],
+    ['reminder-channel', 'reminders'],
+  ] as const)
+    people.put(`/me/${path}`, (req, res) => {
+      const person = res.locals.person as Person;
+      const parsed = z.object({ channel: z.enum(['phone', 'email', 'both']) }).safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: 'Choose phone, email or both' });
+      store.setChannel(person.id, of, parsed.data.channel);
+      res.json(me(store.person(person.id)!));
+    });
 
   const describe = (p: Person) => ({
     id: p.id,

@@ -5,6 +5,7 @@ import { setupCode } from '../auth/setupCode.js';
 import { createGateway } from './app.js';
 import { Budgets, ensureKey, processLauncher } from './budgets.js';
 import { smtpMailer, type SmtpSettings } from './mail.js';
+import { createNotifyListener } from './notifyListener.js';
 import { canNotify, homeAssistantNotify } from './notify.js';
 import { GatewayStore } from './store.js';
 
@@ -18,6 +19,8 @@ import { GatewayStore } from './store.js';
 // - FLYBUDGET_BUDGETS_DIR: where new people's budgets go (default: budgets/ next to DB_PATH)
 // - FLYBUDGET_SERVER_SCRIPT: the Allotment server each budget runs (default: server.js here)
 // - FLYBUDGET_BUDGET_PORT: the first loopback port for budgets (default 4101)
+// - FLYBUDGET_NOTIFY_PORT: the loopback port where budgets hand over their reminders (default
+//   one below the first budget's)
 // - PORT, FLYBUDGET_HOST, FLYBUDGET_ALLOWED_HOSTS, FLYBUDGET_TRUST_PROXY, CLIENT_DIST: as for
 //   the single-user server
 // The mail server for password codes is not read from the environment, which budgets inherit:
@@ -45,21 +48,32 @@ export async function startGateway({ port, serverScript, serverArgs = [], smtp }
   fs.mkdirSync(budgetsDir, { recursive: true, mode: 0o700 });
   ensureKey(keyPath);
 
+  const budgetPort = Number(process.env.FLYBUDGET_BUDGET_PORT ?? 4101);
+  const notifyPort = Number(process.env.FLYBUDGET_NOTIFY_PORT ?? budgetPort - 1);
   const budgets = new Budgets(
-    processLauncher(serverScript, serverArgs),
-    Number(process.env.FLYBUDGET_BUDGET_PORT ?? 4101),
+    processLauncher(serverScript, serverArgs, `http://127.0.0.1:${notifyPort}/notify`),
+    budgetPort,
   );
+  const delivery = {
+    notify: homeAssistantNotify(),
+    canNotify,
+    // Nothing connects to the mail server until the first email
+    mail: smtp && smtpMailer(smtp),
+  };
   const app = createGateway({
     store,
     budgets,
     ownerBudget: { dbPath, keyPath },
     budgetsDir,
     clientDist: process.env.CLIENT_DIST,
-    notify: homeAssistantNotify(),
-    canNotify,
-    // Nothing connects to the mail server until the first email
-    mail: smtp && smtpMailer(smtp),
+    ...delivery,
   });
+  // Reminders from the budgets: loopback only, listening before any budget starts
+  const notifyServer = await listen(
+    createNotifyListener({ store, budgets, ...delivery }),
+    notifyPort,
+    '127.0.0.1',
+  );
 
   // Everyone who may sign in has their budget running, so Up polling and the like keep going
   const active = store.people().filter((p) => !p.disabled);
@@ -71,9 +85,7 @@ export async function startGateway({ port, serverScript, serverArgs = [], smtp }
   store.deleteExpiredSessions();
   setInterval(() => store.deleteExpiredSessions(), 60 * 60 * 1000).unref();
 
-  const server = await new Promise<ReturnType<typeof app.listen>>((resolve, reject) => {
-    const s = app.listen(port, listenHost, (err?: Error) => (err ? reject(err) : resolve(s)));
-  });
+  const server = await listen(app, port, listenHost);
   console.log(
     `Allotment multi-user gateway on port ${port}: ${active.length} budget(s) running${smtp ? ', email on' : ''}.`,
   );
@@ -81,6 +93,7 @@ export async function startGateway({ port, serverScript, serverArgs = [], smtp }
 
   const shutdown = async () => {
     server.close();
+    notifyServer.close();
     await budgets.stopAll();
     store.close();
     process.exit(0);
@@ -89,6 +102,11 @@ export async function startGateway({ port, serverScript, serverArgs = [], smtp }
   process.once('SIGINT', () => void shutdown());
   return { server, budgets, store };
 }
+
+const listen = (app: ReturnType<typeof createGateway>, port: number, host: string) =>
+  new Promise<ReturnType<typeof app.listen>>((resolve, reject) => {
+    const s = app.listen(port, host, (err?: Error) => (err ? reject(err) : resolve(s)));
+  });
 
 // Run directly (`node gateway.js`) unless imported by a launcher. In development and tests the
 // budgets run from source: FLYBUDGET_SERVER_SCRIPT=src/index.ts FLYBUDGET_SERVER_NODE_ARGS="--import tsx"

@@ -445,7 +445,7 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
             value={reminderDays ?? ''}
             onChange={(e) => setReminderDays(e.target.value === '' ? null : Number(e.target.value))}
             // Off, or a reminder that could never be sent: the choice is kept but not offered
-            disabled={!reminders?.available || !reminders.service}
+            disabled={!reminders?.available || !reminders.enabled}
             className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface text-text focus:border-brand-600 focus:outline-none disabled:opacity-60"
           >
             <option value="">Don't remind me</option>
@@ -458,11 +458,13 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
               <option value={reminderDays}>{leadLabel(reminderDays)}</option>
             )}
           </select>
-          {(!reminders?.available || !reminders.service) && (
+          {(!reminders?.available || !reminders.enabled) && (
             <p className="text-xs text-text-tertiary mt-1">
-              {reminders?.available
-                ? 'Choose a notify service in Settings, Server, Reminders first.'
-                : 'Reminders need Allotment to run as a Home Assistant app.'}
+              {!reminders?.available
+                ? 'Reminders need Allotment to run as a Home Assistant app.'
+                : reminders.viaGateway
+                  ? 'Turn reminders on in Settings, Server, Reminders first.'
+                  : 'Choose a notify service in Settings, Server, Reminders first.'}
             </p>
           )}
         </div>

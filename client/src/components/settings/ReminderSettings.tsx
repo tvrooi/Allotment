@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BellRing } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -10,6 +10,8 @@ import { REMINDERS_QUERY_KEY, useReminderSettings } from '../../hooks/useReminde
 // Settings → Server → Reminders (FINX-02): which Home Assistant notify service gets bill and
 // payday reminders. Each schedule chooses its own lead in the schedule's form; nothing is sent
 // until both are set. The message is generic unless the owner asks for names and amounts.
+// Behind the multi-user gateway (D2b) there is no service to name: reminders are on or off, and
+// go to the person's own phone or email, chosen under Password codes.
 
 const inputClass =
   'w-full px-3 py-1.5 text-sm border border-border rounded-md bg-surface text-text focus:border-brand-600 focus:outline-none';
@@ -19,12 +21,15 @@ export function ReminderSettings() {
   const canSave = useCanSave();
   const { data } = useReminderSettings();
   const [service, setService] = useState('');
+  const [enabled, setEnabled] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const headingId = useId();
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     if (!data) return;
     setService(data.service ?? '');
+    setEnabled(data.enabled);
     setShowDetails(data.showDetails);
   }, [data]);
 
@@ -34,35 +39,45 @@ export function ReminderSettings() {
       qc.setQueryData(REMINDERS_QUERY_KEY, saved);
       setMessage({
         ok: true,
-        text: saved.service ? 'Saved. Send a test to check it reaches you.' : 'Reminders are off.',
+        text: saved.enabled ? 'Saved. Send a test to check it reaches you.' : 'Reminders are off.',
       });
     },
     onError: (e) => setMessage({ ok: false, text: (e as Error).message }),
   });
   const test = useMutation({
     mutationFn: sendTestReminder,
-    onSuccess: () => setMessage({ ok: true, text: 'Sent. Check your phone.' }),
+    onSuccess: () =>
+      setMessage({
+        ok: true,
+        text: data?.viaGateway ? 'Sent. Check your phone or email.' : 'Sent. Check your phone.',
+      }),
     onError: (e) => setMessage({ ok: false, text: (e as Error).message }),
   });
 
-  // Not on this install (a desktop, Docker or demo copy, or a budget of a multi-user server):
-  // say so rather than leave a control that does nothing
+  // Not on this install (a desktop, Docker or demo copy): say so rather than leave a control
+  // that does nothing
   if (!data) return null;
 
-  const dirty = (data.service ?? '') !== service.trim() || data.showDetails !== showDetails;
+  const dirty =
+    (data.viaGateway ? data.enabled !== enabled : (data.service ?? '') !== service.trim()) ||
+    data.showDetails !== showDetails;
 
   return (
-    <section className="pt-6 border-t border-border-light">
-      <h2 className="text-sm font-semibold text-text">Reminders</h2>
+    <section aria-labelledby={headingId} className="pt-6 border-t border-border-light">
+      <h2 id={headingId} className="text-sm font-semibold text-text">
+        Reminders
+      </h2>
       <p className="text-xs text-text-tertiary mt-1">
-        Get a Home Assistant notification a few days before a bill or payday. Choose how early in
-        each schedule (Recurring, then Add or Edit). A reminder goes out once, in the daytime, and
-        nothing leaves your Home Assistant.
+        {data.viaGateway
+          ? 'Get a message a few days before a bill or payday. '
+          : 'Get a Home Assistant notification a few days before a bill or payday. '}
+        Choose how early in each schedule (Recurring, then Add or Edit). A reminder goes out once,
+        in the daytime
+        {data.viaGateway ? '.' : ', and nothing leaves your Home Assistant.'}
       </p>
       {!data.available ? (
         <p className="text-xs text-text-secondary mt-3" role="status">
-          Reminders need Allotment to run as a Home Assistant app with its own budget. They are not
-          available here.
+          Reminders need Allotment to run as a Home Assistant app. They are not available here.
         </p>
       ) : (
         <form
@@ -70,27 +85,48 @@ export function ReminderSettings() {
           onSubmit={(e) => {
             e.preventDefault();
             setMessage(null);
-            save.mutate({ service: service.trim() || null, showDetails });
+            save.mutate(
+              data.viaGateway
+                ? { enabled, showDetails }
+                : { service: service.trim() || null, showDetails },
+            );
           }}
         >
-          <label className="block">
-            <span className="block text-xs font-medium text-text-secondary mb-1">
-              Notify service
-            </span>
-            <input
-              value={service}
-              onChange={(e) => setService(e.target.value)}
-              placeholder="e.g. mobile_app_your_phone"
-              maxLength={100}
-              autoCapitalize="none"
-              spellCheck={false}
-              className={inputClass}
-            />
-            <span className="block text-xs text-text-tertiary mt-1">
-              The name of a Home Assistant notify service, without “notify.”. Leave it empty to turn
-              reminders off.
-            </span>
-          </label>
+          {data.viaGateway ? (
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={enabled}
+                onChange={(e) => setEnabled(e.target.checked)}
+                className="mt-0.5 rounded border-border text-brand-600 focus:ring-brand-600"
+              />
+              <span className="text-sm text-text-secondary">
+                Send reminders
+                <span className="block text-xs text-text-tertiary">
+                  They go to your phone or email, chosen under Password codes.
+                </span>
+              </span>
+            </label>
+          ) : (
+            <label className="block">
+              <span className="block text-xs font-medium text-text-secondary mb-1">
+                Notify service
+              </span>
+              <input
+                value={service}
+                onChange={(e) => setService(e.target.value)}
+                placeholder="e.g. mobile_app_your_phone"
+                maxLength={100}
+                autoCapitalize="none"
+                spellCheck={false}
+                className={inputClass}
+              />
+              <span className="block text-xs text-text-tertiary mt-1">
+                The name of a Home Assistant notify service, without “notify.”. Leave it empty to
+                turn reminders off.
+              </span>
+            </label>
+          )}
           <label className="flex items-start gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -113,7 +149,7 @@ export function ReminderSettings() {
             <Button
               type="button"
               variant="secondary"
-              disabled={!data.service || dirty || test.isPending || !canSave}
+              disabled={!data.enabled || dirty || test.isPending || !canSave}
               onClick={() => {
                 setMessage(null);
                 test.mutate();

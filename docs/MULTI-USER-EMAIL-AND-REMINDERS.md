@@ -1,11 +1,11 @@
 # Email codes and reminders for separate budgets
 
-Status: **Part 1 (D2a, email codes) built in up.128; Part 2 (D2b, reminders) not built.** Design
+Status: **built: Part 1 (D2a, email codes) in up.128, Part 2 (D2b, reminders) in up.129.** Design
 approved 7 November 2026: the owner took every recommendation except decision 5, where each person
 chooses where their codes go (see "Owner decisions"). D2 of the Larger features group. It finishes
 step 3 of [MULTI-USER-PLAN.md](MULTI-USER-PLAN.md) (SMTP email) and, with D2b, the reminders gap in
-HANDOVER open items 3 and 9. "What is true today" below describes the code before D2a; "As built"
-says where D2a differs from the design.
+HANDOVER open items 3 and 9. "What is true today" below describes the code before D2a; each part's
+"As built" says where it differs from the design.
 
 ## The problem
 
@@ -169,6 +169,28 @@ Two things work with one budget but not behind the multi-user gateway:
 - The daytime window, once-per-occurrence marking and generic text are unchanged. Email uses the
   same text, with the subject "Allotment: coming up".
 
+### As built (D2b, up.129)
+
+- **Code:** `gateway/notifyListener.ts` (the listener), `gateway/delivery.ts` (destinations for
+  codes and reminders alike), notify tokens in `gateway/budgets.ts`, and on the budget side
+  `gatewayNotify`/`gatewayNotifySettings` in `gateway/notify.ts` and `reminderService()` in
+  `services/reminderService.ts`. Migration `0079_reminders_via_gateway`.
+- **Tokens** are kept as SHA-256 per person (not token → person in the clear), new on every
+  launch and dropped when the budget stops, so a stopped or restarted budget's old token is
+  refused.
+- **Delivered somewhere is delivered:** with **Both** chosen, 204 when either the phone or the
+  email arrives, so the budget marks the occurrence and nothing arrives twice; 422 only when
+  nothing was delivered.
+- **Email** uses the budget's title as its subject ("Allotment: coming up", or "Allotment: test"
+  for **Send a test**), which is why the title may hold no line breaks or control characters.
+- **Reminder destination:** `people.reminder_channel`, phone until the person chooses (email
+  when they have no phone). As for codes, when what they chose can't be used here, the other
+  one they have. Shown as **Send reminders to** under Password codes when they have both.
+- **`GET /api/reminders`** also returns `viaGateway` and `enabled` (the recurring form's
+  **Remind me** reads `enabled`), and the demo answers the same shape.
+- **Port:** `FLYBUDGET_NOTIFY_PORT`, default one below the first budget's port (4100 with the
+  default 4101). The e2e mail catcher moved from 3179 to 3170 for it.
+
 ## Proving a phone is yours
 
 Today a notify service is saved without proof. With R2, reminder text a person wrote reaches that
@@ -223,7 +245,7 @@ install starts unchanged. Before installing on the live app, take the usual cold
 ## Owner decisions
 
 Taken on 7 November 2026: the owner endorsed every recommendation except decision 5, where each
-person chooses where their codes go (phone, email or both). D2a is built (up.128); D2b is next.
+person chooses where their codes go (phone, email or both). Both parts are built (up.128, up.129).
 
 1. **Where the mail server is set.** Recommended: S1, the app's options in Home Assistant. Or S2,
    an administrator page in Allotment; S3 for Docker can follow either.

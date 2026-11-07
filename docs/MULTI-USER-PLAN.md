@@ -133,8 +133,8 @@ attributing changes to a person.
 2. **People:** add a person, invitation code, per-person sign-in, administrator page, stop and
    allow sign-in: done. Deleting a person's budget is left to the files (deliberately not a button).
 3. **Password resets:** Home Assistant notify codes, administrator reset codes and email codes
-   (up.128, D2a): done. Reminders through the gateway (D2b) are designed in
-   [MULTI-USER-EMAIL-AND-REMINDERS.md](MULTI-USER-EMAIL-AND-REMINDERS.md), not built.
+   (up.128, D2a): done, and bill reminders through the gateway (up.129, D2b), both in
+   [MULTI-USER-EMAIL-AND-REMINDERS.md](MULTI-USER-EMAIL-AND-REMINDERS.md).
 4. **Migration of the existing install:** not needed; the existing budget stays in place.
 5. **Shared households across budgets:** done, as combined households (`docs/HOUSEHOLDS.md`,
    "Combining with another person").

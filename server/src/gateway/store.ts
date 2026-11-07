@@ -32,6 +32,8 @@ export interface Person {
   /** Confirmed: saved only once the person typed back a code sent there */
   email: string | null;
   codeChannel: CodeChannel | null;
+  /** Where their budget's reminders go; null until they choose, which means their phone */
+  reminderChannel: CodeChannel | null;
   dbPath: string;
   keyPath: string;
   disabled: boolean;
@@ -46,6 +48,7 @@ interface PersonRow {
   notify_service: string | null;
   email: string | null;
   code_channel: CodeChannel | null;
+  reminder_channel: CodeChannel | null;
   db_path: string;
   key_path: string;
   disabled: number;
@@ -68,6 +71,7 @@ function toPerson(r: PersonRow): Person {
     notifyService: r.notify_service,
     email: r.email,
     codeChannel: r.code_channel,
+    reminderChannel: r.reminder_channel,
     dbPath: r.db_path,
     keyPath: r.key_path,
     disabled: r.disabled === 1,
@@ -217,6 +221,10 @@ export class GatewayStore {
       if (!columns.has('code_channel'))
         this.db.exec(
           "alter table people add column code_channel text check (code_channel in ('phone', 'email', 'both'))",
+        );
+      if (!columns.has('reminder_channel'))
+        this.db.exec(
+          "alter table people add column reminder_channel text check (reminder_channel in ('phone', 'email', 'both'))",
         );
     })();
   }
@@ -400,8 +408,13 @@ export class GatewayStore {
     })();
   }
 
-  setCodeChannel(id: string, channel: CodeChannel) {
-    this.db.prepare('update people set code_channel = ? where id = ?').run(channel, id);
+  /** Where the person's password codes or their budget's reminders go */
+  setChannel(id: string, of: 'codes' | 'reminders', channel: CodeChannel) {
+    this.db
+      .prepare(
+        `update people set ${of === 'codes' ? 'code_channel' : 'reminder_channel'} = ? where id = ?`,
+      )
+      .run(channel, id);
   }
 
   /** A disabled person can't sign in and is signed out everywhere */

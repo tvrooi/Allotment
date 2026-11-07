@@ -1239,6 +1239,8 @@ export const budgetSettings = sqliteTable('budget_settings', {
   reminderNotifyService: text('reminder_notify_service'),
   /** 1 = reminders name the bill and amount (a lock screen shows them); 0 = generic text */
   reminderShowDetails: integer('reminder_show_details').notNull().default(0),
+  /** Behind the multi-user gateway: 1 = send reminders to this budget's person, wherever they chose */
+  remindersViaGateway: integer('reminders_via_gateway').notNull().default(0),
   updatedAt: text('updated_at')
     .notNull()
     .default(sql`(datetime('now'))`),

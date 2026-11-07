@@ -6,7 +6,8 @@
 // after a restart or an edit that remakes the occurrences (regenerateFutureOccurrences keeps it).
 //
 // Rules that matter on a phone's lock screen:
-//   - off until the owner picks a notify service (Settings → Server → Reminders);
+//   - off until the owner picks a notify service (Settings → Server → Reminders), or, behind the
+//     multi-user gateway, turns them on there (they go to the person's own phone or email);
 //   - the text is generic ("2 scheduled items are due soon") unless the owner opts in to names
 //     and amounts, because a lock screen shows the message to whoever is holding the phone;
 //   - one message per tick however many items are due, and none overnight;
@@ -98,6 +99,21 @@ function money(amount: number, currency: string | null): string {
   }
 }
 
+/**
+ * Where reminders go, or null when they are off: the notify service a single budget names, or
+ * behind the gateway (which ignores it and sends to the budget's person) an empty name
+ */
+export function reminderService(
+  settings: Pick<
+    ReturnType<typeof getBudgetSettings>,
+    'reminderNotifyService' | 'remindersViaGateway'
+  >,
+  viaGateway: boolean,
+): string | null {
+  if (viaGateway) return settings.remindersViaGateway === 1 ? '' : null;
+  return settings.reminderNotifyService;
+}
+
 /** The notification's title and text for what is due (items are in date order) */
 export function reminderMessage(items: DueReminder[], showDetails: boolean) {
   const title = 'Allotment: coming up';
@@ -125,10 +141,14 @@ export function reminderMessage(items: DueReminder[], showDetails: boolean) {
  * Sends one notification for everything that is due, then marks those occurrences. Returns how
  * many occurrences it reminded about (0 when off, outside the daytime window, or nothing is due).
  */
-export async function sendDueReminders(notify: Notify, now: Date = new Date()): Promise<number> {
+export async function sendDueReminders(
+  notify: Notify,
+  now: Date = new Date(),
+  viaGateway = false,
+): Promise<number> {
   const settings = getBudgetSettings();
-  const service = settings.reminderNotifyService;
-  if (!service) return 0;
+  const service = reminderService(settings, viaGateway);
+  if (service === null) return 0;
   const hour = now.getHours();
   if (hour < FIRST_REMINDER_HOUR || hour > LAST_REMINDER_HOUR) return 0;
 

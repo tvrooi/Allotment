@@ -87,7 +87,12 @@ import { addDaysIso, todayIso } from './utils/date.js';
 import { OCCURRENCE_HORIZON_DAYS, startScheduleTimer } from './services/scheduleTimer.js';
 import { createRemindersRouter } from './routes/reminders.js';
 import { sendDueReminders } from './services/reminderService.js';
-import { canNotify, homeAssistantNotify } from './gateway/notify.js';
+import {
+  canNotify,
+  gatewayNotify,
+  gatewayNotifySettings,
+  homeAssistantNotify,
+} from './gateway/notify.js';
 
 const app = express();
 
@@ -149,7 +154,16 @@ app.use('/api/dashboards', dashboardsRouter);
 app.use('/api/households', householdsRouter);
 app.use('/api/payment-plans', paymentPlansRouter);
 app.use('/api/schedules', schedulesRouter);
-app.use('/api/reminders', createRemindersRouter());
+// Bill reminders (FINX-02): sent by this budget through Home Assistant, or behind the
+// multi-user gateway (D2b) handed to the gateway for this budget's person
+const viaGateway = gatewayNotifySettings();
+const reminders = viaGateway
+  ? { notify: gatewayNotify(viaGateway.url, viaGateway.token), available: () => true }
+  : { notify: homeAssistantNotify(), available: canNotify };
+app.use(
+  '/api/reminders',
+  createRemindersRouter(reminders.notify, reminders.available, Boolean(viaGateway)),
+);
 app.use('/api/goals', goalsRouter);
 app.use('/api/payday', paydayRouter);
 app.use('/api/forecast', forecastRouter);
@@ -329,12 +343,14 @@ function runStartupTasks(): () => void {
 
   // FINX-01: and then hourly, so a server that stays up keeps its schedules current. The timer
   // waits for the startup syncs, and for any Up sync in progress, before it creates anything.
-  // FINX-02: the same timer sends bill reminders, where Home Assistant can deliver them
-  const notify = homeAssistantNotify();
+  // FINX-02: the same timer sends bill reminders, where they can be delivered
   return startScheduleTimer({
     ready: bankSyncDone,
     busy: isUpSyncing,
-    afterTick: () => (canNotify() ? sendDueReminders(notify) : Promise.resolve()),
+    afterTick: () =>
+      reminders.available()
+        ? sendDueReminders(reminders.notify, new Date(), Boolean(viaGateway))
+        : Promise.resolve(),
   });
 }
 

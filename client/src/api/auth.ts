@@ -32,6 +32,8 @@ export interface CodeDestinations {
   email: string | null;
   /** null until they choose, which means both */
   codeChannel: CodeChannel | null;
+  /** Where their budget's reminders go; null until they choose, which means their phone */
+  reminderChannel: CodeChannel | null;
 }
 export type CodeChannel = 'phone' | 'email' | 'both';
 export type Destination = 'phone' | 'email';

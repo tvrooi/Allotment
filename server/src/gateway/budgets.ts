@@ -1,5 +1,5 @@
 import { spawn } from 'child_process';
-import { randomBytes } from 'crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import fs from 'fs';
 import http from 'http';
 import path from 'path';
@@ -17,8 +17,11 @@ export interface Running {
   exited: Promise<void>;
 }
 
-/** Starts one person's budget listening on 127.0.0.1:port */
-export type Launch = (person: Person, port: number, secret: string) => Running;
+/**
+ * Starts one person's budget listening on 127.0.0.1:port. `notifyToken` lets it send its
+ * person a message through the gateway's loopback listener (notifyListener.ts), and no one else.
+ */
+export type Launch = (person: Person, port: number, secret: string, notifyToken: string) => Running;
 
 export class Budgets {
   /** Sent with every request forwarded for a signed-in person; new on each gateway start */
@@ -27,6 +30,8 @@ export class Budgets {
   private running = new Map<string, Running>();
   private stopping = new Set<string>();
   private ready = new Map<string, Promise<void>>();
+  /** Person id → SHA-256 of their running budget's notify token, new on each launch */
+  private notifyTokens = new Map<string, Buffer>();
   private nextPort: number;
 
   constructor(
@@ -56,12 +61,15 @@ export class Budgets {
       this.ports.set(person.id, port);
     }
     this.stopping.delete(person.id);
-    const proc = this.launch(person, port, this.secret);
+    const notifyToken = randomBytes(32).toString('base64url');
+    this.notifyTokens.set(person.id, tokenDigest(notifyToken));
+    const proc = this.launch(person, port, this.secret, notifyToken);
     this.running.set(person.id, proc);
     void proc.exited.then(() => {
       if (this.running.get(person.id) !== proc) return;
       this.running.delete(person.id);
       this.ready.delete(person.id);
+      this.notifyTokens.delete(person.id);
       // Stopped unexpectedly: start it again shortly
       if (!this.stopping.has(person.id)) {
         console.error(`A budget stopped unexpectedly (${person.id}); restarting it in 5 seconds`);
@@ -80,6 +88,16 @@ export class Budgets {
     this.running.get(personId)?.stop();
     this.running.delete(personId);
     this.ready.delete(personId);
+    this.notifyTokens.delete(personId);
+  }
+
+  /** Whose running budget holds this notify token, compared in constant time */
+  personForNotifyToken(token: string): string | undefined {
+    const given = tokenDigest(token);
+    let found: string | undefined;
+    for (const [personId, digest] of this.notifyTokens)
+      if (timingSafeEqual(given, digest)) found = personId;
+    return found;
   }
 
   async stopAll() {
@@ -89,8 +107,11 @@ export class Budgets {
     await Promise.all(all.map(([, proc]) => proc.exited));
     this.running.clear();
     this.ready.clear();
+    this.notifyTokens.clear();
   }
 }
+
+const tokenDigest = (token: string) => createHash('sha256').update(token).digest();
 
 /** Waits until a budget's /api/health answers on loopback */
 export async function waitForHealth(port: number, timeoutMs: number) {
@@ -118,11 +139,12 @@ export async function waitForHealth(port: number, timeoutMs: number) {
 
 /**
  * Starts budgets as child processes running the Allotment server (`script`, e.g. /app/server.js)
- * in server mode on 127.0.0.1, with the person's database and key. Their log lines are prefixed
+ * in server mode on 127.0.0.1, with the person's database and key, and the gateway's notify
+ * listener (`notifyUrl`) for their reminders. Their log lines are prefixed
  * with the person's id, never their name.
  */
-export function processLauncher(script: string, args: string[] = []): Launch {
-  return (person, port, secret) => {
+export function processLauncher(script: string, args: string[] = [], notifyUrl?: string): Launch {
+  return (person, port, secret, notifyToken) => {
     const env: NodeJS.ProcessEnv = {
       ...process.env,
       FLYBUDGET_SERVER_MODE: 'true',
@@ -137,6 +159,10 @@ export function processLauncher(script: string, args: string[] = []): Launch {
       FLYBUDGET_TRUST_PROXY: 'loopback',
       // What Settings → Server reports: the gateway's own setup, which the browser reaches
       FLYBUDGET_OUTER_TRUST_PROXY: process.env.FLYBUDGET_TRUST_PROXY ?? '',
+      // Its reminders go to its person through the gateway (D2b), never named by the budget
+      ...(notifyUrl
+        ? { FLYBUDGET_NOTIFY_URL: notifyUrl, FLYBUDGET_NOTIFY_TOKEN: notifyToken }
+        : {}),
     };
     // The gateway serves the app's pages; a budget only answers the API
     delete env.CLIENT_DIST;

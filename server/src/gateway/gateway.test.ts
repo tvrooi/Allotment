@@ -11,22 +11,31 @@ import type { Server } from 'http';
 process.env.FLYBUDGET_SERVER_MODE = 'true';
 const { bankCallbackPerson, createGateway } = await import('./app.js');
 const { Budgets, processLauncher } = await import('./budgets.js');
+const { createNotifyListener } = await import('./notifyListener.js');
 const { GatewayStore } = await import('./store.js');
 const { setupCode } = await import('../auth/setupCode.js');
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flybudget-gateway-'));
 const store = new GatewayStore(path.join(dir, 'people.db'));
+// Away from other tests' ports; the budgets hand reminders to the port below their first
+const budgetPort = 24_100 + Math.floor(Math.random() * 500);
+const notifyPort = budgetPort - 1;
 const budgets = new Budgets(
-  processLauncher(path.resolve('src/index.ts'), ['--import', 'tsx']),
-  // Away from other tests' ports
-  24_100 + Math.floor(Math.random() * 500),
+  processLauncher(
+    path.resolve('src/index.ts'),
+    ['--import', 'tsx'],
+    `http://127.0.0.1:${notifyPort}/notify`,
+  ),
+  budgetPort,
   90_000,
 );
+let notifyFails = false;
 const notices: { service: string; message: string }[] = [];
 const mails: { to: string; subject: string; text: string }[] = [];
 let notifyOn = true;
 const logged: string[] = [];
 let server: Server;
+let notifyServer: Server;
 let base: string;
 
 const gatewayOptions = () => ({
@@ -34,8 +43,10 @@ const gatewayOptions = () => ({
   budgets,
   ownerBudget: { dbPath: path.join(dir, 'budget.db'), keyPath: path.join(dir, 'owner.key') },
   budgetsDir: path.join(dir, 'budgets'),
-  notify: async (service: string, _title: string, message: string) =>
-    void notices.push({ service, message }),
+  notify: async (service: string, _title: string, message: string) => {
+    if (notifyFails) throw new Error('Home Assistant could not send it (error 500)');
+    notices.push({ service, message });
+  },
   canNotify: () => notifyOn,
   mail: async (to: string, subject: string, text: string) => void mails.push({ to, subject, text }),
   log: (m: string) => void logged.push(m),
@@ -49,10 +60,14 @@ beforeAll(async () => {
     const s = app.listen(0, '127.0.0.1', () => r(s));
   });
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  notifyServer = await new Promise<Server>((r) => {
+    const s = createNotifyListener(gatewayOptions()).listen(notifyPort, '127.0.0.1', () => r(s));
+  });
 }, 120_000);
 
 afterAll(async () => {
   server?.close();
+  notifyServer?.close();
   await budgets.stopAll();
   store.close();
   fs.rmSync(dir, { recursive: true, force: true });
@@ -466,7 +481,12 @@ describe('multi-user gateway', () => {
     ).toBe(400);
     expect(
       (await partner('POST', '/api/people/me/phone/confirm', { code: confirmCode })).body,
-    ).toEqual({ notifyService: 'mobile_app_edward', email: null, codeChannel: null });
+    ).toEqual({
+      notifyService: 'mobile_app_edward',
+      email: null,
+      codeChannel: null,
+      reminderChannel: null,
+    });
     expect((await owner('GET', '/api/auth/status')).body.person.notifyService).toBeNull();
     notices.length = 0;
     later();
@@ -647,6 +667,76 @@ describe('multi-user gateway', () => {
       (await partner('POST', '/api/auth/login', { name: 'Edward', password: 'emailed-reset-1' }))
         .status,
     ).toBe(204);
+  });
+
+  it("sends a budget's reminders to its own person, where they chose", async () => {
+    // Edward has his phone; Tristan only an email address
+    const settings = (await partner('GET', '/api/reminders')).body;
+    expect(settings).toEqual({
+      available: true,
+      viaGateway: true,
+      enabled: false,
+      service: null,
+      showDetails: false,
+    });
+    expect((await partner('POST', '/api/reminders/test')).status).toBe(409);
+    // A budget behind the gateway never names a destination
+    expect(
+      (await partner('PUT', '/api/reminders', { service: 'mobile_app_other', showDetails: false }))
+        .status,
+    ).toBe(400);
+    expect(
+      (await partner('PUT', '/api/reminders', { enabled: true, showDetails: false })).body,
+    ).toMatchObject({ enabled: true, viaGateway: true });
+    notices.length = 0;
+    mails.length = 0;
+    expect((await partner('POST', '/api/reminders/test')).body).toEqual({ sent: true });
+    expect(notices).toEqual([
+      { service: 'mobile_app_edward', message: 'Bill reminders will arrive here.' },
+    ]);
+    await owner('PUT', '/api/reminders', { enabled: true, showDetails: false });
+    expect((await owner('POST', '/api/reminders/test')).status).toBe(200);
+    expect(mails).toEqual([
+      {
+        to: 'tristan@example.com',
+        subject: 'Allotment: test',
+        text: 'Bill reminders will arrive here.',
+      },
+    ]);
+    expect(notices).toHaveLength(1);
+
+    // His own choice, made with the gateway: email chosen but none saved, so his phone still
+    expect(
+      (await partner('PUT', '/api/people/me/reminder-channel', { channel: 'email' })).body,
+    ).toMatchObject({ reminderChannel: 'email' });
+    await partner('POST', '/api/reminders/test');
+    expect(notices).toHaveLength(2);
+
+    // Nothing delivered: the budget says so and (for the hourly timer) marks nothing
+    notifyFails = true;
+    try {
+      const failed = await partner('POST', '/api/reminders/test');
+      expect(failed.status).toBe(422);
+      expect(failed.body.error).toMatch(/could not be reached/);
+    } finally {
+      notifyFails = false;
+    }
+    // Nowhere to send
+    await partner('DELETE', '/api/people/me/phone');
+    const nowhere = await partner('POST', '/api/reminders/test');
+    expect(nowhere.status).toBe(422);
+    expect(nowhere.body.error).toMatch(/Password codes/);
+
+    // The public port has no way in
+    expect(
+      (
+        await fetch(`${base}/notify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: 't', message: 'm' }),
+        })
+      ).status,
+    ).toBe(404);
   });
 
   it('disables a person: signed out, no sign-in, budget stopped', async () => {

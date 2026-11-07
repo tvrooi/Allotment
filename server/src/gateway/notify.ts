@@ -31,3 +31,38 @@ export function homeAssistantNotify(fetchImpl: typeof fetch = fetch): Notify {
       );
   };
 }
+
+/**
+ * Behind the multi-user gateway (D2b, docs/MULTI-USER-EMAIL-AND-REMINDERS.md): a budget's
+ * messages go to its own person, wherever they chose under Password codes. The gateway passes
+ * the budget a loopback URL and a token of its own; the budget never names a destination, so
+ * `service` is ignored.
+ */
+export function gatewayNotify(url: string, token: string, fetchImpl: typeof fetch = fetch): Notify {
+  return async (_service, title, message) => {
+    const res = await fetchImpl(url, {
+      method: 'POST',
+      redirect: 'error',
+      signal: AbortSignal.timeout(20_000),
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, message }),
+    });
+    if (!res.ok)
+      throw new Error(
+        res.status === 409
+          ? 'Add a phone or email under Settings → Server → Password codes first'
+          : res.status === 422
+            ? 'Your phone or email could not be reached. Check it under Password codes.'
+            : `The reminder could not be sent (error ${res.status})`,
+      );
+  };
+}
+
+/** The gateway's notify URL and token for this budget, when it runs behind the gateway */
+export function gatewayNotifySettings(env: NodeJS.ProcessEnv = process.env) {
+  const url = env.FLYBUDGET_NOTIFY_URL;
+  const token = env.FLYBUDGET_NOTIFY_TOKEN;
+  return url && token && /^http:\/\/127\.0\.0\.1:\d+\/notify$/.test(url)
+    ? { url, token }
+    : undefined;
+}

@@ -7,6 +7,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { db } from '../db/index.js';
 import { errorHandler } from '../middleware/security.js';
 import { BACKUP_TABLES } from '../services/backupService.js';
+import { getBudgetSettings, updateBudgetSettings } from '../services/mainAmountService.js';
 import { accountsRouter } from './accounts.js';
 import { dashboardsRouter } from './dashboards.js';
 import { exportRouter } from './export.js';
@@ -178,6 +179,20 @@ describe('backup and restore', () => {
         expect.objectContaining({ importedId: 'backup-1', importBatchId: null }),
       ]),
     );
+  });
+
+  it('keeps whether reminders go through the gateway (D2b), and restores a backup from before it', async () => {
+    updateBudgetSettings({ remindersViaGateway: 1 });
+    const before = await backup();
+    expect(before.budgetSettings).toEqual([expect.objectContaining({ remindersViaGateway: 1 })]);
+    updateBudgetSettings({ remindersViaGateway: 0 });
+    expect((await send('POST', '/export/restore', before)).status).toBe(200);
+    expect(getBudgetSettings().remindersViaGateway).toBe(1);
+    // A backup from before the setting has no such field: reminders stay off
+    const old = structuredClone(before);
+    delete old.budgetSettings[0].remindersViaGateway;
+    expect((await send('POST', '/export/restore', old)).status).toBe(200);
+    expect(getBudgetSettings().remindersViaGateway).toBe(0);
   });
 
   it('accepts backups made before the format was versioned', async () => {
