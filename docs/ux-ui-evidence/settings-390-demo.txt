@@ -1,0 +1,96 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+
+First time here? A short guide shows how it works: Categories, connecting Up, backups and preferences.
+
+No thanks
+Show me
+Settings
+Categories
+Accounts
+Budget
+Tags
+Connected banks
+Currencies
+Priorities
+Data
+Preferences
+Server
+Income
+Create group
+Income
+Edit
+Delete
+Pay
+Interest
+Other Income
+Create category
+Expenses
+Create group
+Home
+Edit
+Delete
+Rent
+Contents Insurance
+Home Goods
+Create category
+Bills
+Edit
+Delete
+Electricity
+Internet
+Phone
+Streaming
+Create category
+Food
+Edit
+Delete
+Groceries
+Eating Out
+Coffee
+Create category
+Getting Around
+Edit
+Delete
+Car Loan
+Car Insurance
+Fuel
+Public Transport
+Car Servicing
+Rego & CTP
+Create category
+Health
+Edit
+Delete
+Gym
+Chemist
+Doctor & Dentist
+Create category
+Lifestyle
+Edit
+Delete
+Clothing
+Personal Care
+Biscuit (dog)
+Entertainment
+Electronics
+Create category
+Gifts & Giving
+Edit
+Delete
+Gifts
+Charity
+Create category
+Savings Goals
+Edit
+Delete
+Holidays
+Emergency Fund
+Create category
+
+Allotment is free software under the GNU AGPL v3. Source code
+
+A$2k

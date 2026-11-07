@@ -1,0 +1,10 @@
+Allotment
+Investments
+
+Holdings you record and price yourself. They don't change account balances, your budget or net worth until you record a value.
+
+No investment accounts yet
+
+Add an investment, retirement or crypto account, then record what it holds here.
+
+Go to accounts

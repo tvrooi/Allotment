@@ -1,0 +1,64 @@
+Allotment
+Reports
+How reports work
+Add widget
+Custom report
+Overview
+Date range
+1M
+Last month
+3M
+6M
+12M
+YTD
+Last year
+All
+Frozen
+
+Summary
+
+This month
+
+$0
+
+Total income
+
+$0
+
+Total expenses
+
+$0
+
+Avg monthly expenses
+
+$0
+
+Avg per transaction
+
+Net worth
+
+This month
+
+No data for this period
+
+Add transactions, or pick a longer date range.
+
+Income & Expenses
+
+This month
+
+No data for this period
+
+Add transactions, or pick a longer date range.
+
+Spending by category
+
+This month
+
+Spending trends
+
+This month
+
+Transaction calendar
+
+This month

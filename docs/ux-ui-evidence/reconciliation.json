@@ -1,0 +1,66 @@
+[
+  {
+    "width": 1440,
+    "text": "Skip to content\nAllotment\nHelp & guides\nHide balances\nDashboard\nAccounts\nTransactions\nBudget\nReview\n3\nRecurring\nReports\nCash flow\nPLANNING\nGoals\nForecast\nTOOLS\nPayees\nRules\nMore features (5)\nAll accounts\nA$1,950\nFor budget\nA$1,950\nAdd account\nSettings\nOn this computer\nPinned\nAccounts\nAudit household everyday account with a deliberately long descriptive name\nReconcile\nReconcile: Audit household everyday account with a deliberately long descriptive name\nEveryday\nDate\tPayee\tAmount\t\nNov 7, 2026\tAudit grocer — a long payee name for mobile inspection\t-A$25\t\n\nSelected balance\n\nA$975\n\nStatement balance\n\nA$970\n\nDifference\n\nA$5\n\nAdds a -A$5 balance correction. Review your statement first; income and spending stay unchanged.\n\nFinishCreate adjustmentCancel",
+    "overflow": false
+  },
+  {
+    "width": 390,
+    "text": "Allotment\nAccounts\nAudit household everyday account with a deliberately long descriptive name\nReconcile\nReconcile: Audit household everyday account with a deliberately long descriptive name\nEveryday\nDate\tPayee\tAmount\t\nNov 7, 2026\tAudit grocer — a long payee name for mobile inspection\t-A$25\t\n\nSelected balance\n\nA$975\n\nStatement balance\n\nA$970\n\nDifference\n\nA$5\n\nAdds a -A$5 balance correction. Review your statement first; income and spending stay unchanged.\n\nFinishCreate adjustmentCancel",
+    "overflow": false
+  },
+  {
+    "width": 320,
+    "text": "Allotment\nAccounts\nAudit household everyday account with a deliberately long descriptive name\nReconcile\nReconcile: Audit household everyday account with a deliberately long descriptive name\nEveryday\nDate\tPayee\tAmount\t\nNov 7, 2026\tAudit grocer — a long payee name for mobile inspection\t-A$25\t\n\nSelected balance\n\nA$975\n\nStatement balance\n\nA$970\n\nDifference\n\nA$5\n\nAdds a -A$5 balance correction. Review your statement first; income and spending stay unchanged.\n\nFinishCreate adjustmentCancel",
+    "overflow": false
+  },
+  {
+    "afterAdjustment": "http://localhost:3191/#/accounts/b10Va-N9pFVfVLN-40aFR",
+    "accounts": [
+      {
+        "id": "8cwJNXYSvICnawDXyMCfc",
+        "name": "Audit household everyday account with a deliberately long descriptive name",
+        "type": "checking",
+        "startingBalance": 100000,
+        "isOffBudget": 0,
+        "assignPool": 0,
+        "sortOrder": 0,
+        "closedAt": null,
+        "logo": null,
+        "currency": "AUD",
+        "balanceAsOf": null,
+        "createdAt": "2026-11-07T05:51:53.338Z",
+        "balance": 97500,
+        "hasTransactions": true,
+        "lastTransactionDate": "2026-11-07",
+        "householdPool": null,
+        "bankLinked": false,
+        "mainBalance": 97500,
+        "rateDate": null,
+        "currencyDifference": null
+      },
+      {
+        "id": "b10Va-N9pFVfVLN-40aFR",
+        "name": "Audit household everyday account with a deliberately long descriptive name",
+        "type": "checking",
+        "startingBalance": 100000,
+        "isOffBudget": 0,
+        "assignPool": 0,
+        "sortOrder": 0,
+        "closedAt": null,
+        "logo": null,
+        "currency": "AUD",
+        "balanceAsOf": null,
+        "createdAt": "2026-11-07T05:53:11.195Z",
+        "balance": 97000,
+        "hasTransactions": true,
+        "lastTransactionDate": "2026-11-07",
+        "householdPool": null,
+        "bankLinked": false,
+        "mainBalance": 97000,
+        "rateDate": null,
+        "currencyDifference": null
+      }
+    ]
+  }
+]

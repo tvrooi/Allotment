@@ -1,0 +1,41 @@
+{
+  "widgets": [
+    {
+      "id": "demo-widget-1",
+      "type": "summary"
+    },
+    {
+      "id": "demo-widget-2",
+      "type": "net-worth"
+    },
+    {
+      "id": "demo-widget-3",
+      "type": "income-expenses"
+    },
+    {
+      "id": "demo-widget-4",
+      "type": "spending"
+    },
+    {
+      "id": "demo-widget-5",
+      "type": "custom-report"
+    },
+    {
+      "id": "demo-widget-6",
+      "type": "spending-trends"
+    },
+    {
+      "id": "demo-widget-7",
+      "type": "calendar"
+    }
+  ],
+  "before": "http://localhost:5173/#/reports/widget/demo-widget-4",
+  "after": "http://localhost:5173/#/reports/widget/demo-widget-4",
+  "row": "Rent\tHome\tA$12,650\tA$2,108.33\t\n42.8%",
+  "rowLinks": 0,
+  "calendarText": "Reports\nOverview\nTransaction calendar\n\nMoney in and out on each day\n\nSave to widget\nDate range\n1M\nLast month\n3M\n6M\n12M\nYTD\nLast year\nAll\nFrozen\nThis widget has its own date range\nUse dashboard range\n\nMoney in\n\nA$2,050\n\nMoney out\n\nA$531.92\n\nNet\n\nA$1,518.08\n\nDaily average out\n\nA$75.99\n\nOver 7 days\n\nTransaction calendar\n\nGreen is money in, red is money out. Click a day to see its transactions.\n\nA$2,050\nA$531.92\n\nNovember 2026\n\nS\nM\nT\nW\nT\nF\nS\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\nFriday, November 6, 2026\n\n4 transactions · A$2,050 in · A$46.08 out\n\nPayee\tCategory\tAccount\tAmount\n\nBrightwave Studio\tPay\tSpending\t+A$2,050\n\nCorner Grocer\tGroceries\tSpending\t-A$16.17\n\nDaily Grind Coffee\tCoffee\t2Up Spending\t-A$6.42\n\nParcel\tUncategorised\t2Up Spending\t-A$23.49\nDays with transactions\nExport CSV\nDate\tTransactions\tMoney in\tMoney out\tNet\nSat, Nov 7, 2026\t1\tA$0\tA$121.69\t-A$121.69\nFri, Nov 6, 2026\t4\tA$2,050\tA$46.08\tA$2,003.92\nThu, Nov 5, 2026\t4\tA$0\tA$89.38\t-A$89.38\nWed, Nov 4, 2026\t2\tA$0\tA$182.80\t-A$182.80\nTue, Nov 3, 2026\t3\tA$0\tA$66.13\t-A$66.13\nSun, Nov 1, 2026\t1\tA$0\tA$25.84\t-A$25.84\nTotal\t15\tA$2,050\tA$531.92\tA$1,518.08",
+  "calendarURL": "http://localhost:5173/#/reports/widget/demo-widget-7",
+  "accountURL": "http://localhost:5173/#/accounts/demo-acct-checking",
+  "returnURL": "http://localhost:5173/#/reports/widget/demo-widget-7",
+  "returnText": "Reports\nOverview\nTransaction calendar\n\nMoney in and out on each day\n\nSave to widget\nDate range\n1M\nLast month\n3M\n6M\n12M\nYTD\nLast year\nAll\nFrozen\nThis widget has its own date range\nUse dashboard range\n\nMoney in\n\nA$2,050\n\nMoney out\n\nA$531.92\n\nNet\n\nA$1,518.08\n\nDaily average out\n\nA$75.99\n\nOver 7 days\n\nTransaction calendar\n\nGreen is money in, red is money out. Click a day to see its transactions.\n\nA$2,050\nA$531.92\n\nNovember 2026\n\nS\nM\nT\nW\nT\nF\nS\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\nFriday, November 6, 2026\n\n4 transactions · A$2,050 in · A$46.08 out\n\nPayee\tCategory\tAccount\tAmount\n\nBrightwave Studio\tPay\tSpending\t+A$2,050\n\nCorner Grocer\tGroceries\tSpending\t-A$16.17\n\nDaily Grind Coffee\tCoffee\t2Up Spending\t-A$6.42\n\nParcel\tUncategorised\t2Up Spending\t-A$23.49\nDays with transactions\nExport CSV\nDate\tTransactions\tMoney in\tMoney out\tNet\nSat, Nov 7, 2026\t1\tA$0\tA$121.69\t-A$121.69\nFri, Nov 6, 2026\t4\tA$2,050\tA$46.08\tA$2,003.92\nThu, Nov 5, 2026\t4\tA$0\tA$89.38\t-A$89.38\nWed, Nov 4, 2026\t2\tA$0\tA$182.80\t-A$182.80\nTue, Nov 3, 2026\t3\tA$0\tA$66.13\t-A$66.13\nSun, Nov 1, 2026\t1\tA$0\tA$25.84\t-A$25.84\nTotal\t15\tA$2,050\tA$531.92\tA$1,518.08"
+}

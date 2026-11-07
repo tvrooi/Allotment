@@ -1,0 +1,326 @@
+[
+  {
+    "route": "dashboard",
+    "width": 1440,
+    "violations": [],
+    "incomplete": [
+      {
+        "id": "color-contrast",
+        "count": 39
+      }
+    ]
+  },
+  {
+    "route": "budget",
+    "width": 1440,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "budget/year",
+    "width": 1440,
+    "violations": [],
+    "incomplete": [
+      {
+        "id": "color-contrast",
+        "count": 1
+      },
+      {
+        "id": "th-has-data-cells",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "route": "accounts",
+    "width": 1440,
+    "violations": [],
+    "incomplete": [
+      {
+        "id": "color-contrast",
+        "count": 8
+      }
+    ]
+  },
+  {
+    "route": "transactions",
+    "width": 1440,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "household",
+    "width": 1440,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "payment-plans",
+    "width": 1440,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "recurring",
+    "width": 1440,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "cash-flow",
+    "width": 1440,
+    "violations": [],
+    "incomplete": [
+      {
+        "id": "color-contrast",
+        "count": 51
+      }
+    ]
+  },
+  {
+    "route": "reports",
+    "width": 1440,
+    "violations": [],
+    "incomplete": [
+      {
+        "id": "aria-prohibited-attr",
+        "count": 30
+      },
+      {
+        "id": "color-contrast",
+        "count": 28
+      }
+    ]
+  },
+  {
+    "route": "reports/custom",
+    "width": 1440,
+    "violations": [],
+    "incomplete": [
+      {
+        "id": "color-contrast",
+        "count": 31
+      }
+    ]
+  },
+  {
+    "route": "payees",
+    "width": 1440,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "rules",
+    "width": 1440,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "settings",
+    "width": 1440,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "goals",
+    "width": 1440,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "forecast",
+    "width": 1440,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "investments",
+    "width": 1440,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "tax",
+    "width": 1440,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "files",
+    "width": 1440,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "review",
+    "width": 1440,
+    "violations": [],
+    "incomplete": [
+      {
+        "id": "aria-prohibited-attr",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "route": "guide",
+    "width": 1440,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "dashboard",
+    "width": 390,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "budget",
+    "width": 390,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "budget/year",
+    "width": 390,
+    "violations": [],
+    "incomplete": [
+      {
+        "id": "color-contrast",
+        "count": 1
+      },
+      {
+        "id": "th-has-data-cells",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "route": "accounts",
+    "width": 390,
+    "violations": [],
+    "incomplete": [
+      {
+        "id": "color-contrast",
+        "count": 5
+      }
+    ]
+  },
+  {
+    "route": "transactions",
+    "width": 390,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "household",
+    "width": 390,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "payment-plans",
+    "width": 390,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "recurring",
+    "width": 390,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "cash-flow",
+    "width": 390,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "reports",
+    "width": 390,
+    "violations": [],
+    "incomplete": [
+      {
+        "id": "color-contrast",
+        "count": 3
+      }
+    ]
+  },
+  {
+    "route": "reports/custom",
+    "width": 390,
+    "violations": [],
+    "incomplete": [
+      {
+        "id": "color-contrast",
+        "count": 5
+      }
+    ]
+  },
+  {
+    "route": "payees",
+    "width": 390,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "rules",
+    "width": 390,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "settings",
+    "width": 390,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "goals",
+    "width": 390,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "forecast",
+    "width": 390,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "investments",
+    "width": 390,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "tax",
+    "width": 390,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "files",
+    "width": 390,
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "route": "review",
+    "width": 390,
+    "violations": [],
+    "incomplete": [
+      {
+        "id": "aria-prohibited-attr",
+        "count": 2
+      }
+    ]
+  },
+  {
+    "route": "guide",
+    "width": 390,
+    "violations": [],
+    "incomplete": []
+  }
+]

@@ -1,0 +1,67 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+The guide
+Connecting Up
+
+Bring in your Spending account, Savers and 2Up with a read-only token.
+
+What you need
+
+An Up account and a personal access token: a long password Up gives you for apps like Allotment. It can only read your accounts; it can’t move money. You can revoke it in Up at any time.
+
+Connect in three steps
+Open Up’s developer portal at api.up.com.au and sign in with the Up app on your phone.
+Copy the token it shows. It starts with up:yeah:.
+In Allotment, choose Connect Up, paste the token, and pick the accounts to bring in.
+What comes in
+Settled transactions in Australian dollars. Pending ones wait until they settle.
+Your Savers and 2Up accounts, if you choose them.
+Up’s categories where they match yours; the rest you sort once.
+Nothing twice: each Up transaction has a stable ID.
+Keeping it up to date
+
+Allotment syncs when it starts and when you choose Sync Now in Settings → Connected banks. You can also turn on background sync there. Each sync fetches recent transactions; all of Up's history is checked once a week, or straight away with Check all history. Your token is stored encrypted and is never included in backups or exports.
+
+Other banks
+
+Any bank: add the account and import the CSV files your bank exports (see Transactions). Allotment can also connect through Plaid, SimpleFIN and Enable Banking (Europe). Those are community supported: they work, but only Up is checked with every release, so if one stops working for your bank, CSV files still do.
+
+Next: Enable Banking (Europe)
+
+A$0

@@ -1,0 +1,92 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+Budget
+Groceries
+Spending history
+Jun
+Jul
+Aug
+Sep
+Oct
+Nov
+A$0
+A$250
+A$500
+A$750
+A$1k
+A$632
+A$616
+A$712
+A$614
+A$844
+A$138
+Budget
+
+November 2026
+
+Assigned
+A$710
+Activity
+-A$137.86
+Available
+A$752.45
+Target
+Target type
+Monthly amount
+Balance by date
+Recurring bill
+Refill to balance
+Assign the same amount every month.
+Target amount
+
+Targets suggest funding from money you already have. Use Fund targets on the budget to review and assign it.
+
+Save target
+Filters
+This month
+Last month
+Last 3 months
+This year
+All time
+Custom
+2 transactions
+In A$0
+Out A$137.86
+Net -A$137.86
+Nov 6, 2026 – Nov 7, 2026
+Select all 2
+Export
+November 7, 2026
+A$121.69
+Woolies
+A$121.69
+Groceries
+· 2Up Spending
+November 6, 2026
+A$16.17
+Corner Grocer
+A$16.17
+Groceries
+· Spending
+Summary
+Total transactions
+2
+Largest transaction
+A$121.69
+Average transaction
+A$68.93
+Total spending
+A$137.86
+First transaction
+Nov 6, 2026
+Last transaction
+Nov 7, 2026
+
+Files
+
+Link a file
+Drop, paste or choose files
+A$3.5k

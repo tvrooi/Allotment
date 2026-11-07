@@ -1,0 +1,66 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+
+First time here? A short guide shows how it works: Categories, connecting Up, backups and preferences.
+
+No thanks
+Show me
+Settings
+Categories
+Accounts
+Budget
+Tags
+Connected banks
+Currencies
+Priorities
+Data
+Preferences
+Server
+Budget start
+
+When your envelopes start counting. Transactions before it stay in your accounts and reports, and balances don't change, but they no longer carry into envelopes as overspending or uncategorised spending. Use this when your bank history goes back further than your budget does.
+
+Envelopes count all history.
+
+Start month
+Start budget here
+
+Allotment is free software under the GNU AGPL v3. Source code
+
+A$0

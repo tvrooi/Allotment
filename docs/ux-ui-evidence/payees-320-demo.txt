@@ -1,0 +1,1339 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+Payees
+
+Give a payee a default category and its new transactions are sorted for you.
+
+Got it
+Turn off tips
+Select all
+Brightwave Studio
+38 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Cedar Health
+37 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Up
+20 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Harbourside Realty
+37 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Shieldwell Insurance
+34 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Southern Power
+17 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Loop NBN
+17 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Nimbus Mobile
+17 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Streamline
+18 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Tuneful
+17 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+FlexPlay
+12 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Peak Fitness
+17 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Woolies
+75 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Costwise Warehouse
+17 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Corner Grocer
+35 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Daily Grind Coffee
+123 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Luigi's Trattoria
+19 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Taco Luna
+18 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Sakura Sushi
+20 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Burger Barn
+15 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Fuel Stop
+51 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Opal
+69 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+QuickLube Auto Care
+6 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Motor Registry
+1 transaction
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Northstar Mutual
+34 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Evergreen Super
+17 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Pinecone Invest
+17 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Wellway Chemist
+17 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Riverside Medical
+5 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Threadline
+10 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Hearth & Home
+9 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Parcel
+39 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Glow Beauty
+17 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Happy Paws Pet Supply
+19 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Oakwood Vet
+2 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+SkyHop Airlines
+2 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Lakeside Inn
+2 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Cineplex 8
+17 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+Kindred Food Bank
+18 transactions
+No default category
+Income → Pay
+Income → Interest
+Income → Other Income
+Home → Rent
+Home → Contents Insurance
+Home → Home Goods
+Bills → Electricity
+Bills → Internet
+Bills → Phone
+Bills → Streaming
+Food → Groceries
+Food → Eating Out
+Food → Coffee
+Getting Around → Car Loan
+Getting Around → Car Insurance
+Getting Around → Fuel
+Getting Around → Public Transport
+Getting Around → Car Servicing
+Getting Around → Rego & CTP
+Health → Gym
+Health → Chemist
+Health → Doctor & Dentist
+Lifestyle → Clothing
+Lifestyle → Personal Care
+Lifestyle → Biscuit (dog)
+Lifestyle → Entertainment
+Lifestyle → Electronics
+Gifts & Giving → Gifts
+Gifts & Giving → Charity
+Savings Goals → Holidays
+Savings Goals → Emergency Fund
+A$2k

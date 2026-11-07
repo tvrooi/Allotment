@@ -1,0 +1,146 @@
+[
+  {
+    "name": "welcome-1440-empty",
+    "url": "http://localhost:3191/#/welcome"
+  },
+  {
+    "name": "dashboard-1440-empty",
+    "url": "http://localhost:3191/#/dashboard"
+  },
+  {
+    "name": "budget-1440-empty",
+    "url": "http://localhost:3191/#/budget"
+  },
+  {
+    "name": "accounts-1440-empty",
+    "url": "http://localhost:3191/#/accounts"
+  },
+  {
+    "name": "transactions-1440-empty",
+    "url": "http://localhost:3191/#/transactions"
+  },
+  {
+    "name": "household-1440-empty",
+    "url": "http://localhost:3191/#/household"
+  },
+  {
+    "name": "payment-plans-1440-empty",
+    "url": "http://localhost:3191/#/payment-plans"
+  },
+  {
+    "name": "recurring-1440-empty",
+    "url": "http://localhost:3191/#/recurring"
+  },
+  {
+    "name": "cash-flow-1440-empty",
+    "url": "http://localhost:3191/#/cash-flow"
+  },
+  {
+    "name": "reports-1440-empty",
+    "url": "http://localhost:3191/#/reports"
+  },
+  {
+    "name": "payees-1440-empty",
+    "url": "http://localhost:3191/#/payees"
+  },
+  {
+    "name": "rules-1440-empty",
+    "url": "http://localhost:3191/#/rules"
+  },
+  {
+    "name": "goals-1440-empty",
+    "url": "http://localhost:3191/#/goals"
+  },
+  {
+    "name": "forecast-1440-empty",
+    "url": "http://localhost:3191/#/forecast"
+  },
+  {
+    "name": "investments-1440-empty",
+    "url": "http://localhost:3191/#/investments"
+  },
+  {
+    "name": "tax-1440-empty",
+    "url": "http://localhost:3191/#/tax"
+  },
+  {
+    "name": "files-1440-empty",
+    "url": "http://localhost:3191/#/files"
+  },
+  {
+    "name": "review-1440-empty",
+    "url": "http://localhost:3191/#/review"
+  },
+  {
+    "name": "welcome-390-empty",
+    "url": "http://localhost:3191/#/welcome"
+  },
+  {
+    "name": "dashboard-390-empty",
+    "url": "http://localhost:3191/#/dashboard"
+  },
+  {
+    "name": "budget-390-empty",
+    "url": "http://localhost:3191/#/budget"
+  },
+  {
+    "name": "accounts-390-empty",
+    "url": "http://localhost:3191/#/accounts"
+  },
+  {
+    "name": "transactions-390-empty",
+    "url": "http://localhost:3191/#/transactions"
+  },
+  {
+    "name": "household-390-empty",
+    "url": "http://localhost:3191/#/household"
+  },
+  {
+    "name": "payment-plans-390-empty",
+    "url": "http://localhost:3191/#/payment-plans"
+  },
+  {
+    "name": "recurring-390-empty",
+    "url": "http://localhost:3191/#/recurring"
+  },
+  {
+    "name": "cash-flow-390-empty",
+    "url": "http://localhost:3191/#/cash-flow"
+  },
+  {
+    "name": "reports-390-empty",
+    "url": "http://localhost:3191/#/reports"
+  },
+  {
+    "name": "payees-390-empty",
+    "url": "http://localhost:3191/#/payees"
+  },
+  {
+    "name": "rules-390-empty",
+    "url": "http://localhost:3191/#/rules"
+  },
+  {
+    "name": "goals-390-empty",
+    "url": "http://localhost:3191/#/goals"
+  },
+  {
+    "name": "forecast-390-empty",
+    "url": "http://localhost:3191/#/forecast"
+  },
+  {
+    "name": "investments-390-empty",
+    "url": "http://localhost:3191/#/investments"
+  },
+  {
+    "name": "tax-390-empty",
+    "url": "http://localhost:3191/#/tax"
+  },
+  {
+    "name": "files-390-empty",
+    "url": "http://localhost:3191/#/files"
+  },
+  {
+    "name": "review-390-empty",
+    "url": "http://localhost:3191/#/review"
+  }
+]

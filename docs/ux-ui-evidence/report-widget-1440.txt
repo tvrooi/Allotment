@@ -1,0 +1,103 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+Reports
+Overview
+Net worth
+
+Assets, liabilities and net worth over time
+
+Save to widget
+Date range
+1M
+Last month
+3M
+6M
+12M
+YTD
+Last year
+All
+Frozen
+Following the dashboard (Last 6 months)
+
+Net worth
+
+A$165,905.18
+
+Change
+
++A$17,244.73 (+12%)
+
+Assets
+
+A$178,536.37
+
+Liabilities
+
+A$12,631.19
+
+Net worth over time
+
+Assets minus liabilities
+
+Net worth
+Assets
+Liabilities
+A$140k
+A$150k
+A$160k
+A$170k
+A$180k
+Jun
+Jul
+Aug
+Sep
+Oct
+Nov
+A$0
+A$20k
+Month-end balances
+Export CSV
+Month	Assets	Liabilities	Net worth	Change
+Jun 2026	A$162,583.32	A$13,922.87	A$148,660.45	—
+Jul 2026	A$168,472.89	A$13,602.32	A$154,870.57	+A$6,210.12
+Aug 2026	A$170,729.26	A$13,280.20	A$157,449.06	+A$2,578.49
+Sep 2026	A$172,914.01	A$12,956.49	A$159,957.52	+A$2,508.46
+Oct 2026	A$177,018.29	A$12,631.19	A$164,387.10	+A$4,429.58
+Nov 2026	A$178,536.37	A$12,631.19	A$165,905.18	+A$1,518.08
+A$250

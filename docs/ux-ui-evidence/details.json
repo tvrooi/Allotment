@@ -1,0 +1,80 @@
+[
+  {
+    "accounts": [
+      {
+        "id": "demo-acct-checking",
+        "name": "Spending"
+      },
+      {
+        "id": "demo-acct-savings",
+        "name": "Rainy Day"
+      },
+      {
+        "id": "demo-acct-holiday",
+        "name": "Holiday"
+      },
+      {
+        "id": "demo-acct-card",
+        "name": "2Up Spending"
+      },
+      {
+        "id": "demo-acct-retirement",
+        "name": "Evergreen Super"
+      },
+      {
+        "id": "demo-acct-brokerage",
+        "name": "Pinecone Shares"
+      },
+      {
+        "id": "demo-acct-carLoan",
+        "name": "Northstar Car Loan"
+      },
+      {
+        "id": "demo-acct-car",
+        "name": "2021 Hatchback"
+      }
+    ]
+  },
+  {
+    "saved": "http://localhost:5173/#/reports/custom/9QDrJp50pxP6VL8cQU_kg"
+  },
+  {
+    "accounts": [
+      {
+        "id": "demo-acct-checking",
+        "name": "Spending"
+      },
+      {
+        "id": "demo-acct-savings",
+        "name": "Rainy Day"
+      },
+      {
+        "id": "demo-acct-holiday",
+        "name": "Holiday"
+      },
+      {
+        "id": "demo-acct-card",
+        "name": "2Up Spending"
+      },
+      {
+        "id": "demo-acct-retirement",
+        "name": "Evergreen Super"
+      },
+      {
+        "id": "demo-acct-brokerage",
+        "name": "Pinecone Shares"
+      },
+      {
+        "id": "demo-acct-carLoan",
+        "name": "Northstar Car Loan"
+      },
+      {
+        "id": "demo-acct-car",
+        "name": "2021 Hatchback"
+      }
+    ]
+  },
+  {
+    "saved": "http://localhost:5173/#/reports/custom/c4M2juO-JI4ICe7rrct1E"
+  }
+]

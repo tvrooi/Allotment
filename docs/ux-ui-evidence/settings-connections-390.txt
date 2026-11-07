@@ -1,0 +1,41 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+Settings
+Categories
+Accounts
+Budget
+Tags
+Connected banks
+Currencies
+Priorities
+Data
+Preferences
+Server
+Connected banks
+
+Automatically import transactions from your financial institutions.
+
+Up
+
+Spending
+Rainy Day
+Holiday
+2Up Spending
+
+Last synced 5 minutes ago
+
+Connect Up
+Works in the real app
+
+Not available in the demo
+
+Bank connections need the Allotment app, so the demo can't take an Up token or reach a bank. In the app, Up brings in your settled transactions, Savers and 2Up included, and other banks connect through Plaid, SimpleFIN, Enable Banking or CSV files.
+
+Download Allotment
+
+Allotment is free software under the GNU AGPL v3. Source code
+
+A$20

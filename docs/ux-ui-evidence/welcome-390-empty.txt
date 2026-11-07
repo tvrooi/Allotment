@@ -1,0 +1,29 @@
+Welcome to Allotment
+
+EVERY DOLLAR GETS ITS PLOT.
+
+A budget that gives every dollar a job. Start by bringing in your accounts.
+
+Up
+Connect Up — about 2 minutes
+
+Your Spending account, Savers and 2Up come in with their settled transactions, and stay up to date.
+
+1
+Open Up’s developer portal
+It opens in a new tab: sign in with your Up app.
+2
+Copy your token
+It starts with up:yeah: and is read-only.
+3
+Paste it here
+Choose which accounts to bring in. Done.
+Connect Up
+
+Read-only: Allotment can’t move your money.
+
+Another bank: CSV files, or a community-supported connection
+
+Your budget stays on this computer. No Allotment account, no tracking.
+
+Skip for now and look around

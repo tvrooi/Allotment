@@ -1,0 +1,79 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+
+First time here? A short guide shows how it works: Categories, connecting Up, backups and preferences.
+
+No thanks
+Show me
+Settings
+Categories
+Accounts
+Budget
+Tags
+Connected banks
+Currencies
+Priorities
+Data
+Preferences
+Server
+Connected banks
+
+Automatically import transactions from your financial institutions.
+
+Up
+
+Spending
+Rainy Day
+Holiday
+2Up Spending
+
+Last synced 4 minutes ago
+
+Connect Up
+Works in the real app
+
+Not available in the demo
+
+Bank connections need the Allotment app, so the demo can't take an Up token or reach a bank. In the app, Up brings in your settled transactions, Savers and 2Up included, and other banks connect through Plaid, SimpleFIN, Enable Banking or CSV files.
+
+Download Allotment
+
+Allotment is free software under the GNU AGPL v3. Source code
+
+A$0

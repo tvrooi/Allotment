@@ -1,0 +1,37 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+The guide
+Long-term forecast
+
+Your net worth over the decades, with super, study loans and life events.
+
+What it shows
+
+Forecast → Long term projects your net worth year by year, from today’s real balances to an age you choose (95 unless you change it). It’s a projection, not a promise, and it never changes your budget. Day-by-day cash for the next months is on the Cash runway tab.
+
+Start a plan
+
+Give the plan a name and your birth year. Everything else starts at a default you can change, and each one says so beside its box (“Assumption, default …”). Income is your take-home pay, from your payday plans or recurring pay; spending starts from your last 12 months. You can keep several plans and Compare them.
+
+Life events
+
+Add what you expect to happen: buy a home, a new job, a career break, a child, a windfall or one-off expense, a recurring income or expense, retirement, or paying off a loan. Each has its own editor, and Create saves that event on its own. Changes to assumptions, accounts and savings wait until you choose Save changes (or Discard changes).
+
+Super
+
+Every retirement account is treated as super. Your employer’s contributions go in at the super guarantee rate, less contributions tax, and you can add salary sacrifice and your own contributions under Assumptions. Super stays preserved until you retire at your preservation age, or turn 65: until then it grows but can’t cover a shortfall. The chart shows what you could spend (accessible) apart from what’s still locked in super (preserved), and the figures above it show what’s accessible when you retire. Contribution caps are warned about, not enforced. The Age Pension is an amount you type in.
+
+HECS-HELP and other study loans
+
+A student loan account is treated as a study loan: no interest, but the debt rises each 1 June with indexation, and you repay it through tax once your income passes the threshold. By default your take-home pay already has the repayment taken out, so your cash doesn’t change while the debt lasts, and that money comes back once it’s repaid. The page says the year your study loans are repaid. Add an extra yearly payment under Accounts to see how much sooner, and how much indexation it saves.
+
+Reading the result
+
+Today’s dollars (the default) takes inflation out, so a figure in 30 years reads like money now; Future dollars shows the actual amounts. Pick a year under See what made up a year for every part of it, adding up to the cent. Simulation runs your plan through many different market years and shows the chance of success: how often the money lasts. Not modelled: income tax, capital gains tax, the Age Pension means test and a second person.
+
+Next: Reports
+
+A$20

@@ -1,0 +1,21 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+The guide
+Tax time
+
+Deductions, receipts and depreciating assets for your Australian return.
+
+Claims and receipts
+
+Open a transaction and tick Claim as a tax deduction, with its return label and the share that was for work. Add the receipt to the transaction, or keep it in Tax time’s Receipt inbox until the transaction arrives. Download a year’s deductions as a CSV file, or with the receipts in a ZIP, for your return or your tax agent.
+
+Assets that lose value over several years
+
+Something over $300 used for work, such as a laptop, is usually claimed as its decline in value over several years. Choose Depreciate instead on the claim, or Add an asset in Tax time → Assets. Pick the ATO’s prime cost or diminishing value method after comparing them; Allotment works out each year’s part. Keep its records under the asset, record it when you sell it or stop using it, and lock a year once it’s lodged.
+
+Next: Currencies
+
+A$20

@@ -1,0 +1,27 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+Settings
+Categories
+Accounts
+Budget
+Tags
+Connected banks
+Currencies
+Priorities
+Data
+Preferences
+Server
+Tags
+
+Label transactions across categories, like a holiday or a renovation. Add tags in a transaction's details or with a rule.
+
+Add tag
+
+No tags yet.
+
+Allotment is free software under the GNU AGPL v3. Source code
+
+A$20

@@ -1,0 +1,60 @@
+Allotment
+Investments
+
+Holdings you record and price yourself. They don't change account balances, your budget or net worth until you record a value.
+
+Add security
+Add holding
+
+Holdings value
+
+As of Nov 7, 2026
+
+A$210
+
+Known cost basis
+
+1 holding left out
+
+A$0
+
+Unrealized gain
+
+Before tax; only holdings with every cost known
+
+A$0
+
+Audit brokerage
+
+Shares & Funds
+
+Holdings A$210
+
+Recorded balance A$1,000
+
+The holdings are worth A$790 less than the recorded balance. The balance only changes if you record it.
+Record as value
+Security	Units	Price	Value	Cost basis	Unrealized gain
+
+
+AUDIT
+
+Synthetic audit fund · ETF
+
+	10.5
+
+A$20
+
+Nov 6, 2026
+
+	A$210	Unknown	—
+Add holding
+Securities
+
+AUDIT Synthetic audit fund · ETF · AUD
+
+A$20 on Nov 6, 2026 · 1 holding
+
+Values use the latest price you entered on or before today, converted at the latest exchange rate. Gains are unrealized and before tax: sales, dividends, fees outside a lot's cost and time-weighted returns aren't calculated.
+
+-A$1.2M

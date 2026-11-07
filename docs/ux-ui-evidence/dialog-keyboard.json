@@ -1,0 +1,105 @@
+{
+  "initial": {
+    "tag": "INPUT",
+    "text": "",
+    "inside": true
+  },
+  "afterTab": {
+    "tag": "SELECT",
+    "text": "Manual trackingRentContents InsuranceHome GoodsElectricityInternetPhoneStreamingGroceriesEating OutCoffeeCar LoanCar InsuranceFuelPublic TransportCar ServicingRego & CTPGymChemistDoctor & DentistClothingPersonal CareBiscuit (dog)EntertainmentElectronicsGiftsCharityHolidaysEmergency Fund",
+    "inside": true
+  },
+  "tabWalk": [
+    {
+      "tag": "INPUT",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "INPUT",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "INPUT",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "INPUT",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "INPUT",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "INPUT",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "SELECT",
+      "text": "NoneSpendingRainy DayHoliday2Up SpendingEvergreen SuperPinecone SharesNorthstar ",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "",
+      "inside": true
+    }
+  ],
+  "closed": 0
+}

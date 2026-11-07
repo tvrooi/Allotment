@@ -1,0 +1,169 @@
+
+> test
+> playwright test --project=desktop --project=phone --project=server-mode --project=multi-user tests/budget.spec.ts tests/payday.spec.ts tests/review.spec.ts tests/connection.spec.ts tests/category-goals.spec.ts tests/household.spec.ts tests/files.spec.ts tests/forecast.spec.ts tests/recover.spec.ts tests/phone/phone.spec.ts tests/phone/phone-native.spec.ts tests/server-mode/auth.spec.ts tests/multi-user/people.spec.ts
+
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[plugin rolldown:vite-resolve] Module "crypto" has been externalized for browser compatibility, imported by "/workspace/Allotment/server/src/services/upReviewService.ts". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[plugin rolldown:vite-resolve] Module "crypto" has been externalized for browser compatibility, imported by "/workspace/Allotment/server/src/services/upReviewService.ts". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+Running 92 tests using 1 worker
+
+(node:6953) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [desktop] › tests/budget.spec.ts:26:3 › budget › income is ready to budget, and planning spends it down (5.8s)
+  ✓   2 [desktop] › tests/budget.spec.ts:59:3 › budget › a refused amount stays in the field with its reason, and a save in flight is shown (5.2s)
+  ✓   3 [desktop] › tests/budget.spec.ts:116:3 › budget › a save that finishes late does not close the editor opened after it (3.3s)
+  ✓   4 [desktop] › tests/budget.spec.ts:157:3 › budget › a refused quick amount is what stays in the field (3.4s)
+  ✓   5 [desktop] › tests/budget.spec.ts:194:3 › budget › spending shows against its categories, including split parts (2.3s)
+  ✓   6 [desktop] › tests/budget.spec.ts:220:3 › budget › income in an off-budget account is not money to budget (2.1s)
+  ✓   7 [desktop] › tests/budget.spec.ts:241:3 › budget › unspent money carries over to the next month (2.7s)
+  ✓   8 [desktop] › tests/budget.spec.ts:267:3 › budget › money can be held for next month, so this month reaches fully budgeted (6.4s)
+  ✓   9 [desktop] › tests/budget.spec.ts:322:3 › budget › a category links to its detail page with its transactions (3.7s)
+  ✓  10 [desktop] › tests/budget.spec.ts:340:3 › budget › switching months keeps the budget on screen while the next month loads (4.3s)
+  ✓  11 [desktop] › tests/budget.spec.ts:372:3 › budget › an open editor never saves into the month that is still loading (2.5s)
+  ✓  12 [desktop] › tests/budget.spec.ts:409:1 › overspending is covered from the amount editor or by auto-assign (5.6s)
+  ✓  13 [desktop] › tests/budget.spec.ts:445:1 › a quick fill can leave envelopes out, and Replace or Set to zero takes money back (3.7s)
+  ✓  14 [desktop] › tests/budget.spec.ts:503:1 › a recurring bill shows as expected in its category before it is debited (1.8s)
+  ✓  15 [desktop] › tests/category-goals.spec.ts:3:3 › category goal progress and manual compatibility (3.7s)
+  ✓  16 [desktop] › tests/category-goals.spec.ts:3:3 › category goal progress and manual compatibility on phone (4.0s)
+  ✓  17 [desktop] › tests/connection.spec.ts:9:1 › the reconnect screen retries on its own and the app loads without a reload (4.0s)
+  ✓  18 [desktop] › tests/connection.spec.ts:32:1 › "Try now" reconnects straight away (2.0s)
+  ✓  19 [desktop] › tests/connection.spec.ts:42:1 › mid-session the app keeps what it loaded, keeps new transactions, and recovers (17.1s)
+  ✓  20 [desktop] › tests/connection.spec.ts:119:1 › the sidebar shows where the data lives and links to Settings → Server (6.5s)
+  ✓  21 [desktop] › tests/connection.spec.ts:153:1 › server details are only for the app itself (1.3s)
+  ✓  22 [desktop] › tests/files.spec.ts:16:1 › a file is added, labelled, found by what it says and linked to two transactions (9.5s)
+  ✓  23 [desktop] › tests/files.spec.ts:89:1 › a backup with files brings a deleted file back, contents and all (audit I-6) (3.7s)
+  ✓  24 [desktop] › tests/forecast.spec.ts:4:3 › forecast projects paydays and bills without writing (4.9s)
+  ✓  25 [desktop] › tests/forecast.spec.ts:4:3 › forecast projects paydays and bills without writing on a phone (2.3s)
+  ✓  26 [desktop] › tests/household.spec.ts:3:1 › records shared expenses, exports personal scope and keeps the bank debit intact (7.0s)
+  ✓  27 [desktop] › tests/household.spec.ts:43:1 › prepaid pool expenses do not create a second reimbursement claim (3.0s)
+  ✓  28 [desktop] › tests/household.spec.ts:81:1 › shares a payment with the household in one step, with the default split (5.1s)
+  ✓  29 [desktop] › tests/household.spec.ts:121:1 › a household picture shows on the payments shared with it (4.8s)
+  ✓  30 [desktop] › tests/household.spec.ts:193:1 › right-click shares a payment with a household, and Undo or Stop sharing reverses it (7.3s)
+  ✓  31 [desktop] › tests/household.spec.ts:313:1 › share, stop sharing, then undo and redo both, in order (3.7s)
+  ✓  32 [desktop] › tests/household.spec.ts:363:1 › right-clicking one of several picked payments shares all of them (2.7s)
+  ✓  33 [desktop] › tests/household.spec.ts:402:1 › picks payments in the register and shares just those, split equally (3.4s)
+  ✓  34 [desktop] › tests/household.spec.ts:458:1 › lists recurring bills shared with housemates, with shares and one-click sharing (2.7s)
+  ✓  35 [desktop] › tests/household.spec.ts:517:1 › bill splits, automatic sharing, people and one-off bills can all be changed (6.6s)
+  ✓  36 [desktop] › tests/household.spec.ts:610:1 › a rent with fixed amounts from the household account shows what each owes the account (4.6s)
+  ✓  37 [desktop] › tests/household.spec.ts:678:1 › lists who should pay whom and records a suggested repayment in one click (2.5s)
+  ✓  38 [desktop] › tests/household.spec.ts:715:1 › edits an entry in place, and the activity log keeps what was changed and removed (3.3s)
+  ✓  39 [desktop] › tests/household.spec.ts:760:1 › breaks household spending down by month, person and category (3.3s)
+  ✓  40 [desktop] › tests/household.spec.ts:827:1 › renames a household and chooses which one opens first (3.5s)
+  ✓  41 [desktop] › tests/household.spec.ts:853:1 › reconciles household balances to zero, and removing the adjustments undoes it (3.6s)
+  ✓  42 [desktop] › tests/payday.spec.ts:4:3 › payday funding previews and applies once (3.0s)
+  ✓  43 [desktop] › tests/payday.spec.ts:4:3 › payday funding previews and applies once on a phone (2.7s)
+  ✓  44 [desktop] › tests/payday.spec.ts:55:1 › a changed budget requires a refreshed preview (2.8s)
+  ✓  45 [desktop] › tests/payday.spec.ts:103:1 › the newest pay is ticked, a preview needs a deposit, and an empty preview says why (2.9s)
+  ✓  46 [desktop] › tests/payday.spec.ts:151:1 › an applied payday can be undone, previewed again and applied again (3.8s)
+  ✓  47 [desktop] › tests/recover.spec.ts:35:1 › a reconciled transaction can still be categorised, but its amount stays locked (3.2s)
+  ✓  48 [desktop] › tests/recover.spec.ts:66:1 › Unlock frees one reconciled transaction after a warning (3.3s)
+  ✓  49 [desktop] › tests/recover.spec.ts:80:1 › Undo last reconciliation unlocks its rows and removes the adjustment it made (2.8s)
+  ✓  50 [desktop] › tests/review.spec.ts:4:3 › the review resolves items in place and agrees with the budget (2.3s)
+  ✓  51 [desktop] › tests/review.spec.ts:4:3 › the review resolves items in place and agrees with the budget on a phone (2.1s)
+(node:11307) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  52 [phone] › tests/phone/phone-native.spec.ts:54:3 › register › shows each transaction as a card and edits it in a full-screen sheet (3.2s)
+  ✓  53 [phone] › tests/phone/phone-native.spec.ts:94:3 › register › adds a split transaction from a bottom sheet (3.0s)
+  ✓  54 [phone] › tests/phone/phone-native.spec.ts:136:3 › budget › shows categories as cards and plans an amount in a sheet (4.0s)
+  ✓  55 [phone] › tests/phone/phone-native.spec.ts:179:3 › budget › inactive categories are tucked away until asked for, keeping a few in view (2.7s)
+  ✓  56 [phone] › tests/phone/phone-native.spec.ts:204:3 › payees › uses cards with a menu instead of hover and double-click (5.8s)
+  ✓  57 [phone] › tests/phone/phone-native.spec.ts:254:3 › rules › toggles, reorders and deletes from the card (2.9s)
+  ✓  58 [phone] › tests/phone/phone-native.spec.ts:298:3 › dialogs and touch targets › dialogs open as bottom sheets with a full-size close button (2.7s)
+  ✓  59 [phone] › tests/phone/phone-native.spec.ts:309:3 › dialogs and touch targets › primary controls are at least 44px (2.0s)
+  ✓  60 [phone] › tests/phone/phone-native.spec.ts:327:1 › the month picker fits the screen and is easy to tap (2.7s)
+  ✓  61 [phone] › tests/phone/phone-native.spec.ts:346:1 › report summary figures fit their card (2.0s)
+  ✓  62 [phone] › tests/phone/phone-native.spec.ts:368:3 › recurring › shows each item as a card, and the month controls fit (2.2s)
+  ✓  63 [phone] › tests/phone/phone-native.spec.ts:402:3 › cash flow › lists where the money went, and the diagram scrolls sideways (2.4s)
+  ✓  64 [phone] › tests/phone/phone.spec.ts:14:1 › every page fits a phone screen (11.8s)
+  ✓  65 [phone] › tests/phone/phone.spec.ts:75:1 › the welcome screen fits a phone screen (2.2s)
+  ✓  66 [phone] › tests/phone/phone.spec.ts:82:1 › the sidebar is a drawer behind a menu button (3.8s)
+  ✓  67 [phone] › tests/phone/phone.spec.ts:120:1 › adding a transaction works on a phone (3.5s)
+  ✓  68 [phone] › tests/phone/phone.spec.ts:135:1 › account links stay reachable in a short drawer (5.1s)
+(node:13010) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  69 [server-mode] › tests/server-mode/auth.spec.ts:27:1 › a new server asks for a password and the setup code (3.6s)
+  ✓  70 [server-mode] › tests/server-mode/auth.spec.ts:61:1 › the signed-in owner uses the app, with real page URLs (2.6s)
+  ✓  71 [server-mode] › tests/server-mode/auth.spec.ts:76:1 › another browser sees only the login screen (4.3s)
+  ✓  72 [server-mode] › tests/server-mode/auth.spec.ts:87:1 › changing the password signs out other browsers (9.1s)
+  ✓  73 [server-mode] › tests/server-mode/auth.spec.ts:114:1 › server details and signed-in devices need a login (46ms)
+  ✓  74 [server-mode] › tests/server-mode/auth.spec.ts:136:1 › Settings → Server shows the security check and signed-in devices (5.2s)
+  ✓  75 [server-mode] › tests/server-mode/auth.spec.ts:167:1 › bill reminders say they need Home Assistant, and a schedule cannot ask for one here (1.9s)
+  ✓  76 [server-mode] › tests/server-mode/auth.spec.ts:184:1 › a read-only access token reads the budget, over the API and MCP, until revoked (3.7s)
+  ✓  77 [server-mode] › tests/server-mode/auth.spec.ts:226:1 › an organise token proposes a rule that waits for the owner to turn it on (4.0s)
+  ✓  78 [server-mode] › tests/server-mode/auth.spec.ts:277:1 › the sidebar shows the server and can sign out (3.2s)
+  ✓  79 [server-mode] › tests/server-mode/auth.spec.ts:295:1 › a forgotten password is reset with a code from the server log (13.8s)
+  ✓  80 [server-mode] › tests/server-mode/auth.spec.ts:358:1 › Home Assistant users are told to look in the app Log, not in Docker (2.1s)
+  ✓  81 [server-mode] › tests/server-mode/auth.spec.ts:403:1 › with the server unreachable, the app opens with the offline copy and keeps new transactions (4.9s)
+  ✓  82 [server-mode] › tests/server-mode/auth.spec.ts:457:1 › the offline copy can be turned off, and signing out deletes it (12.2s)
+  ✘  83 [server-mode] › tests/server-mode/auth.spec.ts:490:1 › warns before sending the password over plain HTTP to another machine (8.4s)
+  -  84 [server-mode] › tests/server-mode/auth.spec.ts:513:1 › someone guessing passwords can't lock the owner out
+(node:14122) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  85 [multi-user] › tests/multi-user/people.spec.ts:52:1 › the first person sets up with a name and keeps the budget already there (7.5s)
+  ✓  86 [multi-user] › tests/multi-user/people.spec.ts:70:1 › the administrator adds a person, who gets an invitation code (5.1s)
+  ✓  87 [multi-user] › tests/multi-user/people.spec.ts:86:1 › the invited person signs up and sees only their own, empty budget (3.9s)
+  ✓  88 [multi-user] › tests/multi-user/people.spec.ts:116:1 › two people combine their households and see each other's entries (7.3s)
+  ✓  89 [multi-user] › tests/multi-user/people.spec.ts:203:1 › signing in needs the right name for the password (2.9s)
+  ✓  90 [multi-user] › tests/multi-user/people.spec.ts:213:1 › a person adds an email address with its code, gets reminders there, and resets their password by email (6.9s)
+  ✓  91 [multi-user] › tests/multi-user/people.spec.ts:272:1 › the administrator's forgotten password is reset with a code from the log (3.9s)
+  ✓  92 [multi-user] › tests/multi-user/people.spec.ts:297:1 › another person signing in on the same browser takes over every tab's budget (5.2s)
+
+
+  1) [server-mode] › tests/server-mode/auth.spec.ts:490:1 › warns before sending the password over plain HTTP to another machine
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('Sign in to Allotment')
+    Expected: visible
+    Timeout: 7000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('Sign in to Allotment') with timeout 7000ms
+      - waiting for getByText('Sign in to Allotment')
+
+
+      501 |     const page = await browser.newPage();
+      502 |     await page.goto(`http://flybudget.test:${SERVER_PORT}/`);
+    > 503 |     await expect(page.getByText('Sign in to Allotment')).toBeVisible();
+          |                                                          ^
+      504 |     await expect(page.getByLabel('Server address')).toHaveText(`flybudget.test:${SERVER_PORT}`);
+      505 |     await expect(page.getByRole('note')).toContainText(
+      506 |       'Not a secure connection. Your password would travel unencrypted. Only continue on a network you trust.',
+        at /workspace/Allotment/e2e/tests/server-mode/auth.spec.ts:503:58
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/server-mode-auth-warns-bef-1e3c0-ain-HTTP-to-another-machine-server-mode/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/server-mode-auth-warns-bef-1e3c0-ain-HTTP-to-another-machine-server-mode/error-context.md
+
+    Error Context: test-results/server-mode-auth-warns-bef-1e3c0-ain-HTTP-to-another-machine-server-mode/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/server-mode-auth-warns-bef-1e3c0-ain-HTTP-to-another-machine-server-mode/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/server-mode-auth-warns-bef-1e3c0-ain-HTTP-to-another-machine-server-mode/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [server-mode] › tests/server-mode/auth.spec.ts:490:1 › warns before sending the password over plain HTTP to another machine
+  1 did not run
+  90 passed (7.1m)

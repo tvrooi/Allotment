@@ -1,0 +1,17 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+The guide
+Reports
+
+Where the money goes, over any period.
+
+Dashboards and reports
+
+Reports has dashboards of cards (net worth, spending, income) that you arrange, plus a builder for your own reports. Every figure exports to CSV.
+
+Next: Tax time
+
+A$20

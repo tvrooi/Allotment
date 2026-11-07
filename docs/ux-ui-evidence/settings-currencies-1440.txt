@@ -1,0 +1,402 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+
+First time here? A short guide shows how it works: Categories, connecting Up, backups and preferences.
+
+No thanks
+Show me
+Settings
+Categories
+Accounts
+Budget
+Tags
+Connected banks
+Currencies
+Priorities
+Data
+Preferences
+Server
+Currencies
+
+Your budget has one currency. Accounts can each have their own: their amounts stay in it, and the budget and reports count them in yours at each day's exchange rate. How currencies work
+
+Budget currency
+
+What your budget, reports and net worth are counted in. It can be corrected while no account in another currency has transactions.
+
+AUD · Australian Dollar
+EUR · Euro
+USD · US Dollar
+GBP · British Pound
+CHF · Swiss Franc
+PLN · Polish Zloty
+SEK · Swedish Krona
+NOK · Norwegian Krone
+DKK · Danish Krone
+CZK · Czech Koruna
+CAD · Canadian Dollar
+JPY · Japanese Yen
+AFN · Afghan Afghani
+ALL · Albanian Lek
+DZD · Algerian Dinar
+AOA · Angolan Kwanza
+ARS · Argentine Peso
+AMD · Armenian Dram
+AWG · Aruban Florin
+AZN · Azerbaijani Manat
+BSD · Bahamian Dollar
+BHD · Bahraini Dinar
+BDT · Bangladeshi Taka
+BBD · Barbadian Dollar
+BYN · Belarusian Ruble
+BZD · Belize Dollar
+BMD · Bermudan Dollar
+BTN · Bhutanese Ngultrum
+BOB · Bolivian Boliviano
+BAM · Bosnia-Herzegovina Convertible Mark
+BWP · Botswanan Pula
+BRL · Brazilian Real
+BND · Brunei Dollar
+BGN · Bulgarian Lev
+BIF · Burundian Franc
+KHR · Cambodian Riel
+CVE · Cape Verdean Escudo
+KYD · Cayman Islands Dollar
+XAF · Central African CFA Franc
+XPF · CFP Franc
+CLP · Chilean Peso
+CNY · Chinese Yuan
+COP · Colombian Peso
+KMF · Comorian Franc
+CDF · Congolese Franc
+CRC · Costa Rican Colón
+CUP · Cuban Peso
+DJF · Djiboutian Franc
+DOP · Dominican Peso
+XCD · East Caribbean Dollar
+EGP · Egyptian Pound
+ERN · Eritrean Nakfa
+ETB · Ethiopian Birr
+FKP · Falkland Islands Pound
+FJD · Fijian Dollar
+GMD · Gambian Dalasi
+GEL · Georgian Lari
+GHS · Ghanaian Cedi
+GIP · Gibraltar Pound
+GTQ · Guatemalan Quetzal
+GNF · Guinean Franc
+GYD · Guyanaese Dollar
+HTG · Haitian Gourde
+HNL · Honduran Lempira
+HKD · Hong Kong Dollar
+HUF · Hungarian Forint
+ISK · Icelandic Króna
+INR · Indian Rupee
+IDR · Indonesian Rupiah
+IRR · Iranian Rial
+IQD · Iraqi Dinar
+ILS · Israeli New Shekel
+JMD · Jamaican Dollar
+JOD · Jordanian Dinar
+KZT · Kazakhstani Tenge
+KES · Kenyan Shilling
+KWD · Kuwaiti Dinar
+KGS · Kyrgyz Som
+LAK · Laotian Kip
+LBP · Lebanese Pound
+LSL · Lesotho Loti
+LRD · Liberian Dollar
+LYD · Libyan Dinar
+MOP · Macanese Pataca
+MKD · Macedonian Denar
+MGA · Malagasy Ariary
+MWK · Malawian Kwacha
+MYR · Malaysian Ringgit
+MVR · Maldivian Rufiyaa
+MRU · Mauritanian Ouguiya
+MUR · Mauritian Rupee
+MXN · Mexican Peso
+MDL · Moldovan Leu
+MNT · Mongolian Tugrik
+MAD · Moroccan Dirham
+MZN · Mozambican Metical
+MMK · Myanmar Kyat
+NAD · Namibian Dollar
+NPR · Nepalese Rupee
+ANG · Netherlands Antillean Guilder
+TWD · New Taiwan Dollar
+NZD · New Zealand Dollar
+NIO · Nicaraguan Córdoba
+NGN · Nigerian Naira
+KPW · North Korean Won
+OMR · Omani Rial
+PKR · Pakistani Rupee
+PAB · Panamanian Balboa
+PGK · Papua New Guinean Kina
+PYG · Paraguayan Guarani
+PEN · Peruvian Sol
+PHP · Philippine Peso
+QAR · Qatari Riyal
+RON · Romanian Leu
+RUB · Russian Ruble
+RWF · Rwandan Franc
+SVC · Salvadoran Colón
+WST · Samoan Tala
+STN · São Tomé & Príncipe Dobra
+SAR · Saudi Riyal
+RSD · Serbian Dinar
+SCR · Seychellois Rupee
+SGD · Singapore Dollar
+SLE · SLE
+SBD · Solomon Islands Dollar
+SOS · Somali Shilling
+ZAR · South African Rand
+KRW · South Korean Won
+SSP · South Sudanese Pound
+LKR · Sri Lankan Rupee
+SHP · St. Helena Pound
+SDG · Sudanese Pound
+SRD · Surinamese Dollar
+SZL · Swazi Lilangeni
+SYP · Syrian Pound
+TJS · Tajikistani Somoni
+TZS · Tanzanian Shilling
+THB · Thai Baht
+TOP · Tongan Paʻanga
+TTD · Trinidad & Tobago Dollar
+TND · Tunisian Dinar
+TRY · Turkish Lira
+TMT · Turkmenistani Manat
+UGX · Ugandan Shilling
+UAH · Ukrainian Hryvnia
+AED · United Arab Emirates Dirham
+UYU · Uruguayan Peso
+UZS · Uzbekistani Som
+VUV · Vanuatu Vatu
+VES · Venezuelan Bolívar
+VND · Vietnamese Dong
+XOF · West African CFA Franc
+XCG · XCG
+YER · Yemeni Rial
+ZMW · Zambian Kwacha
+ZWG · ZWG
+Change
+Exchange rates
+
+A day without a rate uses the closest earlier one, up to a month back. A rate you type in wins over a downloaded one for its day.
+
+Currency
+EUR · Euro
+USD · US Dollar
+GBP · British Pound
+CHF · Swiss Franc
+PLN · Polish Zloty
+SEK · Swedish Krona
+NOK · Norwegian Krone
+DKK · Danish Krone
+CZK · Czech Koruna
+CAD · Canadian Dollar
+AUD · Australian Dollar
+JPY · Japanese Yen
+AFN · Afghan Afghani
+ALL · Albanian Lek
+DZD · Algerian Dinar
+AOA · Angolan Kwanza
+ARS · Argentine Peso
+AMD · Armenian Dram
+AWG · Aruban Florin
+AZN · Azerbaijani Manat
+BSD · Bahamian Dollar
+BHD · Bahraini Dinar
+BDT · Bangladeshi Taka
+BBD · Barbadian Dollar
+BYN · Belarusian Ruble
+BZD · Belize Dollar
+BMD · Bermudan Dollar
+BTN · Bhutanese Ngultrum
+BOB · Bolivian Boliviano
+BAM · Bosnia-Herzegovina Convertible Mark
+BWP · Botswanan Pula
+BRL · Brazilian Real
+BND · Brunei Dollar
+BGN · Bulgarian Lev
+BIF · Burundian Franc
+KHR · Cambodian Riel
+CVE · Cape Verdean Escudo
+KYD · Cayman Islands Dollar
+XAF · Central African CFA Franc
+XPF · CFP Franc
+CLP · Chilean Peso
+CNY · Chinese Yuan
+COP · Colombian Peso
+KMF · Comorian Franc
+CDF · Congolese Franc
+CRC · Costa Rican Colón
+CUP · Cuban Peso
+DJF · Djiboutian Franc
+DOP · Dominican Peso
+XCD · East Caribbean Dollar
+EGP · Egyptian Pound
+ERN · Eritrean Nakfa
+ETB · Ethiopian Birr
+FKP · Falkland Islands Pound
+FJD · Fijian Dollar
+GMD · Gambian Dalasi
+GEL · Georgian Lari
+GHS · Ghanaian Cedi
+GIP · Gibraltar Pound
+GTQ · Guatemalan Quetzal
+GNF · Guinean Franc
+GYD · Guyanaese Dollar
+HTG · Haitian Gourde
+HNL · Honduran Lempira
+HKD · Hong Kong Dollar
+HUF · Hungarian Forint
+ISK · Icelandic Króna
+INR · Indian Rupee
+IDR · Indonesian Rupiah
+IRR · Iranian Rial
+IQD · Iraqi Dinar
+ILS · Israeli New Shekel
+JMD · Jamaican Dollar
+JOD · Jordanian Dinar
+KZT · Kazakhstani Tenge
+KES · Kenyan Shilling
+KWD · Kuwaiti Dinar
+KGS · Kyrgyz Som
+LAK · Laotian Kip
+LBP · Lebanese Pound
+LSL · Lesotho Loti
+LRD · Liberian Dollar
+LYD · Libyan Dinar
+MOP · Macanese Pataca
+MKD · Macedonian Denar
+MGA · Malagasy Ariary
+MWK · Malawian Kwacha
+MYR · Malaysian Ringgit
+MVR · Maldivian Rufiyaa
+MRU · Mauritanian Ouguiya
+MUR · Mauritian Rupee
+MXN · Mexican Peso
+MDL · Moldovan Leu
+MNT · Mongolian Tugrik
+MAD · Moroccan Dirham
+MZN · Mozambican Metical
+MMK · Myanmar Kyat
+NAD · Namibian Dollar
+NPR · Nepalese Rupee
+ANG · Netherlands Antillean Guilder
+TWD · New Taiwan Dollar
+NZD · New Zealand Dollar
+NIO · Nicaraguan Córdoba
+NGN · Nigerian Naira
+KPW · North Korean Won
+OMR · Omani Rial
+PKR · Pakistani Rupee
+PAB · Panamanian Balboa
+PGK · Papua New Guinean Kina
+PYG · Paraguayan Guarani
+PEN · Peruvian Sol
+PHP · Philippine Peso
+QAR · Qatari Riyal
+RON · Romanian Leu
+RUB · Russian Ruble
+RWF · Rwandan Franc
+SVC · Salvadoran Colón
+WST · Samoan Tala
+STN · São Tomé & Príncipe Dobra
+SAR · Saudi Riyal
+RSD · Serbian Dinar
+SCR · Seychellois Rupee
+SGD · Singapore Dollar
+SLE · SLE
+SBD · Solomon Islands Dollar
+SOS · Somali Shilling
+ZAR · South African Rand
+KRW · South Korean Won
+SSP · South Sudanese Pound
+LKR · Sri Lankan Rupee
+SHP · St. Helena Pound
+SDG · Sudanese Pound
+SRD · Surinamese Dollar
+SZL · Swazi Lilangeni
+SYP · Syrian Pound
+TJS · Tajikistani Somoni
+TZS · Tanzanian Shilling
+THB · Thai Baht
+TOP · Tongan Paʻanga
+TTD · Trinidad & Tobago Dollar
+TND · Tunisian Dinar
+TRY · Turkish Lira
+TMT · Turkmenistani Manat
+UGX · Ugandan Shilling
+UAH · Ukrainian Hryvnia
+AED · United Arab Emirates Dirham
+UYU · Uruguayan Peso
+UZS · Uzbekistani Som
+VUV · Vanuatu Vatu
+VES · Venezuelan Bolívar
+VND · Vietnamese Dong
+XOF · West African CFA Franc
+XCG · XCG
+YER · Yemeni Rial
+ZMW · Zambian Kwacha
+ZWG · ZWG
+Day
+1 USD in AUD
+Add rate
+Download rates
+
+The European Central Bank's daily reference rates, from the rates server (Frankfurter, open source). Only currency codes and dates are sent, never anything about your budget. Off until you turn it on; then it checks every few hours.
+
+Not available in the demo: rates can be typed in above.
+
+How amounts are written
+
+On this device. Automatic writes each currency as at home: 1 234,56 zł, $1,234.56, CHF 1'234.56 (the number format is in Preferences). AUD's position is the Preferences one.
+
+AUD Australian Dollar
+Automatic (before)
+Before
+After
+-A$1,234.56
+
+Allotment is free software under the GNU AGPL v3. Source code
+
+A$0

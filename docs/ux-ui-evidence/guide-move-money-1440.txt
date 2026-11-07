@@ -1,0 +1,62 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+The guide
+Move money
+
+Cover an overspent envelope, change your mind, or give money back.
+
+Start from the envelope
+
+On the Budget page, click the Available figure of an envelope (tap it on a phone). If it has money, Move money opens with that envelope as the source: type an amount and choose where it goes. If it is overspent (red), the panel opens with that envelope as the destination and the amount it is short: choose which envelope pays for it. You can also open Move money / Cover overspending yourself and choose both.
+
+Preview, then apply
+
+Preview move shows what each side has available afterwards, and what the move does to a funding target: for example, that Groceries would be $50 short of its target instead of fully funded. Nothing is saved until you choose Apply move, and Cancel leaves everything as it was. Both envelopes change together, and the move can’t take more than the source has, in this month or any month after it. If your budget changed since you previewed (another edit, an import), apply is refused and you preview again.
+
+Giving money back to Ready to assign
+
+Choose Ready to assign as the destination to take money out of an envelope without giving it to another one. Ready to assign rises by exactly that amount, and you can assign it to any envelope afterwards, as you would any money that is ready. It is not a category: it never appears in your categories or reports.
+
+Undo, and the history
+
+Money move history lists your latest moves, including those that gave money back, and Undo move puts both sides back. Undo works only while nothing else in the budget has changed since the move: after that, move money again to adjust it. Moves in a future month aren’t available. See Budgeting for Ready to assign, and what to do about overspending.
+
+Next: Payday plans
+
+A$0

@@ -1,0 +1,360 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+Recurring
+Monthly
+All recurring
+Find recurring
+Add recurring
+
+Find recurring looks through your history for bills and pay that repeat, and suggests them.
+
+Got it
+Turn off tips
+1 transaction may match your recurring items
+Review now
+November 2026
+Today
+List
+Calendar
+
+Income
+
+A$5,498 remaining
+
+A$2,050 received of A$7,548
+
+Expenses
+
+A$3,185 remaining
+
+A$964.49 paid of A$4,149.49
+
+Income
+Date
+Account
+Status
+Amount
+
+Riley's pay
+
+Every 2 weeks
+
+Nov 6
+
+Spending
+
+Paid
+
+~+A$2,050
+
+Sam's pay
+
+Every 2 weeks
+
+Nov 12
+
+in 5 days
+
+Spending
+
+Upcoming
+
++A$1,724
+
+Riley's pay
+
+Every 2 weeks
+
+Nov 20
+
+in 13 days
+
+Spending
+
+Scheduled
+
+~+A$2,050
+
+Sam's pay
+
+Every 2 weeks
+
+Nov 26
+
+in 19 days
+
+Spending
+
+Scheduled
+
++A$1,724
+
+Expenses
+Date
+Account
+Status
+Amount
+
+Move to savings
+
+Monthly
+
+Nov 2
+
+Spending
+
+Paid
+
+A$900
+
+Gym membership
+
+Monthly
+
+Nov 3
+
+2Up Spending
+
+Paid
+
+A$49
+
+Streamline
+
+Monthly
+
+Nov 5
+
+2Up Spending
+
+Paid
+
+A$15.49
+
+Food bank donation
+
+Monthly
+
+Nov 5
+
+2 days overdue
+
+Spending
+
+Missed
+
+A$25
+
+Rent
+
+Every 2 weeks
+
+Nov 9
+
+in 2 days
+
+Spending
+
+Upcoming
+
+A$1,150
+
+Internet
+
+Monthly
+
+Nov 9
+
+in 2 days
+
+2Up Spending
+
+Upcoming
+
+A$65
+
+Car insurance
+
+Monthly
+
+Nov 12
+
+in 5 days
+
+2Up Spending
+
+Upcoming
+
+A$142
+
+Electricity
+
+Monthly
+
+Nov 18
+
+in 11 days
+
+Spending
+
+Scheduled
+
+~A$98
+
+Car loan
+
+Monthly
+
+Nov 20
+
+in 13 days
+
+Spending
+
+Scheduled
+
+A$389
+
+Biscuit's food
+
+Weekly
+
+Nov 21
+
+in 14 days
+
+2Up Spending
+
+Scheduled
+
+~A$58
+
+Phone plan
+
+Monthly
+
+Nov 22
+
+in 15 days
+
+2Up Spending
+
+Scheduled
+
+A$90
+
+Rent
+
+Every 2 weeks
+
+Nov 23
+
+in 16 days
+
+Spending
+
+Scheduled
+
+A$1,150
+
+Contents insurance
+
+Monthly
+
+Nov 26
+
+in 19 days
+
+2Up Spending
+
+Scheduled
+
+A$18
+
+A$20
+Add recurring
+Name
+Amount
+Type
+Expense
+Income
+Amount precision
+Exact
+Approx
+Variable
+Frequency
+One time
+Weekly
+Every 2 weeks
+Twice a month
+Monthly
+Quarterly
+Every 6 months
+Yearly
+Account
+No account
+Spending
+Rainy Day
+Holiday
+2Up Spending
+Evergreen Super
+Pinecone Shares
+Northstar Car Loan
+2021 Hatchback
+Start date
+End Date (optional)
+Payee (optional)
+Category
+Search categories...
+Notes (optional)
+Auto-create transactions
+Remind me
+Don't remind me
+On the day
+1 day before
+3 days before
+7 days before
+
+Reminders need Allotment to run as a Home Assistant app.
+
+On bank-connected accounts, income waits for the imported receipt even when auto-create is enabled. Closed accounts never auto-create transactions.
+
+▸ Advanced
+Cancel
+Add recurring

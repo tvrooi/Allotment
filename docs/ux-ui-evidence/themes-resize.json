@@ -1,0 +1,206 @@
+[
+  {
+    "name": "dashboard-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "budget-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "budget-year-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "accounts-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "transactions-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "household-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "payment-plans-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "recurring-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "cash-flow-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "reports-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "reports-custom-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "payees-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "rules-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "settings-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "goals-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "forecast-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "investments-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "tax-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "files-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "review-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "guide-1440-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "dashboard-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "budget-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "budget-year-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "accounts-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "transactions-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "household-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "payment-plans-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "recurring-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "cash-flow-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "reports-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "reports-custom-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "payees-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "rules-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "settings-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "goals-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "forecast-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "investments-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "tax-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "files-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "review-390-dark",
+    "dark": "dark"
+  },
+  {
+    "name": "guide-390-dark",
+    "dark": "dark"
+  },
+  {
+    "resize": 320,
+    "overflow": false
+  },
+  {
+    "resize": 360,
+    "overflow": false
+  },
+  {
+    "resize": 390,
+    "overflow": false
+  },
+  {
+    "resize": 640,
+    "overflow": false
+  },
+  {
+    "resize": 767,
+    "overflow": false
+  },
+  {
+    "resize": 768,
+    "overflow": false
+  },
+  {
+    "resize": 900,
+    "overflow": false
+  },
+  {
+    "resize": 1024,
+    "overflow": false
+  },
+  {
+    "resize": 1440,
+    "overflow": false
+  }
+]

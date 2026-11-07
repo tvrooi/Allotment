@@ -1,0 +1,180 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+
+First time here? A check-up: what needs fixing, most urgent first. Nothing changes until you act. A short guide shows how it works.
+
+No thanks
+Show me
+Review
+
+As of Nov 7, 2026 · Nothing here changes until you choose to. How the review works
+
+Category group
+All groups
+Home
+Bills
+Food
+Getting Around
+Health
+Lifestyle
+Gifts & Giving
+Savings Goals
+Do this next
+1
+Give 1 transaction a category
+2
+Assign your Ready to assign money
+A$3,476.51
+3
+Reconcile 3 accounts with your bank
+Resume budgeting
+
+Start with today's plan. You don't need to sort out old transactions first.
+
+Uncategorised spending
+1
+Accounts to reconcile
+3
+Mark review complete
+Records today's figures for next time. It does not reconcile anything.
+Needs attention
+Uncategorised spending
+A$23.49
+Overspent
+A$0
+Targets underfunded
+A$0
+Assigned to later months
+A$0
+Ready to assign
+A$3,476.51
+Uncategorised spending (1)
+Parcel
+Nov 6, 2026 · 2Up Spending
+-A$23.49
+Choose a category…
+Rent
+Contents Insurance
+Home Goods
+Electricity
+Internet
+Phone
+Streaming
+Groceries
+Eating Out
+Coffee
+Car Loan
+Car Insurance
+Fuel
+Public Transport
+Car Servicing
+Rego & CTP
+Gym
+Chemist
+Doctor & Dentist
+Clothing
+Personal Care
+Biscuit (dog)
+Entertainment
+Electronics
+Gifts
+Charity
+Holidays
+Emergency Fund
+Guided setup
+
+Each step is checked against your budget as it is now.
+
+Confirm your balances
+3 account(s) have unreconciled transactions.
+
+Compare each balance with your bank, then reconcile it. Up accounts that matched Up at the last sync are already checked.
+
+Spending
+A$38,591.90
+Reconcile (26)
+Rainy Day
+A$21,706.29
+Reconcile (4)
+Holiday
+A$65.50
+2Up Spending
+A$3,771.12
+Reconcile (51)
+Cover what is due before your next income
+Bills before your next income are covered.
+Assign the money you already have
+Some money you already have is not assigned yet.
+
+A$3,476.51 is ready to assign today. Give every dollar you already have a job; money you expect later is assigned when it arrives.
+
+Open the budget
+Prepare for irregular expenses
+Some irregular expenses have no target yet.
+
+Non-monthly categories and categories with quarterly, half-yearly or yearly bills. A target spreads each bill over the months before it is due.
+
+Car Servicing
+Set a target
+Rego & CTP
+Set a target
+Doctor & Dentist
+Set a target
+Electronics
+Set a target
+Gifts
+Set a target
+Holidays
+Set a target
+Check categories before spending
+Some spending is overspent or uncategorised.
+
+Before you spend, check the category has enough available. Overspending and uncategorised spending are listed under Needs attention.
+
+Move money when priorities change
+When priorities change, move money between categories instead of overspending.
+Flexibility and resilience
+No flexibility reserve yet
+
+Money set aside for no particular deadline gives room to change plans. Mark a category as a Flexibility reserve in Settings → Priorities to see it here. This is optional.
+
+Where today's money is
+Next month and buffer
+December 2026
+Already assigned
+A$0
+Assigned to months after that
+A$0
+Targets still need
+A$0
+Unresolved this month
+A$23.49
+
+Next month's targets assume nothing more is spent or assigned this month.
+
+Cash runway (optional)
+Cash after debts
+A$64,134.81
+Restricted: bill reserves and card payments
+A$0
+Unrestricted
+A$64,134.81
+Average monthly spending
+A$6,192.72
+
+Unrestricted money would cover about 10.4 months (315 days) of everyday spending.
+
+Assumptions
+Tidy up
+
+Setup problems that make the budget harder to trust.
+
+Your budget counts every month since June 2025
+
+Imported history you never budgeted for shows as overspending. Starting the budget in June 2025 keeps that history in accounts and reports, without the old deficits. You can change it in Settings → Budget.
+
+Start budgeting in June 2025
+A$2k

@@ -1,0 +1,21 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+The guide
+Rules
+
+Sort new transactions automatically.
+
+How they work
+
+A rule says: when a transaction matches these conditions (payee, bank text, amount, account), do these things (set the payee, the category, notes, or split it). Rules run on every import and sync, and on what you type.
+
+Check before you save
+
+While you write a rule, Allotment shows which past transactions it would match.
+
+Next: Goals
+
+A$20

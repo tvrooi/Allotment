@@ -1,0 +1,28 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+Settings
+Categories
+Accounts
+Budget
+Tags
+Connected banks
+Currencies
+Priorities
+Data
+Preferences
+Server
+Budget start
+
+When your envelopes start counting. Transactions before it stay in your accounts and reports, and balances don't change, but they no longer carry into envelopes as overspending or uncategorised spending. Use this when your bank history goes back further than your budget does.
+
+Envelopes count all history.
+
+Start month
+Start budget here
+
+Allotment is free software under the GNU AGPL v3. Source code
+
+A$20

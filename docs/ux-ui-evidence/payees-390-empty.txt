@@ -1,0 +1,8 @@
+Allotment
+Payees
+
+No payees yet
+
+Payees are the people and businesses you pay or get paid by. They’re added automatically as you enter or import transactions, and you can give each one a default category.
+
+Add a transaction

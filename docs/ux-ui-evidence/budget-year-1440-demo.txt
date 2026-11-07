@@ -1,0 +1,131 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+2026 budget
+Monthly budget
+
+Income received 2026
+
+A$85,283.48
+
+Assigned to months so far
+
+A$88,739.48
+
+Planned for later months
+
+A$0
+
+Available to assign today
+
+A$3,476.51
+
+Planned assignments and expected pay never add to money available today. Balances are shown at the end of November, not added up across months.
+
+Category
+Measure
+	Jan	Feb	Mar	Apr	May	Jun	Jul	Aug	Sep	Oct	Nov	Dec	Year	Available
+Home
+Rent	Assigned	A$2,300	A$2,300	A$3,450	A$2,300	A$2,300	A$2,300	A$2,300	A$3,450	A$2,300	A$2,300	A$2,300	–	A$27,600	A$2,300
+Activity	-A$2,300	-A$2,300	-A$3,450	-A$2,300	-A$2,300	-A$2,300	-A$2,300	-A$3,450	-A$2,300	-A$2,300	–		-A$25,300
+Contents Insurance	Assigned	A$18	A$18	A$18	A$18	A$18	A$18	A$18	A$18	A$18	A$18	A$18	–	A$198	A$18
+Activity	-A$18	-A$18	-A$18	-A$18	-A$18	-A$18	-A$18	-A$18	-A$18	-A$18	–		-A$180
+Home Goods	Assigned	A$125	A$125	A$125	A$125	A$125	A$125	A$125	A$125	A$125	A$125	A$125	–	A$1,375	A$92.47
+Activity	-A$107.47	-A$159.10	-A$94.98	-A$213.88	-A$146.64	-A$75.78	-A$168.57	-A$181.90	-A$105.12	-A$199.42	-A$64.20		-A$1,517.06
+Bills
+Electricity	Assigned	A$135	A$130	A$105	A$85	A$75	A$90	A$120	A$125	A$95	A$80	A$160	–	A$1,200	A$199.81
+Activity	-A$134.20	-A$127.46	-A$101.32	-A$83.25	-A$74.33	-A$88.90	-A$117.35	-A$121.14	-A$94.06	-A$79.64	–		-A$1,021.65
+Internet	Assigned	A$65	A$65	A$65	A$65	A$65	A$65	A$65	A$65	A$65	A$65	A$65	–	A$715	A$65
+Activity	-A$65	-A$65	-A$65	-A$65	-A$65	-A$65	-A$65	-A$65	-A$65	-A$65	–		-A$650
+Phone	Assigned	A$90	A$90	A$90	A$90	A$90	A$90	A$90	A$90	A$90	A$90	A$90	–	A$990	A$90
+Activity	-A$90	-A$90	-A$90	-A$90	-A$90	-A$90	-A$90	-A$90	-A$90	-A$90	–		-A$900
+Streaming	Assigned	A$44	A$45	A$44	A$45	A$44	A$33	A$33	A$33	A$33	A$33	A$33	–	A$420	A$20.47
+Activity	-A$44.47	-A$44.47	-A$44.47	-A$44.47	-A$44.47	-A$32.48	-A$32.48	-A$32.48	-A$32.48	-A$32.48	-A$15.49		-A$400.24
+Food
+Groceries	Assigned	A$741	A$710	A$710	A$710	A$710	A$710	A$710	A$710	A$710	A$710	A$710	–	A$7,841	A$752.45
+Activity	-A$801.43	-A$649.80	-A$710.98	-A$627.88	-A$803.91	-A$632.03	-A$615.52	-A$712.19	-A$613.99	-A$844.30	-A$137.86		-A$7,149.89
+Eating Out	Assigned	A$235	A$267	A$235	A$235	A$236	A$235	A$235	A$235	A$235	A$235	A$235	–	A$2,618	A$325.67
+Activity	-A$216.45	-A$298.94	-A$176.68	-A$246.57	-A$282.94	-A$173.83	-A$200.70	-A$215.06	-A$189.06	-A$161.97	-A$144.44		-A$2,306.64
+Coffee	Assigned	A$65	A$65	A$65	A$65	A$65	A$65	A$65	A$65	A$65	A$65	A$65	–	A$715	A$72.52
+Activity	-A$56.55	-A$58.77	-A$56.51	-A$69.32	-A$69.50	-A$60.52	-A$64	-A$58.24	-A$67.98	-A$58.13	-A$33.01		-A$652.53
+Getting Around
+Car Loan	Assigned	A$389	A$389	A$389	A$389	A$389	A$389	A$389	A$389	A$389	A$389	A$389	–	A$4,279	A$389
+Activity	-A$389	-A$389	-A$389	-A$389	-A$389	-A$389	-A$389	-A$389	-A$389	-A$389	–		-A$3,890
+Car Insurance	Assigned	A$142	A$142	A$142	A$142	A$142	A$142	A$142	A$142	A$142	A$142	A$142	–	A$1,562	A$142
+Activity	-A$142	-A$142	-A$142	-A$142	-A$142	-A$142	-A$142	-A$142	-A$142	-A$142	–		-A$1,420
+Fuel	Assigned	A$130	A$130	A$130	A$130	A$130	A$130	A$130	A$130	A$130	A$130	A$130	–	A$1,430	A$196.28
+Activity	-A$129.39	-A$124.80	-A$136.17	-A$117.96	-A$119.61	-A$143.20	-A$118.84	-A$116.72	-A$124.70	-A$140.95	–		-A$1,272.34
+Public Transport	Assigned	A$136	A$120	A$120	A$120	A$120	A$120	A$120	A$120	A$120	A$120	A$120	–	A$1,336	A$120.72
+Activity	-A$146.39	-A$110.13	-A$90.48	-A$109.85	-A$137	-A$117.36	-A$106.20	-A$135.57	-A$130.30	-A$103.71	-A$39.43		-A$1,226.42
+Car Servicing	Assigned	A$95	A$95	A$95	A$95	A$95	A$95	A$95	A$95	A$95	A$95	A$95	–	A$1,045	A$205.24
+Activity	–	-A$612.40	-A$69.99	–	–	–	-A$69.99	–	–	-A$612.40	–		-A$1,364.78
+Rego & CTP	Assigned	A$458	A$55	A$55	A$55	A$55	A$55	A$55	A$55	A$55	A$55	A$55	–	A$1,008	A$550.50
+Activity	-A$842.50	–	–	–	–	–	–	–	–	–	–		-A$842.50
+Health
+Gym	Assigned	A$49	A$49	A$49	A$49	A$49	A$49	A$49	A$49	A$49	A$49	A$49	–	A$539	A$49
+Activity	-A$49	-A$49	-A$49	–	-A$49	-A$49	-A$49	-A$49	-A$49	-A$49	-A$49		-A$490
+Chemist	Assigned	A$25	A$25	A$25	A$25	A$25	A$25	A$25	A$25	A$25	A$25	A$25	–	A$275	A$64.07
+Activity	-A$22.34	-A$12.15	-A$27.53	-A$26.30	-A$23.25	-A$25.10	-A$16.37	-A$15.58	-A$17.30	-A$29.03	–		-A$214.95
+Doctor & Dentist	Assigned	A$15	A$15	A$15	A$15	A$15	A$15	A$15	A$15	A$15	A$15	A$15	–	A$165	A$95
+Activity	–	-A$35	–	–	-A$35	–	–	-A$35	–	–	–		-A$105
+Lifestyle
+Clothing	Assigned	A$60	A$60	A$60	A$60	A$60	A$60	A$60	A$60	A$60	A$60	A$60	–	A$660	A$126.17
+Activity	–	-A$133.64	–	-A$81.36	–	-A$124.01	–	-A$116.34	–	-A$119.17	–		-A$574.52
+Personal Care	Assigned	A$48	A$42	A$40	A$40	A$40	A$40	A$40	A$40	A$40	A$40	A$40	–	A$450	A$142.48
+Activity	-A$47.53	-A$41.97	-A$24.51	-A$25.17	-A$27.10	-A$39.73	-A$19.66	-A$19.44	-A$25.90	-A$36.58	–		-A$307.59
+Biscuit (dog)	Assigned	A$105	A$105	A$105	A$105	A$105	A$105	A$105	A$105	A$105	A$105	A$105	–	A$1,155	A$375.68
+Activity	-A$55.85	-A$61.82	-A$54.93	-A$61.47	-A$60.47	-A$59.87	-A$55.62	-A$112.06	-A$302.02	-A$55.91	–		-A$880.02
+Entertainment	Assigned	A$30	A$30	A$30	A$30	A$30	A$30	A$30	A$30	A$30	A$30	A$30	–	A$330	A$38.54
+Activity	-A$26.34	-A$27.92	-A$28.15	-A$32.46	-A$33.33	-A$28.31	-A$27.38	-A$28.59	-A$26.98	-A$32.53	–		-A$291.99
+Electronics	Assigned	A$150	A$150	A$150	A$150	A$150	A$150	A$150	A$150	A$150	A$150	A$150	–	A$1,650	A$962.75
+Activity	-A$22.78	–	-A$45.42	–	–	-A$51.53	-A$97.73	–	-A$1,299	-A$35.65	–		-A$1,552.11
+Gifts & Giving
+Gifts	Assigned	A$25	A$25	A$25	A$25	A$25	A$25	A$25	A$25	A$25	A$25	A$25	–	A$275	A$201.69
+Activity	–	–	–	–	–	–	-A$73.57	–	–	–	–		-A$73.57
+Charity	Assigned	A$25	A$25	A$25	A$25	A$25	A$25	A$25	A$25	A$25	A$25	A$25	–	A$275	A$0
+Activity	-A$25	-A$25	-A$25	-A$25	-A$25	-A$25	-A$25	-A$25	-A$25	-A$25	-A$25		-A$275
+Savings Goals
+Holidays	Assigned	A$250	A$250	A$250	A$250	A$250	A$250	A$250	A$250	A$250	A$250	A$250	–	A$2,750	A$2,403.50
+Activity	–	–	–	-A$486.20	–	-A$734.50	–	–	–	-A$875.80	–		-A$2,096.50
+Emergency Fund	Assigned	A$3,494.40	A$1,939.55	A$980.69	A$3,876.83	A$2,165.98	A$2,166.12	A$4,189.26	A$987.41	A$2,170.55	A$3,912.69	–	–	A$25,883.48	A$50,659.29
+Activity	–	–	–	–	–	–	–	–	–	–	–		–
+Total	Assigned	A$9,444.40	A$7,461.55	A$7,592.69	A$9,319.83	A$7,598.98	A$7,602.12	A$9,655.26	A$7,608.41	A$7,611.55	A$9,338.69	A$5,506	–	A$88,739.48
+Spending	-A$5,731.69	-A$5,576.37	-A$5,890.12	-A$5,255.14	-A$4,935.55	-A$5,465.15	-A$4,861.98	-A$6,128.31	-A$6,106.89	-A$6,495.67	-A$508.43		-A$56,955.30
+Income	A$9,444.40	A$7,461.55	A$7,592.69	A$9,319.83	A$7,598.98	A$7,602.12	A$9,655.26	A$7,608.41	A$7,611.55	A$9,338.69	A$2,050		A$85,283.48
+
+Italic months haven't started: their assignments are plans. Select a month to open it in the monthly budget.

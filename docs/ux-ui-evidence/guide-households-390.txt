@@ -1,0 +1,25 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+The guide
+Households
+
+Share costs with the people you live with, and keep a record of who changed what.
+
+Fix a mistake without starting again
+
+Under Household, open All contributions, payments & repayments and choose Edit on an entry. You can change its description, and if it isn’t linked to a bank payment, its date, amount, who paid and how it’s split. An entry linked to a bank payment keeps that payment’s date and amount. An expense that has a refund can only change its description. Allotment refuses a change that would leave a repayment larger than what was owed, and says why.
+
+See who did what
+
+Activity, below the history, lists what was added, changed, removed or repaid, newest first. An entry you remove keeps its line there. Payments shared by a rule or a shared recurring bill are marked as theirs. If you combine with another Allotment user, their households’ activity is listed with yours.
+
+See where the money went
+
+Under the spending list, Spending by month, person and category uses the same date range. It shows each month, what each person paid compared with their share, and spending by category, taken from the category of the bank payment an entry is linked to. Entries with no payment are under Uncategorised. Repayments aren’t counted as spending.
+
+Next: Backups
+
+A$20

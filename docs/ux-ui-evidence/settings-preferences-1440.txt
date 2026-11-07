@@ -1,0 +1,184 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+
+First time here? A short guide shows how it works: Categories, connecting Up, backups and preferences.
+
+No thanks
+Show me
+Settings
+Categories
+Accounts
+Budget
+Tags
+Connected banks
+Currencies
+Priorities
+Data
+Preferences
+Server
+Preferences
+
+Settings are kept in this tab while you try the demo.
+
+Reset to defaults
+Theme
+Light
+Dark
+System
+Sidebar
+Pinned
+Always open
+Auto-hide
+Collapsed, opens on hover
+Show in the menu
+
+These appear once they hold something. Their pages always open from a link.
+
+Pay later
+
+Afterpay, Zip and other instalment plans · not in use yet
+
+When in use
+Always
+Hidden
+
+Household
+
+Bills and money shared with people you live with · not in use yet
+
+When in use
+Always
+Hidden
+
+Investments
+
+Shares, ETFs and funds you hold · not in use yet
+
+When in use
+Always
+Hidden
+
+Tax time
+
+Deductions and receipts for tax · not in use yet
+
+When in use
+Always
+Hidden
+
+Files
+
+Documents, receipts and links · not in use yet
+
+When in use
+Always
+Hidden
+Safe mode
+
+Hides amounts while someone helps you with your budget. It switches off when the app closes, and anyone using this device can turn it off: it keeps figures off the screen, it doesn't lock them. The eye button at the top of the menu, or Alt+Shift+H, switches it too.
+
+On
+Off
+Balances and totals
+Accounts, net worth, savings, super and investments
+All amounts
+Transactions and the budget too
+Guides and tips
+
+Saved with your budget, so they follow you to every device. The ? button at the top of the menu opens any guide again.
+
+Show tips
+Short tips on a page, once each. One at a time.
+On
+Off
+Offer a page’s guide
+The first time you open a page that has one.
+On
+Off
+Take the welcome tour
+See all guides
+Reset tips and guides
+Icons
+Payee
+Payee logos (or coloured initials) next to payee names
+Show
+Hide
+Category
+Emoji icons next to category names
+Show
+Hide
+Account
+Account logos (or colored initials) next to account names
+Show
+Hide
+Amounts
+
+How amounts are shown and typed on this device. Automatic follows your device's language. You can always type 12.50 or 12,50.
+
+Number format
+Automatic
+1,234.56
+1,234.56
+1.234,56
+1 234,56
+1'234.56
+AUD symbol
+Automatic
+Before
+After
+
+Automatic writes it as AUD is written at home. Symbols of other currencies are in Currencies.
+
+Example: -A$1,234.56
+
+Date format
+MMM d, yyyy
+Jan 5, 2026
+MM/dd/yyyy
+01/05/2026
+dd/MM/yyyy
+05/01/2026
+dd.MM.yyyy
+05.01.2026
+yyyy-MM-dd
+2026-01-05
+
+Allotment is free software under the GNU AGPL v3. Source code
+
+A$0

@@ -1,0 +1,66 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+The guide
+Transactions
+
+Sorting, splitting, transfers and importing files.
+
+Give each one a category
+
+A transaction without a category isn’t in any envelope yet, so it comes off Ready to assign. Choose a category, or let a rule do it.
+
+Working through the list
+
+Click a transaction (or tap it on a phone) to open its details. Use the up and down arrows beside Close to open the one above or below without closing the panel. They follow the list as you see it, search and filters included. What you typed is saved before the next one opens.
+
+Transfers
+
+Money moving between your own accounts, like Spending to a Saver, is a transfer, not spending. When Allotment spots the same amount leaving one account and arriving in another, it suggests linking them. It never guesses on its own. Up says which account a transfer went to, so those pairs come first, under Up reported these in Review; tick the ones that are right and choose Link.
+
+Splits
+
+One purchase, several envelopes: split it by amount or percentage.
+
+Importing files
+
+From an account’s page, choose Import and pick a CSV or CAMT file from your bank. You see a preview before anything is added.
+
+Next: Budgeting
+
+A$0

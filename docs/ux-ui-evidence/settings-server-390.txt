@@ -1,0 +1,34 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+Settings
+Categories
+Accounts
+Budget
+Tags
+Connected banks
+Currencies
+Priorities
+Data
+Preferences
+Server
+Where your data lives
+
+In this browser (demo)
+
+This demo runs entirely in your browser: nothing you change is sent anywhere or saved. In the app, your budget is a file on your computer or on a server you run.
+
+Version 0.2.0-up.131
+
+Use Allotment on your phone and other devices
+
+Run Allotment on a server you control, such as a home server or a small cloud machine, and sign in from any browser. Your data moves to that server; nobody else hosts it.
+
+Read the self-hosting guide
+Make a backup first
+
+Allotment is free software under the GNU AGPL v3. Source code
+
+A$20

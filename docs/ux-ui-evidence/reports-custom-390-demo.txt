@@ -1,0 +1,82 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+Custom report
+Saved reports
+Export
+Save
+
+Chart type
+
+Bar
+Stacked
+Line
+Area
+Donut
+Table
+
+Mode
+
+Total
+Over time
+
+Group by
+
+Category
+Category group
+Payee
+Account
+Month
+
+Balance type
+
+Expenses
+Income
+Net
+
+Date range
+
+1M
+Last month
+3M
+6M
+12M
+YTD
+Last year
+All
+Custom
+
+Live: moves forward with the current month.
+
+Accounts
+
+All selected
+Spending
+Rainy Day
+Holiday
+2Up Spending
+Evergreen Super
+Pinecone Shares
+Northstar Car Loan
+2021 Hatchback
+
+Categories
+
+All selected
+Income
+Home
+Bills
+Food
+Getting Around
+Health
+Lifestyle
+Gifts & Giving
+Savings Goals
+A$0
+A$3.5k
+A$7k
+A$10.5k
+A$14k
+A$2k

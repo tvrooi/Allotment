@@ -1,0 +1,18 @@
+[
+  {
+    "route": "goals",
+    "text": "Allotment\n\nDemo · nothing saved\n\nDownload\nGoals\nAdd goal\n\nSave for what matters\n\nSet a target like an emergency fund, a trip or a new car, and see how close you are and how much to set aside each month.\n\nAdd goal\nLearn more"
+  },
+  {
+    "route": "payees",
+    "text": "Allotment\n\nDemo · nothing saved\n\nDownload\nPayees\n\nNo payees yet\n\nPayees are the people and businesses you pay or get paid by. They’re added automatically as you enter or import transactions, and you can give each one a default category.\n\nAdd a transaction"
+  },
+  {
+    "route": "rules",
+    "text": "Allotment\n\nDemo · nothing saved\n\nDownload\nRules\n\nRules run on new and imported transactions, top to bottom. Each matching rule applies, and a rule higher up wins when two set the same thing.\n\nRun rules\nAdd rule\n\nLet rules do the sorting\n\nRules categorise, rename and split transactions for you as they come in, for example “payee contains Netflix → Streaming”. You can also make one from any transaction.\n\nAdd your first rule\nLearn more"
+  },
+  {
+    "route": "files",
+    "text": "Allotment\n\nDemo · nothing saved\n\nDownload\nFiles\n\nBills, warranties, policies and receipts, kept with what they belong to\n\nDownload all\nAll files\nStarred\nImportant\nReceipts\nNot linked\nAny kind\nPhotos\nPDFs\nDocuments\nSpreadsheets\nPresentations\nText\nVideos\nDrop, paste or choose files\nPhotos, PDFs, Word, Excel, PowerPoint, OpenDocument, CSV, Markdown, text and videos\n\nNo files yet. Add bills, warranties, insurance policies or photos of what you own, then link each to the transactions, categories, goals and accounts it belongs to.\n\nFiles stay on your own server with the budget, never sent anywhere. Removing a link keeps the file; deleting a file removes its links. JSON backups carry files' details, not the files: use Download all to keep a copy of the files themselves."
+  }
+]

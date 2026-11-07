@@ -1,0 +1,21 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+Receipts
+Add
+All
+Receipts
+All
+Unmatched
+Matched
+Scan receipt
+Match now
+Drop, paste or choose a photo or PDF
+
+No receipts yet. Upload or scan one: type its merchant, date and amount, and it is matched to its transaction.
+
+A receipt is matched to money out of exactly its amount: from the same merchant up to 2 days before or 7 days after its date, or any merchant within a day. When two could fit, you choose. Receipts are kept in your budget's database, never sent anywhere.
+
+A$3.5k

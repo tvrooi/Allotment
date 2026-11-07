@@ -1,0 +1,68 @@
+Allotment
+Household
+Split bills with the people you live with and see who owes whom. How this works
+A
+Audit home
+Edit
+New household
+People & balances
+
+Across everything shared: who has paid more than their share, and who owes.
+
+Me (me)Rename
+settled
+AlexRename
+settled
+Add person
+Where these figures come from
+Recurring bills
+
+Bills from Recurring that you split with the household, and each person's share.
+
+Nothing to add yet: set up your bills in Recurring first.
+
+My expense shares: A$0
+Report scope
+My share
+Household
+From
+To
+Export this statement
+
+No shared expenses in this period.
+
+Spending by month, person and category
+Record something else
+Expense, advance or repayment
+
+A one-off shared cost, money paid into the household account, or someone paying someone back. To share a payment from your bank, use Share with household in Transactions.
+
+All contributions, payments & repayments (0)
+Activity
+HOUSEHOLD SETTINGS
+Sharing
+Picture
+
+Shown next to each payment shared with Audit home. Without one, its initial is shown.
+
+A
+Household accounts
+
+Payments from these accounts are the household's, not yours, so they stay out of your budget. Your own transfers into them count as your share, in the category you give them. Add each account the household pays from (for example an Up 2Up spending account and its savers).
+
+Add an account
+Choose an account
+Audit household everyday account with a deliberately long descriptive name
+Audit household everyday account with a deliberately long descriptive name
+Audit brokerage
+Afterpay
+Add
+Default split
+
+Used by Share with household in transactions and by rules. Now equal between everyone.
+
+Equal
+Percentages
+Weights (for example 2 : 1 : 1)
+Save split
+-A$1.2M

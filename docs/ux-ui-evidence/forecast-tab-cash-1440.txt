@@ -1,0 +1,234 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+Forecast
+Long term
+Cash runway
+CSV
+
+Read-only scenarios built from your payday plans, recurring bills, household shares and goals. A forecast never creates transactions or assigns money. Scenarios are labelled assumptions, not predictions or confidence intervals.
+
+Horizon
+30 days
+90 days
+180 days
+1 year
+2 years
+Spending history
+Last 28 days
+Last 90 days
+Last 180 days
+Last 365 days
+Income from
+Automatic
+Payday plans
+Scheduled income
+Household bill shares
+Automatic
+Include my share
+Leave out
+1 scheduled occurrence is overdue and unmatched. Match or skip it in Recurring; overdue items are not forecast.
+Base
+Conservative
+Stretch
+
+A$64,134.81
+
+Cash today
+
+A$62,571.53
+
+Lowest before payday
+
+Nov 11, 2026 · pay Nov 12, 2026
+
+A$62,571.53
+
+Lowest balance
+
+Nov 11, 2026
+
+A$69,767.96
+
+Balance on Feb 5, 2027
+
+No shortfall within this horizon.
+
+Cash runway
+
+ActualBaseConservativeStretch
+Oct 10, 2026
+Oct 23, 2026
+Nov 5, 2026
+Nov 18, 2026
+Dec 1, 2026
+Dec 14, 2026
+Dec 27, 2026
+Jan 9, 2027
+Jan 22, 2027
+Feb 5, 2027
+A$0
+A$20k
+A$40k
+A$60k
+A$80k
+
+Goal trajectory
+
+Goal	Now	Target	On Feb 5, 2027	Base reaches target	Conservative reaches target	Stretch reaches target
+Emergency fund
+Manually tracked
+	A$21,706.29	A$25,000	A$21,706.29	Not within horizon	Not within horizon	Not within horizon
+Anniversary trip to Tasmania
+Category funded · due Jun 30, 2027
+	A$2,403.50	A$4,500	A$2,403.50	Not within horizon (late)	Not within horizon (late)	Not within horizon (late)
+New laptop
+Manually tracked · due Sep 6, 2026
+	A$1,300	A$1,300	A$1,300	Nov 7, 2026	Nov 7, 2026	Nov 7, 2026
+
+Contributions follow payday plan rules for each goal's category unless a scenario sets its own amount per pay. Scheduled bills in a goal's category are withdrawals. Manual values may overlap other goals or accounts.
+
+Base: expected movements
+
+Date	Description	Type	Amount
+Nov 9, 2026	Internet	Bill	-A$65
+Nov 9, 2026	Rent	Bill	-A$1,150
+Nov 12, 2026	Car insurance	Bill	-A$142
+Nov 12, 2026	Sam's pay	Expected pay	A$1,724
+Nov 18, 2026	Electricity	Bill (estimate)	-A$98
+Nov 20, 2026	Car loan	Bill	-A$389
+Nov 20, 2026	Riley's pay	Expected pay (estimate)	A$2,050
+Nov 21, 2026	Biscuit's food	Bill (estimate)	-A$58
+Nov 22, 2026	Phone plan	Bill	-A$90
+Nov 23, 2026	Rent	Bill	-A$1,150
+Nov 26, 2026	Sam's pay	Expected pay	A$1,724
+Nov 26, 2026	Contents insurance	Bill	-A$18
+Dec 3, 2026	Gym membership	Bill	-A$49
+Dec 4, 2026	Riley's pay	Expected pay (estimate)	A$2,050
+Dec 5, 2026	Food bank donation	Bill	-A$25
+Dec 5, 2026	Streamline	Bill	-A$15.49
+Dec 7, 2026	Rent	Bill	-A$1,150
+Dec 9, 2026	Internet	Bill	-A$65
+Dec 10, 2026	Sam's pay	Expected pay	A$1,724
+Dec 12, 2026	Car insurance	Bill	-A$142
+Dec 18, 2026	Electricity	Bill (estimate)	-A$98
+Dec 18, 2026	Riley's pay	Expected pay (estimate)	A$2,050
+Dec 19, 2026	Biscuit's food	Bill (estimate)	-A$58
+Dec 20, 2026	Car loan	Bill	-A$389
+Dec 21, 2026	Rent	Bill	-A$1,150
+Dec 22, 2026	Phone plan	Bill	-A$90
+Dec 24, 2026	Sam's pay	Expected pay	A$1,724
+Dec 26, 2026	Contents insurance	Bill	-A$18
+Jan 1, 2027	Riley's pay	Expected pay (estimate)	A$2,050
+Jan 3, 2027	Gym membership	Bill	-A$49
+Jan 4, 2027	Rent	Bill	-A$1,150
+Jan 5, 2027	Food bank donation	Bill	-A$25
+Jan 5, 2027	Streamline	Bill	-A$15.49
+Jan 7, 2027	Sam's pay	Expected pay	A$1,724
+Jan 9, 2027	Internet	Bill	-A$65
+Jan 12, 2027	Car insurance	Bill	-A$142
+Jan 15, 2027	Riley's pay	Expected pay (estimate)	A$2,050
+Jan 16, 2027	Biscuit's food	Bill (estimate)	-A$58
+Jan 18, 2027	Electricity	Bill (estimate)	-A$98
+Jan 18, 2027	Rent	Bill	-A$1,150
+Jan 20, 2027	Car loan	Bill	-A$389
+Jan 21, 2027	Sam's pay	Expected pay	A$1,724
+Jan 22, 2027	Phone plan	Bill	-A$90
+Jan 26, 2027	Contents insurance	Bill	-A$18
+Jan 29, 2027	Riley's pay	Expected pay (estimate)	A$2,050
+Feb 1, 2027	Rent	Bill	-A$1,150
+Feb 3, 2027	Gym membership	Bill	-A$49
+Feb 4, 2027	Sam's pay	Expected pay	A$1,724
+Feb 5, 2027	Food bank donation	Bill	-A$25
+Feb 5, 2027	Streamline	Bill	-A$15.49
+
+Plus variable spending of A$7,836.38 over the horizon, from A$7,836.38 spent across 90 days since Aug 10, 2026.
+
+Assumptions
+
+Starting cash is the current balance of open, on-budget personal cash and card accounts. Household pool cash is excluded.
+Income is pending scheduled income in income categories.
+Bills and other movements are pending, unmatched recurring occurrences and future-dated register entries. Matched payments replace their forecast.
+Variable spending is the net daily average of expense-category activity over the lookback, excluding transfers, uncategorized adjustments and scheduled payments.
+Household bills add your unreserved personal share on each due date.
+Goal contributions are envelope assignments and do not move cash. Growth is credited at month end and starts at zero unless set.
+
+From Nov 7, 2026 to Feb 5, 2027 · Spending, Rainy Day, Holiday, 2Up Spending · latest transaction Nov 7, 2026
+
+Scenario assumptions
+
+Save a scenario to keep it after a refresh and on your other devices. The comparison shows each scenario against the first one.
+
+Variable spending %
+Income %
+Spending per day
+Goal growth % a year
+Goal contributions per pay
+One-off amount
+Life events
+
+Not saved
+
+Save
+Variable spending %
+Income %
+Spending per day
+Goal growth % a year
+Goal contributions per pay
+One-off amount
+Life events
+
+Not saved
+
+Save
+Variable spending %
+Income %
+Spending per day
+Goal growth % a year
+Goal contributions per pay
+One-off amount
+Life events
+
+Not saved
+
+Save
+
+Nice, that worked. The demo doesn’t keep it, though: download Allotment to keep a real budget.
+
+Download
+A$0

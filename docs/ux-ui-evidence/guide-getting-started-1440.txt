@@ -1,0 +1,60 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+The guide
+Getting started
+
+From an empty budget to every dollar with a job, in about ten minutes.
+
+The idea
+
+Allotment is an envelope budget. Money you already have goes into envelopes (categories) for what it’s for: rent, groceries, the next holiday. When you spend, it comes out of that envelope. If every dollar has a job, you always know what you can spend.
+
+Five steps
+Connect Up (or add accounts by hand). See Connecting Up.
+Check your transactions. Give anything without a category a home; rules can do it for you next time.
+Add your pay and bills as recurring items, so you can see what’s coming.
+Assign your money. On Budget, give each envelope an amount until Ready to assign reaches $0. See Budgeting.
+Come back every payday. Assign the new pay and move money if plans changed.
+Where your data is
+
+Your budget lives on your own computer or your own Home Assistant. There’s no Allotment account and no tracking. Keep a backup: see Backups.
+
+Next: Connecting Up
+
+A$0

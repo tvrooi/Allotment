@@ -1,0 +1,286 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+
+First time here? Where you give every dollar a job: assign money to envelopes until Ready to assign is $0. A short guide shows how it works.
+
+No thanks
+Show me
+Budget,
+November 2026
+Today
+Income
+A$2,050 of A$8,227 expected
+Pay
+A$6,127
+remaining
+Expected
+A$8,177
+Received
+A$2,050
+Interest
+A$50
+remaining
+Expected
+A$50
+Received
+A$0
+Other Income
+A$0
+remaining
+Expected
+A$0
+Received
+A$0
+Fixed
+A$3,273.28 available
+Rent
+A$2,300
+available
+Assigned
+A$2,300
+Activity
+A$0
+-A$2,300 expected
+from 2 recurring items: Rent, Rent
+Contents Insurance
+A$18
+available
+Assigned
+A$18
+Activity
+A$0
+-A$18 expected
+from 1 recurring item: Contents insurance
+Electricity
+A$199.81
+available
+Assigned
+A$160
+Activity
+A$0
+-A$98 expected
+from 1 recurring item: Electricity
+Internet
+A$65
+available
+Assigned
+A$65
+Activity
+A$0
+-A$65 expected
+from 1 recurring item: Internet
+Phone
+A$90
+available
+Assigned
+A$90
+Activity
+A$0
+-A$90 expected
+from 1 recurring item: Phone plan
+Streaming
+A$20.47
+available
+Assigned
+A$33
+Activity
+-A$15.49
+Car Loan
+A$389
+available
+Assigned
+A$389
+Activity
+A$0
+-A$389 expected
+from 1 recurring item: Car loan
+Car Insurance
+A$142
+available
+Assigned
+A$142
+Activity
+A$0
+-A$142 expected
+from 1 recurring item: Car insurance
+Gym
+A$49
+available
+Assigned
+A$49
+Activity
+-A$49
+Charity
+A$0
+available
+Assigned
+A$25
+Activity
+-A$25
+-A$25 expected
+from 1 recurring item: Food bank donation
+Flexible
+A$2,307.05 available
+Home Goods
+A$92.47
+available
+Assigned
+A$125
+Activity
+-A$64.20
+Groceries
+A$752.45
+available
+Assigned
+A$710
+Activity
+-A$137.86
+Eating Out
+A$325.67
+available
+Assigned
+A$235
+Activity
+-A$144.44
+Coffee
+A$72.52
+available
+Assigned
+A$65
+Activity
+-A$33.01
+Fuel
+A$196.28
+available
+Assigned
+A$130
+Activity
+A$0
+Public Transport
+A$120.72
+available
+Assigned
+A$120
+Activity
+-A$39.43
+Chemist
+A$64.07
+available
+Assigned
+A$25
+Activity
+A$0
+Clothing
+A$126.17
+available
+Assigned
+A$60
+Activity
+A$0
+Personal Care
+A$142.48
+available
+Assigned
+A$40
+Activity
+A$0
+Biscuit (dog)
+A$375.68
+available
+Assigned
+A$105
+Activity
+A$0
+-A$58 expected
+from 1 recurring item: Biscuit's food
+Entertainment
+A$38.54
+available
+Assigned
+A$30
+Activity
+A$0
+Non-Monthly
+A$4,418.68 available
+Car Servicing
+A$205.24
+available
+Assigned
+A$95
+Activity
+A$0
+Rego & CTP
+A$550.50
+available
+Assigned
+A$55
+Activity
+A$0
+Doctor & Dentist
+A$95
+available
+Assigned
+A$15
+Activity
+A$0
+Electronics
+A$962.75
+available
+Assigned
+A$150
+Activity
+A$0
+Gifts
+A$201.69
+available
+Assigned
+A$25
+Activity
+A$0
+Holidays
+A$2,403.50
+available
+Assigned
+A$250
+Activity
+A$0
+Savings/Investments
+A$50,659.29 available
+Emergency Fund
+A$50,659.29
+available
+Assigned
+A$0
+Activity
+A$0
+November 2026
+
+Every envelope this month. Tick envelopes in the table to see only those.
+
+Carried in
+A$55,660.73
+Assigned
+A$5,506
+Activity
+-A$508.43
+Available
+A$60,658.30
+Note for this month
+Move money
+Move money / Cover overspending
+
+READY TO ASSIGN
+
+A$3,476.51
+
+Resolve uncategorised spending
+
+Money you have that isn't in a category yet.
+
+Hold money…
+Put the rest in…
+How this is worked out
+A$2k
