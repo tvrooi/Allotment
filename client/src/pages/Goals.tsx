@@ -450,9 +450,8 @@ export default function GoalsPage() {
       <ConfirmModal
         isOpen={deleting !== null}
         onClose={() => setDeleting(null)}
-        onConfirm={() => {
-          if (deleting) deleteGoal.mutate(deleting.id);
-        }}
+        onConfirm={() => (deleting ? deleteGoal.mutateAsync(deleting.id) : undefined)}
+        pendingLabel="Deleting…"
         title="Delete goal"
         message={deleteGoalMessage(deleting)}
         confirmLabel="Delete"

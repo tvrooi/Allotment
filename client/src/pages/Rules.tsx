@@ -429,9 +429,8 @@ export default function RulesPage() {
       <ConfirmModal
         isOpen={deleteId !== null}
         onClose={() => setDeleteId(null)}
-        onConfirm={() => {
-          if (deleteId) deleteRule.mutate(deleteId);
-        }}
+        onConfirm={() => (deleteId ? deleteRule.mutateAsync(deleteId) : undefined)}
+        pendingLabel="Deleting…"
         title="Delete rule"
         message="Delete this rule? Transactions it already changed stay as they are."
         confirmLabel="Delete"

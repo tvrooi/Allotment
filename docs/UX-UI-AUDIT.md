@@ -216,6 +216,8 @@ Test: `e2e/tests/dialog-focus.spec.ts`, at desktop and phone sizes. Each case fa
 
 **P1 · Usability · Local pattern with shared remedy · Effort S–M · Confidence High.**
 
+**Status: fixed in 0.2.0-up.135.** `SaveReportModal` awaits `onSave` (`CustomReportBuilder` passes `mutateAsync`). The button shows **Saving…** and is disabled while saving. The dialog closes only once the save succeeds; on failure it shows the reason (`role="alert"`) and keeps the name. Cancel and Escape are ignored while saving. Test: `e2e/tests/confirm-and-save.spec.ts`, where a refused save is retried once successfully. It fails without the change.
+
 - **Reproduce / state:** Reports → Custom report → Save → name it → submit with POST /custom-reports returning 422.
 - **Evidence / source:** `report-save-failure-390.png`, `defects.json`: injected=true, dialog text remains “Save report / Report name / Cancel / Save”, no alerts. `pages/CustomReportBuilder.tsx:68`; `components/reports/SaveReportModal.tsx:5`; `main.tsx:27` supplies success invalidation, not global error feedback.
 - **Current → impact:** The dialog appears unchanged after refusal; no explanation or recovery. Save has no isPending prop, so repeated activation remains possible. Duplicate creation under slow requests is a source-supported risk, not a measured outcome.
@@ -227,6 +229,19 @@ Test: `e2e/tests/dialog-focus.spec.ts`, at desktop and phone sizes. Each case fa
 ### AU-006 — Confirmation dismisses before a destructive action succeeds
 
 **P1 · Usability / consistency · Shared · Effort M · Confidence High.**
+
+**Status: fixed in 0.2.0-up.135 for callers that return a promise.** When `onConfirm` returns a promise, `ConfirmModal` waits for it:
+
+- It shows `pendingLabel` and blocks a repeat press and closing while the action runs.
+- It closes once the action succeeds.
+- If the action fails, it stays open with the error message, which `api/client.ts` makes safe to show.
+
+Callers that return nothing close straight away, as before. These callers now return a promise:
+
+- Goals, Payees and Rules (`mutateAsync`)
+- Up and SimpleFIN disconnect, and file delete, which already returned one
+
+The other callers still use `mutate` and can move over one at a time. Test: `e2e/tests/confirm-and-save.spec.ts`, covering a refused goal delete with a retry, and a slow payee delete on a phone that is sent once. It fails without the change. Still open: moving focus to the next row after a successful deletion (left over from AU-001).
 
 - **Reproduce / state:** Goals → first Actions → Delete goal → Delete while DELETE /goals/:id returns 422; 390×844.
 - **Evidence / source:** `delete-failure.json`: dialogs=0, alerts=[], goal still present; `delete-goal-390.png`. `components/ui/ConfirmModal.tsx:39` invokes onConfirm then onClose synchronously; Goals.tsx:452 passes mutate. Other callers include Payees and Rules.
