@@ -200,3 +200,34 @@ test('a disabled rule says so in words, and is not faded', async ({ page, api })
   // Faded text fails colour contrast, so the state is said, not dimmed
   expect(await off.evaluate((el) => getComputedStyle(el.closest('button')!).opacity)).toBe('1');
 });
+
+// UX audit AU-003: charts used to hide every focus outline, so the keyboard vanished into them
+test('a chart shows the keyboard focus ring, but not after a click', async ({ page, api }) => {
+  const acct = await api.createAccount('Checking', 100_000);
+  for (const [days, amount] of [
+    [-40, -12_000],
+    [-10, -8_000],
+    [-2, -3_000],
+  ] as const) {
+    await api.createTransaction({
+      accountId: acct.id,
+      date: isoDay(days),
+      amount,
+      payeeName: 'Corner Grocery',
+    });
+  }
+  await open(page, '/dashboard');
+  const chart = page.locator('.recharts-surface[tabindex="0"]').first();
+  await expect(chart).toBeVisible();
+  const outline = () => chart.evaluate((el) => getComputedStyle(el).outlineStyle);
+
+  await chart.click({ position: { x: 5, y: 5 } });
+  expect(await outline()).toBe('none');
+
+  // Keyboard: move on and come back with Shift+Tab, so focus arrives the keyboard's way
+  await chart.focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
+  await expect(chart).toBeFocused();
+  expect(await outline()).not.toBe('none');
+});

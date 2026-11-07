@@ -341,9 +341,10 @@ body {
   }
 }
 
-.recharts-wrapper:focus,
-.recharts-surface:focus,
-.recharts-wrapper *:focus {
+/* Charts: no focus box after a click or tap, but keyboard focus keeps the shared ring
+   (UX audit AU-003). A blanket outline: none here hid where the keyboard was. */
+.recharts-wrapper:focus:not(:focus-visible),
+.recharts-wrapper *:focus:not(:focus-visible) {
   outline: none;
 }
 
@@ -351,7 +352,6 @@ body {
 .recharts-area-curve,
 .recharts-line-curve,
 .recharts-bar-rectangle {
-  outline: none;
   stroke-dasharray: none;
 }
 

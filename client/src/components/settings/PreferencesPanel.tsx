@@ -349,7 +349,7 @@ export function PreferencesPanel() {
             <button
               key={opt.value}
               onClick={() => setDateFormat(opt.value)}
-              className={`flex items-center justify-between px-4 py-2.5 text-sm rounded-md border transition-colors ${
+              className={`flex flex-wrap items-center justify-between gap-x-2 px-4 py-2.5 text-sm rounded-md border transition-colors ${
                 dateFormat === opt.value
                   ? 'border-brand-500 bg-brand-50 text-brand-700 font-medium'
                   : 'border-border bg-surface text-text-secondary hover:border-border'

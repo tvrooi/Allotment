@@ -1,5 +1,14 @@
 # Changes
 
+## 0.2.0-up.132
+
+First fixes from the 7 November 2026 UI and UX audit (`docs/UX-UI-AUDIT.md`, findings AU-003, AU-009, AU-012 and AU-013).
+
+- **Charts show where the keyboard is.** Tabbing onto a chart now shows the same focus ring as everywhere else. Clicking or tapping a chart still shows no box.
+- **Deleting a goal says what Undo brings back.** The confirmation no longer says "This cannot be undone". It says you can undo it, that files attached to the goal are unlinked (they stay in **Files**), and that a paused, completed or retired goal comes back active. After deleting, a message with **Undo** appears, so you can undo on a phone too, not only with Ctrl/⌘+Z.
+- **Show in the menu is readable on a phone.** In **Settings → Preferences**, each optional feature's description now takes the full width, with **When in use**, **Always** and **Hidden** on a row below. The **Date format** choices no longer run off the edge of a narrow phone.
+- **The Goals guide matches the goal form.** It now describes the two progress sources: a category, where progress is the money available in that envelope, and **Manual tracking**, where you update **Saved so far** yourself. Linking an account is for reference and doesn't update the goal.
+
 ## 0.2.0-up.131
 
 - **Cancelled recurring items leave the month.** A cancelled subscription (shown as **Cancelled**) no longer appears in **Recurring → Monthly**, its calendar or its totals, and a cancelled bill drops off the household's **Recurring bills**. It stays under **All recurring**. Forecasts and the budget already left them out.

@@ -52,7 +52,12 @@ export function SidebarFeatureSettings() {
           const choice: Choice = progress?.navFeatures?.[f.key] ?? 'auto';
           const inUse = progress?.featuresInUse?.includes(f.key);
           return (
-            <li key={f.key} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2">
+            // Phones stack the description above full-width choices, so the text keeps the row's
+            // width instead of shrinking beside them (UX audit AU-012)
+            <li
+              key={f.key}
+              className="flex items-center gap-x-4 gap-y-2 px-3 py-2 max-md:flex-col max-md:items-stretch"
+            >
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-text">{f.label}</p>
                 <p className="text-xs text-text-tertiary">
@@ -60,7 +65,11 @@ export function SidebarFeatureSettings() {
                   {choice === 'auto' && (inUse ? ' · in use, shown' : ' · not in use yet')}
                 </p>
               </div>
-              <div role="radiogroup" aria-label={`${f.label} in the menu`} className="flex gap-1">
+              <div
+                role="radiogroup"
+                aria-label={`${f.label} in the menu`}
+                className="flex gap-1 shrink-0 max-md:grid max-md:grid-cols-3"
+              >
                 {CHOICES.map((c) => (
                   <button
                     key={c.value}

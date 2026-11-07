@@ -39,3 +39,24 @@ for (const phone of [false, true]) {
     await expect(page.getByText('Manual tracking', { exact: true })).toBeVisible();
   });
 }
+
+// UX audit AU-009: the confirmation used to say "This cannot be undone" although Undo works
+test('deleting a goal says it can be undone, and Undo brings it back', async ({ page, api }) => {
+  await api.call('POST', '/goals', { name: 'Holiday', targetAmount: 200_000 });
+  await open(page, '/goals');
+  await page.getByRole('button', { name: 'Actions' }).first().click();
+  await page.getByRole('menuitem', { name: 'Delete goal' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Delete goal' });
+  await expect(dialog).toContainText('You can undo this');
+  await expect(dialog).not.toContainText('cannot be undone');
+  await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(page.getByText('Holiday', { exact: true })).toHaveCount(0);
+
+  const toast = page.getByTestId('undo-toast');
+  await expect(toast).toContainText('Deleted goal "Holiday".');
+  await toast.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.getByText('Holiday', { exact: true })).toBeVisible();
+  expect((await api.call('GET', '/goals')).map((g: { name: string }) => g.name)).toEqual([
+    'Holiday',
+  ]);
+});

@@ -16,6 +16,7 @@ import { Card } from '../components/ui/Card';
 import { StatCardRow } from '../components/reports/ChartHelpers';
 import RowMenu from '../components/ui/RowMenu';
 import { transactionsLink } from '../utils/transactionFilters';
+import { deleteGoalMessage } from '../utils/deleteGoalMessage';
 import { formatCurrency } from '../utils/currency';
 import { useHideBalances } from '../utils/safeMode';
 import { SafeModeNotice } from '../components/ui/Private';
@@ -453,7 +454,7 @@ export default function GoalsPage() {
           if (deleting) deleteGoal.mutate(deleting.id);
         }}
         title="Delete goal"
-        message={`Delete "${deleting?.name ?? ''}"? This cannot be undone.`}
+        message={deleteGoalMessage(deleting)}
         confirmLabel="Delete"
         danger
       />
