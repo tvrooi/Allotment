@@ -55,7 +55,10 @@ deductions.
     past transaction that has no claim yet (`PUT /api/tax/claims/:id` with only `label`,
     `workUseBps` and `notes`). It never replaces or removes a claim: those stay the owner's. The
     tax route still refuses split parents and transfers. Owner-approved on 2 November 2026.
-    It may also list a year's likely missed claims (`GET /api/tax/years/:fy/candidates`);
+    It may also list a year's likely missed claims (`GET /api/tax/years/:fy/candidates`). A
+    year also carries its capital gains from investment sales (item 18, `capitalGains`, since
+    0.2.0-up.141; read only, owner decision 7 of INVESTMENT-SALES-AND-INCOME.md); the
+    `/api/investments` routes stay owner only;
   - record a household contribution linked to a deposit (`POST /api/households/:id/events` with
     exactly `kind: "contribution"`, `date`, `description`, `amount`, `payerId` and
     `transactionId`): a past deposit into one of that household's accounts, for exactly its

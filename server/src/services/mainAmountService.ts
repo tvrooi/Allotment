@@ -52,6 +52,8 @@ export function getBudgetSettings(): BudgetSettings {
       reminderNotifyService: null,
       reminderShowDetails: 0,
       remindersViaGateway: 0,
+      capitalLossesCarriedIn: 0,
+      capitalLossesCarriedInFy: null,
       updatedAt: new Date(0).toISOString(),
     }
   );

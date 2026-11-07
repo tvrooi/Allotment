@@ -29,6 +29,52 @@ export interface TaxLot {
   quantity: number;
   /** Total cost of the lot; null = not known */
   costBasis: number | null;
+  /** Units no sale has taken */
+  remaining: number;
+}
+
+/** Why a sale's gain can't be counted: units with no purchase, a cost not known, no exchange rate */
+export type UnknownReason = 'no_lot' | 'no_cost' | 'no_rate';
+
+/** What a sale's gain is missing, in words */
+export const UNKNOWN_TEXT: Record<UnknownReason, string> = {
+  no_lot: 'Some units have no purchase recorded',
+  no_cost: "A purchase's cost isn't known",
+  no_rate: 'No exchange rate on a purchase or sale date',
+};
+
+/** One lot's part of a sale; amounts in the budget's currency */
+export interface SaleParcel {
+  /** null: units no purchase covers */
+  lotId: string | null;
+  acquiredOn: string | null;
+  quantity: number;
+  proceeds: number | null;
+  cost: number | null;
+  gain: number | null;
+  /** Held 12 months or more, so the 50% discount applies to a gain */
+  discountable: boolean;
+  unknown: UnknownReason | null;
+}
+
+/** A recorded sale (D3a). Proceeds, cost and gain are in the budget's currency */
+export interface Sale {
+  id: string;
+  holdingId: string;
+  soldOn: string;
+  quantity: number;
+  /** As entered, in the security's currency */
+  grossProceeds: number;
+  fees: number;
+  notes: string | null;
+  parcels: SaleParcel[];
+  /** After sale brokerage; null without an exchange rate */
+  proceeds: number | null;
+  cost: number | null;
+  gain: number | null;
+  discountableGain: number;
+  discount: 'all' | 'some' | 'none';
+  unknown: UnknownReason | null;
 }
 
 export interface Holding {
@@ -52,6 +98,8 @@ export interface Holding {
   gainPercent: number | null;
   /** The value in the account's currency */
   accountValue: number | null;
+  /** Newest first */
+  sales: Sale[];
 }
 
 export interface InvestmentAccount {
@@ -142,3 +190,54 @@ export const updateLot = (id: string, data: Partial<LotInput>) =>
 
 export const deleteLot = (id: string) =>
   apiFetch<void>(`/investments/lots/${id}`, { method: 'DELETE' });
+
+// ─── Sales (D3a) ──────────────────────────────────────────────────────────────
+
+export interface SaleInput {
+  soldOn: string;
+  quantity: number;
+  /** Gross proceeds and sale brokerage, in the security's currency */
+  proceeds: number;
+  fees: number;
+  /** The purchases it drew from; omitted: first in, first out */
+  parcels?: { lotId: string; quantity: number }[];
+  notes?: string | null;
+}
+
+export interface SalePreview {
+  parcels: SaleParcel[];
+  proceeds: number | null;
+  cost: number | null;
+  gain: number | null;
+  discountableGain: number;
+  discount: Sale['discount'];
+  unknown: UnknownReason | null;
+  budgetCurrency: string | null;
+  /** The holding's purchases, with what's left of each for this sale */
+  lots: TaxLot[];
+}
+
+export const previewSale = (holdingId: string, data: SaleInput & { saleId?: string }) =>
+  apiFetch<SalePreview>(`/investments/holdings/${holdingId}/sales/preview`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+export const recordSale = (holdingId: string, data: SaleInput) =>
+  apiFetch(`/investments/holdings/${holdingId}/sales`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+export const updateSale = (holdingId: string, saleId: string, data: SaleInput) =>
+  apiFetch(`/investments/holdings/${holdingId}/sales/${saleId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+
+export const deleteSale = (holdingId: string, saleId: string) =>
+  apiFetch<void>(`/investments/holdings/${holdingId}/sales/${saleId}`, { method: 'DELETE' });
+
+/** Net capital losses from before Allotment, carried into a financial year (null or 0 clears) */
+export const setCarriedLosses = (data: { financialYear: number | null; amount: number }) =>
+  apiFetch<void>('/investments/carried-losses', { method: 'PUT', body: JSON.stringify(data) });

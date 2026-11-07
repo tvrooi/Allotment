@@ -575,6 +575,13 @@
       "when": 1796659200000,
       "tag": "0081_assign_pools",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "6",
+      "when": 1796745600000,
+      "tag": "0082_investment_sales",
+      "breakpoints": true
     }
   ]
 }

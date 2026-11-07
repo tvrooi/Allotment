@@ -14,10 +14,16 @@ import {
   dashboardPages,
   dashboardWidgets,
   goals,
+  holdings,
+  investmentSaleParcels,
+  investmentSales,
   payees,
   rules,
   scheduleOccurrences,
   schedules,
+  securities,
+  securityPrices,
+  taxLots,
   transactions,
 } from '../db/schema.js';
 import { ensureOccurrencesForAll } from '../services/scheduleService.js';
@@ -62,6 +68,12 @@ export function loadDemoBudget(today: Date): void {
     insert(goals, demo.goals);
     insert(budgetMonthNotes, demo.budgetMonthNotes);
     insert(categoryNotes, demo.categoryNotes);
+    insert(securities, demo.securities);
+    insert(securityPrices, demo.securityPrices);
+    insert(holdings, demo.holdings);
+    insert(taxLots, demo.taxLots);
+    insert(investmentSales, demo.investmentSales);
+    insert(investmentSaleParcels, demo.investmentSaleParcels);
   });
 
   // Recurring items get their occurrences the way the app makes them (three months ahead,

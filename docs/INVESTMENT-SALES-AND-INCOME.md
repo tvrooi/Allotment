@@ -1,8 +1,8 @@
 # Investments: sales, dividends and franking
 
-Status: **design approved 7 November 2026; nothing is built yet.** The owner took every
-recommendation in §9 except decision 7: a read-only assistant tool comes in D3b. Splits come in a
-later PR (D3c), as recommended. D3 of the Larger features
+Status: **design approved 7 November 2026; D3a (sales) built in 0.2.0-up.141** (see §10, "As
+built"). The owner took every recommendation in §9 except decision 7: a read-only assistant tool
+comes in D3b. Splits come in a later PR (D3c), as recommended. D3 of the Larger features
 group. It takes the first two lines of [INVESTMENTS.md](INVESTMENTS.md) "Deferred" (sales and
 realised gains with lot selection; dividends, reinvestment and franking credits) and the Australian
 tax treatment they need, and adds them to Tax time beside deductions and
@@ -306,5 +306,48 @@ read-only assistant tool comes in D3b. Splits (decision 6) come in a later PR, D
    accounts. Or A2, also a per-account "not mine for tax" switch.
 9. **Delivery.** Recommended: D3a (sales), then D3b (dividends and franking), then D3c only if
    decisions 5 or 6 call for it. With C1 chosen, D3c (splits) follows D3b.
+
+## 10. As built
+
+**D3a, sales (0.2.0-up.141).** Where it differs from §5, and why:
+
+- **Migration 0082** adds `investment_sales` and `investment_sale_parcels` as designed, without
+  `transaction_id`: register links come with D3b, which adds the column. Both foreign keys
+  (`holding_id`, and the parcel's `lot_id`) are `ON DELETE CASCADE` in the database, not
+  RESTRICT, so removing an account still removes its holdings as before. The service refuses on
+  its own to remove a holding with sales (`deleteHolding`) or a lot with parcels (`deleteLot`), and
+  to cut a lot below what was sold or date it after a sale that took from it (`updateLot`).
+- **Losses from before Allotment** are two additive `budget_settings` columns,
+  `capital_losses_carried_in` and `capital_losses_carried_in_fy`. The figure is carried into the
+  year the owner chose, on top of what earlier years in Allotment carry
+  (`PUT /api/investments/carried-losses`). They are backed up with the other settings.
+- **Reading:** each holding's sales come with the overview (`GET /api/investments`, `sales` on a
+  holding, with each lot's `remaining`). Item 18 is part of Tax time's year
+  (`GET /api/tax/years/:fy`, `capitalGains`). The separate GETs in §5.3 and §5.5
+  (`/holdings/:id/sales`, `/tax/years/:fy/investments`) are left for D3b, when the token tool
+  needs them. Because item 18 is part of the tax year, an organise token already reads it through
+  `GET /api/tax/years/:fy` and the `tax_deductions` MCP tool (read only, within decision 7); the
+  `/api/investments` routes stay owner only. Writes: `POST /holdings/:id/sales/preview` (it takes an optional `saleId` to preview
+  an edit), `POST`, `PUT` and `DELETE /holdings/:id/sales[/:saleId]`. All writes are owner only.
+- **Code:** `services/capitalGains.ts` (pure: `discountEligible`, `fifoParcels`, `apportion`,
+  `saleFigures`, `netCapitalGain`), `services/investmentSales.ts` (storage, checks, item 18,
+  `keepingLodgedYears`), `services/financialYear.ts` (financial years, moved out of
+  `taxService.ts`), `services/investmentError.ts`. Client: `components/investments/SaleModals.tsx`
+  (Sell and Sales), the Sold list on `pages/Investments.tsx`, and `CapitalGains` on `pages/Tax.tsx`.
+- **Lodged years:** `keepingLodgedYears` runs a change in one DB transaction and compares every
+  lodged year's item 18 figures and sale gains before and after, then undoes the change with a 409
+  when they differ. A change to an open year that alters a lodged year's carried-in losses is
+  refused too. Exchange rates are not locked: a rate entered later can still change a lodged
+  foreign sale's figures.
+- **Rounding:** the discount is half the discountable gain left after losses, rounded down to the
+  cent, so the net gain is never understated. Proceeds after brokerage are split across parcels
+  by units, each part rounded toward zero, with the remainder on the largest parcel.
+- **The budget's currency** is what item 18 is counted in. Tax time says so when the budget isn't
+  in Australian dollars.
+- **Tests:** `services/capitalGains.test.ts` (every rule in §3 that sales need, with property
+  tests), `routes/investmentSales.test.ts` (sales, refusals, item 18, carried losses, lodged
+  years, removal restores exactly, backup version 30 and an older backup, migration 0082 on a
+  populated 0081 database), `demo/demoBudget.test.ts`, and `e2e/tests/investments.spec.ts`
+  (choose parcels, see the gain and discount, find item 18 on Tax time).
 
 [cgt]: https://www.ato.gov.au/individuals-and-families/investments-and-assets/capital-gains-tax

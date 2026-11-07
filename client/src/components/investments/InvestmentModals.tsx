@@ -44,7 +44,7 @@ export const KIND_LABEL: Record<SecurityKind, string> = {
 const today = () => format(new Date(), 'yyyy-MM-dd');
 const labelClass = 'block text-sm font-medium text-text-secondary mb-1';
 
-function Field({
+export function Field({
   label,
   htmlFor,
   hint,
@@ -66,7 +66,7 @@ function Field({
   );
 }
 
-function ErrorText({ error }: { error: unknown }) {
+export function ErrorText({ error }: { error: unknown }) {
   if (!error) return null;
   return (
     <p role="alert" className="text-sm text-negative">
@@ -75,7 +75,7 @@ function ErrorText({ error }: { error: unknown }) {
   );
 }
 
-function Actions({
+export function Actions({
   onClose,
   pending,
   disabled,
@@ -285,7 +285,7 @@ export function PriceModal({ security, onClose }: { security: Security; onClose:
 
 // ─── Holdings ─────────────────────────────────────────────────────────────────
 
-function UnitsInput({
+export function UnitsInput({
   id,
   value,
   onChange,
@@ -452,6 +452,11 @@ function LotRow({ lot, currency }: { lot: Holding['lots'][number]; currency: str
       <div className="flex items-center justify-between gap-2">
         <span className="text-text-secondary">
           {formatDay(lot.acquiredOn)} · {formatUnits(lot.quantity)} units
+          {lot.remaining < lot.quantity && (
+            <span className="block text-xs text-text-tertiary">
+              {lot.remaining ? `${formatUnits(lot.remaining)} left after sales` : 'All sold'}
+            </span>
+          )}
         </span>
         <span className="flex items-center gap-2">
           {editing ? null : lot.costBasis === null ? (
@@ -472,14 +477,17 @@ function LotRow({ lot, currency }: { lot: Holding['lots'][number]; currency: str
               {formatMoney(lot.costBasis, currency)}
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => remove.mutate(lot.id)}
-            className="p-1 text-text-tertiary hover:text-negative rounded"
-            aria-label={`Remove the lot of ${formatDay(lot.acquiredOn)}`}
-          >
-            <Trash2 size={14} />
-          </button>
+          {/* A purchase that sales drew from stays: their gains are worked out from it */}
+          {lot.remaining === lot.quantity && (
+            <button
+              type="button"
+              onClick={() => remove.mutate(lot.id)}
+              className="p-1 text-text-tertiary hover:text-negative rounded"
+              aria-label={`Remove the lot of ${formatDay(lot.acquiredOn)}`}
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
         </span>
       </div>
       {editing && (
@@ -494,10 +502,9 @@ function LotRow({ lot, currency }: { lot: Holding['lots'][number]; currency: str
           </div>
           <Button
             size="sm"
-            onClick={async () => {
-              await update.mutateAsync({ id: lot.id, costBasis: cost });
-              setEditing(false);
-            }}
+            onClick={() =>
+              update.mutate({ id: lot.id, costBasis: cost }, { onSuccess: () => setEditing(false) })
+            }
             disabled={update.isPending}
           >
             Save
@@ -506,16 +513,20 @@ function LotRow({ lot, currency }: { lot: Holding['lots'][number]; currency: str
             <Button
               size="sm"
               variant="ghost"
-              onClick={async () => {
-                await update.mutateAsync({ id: lot.id, costBasis: null });
-                setEditing(false);
-              }}
+              onClick={() =>
+                update.mutate(
+                  { id: lot.id, costBasis: null },
+                  { onSuccess: () => setEditing(false) },
+                )
+              }
             >
               Mark unknown
             </Button>
           )}
         </div>
       )}
+      {/* A change a lodged year's capital gains depend on is refused: say why */}
+      <ErrorText error={update.error ?? remove.error} />
     </li>
   );
 }

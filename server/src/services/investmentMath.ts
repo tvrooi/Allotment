@@ -49,14 +49,16 @@ export interface Valuation {
   gainPercent: number | null;
 }
 
-/** a × b / c, rounded half away from zero, as a safe integer */
-function mulDiv(a: number, b: number, c: number): number {
+/**
+ * a × b / c (c > 0) as a safe integer, rounded half away from zero, or toward zero with 'down'
+ */
+export function mulDiv(a: number, b: number, c: number, rounding: 'nearest' | 'down' = 'nearest') {
   const n = BigInt(a) * BigInt(b);
   const d = BigInt(c);
   const q = n / d;
   const r = n % d;
   const twice = (r < 0n ? -r : r) * 2n;
-  const rounded = twice >= d ? q + (n < 0n ? -1n : 1n) : q;
+  const rounded = rounding === 'nearest' && twice >= d ? q + (n < 0n ? -1n : 1n) : q;
   const result = Number(rounded);
   if (!Number.isSafeInteger(result)) throw new RangeError('Value is out of range');
   return result;

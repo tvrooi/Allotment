@@ -277,7 +277,7 @@ describe('depreciating assets (plan phase 1)', () => {
     linkDocument(doc.id, 'asset', asset.id);
     await send('PUT', '/lodged/2026');
     const backup = JSON.parse(JSON.stringify(createBackup()));
-    expect(backup.version).toBe(29);
+    expect(backup.version).toBe(30);
     expect(backup.depreciatingAssets).toHaveLength(1);
     db.delete(depreciatingAssets).run();
     restoreBackup(parseBackup(backup));

@@ -1,10 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from '../api/investments';
 
 // P3 investments: positions only. Nothing here changes a balance, so only the investment
-// queries are refreshed after a change.
+// queries are refreshed after a change, and Tax time's, whose capital gains follow sales and
+// the lots they drew from.
 
 const KEY = ['investments'];
+const TAX = ['tax'];
 
 export function useInvestments() {
   // Recorded balances change with any transaction: always refetched when the page opens
@@ -33,7 +35,11 @@ function useInvestmentMutation<A, R>(fn: (args: A) => Promise<R>) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: fn,
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: KEY }),
+        qc.invalidateQueries({ queryKey: TAX }),
+      ]),
   });
 }
 
@@ -78,3 +84,35 @@ export const useUpdateLot = () =>
   );
 
 export const useDeleteLot = () => useInvestmentMutation(api.deleteLot);
+
+/** A sale's parcels and gain before it's saved (null input: nothing to preview yet) */
+export function useSalePreview(
+  holdingId: string,
+  input: (api.SaleInput & { saleId?: string }) | null,
+) {
+  return useQuery({
+    queryKey: [...KEY, 'sale-preview', holdingId, input],
+    queryFn: () => api.previewSale(holdingId, input!),
+    enabled: !!input,
+    placeholderData: keepPreviousData,
+    retry: false,
+  });
+}
+
+export const useRecordSale = () =>
+  useInvestmentMutation(({ holdingId, ...data }: { holdingId: string } & api.SaleInput) =>
+    api.recordSale(holdingId, data),
+  );
+
+export const useUpdateSale = () =>
+  useInvestmentMutation(
+    ({ holdingId, saleId, ...data }: { holdingId: string; saleId: string } & api.SaleInput) =>
+      api.updateSale(holdingId, saleId, data),
+  );
+
+export const useDeleteSale = () =>
+  useInvestmentMutation(({ holdingId, saleId }: { holdingId: string; saleId: string }) =>
+    api.deleteSale(holdingId, saleId),
+  );
+
+export const useSetCarriedLosses = () => useInvestmentMutation(api.setCarriedLosses);

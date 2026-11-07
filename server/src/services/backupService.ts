@@ -69,6 +69,8 @@ import {
   securityPrices,
   holdings,
   taxLots,
+  investmentSales,
+  investmentSaleParcels,
   depreciatingAssets,
   depreciatingAssetYears,
   taxLodgedYears,
@@ -109,7 +111,7 @@ import { isCurrencyCode } from '../utils/currencies.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 29;
+export const BACKUP_VERSION = 30;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -182,6 +184,9 @@ const TABLES = {
   securityPrices,
   holdings,
   taxLots,
+  // Investment sales and the lots they drew from (format 30)
+  investmentSales,
+  investmentSaleParcels,
   // Depreciating assets (format 24), before document links (an asset's records); the pool year (format 25)
   depreciatingAssets,
   depreciatingAssetYears,
@@ -507,6 +512,25 @@ export function parseBackup(input: unknown): ParsedBackup {
       (l.costBasis != null && Number(l.costBasis) < 0)
     )
       throw new InvalidBackupError('Invalid tax lot');
+  // Investment sales (format 30). Older backups have none.
+  const lotHolding = new Map(result.taxLots.map((l) => [String(l.id), String(l.holdingId)]));
+  const saleHolding = new Map(
+    result.investmentSales.map((s) => [String(s.id), String(s.holdingId)]),
+  );
+  for (const s of result.investmentSales)
+    if (
+      !isoDate.safeParse(s.soldOn).success ||
+      Number(s.quantity) <= 0 ||
+      Number(s.proceeds) < 0 ||
+      Number(s.fees ?? 0) < 0
+    )
+      throw new InvalidBackupError('Invalid investment sale');
+  for (const p of result.investmentSaleParcels) {
+    const holding = saleHolding.get(String(p.saleId));
+    // A parcel comes from a lot of the holding its sale sold from
+    if (!holding || lotHolding.get(String(p.lotId)) !== holding || Number(p.quantity) <= 0)
+      throw new InvalidBackupError('Invalid investment sale parcel');
+  }
   // Long-term forecast (format 16). Older backups have none: no plans, no loan details.
   const accountIds = new Set(result.accounts.map((a) => String(a.id)));
   const planIds = new Set(result.longTermPlans.map((p) => String(p.id)));

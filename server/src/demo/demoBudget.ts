@@ -29,9 +29,15 @@ import type {
   goals,
   budgetMonthNotes,
   categoryNotes,
+  holdings,
+  investmentSaleParcels,
+  investmentSales,
   payees,
   rules,
   schedules,
+  securities,
+  securityPrices,
+  taxLots,
   transactions,
 } from '../db/schema.js';
 import {
@@ -74,6 +80,13 @@ export interface DemoBudget {
   /** A note on this month and one on an envelope (BUD-10) */
   budgetMonthNotes: Row<typeof budgetMonthNotes>[];
   categoryNotes: Row<typeof categoryNotes>[];
+  /** One share fund in the brokerage account: two purchases and one sale (D3a), kept lean */
+  securities: Row<typeof securities>[];
+  securityPrices: Row<typeof securityPrices>[];
+  holdings: Row<typeof holdings>[];
+  taxLots: Row<typeof taxLots>[];
+  investmentSales: Row<typeof investmentSales>[];
+  investmentSaleParcels: Row<typeof investmentSaleParcels>[];
 }
 
 // ─── Random numbers ────────────────────────────────────────────────────────────
@@ -347,6 +360,12 @@ export function buildDemoBudget(today: Date): DemoBudget {
     goals: [],
     budgetMonthNotes: [],
     categoryNotes: [],
+    securities: [],
+    securityPrices: [],
+    holdings: [],
+    taxLots: [],
+    investmentSales: [],
+    investmentSaleParcels: [],
   };
   const budgetTypes = {} as Record<CategoryKey, BudgetType | undefined>;
   GROUPS.forEach((group, gi) => {
@@ -1538,6 +1557,56 @@ export function buildDemoBudget(today: Date): DemoBudget {
     categoryId: cat.groceries,
     note: 'The warehouse run is split with the household.',
     updatedAt: notedAt,
+  });
+
+  // Investments: 50 units bought over two years ago and 30 last year; 20 of the first sold two
+  // months ago (held over 12 months, so the discount applies). Units are millionths.
+  const units = (n: number) => n * 1_000_000;
+  result.securities.push({
+    id: 'demo-security-gum',
+    symbol: 'GUM',
+    name: 'Gumtree Australian Shares ETF',
+    kind: 'etf',
+    currency: BUDGET_CURRENCY,
+  });
+  result.securityPrices.push(
+    { securityId: 'demo-security-gum', date: ymd(subMonths(today, 1)), price: 9_980 },
+    { securityId: 'demo-security-gum', date: todayStr, price: 10_250 },
+  );
+  result.holdings.push({
+    id: 'demo-holding-gum',
+    accountId: 'demo-acct-brokerage',
+    securityId: 'demo-security-gum',
+    quantity: units(60),
+  });
+  result.taxLots.push(
+    {
+      id: 'demo-lot-gum-first',
+      holdingId: 'demo-holding-gum',
+      acquiredOn: ymd(subMonths(today, 26)),
+      quantity: units(50),
+      costBasis: 400_000,
+    },
+    {
+      id: 'demo-lot-gum-second',
+      holdingId: 'demo-holding-gum',
+      acquiredOn: ymd(subMonths(today, 7)),
+      quantity: units(30),
+      costBasis: 285_000,
+    },
+  );
+  result.investmentSales.push({
+    id: 'demo-sale-gum',
+    holdingId: 'demo-holding-gum',
+    soldOn: ymd(subMonths(today, 2)),
+    quantity: units(20),
+    proceeds: 196_000,
+    fees: 950,
+  });
+  result.investmentSaleParcels.push({
+    saleId: 'demo-sale-gum',
+    lotId: 'demo-lot-gum-first',
+    quantity: units(20),
   });
   return result;
 }

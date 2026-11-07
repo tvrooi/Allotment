@@ -1245,6 +1245,12 @@ export const budgetSettings = sqliteTable('budget_settings', {
   reminderShowDetails: integer('reminder_show_details').notNull().default(0),
   /** Behind the multi-user gateway: 1 = send reminders to this budget's person, wherever they chose */
   remindersViaGateway: integer('reminders_via_gateway').notNull().default(0),
+  /**
+   * Net capital losses carried into Allotment from years it has no sales for, in minor units of
+   * the budget's currency, and the financial year (by its start) they're carried into
+   */
+  capitalLossesCarriedIn: integer('capital_losses_carried_in').notNull().default(0),
+  capitalLossesCarriedInFy: integer('capital_losses_carried_in_fy'),
   updatedAt: text('updated_at')
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -1523,6 +1529,53 @@ export const taxLots = sqliteTable(
       .default(sql`(datetime('now'))`),
   },
   (table) => [index('tax_lots_holding_idx').on(table.holdingId)],
+);
+
+/**
+ * A sale of units from a holding (D3a, docs/INVESTMENT-SALES-AND-INCOME.md): the contract date,
+ * units, gross proceeds and sale brokerage, in the security's currency. Never writes a transaction.
+ */
+export const investmentSales = sqliteTable(
+  'investment_sales',
+  {
+    id: text('id').primaryKey(),
+    holdingId: text('holding_id')
+      .notNull()
+      .references(() => holdings.id, { onDelete: 'cascade' }),
+    soldOn: text('sold_on').notNull(),
+    quantity: integer('quantity').notNull(),
+    proceeds: integer('proceeds').notNull(),
+    fees: integer('fees').notNull().default(0),
+    notes: text('notes'),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    updatedAt: text('updated_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('investment_sales_holding_idx').on(table.holdingId),
+    index('investment_sales_sold_on_idx').on(table.soldOn),
+  ],
+);
+
+/** Units a sale took from one lot: the parcels that set its cost and acquired date */
+export const investmentSaleParcels = sqliteTable(
+  'investment_sale_parcels',
+  {
+    saleId: text('sale_id')
+      .notNull()
+      .references(() => investmentSales.id, { onDelete: 'cascade' }),
+    lotId: text('lot_id')
+      .notNull()
+      .references(() => taxLots.id, { onDelete: 'cascade' }),
+    quantity: integer('quantity').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.saleId, table.lotId] }),
+    index('investment_sale_parcels_lot_idx').on(table.lotId),
+  ],
 );
 
 /** What a loan or mortgage account costs and how it is repaid, for the long-term forecast.

@@ -32,6 +32,7 @@ export const DOCS_PAGES = [
   'rules',
   'goals',
   'long-term-forecast',
+  'investments',
   'tax',
   'currencies',
   'households',
