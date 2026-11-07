@@ -1287,7 +1287,7 @@ export default function HouseholdPage() {
           >
             <label className="block text-sm">
               <span className="text-text-secondary">Name</span>
-              <Input name="name" defaultValue={current.name} required maxLength={200} autoFocus />
+              <Input name="name" defaultValue={current.name} required maxLength={200} />
             </label>
             <label className="flex items-center gap-2 text-sm text-text">
               <input
