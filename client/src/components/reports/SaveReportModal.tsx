@@ -6,7 +6,9 @@ import { Button } from '../ui/Button';
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (name: string) => void;
+  /** Saves the report. The dialog closes once it succeeds, and stays open with the reason (and
+   * the name kept) if it fails, so nothing looks saved that wasn't (UX audit AU-005). */
+  onSave: (name: string) => Promise<unknown>;
   initialName?: string;
   isUpdating?: boolean;
 }
@@ -20,16 +22,35 @@ export default function SaveReportModal({
 }: Props) {
   const fieldId = useId();
   const [name, setName] = useState(initialName);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (name.trim()) onSave(name.trim());
+    if (!name.trim() || saving) return;
+    setError('');
+    setSaving(true);
+    try {
+      await onSave(name.trim());
+      setSaving(false);
+      onClose();
+    } catch (err) {
+      setSaving(false);
+      setError(
+        err instanceof Error && err.message ? err.message : "Couldn't save the report. Try again.",
+      );
+    }
   }
+
+  // Closing while it saves would look like it was cancelled
+  const close = () => {
+    if (!saving) onClose();
+  };
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={close}
       title={isUpdating ? 'Update report' : 'Save report'}
       size="sm"
     >
@@ -49,12 +70,17 @@ export default function SaveReportModal({
           aria-label="Report name"
           autoFocus
         />
+        {error && (
+          <p role="alert" className="mt-3 text-sm text-negative">
+            {error}
+          </p>
+        )}
         <div className="flex justify-end gap-2 mt-4">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={close} disabled={saving}>
             Cancel
           </Button>
-          <Button type="submit" disabled={!name.trim()}>
-            {isUpdating ? 'Update' : 'Save'}
+          <Button type="submit" disabled={!name.trim() || saving} aria-busy={saving || undefined}>
+            {saving ? 'Saving…' : isUpdating ? 'Update' : 'Save'}
           </Button>
         </div>
       </form>

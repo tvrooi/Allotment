@@ -300,13 +300,15 @@ test('plans: a taken name is not a conflict, and unsaved edits are not dropped s
   await page.getByRole('tab', { name: 'Assumptions' }).click();
   await page.getByLabel('Inflation', { exact: true }).fill('4');
   await page.getByLabel('Plan', { exact: true }).selectOption({ label: 'Second' });
-  await expect(page.getByRole('dialog')).toContainText('Leave without saving?');
-  await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+  // By name: the Rename dialog may still be fading out as this one opens
+  const leave = page.getByRole('dialog', { name: 'Leave without saving?' });
+  await expect(leave).toBeVisible();
+  await leave.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByLabel('Plan', { exact: true }).locator('option:checked')).toHaveText(
     'First',
   );
   await page.getByLabel('Plan', { exact: true }).selectOption({ label: 'Second' });
-  await page.getByRole('dialog').getByRole('button', { name: 'Discard changes' }).click();
+  await leave.getByRole('button', { name: 'Discard changes' }).click();
   await expect(page.getByLabel('Plan', { exact: true }).locator('option:checked')).toHaveText(
     'Second',
   );

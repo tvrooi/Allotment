@@ -415,9 +415,8 @@ export default function PayeesPage() {
       <ConfirmModal
         isOpen={deleteId !== null}
         onClose={() => setDeleteId(null)}
-        onConfirm={() => {
-          if (deleteId) deletePayee.mutate(deleteId);
-        }}
+        onConfirm={() => (deleteId ? deletePayee.mutateAsync(deleteId) : undefined)}
+        pendingLabel="Deleting…"
         title="Delete payee"
         message={`Delete "${deleteTarget?.name}"? This will remove the payee from all their transactions.`}
         confirmLabel="Delete"

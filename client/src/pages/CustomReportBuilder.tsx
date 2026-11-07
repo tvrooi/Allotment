@@ -65,25 +65,14 @@ export default function CustomReportBuilder() {
   const debouncedConfig = useDebounce(config, 300);
   const { data, isLoading } = useCustomReportData(debouncedConfig);
 
-  function handleSave(name: string) {
+  // The dialog waits for this, closes on success and shows the reason on failure
+  async function handleSave(name: string) {
     if (id && savedReport) {
-      updateMutation.mutate(
-        { id, data: { name, config } },
-        {
-          onSuccess: () => setSaveOpen(false),
-        },
-      );
+      await updateMutation.mutateAsync({ id, data: { name, config } });
     } else {
-      createMutation.mutate(
-        { name, config, dashboardPageId },
-        {
-          onSuccess: (saved) => {
-            setSaveOpen(false);
-            const back = dashboardPageId ? `?dashboard=${dashboardPageId}` : '';
-            navigate(`/reports/custom/${saved.id}${back}`, { replace: true });
-          },
-        },
-      );
+      const saved = await createMutation.mutateAsync({ name, config, dashboardPageId });
+      const back = dashboardPageId ? `?dashboard=${dashboardPageId}` : '';
+      navigate(`/reports/custom/${saved.id}${back}`, { replace: true });
     }
   }
 
