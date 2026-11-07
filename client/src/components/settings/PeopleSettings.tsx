@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BellRing, Loader2, UserPlus, Users } from 'lucide-react';
 import * as peopleApi from '../../api/people';
-import type { AuthStatus } from '../../api/auth';
+import type { AuthStatus, Destination } from '../../api/auth';
 import { Button } from '../ui/Button';
 
 // Multi-user mode (docs/MULTI-USER-PLAN.md), Settings → Server. Everyone chooses where their
-// password codes go; the administrator adds people and lets them back in. Nobody can open
+// password codes go (their phone, email or both); the administrator adds people and lets them back in. Nobody can open
 // anyone else's budget from here: invitation and reset codes only let that person choose a
 // password.
 
@@ -16,85 +16,258 @@ const inputClass =
 export function PeopleSettings({ status }: { status: AuthStatus }) {
   return (
     <>
-      <PhoneCodes status={status} />
+      <PasswordCodes status={status} />
       {status.person?.isAdmin && <People />}
     </>
   );
 }
 
-/** Where this person's password codes go: a Home Assistant notify service */
-function PhoneCodes({ status }: { status: AuthStatus }) {
+type Message = { ok: boolean; text: string } | null;
+
+/**
+ * Where this person's password codes go: their phone (a Home Assistant notify service), an
+ * email address, or both. A new phone or address is saved only once the code sent there is
+ * typed back (docs/MULTI-USER-EMAIL-AND-REMINDERS.md).
+ */
+function PasswordCodes({ status }: { status: AuthStatus }) {
   const qc = useQueryClient();
-  const [service, setService] = useState(status.person?.notifyService ?? '');
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
-  const save = useMutation({
-    mutationFn: () => peopleApi.setMyNotifyService(service.trim() || null),
-    onSuccess: ({ notifyService }) => {
-      setService(notifyService ?? '');
-      setMessage({ ok: true, text: notifyService ? 'Saved.' : 'Codes will not be sent.' });
+  const [message, setMessage] = useState<Message>(null);
+  const person = status.person;
+  const channel = useMutation({
+    mutationFn: peopleApi.setCodeChannel,
+    onSuccess: () => {
+      setMessage({ ok: true, text: 'Saved.' });
       void qc.invalidateQueries({ queryKey: ['auth-status'] });
     },
     onError: (e: Error) => setMessage({ ok: false, text: e.message }),
   });
-  const test = useMutation({
-    mutationFn: peopleApi.testMyNotifyService,
-    onSuccess: () => setMessage({ ok: true, text: 'Sent. Check your phone.' }),
-    onError: (e: Error) => setMessage({ ok: false, text: e.message }),
-  });
-  if (!status.canNotify) return null;
+  const headingId = useId();
+  if (!person || (!status.canNotify && !status.canEmail)) return null;
+  const both = Boolean(status.canNotify && status.canEmail && person.notifyService && person.email);
   return (
-    <section className="pt-6 border-t border-border-light max-w-md">
-      <h2 className="text-sm font-semibold text-text flex items-center gap-1.5">
-        <BellRing size={14} className="text-text-tertiary" aria-hidden /> Password codes to your
-        phone
+    <section aria-labelledby={headingId} className="pt-6 border-t border-border-light max-w-md">
+      <h2 id={headingId} className="text-sm font-semibold text-text flex items-center gap-1.5">
+        <BellRing size={14} className="text-text-tertiary" aria-hidden /> Password codes
       </h2>
       <p className="text-xs text-text-tertiary mt-1 leading-relaxed">
-        If you forget your password, a code is sent as a Home Assistant notification. Enter your
-        phone's notify service, as in Home Assistant's Developer tools → Actions, for example{' '}
-        <code className="font-mono">notify.mobile_app_my_phone</code>.
+        If you forget your password, a six-digit code is sent here. A new phone or address is saved
+        once you type back the code sent to it.
       </p>
-      <form
-        className="mt-3 flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setMessage(null);
-          save.mutate();
-        }}
-      >
-        <input
-          aria-label="Notify service"
-          placeholder="notify.mobile_app_my_phone"
-          spellCheck={false}
-          value={service}
-          onChange={(e) => setService(e.target.value)}
-          className={`${inputClass} font-mono`}
-        />
-        <Button type="submit" variant="secondary" disabled={save.isPending}>
-          Save
-        </Button>
-        {status.person?.notifyService && (
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={test.isPending}
-            onClick={() => {
-              setMessage(null);
-              test.mutate();
-            }}
-          >
-            Test
-          </Button>
-        )}
-      </form>
+      {status.canNotify && (
+        <DestinationField destination="phone" saved={person.notifyService} onMessage={setMessage} />
+      )}
+      {status.canEmail && (
+        <DestinationField destination="email" saved={person.email} onMessage={setMessage} />
+      )}
+      {both && (
+        <fieldset className="mt-4">
+          <legend className="text-xs font-medium text-text-secondary">Send codes to</legend>
+          <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-text">
+            {(['phone', 'email', 'both'] as const).map((c) => (
+              <label key={c} className="inline-flex items-center gap-1.5">
+                <input
+                  type="radio"
+                  name="code-channel"
+                  checked={(person.codeChannel ?? 'both') === c}
+                  disabled={channel.isPending}
+                  onChange={() => {
+                    setMessage(null);
+                    channel.mutate(c);
+                  }}
+                />
+                {c === 'phone' ? 'My phone' : c === 'email' ? 'My email' : 'Both'}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
       {message && (
         <p
           role="status"
-          className={`text-xs mt-2 ${message.ok ? 'text-text-secondary' : 'text-negative'}`}
+          className={`text-xs mt-2 break-words ${message.ok ? 'text-text-secondary' : 'text-negative'}`}
         >
           {message.text}
         </p>
       )}
     </section>
+  );
+}
+
+const DESTINATION = {
+  phone: {
+    label: 'Phone',
+    input: 'Notify service',
+    placeholder: 'notify.mobile_app_my_phone',
+    hint: (
+      <>
+        Your phone's notify service, as in Home Assistant's Developer tools → Actions, for example{' '}
+        <code className="font-mono">notify.mobile_app_my_phone</code>.
+      </>
+    ),
+    shown: (v: string) => `notify.${v}`,
+    sentTo: 'your phone',
+  },
+  email: {
+    label: 'Email',
+    input: 'Email address',
+    placeholder: 'you@example.com',
+    hint: null,
+    shown: (v: string) => v,
+    sentTo: 'that address',
+  },
+} as const;
+
+/** One destination: what is saved, or a form to add one and confirm it with its code */
+function DestinationField({
+  destination,
+  saved,
+  onMessage,
+}: {
+  destination: Destination;
+  saved: string | null;
+  onMessage: (m: Message) => void;
+}) {
+  const qc = useQueryClient();
+  const d = DESTINATION[destination];
+  const [editing, setEditing] = useState(!saved);
+  const [value, setValue] = useState('');
+  const [pending, setPending] = useState(false);
+  const [code, setCode] = useState('');
+  const fail = (e: Error) => onMessage({ ok: false, text: e.message });
+  const refresh = () => void qc.invalidateQueries({ queryKey: ['auth-status'] });
+  const send = useMutation({
+    mutationFn: () => peopleApi.addDestination(destination, value.trim()),
+    onSuccess: (r) => {
+      if (!r.pending) {
+        setEditing(false);
+        return onMessage({ ok: true, text: 'That one is already saved.' });
+      }
+      setPending(true);
+      setCode('');
+      onMessage({
+        ok: true,
+        text: `A code is on its way to ${d.sentTo}. It works for 10 minutes.`,
+      });
+    },
+    onError: fail,
+  });
+  const confirm = useMutation({
+    mutationFn: () => peopleApi.confirmDestination(destination, code.trim()),
+    onSuccess: () => {
+      setPending(false);
+      setEditing(false);
+      setValue('');
+      onMessage({ ok: true, text: 'Saved. Password codes can come here.' });
+      refresh();
+    },
+    onError: fail,
+  });
+  const remove = useMutation({
+    mutationFn: () => peopleApi.removeDestination(destination),
+    onSuccess: () => {
+      setEditing(true);
+      onMessage({ ok: true, text: `${d.label} removed. Codes won't go there.` });
+      refresh();
+    },
+    onError: fail,
+  });
+  const id = `code-${destination}`;
+
+  return (
+    <div className="mt-3">
+      <p className="text-xs font-medium text-text-secondary" id={`${id}-label`}>
+        {d.label}
+      </p>
+      {saved && !editing ? (
+        <div
+          className="mt-1 flex flex-wrap items-center gap-2"
+          role="group"
+          aria-labelledby={`${id}-label`}
+        >
+          <span className="text-sm text-text font-mono break-all">{d.shown(saved)}</span>
+          <span className="ml-auto flex gap-1">
+            <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+              Change
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={remove.isPending}
+              onClick={() => {
+                onMessage(null);
+                remove.mutate();
+              }}
+            >
+              Remove
+            </Button>
+          </span>
+        </div>
+      ) : pending ? (
+        <form
+          className="mt-1 flex flex-wrap gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onMessage(null);
+            confirm.mutate();
+          }}
+        >
+          <input
+            aria-label={`Code sent to ${destination === 'phone' ? 'your phone' : 'your email'}`}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="123456"
+            maxLength={6}
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            className={`${inputClass} font-mono flex-1 min-w-0`}
+          />
+          <Button type="submit" variant="secondary" disabled={confirm.isPending || !code.trim()}>
+            Confirm
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setPending(false);
+              onMessage(null);
+            }}
+          >
+            Cancel
+          </Button>
+        </form>
+      ) : (
+        <>
+          {d.hint && <p className="text-xs text-text-tertiary mt-1 leading-relaxed">{d.hint}</p>}
+          <form
+            className="mt-1 flex flex-wrap gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              onMessage(null);
+              if (value.trim()) send.mutate();
+            }}
+          >
+            <input
+              aria-label={d.input}
+              type={destination === 'email' ? 'email' : 'text'}
+              autoComplete={destination === 'email' ? 'email' : 'off'}
+              placeholder={d.placeholder}
+              spellCheck={false}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              className={`${inputClass} font-mono flex-1 min-w-0`}
+            />
+            <Button type="submit" variant="secondary" disabled={send.isPending || !value.trim()}>
+              Send code
+            </Button>
+            {saved && (
+              <Button type="button" variant="ghost" onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
+            )}
+          </form>
+        </>
+      )}
+    </div>
   );
 }
 

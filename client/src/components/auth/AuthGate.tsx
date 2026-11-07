@@ -309,8 +309,8 @@ function PasswordForm({
           )}
           {mode === 'forgot' && multiUser && (
             <span className="block mt-2">
-              A code goes to the phone you chose in Settings. The administrator's code is also
-              written to the server's log. {whereIsTheLog(hostKind)}
+              A code goes to the phone or email you chose in Settings. The administrator's code is
+              also written to the server's log. {whereIsTheLog(hostKind)}
             </span>
           )}
           {mode === 'forgot' && !multiUser && (

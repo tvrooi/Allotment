@@ -1,9 +1,11 @@
 # Email codes and reminders for separate budgets
 
-Status: **design approved, not built** (7 November 2026). The owner took every recommendation
-except decision 5: each person chooses where their codes go (see "Owner decisions"). D2 of the
-Larger features group. It finishes step 3 of [MULTI-USER-PLAN.md](MULTI-USER-PLAN.md) (SMTP email) and
-the reminders gap in HANDOVER open items 3 and 9. Nothing here is built.
+Status: **Part 1 (D2a, email codes) built in up.128; Part 2 (D2b, reminders) not built.** Design
+approved 7 November 2026: the owner took every recommendation except decision 5, where each person
+chooses where their codes go (see "Owner decisions"). D2 of the Larger features group. It finishes
+step 3 of [MULTI-USER-PLAN.md](MULTI-USER-PLAN.md) (SMTP email) and, with D2b, the reminders gap in
+HANDOVER open items 3 and 9. "What is true today" below describes the code before D2a; "As built"
+says where D2a differs from the design.
 
 ## The problem
 
@@ -100,6 +102,37 @@ Two things work with one budget but not behind the multi-user gateway:
 - `/auth/status` says whether email is on, so the settings page only offers an address when it
   can be used.
 
+### As built (D2a, up.128)
+
+- **Code:** `gateway/mail.ts` (`smtpTransportOptions`, `mailMessage`, `smtpMailer`,
+  `EMAIL_ADDRESS`); `GatewayOptions.mail` is the `Mailer`, absent when no mail server is set, and
+  `/auth/status` reports `canEmail`. `ha-launch.cjs` `smtpSettings` checks the six `smtp_`
+  options as a set and passes the result to `startGateway({ smtp })`. Nodemailer opens no
+  connection until the first email.
+- **Routes** (`/api/people/me/…`, the signed-in person only): `POST phone` `{ service }` and
+  `POST email` `{ email }` send a code and save nothing (202; 409 when that channel is off here;
+  422 when the send fails; 429 within a minute of the last); `POST phone/confirm` and
+  `POST email/confirm` `{ code }` save it; `DELETE phone` and `DELETE email` remove it;
+  `PUT code-channel` `{ channel: 'phone' | 'email' | 'both' }`. They replace `PUT /me/notify`
+  and its **Test** button: the confirmation code proves the phone.
+- **`people.db`:** `people.email` and `people.code_channel` (with its `CHECK`), added by
+  `GatewayStore.upgrade()` after `pragma table_info`. No `email_confirmed_at`: an address is saved
+  only once confirmed, so a saved address is a confirmed one. One table, `destination_codes`
+  (person, `phone` or `email`, address, hash, expiry, tries), confirms both phones and addresses
+  instead of `email_codes`; `code_sends` (person, destination, purpose, time, kept a day) holds
+  the limits.
+- **Limits:** at most one code a minute per person, purpose (reset or confirmation) and
+  destination (the Log counts as one), so a reset straight after confirming an address still
+  goes; ten emails a day per person across both purposes. Within the minute no new reset code is
+  issued at all, so the one already sent still works.
+- **Where codes go:** where the person chose (both until they choose). If none of what they chose
+  can be used here any more (email or notifications turned off), the other destination they have,
+  so a server setting doesn't lock anyone out.
+- **Development and tests:** `FLYBUDGET_DEV_MAIL_PORT` (the gateway's autostart only) sends
+  plain SMTP to that loopback port; `mail.ts` refuses plain SMTP to any other host. The e2e
+  global setup starts the mail catcher (`e2e/mailCatcher.ts`) before the gateway, which needs
+  its port at start.
+
 ## Part 2: reminders for separate budgets
 
 ### Options
@@ -190,7 +223,7 @@ install starts unchanged. Before installing on the live app, take the usual cold
 ## Owner decisions
 
 Taken on 7 November 2026: the owner endorsed every recommendation except decision 5, where each
-person chooses where their codes go (phone, email or both). Nothing is built yet; D2a comes first.
+person chooses where their codes go (phone, email or both). D2a is built (up.128); D2b is next.
 
 1. **Where the mail server is set.** Recommended: S1, the app's options in Home Assistant. Or S2,
    an administrator page in Allotment; S3 for Docker can follow either.

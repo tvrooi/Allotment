@@ -1,5 +1,5 @@
 name: Allotment
-version: '0.2.0-up.127'
+version: '0.2.0-up.128'
 slug: flybudget_up
 description: Every dollar gets its plot. A private, password-protected budget with native Up Bank imports.
 arch:
@@ -32,3 +32,11 @@ schema:
   allowed_hosts: str
   trust_proxy: bool
   multi_user: bool?
+  # Multi-user mode only: the mail server for password codes by email
+  # (docs/MULTI-USER-EMAIL-AND-REMINDERS.md). All empty means email is off.
+  smtp_host: str?
+  smtp_port: port?
+  smtp_security: list(tls|starttls)?
+  smtp_username: str?
+  smtp_password: password?
+  smtp_from: email?

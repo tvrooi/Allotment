@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { ensureCredentialKey, settings } = require('./ha-launch.cjs');
+const { ensureCredentialKey, settings, smtpSettings } = require('./ha-launch.cjs');
 
 test('the encryption key survives restarts and remains private', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'flybudget-ha-key-'));
@@ -52,4 +52,47 @@ test('multi-user mode is optional, and only a real yes or no', () => {
     () => settings({ allowed_hosts: '', trust_proxy: false, multi_user: 'yes' }),
     /multi_user/,
   );
+});
+
+test('the mail server for password codes is checked as a set, and stays out of the environment', () => {
+  const base = { allowed_hosts: '', trust_proxy: false, multi_user: true };
+  const smtp = {
+    smtp_host: ' smtp.example.com ',
+    smtp_port: 465,
+    smtp_security: 'tls',
+    smtp_username: 'allotment',
+    smtp_password: ' a password with spaces ',
+    smtp_from: 'allotment@example.com',
+  };
+  // Installs from before the options, and options cleared to empty: email is off
+  assert.equal(smtpSettings(base), undefined);
+  assert.equal(
+    smtpSettings({ ...base, smtp_host: '', smtp_username: '', smtp_password: '' }),
+    undefined,
+  );
+  assert.deepEqual(smtpSettings({ ...base, ...smtp }), {
+    host: 'smtp.example.com',
+    port: 465,
+    security: 'tls',
+    username: 'allotment',
+    // A password is taken as typed
+    password: ' a password with spaces ',
+    from: 'allotment@example.com',
+  });
+  // A relay that needs no login
+  const { smtp_username: _u, smtp_password: _p, ...open } = smtp;
+  assert.equal(smtpSettings({ ...base, ...open, smtp_security: 'starttls' }).username, undefined);
+  // A partial set says what is missing
+  assert.throws(
+    () => smtpSettings({ ...base, smtp_host: 'smtp.example.com' }),
+    /smtp_port, smtp_security, smtp_from are empty/,
+  );
+  assert.throws(() => smtpSettings({ ...base, ...open, smtp_password: 'x' }), /together/);
+  // Plain SMTP is never an option here
+  assert.throws(() => smtpSettings({ ...base, ...smtp, smtp_security: 'none' }), /tls or starttls/);
+  assert.throws(() => smtpSettings({ ...base, ...smtp, smtp_port: '465' }), /smtp_port/);
+  assert.throws(() => smtpSettings({ ...base, ...smtp, smtp_from: 'Allotment' }), /smtp_from/);
+  // Nothing about the mail server is in what goes into the environment
+  const env = JSON.stringify(settings({ ...base, ...smtp }));
+  assert.doesNotMatch(env, /smtp|a password with spaces/i);
 });

@@ -1,7 +1,8 @@
+import type { CodeChannel, CodeDestinations, Destination } from './auth';
 import { apiFetch } from './client';
 
 // Multi-user mode (docs/MULTI-USER-PLAN.md): the people who have a budget on this server.
-// Listing and managing them is for the administrator; each person sets their own phone.
+// Listing and managing them is for the administrator; each person sets where their own codes go.
 
 export interface PersonSummary {
   id: string;
@@ -33,11 +34,25 @@ export const setPersonDisabled = (id: string, disabled: boolean) =>
     method: 'POST',
   });
 
-export const setMyNotifyService = (service: string | null) =>
-  apiFetch<{ notifyService: string | null }>('/people/me/notify', {
-    method: 'PUT',
-    body: JSON.stringify({ service }),
+/** Sends a code to a new phone (notify service) or email address; nothing is saved yet */
+export const addDestination = (destination: Destination, value: string) =>
+  apiFetch<CodeDestinations & { pending: boolean }>(`/people/me/${destination}`, {
+    method: 'POST',
+    body: JSON.stringify(destination === 'phone' ? { service: value } : { email: value }),
   });
 
-export const testMyNotifyService = () =>
-  apiFetch<void>('/people/me/notify/test', { method: 'POST' });
+/** Saves the phone or address once its code comes back */
+export const confirmDestination = (destination: Destination, code: string) =>
+  apiFetch<CodeDestinations>(`/people/me/${destination}/confirm`, {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  });
+
+export const removeDestination = (destination: Destination) =>
+  apiFetch<CodeDestinations>(`/people/me/${destination}`, { method: 'DELETE' });
+
+export const setCodeChannel = (channel: CodeChannel) =>
+  apiFetch<CodeDestinations>('/people/me/code-channel', {
+    method: 'PUT',
+    body: JSON.stringify({ channel }),
+  });

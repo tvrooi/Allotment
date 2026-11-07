@@ -26,12 +26,14 @@ import {
 import { checkSetupCode, clearSetupCode, setupCode } from '../auth/setupCode.js';
 import { parseState } from '../services/enableBankingTransactions.js';
 import { Budgets, ensureKey } from './budgets.js';
+import { EMAIL_ADDRESS, type Mailer } from './mail.js';
 import { NOTIFY_SERVICE, type Notify } from './notify.js';
 import { sharingRouter } from './sharing.js';
 import {
   HANDED_CODE_TTL_MS,
   NOTIFIED_CODE_TTL_MS,
   SESSION_TTL_MS,
+  type Destination,
   type GatewayStore,
   type Person,
 } from './store.js';
@@ -64,6 +66,8 @@ export interface GatewayOptions {
   clientDist?: string;
   notify: Notify;
   canNotify: () => boolean;
+  /** Sends email through the mail server in the app's options; absent when none is set */
+  mail?: Mailer;
   /** Where codes for the administrator are written (the app's Log) */
   log?: (message: string) => void;
 }
@@ -76,6 +80,12 @@ const nameSchema = z
   .refine((n) => !/[\u0000-\u001f]/.test(n), 'Invalid name');
 const newPassword = z.string().min(MIN_PASSWORD_LENGTH).max(MAX_PASSWORD_LENGTH);
 const passwordRule = `Password must be ${MIN_PASSWORD_LENGTH}-${MAX_PASSWORD_LENGTH} characters`;
+/** A notify service as typed in Settings, with or without its "notify." */
+const notifyServiceSchema = z
+  .string()
+  .trim()
+  .transform((s) => s.replace(/^notify\./, ''))
+  .pipe(z.string().regex(NOTIFY_SERVICE));
 
 export function createGateway(o: GatewayOptions) {
   const { store, budgets } = o;
@@ -88,6 +98,25 @@ export function createGateway(o: GatewayOptions) {
     );
   app.disable('x-powered-by');
   app.use(proxyConfigWarning, hostGuard, originGuard, securityHeaders, hstsWhenSecure);
+
+  const canEmail = () => Boolean(o.mail);
+  /** Sends a message to one of a person's destinations: a phone, or an email address */
+  const send = (destination: Destination, address: string, subject: string, text: string) =>
+    destination === 'phone' ? o.notify(address, subject, text) : o.mail!(address, subject, text);
+  /**
+   * Where a person's codes go: the destinations they chose that can be used here. When none
+   * of those can (the administrator turned email off, say), whichever they have that can, so
+   * nobody is locked out by a server setting.
+   */
+  function codeDestinations(p: Person): { to: Destination; address: string }[] {
+    const usable = [
+      p.notifyService && o.canNotify() ? { to: 'phone' as const, address: p.notifyService } : null,
+      p.email && canEmail() ? { to: 'email' as const, address: p.email } : null,
+    ].filter((d) => d !== null);
+    const choice = p.codeChannel ?? 'both';
+    const chosen = usable.filter((d) => choice === 'both' || choice === d.to);
+    return chosen.length ? chosen : usable;
+  }
 
   const sessionToken = (req: Request) => readCookie(req.headers.cookie, SESSION_COOKIE);
   const signedIn = (req: Request) => store.personForSession(sessionToken(req));
@@ -200,11 +229,14 @@ export function createGateway(o: GatewayOptions) {
       needsSetup,
       authenticated: Boolean(person),
       canNotify: o.canNotify(),
+      canEmail: canEmail(),
       person: person && {
         id: person.id,
         name: person.name,
         isAdmin: person.isAdmin,
         notifyService: person.notifyService,
+        email: person.email,
+        codeChannel: person.codeChannel,
       },
     });
   });
@@ -286,34 +318,46 @@ export function createGateway(o: GatewayOptions) {
     res.status(204).send();
   });
 
-  // Forgot password: a code goes to the person's phone (Home Assistant notification). For the
+  // Forgot password: a code goes where the person chose (their phone, email or both). For the
   // administrator it is also written to the app's Log, which only a Home Assistant
   // administrator can read. The answer is the same whoever asks, so it reveals nobody.
   auth.post('/forgot', forgotLimit, async (req, res) => {
     const parsed = z.object({ name: z.string().max(200) }).safeParse(req.body);
     const person = parsed.success ? store.personByName(parsed.data.name) : undefined;
     if (person && !person.disabled && person.hasPassword) {
-      // One code: for the administrator a longer one that also goes to the Log
-      const code = person.isAdmin
-        ? store.issueCode(person.id, 'reset', HANDED_CODE_TTL_MS)
-        : person.notifyService && o.canNotify()
-          ? store.issueCode(person.id, 'reset', NOTIFIED_CODE_TTL_MS, true)
+      const destinations = codeDestinations(person);
+      const allowed =
+        person.isAdmin || destinations.length
+          ? store.takeCodeSends(person.id, 'reset', [
+              ...destinations.map((d) => d.to),
+              ...(person.isAdmin ? ['log' as const] : []),
+            ])
           : null;
-      if (code && person.notifyService && o.canNotify())
-        // Not awaited: the answer must take as long for anyone, so it reveals nobody
-        void o
-          .notify(
-            person.notifyService,
-            'Allotment password reset',
-            `Your Allotment code is ${code}. It works once, for ${person.isAdmin ? '24 hours' : '10 minutes'}. If you didn't ask for it, ignore this message.`,
-          )
-          .catch((e) => console.error('A password code could not be sent:', (e as Error).message));
-      if (code && person.isAdmin)
-        log(`\nPassword reset code for ${person.name}: ${code} (works once, for 24 hours)\n`);
+      // One code: for the administrator a longer one that also goes to the Log
+      const code =
+        allowed &&
+        (person.isAdmin
+          ? store.issueCode(person.id, 'reset', HANDED_CODE_TTL_MS)
+          : store.issueCode(person.id, 'reset', NOTIFIED_CODE_TTL_MS, true));
+      if (code) {
+        const text = `Your Allotment code is ${code}. It works once, for ${person.isAdmin ? '24 hours' : '10 minutes'}. If you didn't ask for it, ignore this message.`;
+        for (const d of destinations.filter((d) => allowed.includes(d.to)))
+          // Not awaited: the answer must take as long for anyone, so it reveals nobody
+          void send(
+            d.to,
+            d.address,
+            d.to === 'email' ? 'Allotment password code' : 'Allotment password reset',
+            text,
+          ).catch((e) =>
+            console.error(`A password code could not be sent (${d.to}):`, (e as Error).message),
+          );
+        if (person.isAdmin)
+          log(`\nPassword reset code for ${person.name}: ${code} (works once, for 24 hours)\n`);
+      }
     }
     res.status(202).json({
       message:
-        'If that person can receive codes, one is on its way: to their phone, or for the administrator, in the app’s Log.',
+        'If that person can receive codes, one is on its way: to their phone or email, or for the administrator, in the app’s Log.',
     });
   });
 
@@ -375,39 +419,86 @@ export function createGateway(o: GatewayOptions) {
   };
   people.use(requirePerson);
 
-  // Each person chooses where their own codes go
-  people.put('/me/notify', (req, res) => {
-    const parsed = z
-      .object({
-        service: z
-          .string()
-          .trim()
-          .transform((s) => s.replace(/^notify\./, ''))
-          .pipe(z.string().regex(NOTIFY_SERVICE))
-          .nullable(),
-      })
-      .safeParse(req.body);
-    if (!parsed.success)
-      return res
-        .status(400)
-        .json({ error: 'Use the notify service name, e.g. notify.mobile_app_my_phone' });
-    store.setNotifyService((res.locals.person as Person).id, parsed.data.service);
-    res.json({ notifyService: parsed.data.service });
+  // Each person chooses where their own codes go. A new phone or email address is saved only
+  // once they type back a code sent there, so nobody can point codes at someone else's.
+  const me = (p: Person) => ({
+    notifyService: p.notifyService,
+    email: p.email,
+    codeChannel: p.codeChannel,
   });
-  people.post('/me/notify/test', async (_req, res) => {
+  const destinationInput = {
+    phone: z.object({ service: notifyServiceSchema }).transform((b) => b.service),
+    email: z.object({ email: EMAIL_ADDRESS }).transform((b) => b.email),
+  };
+  const confirmTexts = {
+    phone: {
+      subject: 'Allotment',
+      text: (code: string) =>
+        `Your Allotment code to confirm this phone is ${code}. It works for 10 minutes.`,
+      bad: 'Use the notify service name, e.g. notify.mobile_app_my_phone',
+      off: 'Home Assistant notifications are not available here',
+    },
+    email: {
+      subject: 'Allotment confirmation code',
+      text: (code: string) =>
+        `Your Allotment code to confirm this address is ${code}. It works for 10 minutes. If you didn't ask for it, ignore this message.`,
+      bad: 'Enter an email address',
+      off: 'Email is not set up on this server. The administrator sets it in the app’s options.',
+    },
+  };
+  for (const destination of ['phone', 'email'] as const) {
+    const texts = confirmTexts[destination];
+    // Sends a code to the new address; nothing is saved yet
+    people.post(`/me/${destination}`, async (req, res) => {
+      const person = res.locals.person as Person;
+      const parsed = destinationInput[destination].safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: texts.bad });
+      if (!(destination === 'phone' ? o.canNotify() : canEmail()))
+        return res.status(409).json({ error: texts.off });
+      const address = parsed.data;
+      if (address === (destination === 'phone' ? person.notifyService : person.email))
+        return res.json({ ...me(person), pending: false });
+      if (!store.takeCodeSends(person.id, 'confirm', [destination]))
+        return res
+          .status(429)
+          .json({ error: 'A code was sent a moment ago. Wait a minute and try again.' });
+      const code = store.issueDestinationCode(person.id, destination, address);
+      try {
+        await send(destination, address, texts.subject, texts.text(code));
+      } catch (e) {
+        console.error(
+          `A confirmation code could not be sent (${destination}):`,
+          (e as Error).message,
+        );
+        return res.status(422).json({
+          error:
+            destination === 'phone'
+              ? (e as Error).message
+              : 'The code could not be sent. Check the address, or ask the administrator to check the app’s email settings.',
+        });
+      }
+      res.status(202).json({ ...me(person), pending: true });
+    });
+    // Five wrong tries end a code, and a new one comes at most once a minute
+    people.post(`/me/${destination}/confirm`, (req, res) => {
+      const person = res.locals.person as Person;
+      const parsed = z.object({ code: z.string().max(20) }).safeParse(req.body);
+      if (!parsed.success || !store.confirmDestination(person.id, destination, parsed.data.code))
+        return res.status(400).json({ error: 'That code is wrong or has expired' });
+      res.json(me(store.person(person.id)!));
+    });
+    people.delete(`/me/${destination}`, (_req, res) => {
+      const person = res.locals.person as Person;
+      store.removeDestination(person.id, destination);
+      res.json(me(store.person(person.id)!));
+    });
+  }
+  people.put('/me/code-channel', (req, res) => {
     const person = res.locals.person as Person;
-    if (!person.notifyService || !o.canNotify())
-      return res.status(400).json({ error: 'Choose a notify service first' });
-    try {
-      await o.notify(
-        person.notifyService,
-        'Allotment',
-        'Password codes for Allotment will come here.',
-      );
-      res.status(204).send();
-    } catch (e) {
-      res.status(502).json({ error: (e as Error).message });
-    }
+    const parsed = z.object({ channel: z.enum(['phone', 'email', 'both']) }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Choose phone, email or both' });
+    store.setCodeChannel(person.id, parsed.data.channel);
+    res.json(me(store.person(person.id)!));
   });
 
   const describe = (p: Person) => ({
