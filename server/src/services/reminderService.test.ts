@@ -2,6 +2,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { and, eq } from 'drizzle-orm';
 import fc from 'fast-check';
+import http from 'http';
+import type { AddressInfo } from 'net';
 import { db } from '../db/index.js';
 import {
   accounts,
@@ -17,6 +19,7 @@ import {
   regenerateFutureOccurrences,
 } from './scheduleService.js';
 import { updateBudgetSettings } from './mainAmountService.js';
+import { gatewayNotify, gatewayNotifySettings } from '../gateway/notify.js';
 import {
   FIRST_REMINDER_HOUR,
   LAST_REMINDER_HOUR,
@@ -217,6 +220,82 @@ describe('sendDueReminders', () => {
     ).toBeTruthy();
     expect(await sendDueReminders(notify)).toBe(0);
     expect(sent).toHaveLength(1);
+  });
+});
+
+describe('behind the multi-user gateway (D2b)', () => {
+  /** A stand-in for the gateway's notify listener: answers `status`, records what it got */
+  async function fakeGateway(status: number) {
+    const got: { auth: string | undefined; body: unknown }[] = [];
+    const server = http.createServer((req, res) => {
+      let body = '';
+      req.on('data', (c) => (body += c));
+      req.on('end', () => {
+        got.push({ auth: req.headers.authorization, body: JSON.parse(body) });
+        res.writeHead(status).end();
+      });
+    });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/notify`;
+    return { got, url, close: () => server.close() };
+  }
+
+  it('is off until turned on, then sends to the person with its own token, naming no one', async () => {
+    bill();
+    // A notify service saved before multi-user mode plays no part
+    updateBudgetSettings({ reminderNotifyService: 'mobile_app_phone', remindersViaGateway: 0 });
+    const gateway = await fakeGateway(204);
+    try {
+      const notify = gatewayNotify(gateway.url, 'budget-token');
+      expect(await sendDueReminders(notify, at(2026, 10, 13), true)).toBe(0);
+      expect(gateway.got).toEqual([]);
+      updateBudgetSettings({ remindersViaGateway: 1 });
+      expect(await sendDueReminders(notify, at(2026, 10, 13), true)).toBe(1);
+      expect(gateway.got).toEqual([
+        {
+          auth: 'Bearer budget-token',
+          body: { title: 'Allotment: coming up', message: expect.stringContaining('in 2 days') },
+        },
+      ]);
+      // Marked: never twice
+      expect(await sendDueReminders(notify, at(2026, 10, 14), true)).toBe(0);
+      // A single budget ignores the setting
+      updateBudgetSettings({ reminderNotifyService: null });
+      expect(await sendDueReminders(notify, at(2026, 10, 14), false)).toBe(0);
+    } finally {
+      gateway.close();
+    }
+  });
+
+  it("marks nothing when the gateway can't deliver it or has nowhere to send it", async () => {
+    bill();
+    updateBudgetSettings({ remindersViaGateway: 1 });
+    for (const [status, message] of [
+      [422, /could not be reached/],
+      [409, /Password codes/],
+    ] as const) {
+      const gateway = await fakeGateway(status);
+      try {
+        await expect(
+          sendDueReminders(gatewayNotify(gateway.url, 't'), at(2026, 10, 14), true),
+        ).rejects.toThrow(message);
+      } finally {
+        gateway.close();
+      }
+      expect(dueReminders('2026-10-14')).toHaveLength(1);
+    }
+  });
+
+  it('takes the notify URL only on loopback, with a token', () => {
+    const env = {
+      FLYBUDGET_NOTIFY_URL: 'http://127.0.0.1:4100/notify',
+      FLYBUDGET_NOTIFY_TOKEN: 't',
+    };
+    expect(gatewayNotifySettings(env)).toEqual({ url: env.FLYBUDGET_NOTIFY_URL, token: 't' });
+    expect(gatewayNotifySettings({ ...env, FLYBUDGET_NOTIFY_TOKEN: '' })).toBeUndefined();
+    for (const url of ['http://example.com:4100/notify', 'http://127.0.0.1:4100/other'])
+      expect(gatewayNotifySettings({ ...env, FLYBUDGET_NOTIFY_URL: url })).toBeUndefined();
+    expect(gatewayNotifySettings({})).toBeUndefined();
   });
 });
 

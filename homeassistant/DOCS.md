@@ -158,8 +158,11 @@ a budget only they can open, each with their own password.
 
 - **Access tokens** and the assistant (MCP) connection work per person: each token
   reaches only the budget that created it.
-- **Bill reminders** are not available in a multi-user setup: each person's budget has no way to
-  reach Home Assistant's notifications (only the gateway does, for password codes).
+- **Bill reminders:** each person turns them on in **Settings → Server → Reminders** (**Send
+  reminders**; there is no notify service to enter) and chooses how early in each schedule. They
+  go to that person's own phone or email from **Password codes**: their phone until they choose
+  otherwise under **Send reminders to**. A budget hands its reminders to the part of the app that
+  signs people in, on this machine only, and can only send to its own person.
 - **Bank connections** (Enable Banking) work per person: the bank sends you back to the budget
   that started the login.
 - **Memory:** each budget uses roughly 100 to 150 MB while the app runs.

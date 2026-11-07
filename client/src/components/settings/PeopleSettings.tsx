@@ -2,7 +2,7 @@ import { useId, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BellRing, Loader2, UserPlus, Users } from 'lucide-react';
 import * as peopleApi from '../../api/people';
-import type { AuthStatus, Destination } from '../../api/auth';
+import type { AuthStatus, CodeChannel, Destination } from '../../api/auth';
 import { Button } from '../ui/Button';
 
 // Multi-user mode (docs/MULTI-USER-PLAN.md), Settings → Server. Everyone chooses where their
@@ -25,16 +25,17 @@ export function PeopleSettings({ status }: { status: AuthStatus }) {
 type Message = { ok: boolean; text: string } | null;
 
 /**
- * Where this person's password codes go: their phone (a Home Assistant notify service), an
- * email address, or both. A new phone or address is saved only once the code sent there is
- * typed back (docs/MULTI-USER-EMAIL-AND-REMINDERS.md).
+ * Where this person's password codes, and their budget's bill reminders, go: their phone (a
+ * Home Assistant notify service), an email address, or both. A new phone or address is saved
+ * only once the code sent there is typed back (docs/MULTI-USER-EMAIL-AND-REMINDERS.md).
  */
 function PasswordCodes({ status }: { status: AuthStatus }) {
   const qc = useQueryClient();
   const [message, setMessage] = useState<Message>(null);
   const person = status.person;
   const channel = useMutation({
-    mutationFn: peopleApi.setCodeChannel,
+    mutationFn: ({ of, channel }: { of: 'codes' | 'reminders'; channel: CodeChannel }) =>
+      peopleApi.setChannel(of, channel),
     onSuccess: () => {
       setMessage({ ok: true, text: 'Saved.' });
       void qc.invalidateQueries({ queryKey: ['auth-status'] });
@@ -50,8 +51,9 @@ function PasswordCodes({ status }: { status: AuthStatus }) {
         <BellRing size={14} className="text-text-tertiary" aria-hidden /> Password codes
       </h2>
       <p className="text-xs text-text-tertiary mt-1 leading-relaxed">
-        If you forget your password, a six-digit code is sent here. A new phone or address is saved
-        once you type back the code sent to it.
+        If you forget your password, a six-digit code is sent here, and so are your bill reminders
+        if you turn them on under Reminders. A new phone or address is saved once you type back the
+        code sent to it.
       </p>
       {status.canNotify && (
         <DestinationField destination="phone" saved={person.notifyService} onMessage={setMessage} />
@@ -60,26 +62,26 @@ function PasswordCodes({ status }: { status: AuthStatus }) {
         <DestinationField destination="email" saved={person.email} onMessage={setMessage} />
       )}
       {both && (
-        <fieldset className="mt-4">
-          <legend className="text-xs font-medium text-text-secondary">Send codes to</legend>
-          <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-text">
-            {(['phone', 'email', 'both'] as const).map((c) => (
-              <label key={c} className="inline-flex items-center gap-1.5">
-                <input
-                  type="radio"
-                  name="code-channel"
-                  checked={(person.codeChannel ?? 'both') === c}
-                  disabled={channel.isPending}
-                  onChange={() => {
-                    setMessage(null);
-                    channel.mutate(c);
-                  }}
-                />
-                {c === 'phone' ? 'My phone' : c === 'email' ? 'My email' : 'Both'}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <>
+          <ChannelChoice
+            legend="Send codes to"
+            value={person.codeChannel ?? 'both'}
+            disabled={channel.isPending}
+            onChange={(c) => {
+              setMessage(null);
+              channel.mutate({ of: 'codes', channel: c });
+            }}
+          />
+          <ChannelChoice
+            legend="Send reminders to"
+            value={person.reminderChannel ?? 'phone'}
+            disabled={channel.isPending}
+            onChange={(c) => {
+              setMessage(null);
+              channel.mutate({ of: 'reminders', channel: c });
+            }}
+          />
+        </>
       )}
       {message && (
         <p
@@ -90,6 +92,40 @@ function PasswordCodes({ status }: { status: AuthStatus }) {
         </p>
       )}
     </section>
+  );
+}
+
+/** Phone, email or both, as a row of radio buttons */
+function ChannelChoice({
+  legend,
+  value,
+  disabled,
+  onChange,
+}: {
+  legend: string;
+  value: CodeChannel;
+  disabled: boolean;
+  onChange: (c: CodeChannel) => void;
+}) {
+  const name = useId();
+  return (
+    <fieldset className="mt-4">
+      <legend className="text-xs font-medium text-text-secondary">{legend}</legend>
+      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-text">
+        {(['phone', 'email', 'both'] as const).map((c) => (
+          <label key={c} className="inline-flex items-center gap-1.5">
+            <input
+              type="radio"
+              name={name}
+              checked={value === c}
+              disabled={disabled}
+              onChange={() => onChange(c)}
+            />
+            {c === 'phone' ? 'My phone' : c === 'email' ? 'My email' : 'Both'}
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }
 

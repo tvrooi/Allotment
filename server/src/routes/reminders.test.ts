@@ -60,6 +60,8 @@ describe('reminder settings', () => {
   it('start off, and say whether this install can send them', async () => {
     expect((await call('GET', '/reminders')).body).toEqual({
       available: true,
+      viaGateway: false,
+      enabled: false,
       service: null,
       showDetails: false,
     });
@@ -72,7 +74,13 @@ describe('reminder settings', () => {
       service: 'mobile_app_phone',
       showDetails: true,
     });
-    expect(saved.body).toEqual({ available: true, service: 'mobile_app_phone', showDetails: true });
+    expect(saved.body).toEqual({
+      available: true,
+      viaGateway: false,
+      enabled: true,
+      service: 'mobile_app_phone',
+      showDetails: true,
+    });
     expect((await call('GET', '/reminders')).body.service).toBe('mobile_app_phone');
     expect(
       (await call('PUT', '/reminders', { service: null, showDetails: false })).body.service,
@@ -86,6 +94,8 @@ describe('reminder settings', () => {
     ['an empty service', { service: '', showDetails: false }],
     ['a missing choice', { service: 'phone' }],
     ['an extra field', { service: 'phone', showDetails: false, extra: 1 }],
+    // Only a budget behind the gateway turns reminders on without naming a service
+    ['an on/off switch', { enabled: true, showDetails: false }],
   ])('refuse %s and keep what was saved', async (_label, body) => {
     await call('PUT', '/reminders', { service: 'kept', showDetails: false });
     expect((await call('PUT', '/reminders', body)).status).toBe(400);

@@ -210,7 +210,7 @@ test('signing in needs the right name for the password', async ({ browser, baseU
   await page.context().close();
 });
 
-test('a person adds an email address with its code, and resets their password by email', async ({
+test('a person adds an email address with its code, gets reminders there, and resets their password by email', async ({
   browser,
   baseURL,
 }) => {
@@ -225,6 +225,23 @@ test('a person adds an email address with its code, and resets their password by
   await expect(codes.getByRole('status')).toContainText('Saved. Password codes can come here.');
   await expect(codes.getByText('edward@example.com')).toBeVisible();
   await codes.screenshot({ path: test.info().outputPath('password-codes.png') });
+
+  // Bill reminders from his budget go there too, through the gateway: no service to name
+  const reminders = partner.getByRole('region', { name: 'Reminders' });
+  await expect(reminders.getByLabel('Notify service')).toHaveCount(0);
+  await reminders.getByLabel(/Send reminders/).check();
+  await reminders.getByRole('button', { name: 'Save' }).click();
+  await expect(reminders.getByRole('status')).toContainText('Saved.');
+  await reminders.getByRole('button', { name: 'Send a test' }).click();
+  await expect(reminders.getByRole('status')).toContainText('Check your phone or email');
+  await expect
+    .poll(() =>
+      caughtMail(process.env.E2E_MAIL!).some(
+        (m) => m.to.includes('edward@example.com') && m.raw.includes('Subject: Allotment: test'),
+      ),
+    )
+    .toBe(true);
+  await reminders.screenshot({ path: test.info().outputPath('reminders.png') });
 
   const page = await (await browser.newContext()).newPage();
   await page.goto(`${baseURL}/`);

@@ -51,8 +51,9 @@ export const confirmDestination = (destination: Destination, code: string) =>
 export const removeDestination = (destination: Destination) =>
   apiFetch<CodeDestinations>(`/people/me/${destination}`, { method: 'DELETE' });
 
-export const setCodeChannel = (channel: CodeChannel) =>
-  apiFetch<CodeDestinations>('/people/me/code-channel', {
+/** Where password codes, or this person's reminders, go */
+export const setChannel = (of: 'codes' | 'reminders', channel: CodeChannel) =>
+  apiFetch<CodeDestinations>(`/people/me/${of === 'codes' ? 'code' : 'reminder'}-channel`, {
     method: 'PUT',
     body: JSON.stringify({ channel }),
   });

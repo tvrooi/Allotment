@@ -5,10 +5,39 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 7 November 2026 (D2a: email codes for separate budgets, up.128).
+Last updated: 7 November 2026 (D2b: reminders for separate budgets, up.129).
 
 ## State
 
+- **Reminders for separate budgets (up.129, D2b of the Larger features group; gateway, budget
+  and client; budget migration 0079, additive):** the gateway listens on loopback only
+  (`gateway/notifyListener.ts`, `127.0.0.1`, `FLYBUDGET_NOTIFY_PORT`, default one below the first
+  budget's port, so 4100) with one route, `POST /notify` `{ title, message }` (Zod `.strict()`,
+  title ≤ 100 with no control characters, message ≤ 2,000). Each budget launch gets a fresh
+  random notify token (`Budgets`, kept only as a SHA-256 per person, compared in constant time,
+  dropped when the budget stops) and `FLYBUDGET_NOTIFY_URL`/`FLYBUDGET_NOTIFY_TOKEN`
+  (`processLauncher`). The gateway sends to that person's own confirmed phone or email, as they
+  chose (`people.reminder_channel`, additive with its `CHECK`; phone until they choose; the
+  other one when the chosen can't be used here; `PUT /api/people/me/reminder-channel`):
+  204 when delivered anywhere, 409 nowhere to send, 422 nothing delivered, 401 a missing or
+  other token. Password codes and reminders pick destinations through one helper
+  (`gateway/delivery.ts`). Budget side: `gatewayNotify` (`gateway/notify.ts`) is the `Notify`
+  when `FLYBUDGET_NOTIFY_URL` is a loopback `/notify` URL with a token (`gatewayNotifySettings`);
+  `budget_settings.reminders_via_gateway` (0079, default 0, in backups with the other settings)
+  turns reminders on, and a single budget ignores it (`reminderService()` in
+  `reminderService.ts`). `GET /api/reminders` now also returns `viaGateway` and `enabled`; behind
+  the gateway `PUT` takes `{ enabled, showDetails }` only. Settings → Server → Reminders in a
+  multi-user budget is **Send reminders** (no service field), with **Include the name and
+  amount** and **Send a test**; Password codes gains **Send reminders to** beside **Send codes
+  to**. The daytime window, marking after a successful send and generic text are unchanged.
+  Tests: `gateway/notifyListener.test.ts` (own person only, 401/400/409/422, choices and
+  fallback, nothing but `/notify`, tokens new per launch and gone on stop),
+  `gateway/gateway.test.ts` (real budgets: test reminders to Edward's phone and Tristan's email,
+  no destination named by a budget, failures, the public port has no `/notify`),
+  `services/reminderService.test.ts` (through a fake gateway: off until on, own token, marks
+  nothing on 409/422), `routes/reminders.test.ts`, `routes/backup.test.ts` (round trip and an
+  older backup), `e2e/tests/multi-user/people.spec.ts` (Send a test arrives by email). The e2e
+  mail catcher moved to port 3170, since 3179 is now the gateway's notify port.
 - **Email codes for separate budgets (up.128, D2a of the Larger features group; gateway, client
   and HA options; no budget migration):** optional HA options `smtp_host`, `smtp_port`,
   `smtp_security` (`tls`/`starttls`), `smtp_username`, `smtp_password` (password field),
@@ -347,7 +376,7 @@ Last updated: 7 November 2026 (D2a: email codes for separate budgets, up.128).
   `routes/reminders.ts` (`GET/PUT /api/reminders`, `POST /api/reminders/test`; owner only);
   client `ReminderSettings.tsx` (Settings → Server) and a "Remind me" select in
   `RecurringFormModal.tsx`. Single-budget Home Assistant only: a multi-user budget has no
-  Supervisor token, so reminders there would need the gateway to send (not built). The
+  Supervisor token, so its reminders go through the gateway (D2b, up.129; see State). The
   positive path (a real notify service) is covered by server tests with a stub, not e2e.
   Settings → Server's token section is now "Access tokens" (it was "Read-only access" although
   categorise and organise tokens write).
@@ -535,9 +564,9 @@ site in `website/` was removed (audit decision I-9).
    `docs/MULTI-USER-PLAN.md`, `homeassistant/DOCS.md`) and turned on live on 29 October (see
    State). Confirm the owner has signed in with the setup code and their budget opened with its
    data, Up sync and access tokens intact. Email codes are built (up.128, D2a; the owner sets the
-   `smtp_` options to turn them on). Not built yet: D2b, reminders through the gateway, designed
-   in `docs/MULTI-USER-EMAIL-AND-REMINDERS.md`. Shared households are combined households
-   (up.58).
+   `smtp_` options to turn them on), and so are reminders through the gateway (up.129, D2b);
+   both are in `docs/MULTI-USER-EMAIL-AND-REMINDERS.md`. Shared households are combined
+   households (up.58).
 4. **Gaps found in the 26 October audit** (not built or not documented):
    - User guide pages for payday plans, budget review, card payments and the long-term
      forecast are written (up.121), and every article is linked from its page.
@@ -596,8 +625,7 @@ site in `website/` was removed (audit decision I-9).
    video thumbnails, OCR of scanned PDFs.
 9. **Next fixes from the competitor comparisons** (`docs/research/`, PR #63): SEC-01 duplicates
    and FINX-01 the schedule timer are done (up.102), as are SEC-01's import history and "undo
-   this file" and FINX-02 reminders (up.103; reminders for multi-user budgets, through the gateway,
-   are designed in `docs/MULTI-USER-EMAIL-AND-REMINDERS.md`, not built). ACT-04 per-category overspending is done (up.110) and so is ACT-03 hold for
+   this file" and FINX-02 reminders (up.103; for multi-user budgets, through the gateway, up.129). ACT-04 per-category overspending is done (up.110) and so is ACT-03 hold for
    next month (up.111); ACT-05 month quick fills and BUD-07 selected-category funding are done
    (up.112); BUD-06 row-anchored moves and returning money to Ready to assign (up.115).
 

@@ -118,8 +118,9 @@ describe('gateway store', () => {
 
     s.removeDestination(p.id, 'email');
     expect(s.person(p.id)).toMatchObject({ email: null, notifyService: 'mobile_app_old' });
-    s.setCodeChannel(p.id, 'phone');
-    expect(s.person(p.id)?.codeChannel).toBe('phone');
+    s.setChannel(p.id, 'codes', 'phone');
+    s.setChannel(p.id, 'reminders', 'email');
+    expect(s.person(p.id)).toMatchObject({ codeChannel: 'phone', reminderChannel: 'email' });
   });
 
   it('sends at most one code a minute to each destination, and ten emails a day', () => {
@@ -187,6 +188,7 @@ describe('gateway store', () => {
       notifyService: 'mobile_app_edward',
       email: null,
       codeChannel: null,
+      reminderChannel: null,
       hasPassword: true,
     });
     const [people, sessions, codes] = rows(s.db);
@@ -202,10 +204,11 @@ describe('gateway store', () => {
     const again = new GatewayStore(file);
     expect(rows(again.db)).toEqual([people, sessions, codes]);
     expect(again.db.prepare('select sql from sqlite_master order by name').all()).toEqual(schema);
-    // The new column keeps its rule
-    expect(() => again.db.prepare("update people set code_channel = 'pigeon'").run()).toThrow(
-      /CHECK/,
-    );
+    // The new columns keep their rules
+    for (const column of ['code_channel', 'reminder_channel'])
+      expect(() => again.db.prepare(`update people set ${column} = 'pigeon'`).run()).toThrow(
+        /CHECK/,
+      );
     again.close();
   });
 });

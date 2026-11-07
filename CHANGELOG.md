@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.129
+
+- **Bill reminders work with separate budgets.** With **multi_user** on, each person can now turn on reminders in **Settings → Server → Reminders** (**Send reminders**) and choose how early in each recurring item, as with a single budget. There's no notify service to enter: a reminder goes to that person's own phone or email from **Password codes**, their phone unless they choose otherwise under **Send reminders to** (My phone, My email or Both). **Include the name and amount** and **Send a test** work as before, and reminders still go out once, in the daytime. A budget can only send to its own person, and only through the app on the same machine. Turning **multi_user** off brings back a single budget's own notify service setting, unchanged.
+
 ## 0.2.0-up.128
 
 - **Password codes by email, for separate budgets.** With **multi_user** on, the Home Assistant administrator can set a mail server in the app's new optional `smtp_` options (host, port, `tls` or `starttls`, login and the address codes come from). Each person can then add an email address in **Settings → Server → Password codes**, beside their phone, and **Forgot password?** sends their six-digit code there. Emails are plain text with no links, always sent over an encrypted connection with the mail server's certificate checked, and the mail password never reaches anyone's budget. Leaving the options empty keeps email off, as before.
