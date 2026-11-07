@@ -84,6 +84,9 @@ export default function RowMenu({
                 role="menuitem"
                 onClick={() => {
                   setPos(null);
+                  // Focus goes back to ⋮ first, so a dialog the item opens returns there on
+                  // close rather than to this item, which is about to disappear
+                  btnRef.current?.focus();
                   item.onClick();
                 }}
                 className={`w-full text-left px-3 py-2 max-md:py-3 text-sm transition-colors cursor-pointer ${

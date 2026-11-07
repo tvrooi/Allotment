@@ -177,6 +177,21 @@ Abbreviated source paths in findings are relative to `client/src/`; server paths
 
 **P1 · Accessibility · Shared · Effort M · Confidence High.**
 
+**Status: fixed in 0.2.0-up.134, except focus after a deleted row.** `components/ui/Modal.tsx` now handles focus for every dialog:
+
+- It remembers the opener and focuses the dialog, unless a field's autoFocus already has focus.
+- Tab and Shift+Tab stay inside the dialog. Pickers the dialog opens in their own portal keep their own Tab order.
+- `#root` is inert while a dialog is open, through `utils/inertRoot.ts`, which GuideTour shares.
+- A stack of open dialogs lets only the top one answer Escape and Tab; a dialog underneath is `inert`.
+- On close, focus goes back to the opener.
+
+`RowMenu` puts focus back on its ⋮ button before running an item, so a dialog opened from a menu returns there. Toasts render on `<body>`, so they stay announced while the app is inert.
+
+Test: `e2e/tests/dialog-focus.spec.ts`, at desktop and phone sizes. Each case fails without the change. Still open:
+
+- After a successful deletion, focus should move to the next row; it goes with AU-006, where the confirmation knows the delete succeeded.
+- Screen-reader and hardware-keyboard checks.
+
 - **Reproduce / state:** Goals → Add goal, 390×844, keyboard; repeat with Tab through fields, icon/colour choices and Cancel, then Escape.
 - **Evidence / source:** `defects.json` and `expanded.json` record focus leaving the dialog for BODY and remaining there after Escape; `goal-focus-escape-390.png`. `client/src/components/ui/Modal.tsx:58` handles Escape but no focus containment/restoration; GoalFormModal provides its own initial autofocus.
 - **Current → impact:** Initial autofocus works for this form, but Tab leaves a surface announced as aria-modal. Closing loses the opener. Keyboard and assistive-technology users can lose task context.

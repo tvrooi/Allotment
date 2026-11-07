@@ -7,6 +7,7 @@ import { useGuideStore } from '../../store/guideStore';
 import { useUpdateGuides } from '../../hooks/useGuides';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { Button } from '../ui/Button';
+import { holdRootInert } from '../../utils/inertRoot';
 import {
   guideClosedUpdate,
   placeCard,
@@ -65,10 +66,9 @@ export function GuideTour() {
   useEffect(() => {
     if (!touring) return;
     const returnTo = document.activeElement as HTMLElement | null;
-    const root = document.getElementById('root');
-    if (root) root.inert = true;
+    const release = holdRootInert();
     return () => {
-      if (root) root.inert = false;
+      release();
       if (returnTo?.isConnected) returnTo.focus();
     };
   }, [touring]);
