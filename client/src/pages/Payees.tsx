@@ -6,6 +6,7 @@ import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Modal, useModalValue } from '../components/ui/Modal';
 import { Button, ButtonLink } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
+import { QueryProblem, loadFailed } from '../components/ui/QueryProblem';
 import { PayeeIcon } from '../components/payees/PayeeIcon';
 import RowMenu from '../components/ui/RowMenu';
 import { useIsPhone } from '../hooks/useIsPhone';
@@ -81,7 +82,8 @@ function MergeModal({
 }
 
 export default function PayeesPage() {
-  const { data: payees = [], isLoading } = usePayees();
+  const payeesQuery = usePayees();
+  const { data: payees = [], isLoading } = payeesQuery;
   const { data: groups = [] } = useCategories();
   const updatePayee = useUpdatePayee();
   const deletePayee = useDeletePayee();
@@ -176,11 +178,16 @@ export default function PayeesPage() {
         />
       )}
 
+      {!loadFailed(payeesQuery) && (
+        <QueryProblem what="payees" query={payeesQuery} className="mx-6 my-3 max-md:mx-4" />
+      )}
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center h-32 text-sm text-text-tertiary">
             Loading...
           </div>
+        ) : loadFailed(payeesQuery) ? (
+          <QueryProblem what="payees" query={payeesQuery} />
         ) : filtered.length === 0 ? (
           search ? (
             <div className="flex items-center justify-center h-32 text-sm text-text-tertiary">

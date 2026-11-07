@@ -17,6 +17,7 @@ import {
 import { useDebounce } from '../hooks/useDebounce';
 import { useTags } from '../hooks/useTags';
 import { formatDay } from '../utils/dates';
+import { QueryProblem, loadFailed } from '../components/ui/QueryProblem';
 
 const VIEWS = [
   { id: '', label: 'All files' },
@@ -155,10 +156,8 @@ export default function FilesPage() {
     receipt: view === 'receipts' ? true : undefined,
     linked: view === 'unlinked' ? false : undefined,
   };
-  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useFilePages(
-    filter,
-    PAGE,
-  );
+  const filesQuery = useFilePages(filter, PAGE);
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = filesQuery;
   const upload = useUploadFile();
   const [errors, setErrors] = useState<string[]>([]);
   const docs = data?.pages.flatMap((p) => p.documents) ?? [];
@@ -327,6 +326,7 @@ export default function FilesPage() {
                 {sharedNote}
               </p>
             )}
+            {!loadFailed(filesQuery) && <QueryProblem what="files" query={filesQuery} />}
             {errors.map((e) => (
               <p key={e} role="alert" className="text-sm text-negative">
                 {e}
@@ -335,6 +335,8 @@ export default function FilesPage() {
 
             {isLoading ? (
               <div className="h-40 bg-surface-alt rounded animate-pulse" />
+            ) : loadFailed(filesQuery) ? (
+              <QueryProblem what="files" query={filesQuery} />
             ) : docs.length === 0 ? (
               <p className="text-sm text-text-tertiary">
                 {filtered

@@ -25,6 +25,7 @@ import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { useModalValue } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
+import { QueryProblem, loadFailed } from '../components/ui/QueryProblem';
 import { useOpenFromLink } from '../hooks/useOpenFromLink';
 import RowMenu from '../components/ui/RowMenu';
 import { useIsPhone } from '../hooks/useIsPhone';
@@ -214,7 +215,8 @@ function RuleRow({
 const NO_RULES: Rule[] = [];
 
 export default function RulesPage() {
-  const { data: rulesData = NO_RULES, isLoading } = useRules();
+  const rulesQuery = useRules();
+  const { data: rulesData = NO_RULES, isLoading } = rulesQuery;
   const updateRule = useUpdateRule();
   const deleteRule = useDeleteRule();
   const reorderRules = useReorderRules();
@@ -318,11 +320,16 @@ export default function RulesPage() {
         </div>
       </div>
 
+      {!loadFailed(rulesQuery) && (
+        <QueryProblem what="rules" query={rulesQuery} className="mx-6 my-3 max-md:mx-4" />
+      )}
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center h-32 text-sm text-text-tertiary">
             Loading...
           </div>
+        ) : loadFailed(rulesQuery) ? (
+          <QueryProblem what="rules" query={rulesQuery} />
         ) : localRules.length === 0 ? (
           <EmptyState
             icon={<Wand2 size={26} />}

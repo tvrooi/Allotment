@@ -204,6 +204,15 @@ Test: `e2e/tests/dialog-focus.spec.ts`, at desktop and phone sizes. Each case fa
 
 **P1 · Usability / financial confidence · Shared · Effort M · Confidence High.**
 
+**Status: fixed in 0.2.0-up.136 for the four reproduced pages.** `components/ui/QueryProblem.tsx` takes a react-query result and handles two cases:
+
+- **Nothing loaded:** a `role="alert"` panel says "Couldn't load your …", gives the error's message (safe to show, from `api/client.ts`) and "Nothing has been changed", and offers **Retry** (`refetch`).
+- **Earlier data still showing:** a `role="status"` notice above the data says it is what was loaded earlier, with **Retry**.
+
+`loadFailed(query)` lets a page show the panel instead of its empty state. Goals, Payees, Rules and Files use both. Totals and counts render only with data.
+
+Test: `e2e/tests/load-errors.spec.ts`, which runs each page with its list request refused, then retries, plus a failed refresh on Goals. It fails without the change. Still open: other pages that default a failed query to `[]`, which are suspected but not yet reproduced. Move them over as they're found.
+
 - **Reproduce / state:** Start on Guide in a populated demo; reject GET for Goals, Payees, Rules or Files with a 422 JSON error, then navigate to that page and wait for retry. Tested at 390×844.
 - **Evidence / source:** `load-errors.json`, `goals-load-error-390.png`, `payees-load-error-390.png`, `rules-load-error-390.png`, `files-load-error-390.png`; `pages/Goals.tsx:284`, `Payees.tsx:84`, `Rules.tsx:217`, `Files.tsx:158` default query data without a rendered query error.
 - **Current → impact:** A failed Goals read says “Save for what matters”; Payees says “No payees yet”; Rules offers the first rule; Files says “No files yet”. These imply absent data rather than unavailable data.
