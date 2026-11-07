@@ -5,7 +5,7 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 6 November 2026 (up.127 in review: assistant phase 3).
+Last updated: 7 November 2026 (D2 design: email codes and reminders for separate budgets).
 
 ## State
 
@@ -510,8 +510,9 @@ site in `website/` was removed (audit decision I-9).
 3. **Multi-user (separate budgets per person):** built in `0.2.0-up.48` (`server/src/gateway/`,
    `docs/MULTI-USER-PLAN.md`, `homeassistant/DOCS.md`) and turned on live on 29 October (see
    State). Confirm the owner has signed in with the setup code and their budget opened with its
-   data, Up sync and access tokens intact. Not built yet: SMTP email codes. Shared households
-   are combined households (up.58).
+   data, Up sync and access tokens intact. Not built yet: SMTP email codes, designed with
+   reminders through the gateway in `docs/MULTI-USER-EMAIL-AND-REMINDERS.md` (D2, 7 November;
+   eight owner decisions open, no code). Shared households are combined households (up.58).
 4. **Gaps found in the 26 October audit** (not built or not documented):
    - User guide pages for payday plans, budget review, card payments and the long-term
      forecast are written (up.121), and every article is linked from its page.
@@ -571,7 +572,7 @@ site in `website/` was removed (audit decision I-9).
 9. **Next fixes from the competitor comparisons** (`docs/research/`, PR #63): SEC-01 duplicates
    and FINX-01 the schedule timer are done (up.102), as are SEC-01's import history and "undo
    this file" and FINX-02 reminders (up.103; reminders for multi-user budgets, through the gateway,
-   are not built). ACT-04 per-category overspending is done (up.110) and so is ACT-03 hold for
+   are designed in `docs/MULTI-USER-EMAIL-AND-REMINDERS.md`, not built). ACT-04 per-category overspending is done (up.110) and so is ACT-03 hold for
    next month (up.111); ACT-05 month quick fills and BUD-07 selected-category funding are done
    (up.112); BUD-06 row-anchored moves and returning money to Ready to assign (up.115).
 
