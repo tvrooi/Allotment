@@ -1,0 +1,54 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+The guide
+Rules
+
+Sort new transactions automatically.
+
+How they work
+
+A rule says: when a transaction matches these conditions (payee, bank text, amount, account), do these things (set the payee, the category, notes, or split it). Rules run on every import and sync, and on what you type.
+
+Check before you save
+
+While you write a rule, Allotment shows which past transactions it would match.
+
+Next: Goals
+
+A$0

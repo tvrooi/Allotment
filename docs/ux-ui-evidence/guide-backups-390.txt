@@ -1,0 +1,19 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+The guide
+Backups
+
+Keep a copy of your budget somewhere safe.
+
+Download a backup
+
+Settings → Data → Download backup saves your whole budget in one file. Keep it somewhere other than the computer or Home Assistant it runs on. Your Up token is never included.
+
+Restore
+
+Settings → Data → Restore Backup replaces the budget with a backup. You’re asked to confirm first.
+
+A$20

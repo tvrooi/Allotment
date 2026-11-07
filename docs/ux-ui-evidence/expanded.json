@@ -1,0 +1,660 @@
+[
+  {
+    "name": "dashboard-1440-settled",
+    "url": "http://localhost:5173/#/dashboard",
+    "overflow": false
+  },
+  {
+    "name": "settings-categories-1440",
+    "url": "http://localhost:5173/#/settings?tab=categories",
+    "overflow": false
+  },
+  {
+    "name": "settings-accounts-1440",
+    "url": "http://localhost:5173/#/settings?tab=accounts",
+    "overflow": false
+  },
+  {
+    "name": "settings-budget-1440",
+    "url": "http://localhost:5173/#/settings?tab=budget",
+    "overflow": false
+  },
+  {
+    "name": "settings-tags-1440",
+    "url": "http://localhost:5173/#/settings?tab=tags",
+    "overflow": false
+  },
+  {
+    "name": "settings-connections-1440",
+    "url": "http://localhost:5173/#/settings?tab=connections",
+    "overflow": false
+  },
+  {
+    "name": "settings-currencies-1440",
+    "url": "http://localhost:5173/#/settings?tab=currencies",
+    "overflow": false
+  },
+  {
+    "name": "settings-priorities-1440",
+    "url": "http://localhost:5173/#/settings?tab=priorities",
+    "overflow": false
+  },
+  {
+    "name": "settings-data-1440",
+    "url": "http://localhost:5173/#/settings?tab=data",
+    "overflow": false
+  },
+  {
+    "name": "settings-preferences-1440",
+    "url": "http://localhost:5173/#/settings?tab=preferences",
+    "overflow": false
+  },
+  {
+    "name": "settings-server-1440",
+    "url": "http://localhost:5173/#/settings?tab=server",
+    "overflow": false
+  },
+  {
+    "name": "guide-getting-started-1440",
+    "url": "http://localhost:5173/#/guide/getting-started",
+    "overflow": false
+  },
+  {
+    "name": "guide-bank-sync-1440",
+    "url": "http://localhost:5173/#/guide/bank-sync",
+    "overflow": false
+  },
+  {
+    "name": "guide-enable-banking-1440",
+    "url": "http://localhost:5173/#/guide/enable-banking",
+    "overflow": false
+  },
+  {
+    "name": "guide-accounts-1440",
+    "url": "http://localhost:5173/#/guide/accounts",
+    "overflow": false
+  },
+  {
+    "name": "guide-transactions-1440",
+    "url": "http://localhost:5173/#/guide/transactions",
+    "overflow": false
+  },
+  {
+    "name": "guide-budgeting-1440",
+    "url": "http://localhost:5173/#/guide/budgeting",
+    "overflow": false
+  },
+  {
+    "name": "guide-move-money-1440",
+    "url": "http://localhost:5173/#/guide/move-money",
+    "overflow": false
+  },
+  {
+    "name": "guide-payday-plans-1440",
+    "url": "http://localhost:5173/#/guide/payday-plans",
+    "overflow": false
+  },
+  {
+    "name": "guide-card-payments-1440",
+    "url": "http://localhost:5173/#/guide/card-payments",
+    "overflow": false
+  },
+  {
+    "name": "guide-recurring-1440",
+    "url": "http://localhost:5173/#/guide/recurring",
+    "overflow": false
+  },
+  {
+    "name": "guide-review-1440",
+    "url": "http://localhost:5173/#/guide/review",
+    "overflow": false
+  },
+  {
+    "name": "guide-rules-1440",
+    "url": "http://localhost:5173/#/guide/rules",
+    "overflow": false
+  },
+  {
+    "name": "guide-goals-1440",
+    "url": "http://localhost:5173/#/guide/goals",
+    "overflow": false
+  },
+  {
+    "name": "guide-long-term-forecast-1440",
+    "url": "http://localhost:5173/#/guide/long-term-forecast",
+    "overflow": false
+  },
+  {
+    "name": "guide-reports-1440",
+    "url": "http://localhost:5173/#/guide/reports",
+    "overflow": false
+  },
+  {
+    "name": "guide-tax-1440",
+    "url": "http://localhost:5173/#/guide/tax",
+    "overflow": false
+  },
+  {
+    "name": "guide-currencies-1440",
+    "url": "http://localhost:5173/#/guide/currencies",
+    "overflow": false
+  },
+  {
+    "name": "guide-households-1440",
+    "url": "http://localhost:5173/#/guide/households",
+    "overflow": false
+  },
+  {
+    "name": "guide-backups-1440",
+    "url": "http://localhost:5173/#/guide/backups",
+    "overflow": false
+  },
+  {
+    "route": "forecast",
+    "button": "Cash runway",
+    "error": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Cash runway', exact: true })\u001b[22m\n"
+  },
+  {
+    "name": "recurring-All-recurring-1440",
+    "url": "http://localhost:5173/#/recurring",
+    "overflow": false
+  },
+  {
+    "route": "tax",
+    "button": "Assets",
+    "error": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Assets', exact: true })\u001b[22m\n"
+  },
+  {
+    "route": "tax",
+    "button": "Receipt inbox",
+    "error": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Receipt inbox', exact: true })\u001b[22m\n"
+  },
+  {
+    "route": "reports",
+    "button": "Year in review",
+    "error": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Year in review', exact: true })\u001b[22m\n\u001b[2m    - loca"
+  },
+  {
+    "route": "transactions",
+    "button": "Receipts",
+    "error": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Receipts', exact: true })\u001b[22m\n"
+  },
+  {
+    "name": "detail---budget-category-demo-cat-paychecks-1440",
+    "url": "http://localhost:5173/#/budget/category/demo-cat-paychecks",
+    "overflow": false
+  },
+  {
+    "name": "detail---budget-category-demo-cat-interest-1440",
+    "url": "http://localhost:5173/#/budget/category/demo-cat-interest",
+    "overflow": false
+  },
+  {
+    "name": "detail---budget-category-demo-cat-otherIncome-1440",
+    "url": "http://localhost:5173/#/budget/category/demo-cat-otherIncome",
+    "overflow": false
+  },
+  {
+    "name": "goals-dialog-1440",
+    "url": "http://localhost:5173/#/goals",
+    "overflow": false
+  },
+  {
+    "name": "accounts-dialog-1440",
+    "url": "http://localhost:5173/#/accounts",
+    "overflow": false
+  },
+  {
+    "name": "transactions-dialog-1440",
+    "url": "http://localhost:5173/#/transactions",
+    "overflow": false
+  },
+  {
+    "name": "rules-dialog-1440",
+    "url": "http://localhost:5173/#/rules",
+    "overflow": false
+  },
+  {
+    "name": "recurring-dialog-1440",
+    "url": "http://localhost:5173/#/recurring",
+    "overflow": false
+  },
+  {
+    "name": "investments-dialog-1440",
+    "url": "http://localhost:5173/#/investments",
+    "overflow": false
+  },
+  {
+    "name": "investments-dialog-1440",
+    "url": "http://localhost:5173/#/investments",
+    "overflow": false
+  },
+  {
+    "route": "payees",
+    "button": "Add payee",
+    "error": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Add payee', exact: true }).first()\u001b[22m\n"
+  },
+  {
+    "name": "dashboard-390-settled",
+    "url": "http://localhost:5173/#/dashboard",
+    "overflow": false
+  },
+  {
+    "name": "settings-categories-390",
+    "url": "http://localhost:5173/#/settings?tab=categories",
+    "overflow": false
+  },
+  {
+    "name": "settings-accounts-390",
+    "url": "http://localhost:5173/#/settings?tab=accounts",
+    "overflow": false
+  },
+  {
+    "name": "settings-budget-390",
+    "url": "http://localhost:5173/#/settings?tab=budget",
+    "overflow": false
+  },
+  {
+    "name": "settings-tags-390",
+    "url": "http://localhost:5173/#/settings?tab=tags",
+    "overflow": false
+  },
+  {
+    "name": "settings-connections-390",
+    "url": "http://localhost:5173/#/settings?tab=connections",
+    "overflow": false
+  },
+  {
+    "name": "settings-currencies-390",
+    "url": "http://localhost:5173/#/settings?tab=currencies",
+    "overflow": false
+  },
+  {
+    "name": "settings-priorities-390",
+    "url": "http://localhost:5173/#/settings?tab=priorities",
+    "overflow": false
+  },
+  {
+    "name": "settings-data-390",
+    "url": "http://localhost:5173/#/settings?tab=data",
+    "overflow": false
+  },
+  {
+    "name": "settings-preferences-390",
+    "url": "http://localhost:5173/#/settings?tab=preferences",
+    "overflow": false
+  },
+  {
+    "name": "settings-server-390",
+    "url": "http://localhost:5173/#/settings?tab=server",
+    "overflow": false
+  },
+  {
+    "name": "guide-getting-started-390",
+    "url": "http://localhost:5173/#/guide/getting-started",
+    "overflow": false
+  },
+  {
+    "name": "guide-bank-sync-390",
+    "url": "http://localhost:5173/#/guide/bank-sync",
+    "overflow": false
+  },
+  {
+    "name": "guide-enable-banking-390",
+    "url": "http://localhost:5173/#/guide/enable-banking",
+    "overflow": false
+  },
+  {
+    "name": "guide-accounts-390",
+    "url": "http://localhost:5173/#/guide/accounts",
+    "overflow": false
+  },
+  {
+    "name": "guide-transactions-390",
+    "url": "http://localhost:5173/#/guide/transactions",
+    "overflow": false
+  },
+  {
+    "name": "guide-budgeting-390",
+    "url": "http://localhost:5173/#/guide/budgeting",
+    "overflow": false
+  },
+  {
+    "name": "guide-move-money-390",
+    "url": "http://localhost:5173/#/guide/move-money",
+    "overflow": false
+  },
+  {
+    "name": "guide-payday-plans-390",
+    "url": "http://localhost:5173/#/guide/payday-plans",
+    "overflow": false
+  },
+  {
+    "name": "guide-card-payments-390",
+    "url": "http://localhost:5173/#/guide/card-payments",
+    "overflow": false
+  },
+  {
+    "name": "guide-recurring-390",
+    "url": "http://localhost:5173/#/guide/recurring",
+    "overflow": false
+  },
+  {
+    "name": "guide-review-390",
+    "url": "http://localhost:5173/#/guide/review",
+    "overflow": false
+  },
+  {
+    "name": "guide-rules-390",
+    "url": "http://localhost:5173/#/guide/rules",
+    "overflow": false
+  },
+  {
+    "name": "guide-goals-390",
+    "url": "http://localhost:5173/#/guide/goals",
+    "overflow": false
+  },
+  {
+    "name": "guide-long-term-forecast-390",
+    "url": "http://localhost:5173/#/guide/long-term-forecast",
+    "overflow": false
+  },
+  {
+    "name": "guide-reports-390",
+    "url": "http://localhost:5173/#/guide/reports",
+    "overflow": false
+  },
+  {
+    "name": "guide-tax-390",
+    "url": "http://localhost:5173/#/guide/tax",
+    "overflow": false
+  },
+  {
+    "name": "guide-currencies-390",
+    "url": "http://localhost:5173/#/guide/currencies",
+    "overflow": false
+  },
+  {
+    "name": "guide-households-390",
+    "url": "http://localhost:5173/#/guide/households",
+    "overflow": false
+  },
+  {
+    "name": "guide-backups-390",
+    "url": "http://localhost:5173/#/guide/backups",
+    "overflow": false
+  },
+  {
+    "route": "forecast",
+    "button": "Cash runway",
+    "error": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Cash runway', exact: true })\u001b[22m\n"
+  },
+  {
+    "name": "recurring-All-recurring-390",
+    "url": "http://localhost:5173/#/recurring",
+    "overflow": false
+  },
+  {
+    "route": "tax",
+    "button": "Assets",
+    "error": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Assets', exact: true })\u001b[22m\n"
+  },
+  {
+    "route": "tax",
+    "button": "Receipt inbox",
+    "error": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Receipt inbox', exact: true })\u001b[22m\n"
+  },
+  {
+    "name": "reports-Year-in-review-390",
+    "url": "http://localhost:5173/#/reports?dashboard=demo-dash-year",
+    "overflow": false
+  },
+  {
+    "route": "transactions",
+    "button": "Receipts",
+    "error": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Receipts', exact: true })\u001b[22m\n"
+  },
+  {
+    "name": "detail---budget-category-demo-cat-paychecks-390",
+    "url": "http://localhost:5173/#/budget/category/demo-cat-paychecks",
+    "overflow": false
+  },
+  {
+    "name": "detail---budget-category-demo-cat-interest-390",
+    "url": "http://localhost:5173/#/budget/category/demo-cat-interest",
+    "overflow": false
+  },
+  {
+    "name": "detail---budget-category-demo-cat-otherIncome-390",
+    "url": "http://localhost:5173/#/budget/category/demo-cat-otherIncome",
+    "overflow": false
+  },
+  {
+    "name": "goals-dialog-390",
+    "url": "http://localhost:5173/#/goals",
+    "overflow": false
+  },
+  {
+    "name": "accounts-dialog-390",
+    "url": "http://localhost:5173/#/accounts",
+    "overflow": false
+  },
+  {
+    "name": "transactions-dialog-390",
+    "url": "http://localhost:5173/#/transactions",
+    "overflow": false
+  },
+  {
+    "name": "rules-dialog-390",
+    "url": "http://localhost:5173/#/rules",
+    "overflow": false
+  },
+  {
+    "name": "recurring-dialog-390",
+    "url": "http://localhost:5173/#/recurring",
+    "overflow": false
+  },
+  {
+    "name": "investments-dialog-390",
+    "url": "http://localhost:5173/#/investments",
+    "overflow": false
+  },
+  {
+    "name": "investments-dialog-390",
+    "url": "http://localhost:5173/#/investments",
+    "overflow": false
+  },
+  {
+    "route": "payees",
+    "button": "Add payee",
+    "error": "locator.click: Timeout 2000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Add payee', exact: true }).first()\u001b[22m\n"
+  },
+  {
+    "focusWalk": [
+      {
+        "tag": "SELECT",
+        "label": "Progress source",
+        "text": "Manual trackingRentContents InsuranceHome GoodsElectricityInternetPhon",
+        "inside": true
+      },
+      {
+        "tag": "INPUT",
+        "label": "Target",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "INPUT",
+        "label": "Saved so far",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "INPUT",
+        "label": "Target date",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "INPUT",
+        "label": "Target date",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "INPUT",
+        "label": "Target date",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "INPUT",
+        "label": "Target date",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "SELECT",
+        "label": "Linked account",
+        "text": "NoneSpendingRainy DayHoliday2Up SpendingEvergreen SuperPinecone Shares",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Piggy Bank",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "House",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Plane",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Car",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Coins",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Graduation Cap",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Gem",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Palmtree",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Laptop",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Life Buoy",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Gift",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Baby",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Colour #2563EB",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Colour #059669",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Colour #D97706",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Colour #DC2626",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Colour #7C3AED",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Colour #0891B2",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Colour #DB2777",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": "Colour #4F46E5",
+        "text": "",
+        "inside": true
+      },
+      {
+        "tag": "BUTTON",
+        "label": null,
+        "text": "Cancel",
+        "inside": true
+      },
+      {
+        "tag": "BODY",
+        "label": null,
+        "text": "\n    AllotmentHelp & guidesHide balancesDashboardAccountsTransactionsB",
+        "inside": false
+      }
+    ],
+    "afterEscape": {
+      "tag": "BODY",
+      "text": "\n    AllotmentHelp & guidesHide balancesDashboardAccountsTransactionsBudgetReview3RecurringReportsCa"
+    }
+  }
+]

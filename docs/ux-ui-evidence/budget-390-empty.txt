@@ -1,0 +1,518 @@
+Allotment
+Budget,
+November 2026
+Today
+
+No money assigned for November yet. Tap an amount to give money you already have a job.
+
+Income
+$0 of $0 expected
+Paychecks
+$0
+remaining
+Expected
+$0
+Received
+$0
+Interest
+$0
+remaining
+Expected
+$0
+Received
+$0
+Business Income
+$0
+remaining
+Expected
+$0
+Received
+$0
+Other Income
+$0
+remaining
+Expected
+$0
+Received
+$0
+Fixed
+$0 available
+Car Payment
+$0
+available
+Assigned
+$0
+Activity
+$0
+Car Insurance
+$0
+available
+Assigned
+$0
+Activity
+$0
+Rent / Mortgage
+$0
+available
+Assigned
+$0
+Activity
+$0
+Home Insurance
+$0
+available
+Assigned
+$0
+Activity
+$0
+Property Tax
+$0
+available
+Assigned
+$0
+Activity
+$0
+HOA Fees
+$0
+available
+Assigned
+$0
+Activity
+$0
+Electric
+$0
+available
+Assigned
+$0
+Activity
+$0
+Water
+$0
+available
+Assigned
+$0
+Activity
+$0
+Gas (Natural)
+$0
+available
+Assigned
+$0
+Activity
+$0
+Internet
+$0
+available
+Assigned
+$0
+Activity
+$0
+Phone
+$0
+available
+Assigned
+$0
+Activity
+$0
+Trash / Recycling
+$0
+available
+Assigned
+$0
+Activity
+$0
+Streaming Services
+$0
+available
+Assigned
+$0
+Activity
+$0
+Childcare / Daycare
+$0
+available
+Assigned
+$0
+Activity
+$0
+Tuition
+$0
+available
+Assigned
+$0
+Activity
+$0
+Student Loans
+$0
+available
+Assigned
+$0
+Activity
+$0
+Loan Payment
+$0
+available
+Assigned
+$0
+Activity
+$0
+Bank Fees
+$0
+available
+Assigned
+$0
+Activity
+$0
+Flexible
+$0 available
+Charity
+$0
+available
+Assigned
+$0
+Activity
+$0
+Gifts
+$0
+available
+Assigned
+$0
+Activity
+$0
+Donations
+$0
+available
+Assigned
+$0
+Activity
+$0
+Gas / Fuel
+$0
+available
+Assigned
+$0
+Activity
+$0
+Parking
+$0
+available
+Assigned
+$0
+Activity
+$0
+Public Transit
+$0
+available
+Assigned
+$0
+Activity
+$0
+Ride Share
+$0
+available
+Assigned
+$0
+Activity
+$0
+Home Maintenance
+$0
+available
+Assigned
+$0
+Activity
+$0
+Groceries
+$0
+available
+Assigned
+$0
+Activity
+$0
+Restaurants
+$0
+available
+Assigned
+$0
+Activity
+$0
+Coffee Shops
+$0
+available
+Assigned
+$0
+Activity
+$0
+Fast Food
+$0
+available
+Assigned
+$0
+Activity
+$0
+Alcohol / Bars
+$0
+available
+Assigned
+$0
+Activity
+$0
+Clothing
+$0
+available
+Assigned
+$0
+Activity
+$0
+Electronics
+$0
+available
+Assigned
+$0
+Activity
+$0
+Home Goods
+$0
+available
+Assigned
+$0
+Activity
+$0
+Personal Care
+$0
+available
+Assigned
+$0
+Activity
+$0
+Kids Activities
+$0
+available
+Assigned
+$0
+Activity
+$0
+School Supplies
+$0
+available
+Assigned
+$0
+Activity
+$0
+Baby Supplies
+$0
+available
+Assigned
+$0
+Activity
+$0
+Allowance
+$0
+available
+Assigned
+$0
+Activity
+$0
+Pharmacy
+$0
+available
+Assigned
+$0
+Activity
+$0
+Gym / Fitness
+$0
+available
+Assigned
+$0
+Activity
+$0
+Office Supplies
+$0
+available
+Assigned
+$0
+Activity
+$0
+Software / Tools
+$0
+available
+Assigned
+$0
+Activity
+$0
+Marketing
+$0
+available
+Assigned
+$0
+Activity
+$0
+Professional Services
+$0
+available
+Assigned
+$0
+Activity
+$0
+Miscellaneous
+$0
+available
+Assigned
+$0
+Activity
+$0
+Cash / ATM
+$0
+available
+Assigned
+$0
+Activity
+$0
+Other
+$0
+available
+Assigned
+$0
+Activity
+$0
+Non-Monthly
+$0 available
+Car Maintenance
+$0
+available
+Assigned
+$0
+Activity
+$0
+Home Improvement
+$0
+available
+Assigned
+$0
+Activity
+$0
+Flights
+$0
+available
+Assigned
+$0
+Activity
+$0
+Hotels
+$0
+available
+Assigned
+$0
+Activity
+$0
+Vacation
+$0
+available
+Assigned
+$0
+Activity
+$0
+Entertainment
+$0
+available
+Assigned
+$0
+Activity
+$0
+Hobbies
+$0
+available
+Assigned
+$0
+Activity
+$0
+Books & Supplies
+$0
+available
+Assigned
+$0
+Activity
+$0
+Online Courses
+$0
+available
+Assigned
+$0
+Activity
+$0
+Doctor / Medical
+$0
+available
+Assigned
+$0
+Activity
+$0
+Dentist
+$0
+available
+Assigned
+$0
+Activity
+$0
+Mental Health
+$0
+available
+Assigned
+$0
+Activity
+$0
+Vision / Eye Care
+$0
+available
+Assigned
+$0
+Activity
+$0
+Investments
+$0
+available
+Assigned
+$0
+Activity
+$0
+Business Travel
+$0
+available
+Assigned
+$0
+Activity
+$0
+Savings/Investments
+$0 available
+Savings
+$0
+available
+Assigned
+$0
+Activity
+$0
+November 2026
+
+Every envelope this month. Tick envelopes in the table to see only those.
+
+Carried in
+$0
+Assigned
+$0
+Activity
+$0
+Available
+$0
+Note for this month
+Move money
+Move money / Cover overspending
+
+READY TO ASSIGN
+
+$0
+
+Nothing to assign yet
+
+Money you have that isn't in a category yet.
+
+How this is worked out

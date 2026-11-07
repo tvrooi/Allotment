@@ -1,0 +1,61 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+The guide
+Budgeting
+
+Ready to assign, envelopes, overspending and paydays.
+
+Ready to assign
+
+Money you have that isn’t in an envelope yet. Assign it until it reaches $0. If it goes below $0, you’ve assigned more than you have: take some back from an envelope.
+
+Envelopes carry forward
+
+What’s left in an envelope at the end of the month stays there. That’s how you save up for bills that don’t come every month, like rego or a holiday.
+
+Overspent?
+
+An envelope below $0 is red. Click its Available figure to cover it from another envelope. Plans change: moving money is normal, and you can give it back to Ready to assign. How moving money works.
+
+Spending you’ll be paid back for
+
+Normally an envelope that ends the month overspent starts the next one at $0, and the money you spent comes out of Ready to assign. For spending someone will pay back, such as a work expense, open the category (Settings → Categories → Edit) and tick Keep overspending. Its deficit then carries into the next month and Ready to assign isn’t reduced. When the repayment arrives and you give it that category, the envelope is back to $0. Review still lists it as overspent, marked as kept until repaid.
+
+Holding money for next month
+
+If you’re living on last month’s pay, or some of this month’s money isn’t for this month, choose Hold money… under Ready to assign in the current month and enter how much. It leaves Ready to assign now, so the month can reach $0 and read fully budgeted, and it comes back when next month starts. It can’t be given to a category until then, and you can only hold what is ready to assign. Change hold and Release hold put it back. Nothing is spent or moved out of your accounts.
+
+Filling a month quickly
+
+Assign → Auto-assign plans a whole month at once and shows every change before anything is saved. Choose to cover overspending, copy last month’s assignments or spending, use the average of the last 3, 6 or 12 months’ spending (months with no spending count), or Set to zero. Add only tops envelopes up and never lowers one; Replace sets each envelope to the amount, so an envelope that has more gives the difference back to Ready to assign (never below $0 assigned). Untick any envelope to leave it alone: the rest is planned again, because the money is shared out in order. Fund targets has the same ticks. Taking money back can leave an envelope overspent, and the preview says so.
+
+What Available is telling you
+
+Red Overspent means the envelope is below $0. Covered by carried funds means you spent more than you assigned this month, but money carried in from earlier pays for it, so nothing is wrong. Short of target means there’s money in the envelope but not yet what its target needs. The words are there so you don’t have to rely on the colour.
+
+If a change is refused
+
+An amount is saved only when the server says so. If it’s refused, for example because it is more than you have to assign, the amount stays in the box with the reason beside it, so you can fix it. Undo works the same way: if something changed since, it says so and leaves your figures alone.
+
+Typing amounts
+
+You can type a sum in an envelope’s amount: 100+50 saves $150 and 150*2 saves $300. A sum doesn’t add to what was there, so +50 saves $50. On a computer, press Enter to save, Esc to cancel, and the down arrow or Tab to save and go to the next envelope (up arrow or Shift+Tab for the one before). Envelopes you’ve hidden or filtered out are skipped.
+
+The inspector and notes
+
+Beside the table, the inspector shows the whole month until you tick envelopes. Tick one to see its figures, its target and its note; tick several to see their totals and fund just their targets. Ticking never moves money. Write a note for the month there, or for an envelope when it’s ticked (on a phone, in the envelope’s amount sheet). A note saves when you leave the box, and an envelope’s note stays the same every month.
+
+Cards in the budget
+
+A credit card you’ve set up for payment funding has its own row under Card payments. When you spend on the card, the money comes out of the envelope you categorised the purchase to and is held in the card’s row, so a $100 Groceries envelope with an $80 purchase reads $20 for Groceries and $80 on the card. Under the card’s name the row shows what you owe, and in red any part the reserve doesn’t cover. When you pay the card from your bank and link the two sides as a transfer, the reserve is used up and Groceries stays as it was. Setting up a card, and adding money to its row with Fund debt, are in the Card payments panel beside the table. More about card payments.
+
+Paid fortnightly
+
+Choose Until payday on the Budget page to plan just until your next pay, with the bills that fall before it. How payday plans work.
+
+Next: Move money
+
+A$20

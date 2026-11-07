@@ -1,0 +1,62 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+The guide
+Bills and pay
+
+Recurring items show what’s due, and what’s coming in.
+
+Add what repeats
+
+Rent, pay, subscriptions, rego: add them under Recurring with how often they happen. The dashboard then shows your next bills and your next pay.
+
+Matching
+
+When a payment arrives from Up, Allotment matches it to its recurring item. If it isn’t sure, it asks you to confirm the match.
+
+Find recurring
+
+Allotment can look through your history for things that repeat and suggest them.
+
+Shared houses
+
+Money your housemates put into a household account is never your income: Monthly keeps it under Household account, out of your totals, and the dashboard’s next pay is only your own. A bill the household shares counts at your share, such as “Your share of Rent”, with the full amount beside it.
+
+Next: Budget review
+
+A$0

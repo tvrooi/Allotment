@@ -1,0 +1,98 @@
+Allotment
+Welcome to Allotment. Start with the steps below.
+Customise
+Get started with Allotment
+
+Start with a two-minute tour of where everything is. Your first steps come next.
+
+Show me around
+Skip the tour
+
+Left to spend
+
+—
+
+No budget set this month
+
+Avg monthly income
+
+$0
+
+Avg monthly expenses
+
+$0
+
+Savings rate
+
+10% goal
+15% goal
+20% goal
+25% goal
+30% goal
+
+—
+
+Shown once you have income
+
+Bills and income
+View all
+
+Track your bills and pay
+
+Add rent, subscriptions and income that repeat, or let Allotment find them in your transactions.
+
+Budget
+November 2026
+
+No budget for November 2026 yet
+
+Set how much you plan to spend in each category, then watch your progress here.
+
+Learn more
+Recent transactions
+View all
+
+No transactions yet
+
+Import a CSV file from your bank, connect a bank, or add transactions by hand.
+
+Learn more
+
+Net worth
+
+$0
+
+What you own minus what you owe, across all your accounts.
+
+Your net worth over time appears here once an account is in.
+Spending by category
+View all
+
+No spending this month
+
+As you spend, your biggest categories show up here.
+
+Cash flow
+View all
+
+No money in or out yet
+
+Add transactions to compare what comes in with what goes out, month by month.
+
+Spending $0 this month
+This week vs. last week
+This month vs. last month
+This month vs. last year
+This month vs. average month
+This year vs. last year
+
+Nothing to compare yet
+
+Once you have some spending, this shows how this period compares with the last one.
+
+New to Allotment?
+Read the guide
+Source on GitHub
+(opens in a new tab)
+Report a problem or suggest an idea
+(opens in a new tab)

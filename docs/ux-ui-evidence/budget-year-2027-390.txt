@@ -1,0 +1,101 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+2027 budget
+Monthly budget
+This year
+
+Income received 2027
+
+A$0
+
+Assigned to months so far
+
+A$0
+
+Planned for later months
+
+A$0
+
+Available to assign today
+
+A$3,476.51
+
+Planned assignments and expected pay never add to money available today. Balances are shown once the year starts, not added up across months.
+
+Category
+Measure
+	Jan	Feb	Mar	Apr	May	Jun	Jul	Aug	Sep	Oct	Nov	Dec	Year	Available
+Home
+Rent	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Contents Insurance	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Home Goods	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Bills
+Electricity	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Internet	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Phone	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Streaming	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Food
+Groceries	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Eating Out	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Coffee	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Getting Around
+Car Loan	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Car Insurance	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Fuel	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Public Transport	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Car Servicing	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Rego & CTP	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Health
+Gym	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Chemist	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Doctor & Dentist	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Lifestyle
+Clothing	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Personal Care	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Biscuit (dog)	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Entertainment	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Electronics	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Gifts & Giving
+Gifts	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Charity	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Savings Goals
+Holidays	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Emergency Fund	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–	—
+Activity													–
+Total	Assigned	–	–	–	–	–	–	–	–	–	–	–	–	–
+Spending													–
+Income													–
+
+Italic months haven't started: their assignments are plans. Select a month to open it in the monthly budget.
+
+Oct 8, 2026

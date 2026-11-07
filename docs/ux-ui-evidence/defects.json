@@ -1,0 +1,193 @@
+{
+  "saveFailure": {
+    "injected": true,
+    "text": "Save report\nReport name\nCancel\nSave",
+    "alerts": []
+  },
+  "focus": [
+    {
+      "tag": "SELECT",
+      "label": "Progress source",
+      "text": "Manual trackingRentContents InsuranceHome GoodsElectricityIn",
+      "inside": true
+    },
+    {
+      "tag": "INPUT",
+      "label": "Target",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "INPUT",
+      "label": "Saved so far",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "INPUT",
+      "label": "Target date",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "INPUT",
+      "label": "Target date",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "INPUT",
+      "label": "Target date",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "INPUT",
+      "label": "Target date",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "SELECT",
+      "label": "Linked account",
+      "text": "NoneSpendingRainy DayHoliday2Up SpendingEvergreen SuperPinec",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Piggy Bank",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "House",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Plane",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Car",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Coins",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Graduation Cap",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Gem",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Palmtree",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Laptop",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Life Buoy",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Gift",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Baby",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Colour #2563EB",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Colour #059669",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Colour #D97706",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Colour #DC2626",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Colour #7C3AED",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Colour #0891B2",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Colour #DB2777",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Colour #4F46E5",
+      "text": "",
+      "inside": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": null,
+      "text": "Cancel",
+      "inside": true
+    },
+    {
+      "tag": "BODY",
+      "label": null,
+      "text": "\n    AllotmentHelp & guidesHide balancesDashboardAccountsTra",
+      "inside": false
+    }
+  ],
+  "restored": {
+    "tag": "BODY",
+    "text": "\n    AllotmentHelp & guidesHide balancesDashboardAccountsTransactionsBudgetReview3RecurringReportsCa"
+  }
+}

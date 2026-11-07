@@ -9,6 +9,14 @@ Last updated: 7 November 2026 (live app on up.129: D2a email codes, D2b reminder
 
 ## State
 
+- **UI/UX audit (7 November 2026; documentation only):** see [the report](docs/UX-UI-AUDIT.md)
+  and [evidence guide](docs/ux-ui-evidence/README.md). Fourteen stable findings, ranked work,
+  acceptance criteria and a phased roadmap are ready for implementation. Start with shared
+  load/save failure handling, modal focus and whole financial amounts. Review the coverage
+  gaps before claiming completion; 176 browser checks passed, one was environment-blocked
+  and its following serial check did not run. Product changes have not been implemented.
+  Preserve finding IDs and update the coverage checklist as follow-up work lands.
+
 - **Households, round-ups, Essentials pool and brand icons (up.131; owner-requested 7 November
   2026; migrations 0080 `household_groups.is_default` and 0081 `accounts.assign_pool` +
   `categories.pool_account_id`, both additive, backups carry them with their tables):** the plan in

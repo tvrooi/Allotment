@@ -1,0 +1,69 @@
+
+> test
+> playwright test --project=desktop tests/accessibility.spec.ts tests/first-run.spec.ts tests/planning.spec.ts tests/accounts.spec.ts tests/reports.spec.ts tests/up.spec.ts
+
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[plugin rolldown:vite-resolve] Module "crypto" has been externalized for browser compatibility, imported by "/workspace/Allotment/server/src/services/upReviewService.ts". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[plugin rolldown:vite-resolve] Module "crypto" has been externalized for browser compatibility, imported by "/workspace/Allotment/server/src/services/upReviewService.ts". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+Running 36 tests using 1 worker
+
+(node:2867) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [desktop] › tests/accessibility.spec.ts:9:1 › Budget and Category detail each have one page heading (3.1s)
+  ✓   2 [desktop] › tests/accessibility.spec.ts:32:1 › the dashboard names its selects and orders its headings (2.4s)
+  ✓   3 [desktop] › tests/accessibility.spec.ts:48:1 › the custom report builder names its icon-only controls (2.0s)
+  ✓   4 [desktop] › tests/accessibility.spec.ts:60:1 › no button, link or select on the main pages is nameless (4.8s)
+  ✓   5 [desktop] › tests/accessibility.spec.ts:109:1 › every label in the transaction forms points at its field (3.4s)
+  ✓   6 [desktop] › tests/accessibility.spec.ts:145:1 › every label in the account, goal, recurring and category forms points at its field (4.3s)
+  ✓   7 [desktop] › tests/accessibility.spec.ts:190:1 › a disabled rule says so in words, and is not faded (2.0s)
+  ✓   8 [desktop] › tests/accounts.spec.ts:4:3 › accounts › a new user adds their first account from the welcome screen (2.1s)
+  ✓   9 [desktop] › tests/accounts.spec.ts:24:3 › accounts › "Skip for now" opens the app, and it stays open after a reload (3.0s)
+  ✓  10 [desktop] › tests/accounts.spec.ts:38:3 › accounts › the assets and liabilities summary lists only the kinds of accounts you have (2.3s)
+  ✓  11 [desktop] › tests/accounts.spec.ts:55:3 › accounts › investments, property and loans default to off budget (2.3s)
+  ✓  12 [desktop] › tests/accounts.spec.ts:72:3 › accounts › a starting balance that isn't an amount can't be created as 0 (2.3s)
+  ✓  13 [desktop] › tests/accounts.spec.ts:93:3 › accounts › renaming an account keeps its balance (3.6s)
+  ✓  14 [desktop] › tests/accounts.spec.ts:112:3 › accounts › changing the starting balance moves the balance (4.0s)
+  ✓  15 [desktop] › tests/accounts.spec.ts:122:3 › accounts › text that isn't an amount is marked and keeps the balance it had (3.7s)
+  ✓  16 [desktop] › tests/accounts.spec.ts:141:3 › accounts › closing an account hides it (3.3s)
+  ✓  17 [desktop] › tests/accounts.spec.ts:161:3 › accounts › updating an investment value records the change (3.7s)
+  ✓  18 [desktop] › tests/accounts.spec.ts:181:3 › accounts › the accounts page totals assets and liabilities (1.9s)
+  ✓  19 [desktop] › tests/first-run.spec.ts:16:1 › the getting started checklist tracks progress and can be hidden (5.5s)
+  ✓  20 [desktop] › tests/first-run.spec.ts:41:1 › empty dashboard cards link to where their data comes from (3.2s)
+  ✓  21 [desktop] › tests/first-run.spec.ts:58:1 › empty pages explain themselves and offer the first step (3.0s)
+  ✓  22 [desktop] › tests/planning.spec.ts:6:1 › Cash flow groups spending by merchant with the same total and drills into it (3.2s)
+  ✓  23 [desktop] › tests/planning.spec.ts:39:1 › the annual overview sums months, keeps plans apart and opens a month (3.7s)
+  ✓  24 [desktop] › tests/planning.spec.ts:74:1 › a category-funded goal links to its category and transactions (2.6s)
+  ✓  25 [desktop] › tests/reports.spec.ts:46:3 › reports › the overview dashboard summarizes income and spending (3.7s)
+  ✓  26 [desktop] › tests/reports.spec.ts:68:3 › reports › builds, saves and reopens a custom report (10.2s)
+  ✓  27 [desktop] › tests/reports.spec.ts:104:3 › reports › switching the report to income shows income (4.9s)
+  ✓  28 [desktop] › tests/reports.spec.ts:114:3 › reports › a new dashboard can be added (6.2s)
+  ✓  29 [desktop] › tests/reports.spec.ts:162:3 › frozen months › freezing the dashboard opens a month picker and saves the months (9.0s)
+  ✓  30 [desktop] › tests/reports.spec.ts:190:3 › frozen months › a widget's own frozen months come from the picker, and Escape closes only the picker (11.9s)
+  ✓  31 [desktop] › tests/reports.spec.ts:229:3 › frozen months › the report builder picks custom months (3.3s)
+  ✓  32 [desktop] › tests/up.spec.ts:6:1 › connects Up, imports settled history, resyncs and disconnects (8.1s)
+  ✓  33 [desktop] › tests/up.spec.ts:49:1 › shows an invalid Up token without saving a connection (3.0s)
+  ✓  34 [desktop] › tests/up.spec.ts:65:1 › sets background sync, reviews imports, and expands daily round-up details without altering the ledger (3.9s)
+  ✓  35 [desktop] › tests/up.spec.ts:116:1 › adds balance-proven round-up debits only after an explicit choice (49.6s)
+  ✓  36 [desktop] › tests/up.spec.ts:146:1 › a deleted Up transaction stays deleted until it is restored from Up review (6.2s)
+
+  36 passed (3.7m)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

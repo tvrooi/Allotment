@@ -1,0 +1,50 @@
+[
+  {
+    "colorScheme": "light",
+    "colors": {
+      "text": "#262520",
+      "text-secondary": "#5f5d5b",
+      "text-tertiary": "#696765",
+      "surface": "#fff",
+      "page": "#f7f5ef",
+      "positive": "#1b7550",
+      "negative": "#cb2b30",
+      "caution": "#9a5a00",
+      "brand-600": "#bf3e00",
+      "brand-contrast": "#fff"
+    },
+    "ratios": {
+      "text/surface": 15.35,
+      "text-secondary/surface": 6.56,
+      "text-tertiary/surface": 5.63,
+      "positive/surface": 5.67,
+      "negative/surface": 5.35,
+      "caution/surface": 5.47,
+      "brand-contrast/brand-600": 5.38
+    }
+  },
+  {
+    "colorScheme": "dark",
+    "colors": {
+      "text": "#f4f1ec",
+      "text-secondary": "#c9c3bb",
+      "text-tertiary": "#aaa39a",
+      "surface": "#262320",
+      "page": "#1c1a17",
+      "positive": "#6cc695",
+      "negative": "#ff8f8c",
+      "caution": "#f0b955",
+      "brand-600": "#ff8a57",
+      "brand-contrast": "#22201d"
+    },
+    "ratios": {
+      "text/surface": 13.87,
+      "text-secondary/surface": 8.94,
+      "text-tertiary/surface": 6.26,
+      "positive/surface": 7.55,
+      "negative/surface": 7.11,
+      "caution/surface": 8.76,
+      "brand-contrast/brand-600": 6.98
+    }
+  }
+]

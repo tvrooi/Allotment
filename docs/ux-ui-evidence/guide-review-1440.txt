@@ -1,0 +1,77 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+The guide
+Budget review
+
+A check-up of your budget, and how much room you have if plans change.
+
+A check-up that changes nothing by itself
+
+Review lists what needs your attention, most urgent first, worked out from your budget as it is now. Nothing changes until you act on an item, and fixing one there updates the budget and the forecast too.
+
+Coming back after a break
+
+Resume budgeting says how long since your last review, how many transactions arrived since, what spending has no category, which accounts to reconcile and, with Up connected, the bank changes to look at. Start with today’s plan: you don’t need to sort out old transactions first. Mark review complete saves the date and today’s figures, so next time Since your last review can compare. It moves no money and reconciles nothing.
+
+Needs attention
+Spending with no category: choose one right there.
+Overspent envelopes: move money from one that has some.
+Targets not yet funded: Fund targets previews it first.
+Card debt without a reserve: see Card payments.
+Money assigned to later months, which is already spoken for today.
+Ready to assign that is left over, or below $0.
+Guided setup
+
+Six steps for a budget that’s ready for the month: confirm your balances, cover what’s due before your next pay, assign the money you have, prepare for irregular bills, check categories, and move money when priorities change. Each is checked against your budget as it is now, so a step is done when the budget says so.
+
+Room to change plans
+
+This part is optional. In Settings → Priorities, mark envelopes as Essential, Enjoyment or Flexibility reserve (money for no particular deadline), and set a minimum and a comfort target. Review’s Flexibility and resilience card then shows the reserve you have today and about how many months of essentials it would cover. Super, investments, property, expected pay and money owed to you never count. Move money warns you when a move takes the reserve below its minimum, and still lets you.
+
+Next month and how long your cash lasts
+
+Next month and buffer shows what’s already assigned to next month and what its targets still need. Its cash runway estimates how many days your cash would last at your spending over the last three months, assuming no more pay. Money set aside for dated bills and cards isn’t counted, and super and investments never are.
+
+Extra income and reminders
+
+Got a bonus or a windfall? Under Extra income, choose the deposit, say what your usual pay is (0 for a windfall) and what share of the extra goes to your flexibility reserve, then Preview split and Apply split. To be reminded to review, set how often in Settings → Priorities; a banner then shows on Review and the dashboard when one is due, and Remind me in a week puts it off.
+
+Next: Rules
+
+A$0

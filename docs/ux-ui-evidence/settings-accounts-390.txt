@@ -1,0 +1,50 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+Settings
+Categories
+Accounts
+Budget
+Tags
+Connected banks
+Currencies
+Priorities
+Data
+Preferences
+Server
+Account order
+
+Drag to reorder accounts in the sidebar.
+
+On budget
+Spending
+Everyday
+A$38,591.90
+Rainy Day
+Savings
+A$21,706.29
+Holiday
+Savings
+A$65.50
+2Up Spending
+Everyday
+A$3,771.12
+Off budget
+Evergreen Super
+Superannuation
+A$83,019.15
+Pinecone Shares
+Shares & Funds
+A$9,198.26
+Northstar Car Loan
+Auto loan
+-A$12,631.19
+2021 Hatchback
+Vehicle
+A$22,184.15
+
+Allotment is free software under the GNU AGPL v3. Source code
+
+A$20

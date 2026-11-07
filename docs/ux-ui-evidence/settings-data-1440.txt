@@ -1,0 +1,86 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+
+First time here? A short guide shows how it works: Categories, connecting Up, backups and preferences.
+
+No thanks
+Show me
+Settings
+Categories
+Accounts
+Budget
+Tags
+Connected banks
+Currencies
+Priorities
+Data
+Preferences
+Server
+Data export
+
+Download your data for backup or analysis.
+
+Export transactions
+
+Download all transactions as a CSV file. Optionally filter by date range.
+
+Amounts are written like -12.50, with commas between columns, following your number format in Preferences. Report exports use the same separator.
+
+From
+To
+Download CSV
+Import from YNAB
+
+Bring over a YNAB register export: one account for each YNAB account, with your categories. To import a bank's CSV into one account, open that account and use Import.
+
+From YNAB…
+Full backup
+
+Download a JSON backup of your budget: accounts, transactions, budgets, categories, payees, rules, recurring transactions, goals, reports, dashboards, receipt details and tax claims. Download backup is that alone, as JSON. Neither holds bank connection credentials, passwords or the encryption key. How backups work
+
+Download backup
+Restore from backup
+
+Replace all of your data with a backup file: a JSON backup, or a backup with files (.zip), whose files are checked before anything changes. A copy of your current data is saved first.
+
+Restore backup…
+
+Allotment is free software under the GNU AGPL v3. Source code
+
+A$0

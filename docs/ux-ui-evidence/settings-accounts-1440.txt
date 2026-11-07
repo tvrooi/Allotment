@@ -1,0 +1,88 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+
+First time here? A short guide shows how it works: Categories, connecting Up, backups and preferences.
+
+No thanks
+Show me
+Settings
+Categories
+Accounts
+Budget
+Tags
+Connected banks
+Currencies
+Priorities
+Data
+Preferences
+Server
+Account order
+
+Drag to reorder accounts in the sidebar.
+
+On budget
+Spending
+Everyday
+A$38,591.90
+Rainy Day
+Savings
+A$21,706.29
+Holiday
+Savings
+A$65.50
+2Up Spending
+Everyday
+A$3,771.12
+Off budget
+Evergreen Super
+Superannuation
+A$83,019.15
+Pinecone Shares
+Shares & Funds
+A$9,198.26
+Northstar Car Loan
+Auto loan
+-A$12,631.19
+2021 Hatchback
+Vehicle
+A$22,184.15
+
+Allotment is free software under the GNU AGPL v3. Source code
+
+A$0

@@ -1,0 +1,164 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+
+First time here? Rules sort new transactions for you: rename them, categorise them or split them. A short guide shows how it works.
+
+No thanks
+Show me
+Rules
+
+Rules run on new and imported transactions, top to bottom. Each matching rule applies, and a rule higher up wins when two set the same thing.
+
+Run rules
+Add rule
+
+7 rules · 6 enabled
+
+IF
+
+Imported description contains "DAILY GRIND"
+
+THEN
+
+Rename payee to Daily Grind Coffee
+Set category to Coffee
+
+IF
+
+Imported description starts with "FRESH FIELDS"
+
+THEN
+
+Rename payee to Woolies
+
+IF
+
+Payee is one of Luigi's Trattoria, Taco Luna, Sakura Sushi, Burger Barn
+
+THEN
+
+Set category to Eating Out
+
+IF
+
+Payee is Costwise Warehouse
+
+THEN
+
+Split: 70% to Groceries, the rest to Home Goods
+
+IF
+
+Payee is Northstar Mutual
+and
+Amount is about A$389
+
+THEN
+
+Set category to Car Loan
+Add "Auto loan" after notes
+
+IF
+
+Notes contains "gift"
+or
+Imported description contains "GIFT"
+
+THEN
+
+Set category to Gifts
+
+Off: turn it on to use it.
+
+IF
+
+Is an outflow
+and
+Amount is more than A$500
+and
+Category is uncategorised
+
+THEN
+
+Add "Big purchase: " before notes
+A$20
+New rule
+If
+all
+any
+of these conditions match
+Payee
+Payee name
+Imported description
+Notes
+Amount
+Inflow / outflow
+Category
+Account
+Date
+is
+is not
+contains
+doesn't contain
+starts with
+ends with
+is one of
+is not one of
+matches regex
+is empty
+is not empty
+Add condition
+
+Then
+
+Set category
+Rename payee
+Set notes
+Add text before notes
+Add text after notes
+Split transaction
+Add tag
+Share with household
+Claim as tax deduction
+Choose a category…
+Add action
+Fill in every condition to see matching transactions
+Apply to existing transactions after saving
+Cancel
+Save rule

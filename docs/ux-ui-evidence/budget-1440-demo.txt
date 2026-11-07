@@ -1,0 +1,311 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+Budget,
+November 2026
+Month
+Year
+Until payday
+Assign
+Today
+INCOME
+	Expected	Received	Still to come
+
+
+Income
+	A$8,227	A$2,050	A$6,177
+
+Pay
+	A$8,177
+A$2,050
+	A$6,127
+
+Interest
+	A$50
+A$0
+	A$50
+
+Other Income
+	A$0
+A$0
+	A$0
+Total income	A$8,227	A$2,050
+
+EXPENSES
+	Assigned	Activity	Available
+
+
+Fixed
+	A$3,271	-A$89.49	A$3,273.28
+
+Rent
+	A$2,300
+A$0
+-A$2,300 expected
+from 2 recurring items: Rent, Rent
+	A$2,300
+
+Contents Insurance
+	A$18
+A$0
+-A$18 expected
+from 1 recurring item: Contents insurance
+	A$18
+
+Electricity
+	A$160
+A$0
+-A$98 expected
+from 1 recurring item: Electricity
+	A$199.81
+
+Internet
+	A$65
+A$0
+-A$65 expected
+from 1 recurring item: Internet
+	A$65
+
+Phone
+	A$90
+A$0
+-A$90 expected
+from 1 recurring item: Phone plan
+	A$90
+
+Streaming
+	A$33
+-A$15.49
+	A$20.47
+
+Car Loan
+	A$389
+A$0
+-A$389 expected
+from 1 recurring item: Car loan
+	A$389
+
+Car Insurance
+	A$142
+A$0
+-A$142 expected
+from 1 recurring item: Car insurance
+	A$142
+
+Gym
+	A$49
+-A$49
+	A$49
+
+Charity
+	A$25
+-A$25
+-A$25 expected
+from 1 recurring item: Food bank donation
+	A$0
+
+
+Flexible
+	A$1,645	-A$418.94	A$2,307.05
+
+Home Goods
+	A$125
+-A$64.20
+	A$92.47
+
+Groceries
+	A$710
+-A$137.86
+	A$752.45
+
+Eating Out
+	A$235
+-A$144.44
+	A$325.67
+
+Coffee
+	A$65
+-A$33.01
+	A$72.52
+
+Fuel
+	A$130
+A$0
+	A$196.28
+
+Public Transport
+	A$120
+-A$39.43
+	A$120.72
+
+Chemist
+	A$25
+A$0
+	A$64.07
+
+Clothing
+	A$60
+A$0
+	A$126.17
+
+Personal Care
+	A$40
+A$0
+	A$142.48
+
+Biscuit (dog)
+	A$105
+A$0
+-A$58 expected
+from 1 recurring item: Biscuit's food
+	A$375.68
+
+Entertainment
+	A$30
+A$0
+	A$38.54
+
+
+Non-Monthly
+	A$590	A$0	A$4,418.68
+
+Car Servicing
+	A$95
+A$0
+	A$205.24
+
+Rego & CTP
+	A$55
+A$0
+	A$550.50
+
+Doctor & Dentist
+	A$15
+A$0
+	A$95
+
+Electronics
+	A$150
+A$0
+	A$962.75
+
+Gifts
+	A$25
+A$0
+	A$201.69
+
+Holidays
+	A$250
+A$0
+	A$2,403.50
+
+
+Savings/Investments
+	A$0	A$0	A$50,659.29
+
+Emergency Fund
+	A$0
+A$0
+	A$50,659.29
+Total expenses	A$5,506	-A$508.43	A$60,658.30
+November 2026
+
+Every envelope this month. Tick envelopes in the table to see only those.
+
+Carried in
+A$55,660.73
+Assigned
+A$5,506
+Activity
+-A$508.43
+Available
+A$60,658.30
+Note for this month
+Move money
+Move money / Cover overspending
+
+READY TO ASSIGN
+
+A$3,476.51
+
+Resolve uncategorised spending
+
+Money you have that isn't in a category yet.
+
+Hold money…
+Put the rest in…
+
+Ready to assign as of Nov 7, 2026
+
+In your accounts, less card debt
+A$64,134.81
+Held in envelopes
+A$60,658.30
+Ready to assign
+A$3,476.51
+
+A Saver is still yours to assign: put the money in an envelope to set it aside.
+
+Overspent envelopes
+A$0
+Uncategorised spending
+A$23.49
+Assigned in later months
+A$0
+Held for next month
+A$0
+Card payment shortfall
+A$0
+Payments without funding
+A$0
+
+Summary
+Income
+Expenses
+Income
+A$8,227 expected
+A$2,050
+earned
+A$6,177
+expected income remaining
+Expense envelopes
+A$5,506 assigned
+A$508.43
+Spent this month
+A$60,658.30
+Available

@@ -1,0 +1,70 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+3
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+A$165,905.18
+For budget
+A$64,134.81
+Off budget
+A$101,770.37
+Add account
+Settings
+Demo in this browser
+Pinned
+
+Demo · a sample budget from Up. Change anything; nothing is saved.
+
+Take the 2-minute tour
+Start over
+Back to home
+Download
+Allotment
+The guide
+Card payments
+
+Keep the cash for what you spend on a credit card, ready for the bill.
+
+Why a card has its own row
+
+Spending on a credit card doesn’t leave your bank until you pay the card. Once a card is set up for payment funding, Allotment keeps the money for each purchase aside in the card’s row under Card payments on the Budget page, so it’s there when the bill comes.
+
+Set up a card
+
+In the Card payments panel beside the budget, choose Review … setup for the card. Enter how much cash to put aside for what you already owe, then Preview card setup: it shows the debt, the reserve, what isn’t covered yet, and Ready to assign before and after. Nothing changes until Enable payment funding. Your past transactions stay as they are: what you owed on the day is the card’s opening debt.
+
+Spending on the card
+
+Give a card purchase its usual category. With $100 in Groceries, an $80 purchase leaves $20 in Groceries and moves $80 into the card’s row. Ready to assign doesn’t change, because the money was already budgeted.
+
+Paying the card
+
+When you pay the card from your bank, link the two sides as a transfer. The payment uses up the card’s reserve and lowers what you owe. It isn’t spending: the purchases already were.
+
+When the reserve is short
+
+Under the card’s name the row shows what you owe, and in red any part the reserve doesn’t cover, for example purchases from an overspent envelope. Fund debt in the panel adds money from Ready to assign (in the current month, previewed first), or you can move money into the card’s row from another envelope. Review lists card debt without a reserve until it’s covered.
+
+Cards not set up
+
+Until you set a card up, its purchases count like cash spending, and what you owe on it comes off Ready to assign. Setting it up is optional.
+
+Next: Bills and pay
+
+A$0

@@ -1,0 +1,137 @@
+Allotment
+Review
+
+As of Nov 7, 2026 · Nothing here changes until you choose to. How the review works
+
+Category group
+All groups
+Gifts & Donations
+Transportation
+Housing
+Bills & Utilities
+Food & Dining
+Travel & Lifestyle
+Shopping
+Family
+Education
+Health & Wellness
+Financial
+Business
+Other
+Do this next
+
+Nothing needs you right now. Every dollar has a job.
+
+Resume budgeting
+
+Start with today's plan. You don't need to sort out old transactions first.
+
+Uncategorised spending
+0
+Accounts to reconcile
+0
+Mark review complete
+Records today's figures for next time. It does not reconcile anything.
+Needs attention
+Uncategorised spending
+$0
+Overspent
+$0
+Targets underfunded
+$0
+Assigned to later months
+$0
+Ready to assign
+$0
+
+Nothing needs attention. Your budget is resolved.
+
+Guided setup
+
+Each step is checked against your budget as it is now.
+
+Confirm your balances
+Every cash and card account is reconciled.
+Cover what is due before your next income
+Bills before your next income are covered.
+Assign the money you already have
+Every dollar you have is assigned.
+Prepare for irregular expenses
+Some irregular expenses have no target yet.
+
+Non-monthly categories and categories with quarterly, half-yearly or yearly bills. A target spreads each bill over the months before it is due.
+
+Car Maintenance
+Set a target
+Home Improvement
+Set a target
+Flights
+Set a target
+Hotels
+Set a target
+Vacation
+Set a target
+Entertainment
+Set a target
+Hobbies
+Set a target
+Books & Supplies
+Set a target
+Online Courses
+Set a target
+Doctor / Medical
+Set a target
+Dentist
+Set a target
+Mental Health
+Set a target
+Vision / Eye Care
+Set a target
+Investments
+Set a target
+Business Travel
+Set a target
+Check categories before spending
+No overspending or uncategorised spending.
+Move money when priorities change
+When priorities change, move money between categories instead of overspending.
+Flexibility and resilience
+No flexibility reserve yet
+
+Money set aside for no particular deadline gives room to change plans. Mark a category as a Flexibility reserve in Settings → Priorities to see it here. This is optional.
+
+Where today's money is
+Next month and buffer
+December 2026
+Already assigned
+$0
+Assigned to months after that
+$0
+Targets still need
+$0
+Unresolved this month
+$0
+
+Next month's targets assume nothing more is spent or assigned this month.
+
+Cash runway (optional)
+Cash after debts
+$0
+Restricted: bill reserves and card payments
+$0
+Unrestricted
+$0
+Average monthly spending
+$0
+
+Runway incomplete
+
+History starts nowhere yet; the runway needs every day from 2026-08-01.
+Assumptions
+Tidy up
+
+Setup problems that make the budget harder to trust.
+
+68 categories were never used
+
+Hide unused categories

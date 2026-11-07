@@ -1,0 +1,40 @@
+Skip to content
+Allotment
+Help & guides
+Hide balances
+Dashboard
+Accounts
+Transactions
+Budget
+Review
+Recurring
+Reports
+Cash flow
+PLANNING
+Goals
+Forecast
+TOOLS
+Payees
+Rules
+More features (5)
+All accounts
+$0
+For budget
+$0
+Add account
+Settings
+On this computer
+Pinned
+Rules
+
+Rules run on new and imported transactions, top to bottom. Each matching rule applies, and a rule higher up wins when two set the same thing.
+
+Run rules
+Add rule
+
+Let rules do the sorting
+
+Rules categorise, rename and split transactions for you as they come in, for example “payee contains Netflix → Streaming”. You can also make one from any transaction.
+
+Add your first rule
+Learn more

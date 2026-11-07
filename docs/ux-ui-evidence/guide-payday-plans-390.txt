@@ -1,0 +1,41 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+The guide
+Payday plans
+
+Paid fortnightly? Decide what each pay covers, starting with the bills before the next one.
+
+What a plan does
+
+A payday plan shares out each fortnightly pay in an order you choose, and shows the bills due before the next pay. It’s optional: your envelopes still live in the monthly budget, and what’s left in them still carries forward. Open Budget, choose Until payday, then New payday plan.
+
+Set it up
+Give it a name, an anchor payday (one real payday: pay repeats every 14 days from it), your usual take-home pay, and what to do when payday falls on a weekend.
+Add funding rule for each envelope the pay should fill, in order. Move up changes the order. Bills due before the next pay are covered first, unless you give their envelope a rule of its own to choose where it comes.
+Save payday plan. If you’re paid by more than one employer, make a plan for each.
+Kinds of rule
+Bills until next payday: enough for the bills before the next pay.
+Fixed per pay: the same amount every payday.
+Target by date: a balance by a date, shared over the paydays left until then.
+Smooth monthly cost: a monthly cost spread over the year’s paydays, catching up if a bill needs more sooner.
+Percentage of pay: a share of the pay you received.
+Category target: what the envelope’s target still needs this month, shared between this and the month’s other paydays.
+Remainder: whatever is left, always last.
+On payday
+
+Choose the payday, and change its date if the pay came early or late. Under Income received, tick the pay that arrived. Preview funding shows what each envelope has, what it needs, what this pay adds, and any bill it can’t cover before the next pay. Nothing is saved until Apply funding, which adds the amounts to this month’s budget. Each payday is applied once, and each deposit is used by one plan only. Any part of the pay the plan doesn’t use stays in Ready to assign.
+
+Expected pay isn’t money yet
+
+The take-home pay in the plan is only for planning. Only pay that has arrived can be assigned, so you can preview a future payday but not apply it.
+
+Undo and history
+
+Funding history lists every payday you applied and what went where. Undo takes the amounts back out of the envelopes, and lists anything it couldn’t take back. Archive plan stops using a plan and keeps its history. Editing a plan never changes a payday you already applied. To plan a month instead, see Budgeting.
+
+Next: Card payments
+
+A$20

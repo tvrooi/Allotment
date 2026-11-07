@@ -1,0 +1,34 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+The guide
+Enable Banking (Europe)
+
+Connect a bank in Europe through your own free Enable Banking application.
+
+What you need
+
+A bank in the European Economic Area and a free account with Enable Banking, which connects to banks under Europe’s open banking rules. You make your own application there once; Allotment uses it to read your accounts. It can’t move money. Enable Banking is community supported: if it stops working for your bank, CSV files still do.
+
+Set up your application
+In Allotment, open Settings → Connected banks → Enable Banking, or choose Connect via Enable Banking when you add an account. The setup form shows your redirect URL with a Copy button.
+Sign up in Enable Banking’s Control Panel at enablebanking.com/cp/applications and create a Production application. A Sandbox one only reaches test banks.
+Paste the redirect URL into the application’s redirect URLs.
+Save the .pem file your browser downloads. It’s the application’s private key, and Enable Banking can’t show it again.
+Choose Activate by linking accounts and log in to your bank there. A free application only reaches the accounts you link, so link every account you want in Allotment.
+Back in Allotment, paste the application ID, choose the .pem file and select Check and save. Allotment asks Enable Banking whether they work before saving them, and warns you if the redirect URL isn’t on the application yet.
+Connect your bank
+Pick your country and your bank, then log in on your bank’s own site.
+Your bank sends you back and Allotment carries on by itself. If it can’t (on a server without HTTPS, say), copy the whole address from your browser’s address bar and paste it into Allotment.
+Choose where each bank account goes: an account you already have, or a new one. Accounts you already import statements into are picked for you, and transactions you imported from files are recognised, not added twice.
+Keeping it up to date
+Allotment syncs when it starts and when you choose Sync now. Banks allow only a few automatic updates a day.
+Only booked transactions come in, in the account’s own currency. Pending ones wait until the bank books them.
+Banks give access for a few months at most (180 days under the rules). Settings → Connected banks says when it ends; choose Reconnect and log in again. Your accounts and history stay as they are.
+Your private key is stored encrypted and is never included in backups or exports.
+
+Next: Accounts
+
+A$20

@@ -1,0 +1,22 @@
+Allotment
+All transactions
+Scan receipt
+Add
+All
+Receipts
+Filters
+This month
+Last month
+Last 3 months
+This year
+All time
+Custom
+0 transactions
+
+No transactions yet
+
+Add transactions by hand, import a CSV file from an account page, or connect a bank to bring them in automatically.
+
+Connect a bank
+Add a transaction
+Learn more

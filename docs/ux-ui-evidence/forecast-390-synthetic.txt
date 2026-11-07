@@ -1,0 +1,142 @@
+Allotment
+Forecast
+How the long-term forecast works
+Long term
+Cash runway
+Plan
+Audit future
+New plan
+Duplicate
+Rename
+Delete
+Today's dollars
+Future dollars
+
+A projection, not a promise. Amounts are in today's dollars, with inflation at 2.5% a year taken out. Nothing here changes your budget.
+
+There is no payday plan, so income starts at 0. Enter your take-home pay.
+There are fewer than 90 days of spending history, so the average is rough.
+
+Unfunded spending: from 2026 (age 40) your accounts cannot pay for all of your spending. The shortfall is counted against your net worth.
+
+A$2,895.01
+
+Net worth today
+
+A$2,895.01 accessible · A$0 preserved super
+
+-A$1,110,818.63
+
+Net worth at 95
+
+-A$1,110,818.63
+
+Lowest net worth
+
+In 55 years
+
+—
+
+Accessible at retirement
+
+No retirement event yet
+
+A$0
+
+Super at 60
+
+No retirement event yet
+
+At 65
+
+Super opens
+
+Reached 65, while still working
+
+2026
+2034
+2042
+2050
+2058
+2066
+2074
+2081
+-A$1.2M
+-A$800k
+-A$400k
+A$0
+A$400k
+See what made up a year
+Choose a year
+2026 (age 40 to 41)
+2027 (age 41 to 42)
+2028 (age 42 to 43)
+2029 (age 43 to 44)
+2030 (age 44 to 45)
+2031 (age 45 to 46)
+2032 (age 46 to 47)
+2033 (age 47 to 48)
+2034 (age 48 to 49)
+2035 (age 49 to 50)
+2036 (age 50 to 51)
+2037 (age 51 to 52)
+2038 (age 52 to 53)
+2039 (age 53 to 54)
+2040 (age 54 to 55)
+2041 (age 55 to 56)
+2042 (age 56 to 57)
+2043 (age 57 to 58)
+2044 (age 58 to 59)
+2045 (age 59 to 60)
+2046 (age 60 to 61)
+2047 (age 61 to 62)
+2048 (age 62 to 63)
+2049 (age 63 to 64)
+2050 (age 64 to 65)
+2051 (age 65 to 66)
+2052 (age 66 to 67)
+2053 (age 67 to 68)
+2054 (age 68 to 69)
+2055 (age 69 to 70)
+2056 (age 70 to 71)
+2057 (age 71 to 72)
+2058 (age 72 to 73)
+2059 (age 73 to 74)
+2060 (age 74 to 75)
+2061 (age 75 to 76)
+2062 (age 76 to 77)
+2063 (age 77 to 78)
+2064 (age 78 to 79)
+2065 (age 79 to 80)
+2066 (age 80 to 81)
+2067 (age 81 to 82)
+2068 (age 82 to 83)
+2069 (age 83 to 84)
+2070 (age 84 to 85)
+2071 (age 85 to 86)
+2072 (age 86 to 87)
+2073 (age 87 to 88)
+2074 (age 88 to 89)
+2075 (age 89 to 90)
+2076 (age 90 to 91)
+2077 (age 91 to 92)
+2078 (age 92 to 93)
+2079 (age 93 to 94)
+2080 (age 94 to 95)
+
+Each point is your net worth that many years from today. A year here is the 12 months from today's date, named after the calendar year it starts in.
+
+Life events
+Assumptions
+Accounts
+Savings
+Compare
+Simulation
+
+Life events change income, spending and savings from the year they happen. Each shows as a marker on the line.
+
+Add an event
+
+No events yet. Try adding your retirement to see when your savings and super start being drawn on.
+
+-A$1.2M

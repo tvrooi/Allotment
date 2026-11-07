@@ -1,0 +1,464 @@
+[
+  {
+    "route": "welcome",
+    "width": 1440,
+    "url": "http://localhost:5173/#/welcome",
+    "overflow": false,
+    "screenshot": "welcome-1440-demo.png"
+  },
+  {
+    "route": "dashboard",
+    "width": 1440,
+    "url": "http://localhost:5173/#/dashboard",
+    "overflow": false,
+    "screenshot": "dashboard-1440-demo.png"
+  },
+  {
+    "route": "budget",
+    "width": 1440,
+    "url": "http://localhost:5173/#/budget",
+    "overflow": false,
+    "screenshot": "budget-1440-demo.png"
+  },
+  {
+    "route": "budget/year",
+    "width": 1440,
+    "url": "http://localhost:5173/#/budget/year",
+    "overflow": false,
+    "screenshot": "budget-year-1440-demo.png"
+  },
+  {
+    "route": "accounts",
+    "width": 1440,
+    "url": "http://localhost:5173/#/accounts",
+    "overflow": false,
+    "screenshot": "accounts-1440-demo.png"
+  },
+  {
+    "route": "transactions",
+    "width": 1440,
+    "url": "http://localhost:5173/#/transactions",
+    "overflow": false,
+    "screenshot": "transactions-1440-demo.png"
+  },
+  {
+    "route": "household",
+    "width": 1440,
+    "url": "http://localhost:5173/#/household",
+    "overflow": false,
+    "screenshot": "household-1440-demo.png"
+  },
+  {
+    "route": "payment-plans",
+    "width": 1440,
+    "url": "http://localhost:5173/#/payment-plans",
+    "overflow": false,
+    "screenshot": "payment-plans-1440-demo.png"
+  },
+  {
+    "route": "recurring",
+    "width": 1440,
+    "url": "http://localhost:5173/#/recurring",
+    "overflow": false,
+    "screenshot": "recurring-1440-demo.png"
+  },
+  {
+    "route": "cash-flow",
+    "width": 1440,
+    "url": "http://localhost:5173/#/cash-flow",
+    "overflow": false,
+    "screenshot": "cash-flow-1440-demo.png"
+  },
+  {
+    "route": "reports",
+    "width": 1440,
+    "url": "http://localhost:5173/#/reports",
+    "overflow": false,
+    "screenshot": "reports-1440-demo.png"
+  },
+  {
+    "route": "reports/custom",
+    "width": 1440,
+    "url": "http://localhost:5173/#/reports/custom",
+    "overflow": false,
+    "screenshot": "reports-custom-1440-demo.png"
+  },
+  {
+    "route": "payees",
+    "width": 1440,
+    "url": "http://localhost:5173/#/payees",
+    "overflow": false,
+    "screenshot": "payees-1440-demo.png"
+  },
+  {
+    "route": "rules",
+    "width": 1440,
+    "url": "http://localhost:5173/#/rules",
+    "overflow": false,
+    "screenshot": "rules-1440-demo.png"
+  },
+  {
+    "route": "settings",
+    "width": 1440,
+    "url": "http://localhost:5173/#/settings",
+    "overflow": false,
+    "screenshot": "settings-1440-demo.png"
+  },
+  {
+    "route": "goals",
+    "width": 1440,
+    "url": "http://localhost:5173/#/goals",
+    "overflow": false,
+    "screenshot": "goals-1440-demo.png"
+  },
+  {
+    "route": "forecast",
+    "width": 1440,
+    "url": "http://localhost:5173/#/forecast",
+    "overflow": false,
+    "screenshot": "forecast-1440-demo.png"
+  },
+  {
+    "route": "investments",
+    "width": 1440,
+    "url": "http://localhost:5173/#/investments",
+    "overflow": false,
+    "screenshot": "investments-1440-demo.png"
+  },
+  {
+    "route": "tax",
+    "width": 1440,
+    "url": "http://localhost:5173/#/tax",
+    "overflow": false,
+    "screenshot": "tax-1440-demo.png"
+  },
+  {
+    "route": "files",
+    "width": 1440,
+    "url": "http://localhost:5173/#/files",
+    "overflow": false,
+    "screenshot": "files-1440-demo.png"
+  },
+  {
+    "route": "review",
+    "width": 1440,
+    "url": "http://localhost:5173/#/review",
+    "overflow": false,
+    "screenshot": "review-1440-demo.png"
+  },
+  {
+    "route": "guide",
+    "width": 1440,
+    "url": "http://localhost:5173/#/guide",
+    "overflow": false,
+    "screenshot": "guide-1440-demo.png"
+  },
+  {
+    "route": "welcome",
+    "width": 390,
+    "url": "http://localhost:5173/#/dashboard",
+    "overflow": false,
+    "screenshot": "welcome-390-demo.png"
+  },
+  {
+    "route": "dashboard",
+    "width": 390,
+    "url": "http://localhost:5173/#/dashboard",
+    "overflow": false,
+    "screenshot": "dashboard-390-demo.png"
+  },
+  {
+    "route": "budget",
+    "width": 390,
+    "url": "http://localhost:5173/#/budget",
+    "overflow": false,
+    "screenshot": "budget-390-demo.png"
+  },
+  {
+    "route": "budget/year",
+    "width": 390,
+    "url": "http://localhost:5173/#/budget/year",
+    "overflow": false,
+    "screenshot": "budget-year-390-demo.png"
+  },
+  {
+    "route": "accounts",
+    "width": 390,
+    "url": "http://localhost:5173/#/accounts",
+    "overflow": false,
+    "screenshot": "accounts-390-demo.png"
+  },
+  {
+    "route": "transactions",
+    "width": 390,
+    "url": "http://localhost:5173/#/transactions",
+    "overflow": false,
+    "screenshot": "transactions-390-demo.png"
+  },
+  {
+    "route": "household",
+    "width": 390,
+    "url": "http://localhost:5173/#/household",
+    "overflow": false,
+    "screenshot": "household-390-demo.png"
+  },
+  {
+    "route": "payment-plans",
+    "width": 390,
+    "url": "http://localhost:5173/#/payment-plans",
+    "overflow": false,
+    "screenshot": "payment-plans-390-demo.png"
+  },
+  {
+    "route": "recurring",
+    "width": 390,
+    "url": "http://localhost:5173/#/recurring",
+    "overflow": false,
+    "screenshot": "recurring-390-demo.png"
+  },
+  {
+    "route": "cash-flow",
+    "width": 390,
+    "url": "http://localhost:5173/#/cash-flow",
+    "overflow": false,
+    "screenshot": "cash-flow-390-demo.png"
+  },
+  {
+    "route": "reports",
+    "width": 390,
+    "url": "http://localhost:5173/#/reports",
+    "overflow": false,
+    "screenshot": "reports-390-demo.png"
+  },
+  {
+    "route": "reports/custom",
+    "width": 390,
+    "url": "http://localhost:5173/#/reports/custom",
+    "overflow": false,
+    "screenshot": "reports-custom-390-demo.png"
+  },
+  {
+    "route": "payees",
+    "width": 390,
+    "url": "http://localhost:5173/#/payees",
+    "overflow": false,
+    "screenshot": "payees-390-demo.png"
+  },
+  {
+    "route": "rules",
+    "width": 390,
+    "url": "http://localhost:5173/#/rules",
+    "overflow": false,
+    "screenshot": "rules-390-demo.png"
+  },
+  {
+    "route": "settings",
+    "width": 390,
+    "url": "http://localhost:5173/#/settings",
+    "overflow": false,
+    "screenshot": "settings-390-demo.png"
+  },
+  {
+    "route": "goals",
+    "width": 390,
+    "url": "http://localhost:5173/#/goals",
+    "overflow": false,
+    "screenshot": "goals-390-demo.png"
+  },
+  {
+    "route": "forecast",
+    "width": 390,
+    "url": "http://localhost:5173/#/forecast",
+    "overflow": false,
+    "screenshot": "forecast-390-demo.png"
+  },
+  {
+    "route": "investments",
+    "width": 390,
+    "url": "http://localhost:5173/#/investments",
+    "overflow": false,
+    "screenshot": "investments-390-demo.png"
+  },
+  {
+    "route": "tax",
+    "width": 390,
+    "url": "http://localhost:5173/#/tax",
+    "overflow": false,
+    "screenshot": "tax-390-demo.png"
+  },
+  {
+    "route": "files",
+    "width": 390,
+    "url": "http://localhost:5173/#/files",
+    "overflow": false,
+    "screenshot": "files-390-demo.png"
+  },
+  {
+    "route": "review",
+    "width": 390,
+    "url": "http://localhost:5173/#/review",
+    "overflow": false,
+    "screenshot": "review-390-demo.png"
+  },
+  {
+    "route": "guide",
+    "width": 390,
+    "url": "http://localhost:5173/#/guide",
+    "overflow": false,
+    "screenshot": "guide-390-demo.png"
+  },
+  {
+    "route": "welcome",
+    "width": 320,
+    "url": "http://localhost:5173/#/dashboard",
+    "overflow": false,
+    "screenshot": "welcome-320-demo.png"
+  },
+  {
+    "route": "dashboard",
+    "width": 320,
+    "url": "http://localhost:5173/#/dashboard",
+    "overflow": false,
+    "screenshot": "dashboard-320-demo.png"
+  },
+  {
+    "route": "budget",
+    "width": 320,
+    "url": "http://localhost:5173/#/budget",
+    "overflow": false,
+    "screenshot": "budget-320-demo.png"
+  },
+  {
+    "route": "budget/year",
+    "width": 320,
+    "url": "http://localhost:5173/#/budget/year",
+    "overflow": false,
+    "screenshot": "budget-year-320-demo.png"
+  },
+  {
+    "route": "accounts",
+    "width": 320,
+    "url": "http://localhost:5173/#/accounts",
+    "overflow": false,
+    "screenshot": "accounts-320-demo.png"
+  },
+  {
+    "route": "transactions",
+    "width": 320,
+    "url": "http://localhost:5173/#/transactions",
+    "overflow": false,
+    "screenshot": "transactions-320-demo.png"
+  },
+  {
+    "route": "household",
+    "width": 320,
+    "url": "http://localhost:5173/#/household",
+    "overflow": false,
+    "screenshot": "household-320-demo.png"
+  },
+  {
+    "route": "payment-plans",
+    "width": 320,
+    "url": "http://localhost:5173/#/payment-plans",
+    "overflow": false,
+    "screenshot": "payment-plans-320-demo.png"
+  },
+  {
+    "route": "recurring",
+    "width": 320,
+    "url": "http://localhost:5173/#/recurring",
+    "overflow": false,
+    "screenshot": "recurring-320-demo.png"
+  },
+  {
+    "route": "cash-flow",
+    "width": 320,
+    "url": "http://localhost:5173/#/cash-flow",
+    "overflow": false,
+    "screenshot": "cash-flow-320-demo.png"
+  },
+  {
+    "route": "reports",
+    "width": 320,
+    "url": "http://localhost:5173/#/reports",
+    "overflow": false,
+    "screenshot": "reports-320-demo.png"
+  },
+  {
+    "route": "reports/custom",
+    "width": 320,
+    "url": "http://localhost:5173/#/reports/custom",
+    "overflow": false,
+    "screenshot": "reports-custom-320-demo.png"
+  },
+  {
+    "route": "payees",
+    "width": 320,
+    "url": "http://localhost:5173/#/payees",
+    "overflow": false,
+    "screenshot": "payees-320-demo.png"
+  },
+  {
+    "route": "rules",
+    "width": 320,
+    "url": "http://localhost:5173/#/rules",
+    "overflow": false,
+    "screenshot": "rules-320-demo.png"
+  },
+  {
+    "route": "settings",
+    "width": 320,
+    "url": "http://localhost:5173/#/settings",
+    "overflow": false,
+    "screenshot": "settings-320-demo.png"
+  },
+  {
+    "route": "goals",
+    "width": 320,
+    "url": "http://localhost:5173/#/goals",
+    "overflow": false,
+    "screenshot": "goals-320-demo.png"
+  },
+  {
+    "route": "forecast",
+    "width": 320,
+    "url": "http://localhost:5173/#/forecast",
+    "overflow": false,
+    "screenshot": "forecast-320-demo.png"
+  },
+  {
+    "route": "investments",
+    "width": 320,
+    "url": "http://localhost:5173/#/investments",
+    "overflow": false,
+    "screenshot": "investments-320-demo.png"
+  },
+  {
+    "route": "tax",
+    "width": 320,
+    "url": "http://localhost:5173/#/tax",
+    "overflow": false,
+    "screenshot": "tax-320-demo.png"
+  },
+  {
+    "route": "files",
+    "width": 320,
+    "url": "http://localhost:5173/#/files",
+    "overflow": false,
+    "screenshot": "files-320-demo.png"
+  },
+  {
+    "route": "review",
+    "width": 320,
+    "url": "http://localhost:5173/#/review",
+    "overflow": false,
+    "screenshot": "review-320-demo.png"
+  },
+  {
+    "route": "guide",
+    "width": 320,
+    "url": "http://localhost:5173/#/guide",
+    "overflow": false,
+    "screenshot": "guide-320-demo.png"
+  }
+]

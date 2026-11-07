@@ -1,0 +1,36 @@
+Allotment
+Tax time
+
+Deductions you claim and the receipts that prove them, for your Australian tax return. Record keeping, not tax advice. How Tax time works
+
+Deductions
+Assets
+Receipt inbox
+Financial year (1 July to 30 June)
+2026–27
+Deductions (CSV)
+CSV and receipts (ZIP)
+
+Claimed in 2026–27
+
+A$25
+
+Work-related (D2–D5)
+
+Over $300 needs written evidence
+
+A$25
+
+Without a receipt
+
+1
+
+D5 Other work-related expenses1 item	A$25
+Date	Payee	Label	Cost	Work use	Claim	Receipts
+Nov 7, 2026	Audit office stationery
+Synthetic audit claim
+	D5	A$49.99	50%	A$25	None
+
+Keep receipts for five years from when you lodge. Amounts are in your budget's currency; a claim is the cost times its work-use share. Labels match the deductions section of myTax.
+
+-A$1.2M

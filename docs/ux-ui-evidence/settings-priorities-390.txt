@@ -1,0 +1,193 @@
+Allotment
+
+Demo · nothing saved
+
+Download
+Settings
+Categories
+Accounts
+Budget
+Tags
+Connected banks
+Currencies
+Priorities
+Data
+Preferences
+Server
+Financial priorities
+
+Optional. These labels describe what your money is for. They never assign money, reorder payday plans or change a household share. Skip this and the budget works as before.
+
+What is your money for? (optional)
+Review reminder
+Off
+After each payday
+Monthly
+Quarterly
+Category purposes
+
+Essential categories measure what a month of necessities costs. Enjoyment marks spending you want to protect. Flexibility reserve holds money for no particular deadline; it cannot fund a goal or have a date target. Card payment reserves are not listed.
+
+HOME
+Rent
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Contents Insurance
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Home Goods
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+BILLS
+Electricity
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Internet
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Phone
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Streaming
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+FOOD
+Groceries
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Eating Out
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Coffee
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+GETTING AROUND
+Car Loan
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Car Insurance
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Fuel
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Public Transport
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Car Servicing
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Rego & CTP
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+HEALTH
+Gym
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Chemist
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Doctor & Dentist
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+LIFESTYLE
+Clothing
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Personal Care
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Biscuit (dog)
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Entertainment
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Electronics
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+GIFTS & GIVING
+Gifts
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Charity
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+SAVINGS GOALS
+Holidays
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Emergency Fund
+No purpose
+Essential
+Enjoyment
+Flexibility reserve
+Flexibility reserve
+
+Measured against the money available today in your flexibility categories. See it on Review.
+
+Monthly essentials estimate (optional; otherwise measured from the last three months)
+Comfort target
+No target
+An amount
+Months of essentials
+Minimum (optional; a preference, never a block)
+Save priorities
+
+Allotment is free software under the GNU AGPL v3. Source code
+
+A$20
