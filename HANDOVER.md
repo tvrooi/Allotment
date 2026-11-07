@@ -635,7 +635,7 @@ site in `website/` was removed (audit decision I-9).
    - Transaction detail previous/next is built (up.120); a link per transaction is not.
    - Future-month money moves; money age (deliberately not built, see BUDGET-REVIEW.md).
    - Investments deferrals (sales, dividends, franking): designed in
-     `docs/INVESTMENT-SALES-AND-INCOME.md` (D3), waiting for the owner's decisions (its §9).
+     `docs/INVESTMENT-SALES-AND-INCOME.md` (D3), design approved 7 November (its §9); next is D3a, sales.
    - Receipts §6 (PDF reading, email
      forwarding, logbooks, depreciation, WFH hours).
    - The legacy `recurring_transactions` cleanup is done (up.123, migration 0078).

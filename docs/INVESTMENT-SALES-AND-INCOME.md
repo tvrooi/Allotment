@@ -1,6 +1,8 @@
 # Investments: sales, dividends and franking
 
-Status: **design, waiting for owner decisions (§9). Nothing is built.** D3 of the Larger features
+Status: **design approved 7 November 2026; nothing is built yet.** The owner took every
+recommendation in §9 except decision 7: a read-only assistant tool comes in D3b. Splits come in a
+later PR (D3c), as recommended. D3 of the Larger features
 group. It takes the first two lines of [INVESTMENTS.md](INVESTMENTS.md) "Deferred" (sales and
 realised gains with lot selection; dividends, reinvestment and franking credits) and the Australian
 tax treatment they need, and adds them to Tax time beside deductions and
@@ -235,9 +237,17 @@ asked.
 
 ### 5.5 Tokens and the assistant
 
-None in this project (decision 7). Investments stay owner-only, as today: no allowlisted GET, no
-MCP tool, no assistant policy row. A read-only `investments` MCP tool could follow as its own PR
-with the allowed case and nearest refusal.
+**Read only, in D3b (decision 7).** An `investments` MCP tool for `organise` tokens, marked
+`readOnly`, like `tax_assets`: holdings with their lots, sales (parcels, gain, discount) and
+income, valued on a date, plus a year's item 11 and item 18 figures. It reads through GET routes
+added to `TAX_READ` in `auth/accessTokens.ts` (the organise tax-read list), not to the general
+read-only allowlist: `/investments` (the overview), `/investments/holdings/:id/sales` and
+`/investments/holdings/:id/income`, and `/tax/years/:fy/investments`. Every write stays owner-only:
+no assistant policy row, no proposal kind, nothing through `/api/assistant/do`. Tests: an organise
+token reads each new GET and the tool; a `categorise` or `read` token is refused the same GETs;
+an organise token is refused every new POST, PUT and DELETE (sales, income, split, links) and the
+preview `POST`. `docs/READ-ONLY-ACCESS.md`, `docs/ASSISTANT-ENDPOINTS.md` and the organise scope's
+description in `routes/mcp.ts` change with it.
 
 ## 6. Phases (one PR and release each)
 
@@ -246,8 +256,9 @@ with the allowed case and nearest refusal.
   locks, backup 30, CSV, demo, guide article, tests.
 - **D3b, dividends and franking:** income rows, reinvestment lots, franking prefill, register
   links (also for sales), Tax time item 11, holding period prompt, the `investment` file link kind
-  and the ZIP, tests.
-- **D3c (if decided), splits and trust statements:** C1 and T2.
+  and the ZIP, the read-only `investments` MCP tool for organise tokens (§5.5), tests.
+- **D3c, splits:** the "Split or consolidate" action (C1). Trust statements (T2) wait for
+  demand.
 
 ## 7. Tests
 
@@ -260,8 +271,8 @@ with the allowed case and nearest refusal.
   change in an open year is allowed; a reinvested dividend adds a lot and removing it removes the
   lot; a migration test on a populated 0081 database.
 - Routes: Zod refusals (future date, zero units, more units than held, parcels from another
-  holding), owner-only (a read-only token is refused on every new route, the nearest allowed case
-  being an allowlisted GET).
+  holding), owner-only writes (every token is refused every new write route; organise tokens may make the
+  new GETs, §5.5).
 - Backup: version 30 round trip; a version 29 backup restores.
 - Playwright (`e2e/tests/investments.spec.ts`): sell part of a holding with chosen parcels, see
   the gain and the discount, find it on Tax time; record a franked dividend and see item 11.
@@ -271,9 +282,12 @@ with the allowed case and nearest refusal.
 Automatic quotes or broker imports; mergers, demergers, returns of capital, rights issues and
 takeovers; wash-sale or anti-avoidance rules; the personal-use asset exemption for crypto;
 foreign income tax offsets beyond recording tax withheld; small business CGT concessions; any tax
-payable estimate; performance (time- or money-weighted returns); tokens.
+payable estimate; performance (time- or money-weighted returns); any token write.
 
 ## 9. Owner decisions
+
+Taken on 7 November 2026: the owner endorsed every recommendation except decision 7, where a
+read-only assistant tool comes in D3b. Splits (decision 6) come in a later PR, D3c.
 
 1. **Sales and lots.** Recommended: L1, a sale consumes lots and its gain follows lot corrections,
    protected by lodged-year locks. Or L2 (sale copies the cost) or L3 (owner types the gain).
@@ -287,10 +301,10 @@ payable estimate; performance (time- or money-weighted returns); tokens.
    later (D3c). Or T2 now.
 6. **Splits.** Recommended: C1, a "Split or consolidate" action in D3c. Or C2, manual edits.
 7. **Tokens.** Recommended: none in D3; a read-only MCP tool later if wanted. Or include a
-   read-only tool in D3b.
+   read-only tool in D3b. **Owner's choice: a read-only tool in D3b (§5.5).**
 8. **Super and other people's accounts.** Recommended: A1, Tax time leaves out retirement
    accounts. Or A2, also a per-account "not mine for tax" switch.
 9. **Delivery.** Recommended: D3a (sales), then D3b (dividends and franking), then D3c only if
-   decisions 5 or 6 call for it.
+   decisions 5 or 6 call for it. With C1 chosen, D3c (splits) follows D3b.
 
 [cgt]: https://www.ato.gov.au/individuals-and-families/investments-and-assets/capital-gains-tax
