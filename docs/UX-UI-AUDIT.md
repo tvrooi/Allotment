@@ -177,7 +177,7 @@ Abbreviated source paths in findings are relative to `client/src/`; server paths
 
 **P1 · Accessibility · Shared · Effort M · Confidence High.**
 
-**Status: fixed in 0.2.0-up.134, except focus after a deleted row.** `components/ui/Modal.tsx` now handles focus for every dialog:
+**Status: fixed in 0.2.0-up.134; focus after a deleted row in 0.2.0-up.140.** `components/ui/Modal.tsx` now handles focus for every dialog:
 
 - It remembers the opener and focuses the dialog, unless a field's autoFocus already has focus.
 - Tab and Shift+Tab stay inside the dialog. Pickers the dialog opens in their own portal keep their own Tab order.
@@ -189,7 +189,7 @@ Abbreviated source paths in findings are relative to `client/src/`; server paths
 
 Test: `e2e/tests/dialog-focus.spec.ts`, at desktop and phone sizes. Each case fails without the change. Still open:
 
-- After a successful deletion, focus should move to the next row; it goes with AU-006, where the confirmation knows the delete succeeded.
+- ~~After a successful deletion, focus should move to the next row.~~ Done in 0.2.0-up.140: when a dialog opens, `Modal` notes the opener's peers (the same control, by tag, classes and `aria-haspopup`, in the other rows). If the opener has gone when the dialog closes, focus moves to the next peer, or the previous one after the last row. Goals, Payees and Rules drop the deleted row from their cached list as the delete succeeds, so it is gone by the time focus moves. Test: `e2e/tests/confirm-and-save.spec.ts` ("after a delete, focus moves to the next row", desktop and phone). Callers that confirm with `mutate` close before the delete finishes, so their row is still there and focus goes back to it as before.
 - Screen-reader and hardware-keyboard checks.
 
 - **Reproduce / state:** Goals → Add goal, 390×844, keyboard; repeat with Tab through fields, icon/colour choices and Cancel, then Escape.
@@ -250,7 +250,7 @@ Callers that return nothing close straight away, as before. These callers now re
 - Goals, Payees and Rules (`mutateAsync`)
 - Up and SimpleFIN disconnect, and file delete, which already returned one
 
-The other callers still use `mutate` and can move over one at a time. Test: `e2e/tests/confirm-and-save.spec.ts`, covering a refused goal delete with a retry, and a slow payee delete on a phone that is sent once. It fails without the change. Still open: moving focus to the next row after a successful deletion (left over from AU-001).
+The other callers still use `mutate` and can move over one at a time. Test: `e2e/tests/confirm-and-save.spec.ts`, covering a refused goal delete with a retry, and a slow payee delete on a phone that is sent once. It fails without the change. Focus moving to the next row after a successful deletion, left over from AU-001, is done in 0.2.0-up.140 (see AU-001). The slow payee delete now holds the request until the test releases it, rather than relying on an 800 ms delay outlasting its checks on a slow machine.
 
 - **Reproduce / state:** Goals → first Actions → Delete goal → Delete while DELETE /goals/:id returns 422; 390×844.
 - **Evidence / source:** `delete-failure.json`: dialogs=0, alerts=[], goal still present; `delete-goal-390.png`. `components/ui/ConfirmModal.tsx:39` invokes onConfirm then onClose synchronously; Goals.tsx:452 passes mutate. Other callers include Payees and Rules.
@@ -329,7 +329,7 @@ Test: `e2e/tests/unsaved-drafts.spec.ts`, at desktop and 390 px, including a sav
 
 **P2 · Accessibility / consistency · Shared · Effort M · Confidence High source; keyboard validation incomplete.**
 
-**Status: fixed in 0.2.0-up.138.** One shared `TabList` in `components/ui/tabList.tsx` now gives Recurring, Forecast, Tax and Transactions their tab list, and Settings uses the same pattern through `ScrollCue`: `role="tablist"`, `role="tab"`, `aria-selected`, a roving `tabIndex`, and `components/ui/tabList.tsx` `onTabListKeyDown` for the arrow keys, Home and End. Settings, inside `ScrollCue` through its `scrollerProps`, keeps its URL `?tab=` (with `replace`). Recurring, Settings and Forecast label their content `role="tabpanel"`, using `tabIds()` from the same file. Test: `e2e/tests/tabs.spec.ts`, at desktop and 390 px; it fails without the change. Existing tests now find these controls as tabs. The shared `TabList` also cleared four `interactive-supports-focus` lint warnings (the cap is now 152). Still open: Tax and Transactions' panels aren't labelled yet. A screen-reader walkthrough was not done.
+**Status: fixed in 0.2.0-up.138.** One shared `TabList` in `components/ui/tabList.tsx` now gives Recurring, Forecast, Tax and Transactions their tab list, and Settings uses the same pattern through `ScrollCue`: `role="tablist"`, `role="tab"`, `aria-selected`, a roving `tabIndex`, and `components/ui/tabList.tsx` `onTabListKeyDown` for the arrow keys, Home and End. Settings, inside `ScrollCue` through its `scrollerProps`, keeps its URL `?tab=` (with `replace`). Recurring, Settings and Forecast label their content `role="tabpanel"`, using `tabIds()` from the same file. Test: `e2e/tests/tabs.spec.ts`, at desktop and 390 px; it fails without the change. Existing tests now find these controls as tabs. The shared `TabList` also cleared four `interactive-supports-focus` lint warnings (the cap is now 152). Tax and Transactions label their panels from 0.2.0-up.140. That release also gives Forecast's panel `flex flex-col flex-1 min-h-0` again: the plain panel wrapper in 0.2.0-up.138 let a long forecast scroll the heading and tabs away. Still open: a screen-reader walkthrough was not done.
 
 - **Reproduce / state:** Compare Recurring Monthly/All recurring, Settings sections and Forecast tabs.
 - **Evidence / source:** `pages/RecurringTransactions.tsx:104` styles buttons without the tab semantics used by Forecast.tsx:35; Settings.tsx:79 uses aria-current on buttons. Captures recurring-390-demo/settings-390-demo/forecast-390-demo show similar visual tab treatments.
@@ -354,6 +354,8 @@ Test: `e2e/tests/unsaved-drafts.spec.ts`, at desktop and 390 px, including a sav
 ### AU-011 — Give annual-budget comparison a mobile month anchor
 
 **P2 · Design opportunity · Annual budget/local · M · Medium confidence.**
+
+**Status: fixed in 0.2.0-up.140 (the table stays; single-month cards not built).** `pages/AnnualBudget.tsx`: the table opens with the month chosen in the monthly budget (or this month, or January for another year) as its first column after the fixed ones. Below `md`, a labelled **Jump to month** select moves to any month and follows sideways scrolling, a right-edge fade and chevron show more columns, and the Category column has a set width so the Assigned/Activity labels stay beside it. Group names stay in view. This month's header button has `aria-current="date"`. Desktop is unchanged. Test: `e2e/tests/phone/annual-budget-phone.spec.ts` at 390 and 320 px. It fails without the change. Comparison tasks with users were not run.
 
 - **Reproduce:** `/budget/year`, 390×844, November demo. `budget-year-390-demo.png` begins with Jan/Feb columns; current month is off-screen. Source `pages/AnnualBudget.tsx:156` horizontal scroller, sticky category column, month links.
 - **Impact:** a broad overview is available, but getting from today's context to the relevant column requires lateral searching. This is a discoverability opportunity, not a broken-scroll claim.
@@ -393,7 +395,9 @@ Test: `e2e/tests/unsaved-drafts.spec.ts`, at desktop and 390 px, including a sav
 
 Test: `e2e/tests/report-drill-through.spec.ts`, at desktop and 390 px. It covers a plain purchase, a split, a refund, a transfer, last month's spending and an uncategorised payment. The register shows the right rows, its Net equals the report's $90, Back returns to the report, and the uncategorised total opens its own rows. It fails without the change.
 
-Still open: custom report tables (`ReportTable.tsx`), whose grouping and filters vary per report. Neither payee totals nor projected net worth has a drill-through, which is intended for projected net worth.
+**Custom report tables, from 0.2.0-up.140:** each name in the Name/Amount table (`ReportTable.tsx`) links to the register through `customReportRowLink` (`utils/customReportSelection.ts`): the report's months (or the row's month), `budget_report`, its category, group, payee or account, the report's category filters, and `direction=debit` for spending (the report counts each negative row). A row has no link where the register can't select the same rows: a report that picks its own accounts (it counts off-budget accounts, outside `budget_report`), more than one category-group filter, income grouped other than by category or group, and the payee row that lumps rows without a payee record. In the builder, a link followed with unsaved settings asks first. Test: `e2e/tests/report-drill-through.spec.ts` (spending, then net with a refund) and `customReportSelection.test.ts`.
+
+Still open: the over-time custom table (its columns are names, not ids), account-scoped custom reports, and payee totals in the built-in reports. Projected net worth intentionally has no drill-through. Not changed: Back from a drill-through returns the report at its saved range, not one explored without saving (PR #187 review).
 
 - **Reproduce:** Reports → Spending by category detail → scroll to category table → activate Rent at 390×844. `report-journey.json` records unchanged URL and zero links/buttons in the Rent row; `report-spending-detail-390.png`. Source `components/reports/ReportDetail.tsx:539` renders category/amount cells without onRowClick; `ReportTable.tsx:22` similarly renders static custom totals.
 - **Current → impact:** the user can read an aggregate but must reconstruct category and date filters elsewhere to inspect what produced it. Cash flow already supports a drill-through pattern, so related tasks are inconsistent. Calendar drill-through does work; do not describe all reports as dead ends.

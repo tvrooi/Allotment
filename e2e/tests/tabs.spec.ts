@@ -64,3 +64,35 @@ test('Forecast labels its content with the open tab', async ({ page, api }) => {
   await open(page, '/forecast?tab=cash');
   await expectPanelOf(page, 'Cash runway');
 });
+
+test('Tax labels its content with the open tab', async ({ page, api }) => {
+  await api.createAccount('Everyday', 100_000);
+  await open(page, '/tax');
+  await expectPanelOf(page, 'Deductions');
+  await page.getByRole('tab', { name: 'Receipt inbox' }).click();
+  await expectPanelOf(page, 'Receipt inbox');
+});
+
+test('Transactions labels its content with the open tab', async ({ page, api }) => {
+  await api.createAccount('Everyday', 100_000);
+  await open(page, '/transactions');
+  await expectPanelOf(page, 'All');
+  await page.getByRole('tab', { name: 'Receipts' }).click();
+  await expectPanelOf(page, 'Receipts');
+});
+
+// The panel wrapper must keep the page's height limit: it fills the page below the tabs, so
+// the forecast's own scroller scrolls inside it and the heading and tabs stay on screen. A
+// plain block took its content's height and let the whole page scroll (PR #186 review).
+test('A forecast panel fills the page below its tabs on a phone', async ({ page, api }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await api.createAccount('Everyday', 100_000);
+  await open(page, '/forecast');
+  const panel = page.getByRole('tabpanel', { name: 'Long term' });
+  await expect(panel).toBeVisible();
+  const gap = await panel.evaluate((el) => {
+    const page = el.parentElement!.getBoundingClientRect();
+    return Math.abs(page.bottom - el.getBoundingClientRect().bottom);
+  });
+  expect(gap).toBeLessThanOrEqual(1);
+});

@@ -28,7 +28,7 @@ import {
   EXPENSE_COLORS,
   monthLabel,
 } from './ChartHelpers';
-import ReportTable from './ReportTable';
+import ReportTable, { type FollowLink } from './ReportTable';
 import { useXAxisLayout } from '../../hooks/useXAxisLayout';
 
 // Plot insets for the charts below: left margin (16) + default y-axis width (60), right margin (16)
@@ -40,9 +40,18 @@ interface Props {
   config: CustomReportConfig;
   data: CustomReportData | undefined;
   isLoading: boolean;
+  /** The settings `data` came from, for the table's links (default `config`) */
+  linkConfig?: CustomReportConfig;
+  onFollowLink?: FollowLink;
 }
 
-export default function ReportChartArea({ config, data, isLoading }: Props) {
+export default function ReportChartArea({
+  config,
+  data,
+  isLoading,
+  linkConfig = config,
+  onFollowLink,
+}: Props) {
   if (isLoading)
     return (
       <div className="h-full">
@@ -56,7 +65,8 @@ export default function ReportChartArea({ config, data, isLoading }: Props) {
       </div>
     );
 
-  if (config.chartType === 'table') return <ReportTable data={data} />;
+  if (config.chartType === 'table')
+    return <ReportTable data={data} config={linkConfig} onFollowLink={onFollowLink} />;
   if (config.chartType === 'donut' && data.mode === 'total') return <DonutView data={data} />;
   if (data.mode === 'total') return <TotalChartView config={config} data={data} />;
   return <TimeChartView config={config} data={data} />;

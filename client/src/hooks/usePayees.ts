@@ -85,7 +85,10 @@ export function useDeletePayee() {
       const snapshot = payees?.find((p) => p.id === id);
       return payeesApi.deletePayee(id).then(() => snapshot);
     },
-    onSuccess: (snapshot) => {
+    onSuccess: (snapshot, id) => {
+      // Off the list at once, as the confirmation closes: focus then moves to the next row
+      // (ui/Modal) instead of back to this one until the refetch removes it
+      qc.setQueryData<PayeeWithCount[]>(QK, (list) => list?.filter((x) => x.id !== id));
       qc.invalidateQueries({ queryKey: QK });
       qc.invalidateQueries({ queryKey: ['transactions'] });
       if (!snapshot) return;

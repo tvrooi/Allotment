@@ -78,7 +78,10 @@ export function useDeleteRule() {
       const snapshot = rules?.find((r) => r.id === id);
       return rulesApi.deleteRule(id).then(() => snapshot);
     },
-    onSuccess: (snapshot) => {
+    onSuccess: (snapshot, id) => {
+      // Off the list at once, as the confirmation closes: focus then moves to the next row
+      // (ui/Modal) instead of back to this one until the refetch removes it
+      qc.setQueryData<Rule[]>(QK, (list) => list?.filter((x) => x.id !== id));
       qc.invalidateQueries({ queryKey: QK });
       if (!snapshot) return;
       let current = snapshot;

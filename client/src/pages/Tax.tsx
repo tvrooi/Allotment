@@ -28,7 +28,7 @@ import { formatCurrency } from '../utils/currency';
 import { formatDay } from '../utils/dates';
 import { AssetsTab, type AssetPrefill } from '../components/tax/Assets';
 import { ASSET_LABELS, type AssetLabel } from '../api/assets';
-import { TabList } from '../components/ui/tabList';
+import { tabIds, TabList } from '../components/ui/tabList';
 
 // Tax time (docs/RECEIPTS-AND-TAX.md): a financial year's deductions by return label, with
 // their receipts, and the inbox of receipts not yet matched to a transaction. Record keeping
@@ -66,6 +66,8 @@ export default function TaxPage() {
               key={t.id}
               type="button"
               role="tab"
+              id={tabIds('tax', t.id).tab}
+              aria-controls={tabIds('tax', t.id).panel}
               aria-selected={tab === t.id}
               tabIndex={tab === t.id ? 0 : -1}
               onClick={() =>
@@ -82,7 +84,12 @@ export default function TaxPage() {
           ))}
         </TabList>
       </div>
-      <div className="flex-1 overflow-y-auto px-6 py-5 max-md:px-4">
+      <div
+        role="tabpanel"
+        id={tabIds('tax', tab).panel}
+        aria-labelledby={tabIds('tax', tab).tab}
+        className="flex-1 overflow-y-auto px-6 py-5 max-md:px-4"
+      >
         {tab === 'inbox' ? <Inbox /> : tab === 'assets' ? <AssetsTab /> : <Deductions />}
       </div>
     </div>
