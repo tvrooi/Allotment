@@ -1,1 +1,12 @@
-[{"route":"forecast?tab=cash","width":1440},{"route":"tax?tab=assets","width":1440},{"route":"tax?tab=inbox","width":1440},{"route":"transactions?tab=receipts","width":1440},{"route":"budget/year/2027","width":1440},{"route":"forecast?tab=cash","width":390},{"route":"tax?tab=assets","width":390},{"route":"tax?tab=inbox","width":390},{"route":"transactions?tab=receipts","width":390},{"route":"budget/year/2027","width":390}]
+[
+  { "route": "forecast?tab=cash", "width": 1440 },
+  { "route": "tax?tab=assets", "width": 1440 },
+  { "route": "tax?tab=inbox", "width": 1440 },
+  { "route": "transactions?tab=receipts", "width": 1440 },
+  { "route": "budget/year/2027", "width": 1440 },
+  { "route": "forecast?tab=cash", "width": 390 },
+  { "route": "tax?tab=assets", "width": 390 },
+  { "route": "tax?tab=inbox", "width": 390 },
+  { "route": "transactions?tab=receipts", "width": 390 },
+  { "route": "budget/year/2027", "width": 390 }
+]
