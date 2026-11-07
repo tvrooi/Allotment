@@ -13,14 +13,25 @@ export const NOTIFIED_CODE_TTL_MS = 10 * 60 * 1000;
 export const HANDED_CODE_TTL_MS = 24 * 60 * 60 * 1000;
 /** Wrong tries before a code stops working */
 export const MAX_CODE_TRIES = 5;
+/** Per person, destination and purpose: no new code within a minute of the last */
+export const CODE_INTERVAL_MS = 60 * 1000;
+/** Per person: codes by email in any 24 hours, so Allotment can't be used to flood an inbox */
+export const MAX_EMAILS_PER_DAY = 10;
 
 export type CodeKind = 'invite' | 'reset';
+/** Where a person's codes can go: a Home Assistant notify service, or an email address */
+export type Destination = 'phone' | 'email';
+/** Where a person chose their codes to go; null until they choose, which means both */
+export type CodeChannel = Destination | 'both';
 
 export interface Person {
   id: string;
   name: string;
   isAdmin: boolean;
   notifyService: string | null;
+  /** Confirmed: saved only once the person typed back a code sent there */
+  email: string | null;
+  codeChannel: CodeChannel | null;
   dbPath: string;
   keyPath: string;
   disabled: boolean;
@@ -33,6 +44,8 @@ interface PersonRow {
   name: string;
   is_admin: number;
   notify_service: string | null;
+  email: string | null;
+  code_channel: CodeChannel | null;
   db_path: string;
   key_path: string;
   disabled: number;
@@ -53,6 +66,8 @@ function toPerson(r: PersonRow): Person {
     name: r.name,
     isAdmin: r.is_admin === 1,
     notifyService: r.notify_service,
+    email: r.email,
+    codeChannel: r.code_channel,
     dbPath: r.db_path,
     keyPath: r.key_path,
     disabled: r.disabled === 1,
@@ -167,7 +182,43 @@ export class GatewayStore {
         updated_at text not null,
         primary key (link_id, owner_id, event_id)
       );
+      -- A phone or email address waiting for its code to be typed back (one of each per person)
+      create table if not exists destination_codes (
+        person_id text not null references people(id) on delete cascade,
+        destination text not null check (destination in ('phone', 'email')),
+        address text not null,
+        code_hash text not null,
+        expires_at text not null,
+        tries integer not null default 0,
+        primary key (person_id, destination)
+      );
+      -- Codes sent, for the per-person limits (kept for a day)
+      create table if not exists code_sends (
+        person_id text not null references people(id) on delete cascade,
+        destination text not null check (destination in ('phone', 'email', 'log')),
+        purpose text not null check (purpose in ('reset', 'confirm')),
+        sent_at text not null
+      );
+      create index if not exists code_sends_person on code_sends (person_id, sent_at);
     `);
+    this.upgrade();
+  }
+
+  /**
+   * Additive changes to a people.db made by an earlier version, each only when missing, so
+   * every row stays and a second start changes nothing. Never drop or rewrite here.
+   */
+  private upgrade() {
+    const columns = new Set(
+      (this.db.pragma('table_info(people)') as { name: string }[]).map((c) => c.name),
+    );
+    this.db.transaction(() => {
+      if (!columns.has('email')) this.db.exec('alter table people add column email text');
+      if (!columns.has('code_channel'))
+        this.db.exec(
+          "alter table people add column code_channel text check (code_channel in ('phone', 'email', 'both'))",
+        );
+    })();
   }
 
   close() {
@@ -335,8 +386,22 @@ export class GatewayStore {
     this.db.prepare('update people set revoke_tokens = 0 where id = ?').run(id);
   }
 
-  setNotifyService(id: string, service: string | null) {
-    this.db.prepare('update people set notify_service = ? where id = ?').run(service, id);
+  /** Removes a saved phone or email address (a new one is saved by confirmDestination) */
+  removeDestination(id: string, destination: Destination) {
+    this.db.transaction(() => {
+      this.db
+        .prepare(
+          `update people set ${destination === 'phone' ? 'notify_service' : 'email'} = null where id = ?`,
+        )
+        .run(id);
+      this.db
+        .prepare('delete from destination_codes where person_id = ? and destination = ?')
+        .run(id, destination);
+    })();
+  }
+
+  setCodeChannel(id: string, channel: CodeChannel) {
+    this.db.prepare('update people set code_channel = ? where id = ?').run(channel, id);
   }
 
   /** A disabled person can't sign in and is signed out everywhere */
@@ -346,6 +411,7 @@ export class GatewayStore {
       if (disabled) {
         this.db.prepare('delete from sessions where person_id = ?').run(id);
         this.db.prepare('delete from codes where person_id = ?').run(id);
+        this.db.prepare('delete from destination_codes where person_id = ?').run(id);
       }
     })();
   }
@@ -438,6 +504,12 @@ export class GatewayStore {
   deleteExpiredSessions() {
     this.db.prepare('delete from sessions where expires_at <= ?').run(new Date().toISOString());
     this.db.prepare('delete from codes where expires_at <= ?').run(new Date().toISOString());
+    this.db
+      .prepare('delete from destination_codes where expires_at <= ?')
+      .run(new Date().toISOString());
+    this.db
+      .prepare('delete from code_sends where sent_at <= ?')
+      .run(new Date(Date.now() - DAY_MS).toISOString());
   }
 
   // ─── One-time codes ────────────────────────────────────────────────────────
@@ -461,6 +533,96 @@ export class GatewayStore {
     return digits ? code : formatCode(code);
   }
 
+  /**
+   * A six-digit code for a phone or email address the person wants their codes to go to,
+   * replacing any earlier one for that kind of destination. The address is saved only when
+   * the code comes back (confirmDestination).
+   */
+  issueDestinationCode(personId: string, destination: Destination, address: string): string {
+    const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+    this.db
+      .prepare(
+        `insert into destination_codes (person_id, destination, address, code_hash, expires_at, tries)
+         values (?, ?, ?, ?, ?, 0)
+         on conflict (person_id, destination) do update set address = excluded.address,
+           code_hash = excluded.code_hash, expires_at = excluded.expires_at, tries = 0`,
+      )
+      .run(
+        personId,
+        destination,
+        address,
+        digest(normalizeCode(code)),
+        new Date(Date.now() + NOTIFIED_CODE_TTL_MS).toISOString(),
+      );
+    return code;
+  }
+
+  /**
+   * Saves the address waiting for this code, once; returns it, or null for a wrong, used or
+   * expired code. Wrong tries count towards the limit, as for useCode.
+   */
+  confirmDestination(personId: string, destination: Destination, given: string): string | null {
+    return this.db.transaction(() => {
+      const row = this.db
+        .prepare('select * from destination_codes where person_id = ? and destination = ?')
+        .get(personId, destination) as
+        { address: string; code_hash: string; expires_at: string; tries: number } | undefined;
+      if (!row || row.expires_at <= new Date().toISOString() || row.tries >= MAX_CODE_TRIES)
+        return null;
+      if (!sameHash(given, row.code_hash)) {
+        this.db
+          .prepare(
+            'update destination_codes set tries = tries + 1 where person_id = ? and destination = ?',
+          )
+          .run(personId, destination);
+        return null;
+      }
+      this.db
+        .prepare('delete from destination_codes where person_id = ? and destination = ?')
+        .run(personId, destination);
+      this.db
+        .prepare(
+          `update people set ${destination === 'phone' ? 'notify_service' : 'email'} = ? where id = ?`,
+        )
+        .run(row.address, personId);
+      return row.address;
+    })();
+  }
+
+  /**
+   * The per-person limits on sending codes: none within a minute of the last one for the same
+   * purpose (a password reset, or confirming a phone or address) to the same destination (the
+   * Log counts as one), and at most MAX_EMAILS_PER_DAY emails a day for both purposes
+   * together. Returns the destinations a new code may go to and records them, or null when it
+   * must not be issued at all (the earlier code still works).
+   */
+  takeCodeSends(
+    personId: string,
+    purpose: 'reset' | 'confirm',
+    to: readonly (Destination | 'log')[],
+    now = Date.now(),
+  ): (Destination | 'log')[] | null {
+    return this.db.transaction(() => {
+      const after = (ms: number) => new Date(now - ms).toISOString();
+      const recent = this.db.prepare(
+        'select 1 from code_sends where person_id = ? and destination = ? and purpose = ? and sent_at > ?',
+      );
+      if (to.some((d) => recent.get(personId, d, purpose, after(CODE_INTERVAL_MS)))) return null;
+      const { emails } = this.db
+        .prepare(
+          "select count(*) as emails from code_sends where person_id = ? and destination = 'email' and sent_at > ?",
+        )
+        .get(personId, after(DAY_MS)) as { emails: number };
+      const allowed = to.filter((d) => d !== 'email' || emails < MAX_EMAILS_PER_DAY);
+      if (!allowed.length) return null;
+      const record = this.db.prepare(
+        'insert into code_sends (person_id, destination, purpose, sent_at) values (?, ?, ?, ?)',
+      );
+      for (const d of allowed) record.run(personId, d, purpose, new Date(now).toISOString());
+      return allowed;
+    })();
+  }
+
   /** Checks a code once. A right code is used up; wrong tries count towards the limit. */
   useCode(personId: string, kind: CodeKind, given: string): boolean {
     const row = this.db
@@ -468,9 +630,7 @@ export class GatewayStore {
       .get(personId, kind) as { code_hash: string; expires_at: string; tries: number } | undefined;
     if (!row || row.expires_at <= new Date().toISOString() || row.tries >= MAX_CODE_TRIES)
       return false;
-    const a = Buffer.from(digest(normalizeCode(given)));
-    const b = Buffer.from(row.code_hash);
-    if (a.length === b.length && timingSafeEqual(a, b)) {
+    if (sameHash(given, row.code_hash)) {
       this.db.prepare('delete from codes where person_id = ? and kind = ?').run(personId, kind);
       return true;
     }
@@ -489,3 +649,10 @@ const normalizeCode = (code: string) =>
     .replace(/[^A-Z0-9]/g, '')
     .slice(0, 64);
 const formatCode = (code: string) => code.match(/.{1,4}/g)!.join('-');
+/** Compares a typed code with a stored hash in constant time */
+function sameHash(given: string, hash: string) {
+  const a = Buffer.from(digest(normalizeCode(given)));
+  const b = Buffer.from(hash);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+const DAY_MS = 24 * 60 * 60 * 1000;

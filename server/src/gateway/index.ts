@@ -4,6 +4,7 @@ import { listenHost, serverMode } from '../config.js';
 import { setupCode } from '../auth/setupCode.js';
 import { createGateway } from './app.js';
 import { Budgets, ensureKey, processLauncher } from './budgets.js';
+import { smtpMailer, type SmtpSettings } from './mail.js';
 import { canNotify, homeAssistantNotify } from './notify.js';
 import { GatewayStore } from './store.js';
 
@@ -19,14 +20,18 @@ import { GatewayStore } from './store.js';
 // - FLYBUDGET_BUDGET_PORT: the first loopback port for budgets (default 4101)
 // - PORT, FLYBUDGET_HOST, FLYBUDGET_ALLOWED_HOSTS, FLYBUDGET_TRUST_PROXY, CLIENT_DIST: as for
 //   the single-user server
+// The mail server for password codes is not read from the environment, which budgets inherit:
+// Home Assistant's launcher passes it to startGateway (`smtp`).
 
 export interface GatewayStart {
   port: number;
   serverScript: string;
   serverArgs?: string[];
+  /** The mail server for password codes (the app's options); none means no email */
+  smtp?: SmtpSettings;
 }
 
-export async function startGateway({ port, serverScript, serverArgs = [] }: GatewayStart) {
+export async function startGateway({ port, serverScript, serverArgs = [], smtp }: GatewayStart) {
   if (!serverMode) throw new Error('Multi-user mode needs FLYBUDGET_SERVER_MODE=true');
   const dbPath = process.env.DB_PATH;
   const keyPath = process.env.FLYBUDGET_DATA_KEY_FILE;
@@ -52,6 +57,8 @@ export async function startGateway({ port, serverScript, serverArgs = [] }: Gate
     clientDist: process.env.CLIENT_DIST,
     notify: homeAssistantNotify(),
     canNotify,
+    // Nothing connects to the mail server until the first email
+    mail: smtp && smtpMailer(smtp),
   });
 
   // Everyone who may sign in has their budget running, so Up polling and the like keep going
@@ -67,7 +74,9 @@ export async function startGateway({ port, serverScript, serverArgs = [] }: Gate
   const server = await new Promise<ReturnType<typeof app.listen>>((resolve, reject) => {
     const s = app.listen(port, listenHost, (err?: Error) => (err ? reject(err) : resolve(s)));
   });
-  console.log(`Allotment multi-user gateway on port ${port}: ${active.length} budget(s) running.`);
+  console.log(
+    `Allotment multi-user gateway on port ${port}: ${active.length} budget(s) running${smtp ? ', email on' : ''}.`,
+  );
   if (store.people().length === 0) setupCode();
 
   const shutdown = async () => {
@@ -83,8 +92,14 @@ export async function startGateway({ port, serverScript, serverArgs = [] }: Gate
 
 // Run directly (`node gateway.js`) unless imported by a launcher. In development and tests the
 // budgets run from source: FLYBUDGET_SERVER_SCRIPT=src/index.ts FLYBUDGET_SERVER_NODE_ARGS="--import tsx"
+// FLYBUDGET_DEV_MAIL_PORT sends email unencrypted, without a password, to a mail catcher on
+// this machine's loopback (e2e/mailCatcher.ts); mail.ts refuses that to any other host.
 if (process.env.FLYBUDGET_GATEWAY_AUTOSTART === 'true') {
+  const devMailPort = Number(process.env.FLYBUDGET_DEV_MAIL_PORT);
   startGateway({
+    smtp: devMailPort
+      ? { host: '127.0.0.1', port: devMailPort, security: 'none', from: 'allotment@localhost' }
+      : undefined,
     port: Number(process.env.PORT ?? 3001),
     serverScript:
       process.env.FLYBUDGET_SERVER_SCRIPT ?? path.join(path.dirname(process.argv[1]), 'server.js'),

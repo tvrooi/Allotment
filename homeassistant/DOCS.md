@@ -129,11 +129,33 @@ a budget only they can open, each with their own password.
   budget (**Household → Combine with another Allotment user**). Both then see both households'
   entries, splits and merchants, and one note on each entry that either can edit, but nothing
   else from the other's budget. Either can stop combining at any time.
-- **Forgotten passwords:** each person can choose a phone in **Settings → Server → Password codes
-  to your phone** (a notify service such as `notify.mobile_app_my_phone`). **Forgot password?**
-  then sends a code there through the Home Assistant Companion app (six digits, for 10
-  minutes). The administrator's code, valid for 24 hours, is also written to the app's **Log**. For anyone else, the administrator
-  chooses **Reset password**, and the code appears in the **Log** for them to pass on.
+- **Forgotten passwords:** each person sets where their codes go in **Settings → Server →
+  Password codes**: a phone (a notify service such as `notify.mobile_app_my_phone`, reached
+  through the Home Assistant Companion app), an email address if email is set up (below), or
+  both. A new phone or address is saved only once they type back the code sent to it. With
+  both, they choose **My phone**, **My email** or **Both**. **Forgot password?** then sends a
+  six-digit code there, valid for 10 minutes; if what they chose can't be used any more (email
+  turned off, say), it goes to the other. At most one code a minute goes to each, and at most
+  ten emails a day per person. The administrator's code, valid for 24 hours, goes where they
+  chose and is also written to the app's **Log**. For anyone without a phone or address, the
+  administrator chooses **Reset password**, and the code appears in the **Log** for them to pass
+  on.
+- **Email for password codes (optional):** fill in the app's `smtp_` options in the
+  **Configuration** tab (show unused optional configuration options) and restart:
+  - `smtp_host` and `smtp_port`: your mail provider's SMTP server, e.g. port 465 or 587.
+  - `smtp_security`: `tls` for port 465 (encrypted from the start) or `starttls` for 587. The
+    connection is always encrypted and the server's certificate checked; plain SMTP isn't
+    offered.
+  - `smtp_username` and `smtp_password`: the login, often an app password from your provider.
+    Leave both empty for a relay that needs none.
+  - `smtp_from`: the address codes come from, e.g. `allotment@example.com`. Your provider may
+    require it to be your own address.
+
+  Leave them all empty to keep email off. A partial set stops the app starting, with a message
+  in the **Log** naming what is missing. The password is passed only to the part of the app
+  that signs people in, never to anyone's budget. Emails are plain text with no links: a code
+  email that asks you to click something isn't from Allotment.
+
 - **Access tokens** and the assistant (MCP) connection work per person: each token
   reaches only the budget that created it.
 - **Bill reminders** are not available in a multi-user setup: each person's budget has no way to

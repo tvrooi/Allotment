@@ -12,12 +12,14 @@ import {
   DESKTOP_PORT,
   ENABLE_BANKING_MOCK_PORT,
   FRANKFURTER_MOCK_PORT,
+  MAIL_CATCHER_PORT,
   MULTI_USER_BUDGET_PORT,
   MULTI_USER_PORT,
   SERVER_PORT,
   UP_MOCK_PORT,
 } from './ports';
 import { startEnableBankingMock } from './mockEnableBanking';
+import { startMailCatcher } from './mailCatcher';
 import { startFrankfurterMock } from './mockFrankfurter';
 import { startUpMock } from './mockUp';
 
@@ -288,6 +290,9 @@ export default async function globalSetup() {
   const multiUserLogFile = path.join(dir, 'multi-user.log');
   const multiUserLog: string[] = [];
   fs.mkdirSync(path.join(dir, 'multi-user'), { recursive: true });
+  // Its password codes by email land here
+  const mailFile = path.join(dir, 'mail.jsonl');
+  const mailCatcher = await startMailCatcher(mailFile);
   const multiUser = startServer(
     'multi-user',
     {
@@ -301,6 +306,7 @@ export default async function globalSetup() {
       FLYBUDGET_SERVER_SCRIPT: path.join(root, 'server/src/index.ts'),
       FLYBUDGET_SERVER_NODE_ARGS: '--import tsx',
       FLYBUDGET_BUDGET_PORT: String(MULTI_USER_BUDGET_PORT),
+      FLYBUDGET_DEV_MAIL_PORT: String(MAIL_CATCHER_PORT),
     },
     multiUserLog,
     'src/gateway/index.ts',
@@ -351,6 +357,7 @@ export default async function globalSetup() {
   process.env.E2E_SNAPSHOT = snapshotData;
   process.env.E2E_DIR = dir;
   process.env.E2E_MULTI_USER_LOG = multiUserLogFile;
+  process.env.E2E_MAIL = mailFile;
   process.env.E2E_SERVER_LOG = serverLogFile;
 
   return async () => {
@@ -359,6 +366,7 @@ export default async function globalSetup() {
     enableBanking.close();
     await up.close();
     frankfurter.close();
+    mailCatcher.close();
     stop(desktop);
     stop(server);
     stop(multiUser);

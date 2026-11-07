@@ -1,5 +1,6 @@
 import fs from 'fs';
 import { test, expect, type Page } from '@playwright/test';
+import { caughtMail } from '../../mailCatcher';
 
 // Multi-user mode (docs/MULTI-USER-PLAN.md): the gateway signs people in by name, and each
 // person's budget is its own server process. The administrator adds a person with an
@@ -9,10 +10,26 @@ test.describe.configure({ mode: 'serial' });
 
 const OWNER = 'correct horse battery';
 const PARTNER = 'partner passphrase';
+const PARTNER_AGAIN = 'partner passphrase two';
 
 let owner: Page;
 let partner: Page;
 let invitation = '';
+
+/** The six-digit code in the latest email to `to` with this subject */
+async function emailedCode(to: string, subject: string) {
+  let code = '';
+  await expect
+    .poll(() => {
+      const mail = caughtMail(process.env.E2E_MAIL!)
+        .filter((m) => m.to.includes(to) && m.raw.includes(`Subject: ${subject}`))
+        .at(-1);
+      code = mail ? /code[^\n]*?(\d{6})/.exec(mail.raw)![1] : '';
+      return code;
+    })
+    .not.toBe('');
+  return code;
+}
 
 /** The latest code printed in the gateway's log (setup, or a password reset) */
 function lastCode(after: RegExp) {
@@ -191,6 +208,48 @@ test('signing in needs the right name for the password', async ({ browser, baseU
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByText('Incorrect name or password')).toBeVisible();
   await page.context().close();
+});
+
+test('a person adds an email address with its code, and resets their password by email', async ({
+  browser,
+  baseURL,
+}) => {
+  await partner.goto(`${baseURL}/settings?tab=server`);
+  const codes = partner.getByRole('region', { name: 'Password codes' });
+  await codes.getByLabel('Email address').fill('edward@example.com');
+  await codes.getByRole('button', { name: 'Send code' }).click();
+  await expect(codes.getByRole('status')).toContainText('A code is on its way');
+  const confirm = await emailedCode('edward@example.com', 'Allotment confirmation code');
+  await codes.getByLabel('Code sent to your email').fill(confirm);
+  await codes.getByRole('button', { name: 'Confirm' }).click();
+  await expect(codes.getByRole('status')).toContainText('Saved. Password codes can come here.');
+  await expect(codes.getByText('edward@example.com')).toBeVisible();
+  await codes.screenshot({ path: test.info().outputPath('password-codes.png') });
+
+  const page = await (await browser.newContext()).newPage();
+  await page.goto(`${baseURL}/`);
+  await page.getByRole('button', { name: 'Forgot password?' }).click();
+  await expect(page.getByText(/phone or email you chose/)).toBeVisible();
+  await page.getByLabel('Name').fill('Edward');
+  await page.getByRole('button', { name: 'Send me a code' }).click();
+  await expect(page.getByRole('status')).toContainText('to their phone or email');
+  const code = await emailedCode('edward@example.com', 'Allotment password code');
+  await page.getByLabel('Code', { exact: true }).fill(code);
+  await page.getByLabel('New password').fill(PARTNER_AGAIN);
+  await page.getByLabel('Confirm password').fill(PARTNER_AGAIN);
+  await page.getByRole('button', { name: 'Set password and sign in' }).click();
+  await expect(page.getByRole('navigation').first()).toBeVisible();
+  expect(
+    (await (await page.request.get('/api/accounts')).json()).map((a: { name: string }) => a.name),
+  ).toEqual(['Edward savings']);
+  await page.context().close();
+
+  // Edward's other session was signed out; he signs in with the new password
+  await partner.goto(`${baseURL}/`);
+  await partner.getByLabel('Name').fill('Edward');
+  await partner.getByLabel('Password', { exact: true }).fill(PARTNER_AGAIN);
+  await partner.getByRole('button', { name: 'Sign in' }).click();
+  await expect(partner.getByRole('navigation').first()).toBeVisible();
 });
 
 test("the administrator's forgotten password is reset with a code from the log", async ({

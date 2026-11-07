@@ -14,11 +14,27 @@ export interface AuthStatus {
   multiUser?: boolean;
   /** Password codes can be sent as Home Assistant notifications (the server runs as the HA app) */
   canNotify?: boolean;
+  /** Multi-user: password codes can be sent by email (a mail server is set in the app's options) */
+  canEmail?: boolean;
   /** Single-user server: a forgotten password can be reset with a code from the server log */
   canRecover?: boolean;
   /** Multi-user: who is signed in */
-  person?: { id: string; name: string; isAdmin: boolean; notifyService: string | null };
+  person?: {
+    id: string;
+    name: string;
+    isAdmin: boolean;
+  } & CodeDestinations;
 }
+
+/** Where a person's password codes go; a phone or address is saved only once confirmed */
+export interface CodeDestinations {
+  notifyService: string | null;
+  email: string | null;
+  /** null until they choose, which means both */
+  codeChannel: CodeChannel | null;
+}
+export type CodeChannel = 'phone' | 'email' | 'both';
+export type Destination = 'phone' | 'email';
 
 export const getAuthStatus = () => apiFetch<AuthStatus>('/auth/status');
 

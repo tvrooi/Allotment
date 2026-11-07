@@ -232,12 +232,26 @@ async function run() {
         '-e',
         `require('fs').writeFileSync('/data/options.json',${JSON.stringify(JSON.stringify(options))},{mode:0o600})`,
       );
-    writeOptions({ allowed_hosts: 'budget.example.com', trust_proxy: false, multi_user: true });
+    // With a mail server set (docs/MULTI-USER-EMAIL-AND-REMINDERS.md): .invalid never resolves,
+    // so starting proves nothing connects to it until an email is sent
+    const smtpPassword = randomBytes(18).toString('base64url');
+    writeOptions({
+      allowed_hosts: 'budget.example.com',
+      trust_proxy: false,
+      multi_user: true,
+      smtp_host: 'smtp.example.invalid',
+      smtp_port: 465,
+      smtp_security: 'tls',
+      smtp_username: 'allotment',
+      smtp_password: smtpPassword,
+      smtp_from: 'allotment@example.com',
+    });
     docker('restart', name);
     await ready();
     const multiStatus = await (await fetch(base + '/api/auth/status')).json();
     assert.equal(multiStatus.multiUser, true);
     assert.equal(multiStatus.needsSetup, true);
+    assert.equal(multiStatus.canEmail, true, 'The smtp_ options turn email on.');
     const gatewayCode = [
       ...docker('logs', '--since', '2m', name).matchAll(/[A-Z2-9]{4}(?:-[A-Z2-9]{4}){3}/g),
     ].at(-1)?.[0];
@@ -274,13 +288,25 @@ async function run() {
       'A new person’s budget must be their own.',
     );
     assert.equal(keyHash(), initialKey, 'Multi-user mode must keep the existing key.');
+    // No process in the container, the budgets included, has the mail password in its
+    // environment: ha-launch.cjs hands it to the gateway as a value
+    const leaked = docker(
+      'exec',
+      '--user',
+      '0:0',
+      name,
+      'node',
+      '-e',
+      `const fs=require('fs');let n=0;for(const p of fs.readdirSync('/proc').filter((d)=>/^\\d+$/.test(d))){try{if(fs.readFileSync('/proc/'+p+'/environ','latin1').includes(${JSON.stringify(smtpPassword)}))n++}catch{}}console.log(n)`,
+    ).trim();
+    assert.equal(leaked, '0', 'The mail password must not be in any environment.');
     writeOptions({ allowed_hosts: 'budget.example.com', trust_proxy: false, multi_user: false });
     docker('restart', name);
     await ready();
     const back = await post('/auth/login', { password });
     assert.equal(back.status, 204, 'Turning multi-user off goes back to the old password.');
     console.log(
-      'PASS: root-only Supervisor options; strict-host TCP watchdog; login/setup and native Up endpoint; persistent budget/password/key; uid 1000 server; Supervisor file stays private; multi-user keeps the existing budget and isolates a new one, and turns off cleanly.',
+      'PASS: root-only Supervisor options; strict-host TCP watchdog; login/setup and native Up endpoint; persistent budget/password/key; uid 1000 server; Supervisor file stays private; multi-user keeps the existing budget and isolates a new one, starts with email set without connecting or leaking its password, and turns off cleanly.',
     );
   } finally {
     try {

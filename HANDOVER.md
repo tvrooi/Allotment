@@ -5,10 +5,34 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 7 November 2026 (D2 design: email codes and reminders for separate budgets).
+Last updated: 7 November 2026 (D2a: email codes for separate budgets, up.128).
 
 ## State
 
+- **Email codes for separate budgets (up.128, D2a of the Larger features group; gateway, client
+  and HA options; no budget migration):** optional HA options `smtp_host`, `smtp_port`,
+  `smtp_security` (`tls`/`starttls`), `smtp_username`, `smtp_password` (password field),
+  `smtp_from`, checked as a set by `ha-launch.cjs` `smtpSettings` and passed to
+  `startGateway({ smtp })`, never through the environment. `gateway/mail.ts` sends through
+  Nodemailer 10 (new server dependency, MIT-0, no dependencies or install scripts; bundled only
+  into `gateway.js`): TLS always, certificate checked, 10-second timeouts, plain text, fixed
+  subjects, errors logged as codes without the address. Settings → Server → **Password codes**
+  (was "Password codes to your phone"): a phone and an email address, each saved only once the
+  code sent to it is typed back (`POST/DELETE /api/people/me/{phone,email}`,
+  `…/confirm`; `PUT /me/notify` and its Test are gone), and with both, **My phone / My email /
+  Both** (`PUT /me/code-channel`). Forgot password sends where chosen (falling back to what the
+  person has when that's off), the administrator's code also to the Log; at most one code a
+  minute per purpose and destination and ten emails a day per person (`code_sends`). `people.db`
+  gets its first additive change: `people.email`, `people.code_channel` (after a
+  `pragma table_info` check), and new tables `destination_codes` and `code_sends`. Deviations
+  from the design are in docs/MULTI-USER-EMAIL-AND-REMINDERS.md "As built". Tests:
+  `gateway/mail.test.ts`, `gateway/store.test.ts` (confirmation, limits, upgrading an up.127
+  `people.db` keeps every row and a second start changes nothing), `gateway/gateway.test.ts`
+  (confirming phone and email, forgot by email, channels, fallback, the administrator by email
+  and Log), `homeassistant/ha-launch.test.cjs`, `e2e/tests/multi-user/people.spec.ts` (add an
+  address and reset by email through `e2e/mailCatcher.ts`), and the container smoke test (starts
+  with SMTP set without connecting; the mail password is in no process's environment). D2b
+  (reminders through the gateway) is next.
 - **Assistant endpoints, phase 3 (up.127, D1 of the Larger features group; server only, no
   migration):** each row of the policy table now has `matches` (request only) and, for the seven
   rows whose rule reads the budget, `check`. `requireSession` runs both and keeps the request in
@@ -510,10 +534,10 @@ site in `website/` was removed (audit decision I-9).
 3. **Multi-user (separate budgets per person):** built in `0.2.0-up.48` (`server/src/gateway/`,
    `docs/MULTI-USER-PLAN.md`, `homeassistant/DOCS.md`) and turned on live on 29 October (see
    State). Confirm the owner has signed in with the setup code and their budget opened with its
-   data, Up sync and access tokens intact. Not built yet: SMTP email codes, designed with
-   reminders through the gateway in `docs/MULTI-USER-EMAIL-AND-REMINDERS.md` (D2, 7 November;
-   owner took every recommendation except decision 5: each person chooses where codes go; no
-   code yet, D2a email codes first). Shared households are combined households (up.58).
+   data, Up sync and access tokens intact. Email codes are built (up.128, D2a; the owner sets the
+   `smtp_` options to turn them on). Not built yet: D2b, reminders through the gateway, designed
+   in `docs/MULTI-USER-EMAIL-AND-REMINDERS.md`. Shared households are combined households
+   (up.58).
 4. **Gaps found in the 26 October audit** (not built or not documented):
    - User guide pages for payday plans, budget review, card payments and the long-term
      forecast are written (up.121), and every article is linked from its page.

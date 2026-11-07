@@ -23,20 +23,26 @@ const budgets = new Budgets(
   90_000,
 );
 const notices: { service: string; message: string }[] = [];
+const mails: { to: string; subject: string; text: string }[] = [];
+let notifyOn = true;
 const logged: string[] = [];
 let server: Server;
 let base: string;
 
+const gatewayOptions = () => ({
+  store,
+  budgets,
+  ownerBudget: { dbPath: path.join(dir, 'budget.db'), keyPath: path.join(dir, 'owner.key') },
+  budgetsDir: path.join(dir, 'budgets'),
+  notify: async (service: string, _title: string, message: string) =>
+    void notices.push({ service, message }),
+  canNotify: () => notifyOn,
+  mail: async (to: string, subject: string, text: string) => void mails.push({ to, subject, text }),
+  log: (m: string) => void logged.push(m),
+});
+
 beforeAll(async () => {
-  const app = createGateway({
-    store,
-    budgets,
-    ownerBudget: { dbPath: path.join(dir, 'budget.db'), keyPath: path.join(dir, 'owner.key') },
-    budgetsDir: path.join(dir, 'budgets'),
-    notify: async (service, _title, message) => void notices.push({ service, message }),
-    canNotify: () => true,
-    log: (m) => void logged.push(m),
-  });
+  const app = createGateway(gatewayOptions());
   // The owner's key, as the launcher would have made it
   fs.writeFileSync(path.join(dir, 'owner.key'), Buffer.alloc(32, 7).toString('base64'));
   server = await new Promise<Server>((r) => {
@@ -51,6 +57,38 @@ afterAll(async () => {
   store.close();
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+/** As if a few minutes had passed since every code was sent (the once-a-minute limit) */
+const later = () =>
+  store.db
+    .prepare(
+      "update code_sends set sent_at = strftime('%Y-%m-%dT%H:%M:%fZ', sent_at, '-2 minutes')",
+    )
+    .run();
+/**
+ * Forgot password, through a gateway of its own on the same people.db: each has its own limit
+ * per IP address (5 every 15 minutes), which these tests would otherwise use up
+ */
+async function forgot(name: string) {
+  const app = createGateway(gatewayOptions());
+  const other = await new Promise<Server>((r) => {
+    const s = app.listen(0, '127.0.0.1', () => r(s));
+  });
+  try {
+    const res = await fetch(
+      `http://127.0.0.1:${(other.address() as AddressInfo).port}/api/auth/forgot`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      },
+    );
+    return { status: res.status, body: await res.json() };
+  } finally {
+    other.close();
+  }
+}
+const sixDigits = (text: string) => /(\d{6})/.exec(text)![1];
 
 /** A browser: keeps its own session cookie */
 function browser() {
@@ -413,11 +451,26 @@ describe('multi-user gateway', () => {
   });
 
   it('resets a forgotten password with a code sent to the phone', async () => {
+    // A phone is saved only once the code sent to it comes back
     expect(
-      (await partner('PUT', '/api/people/me/notify', { service: 'notify.mobile_app_edward' })).body,
-    ).toEqual({
-      notifyService: 'mobile_app_edward',
-    });
+      (await partner('POST', '/api/people/me/phone', { service: 'notify.mobile_app_edward' }))
+        .status,
+    ).toBe(202);
+    expect(notices).toHaveLength(1);
+    expect(notices[0]).toMatchObject({ service: 'mobile_app_edward' });
+    expect((await partner('GET', '/api/auth/status')).body.person.notifyService).toBeNull();
+    // Someone else can't confirm it
+    const confirmCode = sixDigits(notices[0].message);
+    expect(
+      (await owner('POST', '/api/people/me/phone/confirm', { code: confirmCode })).status,
+    ).toBe(400);
+    expect(
+      (await partner('POST', '/api/people/me/phone/confirm', { code: confirmCode })).body,
+    ).toEqual({ notifyService: 'mobile_app_edward', email: null, codeChannel: null });
+    expect((await owner('GET', '/api/auth/status')).body.person.notifyService).toBeNull();
+    notices.length = 0;
+    later();
+
     const asked = await stranger('POST', '/api/auth/forgot', { name: 'Edward' });
     expect(asked.status).toBe(202);
     // Unknown names get the same answer and send nothing
@@ -471,6 +524,131 @@ describe('multi-user gateway', () => {
     expect(logged.at(-1)).toMatch(/Password reset code for Tristan/);
   });
 
+  it('sends codes by email to a confirmed address, where each person chose', async () => {
+    expect((await partner('GET', '/api/auth/status')).body).toMatchObject({
+      canNotify: true,
+      canEmail: true,
+    });
+    expect((await partner('POST', '/api/people/me/email', { email: 'edward' })).status).toBe(400);
+    expect(
+      (await partner('POST', '/api/people/me/email', { email: ' edward@example.com ' })).status,
+    ).toBe(202);
+    expect(mails.at(-1)).toMatchObject({
+      to: 'edward@example.com',
+      subject: 'Allotment confirmation code',
+    });
+    expect(mails.at(-1)!.text).not.toMatch(/https?:/);
+    const first = sixDigits(mails.at(-1)!.text);
+    // Asking again straight away sends nothing
+    expect(
+      (await partner('POST', '/api/people/me/email', { email: 'other@example.com' })).status,
+    ).toBe(429);
+    expect(mails).toHaveLength(1);
+    // Five wrong tries and the code stops working
+    const wrong = first === '000000' ? '111111' : '000000';
+    for (let i = 0; i < 5; i++)
+      expect((await partner('POST', '/api/people/me/email/confirm', { code: wrong })).status).toBe(
+        400,
+      );
+    expect((await partner('POST', '/api/people/me/email/confirm', { code: first })).status).toBe(
+      400,
+    );
+    later();
+    await partner('POST', '/api/people/me/email', { email: 'edward@example.com' });
+    // Another person's code is no use here
+    expect(
+      (await owner('POST', '/api/people/me/email/confirm', { code: sixDigits(mails.at(-1)!.text) }))
+        .status,
+    ).toBe(400);
+    expect(
+      (
+        await partner('POST', '/api/people/me/email/confirm', {
+          code: sixDigits(mails.at(-1)!.text),
+        })
+      ).body,
+    ).toMatchObject({ email: 'edward@example.com', notifyService: 'mobile_app_edward' });
+    later();
+
+    // With both a phone and an address and no choice made, the code goes to both
+    notices.length = 0;
+    mails.length = 0;
+    const answer = (await forgot('Edward')).body;
+    await expect.poll(() => mails.length).toBe(1);
+    expect(mails[0]).toMatchObject({
+      to: 'edward@example.com',
+      subject: 'Allotment password code',
+    });
+    expect(notices).toHaveLength(1);
+    expect(sixDigits(notices[0].message)).toBe(sixDigits(mails[0].text));
+    // Within a minute nothing more is sent, and the answer is the same
+    expect((await forgot('Edward')).body).toEqual(answer);
+    await new Promise((r) => setTimeout(r, 50));
+    expect([mails.length, notices.length]).toEqual([1, 1]);
+    later();
+
+    // Email only, and the emailed code resets the password
+    expect(
+      (await partner('PUT', '/api/people/me/code-channel', { channel: 'email' })).body.codeChannel,
+    ).toBe('email');
+    expect(
+      (await partner('PUT', '/api/people/me/code-channel', { channel: 'pigeon' })).status,
+    ).toBe(400);
+    await forgot('Edward');
+    await expect.poll(() => mails.length).toBe(2);
+    expect(notices).toHaveLength(1);
+    const reset = browser();
+    expect(
+      (
+        await reset('POST', '/api/auth/reset', {
+          name: 'Edward',
+          code: sixDigits(mails[1].text),
+          password: 'emailed-reset-1',
+        })
+      ).status,
+    ).toBe(204);
+    later();
+
+    // Phone only; and when notifications are off on this server, the address they have
+    await reset('PUT', '/api/people/me/code-channel', { channel: 'phone' });
+    await forgot('Edward');
+    await expect.poll(() => notices.length).toBe(2);
+    expect(mails).toHaveLength(2);
+    later();
+    notifyOn = false;
+    try {
+      await forgot('Edward');
+      await expect.poll(() => mails.length).toBe(3);
+      expect(notices).toHaveLength(2);
+    } finally {
+      notifyOn = true;
+    }
+    later();
+
+    // Removing the address: codes go to the phone again
+    expect((await reset('DELETE', '/api/people/me/email')).body).toMatchObject({ email: null });
+    await reset('PUT', '/api/people/me/code-channel', { channel: 'email' });
+    await forgot('Edward');
+    await expect.poll(() => notices.length).toBe(3);
+    expect(mails).toHaveLength(3);
+    later();
+
+    // The administrator's code goes to their email and stays in the Log
+    await owner('POST', '/api/people/me/email', { email: 'tristan@example.com' });
+    await owner('POST', '/api/people/me/email/confirm', { code: sixDigits(mails.at(-1)!.text) });
+    later();
+    await forgot('Tristan');
+    await expect.poll(() => mails.length).toBe(5);
+    const adminCode = /Password reset code for Tristan: ([A-Z2-9-]{19})/.exec(logged.at(-1)!)![1];
+    expect(mails[4]).toMatchObject({ to: 'tristan@example.com' });
+    expect(mails[4].text).toContain(adminCode);
+    expect(mails[4].text).toContain('24 hours');
+    // Partner signs in again for the tests that follow
+    expect(
+      (await partner('POST', '/api/auth/login', { name: 'Edward', password: 'emailed-reset-1' }))
+        .status,
+    ).toBe(204);
+  });
+
   it('disables a person: signed out, no sign-in, budget stopped', async () => {
     expect((await owner('POST', `/api/people/${partnerId}/disable`)).body).toMatchObject({
       disabled: true,
@@ -478,7 +656,7 @@ describe('multi-user gateway', () => {
     });
     expect((await partner('GET', '/api/accounts')).status).toBe(401);
     expect(
-      (await partner('POST', '/api/auth/login', { name: 'Edward', password: 'new-partner-1' }))
+      (await partner('POST', '/api/auth/login', { name: 'Edward', password: 'emailed-reset-1' }))
         .status,
     ).toBe(401);
     expect((await owner('POST', `/api/people/${partnerId}/enable`)).body).toMatchObject({

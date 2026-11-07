@@ -11,6 +11,7 @@ turning the option off returns to it and its old password. That replaced step 4 
 
 - Code: `server/src/gateway/` (`store.ts` people, sessions and codes; `budgets.ts` child
   processes; `app.ts` sign-in, people and forwarding; `notify.ts` Home Assistant notifications;
+  `mail.ts` email for password codes;
   `index.ts` the entry, bundled as `gateway.js`). A budget behind the gateway (`gatewaySecret`
   in `config.ts`) closes its own login routes and accepts only the gateway's secret header
   (`requireSession` in `routes/auth.ts`).
@@ -99,7 +100,8 @@ a problem.
      password** sends a six-digit code, valid for 10 minutes, to that phone through the Home
      Assistant Companion app. It needs no mail server and no internet exposure.
   2. **Email:** optional SMTP settings in the app's options (host, port, user, password, from). The
-     code is sent to the person's address. It's useful if someone doesn't use the Companion app.
+     code is sent to the person's confirmed address. It's useful if someone doesn't use the
+     Companion app. Built in up.128: [MULTI-USER-EMAIL-AND-REMINDERS.md](MULTI-USER-EMAIL-AND-REMINDERS.md).
   3. **Administrator reset code:** the administrator chooses **Reset password** for a person, and a
      one-time code is printed in the app's Log (like today's setup code) for the administrator to pass
      on. This is the fallback when nothing else is set up.
@@ -130,9 +132,9 @@ attributing changes to a person.
 1. **Gateway and budget mode:** done.
 2. **People:** add a person, invitation code, per-person sign-in, administrator page, stop and
    allow sign-in: done. Deleting a person's budget is left to the files (deliberately not a button).
-3. **Password resets:** Home Assistant notify codes and administrator reset codes: done. **SMTP
-   email is not built yet;** designed, with reminders through the gateway, in
-   [MULTI-USER-EMAIL-AND-REMINDERS.md](MULTI-USER-EMAIL-AND-REMINDERS.md).
+3. **Password resets:** Home Assistant notify codes, administrator reset codes and email codes
+   (up.128, D2a): done. Reminders through the gateway (D2b) are designed in
+   [MULTI-USER-EMAIL-AND-REMINDERS.md](MULTI-USER-EMAIL-AND-REMINDERS.md), not built.
 4. **Migration of the existing install:** not needed; the existing budget stays in place.
 5. **Shared households across budgets:** done, as combined households (`docs/HOUSEHOLDS.md`,
    "Combining with another person").
