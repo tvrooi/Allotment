@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { formatScheduleAmount, groupOccurrences, isIncomeAmount } from './scheduleFormat';
+import {
+  formatScheduleAmount,
+  groupOccurrences,
+  isIncomeAmount,
+  shownInMonth,
+} from './scheduleFormat';
 import type { ScheduleOccurrence, ScheduleScope } from '../../types';
 
 const household = (
@@ -49,6 +54,15 @@ function occ(
     scope,
   };
 }
+
+describe('shownInMonth', () => {
+  it('leaves cancelled recurring items out of the month', () => {
+    const live = occ('Spotify', -1599, undefined);
+    const gone = { ...occ('GeForce Now', -3299, undefined), displayStatus: 'cancelled' as const };
+    const skipped = { ...occ('Binge', -1900, undefined), displayStatus: 'skipped' as const };
+    expect(shownInMonth([live, gone, skipped])).toEqual([live, skipped]);
+  });
+});
 
 describe('groupOccurrences', () => {
   const pay = occ('Pay', 300_000, { kind: 'personal' }, '2026-11-14');

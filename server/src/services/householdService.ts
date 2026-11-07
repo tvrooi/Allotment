@@ -704,7 +704,8 @@ function sharedRecurringBills(
   );
   return links.flatMap((link) => {
     const schedule = db.select().from(schedules).where(eq(schedules.id, link.scheduleId)).get();
-    if (!schedule) return [];
+    // A cancelled bill is over: its shared payments stay, but it is no longer a household bill
+    if (!schedule || schedule.status === 'canceled') return [];
     const ownSplit = parseSplit(link.splitJson);
     const next = db
       .select({

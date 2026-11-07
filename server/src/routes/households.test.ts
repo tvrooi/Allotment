@@ -523,6 +523,10 @@ describe('household attribution', () => {
     expect(createBackup().householdRecurringBills).toEqual([
       expect.objectContaining({ scheduleId: 'power', groupId: g.group.id }),
     ]);
+    // A cancelled recurring item no longer shows as a household bill
+    db.update(schedules).set({ status: 'canceled' }).where(eq(schedules.id, 'power')).run();
+    expect((await call(`/${g.group.id}`)).data.recurringBills).toEqual([]);
+    db.update(schedules).set({ status: 'active' }).where(eq(schedules.id, 'power')).run();
     const stopped = await call(`/${g.group.id}/recurring-bills/power`, undefined, 'DELETE');
     expect(stopped.data.recurringBills).toEqual([]);
     // Shared payments stay in the household
