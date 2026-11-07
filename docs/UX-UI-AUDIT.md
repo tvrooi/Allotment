@@ -389,6 +389,12 @@ Test: `e2e/tests/unsaved-drafts.spec.ts`, at desktop and 390 px, including a sav
 
 **P2 · Usability opportunity · Reports/shared reporting navigation · M · High current-behavior confidence; benefit needs task validation.**
 
+**Status: fixed in 0.2.0-up.139 for Spending by category.** Each category name in the detail table is a link, labelled "View transactions: …". It reuses Cash Flow's `cashFlowTransactionsLink` (`utils/cashFlowSelection.ts`): the category (or uncategorised), the report's months, and `budget_report`. The register then filters with the same `reportedBudgetActivity` rule as the report's total.
+
+Test: `e2e/tests/report-drill-through.spec.ts`, at desktop and 390 px. It covers a plain purchase, a split, a refund, a transfer, last month's spending and an uncategorised payment. The register shows the right rows, its Net equals the report's $90, Back returns to the report, and the uncategorised total opens its own rows. It fails without the change.
+
+Still open: custom report tables (`ReportTable.tsx`), whose grouping and filters vary per report. Neither payee totals nor projected net worth has a drill-through, which is intended for projected net worth.
+
 - **Reproduce:** Reports → Spending by category detail → scroll to category table → activate Rent at 390×844. `report-journey.json` records unchanged URL and zero links/buttons in the Rent row; `report-spending-detail-390.png`. Source `components/reports/ReportDetail.tsx:539` renders category/amount cells without onRowClick; `ReportTable.tsx:22` similarly renders static custom totals.
 - **Current → impact:** the user can read an aggregate but must reconstruct category and date filters elsewhere to inspect what produced it. Cash flow already supports a drill-through pattern, so related tasks are inconsistent. Calendar drill-through does work; do not describe all reports as dead ends.
 - **Proposed after:** make actual-spending/income category/payee aggregates expose an explicit “View transactions” link or accessible row action carrying category/payee, date range, account scope and report boundary. Preserve the source report, selected range and scroll on return. For projected net worth, use assumption/year detail rather than pretending there is an underlying transaction set.
