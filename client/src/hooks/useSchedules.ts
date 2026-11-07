@@ -17,6 +17,8 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: MQK });
   qc.invalidateQueries({ queryKey: ['transactions'] });
   qc.invalidateQueries({ queryKey: ['accounts'] });
+  // Shared bills and everyone's shares are worked out from the schedule
+  qc.invalidateQueries({ queryKey: ['households'] });
 }
 
 export function useSchedules(status?: string) {

@@ -10,6 +10,7 @@ import { accounts, transactions, payees, schedules, scheduleOccurrences } from '
 import { transactionsRouter } from './transactions.js';
 import { householdsRouter } from './households.js';
 import { accountsRouter } from './accounts.js';
+import { schedulesRouter } from './schedules.js';
 import { allocateShares } from '../services/householdLedger.js';
 import { createBackup, parseBackup, restoreBackup } from '../services/backupService.js';
 import { eq } from 'drizzle-orm';
@@ -24,6 +25,7 @@ beforeAll(async () => {
   app.use('/api/transactions', transactionsRouter);
   app.use('/api/households', householdsRouter);
   app.use('/api/accounts', accountsRouter);
+  app.use('/api/schedules', schedulesRouter);
   server = await new Promise<Server>((resolve) => {
     const s = app.listen(0, '127.0.0.1', () => resolve(s));
   });
@@ -658,6 +660,42 @@ describe('household attribution', () => {
         (e: any) => e.transactionId === 'loop-manual',
       ),
     ).toBe(false);
+  });
+
+  it('follows an edited recurring amount, including an occurrence due today', async () => {
+    const g = await group();
+    const today = new Date().toISOString().slice(0, 10);
+    db.insert(schedules)
+      .values({
+        id: 'rent',
+        name: 'Rent',
+        amount: -478000,
+        recurrenceType: 'monthly',
+        startDate: today,
+        accountId: 'mine',
+      })
+      .run();
+    db.insert(scheduleOccurrences)
+      .values({
+        id: 'rent-today',
+        scheduleId: 'rent',
+        scheduledDate: today,
+        expectedDate: today,
+        expectedAmount: -478000,
+      })
+      .run();
+    await call(`/${g.group.id}/recurring-bills`, { scheduleIds: ['rent'] });
+    const edited = await fetch(base.replace('/households', '/schedules/rent'), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: -495300 }),
+    });
+    expect(edited.status).toBe(200);
+    const bill = (await call(`/${g.group.id}`)).data.recurringBills.find(
+      (b: any) => b.scheduleId === 'rent',
+    );
+    expect(bill.amount).toBe(495300);
+    expect(bill.shares.map((s: any) => s.amount)).toEqual([165100, 165100, 165100]);
   });
 
   it('adds and renames people, keeping their entries and balance', async () => {
