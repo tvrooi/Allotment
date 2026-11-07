@@ -3,8 +3,7 @@ import { CashRunway } from '../components/forecast/CashRunway';
 import { GuideLink } from '../components/guide/GuideLink';
 import { LongTermForecast } from '../components/longterm/LongTermForecast';
 import { PrivateSection } from '../components/ui/Private';
-import { tabIds } from '../components/ui/tabList';
-import { TabList } from '../components/ui/TabList';
+import { tabIds, TabList } from '../components/ui/tabList';
 
 // The Forecast page: the long-term, decades-long view first, with the cash runway (the next
 // 30 days to two years) as its second tab. Neither writes to the budget.

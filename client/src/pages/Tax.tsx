@@ -28,7 +28,7 @@ import { formatCurrency } from '../utils/currency';
 import { formatDay } from '../utils/dates';
 import { AssetsTab, type AssetPrefill } from '../components/tax/Assets';
 import { ASSET_LABELS, type AssetLabel } from '../api/assets';
-import { TabList } from '../components/ui/TabList';
+import { TabList } from '../components/ui/tabList';
 
 // Tax time (docs/RECEIPTS-AND-TAX.md): a financial year's deductions by return label, with
 // their receipts, and the inbox of receipts not yet matched to a transaction. Record keeping

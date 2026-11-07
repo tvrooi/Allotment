@@ -9,7 +9,7 @@ import { useOpenFromLink } from '../hooks/useOpenFromLink';
 import { ReceiptsTab, ScanReceiptButton, useAddReceipts } from '../components/receipts/ReceiptsTab';
 import { Tip } from '../components/guide/Tip';
 import { TIPS } from '../guides';
-import { TabList } from '../components/ui/TabList';
+import { TabList } from '../components/ui/tabList';
 import {
   FILTER_KEYS,
   filtersFromSearch,

@@ -19,10 +19,9 @@ import {
   useScheduleOccurrences,
 } from '../hooks/useSchedules';
 import type { Schedule } from '../types';
-import { tabIds } from '../components/ui/tabList';
+import { tabIds, TabList } from '../components/ui/tabList';
 import { format, subDays, addDays } from 'date-fns';
 import { nearMissDraft, type ScheduleDraft } from '../utils/nearMiss';
-import { TabList } from '../components/ui/TabList';
 
 const tabs = [
   { id: 'monthly' as const, label: 'Monthly' },
