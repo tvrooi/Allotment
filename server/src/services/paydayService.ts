@@ -2,7 +2,7 @@ import { monthEnd, perPeriodNeed } from './fundingMath.js';
 import { fundingState } from './budgetService.js';
 import { budgetWithTargets } from './targetService.js';
 import { inactiveGoalCategories } from './goalLifecycle.js';
-import { personalBudgetAccount } from './balances.js';
+import { budgetAccountScope, plansInPersonalBudget } from './balances.js';
 import { and, eq, lte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns';
@@ -135,14 +135,7 @@ export function incomeOptions(today: string) {
 
 export function billCoverage(from: string, to: string, today: string) {
   const accountRows = db.select().from(accounts).all();
-  const personalIds = new Set(
-    db
-      .select({ id: accounts.id })
-      .from(accounts)
-      .where(personalBudgetAccount)
-      .all()
-      .map((a) => a.id),
-  );
+  const budgetScope = budgetAccountScope();
   const expenseIds = new Set(expenseCategories().map((c) => c.id));
   const ctx = currencyContext();
   const bills: {
@@ -154,11 +147,13 @@ export function billCoverage(from: string, to: string, today: string) {
     estimated: boolean;
   }[] = [];
   for (const schedule of db.select().from(schedules).where(eq(schedules.status, 'active')).all()) {
-    if (schedule.amount >= 0 || !schedule.categoryId || !expenseIds.has(schedule.categoryId))
+    if (
+      !schedule.categoryId ||
+      !expenseIds.has(schedule.categoryId) ||
+      !plansInPersonalBudget(schedule, budgetScope)
+    )
       continue;
     const account = accountRows.find((a) => a.id === schedule.accountId);
-    if (account && !personalIds.has(account.id)) continue;
-    if (schedule.transferAccountId && personalIds.has(schedule.transferAccountId)) continue;
     const stored = db
       .select()
       .from(scheduleOccurrences)

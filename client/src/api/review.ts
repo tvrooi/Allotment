@@ -250,5 +250,7 @@ export interface Housekeeping {
   missingRoundUps: { accountId: string; accountName: string; count: number; total: number }[];
   unlinkedSavers: { name: string; count: number; net: number; ids: string[] }[];
   unusedCategories: number;
+  /** Active recurring bills with no category: no envelope expects them */
+  uncategorisedRecurring: { id: string; name: string; amount: number }[];
 }
 export const getHousekeeping = () => apiFetch<Housekeeping>('/review/housekeeping');

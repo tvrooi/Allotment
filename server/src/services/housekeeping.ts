@@ -1,16 +1,24 @@
 import { and, eq, isNull, min, ne } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { accounts, budgetMonths, cardFunding, categories, transactions } from '../db/schema.js';
+import {
+  accounts,
+  budgetMonths,
+  cardFunding,
+  categories,
+  schedules,
+  transactions,
+} from '../db/schema.js';
 import { getBudgetSettings, todayIso } from './mainAmountService.js';
 import { roundUpCheck } from './upReviewService.js';
-import { onBudget } from './balances.js';
+import { budgetAccountScope, onBudget, plansInPersonalBudget } from './balances.js';
 
 // Setup problems that quietly make a budget less useful, for the Review page and assistants:
 // - a budget counting years of imported history (every old purchase is overspending);
 // - Up round-up debits missing from an account the bank proves short by exactly those;
 // - movements to or from savers that aren't in Allotment (closed, or never connected), which
 //   otherwise look like spending and income;
-// - categories nothing has ever used.
+// - categories nothing has ever used;
+// - recurring bills with no category, which no envelope expects and no payday plan funds.
 // Read-only: each item links to where the owner fixes it.
 
 /** Up's own descriptions for a saver movement; the saver's name is the last part */
@@ -86,6 +94,28 @@ function unlinkedSavers() {
   return [...groups.values()].sort((a, b) => b.count - a.count);
 }
 
+/**
+ * Active recurring payments the personal budget should plan for (`plansInPersonalBudget`) but
+ * can't: with no category, no envelope expects them and the payday plan sets nothing aside.
+ */
+function uncategorisedRecurring() {
+  const scope = budgetAccountScope();
+  return db
+    .select({
+      id: schedules.id,
+      name: schedules.name,
+      amount: schedules.amount,
+      accountId: schedules.accountId,
+      transferAccountId: schedules.transferAccountId,
+    })
+    .from(schedules)
+    .where(and(eq(schedules.status, 'active'), isNull(schedules.categoryId)))
+    .all()
+    .filter((s) => plansInPersonalBudget(s, scope))
+    .map(({ id, name, amount }) => ({ id, name, amount }))
+    .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+}
+
 function unusedCategoryCount() {
   const payment = new Set(
     db
@@ -127,5 +157,6 @@ export function housekeeping(today = todayIso()) {
       })),
     unlinkedSavers: unlinkedSavers(),
     unusedCategories: unusedCategoryCount(),
+    uncategorisedRecurring: uncategorisedRecurring(),
   };
 }

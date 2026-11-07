@@ -5,10 +5,35 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 7 November 2026 (live app on up.129: D2a email codes, D2b reminders).
+Last updated: 7 November 2026 (live app on up.129: D2a email codes, D2b reminders; up.130 in review).
 
 ## State
 
+- **Recurring bills, shared costs and categories (up.130; owner-requested 7 November 2026; no
+  migration, no backup change):** one rule for which recurring items the personal budget plans
+  for, `plansInPersonalBudget` with `budgetAccountScope` in `services/balances.ts` (money out of
+  an open personal account, spent or moved across the boundary into a household or off-budget
+  account), used by `expectedDebits` (which skipped only off-budget accounts, so a household
+  account's rent was expected in full in a personal envelope, and skipped every transfer) and
+  `billCoverage` (payday). `scheduleScopes` gives a household-account bill not on the household's
+  recurring bills list the owner's part of its newest linked expense's shares, scaled with
+  `allocateShares` (`latestRecordedSplits`), before the default split.
+  `linkOccurrenceToTransaction` (`matchingEngine.ts`) now runs in one DB transaction and fills a
+  null category from the schedule (not split parents, adjustments or a transfer unless the
+  schedule is one). `housekeeping().uncategorisedRecurring` (Review → Tidy up, MCP
+  `budget_housekeeping`). `GET /reports/uncategorised-payees` groups by payee and scope
+  (`personal` first, `household` with the household, `off_budget`) and adds `housemate` from
+  `housematePayees`; Sort your first import lists `personal` only and doesn't lead with Income
+  for housemate money. `repaymentCategoryOffers` also offers your own settlements paid out
+  (`direction: 'from_you'`, `personId`): your shares of expenses the recipient paid, categorised
+  from a linked payment or, with none, the payee the description names exactly (default
+  category, else most used). Tests: `expectedDebits.test.ts`, `scheduleScope.test.ts`,
+  `matchingEngine.test.ts` (new), `budgetUx.test.ts`, `routes/uncategorisedPayees.test.ts` (new),
+  `routes/householdCategoryOffers.test.ts`, e2e `household-categories.spec.ts` (new). Not done:
+  whether a shared bill paid from a personal account should be planned at the owner's share
+  rather than in full (payday and expected still plan the full amount, since the owner pays it
+  first); a policy guard refusing an Income category for housemate money (only described to
+  assistants, since an owner may keep such a category on purpose).
 - **Reminders for separate budgets (up.129, D2b of the Larger features group; gateway, budget
   and client; budget migration 0079, additive):** the gateway listens on loopback only
   (`gateway/notifyListener.ts`, `127.0.0.1`, `FLYBUDGET_NOTIFY_PORT`, default one below the first

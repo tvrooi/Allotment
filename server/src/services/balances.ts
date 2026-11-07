@@ -25,6 +25,43 @@ export const personalBudgetAccount: SQL = and(
   sql`not exists (select 1 from household_groups hg where hg.account_id = ${accounts.id})`,
   sql`not exists (select 1 from household_pool_accounts hp where hp.account_id = ${accounts.id})`,
 )!;
+/**
+ * Accounts in the personal budget, and which of those are closed: what a recurring payment
+ * must leave (or cross out of) for an envelope to expect it. A household account or an
+ * off-budget one is in neither.
+ */
+export function budgetAccountScope() {
+  const rows = db
+    .select({ id: accounts.id, closedAt: accounts.closedAt })
+    .from(accounts)
+    .where(personalBudgetAccount)
+    .all();
+  return {
+    personal: new Set(rows.map((a) => a.id)),
+    closed: new Set(rows.filter((a) => a.closedAt).map((a) => a.id)),
+  };
+}
+
+/**
+ * Whether a recurring item is money the personal budget must plan for: money out of an open
+ * personal account (or with no account), either spent or moved across the budget boundary into
+ * a household or off-budget account. A move between personal accounts, or anything paid from a
+ * household or off-budget account, is not. The Budget page's expected debits and the payday
+ * plan both use this, so the two never disagree about which bills an envelope must cover.
+ */
+export function plansInPersonalBudget(
+  schedule: { amount: number; accountId: string | null; transferAccountId: string | null },
+  scope: ReturnType<typeof budgetAccountScope>,
+) {
+  if (schedule.amount >= 0) return false;
+  if (
+    schedule.accountId &&
+    (!scope.personal.has(schedule.accountId) || scope.closed.has(schedule.accountId))
+  )
+    return false;
+  return !schedule.transferAccountId || !scope.personal.has(schedule.transferAccountId);
+}
+
 export const onBudget: SQL = inArray(
   transactions.accountId,
   db.select({ id: accounts.id }).from(accounts).where(personalBudgetAccount),
