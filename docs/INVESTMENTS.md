@@ -24,7 +24,9 @@ to reproduce Monarch's engine.
 
 ## Deferred
 
-These need their own design and synthetic validation before any code:
+These need their own design and synthetic validation before any code. Sales, dividends and
+franking are designed in [INVESTMENT-SALES-AND-INCOME.md](INVESTMENT-SALES-AND-INCOME.md) (D3),
+approved 7 November 2026 and built in phases D3a to D3c.
 
 - Sales and realized gains, lot selection (FIFO, specific identification), splits and corporate actions.
 - Dividends and distributions, reinvestment and franking credits.

@@ -634,7 +634,9 @@ site in `website/` was removed (audit decision I-9).
      the dashboard". The Budgeting group's PR list (B1 to B9) is complete.
    - Transaction detail previous/next is built (up.120); a link per transaction is not.
    - Future-month money moves; money age (deliberately not built, see BUDGET-REVIEW.md).
-   - Investments deferrals (sales, dividends, franking); receipts §6 (PDF reading, email
+   - Investments deferrals (sales, dividends, franking): designed in
+     `docs/INVESTMENT-SALES-AND-INCOME.md` (D3), design approved 7 November (its §9); next is D3a, sales.
+   - Receipts §6 (PDF reading, email
      forwarding, logbooks, depreciation, WFH hours).
    - The legacy `recurring_transactions` cleanup is done (up.123, migration 0078).
 5. **Receipt providers (up.98) follow-ups:** Anthropic's structured output is done (up.124); a
