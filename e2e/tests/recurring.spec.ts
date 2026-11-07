@@ -16,7 +16,7 @@ const scheduleRow = (page: Page, name: string) =>
 
 async function openAll(page: Page) {
   await open(page, '/recurring');
-  await page.getByRole('button', { name: 'All recurring' }).click();
+  await page.getByRole('tab', { name: 'All recurring' }).click();
 }
 
 async function createRent(api: Api, accountId: string, extra: object = {}) {
@@ -58,7 +58,7 @@ test.describe('recurring', () => {
       startDate: isoDay(1),
     });
 
-    await page.getByRole('button', { name: 'All recurring' }).click();
+    await page.getByRole('tab', { name: 'All recurring' }).click();
     await expect(scheduleRow(page, 'Streaming Plus').first()).toContainText('$15.99');
   });
 

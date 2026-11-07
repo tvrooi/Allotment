@@ -9,13 +9,13 @@ import { useOpenFromLink } from '../hooks/useOpenFromLink';
 import { ReceiptsTab, ScanReceiptButton, useAddReceipts } from '../components/receipts/ReceiptsTab';
 import { Tip } from '../components/guide/Tip';
 import { TIPS } from '../guides';
+import { TabList } from '../components/ui/tabList';
 import {
   FILTER_KEYS,
   filtersFromSearch,
   filtersToSearch,
   type FilterState,
 } from '../utils/transactionFilters';
-import { onTabListKeyDown } from '../components/ui/tabList';
 
 export default function TransactionsPage() {
   const [showAdd, setShowAdd] = useState(false);
@@ -77,12 +77,10 @@ export default function TransactionsPage() {
             </Button>
           </div>
         </div>
-        <div
+        <TabList
+          label="Transactions view"
           data-guide="transactions.tabs"
           className="scroll-row flex gap-1 mt-2 -mb-px"
-          role="tablist"
-          aria-label="Transactions view"
-          onKeyDown={onTabListKeyDown}
         >
           {(
             [
@@ -106,7 +104,7 @@ export default function TransactionsPage() {
               {label}
             </button>
           ))}
-        </div>
+        </TabList>
       </div>
       {scan.error && (
         <p role="alert" className="px-6 max-md:px-4 py-2 text-sm text-negative">

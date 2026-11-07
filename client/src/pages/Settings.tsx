@@ -23,6 +23,7 @@ import { TagManager } from '../components/settings/TagManager';
 import { BudgetStartSettings } from '../components/settings/BudgetStartSettings';
 import { LICENSE_URL, SOURCE_CODE_URL } from '../utils/project';
 import { ScrollCue } from '../components/ui/ScrollCue';
+import { onTabListKeyDown, tabIds as tabPanelIds } from '../components/ui/tabList';
 
 const tabs = [
   { id: 'categories', label: 'Categories', icon: Layers },
@@ -67,6 +68,11 @@ export default function SettingsPage() {
             className="mt-3 border-b border-border-light -mb-px"
             scrollerClassName="flex gap-0 -mb-px"
             activeKey={activeTab}
+            scrollerProps={{
+              role: 'tablist',
+              'aria-label': 'Settings sections',
+              onKeyDown: onTabListKeyDown,
+            }}
           >
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -75,8 +81,12 @@ export default function SettingsPage() {
                 <button
                   key={tab.id}
                   type="button"
+                  role="tab"
+                  id={tabPanelIds('settings', tab.id).tab}
+                  aria-controls={tabPanelIds('settings', tab.id).panel}
+                  aria-selected={isActive}
+                  tabIndex={isActive ? 0 : -1}
                   onClick={() => setActiveTab(tab.id)}
-                  aria-current={isActive ? 'page' : undefined}
                   data-scroll-active={isActive}
                   className={`flex items-center gap-1.5 px-3 py-2 max-md:min-h-11 text-sm font-medium whitespace-nowrap shrink-0 transition-colors border-b-2 ${
                     isActive
@@ -94,7 +104,12 @@ export default function SettingsPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="max-w-2xl">
+        <div
+          className="max-w-2xl"
+          role="tabpanel"
+          id={tabPanelIds('settings', activeTab).panel}
+          aria-labelledby={tabPanelIds('settings', activeTab).tab}
+        >
           {activeTab === 'categories' && <CategoryManager />}
           {activeTab === 'accounts' && <AccountReorder />}
           {activeTab === 'tags' && <TagManager />}

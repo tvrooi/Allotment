@@ -229,8 +229,8 @@ test('Settings opened on a later tab shows that tab whole', async ({ page, api }
   await api.createAccount('Everyday', 100_000);
   await open(page, '/settings?tab=connections');
   const bar = page.getByTestId('scroll-cue').first();
-  const tab = bar.getByRole('button', { name: 'Connected banks' });
-  await expect(tab).toHaveAttribute('aria-current', 'page');
+  const tab = bar.getByRole('tab', { name: 'Connected banks' });
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
   // Clear of the fade at either edge, not half hidden under it
   const t = await box(tab);
   const s = await box(bar.getByTestId('scroll-cue-scroller'));

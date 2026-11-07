@@ -391,7 +391,7 @@ test.describe('recurring', () => {
       expect(box.x + box.width, name).toBeLessThanOrEqual(viewport.width);
     }
 
-    await page.getByRole('button', { name: 'All recurring' }).click();
+    await page.getByRole('tab', { name: 'All recurring' }).click();
     await expect(page.getByText('Rent', { exact: true })).toBeVisible();
     await expect(page.getByText('Frequency', { exact: true })).toBeHidden();
     await expect(page.getByPlaceholder('Filter recurring…')).toBeVisible();
