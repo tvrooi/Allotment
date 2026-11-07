@@ -11,7 +11,11 @@
     <meta name="apple-mobile-web-app-title" content="Allotment" />
     <!-- The header colour; utils/applyTheme.ts keeps it in step with the theme -->
     <meta name="theme-color" content="#f7f5ef" />
-    <link rel="icon" type="image/png" href="/logo.png" />
+    <!-- New addresses for the Allotment mark: browsers keep a tab icon per address, so ones that
+         saw the old icon at /logo.png kept showing it -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <title>Allotment</title>
     <!-- Tells the Mac desktop app this page draws its own drag strips, so a server window can
          drop the title bar (electron/macWindow.ts). Keep it in the <head>. -->
