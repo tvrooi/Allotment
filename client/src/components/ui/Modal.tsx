@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { holdRootInert } from '../../utils/inertRoot';
+import { DiscardPrompt } from './DiscardPrompt';
 
 interface Props {
   isOpen: boolean;
@@ -9,6 +10,12 @@ interface Props {
   title: string;
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  /**
+   * The form holds changes that aren't saved. Escape, a click outside or ✕ then ask "Discard
+   * your changes?" (Keep editing / Discard) instead of closing (UX audit AU-007). The form's
+   * own Cancel and Save buttons still call `onClose` directly.
+   */
+  dirty?: boolean;
 }
 
 const sizeClasses = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-3xl' };
@@ -60,7 +67,7 @@ function tabbables(el: HTMLElement) {
   );
 }
 
-export function Modal({ isOpen, onClose, title, children, size = 'md' }: Props) {
+export function Modal({ isOpen, onClose, title, children, size = 'md', dirty = false }: Props) {
   // Stay mounted briefly after closing so the dialog can fade out
   const [mounted, setMounted] = useState(isOpen);
   if (isOpen && !mounted) setMounted(true);
@@ -93,6 +100,26 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: Props) 
   const buried = stack.includes(id) && stack[stack.length - 1] !== id;
   const onTop = isOpen && !buried;
 
+  // Closing a form with unsaved changes asks first; where focus was, to go back to
+  const [asking, setAsking] = useState(false);
+  const askedFrom = useRef<Element | null>(null);
+  if (asking && (!isOpen || !dirty)) setAsking(false);
+  const requestClose = () => {
+    if (!dirty) return onClose();
+    // Escape (or outside) again while asking means "not now"
+    if (asking) return keepEditing();
+    askedFrom.current = document.activeElement;
+    setAsking(true);
+  };
+  const keepEditing = () => {
+    setAsking(false);
+    const back = askedFrom.current;
+    if (back instanceof HTMLElement && back.isConnected) back.focus();
+  };
+  // The keyboard handler below is set up once per open; it always calls the current one
+  const requestCloseRef = useRef(requestClose);
+  requestCloseRef.current = requestClose;
+
   useEffect(() => {
     if (!isOpen) return;
     setOpenStack([...openStack, id]);
@@ -118,7 +145,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: Props) 
     if (!onTop) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (!e.defaultPrevented) onClose();
+        if (!e.defaultPrevented) requestCloseRef.current();
         return;
       }
       if (e.key !== 'Tab') return;
@@ -146,7 +173,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: Props) 
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [onTop, onClose]);
+  }, [onTop]);
 
   if (!mounted) return null;
 
@@ -158,7 +185,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: Props) 
     >
       <div
         className={`fixed inset-0 bg-black/30 backdrop-blur-sm cursor-pointer ${closing ? 'animate-fade-out' : 'animate-fade-in'}`}
-        onClick={onClose}
+        onClick={requestClose}
       />
       {/* Tall dialogs scroll with the page instead of getting cut off. Phones: a sheet that
           slides up from the bottom edge, full width, clear of the home indicator */}
@@ -176,7 +203,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: Props) 
               {shown.current.title}
             </h2>
             <button
-              onClick={onClose}
+              onClick={requestClose}
               aria-label="Close"
               className="p-1 max-md:-mr-2 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md text-text-tertiary hover:text-text-secondary hover:bg-surface-alt transition-colors"
             >
@@ -184,6 +211,16 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: Props) 
             </button>
           </div>
           <div className="px-6 max-md:px-4 py-5">{shown.current.children}</div>
+          {asking && (
+            <DiscardPrompt
+              onKeep={keepEditing}
+              onDiscard={() => {
+                setAsking(false);
+                onClose();
+              }}
+              className="sticky bottom-0 mx-6 mb-5 max-md:mx-4"
+            />
+          )}
         </div>
       </div>
     </div>,

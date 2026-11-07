@@ -50,6 +50,19 @@ interface Props {
   editGoal?: Goal | null;
 }
 
+function startingValues(goal: Goal | null | undefined) {
+  return {
+    categoryId: goal?.categoryId ?? '',
+    name: goal?.name ?? '',
+    targetAmount: goal?.targetAmount ?? 0,
+    currentAmount: goal?.currentAmount ?? 0,
+    targetDate: goal?.targetDate ?? '',
+    accountId: goal?.accountId ?? '',
+    icon: goal?.icon ?? 'PiggyBank',
+    color: goal?.color ?? '#2563EB',
+  };
+}
+
 export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
   const fieldId = useId();
   const { data: accounts = [] } = useAccounts();
@@ -66,28 +79,26 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // What the form opens with: a new goal's defaults, or the goal being edited
+  const start = startingValues(editGoal);
   useEffect(() => {
-    if (isOpen) setError('');
-    if (isOpen && editGoal) {
-      setCategoryId(editGoal.categoryId ?? '');
-      setName(editGoal.name);
-      setTargetAmount(editGoal.targetAmount);
-      setCurrentAmount(editGoal.currentAmount);
-      setTargetDate(editGoal.targetDate ?? '');
-      setAccountId(editGoal.accountId ?? '');
-      setIcon(editGoal.icon);
-      setColor(editGoal.color);
-    } else if (isOpen) {
-      setCategoryId('');
-      setName('');
-      setTargetAmount(0);
-      setCurrentAmount(0);
-      setTargetDate('');
-      setAccountId('');
-      setIcon('PiggyBank');
-      setColor('#2563EB');
-    }
+    if (!isOpen) return;
+    setError('');
+    setCategoryId(start.categoryId);
+    setName(start.name);
+    setTargetAmount(start.targetAmount);
+    setCurrentAmount(start.currentAmount);
+    setTargetDate(start.targetDate);
+    setAccountId(start.accountId);
+    setIcon(start.icon);
+    setColor(start.color);
+    // `start` follows editGoal; a new object each render must not reset what's typed
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- start is derived from editGoal
   }, [isOpen, editGoal]);
+
+  // Anything changed from that, so closing by Escape or outside asks first (UX audit AU-007)
+  const now = { categoryId, name, targetAmount, currentAmount, targetDate, accountId, icon, color };
+  const dirty = (Object.keys(start) as (keyof typeof start)[]).some((k) => now[k] !== start[k]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -114,7 +125,13 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={editGoal ? 'Edit goal' : 'Add goal'} size="sm">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={editGoal ? 'Edit goal' : 'Add goal'}
+      size="sm"
+      dirty={dirty && !saving}
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
           <label htmlFor={`${fieldId}-name`} className="text-sm font-medium text-text-secondary">

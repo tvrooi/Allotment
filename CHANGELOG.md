@@ -1,5 +1,12 @@
 # Changes
 
+## 0.2.0-up.137
+
+From the UI and UX audit (`docs/UX-UI-AUDIT.md`, finding AU-007).
+
+- **A half-written goal isn't lost to one Escape.** If you've typed or changed anything in **Add goal** or **Edit goal**, pressing Escape, clicking outside or ✕ now asks **Discard your changes?** with **Keep editing** (already selected) or **Discard**. Pressing Escape again keeps editing. A form you haven't touched still closes straight away, and **Cancel** still cancels.
+- **Leaving a report you haven't saved asks first.** In the report builder, the back arrow asks **Leave without saving this report?** when its settings have changed since you opened or saved it, and the browser asks before closing or reloading the tab. The menu and the list of saved reports don't ask yet.
+
 ## 0.2.0-up.136
 
 From the UI and UX audit (`docs/UX-UI-AUDIT.md`, finding AU-004).

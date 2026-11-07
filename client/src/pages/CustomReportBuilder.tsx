@@ -15,6 +15,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { downloadCsv } from '../utils/exportCsv';
 import { computeDateRange, decodeRangeParam, resolveDateRange } from '../utils/dateRange';
 import { Button } from '../components/ui/Button';
+import { DiscardPrompt } from '../components/ui/DiscardPrompt';
 import type { CustomReportConfig } from '../types';
 
 const defaultConfig = (): CustomReportConfig => ({
@@ -38,6 +39,10 @@ export default function CustomReportBuilder() {
     ...defaultConfig(),
     ...(rangeParam && { dateRange: rangeParam }),
   }));
+  // The settings as last loaded or saved: anything else is unsaved work (UX audit AU-007)
+  const [baseline, setBaseline] = useState(() => JSON.stringify(config));
+  const dirty = JSON.stringify(config) !== baseline;
+  const [leaving, setLeaving] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
   const [reportName, setReportName] = useState('');
 
@@ -54,10 +59,12 @@ export default function CustomReportBuilder() {
       const firstLoad = rangeAppliedFor.current !== savedReport.id;
       rangeAppliedFor.current = savedReport.id;
       // Live ranges were computed when the report was saved; bring them up to today
-      setConfig({
+      const loaded = {
         ...savedReport.config,
         dateRange: (firstLoad && rangeParam) || resolveDateRange(savedReport.config.dateRange),
-      });
+      };
+      setConfig(loaded);
+      setBaseline(JSON.stringify(loaded));
       setReportName(savedReport.name);
     }
   }, [savedReportId, savedReportUpdatedAt]);
@@ -67,14 +74,27 @@ export default function CustomReportBuilder() {
 
   // The dialog waits for this, closes on success and shows the reason on failure
   async function handleSave(name: string) {
+    const saving = JSON.stringify(config);
     if (id && savedReport) {
       await updateMutation.mutateAsync({ id, data: { name, config } });
+      setBaseline(saving);
     } else {
       const saved = await createMutation.mutateAsync({ name, config, dashboardPageId });
+      setBaseline(saving);
       const back = dashboardPageId ? `?dashboard=${dashboardPageId}` : '';
       navigate(`/reports/custom/${saved.id}${back}`, { replace: true });
     }
   }
+
+  // Closing or reloading the tab with unsaved settings: the browser asks
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+
+  const backTo = dashboardPageId ? `/reports?dashboard=${dashboardPageId}` : '/reports';
 
   function handleExport() {
     if (!data) return;
@@ -101,8 +121,13 @@ export default function CustomReportBuilder() {
       <div className="px-6 py-3 border-b border-border bg-surface flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <Link
-            to={dashboardPageId ? `/reports?dashboard=${dashboardPageId}` : '/reports'}
+            to={backTo}
             aria-label="Back to reports"
+            onClick={(e) => {
+              if (!dirty) return;
+              e.preventDefault();
+              setLeaving(true);
+            }}
             className="text-text-tertiary hover:text-text-secondary transition-colors"
           >
             <ArrowLeft size={16} />
@@ -121,6 +146,15 @@ export default function CustomReportBuilder() {
           </Button>
         </div>
       </div>
+
+      {leaving && dirty && (
+        <DiscardPrompt
+          message="Leave without saving this report?"
+          onKeep={() => setLeaving(false)}
+          onDiscard={() => navigate(backTo)}
+          className="mx-6 mt-3 max-md:mx-4"
+        />
+      )}
 
       {/* Phones: the chart on top, the options below it, in one scrolling column */}
       <div className="flex max-md:flex-col flex-1 overflow-hidden max-md:overflow-y-auto">

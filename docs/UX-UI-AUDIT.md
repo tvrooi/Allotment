@@ -264,6 +264,17 @@ The other callers still use `mutate` and can move over one at a time. Test: `e2e
 
 **P2 · Usability · Shared convention; reproduced locally · Effort M · Confidence High for goal; medium for other callers.**
 
+**Status: fixed in 0.2.0-up.137 for the goal form and the report builder's Back link.** The shared parts:
+
+- `ui/Modal` takes `dirty`. Escape, a backdrop click or ✕ then show `ui/DiscardPrompt`, "Discard your changes?", with **Keep editing** focused and **Discard**. Escape on the prompt keeps editing. A clean form closes in one step, and the form's own Cancel and Save are unchanged.
+- `GoalFormModal` compares its fields with what it opened with.
+- `CustomReportBuilder` compares its settings with those last loaded or saved. Its Back link asks "Leave without saving this report?", and `beforeunload` covers closing the tab.
+
+Test: `e2e/tests/unsaved-drafts.spec.ts`, at desktop and 390 px, including a saved and a reopened report that must not ask. It fails without the change. Still open:
+
+- Sidebar links and the saved-reports list don't ask. The app uses `BrowserRouter`/`HashRouter`, not a data router, so react-router's `useBlocker` isn't available.
+- Other multi-field dialogs can pass `dirty` as they're found.
+
 - **Reproduce / state:** Goals → Add goal → enter “Unsaved audit goal” → Escape → reopen. Also inspect custom-report Back behavior.
 - **Evidence / source:** `final-probes.json`: dirtyDismiss=0 dialogs, reopenedName="". `GoalFormModal.tsx:117`, `Modal.tsx:62`/backdrop; `pages/CustomReportBuilder.tsx:117` navigates back without dirty protection.
 - **Current → impact:** Goal draft is lost with one Escape; custom report settings are local state until Save. Accidental dismissal costs work, particularly on long mobile forms.
