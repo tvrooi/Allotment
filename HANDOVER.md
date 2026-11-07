@@ -22,7 +22,7 @@ Last updated: 7 November 2026 (live app on up.129: D2a email codes, D2b reminder
   (AU-004; 0.2.0-up.136, merged), F unsaved drafts (AU-007; 0.2.0-up.137, merged), G tabs (AU-010; 0.2.0-up.138, merged), H report drill-through (AU-014; 0.2.0-up.139, merged), I follow-ups
   (AU-011 yearly budget month anchor; focus after a deleted row; Tax/Transactions tab panels;
   custom report table drill-through; Forecast panel layout; the slow payee delete test; 0.2.0-up.140).
-  AU-002 waits for the owner's decision after task validation. Each finding's heading in the report carries its status.
+  AU-002 phone Budget order (owner-approved without user validation) is in the same PR. Each finding's heading in the report carries its status.
 
 - **Households, round-ups, Essentials pool and brand icons (up.131; owner-requested 7 November
   2026; migrations 0080 `household_groups.is_default` and 0081 `accounts.assign_pool` +

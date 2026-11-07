@@ -363,10 +363,11 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
           <p>
             If you’re living on last month’s pay, or some of this month’s money isn’t for this
             month, choose <b>Hold money…</b> under Ready to assign in the current month and enter
-            how much. It leaves Ready to assign now, so the month can reach $0 and read fully
-            budgeted, and it comes back when next month starts. It can’t be given to a category
-            until then, and you can only hold what is ready to assign. <b>Change hold</b> and{' '}
-            <b>Release hold</b> put it back. Nothing is spent or moved out of your accounts.
+            how much (on a phone, open <b>Hold money, and how this is worked out</b> first). It
+            leaves Ready to assign now, so the month can reach $0 and read fully budgeted, and it
+            comes back when next month starts. It can’t be given to a category until then, and you
+            can only hold what is ready to assign. <b>Change hold</b> and <b>Release hold</b> put it
+            back. Nothing is spent or moved out of your accounts.
           </p>
         ),
       },

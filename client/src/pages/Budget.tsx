@@ -883,6 +883,74 @@ export default function BudgetPage() {
       </div>
     );
 
+  // Ready to assign, Put the rest in…, Hold and how it's worked out
+  const summaryPanel = (
+    <>
+      <BudgetSummaryWidget
+        funding={summary}
+        expenseAvailable={expenseTotals.balance}
+        toBeBudgeted={tbb}
+        carryOver={carryOver}
+        incomePlanned={incomeTotals.budgeted}
+        incomeEarned={incomeTotals.received}
+        expensesPlanned={expenseTotals.budgeted}
+        expensesSpent={Math.max(0, -expenseTotals.spent)}
+        savingsPlanned={savingsTotals.budgeted}
+        savingsContributed={savingsTotals.spent}
+        fixedExpenses={expensesByBudgetType.fixed}
+        flexibleExpenses={expensesByBudgetType.flexible}
+        nonMonthlyExpenses={expensesByBudgetType.nonMonthly}
+        canHold={!beforeStart && selectedMonth === format(new Date(), 'yyyy-MM')}
+        putRest={
+          beforeStart
+            ? undefined
+            : {
+                groups: categoryGroups.filter((g) => !g.isIncome),
+                disabled: !canSaveBudget || switchingMonth,
+                onPick: (categoryId, categoryName) => {
+                  const cat = allExpenseCats.find((c) => c.id === categoryId);
+                  // Everything left goes on top of what the category already has
+                  handleSave(categoryId, (cat?.budgeted ?? 0) + tbb);
+                  setPutRestNote(`Put ${formatCurrency(tbb)} in ${categoryName}.`);
+                },
+              }
+        }
+      />
+      {putRestNote && !(setBudgetMutation.error || setBulkMutation.error) && (
+        <p role="status" className="mt-2 text-xs text-text-secondary text-center">
+          {putRestNote}
+        </p>
+      )}
+    </>
+  );
+  // The month's inspector, card payments and money moves
+  const sideExtras = (
+    <>
+      <div>
+        <BudgetInspector
+          month={selectedMonth}
+          categories={allExpenseCats}
+          selectedIds={selectedIds}
+          onClear={() => setSelectedIds(new Set())}
+          onFundSelected={(ids) => fundTargetsRef.current?.open(ids)}
+        />
+      </div>
+      <div>
+        <CardPayments
+          key={`cards:${selectedMonth}`}
+          month={selectedMonth}
+          summary={summary}
+          loading={switchingMonth || switchingSummary}
+        />
+        <MoneyMoves
+          key={selectedMonth}
+          month={selectedMonth}
+          categories={groups.filter((g) => !g.isIncome).flatMap((g) => g.categories)}
+        />
+      </div>
+    </>
+  );
+
   return (
     <div className="flex flex-col h-full bg-surface">
       <div
@@ -1089,26 +1157,23 @@ export default function BudgetPage() {
         </p>
       )}
 
-      {/* Phones: the summary (with To Be Budgeted) goes above the table instead of beside it */}
       {/* While the next month loads, the previous one stays (faded) so nothing jumps */}
       <div
         aria-busy={switchingMonth}
         inert={switchingMonth}
         className={`flex max-md:flex-col flex-1 overflow-y-auto transition-opacity ${switchingMonth ? 'opacity-60 pointer-events-none' : ''}`}
       >
+        {/* Phones (UX audit AU-002): a compact Ready to assign, then the envelopes, then the
+            month's inspector, card payments and moves; searching shows only the envelopes */}
+        {isPhone && !needle && <div className="px-4 pt-3">{summaryPanel}</div>}
         <div
           data-guide="budget.categories"
-          className="flex-1 max-md:flex-none max-md:order-last max-md:overflow-x-auto"
+          className="flex-1 max-md:flex-none max-md:overflow-x-auto"
         >
           {isPhone ? (
             <PhoneBudget
+              // The envelopes you assign to first (UX audit AU-002); expected income after them
               sections={[
-                ...shownIncomeGroups.map((g) => ({
-                  key: g.id,
-                  label: g.name,
-                  isIncome: true,
-                  categories: g.categories,
-                })),
                 ...shownExpensesByType.map((bt) => ({
                   key: bt.key,
                   label: bt.label,
@@ -1126,6 +1191,12 @@ export default function BudgetPage() {
                       },
                     ]
                   : []),
+                ...shownIncomeGroups.map((g) => ({
+                  key: g.id,
+                  label: g.name,
+                  isIncome: true,
+                  categories: g.categories,
+                })),
               ]}
               cards={cardPositions}
               month={selectedMonth}
@@ -1299,71 +1370,16 @@ export default function BudgetPage() {
           )}
         </div>
 
-        <div
-          className={`w-80 max-md:w-full shrink-0 border-l max-md:border-l-0 max-md:border-b border-border p-4 self-start max-md:self-stretch sticky max-md:static top-0 ${needle ? 'max-md:hidden' : ''}`}
-        >
-          {/* On a phone, Ready to assign comes first: the inspector, card payments and moves
-              follow it */}
-          <div className="flex flex-col">
-            <div className="max-md:order-last">
-              <BudgetInspector
-                month={selectedMonth}
-                categories={allExpenseCats}
-                selectedIds={selectedIds}
-                onClear={() => setSelectedIds(new Set())}
-                onFundSelected={(ids) => fundTargetsRef.current?.open(ids)}
-              />
+        {isPhone ? (
+          !needle && <div className="p-4 space-y-4">{sideExtras}</div>
+        ) : (
+          <div className="w-80 shrink-0 border-l border-border p-4 self-start sticky top-0">
+            <div className="flex flex-col">
+              {sideExtras}
+              {summaryPanel}
             </div>
-            <div className="max-md:order-last">
-              <CardPayments
-                key={`cards:${selectedMonth}`}
-                month={selectedMonth}
-                summary={summary}
-                loading={switchingMonth || switchingSummary}
-              />
-              <MoneyMoves
-                key={selectedMonth}
-                month={selectedMonth}
-                categories={groups.filter((g) => !g.isIncome).flatMap((g) => g.categories)}
-              />
-            </div>
-            <BudgetSummaryWidget
-              funding={summary}
-              expenseAvailable={expenseTotals.balance}
-              toBeBudgeted={tbb}
-              carryOver={carryOver}
-              incomePlanned={incomeTotals.budgeted}
-              incomeEarned={incomeTotals.received}
-              expensesPlanned={expenseTotals.budgeted}
-              expensesSpent={Math.max(0, -expenseTotals.spent)}
-              savingsPlanned={savingsTotals.budgeted}
-              savingsContributed={savingsTotals.spent}
-              fixedExpenses={expensesByBudgetType.fixed}
-              flexibleExpenses={expensesByBudgetType.flexible}
-              nonMonthlyExpenses={expensesByBudgetType.nonMonthly}
-              canHold={!beforeStart && selectedMonth === format(new Date(), 'yyyy-MM')}
-              putRest={
-                beforeStart
-                  ? undefined
-                  : {
-                      groups: categoryGroups.filter((g) => !g.isIncome),
-                      disabled: !canSaveBudget || switchingMonth,
-                      onPick: (categoryId, categoryName) => {
-                        const cat = allExpenseCats.find((c) => c.id === categoryId);
-                        // Everything left goes on top of what the category already has
-                        handleSave(categoryId, (cat?.budgeted ?? 0) + tbb);
-                        setPutRestNote(`Put ${formatCurrency(tbb)} in ${categoryName}.`);
-                      },
-                    }
-              }
-            />
-            {putRestNote && !(setBudgetMutation.error || setBulkMutation.error) && (
-              <p role="status" className="mt-2 text-xs text-text-secondary text-center">
-                {putRestNote}
-              </p>
-            )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
