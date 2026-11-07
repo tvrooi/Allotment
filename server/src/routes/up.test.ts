@@ -14,7 +14,7 @@ import {
 } from '../db/schema.js';
 import { upRouter } from './up.js';
 import { createBackup, parseBackup, restoreBackup } from '../services/backupService.js';
-import { linkTransfer } from '../services/transferService.js';
+import { listTransferSuggestions } from '../services/transferService.js';
 import { syncUp, syncUpIfDue, nextUpSyncAt, setUpConnecting } from '../services/upSyncService.js';
 import { validateUpPage } from '../services/upService.js';
 import { startUpMock, UP_TEST_TOKEN, upMockTransaction } from '../test/upMock.js';
@@ -401,7 +401,9 @@ describe('native Up integration', () => {
     const initial = opening();
     expect(initial.find((a) => a.id === purchase.accountId)?.startingBalance).toBe(0);
     expect(initial.find((a) => a.id === credit.accountId)?.startingBalance).toBe(5000);
-    linkTransfer(debit.id, credit.id);
+    // Up reported both sides and the debit is exactly the purchase's round-up: linked, not asked
+    expect(debit.transferTransactionId).toBe(credit.id);
+    expect(listTransferSuggestions()).toEqual([]);
     db.update(transactions)
       .set({ notes: 'Reviewed transfer', reconciled: 1 })
       .where(eq(transactions.id, credit.id))
@@ -420,6 +422,24 @@ describe('native Up integration', () => {
     expect(mismatch.notices?.join(' ')).toContain('opening balance was preserved');
     expect(opening()).toEqual(initial);
     expect(db.select().from(transactions).all()).toEqual(snapshot);
+  });
+  it('leaves an Up transfer that is not a round-up for the owner to confirm', async () => {
+    await setup();
+    await request('/map-accounts', {
+      mappings: [
+        { upAccountId: 'spending', action: 'create' },
+        { upAccountId: 'saver', action: 'create' },
+      ],
+    });
+    mock.setMode('round-ups-plain');
+    await syncUp();
+    const debit = db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.importedId, 'up:spending:round-debit'))
+      .get()!;
+    expect(debit.transferTransactionId).toBeNull();
+    expect(listTransferSuggestions().map((s) => s.outflow.id)).toEqual([debit.id]);
   });
   it('reports matching balances when Up lists the round-up debit itself', async () => {
     await setup();

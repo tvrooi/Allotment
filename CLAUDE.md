@@ -38,7 +38,8 @@ Keep AGENTS.md and CLAUDE.md byte-identical (Codex reads one, Claude Code the ot
   Tests use mock bank data and disposable budgets only. Do not copy production data into the checkout.
 - Integer minor units for money; additive migrations; shared transaction helpers for writes.
 - Up imports settled AUD only; stable IDs prevent duplicates. Preserve reconciled/user-edited rows.
-  Review transfer suggestions; never silently guess transfers. Tokens are encrypted and excluded from exports.
+  Review transfer suggestions; never silently guess transfers (an Up round-up that Up reported
+  exactly is linked by the sync, owner-requested 7 November 2026; `linkRoundUpTransfers`). Tokens are encrypted and excluded from exports.
 - Keep host/origin/auth protections. Remote Electron pages must have no Node or preload bridge.
   A server window drops the macOS title bar only when its page has the `flybudget-mac-window`
   marker, and learns it through its user agent (`electron/macWindow.ts`), never a bridge.

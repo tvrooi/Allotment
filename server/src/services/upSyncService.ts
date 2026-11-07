@@ -16,6 +16,7 @@ import { findOverlaps, registerBalanceBefore } from './upCutover.js';
 import {
   bankObservation,
   observeUpAccount,
+  linkRoundUpTransfers,
   roundUpDebit,
   upTransactionId,
 } from './upReviewService.js';
@@ -371,6 +372,12 @@ async function runSync(forceFull: boolean): Promise<UpSyncResult> {
       } catch (err) {
         result.errors.push(syncErrorMessage(err, local.name));
       }
+    }
+    // After every account, so both sides of a round-up are in the register
+    try {
+      linkRoundUpTransfers();
+    } catch (err) {
+      console.warn(`Round-ups were not linked: ${err instanceof Error ? err.message : err}`);
     }
     setStatus(result.errors.length ? 'error' : 'good', result.errors.join(' ') || null);
     if (!result.errors.length)

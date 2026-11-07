@@ -176,10 +176,14 @@ export async function startUpMock(port = 0) {
             ...purchase,
             attributes: {
               ...purchase.attributes,
-              roundUp: {
-                amount: money(-240),
-                boostPortion: money(-200),
-              },
+              // 'round-ups-plain': the same moves without a round-up, an ordinary transfer
+              roundUp:
+                mode === 'round-ups-plain'
+                  ? null
+                  : {
+                      amount: money(-240),
+                      boostPortion: money(-200),
+                    },
             },
           },
           {
