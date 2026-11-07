@@ -104,7 +104,8 @@ export function useDeleteGoal() {
       qc.invalidateQueries({ queryKey: ['goals'] });
       if (!snapshot) return;
       let restoredId: string | undefined;
-      useUndoStore.getState().push({
+      const undoStore = useUndoStore.getState();
+      undoStore.push({
         description: `Delete goal "${snapshot.name}"`,
         undo: async () => {
           restoredId = (await recreateGoal(snapshot)).id;
@@ -115,6 +116,9 @@ export function useDeleteGoal() {
           qc.invalidateQueries({ queryKey: ['goals'] });
         },
       });
+      // The confirmation promises Undo, so offer it where a phone can reach it too, not only
+      // as Ctrl/⌘+Z (UX audit AU-009)
+      undoStore.announce(`Deleted goal "${snapshot.name}".`, true);
     },
   });
 }

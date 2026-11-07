@@ -249,6 +249,8 @@ Abbreviated source paths in findings are relative to `client/src/`; server paths
 
 **P1 · Accessibility · Shared · Effort S–M · Confidence High source/DOM; visual indicator coverage incomplete.**
 
+**Status: fixed in 0.2.0-up.132.** The blanket rule now applies only to focus that isn't keyboard focus (`:focus:not(:focus-visible)`), so keyboard focus on a chart shows the shared ring and a click or tap shows none. Test: `e2e/tests/accessibility.spec.ts` ("a chart shows the keyboard focus ring"). Still open: the per-chart screen-reader check in the acceptance criteria.
+
 - **Reproduce / state:** Dashboard → keyboard-focus the chart surface; inspect chart focus styles.
 - **Evidence / source:** `final-probes.json` shows focusable SVG role=application/tabindex=0 with outline:none; `client/src/index.css:344` removes outlines on chart wrapper/surface/all descendants. Dashboard screenshots provide context; no full screen-reader chart test was performed.
 - **Current → impact:** The global focus style is overridden throughout charts. This creates an orientation risk wherever the library does not provide an equally visible alternative.
@@ -260,6 +262,8 @@ Abbreviated source paths in findings are relative to `client/src/`; server paths
 ### AU-009 — Delete-goal copy contradicts available Undo
 
 **P2 · Content consistency · Local plus confirmation-copy sweep · Effort S · Confidence High.**
+
+**Status: fixed in 0.2.0-up.132.** Verified what `recreateGoal` restores: undo makes a new goal, so file links (removed by cascade) are not restored and the goal comes back active. The confirmation (`utils/deleteGoalMessage.ts`) now says this. Deleting a goal shows an Undo toast, so undo is reachable on a phone. Tests: `deleteGoalMessage.test.ts` and `e2e/tests/category-goals.spec.ts`. Failed deletion still follows AU-006.
 
 - **Reproduce / state:** Goals → Actions → Delete goal. Compare dialog promise with useDeleteGoal implementation.
 - **Evidence / source:** `delete-goal-390.png` says “This cannot be undone”; `pages/Goals.tsx:456`; `hooks/useGoals.ts` useDeleteGoal pushes recreateGoal undo/redo after successful deletion.
@@ -307,6 +311,8 @@ Abbreviated source paths in findings are relative to `client/src/`; server paths
 
 **P2 · Responsive usability · Settings → Preferences/local · S · High confidence.**
 
+**Status: fixed in 0.2.0-up.132.** Below `md`, each row stacks with a full-width three-column choice row; the Date format examples also wrap at 320 px. Test: `e2e/tests/phone/polish-phone.spec.ts` at 320 and 390 px. Keyboard semantics for the choice group remain with AU-010.
+
 - **Reproduce:** `/settings?tab=preferences`, 390×844, scroll to “Show in the menu”. `settings-preferences-390.png` shows a very narrow Pay later description beside three choices. Source `components/settings/SidebarFeatureSettings.tsx:54`: flex-1/min-w-0 text competes with a nonwrapping radio group.
 - **Impact:** text wraps into short fragments, increasing reading effort for the control that reveals optional features.
 - **Before → after:** below the existing phone breakpoint, use a full-width name/description row and a second full-width choice row; keep 44px targets. Desktop may keep text and choices side-by-side. Use a proper keyboard-operable single-choice group.
@@ -316,6 +322,8 @@ Abbreviated source paths in findings are relative to `client/src/`; server paths
 ### AU-013 — Correct what the guide promises about account-linked goals
 
 **P2 · Financial terminology / content defect · Guide and Goals/local · S · High confidence.**
+
+**Status: fixed in 0.2.0-up.132.** The Goals guide now names the form's **Progress source** options (a category, or **Manual tracking**) and says an account link is for reference only. Reader-prediction validation remains open.
 
 - **Reproduce:** read `/guide/goals`, then Goals → Add goal → Progress source/Linked account. `guide-goals-390.png` says a goal can “follow an account”. The form says “Account links are for reference only”; `goals-dialog-390.png`. Source `userGuide/articles.tsx:865`, `GoalFormModal.tsx:153`, `pages/Goals.tsx:31`, `server/src/routes/goals.ts:43`.
 - **Impact:** someone may expect a Saver balance to update the goal automatically, although manual goals use currentAmount and account links are references.

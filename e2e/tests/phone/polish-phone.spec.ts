@@ -270,3 +270,31 @@ test('the detail sheet steps to the previous and next transaction with 44 px but
   await expect(panel.getByText('Corner Grocery', { exact: true })).toBeVisible();
   expect(await sidewaysOverflow(page)).toEqual([]);
 });
+
+// UX audit AU-012: on a phone each feature's description sat in a sliver beside its three
+// choices. It now takes the row's width, with the choices on a line of their own below.
+for (const width of [320, WIDTH]) {
+  test(`Show in the menu stacks its choices under each feature at ${width} px`, async ({
+    page,
+    api,
+  }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await api.createAccount('Everyday', 100_000);
+    await open(page, '/settings?tab=preferences');
+    const section = page.getByRole('region', { name: 'Show in the menu' });
+    const rows = section.getByRole('listitem');
+    await expect(rows.first()).toBeVisible();
+    for (const row of await rows.all()) {
+      const text = row.locator('p').first();
+      const choices = row.getByRole('radiogroup');
+      const [r, t, c] = [await box(row), await box(text), await box(choices)];
+      // The description uses most of the row, and the choices start below it
+      expect(t.width).toBeGreaterThan(r.width * 0.8);
+      expect(c.y).toBeGreaterThanOrEqual(t.y + t.height);
+      for (const choice of await choices.getByRole('radio').all()) {
+        expect((await box(choice)).height).toBeGreaterThanOrEqual(44);
+      }
+    }
+    expect(await sidewaysOverflow(page)).toEqual([]);
+  });
+}

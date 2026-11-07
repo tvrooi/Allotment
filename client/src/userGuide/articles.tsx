@@ -861,10 +861,19 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
       {
         heading: 'Two kinds',
         body: (
-          <p>
-            A goal can follow an account (like an emergency fund in a Saver) or an envelope (like a
-            holiday). Give it a target amount and, if you like, a date.
-          </p>
+          <>
+            <p>
+              Pick a <b>Progress source</b> when you add a goal. <b>A category:</b> progress is the
+              money available in that envelope. Assigning to it on the Budget moves you closer;
+              spending from it or moving money out moves you back.
+            </p>
+            <p>
+              <b>Manual tracking:</b> you update <b>Saved so far</b> yourself. You can link an
+              account (like an emergency fund in a Saver) for reference, but its balance doesn’t
+              update the goal.
+            </p>
+            <p>Either way, give it a target amount and, if you like, a date.</p>
+          </>
         ),
       },
     ],
