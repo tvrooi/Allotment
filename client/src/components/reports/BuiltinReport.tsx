@@ -10,6 +10,7 @@ import { dayBounds } from '../../utils/dateRange';
 import { formatCurrency } from '../../utils/currency';
 import { transactionsLink } from '../../utils/transactionFilters';
 import { Private } from '../ui/Private';
+import { StatGrid } from '../ui/StatCard';
 import { expenseFigure, incomeFigure, monthsToAverage } from '../../utils/reportSummary';
 import {
   NetWorthChart,
@@ -98,19 +99,19 @@ function SummaryTiles({ from, to }: { from: string; to: string }) {
       </div>
     );
   return (
-    <div className="h-full grid grid-cols-2 @4xl:grid-cols-4 gap-x-3 gap-y-2 content-center">
+    <StatGrid wide="container-4" className="h-full gap-x-3 gap-y-2 content-center">
       {cards.map((c) => (
-        <div key={c.label} className="text-center min-w-0">
+        <div key={c.label} className="text-center">
           {/* A size down on narrow cards (a phone), so "$12,345.67" fits two to a row */}
           <p
-            className={`text-lg @sm:text-xl font-semibold tabular-nums break-words ${c.tone ? TONE_CLASS[c.tone] : 'text-text'}`}
+            className={`text-lg @sm:text-xl font-semibold tabular-nums whitespace-nowrap ${c.tone ? TONE_CLASS[c.tone] : 'text-text'}`}
           >
             {c.value}
           </p>
           <p className="text-xs text-text-secondary mt-1">{c.label}</p>
         </div>
       ))}
-    </div>
+    </StatGrid>
   );
 }
 

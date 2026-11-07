@@ -5,7 +5,7 @@ import { useIncomeVsExpenses } from '../../hooks/useReports';
 import { formatCurrency } from '../../utils/currency';
 import { leftToSpend as envelopeLeftToSpend, savingsCategoryIds } from '../../utils/leftToSpend';
 import { useGoals } from '../../hooks/useGoals';
-import { StatCard } from '../ui/StatCard';
+import { StatCard, StatGrid } from '../ui/StatCard';
 import { monthsToAverage, periodFlow, savingsRate } from '../../utils/reportSummary';
 import { usePreferencesStore } from '../../store/preferencesStore';
 
@@ -65,7 +65,7 @@ export default function SummaryStats({ currentMonth }: Props) {
   const rate = exactRate === null ? null : Math.round(exactRate);
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <StatGrid>
       {planned ? (
         <StatCard
           label="Left to spend"
@@ -104,7 +104,7 @@ export default function SummaryStats({ currentMonth }: Props) {
         </div>
         {rate !== null ? (
           <p
-            className={`text-xl font-semibold tabular-nums tracking-tight mt-2 ${rate >= savingsGoal ? 'text-positive' : 'text-text'}`}
+            className={`text-xl font-semibold tabular-nums tracking-tight mt-2 whitespace-nowrap ${rate >= savingsGoal ? 'text-positive' : 'text-text'}`}
           >
             {rate}%
           </p>
@@ -115,6 +115,6 @@ export default function SummaryStats({ currentMonth }: Props) {
           </>
         )}
       </div>
-    </div>
+    </StatGrid>
   );
 }

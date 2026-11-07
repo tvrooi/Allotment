@@ -2,6 +2,7 @@ import { format, parseISO } from 'date-fns';
 import { ChartNoAxesColumn } from 'lucide-react';
 import { formatCurrency } from '../../utils/currency';
 import { CATEGORY_COLORS } from '../../utils/chartColors';
+import { StatGrid } from '../ui/StatCard';
 
 export const EXPENSE_COLORS = CATEGORY_COLORS;
 
@@ -135,16 +136,14 @@ export function StatCardRow({
   if (!cards.length) return null;
   if (variant === 'hero') {
     return (
-      <div
-        className={`grid grid-cols-2 ${cards.length % 3 === 0 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-4 mb-6`}
-      >
+      <StatGrid wide={cards.length % 3 === 0 ? 3 : 4} className="gap-4 mb-6">
         {cards.map((c) => (
           <div
             key={c.label}
             className="rounded-xl bg-surface border border-border-light shadow-card px-4 py-6 text-center"
           >
             <p
-              className={`text-xl font-semibold tabular-nums ${c.tone ? TONE_CLASS[c.tone] : 'text-text'}`}
+              className={`text-xl font-semibold tabular-nums whitespace-nowrap ${c.tone ? TONE_CLASS[c.tone] : 'text-text'}`}
             >
               {c.value}
             </p>
@@ -152,7 +151,7 @@ export function StatCardRow({
             {c.sub && <p className="text-xs text-text-tertiary mt-0.5">{c.sub}</p>}
           </div>
         ))}
-      </div>
+      </StatGrid>
     );
   }
   return (
@@ -165,7 +164,7 @@ export function StatCardRow({
           <p className="text-xs text-text-tertiary">{c.label}</p>
           {c.sub && <p className="text-2xs text-text-tertiary">{c.sub}</p>}
           <p
-            className={`text-lg font-semibold mt-0.5 tabular-nums ${c.tone ? TONE_CLASS[c.tone] : 'text-text'}`}
+            className={`text-lg font-semibold mt-0.5 tabular-nums whitespace-nowrap ${c.tone ? TONE_CLASS[c.tone] : 'text-text'}`}
           >
             {c.value}
           </p>
