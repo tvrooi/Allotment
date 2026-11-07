@@ -578,6 +578,9 @@ site in `website/` was removed (audit decision I-9).
 
 ## Open items (pick up here)
 
+0. **November 2026 owner requests:** households, cancelled recurring, Up round-ups, Essentials
+   pool and the brand sweep are planned in `docs/PLAN-2026-11-HOUSEHOLDS-POOLS-ROUNDUPS.md`; build
+   them one PR per section, in order.
 1. **Confirm the live app after each release:** version, health, and that the budget opens. In
    November, check the October deficits no longer carry. Ask the owner to choose a receipt
    provider (Anthropic or OpenAI key) and press **Try a sample receipt**.
