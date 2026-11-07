@@ -1,7 +1,8 @@
 # Email codes and reminders for separate budgets
 
-Status: **design, waiting for the owner's decisions** (7 November 2026). D2 of the Larger
-features group. It finishes step 3 of [MULTI-USER-PLAN.md](MULTI-USER-PLAN.md) (SMTP email) and
+Status: **design approved, not built** (7 November 2026). The owner took every recommendation
+except decision 5: each person chooses where their codes go (see "Owner decisions"). D2 of the
+Larger features group. It finishes step 3 of [MULTI-USER-PLAN.md](MULTI-USER-PLAN.md) (SMTP email) and
 the reminders gap in HANDOVER open items 3 and 9. Nothing here is built.
 
 ## The problem
@@ -83,12 +84,15 @@ Two things work with one budget but not behind the multi-user gateway:
   a six-digit code there; the address is saved only once the person types it back. They can
   remove it at any time. Confirmation uses a new table (`email_codes`: person, address, hash,
   expiry, tries) instead of rebuilding `codes`.
-- **`people.db` gets its first additive change:** `people.email` and `people.email_confirmed_at`,
+- **`people.db` gets its first additive change:** `people.email`, `people.email_confirmed_at` and
+  `people.code_channel`,
   added after a `pragma table_info` check, so an existing `people.db` keeps every row and a second
   start changes nothing. It is not part of any budget's backup; the app's cold backup includes it.
 - **Forgot password:** a person with a confirmed address gets the same 10-minute code by email
-  (subject "Allotment password code"). With a phone too, see decision 5. The administrator's
-  24-hour code also goes to their address and stays in the Log. The answer stays the same for
+  (subject "Allotment password code"). A person with both a phone and a confirmed address chooses
+  where codes go: phone, email or both (decision 5; both until they choose, stored as
+  `people.code_channel`). The administrator's 24-hour code also goes where they chose and stays in
+  the Log. The answer stays the same for
   everyone, now "…to their phone or email…".
 - **Limits:** the limit per IP address stays. Per person, at most one code a minute and ten emails a
   day across reset and confirmation codes, so Allotment can't be used to flood an inbox. Over the
@@ -152,7 +156,8 @@ types back a code sent to it, as for email. Phones already saved stay as they ar
 - `gateway/gateway.test.ts` with an injected mailer: confirming an address (right code saves;
   wrong code, five tries, expiry and another person's code refused), forgot password by email
   (sent; the same answer for an unknown name or a person with no destination; the per-person
-  limits), the administrator's code by email and in the Log, and the launch environment of a
+  limits), codes going only where the person chose (phone, email or both), the administrator's
+  code by email and in the Log, and the launch environment of a
   budget holding no SMTP setting.
 - The notify listener: the right token reaches only its own person's destination; a missing or
   other token is refused (401); the public port has no `/notify` (404); oversized or extra fields
@@ -184,6 +189,9 @@ install starts unchanged. Before installing on the live app, take the usual cold
 
 ## Owner decisions
 
+Taken on 7 November 2026: the owner endorsed every recommendation except decision 5, where each
+person chooses where their codes go (phone, email or both). Nothing is built yet; D2a comes first.
+
 1. **Where the mail server is set.** Recommended: S1, the app's options in Home Assistant. Or S2,
    an administrator page in Allotment; S3 for Docker can follow either.
 2. **Mail library.** Recommended: Nodemailer (M1). Or our own SMTP client (M2).
@@ -191,7 +199,7 @@ install starts unchanged. Before installing on the live app, take the usual cold
 4. **TLS.** Recommended: always (`tls` or `starttls`, certificate checked), with plain SMTP only to
    a loopback host for tests. Or also allow plain SMTP to an internal relay on your network.
 5. **A person with both a phone and an email.** Recommended: the code goes to both. Or each
-   person picks one.
+   person picks one. **Owner's choice: each person chooses phone, email or both.**
 6. **Reminders.** Recommended: R2, with each person choosing phone, email or both (phone by
    default when they have one). Or R1 or R3.
 7. **Single-budget installs.** Recommended: not now; a single budget's forgotten password stays a

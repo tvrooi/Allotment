@@ -512,7 +512,8 @@ site in `website/` was removed (audit decision I-9).
    State). Confirm the owner has signed in with the setup code and their budget opened with its
    data, Up sync and access tokens intact. Not built yet: SMTP email codes, designed with
    reminders through the gateway in `docs/MULTI-USER-EMAIL-AND-REMINDERS.md` (D2, 7 November;
-   eight owner decisions open, no code). Shared households are combined households (up.58).
+   owner took every recommendation except decision 5: each person chooses where codes go; no
+   code yet, D2a email codes first). Shared households are combined households (up.58).
 4. **Gaps found in the 26 October audit** (not built or not documented):
    - User guide pages for payday plans, budget review, card payments and the long-term
      forecast are written (up.121), and every article is linked from its page.
