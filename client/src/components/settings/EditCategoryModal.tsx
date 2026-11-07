@@ -41,6 +41,7 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
   const [groupId, setGroupId] = useState('');
   const [budgetType, setBudgetType] = useState<BudgetType>('flexible');
   const [linkedAccountId, setLinkedAccountId] = useState('');
+  const [poolAccountId, setPoolAccountId] = useState('');
   const [keepOverspending, setKeepOverspending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { data: accounts } = useAccounts();
@@ -55,6 +56,7 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
     setGroupId(category.groupId);
     setBudgetType((category.budgetType as BudgetType) ?? 'flexible');
     setLinkedAccountId(category.linkedAccountId ?? '');
+    setPoolAccountId(category.poolAccountId ?? '');
     setKeepOverspending(category.keepOverspending === 1);
     setError(null);
     setShowEmojiPicker(false);
@@ -72,6 +74,9 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
       ['checking', 'savings', 'cash'].includes(a.type),
   );
 
+  // Accounts with their own Ready to Assign (Edit account → Own Ready to assign)
+  const pools = (accounts ?? []).filter((a) => a.assignPool === 1 && !a.closedAt);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!category || !name.trim()) return;
@@ -84,6 +89,8 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
       data.budgetType = budgetType;
     if (!isIncome && (linkedAccountId || null) !== (category.linkedAccountId ?? null))
       data.linkedAccountId = linkedAccountId || null;
+    if (!isIncome && (poolAccountId || null) !== (category.poolAccountId ?? null))
+      data.poolAccountId = poolAccountId || null;
     if (!isIncome && keepOverspending !== (category.keepOverspending === 1))
       data.keepOverspending = keepOverspending ? 1 : 0;
 
@@ -219,6 +226,30 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
             <p className="mt-1 text-xs text-text-tertiary">
               Money you transfer into this account from another budget account goes into this
               envelope, as if you had assigned it. Moving money back out takes it out again.
+            </p>
+          </div>
+        )}
+
+        {!isIncome && (pools.length > 0 || category.poolAccountId) && (
+          <div>
+            <label htmlFor="pool-account" className="block text-sm font-medium text-text mb-1.5">
+              Ready to assign from
+            </label>
+            <select
+              id="pool-account"
+              value={poolAccountId}
+              onChange={(e) => setPoolAccountId(e.target.value)}
+              className="block w-full rounded-lg border border-border px-3 py-2 text-sm bg-surface text-text focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            >
+              <option value="">The main Ready to assign</option>
+              {pools.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}’s own
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-text-tertiary">
+              For a bill paid from that account: it is funded from the money moved there.
             </p>
           </div>
         )}

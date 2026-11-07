@@ -1,4 +1,7 @@
-import { beforeAll, beforeEach, afterAll, afterEach, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, afterAll, afterEach, describe, expect, it, vi } from 'vitest';
+import fc from 'fast-check';
+import { eq } from 'drizzle-orm';
+import { setAssignPool } from './assignPools.js';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { db } from '../db/index.js';
 import {
@@ -11,6 +14,7 @@ import {
   budgetSettings,
   categoryTargets,
   goals,
+  schedules,
 } from '../db/schema.js';
 import { budgetGroups, budgetSummary } from './budgetService.js';
 import {
@@ -39,6 +43,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date(`${TODAY}T02:00:00Z`));
   for (const table of [
     budgetMoves,
+    schedules,
     transactions,
     budgetMonths,
     goals,
@@ -506,4 +511,107 @@ it('a new budget connecting its first bank starts today, and an existing one is 
   account('cash', '2026-06-01', 100_000);
   assign('food', '2026-10', 1_000);
   expect(startBudgetIfNew('2026-10-21')).toBeNull();
+});
+
+// Separate pools (assignPools.ts): an Essentials account with its own Ready to Assign
+describe('an account with its own Ready to Assign', () => {
+  const pool = (month = '2026-10') => budgetSummary(month).pools[0];
+  function setup() {
+    account('cash', '2026-09-01');
+    account('ess', '2026-09-01');
+    txn('cash', '2026-10-05', 100000, 'salary');
+    // $300 moved to Essentials
+    db.insert(transactions)
+      .values([
+        {
+          id: 'to-ess',
+          accountId: 'cash',
+          date: '2026-10-06',
+          amount: -30000,
+          transferTransactionId: 'in-ess',
+        },
+        {
+          id: 'in-ess',
+          accountId: 'ess',
+          date: '2026-10-06',
+          amount: 30000,
+          transferTransactionId: 'to-ess',
+        },
+      ])
+      .run();
+    // Rent is paid from Essentials
+    db.insert(schedules)
+      .values({
+        id: 'rent-bill',
+        name: 'Rent',
+        amount: -25000,
+        recurrenceType: 'monthly',
+        startDate: '2026-10-19',
+        accountId: 'ess',
+        categoryId: 'rent',
+      })
+      .run();
+  }
+
+  it('moves a transfer into it out of the main figure, and funds only its earmarked bills', () => {
+    setup();
+    expect(rta('2026-10')).toBe(100000);
+    db.transaction(() => setAssignPool('ess', true));
+    expect(db.select().from(categories).where(eq(categories.id, 'rent')).get()!.poolAccountId).toBe(
+      'ess',
+    );
+    expect(rta('2026-10')).toBe(70000);
+    expect(pool()).toMatchObject({ accountId: 'ess', resources: 30000, readyToAssign: 30000 });
+
+    assign('rent', '2026-10', 20000);
+    expect(pool().readyToAssign).toBe(10000);
+    expect(rta('2026-10')).toBe(70000);
+    // Essentials' own money can't fund more than it holds, even with main money left
+    expect(() => assign('rent', '2026-10', 30001)).toThrow(/ess's own Ready to assign/);
+    // And main money can't be spent past the main figure because Essentials has some left
+    expect(() => assign('food', '2026-10', 70001)).toThrow(/Not enough Ready to assign/);
+    assign('food', '2026-10', 70000);
+    expect(rta('2026-10')).toBe(0);
+
+    // Spending a bill from Essentials leaves its Ready to Assign as it was
+    txn('ess', '2026-10-19', -20000, 'rent');
+    expect(pool().readyToAssign).toBe(10000);
+
+    // Turned off, everything is one figure again and nothing was lost
+    db.transaction(() => setAssignPool('ess', false));
+    expect(budgetSummary('2026-10').pools).toEqual([]);
+    expect(rta('2026-10')).toBe(10000);
+    expect(
+      db.select().from(categories).where(eq(categories.id, 'rent')).get()!.poolAccountId,
+    ).toBeNull();
+  });
+
+  it('never counts a cent twice: main plus pools is the single figure', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 100000 }),
+        fc.integer({ min: 0, max: 30000 }),
+        fc.integer({ min: 0, max: 30000 }),
+        (food, rent, spent) => {
+          for (const table of [budgetMonths, transactions, schedules]) db.delete(table).run();
+          db.delete(accounts).run();
+          setup();
+          db.update(budgetMonths).set({ budgeted: 0 }).run();
+          db.insert(budgetMonths)
+            .values([
+              { id: 'f', month: '2026-10', categoryId: 'food', budgeted: food },
+              { id: 'r', month: '2026-10', categoryId: 'rent', budgeted: rent },
+            ])
+            .run();
+          txn('ess', '2026-10-19', -spent, 'rent');
+          db.transaction(() => setAssignPool('ess', false));
+          const single = rta('2026-10');
+          db.transaction(() => setAssignPool('ess', true));
+          const summary = budgetSummary('2026-10');
+          expect(summary.toBeBudgeted + summary.pools[0].readyToAssign).toBe(single);
+        },
+      ),
+      { numRuns: 25 },
+    );
+  });
 });

@@ -1,4 +1,5 @@
 import { moveCategoryLinks } from '../services/documentRecords.js';
+import { earmarkError } from '../services/assignPools.js';
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import {
@@ -42,6 +43,8 @@ const categorySchema = z.object({
 const categoryEditSchema = categorySchema.partial().extend({
   linkedAccountId: z.string().min(1).max(64).nullable().optional(),
   keepOverspending: z.union([z.literal(0), z.literal(1)]).optional(),
+  /** Funded from this account's own Ready to Assign (assignPools.ts); null = the main one */
+  poolAccountId: z.string().min(1).max(64).nullable().optional(),
 });
 
 /** Account types an envelope can follow: cash the budget counts, not card debt */
@@ -268,6 +271,18 @@ categoriesRouter.put('/:id', (req, res) => {
     );
     if (error) return res.status(409).json({ error });
   }
+  if (parsed.data.poolAccountId) {
+    const error = earmarkError(
+      current.id,
+      parsed.data.groupId ?? current.groupId,
+      parsed.data.poolAccountId,
+    );
+    if (error) return res.status(409).json({ error });
+  }
+  if (linked && (parsed.data.poolAccountId ?? current.poolAccountId))
+    return res
+      .status(409)
+      .json({ error: 'A category that follows an account can’t also be funded from a pool' });
   if (parsed.data.keepOverspending === 1) {
     const group = db
       .select()

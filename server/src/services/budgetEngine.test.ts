@@ -334,6 +334,8 @@ export function legacyFundingState(
     complete,
     unassignedBeforeLater,
     unassigned,
+    // Generated budgets have no separate pools (readyToAssign.test.ts covers them)
+    pools: [],
     accountIssues,
     available: complete && accountIssues.length === 0 ? Math.max(0, unassigned) : 0,
     revision: fundingRevision(),

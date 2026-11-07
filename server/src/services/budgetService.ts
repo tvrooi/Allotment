@@ -17,6 +17,7 @@ import {
   type Ledger,
 } from './budgetLedger.js';
 import { todayIso } from './mainAmountService.js';
+import { assignPools, earmarks } from './assignPools.js';
 import { monthBounds } from '../utils/date.js';
 
 export { LIQUID_ACCOUNT_TYPES } from './balances.js';
@@ -182,7 +183,24 @@ export function fundingState(asOf = todayIso(), month = asOf.slice(0, 7), today 
   // top of what later months take, and released in the month after the hold. Money in a hold
   // can't be assigned to an envelope of any month until then.
   const holdBack = capped(futureAssigned + heldFrom(l, viewMonth)) - laterDeduction;
-  const unassigned = unassignedBeforeLater - laterDeduction - holdBack;
+  const allUnassigned = unassignedBeforeLater - laterDeduction - holdBack;
+  // Separate pools (assignPools.ts): each account's balance less its earmarked envelopes. The
+  // main figures leave them out, so main + pools is what the budget would have without them.
+  const earmarked = earmarks();
+  const pools = assignPools().map((p) => {
+    const own = resourcesAt(
+      { ...l, accounts: l.accounts.filter((h) => h.account.id === p.accountId) },
+      asOf,
+      enrolledCards,
+      LIQUID_ACCOUNT_TYPES,
+    ).resources;
+    const envelopesHere = viewed
+      .filter((c) => earmarked.get(c.id) === p.accountId)
+      .reduce((s, c) => s + held(c), 0);
+    return { ...p, resources: own, envelopes: envelopesHere, readyToAssign: own - envelopesHere };
+  });
+  const pooled = pools.reduce((s, p) => s + p.readyToAssign, 0);
+  const unassigned = allUnassigned - pooled;
   return {
     balances,
     cards: card.positions.map((p) => ({ ...p })),
@@ -200,8 +218,9 @@ export function fundingState(asOf = todayIso(), month = asOf.slice(0, 7), today 
     uncategorized,
     overspent,
     complete,
-    unassignedBeforeLater,
+    unassignedBeforeLater: unassignedBeforeLater - pooled,
     unassigned,
+    pools,
     accountIssues,
     available: complete && accountIssues.length === 0 ? Math.max(0, unassigned) : 0,
     revision: fundingRevision(),
@@ -211,6 +230,7 @@ export function fundingState(asOf = todayIso(), month = asOf.slice(0, 7), today 
       uncategorized === 0 &&
       overspent === 0 &&
       unassigned >= 0 &&
+      pools.every((p) => p.readyToAssign >= 0) &&
       card.positions.every((p) => p.shortfall === 0 && p.uncoveredPayments === 0),
   };
 }

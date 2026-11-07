@@ -66,6 +66,7 @@ export const updateAccount = (
     type: AccountType;
     startingBalance: number;
     isOffBudget: number;
+    assignPool: number;
     logo: string | null;
     closedAt: null;
     currency: string | null;

@@ -231,6 +231,20 @@ export function BudgetSummaryWidget({
             </HelpTip>
           </p>
         </div>
+        {funding?.pools?.map((p) => (
+          <div
+            key={p.accountId}
+            role="status"
+            aria-label={`${p.name}: ready to assign`}
+            className={`mt-2 rounded-lg px-4 py-2 text-center ${p.readyToAssign < 0 ? 'bg-caution-subtle text-caution' : 'bg-surface-alt text-text'}`}
+          >
+            <p className="text-xs font-medium uppercase tracking-wide">{p.name}</p>
+            <p className="text-base font-semibold tabular-nums">
+              {formatCurrency(p.readyToAssign)}
+            </p>
+            <p className="text-xs text-text-secondary">to assign to the bills paid from {p.name}</p>
+          </div>
+        ))}
         {canHold && funding && funding.complete && !funding.accountIssues?.length && (
           <HoldMoney summary={funding} />
         )}

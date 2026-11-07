@@ -150,6 +150,26 @@ NULL`) stops it without rewriting a transaction or an assignment.
 - Read-only tokens can't set the link (`categoryManageAllows` in `auth/assistantPolicy.ts` lists the fields they may edit).
 - Reports still leave internal transfers out.
 
+## Accounts with their own Ready to Assign
+
+Owner-requested on 7 November 2026: an account that pays only some bills (an Up Essentials
+account for your own bills, say) can have its own Ready to Assign. **Edit account → Own Ready to
+assign for the bills paid from this account** sets `accounts.assign_pool`; turning it on earmarks
+the categories of the active recurring bills paid from it (`categories.pool_account_id`), and
+**Edit category → Ready to assign from** changes one. Turning it off returns them to the main
+figure. Code: `services/assignPools.ts`; both columns are in backups with their tables.
+
+`fundingState` gives each pool `resources` (the account's own balance, by the same rules as
+any budget account), `envelopes` (what its earmarked categories hold) and `readyToAssign` (the
+difference). The main `unassigned`, `unassignedBeforeLater` and `toBeBudgeted` leave every pool's
+`readyToAssign` out, so main plus pools is always the single figure the budget had before (a
+property test in `readyToAssign.test.ts`). A transfer from another budget account into the pool
+moves money from the main Ready to Assign to the pool's; spending from it on an earmarked bill
+leaves its Ready to Assign unchanged. The assignment guard (`budgetMoves.ts assignable`) also
+refuses a write that would take a pool below zero, with the pool's name in the message.
+Later-month assignments and holds count against the main figure. The Budget page shows each
+pool under Ready to Assign; `budget_summary` (MCP) includes `pools`.
+
 ## Resources
 
 Resources are the dated balances of personal on-budget checking, savings, cash,
