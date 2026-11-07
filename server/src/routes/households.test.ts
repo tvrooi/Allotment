@@ -10,6 +10,7 @@ import { accounts, transactions, payees, schedules, scheduleOccurrences } from '
 import { transactionsRouter } from './transactions.js';
 import { householdsRouter } from './households.js';
 import { accountsRouter } from './accounts.js';
+import { schedulesRouter } from './schedules.js';
 import { allocateShares } from '../services/householdLedger.js';
 import { createBackup, parseBackup, restoreBackup } from '../services/backupService.js';
 import { eq } from 'drizzle-orm';
@@ -24,6 +25,7 @@ beforeAll(async () => {
   app.use('/api/transactions', transactionsRouter);
   app.use('/api/households', householdsRouter);
   app.use('/api/accounts', accountsRouter);
+  app.use('/api/schedules', schedulesRouter);
   server = await new Promise<Server>((resolve) => {
     const s = app.listen(0, '127.0.0.1', () => resolve(s));
   });
@@ -523,6 +525,10 @@ describe('household attribution', () => {
     expect(createBackup().householdRecurringBills).toEqual([
       expect.objectContaining({ scheduleId: 'power', groupId: g.group.id }),
     ]);
+    // A cancelled recurring item no longer shows as a household bill
+    db.update(schedules).set({ status: 'canceled' }).where(eq(schedules.id, 'power')).run();
+    expect((await call(`/${g.group.id}`)).data.recurringBills).toEqual([]);
+    db.update(schedules).set({ status: 'active' }).where(eq(schedules.id, 'power')).run();
     const stopped = await call(`/${g.group.id}/recurring-bills/power`, undefined, 'DELETE');
     expect(stopped.data.recurringBills).toEqual([]);
     // Shared payments stay in the household
@@ -654,6 +660,61 @@ describe('household attribution', () => {
         (e: any) => e.transactionId === 'loop-manual',
       ),
     ).toBe(false);
+  });
+
+  it('follows an edited recurring amount, including an occurrence due today', async () => {
+    const g = await group();
+    const today = new Date().toISOString().slice(0, 10);
+    db.insert(schedules)
+      .values({
+        id: 'rent',
+        name: 'Rent',
+        amount: -478000,
+        recurrenceType: 'monthly',
+        startDate: today,
+        accountId: 'mine',
+      })
+      .run();
+    db.insert(scheduleOccurrences)
+      .values({
+        id: 'rent-today',
+        scheduleId: 'rent',
+        scheduledDate: today,
+        expectedDate: today,
+        expectedAmount: -478000,
+      })
+      .run();
+    await call(`/${g.group.id}/recurring-bills`, { scheduleIds: ['rent'] });
+    const edited = await fetch(base.replace('/households', '/schedules/rent'), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: -495300 }),
+    });
+    expect(edited.status).toBe(200);
+    const bill = (await call(`/${g.group.id}`)).data.recurringBills.find(
+      (b: any) => b.scheduleId === 'rent',
+    );
+    expect(bill.amount).toBe(495300);
+    expect(bill.shares.map((s: any) => s.amount)).toEqual([165100, 165100, 165100]);
+  });
+
+  it('renames a household and makes one the default', async () => {
+    const a = await group();
+    const b = await group();
+    const renamed = await call(`/${a.group.id}`, { name: 'Tristan & co' }, 'PUT');
+    expect(renamed.status).toBe(200);
+    expect(renamed.data.group.name).toBe('Tristan & co');
+    expect((await call(`/${a.group.id}`, { name: ' ' }, 'PUT')).status).toBe(400);
+    expect((await call(`/${a.group.id}`, { currency: 'USD' }, 'PUT')).status).toBe(400);
+    expect((await call('/nobody', { name: 'X' }, 'PUT')).status).toBe(400);
+
+    await call(`/${a.group.id}`, { isDefault: true }, 'PUT');
+    await call(`/${b.group.id}`, { isDefault: true }, 'PUT');
+    const listed = (await call('')).data as { id: string; isDefault: number }[];
+    expect(listed.filter((g) => g.isDefault).map((g) => g.id)).toEqual([b.group.id]);
+    expect(
+      (createBackup().householdGroups as any[]).find((g) => g.id === b.group.id),
+    ).toMatchObject({ isDefault: 1 });
   });
 
   it('adds and renames people, keeping their entries and balance', async () => {

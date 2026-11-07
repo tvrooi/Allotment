@@ -23,7 +23,7 @@ import { formatCurrency } from '../../utils/currency';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { usePreferencesStore } from '../../store/preferencesStore';
-import { getUpcomingDays, groupOccurrences } from './scheduleFormat';
+import { getUpcomingDays, groupOccurrences, shownInMonth } from './scheduleFormat';
 import type { Schedule, ScheduleOccurrence } from '../../types';
 
 interface Props {
@@ -47,7 +47,7 @@ function computeTotals(occs: ScheduleOccurrence[]): Totals {
   let paid = 0,
     remaining = 0;
   for (const o of occs) {
-    if (o.displayStatus === 'skipped' || o.displayStatus === 'cancelled') continue;
+    if (o.displayStatus === 'skipped') continue;
     if (o.displayStatus === 'paid') paid += Math.abs(o.matchedAmount ?? o.expectedAmount);
     else remaining += Math.abs(o.expectedAmount);
   }
@@ -105,7 +105,8 @@ export default function MonthlyTab({
   const from = format(startOfMonth(monthDate), 'yyyy-MM-dd');
   const to = format(endOfMonth(monthDate), 'yyyy-MM-dd');
 
-  const { data: occurrences = [], isLoading } = useScheduleOccurrences(from, to);
+  const { data: allOccurrences = [], isLoading } = useScheduleOccurrences(from, to);
+  const occurrences = useMemo(() => shownInMonth(allOccurrences), [allOccurrences]);
   const { data: accounts = [] } = useAccounts();
   const markPaid = useMarkOccurrencePaid();
   const skipOcc = useSkipOccurrence();

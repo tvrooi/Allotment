@@ -26,6 +26,8 @@ export function EditAccountModal({ account, onClose }: Props) {
   const [type, setType] = useState<AccountType>('checking');
   const [startingBalance, setStartingBalance] = useState(0);
   const [isOffBudget, setIsOffBudget] = useState(false);
+  const [assignPool, setAssignPool] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [currency, setCurrency] = useState<string | null>(null);
   const budgetCurrency = useBudgetCurrency();
   const { data: currencySettings } = useCurrencySettings();
@@ -48,26 +50,37 @@ export function EditAccountModal({ account, onClose }: Props) {
     setType(account.type);
     setStartingBalance(account.startingBalance);
     setIsOffBudget(account.isOffBudget === 1);
+    setAssignPool(account.assignPool === 1);
+    setSaveError('');
     setCurrency(account.currency);
     setLogo(account.logo ?? null);
     setLogoError(null);
   });
 
+  // Cash the budget counts can have its own Ready to Assign (server assignPools.ts POOL_TYPES)
+  const poolable = !isOffBudget && ['checking', 'savings', 'cash'].includes(type);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!account || !name.trim()) return;
-    await updateAccount.mutateAsync({
-      id: account.id,
-      data: {
-        name: name.trim(),
-        type,
-        startingBalance,
-        isOffBudget: isOffBudget ? 1 : 0,
-        ...(logo !== (account.logo ?? null) ? { logo } : {}),
-        ...(currency !== account.currency ? { currency } : {}),
-      },
-    });
-    onClose();
+    const pool = poolable && assignPool ? 1 : 0;
+    try {
+      await updateAccount.mutateAsync({
+        id: account.id,
+        data: {
+          name: name.trim(),
+          type,
+          startingBalance,
+          isOffBudget: isOffBudget ? 1 : 0,
+          ...(pool !== (account.assignPool ?? 0) ? { assignPool: pool } : {}),
+          ...(logo !== (account.logo ?? null) ? { logo } : {}),
+          ...(currency !== account.currency ? { currency } : {}),
+        },
+      });
+      onClose();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Could not save the account');
+    }
   }
 
   async function handleLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -226,6 +239,29 @@ export function EditAccountModal({ account, onClose }: Props) {
               Off budget (excluded from budgeting)
             </span>
           </label>
+
+          {poolable && (
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={assignPool}
+                onChange={(e) => setAssignPool(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-border text-brand-600 focus:ring-brand-500"
+              />
+              <span className="text-sm text-text-secondary">
+                Own Ready to assign for the bills paid from this account
+                <span className="block text-xs text-text-tertiary">
+                  Money moved here is assigned only to the categories of bills paid from it (an
+                  Essentials account, say), not from the main Ready to assign.
+                </span>
+              </span>
+            </label>
+          )}
+          {saveError && (
+            <p role="alert" className="text-sm text-negative">
+              {saveError}
+            </p>
+          )}
 
           {closeError && (
             <p role="alert" className="text-sm text-negative">

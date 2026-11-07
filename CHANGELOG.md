@@ -1,5 +1,15 @@
 # Changes
 
+## 0.2.0-up.131
+
+- **Cancelled recurring items leave the month.** A cancelled subscription (shown as **Cancelled**) no longer appears in **Recurring → Monthly**, its calendar or its totals, and a cancelled bill drops off the household's **Recurring bills**. It stays under **All recurring**. Forecasts and the budget already left them out.
+- **Changing a recurring amount reaches the household bill.** Editing a bill's amount now also updates an occurrence due today or moved by a weekend, which the household's **Recurring bills** and "Your share of …" read. The Household page refreshes straight away.
+- **Rename a household, and choose which one opens first.** **Edit** beside the household's name changes its name. **Open this household first** makes it the default for the Household page and the sidebar's Household link.
+- **See where household balances come from, and reconcile them.** Under **People & balances**, **Where these figures come from** shows each person's household-account part and what people owe each other directly. **Reconcile balances** agrees everyone's balance from a date (zero unless you type another figure). It does this with adjustment entries that keep the history. Removing those entries undoes it. Assistants can preview it (`household_reconciliation_preview`) and propose it (`propose_household_reconciliation`); nothing changes until you apply the proposal.
+- **Up round-ups stay with their purchase.** A round-up debit now reads "↳ Round-up of _purchase_" in the register. When Up reports the Saver credit for exactly that round-up on the same day, the sync links the two itself, so you're no longer asked whether a 52c round-up is a transfer. Any other move to a Saver is still offered for you to confirm.
+- **An Essentials account can have its own Ready to assign.** In **Edit account**, turn on **Own Ready to assign for the bills paid from this account**. The categories of the recurring bills paid from it are then funded only from the money moved into it, and that money shows under its own name below Ready to assign. **Edit category → Ready to assign from** changes which categories it covers. The main Ready to assign leaves that money out, and assigning more than the account holds is refused.
+- **The tab icon is the Allotment mark everywhere.** The browser and phone icons now load from new addresses, so browsers that kept the old icon pick up the new one.
+
 ## 0.2.0-up.130
 
 - **Bills a household account pays no longer show as expected in your own envelopes.** The Budget page's orange "expected" note (and "Available after these") left out bills paid from a household account only if that account was off budget. Rent paid from a 2Up account, for example, showed its full amount as still to come in your personal Rent envelope. Now the Budget page and the payday plan use one rule: a recurring payment counts only when it leaves one of your own open accounts, whether spent or moved out to a household or off-budget account. So a scheduled transfer of your share into the household account is now expected in its category on the Budget page too, as the payday plan already counted it.

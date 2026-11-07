@@ -188,7 +188,7 @@ const monthAfter = (m: string) => {
  * added back, so that month starts negative until the overspending is covered. */
 function assignable(months: string[], today: string) {
   const current = today.slice(0, 7);
-  const result: { month: string; value: number; complete: boolean }[] = [];
+  const result: { month: string; value: number; complete: boolean; pool?: string }[] = [];
   let deferred = 0;
   for (const m of months) {
     const end = monthBounds(m).to;
@@ -202,6 +202,9 @@ function assignable(months: string[], today: string) {
           : state.unassignedBeforeLater - state.futureAssigned - state.held),
       complete: state.complete,
     });
+    // Each separate pool (assignPools.ts) must cover its own earmarked envelopes too
+    for (const p of state.pools)
+      result.push({ month: m, value: p.readyToAssign, complete: state.complete, pool: p.name });
     deferred += state.cashOverspent;
   }
   return result;
@@ -251,9 +254,11 @@ export function fundedWrite(action: () => void) {
     if (worse)
       throw new BudgetError(
         worse.complete
-          ? worse.month < current
-            ? `Not enough money had arrived by the end of ${worse.month}. Assign it in a later month, or move existing money.`
-            : 'Not enough Ready to assign money. Reduce an assignment or move existing money.'
+          ? worse.pool
+            ? `Not enough in ${worse.pool}'s own Ready to assign. Move money into ${worse.pool}, or assign less.`
+            : worse.month < current
+              ? `Not enough money had arrived by the end of ${worse.month}. Assign it in a later month, or move existing money.`
+              : 'Not enough Ready to assign money. Reduce an assignment or move existing money.'
           : 'Add missing exchange rates before assigning money.',
       );
   });

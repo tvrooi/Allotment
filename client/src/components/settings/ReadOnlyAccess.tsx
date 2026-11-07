@@ -284,6 +284,9 @@ function AssistantChanges() {
 /** What a household correction proposal carries (services/assistantActions.ts) */
 interface HouseholdPayload {
   household?: string;
+  /** household.reconcile: the day the balances are agreed from, and each person's change */
+  date?: string;
+  people?: { personId: string; name: string; before: number; after: number }[];
   entries?: {
     eventId: string;
     date: string;
@@ -321,6 +324,8 @@ function describeProposal(p: AssistantProposal) {
       const total = (h.bills ?? []).reduce((n, b) => n + b.amount, 0);
       return `Share ${plural(h.bills?.length ?? 0, 'bill', 'bills')} paid from the household account${from}, ${formatCurrency(total)} in all`;
     }
+    if (p.kind === 'household.reconcile')
+      return `Agree the household balances${from} from ${formatDay(h.date ?? '')}`;
     return `Unlink ${plural(h.transfers?.length ?? 0, 'transfer', 'transfers')} that the bank matched wrongly`;
   }
   const a = p.payload as {
@@ -356,6 +361,9 @@ function proposalLines(p: AssistantProposal): string[] {
     ...(h.bills ?? []).map(
       (b) =>
         `${formatDay(b.date)} · ${b.description} · ${formatCurrency(b.amount)} · ${split(b.shares)}`,
+    ),
+    ...(h.people ?? []).map(
+      (x) => `${x.name}: ${formatCurrency(x.before)} → ${formatCurrency(x.after)}`,
     ),
     ...(h.transfers ?? []).map(
       (t) =>

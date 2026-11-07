@@ -54,6 +54,10 @@ export function useUpdateAccount() {
     },
     onSuccess: (_, { id, data }, ctx) => {
       qc.invalidateQueries({ queryKey: ['accounts'] });
+      // Budget scope and own Ready to Assign pools change what the budget counts
+      qc.invalidateQueries({ queryKey: ['budget'] });
+      qc.invalidateQueries({ queryKey: ['budget-summary'] });
+      qc.invalidateQueries({ queryKey: ['categories'] });
       if (!ctx?.old) return;
       const snapshot = ctx.old;
       useUndoStore.getState().push({
@@ -63,6 +67,7 @@ export function useUpdateAccount() {
             name: snapshot.name,
             type: snapshot.type,
             isOffBudget: snapshot.isOffBudget,
+            ...(snapshot.assignPool !== undefined ? { assignPool: snapshot.assignPool } : {}),
           });
           qc.invalidateQueries({ queryKey: ['accounts'] });
         },

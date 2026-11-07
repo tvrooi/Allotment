@@ -69,6 +69,11 @@ export function TransactionRow({
   const isSplitParent = tx.isParent === 1 && tx.children && tx.children.length > 0;
   const canEditCategory = (!isTransfer || !!tx.isBudgetBoundary) && !isSplitParent;
   const canEditPayee = !isTransfer;
+  // A round-up debit made from an Up purchase (ROUND_UP_SUFFIX in server upReviewService.ts):
+  // shown as part of that purchase, not as a transfer of its own
+  const roundUpOf = tx.importedId?.endsWith(':roundup')
+    ? (/^Round-up from ([^·]+)/.exec(tx.notes ?? '')?.[1]?.trim() ?? 'a purchase')
+    : null;
 
   const payeeName = tx.payeeName || (isTransfer ? 'Transfer' : '—');
   const payee = useMemo(
@@ -137,6 +142,8 @@ export function TransactionRow({
                 className="opacity-0 group-hover/payee:opacity-100 text-text-tertiary shrink-0 transition-opacity ml-auto"
               />
             </button>
+          ) : roundUpOf ? (
+            <span className="text-xs text-text-tertiary truncate">↳ Round-up of {roundUpOf}</span>
           ) : (
             <span className="text-sm font-medium text-text truncate">{payeeName}</span>
           )}

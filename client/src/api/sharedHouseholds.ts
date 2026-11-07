@@ -26,7 +26,8 @@ export interface CombinedEntry {
   ownerId: string;
   eventId: string;
   mine: boolean;
-  kind: 'expense' | 'contribution' | 'settlement' | 'refund';
+  kind:
+    'expense' | 'contribution' | 'settlement' | 'refund' | 'pool_adjustment' | 'balance_adjustment';
   date: string;
   description: string;
   amount: number;

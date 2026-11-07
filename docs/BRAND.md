@@ -22,7 +22,10 @@ Filled controls and orange text keep the darker `--color-brand-600` so they stay
 
 Sources (SVG; the PNG and ICO files are renders of them):
 
-- `client/public/logo.svg` → `client/public/logo.png` (web app, favicon, Home Assistant icon)
+- `client/public/logo.svg` → `client/public/logo.png` (in-app logo, Home Assistant icon)
+- Browser and phone icons, from the same mark at their own addresses (a browser keeps a tab icon
+  per address, so a changed image needs a new one): `favicon.svg`, `favicon-32.png`,
+  `apple-touch-icon.png` (180 px, on the Soil tile colour) and `icon-512.png` (web app manifest)
 - `electron/resources/icon.svg` → `icon.png` (256 px) and `icon.ico` (16–256 px)
 - `electron/resources/icon-1024.svg` → `icon-1024.png` (macOS and Linux, with the macOS margin)
 

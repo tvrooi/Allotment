@@ -25,6 +25,8 @@ export const accounts = sqliteTable('accounts', {
   type: text('type').notNull(),
   startingBalance: integer('starting_balance').notNull().default(0),
   isOffBudget: integer('is_off_budget').notNull().default(0),
+  /** 1 = its own Ready to Assign, funding only the categories earmarked to it (assignPools.ts) */
+  assignPool: integer('assign_pool').notNull().default(0),
   sortOrder: integer('sort_order').notNull().default(0),
   closedAt: text('closed_at'),
   /** Custom logo as a small image data URL; null = colored initials */
@@ -69,6 +71,8 @@ export const categories = sqliteTable('categories', {
   linkedAccountId: text('linked_account_id').references(() => accounts.id, {
     onDelete: 'set null',
   }),
+  /** Funded from this account's own Ready to Assign (an account with assignPool), not the main one */
+  poolAccountId: text('pool_account_id').references(() => accounts.id, { onDelete: 'set null' }),
   /** 1 = an overspent month's deficit carries into the next instead of starting it at zero,
    * for spending that will be paid back (budgetLedger.ts rollOver). Expense categories only. */
   keepOverspending: integer('keep_overspending').notNull().default(0),
@@ -1279,6 +1283,8 @@ export const householdGroups = sqliteTable('household_groups', {
   defaultSplitJson: text('default_split_json'),
   /** Custom logo as a small image data URL, shown on shared payments; null = colored initial */
   logo: text('logo'),
+  /** 1 = the household the Household page opens first; at most one, none = the first */
+  isDefault: integer('is_default').notNull().default(0),
 });
 /** More pool accounts for a group (an Up 2Up spending account and its savers, say) */
 export const householdPoolAccounts = sqliteTable(

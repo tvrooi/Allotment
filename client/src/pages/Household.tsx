@@ -6,7 +6,7 @@ import { apiFetch } from '../api/client';
 import { useSchedules } from '../hooks/useSchedules';
 import { useTransactions } from '../hooks/useTransactions';
 import { useAccounts } from '../hooks/useAccounts';
-import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Pencil, Plus } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input, Select } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
@@ -17,6 +17,7 @@ import { HouseholdIcon } from '../components/household/HouseholdIcon';
 import { CombinedHousehold } from '../components/household/CombinedHousehold';
 import { RecurringBills } from '../components/household/RecurringBills';
 import { SettleUp } from '../components/household/SettleUp';
+import { ReconcileBalances } from '../components/household/ReconcileBalances';
 import type { SettleUpTransfer } from '../api/households';
 import { EditEntry } from '../components/household/EditEntry';
 import { HouseholdBreakdown } from '../components/household/HouseholdBreakdown';
@@ -32,6 +33,8 @@ type Group = {
   poolAccountIds: string[];
   defaultSplit: HouseholdSplit | null;
   logo?: string | null;
+  /** 1 = opens first when no household is named in the address */
+  isDefault?: number;
 };
 type Person = { id: string; name: string; isSelf: number };
 type Entry = {
@@ -95,7 +98,11 @@ const KIND_LABEL: Record<string, string> = {
   refund: 'Refund',
   contribution: 'Advance into pool',
   settlement: 'Repayment',
+  pool_adjustment: 'Balances agreed (household account)',
+  balance_adjustment: 'Balances agreed (between people)',
 };
+/** Reconcile's entries: removed to undo, never edited */
+const ADJUSTMENT = new Set(['pool_adjustment', 'balance_adjustment']);
 function cents(value: FormDataEntryValue | null) {
   const text = String(value ?? '');
   if (!/^\d+(\.\d{1,2})?$/.test(text))
@@ -120,7 +127,9 @@ export default function HouseholdPage() {
     queryKey: ['households'],
     queryFn: () => apiFetch<Group[]>('/households'),
   });
-  const selected = (groups.some((g) => g.id === id) ? id : groups[0]?.id) ?? '';
+  const selected =
+    (groups.some((g) => g.id === id) ? id : (groups.find((g) => g.isDefault) ?? groups[0])?.id) ??
+    '';
   const current = groups.find((g) => g.id === selected);
   const {
     data: state,
@@ -151,6 +160,7 @@ export default function HouseholdPage() {
     onSuccess: async (data) => {
       setError('');
       setCreating(false);
+      setEditingGroup(false);
       setEditingPerson('');
       setAddingPerson(false);
       setEditingBill('');
@@ -168,6 +178,7 @@ export default function HouseholdPage() {
     onError: (e: Error) => setError(e.message),
   });
   const [creating, setCreating] = useState(false);
+  const [editingGroup, setEditingGroup] = useState(false);
   const [editingPerson, setEditingPerson] = useState('');
   const [addingPerson, setAddingPerson] = useState(false);
   const [editingBill, setEditingBill] = useState('');
@@ -348,6 +359,11 @@ export default function HouseholdPage() {
                 </Select>
               </div>
             )}
+            {current && (
+              <Button size="sm" variant="ghost" onClick={() => setEditingGroup(true)}>
+                <Pencil size={14} /> Edit
+              </Button>
+            )}
             <Button size="sm" variant="secondary" onClick={() => setCreating(true)}>
               <Plus size={14} /> New household
             </Button>
@@ -513,6 +529,15 @@ export default function HouseholdPage() {
                   people={state.people}
                   settlements={state.settlements ?? []}
                   poolOwed={state.poolOwed ?? []}
+                />
+                <ReconcileBalances
+                  key={`reconcile-${state.group.id}`}
+                  groupId={state.group.id}
+                  currency={state.group.currency}
+                  people={state.people}
+                  balances={state.balances}
+                  toPool={state.toPool ?? {}}
+                  direct={state.direct ?? {}}
                 />
                 {hasPool && (
                   <div className="mt-3 grid gap-2 sm:grid-cols-3 text-xs text-text-tertiary">
@@ -1172,18 +1197,20 @@ export default function HouseholdPage() {
                             </td>
                             <td className="py-2 pr-3 text-right tabular-nums">{money(e.amount)}</td>
                             <td className="py-2 text-right whitespace-nowrap">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                disabled={mutation.isPending}
-                                aria-label={`Edit ${e.description}`}
-                                onClick={() => {
-                                  setError('');
-                                  setEditingEntry(e);
-                                }}
-                              >
-                                Edit
-                              </Button>
+                              {!ADJUSTMENT.has(e.kind) && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={mutation.isPending}
+                                  aria-label={`Edit ${e.description}`}
+                                  onClick={() => {
+                                    setError('');
+                                    setEditingEntry(e);
+                                  }}
+                                >
+                                  Edit
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -1243,6 +1270,54 @@ export default function HouseholdPage() {
       <Modal isOpen={creating} onClose={() => setCreating(false)} title="New household">
         {createForm}
       </Modal>
+      {current && (
+        <Modal isOpen={editingGroup} onClose={() => setEditingGroup(false)} title="Edit household">
+          <form
+            className="space-y-4"
+            onSubmit={(e) =>
+              submit(e, (f) => ({
+                path: `/households/${current.id}`,
+                method: 'PUT',
+                body: {
+                  name: f.get('name'),
+                  ...(f.get('isDefault') && !current.isDefault ? { isDefault: true } : {}),
+                },
+              }))
+            }
+          >
+            <label className="block text-sm">
+              <span className="text-text-secondary">Name</span>
+              <Input name="name" defaultValue={current.name} required maxLength={200} />
+            </label>
+            <label className="flex items-center gap-2 text-sm text-text">
+              <input
+                type="checkbox"
+                name="isDefault"
+                defaultChecked={!!current.isDefault || groups.length === 1}
+                disabled={!!current.isDefault}
+              />
+              Open this household first
+            </label>
+            <p className="text-xs text-text-tertiary">
+              Its people, entries and balances stay as they are. Change its picture and default
+              split under Sharing.
+            </p>
+            {error && (
+              <p role="alert" className="text-sm text-negative">
+                {error}
+              </p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => setEditingGroup(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={mutation.isPending}>
+                Save
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }

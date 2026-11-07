@@ -446,7 +446,8 @@ schedulesRouter.put('/:id', (req, res) => {
         ),
       )
       .all()
-      .filter((o) => o.scheduledDate > today);
+      // Everything not yet paid from today on, including one due today or moved by a weekend
+      .filter((o) => o.scheduledDate > today || o.expectedDate >= today);
 
     for (const occ of futureOccs) {
       db.update(scheduleOccurrences)

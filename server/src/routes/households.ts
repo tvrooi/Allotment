@@ -26,6 +26,7 @@ import {
   poolAccountsOf,
   householdActivity,
   poolGroupOf,
+  reconcileBalances,
   recordEvent,
   removeEvent,
   renamePerson,
@@ -38,6 +39,7 @@ import {
   splitSchema,
   unshareRecurringBill,
   updateEvent,
+  updateGroup,
   updateRecurringBill,
 } from '../services/householdService.js';
 import { todayIso } from '../services/mainAmountService.js';
@@ -246,6 +248,26 @@ householdsRouter.delete('/:id/pool-accounts/:accountId', (req, res) =>
   }),
 );
 // The split a quick share uses (Share with… in the register, rules)
+// Balances agreed (reconcileBalances): GET previews everyone at 0, POST records it. Owner only
+// for POST; an access token proposes it instead (MCP propose_household_reconciliation).
+householdsRouter.get('/:id/reconcile', (req, res) =>
+  run(res, () => {
+    const r = reconcileBalances(req.params.id, { preview: true });
+    return {
+      date: r.date,
+      people: r.people,
+      pool: r.pool,
+      poolShares: r.poolShares,
+      directShares: r.directShares,
+    };
+  }),
+);
+householdsRouter.post('/:id/reconcile', (req, res) =>
+  run(res, () => reconcileBalances(req.params.id, req.body).state),
+);
+// Rename a household or make it the one that opens first. Owner only: read-only access
+// tokens never reach this route.
+householdsRouter.put('/:id', (req, res) => run(res, () => updateGroup(req.params.id, req.body)));
 householdsRouter.put('/:id/default-split', (req, res) =>
   run(res, () => {
     const state = snapshot(req.params.id);

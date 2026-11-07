@@ -9,6 +9,17 @@ Last updated: 7 November 2026 (live app on up.129: D2a email codes, D2b reminder
 
 ## State
 
+- **Households, round-ups, Essentials pool and brand icons (up.131; owner-requested 7 November
+  2026; migrations 0080 `household_groups.is_default` and 0081 `accounts.assign_pool` +
+  `categories.pool_account_id`, both additive, backups carry them with their tables):** the plan in
+  `docs/PLAN-2026-11-HOUSEHOLDS-POOLS-ROUNDUPS.md` is built. Cancelled recurring is hidden from
+  Monthly and household bills; an edited recurring amount reprices today's occurrence; households
+  can be renamed and one made the default; `reconcileBalances` agrees balances with
+  `pool_adjustment` / `balance_adjustment` entries (MCP proposal `household.reconcile`);
+  `linkRoundUpTransfers` links exactly-reported Up round-up pairs after each sync; `assignPools.ts`
+  gives an account its own Ready to Assign. **Live follow-up:** after the release, back up and
+  preview the live household's reconciliation with the owner before applying it (zeroing is the
+  owner's decision); then turn on Essentials' own Ready to assign with the owner.
 - **Recurring bills, shared costs and categories (up.130; owner-requested 7 November 2026; no
   migration, no backup change):** one rule for which recurring items the personal budget plans
   for, `plansInPersonalBudget` with `budgetAccountScope` in `services/balances.ts` (money out of
@@ -578,6 +589,9 @@ site in `website/` was removed (audit decision I-9).
 
 ## Open items (pick up here)
 
+0. **November 2026 owner requests (built in up.131):** after release, zero the live household
+   through **Reconcile balances** once the owner confirms the preview, and set up Essentials' own
+   Ready to assign.
 1. **Confirm the live app after each release:** version, health, and that the budget opens. In
    November, check the October deficits no longer carry. Ask the owner to choose a receipt
    provider (Anthropic or OpenAI key) and press **Try a sample receipt**.

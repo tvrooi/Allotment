@@ -1,4 +1,5 @@
 import { bankLinked } from '../services/accountIntegrity.js';
+import { PoolError, setAssignPool } from '../services/assignPools.js';
 import { Router } from 'express';
 import {
   AccountDeletionError,
@@ -69,11 +70,16 @@ const createSchema = z.object({
 
 // Built without defaults: Zod applies `.default()` even inside `.partial()`, so an update
 // that only renames an account would otherwise reset its starting balance to 0
-const updateSchema = z.object(fields).partial().extend({
-  logo: logoSchema.optional(),
-  // Reopens a closed account (undo of "Close account"); closing is DELETE
-  closedAt: z.null().optional(),
-});
+const updateSchema = z
+  .object(fields)
+  .partial()
+  .extend({
+    logo: logoSchema.optional(),
+    // Reopens a closed account (undo of "Close account"); closing is DELETE
+    closedAt: z.null().optional(),
+    /** 1 = its own Ready to Assign for the categories earmarked to it (assignPools.ts) */
+    assignPool: z.union([z.literal(0), z.literal(1)]).optional(),
+  });
 
 /**
  * An account as the API shows it: its balance, its currency (the budget's when it has none
@@ -426,7 +432,7 @@ accountsRouter.put('/:id', (req, res) => {
     return res.status(409).json({
       error: 'An account with payment funding must keep its credit type, budget scope and currency',
     });
-  const data = { ...parsed.data };
+  const { assignPool, ...data } = parsed.data;
   const household = poolGroupOf(existing.id);
   if (
     household &&
@@ -455,17 +461,28 @@ accountsRouter.put('/:id', (req, res) => {
     data.currency = storedCurrency(data.currency);
   }
 
-  if (Object.keys(data).length) {
-    db.update(accounts)
-      .set({
-        ...data,
-        // A hand-edited starting balance is the owner's word, not "today's balance" any more
-        ...(data.startingBalance !== undefined && data.startingBalance !== existing.startingBalance
-          ? { balanceAsOf: null }
-          : {}),
-      })
-      .where(eq(accounts.id, req.params.id))
-      .run();
+  try {
+    db.transaction(() => {
+      if (Object.keys(data).length) {
+        db.update(accounts)
+          .set({
+            ...data,
+            // A hand-edited starting balance is the owner's word, not "today's balance" any more
+            ...(data.startingBalance !== undefined &&
+            data.startingBalance !== existing.startingBalance
+              ? { balanceAsOf: null }
+              : {}),
+          })
+          .where(eq(accounts.id, req.params.id))
+          .run();
+      }
+      // After the other fields, so a pool is checked against the account as it now is
+      if (assignPool !== undefined && assignPool !== existing.assignPool)
+        setAssignPool(existing.id, assignPool === 1);
+    });
+  } catch (error) {
+    if (error instanceof PoolError) return res.status(409).json({ error: error.message });
+    throw error;
   }
   const updated = db.select().from(accounts).where(eq(accounts.id, req.params.id)).get()!;
   res.json(withBalance(updated));

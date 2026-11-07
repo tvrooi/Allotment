@@ -301,6 +301,8 @@ export interface Category {
   hidden?: number;
   /** The account this envelope follows: transfers into it fund the envelope */
   linkedAccountId?: string | null;
+  /** Funded from this account's own Ready to Assign; null = the main one */
+  poolAccountId?: string | null;
   /** 1 = an overspent month's deficit carries into the next instead of starting it at zero */
   keepOverspending?: number;
   /** With `?usage=1` (getCategoriesWithUsage) */
@@ -406,6 +408,8 @@ export interface BudgetCategory {
   paymentAccountId?: string | null;
   /** The account this envelope follows (linked envelopes) */
   linkedAccountId?: string | null;
+  /** Funded from this account's own Ready to Assign; null = the main one */
+  poolAccountId?: string | null;
   /** 1 = keeps an overspent month's deficit for the next month (reimbursable spending) */
   keepOverspending?: number;
   budgeted: number;
@@ -475,7 +479,16 @@ export interface BudgetSummary {
   income: number;
   totalBudgeted: number;
   carryOver: number;
+  /** The main Ready to Assign: without the accounts that have their own (pools) */
   toBeBudgeted: number;
+  /** Accounts with their own Ready to Assign, for the categories earmarked to them */
+  pools?: {
+    accountId: string;
+    name: string;
+    resources: number;
+    envelopes: number;
+    readyToAssign: number;
+  }[];
   /** First month the envelopes count (YYYY-MM); null = all history */
   budgetStartMonth?: string | null;
   /** The first day envelopes count (YYYY-MM-DD), or null for all history */
@@ -490,6 +503,8 @@ export interface Account {
   type: AccountType;
   startingBalance: number;
   isOffBudget: number;
+  /** 1 = its own Ready to Assign for the categories earmarked to it */
+  assignPool?: number;
   sortOrder: number;
   closedAt: string | null;
   /** Custom logo image (data URL); null = colored initials */

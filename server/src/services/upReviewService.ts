@@ -10,6 +10,7 @@ import {
   upAccountMappings,
 } from '../db/schema.js';
 import { cleanUpText, upObservationSchema, type UpTransaction } from './upTransactions.js';
+import { linkTransfer, listTransferSuggestions } from './transferService.js';
 
 export function bankObservation(tx: UpTransaction) {
   const a = tx.attributes;
@@ -348,12 +349,58 @@ export function roundUpDebit(
     notes: [
       `Round-up from ${source.description || 'an Up purchase'}`,
       source.boostAmount ? `includes ${dollars(source.boostAmount)} boost` : null,
-      'Up internal transfer: review the transfer suggestions in the register.',
+      'Up round-up: linked to its Saver credit once Up reports it.',
     ]
       .filter(Boolean)
       .join(' · '),
     importedId: importedId + ROUND_UP_SUFFIX,
   };
+}
+
+/**
+ * Round-ups belong to their purchase; they aren't a transfer for the owner to confirm
+ * (owner-requested on 7 November 2026). Links a suggested pair only when all of this holds:
+ * Up reported it (one side names the other's account), both sides are Up's own records, same
+ * day and exactly the same amount, and the money out is a round-up: a debit made from a
+ * purchase's round-up (ROUND_UP_SUFFIX), or an Up debit for exactly one purchase's round-up or
+ * that day's round-ups from that account. Anything else stays a suggestion, and a pair the owner
+ * marked "Not a transfer" is never suggested, so never linked. Returns how many were linked.
+ */
+export function linkRoundUpTransfers(): number {
+  const pairs = listTransferSuggestions().filter(
+    (s) =>
+      s.reported &&
+      s.days === 0 &&
+      s.outflow.amount < 0 &&
+      s.outflow.amount === -s.inflow.amount &&
+      !!s.outflow.importedId?.startsWith('up:') &&
+      !!s.inflow.importedId?.startsWith('up:'),
+  );
+  if (!pairs.length) return 0;
+  const since = pairs.reduce((d, s) => (s.outflow.date < d ? s.outflow.date : d), '9999-12-31');
+  const roundUps = new Map<string, Set<number>>();
+  for (const day of roundUpDays(since))
+    roundUps.set(
+      `${day.date}:${day.accountId}`,
+      new Set([day.amount, ...day.purchases.map((p) => p.roundUpAmount)]),
+    );
+  let linked = 0;
+  for (const s of pairs) {
+    const isRoundUp =
+      s.outflow.importedId!.endsWith(ROUND_UP_SUFFIX) ||
+      !!roundUps.get(`${s.outflow.date}:${s.outflow.accountId}`)?.has(-s.outflow.amount);
+    if (!isRoundUp) continue;
+    try {
+      linkTransfer(s.outflow.id, s.inflow.id);
+      linked++;
+    } catch (err) {
+      // A reconciled or edited side refuses the link: it stays a suggestion for the owner
+      console.warn(
+        `A round-up stays a transfer suggestion: ${err instanceof Error ? err.message : 'could not link'}`,
+      );
+    }
+  }
+  return linked;
 }
 
 export const upTransactionId = (accountId: string, importedId: string) =>

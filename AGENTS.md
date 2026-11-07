@@ -38,7 +38,8 @@ Keep AGENTS.md and CLAUDE.md byte-identical (Codex reads one, Claude Code the ot
   Tests use mock bank data and disposable budgets only. Do not copy production data into the checkout.
 - Integer minor units for money; additive migrations; shared transaction helpers for writes.
 - Up imports settled AUD only; stable IDs prevent duplicates. Preserve reconciled/user-edited rows.
-  Review transfer suggestions; never silently guess transfers. Tokens are encrypted and excluded from exports.
+  Review transfer suggestions; never silently guess transfers (an Up round-up that Up reported
+  exactly is linked by the sync, owner-requested 7 November 2026; `linkRoundUpTransfers`). Tokens are encrypted and excluded from exports.
 - Keep host/origin/auth protections. Remote Electron pages must have no Node or preload bridge.
   A server window drops the macOS title bar only when its page has the `flybudget-mac-window`
   marker, and learns it through its user agent (`electron/macWindow.ts`), never a bridge.
@@ -56,7 +57,8 @@ Keep AGENTS.md and CLAUDE.md byte-identical (Codex reads one, Claude Code the ot
   settlements, edits or removals), and record the owner's own unlinked contribution up to what
   the owner owes the household account (never anyone else's, never into credit). An `organise` token may also propose
   household corrections that only the owner applies: removing entries, sharing bills a household
-  account paid, unlinking transfers with a side in a household account (owner-requested 6 November 2026). Token category changes are undoable change sets;
+  account paid, unlinking transfers with a side in a household account (owner-requested 6 November 2026),
+  agreeing household balances from a date with adjustment entries (owner-requested 7 November 2026). Token category changes are undoable change sets;
   only the owner redoes one.
 - HA `/data/options.json` stays root-only; root opens it before dropping to uid 1000. Never regenerate
   an existing key. Supervisor watchdog must be TCP because strict hosts reject its IP-based HTTP probe.

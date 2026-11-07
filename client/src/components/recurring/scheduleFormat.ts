@@ -51,6 +51,11 @@ export const discoveredHouseholdLabel = (h: DiscoveredHousehold) =>
  * amount), and `household` the household's own items in full, bills and contributions.
  * Housemates' money is never income, and a shared bill never counts at its full amount.
  */
+/** A cancelled recurring item is over: it stays under All recurring, not in a month's list */
+export function shownInMonth(occurrences: ScheduleOccurrence[]) {
+  return occurrences.filter((o) => o.displayStatus !== 'cancelled');
+}
+
 export function groupOccurrences(occurrences: ScheduleOccurrence[]) {
   const sorted = [...occurrences].sort((a, b) => a.expectedDate.localeCompare(b.expectedDate));
   const income: ScheduleOccurrence[] = [];

@@ -823,3 +823,58 @@ test('breaks household spending down by month, person and category', async ({ pa
     true,
   );
 });
+
+test('renames a household and chooses which one opens first', async ({ page }) => {
+  await open(page, '/household');
+  await page.getByLabel('Name', { exact: true }).fill('Home');
+  await page.getByLabel('People, one per line; put yourself first').fill('Me\nAlex');
+  await page.getByRole('button', { name: 'Create household', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'People & balances' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'New household' }).click();
+  const create = page.getByRole('dialog', { name: 'New household' });
+  await create.getByLabel('Name', { exact: true }).fill('Beach house');
+  await create.getByLabel('People, one per line; put yourself first').fill('Me\nSam');
+  await create.getByRole('button', { name: 'Create household', exact: true }).click();
+  const picker = page.getByRole('combobox', { name: 'Household', exact: true });
+  await expect(picker.locator('option:checked')).toHaveText('Beach house');
+
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  const edit = page.getByRole('dialog', { name: 'Edit household' });
+  await edit.getByLabel('Name').fill('Coast house');
+  await edit.getByLabel('Open this household first').check();
+  await edit.getByRole('button', { name: 'Save' }).click();
+  await expect(edit).toBeHidden();
+
+  await open(page, '/household');
+  await expect(picker.locator('option:checked')).toHaveText('Coast house');
+});
+
+test('reconciles household balances to zero, and removing the adjustments undoes it', async ({
+  page,
+}) => {
+  await open(page, '/household');
+  await page.getByLabel('Name', { exact: true }).fill('Home');
+  await page.getByLabel('People, one per line; put yourself first').fill('Me\nAlex');
+  await page.getByRole('button', { name: 'Create household', exact: true }).click();
+  await page.getByRole('button', { name: 'Expense, advance or repayment' }).click();
+  const event = page.getByRole('heading', { name: 'Record something else' }).locator('../..');
+  await event.getByLabel('Description', { exact: true }).fill('Groceries');
+  await event.getByLabel('Date', { exact: true }).fill('2026-10-21');
+  await event.getByLabel('Amount (AUD)').fill('80.00');
+  await event.getByLabel('Paid by').selectOption({ label: 'Me' });
+  await event.getByRole('button', { name: 'Save event' }).click();
+  await expect(page.getByText('owes A$40', { exact: true })).toBeVisible();
+
+  await page.getByText('Where these figures come from').click();
+  await page.getByRole('button', { name: 'Reconcile balances' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Reconcile balances' });
+  await dialog.getByRole('button', { name: 'Agree balances' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText('owes A$40', { exact: true })).toHaveCount(0);
+
+  await page.getByRole('button', { name: /All contributions, payments & repayments/ }).click();
+  await expect(page.getByText('Balances agreed (between people)')).toBeVisible();
+  await page.getByRole('button', { name: 'Remove entry' }).last().click();
+  await expect(page.getByText('owes A$40', { exact: true })).toBeVisible();
+});

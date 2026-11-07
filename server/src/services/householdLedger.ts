@@ -66,6 +66,15 @@ export function householdLedger(people: { id: string }[], events: Event[], share
     } else if (e.kind === 'settlement') {
       direct[e.payerId!] += e.amount;
       direct[e.recipientId!] -= e.amount;
+    } else if (e.kind === 'pool_adjustment') {
+      // Balances agreed: each share moves that person's part with the household account
+      for (const sh of byEvent.get(e.id) ?? []) {
+        toPool[sh.personId] += sh.amount;
+        pool += sh.amount;
+      }
+    } else if (e.kind === 'balance_adjustment') {
+      // Balances agreed: what people owe each other directly (these shares add up to zero)
+      for (const sh of byEvent.get(e.id) ?? []) direct[sh.personId] += sh.amount;
     }
   }
   const balances = zero();

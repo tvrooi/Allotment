@@ -1009,6 +1009,54 @@ describe('household corrections, proposed for the owner to apply', () => {
     });
     expect(contribution.data.recorded).toBe(1);
   });
+
+  it('agrees the balances only when the owner applies, and removing the adjustments undoes it', async () => {
+    const read = await newToken('read');
+    const token = await newToken('organise');
+    const categorise = await newToken('categorise');
+    expect(await toolNames(categorise)).not.toContain('propose_household_reconciliation');
+    const before = (await state()).balances as Record<string, number>;
+    const preview = await tool(read, 'household_reconciliation_preview', { household_id: 'fix' });
+    expect(preview.data.people).toEqual(
+      people.map((personId) => ({ personId, before: before[personId], after: 0 })),
+    );
+    // No token records it directly
+    expect((await call('POST', '/households/fix/reconcile', { token }, {})).status).toBe(403);
+    expect(
+      (
+        await tool(token, 'propose_household_reconciliation', {
+          household_id: 'fix',
+          date: '2999-01-01',
+        })
+      ).data.error,
+    ).toMatch(/past date/);
+    const { data } = await tool(token, 'propose_household_reconciliation', {
+      household_id: 'fix',
+      date: '2026-03-01',
+      agreed: [{ person_id: 'c-ana', amount: 500 }],
+      note: 'Square up before the new lease',
+    });
+    expect(data.proposed).toMatchObject({
+      kind: 'household.reconcile',
+      payload: { household: 'Fix', date: '2026-03-01' },
+    });
+    expect((await state()).balances).toEqual(before);
+    expect((await apply(data.proposed.id)).body).toMatchObject({ status: 'applied' });
+    const after = await state();
+    expect(after.balances).toEqual({ 'c-me': 0, 'c-ana': 500, 'c-ben': 0 });
+    expect(
+      (
+        await tool(token, 'propose_household_reconciliation', {
+          household_id: 'fix',
+          agreed: [{ person_id: 'c-ana', amount: 500 }],
+        })
+      ).data.error,
+    ).toMatch(/already agreed/);
+    // Undo: the owner removes the adjustment entries, and the old balances are back
+    for (const e of after.events.filter((x: any) => x.kind.endsWith('_adjustment')))
+      expect((await call('DELETE', `/households/fix/events/${e.id}`)).status).toBe(200);
+    expect((await state()).balances).toEqual(before);
+  });
 });
 
 describe('past household expenses and repayments', () => {
