@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.139
+
+From the UI and UX audit (`docs/UX-UI-AUDIT.md`, finding AU-014).
+
+- **A category's spending opens the transactions behind it.** In **Reports → Spending by category**, each category's name in the table now opens **Transactions** filtered to that category, the report's months and the same budget accounts the report counts. Their **Net** matches the report's total: a split counts only its part in that category, a refund counts against it, and transfers between your accounts are left out. **Uncategorised** opens the uncategorised ones. Back returns to the report.
+
 ## 0.2.0-up.138
 
 From the UI and UX audit (`docs/UX-UI-AUDIT.md`, finding AU-010).

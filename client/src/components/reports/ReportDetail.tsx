@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { cashFlowTransactionsLink } from '../../utils/cashFlowSelection';
 import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { Check, ChevronDown, Download, X } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -545,13 +546,25 @@ function SpendingDetail({ from, to }: DetailProps) {
           columns={[
             {
               label: 'Category',
-              // The chart colors its ten bars in this same order
+              // The chart colors its ten bars in this same order. The name opens the
+              // transactions behind its total: same category, months and budget scope as the
+              // report (the register's budget_report filter), so they add up to it (AU-014).
               cell: (r, i) => (
                 <span className="inline-flex items-center">
                   <Swatch
                     color={i < 10 ? CATEGORY_COLORS[i % CATEGORY_COLORS.length] : undefined}
                   />
-                  {r.label}
+                  <Link
+                    to={cashFlowTransactionsLink(
+                      { nodeType: 'subcategory', categoryId: r.categoryId },
+                      from,
+                      to,
+                    )}
+                    aria-label={`View transactions: ${r.categoryName ?? 'Uncategorised'}`}
+                    className="text-text hover:text-brand-600 hover:underline"
+                  >
+                    {r.label}
+                  </Link>
                 </span>
               ),
             },
