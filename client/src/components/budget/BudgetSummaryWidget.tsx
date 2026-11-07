@@ -40,6 +40,9 @@ interface BudgetSummaryWidgetProps {
 }
 
 /** On a phone the working behind Ready to assign folds away, so the envelopes come sooner */
+const READY_HELP =
+  "Ready to assign is the money in your accounts that you haven't given a job yet. Give it to categories (envelopes) until this reaches $0, so every dollar is planned. Spending takes money out of its envelope, not out of here.";
+
 function PhoneCollapsed({
   collapsed,
   label,
@@ -187,6 +190,12 @@ export function BudgetSummaryWidget({
   const isPhone = useIsPhone();
   const [picking, setPicking] = useState(false);
   const [pickerButton, setPickerButton] = useState<HTMLButtonElement | null>(null);
+  const showHold = !!canHold && !!funding && funding.complete && !funding.accountIssues?.length;
+  const readyAmount = funding?.accountIssues?.length
+    ? 'Check balances'
+    : funding?.complete === false
+      ? 'Incomplete'
+      : formatCurrency(toBeBudgeted);
   const canPutRest =
     !!putRest && toBeBudgeted > 0 && !funding?.accountIssues?.length && funding?.complete !== false;
   const hero =
@@ -205,32 +214,47 @@ export function BudgetSummaryWidget({
   return (
     <div className="rounded-lg shadow-card border border-border-light overflow-hidden bg-surface">
       <div className="p-3">
-        <div
-          role="status"
-          aria-label="Ready to assign"
-          data-guide="budget.ready"
-          className={`${hero.bg} rounded-lg px-4 py-3 text-center`}
-        >
-          <p className={`text-xs font-medium uppercase tracking-wide ${hero.text}`}>
-            Ready to assign
-          </p>
-          <p className={`text-lg font-semibold tabular-nums ${hero.text}`}>
-            {funding?.accountIssues?.length
-              ? 'Check balances'
-              : funding?.complete === false
-                ? 'Incomplete'
-                : formatCurrency(toBeBudgeted)}
-          </p>
-          <p className={`text-xs ${hero.text} mt-0.5`}>{hero.label}</p>
-          <p className={`text-xs ${hero.text} mt-1`}>
-            Money you have that isn't in a category yet.
-            <HelpTip label="What is Ready to assign?" inline>
-              Ready to assign is the money in your accounts that you haven't given a job yet. Give
-              it to categories (envelopes) until this reaches $0, so every dollar is planned.
-              Spending takes money out of its envelope, not out of here.
-            </HelpTip>
-          </p>
-        </div>
+        {isPhone ? (
+          // Phones: one compact row, so the envelopes below are in reach (UX audit AU-002)
+          <div
+            role="status"
+            aria-label="Ready to assign"
+            data-guide="budget.ready"
+            className={`${hero.bg} rounded-lg px-3 py-2 flex items-center justify-between gap-3`}
+          >
+            <div className={`min-w-0 text-left text-xs ${hero.text}`}>
+              <p className="font-medium uppercase tracking-wide">
+                Ready to assign
+                <HelpTip label="What is Ready to assign?" inline>
+                  {READY_HELP}
+                </HelpTip>
+              </p>
+              <p>{hero.label}</p>
+            </div>
+            <p className={`text-lg font-semibold tabular-nums whitespace-nowrap ${hero.text}`}>
+              {readyAmount}
+            </p>
+          </div>
+        ) : (
+          <div
+            role="status"
+            aria-label="Ready to assign"
+            data-guide="budget.ready"
+            className={`${hero.bg} rounded-lg px-4 py-3 text-center`}
+          >
+            <p className={`text-xs font-medium uppercase tracking-wide ${hero.text}`}>
+              Ready to assign
+            </p>
+            <p className={`text-lg font-semibold tabular-nums ${hero.text}`}>{readyAmount}</p>
+            <p className={`text-xs ${hero.text} mt-0.5`}>{hero.label}</p>
+            <p className={`text-xs ${hero.text} mt-1`}>
+              Money you have that isn't in a category yet.
+              <HelpTip label="What is Ready to assign?" inline>
+                {READY_HELP}
+              </HelpTip>
+            </p>
+          </div>
+        )}
         {funding?.pools?.map((p) => (
           <div
             key={p.accountId}
@@ -245,8 +269,11 @@ export function BudgetSummaryWidget({
             <p className="text-xs text-text-secondary">to assign to the bills paid from {p.name}</p>
           </div>
         ))}
-        {canHold && funding && funding.complete && !funding.accountIssues?.length && (
-          <HoldMoney summary={funding} />
+        {showHold && !isPhone && <HoldMoney summary={funding} />}
+        {showHold && isPhone && (funding.holdAmount ?? 0) > 0 && (
+          <p className="mt-2 text-center text-xs text-text-secondary">
+            {formatCurrency(funding.holdAmount ?? 0)} held for next month.
+          </p>
         )}
         {canPutRest && (
           <div className="relative mt-2 text-center">
@@ -299,7 +326,15 @@ export function BudgetSummaryWidget({
           </ul>
         </div>
       )}
-      <PhoneCollapsed collapsed={isPhone} label="How this is worked out">
+      <PhoneCollapsed
+        collapsed={isPhone}
+        label={showHold ? 'Hold money, and how this is worked out' : 'How this is worked out'}
+      >
+        {showHold && isPhone && (
+          <div className="px-4 pb-3">
+            <HoldMoney summary={funding} />
+          </div>
+        )}
         {funding && (
           <div className="px-4 pb-3 text-xs">
             <p className="text-text-tertiary mb-1.5">

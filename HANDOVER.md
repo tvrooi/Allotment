@@ -5,7 +5,7 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 7 November 2026 (live app on up.129: D2a email codes, D2b reminders; up.130 in review).
+Last updated: 7 November 2026 (live app on up.129: D2a email codes, D2b reminders; up.140 in review).
 
 ## State
 
@@ -14,13 +14,15 @@ Last updated: 7 November 2026 (live app on up.129: D2a email codes, D2b reminder
   acceptance criteria and a phased roadmap are ready for implementation. Start with shared
   load/save failure handling, modal focus and whole financial amounts. Review the coverage
   gaps before claiming completion; 176 browser checks passed, one was environment-blocked
-  and its following serial check did not run. Product changes have not been implemented.
+  and its following serial check did not run. Product changes land in the follow-up PRs below.
   Preserve finding IDs and update the coverage checklist as follow-up work lands.
   Follow-up PRs in order: A (AU-003, 009, 012, 013; 0.2.0-up.132, merged), B amounts on one
   line (AU-008; 0.2.0-up.133, merged), C modal focus (AU-001; 0.2.0-up.134, merged), D save and delete feedback
   (AU-005/006; 0.2.0-up.135, merged), E load errors
-  (AU-004; 0.2.0-up.136, merged), F unsaved drafts (AU-007; 0.2.0-up.137, merged), G tabs (AU-010; 0.2.0-up.138, merged), H report drill-through (AU-014; 0.2.0-up.139); AU-002/011
-  after task validation. Each finding's heading in the report carries its status.
+  (AU-004; 0.2.0-up.136, merged), F unsaved drafts (AU-007; 0.2.0-up.137, merged), G tabs (AU-010; 0.2.0-up.138, merged), H report drill-through (AU-014; 0.2.0-up.139, merged), I follow-ups
+  (AU-011 yearly budget month anchor; focus after a deleted row; Tax/Transactions tab panels;
+  custom report table drill-through; Forecast panel layout; the slow payee delete test; 0.2.0-up.140).
+  AU-002 phone Budget order (owner-approved without user validation) is in the same PR. Each finding's heading in the report carries its status.
 
 - **Households, round-ups, Essentials pool and brand icons (up.131; owner-requested 7 November
   2026; migrations 0080 `household_groups.is_default` and 0081 `accounts.assign_pool` +

@@ -89,6 +89,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', dirty = f
   // field's autoFocus has already moved focus into the dialog). Focus returns here on close.
   const dialogRef = useRef<HTMLDivElement>(null);
   const opener = useRef<Element | null>(null);
+  const openerPeers = useRef<HTMLElement[]>([]);
   const wasOpen = useRef(false);
   if (isOpen && !wasOpen.current) opener.current = document.activeElement;
   wasOpen.current = isOpen;
@@ -124,6 +125,8 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', dirty = f
     if (!isOpen) return;
     setOpenStack([...openStack, id]);
     const release = holdRootInert();
+    // After commit, so the opener's classes no longer show the menu that opened this
+    openerPeers.current = peersAfter(opener.current);
     const dialog = dialogRef.current;
     // A field with autoFocus already has focus; otherwise the dialog itself takes it
     if (dialog && !dialog.contains(document.activeElement)) dialog.focus();
@@ -132,11 +135,15 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', dirty = f
       release();
       // Back to the opener, unless something else deliberately took focus meanwhile. A tick
       // later: an opener in the dialog underneath stays inert until that dialog re-renders.
+      // If the opener's row was deleted, the same control in the next row (or the previous one,
+      // after the last row) takes focus, so the keyboard keeps its place in the list.
       const back = opener.current;
+      const peers = openerPeers.current;
       setTimeout(() => {
         const active = document.activeElement;
         if (active && active !== document.body && !dialog?.contains(active)) return;
-        if (back instanceof HTMLElement && back.isConnected) back.focus();
+        if (back instanceof HTMLElement && back.isConnected) return back.focus();
+        peers.find((p) => p.isConnected)?.focus();
       });
     };
   }, [isOpen, id]);
@@ -226,4 +233,24 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', dirty = f
     </div>,
     document.body,
   );
+}
+
+/**
+ * The opener's peers, the same control in the other rows of its list (same tag, classes and
+ * menu popup), nearest first: the ones after it in document order, then the ones before it,
+ * last first. Read when a dialog opens, while the opener is still on the page.
+ */
+function peersAfter(opener: Element | null): HTMLElement[] {
+  if (!(opener instanceof HTMLElement) || opener === document.body) return [];
+  const same = (el: HTMLElement) =>
+    el.tagName === opener.tagName &&
+    el.className === opener.className &&
+    el.getAttribute('aria-haspopup') === opener.getAttribute('aria-haspopup') &&
+    el.getClientRects().length > 0;
+  const all = Array.from(document.querySelectorAll<HTMLElement>(opener.tagName)).filter(
+    (el) => el === opener || same(el),
+  );
+  const at = all.indexOf(opener);
+  if (at < 0) return [];
+  return [...all.slice(at + 1), ...all.slice(0, at).reverse()];
 }

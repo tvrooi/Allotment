@@ -42,7 +42,8 @@ export default function CustomReportBuilder() {
   // The settings as last loaded or saved: anything else is unsaved work (UX audit AU-007)
   const [baseline, setBaseline] = useState(() => JSON.stringify(config));
   const dirty = JSON.stringify(config) !== baseline;
-  const [leaving, setLeaving] = useState(false);
+  // Where the person asked to go while the settings were unsaved; the prompt asks first
+  const [leaving, setLeaving] = useState<string | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);
   const [reportName, setReportName] = useState('');
 
@@ -126,7 +127,7 @@ export default function CustomReportBuilder() {
             onClick={(e) => {
               if (!dirty) return;
               e.preventDefault();
-              setLeaving(true);
+              setLeaving(backTo);
             }}
             className="text-text-tertiary hover:text-text-secondary transition-colors"
           >
@@ -150,8 +151,8 @@ export default function CustomReportBuilder() {
       {leaving && dirty && (
         <DiscardPrompt
           message="Leave without saving this report?"
-          onKeep={() => setLeaving(false)}
-          onDiscard={() => navigate(backTo)}
+          onKeep={() => setLeaving(null)}
+          onDiscard={() => navigate(leaving)}
           className="mx-6 mt-3 max-md:mx-4"
         />
       )}
@@ -161,7 +162,18 @@ export default function CustomReportBuilder() {
         <ReportBuilderSidebar config={config} onChange={setConfig} />
         <div className="flex-1 max-md:flex-none max-md:order-first p-6 max-md:p-4 overflow-auto bg-page">
           <div className="h-[500px] max-md:h-[360px]" key={id ?? 'new'}>
-            <ReportChartArea config={config} data={data} isLoading={isLoading} />
+            <ReportChartArea
+              config={config}
+              data={data}
+              isLoading={isLoading}
+              // The settings that produced `data`; a table row's link asks first when unsaved
+              linkConfig={debouncedConfig}
+              onFollowLink={(to, e) => {
+                if (!dirty) return;
+                e.preventDefault();
+                setLeaving(to);
+              }}
+            />
           </div>
         </div>
       </div>

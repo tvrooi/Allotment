@@ -9,7 +9,7 @@ import { useOpenFromLink } from '../hooks/useOpenFromLink';
 import { ReceiptsTab, ScanReceiptButton, useAddReceipts } from '../components/receipts/ReceiptsTab';
 import { Tip } from '../components/guide/Tip';
 import { TIPS } from '../guides';
-import { TabList } from '../components/ui/tabList';
+import { tabIds, TabList } from '../components/ui/tabList';
 import {
   FILTER_KEYS,
   filtersFromSearch,
@@ -92,6 +92,8 @@ export default function TransactionsPage() {
               key={id}
               type="button"
               role="tab"
+              id={tabIds('transactions', id).tab}
+              aria-controls={tabIds('transactions', id).panel}
               aria-selected={view === id}
               tabIndex={view === id ? 0 : -1}
               onClick={() => setPageParam({ view: id === 'all' ? null : id, receipt: null })}
@@ -118,17 +120,24 @@ export default function TransactionsPage() {
           className="px-6 py-2.5 border-b border-border-light shrink-0"
         />
       )}
-      {view === 'receipts' ? (
-        <ReceiptsTab openId={openReceipt} onOpen={(id) => setPageParam({ receipt: id })} />
-      ) : (
-        <TransactionTable
-          key={own.current.generation}
-          initialFilters={filtersFromSearch(params)}
-          onFiltersChange={onFiltersChange}
-          canSaveView
-          onAddTransaction={() => setShowAdd(true)}
-        />
-      )}
+      <div
+        role="tabpanel"
+        id={tabIds('transactions', view).panel}
+        aria-labelledby={tabIds('transactions', view).tab}
+        className="flex flex-col flex-1 min-h-0"
+      >
+        {view === 'receipts' ? (
+          <ReceiptsTab openId={openReceipt} onOpen={(id) => setPageParam({ receipt: id })} />
+        ) : (
+          <TransactionTable
+            key={own.current.generation}
+            initialFilters={filtersFromSearch(params)}
+            onFiltersChange={onFiltersChange}
+            canSaveView
+            onAddTransaction={() => setShowAdd(true)}
+          />
+        )}
+      </div>
       <AddTransactionModal isOpen={showAdd} onClose={() => setShowAdd(false)} />
     </div>
   );

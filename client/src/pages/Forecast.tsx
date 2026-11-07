@@ -63,6 +63,7 @@ export default function ForecastPage() {
         role="tabpanel"
         id={tabIds('forecast', tab).panel}
         aria-labelledby={tabIds('forecast', tab).tab}
+        className="flex flex-col flex-1 min-h-0"
       >
         <PrivateSection title="Forecasts are hidden in Safe mode">
           {tab === 'cash' ? <CashRunway /> : <LongTermForecast />}

@@ -1,5 +1,17 @@
 # Changes
 
+## 0.2.0-up.140
+
+From the UI and UX audit (`docs/UX-UI-AUDIT.md`: AU-002, AU-011, and what was left of AU-001, AU-010 and AU-014).
+
+- **On a phone, the budget opens on your envelopes.** Ready to assign is now one compact row (the amount, what it means and **Put the rest in…**), followed straight away by the envelopes you assign money to, then card payments, then Income. The month's summary and note, **Move money** and card payment details come after them. **Hold money** and how Ready to assign is worked out are under **Hold money, and how this is worked out**. Balance warnings, Ready to assign for each pool and money held for next month stay in view. The computer layout is unchanged.
+- **The yearly budget opens on this month on a phone.** **Budget → Year** used to open on January, with this month off screen to the right. On a phone it now opens on the month you have open in the monthly budget (or this month), with **Jump to month** to go straight to any other. A fade on the right shows there are more months. The category names, group names and the **Assigned** / **Activity** labels stay in place as the months scroll. This month's column is marked for screen readers.
+- **Custom report tables open their transactions.** In a custom report shown as a table, each name in the **Name / Amount** table opens **Transactions** with the same months, budget accounts and filters, and the same spending or income, so the register adds up to that row. Rows the register can't match exactly have no link: a report that picks its own accounts, filters more than one category group, or shows income grouped by payee, account or month, and the one payee row that gathers everything without a saved payee. Following a link with unsaved report changes asks **Leave without saving this report?** first.
+- **After you delete a goal, payee or rule, the keyboard stays in the list.** Focus moves to the same button on the next row (or the row before, when you deleted the last), instead of being lost. The row also disappears as soon as the delete succeeds.
+- **Tax time and Transactions tabs label their content,** like Recurring, Settings and Forecast, so screen readers say which tab it belongs to.
+- **Fixed:** a long forecast on **Forecast** could scroll the heading and tabs off the page (since 0.2.0-up.138). The forecast scrolls inside its tab again.
+- A browser test of a slow payee delete on a phone no longer depends on how fast the machine running it is.
+
 ## 0.2.0-up.139
 
 From the UI and UX audit (`docs/UX-UI-AUDIT.md`, finding AU-014).
