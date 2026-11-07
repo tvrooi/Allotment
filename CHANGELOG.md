@@ -1,5 +1,12 @@
 # Changes
 
+## 0.2.0-up.136
+
+From the UI and UX audit (`docs/UX-UI-AUDIT.md`, finding AU-004).
+
+- **A page that couldn't load says so, instead of looking empty.** If Goals, Payees, Rules or Files can't be fetched (Allotment can't be reached, or the server refuses), the page now says "Couldn't load your goals" (or payees, rules, files), gives the reason, and says nothing has been changed. **Retry** fetches them again. It used to show the welcome screen for a page with nothing in it, such as "No payees yet", as if they were gone.
+- **If a refresh fails, what's on screen stays.** When the list was already loaded and fetching it again fails, it stays on screen with a note that it's what was loaded earlier, and **Retry**.
+
 ## 0.2.0-up.135
 
 From the UI and UX audit (`docs/UX-UI-AUDIT.md`, findings AU-005 and AU-006).

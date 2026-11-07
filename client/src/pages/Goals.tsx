@@ -12,6 +12,7 @@ import { Modal, useModalValue } from '../components/ui/Modal';
 import { FilesSection } from '../components/files/FilesSection';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
+import { QueryProblem, loadFailed } from '../components/ui/QueryProblem';
 import { Card } from '../components/ui/Card';
 import { StatCardRow } from '../components/reports/ChartHelpers';
 import RowMenu from '../components/ui/RowMenu';
@@ -282,7 +283,8 @@ function GoalGroup({
 }
 
 export default function GoalsPage() {
-  const { data: goals = [], isLoading } = useGoals();
+  const goalsQuery = useGoals();
+  const { data: goals = [], isLoading } = goalsQuery;
   const { data: accounts = [] } = useAccounts();
   const createGoal = useCreateGoal();
   const updateGoal = useUpdateGoal();
@@ -346,7 +348,14 @@ export default function GoalsPage() {
         </Button>
       </div>
 
-      {goals.length === 0 ? (
+      {!loadFailed(goalsQuery) && (
+        <QueryProblem what="goals" query={goalsQuery} className="mx-6 mt-4 max-md:mx-4" />
+      )}
+      {loadFailed(goalsQuery) ? (
+        <div className="flex-1 flex items-center justify-center overflow-y-auto">
+          <QueryProblem what="goals" query={goalsQuery} />
+        </div>
+      ) : goals.length === 0 ? (
         <div className="flex-1 flex items-center justify-center overflow-y-auto">
           <EmptyState
             icon={<Target size={26} />}
