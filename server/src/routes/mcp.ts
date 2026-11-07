@@ -261,6 +261,14 @@ const TOOLS: Tool[] = [
     path: (a) => `/households/${seg(a.household_id)}/statement${query(a, ['from', 'to'])}`,
   },
   {
+    name: 'household_reconciliation_preview',
+    description:
+      "Where each person's household balance comes from and what agreeing it at 0 would change: each person's balance now (before) and after, the adjustments to their part with the household account (poolShares) and to what people owe each other directly (directShares, adding up to 0), and the ledger's household-account total before and after. Read household_statement for the entries behind the figures. To agree the balances, use propose_household_reconciliation.",
+    properties: { household_id: { type: 'string', description: 'From list_households' } },
+    required: ['household_id'],
+    path: (a) => `/households/${seg(a.household_id)}/reconcile`,
+  },
+  {
     name: 'household_contribution_suggestions',
     description:
       "Money received in the last 120 days that looks like someone paying the household: deposits into its accounts not linked yet (contribution: the person's name in the payee, or a transfer from one of your own accounts) and repayments into your accounts (settlement), each with what that person owes. A transfer back from a shared saver outside the household is offered as yours: check whose money it is.",
@@ -1266,6 +1274,45 @@ const ACTION_TOOLS: ActionTool[] = [
       propose(ctx, {
         kind: 'household.unlink_transfers',
         transactionIds: a.transaction_ids,
+        note: a.note,
+      }),
+  },
+  {
+    name: 'propose_household_reconciliation',
+    scope: 'organise',
+    description:
+      "Proposes agreeing a household's balances from a date: each person's balance with the household account becomes the agreed figure (0 unless given, in cents; positive = credit held there) and what people owe each other directly is cleared, with adjustment entries that keep every earlier entry. Check household_reconciliation_preview with the user first. Nothing changes until the owner applies it in Allotment (Settings → Server → Access tokens → Waiting for you); applying is refused if any balance changed since. The owner can undo it by removing the adjustment entries.",
+    properties: {
+      household_id: { ...idString, description: 'From list_households' },
+      date: {
+        ...day,
+        description: 'The day the balances are agreed (today or earlier); today when left out',
+      },
+      agreed: {
+        type: 'array',
+        maxItems: MAX_PROPOSAL_ITEMS,
+        description: 'Anyone not listed is agreed at 0',
+        items: {
+          type: 'object',
+          properties: {
+            person_id: { ...idString, description: "From household's people" },
+            amount: { type: 'integer', description: 'Agreed balance in cents' },
+          },
+          required: ['person_id', 'amount'],
+        },
+      },
+      note: { type: 'string', maxLength: 1000, description: 'Why, for the owner' },
+    },
+    required: ['household_id'],
+    run: async (ctx, a) =>
+      propose(ctx, {
+        kind: 'household.reconcile',
+        householdId: a.household_id,
+        date: a.date,
+        agreed: ((a.agreed ?? []) as { person_id: string; amount: number }[]).map((x) => ({
+          personId: x.person_id,
+          amount: x.amount,
+        })),
         note: a.note,
       }),
   },

@@ -92,7 +92,10 @@ summaries) and in **Settings → Server → Access tokens → Assistant activity
    up.113's temporary direct rows): `household.remove_entries`, `household.share_bills` (bills a
    household account paid, linked to their payments) and `household.unlink_transfers` (transfers
    with a side in a household account), MCP `remove_household_entries`,
-   `record_household_bill_expenses` and `unlink_household_transfers`. Each holds up to 50 items,
+   `record_household_bill_expenses` and `unlink_household_transfers`. `household.reconcile`
+   (owner request of 7 November 2026; MCP `propose_household_reconciliation`) agrees every
+   balance from a date with adjustment entries (docs/HOUSEHOLDS.md), refused at apply if any
+   balance changed since it was proposed. Each holds up to 50 items,
    is checked when proposed, lists every item for the owner, and is applied whole in one database
    transaction through the household and transfer services, or not at all.
 3. **Done (0.2.0-up.127): checks inside the write.** Each row whose rule depends on the budget

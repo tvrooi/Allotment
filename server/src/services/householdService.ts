@@ -1010,6 +1010,97 @@ export function renamePerson(groupId: string, personId: string, raw: unknown) {
   return snapshot(groupId);
 }
 
+const reconcileInput = z
+  .object({
+    date: date.optional(),
+    /**
+     * Each person's agreed balance with the household account, in cents (positive = credit
+     * held there, negative = owes it). Anyone left out is agreed at 0. What people owe each
+     * other directly is always cleared: settle that first if it should be paid instead.
+     */
+    agreed: z
+      .array(
+        z.object({
+          personId: z.string().min(1).max(64),
+          amount: z.number().int().min(-1e12).max(1e12),
+        }),
+      )
+      .max(100)
+      .default([]),
+    /** Show what would change, recording nothing */
+    preview: z.boolean().optional(),
+  })
+  .strict();
+
+/**
+ * Reconciles a household: sets every balance to an agreed figure (0 unless given) from a date,
+ * with up to two adjustment entries, so later activity starts from there. Earlier entries stay
+ * as they were; removing the adjustments (Undo) brings the old balances back.
+ */
+export function reconcileBalances(groupId: string, raw: unknown, source: ActivitySource = 'owner') {
+  const state = snapshot(groupId);
+  const input = reconcileInput.parse(raw);
+  const asOf = input.date ?? todayIso();
+  const agreed = new Map<string, number>();
+  for (const a of input.agreed) {
+    if (!state.people.some((p) => p.id === a.personId)) throw new Error('Person not found');
+    if (agreed.has(a.personId)) throw new Error('Give each person one agreed balance');
+    agreed.set(a.personId, a.amount);
+  }
+  const poolShares = state.people
+    .map((p) => ({ personId: p.id, amount: (agreed.get(p.id) ?? 0) - state.toPool[p.id] }))
+    .filter((s) => s.amount !== 0);
+  const directShares = state.people
+    .map((p) => ({ personId: p.id, amount: -state.direct[p.id] }))
+    .filter((s) => s.amount !== 0);
+  const newPool = state.pool + poolShares.reduce((n, s) => n + s.amount, 0);
+  const people = state.people.map((p) => ({
+    personId: p.id,
+    before: state.balances[p.id],
+    after: agreed.get(p.id) ?? 0,
+  }));
+  const result = {
+    date: asOf,
+    people,
+    poolShares,
+    directShares,
+    pool: { before: state.pool, after: newPool },
+  };
+  if (input.preview) return { ...result, recorded: [] as string[], state };
+  if (!poolShares.length && !directShares.length)
+    throw new Error('These balances are already agreed: nothing to change');
+  if (state.reserved > 0 && newPool < state.reserved)
+    throw new Error('Release bill reservations first: the agreed balances don’t cover them');
+  const description = `Balances agreed on ${asOf}`;
+  const recorded: string[] = [];
+  db.transaction(() => {
+    for (const [kind, list] of [
+      ['pool_adjustment', poolShares],
+      ['balance_adjustment', directShares],
+    ] as const) {
+      if (!list.length) continue;
+      const id = nanoid();
+      db.insert(events)
+        .values({
+          id,
+          groupId,
+          kind,
+          date: asOf,
+          description,
+          // What the entry moves, for lists; the shares carry the signed amounts
+          amount: list.reduce((n, s) => n + Math.abs(s.amount), 0),
+        })
+        .run();
+      db.insert(shares)
+        .values(list.map((s) => ({ id: nanoid(), eventId: id, ...s })))
+        .run();
+      recorded.push(id);
+    }
+    logActivity(groupId, 'settled', recorded[0], `${description}`, source);
+  });
+  return { ...result, recorded, state: snapshot(groupId) };
+}
+
 const groupEdit = z
   .object({
     name: name.optional(),

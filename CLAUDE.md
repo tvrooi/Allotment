@@ -56,7 +56,8 @@ Keep AGENTS.md and CLAUDE.md byte-identical (Codex reads one, Claude Code the ot
   settlements, edits or removals), and record the owner's own unlinked contribution up to what
   the owner owes the household account (never anyone else's, never into credit). An `organise` token may also propose
   household corrections that only the owner applies: removing entries, sharing bills a household
-  account paid, unlinking transfers with a side in a household account (owner-requested 6 November 2026). Token category changes are undoable change sets;
+  account paid, unlinking transfers with a side in a household account (owner-requested 6 November 2026),
+  agreeing household balances from a date with adjustment entries (owner-requested 7 November 2026). Token category changes are undoable change sets;
   only the owner redoes one.
 - HA `/data/options.json` stays root-only; root opens it before dropping to uid 1000. Never regenerate
   an existing key. Supervisor watchdog must be TCP because strict hosts reject its IP-based HTTP probe.

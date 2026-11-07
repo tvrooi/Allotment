@@ -124,7 +124,10 @@ Changes the owner must approve arrive as proposals: an organise token may
 depreciating asset or a change to one, and (owner-requested on 6 November 2026) household
 corrections: removing household entries (MCP `remove_household_entries`), sharing past bills a
 household account paid, linked to their payments (`record_household_bill_expenses`), and
-unlinking past transfers with a side in a household account (`unlink_household_transfers`).
+unlinking past transfers with a side in a household account (`unlink_household_transfers`), and
+(owner-requested on 7 November 2026) agreeing a household's balances from a date
+(`propose_household_reconciliation`; `household_reconciliation_preview` reads what it would
+change).
 Nothing changes until the owner chooses **Apply** under **Waiting for you** in the same settings
 section (`POST /api/assistant/proposals/:id/apply` or `/decline`, owner only), which lists every
 item a household proposal would change. Applying runs the same checks as the owner's own change,

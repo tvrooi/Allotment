@@ -17,6 +17,7 @@ import { HouseholdIcon } from '../components/household/HouseholdIcon';
 import { CombinedHousehold } from '../components/household/CombinedHousehold';
 import { RecurringBills } from '../components/household/RecurringBills';
 import { SettleUp } from '../components/household/SettleUp';
+import { ReconcileBalances } from '../components/household/ReconcileBalances';
 import type { SettleUpTransfer } from '../api/households';
 import { EditEntry } from '../components/household/EditEntry';
 import { HouseholdBreakdown } from '../components/household/HouseholdBreakdown';
@@ -97,7 +98,11 @@ const KIND_LABEL: Record<string, string> = {
   refund: 'Refund',
   contribution: 'Advance into pool',
   settlement: 'Repayment',
+  pool_adjustment: 'Balances agreed (household account)',
+  balance_adjustment: 'Balances agreed (between people)',
 };
+/** Reconcile's entries: removed to undo, never edited */
+const ADJUSTMENT = new Set(['pool_adjustment', 'balance_adjustment']);
 function cents(value: FormDataEntryValue | null) {
   const text = String(value ?? '');
   if (!/^\d+(\.\d{1,2})?$/.test(text))
@@ -524,6 +529,15 @@ export default function HouseholdPage() {
                   people={state.people}
                   settlements={state.settlements ?? []}
                   poolOwed={state.poolOwed ?? []}
+                />
+                <ReconcileBalances
+                  key={`reconcile-${state.group.id}`}
+                  groupId={state.group.id}
+                  currency={state.group.currency}
+                  people={state.people}
+                  balances={state.balances}
+                  toPool={state.toPool ?? {}}
+                  direct={state.direct ?? {}}
                 />
                 {hasPool && (
                   <div className="mt-3 grid gap-2 sm:grid-cols-3 text-xs text-text-tertiary">
@@ -1183,18 +1197,20 @@ export default function HouseholdPage() {
                             </td>
                             <td className="py-2 pr-3 text-right tabular-nums">{money(e.amount)}</td>
                             <td className="py-2 text-right whitespace-nowrap">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                disabled={mutation.isPending}
-                                aria-label={`Edit ${e.description}`}
-                                onClick={() => {
-                                  setError('');
-                                  setEditingEntry(e);
-                                }}
-                              >
-                                Edit
-                              </Button>
+                              {!ADJUSTMENT.has(e.kind) && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={mutation.isPending}
+                                  aria-label={`Edit ${e.description}`}
+                                  onClick={() => {
+                                    setError('');
+                                    setEditingEntry(e);
+                                  }}
+                                >
+                                  Edit
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
                                 variant="ghost"

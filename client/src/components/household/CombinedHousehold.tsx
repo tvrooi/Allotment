@@ -31,6 +31,8 @@ const KIND: Record<CombinedEntry['kind'], string> = {
   contribution: 'Contribution',
   settlement: 'Repayment',
   refund: 'Refund',
+  pool_adjustment: 'Balances agreed',
+  balance_adjustment: 'Balances agreed',
 };
 
 interface Props {

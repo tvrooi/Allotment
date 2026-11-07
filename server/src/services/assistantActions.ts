@@ -15,7 +15,13 @@ import {
   createAsset,
   updateAsset,
 } from './depreciatingAssetService.js';
-import { poolGroupOf, recordEvent, removeEvent, snapshot } from './householdService.js';
+import {
+  poolGroupOf,
+  reconcileBalances,
+  recordEvent,
+  removeEvent,
+  snapshot,
+} from './householdService.js';
 import { todayIso } from './mainAmountService.js';
 import { TransferError, unlinkTransfer } from './transferService.js';
 
@@ -76,6 +82,17 @@ export const proposalSchema = z.discriminatedUnion('kind', [
     note,
   }),
   z.object({ kind: z.literal('household.unlink_transfers'), transactionIds: ids, note }),
+  // Balances agreed (owner-requested on 7 November 2026): reconcileBalances, applied by the owner
+  z.object({
+    kind: z.literal('household.reconcile'),
+    householdId: id,
+    date: z.iso.date().optional(),
+    agreed: z
+      .array(z.object({ personId: id, amount: z.number().int().min(-1e12).max(1e12) }))
+      .max(MAX_PROPOSAL_ITEMS)
+      .default([]),
+    note,
+  }),
 ]);
 export type ProposalInput = z.infer<typeof proposalSchema>;
 
@@ -214,6 +231,33 @@ function proposalContent(input: ProposalInput): { targetId: string | null; paylo
         payload: { householdId: input.householdId, household: state.group.name, bills },
       };
     }
+    case 'household.reconcile': {
+      const state = household(input.householdId);
+      const date = input.date ?? todayIso();
+      if (date > todayIso()) throw new ProposalError('Only today or a past date');
+      let preview;
+      try {
+        preview = reconcileBalances(input.householdId, {
+          date,
+          agreed: input.agreed,
+          preview: true,
+        });
+      } catch (e) {
+        throw new ProposalError(e instanceof Error ? e.message : 'Invalid reconciliation');
+      }
+      if (!preview.poolShares.length && !preview.directShares.length)
+        throw new ProposalError('These balances are already agreed: nothing to change');
+      return {
+        targetId: input.householdId,
+        payload: {
+          householdId: input.householdId,
+          household: state.group.name,
+          date,
+          agreed: input.agreed,
+          people: preview.people.map((x) => ({ ...x, name: personName(state, x.personId) })),
+        },
+      };
+    }
     case 'household.unlink_transfers': {
       unique(input.transactionIds, 'transfer');
       const transfers = input.transactionIds.map((transactionId) => {
@@ -271,6 +315,20 @@ function applyHouseholdProposal(kind: string, payload: unknown): string | null {
           );
         removeEvent(p.householdId, e.eventId);
       }
+      return p.householdId;
+    }
+    if (kind === 'household.reconcile') {
+      const p = payload as {
+        householdId: string;
+        date: string;
+        agreed: { personId: string; amount: number }[];
+        people: { personId: string; before: number }[];
+      };
+      const now = snapshot(p.householdId);
+      // Only the balances the owner was shown: anything recorded since is refused, not folded in
+      if (p.people.some((x) => now.balances[x.personId] !== x.before))
+        throw new ProposalError('The balances changed since this was proposed', 409);
+      reconcileBalances(p.householdId, { date: p.date, agreed: p.agreed });
       return p.householdId;
     }
     if (kind === 'household.share_bills') {

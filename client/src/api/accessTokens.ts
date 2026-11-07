@@ -96,7 +96,8 @@ export interface AssistantProposal {
     | 'asset.update'
     | 'household.remove_entries'
     | 'household.share_bills'
-    | 'household.unlink_transfers';
+    | 'household.unlink_transfers'
+    | 'household.reconcile';
   targetId: string | null;
   payload: Record<string, unknown>;
   note: string | null;

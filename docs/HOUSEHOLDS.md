@@ -134,6 +134,27 @@ sidebar's Household link open it unless the address names another (`?household=`
 household is the default; with none, the first one opens. Both are owner-only settings, so access
 tokens can't change them; `list_households` shows which one is the default.
 
+## Where the balances come from, and reconciling them
+
+Each person's balance is two parts (`householdLedger`): **household account**, money they put
+in less their share of what the household account paid, and **between people**, what they paid
+for others less their share of what others paid, after repayments. **Where these figures come
+from** under People & balances shows both parts per person. The amount beside Household in the
+sidebar is something else: the household accounts' bank balance.
+
+**Reconcile balances** agrees everyone's balance from a date (0 unless another figure is typed;
+positive is credit held in the household account). It records up to two adjustment entries,
+`pool_adjustment` (each person's household-account part moves to the agreed figure) and
+`balance_adjustment` (what people owe each other directly is cleared; its shares add up to 0),
+dated that day and described "Balances agreed on …". Earlier entries stay as they were, and
+removing the adjustment entries (they can't be edited) brings the old balances back. It is refused
+when nothing would change, or when bill reservations would no longer be covered. Routes:
+`GET /api/households/:id/reconcile` previews agreeing everyone at 0;
+`POST /api/households/:id/reconcile` with `{ date?, agreed?: [{ personId, amount }] }` records it.
+An `organise` token can only propose it (MCP `propose_household_reconciliation`, after
+`household_reconciliation_preview`), and the owner applies it; applying is refused if any balance
+changed since.
+
 ## People
 
 **Add person** under People & balances adds someone with a zero balance. An equal split includes
