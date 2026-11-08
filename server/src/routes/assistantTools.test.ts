@@ -22,6 +22,9 @@ const {
   householdRecurringBills,
   schedules,
   depreciatingAssets,
+  securities,
+  holdings,
+  investmentIncome,
 } = await import('../db/schema.js');
 const { hostGuard, originGuard, errorHandler } = await import('../middleware/security.js');
 const { authRouter, requireSession } = await import('./auth.js');
@@ -39,6 +42,7 @@ const { changeSetsRouter } = await import('./changeSets.js');
 const { budgetProposalsRouter } = await import('./budgetProposals.js');
 const { taxRouter } = await import('./tax.js');
 const { householdsRouter } = await import('./households.js');
+const { investmentsRouter } = await import('./investments.js');
 
 let server: Server;
 let base: string;
@@ -87,6 +91,7 @@ beforeAll(async () => {
   app.use('/api/budget-proposals', budgetProposalsRouter);
   app.use('/api/tax', taxRouter);
   app.use('/api/households', householdsRouter);
+  app.use('/api/investments', investmentsRouter);
   app.use('/api/access-tokens', accessTokensRouter);
   app.use('/api/mcp', mcpRouter);
   app.use(errorHandler);
@@ -1239,5 +1244,72 @@ describe('the assistant endpoint and its log (audit decision I-11)', () => {
     expect(
       (await call('POST', '/assistant/proposals', {}, { kind: 'asset.create', asset })).status,
     ).toBe(400);
+  });
+});
+
+describe('investments, read only (D3b, owner decision 7)', () => {
+  it('an organise token reads holdings, sales, income and the year; nothing writes', async () => {
+    db.insert(accounts).values({ id: 'shares', name: 'Mock shares', type: 'investment' }).run();
+    db.insert(securities)
+      .values({ id: 'sec', symbol: 'MOCK', name: 'Mock fund', kind: 'etf', currency: 'AUD' })
+      .run();
+    db.insert(holdings)
+      .values({ id: 'hold', accountId: 'shares', securityId: 'sec', quantity: 10_000_000 })
+      .run();
+    db.insert(investmentIncome)
+      .values({
+        id: 'div',
+        holdingId: 'hold',
+        paidOn: '2025-09-20',
+        kind: 'dividend',
+        amount: 7_000,
+        franked: 7_000,
+        frankingCredit: 3_000,
+      })
+      .run();
+    const token = await newToken('organise');
+    expect(await toolNames(token)).toContain('investments');
+    expect(await toolNames(await newToken('categorise'))).not.toContain('investments');
+
+    const read = await tool(token, 'investments', { financial_year: 2025 });
+    expect(read.isError).toBe(false);
+    const holding = read.data.investments.accounts
+      .flatMap((a: { holdings: unknown[] }) => a.holdings)
+      .find((h: { id: string }) => h.id === 'hold');
+    expect(holding.income).toEqual([expect.objectContaining({ id: 'div', frankingCredit: 3_000 })]);
+    expect(read.data.investmentIncome.dividends).toMatchObject({
+      franked: 7_000,
+      frankingCredit: 3_000,
+    });
+    expect(read.data.capitalGains).toMatchObject({ totalGains: 0 });
+
+    // Writes are refused, directly and through the assistant endpoint
+    const payment = {
+      paidOn: '2025-10-01',
+      kind: 'dividend',
+      amount: 1,
+      unfranked: 1,
+      franked: 0,
+      frankingCredit: 0,
+      withheld: 0,
+    };
+    for (const direct of [true, false])
+      expect(
+        (await call('POST', '/investments/holdings/hold/income', { token, direct }, payment))
+          .status,
+      ).toBe(403);
+    expect(
+      (
+        await call(
+          'PUT',
+          '/investments/holdings/hold/income/div/transaction',
+          { token, direct: true },
+          { transactionId: null },
+        )
+      ).status,
+    ).toBe(403);
+    expect(db.select().from(investmentIncome).all()).toHaveLength(1);
+    // The owner still can
+    expect((await call('POST', '/investments/holdings/hold/income', {}, payment)).status).toBe(201);
   });
 });

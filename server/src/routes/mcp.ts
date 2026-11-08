@@ -983,6 +983,33 @@ const ACTION_TOOLS: ActionTool[] = [
     },
   },
   {
+    name: 'investments',
+    scope: 'organise',
+    readOnly: true,
+    description:
+      "Investments: each investment account's holdings with their purchases (lots), sales (parcels, gain or loss, whether the 50% discount applies) and income (dividends, distributions, interest with franked, unfranked, franking credit and tax withheld), valued on as_of (default today). With financial_year, also that year's capital gains (item 18) and investment income (items 10 and 11). Amounts in cents, units in millionths; financial year 2025 = 2025–26. Read only: never records, changes or links a sale or payment. Record keeping, not tax advice.",
+    properties: {
+      as_of: day,
+      financial_year: { type: 'integer', minimum: 1990, maximum: 2200 },
+    },
+    run: async (ctx, a) => {
+      const overview = await api(
+        ctx,
+        a.as_of === undefined ? '/investments' : `/investments?asOf=${seg(a.as_of)}`,
+      );
+      if (!overview.ok) return { error: overview.error };
+      if (a.financial_year === undefined) return { investments: overview.data };
+      if (!Number.isInteger(a.financial_year)) return { error: 'Give a financial year, e.g. 2025' };
+      const year = await api(ctx, `/tax/years/${seg(a.financial_year)}`);
+      if (!year.ok) return { error: year.error };
+      const { capitalGains, investmentIncome } = year.data as {
+        capitalGains: unknown;
+        investmentIncome: unknown;
+      };
+      return { investments: overview.data, capitalGains, investmentIncome };
+    },
+  },
+  {
     name: 'propose_tax_asset',
     scope: 'organise',
     description:
@@ -1356,7 +1383,7 @@ const BASICS =
 const INSTRUCTIONS: Record<TokenScope, string> = {
   read: `Read-only access to an Allotment budget. ${BASICS}`,
   categorise: `Read access to an Allotment budget, plus setting the category of past transactions (categorise_transactions, categorise_by_payee) and creating and editing categories and groups; nothing else can change. ${BASICS} Start from uncategorised_payees. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before categorising.`,
-  organise: `Read access to an Allotment budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers, suggesting assignments the owner applies, claiming past transactions as tax deductions (tax_years, tax_deductions, tax_claim_candidates, claim_tax_deductions; never replacing or removing a claim), reading depreciating assets (tax_assets) and proposing new ones or changes the owner applies (propose_tax_asset), recording household contributions linked to deposits into a household account (household_bill_reconciliation, record_household_contributions), and your own unlinked contribution up to what you owe the household account (record_own_household_contribution). Proposing household corrections that only the owner applies: removing entries, sharing bills a household account paid, and unlinking wrong transfers into household accounts (remove_household_entries, record_household_bill_expenses, unlink_household_transfers). ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
+  organise: `Read access to an Allotment budget, plus categorising, editing categories, proposing rules (saved disabled until the owner enables them), applying a category-only rule to uncategorised transactions, payee default categories, linking suggested transfers, suggesting assignments the owner applies, claiming past transactions as tax deductions (tax_years, tax_deductions, tax_claim_candidates, claim_tax_deductions; never replacing or removing a claim), reading depreciating assets (tax_assets) and proposing new ones or changes the owner applies (propose_tax_asset), reading investments with their sales, income and the year's capital gains and income items (investments, read only), recording household contributions linked to deposits into a household account (household_bill_reconciliation, record_household_contributions), and your own unlinked contribution up to what you owe the household account (record_own_household_contribution). Proposing household corrections that only the owner applies: removing entries, sharing bills a household account paid, and unlinking wrong transfers into household accounts (remove_household_entries, record_household_bill_expenses, unlink_household_transfers). ${BASICS} Start from uncategorised_payees; test rule conditions before proposing a rule. Every category change returns a changeSetId that undo_change_set reverses. Confirm a plan with the user before changing anything.`,
 };
 
 const schemaOf = (t: { properties?: Record<string, unknown>; required?: string[] }) => ({

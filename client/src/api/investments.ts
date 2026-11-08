@@ -31,6 +31,8 @@ export interface TaxLot {
   costBasis: number | null;
   /** Units no sale has taken */
   remaining: number;
+  /** Bought by a reinvested payment: changed through that payment */
+  reinvested: boolean;
 }
 
 /** Why a sale's gain can't be counted: units with no purchase, a cost not known, no exchange rate */
@@ -67,6 +69,8 @@ export interface Sale {
   grossProceeds: number;
   fees: number;
   notes: string | null;
+  /** The settlement deposit it's linked to */
+  transactionId: string | null;
   parcels: SaleParcel[];
   /** After sale brokerage; null without an exchange rate */
   proceeds: number | null;
@@ -100,6 +104,36 @@ export interface Holding {
   accountValue: number | null;
   /** Newest first */
   sales: Sale[];
+  /** Dividends, distributions and interest, newest first */
+  income: Income[];
+}
+
+export const INCOME_KINDS = ['dividend', 'distribution', 'interest'] as const;
+export type IncomeKind = (typeof INCOME_KINDS)[number];
+
+export const INCOME_KIND_LABEL: Record<IncomeKind, string> = {
+  dividend: 'Dividend',
+  distribution: 'Distribution',
+  interest: 'Interest',
+};
+
+/** A payment as entered from its statement, in the security's currency */
+export interface Income {
+  id: string;
+  holdingId: string;
+  paidOn: string;
+  kind: IncomeKind;
+  /** The payment after any tax withheld */
+  amount: number;
+  unfranked: number;
+  franked: number;
+  frankingCredit: number;
+  withheld: number;
+  reinvested: { lotId: string; quantity: number; cost: number } | null;
+  transactionId: string | null;
+  notes: string | null;
+  /** Unfranked + franked isn't the payment plus tax withheld: check the statement */
+  partsDisagree: boolean;
 }
 
 export interface InvestmentAccount {
@@ -241,3 +275,66 @@ export const deleteSale = (holdingId: string, saleId: string) =>
 /** Net capital losses from before Allotment, carried into a financial year (null or 0 clears) */
 export const setCarriedLosses = (data: { financialYear: number | null; amount: number }) =>
   apiFetch<void>('/investments/carried-losses', { method: 'PUT', body: JSON.stringify(data) });
+
+// ─── Income and deposits (D3b) ────────────────────────────────────────────────
+
+export interface IncomeInput {
+  paidOn: string;
+  kind: IncomeKind;
+  amount: number;
+  unfranked: number;
+  franked: number;
+  frankingCredit: number;
+  withheld: number;
+  reinvested?: { quantity: number; cost: number } | null;
+  notes?: string | null;
+}
+
+export const recordIncome = (holdingId: string, data: IncomeInput) =>
+  apiFetch(`/investments/holdings/${holdingId}/income`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+export const updateIncome = (holdingId: string, incomeId: string, data: IncomeInput) =>
+  apiFetch(`/investments/holdings/${holdingId}/income/${incomeId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+
+export const deleteIncome = (holdingId: string, incomeId: string) =>
+  apiFetch<void>(`/investments/holdings/${holdingId}/income/${incomeId}`, { method: 'DELETE' });
+
+/** A sale's or a payment's row, as the deposit routes name them */
+export type DepositOf = { holdingId: string; kind: 'sales' | 'income'; id: string };
+
+export interface DepositSuggestion {
+  id: string;
+  date: string;
+  amount: number;
+  payeeName: string | null;
+  accountName: string;
+  currency: string | null;
+}
+
+export const depositSuggestions = ({ holdingId, kind, id }: DepositOf) =>
+  apiFetch<DepositSuggestion[]>(`/investments/holdings/${holdingId}/${kind}/${id}/deposits`);
+
+export const linkDeposit = ({ holdingId, kind, id }: DepositOf, transactionId: string | null) =>
+  apiFetch<void>(`/investments/holdings/${holdingId}/${kind}/${id}/transaction`, {
+    method: 'PUT',
+    body: JSON.stringify({ transactionId }),
+  });
+
+/** The sale or payment a register row is the deposit of */
+export interface InvestmentLink {
+  kind: 'sale' | 'income';
+  id: string;
+  holdingId: string;
+  date: string;
+  symbol: string;
+  incomeKind?: IncomeKind;
+}
+
+export const investmentForTransaction = (transactionId: string) =>
+  apiFetch<InvestmentLink | null>(`/investments/transactions/${transactionId}`);

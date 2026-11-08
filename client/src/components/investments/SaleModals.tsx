@@ -6,6 +6,8 @@ import { Input } from '../ui/Input';
 import { CurrencyInput } from '../ui/CurrencyInput';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { GuideLink } from '../guide/GuideLink';
+import { FilesSection } from '../files/FilesSection';
+import { DepositLink } from './DepositLink';
 import { Actions, ErrorText, Field, UnitsInput } from './InvestmentModals';
 import {
   useDeleteSale,
@@ -356,6 +358,17 @@ export function SalesModal({
                 Remove
               </Button>
             </div>
+            <DepositLink
+              of={{ holdingId: holding.id, kind: 'sales', id: s.id }}
+              transactionId={s.transactionId}
+              label={`the sale of ${formatDay(s.soldOn)}`}
+            />
+            <details>
+              <summary className="cursor-pointer text-xs text-text-secondary">
+                Contract note and files
+              </summary>
+              <FilesSection kind="investmentSale" targetId={s.id} title="Files" />
+            </details>
           </li>
         ))}
       </ul>

@@ -116,3 +116,44 @@ export const useDeleteSale = () =>
   );
 
 export const useSetCarriedLosses = () => useInvestmentMutation(api.setCarriedLosses);
+
+export const useRecordIncome = () =>
+  useInvestmentMutation(({ holdingId, ...data }: { holdingId: string } & api.IncomeInput) =>
+    api.recordIncome(holdingId, data),
+  );
+
+export const useUpdateIncome = () =>
+  useInvestmentMutation(
+    ({ holdingId, incomeId, ...data }: { holdingId: string; incomeId: string } & api.IncomeInput) =>
+      api.updateIncome(holdingId, incomeId, data),
+  );
+
+export const useDeleteIncome = () =>
+  useInvestmentMutation(({ holdingId, incomeId }: { holdingId: string; incomeId: string }) =>
+    api.deleteIncome(holdingId, incomeId),
+  );
+
+/** Deposits in the register that could be a sale's or payment's cash */
+export const useDepositSuggestions = (of: api.DepositOf | null) =>
+  useQuery({
+    queryKey: [...KEY, 'deposits', of],
+    queryFn: () => api.depositSuggestions(of!),
+    enabled: !!of,
+  });
+
+/** Links (or unlinks, with null) a deposit; the transaction panel's marker follows */
+export function useLinkDeposit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ of, transactionId }: { of: api.DepositOf; transactionId: string | null }) =>
+      api.linkDeposit(of, transactionId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+/** The sale or payment this register row is the deposit of, for the transaction panel */
+export const useInvestmentForTransaction = (transactionId: string) =>
+  useQuery({
+    queryKey: [...KEY, 'transaction', transactionId],
+    queryFn: () => api.investmentForTransaction(transactionId),
+  });

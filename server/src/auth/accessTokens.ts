@@ -190,9 +190,12 @@ const TAX_READ = [
   // are the owner's, or later an assistant's proposal the owner approves (audit I-11)
   /^\/tax\/assets(\/[^/]+)?$/,
   /^\/tax\/pool$/,
+  // Investments, read only (owner decision 7, INVESTMENT-SALES-AND-INCOME.md §9): holdings with
+  // their lots, sales and income. Every investments write stays the owner's.
+  /^\/investments$/,
 ];
 
-/** Whether an organise token may read this tax path (labels, years, claims, assets, the pool) */
+/** Whether an organise token may read this tax path (labels, years, claims, assets, the pool, investments) */
 export function taxReadAllows(method: string, rawPath: string): boolean {
   if (method !== 'GET' && method !== 'HEAD') return false;
   const path = rawPath.toLowerCase().replace(/\/+$/, '');

@@ -71,6 +71,7 @@ import {
   taxLots,
   investmentSales,
   investmentSaleParcels,
+  investmentIncome,
   depreciatingAssets,
   depreciatingAssetYears,
   taxLodgedYears,
@@ -100,6 +101,7 @@ import {
 } from './longTermConfig.js';
 import { loanDetailsSchema } from './loanDetails.js';
 import { SECURITY_KINDS } from './investmentService.js';
+import { INCOME_KINDS } from './investmentIncome.js';
 import { isCurrencyCode } from '../utils/currencies.js';
 
 // Full JSON backup of the user's data, and restoring one.
@@ -111,7 +113,7 @@ import { isCurrencyCode } from '../utils/currencies.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 30;
+export const BACKUP_VERSION = 31;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -187,6 +189,8 @@ const TABLES = {
   // Investment sales and the lots they drew from (format 30)
   investmentSales,
   investmentSaleParcels,
+  // Dividends, distributions and interest (format 31)
+  investmentIncome,
   // Depreciating assets (format 24), before document links (an asset's records); the pool year (format 25)
   depreciatingAssets,
   depreciatingAssetYears,
@@ -531,6 +535,26 @@ export function parseBackup(input: unknown): ParsedBackup {
     if (!holding || lotHolding.get(String(p.lotId)) !== holding || Number(p.quantity) <= 0)
       throw new InvalidBackupError('Invalid investment sale parcel');
   }
+  // Investment income (format 31). Older backups have none, and sales without a deposit link.
+  const transactionIds = new Set(result.transactions.map((t) => String(t.id)));
+  const linksDeposit = (id: unknown) => id == null || transactionIds.has(String(id));
+  for (const s of result.investmentSales)
+    if (!linksDeposit(s.transactionId)) throw new InvalidBackupError('Invalid investment sale');
+  const holdingIds = new Set(result.holdings.map((h) => String(h.id)));
+  for (const i of result.investmentIncome)
+    if (
+      !holdingIds.has(String(i.holdingId)) ||
+      !isoDate.safeParse(i.paidOn).success ||
+      !(INCOME_KINDS as readonly string[]).includes(String(i.kind)) ||
+      [i.amount, i.unfranked, i.franked, i.frankingCredit, i.withheld].some(
+        (n) => Number(n ?? 0) < 0,
+      ) ||
+      // Reinvested units are a lot of the same holding
+      (i.reinvestedLotId != null &&
+        lotHolding.get(String(i.reinvestedLotId)) !== String(i.holdingId)) ||
+      !linksDeposit(i.transactionId)
+    )
+      throw new InvalidBackupError('Invalid investment income');
   // Long-term forecast (format 16). Older backups have none: no plans, no loan details.
   const accountIds = new Set(result.accounts.map((a) => String(a.id)));
   const planIds = new Set(result.longTermPlans.map((p) => String(p.id)));

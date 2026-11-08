@@ -1,6 +1,6 @@
 import { API_BASE } from './base';
 import { apiFetch } from './client';
-import type { Sale } from './investments';
+import type { Income, Sale } from './investments';
 
 // Receipts and tax deductions (server: routes/receipts.ts, routes/tax.ts). Amounts are cents.
 
@@ -161,6 +161,41 @@ export interface CapitalGainsYear {
   notes: string[];
 }
 
+/** In the budget's currency */
+interface IncomeAmounts {
+  amount: number | null;
+  unfranked: number | null;
+  franked: number | null;
+  frankingCredit: number | null;
+  withheld: number | null;
+}
+
+/** A financial year's investment income for Tax time, in the budget's currency */
+export interface InvestmentIncomeYear {
+  payments: (Income & {
+    symbol: string;
+    securityName: string;
+    accountName: string;
+    converted: IncomeAmounts;
+    holdingPeriodConcern: boolean;
+    files: { id: string; fileName: string }[];
+  })[];
+  /** Item 11: S, T, U and V */
+  dividends: {
+    unfranked: number;
+    franked: number;
+    frankingCredit: number;
+    withheld: number;
+    count: number;
+  };
+  distributions: { amount: number; franked: number; frankingCredit: number; count: number };
+  /** Item 10: L and M */
+  interest: { gross: number; withheld: number; count: number };
+  unconverted: number;
+  superPayments: number;
+  notes: string[];
+}
+
 export interface TaxYear {
   financialYear: number;
   name: string;
@@ -176,6 +211,8 @@ export interface TaxYear {
   } | null;
   /** Item 18 from investment sales (docs/INVESTMENT-SALES-AND-INCOME.md) */
   capitalGains: CapitalGainsYear;
+  /** Items 10 and 11, and distributions, from investment income */
+  investmentIncome: InvestmentIncomeYear;
   /** Balancing adjustments that are assessable income, not deductions */
   assetIncome: number;
   totals: { label: TaxLabel; name: string; count: number; total: number }[];

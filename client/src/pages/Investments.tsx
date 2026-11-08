@@ -24,9 +24,11 @@ import {
   basisSummary,
 } from '../components/investments/InvestmentModals';
 import { SalesModal, SellModal } from '../components/investments/SaleModals';
+import { IncomeListModal, IncomeModal } from '../components/investments/IncomeModals';
 import { GuideLink } from '../components/guide/GuideLink';
 import type {
   Holding,
+  Income,
   InvestmentAccount,
   Sale,
   Security,
@@ -49,6 +51,8 @@ type Dialog =
   | { kind: 'lots'; holdingId: string }
   | { kind: 'sell'; holdingId: string; sale?: Sale }
   | { kind: 'sales'; holdingId: string }
+  | { kind: 'income'; holdingId: string; income?: Income }
+  | { kind: 'income-list'; holdingId: string }
   | { kind: 'record'; accountId: string; value: number }
   | { kind: 'remove-holding'; holding: Holding }
   | { kind: 'remove-security'; security: SecuritySummary };
@@ -156,12 +160,21 @@ function HoldingRow({ holding, onDialog }: { holding: Holding; onDialog: (d: Dia
               hidden: !holding.sales.length,
               onClick: () => onDialog({ kind: 'sales', holdingId: holding.id }),
             },
+            {
+              label: 'Record a payment',
+              onClick: () => onDialog({ kind: 'income', holdingId: holding.id }),
+            },
+            {
+              label: `Income (${holding.income.length})`,
+              hidden: !holding.income.length,
+              onClick: () => onDialog({ kind: 'income-list', holdingId: holding.id }),
+            },
             { label: 'Edit units', onClick: () => onDialog({ kind: 'holding', holding }) },
             {
               label: 'Remove holding',
               danger: true,
-              // Its sales are the record of what was sold: it stays under Sold
-              hidden: holding.sales.length > 0,
+              // Its sales and income are the record for Tax time: it stays (under Sold once empty)
+              hidden: holding.sales.length > 0 || holding.income.length > 0,
               onClick: () => onDialog({ kind: 'remove-holding', holding }),
             },
           ]}
@@ -333,6 +346,10 @@ export default function InvestmentsPage() {
   const lotsHolding = dialog?.kind === 'lots' ? holdingFor(dialog.holdingId) : null;
   const sellHolding = dialog?.kind === 'sell' ? holdingFor(dialog.holdingId) : null;
   const salesHolding = dialog?.kind === 'sales' ? holdingFor(dialog.holdingId) : null;
+  const incomeHolding =
+    dialog?.kind === 'income' || dialog?.kind === 'income-list'
+      ? holdingFor(dialog.holdingId)
+      : null;
   const recordAccount =
     dialog?.kind === 'record' ? allAccounts.find((a) => a.id === dialog.accountId) : undefined;
 
@@ -453,9 +470,9 @@ export default function InvestmentsPage() {
 
                 <p className="text-xs text-text-tertiary">
                   Values use the latest price you entered on or before today, converted at the
-                  latest exchange rate. Gains are unrealized and before tax. Sales' capital gains
-                  are on Tax time; dividends, fees outside a lot's cost and time-weighted returns
-                  aren't calculated.
+                  latest exchange rate. Gains are unrealized and before tax. Sales' capital gains,
+                  dividends, distributions and interest are on Tax time; fees outside a lot's cost
+                  and time-weighted returns aren't calculated.
                 </p>
               </>
             )}
@@ -498,6 +515,24 @@ export default function InvestmentsPage() {
           onClose={() =>
             dialog.sale ? setDialog({ kind: 'sales', holdingId: sellHolding.id }) : close()
           }
+        />
+      )}
+      {incomeHolding && dialog?.kind === 'income' && (
+        <IncomeModal
+          holding={incomeHolding}
+          income={dialog.income}
+          onClose={() =>
+            dialog.income
+              ? setDialog({ kind: 'income-list', holdingId: incomeHolding.id })
+              : close()
+          }
+        />
+      )}
+      {incomeHolding && dialog?.kind === 'income-list' && (
+        <IncomeListModal
+          holding={incomeHolding}
+          onEdit={(income) => setDialog({ kind: 'income', holdingId: incomeHolding.id, income })}
+          onClose={close}
         />
       )}
       {salesHolding && (

@@ -43,6 +43,7 @@ import { TransactionMarks } from './TransactionMarks';
 import { ReceiptsSection } from '../tax/ReceiptsSection';
 import { TaxClaimSection } from '../tax/TaxClaimSection';
 import { FilesSection } from '../files/FilesSection';
+import { InvestmentMoney } from '../investments/InvestmentMoney';
 import { SplitTransactionModal } from './SplitTransactionModal';
 import type {
   Transaction,
@@ -492,6 +493,7 @@ export function TransactionDetailPanel({
           <FilesSection kind="transaction" targetId={tx.id} title="Other files" hideReceipts />
         )}
         {!tx.isAdjustment && <TaxClaimSection tx={tx} currency={currency} />}
+        {!tx.parentTransactionId && tx.amount > 0 && <InvestmentMoney transactionId={tx.id} />}
 
         {linkedSchedule && (
           <div>

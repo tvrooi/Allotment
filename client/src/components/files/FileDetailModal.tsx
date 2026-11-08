@@ -35,7 +35,11 @@ const KIND_NOUNS: Record<LinkKind, string> = {
   goal: 'Goal',
   account: 'Account',
   asset: 'Asset',
+  investmentSale: 'Sale',
+  investmentIncome: 'Payment',
 };
+/** Linked from their own dialogs on Investments, not chosen here */
+const PICKED_ELSEWHERE = new Set<LinkKind>(['investmentSale', 'investmentIncome']);
 
 /** Where a link goes in the app */
 function linkTarget(link: FileLink) {
@@ -43,6 +47,7 @@ function linkTarget(link: FileLink) {
   if (link.kind === 'account') return `/accounts/${encodeURIComponent(link.id)}`;
   if (link.kind === 'goal') return '/goals';
   if (link.kind === 'asset') return `/tax?tab=assets&asset=${encodeURIComponent(link.id)}`;
+  if (link.kind === 'investmentSale' || link.kind === 'investmentIncome') return '/investments';
   return `/transactions?search=${encodeURIComponent(link.label)}`;
 }
 
@@ -91,7 +96,7 @@ function AddLink({ doc, onDone }: { doc: StoredDocument; onDone: () => void }) {
       <div className="flex gap-1 flex-wrap" role="group" aria-label="Link to">
         {(Object.keys(KIND_NOUNS) as LinkKind[])
           // Assets appear once there are any, on Tax time
-          .filter((k) => k !== 'asset' || assets.length > 0)
+          .filter((k) => !PICKED_ELSEWHERE.has(k) && (k !== 'asset' || assets.length > 0))
           .map((k) => (
             <Button
               key={k}

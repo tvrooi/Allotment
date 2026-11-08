@@ -28,7 +28,9 @@ to reproduce Monarch's engine.
 These need their own design and synthetic validation before any code. Sales, dividends and
 franking are designed in [INVESTMENT-SALES-AND-INCOME.md](INVESTMENT-SALES-AND-INCOME.md) (D3),
 approved 7 November 2026 and built in phases D3a to D3c. Sales with lot selection (FIFO or chosen
-parcels) and their capital gains on Tax time are built (D3a, 0.2.0-up.141).
+parcels) and their capital gains on Tax time are built (D3a, 0.2.0-up.141), and so are
+dividends, distributions and interest with franking and reinvestment, linked to their deposits
+(D3b, 0.2.0-up.142).
 
 - Sales and realized gains, lot selection (FIFO, specific identification), splits and corporate actions.
 - Dividends and distributions, reinvestment and franking credits.

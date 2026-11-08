@@ -457,6 +457,11 @@ function LotRow({ lot, currency }: { lot: Holding['lots'][number]; currency: str
               {lot.remaining ? `${formatUnits(lot.remaining)} left after sales` : 'All sold'}
             </span>
           )}
+          {lot.reinvested && (
+            <span className="block text-xs text-text-tertiary">
+              Reinvested payment: change it under Income
+            </span>
+          )}
         </span>
         <span className="flex items-center gap-2">
           {editing ? null : lot.costBasis === null ? (
@@ -478,7 +483,7 @@ function LotRow({ lot, currency }: { lot: Holding['lots'][number]; currency: str
             </button>
           )}
           {/* A purchase that sales drew from stays: their gains are worked out from it */}
-          {lot.remaining === lot.quantity && (
+          {lot.remaining === lot.quantity && !lot.reinvested && (
             <button
               type="button"
               onClick={() => remove.mutate(lot.id)}

@@ -14,7 +14,11 @@ import {
   documents,
   documentTags,
   goals,
+  holdings,
+  investmentIncome,
+  investmentSales,
   receipts,
+  securities,
   tags,
   transactions,
 } from '../db/schema.js';
@@ -117,6 +121,62 @@ const LINK_TARGETS = {
   account: { column: documentLinks.accountId, noun: 'Account', ...named(accounts) },
   /** A depreciating asset's records: invoice, warranty, photos (DEPRECIATING-ASSETS-PLAN.md) */
   asset: { column: documentLinks.assetId, noun: 'Asset', ...named(depreciatingAssets) },
+  /** A sale's contract note (INVESTMENT-SALES-AND-INCOME.md), labelled "VAS sale" */
+  investmentSale: {
+    column: documentLinks.investmentSaleId,
+    noun: 'Sale',
+    resolve: (id: string) =>
+      db
+        .select({ id: investmentSales.id })
+        .from(investmentSales)
+        .where(eq(investmentSales.id, id))
+        .get()?.id ?? null,
+    describe: (ids: string[]) =>
+      new Map(
+        db
+          .select({
+            id: investmentSales.id,
+            date: investmentSales.soldOn,
+            symbol: securities.symbol,
+          })
+          .from(investmentSales)
+          .innerJoin(holdings, eq(holdings.id, investmentSales.holdingId))
+          .innerJoin(securities, eq(securities.id, holdings.securityId))
+          .where(inArray(investmentSales.id, ids))
+          .all()
+          .map((r): [string, TargetLabel] => [r.id, { label: `${r.symbol} sale`, date: r.date }]),
+      ),
+  },
+  /** A dividend, distribution or interest statement, labelled "VAS dividend" */
+  investmentIncome: {
+    column: documentLinks.investmentIncomeId,
+    noun: 'Payment',
+    resolve: (id: string) =>
+      db
+        .select({ id: investmentIncome.id })
+        .from(investmentIncome)
+        .where(eq(investmentIncome.id, id))
+        .get()?.id ?? null,
+    describe: (ids: string[]) =>
+      new Map(
+        db
+          .select({
+            id: investmentIncome.id,
+            date: investmentIncome.paidOn,
+            kind: investmentIncome.kind,
+            symbol: securities.symbol,
+          })
+          .from(investmentIncome)
+          .innerJoin(holdings, eq(holdings.id, investmentIncome.holdingId))
+          .innerJoin(securities, eq(securities.id, holdings.securityId))
+          .where(inArray(investmentIncome.id, ids))
+          .all()
+          .map((r): [string, TargetLabel] => [
+            r.id,
+            { label: `${r.symbol} ${r.kind}`, date: r.date },
+          ]),
+      ),
+  },
 } as const;
 
 export type LinkKind = keyof typeof LINK_TARGETS;

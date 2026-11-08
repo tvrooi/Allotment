@@ -195,8 +195,9 @@ records, not only tax evidence.
   for search only).
 - Working-from-home hours (the fixed rate per hour), car logbooks and cents per kilometre.
 - Depreciation's optional extras ([DEPRECIATING-ASSETS-PLAN.md](DEPRECIATING-ASSETS-PLAN.md) phase 4): second-element costs, effective life recalculation, and a car cost limit warning. Depreciating assets and the low-value pool are on Tax time → Assets.
-- Income, tax withheld, tax offsets and an estimated refund. The one income item Tax time shows is capital
-  gains (item 18) from investment sales ([INVESTMENT-SALES-AND-INCOME.md](INVESTMENT-SALES-AND-INCOME.md)).
+- Income, tax withheld, tax offsets and an estimated refund. The income items Tax time shows are
+  from investments: capital gains (item 18), dividends (item 11) and interest (item 10)
+  ([INVESTMENT-SALES-AND-INCOME.md](INVESTMENT-SALES-AND-INCOME.md)).
 - Lodging with the ATO. myTax has no import, so the CSV is for you or your tax agent.
 - Uploading receipts from the read-only assistant.
 

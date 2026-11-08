@@ -980,7 +980,7 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
   {
     page: 'investments',
     title: 'Investments',
-    summary: 'Holdings, prices, purchases and sales, and the capital gains they make.',
+    summary: 'Holdings, prices, purchases, sales and dividends, and what Tax time does with them.',
     sections: [
       {
         heading: 'Holdings you price yourself',
@@ -1017,15 +1017,29 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         ),
       },
       {
-        heading: 'Capital gains on Tax time',
+        heading: 'Dividends and interest',
+        body: (
+          <p>
+            Choose <b>Record a payment</b> on a holding and copy the statement: the amount paid, the
+            franked and unfranked amounts, the franking credit and any tax withheld. If you don’t
+            have the credit, work it out at 30% or 25% from the franked amount. Tick{' '}
+            <b>Reinvested through a dividend plan</b> for units you were allotted: they become a
+            purchase of their own. Under <b>Income</b>, link the payment to its deposit in your bank
+            account (suggested by amount and date), and keep the statement with it.
+          </p>
+        ),
+      },
+      {
+        heading: 'Investments on Tax time',
         body: (
           <p>
             <L to="tax">Tax time</L> shows each year’s sales with item 18’s figures: total capital
             gains, the net capital gain after losses and the discount, and losses carried forward.
-            Enter net capital losses from before you used Allotment once. Super accounts are left
+            Enter net capital losses from before you used Allotment once. Dividends add up to item
+            11 and interest to item 10. Distributions from ETFs and managed funds are shown apart:
+            the fund’s annual tax statement says how they go on your return. Super accounts are left
             out, because the fund pays their tax. Lock a year once it’s lodged so its figures can’t
-            change. It’s record keeping, not tax advice: dividends, splits and a fund’s annual tax
-            statement aren’t covered yet.
+            change. It’s record keeping, not tax advice: splits aren’t covered yet.
           </p>
         ),
       },

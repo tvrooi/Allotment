@@ -18,6 +18,7 @@ import {
 import { mainAmount } from './balances.js';
 import { financialYearName, financialYearOf, financialYearRange } from './financialYear.js';
 import { capitalGainsYear, capitalGainsYears } from './investmentSales.js';
+import { incomeYear, incomeYears } from './investmentIncomeService.js';
 import { extensionOf } from './receiptMeta.js';
 import { zip } from '../utils/zip.js';
 import {
@@ -308,6 +309,8 @@ export function taxYear(fy: number) {
     pool,
     /** Item 18 from investment sales (docs/INVESTMENT-SALES-AND-INCOME.md); income, not a deduction */
     capitalGains: capitalGainsYear(fy),
+    /** Items 10, 11 and distributions from investment income; income, not a deduction */
+    investmentIncome: incomeYear(fy),
     totals,
     total:
       claims.reduce((s, c) => s + c.claim, 0) +
@@ -414,7 +417,12 @@ export function claimCandidates(fy: number, today: string) {
 
 /** Financial years with claims, and the current one, newest first */
 export function taxYears(today: string) {
-  const years = new Set([financialYearOf(today), ...assetYears(today), ...capitalGainsYears()]);
+  const years = new Set([
+    financialYearOf(today),
+    ...assetYears(today),
+    ...capitalGainsYears(),
+    ...incomeYears(),
+  ]);
   for (const r of db
     .select({ date: transactions.date })
     .from(taxClaims)
@@ -447,6 +455,55 @@ const UNKNOWN_TEXT = {
   no_cost: 'Purchase cost unknown',
   no_rate: 'No exchange rate',
 } as const;
+
+/** Investment income (items 10 and 11, and distributions) as more rows of the year's CSV */
+function incomeRows(year: ReturnType<typeof taxYear>['investmentIncome']) {
+  if (!year.payments.length) return [];
+  const amount = (cents: number | null) => (cents === null ? null : dollars(cents));
+  const KIND_TEXT = { dividend: 'Dividend', distribution: 'Distribution', interest: 'Interest' };
+  return [
+    [],
+    ['Investment income (items 10 and 11)'],
+    [
+      'Paid on',
+      'Security',
+      'Account',
+      'Kind',
+      'Paid',
+      'Unfranked',
+      'Franked',
+      'Franking credit',
+      'Tax withheld',
+      'Reinvested',
+      'Notes',
+    ],
+    ...year.payments.map((p) => [
+      p.paidOn,
+      `${p.symbol} ${p.securityName}`,
+      p.accountName,
+      KIND_TEXT[p.kind],
+      amount(p.converted.amount),
+      amount(p.converted.unfranked),
+      amount(p.converted.franked),
+      amount(p.converted.frankingCredit),
+      amount(p.converted.withheld),
+      p.reinvested ? units(p.reinvested.quantity) : null,
+      p.notes,
+    ]),
+    [],
+    ['11S Unfranked amount', dollars(year.dividends.unfranked)],
+    ['11T Franked amount', dollars(year.dividends.franked)],
+    ['11U Franking credit', dollars(year.dividends.frankingCredit)],
+    ['11V TFN amounts withheld from dividends', dollars(year.dividends.withheld)],
+    ['10L Gross interest', dollars(year.interest.gross)],
+    ['10M TFN amounts withheld from interest', dollars(year.interest.withheld)],
+    [
+      'Distributions paid (from the fund statement: items 13 and 18)',
+      dollars(year.distributions.amount),
+    ],
+    ['Distributions: franking credits', dollars(year.distributions.frankingCredit)],
+  ];
+}
 
 /** Item 18's sales and figures, as more rows of the year's CSV (none without sales) */
 function capitalGainsRows(year: ReturnType<typeof taxYear>['capitalGains']) {
@@ -562,6 +619,7 @@ export function taxYearCsv(fy: number) {
         ]
       : []),
     ...capitalGainsRows(year.capitalGains),
+    ...incomeRows(year.investmentIncome),
   ];
   return { name: year.name, csv: lines.map((l) => l.map(csvCell).join(',')).join('\r\n') + '\r\n' };
 }
@@ -599,6 +657,21 @@ export function taxYearArchive(fy: number) {
       payeeName: a.name,
       receipts: a.receipts,
       files: a.files,
+    })),
+    // Contract notes and dividend statements, linked to the year's sales and payments
+    ...year.capitalGains.sales.map((s) => ({
+      date: s.soldOn,
+      label: '18',
+      payeeName: `${s.symbol} sale`,
+      receipts: [] as { id: string; fileName: string }[],
+      files: s.files,
+    })),
+    ...year.investmentIncome.payments.map((p) => ({
+      date: p.paidOn,
+      label: p.kind === 'interest' ? '10' : '11',
+      payeeName: `${p.symbol} ${p.kind}`,
+      receipts: [] as { id: string; fileName: string }[],
+      files: p.files,
     })),
   ];
   const ids = [...new Set(owners.flatMap((c) => c.receipts.map((r) => r.id)))];

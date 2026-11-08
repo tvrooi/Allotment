@@ -100,13 +100,17 @@ mention, and there are no paid plans: storage is the owner's own disk, with an o
 
 ## 4. Links
 
-- **Kinds:** transaction, category, goal, account and asset (a depreciating asset's records,
-  DEPRECIATING-ASSETS-PLAN.md; migration 0066) (`LINK_TARGETS` in `documentService.ts`).
+- **Kinds:** transaction, category, goal, account, asset (a depreciating asset's records,
+  DEPRECIATING-ASSETS-PLAN.md; migration 0066), and investmentSale and investmentIncome (a sale's
+  contract note, a payment's statement; INVESTMENT-SALES-AND-INCOME.md, migration 0083)
+  (`LINK_TARGETS` in `documentService.ts`).
   Adding a kind is one nullable foreign-key column on `document_links` (an additive migration, with
   `ON DELETE CASCADE` and a partial unique index) and one entry in `LINK_TARGETS`. The
   depreciating assets plan adds `asset` this way
   ([DEPRECIATING-ASSETS-PLAN.md](DEPRECIATING-ASSETS-PLAN.md) §3.1). A file's **Link** offers
-  Asset once there is one; an asset's Records on Tax time → Assets lists and adds its files.
+  Asset once there is one; an asset's Records on Tax time → Assets lists and adds its files. A
+  sale's or a payment's files are added from its row under Investments (Sales or Income), not from
+  a file's **Link**; the year's ZIP on Tax time includes them.
 - A file belongs to the whole transaction: a link to a split part goes to its parent.
 - **Deleting what a file is linked to** removes only the link (`ON DELETE CASCADE` on the link,
   never the document). **Merging a category** moves its files' links to the category it joins

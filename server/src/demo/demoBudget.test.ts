@@ -227,5 +227,8 @@ describe('the demo budget, loaded', () => {
     expect(holding.sales).toEqual([
       expect.objectContaining({ gain: 35_050, discount: 'all', unknown: null }),
     ]);
+    expect(holding.income).toEqual([
+      expect.objectContaining({ kind: 'dividend', franked: 8_400, frankingCredit: 3_600 }),
+    ]);
   });
 });

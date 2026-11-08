@@ -18,17 +18,27 @@ import {
   updateLot,
   updateSecurity,
 } from '../services/investmentService.js';
+import { previewSale } from '../services/investmentSales.js';
 import {
-  previewSale,
+  recordIncome,
   recordSale,
+  removeIncome,
   removeSale,
   setCarriedInLosses,
+  updateIncome,
   updateSale,
-} from '../services/investmentSales.js';
+} from '../services/investmentTax.js';
+import {
+  depositSuggestions,
+  investmentForTransaction,
+  linkDeposit,
+} from '../services/investmentLinks.js';
+import { INCOME_KINDS } from '../services/investmentIncome.js';
 
-// P3 investments (services/investmentService.ts) and D3a sales (services/investmentSales.ts).
-// Positions only: nothing here writes to the ledger, so no route changes an account's balance.
-// Owner session only: no token reaches these routes.
+// P3 investments (services/investmentService.ts), D3a sales and D3b income
+// (services/investmentTax.ts). Positions only: nothing here writes to the ledger, so no route
+// changes an account's balance. Owner session only, except that an organise token may read the
+// overview (GET /, auth/accessTokens.ts); no token reaches any other route here.
 
 export const investmentsRouter = Router();
 
@@ -203,3 +213,59 @@ investmentsRouter.put('/carried-losses', (req, res) => {
   );
   if (data) send(res, () => setCarriedInLosses(data.financialYear, data.amount));
 });
+
+// ─── Income (D3b) ─────────────────────────────────────────────────────────────
+
+const payment = z
+  .object({
+    paidOn: isoDate,
+    kind: z.enum(INCOME_KINDS),
+    amount: money,
+    unfranked: money,
+    franked: money,
+    frankingCredit: money,
+    withheld: money,
+    reinvested: z.object({ quantity: lotQuantity, cost: money }).strict().nullable().optional(),
+    notes: notes.optional(),
+  })
+  .strict();
+
+investmentsRouter.post('/holdings/:id/income', (req, res) => {
+  const data = parse(payment, req.body, res);
+  if (data) send(res, () => recordIncome(req.params.id, data), 201);
+});
+
+investmentsRouter.put('/holdings/:id/income/:incomeId', (req, res) => {
+  const data = parse(payment, req.body, res);
+  if (data) send(res, () => updateIncome(req.params.id, req.params.incomeId, data));
+});
+
+investmentsRouter.delete('/holdings/:id/income/:incomeId', (req, res) =>
+  send(res, () => removeIncome(req.params.id, req.params.incomeId)),
+);
+
+// ─── Deposits in the register (D3b) ───────────────────────────────────────────
+
+const linkedKind = z.enum(['sales', 'income']);
+const kindOf = (segment: 'sales' | 'income') => (segment === 'sales' ? 'sale' : 'income');
+
+investmentsRouter.get('/holdings/:id/:kind/:rowId/deposits', (req, res) => {
+  const kind = linkedKind.safeParse(req.params.kind);
+  if (!kind.success) return res.status(404).json({ error: 'Not found' });
+  send(res, () => depositSuggestions(kindOf(kind.data), req.params.id, req.params.rowId));
+});
+
+investmentsRouter.put('/holdings/:id/:kind/:rowId/transaction', (req, res) => {
+  const kind = linkedKind.safeParse(req.params.kind);
+  if (!kind.success) return res.status(404).json({ error: 'Not found' });
+  const data = parse(z.object({ transactionId: id.nullable() }).strict(), req.body, res);
+  if (data)
+    send(res, () =>
+      linkDeposit(kindOf(kind.data), req.params.id, req.params.rowId, data.transactionId),
+    );
+});
+
+// The sale or payment a register row is the deposit of, for the transaction panel
+investmentsRouter.get('/transactions/:transactionId', (req, res) =>
+  res.json(investmentForTransaction(req.params.transactionId)),
+);
