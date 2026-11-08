@@ -83,8 +83,8 @@ export function BillAmount({ bill, currency }: Props) {
       {bill.payments.length > 0 && (
         <details className="text-xs text-text-tertiary">
           <summary className="cursor-pointer w-fit">
-            {bill.payments.length} {bill.payments.length === 1 ? 'payment' : 'payments'} in six
-            months: <span className="tabular-nums">{money(total)}</span>
+            {bill.payments.length === 1 ? 'Last payment' : `Last ${bill.payments.length} payments`}:{' '}
+            <span className="tabular-nums">{money(total)}</span>
           </summary>
           <ul className="mt-1 grid gap-0.5">
             {bill.payments.map((p) => (

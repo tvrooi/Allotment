@@ -1245,14 +1245,17 @@ export function editBill(groupId: string, billId: string, raw: unknown) {
 /**
  * A recurring item's amount changed (PUT /api/schedules/:id): its household bills due from
  * `today` that no payment is matched to follow it, with my share recomputed by the bill's split
- * (its own, or the household's default) and a reservation capped at the new total. Past bills
- * and matched ones keep what they were. Called inside the schedule update's DB transaction.
+ * (its own, or the household's default). Past bills, matched ones, and ones with more set aside
+ * than the new total keep what they were: a reservation is never changed here, so undoing the
+ * schedule edit (which only resends the schedule's fields) can't leave money released, and a
+ * lower amount needs its reservation lowered first, as editBill requires. Called inside the
+ * schedule update's DB transaction.
  */
 export function followScheduleAmount(scheduleId: string, amount: number, today = todayIso()) {
   const total = Math.abs(amount);
   const linked = db.select().from(bills).where(eq(bills.scheduleId, scheduleId)).all();
   for (const bill of linked) {
-    if (bill.dueDate < today) continue;
+    if (bill.dueDate < today || bill.reserved > total) continue;
     if (db.select({ id: events.id }).from(events).where(eq(events.billId, bill.id)).get()) continue;
     const group = db.select().from(groups).where(eq(groups.id, bill.groupId)).get();
     if (!group) continue;
@@ -1266,11 +1269,7 @@ export function followScheduleAmount(scheduleId: string, amount: number, today =
     const self = members.find((m) => m.isSelf);
     const mine = billShares(split, members, total).shares.find((x) => x.personId === self?.id);
     db.update(bills)
-      .set({
-        amount: total,
-        personalShare: Math.min(mine?.amount ?? 0, total),
-        reserved: Math.min(bill.reserved, total),
-      })
+      .set({ amount: total, personalShare: Math.min(mine?.amount ?? 0, total) })
       .where(eq(bills.id, bill.id))
       .run();
   }

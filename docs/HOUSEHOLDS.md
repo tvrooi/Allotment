@@ -182,9 +182,10 @@ its newest payment is outside the schedule's tolerance of the expected amount, t
 variable 25%). Nothing changes without that click. **Edit amount** sets the expected amount and how
 it varies. Both save the schedule through `PUT /api/schedules/:id`, with Undo, so Recurring and the
 forecast follow. The same update moves the schedule's household bills that are due from today and
-have no payment matched to them to the new amount, with my share recomputed by the bill's split and a
-reservation capped at the new total (`followScheduleAmount`), in the same database transaction.
-Bills already paid, or due before today, keep what they were. The tile also lists its payments from
+have no payment matched to them to the new amount, with my share recomputed by the bill's split
+(`followScheduleAmount`), in the same database transaction. Bills already paid, due before today, or
+with more set aside than the new amount keep what they were: reservations are never changed, so Undo
+puts everything back. The tile also lists its payments from
 the last six months, newest first, with their total. Frequency and dates are still changed in
 Recurring.
 

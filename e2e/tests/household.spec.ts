@@ -1079,7 +1079,7 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
     .getByRole('listitem', { name: 'Electricity (OVO)' });
   await expect(tile).toContainText('amount changed');
   await expect(tile).toContainText('Last paid A$107');
-  await tile.getByText(/3 payments in six months: A\$307/).click();
+  await tile.getByText(/Last 3 payments: A\$307/).click();
   await expect(tile.getByRole('listitem').first()).toContainText('107');
   await tile.getByRole('button', { name: 'Update to A$107' }).click();
   await expect(tile).not.toContainText('amount changed');
