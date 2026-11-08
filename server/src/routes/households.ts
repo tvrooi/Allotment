@@ -68,7 +68,8 @@ function run(res: Response, fn: () => unknown, status = 200) {
       .json({ error: error instanceof Error ? error.message : 'Invalid household entry' });
   }
 }
-householdsRouter.get('/', (_req, res) =>
+householdsRouter.get('/', (_req, res) => {
+  const members = db.select().from(people).all();
   res.json(
     db
       .select()
@@ -78,9 +79,13 @@ householdsRouter.get('/', (_req, res) =>
         ...g,
         poolAccountIds: poolAccountsOf(g),
         defaultSplit: defaultSplitJson ? (JSON.parse(defaultSplitJson) as unknown) : null,
+        // Who is in it, for the register's "Paid ahead to" menu (names only, as GET /:id gives)
+        people: members
+          .filter((p) => p.groupId === g.id)
+          .map((p) => ({ id: p.id, name: p.name, isSelf: p.isSelf === 1 })),
       })),
-  ),
-);
+  );
+});
 householdsRouter.post('/', (req, res) =>
   run(
     res,

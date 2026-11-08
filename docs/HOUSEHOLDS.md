@@ -130,6 +130,26 @@ the last 120 days that isn't linked yet:
 
 Nothing is recorded without that click.
 
+## Paying ahead for a shared expense
+
+Money you send someone in a household towards something you share, before anyone has recorded
+the expense (your part of a bill they will pay, say), can be marked as **paid ahead**: right-click
+the payment in the register (or ⋯ on a phone card) and choose **Paid ahead to ▸ _person_**, or open
+it and choose **Paid ahead for a shared expense**. It is saved as a repayment paid ahead from you
+to them (`kind: 'settlement'`, `advance: true`, linked to the payment), the same entry the
+Household form's **Paid ahead** tick makes. Until the expense is recorded they owe it back to you;
+once it is (by you on the Household page, or by them in their own budget when the households are
+combined), your share of it comes off, and any difference stays in the balances. Nothing is
+matched by guess: the advance is not tied to one expense.
+
+Only your own money out can be paid ahead: not money in, a transfer between your accounts, a
+split, a balance correction, a payment already in a household, or a payment from a household
+account (that is the household's money, so the server refuses a repayment linked to one).
+**Undo** in the toast, or **Remove from _household_** in the menu, removes the entry. The
+activity log says "Me paid Juno $60.00 ahead" when it is more than was owed. `GET /households`
+lists each household's `people` (id, name, `isSelf`) for the menu. The bank payment keeps its own
+category; **Categorise repayments** can suggest one once the expense is recorded.
+
 ## Recurring bills
 
 Bills you already track in **Recurring** can be shared with a household: **Household → Recurring

@@ -1146,6 +1146,18 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
     summary: 'Share costs with the people you live with, and keep a record of who changed what.',
     sections: [
       {
+        heading: 'Send your share before the bill is recorded',
+        body: (
+          <p>
+            Paid someone your part of a bill they haven’t recorded yet? Right-click the payment in
+            your register and choose <b>Paid ahead to</b> and their name (or open the payment and
+            choose <b>Paid ahead for a shared expense</b>). Until the bill is recorded they owe it
+            back to you. When it is, by you or by them in a combined household, your share comes off
+            it.
+          </p>
+        ),
+      },
+      {
         heading: 'Is there enough for the bills?',
         body: (
           <p>

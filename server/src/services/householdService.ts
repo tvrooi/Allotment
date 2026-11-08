@@ -243,6 +243,7 @@ export function recordEvent(
     throw new Error('Participant belongs to another household');
   let amount = input.amount ?? 0;
   let portions: { personId: string; amount: number }[] = [];
+  let paidAhead = false;
   if (input.kind === 'refund') {
     const original = state.events.find((e) => e.id === input.reversesId && e.kind === 'expense');
     if (!original) throw new Error('Choose the original expense');
@@ -304,11 +305,14 @@ export function recordEvent(
     // is fine too.
     const within = (balances: Record<string, number>) =>
       amount <= -(balances[input.payerId!] ?? 0) && amount <= (balances[input.recipientId!] ?? 0);
+    // More than is owed: a repayment paid ahead (`advance`), e.g. towards a shared expense the
+    // recipient hasn't recorded yet; their expense, once recorded, nets it off
+    paidAhead = input.kind === 'settlement' && !(within(state.direct) || within(state.balances));
     if (
       input.kind === 'settlement' &&
       (!member(input.recipientId) ||
         input.recipientId === input.payerId ||
-        (!input.advance && !(within(state.direct) || within(state.balances))))
+        (!input.advance && paidAhead))
     )
       throw new Error('Settlement exceeds the outstanding balance');
   }
@@ -373,6 +377,8 @@ export function recordEvent(
       throw new Error('A direct payment must use a personal account');
     if (input.kind === 'settlement' && input.payerId !== self && input.recipientId !== self)
       throw new Error('Other people’s repayments cannot be linked to your bank account');
+    if (input.kind === 'settlement' && state.poolAccountIds.includes(tx.accountId))
+      throw new Error('Money in or out of the household account is a contribution or an expense');
     if (
       tx.transferTransactionId &&
       db.select().from(events).where(eq(events.transactionId, tx.transferTransactionId)).get()
@@ -416,7 +422,9 @@ export function recordEvent(
       row.kind === 'settlement' ? 'settled' : source === 'owner' ? 'created' : 'auto_shared',
       row.id,
       row.kind === 'settlement'
-        ? `${who(row.payerId)} repaid ${who(row.recipientId)} ${dollars(row.amount)}`
+        ? paidAhead
+          ? `${who(row.payerId)} paid ${who(row.recipientId)} ${dollars(row.amount)} ahead`
+          : `${who(row.payerId)} repaid ${who(row.recipientId)} ${dollars(row.amount)}`
         : `${ADDED[row.kind] ?? 'Added'} “${row.description}” (${dollars(Math.abs(row.amount))})`,
       source,
     );

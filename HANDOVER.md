@@ -9,6 +9,16 @@ Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminder
 
 ## State
 
+- **Paid ahead for a shared expense (up.148; owner-requested 8 November 2026; server and client,
+  no migration):** see [docs/HOUSEHOLDS.md](docs/HOUSEHOLDS.md) "Paying ahead for a shared
+  expense". The register's menu (**Paid ahead to ▸ person**) and the details panel
+  (`components/household/PayAhead.tsx`) record the owner's money out as a settlement with
+  `advance: true` linked to the payment (`recordPaidAhead` in `api/households.ts`); Undo and
+  **Remove from _household_** remove it (`removeSharedEntries(…, 'settlement')`). `recordEvent`
+  now refuses a settlement linked to a household-account transaction, and logs "paid … ahead" when
+  a repayment exceeds what was owed. `GET /households` returns `people`. Tests:
+  `routes/households.test.ts` ("pays ahead…"), e2e `household.spec.ts` ("a payment to someone is
+  marked as paid ahead…"). Not built: tying an advance to one expense, or to a recurring bill.
 - **Household as an Essentials-style bills hub (up.147 carried PRs 1 and 2 of 4; up.148 is PR 3):** plan from the
   owner's 8 November request, with the decisions the owner made: drift only prompts, the gauge covers
   the next 30 days, both bill sections merge into one hub, and all four parts get built. PR 1 puts

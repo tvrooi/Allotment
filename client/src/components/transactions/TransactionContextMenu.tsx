@@ -1,6 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ExternalLink, PanelRight, SlidersHorizontal, Users, UserMinus } from 'lucide-react';
+import {
+  ExternalLink,
+  HandCoins,
+  PanelRight,
+  SlidersHorizontal,
+  Users,
+  UserMinus,
+} from 'lucide-react';
 import {
   getHouseholdEvents,
   removeHouseholdEvent,
@@ -12,12 +19,19 @@ import { useHouseholds } from '../../hooks/useHouseholds';
 import { useUndoStore } from '../../store/undoStore';
 import { HouseholdIcon } from '../household/HouseholdIcon';
 import { describeShare, splitText, useShareWithHousehold } from '../household/ShareWithHousehold';
+import {
+  describePayAhead,
+  payAheadTargets,
+  usePayAhead,
+  whyNotPayAhead,
+} from '../household/PayAhead';
 import { ContextMenu, type MenuItem, type MenuPoint } from '../ui/ContextMenu';
 import type { Transaction } from '../../types';
 
 // The register's right-click (long-press, Shift+F10, ⋯) menu for one transaction: open it,
 // share it with a household in one step (default split, Undo in the toast), or see and stop
-// how it's shared. Right-clicking one of several picked payments shares all of them.
+// how it's shared. Right-clicking one of several picked payments shares all of them. A payment
+// to someone in a household can be marked as paid ahead towards a shared expense (PayAhead.tsx).
 
 /** Why a payment can't be shared from here (null = it can), as sharing in the register decides */
 export function whyNotShareable(tx: Transaction): string | null {
@@ -48,6 +62,7 @@ export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onC
   const qc = useQueryClient();
   const { data: households = [] } = useHouseholds();
   const share = useShareWithHousehold();
+  const payAhead = usePayAhead();
   const announce = useUndoStore((s) => s.announce);
 
   const refresh = () => {
@@ -63,21 +78,28 @@ export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onC
       return { h, entry, name: payeeOf(tx) };
     },
     onSuccess: ({ h, entry, name }) => {
+      const kind = entry.kind === 'settlement' ? 'settlement' : 'expense';
+      const what = kind === 'settlement' ? `Paid ahead (${name})` : `Sharing ${name}`;
       refresh();
       // Undo records it again exactly as it was, split included (with a new id, so redo and an
       // earlier share's undo find it by its payment)
       useUndoStore.getState().push({
-        description: `Stop sharing ${name} with ${h.name}`,
+        description: `Remove ${what.toLowerCase()} from ${h.name}`,
         undo: async () => {
           await restoreHouseholdEvent(h.id, entry);
           refresh();
         },
         redo: async () => {
-          await removeSharedEntries(h.id, [entry.transactionId!]);
+          await removeSharedEntries(h.id, [entry.transactionId!], kind);
           refresh();
         },
       });
-      announce(`Stopped sharing ${name} with ${h.name}.`, true);
+      announce(
+        kind === 'settlement'
+          ? `Removed the payment ahead from ${h.name}.`
+          : `Stopped sharing ${name} with ${h.name}.`,
+        true,
+      );
     },
     onError: (e: Error) => announce(e.message, false),
   });
@@ -109,6 +131,8 @@ export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onC
   const reason = whyNotShareable(tx);
   if (tx.household && linked) {
     const shared = tx.household.kind === 'expense';
+    // Your own payment to someone, e.g. paid ahead: taken back here as a shared expense is
+    const yourRepayment = tx.household.kind === 'settlement' && tx.amount < 0;
     items.push({
       key: 'view',
       label: `View in ${linked.name}`,
@@ -121,6 +145,15 @@ export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onC
       items.push({
         key: 'stop',
         label: `Stop sharing with ${linked.name}`,
+        icon: <UserMinus size={14} />,
+        danger: true,
+        onSelect: () => stopSharing.mutate({ h: linked, tx }),
+      });
+    if (yourRepayment)
+      items.push({
+        key: 'stop',
+        label: `Remove from ${linked.name}`,
+        hint: 'Your payment to someone in it',
         icon: <UserMinus size={14} />,
         danger: true,
         onSelect: () => stopSharing.mutate({ h: linked, tx }),
@@ -175,6 +208,29 @@ export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onC
       ],
     });
   }
+  const targets =
+    ids.length === 1 && !whyNotPayAhead(tx, households) ? payAheadTargets(households) : [];
+  if (targets.length)
+    items.push({
+      key: 'ahead',
+      label: 'Paid ahead to',
+      hint: 'Towards a shared expense not recorded yet',
+      icon: <HandCoins size={14} />,
+      submenu: targets.map((t) => ({
+        key: `${t.household.id}:${t.person.id}`,
+        label: t.person.name,
+        hint: t.household.name,
+        icon: <HouseholdIcon name={t.household.name} logo={t.household.logo} size="sm" />,
+        onSelect: () =>
+          payAhead.mutate(
+            { tx, target: t },
+            {
+              onSuccess: () => announce(describePayAhead(t), true),
+              onError: (e: Error) => announce(e.message, false),
+            },
+          ),
+      })),
+    });
   if (tx.household && !linked)
     items.push({
       key: 'household',

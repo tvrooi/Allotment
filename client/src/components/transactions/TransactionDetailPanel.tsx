@@ -2,6 +2,7 @@ import { transferLabel, transferSides } from './transferLabel';
 import { useAccountName } from '../../hooks/useAccounts';
 import { listedAmount, RoundUpDetails } from './RoundUp';
 import { ShareWithHousehold } from '../household/ShareWithHousehold';
+import { PayAhead } from '../household/PayAhead';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import { HouseholdIcon } from '../household/HouseholdIcon';
 import { useHouseholds } from '../../hooks/useHouseholds';
@@ -577,6 +578,7 @@ export function TransactionDetailPanel({
                 Share with people
               </Button>
               <ShareWithHousehold transactionId={tx.id} />
+              <PayAhead tx={tx} />
             </>
           )
         )}
