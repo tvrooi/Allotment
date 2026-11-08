@@ -150,9 +150,13 @@ the owner confirms; never linked by guess, like transfers. Linking only marks th
 investment money on the transaction panel; it changes no category or balance.
 
 **Corporate actions (splits and consolidations).** A split changes units but not cost or acquired
-date, and is not a CGT event. **C1 (recommended): a "Split or consolidate" action** that scales the
-holding and every remaining lot by a ratio in one DB transaction, refused when a lodged year would
-change. **C2:** leave it to manual lot edits. Mergers, demergers, returns of capital and rights
+date, and is not a CGT event. **C1 (recommended): a "Split or consolidate" action** that records a split
+**event** (date and ratio) and scales the holding in one DB transaction. Lots and earlier sale
+parcels are never rewritten: a lot's units on a date are its recorded units times the ratios of
+splits after it was acquired and on or before that date, and a parcel's units are as of its sale
+date. So a partly sold lot keeps its earlier sale's cost, and only the unsold units are scaled:
+100 units costing $100, 40 sold for a cost of $40, then a 2-for-1 split leaves 120 units costing
+$60, and the sale still costs $40. **C2:** leave it to manual lot edits. Mergers, demergers, returns of capital and rights
 issues stay out of scope.
 
 **Which accounts count for tax.** **A1 (recommended):** sales and income can be recorded in any
@@ -179,6 +183,9 @@ asked.
   (nullable, SET NULL), `transaction_id` (nullable, SET NULL), `notes`, timestamps. A check that
   `unfranked + franked = amount + withheld` for dividends is a prompt on the form, not a database
   constraint, because some statements differ by rounding.
+- D3c adds `investment_splits`: `id`, `holding_id` (CASCADE only with the holding, which sales
+  already protect), `effective_on`, `to_units` and `from_units` (positive integers: 2 and 1 for a
+  2-for-1 split, 1 and 3 for a 1-for-3 consolidation). No lot or parcel is changed by a split.
 - Indexes on `holding_id` and on the dates for year queries. Backup version 30 with all three
   tables; a version 29 backup restores with no sales or income.
 
@@ -186,7 +193,12 @@ asked.
 
 - `discountEligible(acquiredOn, soldOn)`: date arithmetic through `isoDate`, the boundary pinned
   by the 1 January examples above and by 29 February acquisitions.
-- `saleParcels(sale, lots, rates)`: each parcel's cost (lot cost × units ÷ lot units, `mulDiv`),
+- `lotUnitsOn(lot, splits, date)`: the lot's recorded units scaled by each split after its
+  acquisition and on or before `date` (rounded down to a millionth; any fraction lost to a
+  consolidation is shown, never silently dropped). A lot's remaining units today are
+  `lotUnitsOn(lot, splits, today)` less each parcel's units scaled from its sale date to today.
+- `saleParcels(sale, lots, splits, rates)`: each parcel's cost (lot cost × parcel units ÷
+  `lotUnitsOn(lot, splits, sale date)`, `mulDiv`),
   AUD cost on the lot's date and AUD proceeds on the sale's date, apportioned to parcels by units
   with the remainder cent on the largest parcel so parts sum to the whole; gain per parcel, its
   discount eligibility, or `unknown` with the reason (no lot, no cost, no rate).
@@ -269,7 +281,9 @@ description in `routes/mcp.ts` change with it.
   parcel insert leaves nothing changed); a lot with parcels can't be deleted or cut below what was
   sold; a holding with sales can't be deleted; a change to a lodged year is refused and the same
   change in an open year is allowed; a reinvested dividend adds a lot and removing it removes the
-  lot; a migration test on a populated 0081 database.
+  lot; a migration test on a populated 0081 database. D3c: a partial sale, then a split, keeps the
+  sale's cost and gain unchanged and scales only the unsold units (the 100-unit example in §4); a
+  consolidation's lost fraction is reported; a later sale after a split draws the right cost.
 - Routes: Zod refusals (future date, zero units, more units than held, parcels from another
   holding), owner-only writes (every token is refused every new write route; organise tokens may make the
   new GETs, §5.5).
@@ -334,6 +348,8 @@ read-only assistant tool comes in D3b. Splits (decision 6) come in a later PR, D
   `keepingLodgedYears`), `services/financialYear.ts` (financial years, moved out of
   `taxService.ts`), `services/investmentError.ts`. Client: `components/investments/SaleModals.tsx`
   (Sell and Sales), the Sold list on `pages/Investments.tsx`, and `CapitalGains` on `pages/Tax.tsx`.
+- **Splits (D3c)** need nothing from D3a's tables: a split is its own event and never rewrites a
+  lot or a parcel (§4), so the parcels D3a stores stay as recorded.
 - **Lodged years:** `keepingLodgedYears` runs a change in one DB transaction and compares every
   lodged year's item 18 figures and sale gains before and after, then undoes the change with a 409
   when they differ. A change to an open year that alters a lodged year's carried-in losses is
