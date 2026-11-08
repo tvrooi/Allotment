@@ -474,6 +474,15 @@ export const documentLinks = sqliteTable(
     assetId: text('asset_id').references((): AnySQLiteColumn => depreciatingAssets.id, {
       onDelete: 'cascade',
     }),
+    /** A sale's contract note, an income row's statement (migration 0083) */
+    investmentSaleId: text('investment_sale_id').references(
+      (): AnySQLiteColumn => investmentSales.id,
+      { onDelete: 'cascade' },
+    ),
+    investmentIncomeId: text('investment_income_id').references(
+      (): AnySQLiteColumn => investmentIncome.id,
+      { onDelete: 'cascade' },
+    ),
     createdAt: text('created_at').notNull(),
   },
   (table) => [
@@ -493,6 +502,12 @@ export const documentLinks = sqliteTable(
     uniqueIndex('document_links_asset_idx')
       .on(table.assetId, table.documentId)
       .where(sql`asset_id IS NOT NULL`),
+    uniqueIndex('document_links_investment_sale_idx')
+      .on(table.investmentSaleId, table.documentId)
+      .where(sql`investment_sale_id IS NOT NULL`),
+    uniqueIndex('document_links_investment_income_idx')
+      .on(table.investmentIncomeId, table.documentId)
+      .where(sql`investment_income_id IS NOT NULL`),
   ],
 );
 
@@ -1546,6 +1561,10 @@ export const investmentSales = sqliteTable(
     quantity: integer('quantity').notNull(),
     proceeds: integer('proceeds').notNull(),
     fees: integer('fees').notNull().default(0),
+    /** The settlement deposit in the register, when the owner linked it (D3b) */
+    transactionId: text('transaction_id').references((): AnySQLiteColumn => transactions.id, {
+      onDelete: 'set null',
+    }),
     notes: text('notes'),
     createdAt: text('created_at')
       .notNull()
@@ -1557,6 +1576,50 @@ export const investmentSales = sqliteTable(
   (table) => [
     index('investment_sales_holding_idx').on(table.holdingId),
     index('investment_sales_sold_on_idx').on(table.soldOn),
+    index('investment_sales_transaction_idx').on(table.transactionId),
+  ],
+);
+
+/**
+ * Income paid on a holding (D3b): a dividend, a trust distribution or interest, with the parts
+ * item 11 needs as the statement shows them, in the security's currency. Reinvested units are a
+ * lot of their own. Never writes a transaction; it may be linked to the deposit.
+ */
+export const investmentIncome = sqliteTable(
+  'investment_income',
+  {
+    id: text('id').primaryKey(),
+    holdingId: text('holding_id')
+      .notNull()
+      .references(() => holdings.id, { onDelete: 'cascade' }),
+    paidOn: text('paid_on').notNull(),
+    /** dividend | distribution | interest */
+    kind: text('kind').notNull(),
+    /** The payment after any tax withheld */
+    amount: integer('amount').notNull(),
+    unfranked: integer('unfranked').notNull().default(0),
+    franked: integer('franked').notNull().default(0),
+    frankingCredit: integer('franking_credit').notNull().default(0),
+    /** TFN amounts or foreign tax withheld */
+    withheld: integer('withheld').notNull().default(0),
+    reinvestedLotId: text('reinvested_lot_id').references(() => taxLots.id, {
+      onDelete: 'set null',
+    }),
+    transactionId: text('transaction_id').references((): AnySQLiteColumn => transactions.id, {
+      onDelete: 'set null',
+    }),
+    notes: text('notes'),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    updatedAt: text('updated_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('investment_income_holding_idx').on(table.holdingId),
+    index('investment_income_paid_on_idx').on(table.paidOn),
+    index('investment_income_transaction_idx').on(table.transactionId),
   ],
 );
 

@@ -1,8 +1,8 @@
 # Investments: sales, dividends and franking
 
-Status: **design approved 7 November 2026; D3a (sales) built in 0.2.0-up.141** (see §10, "As
-built"). The owner took every recommendation in §9 except decision 7: a read-only assistant tool
-comes in D3b. Splits come in a later PR (D3c), as recommended. D3 of the Larger features
+Status: **design approved 7 November 2026; D3a (sales) built in 0.2.0-up.141, D3b (dividends,
+franking, deposit links and the read-only tool) in 0.2.0-up.142** (see §10, "As built"). The owner
+took every recommendation in §9 except decision 7: a read-only assistant tool comes in D3b. Splits come in a later PR (D3c), as recommended. D3 of the Larger features
 group. It takes the first two lines of [INVESTMENTS.md](INVESTMENTS.md) "Deferred" (sales and
 realised gains with lot selection; dividends, reinvestment and franking credits) and the Australian
 tax treatment they need, and adds them to Tax time beside deductions and
@@ -338,14 +338,14 @@ read-only assistant tool comes in D3b. Splits (decision 6) come in a later PR, D
 - **Reading:** each holding's sales come with the overview (`GET /api/investments`, `sales` on a
   holding, with each lot's `remaining`). Item 18 is part of Tax time's year
   (`GET /api/tax/years/:fy`, `capitalGains`). The separate GETs in §5.3 and §5.5
-  (`/holdings/:id/sales`, `/tax/years/:fy/investments`) are left for D3b, when the token tool
-  needs them. Because item 18 is part of the tax year, an organise token already reads it through
+  (`/holdings/:id/sales`, `/tax/years/:fy/investments`) were left for D3b, which found them
+  unneeded (below). Because item 18 is part of the tax year, an organise token already reads it through
   `GET /api/tax/years/:fy` and the `tax_deductions` MCP tool (read only, within decision 7); the
   `/api/investments` routes stay owner only. Writes: `POST /holdings/:id/sales/preview` (it takes an optional `saleId` to preview
   an edit), `POST`, `PUT` and `DELETE /holdings/:id/sales[/:saleId]`. All writes are owner only.
 - **Code:** `services/capitalGains.ts` (pure: `discountEligible`, `fifoParcels`, `apportion`,
   `saleFigures`, `netCapitalGain`), `services/investmentSales.ts` (storage, checks, item 18,
-  `keepingLodgedYears`), `services/financialYear.ts` (financial years, moved out of
+  `keepingLodgedYears`, which D3b moved to `investmentTax.ts`), `services/financialYear.ts` (financial years, moved out of
   `taxService.ts`), `services/investmentError.ts`. Client: `components/investments/SaleModals.tsx`
   (Sell and Sales), the Sold list on `pages/Investments.tsx`, and `CapitalGains` on `pages/Tax.tsx`.
 - **Splits (D3c)** need nothing from D3a's tables: a split is its own event and never rewrites a
@@ -365,5 +365,52 @@ read-only assistant tool comes in D3b. Splits (decision 6) come in a later PR, D
   years, removal restores exactly, backup version 30 and an older backup, migration 0082 on a
   populated 0081 database), `demo/demoBudget.test.ts`, and `e2e/tests/investments.spec.ts`
   (choose parcels, see the gain and discount, find item 18 on Tax time).
+
+**D3b, dividends, franking and deposits (0.2.0-up.142).** Where it differs from §5, and why:
+
+- **Migration 0083** adds `investment_income` as designed (`holding_id` cascades with an
+  account's removal, like sales; the service refuses to remove a holding with income), plus
+  `investment_sales.transaction_id` and two file link columns. **Files:** a link column points at
+  one table, so §5.3's single `investment` link kind is two, `investmentSale` and
+  `investmentIncome` (`LINK_TARGETS`). Their files are added from a sale's or payment's row on
+  Investments, and the year's ZIP takes them.
+- **Reinvestment:** a payment's `reinvested` (units and their cost, at most the payment) is a lot
+  acquired on the payment date, kept in step by every change to the payment, with the holding's
+  units. A reinvested lot isn't removed on its own (`deleteLot` refuses); a payment whose units a
+  sale took can't drop or shrink them. The cash deposit expected is the payment less what was
+  reinvested.
+- **Item 11 and the rest:** `services/investmentIncome.ts` (pure: `incomeYearTotals`,
+  `partsDisagree`, `holdingPeriodConcerns`) and `services/investmentIncomeService.ts`
+  (`incomeYear`). Dividends are 11S, T, U and V; interest is item 10 (L gross, M withheld); trust
+  distributions are shown apart with a note to use the fund's statement (decision 5). Each figure
+  converts on the payment date. The 45-day note appears only when the year's credits reach
+  $5,000; it flags payments with units of the same holding bought on or before and sold on or
+  after the payment, held fewer than 45 days at risk. Without ex-dividend dates this is a prompt to
+  check, not a finding. A dividend whose parts don't add up to the payment plus tax withheld is
+  flagged after saving, on the list and on Tax time, not refused.
+- **Franking prefill** is the form's alone (`client/src/utils/franking.ts`, exact with BigInt):
+  the server keeps what the owner enters, so it has no copy.
+- **Locks:** `investmentTax.ts` now runs every write to a sale, a payment, losses carried in and a
+  lot's terms in one DB transaction and compares each lodged year's items 18, 10 and 11 before and
+  after. A deposit link changes no figure, so it is not locked.
+- **Deposits** (`services/investmentLinks.ts`): `GET /holdings/:id/{sales|income}/:rowId/deposits`
+  suggests money in for exactly the expected amount in the budget's currency within 7 days, not a
+  split part and not already linked, closest first, at most 10. `PUT …/transaction` links one or
+  `null` unlinks; a transaction is one sale's or payment's deposit at most. The transaction panel
+  shows **Investment money** (`GET /investments/transactions/:id`).
+- **Tokens (decision 7):** organise tokens may read `GET /api/investments` (added to `TAX_READ`)
+  and the tax year, which carries `capitalGains` and `investmentIncome`. The MCP tool
+  `investments` (organise, `readOnly`) reads those two. §5.5's per-holding GETs and
+  `/tax/years/:fy/investments` would only repeat them, so they aren't built. No assistant policy
+  row, proposal kind or other route is added.
+- **Backups:** version 31 with `investment_income`; a payment's reinvested lot must belong to its
+  holding and a deposit link must name a transaction in the backup.
+- **Tests:** `services/investmentIncome.test.ts`, `routes/investmentIncome.test.ts` (reinvestment
+  in step, refusals, items 10 and 11, distributions apart, super left out, the 45-day prompt,
+  lodged years, deposits, files and the ZIP, backup version 31 and an older backup, token
+  refusals, migration 0083 on a populated 0082 database), `routes/assistantTools.test.ts` (the
+  `investments` tool for organise tokens, refused writes), `client/src/utils/franking.test.ts`,
+  the demo budget's dividend, and `e2e/tests/investments.spec.ts` (a franked dividend with the 30%
+  prefill, linked to its deposit, on Tax time).
 
 [cgt]: https://www.ato.gov.au/individuals-and-families/investments-and-assets/capital-gains-tax

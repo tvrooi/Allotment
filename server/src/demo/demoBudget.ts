@@ -30,6 +30,7 @@ import type {
   budgetMonthNotes,
   categoryNotes,
   holdings,
+  investmentIncome,
   investmentSaleParcels,
   investmentSales,
   payees,
@@ -87,6 +88,8 @@ export interface DemoBudget {
   taxLots: Row<typeof taxLots>[];
   investmentSales: Row<typeof investmentSales>[];
   investmentSaleParcels: Row<typeof investmentSaleParcels>[];
+  /** One fully franked dividend (D3b) */
+  investmentIncome: Row<typeof investmentIncome>[];
 }
 
 // ─── Random numbers ────────────────────────────────────────────────────────────
@@ -366,6 +369,7 @@ export function buildDemoBudget(today: Date): DemoBudget {
     taxLots: [],
     investmentSales: [],
     investmentSaleParcels: [],
+    investmentIncome: [],
   };
   const budgetTypes = {} as Record<CategoryKey, BudgetType | undefined>;
   GROUPS.forEach((group, gi) => {
@@ -1607,6 +1611,18 @@ export function buildDemoBudget(today: Date): DemoBudget {
     saleId: 'demo-sale-gum',
     lotId: 'demo-lot-gum-first',
     quantity: units(20),
+  });
+  // A fully franked dividend last month: $84 paid on 60 units, with a $36 credit at 30%
+  result.investmentIncome.push({
+    id: 'demo-income-gum',
+    holdingId: 'demo-holding-gum',
+    paidOn: ymd(subMonths(today, 1)),
+    kind: 'dividend',
+    amount: 8_400,
+    unfranked: 0,
+    franked: 8_400,
+    frankingCredit: 3_600,
+    withheld: 0,
   });
   return result;
 }

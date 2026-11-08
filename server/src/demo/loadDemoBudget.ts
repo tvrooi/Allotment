@@ -15,6 +15,7 @@ import {
   dashboardWidgets,
   goals,
   holdings,
+  investmentIncome,
   investmentSaleParcels,
   investmentSales,
   payees,
@@ -74,6 +75,7 @@ export function loadDemoBudget(today: Date): void {
     insert(taxLots, demo.taxLots);
     insert(investmentSales, demo.investmentSales);
     insert(investmentSaleParcels, demo.investmentSaleParcels);
+    insert(investmentIncome, demo.investmentIncome);
   });
 
   // Recurring items get their occurrences the way the app makes them (three months ahead,

@@ -1,13 +1,16 @@
 // D3a investment sales (docs/INVESTMENT-SALES-AND-INCOME.md §5): selling units from a holding
 // against its lots, and Tax time's item 18 from those sales. Sales never write a transaction or
 // change a balance (the cash is an ordinary register row). Figures come from capitalGains.ts;
-// this file stores, checks and gathers. Lodged years are locked: any change that would move a
-// lodged year's item 18 figures is refused and undone.
-import { asc, eq, inArray, sql } from 'drizzle-orm';
+// this file stores, checks and gathers. Writes are made through investmentTax.ts, which keeps
+// lodged years' figures from moving.
+import { and, asc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import {
   accounts,
+  documentLinks,
+  documents,
   holdings,
   investmentSaleParcels,
   investmentSales,
@@ -23,7 +26,6 @@ import {
   type SaleFigures,
   type UnknownReason,
 } from './capitalGains.js';
-import { lodgedYears } from './depreciatingAssetService.js';
 import { financialYearName, financialYearOf } from './financialYear.js';
 import { InvestmentError } from './investmentError.js';
 import {
@@ -31,12 +33,11 @@ import {
   currencyContext,
   getBudgetSettings,
   todayIso,
-  updateBudgetSettings,
   type CurrencyContext,
 } from './mainAmountService.js';
 
 /** Super is taxed in the fund, not on a personal return: Tax time leaves these accounts out */
-const NOT_ON_PERSONAL_RETURN = 'retirement';
+export const NOT_ON_PERSONAL_RETURN = 'retirement';
 
 const now = () => new Date().toISOString();
 
@@ -112,8 +113,9 @@ function saleRecords() {
 }
 
 /** An amount in the security's currency in the budget's on a day (as it is with none chosen) */
-const toBudget = (currency: string, ctx: CurrencyContext) => (amount: number, date: string) =>
-  ctx.budget ? convertAmount(amount, currency, ctx.budget, date, ctx) : amount;
+export const toBudget =
+  (currency: string, ctx: CurrencyContext) => (amount: number, date: string) =>
+    ctx.budget ? convertAmount(amount, currency, ctx.budget, date, ctx) : amount;
 
 function figuresOf(record: ReturnType<typeof saleRecords>[number], ctx: CurrencyContext) {
   return saleFigures(record.sale, record.parcels, toBudget(record.currency, ctx));
@@ -142,6 +144,8 @@ function saleOut(record: ReturnType<typeof saleRecords>[number], f: SaleFigures)
     grossProceeds: sale.proceeds,
     fees: sale.fees,
     notes: sale.notes,
+    /** The settlement deposit it's linked to, if any */
+    transactionId: sale.transactionId,
     parcels: f.parcels,
     proceeds: f.proceeds,
     cost: f.cost,
@@ -202,11 +206,18 @@ export function capitalGainsYear(fy: number) {
     carry = net.lossesCarriedForward;
   }
 
-  const sales = (byYear.get(fy) ?? []).map(({ record, f }) => ({
+  const rows = byYear.get(fy) ?? [];
+  const files = linkedFiles(
+    documentLinks.investmentSaleId,
+    rows.map((r) => r.record.sale.id),
+  );
+  const sales = rows.map(({ record, f }) => ({
     ...saleOut(record, f),
     symbol: record.symbol,
     securityName: record.securityName,
     accountName: record.accountName,
+    /** Its contract note and other files, for the year's ZIP */
+    files: files.get(record.sale.id) ?? [],
   }));
   const withoutCost = sales.filter((s) => s.unknown === 'no_cost' || s.unknown === 'no_lot');
   const withoutRate = sales.filter((s) => s.unknown === 'no_rate');
@@ -257,51 +268,25 @@ export function capitalGainsYears(): number[] {
   return [...years];
 }
 
-/** What a lodged year's lock protects: item 18's figures and each sale's */
-function lockedFigures(fy: number) {
-  const year = capitalGainsYear(fy);
-  return JSON.stringify({
-    totalGains: year.totalGains,
-    netGain: year.netGain,
-    lossesCarriedForward: year.lossesCarriedForward,
-    lossesApplied: year.lossesApplied,
-    unknownParcels: year.unknownParcels,
-    sales: year.sales.map((s) => [s.id, s.soldOn, s.quantity, s.proceeds, s.cost, s.gain]),
-  });
-}
-
-/**
- * Runs `change` in one DB transaction, and undoes it with a refusal when it would change a lodged
- * year's capital gains (the way depreciating assets are locked)
- */
-export function keepingLodgedYears<T>(change: () => T): T {
-  return db.transaction(() => {
-    const lodged = lodgedYears();
-    const before = lodged.map(lockedFigures);
-    const result = change();
-    const changed = lodged.filter((fy, i) => lockedFigures(fy) !== before[i]);
-    if (changed.length)
-      throw new InvestmentError(
-        `That would change the capital gains of ${changed.map(financialYearName).join(', ')}, already lodged. Unlock the year first.`,
-        409,
-      );
-    return result;
-  });
-}
-
-/** Net capital losses carried into a year from before Allotment (0 clears them) */
-export function setCarriedInLosses(financialYear: number | null, amount: number) {
-  keepingLodgedYears(() =>
-    updateBudgetSettings({
-      capitalLossesCarriedIn: financialYear === null ? 0 : amount,
-      capitalLossesCarriedInFy: amount && financialYear !== null ? financialYear : null,
-    }),
-  );
+/** Files linked to each of these rows through one of document_links' columns */
+export function linkedFiles(column: SQLiteColumn, ids: string[]) {
+  const out = new Map<string, { id: string; fileName: string }[]>();
+  if (!ids.length) return out;
+  for (const r of db
+    .select({ owner: column, id: documents.id, fileName: documents.fileName })
+    .from(documentLinks)
+    .innerJoin(documents, eq(documents.id, documentLinks.documentId))
+    .where(and(inArray(column, ids), isNotNull(column)))
+    .all()) {
+    const owner = r.owner as string;
+    out.set(owner, [...(out.get(owner) ?? []), { id: r.id, fileName: r.fileName }]);
+  }
+  return out;
 }
 
 // ─── Recording sales ──────────────────────────────────────────────────────────
 
-function holdingWithSecurity(holdingId: string) {
+export function holdingWithSecurity(holdingId: string) {
   const row = db
     .select({ holding: holdings, currency: securities.currency })
     .from(holdings)
@@ -312,7 +297,7 @@ function holdingWithSecurity(holdingId: string) {
   return row;
 }
 
-function saleOf(holdingId: string, saleId: string) {
+export function saleOf(holdingId: string, saleId: string) {
   const row = db.select().from(investmentSales).where(eq(investmentSales.id, saleId)).get();
   if (!row || row.holdingId !== holdingId) throw new InvestmentError('Sale not found', 404);
   return row;
@@ -421,24 +406,21 @@ function writeSale(saleId: string, holdingId: string, input: SaleInput, exceptSa
   return db.select().from(investmentSales).where(eq(investmentSales.id, saleId)).get()!;
 }
 
-export function recordSale(holdingId: string, input: SaleInput) {
-  return keepingLodgedYears(() => writeSale(nanoid(), holdingId, input));
-}
-
-export function updateSale(holdingId: string, saleId: string, input: SaleInput) {
-  return keepingLodgedYears(() => writeSale(saleId, holdingId, input, saleId));
+/** Saves a new sale (no `saleId`) or replaces one. Call inside investmentTax.ts's lock. */
+export function saveSale(holdingId: string, input: SaleInput, saleId?: string) {
+  return saleId
+    ? writeSale(saleId, holdingId, input, saleId)
+    : writeSale(nanoid(), holdingId, input);
 }
 
 /** Removes a sale and puts its units back in the holding and its lots */
-export function removeSale(holdingId: string, saleId: string) {
-  keepingLodgedYears(() => {
-    const sale = saleOf(holdingId, saleId);
-    db.delete(investmentSales).where(eq(investmentSales.id, saleId)).run();
-    db.update(holdings)
-      .set({ quantity: sql`${holdings.quantity} + ${sale.quantity}`, updatedAt: now() })
-      .where(eq(holdings.id, holdingId))
-      .run();
-  });
+export function deleteSale(holdingId: string, saleId: string) {
+  const sale = saleOf(holdingId, saleId);
+  db.delete(investmentSales).where(eq(investmentSales.id, saleId)).run();
+  db.update(holdings)
+    .set({ quantity: sql`${holdings.quantity} + ${sale.quantity}`, updatedAt: now() })
+    .where(eq(holdings.id, holdingId))
+    .run();
 }
 
 // ─── What sales hold on to ────────────────────────────────────────────────────

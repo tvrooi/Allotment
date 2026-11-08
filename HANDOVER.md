@@ -5,10 +5,21 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 7 November 2026 (live app on up.129: D2a email codes, D2b reminders; up.141 D3a in review).
+Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminders; up.141 D3a merged; up.142 D3b in review).
 
 ## State
 
+- **Dividends, franking and deposits (up.142, D3b of the Larger features group; server, client,
+  demo and MCP; migration 0083, additive; backup version 31):** see
+  [docs/INVESTMENT-SALES-AND-INCOME.md](docs/INVESTMENT-SALES-AND-INCOME.md) §10 "D3b". A holding's
+  **Record a payment** (dividend, distribution or interest; franked, unfranked, credit with a
+  30%/25% prefill, tax withheld, units reinvested as their own lot) and **Income**, where a payment
+  or a sale links to its deposit (suggested by amount within 7 days) and keeps its statement or
+  contract note (`investmentSale`/`investmentIncome` file link kinds). The transaction panel
+  shows **Investment money**. Tax time → Deductions gains **Dividends and interest (items 10 and 11)**, distributions apart, the 45-day prompt over $5,000 of credits; the CSV and ZIP carry
+  them; lodged years lock items 10, 11 and 18 (`services/investmentTax.ts`). Organise tokens read
+  `GET /api/investments` and the MCP `investments` tool (read only, owner decision 7); no token
+  writes any of it. Next: D3c, splits.
 - **Investment sales and capital gains (up.141, D3a of the Larger features group; server, client
   and demo; migration 0082, additive; backup version 30):** built to
   [docs/INVESTMENT-SALES-AND-INCOME.md](docs/INVESTMENT-SALES-AND-INCOME.md), whose §10 "As built"
@@ -647,7 +658,8 @@ site in `website/` was removed (audit decision I-9).
    - Future-month money moves; money age (deliberately not built, see BUDGET-REVIEW.md).
    - Investments deferrals (sales, dividends, franking): designed in
      `docs/INVESTMENT-SALES-AND-INCOME.md` (D3), design approved 7 November (its §9). D3a, sales,
-     is built (up.141); next is D3b, dividends and franking with the read-only MCP tool.
+     is built (up.141), and D3b, dividends, franking, deposits and the read-only MCP tool
+     (up.142); next is D3c, splits.
    - Receipts §6 (PDF reading, email
      forwarding, logbooks, depreciation, WFH hours).
    - The legacy `recurring_transactions` cleanup is done (up.123, migration 0078).

@@ -18,13 +18,14 @@ import {
 } from './mainAmountService.js';
 import { mulDiv, valueHolding, type PriceInput } from './investmentMath.js';
 import { InvestmentError } from './investmentError.js';
+import { holdingHasSales, salesByHolding, soldFromLot, soldFromLots } from './investmentSales.js';
 import {
-  holdingHasSales,
-  keepingLodgedYears,
-  salesByHolding,
-  soldFromLot,
-  soldFromLots,
-} from './investmentSales.js';
+  holdingHasIncome,
+  incomeByHolding,
+  lotIsReinvestment,
+  reinvestedLots,
+} from './investmentIncomeService.js';
+import { keepingLodgedYears } from './investmentTax.js';
 
 // P3 investments (docs/INVESTMENTS.md): manual securities, prices, positions and tax lots.
 // None of it writes a transaction or changes an account's balance. The overview compares the
@@ -220,6 +221,11 @@ export function deleteHolding(id: string) {
   // Its sales are the record of what was sold: a sold-out holding stays, under Sold
   if (holdingHasSales(id))
     throw new InvestmentError('This holding has sales. Remove its sales first.', 409);
+  if (holdingHasIncome(id))
+    throw new InvestmentError(
+      'This holding has income recorded. Remove those payments first.',
+      409,
+    );
   db.delete(holdings).where(eq(holdings.id, id)).run();
 }
 
@@ -263,6 +269,11 @@ export function updateLot(
 export function deleteLot(id: string) {
   if (soldFromLot(id).units)
     throw new InvestmentError('Units of this purchase were sold. Remove the sale first.', 409);
+  if (lotIsReinvestment(id))
+    throw new InvestmentError(
+      'This purchase is a reinvested payment. Change or remove the payment instead.',
+      409,
+    );
   const result = db.delete(taxLots).where(eq(taxLots.id, id)).run();
   if (!result.changes) throw new InvestmentError('Lot not found', 404);
 }
@@ -342,7 +353,9 @@ export function investmentOverview(asOf: string = todayIso()) {
 
   // A lot counts only the units no sale took, at that share of its cost
   const taken = soldFromLots(lotRows.map((l) => l.id));
+  const reinvested = reinvestedLots(lotRows.map((l) => l.id));
   const sales = salesByHolding(ctx);
+  const income = incomeByHolding();
 
   const securityById = new Map(securityRows.map((s) => [s.id, s]));
   // Counted over every account, closed ones too: a held security can't be deleted
@@ -410,9 +423,13 @@ export function investmentOverview(asOf: string = todayIso()) {
             costBasis: l.costBasis,
             /** Units no sale has taken */
             remaining: l.remaining,
+            /** Bought by a reinvested payment: changed through that payment */
+            reinvested: reinvested.has(l.id),
           })),
           /** Newest first, figures in the budget's currency */
           sales: sales.get(h.id) ?? [],
+          /** Dividends, distributions and interest, newest first, as entered */
+          income: income.get(h.id) ?? [],
           ...valuation,
           /** The value in the account's currency (null without a price or rate) */
           accountValue,

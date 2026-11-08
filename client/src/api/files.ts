@@ -5,7 +5,15 @@ import { apiFetch } from './client';
 
 export type FileKind =
   'image' | 'pdf' | 'document' | 'spreadsheet' | 'presentation' | 'text' | 'video';
-export type LinkKind = 'transaction' | 'category' | 'goal' | 'account' | 'asset';
+export type LinkKind =
+  | 'transaction'
+  | 'category'
+  | 'goal'
+  | 'account'
+  | 'asset'
+  /** A sale's contract note or a payment's statement (D3b), linked from Investments */
+  | 'investmentSale'
+  | 'investmentIncome';
 
 export interface FileLink {
   kind: LinkKind;

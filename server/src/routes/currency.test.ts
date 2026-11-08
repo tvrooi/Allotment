@@ -317,7 +317,7 @@ describe('multiple currencies', () => {
 
   it('keeps currencies, rates and values through a backup, and an old backup keeps the currency', async () => {
     const backup = (await call('GET', '/export/backup')).body;
-    expect(backup.version).toBe(30);
+    expect(backup.version).toBe(31);
     expect(backup.budgetSettings[0]).toMatchObject({ currency: 'EUR' });
     expect(backup.exchangeRates.length).toBeGreaterThan(0);
     const before = db.select().from(transactions).all();

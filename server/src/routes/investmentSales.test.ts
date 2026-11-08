@@ -357,7 +357,7 @@ describe('investment sales', () => {
 
   it('backs sales up and restores them; an older backup restores with none', () => {
     const backup = createBackup() as any;
-    expect(backup.version).toBe(30);
+    expect(backup.version).toBe(31);
     expect(backup.investmentSales).toHaveLength(4);
     expect(backup.investmentSaleParcels).toHaveLength(5);
     restoreBackup(parseBackup(JSON.parse(JSON.stringify(backup))));
@@ -387,12 +387,11 @@ describe('investment sales', () => {
 });
 
 describe('tokens and investment sales', () => {
-  // Decision 7 (§9): organise tokens read investments, nothing writes. Item 18 is part of the tax
-  // year they already read; the investments routes themselves stay owner only until D3b.
-  it('an organise token reads item 18 with the tax year, and nothing more', () => {
+  // Decision 7 (§9): organise tokens read investments (D3b), nothing writes
+  it('an organise token reads investments and item 18, and writes nothing', () => {
     expect(tokenAllows('organise', 'GET', '/tax/years/2025', undefined)).toBe(true);
+    expect(tokenAllows('organise', 'GET', '/investments', undefined)).toBe(true);
     for (const [method, p] of [
-      ['GET', '/investments'],
       ['POST', '/investments/holdings/h/sales/preview'],
       ['POST', '/investments/holdings/h/sales'],
       ['PUT', '/investments/holdings/h/sales/s'],

@@ -135,3 +135,65 @@ test('sells chosen parcels and shows the capital gain on Tax time', async ({ pag
   );
   await expect(section.getByRole('row', { name: /SELL/ })).toContainText('Part');
 });
+
+// D3b: a franked dividend from its statement, the credit worked out at 30%, linked to its
+// deposit, and item 11 on Tax time
+test('records a franked dividend, links its deposit and shows item 11', async ({ page, api }) => {
+  const account = await api.createAccount('Mock dividend account', 0, 'investment');
+  const bank = await api.createAccount('Mock everyday', 0, 'checking');
+  const security = await api.call('POST', '/investments/securities', {
+    symbol: 'DIVI',
+    name: 'Mock dividend fund',
+    kind: 'stock',
+    currency: 'AUD',
+  });
+  await api.call('POST', '/investments/holdings', {
+    accountId: account.id,
+    securityId: security.id,
+    quantity: 100_000_000,
+  });
+  const paidOn = isoDay(-12);
+  await api.createTransaction({
+    accountId: bank.id,
+    date: isoDay(-10),
+    amount: 7_000,
+    payeeName: 'Mock dividend deposit',
+  });
+
+  await open(page, '/investments');
+  const row = page.getByRole('row', { name: /DIVI/ });
+  await row.getByRole('button', { name: 'Actions for DIVI' }).click();
+  await page.getByRole('menuitem', { name: 'Record a payment' }).click();
+  let dialog = page.getByRole('dialog', { name: 'Record a payment from DIVI' });
+  await dialog.getByLabel('Paid on').fill(paidOn);
+  await typeAmount(dialog.getByLabel('Amount paid'), '70');
+  await typeAmount(dialog.getByLabel('Franked amount', { exact: true }), '70');
+  await dialog.getByRole('button', { name: '30%' }).click();
+  await expect(dialog.getByLabel('Franking credit')).toHaveValue(/30(\.00)?/);
+  await dialog.getByRole('button', { name: 'Record payment' }).click();
+  await expect(dialog).toBeHidden();
+
+  await row.getByRole('button', { name: 'Actions for DIVI' }).click();
+  await page.getByRole('menuitem', { name: 'Income (1)' }).click();
+  dialog = page.getByRole('dialog', { name: 'Income from DIVI' });
+  await expect(dialog).toContainText(/credit A?\$30(\.00)?/);
+  await dialog.getByRole('button', { name: /^Link the deposit of the dividend/ }).click();
+  await dialog.getByRole('button', { name: /^Link Mock dividend deposit/ }).click();
+  await expect(dialog).toContainText('Deposit linked');
+  await dialog.getByRole('button', { name: 'Close', exact: true }).last().click();
+
+  // Tax time: the dividend in its financial year's item 11
+  const year =
+    Number(paidOn.slice(5, 7)) >= 7 ? Number(paidOn.slice(0, 4)) : Number(paidOn.slice(0, 4)) - 1;
+  await open(page, '/tax');
+  await page
+    .getByLabel('Financial year')
+    .selectOption({ label: `${year}–${String(year + 1).slice(2)}` });
+  const section = page.getByRole('region', { name: 'Dividends and interest (items 10 and 11)' });
+  await expect(section.getByRole('row', { name: /11T Franked amount/ })).toContainText(
+    /A?\$70(\.00)?/,
+  );
+  await expect(section.getByRole('row', { name: /11U Franking credit/ })).toContainText(
+    /A?\$30(\.00)?/,
+  );
+});

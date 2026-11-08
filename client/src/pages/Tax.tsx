@@ -12,6 +12,7 @@ import {
   taxYearArchiveUrl,
   taxYearCsvUrl,
   type CapitalGainsYear,
+  type InvestmentIncomeYear,
   type Receipt,
   type TaxYear,
   type TaxYearAsset,
@@ -34,7 +35,7 @@ import { SavingPausedHint } from '../components/connection/SavingPausedHint';
 import { useSetCarriedLosses } from '../hooks/useInvestments';
 import { useCanSave } from '../hooks/useConnection';
 import { formatUnits } from '../utils/units';
-import { UNKNOWN_TEXT } from '../api/investments';
+import { INCOME_KIND_LABEL, UNKNOWN_TEXT } from '../api/investments';
 
 // Tax time (docs/RECEIPTS-AND-TAX.md): a financial year's deductions by return label, with
 // their receipts, and the inbox of receipts not yet matched to a transaction. Record keeping
@@ -131,7 +132,8 @@ function Deductions() {
           (year.claims.length > 0 ||
             year.assets.length > 0 ||
             year.pool ||
-            year.capitalGains.sales.length > 0) && (
+            year.capitalGains.sales.length > 0 ||
+            year.investmentIncome.payments.length > 0) && (
             <div className="flex gap-2 ml-auto">
               <a href={taxYearCsvUrl(year.financialYear)} download>
                 <Button variant="secondary">
@@ -301,6 +303,9 @@ function Deductions() {
           {(year.capitalGains.sales.length > 0 || year.capitalGains.lossesCarriedIn > 0) && (
             <CapitalGains year={year.capitalGains} financialYear={year.financialYear} />
           )}
+          {year.investmentIncome.payments.length > 0 && (
+            <InvestmentIncome year={year.investmentIncome} />
+          )}
           <p className="text-xs text-text-tertiary">
             Keep receipts for five years from when you lodge. Amounts are in your budget's currency;
             a claim is the cost times its work-use share. Labels match the deductions section of
@@ -409,6 +414,93 @@ function CapitalGains({ year, financialYear }: { year: CapitalGainsYear; financi
         </div>
       )}
       <CarriedInLosses current={year.carriedInFromBefore} financialYear={financialYear} />
+    </section>
+  );
+}
+
+/** Dividends (item 11), distributions and interest (item 10) from the year's payments */
+function InvestmentIncome({ year }: { year: InvestmentIncomeYear }) {
+  const rows: [string, number][] = [
+    ['11S Unfranked amount', year.dividends.unfranked],
+    ['11T Franked amount', year.dividends.franked],
+    ['11U Franking credit', year.dividends.frankingCredit],
+    ['11V TFN amounts withheld', year.dividends.withheld],
+  ];
+  if (year.interest.count)
+    rows.push(
+      ['10L Gross interest', year.interest.gross],
+      ['10M TFN amounts withheld from interest', year.interest.withheld],
+    );
+  if (year.distributions.count)
+    rows.push(
+      ['Distributions paid (use the fund statement)', year.distributions.amount],
+      ['Distributions: franking credits', year.distributions.frankingCredit],
+    );
+  const money = (n: number | null) => (n === null ? '—' : formatCurrency(n));
+  return (
+    <section aria-labelledby="investment-income-heading" className="space-y-3">
+      <h2 id="investment-income-heading" className="text-sm font-semibold text-text">
+        Dividends and interest (items 10 and 11)
+      </h2>
+      {year.notes.map((n) => (
+        <p
+          key={n}
+          role="note"
+          className="rounded-md border border-caution p-3 text-sm text-caution"
+        >
+          {n}
+        </p>
+      ))}
+      <table className="w-full text-sm max-w-xl">
+        <tbody>
+          {rows.map(([label, amount]) => (
+            <tr key={label} className="border-b border-border-light">
+              <th scope="row" className="text-left py-1.5 font-normal">
+                {label}
+              </th>
+              <td className="text-right tabular-nums">{formatCurrency(amount)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[44rem]">
+          <thead>
+            <tr className="text-left text-xs text-text-tertiary">
+              <th className="py-1.5 font-medium">Paid on</th>
+              <th className="font-medium">Security</th>
+              <th className="font-medium">Kind</th>
+              <th className="text-right font-medium">Paid</th>
+              <th className="text-right font-medium">Franked</th>
+              <th className="text-right font-medium">Credit</th>
+              <th className="text-right font-medium">Withheld</th>
+            </tr>
+          </thead>
+          <tbody>
+            {year.payments.map((p) => (
+              <tr key={p.id} className="border-t border-border-light align-top">
+                <td className="py-2 whitespace-nowrap">{formatDay(p.paidOn)}</td>
+                <td className="py-2">
+                  <Link to="/investments" className="text-brand-600 hover:text-brand-700">
+                    {p.symbol}
+                  </Link>
+                  <span className="block text-xs text-text-tertiary">{p.accountName}</span>
+                  {p.holdingPeriodConcern && (
+                    <span className="block text-xs text-caution">Check the 45-day rule</span>
+                  )}
+                </td>
+                <td className="py-2">{INCOME_KIND_LABEL[p.kind]}</td>
+                <td className="py-2 text-right tabular-nums">{money(p.converted.amount)}</td>
+                <td className="py-2 text-right tabular-nums">{money(p.converted.franked)}</td>
+                <td className="py-2 text-right tabular-nums">
+                  {money(p.converted.frankingCredit)}
+                </td>
+                <td className="py-2 text-right tabular-nums">{money(p.converted.withheld)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }
