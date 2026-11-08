@@ -195,6 +195,11 @@ export interface SharedRecurringBill {
   name: string;
   /** Expected amount of the next payment (positive) */
   amount: number;
+  /** exact, approximate or variable: how far a payment may differ before it counts as drift */
+  amountType: 'exact' | 'approximate' | 'variable';
+  /** The schedule's own signed amount; an edit keeps its sign */
+  scheduleAmount: number;
+  accountId: string | null;
   recurrenceType: string;
   status: string;
   nextDate: string | null;
@@ -209,6 +214,13 @@ export interface SharedRecurringBill {
   fixedTotal: number | null;
   /** Recent payments, newest first, and whether each is shared yet */
   payments: { transactionId: string; date: string; amount: number; shared: boolean }[];
+  /** The newest payment against the expected amount, when outside tolerance (server billDrift) */
+  drift: {
+    lastPaid: number;
+    lastDate: string;
+    average: number;
+    averageOf: number;
+  } | null;
   /** Expected dates in the coverage window, with each person's share */
   upcoming: { date: string; amount: number; shares: { personId: string; amount: number }[] }[];
 }

@@ -9,7 +9,7 @@ Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminder
 
 ## State
 
-- **Household as an Essentials-style bills hub (up.147 carries PRs 1 and 2 of 4):** plan from the
+- **Household as an Essentials-style bills hub (up.147 carried PRs 1 and 2 of 4; up.148 is PR 3):** plan from the
   owner's 8 November request, with the decisions the owner made: drift only prompts, the gauge covers
   the next 30 days, both bill sections merge into one hub, and all four parts get built. PR 1 puts
   Recurring bills first and lists household entries newest first, from the newest entry's month and
@@ -18,6 +18,13 @@ Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminder
   `components/household/BillsCoverage.tsx`): the cash against the bills due in the next 30 days,
   and each person's share against what they paid in this month. PR 3: bill tiles with in-place edit and a drift prompt, merging **Bills to reserve for**, plus
   the unbuilt November item 2 (a recurring amount edit recomputes the linked `household_bills`).
+  PR 3 (up.148): bill tiles with a due label (`components/household/dueLabel.ts`), the
+  drift prompt (`services/billDrift.ts`; tolerance shared with `matchingEngine.ts` via
+  `withinTolerance`) and **Edit amount** (`BillAmount.tsx`, through `PUT /api/schedules/:id`
+  with Undo). November item 2 is built: `followScheduleAmount` moves unpaid household bills
+  due from today in the schedule update's transaction. **One-off bills** (formerly "Bills to
+  reserve for") moved under the recurring bills. Not built yet: editing frequency or the next
+  date in place (still in Recurring), and the drift prompt on the Recurring page itself.
   PR 4: suggest missing bills from the household account (live: CovaU Energy, Yarra Valley Water).
   Live facts behind it: OVO is expected at A$150 but was paid A$100–107; Superloop is A$115 against
   A$114.

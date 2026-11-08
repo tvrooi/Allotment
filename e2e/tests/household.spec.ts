@@ -596,7 +596,7 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
   expect(after.events.some((e: any) => e.transactionId === next.id)).toBe(true);
 
   // One-off bill: edit, then delete
-  const bills = page.getByRole('heading', { name: 'Bills to reserve for' }).locator('..');
+  const bills = page.getByRole('heading', { name: 'One-off bills' }).locator('..');
   await bills.getByRole('button', { name: 'Edit Council rates' }).click();
   await bills.getByLabel('Bill name').first().fill('Council rates Q2');
   await bills.getByLabel('Total', { exact: true }).fill('310.00');
@@ -963,4 +963,70 @@ test('a gauge shows whether the household account covers the next 30 days of bil
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
+});
+
+test('a bill whose payments changed offers its new amount, and its amount edits in place', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Up Spending', 100000);
+  const day = (offset: number) =>
+    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+  let payeeId = '';
+  for (const [offset, amount] of [
+    [-70, -10000],
+    [-40, -10000],
+    [-10, -10700],
+  ] as const) {
+    const paid = await api.createTransaction({
+      accountId: account.id,
+      date: day(offset),
+      amount,
+      payeeName: 'OVO Energy',
+    });
+    payeeId = paid.payeeId;
+  }
+  const schedule = await api.call('POST', '/schedules', {
+    name: 'Electricity (OVO)',
+    amount: -15000,
+    amountType: 'variable',
+    recurrenceType: 'monthly',
+    recurrenceRule: { type: 'monthly', interval: 1, anchorDay: Number(day(20).slice(8)) },
+    startDate: day(20),
+    accountId: account.id,
+    payeeId,
+  });
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Juno', 'Zephyr'],
+    selfIndex: 0,
+  });
+  await api.call('POST', `/households/${group.group.id}/recurring-bills`, {
+    scheduleIds: [schedule.id],
+  });
+  await open(page, '/household');
+  const tile = page
+    .getByRole('region', { name: 'Recurring bills' })
+    .getByRole('listitem', { name: 'Electricity (OVO)' });
+  await expect(tile).toContainText('amount changed');
+  await expect(tile).toContainText('Last paid A$107');
+  await tile.getByText(/3 payments in six months: A\$307/).click();
+  await expect(tile.getByRole('listitem').first()).toContainText('107');
+  await tile.getByRole('button', { name: 'Update to A$107' }).click();
+  await expect(tile).not.toContainText('amount changed');
+  await expect
+    .poll(async () => (await api.call('GET', `/schedules/${schedule.id}`)).amount)
+    .toBe(-10700);
+
+  await tile.getByRole('button', { name: 'Edit amount of Electricity (OVO)' }).click();
+  const form = tile.getByRole('form', { name: 'Edit Electricity (OVO)' });
+  await typeAmount(form.getByLabel('Expected amount'), '112.50');
+  await form.getByRole('button', { name: 'Save' }).click();
+  await expect(tile).toContainText('A$112.50');
+  await expect
+    .poll(async () => (await api.call('GET', `/schedules/${schedule.id}`)).amount)
+    .toBe(-11250);
+  await expect(tile.getByText(/Juno\s*A\$37\.50/)).toBeVisible();
 });

@@ -1,5 +1,15 @@
 # Changes
 
+## 0.2.0-up.148
+
+Part three of four of the Household updates that bring the page closer to Up's Essentials.
+
+- **When a bill's amount changes.** Each shared recurring bill is now a tile that says when it's due ("Due in 3 days"). When its last payment doesn't match what it expects, it says **amount changed** and offers **Update to A$107** or the average of the last three payments. Nothing changes until you click. The tolerance is the one Recurring uses for matching: exact bills prompt on any change, "about the same" bills beyond 10%, and changing bills beyond 25%.
+- **Edit amount** on the tile sets the expected amount and how it varies, with Undo. Recurring and your forecast follow.
+- **Household bills follow an amount you change.** Editing a recurring amount, here or in Recurring, now also updates that bill's household bills that aren't paid yet, with your share recomputed. Paid and past bills keep what they were.
+- Each tile lists its payments from the last six months, newest first, with their total.
+- **One-off bills** (formerly "Bills to reserve for") now sit under the recurring bills.
+
 ## 0.2.0-up.147
 
 The first two of four Household updates that bring the page closer to Up's Essentials (see `docs/HOUSEHOLDS.md`).

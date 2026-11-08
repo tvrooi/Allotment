@@ -153,6 +153,24 @@ sharing** takes a bill off the list and leaves its shared payments in the househ
 are in backup version 20 (`household_recurring_bills`, with `split_json` and `auto_share_from`);
 older backups restore without them.
 
+### Amounts that change, and one-off bills
+
+Each recurring bill is a tile with its due date in words ("Due in 3 days", "Overdue since …"). When
+its newest payment is outside the schedule's tolerance of the expected amount, the tile says
+**amount changed** and offers **Update to A$107** or **Use the average of the last 3**
+(`services/billDrift.ts`, the tolerance from `matchingEngine.ts`: exact 0%, approximate 10%,
+variable 25%). Nothing changes without that click. **Edit amount** sets the expected amount and how
+it varies. Both save the schedule through `PUT /api/schedules/:id`, with Undo, so Recurring and the
+forecast follow. The same update moves the schedule's household bills that are due from today and
+have no payment matched to them to the new amount, with my share recomputed by the bill's split and a
+reservation capped at the new total (`followScheduleAmount`), in the same database transaction.
+Bills already paid, or due before today, keep what they were. The tile also lists its payments from
+the last six months, newest first, with their total. Frequency and dates are still changed in
+Recurring.
+
+**One-off bills** (formerly "Bills to reserve for") sit under the recurring bills: a bill that
+doesn't repeat, with money set aside for it from the household account.
+
 ## Editing a household
 
 **Edit** beside the household's name renames it (`PUT /api/households/:id` with `{ name }`); its

@@ -17,6 +17,7 @@ import {
 import { MAX_REMINDER_DAYS } from '../services/reminderService.js';
 import { discoverSchedules, createDiscoveredSchedules } from '../services/scheduleDiscovery.js';
 import { scheduleScopes } from '../services/scheduleScope.js';
+import { followScheduleAmount } from '../services/householdService.js';
 import { endSchedule, possiblyEndedIds, reopenSchedule } from '../services/scheduleActivity.js';
 import {
   ensureOccurrences,
@@ -422,40 +423,44 @@ schedulesRouter.put('/:id', (req, res) => {
     updates.autoCreateFrom = format(new Date(), 'yyyy-MM-dd');
   }
 
-  db.update(schedules).set(updates).where(eq(schedules.id, req.params.id)).run();
+  db.transaction(() => {
+    db.update(schedules).set(updates).where(eq(schedules.id, req.params.id)).run();
 
-  const patternChanged =
-    (data.recurrenceType !== undefined && data.recurrenceType !== existing.recurrenceType) ||
-    updates.recurrenceRule !== undefined ||
-    (data.startDate !== undefined && data.startDate !== existing.startDate) ||
-    (data.endDate !== undefined && data.endDate !== existing.endDate) ||
-    (data.weekendAdjust !== undefined && data.weekendAdjust !== existing.weekendAdjust);
-  if (patternChanged) {
-    regenerateFutureOccurrences(req.params.id);
-  }
-
-  if (data.amount !== undefined && data.amount !== existing.amount) {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const futureOccs = db
-      .select()
-      .from(scheduleOccurrences)
-      .where(
-        and(
-          eq(scheduleOccurrences.scheduleId, req.params.id),
-          eq(scheduleOccurrences.status, 'pending'),
-        ),
-      )
-      .all()
-      // Everything not yet paid from today on, including one due today or moved by a weekend
-      .filter((o) => o.scheduledDate > today || o.expectedDate >= today);
-
-    for (const occ of futureOccs) {
-      db.update(scheduleOccurrences)
-        .set({ expectedAmount: data.amount })
-        .where(eq(scheduleOccurrences.id, occ.id))
-        .run();
+    const patternChanged =
+      (data.recurrenceType !== undefined && data.recurrenceType !== existing.recurrenceType) ||
+      updates.recurrenceRule !== undefined ||
+      (data.startDate !== undefined && data.startDate !== existing.startDate) ||
+      (data.endDate !== undefined && data.endDate !== existing.endDate) ||
+      (data.weekendAdjust !== undefined && data.weekendAdjust !== existing.weekendAdjust);
+    if (patternChanged) {
+      regenerateFutureOccurrences(req.params.id);
     }
-  }
+
+    if (data.amount !== undefined && data.amount !== existing.amount) {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const futureOccs = db
+        .select()
+        .from(scheduleOccurrences)
+        .where(
+          and(
+            eq(scheduleOccurrences.scheduleId, req.params.id),
+            eq(scheduleOccurrences.status, 'pending'),
+          ),
+        )
+        .all()
+        // Everything not yet paid from today on, including one due today or moved by a weekend
+        .filter((o) => o.scheduledDate > today || o.expectedDate >= today);
+
+      for (const occ of futureOccs) {
+        db.update(scheduleOccurrences)
+          .set({ expectedAmount: data.amount })
+          .where(eq(scheduleOccurrences.id, occ.id))
+          .run();
+      }
+      // Its household bills not paid yet follow, in the same transaction (November plan item 2)
+      followScheduleAmount(req.params.id, data.amount, today);
+    }
+  });
 
   const updated = db.select().from(schedules).where(eq(schedules.id, req.params.id)).get();
   res.json(updated);

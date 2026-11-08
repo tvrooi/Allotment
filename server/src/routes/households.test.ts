@@ -782,6 +782,59 @@ describe('household attribution', () => {
     });
   });
 
+  it("an edited recurring amount updates its household bills that aren't paid yet", async () => {
+    const g = await group();
+    const today = todayIso();
+    db.insert(schedules)
+      .values({
+        id: 'follow-water',
+        name: 'Water',
+        amount: -18000,
+        recurrenceType: 'quarterly',
+        startDate: today,
+        accountId: 'mine',
+      })
+      .run();
+    const bill = (description: string, dueDate: string) =>
+      call(`/${g.group.id}/bills`, {
+        description,
+        dueDate,
+        amount: 18000,
+        personalShare: 6000,
+        reserved: 0,
+        scheduleId: 'follow-water',
+      });
+    await bill('Water (next)', addDaysIso(today, 20));
+    await bill('Water (last quarter)', addDaysIso(today, -70));
+    const paidBill = (await bill('Water (paid)', addDaysIso(today, 3))).data.bills.find(
+      (b: any) => b.description === 'Water (paid)',
+    );
+    await call(`/${g.group.id}/events`, {
+      kind: 'expense',
+      date: today,
+      description: 'Water',
+      amount: 18000,
+      payerId: g.people[0].id,
+      billId: paidBill.id,
+      shares: g.people.map((p: any) => ({ personId: p.id, value: 1 })),
+    });
+
+    const edited = await fetch(base.replace('/households', '/schedules/follow-water'), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: -16800 }),
+    });
+    expect(edited.status).toBe(200);
+    const after = Object.fromEntries(
+      (await call(`/${g.group.id}`)).data.bills.map((b: any) => [b.description, b]),
+    );
+    // The next bill follows the new amount, with my share recomputed (equal split of three)
+    expect(after['Water (next)']).toMatchObject({ amount: 16800, personalShare: 5600 });
+    // A past bill and a bill a payment is matched to keep what they were
+    expect(after['Water (last quarter)']).toMatchObject({ amount: 18000, personalShare: 6000 });
+    expect(after['Water (paid)']).toMatchObject({ amount: 18000, personalShare: 6000 });
+  });
+
   it('renames a household and makes one the default', async () => {
     const a = await group();
     const b = await group();

@@ -9,6 +9,22 @@ import { eq, and, gte, lte, isNull } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { format, parseISO, addDays, subDays } from 'date-fns';
 
+/** How far a payment may differ from a schedule's expected amount, as a fraction of it */
+export const AMOUNT_TOLERANCE: Record<string, number> = {
+  exact: 0,
+  approximate: 0.1,
+  variable: 0.25,
+};
+export const amountTolerance = (amountType: string) => AMOUNT_TOLERANCE[amountType] ?? 0;
+
+/** Whether `actual` is within the schedule's tolerance of `expected` (minor units, either sign) */
+export function withinTolerance(amountType: string, actual: number, expected: number) {
+  const diff = Math.abs(Math.abs(actual) - Math.abs(expected));
+  if (diff === 0) return true;
+  const base = Math.abs(expected);
+  return base > 0 && diff / base <= amountTolerance(amountType);
+}
+
 export function linkOccurrenceToTransaction(
   occurrenceId: string,
   transactionId: string,
@@ -144,23 +160,11 @@ function scoreMatch(
   const amountDiff = Math.abs(tx.amount - occ.expectedAmount);
   const absExpected = Math.abs(occ.expectedAmount);
 
-  switch (schedule.amountType) {
-    case 'exact':
-      amountScore = amountDiff === 0 ? 30 : 0;
-      break;
-    case 'approximate':
-      if (amountDiff === 0) amountScore = 30;
-      else if (absExpected > 0 && amountDiff / absExpected <= 0.1) amountScore = 20;
-      else amountScore = 0;
-      break;
-    case 'variable':
-      if (amountDiff === 0) amountScore = 30;
-      else if (absExpected > 0 && amountDiff / absExpected <= 0.25) amountScore = 10;
-      else amountScore = 0;
-      break;
-    default:
-      amountScore = amountDiff === 0 ? 30 : 0;
-  }
+  const tolerance = amountTolerance(schedule.amountType);
+  if (amountDiff === 0) amountScore = 30;
+  else if (tolerance > 0 && absExpected > 0 && amountDiff / absExpected <= tolerance)
+    amountScore = schedule.amountType === 'approximate' ? 20 : 10;
+  else amountScore = 0;
 
   if (amountScore === 0) return { score: 0, payeeScore: 0 };
 
