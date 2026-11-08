@@ -978,6 +978,60 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
     ],
   },
   {
+    page: 'investments',
+    title: 'Investments',
+    summary: 'Holdings, prices, purchases and sales, and the capital gains they make.',
+    sections: [
+      {
+        heading: 'Holdings you price yourself',
+        body: (
+          <p>
+            Add a security (a share, ETF, fund or coin), then a holding of it in an investment,
+            retirement or crypto account, and type in prices as you see them: Allotment doesn’t
+            fetch quotes. Holdings never change an account’s balance until you choose{' '}
+            <b>Record as value</b>.
+          </p>
+        ),
+      },
+      {
+        heading: 'Purchases and cost',
+        body: (
+          <p>
+            Under <b>Purchases and cost</b>, record when units were bought and what they cost in
+            total, brokerage included. A cost you don’t know stays unknown, never zero, and no gain
+            is shown for it.
+          </p>
+        ),
+      },
+      {
+        heading: 'Selling',
+        body: (
+          <p>
+            Choose <b>Sell</b> on a holding and copy the contract note: the trade date, units,
+            proceeds and sale brokerage. The oldest purchases are sold first unless you{' '}
+            <b>Choose parcels</b>. Before you save, you see each parcel’s cost, its gain or loss and
+            whether it was held 12 months or more (the 50% discount). The units leave the holding;
+            the cash is whatever your bank recorded. A holding with every unit sold moves under{' '}
+            <b>Sold</b>.
+          </p>
+        ),
+      },
+      {
+        heading: 'Capital gains on Tax time',
+        body: (
+          <p>
+            <L to="tax">Tax time</L> shows each year’s sales with item 18’s figures: total capital
+            gains, the net capital gain after losses and the discount, and losses carried forward.
+            Enter net capital losses from before you used Allotment once. Super accounts are left
+            out, because the fund pays their tax. Lock a year once it’s lodged so its figures can’t
+            change. It’s record keeping, not tax advice: dividends, splits and a fund’s annual tax
+            statement aren’t covered yet.
+          </p>
+        ),
+      },
+    ],
+  },
+  {
     page: 'tax',
     title: 'Tax time',
     summary: 'Deductions, receipts and depreciating assets for your Australian return.',

@@ -5,10 +5,21 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 7 November 2026 (live app on up.129: D2a email codes, D2b reminders; up.140 in review).
+Last updated: 7 November 2026 (live app on up.129: D2a email codes, D2b reminders; up.141 D3a in review).
 
 ## State
 
+- **Investment sales and capital gains (up.141, D3a of the Larger features group; server, client
+  and demo; migration 0082, additive; backup version 30):** built to
+  [docs/INVESTMENT-SALES-AND-INCOME.md](docs/INVESTMENT-SALES-AND-INCOME.md), whose §10 "As built"
+  lists where it differs from the design. Investments → a holding's **Sell** (FIFO or **Choose
+  parcels**, a preview of each parcel's gain and the 12-month discount) and **Sales**. Fully sold
+  holdings sit under **Sold**. Tax time → Deductions has **Capital gains (item 18)**: 18H, 18A and
+  18V, losses carried year to year plus an optional figure from before Allotment, super left out,
+  unknown costs or rates counted, never zero. The year's CSV gains item 18. Lodged years refuse any
+  change that moves their item 18 (`keepingLodgedYears`). A new guide article, Investments. No
+  token reaches any of it yet: D3b adds dividends, franking, register links, the `investment` file
+  link kind and the read-only `investments` MCP tool for organise tokens; D3c adds splits.
 - **UI/UX audit (7 November 2026; documentation only):** see [the report](docs/UX-UI-AUDIT.md)
   and [evidence guide](docs/ux-ui-evidence/README.md). Fourteen stable findings, ranked work,
   acceptance criteria and a phased roadmap are ready for implementation. Start with shared
@@ -202,8 +213,8 @@ Last updated: 7 November 2026 (live app on up.129: D2a email codes, D2b reminder
   and the long-term forecast (`guides/tips.ts`). Tests: `articles.test.ts`, e2e
   `user-guide.spec.ts` (each link, and the header links at 44 px on a phone); the page-guide
   walks in `guides.spec.ts` and the phone spec cover the new guides. Docs: GUIDES.md "The user
-  guide", LONG-TERM-FORECAST.md's status line. Not built: articles for Pay later, Investments,
-  Files and Cash flow (their page guides cover them). Next: C3 (Enable Banking's setup steps).
+  guide", LONG-TERM-FORECAST.md's status line. Not built: articles for Pay later, Files and Cash
+  flow (their page guides cover them); Investments got its article in up.141. Next: C3 (Enable Banking's setup steps).
 - **Previous and next in transaction details (up.120, C1 of the Polish and help group; client
   only, no migration):** `TransactionDetailPanel` takes `onPrevious`/`onNext` (missing at the first
   or last row, shown as `aria-disabled` so focus stays on the button); `TransactionTable` steps
@@ -635,7 +646,8 @@ site in `website/` was removed (audit decision I-9).
    - Transaction detail previous/next is built (up.120); a link per transaction is not.
    - Future-month money moves; money age (deliberately not built, see BUDGET-REVIEW.md).
    - Investments deferrals (sales, dividends, franking): designed in
-     `docs/INVESTMENT-SALES-AND-INCOME.md` (D3), design approved 7 November (its §9); next is D3a, sales.
+     `docs/INVESTMENT-SALES-AND-INCOME.md` (D3), design approved 7 November (its §9). D3a, sales,
+     is built (up.141); next is D3b, dividends and franking with the read-only MCP tool.
    - Receipts §6 (PDF reading, email
      forwarding, logbooks, depreciation, WFH hours).
    - The legacy `recurring_transactions` cleanup is done (up.123, migration 0078).

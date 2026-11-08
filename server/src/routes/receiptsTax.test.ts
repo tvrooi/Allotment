@@ -19,7 +19,8 @@ const { accessTokensRouter } = await import('./accessTokens.js');
 const { receiptsRouter } = await import('./receipts.js');
 const { taxRouter } = await import('./tax.js');
 const { sniffReceiptType } = await import('../services/receiptService.js');
-const { financialYearOf, taxYear } = await import('../services/taxService.js');
+const { taxYear } = await import('../services/taxService.js');
+const { financialYearOf } = await import('../services/financialYear.js');
 const { insertNewTransaction, buildRuleContext } = await import('../services/ruleService.js');
 const { createBackup, parseBackup, restoreBackup, BACKUP_TABLES } =
   await import('../services/backupService.js');

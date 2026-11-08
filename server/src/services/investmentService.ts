@@ -16,20 +16,19 @@ import {
   todayIso,
   type CurrencyContext,
 } from './mainAmountService.js';
-import { valueHolding, type PriceInput } from './investmentMath.js';
+import { mulDiv, valueHolding, type PriceInput } from './investmentMath.js';
+import { InvestmentError } from './investmentError.js';
+import {
+  holdingHasSales,
+  keepingLodgedYears,
+  salesByHolding,
+  soldFromLot,
+  soldFromLots,
+} from './investmentSales.js';
 
 // P3 investments (docs/INVESTMENTS.md): manual securities, prices, positions and tax lots.
 // None of it writes a transaction or changes an account's balance. The overview compares the
 // holdings' value with the account's recorded balance and leaves recording it to the user.
-
-export class InvestmentError extends Error {
-  constructor(
-    message: string,
-    readonly status = 400,
-  ) {
-    super(message);
-  }
-}
 
 /** Account types whose positions can be tracked */
 export const INVESTMENT_ACCOUNT_TYPES = ['investment', 'retirement', 'crypto'] as const;
@@ -218,6 +217,9 @@ export function updateHolding(id: string, input: { quantity?: number; notes?: st
 /** Removes the position and its lots; the account's transactions and balance are untouched */
 export function deleteHolding(id: string) {
   holding(id);
+  // Its sales are the record of what was sold: a sold-out holding stays, under Sold
+  if (holdingHasSales(id))
+    throw new InvestmentError('This holding has sales. Remove its sales first.', 409);
   db.delete(holdings).where(eq(holdings.id, id)).run();
 }
 
@@ -240,14 +242,27 @@ export function updateLot(
   id: string,
   input: { acquiredOn?: string; quantity?: number; costBasis?: number | null },
 ) {
-  const lot = db.select().from(taxLots).where(eq(taxLots.id, id)).get();
-  if (!lot) throw new InvestmentError('Lot not found', 404);
-  if (input.acquiredOn) checkLotDate(input.acquiredOn);
-  if (Object.keys(input).length) db.update(taxLots).set(input).where(eq(taxLots.id, id)).run();
-  return db.select().from(taxLots).where(eq(taxLots.id, id)).get()!;
+  // A sold parcel's cost and date follow its lot, so a lodged year's gains can't move
+  return keepingLodgedYears(() => {
+    const lot = db.select().from(taxLots).where(eq(taxLots.id, id)).get();
+    if (!lot) throw new InvestmentError('Lot not found', 404);
+    if (input.acquiredOn) checkLotDate(input.acquiredOn);
+    const sold = soldFromLot(id);
+    if (input.quantity !== undefined && input.quantity < sold.units)
+      throw new InvestmentError(
+        "Sales took units from this purchase: it can't hold fewer than they took",
+        409,
+      );
+    if (input.acquiredOn && sold.firstSoldOn && input.acquiredOn > sold.firstSoldOn)
+      throw new InvestmentError('A sale took units from this purchase before that date', 409);
+    if (Object.keys(input).length) db.update(taxLots).set(input).where(eq(taxLots.id, id)).run();
+    return db.select().from(taxLots).where(eq(taxLots.id, id)).get()!;
+  });
 }
 
 export function deleteLot(id: string) {
+  if (soldFromLot(id).units)
+    throw new InvestmentError('Units of this purchase were sold. Remove the sale first.', 409);
   const result = db.delete(taxLots).where(eq(taxLots.id, id)).run();
   if (!result.changes) throw new InvestmentError('Lot not found', 404);
 }
@@ -325,6 +340,10 @@ export function investmentOverview(asOf: string = todayIso()) {
     ).map((r) => [r.accountId, r.sum]),
   );
 
+  // A lot counts only the units no sale took, at that share of its cost
+  const taken = soldFromLots(lotRows.map((l) => l.id));
+  const sales = salesByHolding(ctx);
+
   const securityById = new Map(securityRows.map((s) => [s.id, s]));
   // Counted over every account, closed ones too: a held security can't be deleted
   const heldCounts = new Map(
@@ -352,8 +371,16 @@ export function investmentOverview(asOf: string = todayIso()) {
       .filter((h) => h.accountId === account.id)
       .map((h) => {
         const sec = securityById.get(h.securityId)!;
-        const lots = lotRows.filter((l) => l.holdingId === h.id);
-        const valuation = valueHolding(h.quantity, lots, prices.get(sec.id) ?? [], asOf);
+        const lots = lotRows
+          .filter((l) => l.holdingId === h.id)
+          .map((l) => ({ ...l, remaining: l.quantity - (taken.get(l.id) ?? 0) }));
+        const held = lots
+          .filter((l) => l.remaining > 0)
+          .map((l) => ({
+            quantity: l.remaining,
+            costBasis: l.costBasis === null ? null : mulDiv(l.costBasis, l.remaining, l.quantity),
+          }));
+        const valuation = valueHolding(h.quantity, held, prices.get(sec.id) ?? [], asOf);
         const accountValue = convert(valuation.value, sec.currency, currency, asOf, ctx);
         holdingsValue =
           holdingsValue === null || accountValue === null ? null : holdingsValue + accountValue;
@@ -381,7 +408,11 @@ export function investmentOverview(asOf: string = todayIso()) {
             acquiredOn: l.acquiredOn,
             quantity: l.quantity,
             costBasis: l.costBasis,
+            /** Units no sale has taken */
+            remaining: l.remaining,
           })),
+          /** Newest first, figures in the budget's currency */
+          sales: sales.get(h.id) ?? [],
           ...valuation,
           /** The value in the account's currency (null without a price or rate) */
           accountValue,

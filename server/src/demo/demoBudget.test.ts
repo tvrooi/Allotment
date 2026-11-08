@@ -12,6 +12,7 @@ import { schedulesRouter } from '../routes/schedules.js';
 import { buildDemoBudget } from './demoBudget.js';
 import { loadDemoBudget } from './loadDemoBudget.js';
 import { listTransferSuggestions } from '../services/transferService.js';
+import { investmentOverview } from '../services/investmentService.js';
 
 // The in-browser demo's budget (see ../browser/README.md) has to look finished whatever day
 // someone opens it: these check it for any "today".
@@ -217,5 +218,14 @@ describe('the demo budget, loaded', () => {
   it('leaves one subscription for "Find recurring" to spot', async () => {
     const { found } = await get('/schedules/discover');
     expect(found.map((f: { payeeId: string }) => f.payeeId)).toContain('demo-payee-tuneful');
+  });
+
+  it('shows a sale with a known, discounted gain and a fully costed holding', () => {
+    const [holding] = investmentOverview().accounts.flatMap((a) => a.holdings);
+    expect(holding).toMatchObject({ quantity: 60_000_000, basisStatus: 'complete' });
+    // 20 of the first 50 units: $1,960 less $9.50 brokerage, against $1,600 of cost
+    expect(holding.sales).toEqual([
+      expect.objectContaining({ gain: 35_050, discount: 'all', unknown: null }),
+    ]);
   });
 });

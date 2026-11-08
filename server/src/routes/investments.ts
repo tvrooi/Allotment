@@ -1,8 +1,8 @@
 import { Router, type Response } from 'express';
 import { z } from 'zod';
 import { currencySchema, isoDate } from '../utils/validation.js';
+import { InvestmentError } from '../services/investmentError.js';
 import {
-  InvestmentError,
   SECURITY_KINDS,
   addLot,
   createHolding,
@@ -18,9 +18,17 @@ import {
   updateLot,
   updateSecurity,
 } from '../services/investmentService.js';
+import {
+  previewSale,
+  recordSale,
+  removeSale,
+  setCarriedInLosses,
+  updateSale,
+} from '../services/investmentSales.js';
 
-// P3 investments (services/investmentService.ts). Positions only: nothing here writes to the
-// ledger, so no route changes an account's balance.
+// P3 investments (services/investmentService.ts) and D3a sales (services/investmentSales.ts).
+// Positions only: nothing here writes to the ledger, so no route changes an account's balance.
+// Owner session only: no token reaches these routes.
 
 export const investmentsRouter = Router();
 
@@ -141,3 +149,57 @@ investmentsRouter.put('/lots/:id', (req, res) => {
 });
 
 investmentsRouter.delete('/lots/:id', (req, res) => send(res, () => deleteLot(req.params.id)));
+
+// ─── Sales (D3a) ──────────────────────────────────────────────────────────────
+
+const sale = z
+  .object({
+    soldOn: isoDate,
+    quantity: lotQuantity,
+    proceeds: money,
+    fees: money,
+    /** Omitted: first in, first out */
+    parcels: z
+      .array(z.object({ lotId: id, quantity: lotQuantity }).strict())
+      .max(500)
+      .optional(),
+    notes: notes.optional(),
+  })
+  .strict();
+
+investmentsRouter.post('/holdings/:id/sales/preview', (req, res) => {
+  const data = parse(sale.extend({ saleId: id.optional() }), req.body, res);
+  if (data) {
+    const { saleId, ...input } = data;
+    send(res, () => previewSale(req.params.id, input, saleId));
+  }
+});
+
+investmentsRouter.post('/holdings/:id/sales', (req, res) => {
+  const data = parse(sale, req.body, res);
+  if (data) send(res, () => recordSale(req.params.id, data), 201);
+});
+
+investmentsRouter.put('/holdings/:id/sales/:saleId', (req, res) => {
+  const data = parse(sale, req.body, res);
+  if (data) send(res, () => updateSale(req.params.id, req.params.saleId, data));
+});
+
+investmentsRouter.delete('/holdings/:id/sales/:saleId', (req, res) =>
+  send(res, () => removeSale(req.params.id, req.params.saleId)),
+);
+
+// Net capital losses from years before Allotment's records, carried into one financial year
+investmentsRouter.put('/carried-losses', (req, res) => {
+  const data = parse(
+    z
+      .object({
+        financialYear: z.number().int().min(2000).max(2200).nullable(),
+        amount: money,
+      })
+      .strict(),
+    req.body,
+    res,
+  );
+  if (data) send(res, () => setCarriedInLosses(data.financialYear, data.amount));
+});

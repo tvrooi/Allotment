@@ -16,6 +16,8 @@ import {
   transactions,
 } from '../db/schema.js';
 import { mainAmount } from './balances.js';
+import { financialYearName, financialYearOf, financialYearRange } from './financialYear.js';
+import { capitalGainsYear, capitalGainsYears } from './investmentSales.js';
 import { extensionOf } from './receiptMeta.js';
 import { zip } from '../utils/zip.js';
 import {
@@ -56,14 +58,6 @@ export const TAX_LABEL_KEYS = Object.keys(TAX_LABELS) as TaxLabel[];
 export const WRITTEN_EVIDENCE_THRESHOLD = 30_000;
 /** A work item costing more than this is usually depreciated, not deducted at once */
 export const IMMEDIATE_DEDUCTION_LIMIT = 30_000;
-
-/** The financial year a date falls in, named by the year it starts: 2026 = 1 July 2026–30 June 2027 */
-export function financialYearOf(date: string): number {
-  const year = Number(date.slice(0, 4));
-  return Number(date.slice(5, 7)) >= 7 ? year : year - 1;
-}
-export const financialYearRange = (fy: number) => ({ from: `${fy}-07-01`, to: `${fy + 1}-06-30` });
-export const financialYearName = (fy: number) => `${fy}–${String(fy + 1).slice(2)}`;
 
 const now = () => new Date().toISOString();
 
@@ -312,6 +306,8 @@ export function taxYear(fy: number) {
     claims,
     assets,
     pool,
+    /** Item 18 from investment sales (docs/INVESTMENT-SALES-AND-INCOME.md); income, not a deduction */
+    capitalGains: capitalGainsYear(fy),
     totals,
     total:
       claims.reduce((s, c) => s + c.claim, 0) +
@@ -418,7 +414,7 @@ export function claimCandidates(fy: number, today: string) {
 
 /** Financial years with claims, and the current one, newest first */
 export function taxYears(today: string) {
-  const years = new Set([financialYearOf(today), ...assetYears(today)]);
+  const years = new Set([financialYearOf(today), ...assetYears(today), ...capitalGainsYears()]);
   for (const r of db
     .select({ date: transactions.date })
     .from(taxClaims)
@@ -438,6 +434,61 @@ export const csvCell = (v: string | number | null | undefined) => {
   return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 };
 const dollars = (cents: number) => (cents / 100).toFixed(2);
+/** Millionths of a unit as a plain decimal, exactly */
+const units = (millionths: number) => {
+  const fraction = String(millionths % 1_000_000)
+    .padStart(6, '0')
+    .replace(/0+$/, '');
+  return `${Math.trunc(millionths / 1_000_000)}${fraction ? `.${fraction}` : ''}`;
+};
+const DISCOUNT_TEXT = { all: 'Yes', some: 'Partly', none: 'No' } as const;
+const UNKNOWN_TEXT = {
+  no_lot: 'Units without a purchase',
+  no_cost: 'Purchase cost unknown',
+  no_rate: 'No exchange rate',
+} as const;
+
+/** Item 18's sales and figures, as more rows of the year's CSV (none without sales) */
+function capitalGainsRows(year: ReturnType<typeof taxYear>['capitalGains']) {
+  if (!year.sales.length && !year.lossesCarriedIn) return [];
+  const amount = (cents: number | null) => (cents === null ? null : dollars(cents));
+  return [
+    [],
+    ['Capital gains (item 18)'],
+    [
+      'Sold on',
+      'Security',
+      'Account',
+      'Units',
+      'Proceeds after brokerage',
+      'Cost',
+      'Gain or loss',
+      'Discount',
+      'Not counted',
+      'Notes',
+    ],
+    ...year.sales.map((s) => [
+      s.soldOn,
+      `${s.symbol} ${s.securityName}`,
+      s.accountName,
+      units(s.quantity),
+      amount(s.proceeds),
+      amount(s.cost),
+      amount(s.gain),
+      DISCOUNT_TEXT[s.discount],
+      s.unknown ? UNKNOWN_TEXT[s.unknown] : null,
+      s.notes,
+    ]),
+    [],
+    ['18H Total current year capital gains', dollars(year.totalGains)],
+    ['Capital losses this year', dollars(year.currentLosses)],
+    ['Net capital losses from earlier years', dollars(year.lossesCarriedIn)],
+    ['Losses applied', dollars(year.lossesApplied)],
+    ['CGT discount', dollars(year.discount)],
+    ['18A Net capital gain', dollars(year.netGain)],
+    ['18V Net capital losses carried forward', dollars(year.lossesCarriedForward)],
+  ];
+}
 
 export function taxYearCsv(fy: number) {
   const year = taxYear(fy);
@@ -510,6 +561,7 @@ export function taxYearCsv(fy: number) {
           ],
         ]
       : []),
+    ...capitalGainsRows(year.capitalGains),
   ];
   return { name: year.name, csv: lines.map((l) => l.map(csvCell).join(',')).join('\r\n') + '\r\n' };
 }

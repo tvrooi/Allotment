@@ -1,5 +1,6 @@
 import { API_BASE } from './base';
 import { apiFetch } from './client';
+import type { Sale } from './investments';
 
 // Receipts and tax deductions (server: routes/receipts.ts, routes/tax.ts). Amounts are cents.
 
@@ -135,6 +136,31 @@ export interface TaxYearAsset {
   files: { id: string; fileName: string }[];
 }
 
+/** A financial year's capital gains (item 18), in the budget's currency */
+export interface CapitalGainsYear {
+  sales: (Sale & {
+    symbol: string;
+    securityName: string;
+    accountName: string;
+  })[];
+  /** 18H: total current year capital gains */
+  totalGains: number;
+  currentLosses: number;
+  lossesCarriedIn: number;
+  lossesApplied: number;
+  discount: number;
+  /** 18A: net capital gain */
+  netGain: number;
+  /** 18V: net capital losses carried forward */
+  lossesCarriedForward: number;
+  unknownParcels: number;
+  /** Net capital losses from before Allotment, as entered */
+  carriedInFromBefore: { financialYear: number; amount: number } | null;
+  /** Sales in super accounts, left out */
+  superSales: number;
+  notes: string[];
+}
+
 export interface TaxYear {
   financialYear: number;
   name: string;
@@ -148,6 +174,8 @@ export interface TaxYear {
     row: import('./assets').PoolRow;
     assets: { assetId: string; name: string; added: number }[];
   } | null;
+  /** Item 18 from investment sales (docs/INVESTMENT-SALES-AND-INCOME.md) */
+  capitalGains: CapitalGainsYear;
   /** Balancing adjustments that are assessable income, not deductions */
   assetIncome: number;
   totals: { label: TaxLabel; name: string; count: number; total: number }[];

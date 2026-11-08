@@ -11,6 +11,7 @@ import {
   receiptFileUrl,
   taxYearArchiveUrl,
   taxYearCsvUrl,
+  type CapitalGainsYear,
   type Receipt,
   type TaxYear,
   type TaxYearAsset,
@@ -27,8 +28,13 @@ import {
 import { formatCurrency } from '../utils/currency';
 import { formatDay } from '../utils/dates';
 import { AssetsTab, type AssetPrefill } from '../components/tax/Assets';
-import { ASSET_LABELS, type AssetLabel } from '../api/assets';
+import { ASSET_LABELS, fyName, type AssetLabel } from '../api/assets';
 import { tabIds, TabList } from '../components/ui/tabList';
+import { SavingPausedHint } from '../components/connection/SavingPausedHint';
+import { useSetCarriedLosses } from '../hooks/useInvestments';
+import { useCanSave } from '../hooks/useConnection';
+import { formatUnits } from '../utils/units';
+import { UNKNOWN_TEXT } from '../api/investments';
 
 // Tax time (docs/RECEIPTS-AND-TAX.md): a financial year's deductions by return label, with
 // their receipts, and the inbox of receipts not yet matched to a transaction. Record keeping
@@ -121,20 +127,24 @@ function Deductions() {
             ))}
           </Select>
         </label>
-        {year && (year.claims.length > 0 || year.assets.length > 0 || year.pool) && (
-          <div className="flex gap-2 ml-auto">
-            <a href={taxYearCsvUrl(year.financialYear)} download>
-              <Button variant="secondary">
-                <Download size={14} /> Deductions (CSV)
-              </Button>
-            </a>
-            <a href={taxYearArchiveUrl(year.financialYear)} download>
-              <Button variant="secondary">
-                <Download size={14} /> CSV and receipts (ZIP)
-              </Button>
-            </a>
-          </div>
-        )}
+        {year &&
+          (year.claims.length > 0 ||
+            year.assets.length > 0 ||
+            year.pool ||
+            year.capitalGains.sales.length > 0) && (
+            <div className="flex gap-2 ml-auto">
+              <a href={taxYearCsvUrl(year.financialYear)} download>
+                <Button variant="secondary">
+                  <Download size={14} /> Deductions (CSV)
+                </Button>
+              </a>
+              <a href={taxYearArchiveUrl(year.financialYear)} download>
+                <Button variant="secondary">
+                  <Download size={14} /> CSV and receipts (ZIP)
+                </Button>
+              </a>
+            </div>
+          )}
       </div>
 
       {year && (
@@ -288,6 +298,9 @@ function Deductions() {
               )}
             </>
           )}
+          {(year.capitalGains.sales.length > 0 || year.capitalGains.lossesCarriedIn > 0) && (
+            <CapitalGains year={year.capitalGains} financialYear={year.financialYear} />
+          )}
           <p className="text-xs text-text-tertiary">
             Keep receipts for five years from when you lodge. Amounts are in your budget's currency;
             a claim is the cost times its work-use share. Labels match the deductions section of
@@ -300,6 +313,186 @@ function Deductions() {
 }
 
 const ASSET_LABEL_SET = new Set<string>(ASSET_LABELS);
+
+const signedCurrency = (n: number) => `${n > 0 ? '+' : ''}${formatCurrency(n)}`;
+
+/** Item 18 from the year's investment sales, and the losses carried in from before Allotment */
+function CapitalGains({ year, financialYear }: { year: CapitalGainsYear; financialYear: number }) {
+  const rows: [string, number][] = [
+    ['18H Total current year capital gains', year.totalGains],
+    ['Capital losses this year', year.currentLosses],
+    ['Net capital losses from earlier years', year.lossesCarriedIn],
+    ['Losses used', year.lossesApplied],
+    ['CGT discount (50%)', year.discount],
+    ['18A Net capital gain', year.netGain],
+    ['18V Net capital losses carried forward', year.lossesCarriedForward],
+  ];
+  return (
+    <section aria-labelledby="capital-gains-heading" className="space-y-3">
+      <h2 id="capital-gains-heading" className="text-sm font-semibold text-text">
+        Capital gains (item 18)
+      </h2>
+      {year.notes.map((n) => (
+        <p
+          key={n}
+          role="note"
+          className="rounded-md border border-caution p-3 text-sm text-caution"
+        >
+          {n}
+        </p>
+      ))}
+      <table className="w-full text-sm max-w-xl">
+        <tbody>
+          {rows.map(([label, amount]) => (
+            <tr key={label} className="border-b border-border-light">
+              <th scope="row" className="text-left py-1.5 font-normal">
+                {label}
+              </th>
+              <td className="text-right tabular-nums">{formatCurrency(amount)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {year.sales.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[44rem]">
+            <thead>
+              <tr className="text-left text-xs text-text-tertiary">
+                <th className="py-1.5 font-medium">Sold on</th>
+                <th className="font-medium">Security</th>
+                <th className="text-right font-medium">Units</th>
+                <th className="text-right font-medium">Proceeds</th>
+                <th className="text-right font-medium">Cost</th>
+                <th className="text-right font-medium">Gain</th>
+                <th className="font-medium pl-4">Discount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {year.sales.map((s) => (
+                <tr key={s.id} className="border-t border-border-light align-top">
+                  <td className="py-2 whitespace-nowrap">{formatDay(s.soldOn)}</td>
+                  <td className="py-2">
+                    <Link to="/investments" className="text-brand-600 hover:text-brand-700">
+                      {s.symbol}
+                    </Link>
+                    <span className="block text-xs text-text-tertiary">{s.accountName}</span>
+                  </td>
+                  <td className="py-2 text-right tabular-nums">{formatUnits(s.quantity)}</td>
+                  <td className="py-2 text-right tabular-nums">
+                    {s.proceeds === null ? '—' : formatCurrency(s.proceeds)}
+                  </td>
+                  <td className="py-2 text-right tabular-nums">
+                    {s.cost === null ? '—' : formatCurrency(s.cost)}
+                  </td>
+                  <td className="py-2 text-right tabular-nums">
+                    {s.gain === null ? (
+                      <span className="text-xs text-negative">
+                        {s.unknown ? UNKNOWN_TEXT[s.unknown] : 'Not known'}
+                      </span>
+                    ) : (
+                      signedCurrency(s.gain)
+                    )}
+                  </td>
+                  <td className="py-2 pl-4">
+                    {s.gain === null || s.gain <= 0
+                      ? '—'
+                      : s.discount === 'all'
+                        ? 'Yes'
+                        : s.discount === 'some'
+                          ? 'Part'
+                          : 'No'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <CarriedInLosses current={year.carriedInFromBefore} financialYear={financialYear} />
+    </section>
+  );
+}
+
+/** Net capital losses from years before Allotment's records, entered once */
+function CarriedInLosses({
+  current,
+  financialYear,
+}: {
+  current: CapitalGainsYear['carriedInFromBefore'];
+  financialYear: number;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [amount, setAmount] = useState(current?.amount ?? 0);
+  const save = useSetCarriedLosses();
+  const canSave = useCanSave();
+  const into = current?.financialYear ?? financialYear;
+  const submit = (value: number) =>
+    save.mutate({ financialYear: into, amount: value }, { onSuccess: () => setEditing(false) });
+  return (
+    <div className="text-sm text-text-secondary space-y-2">
+      {editing ? (
+        <form
+          className="flex flex-wrap items-end gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit(amount);
+          }}
+        >
+          <label className="space-y-1">
+            <span className="block text-xs font-medium">
+              Net capital losses carried into {fyName(into)} from before Allotment
+            </span>
+            <CurrencyInput
+              value={amount}
+              onChange={setAmount}
+              aria-label="Net capital losses from before Allotment"
+            />
+          </label>
+          <Button type="submit" disabled={save.isPending || !canSave}>
+            Save
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => setEditing(false)}>
+            Cancel
+          </Button>
+        </form>
+      ) : (
+        <p>
+          {current
+            ? `Net capital losses from before Allotment: ${formatCurrency(current.amount)}, carried into ${fyName(current.financialYear)}.`
+            : 'Net capital losses from years before you used Allotment can be carried in.'}{' '}
+          <button
+            type="button"
+            className="font-medium text-brand-600 hover:text-brand-700"
+            onClick={() => {
+              setAmount(current?.amount ?? 0);
+              setEditing(true);
+            }}
+          >
+            {current ? 'Change' : 'Add them'}
+          </button>
+          {current && (
+            <>
+              {' · '}
+              <button
+                type="button"
+                className="font-medium text-brand-600 hover:text-brand-700"
+                onClick={() => submit(0)}
+              >
+                Remove
+              </button>
+            </>
+          )}
+        </p>
+      )}
+      <SavingPausedHint />
+      {save.error && (
+        <p role="alert" className="text-sm text-negative">
+          {(save.error as Error).message}
+        </p>
+      )}
+    </div>
+  );
+}
 
 /** This year's decline in value of depreciating assets, alongside the claims */
 function YearAssets({ assets, pool }: { assets: TaxYearAsset[]; pool: TaxYear['pool'] }) {

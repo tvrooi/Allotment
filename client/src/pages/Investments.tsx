@@ -23,7 +23,15 @@ import {
   SecurityModal,
   basisSummary,
 } from '../components/investments/InvestmentModals';
-import type { Holding, InvestmentAccount, Security, SecuritySummary } from '../api/investments';
+import { SalesModal, SellModal } from '../components/investments/SaleModals';
+import { GuideLink } from '../components/guide/GuideLink';
+import type {
+  Holding,
+  InvestmentAccount,
+  Sale,
+  Security,
+  SecuritySummary,
+} from '../api/investments';
 import { formatMoney } from '../utils/currency';
 import { PrivateSection } from '../components/ui/Private';
 import { formatDay } from '../utils/dates';
@@ -39,6 +47,8 @@ type Dialog =
   | { kind: 'price'; security: Security }
   | { kind: 'holding'; holding?: Holding; accountId?: string; securityId?: string }
   | { kind: 'lots'; holdingId: string }
+  | { kind: 'sell'; holdingId: string; sale?: Sale }
+  | { kind: 'sales'; holdingId: string }
   | { kind: 'record'; accountId: string; value: number }
   | { kind: 'remove-holding'; holding: Holding }
   | { kind: 'remove-security'; security: SecuritySummary };
@@ -136,16 +146,62 @@ function HoldingRow({ holding, onDialog }: { holding: Holding; onDialog: (d: Dia
               label: 'Purchases and cost',
               onClick: () => onDialog({ kind: 'lots', holdingId: holding.id }),
             },
+            {
+              label: 'Sell',
+              hidden: holding.quantity === 0,
+              onClick: () => onDialog({ kind: 'sell', holdingId: holding.id }),
+            },
+            {
+              label: `Sales (${holding.sales.length})`,
+              hidden: !holding.sales.length,
+              onClick: () => onDialog({ kind: 'sales', holdingId: holding.id }),
+            },
             { label: 'Edit units', onClick: () => onDialog({ kind: 'holding', holding }) },
             {
               label: 'Remove holding',
               danger: true,
+              // Its sales are the record of what was sold: it stays under Sold
+              hidden: holding.sales.length > 0,
               onClick: () => onDialog({ kind: 'remove-holding', holding }),
             },
           ]}
         />
       </td>
     </tr>
+  );
+}
+
+function HoldingsTable({
+  holdings,
+  onDialog,
+  inset = false,
+}: {
+  holdings: Holding[];
+  onDialog: (d: Dialog) => void;
+  /** Inside the Sold list, which has its own padding */
+  inset?: boolean;
+}) {
+  return (
+    <div className={`overflow-x-auto ${inset ? '' : 'px-5 pb-2'}`}>
+      <table className="w-full text-sm min-w-[640px]">
+        <thead>
+          <tr className="text-xs text-text-tertiary">
+            <th className="text-left font-medium py-2 pr-3">Security</th>
+            <th className="text-right font-medium py-2 px-3">Units</th>
+            <th className="text-right font-medium py-2 px-3">Price</th>
+            <th className="text-right font-medium py-2 px-3">Value</th>
+            <th className="text-right font-medium py-2 px-3">Cost basis</th>
+            <th className="text-right font-medium py-2 px-3">Unrealized gain</th>
+            <th className="w-8" aria-label="Actions" />
+          </tr>
+        </thead>
+        <tbody>
+          {holdings.map((h) => (
+            <HoldingRow key={h.id} holding={h} onDialog={onDialog} />
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -157,6 +213,9 @@ function AccountCard({
   onDialog: (d: Dialog) => void;
 }) {
   const { currency } = account;
+  // Every unit sold: kept for its sales, out of the way
+  const held = account.holdings.filter((h) => h.quantity > 0 || !h.sales.length);
+  const sold = account.holdings.filter((h) => h.quantity === 0 && h.sales.length > 0);
   return (
     <Card padding="none" className="overflow-hidden">
       <div className="px-5 py-4 flex flex-wrap items-start justify-between gap-3">
@@ -202,29 +261,20 @@ function AccountCard({
           shown.
         </p>
       )}
-      {account.holdings.length ? (
-        <div className="overflow-x-auto px-5 pb-2">
-          <table className="w-full text-sm min-w-[640px]">
-            <thead>
-              <tr className="text-xs text-text-tertiary">
-                <th className="text-left font-medium py-2 pr-3">Security</th>
-                <th className="text-right font-medium py-2 px-3">Units</th>
-                <th className="text-right font-medium py-2 px-3">Price</th>
-                <th className="text-right font-medium py-2 px-3">Value</th>
-                <th className="text-right font-medium py-2 px-3">Cost basis</th>
-                <th className="text-right font-medium py-2 px-3">Unrealized gain</th>
-                <th className="w-8" aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {account.holdings.map((h) => (
-                <HoldingRow key={h.id} holding={h} onDialog={onDialog} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {held.length ? (
+        <HoldingsTable holdings={held} onDialog={onDialog} />
       ) : (
-        <p className="px-5 pb-4 text-sm text-text-tertiary">No holdings recorded.</p>
+        <p className="px-5 pb-4 text-sm text-text-tertiary">
+          {sold.length ? 'Nothing held now.' : 'No holdings recorded.'}
+        </p>
+      )}
+      {sold.length > 0 && (
+        <details className="px-5 pb-2">
+          <summary className="cursor-pointer py-2 text-sm text-text-secondary">
+            Sold ({sold.length})
+          </summary>
+          <HoldingsTable holdings={sold} onDialog={onDialog} inset />
+        </details>
       )}
       <div className="px-5 py-3 border-t border-border-light">
         <Button
@@ -281,6 +331,8 @@ export default function InvestmentsPage() {
   const holdingFor = (id: string) =>
     data?.accounts.flatMap((a) => a.holdings).find((h) => h.id === id) ?? null;
   const lotsHolding = dialog?.kind === 'lots' ? holdingFor(dialog.holdingId) : null;
+  const sellHolding = dialog?.kind === 'sell' ? holdingFor(dialog.holdingId) : null;
+  const salesHolding = dialog?.kind === 'sales' ? holdingFor(dialog.holdingId) : null;
   const recordAccount =
     dialog?.kind === 'record' ? allAccounts.find((a) => a.id === dialog.accountId) : undefined;
 
@@ -293,7 +345,13 @@ export default function InvestmentsPage() {
           </h1>
           <p className="text-sm text-text-tertiary mt-0.5">
             Holdings you record and price yourself. They don't change account balances, your budget
-            or net worth until you record a value.
+            or net worth until you record a value.{' '}
+            <GuideLink
+              page="investments"
+              className="font-medium text-brand-600 hover:text-brand-700"
+            >
+              How investments work
+            </GuideLink>
           </p>
         </div>
         {!!data?.accounts.length && (
@@ -395,8 +453,9 @@ export default function InvestmentsPage() {
 
                 <p className="text-xs text-text-tertiary">
                   Values use the latest price you entered on or before today, converted at the
-                  latest exchange rate. Gains are unrealized and before tax: sales, dividends, fees
-                  outside a lot's cost and time-weighted returns aren't calculated.
+                  latest exchange rate. Gains are unrealized and before tax. Sales' capital gains
+                  are on Tax time; dividends, fees outside a lot's cost and time-weighted returns
+                  aren't calculated.
                 </p>
               </>
             )}
@@ -431,6 +490,24 @@ export default function InvestmentsPage() {
         />
       )}
       {lotsHolding && <LotsModal holding={lotsHolding} onClose={close} />}
+      {sellHolding && dialog?.kind === 'sell' && (
+        <SellModal
+          holding={sellHolding}
+          sale={dialog.sale}
+          budgetCurrency={budget}
+          onClose={() =>
+            dialog.sale ? setDialog({ kind: 'sales', holdingId: sellHolding.id }) : close()
+          }
+        />
+      )}
+      {salesHolding && (
+        <SalesModal
+          holding={salesHolding}
+          budgetCurrency={budget}
+          onEdit={(sale) => setDialog({ kind: 'sell', holdingId: salesHolding.id, sale })}
+          onClose={close}
+        />
+      )}
       {dialog?.kind === 'record' && recordAccount && (
         <UpdateValueModal
           account={recordAccount}
