@@ -217,7 +217,9 @@ describe('bulkEdit', () => {
     expect(row('t1').payeeName).toBe('Transfer: Card');
     expect(row('t2').payeeName).toBe('Transfer: Cash');
     // Asking for what every row already has changes nothing, and says so
-    expect(previewBulkEdit(bothSides, { payeeName: 'Cafe', hiddenFromReports: false })).toMatchObject({
+    expect(
+      previewBulkEdit(bothSides, { payeeName: 'Cafe', hiddenFromReports: false }),
+    ).toMatchObject({
       changing: 0,
     });
     expect(bulkEdit(bothSides, { payeeName: 'Cafe', hiddenFromReports: false }, 3).changed).toBe(0);
