@@ -193,7 +193,8 @@ records, not only tax evidence.
 
 - Email forwarding, and reading PDFs as receipts (only photos are read; Files finds a PDF's text
   for search only).
-- Working-from-home hours (the fixed rate per hour), car logbooks and cents per kilometre.
+- Working-from-home hours (the fixed rate per hour), car logbooks and cents per kilometre: designed in
+  [TAX-CAR-AND-HOME.md](TAX-CAR-AND-HOME.md), awaiting the owner's decisions.
 - Depreciation's optional extras ([DEPRECIATING-ASSETS-PLAN.md](DEPRECIATING-ASSETS-PLAN.md) phase 4): second-element costs, effective life recalculation, and a car cost limit warning. Depreciating assets and the low-value pool are on Tax time → Assets.
 - Income, tax withheld, tax offsets and an estimated refund. The income items Tax time shows are
   from investments: capital gains (item 18), dividends (item 11) and interest (item 10)
