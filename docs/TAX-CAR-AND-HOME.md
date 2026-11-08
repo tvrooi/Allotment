@@ -2,7 +2,7 @@
 
 Status: **design approved 8 November 2026** (the owner's decisions are in §9; three differ from
 the first recommendations: trip-by-trip entries, token detail reads, and amending lodged years
-instead of locking them). D4a (working from home) is built first, then D4b (car); see §10. D4 of the Larger features group. It takes the
+instead of locking them). **D4a (working from home) is built (0.2.0-up.144)**; D4b (car) is next; see §10. D4 of the Larger features group. It takes the
 "working-from-home hours (the fixed rate per hour), car logbooks and cents per kilometre" line of
 [RECEIPTS-AND-TAX.md](RECEIPTS-AND-TAX.md) §6 and adds them to Tax time beside deductions,
 [depreciating assets](DEPRECIATING-ASSETS-PLAN.md) and
@@ -637,7 +637,46 @@ Taken on 8 November 2026, one by one:
 
 ## 10. As built
 
-Not built yet.
+### D4a, working from home (0.2.0-up.144)
+
+Built as designed in §5 and §6 for D4a. Migration `0085_tax_home_hours.sql` (the design's
+`0085_tax_car_and_home.sql` name was for both phases; D4b takes the next number), backup version 33.
+
+- **Data:** `tax_home_hours`, `tax_home_years`, `tax_lodged_figures` (cascades from
+  `tax_lodged_years`; foreign keys are on in the server, the gateway and the demo worker), and the
+  `homeYear` Files link kind (`document_links.home_year_fy`, schema property `homeYearId` so the
+  `<kind>Id` convention of `documentService.ts` holds; linking creates the year's row).
+- **Pure:** `taxRates.ts` (`HOME_HOURLY` for 2022 to 2025 and the ATO source and `checked`
+  date; no cents-per-km table, which is D4b), `homeHours.ts`, `lodgedFigures.ts` (`amendments`,
+  `amendmentNote`; the note text is sent by the server, so the page and the year's notes share it).
+- **DB:** `taxCarHomeService.ts` holds the hours CRUD, the fill, the year's rate, the snapshot
+  writer (`recordLodgedFigures`, called by `lodgeYear`) and `yearAmendments`. The design put the
+  snapshot writer in `lodgedFigures.ts`; it is here so the pure module stays free of the database.
+- **Routes:** as §5.3, plus `preview: true` on `POST /tax/home/fill`, which returns the same
+  `{added, skipped}` without writing, for the page's confirmation. `PUT /tax/lodged/:fy` opens one
+  transaction at the route (the demo's sql.js can't nest one) around the lodged row and its snapshot.
+- **Year:** `taxYear` gains `home` (with the year's linked files) and `amendments`; D5 and `total`
+  include the claim; notes cover the record-keeping reminder, a missing rate and each amendment.
+  `taxYears` includes years with hours or a typed rate. The CSV has a Working from home row, the
+  ZIP `home-hours-<year>.csv` and the year's bills under `files/`.
+- **Tokens:** `TAX_READ` gains `/tax/home/:fy` only. No policy row, no token write. Tests cover the
+  allowed read, a non-organise token refused, and every new write and `PUT /tax/lodged/:fy` refused.
+- **Client:** the Car and home tab (`components/tax/CarAndHome.tsx`), the Amended since lodging
+  banner on Deductions, and the Lodged years buttons on Assets now list every year with data, so a
+  year with only home hours can be marked lodged. The year select is the tab's own (the Deductions
+  tab keeps its own), not shared between tabs.
+- **Guide and demo:** a Working from home section in the tax article, a line in the tax tour
+  (version 3), and three weeks of hours in the demo (with a typed demo rate when the year has no ATO
+  rate).
+- **The $1,000 instant deduction (decision 8): not built.** Checked on 8 November 2026. The ATO's
+  page "Standard deduction for work-related expenses" could not be opened from the build
+  environment (HTTP 403), so the check rests on search results quoting it: the measure is to apply
+  from 2026–27, exposure draft legislation was consulted on until 1 May 2026, an ATO page of
+  28 May 2026 said it was not yet law, and a later one (2 November 2026) cites a draft law companion
+  ruling. Nothing found shows an Act passed. With no confirmed law there is no confirmed amount,
+  year or set of labels to compare against, so `INSTANT_WORK_DEDUCTION` and `instantDeduction` are
+  left out and Deductions has no tile. Check the page by hand and revisit once it is law; the
+  design in §5.3 still applies.
 
 [cpk]: https://www.ato.gov.au/individuals-and-families/income-deductions-offsets-and-records/deductions-you-can-claim/work-related-deductions/cars-transport-and-travel/motor-vehicle-and-car-expenses/expenses-for-a-car-you-own-or-lease/cents-per-kilometre-method
 [logbook]: https://www.ato.gov.au/businesses-and-organisations/income-deductions-and-concessions/income-and-deductions-for-business/deductions/deductions-for-motor-vehicle-expenses/logbook-method

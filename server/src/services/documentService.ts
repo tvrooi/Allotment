@@ -36,6 +36,8 @@ import {
   storeUpload,
   type Upload,
 } from './fileStore.js';
+import { ensureHomeYear } from './taxCarHomeService.js';
+import { financialYearName } from './financialYear.js';
 import { cleanName, deleteReceipt, receiptForDocument, updateReceipt } from './receiptService.js';
 
 export class DocumentError extends Error {
@@ -177,6 +179,19 @@ const LINK_TARGETS = {
           ]),
       ),
   },
+  /** A working-from-home year's bills (TAX-CAR-AND-HOME.md); the target id is the financial year */
+  homeYear: {
+    column: documentLinks.homeYearId,
+    noun: 'Year',
+    resolve: (id: string) => ensureHomeYear(Number(id)),
+    describe: (ids: string[]) =>
+      new Map(
+        ids.map((id): [string, TargetLabel] => [
+          id,
+          { label: `Working from home ${financialYearName(Number(id))}` },
+        ]),
+      ),
+  },
 } as const;
 
 export type LinkKind = keyof typeof LINK_TARGETS;
@@ -247,7 +262,7 @@ function decorate(rows: (typeof documents.$inferSelect)[]) {
   for (const l of linkRows)
     for (const kind of LINK_KINDS) {
       const target = l[`${kind}Id` as const];
-      if (target) pairs.push({ documentId: l.documentId, kind, id: target });
+      if (target) pairs.push({ documentId: l.documentId, kind, id: String(target) });
     }
   for (const r of receiptRows)
     if (r.transactionId && r.documentId)

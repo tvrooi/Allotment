@@ -13,7 +13,9 @@ export type LinkKind =
   | 'asset'
   /** A sale's contract note or a payment's statement (D3b), linked from Investments */
   | 'investmentSale'
-  | 'investmentIncome';
+  | 'investmentIncome'
+  /** A working-from-home year's bills (D4a); the id is the financial year */
+  | 'homeYear';
 
 export interface FileLink {
   kind: LinkKind;

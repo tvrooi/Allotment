@@ -1,6 +1,7 @@
 import { transferLabel } from './transferLabel';
 import { useAccountName } from '../../hooks/useAccounts';
 import { RowMarks } from './TransactionMarks';
+import { listedAmount, RoundUpMark } from './RoundUp';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import { useMemo, useState } from 'react';
 import { ChevronRight, ChevronDown, ArrowRight, Lock } from 'lucide-react';
@@ -71,11 +72,8 @@ export function TransactionRow({
   const isSplitParent = tx.isParent === 1 && tx.children && tx.children.length > 0;
   const canEditCategory = (!isTransfer || !!tx.isBudgetBoundary) && !isSplitParent;
   const canEditPayee = !isTransfer;
-  // A round-up debit made from an Up purchase (ROUND_UP_SUFFIX in server upReviewService.ts):
-  // shown as part of that purchase, not as a transfer of its own
-  const roundUpOf = tx.importedId?.endsWith(':roundup')
-    ? (/^Round-up from ([^·]+)/.exec(tx.notes ?? '')?.[1]?.trim() ?? 'a purchase')
-    : null;
+  // A round-up's own row, listed only when round-ups are shown: part of its purchase
+  const roundUpOf = tx.roundUpOf ? (tx.roundUpOf.payeeName ?? 'a purchase') : null;
 
   const accountNameOf = useAccountName();
   const payeeName =
@@ -287,9 +285,10 @@ export function TransactionRow({
         {/* Amount, in its account's currency (with the budget's value under it when they differ) */}
         <div className="w-24 text-right shrink-0 mx-2">
           <span
-            className={`block text-sm font-medium tabular-nums ${tx.amount > 0 && !tx.transferPair ? 'text-positive' : 'text-text'}`}
+            className={`flex items-center justify-end gap-1 text-sm font-medium tabular-nums ${tx.amount > 0 && !tx.transferPair ? 'text-positive' : 'text-text'}`}
           >
-            {formatMoney(Math.abs(tx.amount), currency)}
+            <RoundUpMark tx={tx} currency={currency} />
+            {formatMoney(Math.abs(listedAmount(tx)), currency)}
           </span>
           <ForeignValue tx={tx} className="block" />
         </div>

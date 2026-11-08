@@ -130,6 +130,10 @@ The first brief left these decisions open. They are binding for phase 8 PRs.
   register. `transfers=exclude` removes rows linked as transfers. `budget_report=1`
   keeps the existing cash-flow scope: personal budget accounts, and only the budget
   side of a transfer across the budget boundary.
+- **Up round-ups.** `round_ups=fold` (the default) lists a purchase once with its round-up on it
+  and leaves the round-up's own rows out of the register, its count and bulk edits (the Saver's
+  credit stays in that Saver's own register); `round_ups=show` lists them. The summary's money
+  and the export always include them. Definition: `server/src/services/roundUps.ts`.
 - **Transfer pairs.** `transfer_pairs=fold` (the default) lists a linked transfer once when both
   sides are in a view of more than one account and the selection is accounts and dates alone: the
   side with a category, else the money out. The register, its count and bulk edits leave the other

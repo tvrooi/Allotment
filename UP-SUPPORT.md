@@ -44,8 +44,13 @@ to **Reconcile**. Allotment never adjusts the balance by itself.
   **Round-up accounting check** (Settings → Connected banks → Up) compares each account's register
   with Up's settled balance. When the register is higher by exactly the round-ups settled since
   the first sync, you can choose **Add round-up debits**. That adds one uncategorized
-  "Up round-up" debit per purchase (boost included) and keeps adding them on later syncs. The
-  register shows it as "↳ Round-up of _purchase_", part of that purchase. Each sync links a
+  "Up round-up" debit per purchase (boost included) and keeps adding them on later syncs. As in
+  Up's app, lists show the purchase once at its total with a round-up mark (A$51.52 rounded up 48c
+  shows as A$52), and its details show the purchase, the round-up, where it went and any boost
+  (owner-requested 8 November 2026). The round-up's own rows aren't listed: the debit nowhere,
+  and the Saver's credit only in that Saver's own register (also a credit Up describes as a
+  round-up whose purchase is still pending). They still count in balances, the budget, reports,
+  exports and the assistant's `find_transactions`. Each sync links a
   round-up to its Saver credit by itself when Up reported the Saver credit as coming from that
   account, on the same day, for exactly that round-up (or that day's round-ups), so it isn't
   offered as a transfer to confirm (owner-requested 7 November 2026). Anything else, including an

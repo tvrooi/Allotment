@@ -1,5 +1,6 @@
 import { transferLabel, transferSides } from './transferLabel';
 import { useAccountName } from '../../hooks/useAccounts';
+import { listedAmount, RoundUpDetails } from './RoundUp';
 import { ShareWithHousehold } from '../household/ShareWithHousehold';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import { HouseholdIcon } from '../household/HouseholdIcon';
@@ -290,9 +291,11 @@ export function TransactionDetailPanel({
           <span
             className={`text-lg font-semibold tabular-nums ${tx.amount > 0 ? 'text-positive' : 'text-text'}`}
           >
-            {formatMoney(Math.abs(tx.amount), currency)}
+            {formatMoney(Math.abs(listedAmount(tx)), currency)}
           </span>
         </div>
+
+        <RoundUpDetails tx={tx} currency={currency} />
 
         {isReconciled && (
           <>

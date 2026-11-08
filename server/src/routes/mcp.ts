@@ -150,9 +150,10 @@ const TOOLS: Tool[] = [
           'Comma-separated fields to return per transaction, to keep results short (e.g. id,date,amount,payeeName,categoryId,notes,accountId)',
       },
     },
-    // Both sides of every transfer: the assistant reads the ledger, not the folded list
+    // Every row (both sides of each transfer, round-up legs included): the assistant reads the
+    // ledger, not the folded list
     path: (a) =>
-      `/transactions${query({ limit: 100, ...a, transfer_pairs: 'show' }, [...Object.keys(selection), 'limit', 'offset', 'transfer_pairs'])}`,
+      `/transactions${query({ limit: 100, ...a, round_ups: 'show', transfer_pairs: 'show' }, [...Object.keys(selection), 'limit', 'offset', 'round_ups', 'transfer_pairs'])}`,
     transform: (text, a) => {
       if (typeof a.fields !== 'string' || !a.fields.trim()) return text;
       const keep = a.fields
@@ -192,7 +193,7 @@ const TOOLS: Tool[] = [
       'Count, money in, money out, net and date span of the transactions matching filters.',
     properties: selection,
     path: (a) =>
-      `/transactions/summary${query({ ...a, transfer_pairs: 'show' }, [...Object.keys(selection), 'transfer_pairs'])}`,
+      `/transactions/summary${query({ ...a, round_ups: 'show', transfer_pairs: 'show' }, [...Object.keys(selection), 'round_ups', 'transfer_pairs'])}`,
   },
   {
     name: 'income_vs_expenses',
@@ -858,7 +859,7 @@ const ACTION_TOOLS: ActionTool[] = [
     scope: 'organise',
     readOnly: true,
     description:
-      'The tax deductions claimed for one Australian financial year (1 July to 30 June), named by the year it starts (2025 = 2025–26): each claim with its label, work-use share, cost and claimed amount, totals per label, receipts still missing, and capital gains from investment sales (capitalGains: item 18, read only). Record keeping, not tax advice.',
+      'The tax deductions claimed for one Australian financial year (1 July to 30 June), named by the year it starts (2025 = 2025–26): each claim with its label, work-use share, cost and claimed amount, totals per label, receipts still missing, capital gains from investment sales (capitalGains: item 18, read only), working from home (home: hours, rate and claim, counted in D5; the days are at GET /tax/home/{year}) and amendments (parts of a lodged year whose claim changed since it was marked lodged, each with its note). Record keeping, not tax advice.',
     properties: {
       financial_year: {
         type: 'integer',

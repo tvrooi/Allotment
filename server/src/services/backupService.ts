@@ -76,6 +76,9 @@ import {
   depreciatingAssets,
   depreciatingAssetYears,
   taxLodgedYears,
+  taxHomeHours,
+  taxHomeYears,
+  taxLodgedFigures,
   accountLoanDetails,
   longTermPlans,
   longTermEvents,
@@ -115,7 +118,7 @@ import { isCurrencyCode } from '../utils/currencies.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 32;
+export const BACKUP_VERSION = 33;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -199,6 +202,11 @@ const TABLES = {
   depreciatingAssets,
   depreciatingAssetYears,
   taxLodgedYears,
+  // Working from home (format 33): hours, a year's rate, and what lodged years claimed; the
+  // year's bills are document links (home_year_fy), so these come before them
+  taxHomeHours,
+  taxHomeYears,
+  taxLodgedFigures,
   // Files (format 23): what each document is linked to, and its labels
   documentLinks,
   documentTags,
@@ -567,6 +575,17 @@ export function parseBackup(input: unknown): ParsedBackup {
       !validRatio(Number(sp.toUnits), Number(sp.fromUnits))
     )
       throw new InvalidBackupError('Invalid investment split');
+  // Working from home (format 33). Older backups have none.
+  for (const h of result.taxHomeHours)
+    if (!isoDate.safeParse(h.workDate).success || Number(h.minutes) < 1 || Number(h.minutes) > 1440)
+      throw new InvalidBackupError('Invalid working-from-home hours');
+  for (const y of result.taxHomeYears)
+    if (y.rateTenths != null && (Number(y.rateTenths) < 1 || Number(y.rateTenths) > 10_000))
+      throw new InvalidBackupError('Invalid working-from-home rate');
+  const lodgedFys = new Set(result.taxLodgedYears.map((y) => Number(y.financialYear)));
+  for (const f of result.taxLodgedFigures)
+    if (!lodgedFys.has(Number(f.financialYear)))
+      throw new InvalidBackupError('Invalid lodged figures');
   // Long-term forecast (format 16). Older backups have none: no plans, no loan details.
   const accountIds = new Set(result.accounts.map((a) => String(a.id)));
   const planIds = new Set(result.longTermPlans.map((p) => String(p.id)));

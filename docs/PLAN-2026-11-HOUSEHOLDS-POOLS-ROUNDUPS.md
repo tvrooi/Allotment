@@ -95,6 +95,10 @@ Decisions (owner, 7 November 2026):
 
 ## 5. Up Round Ups attached to their purchase
 
+_Status: the link landed in up.131; showing the round-up on its purchase (folded out of lists,
+the purchase at its total, the parts in its details) landed in up.145 (`services/roundUps.ts`,
+owner-requested again 8 November 2026)._
+
 - Up API: `attributes.roundUp { amount, boostPortion }` is on the purchase (`amount` negative and
   includes any boost). The sample suggests the purchase `amount` excludes the round-up; verify
   against a mock built from a real response shape. The Saver receives its own credit, often one

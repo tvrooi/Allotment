@@ -27,6 +27,7 @@ import {
   unpoolAsset,
 } from '../../api/assets';
 import { TAX_LABEL_NAMES } from '../../api/tax';
+import { useTaxYears } from '../../hooks/useTax';
 import { useAssetMutation, useAssets, useLodgedYears, usePool } from '../../hooks/useAssets';
 import { Button } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
@@ -191,11 +192,14 @@ function LodgedYears({ assets }: { assets: Asset[] }) {
   const lodge = useAssetMutation(lodgeYear);
   const unlodge = useAssetMutation(unlodgeYear);
   const { data: pool = [] } = usePool();
-  // Every year with figures to lock: assets' own schedules and the low-value pool's
+  const { data: taxYears = [] } = useTaxYears();
+  // Every year with figures to lock or record: assets' own schedules, the low-value pool's, and
+  // years with hours worked at home
   const years = [
     ...new Set([
       ...assets.flatMap((a) => a.schedule.map((r) => r.financialYear)),
       ...pool.map((r) => r.financialYear),
+      ...taxYears.map((y) => y.financialYear),
       ...lodged,
     ]),
   ]
@@ -208,7 +212,9 @@ function LodgedYears({ assets }: { assets: Asset[] }) {
         Lodged years
       </h2>
       <p className="text-xs text-text-tertiary">
-        Once a year is lodged, lock it so a later change can&rsquo;t alter the figures you lodged.
+        Once a year is lodged, lock it so a later change can&rsquo;t alter its asset and investment
+        figures. Working-from-home hours stay editable: a change shows as an amendment on
+        Deductions.
       </p>
       <ul className="flex flex-wrap gap-2">
         {years.map((fy) => {

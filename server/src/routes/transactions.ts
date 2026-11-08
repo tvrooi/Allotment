@@ -31,6 +31,7 @@ import {
   unlinkTransfer,
 } from '../services/transferService.js';
 import { isoDate } from '../utils/validation.js';
+import { purchasesOfRoundUps, roundUpsOf } from '../services/roundUps.js';
 import {
   listsTransferPair,
   parseSelection,
@@ -458,6 +459,9 @@ transactionsRouter.get('/', (req, res) => {
   }
 
   const tagMap = tagsByTransaction(rows.map((r) => r.id));
+  // Up round-ups: on the purchase, and (when listed) the purchase on the round-up
+  const roundUps = roundUpsOf(rows);
+  const roundUpPurchases = purchasesOfRoundUps(rows);
   const result = rows.map(({ householdGroupId, householdEventId, householdEventKind, ...r }) => ({
     ...r,
     // The household this payment is linked to, its entry there and the entry's kind (an
@@ -467,6 +471,8 @@ transactionsRouter.get('/', (req, res) => {
         ? { id: householdGroupId, eventId: householdEventId, kind: householdEventKind }
         : null,
     tagIds: tagMap.get(r.id) ?? [],
+    roundUp: roundUps.get(r.id) ?? null,
+    roundUpOf: roundUpPurchases.get(r.id) ?? null,
     ...(r.isParent === 1 ? { children: childrenMap.get(r.id) ?? [] } : {}),
   }));
 

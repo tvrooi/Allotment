@@ -222,3 +222,16 @@ export function useStartSampleRead() {
     onSuccess: (data) => qc.setQueryData([...RECEIPTS, 'reader', 'sample'], data),
   });
 }
+
+// Working from home (D4a). A change moves the year's D5 total, its notes and the years list.
+export const useHome = (fy: number | null) =>
+  useQuery({
+    queryKey: [...TAX, 'home', fy],
+    queryFn: () => api.homeDetail(fy!),
+    enabled: fy !== null,
+  });
+
+export function useHomeMutation<A>(fn: (args: A) => Promise<unknown>) {
+  const refresh = useRefresh();
+  return useMutation({ mutationFn: fn, onSuccess: () => refresh() });
+}

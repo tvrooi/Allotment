@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { db } from '../db/index.js';
 import { categories, transactions } from '../db/schema.js';
 import { isRealDate } from '../utils/validation.js';
+import { isRoundUpCredit, isRoundUpDebit } from './roundUps.js';
 import {
   isBudgetBoundary,
   isIncomeOrSpending,
@@ -60,6 +61,11 @@ export const selectionSchema = z
      * "Transfer from X to Y"; show lists both sides (transferPairCondition).
      */
     transfer_pairs: z.enum(['fold', 'show']),
+    /**
+     * Up round-ups: fold (the default) lists a purchase once with its round-up on it, leaving out
+     * the round-up's own rows (roundUps.ts); show lists every row.
+     */
+    round_ups: z.enum(['fold', 'show']),
   })
   .partial()
   .refine((s) => !s.from || !s.to || s.from <= s.to, {
@@ -217,7 +223,15 @@ export function leafCondition(s: Selection): SQL {
 }
 
 /** Selection keys that keep both sides of a transfer in the same list, so a pair can be folded */
-const PAIR_KEYS = new Set(['account_id', 'account_ids', 'month', 'from', 'to', 'transfer_pairs']);
+const PAIR_KEYS = new Set([
+  'account_id',
+  'account_ids',
+  'month',
+  'from',
+  'to',
+  'transfer_pairs',
+  'round_ups',
+]);
 
 /**
  * The side of a linked transfer whose other side is listed too: a view of more than one account
@@ -275,12 +289,26 @@ export function listsTransferPair(s: Selection): SQL {
   return c ? sql`exists (select 1 from transactions pair_other where ${c})` : sql`0`;
 }
 
+/**
+ * Folded round-ups (the default): the debit is shown on its purchase, so its own row is left out.
+ * The Saver's credit is left out too, except in that one account's own register, where it is
+ * the account's real activity (as in Up's Saver).
+ */
+function roundUpConditions(s: Selection): SQL[] {
+  if (s.round_ups === 'show') return [];
+  const accountIds = new Set([...(s.account_ids ?? []), ...(s.account_id ? [s.account_id] : [])]);
+  return accountIds.size === 1
+    ? [sql`not ${isRoundUpDebit}`]
+    : [sql`not ${isRoundUpDebit}`, sql`not ${isRoundUpCredit}`];
+}
+
 /** Register rows (unsplit transactions and split parents) the selection matches */
 export function registerCondition(s: Selection): SQL {
   const c = [
     isNull(transactions.parentTransactionId),
     ...rowConditions(s),
     ...registerStateConditions(s, 'register'),
+    ...roundUpConditions(s),
   ];
   const pair = foldedTransferSide(s);
   if (pair) c.push(sql`not ${pair}`);
@@ -301,7 +329,7 @@ export function registerCondition(s: Selection): SQL {
 }
 
 export interface SelectionSummary {
-  /** Register rows: a split counts once, a folded transfer pair once */
+  /** Register rows: a split counts once, a folded transfer pair once, a folded round-up not at all */
   count: number;
   /** Matching leaves (unsplit rows and split parts) */
   leafCount: number;
@@ -317,10 +345,13 @@ export interface SelectionSummary {
 
 /** Totals of the matching leaves. Reads only. */
 export function summarizeSelection(s: Selection): SelectionSummary {
-  // The count is of the rows the register lists (a folded transfer pair once); the money is all
+  // The count is of the rows the register lists (a folded transfer pair once, folded round-ups
+  // aside); the money is all of it
+  const listed = [...roundUpConditions(s)];
   const pair = foldedTransferSide(s);
-  const listedId = pair
-    ? sql`case when not ${pair} then coalesce(${transactions.parentTransactionId}, ${transactions.id}) end`
+  if (pair) listed.push(sql`not ${pair}`);
+  const listedId = listed.length
+    ? sql`case when ${and(...listed)} then coalesce(${transactions.parentTransactionId}, ${transactions.id}) end`
     : sql`coalesce(${transactions.parentTransactionId}, ${transactions.id})`;
   const row = db
     .select({
