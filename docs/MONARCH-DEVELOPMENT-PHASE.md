@@ -134,6 +134,12 @@ The first brief left these decisions open. They are binding for phase 8 PRs.
   and leaves the round-up's own rows out of the register, its count and bulk edits (the Saver's
   credit stays in that Saver's own register); `round_ups=show` lists them. The summary's money
   and the export always include them. Definition: `server/src/services/roundUps.ts`.
+- **Transfer pairs.** `transfer_pairs=fold` (the default) lists a linked transfer once when both
+  sides are in a view of more than one account and the selection is accounts and dates alone: the
+  side with a category, else the money out. The register, its count and bulk edits leave the other
+  side out; the summary's money and the export keep both. `transfer_pairs=show` lists both.
+  `GET /transactions` adds `transferAccountId` and `transferPair` for the "Transfer from X to Y"
+  label (`client/src/components/transactions/transferLabel.ts`).
 - **Currency.** Summary totals are in the budget currency using each row's stored
   value. Rows whose rate is missing are left out of totals and reported as a
   separate count, matching reports. Export keeps both the account amount and the

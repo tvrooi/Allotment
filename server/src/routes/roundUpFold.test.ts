@@ -174,7 +174,9 @@ describe('Up round-ups folded into their purchase', () => {
   });
 
   it('shows every leg when asked, each round-up naming its purchase', async () => {
-    const rows = await list('round_ups=show');
+    // Across accounts the linked debit and credit would also fold as a transfer pair
+    expect(await list('round_ups=show')).toHaveLength(5);
+    const rows = await list('round_ups=show&transfer_pairs=show');
     expect(rows).toHaveLength(6);
     expect(rows.find((r) => r.id === 'grocer-roundup')!.roundUpOf).toEqual({
       transactionId: 'grocer',
@@ -186,7 +188,7 @@ describe('Up round-ups folded into their purchase', () => {
     const summary = await (await fetch(`${base}/summary`)).json();
     expect(summary).toMatchObject({ count: 3, leafCount: 6, moneyOut: 5152 + 48 + 450 });
     expect(summary.moneyIn).toBe(48 + 43 + 5000);
-    const shown = await (await fetch(`${base}/summary?round_ups=show`)).json();
+    const shown = await (await fetch(`${base}/summary?round_ups=show&transfer_pairs=show`)).json();
     expect(shown.count).toBe(6);
   });
 

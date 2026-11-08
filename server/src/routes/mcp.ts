@@ -150,9 +150,10 @@ const TOOLS: Tool[] = [
           'Comma-separated fields to return per transaction, to keep results short (e.g. id,date,amount,payeeName,categoryId,notes,accountId)',
       },
     },
-    // Every row, round-up legs included: the assistant reads the ledger, not the folded list
+    // Every row (both sides of each transfer, round-up legs included): the assistant reads the
+    // ledger, not the folded list
     path: (a) =>
-      `/transactions${query({ limit: 100, ...a, round_ups: 'show' }, [...Object.keys(selection), 'limit', 'offset', 'round_ups'])}`,
+      `/transactions${query({ limit: 100, ...a, round_ups: 'show', transfer_pairs: 'show' }, [...Object.keys(selection), 'limit', 'offset', 'round_ups', 'transfer_pairs'])}`,
     transform: (text, a) => {
       if (typeof a.fields !== 'string' || !a.fields.trim()) return text;
       const keep = a.fields
@@ -192,7 +193,7 @@ const TOOLS: Tool[] = [
       'Count, money in, money out, net and date span of the transactions matching filters.',
     properties: selection,
     path: (a) =>
-      `/transactions/summary${query({ ...a, round_ups: 'show' }, [...Object.keys(selection), 'round_ups'])}`,
+      `/transactions/summary${query({ ...a, round_ups: 'show', transfer_pairs: 'show' }, [...Object.keys(selection), 'round_ups', 'transfer_pairs'])}`,
   },
   {
     name: 'income_vs_expenses',

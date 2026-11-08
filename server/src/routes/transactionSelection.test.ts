@@ -319,7 +319,9 @@ describe('selection rules', () => {
       ],
       async () => {
         const q = 'from=2026-10-15&to=2026-10-16';
-        expect(await summary(q)).toMatchObject({ count: 3, moneyIn: 52000, moneyOut: 50000 });
+        // Across accounts the linked pair is listed once (transfer_pairs); its money all counts
+        expect(await summary(q)).toMatchObject({ count: 2, moneyIn: 52000, moneyOut: 50000 });
+        expect(await summary(`${q}&transfer_pairs=show`)).toMatchObject({ count: 3 });
         expect(await summary(`${q}&transfers=exclude`)).toMatchObject({
           count: 1,
           moneyIn: 2000,

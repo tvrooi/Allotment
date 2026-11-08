@@ -1,3 +1,5 @@
+import { transferLabel } from './transferLabel';
+import { useAccountName } from '../../hooks/useAccounts';
 import { RowMarks } from './TransactionMarks';
 import { listedAmount, RoundUpMark } from './RoundUp';
 import { CategoryIcon } from '../ui/CategoryIcon';
@@ -73,7 +75,9 @@ export function TransactionRow({
   // A round-up's own row, listed only when round-ups are shown: part of its purchase
   const roundUpOf = tx.roundUpOf ? (tx.roundUpOf.payeeName ?? 'a purchase') : null;
 
-  const payeeName = tx.payeeName || (isTransfer ? 'Transfer' : '—');
+  const accountNameOf = useAccountName();
+  const payeeName =
+    transferLabel(tx, accountNameOf) ?? (tx.payeeName || (isTransfer ? 'Transfer' : '—'));
   const payee = useMemo(
     () => (tx.payeeId ? payees.find((p) => p.id === tx.payeeId) : undefined),
     [payees, tx.payeeId],
@@ -281,7 +285,7 @@ export function TransactionRow({
         {/* Amount, in its account's currency (with the budget's value under it when they differ) */}
         <div className="w-24 text-right shrink-0 mx-2">
           <span
-            className={`flex items-center justify-end gap-1 text-sm font-medium tabular-nums ${tx.amount > 0 ? 'text-positive' : 'text-text'}`}
+            className={`flex items-center justify-end gap-1 text-sm font-medium tabular-nums ${tx.amount > 0 && !tx.transferPair ? 'text-positive' : 'text-text'}`}
           >
             <RoundUpMark tx={tx} currency={currency} />
             {formatMoney(Math.abs(listedAmount(tx)), currency)}
