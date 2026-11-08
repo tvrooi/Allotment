@@ -18,6 +18,7 @@ export interface HouseholdSummary {
   defaultSplit: HouseholdSplit | null;
   /** Its picture (small image data URL), shown on payments shared with it; null = initial */
   logo: string | null;
+  people: { id: string; name: string; isSelf: boolean }[];
 }
 
 export interface RepaymentSuggestion {
@@ -131,7 +132,31 @@ export const recordSettleUp = (
     }),
   });
 
-/** Removes one household entry (undoing a share) */
+/**
+ * Records your bank payment to someone in the household as paid ahead (a repayment that may be
+ * more than is owed), towards a shared expense they haven't recorded yet. Their expense, once
+ * recorded, nets it off; until then it shows as owed back to you.
+ */
+export const recordPaidAhead = (
+  groupId: string,
+  tx: { id: string; date: string; amount: number },
+  selfId: string,
+  to: { id: string; name: string },
+) =>
+  apiFetch<unknown>(`/households/${groupId}/events`, {
+    method: 'POST',
+    body: JSON.stringify({
+      kind: 'settlement',
+      date: tx.date,
+      description: `Paid ahead to ${to.name} for a shared expense`,
+      amount: Math.abs(tx.amount),
+      payerId: selfId,
+      recipientId: to.id,
+      transactionId: tx.id,
+      advance: true,
+    }),
+  });
+
 /** An entry in a household, as GET /households/:id lists it */
 export interface HouseholdEvent {
   id: string;
@@ -174,14 +199,18 @@ export const restoreHouseholdEvent = async (groupId: string, e: HouseholdEvent) 
   ).events.find((x) => x.transactionId === e.transactionId)!.id;
 
 /**
- * Removes the shared-expense entries now linked to these payments in a household, whatever
- * their ids (an entry that Stop sharing removed and Undo recorded again has a new id). Payments
- * with no such entry are skipped.
+ * Removes the shared-expense entries (or, with `kind`, the repayments) now linked to these
+ * payments in a household, whatever their ids (an entry that Stop sharing removed and Undo
+ * recorded again has a new id). Payments with no such entry are skipped.
  */
-export async function removeSharedEntries(groupId: string, transactionIds: string[]) {
+export async function removeSharedEntries(
+  groupId: string,
+  transactionIds: string[],
+  kind: 'expense' | 'settlement' = 'expense',
+) {
   const ids = new Set(transactionIds);
   const entries = (await getHouseholdEvents(groupId)).filter(
-    (e) => e.kind === 'expense' && e.transactionId !== null && ids.has(e.transactionId),
+    (e) => e.kind === kind && e.transactionId !== null && ids.has(e.transactionId),
   );
   for (const e of entries.reverse()) await removeHouseholdEvent(groupId, e.id);
 }

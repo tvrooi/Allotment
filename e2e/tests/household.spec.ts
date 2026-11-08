@@ -311,6 +311,73 @@ test('right-click shares a payment with a household, and Undo or Stop sharing re
   await expect(page.getByRole('button', { name: 'Create rule' })).toBeVisible();
 });
 
+test('a payment to someone is marked as paid ahead towards a shared expense', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Everyday', 20000);
+  const transfer = await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -6000,
+    payeeName: 'Mock Transfer to Juno',
+  });
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Juno', 'Zephyr'],
+    selfIndex: 0,
+  });
+  const [me, juno, zephyr] = group.people.map((p: { id: string }) => p.id);
+  const balances = async () => (await api.call('GET', `/households/${group.group.id}`)).balances;
+  await open(page, `/accounts/${account.id}`);
+  const row = page.getByTestId('transaction-row').filter({ hasText: 'Mock Transfer to Juno' });
+  const badge = row.getByRole('img', { name: 'Linked to Flat' });
+  const toast = page.getByTestId('undo-toast');
+  const menu = page.getByRole('menu', { name: 'Actions for Mock Transfer to Juno' });
+
+  // Right-click → Paid ahead to → Juno: Juno owes it back until the expense is recorded
+  await row.click({ button: 'right' });
+  await menu.getByRole('menuitem', { name: 'Paid ahead to' }).hover();
+  const people = page.getByRole('menu', { name: 'Paid ahead to' });
+  await expect(people.getByRole('menuitem')).toHaveCount(2);
+  await people.getByRole('menuitem', { name: /^Juno/ }).click();
+  await expect(toast).toContainText('Paid ahead to Juno.');
+  await expect(badge).toBeVisible();
+  expect(await balances()).toMatchObject({ [me]: 6000, [juno]: -6000, [zephyr]: 0 });
+  await toast.getByRole('button', { name: 'Undo' }).click();
+  await expect(badge).toHaveCount(0);
+  expect(await balances()).toMatchObject({ [me]: 0, [juno]: 0 });
+
+  // From the details panel, then Juno's bill is recorded and my share comes off it
+  await row.click();
+  await page.getByRole('button', { name: 'Paid ahead for a shared expense' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Paid ahead for a shared expense' });
+  await dialog.getByRole('combobox', { name: 'Paid to' }).selectOption({ label: 'Juno' });
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(toast).toContainText('Paid ahead to Juno.');
+  await expect(page.getByTestId('shared-with-household')).toContainText('Linked to Flat');
+  await api.call('POST', `/households/${group.group.id}/events`, {
+    kind: 'expense',
+    date: isoDay(),
+    description: 'Electricity',
+    amount: 12000,
+    payerId: juno,
+    shares: [me, juno, zephyr].map((personId) => ({ personId, value: 1 })),
+  });
+  expect(await balances()).toMatchObject({ [me]: 2000, [juno]: 2000, [zephyr]: -4000 });
+
+  // Already linked: the menu offers to take it out again, not to pay ahead twice
+  await page.reload();
+  await row.click({ button: 'right' });
+  await expect(menu.getByRole('menuitem', { name: 'Paid ahead to' })).toHaveCount(0);
+  await menu.getByRole('menuitem', { name: 'Remove from Flat' }).click();
+  await expect(toast).toContainText('Removed the payment ahead from Flat.');
+  await expect(badge).toHaveCount(0);
+});
+
 test('share, stop sharing, then undo and redo both, in order', async ({ page, api }) => {
   const account = await api.createAccount('Everyday', 20000);
   const grocer = await api.createTransaction({
