@@ -144,7 +144,7 @@ test.describe('account register', () => {
     await fillNewTransaction(page, { category: 'Transfer: Rainy Day Savings', outflow: '250' });
     await newForm(page).getByRole('button', { name: 'Save' }).click();
 
-    await expect(page.getByText('Transfer: Rainy Day Savings')).toBeVisible();
+    await expect(page.getByText('Transfer to Rainy Day Savings')).toBeVisible();
     expect(await api.balance(checking.id)).toBe(75_000);
     expect(await api.balance(savings.id)).toBe(525_000);
 
@@ -416,7 +416,7 @@ test('an inflow marked as a transfer brings the money in from the other account'
   await fillNewTransaction(page, { category: 'Transfer: Rainy Day Savings', inflow: '100' });
   await newForm(page).getByRole('button', { name: 'Save' }).click();
 
-  await expect(row(page, 'Transfer: Rainy Day Savings')).toBeVisible();
+  await expect(row(page, 'Transfer from Rainy Day Savings')).toBeVisible();
   expect(await api.balance(checking.id)).toBe(110_000);
   expect(await api.balance(savings.id)).toBe(490_000);
 });
@@ -452,7 +452,7 @@ test.describe('transfers between existing transactions (#89)', () => {
 
     // Nothing matched in savings, so the other side was created there
     await expect(panel.getByRole('button', { name: 'Not a transfer' })).toBeVisible();
-    await expect(row(page, 'Transfer: Rainy Day Savings')).toBeVisible();
+    await expect(row(page, 'Transfer to Rainy Day Savings')).toBeVisible();
     expect(await api.balance(checking.id)).toBe(75_000);
     expect(await api.balance(savings.id)).toBe(525_000);
 
@@ -490,7 +490,7 @@ test.describe('transfers between existing transactions (#89)', () => {
     await expect(dialog).toBeHidden();
     await expect(banner).toContainText('Linked 1 transfer.');
 
-    await expect(row(page, 'Transfer: Travel Card')).toBeVisible();
+    await expect(row(page, 'Transfer to Travel Card')).toBeVisible();
     await expect(row(page, 'CORNER GROCERY')).toBeVisible();
     // Linking moves no money: both sides were already there
     expect([await api.balance(checking.id), await api.balance(card.id)]).toEqual(before);
@@ -517,7 +517,7 @@ test('categorises a transfer across the budget boundary without changing either 
     otherTransactionId: into.id,
   });
   await open(page, `/accounts/${checking.id}`);
-  await row(page, 'Transfer: Retirement tracking').click();
+  await row(page, 'Transfer to Retirement tracking').click();
   const panel = page.getByRole('complementary', { name: 'Transaction details' });
   await expect(panel.getByText(/Transfer across the budget boundary/)).toBeVisible();
   await panel.getByRole('button', { name: 'Uncategorised', exact: true }).click();
