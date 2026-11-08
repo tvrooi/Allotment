@@ -223,6 +223,18 @@ export interface Transaction {
    * when it was shared; a contribution or settlement when it was money in); null = not linked
    */
   household?: { id: string; eventId: string; kind: string } | null;
+  /**
+   * An Up purchase's round-up (server roundUps.ts): the debit (negative, boost included), its own
+   * row, the Saver it went to once linked, and Up's boost within it; null = none
+   */
+  roundUp?: {
+    amount: number;
+    transactionId: string;
+    toAccountName: string | null;
+    boost: number | null;
+  } | null;
+  /** On a round-up's own row (listed only when round-ups are shown): the purchase it came from */
+  roundUpOf?: { transactionId: string; payeeName: string | null } | null;
 }
 
 /** A tag (phase 9) */

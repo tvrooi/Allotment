@@ -1040,7 +1040,19 @@ export function buildDemoBudget(today: Date): DemoBudget {
     }
   });
 
-  // The trip they took, paid for from the Vacation category they'd saved in
+  // An Up purchase rounded up to the Rainy Day saver: listed once at A$52.00, with the 48c
+  // round-up in its details (server/src/services/roundUps.ts)
+  {
+    const date = ymd(subDays(today, 1));
+    const purchase = add({ account: 'checking', date, amount: -5_152, payee: 'freshFields' });
+    const roundUp = transfer('checking', 'savings', date, 48, 'Round-up from Woolies');
+    const purchaseImport = 'up:demo-everyday:round-up-purchase';
+    for (const t of result.transactions) {
+      if (t.id === purchase) t.importedId = purchaseImport;
+      if (t.id === roundUp) t.importedId = `${purchaseImport}:roundup`;
+    }
+  }
+
   const tripMonth = subMonths(today, 5);
   add({
     account: 'card',

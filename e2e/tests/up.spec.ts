@@ -135,11 +135,18 @@ test('adds balance-proven round-up debits only after an explicit choice', async 
   await check.getByRole('button', { name: 'Add 1 round-up debit (-A$2.40)' }).click();
   await expect(check).toContainText('The register matches Up’s settled balance.');
   await expect(check.getByRole('button', { name: 'Stop adding round-up debits' })).toBeVisible();
-  const rows = await api.transactions();
+  // The ledger has the debit; the register folds it into its purchase
+  const rows = await api.transactions('?round_ups=show');
   expect(rows).toHaveLength(3);
   expect(rows.find((t) => t.payeeName === 'Up round-up')).toMatchObject({ amount: -240 });
+  const listed = await api.transactions();
+  expect(listed).toHaveLength(2);
+  expect(listed.find((t) => t.importedId === 'up:spending:later-purchase').roundUp).toMatchObject({
+    amount: -240,
+    boost: -200,
+  });
   await api.call('POST', '/up/sync');
-  expect(await api.transactions()).toHaveLength(3);
+  expect(await api.transactions('?round_ups=show')).toHaveLength(3);
   await api.call('DELETE', '/up/connection');
 });
 

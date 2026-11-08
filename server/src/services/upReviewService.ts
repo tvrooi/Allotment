@@ -11,6 +11,7 @@ import {
 } from '../db/schema.js';
 import { cleanUpText, upObservationSchema, type UpTransaction } from './upTransactions.js';
 import { linkTransfer, listTransferSuggestions } from './transferService.js';
+import { ROUND_UP_SUFFIX } from './roundUps.js';
 
 export function bankObservation(tx: UpTransaction) {
   const a = tx.attributes;
@@ -328,7 +329,6 @@ export function roundUpDays(since: string) {
 // Round-up accounting. Up attaches round-up metadata to a settled purchase but supplies no
 // link to the Saver credit, so purchases and credits are never paired here. The account's own
 // settled balance decides whether the spending-side debit is missing from the register.
-export const ROUND_UP_SUFFIX = ':roundup';
 const dollars = (cents: number) =>
   `$${Math.floor(Math.abs(cents) / 100)}.${String(Math.abs(cents) % 100).padStart(2, '0')}`;
 
