@@ -56,6 +56,14 @@ Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminder
   custom report table drill-through; Forecast panel layout; the slow payee delete test; 0.2.0-up.140).
   AU-002 phone Budget order (owner-approved without user validation) is in the same PR. Each finding's heading in the report carries its status.
 
+- **Transfer direction and one row per pair (up.146; owner-requested 8 November 2026; no
+  migration):** linked transfers read "Transfer to X" / "Transfer from X", and a pair with both
+  sides in a multi-account view is one row, "Transfer from X to Y", with From/To in its details.
+  Server: `transfer_pairs` (`fold` default, `show`) in `transactionSelection.ts`
+  (`transferPairCondition`; folds only for account/date selections, never one account's register);
+  `GET /transactions` adds `transferAccountId` and `transferPair`; MCP reads ask for `show`.
+  Client: `transferLabel.ts`, `useAccountName`. Tests: `routes/transferPairs.test.ts`,
+  `transferLabel.test.ts`.
 - **Households, round-ups, Essentials pool and brand icons (up.131; owner-requested 7 November
   2026; migrations 0080 `household_groups.is_default` and 0081 `accounts.assign_pool` +
   `categories.pool_account_id`, both additive, backups carry them with their tables):** the plan in

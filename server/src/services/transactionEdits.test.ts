@@ -165,6 +165,8 @@ describe('splitTransaction', () => {
 
 describe('bulkEdit', () => {
   const all = { selection: {} };
+  // Both sides of a linked transfer, as an account's own register lists them
+  const bothSides = { selection: { transfer_pairs: 'show' as const } };
 
   it('refuses a stale count and writes nothing', () => {
     addTx('x', -100);
@@ -206,17 +208,19 @@ describe('bulkEdit', () => {
       .set({ transferTransactionId: 't1' })
       .where(eq(transactions.id, 't2'))
       .run();
-    const preview = previewBulkEdit(all, { payeeName: 'Cafe' });
+    // Across all accounts the pair is one row, so a bulk edit of that view matches what it lists
+    expect(previewBulkEdit(all, { payeeName: 'Cafe' })).toMatchObject({ matched: 2 });
+    const preview = previewBulkEdit(bothSides, { payeeName: 'Cafe' });
     // x already has that payee name but no payee id, so linking it is the one change
     expect(preview).toMatchObject({ matched: 3, changing: 1, skipped: { transfer: 2 } });
-    bulkEdit(all, { payeeName: 'Cafe' }, 3);
+    bulkEdit(bothSides, { payeeName: 'Cafe' }, 3);
     expect(row('t1').payeeName).toBe('Transfer: Card');
     expect(row('t2').payeeName).toBe('Transfer: Cash');
     // Asking for what every row already has changes nothing, and says so
-    expect(previewBulkEdit(all, { payeeName: 'Cafe', hiddenFromReports: false })).toMatchObject({
+    expect(previewBulkEdit(bothSides, { payeeName: 'Cafe', hiddenFromReports: false })).toMatchObject({
       changing: 0,
     });
-    expect(bulkEdit(all, { payeeName: 'Cafe', hiddenFromReports: false }, 3).changed).toBe(0);
+    expect(bulkEdit(bothSides, { payeeName: 'Cafe', hiddenFromReports: false }, 3).changed).toBe(0);
   });
 
   it('creates a new payee only when a row takes it', () => {
@@ -231,10 +235,10 @@ describe('bulkEdit', () => {
       .where(eq(transactions.id, 't2'))
       .run();
     const named = (name: string) => db.select().from(payees).where(eq(payees.name, name)).all();
-    expect(bulkEdit(all, { payeeName: 'Brand new' }, 2).changed).toBe(0);
+    expect(bulkEdit(bothSides, { payeeName: 'Brand new' }, 2).changed).toBe(0);
     expect(named('Brand new')).toHaveLength(0);
     addTx('x', -100);
-    expect(bulkEdit(all, { payeeName: 'Brand new' }, 3).changed).toBe(1);
+    expect(bulkEdit(bothSides, { payeeName: 'Brand new' }, 3).changed).toBe(1);
     expect(named('Brand new')).toHaveLength(1);
     expect(row('x').payeeId).toBe(named('Brand new')[0].id);
   });

@@ -32,6 +32,7 @@ import {
 } from '../services/transferService.js';
 import { isoDate } from '../utils/validation.js';
 import {
+  listsTransferPair,
   parseSelection,
   registerCondition,
   summarizeSelection,
@@ -411,6 +412,12 @@ transactionsRouter.get('/', (req, res) => {
       householdGroupId: householdEvents.groupId,
       householdEventId: householdEvents.id,
       householdEventKind: householdEvents.kind,
+      // A linked transfer's other account, so a row can say which way the money went
+      transferAccountId: sql<
+        string | null
+      >`(select o.account_id from transactions o where o.id = "transactions"."transfer_transaction_id")`,
+      // The pair's other side is folded into this row: it reads "Transfer from X to Y"
+      transferPair: listsTransferPair(selection.data).mapWith(Boolean),
     })
     .from(transactions)
     .leftJoin(householdEvents, eq(householdEvents.transactionId, transactions.id))

@@ -1,3 +1,5 @@
+import { transferLabel } from './transferLabel';
+import { useAccountName } from '../../hooks/useAccounts';
 import { RowMarks } from './TransactionMarks';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import { useMemo, useState } from 'react';
@@ -75,7 +77,9 @@ export function TransactionRow({
     ? (/^Round-up from ([^·]+)/.exec(tx.notes ?? '')?.[1]?.trim() ?? 'a purchase')
     : null;
 
-  const payeeName = tx.payeeName || (isTransfer ? 'Transfer' : '—');
+  const accountNameOf = useAccountName();
+  const payeeName =
+    transferLabel(tx, accountNameOf) ?? (tx.payeeName || (isTransfer ? 'Transfer' : '—'));
   const payee = useMemo(
     () => (tx.payeeId ? payees.find((p) => p.id === tx.payeeId) : undefined),
     [payees, tx.payeeId],
@@ -283,7 +287,7 @@ export function TransactionRow({
         {/* Amount, in its account's currency (with the budget's value under it when they differ) */}
         <div className="w-24 text-right shrink-0 mx-2">
           <span
-            className={`block text-sm font-medium tabular-nums ${tx.amount > 0 ? 'text-positive' : 'text-text'}`}
+            className={`block text-sm font-medium tabular-nums ${tx.amount > 0 && !tx.transferPair ? 'text-positive' : 'text-text'}`}
           >
             {formatMoney(Math.abs(tx.amount), currency)}
           </span>

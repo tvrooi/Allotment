@@ -1,3 +1,5 @@
+import { transferLabel } from './transferLabel';
+import { useAccountName } from '../../hooks/useAccounts';
 import { RowMarks } from './TransactionMarks';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import { useMemo } from 'react';
@@ -40,7 +42,9 @@ export function TransactionCard({
   const currencyOf = useAccountCurrency();
   const isTransfer = !!tx.transferTransactionId;
   const isSplit = tx.isParent === 1 && !!tx.children?.length;
-  const payeeName = tx.payeeName || (isTransfer ? 'Transfer' : '—');
+  const accountNameOf = useAccountName();
+  const payeeName =
+    transferLabel(tx, accountNameOf) ?? (tx.payeeName || (isTransfer ? 'Transfer' : '—'));
   const payee = useMemo(
     () => (tx.payeeId ? payees.find((p) => p.id === tx.payeeId) : undefined),
     [payees, tx.payeeId],
@@ -81,7 +85,7 @@ export function TransactionCard({
             {payeeName}
           </span>
           <span
-            className={`shrink-0 text-row font-medium tabular-nums ${tx.amount > 0 ? 'text-positive' : 'text-text'}`}
+            className={`shrink-0 text-row font-medium tabular-nums ${tx.amount > 0 && !tx.transferPair ? 'text-positive' : 'text-text'}`}
           >
             {tx.amount > 0 ? '+' : ''}
             {formatMoney(Math.abs(tx.amount), currencyOf(tx.accountId))}

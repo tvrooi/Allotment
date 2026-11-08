@@ -55,6 +55,11 @@ export const selectionSchema = z
     tag_ids: idList,
     transfers: z.enum(['include', 'exclude']),
     budget_report: flag,
+    /**
+     * Linked transfers between two listed accounts: fold (the default) lists the pair once, as
+     * "Transfer from X to Y"; show lists both sides (transferPairCondition).
+     */
+    transfer_pairs: z.enum(['fold', 'show']),
   })
   .partial()
   .refine((s) => !s.from || !s.to || s.from <= s.to, {
@@ -211,6 +216,65 @@ export function leafCondition(s: Selection): SQL {
   return and(...c)!;
 }
 
+/** Selection keys that keep both sides of a transfer in the same list, so a pair can be folded */
+const PAIR_KEYS = new Set(['account_id', 'account_ids', 'month', 'from', 'to', 'transfer_pairs']);
+
+/**
+ * The side of a linked transfer whose other side is listed too: a view of more than one account
+ * shows the pair once (owner-requested 8 November 2026). Folded only when the selection is
+ * accounts and dates alone (any other filter could match one side and not the other) and never in
+ * one account's own register. The listed side is the one with a category (the budget side across
+ * the budget boundary), else the money out, so it reads "from" its own account. `side` and
+ * `other` are SQL table names; null = nothing is folded for this selection.
+ */
+function transferPairCondition(s: Selection, side: string, other: string): SQL | null {
+  if (s.transfer_pairs === 'show') return null;
+  if (Object.entries(s).some(([k, v]) => v !== undefined && !PAIR_KEYS.has(k))) return null;
+  const accountIds = [
+    ...new Set([...(s.account_ids ?? []), ...(s.account_id ? [s.account_id] : [])]),
+  ];
+  if (accountIds.length === 1) return null;
+  const col = (t: string, c: string) => sql.raw(`${t}."${c}"`);
+  const c: SQL[] = [
+    sql`${col(other, 'id')} = ${col(side, 'transfer_transaction_id')}`,
+    sql`${col(other, 'parent_transaction_id')} is null`,
+    sql`(
+      (${col(side, 'category_id')} is null and ${col(other, 'category_id')} is not null)
+      or ((${col(side, 'category_id')} is null) = (${col(other, 'category_id')} is null)
+        and ${col(side, 'amount')} > 0)
+    )`,
+  ];
+  // Both sides are in the view: the account and date filters hold for each
+  for (const t of [side, other]) {
+    if (accountIds.length)
+      c.push(
+        sql`${col(t, 'account_id')} in (${sql.join(
+          accountIds.map((id) => sql`${id}`),
+          sql`, `,
+        )})`,
+      );
+    if (s.month) {
+      c.push(sql`${col(t, 'date')} >= ${`${s.month}-01`}`);
+      c.push(sql`${col(t, 'date')} <= ${monthEnd(s.month)}`);
+    }
+    if (s.from) c.push(sql`${col(t, 'date')} >= ${s.from}`);
+    if (s.to) c.push(sql`${col(t, 'date')} <= ${s.to}`);
+  }
+  return and(...c)!;
+}
+
+/** The register row is the folded side of a listed transfer pair */
+function foldedTransferSide(s: Selection): SQL | null {
+  const c = transferPairCondition(s, '"transactions"', 'pair_other');
+  return c ? sql`exists (select 1 from transactions pair_other where ${c})` : null;
+}
+
+/** The register row lists a transfer pair whose other side is folded into it */
+export function listsTransferPair(s: Selection): SQL {
+  const c = transferPairCondition(s, 'pair_other', '"transactions"');
+  return c ? sql`exists (select 1 from transactions pair_other where ${c})` : sql`0`;
+}
+
 /** Register rows (unsplit transactions and split parents) the selection matches */
 export function registerCondition(s: Selection): SQL {
   const c = [
@@ -218,6 +282,8 @@ export function registerCondition(s: Selection): SQL {
     ...rowConditions(s),
     ...registerStateConditions(s, 'register'),
   ];
+  const pair = foldedTransferSide(s);
+  if (pair) c.push(sql`not ${pair}`);
   const leaf = leafOnlyConditions(s);
   if (leaf.length) {
     const parentsWithMatch = db
@@ -235,7 +301,7 @@ export function registerCondition(s: Selection): SQL {
 }
 
 export interface SelectionSummary {
-  /** Register rows: a split counts once */
+  /** Register rows: a split counts once, a folded transfer pair once */
   count: number;
   /** Matching leaves (unsplit rows and split parts) */
   leafCount: number;
@@ -251,9 +317,14 @@ export interface SelectionSummary {
 
 /** Totals of the matching leaves. Reads only. */
 export function summarizeSelection(s: Selection): SelectionSummary {
+  // The count is of the rows the register lists (a folded transfer pair once); the money is all
+  const pair = foldedTransferSide(s);
+  const listedId = pair
+    ? sql`case when not ${pair} then coalesce(${transactions.parentTransactionId}, ${transactions.id}) end`
+    : sql`coalesce(${transactions.parentTransactionId}, ${transactions.id})`;
   const row = db
     .select({
-      count: sql<number>`count(distinct coalesce(${transactions.parentTransactionId}, ${transactions.id}))`,
+      count: sql<number>`count(distinct ${listedId})`,
       leafCount: sql<number>`count(*)`,
       moneyIn: sql<number>`coalesce(sum(case when ${mainAmount} > 0 then ${mainAmount} else 0 end), 0)`,
       moneyOut: sql<number>`coalesce(sum(case when ${mainAmount} < 0 then -${mainAmount} else 0 end), 0)`,

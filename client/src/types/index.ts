@@ -195,6 +195,10 @@ export interface Transaction {
   transferTransactionId: string | null;
   /** Computed by the server: this is the on-budget side of a transfer to/from off budget. */
   isBudgetBoundary?: boolean;
+  /** A linked transfer's other account (GET /transactions); null = not a transfer */
+  transferAccountId?: string | null;
+  /** The transfer's other side is folded into this row: it reads "Transfer from X to Y" */
+  transferPair?: boolean;
   isParent: number;
   parentTransactionId: string | null;
   importedId: string | null;

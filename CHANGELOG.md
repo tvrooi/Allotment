@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.146
+
+- **Transfers say which way the money went.** A transfer between two of your accounts reads **Transfer to 2Up Essentials** on the money-out side and **Transfer from Spending** on the money-in side, instead of "Transfer: Spending", which could mean either. A name you typed yourself is kept.
+- **One row per transfer.** Where a list shows both accounts, such as All transactions, a transfer between them is one row: **Transfer from Spending to 2Up Essentials**. Its details show the account it came **From** and the one it went **To**. An account's own register still lists its side, and a list filtered by anything other than accounts and dates (a search or a category, say) still shows both sides. The count above the list counts what it shows; the money in and out still includes both sides, as before. This applies to every linked transfer, and it matters most with Up, where your personal and 2Up accounts all sync.
+
 ## 0.2.0-up.143
 
 Splits and consolidations (D3c of `docs/INVESTMENT-SALES-AND-INCOME.md`). Record keeping for your Australian return, not tax advice.

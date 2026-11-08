@@ -150,8 +150,9 @@ const TOOLS: Tool[] = [
           'Comma-separated fields to return per transaction, to keep results short (e.g. id,date,amount,payeeName,categoryId,notes,accountId)',
       },
     },
+    // Both sides of every transfer: the assistant reads the ledger, not the folded list
     path: (a) =>
-      `/transactions${query({ limit: 100, ...a }, [...Object.keys(selection), 'limit', 'offset'])}`,
+      `/transactions${query({ limit: 100, ...a, transfer_pairs: 'show' }, [...Object.keys(selection), 'limit', 'offset', 'transfer_pairs'])}`,
     transform: (text, a) => {
       if (typeof a.fields !== 'string' || !a.fields.trim()) return text;
       const keep = a.fields
@@ -190,7 +191,8 @@ const TOOLS: Tool[] = [
     description:
       'Count, money in, money out, net and date span of the transactions matching filters.',
     properties: selection,
-    path: (a) => `/transactions/summary${query(a, Object.keys(selection))}`,
+    path: (a) =>
+      `/transactions/summary${query({ ...a, transfer_pairs: 'show' }, [...Object.keys(selection), 'transfer_pairs'])}`,
   },
   {
     name: 'income_vs_expenses',
