@@ -1169,6 +1169,18 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         ),
       },
       {
+        heading: 'When a bill changes',
+        body: (
+          <p>
+            Bills like power often cost a little more or less each time. When a shared bill&rsquo;s
+            last payment doesn&rsquo;t match what it expects, its tile says <b>amount changed</b>{' '}
+            and offers <b>Update to</b> the last amount or the average of the last three. You can
+            also choose <b>Edit amount</b>. Recurring, your forecast and the household&rsquo;s bills
+            that aren&rsquo;t paid yet all follow, and Undo takes it back.
+          </p>
+        ),
+      },
+      {
         heading: 'Recent entries first',
         body: (
           <p>

@@ -23,6 +23,15 @@ export function addDaysIso(day: string, n: number): string {
   return `${String(date.getUTCFullYear()).padStart(4, '0')}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
 }
 
+/** Whole calendar days from `from` to `to` (negative when `to` is earlier) */
+export function daysBetweenIso(from: string, to: string): number {
+  const utc = (day: string) => {
+    const [y, m, d] = day.split('-').map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  return Math.round((utc(to) - utc(from)) / DAY_MS);
+}
+
 /** The day on the wall clock of `date` on this device */
 export function localDayIso(date: Date = new Date()): string {
   return `${String(date.getFullYear()).padStart(4, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;

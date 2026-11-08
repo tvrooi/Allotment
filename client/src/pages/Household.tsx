@@ -433,6 +433,254 @@ export default function HouseholdPage() {
                 bills={state.recurringBills}
               />
 
+              {(hasPool || state.bills.length > 0) && (
+                <section className={card}>
+                  <h2 className="text-sm font-semibold text-text">One-off bills</h2>
+                  <p className="text-xs text-text-tertiary mt-0.5 mb-3">
+                    A bill that doesn't repeat, like a plumber or a bond top-up. Set money aside
+                    from the household account for it before it is due: an account balance alone
+                    does not mean a bill is funded.
+                  </p>
+                  {state.bills.length === 0 && (
+                    <p className="text-sm text-text-tertiary py-2">No shared bills yet.</p>
+                  )}
+                  <div className="divide-y divide-border-light border-t border-border-light">
+                    {state.bills.map((b) => (
+                      <div key={b.id} className="py-3 space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-text">{b.description}</p>
+                            <p className="text-xs text-text-tertiary">
+                              Due {formatDay(b.dueDate)} · {money(b.amount)} · My estimate{' '}
+                              {money(b.personalShare)}
+                            </p>
+                          </div>
+                          <span
+                            className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${STATUS_CLASS[b.status] ?? 'bg-surface-alt text-text-secondary'}`}
+                          >
+                            {b.status}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            aria-label={`Edit ${b.description}`}
+                            onClick={() => setEditingBill(editingBill === b.id ? '' : b.id)}
+                          >
+                            Edit
+                          </Button>
+                          {deletingBill === b.id ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                disabled={mutation.isPending}
+                                onClick={() =>
+                                  mutation.mutate({
+                                    path: `/households/${selected}/bills/${b.id}`,
+                                    method: 'DELETE',
+                                    body: undefined,
+                                  })
+                                }
+                              >
+                                Delete {b.description}
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => setDeletingBill('')}>
+                                Keep it
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              aria-label={`Delete ${b.description}…`}
+                              disabled={state.events.some((e) => e.billId === b.id)}
+                              title={
+                                state.events.some((e) => e.billId === b.id)
+                                  ? 'A payment is matched to this bill: remove that entry first'
+                                  : undefined
+                              }
+                              onClick={() => setDeletingBill(b.id)}
+                            >
+                              Delete
+                            </Button>
+                          )}
+                        </div>
+                        {editingBill === b.id && (
+                          <form
+                            className="grid gap-2 rounded-md bg-surface-alt p-2.5"
+                            onSubmit={(e) =>
+                              submit(e, (f) => {
+                                const paid = state.events.some((x) => x.billId === b.id);
+                                return {
+                                  path: `/households/${selected}/bills/${b.id}`,
+                                  method: 'PUT',
+                                  body: {
+                                    description: f.get('description'),
+                                    dueDate: f.get('dueDate'),
+                                    ...(paid
+                                      ? {}
+                                      : {
+                                          amount: cents(f.get('amount')),
+                                          personalShare: cents(f.get('personalShare')),
+                                        }),
+                                  },
+                                };
+                              })
+                            }
+                          >
+                            <label className={field}>
+                              <span className="text-xs">Bill name</span>
+                              <Input
+                                name="description"
+                                defaultValue={b.description}
+                                required
+                                maxLength={200}
+                              />
+                            </label>
+                            <div className="grid gap-2 sm:grid-cols-3">
+                              <label className={field}>
+                                <span className="text-xs">Due date</span>
+                                <Input
+                                  type="date"
+                                  name="dueDate"
+                                  defaultValue={b.dueDate}
+                                  required
+                                />
+                              </label>
+                              <label className={field}>
+                                <span className="text-xs">Total</span>
+                                <Input
+                                  name="amount"
+                                  inputMode="decimal"
+                                  defaultValue={(b.amount / 100).toFixed(2)}
+                                  disabled={state.events.some((x) => x.billId === b.id)}
+                                />
+                              </label>
+                              <label className={field}>
+                                <span className="text-xs">My estimated share</span>
+                                <Input
+                                  name="personalShare"
+                                  inputMode="decimal"
+                                  defaultValue={(b.personalShare / 100).toFixed(2)}
+                                  disabled={state.events.some((x) => x.billId === b.id)}
+                                />
+                              </label>
+                            </div>
+                            {state.events.some((x) => x.billId === b.id) && (
+                              <p className="text-xs text-text-tertiary">
+                                A payment is matched to this bill, so its amounts stay as they are.
+                              </p>
+                            )}
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setEditingBill('')}
+                              >
+                                Cancel
+                              </Button>
+                              <Button type="submit" size="sm" disabled={mutation.isPending}>
+                                Save bill
+                              </Button>
+                            </div>
+                          </form>
+                        )}
+                        <form
+                          className="flex items-end gap-2"
+                          onSubmit={(e) =>
+                            submit(e, (f) => ({
+                              path: `/households/${selected}/bills/${b.id}/reservation`,
+                              method: 'PUT',
+                              body: { reserved: cents(f.get('reserved')) },
+                            }))
+                          }
+                        >
+                          <label className={`${field} flex-1`}>
+                            <span className="text-xs">Reserved</span>
+                            <Input
+                              name="reserved"
+                              inputMode="decimal"
+                              defaultValue={(b.reserved / 100).toFixed(2)}
+                            />
+                          </label>
+                          <Button
+                            type="submit"
+                            size="sm"
+                            variant="secondary"
+                            disabled={
+                              mutation.isPending || state.events.some((e) => e.billId === b.id)
+                            }
+                          >
+                            Update reservation
+                          </Button>
+                        </form>
+                      </div>
+                    ))}
+                  </div>
+                  <form
+                    className="grid gap-3 border-t border-border-light pt-4 mt-1"
+                    onSubmit={(e) =>
+                      submit(e, (f) => ({
+                        path: `/households/${selected}/bills`,
+                        body: {
+                          description: f.get('description'),
+                          dueDate: f.get('dueDate'),
+                          amount: cents(f.get('amount')),
+                          personalShare: cents(f.get('personalShare')),
+                          scheduleId: f.get('scheduleId') || null,
+                          reserved: cents(f.get('reserved')),
+                        },
+                      }))
+                    }
+                  >
+                    <h3 className="text-sm font-semibold text-text">Add a bill</h3>
+                    <label className={field}>
+                      Bill name
+                      <Input name="description" required />
+                    </label>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className={field}>
+                        Due date
+                        <Input type="date" name="dueDate" required />
+                      </label>
+                      <label className={field}>
+                        Estimated / billed total
+                        <Input name="amount" inputMode="decimal" placeholder="0.00" required />
+                      </label>
+                      <label className={field}>
+                        My estimated share
+                        <Input name="personalShare" inputMode="decimal" required defaultValue="0" />
+                      </label>
+                      <label className={field}>
+                        Reserve now
+                        <Input name="reserved" inputMode="decimal" defaultValue="0" required />
+                      </label>
+                    </div>
+                    <label className={field}>
+                      Recurring schedule (optional)
+                      <Select name="scheduleId">
+                        <option value="">One-off bill</option>
+                        {schedules
+                          .filter((s) => !s.autoCreate)
+                          .map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                      </Select>
+                    </label>
+                    <div className="flex justify-end">
+                      <Button type="submit" variant="secondary" disabled={mutation.isPending}>
+                        Add bill
+                      </Button>
+                    </div>
+                  </form>
+                </section>
+              )}
+
               <section data-guide="household.people" className={card}>
                 <h2 className="text-sm font-semibold text-text">People & balances</h2>
                 <p className="text-xs text-text-tertiary mt-0.5 mb-3">
@@ -697,9 +945,7 @@ export default function HouseholdPage() {
                 scope={scope}
               />
 
-              <div
-                className={`grid gap-4 items-start ${hasPool || state.bills.length > 0 ? 'lg:grid-cols-2' : ''}`}
-              >
+              <div className="grid gap-4 items-start">
                 <section data-guide="household.record" className={card}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 className="text-sm font-semibold text-text">Record something else</h2>
@@ -945,263 +1191,6 @@ export default function HouseholdPage() {
                     </form>
                   )}
                 </section>
-
-                {(hasPool || state.bills.length > 0) && (
-                  <section className={card}>
-                    <h2 className="text-sm font-semibold text-text">Bills to reserve for</h2>
-                    <p className="text-xs text-text-tertiary mt-0.5 mb-3">
-                      Set money aside from the household account for a bill before it is due. An
-                      account balance alone does not mean a bill is funded.
-                    </p>
-                    {state.bills.length === 0 && (
-                      <p className="text-sm text-text-tertiary py-2">No shared bills yet.</p>
-                    )}
-                    <div className="divide-y divide-border-light border-t border-border-light">
-                      {state.bills.map((b) => (
-                        <div key={b.id} className="py-3 space-y-2">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-text">{b.description}</p>
-                              <p className="text-xs text-text-tertiary">
-                                Due {formatDay(b.dueDate)} · {money(b.amount)} · My estimate{' '}
-                                {money(b.personalShare)}
-                              </p>
-                            </div>
-                            <span
-                              className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${STATUS_CLASS[b.status] ?? 'bg-surface-alt text-text-secondary'}`}
-                            >
-                              {b.status}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              aria-label={`Edit ${b.description}`}
-                              onClick={() => setEditingBill(editingBill === b.id ? '' : b.id)}
-                            >
-                              Edit
-                            </Button>
-                            {deletingBill === b.id ? (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  disabled={mutation.isPending}
-                                  onClick={() =>
-                                    mutation.mutate({
-                                      path: `/households/${selected}/bills/${b.id}`,
-                                      method: 'DELETE',
-                                      body: undefined,
-                                    })
-                                  }
-                                >
-                                  Delete {b.description}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setDeletingBill('')}
-                                >
-                                  Keep it
-                                </Button>
-                              </>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                aria-label={`Delete ${b.description}…`}
-                                disabled={state.events.some((e) => e.billId === b.id)}
-                                title={
-                                  state.events.some((e) => e.billId === b.id)
-                                    ? 'A payment is matched to this bill: remove that entry first'
-                                    : undefined
-                                }
-                                onClick={() => setDeletingBill(b.id)}
-                              >
-                                Delete
-                              </Button>
-                            )}
-                          </div>
-                          {editingBill === b.id && (
-                            <form
-                              className="grid gap-2 rounded-md bg-surface-alt p-2.5"
-                              onSubmit={(e) =>
-                                submit(e, (f) => {
-                                  const paid = state.events.some((x) => x.billId === b.id);
-                                  return {
-                                    path: `/households/${selected}/bills/${b.id}`,
-                                    method: 'PUT',
-                                    body: {
-                                      description: f.get('description'),
-                                      dueDate: f.get('dueDate'),
-                                      ...(paid
-                                        ? {}
-                                        : {
-                                            amount: cents(f.get('amount')),
-                                            personalShare: cents(f.get('personalShare')),
-                                          }),
-                                    },
-                                  };
-                                })
-                              }
-                            >
-                              <label className={field}>
-                                <span className="text-xs">Bill name</span>
-                                <Input
-                                  name="description"
-                                  defaultValue={b.description}
-                                  required
-                                  maxLength={200}
-                                />
-                              </label>
-                              <div className="grid gap-2 sm:grid-cols-3">
-                                <label className={field}>
-                                  <span className="text-xs">Due date</span>
-                                  <Input
-                                    type="date"
-                                    name="dueDate"
-                                    defaultValue={b.dueDate}
-                                    required
-                                  />
-                                </label>
-                                <label className={field}>
-                                  <span className="text-xs">Total</span>
-                                  <Input
-                                    name="amount"
-                                    inputMode="decimal"
-                                    defaultValue={(b.amount / 100).toFixed(2)}
-                                    disabled={state.events.some((x) => x.billId === b.id)}
-                                  />
-                                </label>
-                                <label className={field}>
-                                  <span className="text-xs">My estimated share</span>
-                                  <Input
-                                    name="personalShare"
-                                    inputMode="decimal"
-                                    defaultValue={(b.personalShare / 100).toFixed(2)}
-                                    disabled={state.events.some((x) => x.billId === b.id)}
-                                  />
-                                </label>
-                              </div>
-                              {state.events.some((x) => x.billId === b.id) && (
-                                <p className="text-xs text-text-tertiary">
-                                  A payment is matched to this bill, so its amounts stay as they
-                                  are.
-                                </p>
-                              )}
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setEditingBill('')}
-                                >
-                                  Cancel
-                                </Button>
-                                <Button type="submit" size="sm" disabled={mutation.isPending}>
-                                  Save bill
-                                </Button>
-                              </div>
-                            </form>
-                          )}
-                          <form
-                            className="flex items-end gap-2"
-                            onSubmit={(e) =>
-                              submit(e, (f) => ({
-                                path: `/households/${selected}/bills/${b.id}/reservation`,
-                                method: 'PUT',
-                                body: { reserved: cents(f.get('reserved')) },
-                              }))
-                            }
-                          >
-                            <label className={`${field} flex-1`}>
-                              <span className="text-xs">Reserved</span>
-                              <Input
-                                name="reserved"
-                                inputMode="decimal"
-                                defaultValue={(b.reserved / 100).toFixed(2)}
-                              />
-                            </label>
-                            <Button
-                              type="submit"
-                              size="sm"
-                              variant="secondary"
-                              disabled={
-                                mutation.isPending || state.events.some((e) => e.billId === b.id)
-                              }
-                            >
-                              Update reservation
-                            </Button>
-                          </form>
-                        </div>
-                      ))}
-                    </div>
-                    <form
-                      className="grid gap-3 border-t border-border-light pt-4 mt-1"
-                      onSubmit={(e) =>
-                        submit(e, (f) => ({
-                          path: `/households/${selected}/bills`,
-                          body: {
-                            description: f.get('description'),
-                            dueDate: f.get('dueDate'),
-                            amount: cents(f.get('amount')),
-                            personalShare: cents(f.get('personalShare')),
-                            scheduleId: f.get('scheduleId') || null,
-                            reserved: cents(f.get('reserved')),
-                          },
-                        }))
-                      }
-                    >
-                      <h3 className="text-sm font-semibold text-text">Add a bill</h3>
-                      <label className={field}>
-                        Bill name
-                        <Input name="description" required />
-                      </label>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <label className={field}>
-                          Due date
-                          <Input type="date" name="dueDate" required />
-                        </label>
-                        <label className={field}>
-                          Estimated / billed total
-                          <Input name="amount" inputMode="decimal" placeholder="0.00" required />
-                        </label>
-                        <label className={field}>
-                          My estimated share
-                          <Input
-                            name="personalShare"
-                            inputMode="decimal"
-                            required
-                            defaultValue="0"
-                          />
-                        </label>
-                        <label className={field}>
-                          Reserve now
-                          <Input name="reserved" inputMode="decimal" defaultValue="0" required />
-                        </label>
-                      </div>
-                      <label className={field}>
-                        Recurring schedule (optional)
-                        <Select name="scheduleId">
-                          <option value="">One-off bill</option>
-                          {schedules
-                            .filter((s) => !s.autoCreate)
-                            .map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {s.name}
-                              </option>
-                            ))}
-                        </Select>
-                      </label>
-                      <div className="flex justify-end">
-                        <Button type="submit" variant="secondary" disabled={mutation.isPending}>
-                          Add bill
-                        </Button>
-                      </div>
-                    </form>
-                  </section>
-                )}
               </div>
 
               <section className={card}>

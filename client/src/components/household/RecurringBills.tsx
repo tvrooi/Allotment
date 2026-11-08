@@ -15,6 +15,9 @@ import { FREQ_LABEL } from '../recurring/scheduleFormat';
 import { formatMoney } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { Button } from '../ui/Button';
+import { BillAmount } from './BillAmount';
+import { dueLabel } from './dueLabel';
+import { todayIso } from '../../utils/calendarDay';
 
 // Household → Recurring bills: items from Recurring (power, gas, internet, water…) shared with
 // the household. Each shows its next date, everyone's share with its split (its own or the
@@ -93,6 +96,7 @@ export function RecurringBills({ groupId, currency, people, bills }: Props) {
       !shownIds.has(s.id),
   );
   const busy = add.isPending || stop.isPending || share.isPending || update.isPending;
+  const today = todayIso();
 
   return (
     <section data-guide="household.bills" className={card} aria-labelledby="household-recurring">
@@ -130,15 +134,28 @@ export function RecurringBills({ groupId, currency, people, bills }: Props) {
       )}
 
       {bills.length > 0 && (
-        <ul className="mt-3 divide-y divide-border-light border-t border-border-light">
+        <ul className="mt-3 grid gap-3 md:grid-cols-2">
           {bills.map((b) => {
             const unshared = b.payments.filter((p) => !p.shared);
+            const due = b.status === 'active' ? dueLabel(b.nextDate, today) : null;
             return (
-              <li key={b.scheduleId} className="py-3 space-y-1.5">
+              <li
+                key={b.scheduleId}
+                aria-label={b.name}
+                className="rounded-lg border border-border-light p-3 space-y-1.5 min-w-0"
+              >
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3">
                   <p className="text-sm font-medium text-text">{b.name}</p>
                   <p className="text-sm tabular-nums text-text">{money(b.amount)}</p>
                 </div>
+                {due && (
+                  <p
+                    className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${due.tone === 'soon' ? 'bg-caution-subtle text-text' : 'bg-surface-alt text-text-secondary'}`}
+                  >
+                    {due.text}
+                    {b.drift ? ' · amount changed' : ''}
+                  </p>
+                )}
                 <p className="text-xs text-text-tertiary">
                   {FREQ_LABEL.get(b.recurrenceType as never) ?? b.recurrenceType}
                   {b.status !== 'active'
@@ -187,6 +204,7 @@ export function RecurringBills({ groupId, currency, people, bills }: Props) {
                     />
                   </div>
                 ) : null}
+                <BillAmount bill={b} currency={currency} />
                 <label className="flex items-center gap-2 text-xs text-text-secondary min-h-8">
                   <input
                     type="checkbox"

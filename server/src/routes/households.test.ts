@@ -6,7 +6,14 @@ import type { Server } from 'http';
 import type { AddressInfo } from 'net';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { db } from '../db/index.js';
-import { accounts, transactions, payees, schedules, scheduleOccurrences } from '../db/schema.js';
+import {
+  accounts,
+  householdBills,
+  transactions,
+  payees,
+  schedules,
+  scheduleOccurrences,
+} from '../db/schema.js';
 import { transactionsRouter } from './transactions.js';
 import { householdsRouter } from './households.js';
 import { accountsRouter } from './accounts.js';
@@ -848,6 +855,80 @@ describe('household attribution', () => {
     expect(coverage.people.find((p: any) => p.personId === alex.id)).toMatchObject({
       paidIn: 3000,
     });
+  });
+
+  it("an edited recurring amount updates its household bills that aren't paid yet", async () => {
+    const g = await group();
+    const today = todayIso();
+    db.insert(schedules)
+      .values({
+        id: 'follow-water',
+        name: 'Water',
+        amount: -18000,
+        recurrenceType: 'quarterly',
+        startDate: today,
+        accountId: 'mine',
+      })
+      .run();
+    const bill = (description: string, dueDate: string) =>
+      call(`/${g.group.id}/bills`, {
+        description,
+        dueDate,
+        amount: 18000,
+        personalShare: 6000,
+        reserved: 0,
+        scheduleId: 'follow-water',
+      });
+    await bill('Water (next)', addDaysIso(today, 20));
+    // Money set aside beyond the new total: the bill keeps its amount and its reservation
+    const reservedBill = (await bill('Water (set aside)', addDaysIso(today, 25))).data.bills.find(
+      (b: any) => b.description === 'Water (set aside)',
+    );
+    // Set up directly: this household has no account to fund a reservation through the route
+    db.update(householdBills)
+      .set({ reserved: 17000 })
+      .where(eq(householdBills.id, reservedBill.id))
+      .run();
+    await bill('Water (last quarter)', addDaysIso(today, -70));
+    const paidBill = (await bill('Water (paid)', addDaysIso(today, 3))).data.bills.find(
+      (b: any) => b.description === 'Water (paid)',
+    );
+    await call(`/${g.group.id}/events`, {
+      kind: 'expense',
+      date: today,
+      description: 'Water',
+      amount: 18000,
+      payerId: g.people[0].id,
+      billId: paidBill.id,
+      shares: g.people.map((p: any) => ({ personId: p.id, value: 1 })),
+    });
+
+    const edited = await fetch(base.replace('/households', '/schedules/follow-water'), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: -16800 }),
+    });
+    expect(edited.status).toBe(200);
+    const after = Object.fromEntries(
+      (await call(`/${g.group.id}`)).data.bills.map((b: any) => [b.description, b]),
+    );
+    // The next bill follows the new amount, with my share recomputed (equal split of three)
+    expect(after['Water (next)']).toMatchObject({ amount: 16800, personalShare: 5600 });
+    // A past bill and a bill a payment is matched to keep what they were
+    expect(after['Water (last quarter)']).toMatchObject({ amount: 18000, personalShare: 6000 });
+    expect(after['Water (paid)']).toMatchObject({ amount: 18000, personalShare: 6000 });
+    expect(after['Water (set aside)']).toMatchObject({ amount: 18000, reserved: 17000 });
+    // Undo resends the old amount: the next bill goes back, and nothing else moved
+    await fetch(base.replace('/households', '/schedules/follow-water'), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: -18000 }),
+    });
+    const undone = Object.fromEntries(
+      (await call(`/${g.group.id}`)).data.bills.map((b: any) => [b.description, b]),
+    );
+    expect(undone['Water (next)']).toMatchObject({ amount: 18000, personalShare: 6000 });
+    expect(undone['Water (set aside)']).toMatchObject({ amount: 18000, reserved: 17000 });
   });
 
   it('renames a household and makes one the default', async () => {

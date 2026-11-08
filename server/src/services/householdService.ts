@@ -25,6 +25,7 @@ import { allocateShares, householdLedger } from './householdLedger.js';
 import { accountTransactionSum } from './balances.js';
 import { addDaysIso, todayIso } from '../utils/date.js';
 import { COVERAGE_DAYS, householdCoverage, type CoverageItem } from './householdCoverage.js';
+import { billDrift } from './billDrift.js';
 
 // Household groups (docs/HOUSEHOLDS.md): the state of one group, and recording an event with
 // every check the ledger relies on. Shared by the households routes, quick sharing from the
@@ -842,6 +843,10 @@ function sharedRecurringBills(
         scheduleId: schedule.id,
         name: schedule.name,
         amount,
+        amountType: schedule.amountType,
+        /** The schedule's own signed amount, for an edit that keeps its sign */
+        scheduleAmount: schedule.amount,
+        accountId: schedule.accountId,
         recurrenceType: schedule.recurrenceType,
         status: schedule.status,
         nextDate: next?.date ?? null,
@@ -855,6 +860,8 @@ function sharedRecurringBills(
         payments,
         /** Expected dates in the coverage window (today to COVERAGE_DAYS ahead) */
         upcoming,
+        /** Its newest payment against the expected amount, when outside tolerance (billDrift) */
+        drift: billDrift(amount, schedule.amountType, payments),
       },
     ];
   });
@@ -1233,6 +1240,39 @@ export function editBill(groupId: string, billId: string, raw: unknown) {
   if (Object.values(input).some((v) => v !== undefined))
     db.update(bills).set(input).where(eq(bills.id, billId)).run();
   return snapshot(groupId);
+}
+
+/**
+ * A recurring item's amount changed (PUT /api/schedules/:id): its household bills due from
+ * `today` that no payment is matched to follow it, with my share recomputed by the bill's split
+ * (its own, or the household's default). Past bills, matched ones, and ones with more set aside
+ * than the new total keep what they were: a reservation is never changed here, so undoing the
+ * schedule edit (which only resends the schedule's fields) can't leave money released, and a
+ * lower amount needs its reservation lowered first, as editBill requires. Called inside the
+ * schedule update's DB transaction.
+ */
+export function followScheduleAmount(scheduleId: string, amount: number, today = todayIso()) {
+  const total = Math.abs(amount);
+  const linked = db.select().from(bills).where(eq(bills.scheduleId, scheduleId)).all();
+  for (const bill of linked) {
+    if (bill.dueDate < today || bill.reserved > total) continue;
+    if (db.select({ id: events.id }).from(events).where(eq(events.billId, bill.id)).get()) continue;
+    const group = db.select().from(groups).where(eq(groups.id, bill.groupId)).get();
+    if (!group) continue;
+    const members = db.select().from(people).where(eq(people.groupId, group.id)).all();
+    const link = db
+      .select()
+      .from(recurringBills)
+      .where(and(eq(recurringBills.groupId, group.id), eq(recurringBills.scheduleId, scheduleId)))
+      .get();
+    const split = parseSplit(link?.splitJson ?? null) ?? parseSplit(group.defaultSplitJson);
+    const self = members.find((m) => m.isSelf);
+    const mine = billShares(split, members, total).shares.find((x) => x.personId === self?.id);
+    db.update(bills)
+      .set({ amount: total, personalShare: Math.min(mine?.amount ?? 0, total) })
+      .where(eq(bills.id, bill.id))
+      .run();
+  }
 }
 
 /** Deletes a one-off bill no expense is matched to; its reservation is released */
