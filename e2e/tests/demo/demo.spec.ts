@@ -344,3 +344,29 @@ test('reviewed card funding uses the same accounting inside the browser demo', a
     page.getByTestId('card-payment').filter({ hasText: 'Example payment card' }),
   ).toContainText(/Available for payment: A?\$80/);
 });
+
+test('the demo has working-from-home hours, and lodging a year records them in the worker', async ({
+  page,
+}) => {
+  await openDemo(page, '/tax?tab=car-home');
+  await expect(page.getByRole('heading', { name: 'Working from home' })).toBeVisible();
+  await expect(page.getByText('Hours this year')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Edit hours on/ }).first()).toBeVisible();
+
+  // Lodging writes the year and its snapshot in one transaction, which sql.js can't nest
+  await openDemo(page, '/tax?tab=assets');
+  const year = page.getByRole('region', { name: 'Lodged years' }).getByRole('button').first();
+  await year.click();
+  await expect(year).toHaveAttribute('aria-pressed', 'true');
+
+  await page.getByRole('tab', { name: 'Car and home' }).click();
+  await page
+    .getByRole('button', { name: /^Edit hours on/ })
+    .first()
+    .click();
+  const edit = page.getByRole('dialog', { name: 'Edit hours' });
+  await edit.getByLabel('Hours worked at home').fill('1');
+  await edit.getByRole('button', { name: 'Save hours' }).click();
+  await page.getByRole('tab', { name: 'Deductions' }).click();
+  await expect(page.getByRole('region', { name: 'Amended since lodging' })).toBeVisible();
+});

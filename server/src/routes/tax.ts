@@ -39,6 +39,17 @@ import {
   unpoolAsset,
   updateAsset,
 } from '../services/depreciatingAssetService.js';
+import {
+  HomeError,
+  fillHome,
+  fillPlan,
+  homeDetail,
+  removeHomeDay,
+  setHomeDay,
+  setHomeYear,
+} from '../services/taxCarHomeService.js';
+import { db } from '../db/index.js';
+import { isoDate } from '../utils/validation.js';
 import { disposition } from '../utils/contentDisposition.js';
 
 // Tax deductions (docs/RECEIPTS-AND-TAX.md). Record keeping for an Australian return, not tax
@@ -57,6 +68,8 @@ function action(handler: RequestHandler): RequestHandler {
       if (error instanceof z.ZodError)
         return res.status(400).json({ error: error.issues.map((i) => i.message).join('; ') });
       if (error instanceof TaxError) return res.status(error.status).json({ error: error.message });
+      if (error instanceof HomeError)
+        return res.status(error.status).json({ error: error.message });
       next(error);
     }
   };
@@ -222,6 +235,66 @@ taxRouter.get(
   assetAction((_req, res) => res.json(poolRows())),
 );
 
+// ─── Working from home (docs/TAX-CAR-AND-HOME.md, D4a) ───────────────────────────────────────────
+// Owner only. An organise token may read GET /home/:fy and nothing else here (decision 6).
+
+const homeNotes = z.string().max(500).nullable().default(null);
+const dayBody = z.object({ minutes: z.number().int().min(1).max(1440), notes: homeNotes }).strict();
+const fillBody = z
+  .object({
+    from: isoDate,
+    to: isoDate,
+    weekdays: z.array(z.number().int().min(1).max(7)).min(1).max(7),
+    minutes: z.number().int().min(1).max(1440),
+    // A preview asks what a fill would do, and writes nothing
+    preview: z.boolean().default(false),
+  })
+  .strict();
+const homeYearBody = z
+  .object({
+    rateTenths: z.number().int().min(1).max(10_000).nullable(),
+    notes: homeNotes,
+  })
+  .strict();
+
+taxRouter.get(
+  '/home/:fy',
+  action((req, res) => res.json(homeDetail(fy.parse(req.params.fy)))),
+);
+taxRouter.put(
+  '/home/days/:date',
+  action((req, res) => {
+    const date = isoDate.parse(req.params.date);
+    const body = dayBody.parse(req.body);
+    res.json(setHomeDay(date, body.minutes, body.notes));
+  }),
+);
+taxRouter.delete(
+  '/home/days/:date',
+  action((req, res) => {
+    removeHomeDay(isoDate.parse(req.params.date));
+    res.status(204).end();
+  }),
+);
+taxRouter.post(
+  '/home/fill',
+  action((req, res) => {
+    const { preview, ...body } = fillBody.parse(req.body);
+    if (preview) {
+      const plan = fillPlan(body);
+      return res.json({ added: plan.add.length, skipped: plan.skipped });
+    }
+    res.json(fillHome(body));
+  }),
+);
+taxRouter.put(
+  '/home/years/:fy',
+  action((req, res) => {
+    const body = homeYearBody.parse(req.body);
+    res.json(setHomeYear(fy.parse(req.params.fy), body.rateTenths, body.notes));
+  }),
+);
+
 // Lodged years lock their asset figures (owner only: never on a token's allowlist)
 taxRouter.get(
   '/lodged',
@@ -229,7 +302,11 @@ taxRouter.get(
 );
 taxRouter.put(
   '/lodged/:fy',
-  assetAction((req, res) => res.json(lodgeYear(fy.parse(req.params.fy)))),
+  // One transaction here for the lodged row and its snapshot (sql.js can't nest one)
+  assetAction((req, res) => {
+    const year = fy.parse(req.params.fy);
+    res.json(db.transaction(() => lodgeYear(year)));
+  }),
 );
 taxRouter.delete(
   '/lodged/:fy',

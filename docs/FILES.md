@@ -102,8 +102,10 @@ mention, and there are no paid plans: storage is the owner's own disk, with an o
 
 - **Kinds:** transaction, category, goal, account, asset (a depreciating asset's records,
   DEPRECIATING-ASSETS-PLAN.md; migration 0066), and investmentSale and investmentIncome (a sale's
-  contract note, a payment's statement; INVESTMENT-SALES-AND-INCOME.md, migration 0083)
-  (`LINK_TARGETS` in `documentService.ts`).
+  contract note, a payment's statement; INVESTMENT-SALES-AND-INCOME.md, migration 0083), and
+  homeYear (a working-from-home year's bills; TAX-CAR-AND-HOME.md, migration 0085; the target id
+  is the financial year, kept in `document_links.home_year_fy`, and linking creates the year's
+  `tax_home_years` row) (`LINK_TARGETS` in `documentService.ts`).
   Adding a kind is one nullable foreign-key column on `document_links` (an additive migration, with
   `ON DELETE CASCADE` and a partial unique index) and one entry in `LINK_TARGETS`. The
   depreciating assets plan adds `asset` this way

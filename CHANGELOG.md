@@ -1,5 +1,18 @@
 # Changes
 
+## 0.2.0-up.144
+
+Working from home (D4a of `docs/TAX-CAR-AND-HOME.md`). Record keeping for your Australian return, not tax advice.
+
+- **Hours at home, day by day.** Tax time has a new **Car and home** tab. **Add hours** records the hours you actually worked at home on a date (7.5 or 7:30), and each day can be edited or removed. **Fill a pattern** writes the same hours on chosen weekdays across a range, after showing "Adds 9 days, skips 1 already recorded"; a day you already recorded is never changed.
+- **The ATO's fixed rate.** Hours times the year's rate go in **D5** on Deductions. Allotment knows the ATO's rate for 2022–23 to 2025–26 (67c, then 70c an hour). For a year it doesn't know, such as 2026–27, it says "Type the ATO's rate" and claims nothing until you do. You can also type your own rate for any year. A rate is never guessed or carried forward.
+- **Bills.** Keep one bill for each expense the rate covers (energy, phone, internet, stationery) under the year's **Bills**. They go in the year's ZIP, and the CSV and ZIP include the hours.
+- **Lodged years can be amended.** Marking a year lodged now records what working from home claimed. If you change the hours afterwards the change is allowed, and Deductions shows **Amended since lodging** with the old and new claim and **Mark lodged again**. Assets and investments keep their locks.
+- **Assistants with an organise token can read the hours** (`GET /api/tax/home/{year}`) and the year's working-from-home claim and amendments in `tax_deductions`. They can't change any of it.
+- The $1,000 instant deduction is not built: it is not confirmed as law yet, so there is nothing to compare.
+- The demo budget has three weeks of hours. Backups are now version 33 and include hours, a year's rate and what lodged years claimed. An older backup restores with none.
+- The car (cents per km and logbooks) comes in a later update (D4b).
+
 ## 0.2.0-up.143
 
 Splits and consolidations (D3c of `docs/INVESTMENT-SALES-AND-INCOME.md`). Record keeping for your Australian return, not tax advice.

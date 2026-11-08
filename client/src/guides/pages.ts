@@ -284,7 +284,7 @@ export const investmentsGuide: Guide = {
 
 export const taxGuide: Guide = {
   id: 'tax',
-  version: 2,
+  version: 3,
   title: 'Tax time',
   summary: 'Deductions, the receipts that prove them, and exports for your return.',
   page: '/tax',
@@ -302,8 +302,8 @@ export const taxGuide: Guide = {
       target: 'tax.year',
     },
     {
-      title: 'Assets and the receipt inbox',
-      body: 'Assets keeps things that lose value over several years, such as a work laptop, and works out the part you claim each year. The receipt inbox holds receipts until each is matched to its transaction.',
+      title: 'Assets, working from home and the receipt inbox',
+      body: 'Assets keeps things that lose value over several years, such as a work laptop, and works out the part you claim each year. Car and home keeps the hours you worked at home, which go in D5. The receipt inbox holds receipts until each is matched to its transaction.',
       route: '/tax',
       target: 'tax.tabs',
     },

@@ -37,6 +37,7 @@ const KIND_NOUNS: Record<LinkKind, string> = {
   asset: 'Asset',
   investmentSale: 'Sale',
   investmentIncome: 'Payment',
+  homeYear: 'Working from home',
 };
 /** Linked from their own dialogs on Investments, not chosen here */
 const PICKED_ELSEWHERE = new Set<LinkKind>(['investmentSale', 'investmentIncome']);
@@ -47,6 +48,7 @@ function linkTarget(link: FileLink) {
   if (link.kind === 'account') return `/accounts/${encodeURIComponent(link.id)}`;
   if (link.kind === 'goal') return '/goals';
   if (link.kind === 'asset') return `/tax?tab=assets&asset=${encodeURIComponent(link.id)}`;
+  if (link.kind === 'homeYear') return '/tax?tab=car-home';
   if (link.kind === 'investmentSale' || link.kind === 'investmentIncome') return '/investments';
   return `/transactions?search=${encodeURIComponent(link.label)}`;
 }

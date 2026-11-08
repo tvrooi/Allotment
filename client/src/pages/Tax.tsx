@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { GuideLink } from '../components/guide/GuideLink';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Download, FolderOpen, Paperclip, Trash2 } from 'lucide-react';
@@ -29,7 +29,8 @@ import {
 import { formatCurrency } from '../utils/currency';
 import { formatDay } from '../utils/dates';
 import { AssetsTab, type AssetPrefill } from '../components/tax/Assets';
-import { ASSET_LABELS, fyName, type AssetLabel } from '../api/assets';
+import { ASSET_LABELS, fyName, lodgeYear, type AssetLabel } from '../api/assets';
+import { useAssetMutation } from '../hooks/useAssets';
 import { tabIds, TabList } from '../components/ui/tabList';
 import { SavingPausedHint } from '../components/connection/SavingPausedHint';
 import { useSetCarriedLosses } from '../hooks/useInvestments';
@@ -41,9 +42,12 @@ import { INCOME_KIND_LABEL, UNKNOWN_TEXT } from '../api/investments';
 // their receipts, and the inbox of receipts not yet matched to a transaction. Record keeping
 // for an Australian return, not tax advice.
 
+const CarAndHome = lazy(() => import('../components/tax/CarAndHome'));
+
 const TABS = [
   { id: 'deductions', label: 'Deductions' },
   { id: 'assets', label: 'Assets' },
+  { id: 'car-home', label: 'Car and home' },
   { id: 'inbox', label: 'Receipt inbox' },
 ] as const;
 
@@ -97,7 +101,17 @@ export default function TaxPage() {
         aria-labelledby={tabIds('tax', tab).tab}
         className="flex-1 overflow-y-auto px-6 py-5 max-md:px-4"
       >
-        {tab === 'inbox' ? <Inbox /> : tab === 'assets' ? <AssetsTab /> : <Deductions />}
+        {tab === 'inbox' ? (
+          <Inbox />
+        ) : tab === 'assets' ? (
+          <AssetsTab />
+        ) : tab === 'car-home' ? (
+          <Suspense fallback={null}>
+            <CarAndHome />
+          </Suspense>
+        ) : (
+          <Deductions />
+        )}
       </div>
     </div>
   );
@@ -132,6 +146,7 @@ function Deductions() {
           (year.claims.length > 0 ||
             year.assets.length > 0 ||
             year.pool ||
+            year.home.minutes > 0 ||
             year.capitalGains.sales.length > 0 ||
             year.investmentIncome.payments.length > 0) && (
             <div className="flex gap-2 ml-auto">
@@ -166,16 +181,23 @@ function Deductions() {
               },
             ]}
           />
-          {year.notes.map((n) => (
-            <p
-              key={n}
-              role="note"
-              className="rounded-md border border-caution p-3 text-sm text-caution"
-            >
-              {n}
-            </p>
-          ))}
-          {year.claims.length === 0 && year.assets.length === 0 && !year.pool ? (
+          {year.amendments.length > 0 && <Amendments year={year} />}
+          {year.notes
+            // An amendment's note is the banner's text, shown above
+            .filter((n) => !year.amendments.some((a) => a.note === n))
+            .map((n) => (
+              <p
+                key={n}
+                role="note"
+                className="rounded-md border border-caution p-3 text-sm text-caution"
+              >
+                {n}
+              </p>
+            ))}
+          {year.claims.length === 0 &&
+          year.assets.length === 0 &&
+          !year.pool &&
+          year.home.claim === 0 ? (
             <p className="text-sm text-text-secondary">
               Nothing claimed in {year.name} yet. Open a transaction and tick{' '}
               <em>Claim as a tax deduction</em>, or make a rule that claims matching payments as
@@ -314,6 +336,39 @@ function Deductions() {
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * A lodged year whose working-from-home claim moved since it was marked lodged: the server's
+ * wording, and Mark lodged again to record the new figures once the ATO has an amendment.
+ */
+function Amendments({ year }: { year: TaxYear }) {
+  const canSave = useCanSave();
+  const lodge = useAssetMutation(lodgeYear);
+  return (
+    <section
+      aria-label="Amended since lodging"
+      className="rounded-md border border-caution p-3 space-y-2"
+    >
+      <h2 className="text-sm font-semibold text-caution">Amended since lodging</h2>
+      <ul className="space-y-1 text-sm text-caution">
+        {year.amendments.map((a) => (
+          <li key={a.part}>{a.note}</li>
+        ))}
+      </ul>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={!canSave || lodge.isPending}
+          onClick={() => lodge.mutate(year.financialYear)}
+        >
+          Mark lodged again
+        </Button>
+        <SavingPausedHint />
+      </div>
+    </section>
   );
 }
 

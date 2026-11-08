@@ -54,7 +54,9 @@ bodies already kept.
 | `own_household_contribution` | organise   | your own unlinked contribution, up to what you owe the household account |
 | `propose_change`             | organise   | `POST /assistant/proposals`: a depreciating asset proposal (see Phases)  |
 
-Organise tokens also read the tax paths (`taxReadAllows`); reads stay on the general routes.
+Organise tokens also read the tax paths (`taxReadAllows`, including `GET /tax/home/:fy`, the hours
+by day); reads stay on the general routes. No policy row writes working-from-home hours or lodges a
+year: those routes are on no allowlist.
 
 Rules for the table:
 
