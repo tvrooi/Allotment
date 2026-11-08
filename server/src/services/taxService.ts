@@ -27,7 +27,15 @@ import {
   assetYears,
   assetsForYear,
   poolForYear,
+  lodgedYears,
 } from './depreciatingAssetService.js';
+import {
+  homeData,
+  homeDaysRows,
+  homeFiles,
+  homeYears,
+  yearAmendments,
+} from './taxCarHomeService.js';
 
 export class TaxError extends Error {
   constructor(
@@ -254,18 +262,23 @@ export function taxYear(fy: number) {
   const assets = assetsForYear(fy);
   // The low-value pool's decline is D6, as one amount for every asset in it
   const pool = poolForYear(fy);
+  // Working from home (fixed rate method) is part of D5; its hours are on Car and home
+  const { year: homeFigures } = homeData(fy);
+  const home = { ...homeFigures, files: homeFiles(fy) };
   const totals = TAX_LABEL_KEYS.map((label) => {
     const mine = claims.filter((c) => c.label === label);
     const mineAssets = assets.filter((a) => a.label === label);
     const pooled = label === 'D6' && pool ? pool : null;
+    const homeClaim = label === 'D5' ? home.claim : 0;
     return {
       label,
       name: TAX_LABELS[label].name,
-      count: mine.length + mineAssets.length + (pooled?.assets.length ?? 0),
+      count: mine.length + mineAssets.length + (pooled?.assets.length ?? 0) + (homeClaim ? 1 : 0),
       total:
         mine.reduce((s, c) => s + c.claim, 0) +
         mineAssets.reduce((s, a) => s + a.deduction, 0) +
-        (pooled?.row.decline ?? 0),
+        (pooled?.row.decline ?? 0) +
+        homeClaim,
     };
   }).filter((t) => t.count > 0);
   const workRelated = claims
@@ -290,6 +303,16 @@ export function taxYear(fy: number) {
     notes.push(
       'Items costing more than $300 are usually claimed as decline in value over several years, not all at once.',
     );
+  if (home.minutes > 0) {
+    notes.push(
+      'Working from home: keep a record of the hours you actually worked and one bill for each expense the rate covers (energy, phone, internet, stationery).',
+    );
+    if (home.missing.includes('rate'))
+      notes.push(`Type the ATO's rate for ${financialYearName(fy)}.`);
+  }
+  // A lodged year is never locked for these figures: a change shows as an amendment instead
+  const amendments = yearAmendments(fy, lodgedYears().includes(fy));
+  for (const a of amendments) notes.push(a.note);
   const assetIncome = assets.reduce((s, a) => s + a.income, 0) + (pool?.row.income ?? 0);
   if (assetIncome > 0)
     notes.push(
@@ -311,11 +334,16 @@ export function taxYear(fy: number) {
     capitalGains: capitalGainsYear(fy),
     /** Items 10, 11 and distributions from investment income; income, not a deduction */
     investmentIncome: incomeYear(fy),
+    /** Working-from-home hours and claim (D5), with the year's bills; hours are on Car and home */
+    home,
+    /** Parts of a lodged year that differ from what was recorded when it was marked lodged */
+    amendments,
     totals,
     total:
       claims.reduce((s, c) => s + c.claim, 0) +
       assets.reduce((s, a) => s + a.deduction, 0) +
-      (pool?.row.decline ?? 0),
+      (pool?.row.decline ?? 0) +
+      home.claim,
     assetIncome,
     workRelatedTotal: workRelated,
     missingReceipts: missing.length,
@@ -422,6 +450,7 @@ export function taxYears(today: string) {
     ...assetYears(today),
     ...capitalGainsYears(),
     ...incomeYears(),
+    ...homeYears(),
   ]);
   for (const r of db
     .select({ date: transactions.date })
@@ -580,6 +609,25 @@ export function taxYearCsv(fy: number) {
       c.receipts.map((r) => r.fileName).join('; '),
       c.files.map((f) => f.fileName).join('; '),
     ]),
+    ...(year.home.claim || year.home.minutes
+      ? [
+          [
+            null,
+            'D5',
+            TAX_LABELS.D5.name,
+            `Working from home: ${(year.home.minutes / 60).toFixed(2)} hours over ${year.home.days} days at ${year.home.rateTenths === null ? 'no rate' : `${(year.home.rateTenths / 10).toFixed(1)}c per hour`}`,
+            null,
+            null,
+            null,
+            null,
+            dollars(year.home.claim),
+            year.home.notes,
+            null,
+            null,
+            year.home.files.map((f) => f.fileName).join('; '),
+          ],
+        ]
+      : []),
     ...year.assets.map((a) => [
       a.startDate,
       a.label,
@@ -641,6 +689,17 @@ export function taxYearArchive(fy: number) {
       data: Buffer.from(schedule, 'utf8'),
     });
   }
+  if (year.home.days) {
+    files.push({
+      name: `home-hours-${name.replace('–', '-')}.csv`,
+      data: Buffer.from(
+        homeDaysRows(fy)
+          .map((l) => l.map(csvCell).join(','))
+          .join('\r\n') + '\r\n',
+        'utf8',
+      ),
+    });
+  }
   // Assets' evidence goes in with the claims': the purchase's receipts, the asset's files
   const owners = [
     ...year.claims,
@@ -651,6 +710,14 @@ export function taxYearArchive(fy: number) {
       receipts: a.receipts,
       files: a.files,
     })),
+    // The bills for the expenses the working-from-home rate covers
+    {
+      date: `${fy}-07-01`,
+      label: 'D5',
+      payeeName: 'Working from home',
+      receipts: [] as { id: string; fileName: string }[],
+      files: year.home.files,
+    },
     ...(year.pool?.assets ?? []).map((a) => ({
       date: `${fy}-07-01`,
       label: 'D6',

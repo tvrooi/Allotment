@@ -196,6 +196,38 @@ export interface InvestmentIncomeYear {
   notes: string[];
 }
 
+/** The year's hours and claim; the rate is tenths of a cent per hour, null when none is known */
+export interface HomeFigures {
+  minutes: number;
+  days: number;
+  rateTenths: number | null;
+  claim: number;
+  missing: 'rate'[];
+  rateSource: 'table' | 'override' | null;
+  notes: string | null;
+}
+export interface Amendment {
+  part: string;
+  label: string;
+  lodgedClaim: number | null;
+  claim: number;
+  status: 'amended' | 'notRecorded';
+  /** The server's wording, also in the year's notes */
+  note: string;
+}
+export interface HomeDay {
+  date: string;
+  minutes: number;
+  notes: string | null;
+}
+export interface HomeDetail {
+  days: HomeDay[];
+  year: HomeFigures;
+  /** The ATO's rate for the year (tenths of a cent), the owner's own, and where the ATO's came from */
+  rate: { table: number | null; override: number | null; source: string; checked: string };
+  files: { id: string; fileName: string }[];
+}
+
 export interface TaxYear {
   financialYear: number;
   name: string;
@@ -215,6 +247,10 @@ export interface TaxYear {
   investmentIncome: InvestmentIncomeYear;
   /** Balancing adjustments that are assessable income, not deductions */
   assetIncome: number;
+  /** Working from home (D4a): counted in D5; the days are at Car and home */
+  home: HomeFigures & { files: { id: string; fileName: string }[] };
+  /** Parts of a lodged year whose claim moved since it was marked lodged (never a lock) */
+  amendments: Amendment[];
   totals: { label: TaxLabel; name: string; count: number; total: number }[];
   total: number;
   workRelatedTotal: number;
@@ -324,6 +360,28 @@ export const taxYears = () => apiFetch<{ financialYear: number; name: string }[]
 export const taxYear = (fy: number) => apiFetch<TaxYear>(`/tax/years/${fy}`);
 export const taxYearCsvUrl = (fy: number) => `${API_BASE}/tax/years/${fy}/csv`;
 export const taxYearArchiveUrl = (fy: number) => `${API_BASE}/tax/years/${fy}/archive`;
+export const homeDetail = (fy: number) => apiFetch<HomeDetail>(`/tax/home/${fy}`);
+export const setHomeDay = (date: string, day: { minutes: number; notes: string | null }) =>
+  apiFetch<HomeDay>(`/tax/home/days/${date}`, { method: 'PUT', body: JSON.stringify(day) });
+export const removeHomeDay = (date: string) =>
+  apiFetch<void>(`/tax/home/days/${date}`, { method: 'DELETE' });
+export interface HomeFill {
+  from: string;
+  to: string;
+  /** 1 Monday to 7 Sunday */
+  weekdays: number[];
+  minutes: number;
+}
+/** With preview, says how many days a fill would add and skip, and writes nothing */
+export const fillHome = (fill: HomeFill, preview = false) =>
+  apiFetch<{ added: number; skipped: number }>('/tax/home/fill', {
+    method: 'POST',
+    body: JSON.stringify({ ...fill, preview }),
+  });
+export const setHomeYear = (
+  fy: number,
+  year: { rateTenths: number | null; notes: string | null },
+) => apiFetch<HomeDetail>(`/tax/home/years/${fy}`, { method: 'PUT', body: JSON.stringify(year) });
 export const claimedIds = () => apiFetch<string[]>('/tax/claims');
 export const getClaim = (transactionId: string) =>
   apiFetch<TaxClaim | null>(`/tax/claims/${encodeURIComponent(transactionId)}`);

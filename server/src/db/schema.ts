@@ -483,6 +483,11 @@ export const documentLinks = sqliteTable(
       (): AnySQLiteColumn => investmentIncome.id,
       { onDelete: 'cascade' },
     ),
+    /** A working-from-home year's bills (migration 0085); the column holds the financial year */
+    homeYearId: integer('home_year_fy').references(
+      (): AnySQLiteColumn => taxHomeYears.financialYear,
+      { onDelete: 'cascade' },
+    ),
     createdAt: text('created_at').notNull(),
   },
   (table) => [
@@ -508,6 +513,9 @@ export const documentLinks = sqliteTable(
     uniqueIndex('document_links_investment_income_idx')
       .on(table.investmentIncomeId, table.documentId)
       .where(sql`investment_income_id IS NOT NULL`),
+    uniqueIndex('document_links_home_year_idx')
+      .on(table.homeYearId, table.documentId)
+      .where(sql`home_year_fy IS NOT NULL`),
   ],
 );
 
@@ -664,6 +672,38 @@ export const taxLodgedYears = sqliteTable('tax_lodged_years', {
   financialYear: integer('financial_year').primaryKey(),
   lodgedAt: text('lodged_at').notNull(),
 });
+
+/** Minutes worked at home on a date (D4a): the ATO's fixed-rate method needs actual hours */
+export const taxHomeHours = sqliteTable('tax_home_hours', {
+  workDate: text('work_date').primaryKey(),
+  minutes: integer('minutes').notNull(),
+  notes: text('notes'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+/** A year's own working-from-home rate (tenths of a cent per hour) and notes; its bills are files */
+export const taxHomeYears = sqliteTable('tax_home_years', {
+  financialYear: integer('financial_year').primaryKey(),
+  rateTenths: integer('rate_tenths'),
+  notes: text('notes'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+/** What a part (home) of a lodged year claimed when it was marked lodged; JSON figures */
+export const taxLodgedFigures = sqliteTable(
+  'tax_lodged_figures',
+  {
+    financialYear: integer('financial_year')
+      .notNull()
+      .references(() => taxLodgedYears.financialYear, { onDelete: 'cascade' }),
+    part: text('part').notNull(),
+    figures: text('figures').notNull(),
+    recordedAt: text('recorded_at').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.financialYear, table.part] })],
+);
 
 export const transactionTags = sqliteTable(
   'transaction_tags',

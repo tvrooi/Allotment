@@ -193,6 +193,9 @@ const TAX_READ = [
   // Investments, read only (owner decision 7, INVESTMENT-SALES-AND-INCOME.md §9): holdings with
   // their lots, sales and income. Every investments write stays the owner's.
   /^\/investments$/,
+  // Working-from-home hours by day, read only (owner decision 6, TAX-CAR-AND-HOME.md §9). The
+  // writes (days, fill, a year's rate, lodging) stay the owner's and are on no allowlist.
+  /^\/tax\/home\/\d{4}$/,
 ];
 
 /** Whether an organise token may read this tax path (labels, years, claims, assets, the pool, investments) */

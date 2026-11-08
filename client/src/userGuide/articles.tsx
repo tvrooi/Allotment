@@ -4,6 +4,7 @@
 import type { ReactNode } from 'react';
 import type { DocsPage } from '../utils/project';
 import { GuideLink } from '../components/guide/GuideLink';
+import { ExternalLink } from '../components/ui/ExternalLink';
 
 export interface GuideArticle {
   page: DocsPage;
@@ -1087,6 +1088,37 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
             under the asset, record it when you sell it or stop using it, and lock a year once it’s
             lodged.
           </p>
+        ),
+      },
+      {
+        heading: 'Working from home',
+        body: (
+          <>
+            <p>
+              Tax time → <b>Car and home</b> keeps the hours you worked at home, day by day, for the
+              ATO’s{' '}
+              <ExternalLink href="https://www.ato.gov.au/individuals-and-families/income-deductions-offsets-and-records/deductions-you-can-claim/work-related-deductions/working-from-home-expenses/fixed-rate-method">
+                fixed rate method
+              </ExternalLink>
+              . Hours times the year’s rate go in D5 on Deductions. Allotment knows the ATO’s rate
+              for 2022–23 to 2025–26; for a year it doesn’t know, type the rate from the ATO’s page
+              and nothing is claimed until you do.
+            </p>
+            <p>
+              The ATO wants the hours you actually worked for the whole year, from a timesheet,
+              roster or diary: an estimate or a four-week sample isn’t enough. <b>Fill a pattern</b>{' '}
+              writes the same hours on chosen weekdays and never changes a day you already recorded,
+              so check it against your real hours. Keep one bill for each expense the rate covers
+              (energy, phone, internet, stationery) under <b>Bills</b>, and claim a work laptop or
+              desk as an asset instead, since the rate doesn’t cover those.
+            </p>
+            <p>
+              A lodged year’s hours can still change. Allotment records what the year claimed when
+              you mark it lodged, and shows <b>Amended since lodging</b> on Deductions if it
+              changes, so you know to lodge an amendment. <b>Mark lodged again</b> records the new
+              figures.
+            </p>
+          </>
         ),
       },
     ],
