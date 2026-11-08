@@ -1,3 +1,5 @@
+import { transferLabel, transferSides } from './transferLabel';
+import { useAccountName } from '../../hooks/useAccounts';
 import { listedAmount, RoundUpDetails } from './RoundUp';
 import { ShareWithHousehold } from '../household/ShareWithHousehold';
 import { CategoryIcon } from '../ui/CategoryIcon';
@@ -145,7 +147,10 @@ export function TransactionDetailPanel({
   // Synced and earlier transactions can be split into categories here, or have their parts changed
   const canSplit = !isReconciled && !isTransfer && !tx.isAdjustment && !tx.parentTransactionId;
 
-  const payeeName = tx.payeeName || (isTransfer ? 'Transfer' : '—');
+  const accountNameOf = useAccountName();
+  const transferWay = transferSides(tx, accountNameOf);
+  const payeeName =
+    transferLabel(tx, accountNameOf) ?? (tx.payeeName || (isTransfer ? 'Transfer' : '—'));
   const payee = tx.payeeId ? payees.find((p) => p.id === tx.payeeId) : undefined;
   const categoryEntry = tx.categoryId ? (categoryMap.get(tx.categoryId) ?? null) : null;
   // Making or undoing a transfer needs the server: not offered while saving is paused, and a
@@ -338,6 +343,18 @@ export function TransactionDetailPanel({
 
         <MainAmountField tx={tx} disabled={isReconciled} />
 
+        {transferWay && (
+          <dl
+            aria-label="Transfer between accounts"
+            className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-3 py-2.5 bg-surface-alt rounded-lg border border-border-light text-sm"
+          >
+            <dt className="text-text-secondary">From</dt>
+            <dd className="text-text truncate">{transferWay.from}</dd>
+            <dt className="text-text-secondary">To</dt>
+            <dd className="text-text truncate">{transferWay.to}</dd>
+          </dl>
+        )}
+
         <div>
           <div className="flex items-center justify-between mb-1.5">
             {/* Not a <label>: it captions a split list, a transfer or a button named by its category */}
@@ -384,7 +401,7 @@ export function TransactionDetailPanel({
           ) : isTransfer && !tx.isBudgetBoundary ? (
             <div className="flex items-center gap-2">
               <div className="flex-1 min-w-0 truncate text-sm text-brand-600 px-3 py-2 border border-border rounded-lg bg-surface-alt">
-                {tx.payeeName || 'Transfer'}
+                {payeeName}
               </div>
               {!isReconciled && (
                 <Button

@@ -1,3 +1,5 @@
+import { transferLabel } from './transferLabel';
+import { useAccountName } from '../../hooks/useAccounts';
 import { listedAmount, RoundUpMark } from './RoundUp';
 import { RowMarks } from './TransactionMarks';
 import { CategoryIcon } from '../ui/CategoryIcon';
@@ -41,7 +43,9 @@ export function TransactionCard({
   const currencyOf = useAccountCurrency();
   const isTransfer = !!tx.transferTransactionId;
   const isSplit = tx.isParent === 1 && !!tx.children?.length;
-  const payeeName = tx.payeeName || (isTransfer ? 'Transfer' : '—');
+  const accountNameOf = useAccountName();
+  const payeeName =
+    transferLabel(tx, accountNameOf) ?? (tx.payeeName || (isTransfer ? 'Transfer' : '—'));
   const payee = useMemo(
     () => (tx.payeeId ? payees.find((p) => p.id === tx.payeeId) : undefined),
     [payees, tx.payeeId],
@@ -82,7 +86,7 @@ export function TransactionCard({
             {payeeName}
           </span>
           <span
-            className={`shrink-0 inline-flex items-center gap-1 text-row font-medium tabular-nums ${tx.amount > 0 ? 'text-positive' : 'text-text'}`}
+            className={`shrink-0 inline-flex items-center gap-1 text-row font-medium tabular-nums ${tx.amount > 0 && !tx.transferPair ? 'text-positive' : 'text-text'}`}
           >
             <RoundUpMark tx={tx} currency={currencyOf(tx.accountId)} />
             {tx.amount > 0 ? '+' : ''}

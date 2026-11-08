@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import * as accountsApi from '../api/accounts';
 import { useUndoStore } from '../store/undoStore';
 import type { Account } from '../types';
@@ -141,4 +142,13 @@ export function useReorderAccounts() {
       });
     },
   });
+}
+
+/** Account names by id (open and closed), e.g. for a transfer's other side */
+export function useAccountName() {
+  const { data: accounts = [] } = useAccounts();
+  return useMemo(() => {
+    const names = new Map(accounts.map((a) => [a.id, a.name]));
+    return (id: string) => names.get(id);
+  }, [accounts]);
 }

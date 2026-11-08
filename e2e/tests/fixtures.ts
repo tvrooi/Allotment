@@ -74,8 +74,10 @@ export class Api {
     throw new Error(`No category named ${name}`);
   }
 
+  /** The ledger: both sides of every transfer, not the register's folded pairs */
   transactions(query = '') {
-    return this.call<any[]>('GET', `/transactions${query}`);
+    const all = `${query ? `${query}&` : '?'}transfer_pairs=show`;
+    return this.call<any[]>('GET', `/transactions${all}`);
   }
 }
 
