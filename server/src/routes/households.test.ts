@@ -16,6 +16,7 @@ import { createBackup, parseBackup, restoreBackup } from '../services/backupServ
 import { eq } from 'drizzle-orm';
 import { budgetActivity } from '../services/balances.js';
 import { insertNewTransaction } from '../services/ruleService.js';
+import { addDaysIso, todayIso } from '../utils/date.js';
 let server: Server;
 let base: string;
 beforeAll(async () => {
@@ -764,6 +765,89 @@ describe('household attribution', () => {
     );
     expect(bill.amount).toBe(495300);
     expect(bill.shares.map((s: any) => s.amount)).toEqual([165100, 165100, 165100]);
+  });
+
+  it('gauges the household account against the bills due in the next 30 days', async () => {
+    db.insert(accounts)
+      .values({ id: 'cov-pool', name: '2Up Essentials', type: 'savings', startingBalance: 20000 })
+      .run();
+    const g = await group('cov-pool');
+    const today = todayIso();
+    const [me, alex] = g.people;
+    for (const [id, accountId] of [
+      ['cov-power', 'cov-pool'],
+      ['cov-gym', 'mine'],
+    ] as const)
+      db.insert(schedules)
+        .values({
+          id,
+          name: id === 'cov-power' ? 'Power' : 'Gym',
+          amount: -15000,
+          recurrenceType: 'monthly',
+          startDate: today,
+          accountId,
+        })
+        .run();
+    db.insert(scheduleOccurrences)
+      .values([
+        // Due in 5 days, and again beyond the window
+        {
+          id: 'cp-1',
+          scheduleId: 'cov-power',
+          scheduledDate: addDaysIso(today, 5),
+          expectedDate: addDaysIso(today, 5),
+          expectedAmount: -15000,
+        },
+        {
+          id: 'cp-2',
+          scheduleId: 'cov-power',
+          scheduledDate: addDaysIso(today, 40),
+          expectedDate: addDaysIso(today, 40),
+          expectedAmount: -15000,
+        },
+        // Paid from a personal account: shared, but not the household account's to cover
+        {
+          id: 'cg-1',
+          scheduleId: 'cov-gym',
+          scheduledDate: addDaysIso(today, 3),
+          expectedDate: addDaysIso(today, 3),
+          expectedAmount: -15000,
+        },
+      ])
+      .run();
+    await call(`/${g.group.id}/recurring-bills`, { scheduleIds: ['cov-power', 'cov-gym'] });
+    // A one-off bill, and one tied to the shared Power schedule that its dates already count
+    await call(`/${g.group.id}/bills`, {
+      description: 'Plumber',
+      dueDate: addDaysIso(today, 10),
+      amount: 9000,
+    });
+    await call(`/${g.group.id}/bills`, {
+      description: 'Power (old)',
+      dueDate: addDaysIso(today, 5),
+      amount: 15000,
+      scheduleId: 'cov-power',
+    });
+    await call(`/${g.group.id}/events`, {
+      kind: 'contribution',
+      date: today,
+      description: 'Bills',
+      amount: 3000,
+      payerId: alex.id,
+    });
+
+    const { coverage } = (await call(`/${g.group.id}`)).data;
+    expect(coverage.from).toBe(today);
+    expect(coverage.due.map((d: any) => [d.name, d.amount])).toEqual([
+      ['Power', 15000],
+      ['Plumber', 9000],
+    ]);
+    expect(coverage.cash).toBe(20000);
+    expect(coverage).toMatchObject({ needed: 24000, covered: 20000, shortfall: 4000 });
+    expect(coverage.people.find((p: any) => p.personId === me.id).shareDue).toBe(8000);
+    expect(coverage.people.find((p: any) => p.personId === alex.id)).toMatchObject({
+      paidIn: 3000,
+    });
   });
 
   it('renames a household and makes one the default', async () => {

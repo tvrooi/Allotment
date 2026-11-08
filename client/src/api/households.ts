@@ -238,6 +238,27 @@ export interface SharedRecurringBill {
   fixedTotal: number | null;
   /** Recent payments, newest first, and whether each is shared yet */
   payments: { transactionId: string; date: string; amount: number; shared: boolean }[];
+  /** Expected dates in the coverage window, with each person's share */
+  upcoming: { date: string; amount: number; shares: { personId: string; amount: number }[] }[];
+}
+
+/** The Household page's gauge (server: householdCoverage.ts). Minor units */
+export interface HouseholdCoverage {
+  from: string;
+  to: string;
+  cash: number;
+  due: {
+    id: string;
+    source: 'recurring' | 'bill';
+    name: string;
+    date: string;
+    amount: number;
+    shares: { personId: string; amount: number }[];
+  }[];
+  needed: number;
+  covered: number;
+  shortfall: number;
+  people: { personId: string; shareDue: number; paidIn: number }[];
 }
 
 export const shareRecurringBills = (groupId: string, scheduleIds: string[]) =>

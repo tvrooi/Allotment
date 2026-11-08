@@ -1,9 +1,17 @@
 # Changes
 
-## 0.2.0-up.147
+## 0.2.0-up.148
 
 - **Pay your share ahead.** Sent a housemate money towards a shared bill they haven't recorded yet? Right-click the payment in your register (or tap ⋯ on a phone) and choose **Paid ahead to** and their name, or open the payment and choose **Paid ahead for a shared expense**. Until the bill is recorded in the household they owe it back to you; once it is, by you or by them in a combined household, your share comes off it. **Undo** in the toast, or **Remove from** the household in the menu, takes it back.
 - Only your own money out can be paid ahead. A payment from a household account can't be recorded as a repayment from you any more: it is the household's money, so it is a contribution or an expense.
+
+## 0.2.0-up.147
+
+The first two of four Household updates that bring the page closer to Up's Essentials (see `docs/HOUSEHOLDS.md`).
+
+- **Bills first.** The Household page opens with your recurring bills, then who owes what.
+- **Is there enough for the bills?** With a household account, **Bills coverage** at the top works like the dial in Up's Essentials. It compares what the account holds now with the bills it will pay in the next 30 days ("A$176 of A$4,930 needed by 8 Dec"). It lists those bills and what is still to be paid in, then each person's part of them beside what they have paid in this month. The older figures, under plainer names, are under **Household account figures**. Assistants see the same figures in the `household` tool.
+- **Newest first, and not everything at once.** Your expense shares and **All contributions, payments & repayments** list the newest entry first and open on its month and the month before. **Show older** goes further back, and always reaches at least one more entry. Choosing a **From** date still shows that whole range, and the statement's total and export still cover every date you chose.
 
 ## 0.2.0-up.146
 

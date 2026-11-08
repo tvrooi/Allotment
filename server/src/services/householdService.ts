@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNotNull, lt, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNotNull, lt, lte, ne, sql } from 'drizzle-orm';
 import { format, subDays } from 'date-fns';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -24,6 +24,7 @@ import {
 import { allocateShares, householdLedger } from './householdLedger.js';
 import { accountTransactionSum } from './balances.js';
 import { addDaysIso, todayIso } from '../utils/date.js';
+import { COVERAGE_DAYS, householdCoverage, type CoverageItem } from './householdCoverage.js';
 
 // Household groups (docs/HOUSEHOLDS.md): the state of one group, and recording an event with
 // every check the ledger relies on. Shared by the households routes, quick sharing from the
@@ -113,8 +114,49 @@ export function snapshot(id: string) {
   const reserved = remaining.reduce((sum, b) => sum + b.reserved, 0);
   const { defaultSplitJson, ...groupFields } = group;
   const defaultSplit = parseSplit(defaultSplitJson);
+  const recurring = sharedRecurringBills(id, members, defaultSplit, poolAccountIds);
+  const paidOf = (billId: string) =>
+    entries.filter((e) => e.billId === billId).reduce((sum, e) => sum + e.amount, 0);
+  const coverageFrom = todayIso();
+  const coverageTo = addDaysIso(coverageFrom, COVERAGE_DAYS);
+  // A one-off bill that belongs to a shared recurring item is already counted by its dates
+  const sharedSchedules = new Set(recurring.map((b) => b.scheduleId));
+  const due: CoverageItem[] = [
+    ...recurring
+      .filter((b) => b.paidFromPool)
+      .flatMap((b) =>
+        b.upcoming.map((o) => ({
+          id: b.scheduleId,
+          source: 'recurring' as const,
+          name: b.name,
+          ...o,
+        })),
+      ),
+    ...remaining
+      .filter((b) => !(b.scheduleId && sharedSchedules.has(b.scheduleId)))
+      .map((b) => {
+        const left = Math.max(0, b.amount - paidOf(b.id));
+        return {
+          id: b.id,
+          source: 'bill' as const,
+          name: b.description,
+          date: b.dueDate,
+          amount: left,
+          shares: billShares(defaultSplit, members, left).shares,
+        };
+      }),
+  ];
+  const coverage = householdCoverage({
+    from: coverageFrom,
+    to: coverageTo,
+    cash,
+    due,
+    members,
+    contributions: entries.filter((e) => e.kind === 'contribution'),
+  });
   return {
-    recurringBills: sharedRecurringBills(id, members, defaultSplit, poolAccountIds),
+    recurringBills: recurring,
+    coverage,
     group: { ...groupFields, poolAccountIds, defaultSplit },
     poolAccountIds,
     people: members,
@@ -124,7 +166,7 @@ export function snapshot(id: string) {
     reserved,
     unreserved: Math.max(0, Math.min(cash, ledger.pool) - reserved),
     bills: allBills.map((b) => {
-      const paid = entries.filter((e) => e.billId === b.id).reduce((sum, e) => sum + e.amount, 0);
+      const paid = paidOf(b.id);
       return {
         ...b,
         paid,
@@ -700,6 +742,8 @@ function sharedRecurringBills(
 ) {
   const links = db.select().from(recurringBills).where(eq(recurringBills.groupId, groupId)).all();
   if (!links.length) return [];
+  const coverageFrom = todayIso();
+  const coverageTo = addDaysIso(coverageFrom, COVERAGE_DAYS);
   const today = format(new Date(), 'yyyy-MM-dd');
   const since = format(subDays(new Date(), BILL_PAYMENT_DAYS), 'yyyy-MM-dd');
   const linked = new Set(
@@ -732,6 +776,31 @@ function sharedRecurringBills(
       .get();
     const amount = Math.abs(next?.amount ?? schedule.amount);
     const { shares: billShareRows, fixedTotal } = billShares(ownSplit ?? split, members, amount);
+    // Every date it is still expected within the coverage gauge's window, with everyone's share
+    const upcoming = db
+      .select({
+        date: scheduleOccurrences.expectedDate,
+        amount: scheduleOccurrences.expectedAmount,
+      })
+      .from(scheduleOccurrences)
+      .where(
+        and(
+          eq(scheduleOccurrences.scheduleId, schedule.id),
+          eq(scheduleOccurrences.status, 'pending'),
+          gte(scheduleOccurrences.expectedDate, coverageFrom),
+          lte(scheduleOccurrences.expectedDate, coverageTo),
+        ),
+      )
+      .orderBy(scheduleOccurrences.expectedDate)
+      .all()
+      .map((o) => {
+        const due = Math.abs(o.amount);
+        return {
+          date: o.date,
+          amount: due,
+          shares: billShares(ownSplit ?? split, members, due).shares,
+        };
+      });
     const matchedIds = db
       .select({ id: scheduleOccurrences.matchedTransactionId })
       .from(scheduleOccurrences)
@@ -784,6 +853,8 @@ function sharedRecurringBills(
         /** What fixed amounts add up to (null for other splits); payments must equal it */
         fixedTotal,
         payments,
+        /** Expected dates in the coverage window (today to COVERAGE_DAYS ahead) */
+        upcoming,
       },
     ];
   });
