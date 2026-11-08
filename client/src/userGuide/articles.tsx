@@ -1146,6 +1146,18 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
     summary: 'Share costs with the people you live with, and keep a record of who changed what.',
     sections: [
       {
+        heading: 'Recent entries first',
+        body: (
+          <p>
+            The page opens with your recurring bills, then who owes what. Your expense shares and{' '}
+            <b>All contributions, payments &amp; repayments</b> list the newest entry first and show
+            its month and the month before. <b>Show older</b> goes further back. Choosing a{' '}
+            <b>From</b> date shows that whole range, and the total and the export always cover the
+            dates you chose, whatever is on screen.
+          </p>
+        ),
+      },
+      {
         heading: 'Fix a mistake without starting again',
         body: (
           <p>

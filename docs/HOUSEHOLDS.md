@@ -23,6 +23,15 @@ Two accounting policies work together:
   another expense or salary. Do not add this report's shares to your personal
   contribution-based budget totals; these answer different questions.
 
+The page opens with **Recurring bills**, then **People & balances**. The expense statement and
+**All contributions, payments & repayments** list entries newest first. They open on the newest
+entry's month and the month before it, counted from that entry rather than from today, so a
+quiet household still shows its last activity. **Show older** reaches the next hidden entry and
+three months more (`client/src/components/household/recentEntries.ts`). A **From** date shows its
+whole range. The statement's total and its export always cover the chosen dates (all of them
+when none are set), not just the rows on screen. The server keeps sending entries oldest first;
+only the page reverses them.
+
 ## More pool accounts, default splits and sharing in one step
 
 A household can have **several pool accounts** (**Household → Sharing → Household accounts**),

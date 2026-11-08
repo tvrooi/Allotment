@@ -9,6 +9,17 @@ Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminder
 
 ## State
 
+- **Household as an Essentials-style bills hub (up.147 is PR 1 of 4; client only):** plan from the
+  owner's 8 November request, with the decisions the owner made: drift only prompts, the gauge covers
+  the next 30 days, both bill sections merge into one hub, and all four parts get built. PR 1 puts
+  Recurring bills first and lists household entries newest first, from the newest entry's month and
+  the one before (`components/household/recentEntries.ts`, **Show older**). Next: PR 2, a coverage
+  gauge (cash against bills due in the next 30 days, plus each person's share against what they paid
+  in). PR 3: bill tiles with in-place edit and a drift prompt, merging **Bills to reserve for**, plus
+  the unbuilt November item 2 (a recurring amount edit recomputes the linked `household_bills`).
+  PR 4: suggest missing bills from the household account (live: CovaU Energy, Yarra Valley Water).
+  Live facts behind it: OVO is expected at A$150 but was paid A$100–107; Superloop is A$115 against
+  A$114.
 - **Working from home (up.144, D4a of the Larger features group; server, client, demo and MCP text;
   migration 0085, additive; backup version 33):** built to
   [docs/TAX-CAR-AND-HOME.md](docs/TAX-CAR-AND-HOME.md), whose §10 "As built" lists where it differs.

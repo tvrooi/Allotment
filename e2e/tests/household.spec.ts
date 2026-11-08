@@ -878,3 +878,45 @@ test('reconciles household balances to zero, and removing the adjustments undoes
   await page.getByRole('button', { name: 'Remove entry' }).last().click();
   await expect(page.getByText('owes A$40', { exact: true })).toBeVisible();
 });
+
+test('lists recent entries newest first, with older months a click away', async ({ page, api }) => {
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    people: ['Me', 'Alex'],
+    selfIndex: 0,
+  });
+  const [me] = group.people;
+  for (const [date, description] of [
+    ['2026-05-04', 'Old power bill'],
+    ['2026-10-08', 'Internet'],
+    ['2026-11-06', 'Water'],
+  ])
+    await api.call('POST', `/households/${group.group.id}/events`, {
+      kind: 'expense',
+      date,
+      description,
+      amount: 10000,
+      payerId: me.id,
+      shares: group.people.map((p: any) => ({ personId: p.id, value: 1 })),
+    });
+  await open(page, '/household');
+  const statement = page.getByRole('heading', { name: /My expense shares/ }).locator('../..');
+  // The total still covers every expense; the rows open on the newest two months
+  await expect(statement.getByRole('heading', { name: /My expense shares:.*150/ })).toBeVisible();
+  const rows = statement.getByRole('row');
+  await expect(rows.nth(1)).toContainText('Water');
+  await expect(rows.nth(2)).toContainText('Internet');
+  await expect(statement.getByText('Old power bill')).toHaveCount(0);
+  await statement.getByRole('button', { name: 'Show older (1)' }).click();
+  await expect(statement.getByText('Old power bill')).toBeVisible();
+
+  await page.getByRole('button', { name: /All contributions, payments & repayments/ }).click();
+  const history = page
+    .getByRole('button', { name: /All contributions, payments & repayments/ })
+    .locator('..');
+  await expect(history.getByRole('row').first()).toContainText('Water');
+  await expect(history.getByText('Old power bill')).toHaveCount(0);
+  await history.getByRole('button', { name: 'Show older (1)' }).click();
+  await expect(history.getByRole('row').last()).toContainText('Old power bill');
+});

@@ -1,5 +1,12 @@
 # Changes
 
+## 0.2.0-up.147
+
+The first of four Household updates that bring the page closer to Up's Essentials (see `docs/HOUSEHOLDS.md`).
+
+- **Bills first.** The Household page opens with your recurring bills, then who owes what.
+- **Newest first, and not everything at once.** Your expense shares and **All contributions, payments & repayments** list the newest entry first and open on its month and the month before. **Show older** goes further back, and always reaches at least one more entry. Choosing a **From** date still shows that whole range, and the statement's total and export still cover every date you chose.
+
 ## 0.2.0-up.146
 
 - **Transfers say which way the money went.** A transfer between two of your accounts reads **Transfer to 2Up Essentials** on the money-out side and **Transfer from Spending** on the money-in side, instead of "Transfer: Spending", which could mean either. A name you typed yourself is kept.

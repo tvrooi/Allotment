@@ -23,6 +23,7 @@ import { EditEntry } from '../components/household/EditEntry';
 import { HouseholdBreakdown } from '../components/household/HouseholdBreakdown';
 import { ActivityLog } from '../components/household/ActivityLog';
 import { RepaymentCategoryOffers } from '../components/household/RepaymentCategoryOffers';
+import { recentEntries } from '../components/household/recentEntries';
 import type { HouseholdSplit, SharedRecurringBill } from '../api/households';
 
 type Group = {
@@ -103,6 +104,19 @@ const KIND_LABEL: Record<string, string> = {
 };
 /** Reconcile's entries: removed to undo, never edited */
 const ADJUSTMENT = new Set(['pool_adjustment', 'balance_adjustment']);
+/** Household lists open on the newest entry's month and the one before it */
+const RECENT_MONTHS = 2;
+
+function ShowOlder({ older, onClick }: { older: number; onClick: () => void }) {
+  if (older === 0) return null;
+  return (
+    <div className="flex justify-center pt-2">
+      <Button size="sm" variant="ghost" onClick={onClick}>
+        Show older ({older})
+      </Button>
+    </div>
+  );
+}
 function cents(value: FormDataEntryValue | null) {
   const text = String(value ?? '');
   if (!/^\d+(\.\d{1,2})?$/.test(text))
@@ -184,6 +198,8 @@ export default function HouseholdPage() {
   const [editingBill, setEditingBill] = useState('');
   const [deletingBill, setDeletingBill] = useState('');
   const [showHistory, setShowHistory] = useState(false);
+  const [expenseMonths, setExpenseMonths] = useState(RECENT_MONTHS);
+  const [historyMonths, setHistoryMonths] = useState(RECENT_MONTHS);
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
   const money = (n: number) => formatMoney(n, state?.group.currency ?? 'AUD');
   const hasPool = (state?.group.poolAccountIds.length ?? 0) > 0;
@@ -313,7 +329,10 @@ export default function HouseholdPage() {
   );
   const myShare = (e: Entry) =>
     e.shares.filter((s) => s.personId === self?.id).reduce((n, s) => n + s.amount, 0);
-  const shownEvents = showHistory ? (state?.events ?? []) : [];
+  // Newest first, recent months only until Show older; a chosen From date shows its whole range
+  const recentExpenses = recentEntries(expenses, from ? Infinity : expenseMonths);
+  const history = recentEntries(showHistory ? (state?.events ?? []) : [], historyMonths);
+  const shownEvents = history.shown;
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 py-4 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-3">
@@ -396,6 +415,14 @@ export default function HouseholdPage() {
           {isLoading && <div className="h-40 bg-surface-alt rounded-lg animate-pulse" />}
           {state && (
             <>
+              <RecurringBills
+                key={`recurring-${state.group.id}`}
+                groupId={state.group.id}
+                currency={state.group.currency}
+                people={state.people}
+                bills={state.recurringBills}
+              />
+
               <section data-guide="household.people" className={card}>
                 <h2 className="text-sm font-semibold text-text">People & balances</h2>
                 <p className="text-xs text-text-tertiary mt-0.5 mb-3">
@@ -569,14 +596,6 @@ export default function HouseholdPage() {
                 currency={state.group.currency}
               />
 
-              <RecurringBills
-                key={`recurring-${state.group.id}`}
-                groupId={state.group.id}
-                currency={state.group.currency}
-                people={state.people}
-                bills={state.recurringBills}
-              />
-
               <section className={card}>
                 <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
                   <h2 className="text-sm font-semibold text-text">
@@ -626,7 +645,7 @@ export default function HouseholdPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {expenses.map((e) => (
+                        {recentExpenses.shown.map((e) => (
                           <tr key={e.id} className="border-t border-border-light">
                             <td className="py-2 pr-3 whitespace-nowrap text-text-secondary">
                               {formatDay(e.date)}
@@ -645,6 +664,10 @@ export default function HouseholdPage() {
                         ))}
                       </tbody>
                     </table>
+                    <ShowOlder
+                      older={recentExpenses.older}
+                      onClick={() => setExpenseMonths(recentExpenses.more)}
+                    />
                   </div>
                 )}
               </section>
@@ -1230,6 +1253,10 @@ export default function HouseholdPage() {
                         ))}
                       </tbody>
                     </table>
+                    <ShowOlder
+                      older={history.older}
+                      onClick={() => setHistoryMonths(history.more)}
+                    />
                   </div>
                 )}
               </section>
