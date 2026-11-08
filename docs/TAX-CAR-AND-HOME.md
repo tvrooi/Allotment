@@ -379,9 +379,10 @@ export function rateFor(table, fy, override: number | null): number | null; // o
   - **Logbook:** every linked claim is `sign × mulDiv(|cost|, businessBps, 10_000)`, and `claim`
     is their sum. `missing` can be `'logbook'` (none valid), `'km'` (the logbook's km can't be
     worked out), `'odometerStart'` or `'odometerEnd'` (the year's readings).
-  - A car with claims or assets in a year but no `tax_car_years` row reports `method: null`,
-    `claim: 0` and `missing: ['method']`. Its linked claims then count at their own work use, as
-    today, until a method is chosen.
+  - A car with claims or assets in a year but no `tax_car_years` row reports `method: null` and
+    `missing: ['method']`. Its linked claims count at their own work use, as today, until a
+    method is chosen, and its `claim` is their sum, so linking a claim before choosing a method
+    never lowers D1.
 
 ### 5.3 Server
 
@@ -423,7 +424,8 @@ export function rateFor(table, fy, override: number | null): number | null; // o
 - **The year.** `taxYear(fy)` gains `home`, `cars[]` (the results above, plus car names),
   `amendments[]` (from `lodgedFigures.ts`) and, if decision 8's measure is law,
   `instantDeduction`. In `totals`:
-  - **D1** = unlinked D1 claims at their own work use + every car's `claim` + D1 assets
+  - **D1** = unlinked D1 claims at their own work use + every car's `claim` (which, for a car
+    with no method yet, is its linked claims at their own work use, §5.2) + D1 assets
     (unchanged).
   - **D5** += `home.claim`.
   - In each `claims[]` entry, a linked claim carries `carId` and the amount it counts
@@ -582,7 +584,8 @@ READ-ONLY-ACCESS.md, ASSISTANT-ENDPOINTS.md and §10 here.
     reports the amendment; lodging again clears it; unlodging removes the snapshot; an asset or
     investment change in a lodged year is still refused (the existing tests stay green);
   - D4b: a cents-per-km year makes linked claims count 0, a logbook year applies its share, a
-    car year with no method falls back to the claim's own share, and deleting a car unlinks its
+    car year with no method falls back to the claim's own share (D1 is the same before and after
+    linking the claim), and deleting a car unlinks its
     claims and assets without deleting them;
   - the CSV and the ZIP (`unzip -t` as today) include the new rows and files.
 - **Auth** (`accessTokens.test.ts`, `assistantPolicy.test.ts`), each with the allowed case and
