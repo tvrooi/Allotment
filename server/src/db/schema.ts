@@ -1581,6 +1581,27 @@ export const investmentSales = sqliteTable(
 );
 
 /**
+ * A split or consolidation of a holding (D3c): from `fromUnits` units to `toUnits` units
+ * (2 and 1 for a 2-for-1 split). Never rewrites a lot or a sale parcel (investmentSplits.ts).
+ */
+export const investmentSplits = sqliteTable(
+  'investment_splits',
+  {
+    id: text('id').primaryKey(),
+    holdingId: text('holding_id')
+      .notNull()
+      .references(() => holdings.id, { onDelete: 'cascade' }),
+    effectiveOn: text('effective_on').notNull(),
+    toUnits: integer('to_units').notNull(),
+    fromUnits: integer('from_units').notNull(),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [index('investment_splits_holding_idx').on(table.holdingId)],
+);
+
+/**
  * Income paid on a holding (D3b): a dividend, a trust distribution or interest, with the parts
  * item 11 needs as the statement shows them, in the security's currency. Reinvested units are a
  * lot of their own. Never writes a transaction; it may be linked to the deposit.

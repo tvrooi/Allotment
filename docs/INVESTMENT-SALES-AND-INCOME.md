@@ -1,8 +1,9 @@
 # Investments: sales, dividends and franking
 
 Status: **design approved 7 November 2026; D3a (sales) built in 0.2.0-up.141, D3b (dividends,
-franking, deposit links and the read-only tool) in 0.2.0-up.142** (see §10, "As built"). The owner
-took every recommendation in §9 except decision 7: a read-only assistant tool comes in D3b. Splits come in a later PR (D3c), as recommended. D3 of the Larger features
+franking, deposit links and the read-only tool) in 0.2.0-up.142 and D3c (splits and
+consolidations) in 0.2.0-up.143** (see §10, "As built"). The owner
+took every recommendation in §9 except decision 7: a read-only assistant tool came with D3b. D3 of the Larger features
 group. It takes the first two lines of [INVESTMENTS.md](INVESTMENTS.md) "Deferred" (sales and
 realised gains with lot selection; dividends, reinvestment and franking credits) and the Australian
 tax treatment they need, and adds them to Tax time beside deductions and
@@ -269,7 +270,7 @@ description in `routes/mcp.ts` change with it.
 - **D3b, dividends and franking:** income rows, reinvestment lots, franking prefill, register
   links (also for sales), Tax time item 11, holding period prompt, the `investment` file link kind
   and the ZIP, the read-only `investments` MCP tool for organise tokens (§5.5), tests.
-- **D3c, splits:** the "Split or consolidate" action (C1). Trust statements (T2) wait for
+- **D3c, splits:** the "Split or consolidate" action (C1), built. Trust statements (T2) wait for
   demand.
 
 ## 7. Tests
@@ -348,8 +349,9 @@ read-only assistant tool comes in D3b. Splits (decision 6) come in a later PR, D
   `keepingLodgedYears`, which D3b moved to `investmentTax.ts`), `services/financialYear.ts` (financial years, moved out of
   `taxService.ts`), `services/investmentError.ts`. Client: `components/investments/SaleModals.tsx`
   (Sell and Sales), the Sold list on `pages/Investments.tsx`, and `CapitalGains` on `pages/Tax.tsx`.
-- **Splits (D3c)** need nothing from D3a's tables: a split is its own event and never rewrites a
-  lot or a parcel (§4), so the parcels D3a stores stay as recorded.
+- **Splits (D3c)** needed nothing from D3a's tables: a split is its own event and never rewrites a
+  lot or a parcel (§4), so the parcels D3a stores stay as recorded. A parcel's units are now
+  defined as the lot's units on the sale's date (§10, D3c).
 - **Lodged years:** `keepingLodgedYears` runs a change in one DB transaction and compares every
   lodged year's item 18 figures and sale gains before and after, then undoes the change with a 409
   when they differ. A change to an open year that alters a lodged year's carried-in losses is
@@ -412,5 +414,47 @@ read-only assistant tool comes in D3b. Splits (decision 6) come in a later PR, D
   `investments` tool for organise tokens, refused writes), `client/src/utils/franking.test.ts`,
   the demo budget's dividend, and `e2e/tests/investments.spec.ts` (a franked dividend with the 30%
   prefill, linked to its deposit, on Tax time).
+
+**D3c, splits and consolidations (0.2.0-up.143).** Where it differs from §4 and §5, and why:
+
+- **Migration 0084** adds `investment_splits` as designed (`holding_id` cascades with the
+  holding; `to_units` and `from_units` are positive). **Backup version 32** includes it; an older
+  backup restores with none, and a split naming a missing holding, a bad date or a 1-for-1 ratio is
+  refused.
+- **Units are counted on a date** (`services/splitMath.ts`, pure). A lot's units on a day are its
+  recorded units times the splits after it was bought and on or before that day (a split counts from
+  its own effective date, so a lot bought that day is already in the new units). A sale's quantity
+  and its parcels' quantities are as of the sale's date, so `saleFigures` is unchanged: it is given
+  the lot's units on that date. Going forward each split rounds down; going back it rounds up, so
+  the units a sale took are never understated. A lost fraction (consolidations only, less than a
+  millionth of a unit) is reported as `rounded` on the preview and result and `unitsRounded` on a
+  holding, never dropped silently.
+- **`holdings.quantity` stays the units held now.** Recording a split scales it in the same DB
+  transaction, through `keepingLodgedYears` like every other write. A sale lowers it by its units
+  counted today, and removing the sale puts the same number back, so recording then removing a
+  sale restores the holding exactly even after a later split.
+- **A lot's `remaining` and `units` are counted today** (`units` is the recorded `quantity` after
+  the splits since). A sale dated before a split can be recorded afterwards: its units, its
+  availability (`lots[].quantity` and `remaining` in the preview) and its cost are on its own date.
+- **Order rule.** A split can't be recorded or removed while a sale of the holding is dated on or
+  after its effective date: that sale's units were entered in units counted after it, or before the
+  split was recorded, and either way the split would change what they mean. The owner removes the
+  sale and enters it again afterwards. (The design said only that parcels are as of the sale date;
+  this makes the two inputs unambiguous.) A split can't be dated in the future.
+- **Other edits.** `updateLot` compares the lot's units today (not recorded units) with what sales
+  took, and refuses a date or quantity change that would put them below; a reinvested payment's
+  lot moves the holding by its units today.
+- **Routes** (owner only, none on any token's allowlist): `POST /holdings/:id/splits/preview`,
+  `POST /holdings/:id/splits` and `DELETE /holdings/:id/splits/:splitId`. A holding's `splits`
+  come with the overview (`GET /api/investments`), so organise tokens read them there.
+- **Client:** `components/investments/SplitModals.tsx` (preview, record, remove), a **Split or
+  consolidate** entry on a holding's menu, purchases that show their units today, and a section
+  in the Investments guide article. The demo budget has no split; the action works there like any
+  other.
+- **Tests:** `services/splitMath.test.ts` (every rule, with property tests),
+  `routes/investmentSplits.test.ts` (the 100-unit example in §4, a later sale after a split, a sale
+  dated before the split recorded afterwards, refusals, a consolidation's lost fraction, reinvested
+  units, backup version 32 and an older backup, token refusals, migration 0084 on a populated 0083
+  database), and `e2e/tests/investments.spec.ts` (split a holding after a part sale).
 
 [cgt]: https://www.ato.gov.au/individuals-and-families/investments-and-assets/capital-gains-tax

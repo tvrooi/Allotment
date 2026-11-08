@@ -72,6 +72,7 @@ import {
   investmentSales,
   investmentSaleParcels,
   investmentIncome,
+  investmentSplits,
   depreciatingAssets,
   depreciatingAssetYears,
   taxLodgedYears,
@@ -102,6 +103,7 @@ import {
 import { loanDetailsSchema } from './loanDetails.js';
 import { SECURITY_KINDS } from './investmentService.js';
 import { INCOME_KINDS } from './investmentIncome.js';
+import { validRatio } from './splitMath.js';
 import { isCurrencyCode } from '../utils/currencies.js';
 
 // Full JSON backup of the user's data, and restoring one.
@@ -113,7 +115,7 @@ import { isCurrencyCode } from '../utils/currencies.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 31;
+export const BACKUP_VERSION = 32;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -191,6 +193,8 @@ const TABLES = {
   investmentSaleParcels,
   // Dividends, distributions and interest (format 31)
   investmentIncome,
+  // Splits and consolidations (format 32)
+  investmentSplits,
   // Depreciating assets (format 24), before document links (an asset's records); the pool year (format 25)
   depreciatingAssets,
   depreciatingAssetYears,
@@ -555,6 +559,14 @@ export function parseBackup(input: unknown): ParsedBackup {
       !linksDeposit(i.transactionId)
     )
       throw new InvalidBackupError('Invalid investment income');
+  // Splits and consolidations (format 32). Older backups have none.
+  for (const sp of result.investmentSplits)
+    if (
+      !holdingIds.has(String(sp.holdingId)) ||
+      !isoDate.safeParse(sp.effectiveOn).success ||
+      !validRatio(Number(sp.toUnits), Number(sp.fromUnits))
+    )
+      throw new InvalidBackupError('Invalid investment split');
   // Long-term forecast (format 16). Older backups have none: no plans, no loan details.
   const accountIds = new Set(result.accounts.map((a) => String(a.id)));
   const planIds = new Set(result.longTermPlans.map((p) => String(p.id)));

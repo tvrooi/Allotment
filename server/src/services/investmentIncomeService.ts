@@ -32,7 +32,9 @@ import {
   soldFromLot,
   toBudget,
 } from './investmentSales.js';
+import { splitsOf } from './investmentSplits.js';
 import { currencyContext, todayIso, type CurrencyContext } from './mainAmountService.js';
+import { lotUnitsOn } from './splitMath.js';
 
 const now = () => new Date().toISOString();
 
@@ -68,6 +70,10 @@ function syncReinvestment(
 ): string | null {
   const holding = holdingWithSecurity(holdingId).holding;
   const at = now();
+  // The holding keeps the units held now: a reinvested lot's units are scaled by any splits since
+  const splits = splitsOf(holdingId);
+  const unitsNow = (acquiredOn: string, quantity: number) =>
+    lotUnitsOn({ acquiredOn, quantity }, splits, todayIso()).units;
   const moveUnits = (delta: number) => {
     if (holding.quantity + delta < 0)
       throw new InvestmentError(
@@ -94,7 +100,7 @@ function syncReinvestment(
         createdAt: at,
       })
       .run();
-    moveUnits(reinvested.quantity);
+    moveUnits(unitsNow(paidOn, reinvested.quantity));
     return id;
   }
   const sold = soldFromLot(lot.id);
@@ -105,10 +111,10 @@ function syncReinvestment(
         409,
       );
     db.delete(taxLots).where(eq(taxLots.id, lot.id)).run();
-    moveUnits(-lot.quantity);
+    moveUnits(-unitsNow(lot.acquiredOn, lot.quantity));
     return null;
   }
-  if (reinvested.quantity < sold.units)
+  if (unitsNow(paidOn, reinvested.quantity) < sold.units)
     throw new InvestmentError(
       "Sales took units this payment bought: it can't have bought fewer than they took",
       409,
@@ -119,7 +125,7 @@ function syncReinvestment(
     .set({ acquiredOn: paidOn, quantity: reinvested.quantity, costBasis: reinvested.cost })
     .where(eq(taxLots.id, lot.id))
     .run();
-  moveUnits(reinvested.quantity - lot.quantity);
+  moveUnits(unitsNow(paidOn, reinvested.quantity) - unitsNow(lot.acquiredOn, lot.quantity));
   return lot.id;
 }
 

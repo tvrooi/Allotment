@@ -452,7 +452,12 @@ function LotRow({ lot, currency }: { lot: Holding['lots'][number]; currency: str
       <div className="flex items-center justify-between gap-2">
         <span className="text-text-secondary">
           {formatDay(lot.acquiredOn)} · {formatUnits(lot.quantity)} units
-          {lot.remaining < lot.quantity && (
+          {lot.units !== lot.quantity && (
+            <span className="block text-xs text-text-tertiary">
+              {formatUnits(lot.units)} units today, after splits
+            </span>
+          )}
+          {lot.remaining < lot.units && (
             <span className="block text-xs text-text-tertiary">
               {lot.remaining ? `${formatUnits(lot.remaining)} left after sales` : 'All sold'}
             </span>
@@ -483,7 +488,7 @@ function LotRow({ lot, currency }: { lot: Holding['lots'][number]; currency: str
             </button>
           )}
           {/* A purchase that sales drew from stays: their gains are worked out from it */}
-          {lot.remaining === lot.quantity && !lot.reinvested && (
+          {lot.remaining === lot.units && !lot.reinvested && (
             <button
               type="button"
               onClick={() => remove.mutate(lot.id)}

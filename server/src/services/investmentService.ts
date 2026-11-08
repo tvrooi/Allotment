@@ -26,6 +26,8 @@ import {
   reinvestedLots,
 } from './investmentIncomeService.js';
 import { keepingLodgedYears } from './investmentTax.js';
+import { splitRows, splitsByHolding, splitsOf } from './investmentSplits.js';
+import { lotUnitsOn } from './splitMath.js';
 
 // P3 investments (docs/INVESTMENTS.md): manual securities, prices, positions and tax lots.
 // None of it writes a transaction or changes an account's balance. The overview compares the
@@ -254,7 +256,14 @@ export function updateLot(
     if (!lot) throw new InvestmentError('Lot not found', 404);
     if (input.acquiredOn) checkLotDate(input.acquiredOn);
     const sold = soldFromLot(id);
-    if (input.quantity !== undefined && input.quantity < sold.units)
+    // Sold units are counted today, so the lot's are too: its splits since it was bought apply
+    const splits = splitsOf(lot.holdingId);
+    const unitsNow = (quantity: number, acquiredOn: string) =>
+      lotUnitsOn({ acquiredOn, quantity }, splits, todayIso()).units;
+    if (
+      (input.quantity !== undefined || input.acquiredOn !== undefined) &&
+      unitsNow(input.quantity ?? lot.quantity, input.acquiredOn ?? lot.acquiredOn) < sold.units
+    )
       throw new InvestmentError(
         "Sales took units from this purchase: it can't hold fewer than they took",
         409,
@@ -303,6 +312,7 @@ function convert(
  */
 export function investmentOverview(asOf: string = todayIso()) {
   const ctx = currencyContext();
+  const today = todayIso();
   const accountRows = db
     .select()
     .from(accounts)
@@ -355,6 +365,7 @@ export function investmentOverview(asOf: string = todayIso()) {
   const taken = soldFromLots(lotRows.map((l) => l.id));
   const reinvested = reinvestedLots(lotRows.map((l) => l.id));
   const sales = salesByHolding(ctx);
+  const splits = splitsByHolding();
   const income = incomeByHolding();
 
   const securityById = new Map(securityRows.map((s) => [s.id, s]));
@@ -384,14 +395,23 @@ export function investmentOverview(asOf: string = todayIso()) {
       .filter((h) => h.accountId === account.id)
       .map((h) => {
         const sec = securityById.get(h.securityId)!;
+        // A lot's units today are its recorded units scaled by the splits since it was bought
         const lots = lotRows
           .filter((l) => l.holdingId === h.id)
-          .map((l) => ({ ...l, remaining: l.quantity - (taken.get(l.id) ?? 0) }));
+          .map((l) => {
+            const units = lotUnitsOn(l, splits.get(h.id) ?? [], today);
+            return {
+              ...l,
+              units: units.units,
+              exact: units.exact,
+              remaining: units.units - (taken.get(l.id) ?? 0),
+            };
+          });
         const held = lots
           .filter((l) => l.remaining > 0)
           .map((l) => ({
             quantity: l.remaining,
-            costBasis: l.costBasis === null ? null : mulDiv(l.costBasis, l.remaining, l.quantity),
+            costBasis: l.costBasis === null ? null : mulDiv(l.costBasis, l.remaining, l.units),
           }));
         const valuation = valueHolding(h.quantity, held, prices.get(sec.id) ?? [], asOf);
         const accountValue = convert(valuation.value, sec.currency, currency, asOf, ctx);
@@ -419,13 +439,19 @@ export function investmentOverview(asOf: string = todayIso()) {
           lots: lots.map((l) => ({
             id: l.id,
             acquiredOn: l.acquiredOn,
+            /** As recorded when bought; `units` is what that is today, after any splits */
             quantity: l.quantity,
+            units: l.units,
             costBasis: l.costBasis,
-            /** Units no sale has taken */
+            /** Units no sale has taken, counted today */
             remaining: l.remaining,
             /** Bought by a reinvested payment: changed through that payment */
             reinvested: reinvested.has(l.id),
           })),
+          /** Splits and consolidations, newest first */
+          splits: splitRows(h.id),
+          /** A consolidation dropped a fraction of a millionth of a unit from a purchase */
+          unitsRounded: lots.some((l) => !l.exact),
           /** Newest first, figures in the budget's currency */
           sales: sales.get(h.id) ?? [],
           /** Dividends, distributions and interest, newest first, as entered */

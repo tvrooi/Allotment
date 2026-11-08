@@ -28,6 +28,8 @@ import {
 } from './capitalGains.js';
 import { financialYearName, financialYearOf } from './financialYear.js';
 import { InvestmentError } from './investmentError.js';
+import { splitsByHolding, splitsOf } from './investmentSplits.js';
+import { lotUnitsOn, unitsBetween } from './splitMath.js';
 import {
   convertAmount,
   currencyContext,
@@ -53,21 +55,31 @@ export interface SaleInput {
 
 // ─── Reading sales ────────────────────────────────────────────────────────────
 
-/** Units each lot has given to sales (all but `exceptSaleId`'s) */
-function soldUnits(lotIds: string[], exceptSaleId?: string): Map<string, number> {
+/**
+ * Units each lot has given to sales (all but `exceptSaleId`'s), counted on `on` (today unless
+ * given): a parcel's units are as of its sale's date, so splits since then scale them
+ */
+function soldUnits(lotIds: string[], exceptSaleId?: string, on = todayIso()): Map<string, number> {
   if (!lotIds.length) return new Map();
   const rows = db
     .select({
       lotId: investmentSaleParcels.lotId,
       saleId: investmentSaleParcels.saleId,
+      holdingId: investmentSales.holdingId,
+      soldOn: investmentSales.soldOn,
       quantity: investmentSaleParcels.quantity,
     })
     .from(investmentSaleParcels)
+    .innerJoin(investmentSales, eq(investmentSales.id, investmentSaleParcels.saleId))
     .where(inArray(investmentSaleParcels.lotId, lotIds))
     .all();
+  const splits = splitsByHolding();
   const taken = new Map<string, number>();
   for (const r of rows)
-    if (r.saleId !== exceptSaleId) taken.set(r.lotId, (taken.get(r.lotId) ?? 0) + r.quantity);
+    if (r.saleId !== exceptSaleId) {
+      const units = unitsBetween(r.quantity, r.soldOn, on, splits.get(r.holdingId) ?? []).units;
+      taken.set(r.lotId, (taken.get(r.lotId) ?? 0) + units);
+    }
   return taken;
 }
 
@@ -88,6 +100,8 @@ function saleRecords() {
     .innerJoin(securities, eq(securities.id, holdings.securityId))
     .orderBy(asc(investmentSales.soldOn), asc(investmentSales.createdAt))
     .all();
+  const splits = splitsByHolding();
+  const sales = new Map(rows.map((r) => [r.sale.id, r.sale]));
   const parcels = new Map<string, { lot: ParcelLot; quantity: number }[]>();
   for (const p of db
     .select({
@@ -103,8 +117,15 @@ function saleRecords() {
     .orderBy(asc(taxLots.acquiredOn), asc(taxLots.createdAt))
     .all()) {
     const list = parcels.get(p.saleId) ?? [];
+    const sale = sales.get(p.saleId)!;
+    // The parcel's units, and so its share of the cost, are as of the sale's date
+    const lotUnits = lotUnitsOn(
+      { acquiredOn: p.acquiredOn, quantity: p.lotQuantity },
+      splits.get(sale.holdingId) ?? [],
+      sale.soldOn,
+    ).units;
     list.push({
-      lot: { id: p.id, acquiredOn: p.acquiredOn, quantity: p.lotQuantity, costBasis: p.costBasis },
+      lot: { id: p.id, acquiredOn: p.acquiredOn, quantity: lotUnits, costBasis: p.costBasis },
       quantity: p.quantity,
     });
     parcels.set(p.saleId, list);
@@ -310,10 +331,16 @@ export function saleOf(holdingId: string, saleId: string) {
 function resolveSale(holdingId: string, input: SaleInput, exceptSaleId?: string) {
   const { holding, currency } = holdingWithSecurity(holdingId);
   if (input.soldOn > todayIso()) throw new InvestmentError("A sale can't be dated in the future");
-  const before = exceptSaleId ? saleOf(holdingId, exceptSaleId).quantity : 0;
-  const held = holding.quantity + before;
-  if (input.quantity > held)
-    throw new InvestmentError("That's more units than this holding has", 409);
+  // The holding keeps the units held now; a sale's units are as of its date, so splits since
+  // then scale them
+  const splits = splitsOf(holdingId);
+  const today = todayIso();
+  const prior = exceptSaleId ? saleOf(holdingId, exceptSaleId) : null;
+  const held =
+    holding.quantity +
+    (prior ? unitsBetween(prior.quantity, prior.soldOn, today, splits).units : 0);
+  const sold = unitsBetween(input.quantity, input.soldOn, today, splits).units;
+  if (sold > held) throw new InvestmentError("That's more units than this holding has", 409);
 
   const lotRows = db
     .select()
@@ -321,11 +348,16 @@ function resolveSale(holdingId: string, input: SaleInput, exceptSaleId?: string)
     .where(eq(taxLots.holdingId, holdingId))
     .orderBy(asc(taxLots.acquiredOn), asc(taxLots.createdAt))
     .all();
+  // Each purchase's units, and what other sales left of them, counted on the sale's date
   const taken = soldUnits(
     lotRows.map((l) => l.id),
     exceptSaleId,
+    input.soldOn,
   );
-  const lots = lotRows.map((l) => ({ ...l, remaining: l.quantity - (taken.get(l.id) ?? 0) }));
+  const lots = lotRows.map((l) => {
+    const units = lotUnitsOn(l, splits, input.soldOn).units;
+    return { ...l, quantity: units, remaining: units - (taken.get(l.id) ?? 0) };
+  });
 
   let parcels: ParcelChoice[];
   if (input.parcels) {
@@ -348,7 +380,7 @@ function resolveSale(holdingId: string, input: SaleInput, exceptSaleId?: string)
   } else {
     parcels = fifoParcels(lots, input.quantity, input.soldOn).parcels;
   }
-  return { holding, currency, held, lots, parcels };
+  return { holding, currency, held, sold, lots, parcels };
 }
 
 /** A sale's parcels, gain and discount before it is saved, with the lots it could draw from */
@@ -376,7 +408,7 @@ export function previewSale(holdingId: string, input: SaleInput, exceptSaleId?: 
 }
 
 function writeSale(saleId: string, holdingId: string, input: SaleInput, exceptSaleId?: string) {
-  const { held, parcels } = resolveSale(holdingId, input, exceptSaleId);
+  const { held, sold, parcels } = resolveSale(holdingId, input, exceptSaleId);
   const at = now();
   const row = {
     soldOn: input.soldOn,
@@ -400,7 +432,7 @@ function writeSale(saleId: string, holdingId: string, input: SaleInput, exceptSa
       .run();
   // The holding keeps the units held now: the sale's units leave it in the same step
   db.update(holdings)
-    .set({ quantity: held - input.quantity, updatedAt: at })
+    .set({ quantity: held - sold, updatedAt: at })
     .where(eq(holdings.id, holdingId))
     .run();
   return db.select().from(investmentSales).where(eq(investmentSales.id, saleId)).get()!;
@@ -418,25 +450,25 @@ export function deleteSale(holdingId: string, saleId: string) {
   const sale = saleOf(holdingId, saleId);
   db.delete(investmentSales).where(eq(investmentSales.id, saleId)).run();
   db.update(holdings)
-    .set({ quantity: sql`${holdings.quantity} + ${sale.quantity}`, updatedAt: now() })
+    .set({
+      quantity: sql`${holdings.quantity} + ${unitsBetween(sale.quantity, sale.soldOn, todayIso(), splitsOf(holdingId)).units}`,
+      updatedAt: now(),
+    })
     .where(eq(holdings.id, holdingId))
     .run();
 }
 
 // ─── What sales hold on to ────────────────────────────────────────────────────
 
-/** Units sold from a lot and the earliest sale that took some */
+/** Units sold from a lot, counted today, and the earliest sale that took some */
 export function soldFromLot(lotId: string): { units: number; firstSoldOn: string | null } {
   const row = db
-    .select({
-      units: sql<number>`coalesce(sum(${investmentSaleParcels.quantity}), 0)`,
-      first: sql<string | null>`min(${investmentSales.soldOn})`,
-    })
+    .select({ first: sql<string | null>`min(${investmentSales.soldOn})` })
     .from(investmentSaleParcels)
     .innerJoin(investmentSales, eq(investmentSales.id, investmentSaleParcels.saleId))
     .where(eq(investmentSaleParcels.lotId, lotId))
     .get();
-  return { units: row?.units ?? 0, firstSoldOn: row?.first ?? null };
+  return { units: soldUnits([lotId]).get(lotId) ?? 0, firstSoldOn: row?.first ?? null };
 }
 
 /** Units each of these lots has given to sales */

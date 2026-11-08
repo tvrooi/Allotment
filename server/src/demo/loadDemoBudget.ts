@@ -16,6 +16,7 @@ import {
   goals,
   holdings,
   investmentIncome,
+  investmentSplits,
   investmentSaleParcels,
   investmentSales,
   payees,
@@ -76,6 +77,7 @@ export function loadDemoBudget(today: Date): void {
     insert(investmentSales, demo.investmentSales);
     insert(investmentSaleParcels, demo.investmentSaleParcels);
     insert(investmentIncome, demo.investmentIncome);
+    insert(investmentSplits, demo.investmentSplits);
   });
 
   // Recurring items get their occurrences the way the app makes them (three months ahead,

@@ -26,13 +26,23 @@ export interface SecuritySummary extends Security {
 export interface TaxLot {
   id: string;
   acquiredOn: string;
+  /** As recorded when bought; `units` is what that is today, after any splits */
   quantity: number;
+  units: number;
   /** Total cost of the lot; null = not known */
   costBasis: number | null;
-  /** Units no sale has taken */
+  /** Units no sale has taken, counted today */
   remaining: number;
   /** Bought by a reinvested payment: changed through that payment */
   reinvested: boolean;
+}
+
+/** A split or consolidation of a holding (D3c): `fromUnits` units became `toUnits` */
+export interface Split {
+  id: string;
+  effectiveOn: string;
+  toUnits: number;
+  fromUnits: number;
 }
 
 /** Why a sale's gain can't be counted: units with no purchase, a cost not known, no exchange rate */
@@ -102,6 +112,10 @@ export interface Holding {
   gainPercent: number | null;
   /** The value in the account's currency */
   accountValue: number | null;
+  /** Splits and consolidations, newest first */
+  splits: Split[];
+  /** A consolidation dropped a fraction of a millionth of a unit from a purchase */
+  unitsRounded: boolean;
   /** Newest first */
   sales: Sale[];
   /** Dividends, distributions and interest, newest first */
@@ -247,8 +261,8 @@ export interface SalePreview {
   discount: Sale['discount'];
   unknown: UnknownReason | null;
   budgetCurrency: string | null;
-  /** The holding's purchases, with what's left of each for this sale */
-  lots: TaxLot[];
+  /** The holding's purchases, with their units and what's left of each, on the sale's date */
+  lots: Pick<TaxLot, 'id' | 'acquiredOn' | 'quantity' | 'costBasis' | 'remaining'>[];
 }
 
 export const previewSale = (holdingId: string, data: SaleInput & { saleId?: string }) =>
@@ -338,3 +352,39 @@ export interface InvestmentLink {
 
 export const investmentForTransaction = (transactionId: string) =>
   apiFetch<InvestmentLink | null>(`/investments/transactions/${transactionId}`);
+
+// ─── Splits and consolidations (D3c) ──────────────────────────────────────────
+
+/** Largest number in a split's ratio (server: services/splitMath.ts) */
+export const SPLIT_RATIO_MAX = 100_000;
+
+export interface SplitInput {
+  effectiveOn: string;
+  toUnits: number;
+  fromUnits: number;
+}
+
+export interface SplitPreview {
+  /** The units held now, and after the split */
+  before: number;
+  after: number;
+  /** Each purchase's units today, before and after */
+  lots: { id: string; acquiredOn: string; before: number; after: number; scaled: boolean }[];
+  /** A fraction of a millionth of a unit is dropped */
+  rounded: boolean;
+}
+
+export const previewSplit = (holdingId: string, data: SplitInput) =>
+  apiFetch<SplitPreview>(`/investments/holdings/${holdingId}/splits/preview`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+export const recordSplit = (holdingId: string, data: SplitInput) =>
+  apiFetch<Split & SplitPreview>(`/investments/holdings/${holdingId}/splits`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+export const deleteSplit = (holdingId: string, splitId: string) =>
+  apiFetch<void>(`/investments/holdings/${holdingId}/splits/${splitId}`, { method: 'DELETE' });

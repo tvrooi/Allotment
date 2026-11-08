@@ -987,7 +987,7 @@ const ACTION_TOOLS: ActionTool[] = [
     scope: 'organise',
     readOnly: true,
     description:
-      "Investments: each investment account's holdings with their purchases (lots), sales (parcels, gain or loss, whether the 50% discount applies) and income (dividends, distributions, interest with franked, unfranked, franking credit and tax withheld), valued on as_of (default today). With financial_year, also that year's capital gains (item 18) and investment income (items 10 and 11). Amounts in cents, units in millionths; financial year 2025 = 2025–26. Read only: never records, changes or links a sale or payment. Record keeping, not tax advice.",
+      "Investments: each investment account's holdings with their purchases (lots, with their units today after any splits and consolidations), sales (parcels, gain or loss, whether the 50% discount applies) and income (dividends, distributions, interest with franked, unfranked, franking credit and tax withheld), valued on as_of (default today). With financial_year, also that year's capital gains (item 18) and investment income (items 10 and 11). Amounts in cents, units in millionths; financial year 2025 = 2025–26. Read only: never records, changes or links a sale or payment. Record keeping, not tax advice.",
     properties: {
       as_of: day,
       financial_year: { type: 'integer', minimum: 1990, maximum: 2200 },
