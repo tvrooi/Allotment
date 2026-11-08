@@ -24,7 +24,8 @@ import { HouseholdBreakdown } from '../components/household/HouseholdBreakdown';
 import { ActivityLog } from '../components/household/ActivityLog';
 import { RepaymentCategoryOffers } from '../components/household/RepaymentCategoryOffers';
 import { recentEntries } from '../components/household/recentEntries';
-import type { HouseholdSplit, SharedRecurringBill } from '../api/households';
+import type { HouseholdCoverage, HouseholdSplit, SharedRecurringBill } from '../api/households';
+import { BillsCoverage } from '../components/household/BillsCoverage';
 
 type Group = {
   id: string;
@@ -78,6 +79,7 @@ type State = {
   unreserved: number;
   bills: Bill[];
   recurringBills: SharedRecurringBill[];
+  coverage: HouseholdCoverage;
 };
 const today = () => {
   const d = new Date();
@@ -415,6 +417,14 @@ export default function HouseholdPage() {
           {isLoading && <div className="h-40 bg-surface-alt rounded-lg animate-pulse" />}
           {state && (
             <>
+              {hasPool && state.coverage && (
+                <BillsCoverage
+                  coverage={state.coverage}
+                  currency={state.group.currency}
+                  people={state.people}
+                />
+              )}
+
               <RecurringBills
                 key={`recurring-${state.group.id}`}
                 groupId={state.group.id}
@@ -567,26 +577,32 @@ export default function HouseholdPage() {
                   direct={state.direct ?? {}}
                 />
                 {hasPool && (
-                  <div className="mt-3 grid gap-2 sm:grid-cols-3 text-xs text-text-tertiary">
-                    <p className="bg-surface-alt rounded-lg p-2.5">
-                      Received pool funding remaining:{' '}
-                      <span className="block text-sm font-semibold tabular-nums text-text">
-                        {money(state.pool)}
-                      </span>
-                    </p>
-                    <p className="bg-surface-alt rounded-lg p-2.5">
-                      Bank cash:{' '}
-                      <span className="block text-sm font-semibold tabular-nums text-text">
-                        {money(state.cash)}
-                      </span>
-                    </p>
-                    <p className="bg-surface-alt rounded-lg p-2.5">
-                      Available to reserve:{' '}
-                      <span className="block text-sm font-semibold tabular-nums text-text">
-                        {money(state.unreserved)}
-                      </span>
-                    </p>
-                  </div>
+                  <details className="mt-3 text-xs text-text-tertiary">
+                    <summary className="cursor-pointer w-fit font-medium text-text-secondary">
+                      Household account figures
+                    </summary>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                      <p className="bg-surface-alt rounded-lg p-2.5">
+                        In the account now:{' '}
+                        <span className="block text-sm font-semibold tabular-nums text-text">
+                          {money(state.cash)}
+                        </span>
+                      </p>
+                      <p className="bg-surface-alt rounded-lg p-2.5">
+                        Paid in, less what the account paid:{' '}
+                        <span className="block text-sm font-semibold tabular-nums text-text">
+                          {money(state.pool)}
+                        </span>
+                        Below zero means people owe the account this much.
+                      </p>
+                      <p className="bg-surface-alt rounded-lg p-2.5">
+                        Not set aside for a bill:{' '}
+                        <span className="block text-sm font-semibold tabular-nums text-text">
+                          {money(state.unreserved)}
+                        </span>
+                      </p>
+                    </div>
+                  </details>
                 )}
               </section>
 

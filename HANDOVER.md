@@ -9,13 +9,14 @@ Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminder
 
 ## State
 
-- **Household as an Essentials-style bills hub (up.147 is PR 1 of 4; client only):** plan from the
+- **Household as an Essentials-style bills hub (up.147 carries PRs 1 and 2 of 4):** plan from the
   owner's 8 November request, with the decisions the owner made: drift only prompts, the gauge covers
   the next 30 days, both bill sections merge into one hub, and all four parts get built. PR 1 puts
   Recurring bills first and lists household entries newest first, from the newest entry's month and
-  the one before (`components/household/recentEntries.ts`, **Show older**). Next: PR 2, a coverage
-  gauge (cash against bills due in the next 30 days, plus each person's share against what they paid
-  in). PR 3: bill tiles with in-place edit and a drift prompt, merging **Bills to reserve for**, plus
+  the one before (`components/household/recentEntries.ts`, **Show older**). PR 2 adds **Bills coverage**
+  (`services/householdCoverage.ts`, `coverage` in the household snapshot,
+  `components/household/BillsCoverage.tsx`): the cash against the bills due in the next 30 days,
+  and each person's share against what they paid in this month. PR 3: bill tiles with in-place edit and a drift prompt, merging **Bills to reserve for**, plus
   the unbuilt November item 2 (a recurring amount edit recomputes the linked `household_bills`).
   PR 4: suggest missing bills from the household account (live: CovaU Energy, Yarra Valley Water).
   Live facts behind it: OVO is expected at A$150 but was paid A$100–107; Superloop is A$115 against

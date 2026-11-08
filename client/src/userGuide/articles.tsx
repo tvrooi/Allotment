@@ -1146,6 +1146,17 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
     summary: 'Share costs with the people you live with, and keep a record of who changed what.',
     sections: [
       {
+        heading: 'Is there enough for the bills?',
+        body: (
+          <p>
+            With a household account, <b>Bills coverage</b> at the top compares what the account
+            holds with the bills it will pay in the next 30 days, like the dial in Up&rsquo;s
+            Essentials. It lists those bills and what is still to be paid in, and each
+            person&rsquo;s part of them beside what they have paid in this month.
+          </p>
+        ),
+      },
+      {
         heading: 'Recent entries first',
         body: (
           <p>
