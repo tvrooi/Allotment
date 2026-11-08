@@ -75,7 +75,8 @@ test('prepaid pool expenses do not create a second reimbursement claim', async (
   expect(Object.values(ledger.balances)).toEqual([0, 0]);
   await open(page, '/household');
   await expect(page.getByRole('heading', { name: 'People & balances' })).toBeVisible();
-  await expect(page.getByText(/Received pool funding remaining:/)).toContainText('$0');
+  await page.getByText('Household account figures').click();
+  await expect(page.getByText(/Paid in, less what the account paid:/)).toContainText('$0');
 });
 
 test('shares a payment with the household in one step, with the default split', async ({
@@ -494,7 +495,7 @@ test('lists recurring bills shared with housemates, with shares and one-click sh
   const recurring = page.getByRole('region', { name: 'Recurring bills' });
   await expect(recurring).toContainText('No recurring bills shared yet');
   // No household account: the pool figures stay out of the way
-  await expect(page.getByText(/Received pool funding remaining:/)).toHaveCount(0);
+  await expect(page.getByText('Household account figures')).toHaveCount(0);
   await recurring.getByRole('button', { name: 'Add recurring bills' }).click();
   await recurring.getByLabel('Electricity (OVO)').check();
   await recurring.getByLabel('Internet (Superloop)').check();
@@ -877,4 +878,89 @@ test('reconciles household balances to zero, and removing the adjustments undoes
   await expect(page.getByText('Balances agreed (between people)')).toBeVisible();
   await page.getByRole('button', { name: 'Remove entry' }).last().click();
   await expect(page.getByText('owes A$40', { exact: true })).toBeVisible();
+});
+
+test('lists recent entries newest first, with older months a click away', async ({ page, api }) => {
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    people: ['Me', 'Alex'],
+    selfIndex: 0,
+  });
+  const [me] = group.people;
+  for (const [date, description] of [
+    ['2026-05-04', 'Old power bill'],
+    ['2026-10-08', 'Internet'],
+    ['2026-11-06', 'Water'],
+  ])
+    await api.call('POST', `/households/${group.group.id}/events`, {
+      kind: 'expense',
+      date,
+      description,
+      amount: 10000,
+      payerId: me.id,
+      shares: group.people.map((p: any) => ({ personId: p.id, value: 1 })),
+    });
+  await open(page, '/household');
+  const statement = page.getByRole('heading', { name: /My expense shares/ }).locator('../..');
+  // The total still covers every expense; the rows open on the newest two months
+  await expect(statement.getByRole('heading', { name: /My expense shares:.*150/ })).toBeVisible();
+  const rows = statement.getByRole('row');
+  await expect(rows.nth(1)).toContainText('Water');
+  await expect(rows.nth(2)).toContainText('Internet');
+  await expect(statement.getByText('Old power bill')).toHaveCount(0);
+  await statement.getByRole('button', { name: 'Show older (1)' }).click();
+  await expect(statement.getByText('Old power bill')).toBeVisible();
+
+  await page.getByRole('button', { name: /All contributions, payments & repayments/ }).click();
+  const history = page
+    .getByRole('button', { name: /All contributions, payments & repayments/ })
+    .locator('..');
+  await expect(history.getByRole('row').first()).toContainText('Water');
+  await expect(history.getByText('Old power bill')).toHaveCount(0);
+  await history.getByRole('button', { name: 'Show older (1)' }).click();
+  await expect(history.getByRole('row').last()).toContainText('Old power bill');
+});
+
+test('a gauge shows whether the household account covers the next 30 days of bills', async ({
+  page,
+  api,
+}) => {
+  const pool = await api.createAccount('2Up Essentials', 10000, 'savings', { currency: 'AUD' });
+  const day = (offset: number) =>
+    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+  const schedule = await api.call('POST', '/schedules', {
+    name: 'Internet',
+    amount: -11400,
+    recurrenceType: 'monthly',
+    recurrenceRule: { type: 'monthly', interval: 1, anchorDay: Number(day(3).slice(8)) },
+    startDate: day(3),
+    accountId: pool.id,
+  });
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: pool.id,
+    people: ['Me', 'Juno', 'Zephyr'],
+    selfIndex: 0,
+  });
+  await api.call('POST', `/households/${group.group.id}/recurring-bills`, {
+    scheduleIds: [schedule.id],
+  });
+  await open(page, '/household');
+  const gauge = page.getByRole('region', { name: 'Bills coverage' });
+  await expect(gauge.getByRole('meter', { name: 'Bills covered' })).toHaveAttribute(
+    'aria-valuenow',
+    '88',
+  );
+  await expect(gauge).toContainText(/A\$100\s*of A\$114 needed by/);
+  await expect(gauge).toContainText('A$14 still to be paid in');
+  await expect(gauge.getByRole('listitem').filter({ hasText: 'Internet' })).toContainText('114');
+  await expect(
+    gauge.getByRole('list', { name: "Each person's part" }).getByRole('listitem').nth(1),
+  ).toContainText(/Juno.*A\$38 of these bills · paid in A\$0/);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
 });

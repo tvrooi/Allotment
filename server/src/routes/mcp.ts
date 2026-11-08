@@ -246,7 +246,7 @@ const TOOLS: Tool[] = [
   {
     name: 'household',
     description:
-      "One household group in full: people, agreed shares, events (expenses, advances, repayments, refunds), bills and each person's balance.",
+      "One household group in full: people, agreed shares, events (expenses, advances, repayments, refunds), bills, each person's balance, and coverage: the household accounts' cash against the bills due in the next 30 days, with each person's part and what they paid in this month.",
     properties: { household_id: { type: 'string', description: 'From list_households' } },
     required: ['household_id'],
     path: (a) => `/households/${seg(a.household_id)}`,

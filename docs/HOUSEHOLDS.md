@@ -23,6 +23,34 @@ Two accounting policies work together:
   another expense or salary. Do not add this report's shares to your personal
   contribution-based budget totals; these answer different questions.
 
+The page opens with **Recurring bills**, then **People & balances**. The expense statement and
+**All contributions, payments & repayments** list entries newest first. They open on the newest
+entry's month and the month before it, counted from that entry rather than from today, so a
+quiet household still shows its last activity. **Show older** reaches the next hidden entry and
+three months more (`client/src/components/household/recentEntries.ts`). A **From** date shows its
+whole range. The statement's total and its export always cover the chosen dates (all of them
+when none are set), not just the rows on screen. The server keeps sending entries oldest first;
+only the page reverses them.
+
+### Bills coverage
+
+With a household account, **Bills coverage** sits at the top of the page, like the dial in Up's
+Essentials. It compares what the household accounts hold now with the bills they will pay in the
+next 30 days (`COVERAGE_DAYS`): "A$176 of A$4,930 needed by 8 Dec", a meter, and what is still to
+be paid in. The bills it counts are:
+
+- every expected date of a shared recurring bill paid from a household account
+  (`sharedRecurringBills` → `upcoming`); and
+- one-off bills that are not fully paid, including overdue ones. A one-off bill tied to a shared
+  recurring item is left out, because that item's dates already count it.
+
+Each person's row shows their part of those bills, from the bill's split (the same `billShares`
+the bill list uses), and what they have paid in since the first of the month. The figures come
+from `householdCoverage.ts` through `GET /api/households/:id` (`coverage`), so MCP `household` reads them too. They are a
+projection only and never write. The older figures (in the account now; paid in, less what the
+account paid; not set aside for a bill) are under **Household account figures** in People &
+balances.
+
 ## More pool accounts, default splits and sharing in one step
 
 A household can have **several pool accounts** (**Household → Sharing → Household accounts**),
