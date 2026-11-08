@@ -197,3 +197,59 @@ test('records a franked dividend, links its deposit and shows item 11', async ({
     /A?\$30(\.00)?/,
   );
 });
+
+// D3c: a 2-for-1 split doubles the units held, previews it first, and an earlier sale keeps its cost
+test('splits a holding after a part sale and keeps the earlier sale’s gain', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Mock split account', 0, 'investment');
+  const security = await api.call('POST', '/investments/securities', {
+    symbol: 'SPLT',
+    name: 'Mock split fund',
+    kind: 'stock',
+    currency: 'AUD',
+  });
+  const holding = await api.call('POST', '/investments/holdings', {
+    accountId: account.id,
+    securityId: security.id,
+    quantity: 100_000_000,
+  });
+  await api.call('POST', `/investments/holdings/${holding.id}/lots`, {
+    acquiredOn: isoDay(-800),
+    quantity: 100_000_000,
+    costBasis: 10_000,
+  });
+  const sale = await api.call('POST', `/investments/holdings/${holding.id}/sales`, {
+    soldOn: isoDay(-60),
+    quantity: 40_000_000,
+    proceeds: 8_000,
+    fees: 0,
+  });
+
+  await open(page, '/investments');
+  const row = page.getByRole('row', { name: /SPLT/ });
+  await expect(row.getByRole('cell').nth(1)).toHaveText('60');
+  await row.getByRole('button', { name: 'Actions for SPLT' }).click();
+  await page.getByRole('menuitem', { name: 'Split or consolidate' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Split or consolidate SPLT' });
+  await dialog.getByLabel('Effective on').fill(isoDay(-30));
+  await dialog.getByLabel('New units').fill('2');
+  await dialog.getByLabel('For every old unit(s)').fill('1');
+  await expect(dialog).toContainText(
+    'You hold 60 units now; after the 2 for 1 split you will hold 120',
+  );
+  await dialog.getByRole('button', { name: 'Record' }).click();
+  await expect(dialog).toBeHidden();
+
+  await expect(row.getByRole('cell').nth(1)).toHaveText('120');
+  // The cost of the 120 units left is the other $60, and the earlier sale still cost $40
+  await expect(row).toContainText(/A?\$60(\.00)?/);
+  const saved = await api.call('GET', '/investments');
+  const found = saved.accounts
+    .flatMap(
+      (a: { holdings: { id: string; sales: { id: string; cost: number }[] }[] }) => a.holdings,
+    )
+    .find((h: { id: string }) => h.id === holding.id);
+  expect(found.sales.find((s: { id: string }) => s.id === sale.id).cost).toBe(4_000);
+});

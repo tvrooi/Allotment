@@ -5,10 +5,20 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminders; up.141 D3a merged; up.142 D3b in review).
+Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminders; up.141 D3a and up.142 D3b merged; up.143 D3c in review).
 
 ## State
 
+- **Splits and consolidations (up.143, D3c of the Larger features group; server, client and MCP
+  read; migration 0084, additive; backup version 32):** see
+  [docs/INVESTMENT-SALES-AND-INCOME.md](docs/INVESTMENT-SALES-AND-INCOME.md) §10 "D3c". A holding's
+  **Split or consolidate** (date and ratio, previewed) scales the units held and rewrites nothing:
+  a lot's units on a day are its recorded units times the splits since it was bought
+  (`services/splitMath.ts`, `investmentSplits.ts`), a sale's quantity and parcels are as of its
+  date, so an earlier sale keeps its cost. A split can't be recorded or removed while a sale is
+  dated on or after it. Writes run through `investmentTax.ts` like the rest; no token writes
+  splits, and organise tokens see them on `GET /api/investments`. D3 is complete; a trust
+  distribution's annual statement (T2) waits for demand.
 - **Dividends, franking and deposits (up.142, D3b of the Larger features group; server, client,
   demo and MCP; migration 0083, additive; backup version 31):** see
   [docs/INVESTMENT-SALES-AND-INCOME.md](docs/INVESTMENT-SALES-AND-INCOME.md) §10 "D3b". A holding's
@@ -19,7 +29,7 @@ Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminder
   shows **Investment money**. Tax time → Deductions gains **Dividends and interest (items 10 and 11)**, distributions apart, the 45-day prompt over $5,000 of credits; the CSV and ZIP carry
   them; lodged years lock items 10, 11 and 18 (`services/investmentTax.ts`). Organise tokens read
   `GET /api/investments` and the MCP `investments` tool (read only, owner decision 7); no token
-  writes any of it. Next: D3c, splits.
+  writes any of it. D3c, splits, followed.
 - **Investment sales and capital gains (up.141, D3a of the Larger features group; server, client
   and demo; migration 0082, additive; backup version 30):** built to
   [docs/INVESTMENT-SALES-AND-INCOME.md](docs/INVESTMENT-SALES-AND-INCOME.md), whose §10 "As built"
@@ -30,7 +40,7 @@ Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminder
   unknown costs or rates counted, never zero. The year's CSV gains item 18. Lodged years refuse any
   change that moves their item 18 (`keepingLodgedYears`). A new guide article, Investments. No
   token reaches any of it yet: D3b adds dividends, franking, register links, the `investment` file
-  link kind and the read-only `investments` MCP tool for organise tokens; D3c adds splits.
+  link kind and the read-only `investments` MCP tool for organise tokens; D3c added splits.
 - **UI/UX audit (7 November 2026; documentation only):** see [the report](docs/UX-UI-AUDIT.md)
   and [evidence guide](docs/ux-ui-evidence/README.md). Fourteen stable findings, ranked work,
   acceptance criteria and a phased roadmap are ready for implementation. Start with shared
@@ -659,7 +669,8 @@ site in `website/` was removed (audit decision I-9).
    - Investments deferrals (sales, dividends, franking): designed in
      `docs/INVESTMENT-SALES-AND-INCOME.md` (D3), design approved 7 November (its §9). D3a, sales,
      is built (up.141), and D3b, dividends, franking, deposits and the read-only MCP tool
-     (up.142); next is D3c, splits.
+     (up.142), and D3c, splits and consolidations (up.143); a trust distribution's annual statement
+     waits for demand.
    - Receipts §6 (PDF reading, email
      forwarding, logbooks, depreciation, WFH hours).
    - The legacy `recurring_transactions` cleanup is done (up.123, migration 0078).

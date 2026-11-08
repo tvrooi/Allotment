@@ -25,6 +25,7 @@ import {
 } from '../components/investments/InvestmentModals';
 import { SalesModal, SellModal } from '../components/investments/SaleModals';
 import { IncomeListModal, IncomeModal } from '../components/investments/IncomeModals';
+import { SplitModal } from '../components/investments/SplitModals';
 import { GuideLink } from '../components/guide/GuideLink';
 import type {
   Holding,
@@ -53,6 +54,7 @@ type Dialog =
   | { kind: 'sales'; holdingId: string }
   | { kind: 'income'; holdingId: string; income?: Income }
   | { kind: 'income-list'; holdingId: string }
+  | { kind: 'split'; holdingId: string }
   | { kind: 'record'; accountId: string; value: number }
   | { kind: 'remove-holding'; holding: Holding }
   | { kind: 'remove-security'; security: SecuritySummary };
@@ -168,6 +170,10 @@ function HoldingRow({ holding, onDialog }: { holding: Holding; onDialog: (d: Dia
               label: `Income (${holding.income.length})`,
               hidden: !holding.income.length,
               onClick: () => onDialog({ kind: 'income-list', holdingId: holding.id }),
+            },
+            {
+              label: 'Split or consolidate',
+              onClick: () => onDialog({ kind: 'split', holdingId: holding.id }),
             },
             { label: 'Edit units', onClick: () => onDialog({ kind: 'holding', holding }) },
             {
@@ -346,6 +352,7 @@ export default function InvestmentsPage() {
   const lotsHolding = dialog?.kind === 'lots' ? holdingFor(dialog.holdingId) : null;
   const sellHolding = dialog?.kind === 'sell' ? holdingFor(dialog.holdingId) : null;
   const salesHolding = dialog?.kind === 'sales' ? holdingFor(dialog.holdingId) : null;
+  const splitHolding = dialog?.kind === 'split' ? holdingFor(dialog.holdingId) : null;
   const incomeHolding =
     dialog?.kind === 'income' || dialog?.kind === 'income-list'
       ? holdingFor(dialog.holdingId)
@@ -507,6 +514,7 @@ export default function InvestmentsPage() {
         />
       )}
       {lotsHolding && <LotsModal holding={lotsHolding} onClose={close} />}
+      {splitHolding && <SplitModal holding={splitHolding} onClose={close} />}
       {sellHolding && dialog?.kind === 'sell' && (
         <SellModal
           holding={sellHolding}

@@ -13,6 +13,7 @@ import {
   type IncomeInput,
 } from './investmentIncomeService.js';
 import { capitalGainsYear, deleteSale, saveSale, type SaleInput } from './investmentSales.js';
+import { deleteSplit, saveSplit, type SplitInput } from './investmentSplits.js';
 import { updateBudgetSettings } from './mainAmountService.js';
 
 /** What a lodged year's lock protects: its figures, and each sale's and payment's */
@@ -62,6 +63,14 @@ export const updateIncome = (holdingId: string, incomeId: string, input: IncomeI
 /** Removes a payment and any units it reinvested */
 export const removeIncome = (holdingId: string, incomeId: string) =>
   keepingLodgedYears(() => deleteIncome(holdingId, incomeId));
+
+/** Records a split or consolidation and scales the holding's units */
+export const recordSplit = (holdingId: string, input: SplitInput) =>
+  keepingLodgedYears(() => saveSplit(holdingId, input));
+
+/** Removes a split and scales the holding's units back */
+export const removeSplit = (holdingId: string, splitId: string) =>
+  keepingLodgedYears(() => deleteSplit(holdingId, splitId));
 
 /** Net capital losses carried into a year from before Allotment (0 clears them) */
 export function setCarriedInLosses(financialYear: number | null, amount: number) {

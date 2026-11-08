@@ -1017,6 +1017,20 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         ),
       },
       {
+        heading: 'Splits and consolidations',
+        body: (
+          <p>
+            When a company splits its shares (2 for 1) or consolidates them (1 for 3), choose{' '}
+            <b>Split or consolidate</b> on the holding and enter the date and ratio. The units you
+            hold change, but what they cost and when you bought them don’t, and it isn’t a sale.
+            Sales you recorded earlier keep their cost: a sale dated before the split still counts
+            its units as they were then. Record the split before any sale dated on or after it. A
+            consolidation can leave a fraction of a millionth of a unit, which is rounded down and
+            shown.
+          </p>
+        ),
+      },
+      {
         heading: 'Dividends and interest',
         body: (
           <p>
@@ -1039,7 +1053,8 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
             11 and interest to item 10. Distributions from ETFs and managed funds are shown apart:
             the fund’s annual tax statement says how they go on your return. Super accounts are left
             out, because the fund pays their tax. Lock a year once it’s lodged so its figures can’t
-            change. It’s record keeping, not tax advice: splits aren’t covered yet.
+            change. It’s record keeping, not tax advice: mergers, demergers, returns of capital and
+            rights issues aren’t covered.
           </p>
         ),
       },

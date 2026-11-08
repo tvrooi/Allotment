@@ -56,7 +56,7 @@ const backup = async () => {
 describe('backup and restore', () => {
   it('backs up every table', async () => {
     const data = await backup();
-    expect(data).toMatchObject({ format: 'flybudget-backup', version: 31 });
+    expect(data).toMatchObject({ format: 'flybudget-backup', version: 32 });
     for (const table of BACKUP_TABLES) expect(Array.isArray(data[table])).toBe(true);
   });
 

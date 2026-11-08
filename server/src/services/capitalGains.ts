@@ -155,8 +155,11 @@ export function saleFigures(
 
   const out: ParcelFigures[] = parcels.map((p, i) => {
     const share = shares?.[i] ?? null;
+    // A lot of no units (consolidated away before this sale) has no cost to share out
     const ownCost =
-      p.lot.costBasis === null ? null : mulDiv(p.lot.costBasis, p.quantity, p.lot.quantity);
+      p.lot.costBasis === null || p.lot.quantity === 0
+        ? null
+        : mulDiv(p.lot.costBasis, p.quantity, p.lot.quantity);
     const cost = ownCost === null ? null : toBudget(ownCost, p.lot.acquiredOn);
     const unknown: UnknownReason | null =
       ownCost === null ? 'no_cost' : cost === null || share === null ? 'no_rate' : null;

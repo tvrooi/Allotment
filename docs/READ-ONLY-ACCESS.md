@@ -59,10 +59,10 @@ deductions.
     year also carries its capital gains from investment sales (item 18, `capitalGains`, since
     0.2.0-up.141) and its investment income (items 10 and 11, `investmentIncome`, since
     0.2.0-up.142);
-  - read investments (`GET /api/investments`: holdings with their lots, sales and income; MCP
+  - read investments (`GET /api/investments`: holdings with their lots, splits, sales and income; MCP
     `investments`), read only (owner decision 7 of INVESTMENT-SALES-AND-INCOME.md, since
     0.2.0-up.142). Every other `/api/investments` route, and every write to a sale, a payment, a
-    lot, a deposit link or the losses carried in, stays the owner's;
+    split, a lot, a deposit link or the losses carried in, stays the owner's;
   - record a household contribution linked to a deposit (`POST /api/households/:id/events` with
     exactly `kind: "contribution"`, `date`, `description`, `amount`, `payerId` and
     `transactionId`): a past deposit into one of that household's accounts, for exactly its

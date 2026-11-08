@@ -157,3 +157,24 @@ export const useInvestmentForTransaction = (transactionId: string) =>
     queryKey: [...KEY, 'transaction', transactionId],
     queryFn: () => api.investmentForTransaction(transactionId),
   });
+
+/** What a split would do to the units held, before it's saved (null input: nothing to preview) */
+export function useSplitPreview(holdingId: string, input: api.SplitInput | null) {
+  return useQuery({
+    queryKey: [...KEY, 'split-preview', holdingId, input],
+    queryFn: () => api.previewSplit(holdingId, input!),
+    enabled: !!input,
+    placeholderData: keepPreviousData,
+    retry: false,
+  });
+}
+
+export const useRecordSplit = () =>
+  useInvestmentMutation(({ holdingId, ...data }: { holdingId: string } & api.SplitInput) =>
+    api.recordSplit(holdingId, data),
+  );
+
+export const useDeleteSplit = () =>
+  useInvestmentMutation(({ holdingId, splitId }: { holdingId: string; splitId: string }) =>
+    api.deleteSplit(holdingId, splitId),
+  );

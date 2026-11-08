@@ -31,6 +31,7 @@ import type {
   categoryNotes,
   holdings,
   investmentIncome,
+  investmentSplits,
   investmentSaleParcels,
   investmentSales,
   payees,
@@ -90,6 +91,7 @@ export interface DemoBudget {
   investmentSaleParcels: Row<typeof investmentSaleParcels>[];
   /** One fully franked dividend (D3b) */
   investmentIncome: Row<typeof investmentIncome>[];
+  investmentSplits: Row<typeof investmentSplits>[];
 }
 
 // ─── Random numbers ────────────────────────────────────────────────────────────
@@ -370,6 +372,7 @@ export function buildDemoBudget(today: Date): DemoBudget {
     investmentSales: [],
     investmentSaleParcels: [],
     investmentIncome: [],
+    investmentSplits: [],
   };
   const budgetTypes = {} as Record<CategoryKey, BudgetType | undefined>;
   GROUPS.forEach((group, gi) => {

@@ -1,5 +1,16 @@
 # Changes
 
+## 0.2.0-up.143
+
+Splits and consolidations (D3c of `docs/INVESTMENT-SALES-AND-INCOME.md`). Record keeping for your Australian return, not tax advice.
+
+- **Split or consolidate a holding.** On **Investments**, a holding's menu has **Split or consolidate**: enter the date the new units count from and the ratio (**2 for 1** is a split, **1 for 3** a consolidation). You see the units you hold now and after, and each purchase's units, before you save. A split changes how many units you hold, not what they cost or when you bought them, and it isn't a sale, so it adds nothing to Tax time on its own.
+- **Earlier sales keep their cost.** A purchase keeps the units and cost you recorded; its units today follow from the splits since. A sale counts its units as they were on its date, so 100 units costing $100, 40 sold for a $40 cost, then a 2-for-1 split leaves 120 units costing $60, and the sale still costs $40. A later sale draws its cost from the units on its own date. A sale dated before a split can still be recorded afterwards, in the units of its date.
+- **Order matters, and Allotment says so.** A split can't be recorded or removed while a sale is dated on or after it, because that would change what the sale's units mean: remove the sale and enter it again afterwards. A consolidation rounds an odd unit down by less than a millionth of a unit and shows that it did.
+- Purchases now show their units today when a split has changed them, and a purchase's cost can't be cut below what sales took, counted after the split. Reinvested units are counted the same way.
+- Backups are now version 32 and include splits. An older backup restores with none.
+- Mergers, demergers, returns of capital, rights issues and a fund's annual tax statement stay out of scope.
+
 ## 0.2.0-up.142
 
 Dividends, franking credits and deposits (D3b of `docs/INVESTMENT-SALES-AND-INCOME.md`). Record keeping for your Australian return, not tax advice.

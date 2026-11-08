@@ -507,7 +507,7 @@ describe('backups and export', () => {
     const doc = await upload('plan.pdf', pdf(), '&linkKind=goal&linkId=car&tagIds=tax');
     await call('POST', '/receipts?fileName=r.png', { raw: png('r') });
     const backup = JSON.parse(JSON.stringify(createBackup()));
-    expect(backup.version).toBe(31);
+    expect(backup.version).toBe(32);
     expect(backup.documents).toHaveLength(2);
     expect(backup.documentLinks).toHaveLength(1);
     expect(backup.documentTags).toHaveLength(1);

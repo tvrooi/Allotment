@@ -181,7 +181,12 @@ export function SellModal({
           <Field
             label="Units sold"
             htmlFor="sale-units"
-            hint={`${formatUnits(holding.quantity + (sale?.quantity ?? 0))} held`}
+            hint={
+              // A saved sale's units are as of its date, which a split since may have changed
+              sale && holding.splits.length
+                ? undefined
+                : `${formatUnits(holding.quantity + (sale?.quantity ?? 0))} held`
+            }
           >
             <UnitsInput id="sale-units" value={units} onChange={setUnits} />
           </Field>

@@ -19,11 +19,15 @@ import {
   updateSecurity,
 } from '../services/investmentService.js';
 import { previewSale } from '../services/investmentSales.js';
+import { previewSplit } from '../services/investmentSplits.js';
+import { SPLIT_RATIO_MAX } from '../services/splitMath.js';
 import {
   recordIncome,
   recordSale,
+  recordSplit,
   removeIncome,
   removeSale,
+  removeSplit,
   setCarriedInLosses,
   updateIncome,
   updateSale,
@@ -35,7 +39,7 @@ import {
 } from '../services/investmentLinks.js';
 import { INCOME_KINDS } from '../services/investmentIncome.js';
 
-// P3 investments (services/investmentService.ts), D3a sales and D3b income
+// P3 investments (services/investmentService.ts), D3a sales, D3b income and D3c splits
 // (services/investmentTax.ts). Positions only: nothing here writes to the ledger, so no route
 // changes an account's balance. Owner session only, except that an organise token may read the
 // overview (GET /, auth/accessTokens.ts); no token reaches any other route here.
@@ -242,6 +246,30 @@ investmentsRouter.put('/holdings/:id/income/:incomeId', (req, res) => {
 
 investmentsRouter.delete('/holdings/:id/income/:incomeId', (req, res) =>
   send(res, () => removeIncome(req.params.id, req.params.incomeId)),
+);
+
+// ─── Splits and consolidations (D3c) ──────────────────────────────────────────
+
+const split = z
+  .object({
+    effectiveOn: isoDate,
+    toUnits: z.number().int().min(1).max(SPLIT_RATIO_MAX),
+    fromUnits: z.number().int().min(1).max(SPLIT_RATIO_MAX),
+  })
+  .strict();
+
+investmentsRouter.post('/holdings/:id/splits/preview', (req, res) => {
+  const data = parse(split, req.body, res);
+  if (data) send(res, () => previewSplit(req.params.id, data));
+});
+
+investmentsRouter.post('/holdings/:id/splits', (req, res) => {
+  const data = parse(split, req.body, res);
+  if (data) send(res, () => recordSplit(req.params.id, data), 201);
+});
+
+investmentsRouter.delete('/holdings/:id/splits/:splitId', (req, res) =>
+  send(res, () => removeSplit(req.params.id, req.params.splitId)),
 );
 
 // ─── Deposits in the register (D3b) ───────────────────────────────────────────
