@@ -236,6 +236,74 @@ describe('household attribution', () => {
     });
     expect(expense.data.error).toMatch(/Only a repayment/);
   });
+  it('pays ahead from a bank payment towards an expense someone records later', async () => {
+    const g = await group();
+    db.insert(accounts).values({ id: 'pool-ahead', name: 'Joint 2', type: 'checking' }).run();
+    const pooled = await group('pool-ahead');
+    db.insert(transactions)
+      .values({ id: 'pool-out', accountId: 'pool-ahead', date, amount: -6000 })
+      .run();
+    // The household account's money isn't yours to pay ahead
+    expect(
+      (
+        await call(`/${pooled.group.id}/events`, {
+          kind: 'settlement',
+          date,
+          description: 'From the household account',
+          amount: 6000,
+          payerId: pooled.people[0].id,
+          recipientId: pooled.people[1].id,
+          transactionId: 'pool-out',
+          advance: true,
+        })
+      ).data.error,
+    ).toMatch(/contribution or an expense/);
+    const [me, alex, sam] = g.people;
+    // The register's menu needs each household's people
+    const listed = (await call('')).data.find((h: { id: string }) => h.id === g.group.id);
+    expect(listed.people).toEqual([
+      { id: me.id, name: 'Me', isSelf: true },
+      { id: alex.id, name: 'Alex', isSelf: false },
+      { id: sam.id, name: 'Sam', isSelf: false },
+    ]);
+    db.insert(transactions)
+      .values([
+        { id: 'to-alex', accountId: 'mine', date, amount: -6000 },
+        { id: 'from-alex', accountId: 'mine', date, amount: 6000 },
+      ])
+      .run();
+    const ahead = {
+      kind: 'settlement',
+      date,
+      description: 'Paid ahead to Alex for a shared expense',
+      amount: 6000,
+      payerId: me.id,
+      recipientId: alex.id,
+      transactionId: 'to-alex',
+      advance: true,
+    };
+    // Money in can't be your payment ahead to someone
+    expect(
+      (await call(`/${g.group.id}/events`, { ...ahead, transactionId: 'from-alex' })).data.error,
+    ).toMatch(/direction/);
+    const paid = await call(`/${g.group.id}/events`, ahead);
+    expect(paid.status).toBe(201);
+    expect(paid.data.balances).toMatchObject({ [me.id]: 6000, [alex.id]: -6000, [sam.id]: 0 });
+    const log = (await call(`/${g.group.id}/activity`)).data;
+    expect(log[0].summary).toBe('Me paid Alex $60.00 ahead');
+    // Alex records the bill they paid, split three ways: my $60 covers my share and Sam's
+    const bill = await call(`/${g.group.id}/events`, {
+      kind: 'expense',
+      date,
+      description: 'Electricity',
+      amount: 9000,
+      payerId: alex.id,
+      shares: [me, alex, sam].map((p) => ({ personId: p.id, value: 1 })),
+    });
+    expect(bill.data.balances).toEqual({ [me.id]: 3000, [alex.id]: 0, [sam.id]: -3000 });
+    // The same payment can't be linked twice
+    expect((await call(`/${g.group.id}/events`, ahead)).data.error).toMatch(/already linked/);
+  });
   it('rejects wrong totals, foreign people, missing bank records and unreceived pool money', async () => {
     const g = await group();
     const stranger = (await group()).people[0];

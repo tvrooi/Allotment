@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.147
+
+- **Pay your share ahead.** Sent a housemate money towards a shared bill they haven't recorded yet? Right-click the payment in your register (or tap ⋯ on a phone) and choose **Paid ahead to** and their name, or open the payment and choose **Paid ahead for a shared expense**. Until the bill is recorded in the household they owe it back to you; once it is, by you or by them in a combined household, your share comes off it. **Undo** in the toast, or **Remove from** the household in the menu, takes it back.
+- Only your own money out can be paid ahead. A payment from a household account can't be recorded as a repayment from you any more: it is the household's money, so it is a contribution or an expense.
+
 ## 0.2.0-up.146
 
 - **Transfers say which way the money went.** A transfer between two of your accounts reads **Transfer to 2Up Essentials** on the money-out side and **Transfer from Spending** on the money-in side, instead of "Transfer: Spending", which could mean either. A name you typed yourself is kept.

@@ -9,6 +9,16 @@ Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminder
 
 ## State
 
+- **Paid ahead for a shared expense (up.147; owner-requested 8 November 2026; server and client,
+  no migration):** see [docs/HOUSEHOLDS.md](docs/HOUSEHOLDS.md) "Paying ahead for a shared
+  expense". The register's menu (**Paid ahead to ▸ person**) and the details panel
+  (`components/household/PayAhead.tsx`) record the owner's money out as a settlement with
+  `advance: true` linked to the payment (`recordPaidAhead` in `api/households.ts`); Undo and
+  **Remove from _household_** remove it (`removeSharedEntries(…, 'settlement')`). `recordEvent`
+  now refuses a settlement linked to a household-account transaction, and logs "paid … ahead" when
+  a repayment exceeds what was owed. `GET /households` returns `people`. Tests:
+  `routes/households.test.ts` ("pays ahead…"), e2e `household.spec.ts` ("a payment to someone is
+  marked as paid ahead…"). Not built: tying an advance to one expense, or to a recurring bill.
 - **Working from home (up.144, D4a of the Larger features group; server, client, demo and MCP text;
   migration 0085, additive; backup version 33):** built to
   [docs/TAX-CAR-AND-HOME.md](docs/TAX-CAR-AND-HOME.md), whose §10 "As built" lists where it differs.
