@@ -5,7 +5,7 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminders; up.141 D3a, up.142 D3b and up.143 D3c merged; D4 design, car expenses and working from home, in review).
+Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminders; up.141 D3a, up.142 D3b and up.143 D3c merged; D4 design, car expenses and working from home, approved; D4a being built).
 
 ## State
 
@@ -673,8 +673,8 @@ site in `website/` was removed (audit decision I-9).
      waits for demand.
    - Receipts §6 (PDF reading, email
      forwarding, logbooks, depreciation, WFH hours). Car expenses (cents per km and logbooks) and
-     working-from-home hours are designed in `docs/TAX-CAR-AND-HOME.md` (D4), awaiting the
-     owner's decisions (its §9).
+     working-from-home hours are designed in `docs/TAX-CAR-AND-HOME.md` (D4), design approved
+     8 November (its §9): D4a working from home, then D4b car.
    - The legacy `recurring_transactions` cleanup is done (up.123, migration 0078).
 5. **Receipt providers (up.98) follow-ups:** Anthropic's structured output is done (up.124); a
    cost note per read if the owner wants one.
