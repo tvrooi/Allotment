@@ -25,6 +25,8 @@ import {
   schedules,
   securities,
   securityPrices,
+  taxHomeHours,
+  taxHomeYears,
   taxLots,
   transactions,
 } from '../db/schema.js';
@@ -78,6 +80,8 @@ export function loadDemoBudget(today: Date): void {
     insert(investmentSaleParcels, demo.investmentSaleParcels);
     insert(investmentIncome, demo.investmentIncome);
     insert(investmentSplits, demo.investmentSplits);
+    insert(taxHomeYears, demo.taxHomeYears);
+    insert(taxHomeHours, demo.taxHomeHours);
   });
 
   // Recurring items get their occurrences the way the app makes them (three months ahead,

@@ -28,6 +28,7 @@ import {
   type ScheduleRow,
 } from './depreciation.js';
 import { isoDate } from '../utils/validation.js';
+import { recordLodgedFigures } from './taxCarHomeService.js';
 
 export class AssetError extends Error {
   constructor(
@@ -471,11 +472,17 @@ export function removeAsset(id: string) {
   db.delete(depreciatingAssets).where(eq(depreciatingAssets.id, id)).run();
 }
 
+/**
+ * Marks a year lodged and records what its working-from-home figures claim (a later change shows
+ * as an amendment, not a refusal). On an already lodged year this refreshes the snapshot: Mark
+ * lodged again. The caller opens the transaction (the demo's sql.js can't nest one).
+ */
 export function lodgeYear(fy: number) {
   db.insert(taxLodgedYears)
     .values({ financialYear: fy, lodgedAt: now() })
     .onConflictDoNothing()
     .run();
+  recordLodgedFigures(fy);
   return lodgedYears();
 }
 export function unlodgeYear(fy: number) {

@@ -5,10 +5,21 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminders; up.141 D3a and up.142 D3b merged; up.143 D3c in review).
+Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminders; up.141 D3a, up.142 D3b and up.143 D3c merged; D4 design, car expenses and working from home, approved; D4a working from home built in up.144, in review; D4b car next).
 
 ## State
 
+- **Working from home (up.144, D4a of the Larger features group; server, client, demo and MCP text;
+  migration 0085, additive; backup version 33):** built to
+  [docs/TAX-CAR-AND-HOME.md](docs/TAX-CAR-AND-HOME.md), whose §10 "As built" lists where it differs.
+  Tax time has a **Car and home** tab (`?tab=car-home`) with the day-by-day hours at home, **Fill a
+  pattern** (never overwrites a day), the year's rate (built-in ATO table for 2022 to 2025 in
+  `services/taxRates.ts`; none for 2026, so the owner types it) and the year's **Bills** (Files link
+  kind `homeYear`). Hours times the rate are in D5. Lodged years are not locked for it: marking a
+  year lodged records the figure (`tax_lodged_figures`), a later change shows **Amended since
+  lodging** with **Mark lodged again**; assets and investments keep their locks. Organise tokens read
+  `GET /api/tax/home/:fy` and the year's `home` and `amendments`; no token writes any of it. The
+  $1,000 instant deduction is not built (not confirmed as law); D4b, the car, is next.
 - **Splits and consolidations (up.143, D3c of the Larger features group; server, client and MCP
   read; migration 0084, additive; backup version 32):** see
   [docs/INVESTMENT-SALES-AND-INCOME.md](docs/INVESTMENT-SALES-AND-INCOME.md) §10 "D3c". A holding's
@@ -682,7 +693,9 @@ site in `website/` was removed (audit decision I-9).
      (up.142), and D3c, splits and consolidations (up.143); a trust distribution's annual statement
      waits for demand.
    - Receipts §6 (PDF reading, email
-     forwarding, logbooks, depreciation, WFH hours).
+     forwarding, logbooks, depreciation, WFH hours). Car expenses (cents per km and logbooks) and
+     working-from-home hours are designed in `docs/TAX-CAR-AND-HOME.md` (D4), design approved
+     8 November (its §9). D4a, working from home, is built (up.144); D4b, the car, is next.
    - The legacy `recurring_transactions` cleanup is done (up.123, migration 0078).
 5. **Receipt providers (up.98) follow-ups:** Anthropic's structured output is done (up.124); a
    cost note per read if the owner wants one.

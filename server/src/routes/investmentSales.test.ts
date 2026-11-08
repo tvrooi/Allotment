@@ -357,7 +357,7 @@ describe('investment sales', () => {
 
   it('backs sales up and restores them; an older backup restores with none', () => {
     const backup = createBackup() as any;
-    expect(backup.version).toBe(32);
+    expect(backup.version).toBe(33);
     expect(backup.investmentSales).toHaveLength(4);
     expect(backup.investmentSaleParcels).toHaveLength(5);
     restoreBackup(parseBackup(JSON.parse(JSON.stringify(backup))));

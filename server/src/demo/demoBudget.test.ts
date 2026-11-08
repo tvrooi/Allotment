@@ -49,6 +49,23 @@ describe('the demo budget (property-based)', () => {
     );
   });
 
+  it('has up to three weeks of weekday home hours, all in the current financial year, never later than today', () => {
+    fc.assert(
+      fc.property(anyDay, (today) => {
+        const { taxHomeHours } = buildDemoBudget(today);
+        const fy =
+          Number(ymd(today).slice(5, 7)) >= 7 ? today.getFullYear() : today.getFullYear() - 1;
+        expect(taxHomeHours.length).toBeLessThanOrEqual(16);
+        for (const h of taxHomeHours) {
+          expect(h.workDate <= ymd(today)).toBe(true);
+          expect(h.workDate >= `${fy}-07-01`).toBe(true);
+          expect([0, 6]).not.toContain(new Date(`${h.workDate}T00:00:00Z`).getUTCDay());
+        }
+      }),
+      { numRuns: 50 },
+    );
+  });
+
   it('keeps transfers paired and splits adding up, with nothing pointing nowhere', () => {
     fc.assert(
       fc.property(anyDay, (today) => {

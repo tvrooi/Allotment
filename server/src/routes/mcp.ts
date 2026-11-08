@@ -858,7 +858,7 @@ const ACTION_TOOLS: ActionTool[] = [
     scope: 'organise',
     readOnly: true,
     description:
-      'The tax deductions claimed for one Australian financial year (1 July to 30 June), named by the year it starts (2025 = 2025–26): each claim with its label, work-use share, cost and claimed amount, totals per label, receipts still missing, and capital gains from investment sales (capitalGains: item 18, read only). Record keeping, not tax advice.',
+      'The tax deductions claimed for one Australian financial year (1 July to 30 June), named by the year it starts (2025 = 2025–26): each claim with its label, work-use share, cost and claimed amount, totals per label, receipts still missing, capital gains from investment sales (capitalGains: item 18, read only), working from home (home: hours, rate and claim, counted in D5; the days are at GET /tax/home/{year}) and amendments (parts of a lodged year whose claim changed since it was marked lodged, each with its note). Record keeping, not tax advice.',
     properties: {
       financial_year: {
         type: 'integer',

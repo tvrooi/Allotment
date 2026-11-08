@@ -87,6 +87,12 @@ The owner types a receipt's details and line items, and matching and splitting u
     their own record-keeping rules (logbook or cents per km) and are left out of the total.
   - **Over $300:** a D2–D5 item costing more than $300 is flagged. Such items are usually claimed as
     decline in value over several years. A claim is never split into years automatically.
+- **Working from home** (0.2.0-up.144, [TAX-CAR-AND-HOME.md](TAX-CAR-AND-HOME.md) D4a): Tax time →
+  Car and home keeps the hours worked at home by day (`tax_home_hours`); hours times the year's ATO
+  rate (`services/taxRates.ts`, or the owner's own) are added to D5 in `taxYear().totals` and
+  `home`. No rate means no claim and a prompt. A lodged year records the figure (`tax_lodged_figures`)
+  and a later change shows as `amendments`, never a lock; the year's CSV has a Working from home row
+  and the ZIP carries `home-hours-<year>.csv` and the year's bills (Files link kind `homeYear`).
 - **Rules:** `claim_tax_deduction` with a label claims money out as it imports, or when rules are
   applied. It claims only outflows, the first matching rule wins, and it never replaces an existing
   claim. Created rules follow the usual rule review; tokens can propose such a rule only disabled.
@@ -193,7 +199,9 @@ records, not only tax evidence.
 
 - Email forwarding, and reading PDFs as receipts (only photos are read; Files finds a PDF's text
   for search only).
-- Working-from-home hours (the fixed rate per hour), car logbooks and cents per kilometre.
+- Car logbooks and cents per kilometre (D4b): designed in
+  [TAX-CAR-AND-HOME.md](TAX-CAR-AND-HOME.md), design approved 8 November 2026. Working-from-home
+  hours are built (D4a, §4).
 - Depreciation's optional extras ([DEPRECIATING-ASSETS-PLAN.md](DEPRECIATING-ASSETS-PLAN.md) phase 4): second-element costs, effective life recalculation, and a car cost limit warning. Depreciating assets and the low-value pool are on Tax time → Assets.
 - Income, tax withheld, tax offsets and an estimated refund. The income items Tax time shows are
   from investments: capital gains (item 18), dividends (item 11) and interest (item 10)

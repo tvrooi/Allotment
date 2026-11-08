@@ -32,6 +32,8 @@ import type {
   holdings,
   investmentIncome,
   investmentSplits,
+  taxHomeHours,
+  taxHomeYears,
   investmentSaleParcels,
   investmentSales,
   payees,
@@ -49,6 +51,8 @@ import {
   type RecurrenceType,
 } from '../utils/recurrence.js';
 import type { Action, Condition } from '../services/rulesEngine.js';
+import { financialYearOf } from '../services/financialYear.js';
+import { HOME_HOURLY } from '../services/taxRates.js';
 import { DEMO_LOGOS, type DemoLogo } from './logos.js';
 
 type Row<T extends { $inferInsert: unknown }> = T['$inferInsert'];
@@ -92,6 +96,9 @@ export interface DemoBudget {
   /** One fully franked dividend (D3b) */
   investmentIncome: Row<typeof investmentIncome>[];
   investmentSplits: Row<typeof investmentSplits>[];
+  /** Three weeks of working-from-home hours this financial year (D4a), kept lean */
+  taxHomeHours: Row<typeof taxHomeHours>[];
+  taxHomeYears: Row<typeof taxHomeYears>[];
 }
 
 // ─── Random numbers ────────────────────────────────────────────────────────────
@@ -373,6 +380,8 @@ export function buildDemoBudget(today: Date): DemoBudget {
     investmentSaleParcels: [],
     investmentIncome: [],
     investmentSplits: [],
+    taxHomeHours: [],
+    taxHomeYears: [],
   };
   const budgetTypes = {} as Record<CategoryKey, BudgetType | undefined>;
   GROUPS.forEach((group, gi) => {
@@ -1639,5 +1648,28 @@ export function buildDemoBudget(today: Date): DemoBudget {
     frankingCredit: 3_600,
     withheld: 0,
   });
+  // Working from home: weekdays of the last three weeks, never before this financial year starts
+  const fyStart = `${financialYearOf(todayStr)}-07-01`;
+  for (let back = 21; back >= 0; back--) {
+    const d = subDays(today, back);
+    const date = ymd(d);
+    if (getDay(d) % 6 === 0 || date < fyStart) continue;
+    result.taxHomeHours.push({
+      workDate: date,
+      minutes: getDay(d) === 3 ? 450 : 480,
+      notes: null,
+      createdAt: notedAt,
+      updatedAt: notedAt,
+    });
+  }
+  // The ATO has not published a rate for a year the table lacks: the demo types one
+  if (HOME_HOURLY[financialYearOf(todayStr)] === undefined)
+    result.taxHomeYears.push({
+      financialYear: financialYearOf(todayStr),
+      rateTenths: 700,
+      notes: 'Demo rate',
+      createdAt: notedAt,
+      updatedAt: notedAt,
+    });
   return result;
 }

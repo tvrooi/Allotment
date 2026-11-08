@@ -58,7 +58,10 @@ deductions.
     It may also list a year's likely missed claims (`GET /api/tax/years/:fy/candidates`). A
     year also carries its capital gains from investment sales (item 18, `capitalGains`, since
     0.2.0-up.141) and its investment income (items 10 and 11, `investmentIncome`, since
-    0.2.0-up.142);
+    0.2.0-up.142), and its working-from-home claim and amendments (`home`, `amendments`, since
+    0.2.0-up.144). The hours by day are readable too (`GET /api/tax/home/:fy`, owner decision 6 of
+    TAX-CAR-AND-HOME.md). Every write (a day, a fill, a year's rate, lodging or unlodging a year)
+    stays the owner's;
   - read investments (`GET /api/investments`: holdings with their lots, splits, sales and income; MCP
     `investments`), read only (owner decision 7 of INVESTMENT-SALES-AND-INCOME.md, since
     0.2.0-up.142). Every other `/api/investments` route, and every write to a sale, a payment, a
