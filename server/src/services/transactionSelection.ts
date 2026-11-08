@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { db } from '../db/index.js';
 import { categories, transactions } from '../db/schema.js';
 import { isRealDate } from '../utils/validation.js';
+import { isRoundUpCredit, isRoundUpDebit } from './roundUps.js';
 import {
   isBudgetBoundary,
   isIncomeOrSpending,
@@ -55,6 +56,11 @@ export const selectionSchema = z
     tag_ids: idList,
     transfers: z.enum(['include', 'exclude']),
     budget_report: flag,
+    /**
+     * Up round-ups: fold (the default) lists a purchase once with its round-up on it, leaving out
+     * the round-up's own rows (roundUps.ts); show lists every row.
+     */
+    round_ups: z.enum(['fold', 'show']),
   })
   .partial()
   .refine((s) => !s.from || !s.to || s.from <= s.to, {
@@ -211,12 +217,26 @@ export function leafCondition(s: Selection): SQL {
   return and(...c)!;
 }
 
+/**
+ * Folded round-ups (the default): the debit is shown on its purchase, so its own row is left out.
+ * The Saver's credit is left out too, except in that one account's own register, where it is
+ * the account's real activity (as in Up's Saver).
+ */
+function roundUpConditions(s: Selection): SQL[] {
+  if (s.round_ups === 'show') return [];
+  const accountIds = new Set([...(s.account_ids ?? []), ...(s.account_id ? [s.account_id] : [])]);
+  return accountIds.size === 1
+    ? [sql`not ${isRoundUpDebit}`]
+    : [sql`not ${isRoundUpDebit}`, sql`not ${isRoundUpCredit}`];
+}
+
 /** Register rows (unsplit transactions and split parents) the selection matches */
 export function registerCondition(s: Selection): SQL {
   const c = [
     isNull(transactions.parentTransactionId),
     ...rowConditions(s),
     ...registerStateConditions(s, 'register'),
+    ...roundUpConditions(s),
   ];
   const leaf = leafOnlyConditions(s);
   if (leaf.length) {
@@ -235,7 +255,7 @@ export function registerCondition(s: Selection): SQL {
 }
 
 export interface SelectionSummary {
-  /** Register rows: a split counts once */
+  /** Register rows: a split counts once, a folded round-up not at all */
   count: number;
   /** Matching leaves (unsplit rows and split parts) */
   leafCount: number;
@@ -251,9 +271,14 @@ export interface SelectionSummary {
 
 /** Totals of the matching leaves. Reads only. */
 export function summarizeSelection(s: Selection): SelectionSummary {
+  // The count is of the rows the register lists (folded round-ups aside); the money is all of it
+  const listed = roundUpConditions(s);
+  const listedId = listed.length
+    ? sql`case when ${and(...listed)} then coalesce(${transactions.parentTransactionId}, ${transactions.id}) end`
+    : sql`coalesce(${transactions.parentTransactionId}, ${transactions.id})`;
   const row = db
     .select({
-      count: sql<number>`count(distinct coalesce(${transactions.parentTransactionId}, ${transactions.id}))`,
+      count: sql<number>`count(distinct ${listedId})`,
       leafCount: sql<number>`count(*)`,
       moneyIn: sql<number>`coalesce(sum(case when ${mainAmount} > 0 then ${mainAmount} else 0 end), 0)`,
       moneyOut: sql<number>`coalesce(sum(case when ${mainAmount} < 0 then -${mainAmount} else 0 end), 0)`,

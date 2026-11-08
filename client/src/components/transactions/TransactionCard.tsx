@@ -1,3 +1,4 @@
+import { listedAmount, RoundUpMark } from './RoundUp';
 import { RowMarks } from './TransactionMarks';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import { useMemo } from 'react';
@@ -81,10 +82,11 @@ export function TransactionCard({
             {payeeName}
           </span>
           <span
-            className={`shrink-0 text-row font-medium tabular-nums ${tx.amount > 0 ? 'text-positive' : 'text-text'}`}
+            className={`shrink-0 inline-flex items-center gap-1 text-row font-medium tabular-nums ${tx.amount > 0 ? 'text-positive' : 'text-text'}`}
           >
+            <RoundUpMark tx={tx} currency={currencyOf(tx.accountId)} />
             {tx.amount > 0 ? '+' : ''}
-            {formatMoney(Math.abs(tx.amount), currencyOf(tx.accountId))}
+            {formatMoney(Math.abs(listedAmount(tx)), currencyOf(tx.accountId))}
           </span>
         </span>
         <ForeignValue tx={tx} className="justify-self-end" />

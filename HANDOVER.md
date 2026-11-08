@@ -67,6 +67,16 @@ Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminder
   custom report table drill-through; Forecast panel layout; the slow payee delete test; 0.2.0-up.140).
   AU-002 phone Budget order (owner-approved without user validation) is in the same PR. Each finding's heading in the report carries its status.
 
+- **Round-ups folded into their purchase (up.145; owner-requested 8 November 2026; no
+  migration):** up.131 linked round-ups but still listed both legs. `services/roundUps.ts` holds
+  the one definition (`isRoundUpDebit`, `isRoundUpCredit`, `roundUpsOf`); the selection's
+  `round_ups` (`fold` default, `show`) leaves the debit out of every list and the Saver credit out
+  of all but that Saver's own register (`registerCondition`, so bulk edits skip them too); the
+  summary counts listed rows, money unchanged. `GET /transactions` adds `roundUp` on the purchase
+  and `roundUpOf` on the leg; MCP `find_transactions`/`transaction_summary` ask for `show`.
+  Client: `components/transactions/RoundUp.tsx` (row total, mark, detail breakdown). Tests:
+  `routes/roundUpFold.test.ts`, `e2e/tests/demo/round-ups.spec.ts`. Owner also asked (same day)
+  for a linked transfer pair to read as one "Transfer from X to Y" row: next PR.
 - **Households, round-ups, Essentials pool and brand icons (up.131; owner-requested 7 November
   2026; migrations 0080 `household_groups.is_default` and 0081 `accounts.assign_pool` +
   `categories.pool_account_id`, both additive, backups carry them with their tables):** the plan in

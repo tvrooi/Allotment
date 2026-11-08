@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.145
+
+- **Round-ups look like they do in Up.** A purchase you rounded up is listed once, at its total, with a small round-up mark: a A$51.52 shop rounded up 48c shows as A$52. Open it to see the purchase, the round-up, the Saver it went to and any boost. The round-up's own rows no longer fill All transactions or your Spending account; your Saver's own register still lists each credit, as Up's Saver does. A round-up whose purchase is still pending is left out of All transactions too. Nothing in your ledger changes: balances, the budget, reports, exports and your assistant still count every cent, and the transaction count above the list counts what it shows.
+
 ## 0.2.0-up.144
 
 Working from home (D4a of `docs/TAX-CAR-AND-HOME.md`). Record keeping for your Australian return, not tax advice.

@@ -1,3 +1,4 @@
+import { listedAmount } from './RoundUp';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, Receipt, SearchX, Upload, Link2, ListChecks } from 'lucide-react';
@@ -242,8 +243,12 @@ export function TransactionTable({
   // together add their values in the budget's currency
   const ownCurrency = useAccountCurrency()(accountId);
   const budgetCurrency = useBudgetCurrency();
-  const dayAmount = (t: (typeof transactions)[number]) =>
-    accountId ? t.amount : transactionValue(t);
+  const dayAmount = (t: (typeof transactions)[number]) => {
+    const value = accountId ? t.amount : transactionValue(t);
+    // A purchase counts at its listed total (RoundUp.tsx); the round-up is in the account's
+    // currency, so it is added only when the value is too
+    return value === t.amount ? listedAmount(t) : value;
+  };
   const groupedByDate = useMemo(() => {
     const result: Array<{ date: string; txs: typeof transactions; total: number }> = [];
     let currentDate = '';
