@@ -6,8 +6,11 @@ export function parseDuration(text: string): number | null {
   const t = text.trim().toLowerCase();
   let minutes: number;
   const clock = /^(\d{1,2})\s*(?::|h)\s*(\d{1,2})?\s*(?:m|min)?$/.exec(t);
-  if (clock) minutes = Number(clock[1]) * 60 + Number(clock[2] ?? 0);
-  else if (/^\d{1,2}(\.\d{1,2})?$/.test(t)) minutes = Math.round(Number(t) * 60);
+  if (clock) {
+    // A clock's minutes run 0 to 59: 7:75 is a typo, not 8 h 15 min
+    if (Number(clock[2] ?? 0) > 59) return null;
+    minutes = Number(clock[1]) * 60 + Number(clock[2] ?? 0);
+  } else if (/^\d{1,2}(\.\d{1,2})?$/.test(t)) minutes = Math.round(Number(t) * 60);
   else return null;
   return minutes >= 1 && minutes <= 1440 ? minutes : null;
 }

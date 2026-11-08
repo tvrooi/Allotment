@@ -298,6 +298,18 @@ describe('lodged years are amended, not locked', () => {
     expect(db.select().from(schema.taxLodgedFigures).all()).toHaveLength(1);
   });
 
+  it('keeps a lodged year listed after its last day is removed, with the amendment', async () => {
+    await day('2024-08-05', 600);
+    await send('PUT', '/lodged/2024');
+    expect((await send('DELETE', '/home/days/2024-08-05')).status).toBe(204);
+    expect(taxYears('2025-11-08').map((y) => y.financialYear)).toContain(2024);
+    expect(taxYear(2024).amendments[0]).toMatchObject({
+      status: 'amended',
+      lodgedClaim: 700,
+      claim: 0,
+    });
+  });
+
   it('removes the snapshot when the year is unlocked, and an open year has no amendments', async () => {
     await day('2025-08-04', 600);
     await send('PUT', '/lodged/2025');

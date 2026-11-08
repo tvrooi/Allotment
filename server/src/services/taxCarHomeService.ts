@@ -192,6 +192,9 @@ export function homeYears(): number[] {
     .from(taxHomeYears)
     .all())
     if (r.rate !== null) years.add(r.fy);
+  // A lodged snapshot keeps its year listed, so an amendment down to nothing stays reachable
+  for (const r of db.select({ fy: taxLodgedFigures.financialYear }).from(taxLodgedFigures).all())
+    years.add(r.fy);
   return [...years];
 }
 

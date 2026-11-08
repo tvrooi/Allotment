@@ -11,7 +11,7 @@ describe('parseDuration', () => {
     expect(parseDuration(' 0.25 ')).toBe(15);
   });
   it('refuses nothing, zero, over 24 hours and words', () => {
-    for (const bad of ['', '0', '24.5', '25', 'abc', '7.555', '-1', '7:75x'])
+    for (const bad of ['', '0', '24.5', '25', 'abc', '7.555', '-1', '7:75x', '7:75', '7h60'])
       expect(parseDuration(bad), bad).toBeNull();
     expect(parseDuration('24')).toBe(1440);
   });
