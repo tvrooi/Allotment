@@ -9,6 +9,25 @@ Last updated: 9 November 2026 (live app on up.149: the household bills hub, cove
 
 ## State
 
+- **Budgeting review, Phase 1 (up.152; owner-requested 9 November 2026; server and client, no
+  migration):** the plan from the 9 November UX audit is four phases with one release per phase.
+  The owner decided: forecast household bills count the cash paid out, otherwise the owner's share;
+  a linked goal and its category target become one record (Phase 2, ask per diverging pair);
+  expected income comes from the payday plan, then recurring income, then the typed amount (Phase 2);
+  Forecast opens on Cash runway (Phase 4). Phase 1:
+  - Payday suggestion: `paydayService.suggestDeposit` and `defaultPayday`; the context route takes
+    `?scheduledDate`; `incomeOptions` leaves out linked accounts.
+  - Cash breakdown: `resourcesAt` returns `cash`/`otherDebt`; `fundingState.breakdown`;
+    `client/src/components/budget/CashBridge.tsx`; tests in `cashBreakdown.test.ts`.
+  - Bill coverage: `billCoverageDetail` returns the `excluded` bills
+    (`no-category` / `household-pool` / `outside-budget`); `guideState().coverage`;
+    `/recurring?filter=needs-category` (`NeedsCategoryList.tsx`).
+  - Forecast: `householdService.sharedRecurringDue` and `allPoolAccountIds`;
+    `scheduleService.pendingOccurrences`; `variableSpending` removes only replaced payments.
+
+  Next: Phase 2 (goal summaries, merged goal and target, one expected-income source). Later list:
+  the Review queue redesign, the Cash flow personal-share view, and Household screens by type.
+
 - **Paid ahead for a shared expense (up.148; owner-requested 8 November 2026; server and client,
   no migration):** see [docs/HOUSEHOLDS.md](docs/HOUSEHOLDS.md) "Paying ahead for a shared
   expense". The register's menu (**Paid ahead to ▸ person**) and the details panel
