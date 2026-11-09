@@ -19,6 +19,11 @@ import {
 import { householdBreakdown } from '../services/householdReport.js';
 import { billReconciliation } from '../services/householdReconciliation.js';
 import {
+  addSuggestedBill,
+  billSuggestions,
+  dismissSuggestedBill,
+} from '../services/householdBillSuggestions.js';
+import {
   addPerson,
   checkSplit,
   deleteBill,
@@ -44,6 +49,7 @@ import {
 } from '../services/householdService.js';
 import { todayIso } from '../services/mainAmountService.js';
 import { logoSchema } from '../utils/logo.js';
+import { payeeKeySchema } from '../utils/payeeKey.js';
 
 export const householdsRouter = Router();
 const money = z.number().int().min(1).max(1e12);
@@ -335,6 +341,24 @@ householdsRouter.post('/:id/recurring-bills', (req, res) => {
 householdsRouter.delete('/:id/recurring-bills/:scheduleId', (req, res) =>
   run(res, () => unshareRecurringBill(req.params.id, req.params.scheduleId)),
 );
+// Bills the household account pays that aren't in Recurring yet (owner only): suggestions,
+// adding one as a household bill, and saying one isn't a bill
+householdsRouter.get('/:id/bill-suggestions', (req, res) =>
+  run(res, () => billSuggestions(req.params.id)),
+);
+householdsRouter.post('/:id/bill-suggestions/add', (req, res) => {
+  const parsed = z.object({ id: z.string().min(3).max(600) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  run(res, () => addSuggestedBill(req.params.id, parsed.data.id));
+});
+householdsRouter.post('/:id/bill-suggestions/dismiss', (req, res) => {
+  const parsed = z.object({ payeeKey: payeeKeySchema }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  run(res, () => {
+    dismissSuggestedBill(req.params.id, parsed.data.payeeKey);
+    return billSuggestions(req.params.id);
+  });
+});
 // A bill's own split (null = the default) and whether new payments are shared as they arrive
 householdsRouter.put('/:id/recurring-bills/:scheduleId', (req, res) => {
   const parsed = z

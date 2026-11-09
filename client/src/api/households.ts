@@ -351,3 +351,32 @@ export const getHouseholdStatement = (groupId: string, from: string, to: string)
   const text = query.toString();
   return apiFetch<HouseholdBreakdown>(`/households/${groupId}/statement${text ? `?${text}` : ''}`);
 };
+
+/** A bill the household account pays that isn't in Recurring yet (server householdBillSuggestions) */
+export interface BillSuggestion {
+  id: string;
+  payeeKey: string;
+  payeeName: string;
+  accountId: string;
+  frequency: 'monthly' | 'every 2 months' | 'quarterly' | 'every 6 months' | 'yearly';
+  count: number;
+  firstDate: string;
+  lastDate: string;
+  nextDate: string;
+  amount: number;
+  minAmount: number;
+  maxAmount: number;
+}
+
+export const getBillSuggestions = (groupId: string) =>
+  apiFetch<BillSuggestion[]>(`/households/${groupId}/bill-suggestions`);
+export const addSuggestedBill = (groupId: string, id: string) =>
+  apiFetch<unknown>(`/households/${groupId}/bill-suggestions/add`, {
+    method: 'POST',
+    body: JSON.stringify({ id }),
+  });
+export const dismissSuggestedBill = (groupId: string, payeeKey: string) =>
+  apiFetch<BillSuggestion[]>(`/households/${groupId}/bill-suggestions/dismiss`, {
+    method: 'POST',
+    body: JSON.stringify({ payeeKey }),
+  });

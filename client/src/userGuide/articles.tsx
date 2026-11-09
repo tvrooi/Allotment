@@ -1169,6 +1169,17 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         ),
       },
       {
+        heading: 'Bills you haven’t set up yet',
+        body: (
+          <p>
+            With a household account, <b>Looks like a bill</b> lists payments the account makes
+            again and again that aren&rsquo;t recurring bills yet, like power every two months or
+            water every quarter. <b>Add as household bill</b> makes it a recurring bill shared with
+            the household, with its amount allowed to change. <b>Not a bill</b> stops suggesting it.
+          </p>
+        ),
+      },
+      {
         heading: 'When a bill changes',
         body: (
           <p>

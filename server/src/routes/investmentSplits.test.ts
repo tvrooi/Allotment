@@ -274,7 +274,7 @@ describe('a consolidation', () => {
 describe('splits in backups', () => {
   it('backs splits up and restores them; an older backup restores with none', () => {
     const backup = createBackup() as any;
-    expect(backup.version).toBe(33);
+    expect(backup.version).toBe(34);
     expect(backup.investmentSplits.length).toBeGreaterThanOrEqual(3);
     restoreBackup(parseBackup(JSON.parse(JSON.stringify(backup))));
     expect(createBackup().investmentSplits).toHaveLength(backup.investmentSplits.length);

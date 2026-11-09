@@ -431,6 +431,7 @@ export default function HouseholdPage() {
                 currency={state.group.currency}
                 people={state.people}
                 bills={state.recurringBills}
+                hasPool={hasPool}
               />
 
               {(hasPool || state.bills.length > 0) && (

@@ -1,7 +1,7 @@
 import { withinTolerance } from './matchingEngine.js';
 
-// A recurring bill whose real payments have moved away from what it expects, like OVO expected at
-// A$150 and paid A$107. The Household page offers "Update to A$107" or "Use the average of the
+// A recurring bill whose real payments have moved away from what it expects, like power expected
+// at A$120 and paid A$86.50. The Household page offers "Update to A$86.50" or "Use the average of the
 // last 3", and only the owner's click changes the amount. Minor units, positive.
 
 /** How many recent payments the average uses */

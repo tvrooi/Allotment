@@ -36,7 +36,7 @@ only the page reverses them.
 
 With a household account, **Bills coverage** sits at the top of the page, like the dial in Up's
 Essentials. It compares what the household accounts hold now with the bills they will pay in the
-next 30 days (`COVERAGE_DAYS`): "A$176 of A$4,930 needed by 8 Dec", a meter, and what is still to
+next 30 days (`COVERAGE_DAYS`): "A$150 of A$1,320 needed by 8 Dec", a meter, and what is still to
 be paid in. The bills it counts are:
 
 - every expected date of a shared recurring bill paid from a household account
@@ -177,7 +177,7 @@ older backups restore without them.
 
 Each recurring bill is a tile with its due date in words ("Due in 3 days", "Overdue since …"). When
 its newest payment is outside the schedule's tolerance of the expected amount, the tile says
-**amount changed** and offers **Update to A$107** or **Use the average of the last 3**
+**amount changed** and offers **Update to** the last amount or **Use the average of the last 3**
 (`services/billDrift.ts`, the tolerance from `matchingEngine.ts`: exact 0%, approximate 10%,
 variable 25%). Nothing changes without that click. **Edit amount** sets the expected amount and how
 it varies. Both save the schedule through `PUT /api/schedules/:id`, with Undo, so Recurring and the
@@ -188,6 +188,22 @@ with more set aside than the new amount keep what they were: reservations are ne
 puts everything back. The tile also lists its payments from
 the last six months, newest first, with their total. Frequency and dates are still changed in
 Recurring.
+
+### Bills the household account pays
+
+With a household account, **Looks like a bill** lists payees the account pays again and again that
+aren't recurring bills yet, like power every two months or water every quarter
+(`services/householdBillSuggestions.ts`). Schedule discovery only finds weekly to monthly habits over
+four months, so this reads a year of money out of the household's own accounts. It skips transfers,
+split parents, and payees a live recurring item already covers (`scheduledPayeeKeys`). It needs two
+payments or more whose median gap reads as monthly, every 2 months, quarterly, every 6 months or
+yearly, and the last payment can be no more than one and a half usual gaps ago. **Add as household
+bill** creates a variable recurring item from the last payment on (its amount the median of the last
+three, linked to that payment, through `createDiscoveredSchedules`) and shares it with the household.
+**Not a bill** stops suggesting that payee for this household (`household_bill_dismissals`, migration
+0086, backup version 34; older backups restore with none). Routes: `GET
+/api/households/:id/bill-suggestions`, `POST …/bill-suggestions/add` with `{ id }`, `POST
+…/bill-suggestions/dismiss` with `{ payeeKey }`. They are owner only, not on the token allowlist.
 
 **One-off bills** (formerly "Bills to reserve for") sit under the recurring bills: a bill that
 doesn't repeat, with money set aside for it from the household account.

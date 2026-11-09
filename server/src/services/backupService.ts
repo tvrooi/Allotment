@@ -11,6 +11,7 @@ import {
   householdShares,
   householdBills,
   householdRecurringBills,
+  householdBillDismissals,
   householdActivity,
   paymentPlans,
   paymentPlanInstalments,
@@ -108,6 +109,7 @@ import { SECURITY_KINDS } from './investmentService.js';
 import { INCOME_KINDS } from './investmentIncome.js';
 import { validRatio } from './splitMath.js';
 import { isCurrencyCode } from '../utils/currencies.js';
+import { PAYEE_KEY } from '../utils/payeeKey.js';
 
 // Full JSON backup of the user's data, and restoring one.
 //
@@ -118,7 +120,7 @@ import { isCurrencyCode } from '../utils/currencies.js';
 // this installation.
 
 export const BACKUP_FORMAT = 'flybudget-backup';
-export const BACKUP_VERSION = 33;
+export const BACKUP_VERSION = 34;
 
 /** Every table in a backup, parents before the tables that reference them. */
 const TABLES = {
@@ -183,6 +185,8 @@ const TABLES = {
   householdShares,
   householdBills,
   householdRecurringBills,
+  // Household bill suggestions dismissed (format 34)
+  householdBillDismissals,
   householdActivity,
   paymentPlans,
   paymentPlanInstalments,
@@ -575,6 +579,14 @@ export function parseBackup(input: unknown): ParsedBackup {
       !validRatio(Number(sp.toUnits), Number(sp.fromUnits))
     )
       throw new InvalidBackupError('Invalid investment split');
+  // Dismissed household bill suggestions (format 34): a payee key as payeeKeyOf makes it; the
+  // household itself is checked by its foreign key on restore. Older backups have none.
+  for (const d of result.householdBillDismissals)
+    if (
+      !PAYEE_KEY.test(String(d.payeeKey)) ||
+      !isoDate.safeParse(String(d.dismissedAt).slice(0, 10)).success
+    )
+      throw new InvalidBackupError('Invalid household bill dismissal');
   // Working from home (format 33). Older backups have none.
   for (const h of result.taxHomeHours)
     if (!isoDate.safeParse(h.workDate).success || Number(h.minutes) < 1 || Number(h.minutes) > 1440)

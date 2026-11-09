@@ -455,7 +455,7 @@ describe('backups', () => {
     });
     linkDocument(doc.id, 'homeYear', '2025');
     const backup = JSON.parse(JSON.stringify(createBackup()));
-    expect(backup.version).toBe(33);
+    expect(backup.version).toBe(34);
     expect(backup.taxHomeHours).toHaveLength(1);
     expect(backup.taxLodgedFigures).toHaveLength(1);
 

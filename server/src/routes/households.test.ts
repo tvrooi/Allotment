@@ -931,6 +931,63 @@ describe('household attribution', () => {
     expect(undone['Water (set aside)']).toMatchObject({ amount: 18000, reserved: 17000 });
   });
 
+  it('suggests bills the household account pays, and adds or dismisses them', async () => {
+    db.insert(accounts)
+      .values({ id: 'sugg-pool', name: '2Up Essentials', type: 'savings', startingBalance: 500000 })
+      .run();
+    const g = await group('sugg-pool');
+    const today = todayIso();
+    const pay = (id: string, payee: string, daysAgo: number, amount: number) =>
+      insertNewTransaction({
+        payeeId: null,
+        importedPayee: null,
+        notes: null,
+        categoryId: null,
+        importedId: null,
+        id,
+        accountId: 'sugg-pool',
+        date: addDaysIso(today, -daysAgo),
+        amount,
+        payeeName: payee,
+      });
+    for (const [i, daysAgo] of [190, 128, 66, 4].entries())
+      pay(`power-${i}`, 'Northwind Power', daysAgo, -26000 - i * 1000);
+    pay('water-0', 'Riverbend Water', 115, -17240);
+    pay('water-1', 'Riverbend Water', 30, -15890);
+    pay('once', 'Plumber', 20, -45000);
+
+    const suggested = (await call(`/${g.group.id}/bill-suggestions`)).data;
+    // Soonest due first: power about 57 days away, water about 63
+    expect(suggested.map((s: any) => [s.payeeName, s.frequency])).toEqual([
+      ['Northwind Power', 'every 2 months'],
+      ['Riverbend Water', 'quarterly'],
+    ]);
+    const [power, water] = suggested;
+    expect(power).toMatchObject({ count: 4, amount: 28000, accountId: 'sugg-pool' });
+
+    // Not a bill: never suggested again
+    const left = await call(`/${g.group.id}/bill-suggestions/dismiss`, {
+      payeeKey: water.payeeKey,
+    });
+    expect(left.data.map((s: any) => s.payeeName)).toEqual(['Northwind Power']);
+    // A key the backup couldn't restore is refused, and an accepted one survives a backup
+    for (const payeeKey of ['id:', 'name:', 'payee:1', `name:${'x'.repeat(501)}`])
+      expect((await call(`/${g.group.id}/bill-suggestions/dismiss`, { payeeKey })).status).toBe(
+        400,
+      );
+    expect(() => parseBackup(JSON.parse(JSON.stringify(createBackup())))).not.toThrow();
+
+    // Added: a variable recurring item from the household account, shared with the household
+    const added = await call(`/${g.group.id}/bill-suggestions/add`, { id: power.id });
+    expect(added.status).toBe(200);
+    const bill = added.data.recurringBills.find((b: any) => b.name === 'Northwind Power');
+    expect(bill).toMatchObject({ amountType: 'variable', amount: 28000, paidFromPool: true });
+    expect(bill.nextDate > today).toBe(true);
+    expect((await call(`/${g.group.id}/bill-suggestions`)).data).toEqual([]);
+    // Adding it again is refused rather than making a second schedule
+    expect((await call(`/${g.group.id}/bill-suggestions/add`, { id: power.id })).status).toBe(400);
+  });
+
   it('renames a household and makes one the default', async () => {
     const a = await group();
     const b = await group();
