@@ -132,7 +132,7 @@ export interface GuideState {
     name: string;
     expectedDate: string;
     amount: number;
-    reason: 'no-category' | 'household-pool';
+    reason: 'no-category' | 'household-pool' | 'outside-budget';
   }[];
   irregular: { categoryId: string; name: string; hasTarget: boolean }[];
 }

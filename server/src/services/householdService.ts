@@ -71,6 +71,22 @@ export function poolAccountsOf(group: { id: string; accountId: string | null }):
   return [...(group.accountId ? [group.accountId] : []), ...extra];
 }
 
+/** Every household's pool accounts, across all households */
+export function allPoolAccountIds(): Set<string> {
+  return new Set([
+    ...db
+      .select({ accountId: groups.accountId })
+      .from(groups)
+      .all()
+      .flatMap((g) => (g.accountId ? [g.accountId] : [])),
+    ...db
+      .select({ accountId: poolAccounts.accountId })
+      .from(poolAccounts)
+      .all()
+      .map((r) => r.accountId),
+  ]);
+}
+
 /** The household whose pool this account is, if any */
 export function poolGroupOf(accountId: string) {
   const direct = db.select().from(groups).where(eq(groups.accountId, accountId)).get();

@@ -19,6 +19,9 @@ import {
   validateCategories,
 } from '../services/paydayService.js';
 import { addMonths, format, parseISO } from 'date-fns';
+import { isoDate } from '../utils/validation.js';
+
+const contextQuery = z.object({ scheduledDate: isoDate.optional() });
 
 export const paydayRouter = Router();
 // This router is mounted behind the same session/host/origin guards as the budget.
@@ -78,8 +81,8 @@ paydayRouter.get(
     const list = paydays(plan, from, to);
     const income = incomeOptions(today);
     // The panel asks about the payday it shows; with none, the one it opens on.
-    const chosen = typeof req.query.scheduledDate === 'string' ? req.query.scheduledDate : '';
-    const pay = list.find((p) => p.scheduledDate === chosen) ?? defaultPayday(list, today);
+    const { scheduledDate } = contextQuery.parse(req.query);
+    const pay = list.find((p) => p.scheduledDate === scheduledDate) ?? defaultPayday(list, today);
     res.json({
       today,
       paydays: list,

@@ -43,6 +43,12 @@ const STEP_TITLES: Record<api.GuideStepId, string> = {
   'before-spending': 'Check categories before spending',
   priorities: 'Move money when priorities change',
 };
+/** Why a bill in the window is left out of the coverage figures */
+const EXCLUDED_REASON: Record<api.GuideState['excludedBills'][number]['reason'], string> = {
+  'no-category': 'needs a category',
+  'household-pool': 'household pool',
+  'outside-budget': 'paid outside the budget',
+};
 const monthLabel = (month: string) => format(parseISO(`${month}-01`), 'MMMM yyyy');
 
 function StatusIcon({ status }: { status: api.GuideState['steps'][number]['status'] }) {
@@ -202,8 +208,7 @@ function StepDetail({ id, guide }: { id: api.GuideStepId; guide: api.GuideState 
                     {b.name} · {formatDay(b.expectedDate)}
                   </span>
                   <span>
-                    {formatCurrency(b.amount)} ·{' '}
-                    {b.reason === 'no-category' ? 'needs a category' : 'household pool'}
+                    {formatCurrency(b.amount)} · {EXCLUDED_REASON[b.reason]}
                   </span>
                 </li>
               ))}

@@ -9,6 +9,7 @@ import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { db } from '../db/index.js';
 import { BudgetError } from './budgetMoves.js';
 import { addAssigned } from './fundingPlan.js';
+import { allPoolAccountIds } from './householdService.js';
 import {
   accounts,
   budgetMonths,
@@ -186,14 +187,14 @@ export type ExcludedBill = {
   name: string;
   expectedDate: string;
   amount: number;
-  reason: 'no-category' | 'household-pool';
+  reason: 'no-category' | 'household-pool' | 'outside-budget';
 };
 
 /**
  * Bills due in [from, to): a bill dated on `to` belongs to the next cycle. Bills without a
- * category, or paid from a household pool account, can't be tied to an envelope, so they come
- * back in `excluded` instead of vanishing; callers must not call coverage settled while a
- * personal bill is excluded.
+ * category, or paid from a household pool or another off-budget account, can't be tied to an
+ * envelope, so they come back in `excluded` instead of vanishing; callers must not call
+ * coverage settled while a personal bill is excluded.
  */
 export function billCoverageDetail(from: string, to: string, today: string) {
   const accountRows = db.select().from(accounts).all();
@@ -209,6 +210,7 @@ export function billCoverageDetail(from: string, to: string, today: string) {
     estimated: boolean;
   }[] = [];
   const excluded: ExcludedBill[] = [];
+  const pools = allPoolAccountIds();
   for (const schedule of db.select().from(schedules).where(eq(schedules.status, 'active')).all()) {
     const inPersonal = plansInPersonalBudget(schedule, budgetScope);
     let reason: ExcludedBill['reason'] | null = null;
@@ -219,7 +221,7 @@ export function billCoverageDetail(from: string, to: string, today: string) {
         !budgetScope.personal.has(schedule.accountId) &&
         !(schedule.transferAccountId && budgetScope.personal.has(schedule.transferAccountId))
       )
-        reason = 'household-pool';
+        reason = pools.has(schedule.accountId) ? 'household-pool' : 'outside-budget';
       else if (inPersonal && !schedule.categoryId) reason = 'no-category';
     }
     if (!reason && (!schedule.categoryId || !expenseIds.has(schedule.categoryId) || !inPersonal))

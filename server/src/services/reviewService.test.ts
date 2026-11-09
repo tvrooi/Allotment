@@ -343,6 +343,24 @@ describe('guided setup (6G)', () => {
       });
       expect(step('before-income').status).toBe('done');
     });
+    it('names a bill paid from an off-budget account as outside the budget, not the household', () => {
+      db.insert(accounts)
+        .values({
+          id: 'broker',
+          name: 'Broker',
+          type: 'investment',
+          isOffBudget: 1,
+          createdAt: '2026-06-01',
+        })
+        .run();
+      bill('broker-fee', { accountId: 'broker', categoryId: null });
+      const guide = guideState();
+      expect(guide.excludedBills).toMatchObject([
+        { scheduleId: 'broker-fee', reason: 'outside-budget' },
+      ]);
+      expect(guide.coverage).toMatchObject({ kind: 'none-due', householdMessage: null });
+      expect(step('before-income').status).toBe('done');
+    });
     it('funds every tracked bill, and leaves a bill dated on the next income day to the next pay', () => {
       db.insert(paydayPlans)
         .values({

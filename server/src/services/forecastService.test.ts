@@ -3,7 +3,7 @@ import express from 'express';
 import type { Server } from 'http';
 import type { AddressInfo } from 'net';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import {
   accounts,
@@ -25,6 +25,7 @@ import {
 } from '../db/schema.js';
 import { buildForecast } from './forecastService.js';
 import { forecastRequestSchema, type ForecastRequest } from './forecastConfig.js';
+import { updateBudgetSettings } from './mainAmountService.js';
 import { forecastRouter } from '../routes/forecast.js';
 
 // Synthetic fixtures only. "Today" is Wednesday 21 October 2026; pay is fortnightly from
@@ -398,6 +399,23 @@ describe('household shares', () => {
     linkedPayment('rent-paid', { payeeId: 'landlord' });
     expect(forecast({ lookbackDays: 28 }).spending.total).toBe(28000);
     expect(forecast({ lookbackDays: 28, includeHousehold: false }).spending.total).toBe(70000);
+  });
+
+  it('keeps a skipped household’s payments in the average, since no event replaces them', () => {
+    // A household in another currency is left out of the forecast with a warning, so removing
+    // its past payments would drop the cost with nothing in its place
+    updateBudgetSettings({ currency: 'AUD' });
+    try {
+      db.update(householdGroups).set({ currency: 'NZD' }).where(eq(householdGroups.id, 'hh')).run();
+      linkedPayment('top-up', {}, { kind: 'contribution' });
+      const result = forecast({ horizonDays: 14, lookbackDays: 28 });
+      expect(result.warnings).toContain(
+        'Home bills are excluded: the household currency differs from the budget.',
+      );
+      expect(result.spending.total).toBe(42000);
+    } finally {
+      updateBudgetSettings({ currency: null });
+    }
   });
 
   describe('shared recurring bills', () => {

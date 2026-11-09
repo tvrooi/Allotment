@@ -11,7 +11,6 @@ import {
   householdBills,
   householdEvents,
   householdGroups,
-  householdPoolAccounts,
   householdRecurringBills,
   paydayPlans,
   scheduleOccurrences,
@@ -28,7 +27,7 @@ import type { PaydayConfig } from './paydayConfig.js';
 import { possiblyEndedIds } from './scheduleActivity.js';
 import type { ForecastRequest, ForecastScenario } from './forecastConfig.js';
 import { pendingOccurrences } from './scheduleService.js';
-import { sharedRecurringDue } from './householdService.js';
+import { allPoolAccountIds, sharedRecurringDue } from './householdService.js';
 import { incomeCategoryIds, isPersonalIncomeSchedule, scheduleScopes } from './scheduleScope.js';
 
 // Read-only projection. Every input comes from the same definitions as the budget and
@@ -232,19 +231,7 @@ function paydayEvents(
 
 /** Pool accounts receiving scheduled personal transfers already forecast as outflows. */
 function contributionPools() {
-  const pools = new Set([
-    ...db
-      .select({ accountId: householdGroups.accountId })
-      .from(householdGroups)
-      .where(isNotNull(householdGroups.accountId))
-      .all()
-      .map((g) => g.accountId!),
-    ...db
-      .select({ accountId: householdPoolAccounts.accountId })
-      .from(householdPoolAccounts)
-      .all()
-      .map((p) => p.accountId),
-  ]);
+  const pools = allPoolAccountIds();
   const personal = personalAccountIds();
   const funded = new Set<string>();
   for (const s of db.select().from(schedules).where(eq(schedules.status, 'active')).all()) {
@@ -354,20 +341,30 @@ function variableSpending(today: string, lookbackDays: number, excludeHousehold:
     .select({ id: scheduleOccurrences.matchedTransactionId })
     .from(scheduleOccurrences)
     .where(isNotNull(scheduleOccurrences.matchedTransactionId));
+  // Only households the forecast models: one in another currency is skipped with a warning
+  // (householdEventsFor), so its past payments stay in the average rather than vanish.
+  const budget = currencyContext().budget;
+  const modelled = db
+    .select({ id: householdGroups.id })
+    .from(householdGroups)
+    .where(budget ? eq(householdGroups.currency, budget) : undefined);
   const sharedBillPayees = db
     .select({ id: schedules.payeeId })
     .from(schedules)
     .innerJoin(householdRecurringBills, eq(householdRecurringBills.scheduleId, schedules.id))
-    .where(isNotNull(schedules.payeeId));
+    .where(and(isNotNull(schedules.payeeId), inArray(householdRecurringBills.groupId, modelled)));
   const linked = db
     .select({ id: householdEvents.transactionId })
     .from(householdEvents)
     .innerJoin(transactions, eq(transactions.id, householdEvents.transactionId))
     .where(
-      or(
-        isNotNull(householdEvents.billId),
-        eq(householdEvents.kind, 'contribution'),
-        inArray(transactions.payeeId, sharedBillPayees),
+      and(
+        inArray(householdEvents.groupId, modelled),
+        or(
+          isNotNull(householdEvents.billId),
+          eq(householdEvents.kind, 'contribution'),
+          inArray(transactions.payeeId, sharedBillPayees),
+        ),
       ),
     );
   const expenseCategories = db
