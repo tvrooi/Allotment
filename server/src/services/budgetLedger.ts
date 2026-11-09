@@ -253,10 +253,11 @@ function build(): Ledger {
       : undefined;
     if (!history.expense || !account) continue;
     const effectiveMonth = account.effective.slice(0, 7);
-    history.mirror = {
-      account,
-      from: effectiveMonth > startMonth ? effectiveMonth : startMonth,
-    };
+    const from = effectiveMonth > startMonth ? effectiveMonth : startMonth;
+    // Mirror only once the account is in effect: before that nothing has settled the envelope to
+    // a balance, so every month (later ones included) follows the usual rules
+    if (from > todayIso().slice(0, 7)) continue;
+    history.mirror = { account, from };
     mirrorSteps(history, lastMonth, ctx);
   }
 

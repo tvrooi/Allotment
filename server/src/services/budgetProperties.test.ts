@@ -382,7 +382,9 @@ function recompute(raw: Raw, month: string) {
       ? 0
       : saver.startingBalance +
         saverRows.filter((t) => t.date <= date).reduce((s, t) => s + t.amount, 0);
-  const mirrorFrom = [saverOpens.slice(0, 7), startMonth].sort().at(-1)!;
+  // A saver not yet in effect mirrors nothing: every month follows the usual rules
+  const opensFrom = [saverOpens.slice(0, 7), startMonth].sort().at(-1)!;
+  const mirrorFrom = opensFrom > CURRENT ? '9999-12' : opensFrom;
   const assignedIn = (c: string, m: string) =>
     raw.assigned
       .filter((a) => a.categoryId === c && a.month === m)

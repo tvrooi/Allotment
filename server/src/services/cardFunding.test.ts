@@ -308,6 +308,15 @@ describe('card payment reserves', () => {
       .run();
     db.update(categories).set({ linkedAccountId: 'saver' }).where(eq(categories.id, 'food')).run();
     expect({ balance: cat().balance, unassigned: state().unassigned }).toEqual(unlinked);
+    // November too: the mirror hasn't settled anything yet, so the adjustment still counts
+    const november = () =>
+      budgetGroups('2026-11')
+        .flatMap((g) => g.categories)
+        .find((c) => c.id === 'food')!.balance;
+    db.update(categories).set({ linkedAccountId: null }).where(eq(categories.id, 'food')).run();
+    const novemberUnlinked = november();
+    db.update(categories).set({ linkedAccountId: 'saver' }).where(eq(categories.id, 'food')).run();
+    expect(november()).toBe(novemberUnlinked);
   });
   it('returns an unreserved payment followed by refund to its original funding position', () => {
     setup();
