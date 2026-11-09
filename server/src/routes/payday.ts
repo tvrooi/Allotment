@@ -9,6 +9,8 @@ import {
   applyPayday,
   expenseCategories,
   incomeOptions,
+  suggestDeposit,
+  defaultPayday,
   loadPlan,
   PaydayError,
   paydays,
@@ -73,10 +75,16 @@ paydayRouter.get(
     const today = dateInZone(plan.timeZone);
     const from = format(addMonths(parseISO(today), -1), 'yyyy-MM-dd');
     const to = format(addMonths(parseISO(today), 12), 'yyyy-MM-dd');
+    const list = paydays(plan, from, to);
+    const income = incomeOptions(today);
+    // The panel asks about the payday it shows; with none, the one it opens on.
+    const chosen = typeof req.query.scheduledDate === 'string' ? req.query.scheduledDate : '';
+    const pay = list.find((p) => p.scheduledDate === chosen) ?? defaultPayday(list, today);
     res.json({
       today,
-      paydays: paydays(plan, from, to),
-      income: incomeOptions(today),
+      paydays: list,
+      income,
+      suggestion: pay ? suggestDeposit(plan, income, pay.expectedDate) : null,
       history: db
         .select()
         .from(paydayFundingEvents)

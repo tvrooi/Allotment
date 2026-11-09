@@ -106,12 +106,22 @@ export function incomeOptions(today: string) {
       .all()
       .map((r) => r.transactionId),
   ]);
+  // Money paid into an account an envelope is linked to is that envelope's money (PR 204),
+  // not income to assign, so it never pays a payday.
+  const linkedAccounts = new Set(
+    db
+      .select({ id: categories.linkedAccountId })
+      .from(categories)
+      .all()
+      .flatMap((c) => (c.id ? [c.id] : [])),
+  );
   return (
     db
       .select({
         id: transactions.id,
         date: transactions.date,
         name: transactions.payeeName,
+        accountId: transactions.accountId,
         amount: mainAmount,
         importedId: transactions.importedId,
         reconciled: transactions.reconciled,
@@ -127,10 +137,47 @@ export function incomeOptions(today: string) {
         (r) =>
           r.amount > 0 &&
           !used.has(r.id) &&
+          !linkedAccounts.has(r.accountId) &&
           !(r.importedId?.startsWith('schedule:') && !r.reconciled),
       )
       .sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id))
   );
+}
+
+/** A deposit counts as the pay when it lands within a week of the payday. */
+const SUGGEST_WINDOW_DAYS = 7;
+/** ...and is within this many percent of the plan's expected pay. */
+const SUGGEST_TOLERANCE_PERCENT = 15;
+
+/** The unused deposit that most plausibly pays `expectedDate`, or null when it is not
+ * exactly one. A plan records no salary payee or category, so the evidence is the date
+ * and the amount: a 12-cent interest deposit is never the pay, however recent. Cents only. */
+export function suggestDeposit(
+  plan: Pick<PaydayConfig, 'expectedIncome'>,
+  options: { id: string; date: string; amount: number }[],
+  expectedDate: string,
+): { id: string; reasons: string[] } | null {
+  if (plan.expectedIncome <= 0) return null;
+  const candidates = options.filter(
+    (r) =>
+      Math.abs(differenceInCalendarDays(parseISO(r.date), parseISO(expectedDate))) <=
+        SUGGEST_WINDOW_DAYS &&
+      Math.abs(r.amount - plan.expectedIncome) * 100 <=
+        plan.expectedIncome * SUGGEST_TOLERANCE_PERCENT,
+  );
+  if (candidates.length !== 1) return null;
+  return {
+    id: candidates[0].id,
+    reasons: [
+      `Arrived within ${SUGGEST_WINDOW_DAYS} days of the expected payday`,
+      `Within ${SUGGEST_TOLERANCE_PERCENT}% of the plan's expected pay`,
+    ],
+  };
+}
+
+/** The payday the panel opens on: the latest one that has arrived, else the first. */
+export function defaultPayday<T extends { expectedDate: string }>(list: T[], today: string) {
+  return list.filter((p) => p.expectedDate <= today).at(-1) ?? list[0];
 }
 
 /** A bill in the window that the coverage figures leave out, and why (see `billCoverageDetail`). */

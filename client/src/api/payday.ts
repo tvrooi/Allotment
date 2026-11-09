@@ -31,6 +31,8 @@ export interface PaydayContext {
   today: string;
   paydays: { scheduledDate: string; expectedDate: string }[];
   income: { id: string; date: string; name: string | null; amount: number }[];
+  /** The one unused deposit that plausibly pays the asked-about payday, with why; else null. */
+  suggestion: { id: string; reasons: string[] } | null;
   history: FundingEvent[];
   undone: UndoneFunding[];
 }
@@ -101,7 +103,10 @@ export const savePlan = (config: PaydayConfig, id?: string) =>
   apiFetch<PaydayPlan>(`/payday${id ? `/${id}` : ''}`, json(id ? 'PUT' : 'POST', config));
 export const archivePlan = (id: string) =>
   apiFetch<void>(`/payday/${id}/archive`, json('POST', {}));
-export const getPaydayContext = (id: string) => apiFetch<PaydayContext>(`/payday/${id}/context`);
+export const getPaydayContext = (id: string, scheduledDate?: string) =>
+  apiFetch<PaydayContext>(
+    `/payday/${id}/context${scheduledDate ? `?scheduledDate=${encodeURIComponent(scheduledDate)}` : ''}`,
+  );
 export const previewPayday = (id: string, request: PaydayRequest) =>
   apiFetch<PaydayPreview>(`/payday/${id}/preview`, json('POST', request));
 export const applyPayday = (id: string, request: PaydayRequest, previewKey: string) =>
