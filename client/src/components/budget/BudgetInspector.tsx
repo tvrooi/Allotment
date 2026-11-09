@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { useMonthNote, useSetCategoryNote, useSetMonthNote } from '../../hooks/useBudget';
 import { useCanSave } from '../../hooks/useConnection';
+import { useIsPhone } from '../../hooks/useIsPhone';
 import type { BudgetCategory } from '../../types';
 import { availability, selectionFigures } from '../../utils/budgetFigures';
 import { formatCurrency } from '../../utils/currency';
@@ -80,6 +81,8 @@ function Figures({ cats }: { cats: BudgetCategory[] }) {
 function MonthView({ month, categories }: { month: string; categories: BudgetCategory[] }) {
   const { data, isSuccess } = useMonthNote(month);
   const setNote = useSetMonthNote();
+  // Phones list envelopes as cards with nothing to tick
+  const isPhone = useIsPhone();
   return (
     <div className="grid gap-3">
       <div>
@@ -87,7 +90,9 @@ function MonthView({ month, categories }: { month: string; categories: BudgetCat
           {format(parseISO(`${month}-01`), 'MMMM yyyy')}
         </h2>
         <p className="text-xs text-text-tertiary">
-          Every envelope this month. Tick envelopes in the table to see only those.
+          {isPhone
+            ? 'Every envelope this month.'
+            : 'Every envelope this month. Tick envelopes in the table to see only those.'}
         </p>
       </div>
       <Figures cats={categories} />

@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay, typeAmount } from './fixtures';
+import { test, expect, open, isoDay, thisMonth, typeAmount } from './fixtures';
 import type { Api } from './fixtures';
 
 // Multiple currencies: the budget has one, accounts can each have their own, and the budget
@@ -153,4 +153,33 @@ test('ECB rates download only when turned on', async ({ page, api }) => {
   await expect(page.getByText('1 PLN = 0.235294 EUR')).toBeVisible();
   const [tx] = await api.call('GET', `/transactions?account_id=${zloty.id}`);
   expect(tx).toMatchObject({ mainAmount: -2_000, mainAmountSource: 'rate' });
+});
+
+test('amounts drawn before the budget currency arrives still use its symbol', async ({
+  page,
+  api,
+}) => {
+  await setCurrency(api, 'AUD');
+  const checking = await api.createAccount('Checking', 0);
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: 300_000,
+    payeeName: 'Employer',
+    categoryId: (await api.category('Paychecks')).id,
+  });
+  const groceries = await api.category('Groceries');
+  await api.call('PUT', `/budget/${thisMonth()}/${groceries.id}`, { budgeted: 40_000 });
+
+  // The currency answers after the budget, as on a slow first load
+  await page.route('**/api/currency', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    await route.continue();
+  });
+  await open(page, '/budget');
+  // The budget's own dollar is plain $ even on this American device, in the table and the summary alike
+  const ready = page.getByRole('status', { name: 'Ready to assign' });
+  await expect(ready).toContainText('$2,600');
+  await expect(ready).not.toContainText('A$');
+  await expect(page.getByRole('button', { name: /^Assigned to Groceries: \$400/ })).toBeVisible();
 });

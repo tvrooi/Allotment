@@ -53,7 +53,7 @@ test('mid-session the app keeps what it loaded, keeps new transactions, and reco
   const groceries = await api.category('Groceries');
   await api.call('PUT', `/budget/${thisMonth()}/${groceries.id}`, { budgeted: 50_000 });
   await open(page, '/budget');
-  const planned = page.getByRole('button', { name: /^Planned for Groceries:/ });
+  const planned = page.getByRole('button', { name: /^Assigned to Groceries:/ });
   await expect(planned).toBeEnabled();
   await open(page, `/accounts/${account.id}`);
   await expect(page.getByText('Corner Grocery')).toBeVisible();

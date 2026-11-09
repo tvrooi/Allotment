@@ -1,6 +1,8 @@
+import { formatCurrency } from '../../utils/currency';
+
 /**
  * How much of a category's plan is used: green, amber from 80%, red when over. Recurring
- * debits still expected this month follow in orange.
+ * debits still expected this month follow in grey.
  */
 export function SpentBar({
   spent,
@@ -40,8 +42,14 @@ export function SpentBar({
     100 - Math.max(fillWidth, 0),
   );
 
+  // The bar has no legend, so hovering it says what it measures (the figures beside it are what
+  // a screen reader reads)
+  const label = `${isIncome ? 'Received' : 'Spent'} ${formatCurrency(spent)} of ${formatCurrency(budgeted)}${
+    expected > 0 ? `, ${formatCurrency(expected)} still expected` : ''
+  }`;
+
   return (
-    <div className={`${className} bg-surface-alt rounded-full overflow-hidden flex`}>
+    <div title={label} className={`${className} bg-surface-alt rounded-full overflow-hidden flex`}>
       <div
         className={`h-full rounded-full transition-all ${color}`}
         style={{ width: `${fillWidth.toFixed(1)}%` }}

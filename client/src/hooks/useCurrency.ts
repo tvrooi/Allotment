@@ -15,15 +15,20 @@ export function useCurrencySettings() {
 export const useBudgetCurrency = () => useCurrencyStore((s) => s.budgetCurrency);
 
 /**
- * Keeps the budget's currency where the formatters read it. Mounted once, in AppShell; the
+ * Keeps the budget's currency where the formatters read it. Mounted once, in AuthGate; the
  * offline copy restores the last answer, so amounts look right even before the server replies.
+ * Returns whether the formatters have it: formatCurrency reads it when called, so an amount
+ * drawn before then keeps the placeholder symbol until something else redraws it. A failed
+ * request settles too, so pages still open on the device's symbol preference.
  */
-export function useBudgetCurrencySync() {
-  const { data } = useCurrencySettings();
+export function useBudgetCurrencySync(): boolean {
+  const { data, failureCount } = useCurrencySettings();
   const set = useCurrencyStore((s) => s.setBudgetCurrency);
+  const current = useCurrencyStore((s) => s.budgetCurrency);
   useEffect(() => {
     if (data) set(data.currency);
   }, [data, set]);
+  return data ? current === data.currency : failureCount > 0;
 }
 
 /** Whether this budget has accounts in more than one currency */

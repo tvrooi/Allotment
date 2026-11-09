@@ -145,8 +145,8 @@ test.describe('last month', () => {
     const row = page.getByRole('row', { name: /Groceries/ });
     await expect(row).toContainText('$42.50');
     // Nothing to assign to: the planned amount can't be opened for editing
-    await row.getByRole('button', { name: /^Planned for Groceries/ }).click();
-    await expect(page.getByRole('textbox', { name: 'Planned for Groceries' })).toHaveCount(0);
+    await row.getByRole('button', { name: /^Assigned to Groceries/ }).click();
+    await expect(page.getByRole('textbox', { name: 'Assigned to Groceries' })).toHaveCount(0);
   });
 });
 
@@ -156,8 +156,8 @@ test.describe('the budget page', () => {
     await open(page, '/budget');
     const find = page.getByRole('searchbox', { name: 'Find a category' });
     await find.fill('groc');
-    await expect(page.getByRole('button', { name: /^Planned for Groceries:/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Planned for Rent/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Assigned to Groceries:/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Assigned to Rent/ })).toHaveCount(0);
     await page.getByRole('button', { name: 'Clear category search' }).click();
     await expect(find).toHaveValue('');
   });
@@ -168,13 +168,13 @@ test.describe('the budget page', () => {
   }) => {
     await api.createAccount('Everyday', 100_000);
     await open(page, '/budget');
-    await expect(page.getByRole('button', { name: /^Planned for Rent/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Assigned to Rent/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Show \d+ inactive/ })).toHaveCount(0);
 
     const groceries = await api.category('Groceries');
     await api.call('PUT', `/budget/${thisMonth()}/${groceries.id}`, { budgeted: 10_000 });
     await page.reload();
-    await expect(page.getByRole('button', { name: /^Planned for Groceries:/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Assigned to Groceries:/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Show \d+ inactive/ }).first()).toBeVisible();
   });
 

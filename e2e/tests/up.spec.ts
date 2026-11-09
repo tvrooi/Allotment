@@ -92,10 +92,10 @@ test('sets background sync, reviews imports, and expands daily round-up details 
   await expect(review.getByRole('heading')).toHaveText('Needs review (0)');
   await expect(review.getByText('Nothing needs review.')).toBeVisible();
   const rounds = page.getByRole('region', { name: 'Daily Up round-ups', exact: true });
-  await rounds.getByText('A$2.40 reported', { exact: false }).click();
-  await expect(rounds.getByText('Includes A$2 in boosts.')).toBeVisible();
+  await rounds.getByText('$2.40 reported', { exact: false }).click();
+  await expect(rounds.getByText('Includes $2 in boosts.')).toBeVisible();
   await expect(
-    rounds.getByText('purchase · purchase -A$17.60 · round-up A$2.40', { exact: true }),
+    rounds.getByText('purchase · purchase -$17.60 · round-up $2.40', { exact: true }),
   ).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('up-review-desktop.png') });
   expect(await api.transactions()).toEqual(before);
@@ -104,8 +104,8 @@ test('sets background sync, reviews imports, and expands daily round-up details 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Up', exact: true }).click();
   await rounds.scrollIntoViewIfNeeded();
-  await rounds.getByText('A$2.40 reported', { exact: false }).click();
-  await expect(rounds.getByText('Includes A$2 in boosts.')).toBeVisible();
+  await rounds.getByText('$2.40 reported', { exact: false }).click();
+  await expect(rounds.getByText('Includes $2 in boosts.')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -131,8 +131,8 @@ test('adds balance-proven round-up debits only after an explicit choice', async 
   await page.getByRole('button', { name: 'Up', exact: true }).click();
   const check = page.getByRole('region', { name: 'Round-up accounting check', exact: true });
   await expect(check).toContainText('higher than Up by exactly the round-ups');
-  await expect(check).toContainText('Difference -A$2.40');
-  await check.getByRole('button', { name: 'Add 1 round-up debit (-A$2.40)' }).click();
+  await expect(check).toContainText('Difference -$2.40');
+  await check.getByRole('button', { name: 'Add 1 round-up debit (-$2.40)' }).click();
   await expect(check).toContainText('The register matches Up’s settled balance.');
   await expect(check.getByRole('button', { name: 'Stop adding round-up debits' })).toBeVisible();
   // The ledger has the debit; the register folds it into its purchase

@@ -1,5 +1,15 @@
 # Changes
 
+## 0.2.0-up.154
+
+The Budget page, from the 9 November design critique (docs/critiques/2026-11-09-budget.md):
+
+- **Ready to assign leads the right rail,** as its largest figure. It stays green while the figure holds; uncategorised spending, overspending and card shortfalls get their own line under it with a **Review** link, instead of turning it yellow. Yellow is kept for balances that disagree with the bank or missing exchange rates.
+- **A budget in Australian dollars writes $, never A$,** on any device. Another currency that would then look the same is written as its code (USD beside an Australian $). Amounts drawn before the budget's currency had loaded no longer keep the wrong symbol.
+- **The working behind Ready to assign is folded under "How this is worked out"** on desktop too, and its rows that are $0 are left out.
+- **Only envelopes that need a decision are pills:** overspent in red, short of a target in amber, with their caption in the same colour. An envelope with money in it is a plain figure. Hover a spending bar to see what it measures.
+- Section headers are in sentence case. The amount you assign is named **Assigned to Rent** (it was "Planned for"). The Move money button says **Cover overspending** only when an envelope is overspent, and **Move between envelopes** otherwise. Phones no longer ask you to tick envelopes in a table they don't have.
+
 ## 0.2.0-up.153
 
 Follow-ups to linked categories (0.2.0-up.151):

@@ -64,7 +64,7 @@ test("housemates' deposits aren't income, and a shared bill counts at my share",
   await expect(main.getByText('Juno rent')).toHaveCount(0);
   // Income received counts the owner's pay only
   const month = isoDay().slice(0, 7);
-  // Amounts show as A$ in a budget whose currency is AUD
+  // A budget in AUD writes its amounts as plain $ (older builds wrote A$ on American devices)
   const money = (cents: number) => `A?\\$${(cents / 100).toLocaleString('en-AU')}`;
   const payTotal = occurrences
     .filter((o) => o.scheduleId === pay.id && o.expectedDate.startsWith(month))

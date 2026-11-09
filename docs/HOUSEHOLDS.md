@@ -36,7 +36,7 @@ only the page reverses them.
 
 With a household account, **Bills coverage** sits at the top of the page, like the dial in Up's
 Essentials. It compares what the household accounts hold now with the bills they will pay in the
-next 30 days (`COVERAGE_DAYS`): "A$150 of A$1,320 needed by 8 Dec", a meter, and what is still to
+next 30 days (`COVERAGE_DAYS`): "$150 of $1,320 needed by 8 Dec", a meter, and what is still to
 be paid in. The bills it counts are:
 
 - every expected date of a shared recurring bill paid from a household account

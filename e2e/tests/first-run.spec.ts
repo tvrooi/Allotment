@@ -73,6 +73,6 @@ test('empty pages explain themselves and offer the first step', async ({ page, a
   await open(page, '/budget');
   await expect(page.getByText(/No money assigned for/)).toBeVisible();
   // Every category is listed (none tucked away), so there's something to plan straight away
-  await expect(page.getByRole('button', { name: /^Planned for Groceries:/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Assigned to Groceries:/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Show \d+ inactive/ })).toHaveCount(0);
 });

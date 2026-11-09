@@ -45,6 +45,24 @@ export function availability(
   return { kind: 'available', remaining, caption: null };
 }
 
+/**
+ * The Available figure's colours. Only what needs a decision is a pill, in its own colour
+ * (overspent red, short of a target or covered by carried money amber); an envelope with money
+ * in it is a plain figure, so the exceptions stand out; $0 is grey.
+ */
+export function availableTone(kind: AvailabilityKind, remaining: number): string {
+  if (kind === 'overspent') return 'font-semibold bg-negative-subtle text-negative';
+  if (kind === 'short' || kind === 'carried') return 'font-semibold bg-caution-subtle text-caution';
+  return remaining > 0 ? 'font-medium text-text' : 'text-text-tertiary';
+}
+
+/** The caption under the figure ("Overspent", "Short of target") in the same colour */
+export function captionTone(kind: AvailabilityKind): string {
+  if (kind === 'overspent') return 'text-negative';
+  if (kind === 'short' || kind === 'carried') return 'text-caution';
+  return 'text-text-tertiary';
+}
+
 /** A category with nothing planned and no activity is "inactive" and tucked away. */
 export function isActiveCategory(cat: BudgetCategory, isIncome: boolean) {
   return (

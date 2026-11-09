@@ -182,6 +182,25 @@ export function currencySymbol(currency: string): string {
   return found;
 }
 
+const plainSymbols = new Map<string, string>();
+const plainSymbol = (currency: string) => {
+  let found = plainSymbols.get(currency);
+  if (!found) plainSymbols.set(currency, (found = symbolIn(currency, 'narrowSymbol')));
+  return found;
+};
+
+/**
+ * The symbol amounts in a currency show in a budget kept in another (or none). The budget's
+ * own currency needs nothing to tell it apart, so it is written plainly on any device ($ for an
+ * Australian budget, not A$). Another currency that would then look the same is written as its
+ * code (USD beside an Australian $), since a US device calls its own dollar plain $ too.
+ */
+function displaySymbol(currency: string, budgetCurrency: string | null): string {
+  if (currency === budgetCurrency) return plainSymbol(currency);
+  const symbol = currencySymbol(currency);
+  return budgetCurrency && symbol === plainSymbol(budgetCurrency) ? currency : symbol;
+}
+
 /** A currency's name in the device's language ("Polish zloty"), or its code */
 export function currencyName(currency: string): string {
   try {
@@ -231,15 +250,18 @@ export function currencyAmountStyle(
     own?.position ??
     (code === budgetCurrency && prefs.symbolPosition !== 'auto' ? prefs.symbolPosition : null);
   const position = chosen ?? convention.position;
-  const symbol = own?.symbol || currencySymbol(code);
+  const symbol = own?.symbol || displaySymbol(code, budgetCurrency);
   return {
     format,
     position,
     symbol,
     minor: minorUnits(code),
-    // Its own convention's spacing; on a side chosen by hand, a space after letters (CHF 12)
+    // Its own convention's spacing; on a side chosen by hand or written as its code, a space
+    // after letters (CHF 12, USD 12)
     space:
-      position === convention.position && !own?.symbol ? convention.space : /\p{L}$/u.test(symbol),
+      position === convention.position && !own?.symbol && symbol !== code
+        ? convention.space
+        : /\p{L}$/u.test(symbol),
   };
 }
 

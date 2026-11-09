@@ -475,7 +475,8 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
             phone). If it has money, <b>Move money</b> opens with that envelope as the source: type
             an amount and choose where it goes. If it is overspent (red), the panel opens with that
             envelope as the destination and the amount it is short: choose which envelope pays for
-            it. You can also open <b>Move money / Cover overspending</b> yourself and choose both.
+            it. You can also open the panel yourself (<b>Cover overspending</b>, or{' '}
+            <b>Move between envelopes</b> when nothing is overspent) and choose both.
           </p>
         ),
       },

@@ -145,20 +145,20 @@ test.describe('budget', () => {
     await expectTouchSize(page.getByRole('button', { name: 'Previous month' }));
     await expectTouchSize(page.getByRole('button', { name: 'Next month' }));
 
-    const planned = card.getByRole('button', { name: 'Planned for Groceries: $500' });
+    const planned = card.getByRole('button', { name: 'Assigned to Groceries: $500' });
     await expectTouchSize(planned);
     await planned.click();
     const sheet = page.getByRole('dialog', { name: 'Plan Groceries' });
     await expectBottomSheet(page, sheet);
-    await sheet.getByRole('textbox', { name: 'Planned for Groceries' }).fill('425');
+    await sheet.getByRole('textbox', { name: 'Assigned to Groceries' }).fill('425');
     await sheet.getByRole('button', { name: 'Save' }).click();
     await expect(sheet).toBeHidden();
     await expect(card).toContainText('$382.50 available');
 
     // Enter saves too; the next 12 months are only overwritten after reviewing their preview
-    await card.getByRole('button', { name: /^Planned for Groceries/ }).click();
+    await card.getByRole('button', { name: /^Assigned to Groceries/ }).click();
     await sheet.getByRole('checkbox', { name: 'Use this amount for the next 12 months' }).check();
-    const input = sheet.getByRole('textbox', { name: 'Planned for Groceries' });
+    const input = sheet.getByRole('textbox', { name: 'Assigned to Groceries' });
     await input.fill('30');
     await input.press('Enter');
     const review = sheet.getByRole('region', { name: 'Next 12 months preview' });

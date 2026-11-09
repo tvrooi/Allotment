@@ -8,7 +8,13 @@ import { usePreferencesStore } from '../../store/preferencesStore';
 import { useCanSave } from '../../hooks/useConnection';
 import { canMoveIn, useMoveRequest } from '../../store/moveRequestStore';
 import { formatCurrency } from '../../utils/currency';
-import { availability, categoryFigures, splitCategories } from '../../utils/budgetFigures';
+import {
+  availability,
+  availableTone,
+  captionTone,
+  categoryFigures,
+  splitCategories,
+} from '../../utils/budgetFigures';
 import { TransferredNote, useLinkedAccount } from './TransferredNote';
 import { ExpectedNote } from './ExpectedNote';
 import { CardRowNotes } from './CardRowNotes';
@@ -188,14 +194,7 @@ function CategoryCard({
   const linked = useLinkedAccount(cat);
   const movable =
     !isIncome && !linked && canSave && !readOnly && remaining !== 0 && canMoveIn(month);
-  const pill =
-    kind === 'overspent'
-      ? 'bg-negative/20'
-      : kind === 'short' || kind === 'carried'
-        ? 'bg-caution/20'
-        : remaining > 0
-          ? 'bg-positive/20'
-          : 'bg-surface-alt';
+  const pill = availableTone(kind, remaining);
 
   return (
     // relative: keeps the sr-only text inside the card, or it's placed against the page and
@@ -219,16 +218,14 @@ function CategoryCard({
                 ? `Cover ${cat.name}: ${formatCurrency(-remaining)} overspent`
                 : `Move money from ${cat.name}: ${formatCurrency(remaining)} available${caption ? `, ${caption.toLowerCase()}` : ''}`
             }
-            className={`shrink-0 min-h-11 -my-2 rounded-full px-2.5 text-sm font-medium tabular-nums text-text ${pill}`}
+            className={`shrink-0 min-h-11 -my-2 rounded-full px-2.5 text-sm tabular-nums ${pill}`}
           >
             {formatCurrency(remaining)}
             {/* Read as text too (the label above is what a screen reader announces) */}
             <span className="sr-only"> available</span>
           </button>
         ) : (
-          <span
-            className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-medium tabular-nums text-text ${pill}`}
-          >
+          <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm tabular-nums ${pill}`}>
             {formatCurrency(remaining)}
             <span className="sr-only">
               {' '}
@@ -238,7 +235,7 @@ function CategoryCard({
           </span>
         )}
       </div>
-      {caption && <p className="mt-1 text-right text-xs text-text-tertiary">{caption}</p>}
+      {caption && <p className={`mt-1 text-right text-xs ${captionTone(kind)}`}>{caption}</p>}
       <SpentBar
         spent={isIncome ? actual : cat.spent}
         budgeted={cat.budgeted + (cat.transferred ?? 0)}
@@ -270,7 +267,7 @@ function CategoryCard({
             type="button"
             onClick={onEdit}
             disabled={!canSave || readOnly}
-            aria-label={`Planned for ${cat.name}: ${formatCurrency(cat.budgeted)}`}
+            aria-label={`Assigned to ${cat.name}: ${formatCurrency(cat.budgeted)}`}
             className="min-h-11 flex items-center gap-1.5 text-left disabled:opacity-50"
           >
             <span className="grid">

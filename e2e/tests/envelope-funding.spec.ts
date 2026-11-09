@@ -52,7 +52,9 @@ for (const phone of [false, true]) {
       : page.locator('tr').filter({ hasText: 'Groceries' });
     await expect(row).toContainText('$250');
     await expect(row).toContainText('-$450');
-    await page.getByRole('button', { name: 'Move money / Cover overspending' }).click();
+    await page
+      .getByRole('button', { name: /^(Cover overspending|Move between envelopes)$/ })
+      .click();
     await page.getByLabel('Move from').selectOption(food.id);
     await page.getByLabel('Move to').selectOption(rent.id);
     await page.getByLabel('Move amount').fill('50');
@@ -165,7 +167,7 @@ for (const phone of [false, true]) {
 
 test('Move money has its own guide page, linked from the panel', async ({ page }) => {
   await open(page, '/budget');
-  await page.getByRole('button', { name: 'Move money / Cover overspending' }).click();
+  await page.getByRole('button', { name: /^(Cover overspending|Move between envelopes)$/ }).click();
   await page.getByRole('link', { name: 'How moving money works' }).click();
   await expect(page).toHaveURL(/#\/guide\/move-money$/);
   await expect(
@@ -208,6 +210,6 @@ for (const phone of [false, true]) {
     await expect(row.getByTestId('transferred-note')).toContainText('holds $825.50');
     await expect(row).toContainText('$825.50');
     // Funded by a transfer, never an assignment
-    await expect(row.getByRole('button', { name: /^Planned for Rent/ })).toHaveCount(0);
+    await expect(row.getByRole('button', { name: /^Assigned to Rent/ })).toHaveCount(0);
   });
 }

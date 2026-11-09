@@ -7,9 +7,9 @@ import { test, expect, open, isoDay, thisMonth } from './fixtures';
 /** The expense envelopes' names, in the order the table shows them */
 const plannedNames = (page: Page) =>
   page
-    .getByRole('button', { name: /^Planned for / })
+    .getByRole('button', { name: /^Assigned to / })
     .evaluateAll((els) =>
-      els.map((e) => /^Planned for (.*): /.exec(e.getAttribute('aria-label') ?? '')![1]),
+      els.map((e) => /^Assigned to (.*): /.exec(e.getAttribute('aria-label') ?? '')![1]),
     );
 
 async function budgetOf(api: { call: (m: string, p: string) => Promise<unknown> }) {
@@ -35,21 +35,21 @@ test.describe('budget keyboard and inspector', () => {
     // The filter keeps the same rows on screen while assigning reshapes a new budget's list;
     // the keys move only through rows it shows
     await page.getByRole('searchbox', { name: 'Find a category' }).fill('e');
-    await expect(page.getByRole('button', { name: /^Planned for / }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Assigned to / }).first()).toBeVisible();
     const [a, b, c] = await plannedNames(page);
-    const field = (name: string) => page.getByRole('textbox', { name: `Planned for ${name}` });
+    const field = (name: string) => page.getByRole('textbox', { name: `Assigned to ${name}` });
 
     // A sum is worked out; Down saves it and opens the next envelope
-    await page.getByRole('button', { name: new RegExp(`^Planned for ${a}:`) }).click();
+    await page.getByRole('button', { name: new RegExp(`^Assigned to ${a}:`) }).click();
     await field(a).fill('100+50');
     await field(a).press('ArrowDown');
     await expect(field(b)).toBeFocused();
-    await expect(page.getByRole('button', { name: `Planned for ${a}: $150` })).toBeVisible();
+    await expect(page.getByRole('button', { name: `Assigned to ${a}: $150` })).toBeVisible();
     // Tab saves and opens the next; Shift+Tab goes back without saving an unchanged amount
     await field(b).fill('150*2');
     await field(b).press('Tab');
     await expect(field(c)).toBeFocused();
-    await expect(page.getByRole('button', { name: `Planned for ${b}: $300` })).toBeVisible();
+    await expect(page.getByRole('button', { name: `Assigned to ${b}: $300` })).toBeVisible();
     const puts: string[] = [];
     page.on('request', (r) => {
       if (r.method() === 'PUT' && r.url().includes('/api/budget/')) puts.push(r.url());
@@ -62,8 +62,8 @@ test.describe('budget keyboard and inspector', () => {
     // A sum isn't relative to what was there: +50 is 50. Malformed ones stay open, unsaved
     await field(a).fill('+50');
     await field(a).press('Enter');
-    await expect(page.getByRole('button', { name: `Planned for ${a}: $50` })).toBeVisible();
-    await page.getByRole('button', { name: new RegExp(`^Planned for ${a}:`) }).click();
+    await expect(page.getByRole('button', { name: `Assigned to ${a}: $50` })).toBeVisible();
+    await page.getByRole('button', { name: new RegExp(`^Assigned to ${a}:`) }).click();
     for (const bad of ['*2', '100+', '10/0']) {
       await field(a).fill(bad);
       await field(a).press('ArrowDown');
@@ -77,13 +77,13 @@ test.describe('budget keyboard and inspector', () => {
     expect(saved.get(b)!.budgeted).toBe(30000);
     expect(saved.get(c)!.budgeted).toBe(0);
     // A negative assignment opens with its minus sign, so saving it unchanged keeps it
-    await page.getByRole('button', { name: new RegExp(`^Planned for ${b}:`) }).click();
+    await page.getByRole('button', { name: new RegExp(`^Assigned to ${b}:`) }).click();
     await field(b).fill('-20');
     await field(b).press('Enter');
-    await page.getByRole('button', { name: new RegExp(`^Planned for ${b}:`) }).click();
+    await page.getByRole('button', { name: new RegExp(`^Assigned to ${b}:`) }).click();
     await expect(field(b)).toHaveValue('-20.00');
     await field(b).press('Enter');
-    await expect(page.getByRole('button', { name: `Planned for ${b}: -$20` })).toBeVisible();
+    await expect(page.getByRole('button', { name: `Assigned to ${b}: -$20` })).toBeVisible();
   });
 
   test('the inspector shows the month, one envelope or several, with notes', async ({
@@ -173,9 +173,9 @@ test.describe('budget keyboard and inspector', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await open(page, '/budget');
     const card = page.getByTestId('budget-card').filter({ hasText: 'Groceries' });
-    await card.getByRole('button', { name: /^Planned for Groceries/ }).click();
+    await card.getByRole('button', { name: /^Assigned to Groceries/ }).click();
     const sheet = page.getByRole('dialog', { name: 'Plan Groceries' });
-    await sheet.getByRole('textbox', { name: 'Planned for Groceries' }).fill('20*3');
+    await sheet.getByRole('textbox', { name: 'Assigned to Groceries' }).fill('20*3');
     await sheet.getByRole('textbox', { name: 'Note for Groceries' }).fill('Split with Sam');
     await sheet.getByRole('button', { name: 'Save' }).click();
     await expect(sheet).toBeHidden();
@@ -187,8 +187,8 @@ test.describe('budget keyboard and inspector', () => {
       .toEqual([6000, 'Split with Sam']);
     // Changing a note back to what it was when the sheet opened, after saving something else,
     // is saved too: the sheet compares with its last save, not with the note it opened with
-    await card.getByRole('button', { name: /^Planned for Groceries/ }).click();
-    const amount = sheet.getByRole('textbox', { name: 'Planned for Groceries' });
+    await card.getByRole('button', { name: /^Assigned to Groceries/ }).click();
+    const amount = sheet.getByRole('textbox', { name: 'Assigned to Groceries' });
     const note = sheet.getByRole('textbox', { name: 'Note for Groceries' });
     await note.fill('Temporary');
     await amount.click();
@@ -202,7 +202,7 @@ test.describe('budget keyboard and inspector', () => {
     await sheet.getByRole('button', { name: 'Cancel' }).click();
     await expect(sheet).toBeHidden();
     // Dismissing the sheet keeps a note typed in it
-    await card.getByRole('button', { name: /^Planned for Groceries/ }).click();
+    await card.getByRole('button', { name: /^Assigned to Groceries/ }).click();
     await sheet.getByRole('textbox', { name: 'Note for Groceries' }).fill('Split with Sam and Jo');
     await sheet.getByRole('button', { name: 'Cancel' }).click();
     await expect

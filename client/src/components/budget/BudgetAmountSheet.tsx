@@ -117,7 +117,7 @@ function SheetBody({
           autoFocus
           type="text"
           inputMode="decimal"
-          aria-label={`Planned for ${category.name}`}
+          aria-label={`Assigned to ${category.name}`}
           value={raw}
           onChange={(e) => {
             setRaw(e.target.value);

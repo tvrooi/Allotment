@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
   availability,
+  availableTone,
+  captionTone,
   categoryFigures,
   isActiveCategory,
   selectionFigures,
@@ -261,5 +263,19 @@ describe('selectionFigures (BUD-10, property-based)', () => {
 
   it('is all zeros for no selection', () => {
     expect(Object.values(selectionFigures([])).every((v) => v === 0)).toBe(true);
+  });
+});
+
+describe('availableTone', () => {
+  it('marks only what needs a decision as a pill, in its own colour', () => {
+    expect(availableTone('overspent', -500)).toContain('bg-negative-subtle');
+    expect(availableTone('overspent', -500)).toContain('text-negative');
+    expect(availableTone('short', 500)).toContain('bg-caution-subtle');
+    expect(availableTone('carried', 500)).toContain('text-caution');
+    // An envelope with money in it, or nothing, is a plain figure
+    expect(availableTone('available', 500)).not.toMatch(/\bbg-/);
+    expect(availableTone('zero', 0)).toBe('text-text-tertiary');
+    expect(captionTone('overspent')).toBe('text-negative');
+    expect(captionTone('short')).toBe('text-caution');
   });
 });

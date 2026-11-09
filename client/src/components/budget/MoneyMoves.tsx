@@ -5,6 +5,7 @@ import { useCanSave } from '../../hooks/useConnection';
 import { centsToInput, formatCurrency, parseCents, isUnreadableAmount } from '../../utils/currency';
 import { useMoveRequest } from '../../store/moveRequestStore';
 import type { BudgetCategory } from '../../types';
+import { availability } from '../../utils/budgetFigures';
 import { Button } from '../ui/Button';
 import { GuideLink } from '../guide/GuideLink';
 import { Input, Select } from '../ui/Input';
@@ -148,6 +149,8 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
       ? READY_LABEL
       : (categories.find((c) => c.id === id)?.name ?? 'Removed category');
   const label = 'grid gap-1 text-xs font-medium text-text-secondary';
+  // The button names the job there is: covering only when an envelope is actually overspent
+  const anyOverspent = categories.some((c) => availability(c, false).kind === 'overspent');
   return (
     <section
       ref={panel}
@@ -163,7 +166,7 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
-        Move money / Cover overspending
+        {anyOverspent ? 'Cover overspending' : 'Move between envelopes'}
       </Button>
       {open && (
         <div className="grid gap-3">

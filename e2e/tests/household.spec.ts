@@ -767,16 +767,16 @@ test('lists who should pay whom and records a suggested repayment in one click',
   });
   await open(page, '/household');
   const list = page.getByRole('list', { name: 'Suggested repayments' });
-  await expect(list.getByText('You pay Alex A$30')).toBeVisible();
-  await expect(list.getByText('Sam pays Alex A$30')).toBeVisible();
-  await page.getByRole('button', { name: 'Record: Sam pays Alex A$30' }).click();
-  await expect(list.getByText('Sam pays Alex A$30')).toHaveCount(0);
-  await expect(list.getByText('You pay Alex A$30')).toBeVisible();
+  await expect(list.getByText('You pay Alex $30')).toBeVisible();
+  await expect(list.getByText('Sam pays Alex $30')).toBeVisible();
+  await page.getByRole('button', { name: 'Record: Sam pays Alex $30' }).click();
+  await expect(list.getByText('Sam pays Alex $30')).toHaveCount(0);
+  await expect(list.getByText('You pay Alex $30')).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
-  await page.getByRole('button', { name: 'Record: You pay Alex A$30' }).click();
+  await page.getByRole('button', { name: 'Record: You pay Alex $30' }).click();
   await expect(page.getByRole('list', { name: 'Suggested repayments' })).toHaveCount(0);
 });
 
@@ -810,7 +810,7 @@ test('edits an entry in place, and the activity log keeps what was changed and r
   const history = page
     .getByRole('row', { name: /Groceries and bread/ })
     .filter({ has: page.getByRole('button', { name: 'Remove entry' }) });
-  await expect(history).toContainText('A$96');
+  await expect(history).toContainText('$96');
 
   await page.getByRole('button', { name: 'Remove entry' }).click();
   await expect(history).toHaveCount(0);
@@ -874,14 +874,14 @@ test('breaks household spending down by month, person and category', async ({ pa
     has: page.getByRole('button', { name: 'Spending by month, person and category' }),
   });
   const month = (name: string) => section.getByRole('row', { name: new RegExp(name) });
-  await expect(month('Sep 26')).toContainText('A$90');
-  await expect(month('Oct 26')).toContainText('A$60');
+  await expect(month('Sep 26')).toContainText('$90');
+  await expect(month('Oct 26')).toContainText('$60');
   // Me paid $90 of $150 and owes a third of it: $40 more than their share
-  await expect(section.getByRole('row', { name: /^Me / })).toContainText('A$90');
-  await expect(section.getByRole('row', { name: /^Me / })).toContainText('A$50');
-  await expect(section.getByRole('row', { name: /^Me / })).toContainText('A$40');
-  await expect(section.getByRole('row', { name: /^Groceries / })).toContainText('A$90');
-  await expect(section.getByRole('row', { name: /^Uncategorised / })).toContainText('A$60');
+  await expect(section.getByRole('row', { name: /^Me / })).toContainText('$90');
+  await expect(section.getByRole('row', { name: /^Me / })).toContainText('$50');
+  await expect(section.getByRole('row', { name: /^Me / })).toContainText('$40');
+  await expect(section.getByRole('row', { name: /^Groceries / })).toContainText('$90');
+  await expect(section.getByRole('row', { name: /^Uncategorised / })).toContainText('$60');
   // A date range narrows all three
   await page.getByLabel('From').fill('2026-10-01');
   await expect(section.getByRole('row', { name: /^Groceries / })).toHaveCount(0);
@@ -1020,12 +1020,12 @@ test('a gauge shows whether the household account covers the next 30 days of bil
     'aria-valuenow',
     '95',
   );
-  await expect(gauge).toContainText(/A\$100\s*of A\$105 needed by/);
-  await expect(gauge).toContainText('A$5 still to be paid in');
+  await expect(gauge).toContainText(/\$100\s*of \$105 needed by/);
+  await expect(gauge).toContainText('$5 still to be paid in');
   await expect(gauge.getByRole('listitem').filter({ hasText: 'Internet' })).toContainText('105');
   await expect(
     gauge.getByRole('list', { name: "Each person's part" }).getByRole('listitem').nth(1),
-  ).toContainText(/Alex.*A\$35 of these bills · paid in A\$0/);
+  ).toContainText(/Alex.*\$35 of these bills · paid in \$0/);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
@@ -1139,12 +1139,12 @@ test('suggests bills the household account pays, to add or dismiss', async ({ pa
   await expect(water).toHaveCount(0);
 
   const power = suggestions.getByRole('listitem', { name: 'Northwind Power' });
-  await expect(power).toContainText('every 2 months · 4 payments, A$241.10–A$498.75');
+  await expect(power).toContainText('every 2 months · 4 payments, $241.10–$498.75');
   await power.getByRole('button', { name: 'Add as household bill' }).click();
   const tile = page
     .getByRole('region', { name: 'Recurring bills' })
     .getByRole('listitem', { name: 'Northwind Power' });
-  await expect(tile).toContainText('A$270.20');
+  await expect(tile).toContainText('$270.20');
   await expect(tile).toContainText('paid from the household account');
   await expect(page.getByRole('list', { name: 'Looks like a bill' })).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });

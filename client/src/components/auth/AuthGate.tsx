@@ -121,9 +121,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   const app = (
     <>
-      {children}
+      <BudgetCurrencyReady>{children}</BudgetCurrencyReady>
       <OutboxSender />
-      <BudgetCurrencySync />
     </>
   );
 
@@ -504,8 +503,15 @@ function SetupCodeHelp({ id, hostKind }: { id: string; hostKind: HostKind | unde
   );
 }
 
-/** Keeps the budget's currency where amounts are formatted (see useBudgetCurrencySync) */
-function BudgetCurrencySync() {
-  useBudgetCurrencySync();
-  return null;
+/**
+ * Keeps the budget's currency where amounts are formatted, and holds the pages until it is
+ * there, so no amount is drawn with a symbol that later differs (see useBudgetCurrencySync)
+ */
+function BudgetCurrencyReady({ children }: { children: React.ReactNode }) {
+  const synced = useBudgetCurrencySync();
+  // Only the first load waits: a currency chosen later (Settings, connecting Up) must not
+  // unmount open pages and dialogs; that change refetches everything, redrawing the amounts
+  const [opened, setOpened] = useState(false);
+  if (synced && !opened) setOpened(true);
+  return synced || opened ? <>{children}</> : null;
 }

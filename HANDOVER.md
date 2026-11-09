@@ -9,6 +9,18 @@ Last updated: 9 November 2026 (live app on up.149: the household bills hub, cove
 
 ## State
 
+- **Budget page design pass (up.154; owner-requested 9 November 2026; client only):** from the
+  impeccable critique in `docs/critiques/2026-11-09-budget.md` (27/40). Done: Ready to assign
+  leads the rail (`BudgetSummaryWidget`; only `accountIssues`/incomplete rates make it caution,
+  other `unresolvedReason` causes are a separate notice); the budget's own currency is written
+  with its plain symbol and a look-alike currency by its code (`displaySymbol` in
+  `utils/currency.ts`); `AuthGate` holds pages on first load until the budget currency is in the
+  store; the rail's working folds and hides $0 rows; Available pills only for exceptions
+  (`availableTone`/`captionTone` in `budgetFigures.ts`); copy fixes ("Assigned to", sentence case).
+  Still open from the critique: a bolder "plots" variant as a separate route, the "Find a
+  category" placeholder contrast (3.1:1), and one recommended action between Hold money and
+  Put the rest in.
+
 - **Budgeting review, Phase 1 (up.152; owner-requested 9 November 2026; server and client, no
   migration):** the plan from the 9 November UX audit is four phases with one release per phase.
   The owner decided: forecast household bills count the cash paid out, otherwise the owner's share;

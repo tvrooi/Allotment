@@ -75,7 +75,7 @@ test.describe('the budget header', () => {
 
     // Tap 1: the search field. Tap 2: the category.
     await page.getByRole('searchbox', { name: 'Find a category' }).fill('Groc');
-    const planned = page.getByRole('button', { name: /^Planned for Groceries:/ });
+    const planned = page.getByRole('button', { name: /^Assigned to Groceries:/ });
     await expect(planned).toBeInViewport();
     expect(await sidewaysOverflow(page)).toEqual([]);
     await planned.click();

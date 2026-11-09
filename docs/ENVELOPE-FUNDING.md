@@ -163,7 +163,7 @@ category's own activity is `transferred` (`mirrorSteps` and `currentTransferred`
 - A reviewed card's refund adjustment to a linked envelope is ignored (`budgetService.assessment`):
   the mirror already settled it.
 - Targets, goals and the annual overview count `transferred` with `budgeted`; the Budget page
-  shows "Move A$X more to <account>" for a linked envelope's target.
+  shows "Move $X more to <account>" for a linked envelope's target.
 - One envelope per account (a unique index), only expense envelopes (not income or card
   payment), and only open checking, savings or cash accounts in the personal budget. Nothing is
   stored: unlinking or deleting the account (`ON DELETE SET NULL`) returns the envelope to plain
@@ -308,7 +308,8 @@ The demo budget has one of each. The older, unused `budget_months.notes` column 
 
 ## Moves, coverage and undo
 
-Move money / Cover overspending works on desktop and phone. Choose two distinct
+Move money works on desktop and phone. Its button reads Cover overspending while an
+envelope is overspent, and Move between envelopes otherwise. Choose two distinct
 expense categories and a positive amount, preview their resulting availability,
 then apply. The source must have availability through every affected month, including
 later spending when editing a historical month. Future-month moves are not enabled.

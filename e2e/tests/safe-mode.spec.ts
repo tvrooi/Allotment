@@ -186,7 +186,7 @@ test.describe('Safe mode', () => {
     }
     // The budget's editor shows the category's history as a small chart
     await open(page, '/budget');
-    await page.getByRole('button', { name: /^Planned for Groceries:/ }).click();
+    await page.getByRole('button', { name: /^Assigned to Groceries:/ }).click();
     await expect(page.locator('svg text').first()).toBeAttached();
     expect(await chartAmounts(), 'budget editor').toEqual([]);
   });

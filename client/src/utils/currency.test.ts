@@ -332,6 +332,26 @@ describe('amounts in other currencies', () => {
     expect(written('USD', { symbol: 'US$', position: 'before' })).toBe('US$12.50');
   });
 
+  it("writes the budget's own currency plainly, and another that would look the same by its code", () => {
+    const prefs = {
+      amountFormat: 'dot' as const,
+      symbolPosition: 'auto' as const,
+      currencySymbol: '$',
+      currencyStyles: {},
+    };
+    const written = (currency: string, budget: string) =>
+      formatAmount(1250, currencyAmountStyle(currency, prefs, budget)).replace(' ', ' ');
+    // An Australian budget is in dollars on any device: $, never A$
+    expect(written('AUD', 'AUD')).toBe('$12.50');
+    expect(written('CAD', 'CAD')).toBe('$12.50');
+    // Another dollar beside it can't also be $
+    expect(written('USD', 'AUD')).not.toBe('$12.50');
+    expect(written('NZD', 'AUD')).not.toBe('$12.50');
+    // Symbols nobody shares are unchanged
+    expect(written('EUR', 'AUD')).toContain('€');
+    expect(written('PLN', 'PLN')).toMatch(/^12\.50\szł$/);
+  });
+
   it("puts each currency's symbol where its country does", () => {
     expect(currencyConvention('PLN')).toEqual({ position: 'after', space: true });
     expect(currencyConvention('USD')).toEqual({ position: 'before', space: false });

@@ -6,19 +6,19 @@ import { test, expect, open, isoDay, thisMonth } from './fixtures';
 const toBeBudgeted = (page: Page) => page.getByRole('status', { name: 'Ready to assign' });
 
 async function plan(page: Page, category: string, amount: string) {
-  const button = page.getByRole('button', { name: new RegExp(`^Planned for ${category}:`) });
+  const button = page.getByRole('button', { name: new RegExp(`^Assigned to ${category}:`) });
   // Categories with no activity sit under "Show N inactive categories" in each section
-  await expect(page.getByRole('button', { name: /^Planned for / }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Assigned to / }).first()).toBeVisible();
   const showInactive = page.getByRole('button', { name: /^Show \d+ inactive/ });
   while (!(await button.isVisible()) && (await showInactive.count()) > 0) {
     await showInactive.first().click();
   }
   await button.click();
-  const input = page.getByRole('textbox', { name: `Planned for ${category}` });
+  const input = page.getByRole('textbox', { name: `Assigned to ${category}` });
   await input.fill(amount);
   await input.press('Enter');
   await expect(
-    page.getByRole('button', { name: new RegExp(`^Planned for ${category}: \\$`) }),
+    page.getByRole('button', { name: new RegExp(`^Assigned to ${category}: \\$`) }),
   ).toBeVisible();
 }
 
@@ -88,12 +88,12 @@ test.describe('budget', () => {
     });
 
     const showInactive = page.getByRole('button', { name: /^Show \d+ inactive/ });
-    const restaurants = page.getByRole('button', { name: /^Planned for Restaurants:/ });
+    const restaurants = page.getByRole('button', { name: /^Assigned to Restaurants:/ });
     while (!(await restaurants.isVisible()) && (await showInactive.count()) > 0) {
       await showInactive.first().click();
     }
     await restaurants.click();
-    const input = page.getByRole('textbox', { name: 'Planned for Restaurants' });
+    const input = page.getByRole('textbox', { name: 'Assigned to Restaurants' });
     await input.fill('50');
     await input.press('Enter');
     await expect(page.getByText('Saving…')).toBeVisible();
@@ -127,7 +127,7 @@ test.describe('budget', () => {
       categoryId: paychecks.id,
     });
     await open(page, '/budget');
-    await expect(page.getByRole('button', { name: /^Planned for / }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Assigned to / }).first()).toBeVisible();
     await page.route('**/api/budget/*/*', async (route) => {
       if (route.request().method() === 'PUT') await new Promise((r) => setTimeout(r, 800));
       await route.continue();
@@ -137,19 +137,19 @@ test.describe('budget', () => {
     while ((await showInactive.count()) > 0) await showInactive.first().click();
     const first = 'Groceries';
     const second = 'Restaurants';
-    await page.getByRole('button', { name: new RegExp(`^Planned for ${first}:`) }).click();
-    const a = page.getByRole('textbox', { name: `Planned for ${first}` });
+    await page.getByRole('button', { name: new RegExp(`^Assigned to ${first}:`) }).click();
+    const a = page.getByRole('textbox', { name: `Assigned to ${first}` });
     await a.fill('10');
     await a.press('Enter');
     await expect(page.getByText('Saving…')).toBeVisible();
 
     // Another envelope is opened and typed in while the first save is on its way
-    await page.getByRole('button', { name: new RegExp(`^Planned for ${second}:`) }).click();
-    const b = page.getByRole('textbox', { name: `Planned for ${second}` });
+    await page.getByRole('button', { name: new RegExp(`^Assigned to ${second}:`) }).click();
+    const b = page.getByRole('textbox', { name: `Assigned to ${second}` });
     await b.fill('5');
     await expect(page.getByText('Saving…')).toHaveCount(0);
     await expect(
-      page.getByRole('button', { name: new RegExp(`^Planned for ${first}: \\$10`) }),
+      page.getByRole('button', { name: new RegExp(`^Assigned to ${first}: \\$10`) }),
     ).toBeVisible();
     await expect(b).toHaveValue('5');
   });
@@ -181,14 +181,14 @@ test.describe('budget', () => {
     await expect(toBeBudgeted(page)).toContainText('$0');
 
     const showInactive = page.getByRole('button', { name: /^Show \d+ inactive/ });
-    const button = page.getByRole('button', { name: /^Planned for Groceries:/ });
+    const button = page.getByRole('button', { name: /^Assigned to Groceries:/ });
     while (!(await button.isVisible()) && (await showInactive.count()) > 0) {
       await showInactive.first().click();
     }
     await button.click();
     await page.getByRole('button', { name: /^Cover \$50(\.00)? overspent/ }).click();
     await expect(page.getByText(/^Not saved\./)).toBeVisible();
-    await expect(page.getByRole('textbox', { name: 'Planned for Groceries' })).toHaveValue(/^50/);
+    await expect(page.getByRole('textbox', { name: 'Assigned to Groceries' })).toHaveValue(/^50/);
   });
 
   test('spending shows against its categories, including split parts', async ({ page, api }) => {
@@ -345,7 +345,7 @@ test.describe('budget', () => {
     const groceries = await api.category('Groceries');
     await api.call('PUT', `/budget/${thisMonth()}/${groceries.id}`, { budgeted: 20_000 });
     await open(page, '/budget');
-    const groceriesPlanned = page.getByRole('button', { name: /^Planned for Groceries:/ });
+    const groceriesPlanned = page.getByRole('button', { name: /^Assigned to Groceries:/ });
     await expect(groceriesPlanned).toBeVisible();
 
     // Make next month slow to load, so the moment in between can be checked
@@ -365,20 +365,20 @@ test.describe('budget', () => {
     // Then next month's figures replace it
     await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
     await expect(
-      page.getByRole('button', { name: /^Planned for Groceries: \$0(\.00)?$/ }),
+      page.getByRole('button', { name: /^Assigned to Groceries: \$0(\.00)?$/ }),
     ).toBeVisible();
   });
 
   test('an open editor never saves into the month that is still loading', async ({ page, api }) => {
     await api.createAccount('Checking', 100_000);
     await open(page, '/budget');
-    const groceries = page.getByRole('button', { name: /^Planned for Groceries:/ });
+    const groceries = page.getByRole('button', { name: /^Assigned to Groceries:/ });
     const showInactive = page.getByRole('button', { name: /^Show \d+ inactive/ });
-    await expect(page.getByRole('button', { name: /^Planned for / }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Assigned to / }).first()).toBeVisible();
     while (!(await groceries.isVisible()) && (await showInactive.count()) > 0)
       await showInactive.first().click();
     await groceries.click();
-    await page.getByRole('textbox', { name: 'Planned for Groceries' }).fill('75');
+    await page.getByRole('textbox', { name: 'Assigned to Groceries' }).fill('75');
 
     // Hold the next month back, as a slow connection would
     let release!: () => void;
@@ -394,7 +394,7 @@ test.describe('budget', () => {
     });
     await page.getByRole('button', { name: 'Next month' }).click({ force: true });
     // The editor closed with the month change (blur may save October: that's its own month)
-    await expect(page.getByRole('textbox', { name: 'Planned for Groceries' })).toHaveCount(0);
+    await expect(page.getByRole('textbox', { name: 'Assigned to Groceries' })).toHaveCount(0);
     const loading = page.locator('[aria-busy="true"]');
     await expect(loading).toHaveAttribute('inert', '');
     release();
@@ -422,13 +422,13 @@ test('overspending is covered from the amount editor or by auto-assign', async (
     });
   }
   await open(page, '/budget');
-  await page.getByRole('button', { name: /^Planned for Groceries:/ }).click();
+  await page.getByRole('button', { name: /^Assigned to Groceries:/ }).click();
   // Nothing typed yet: no "Use $0 for the next 12 months"
   await expect(page.getByRole('button', { name: /next 12 months/ })).toHaveCount(0);
-  await page.getByRole('textbox', { name: 'Planned for Groceries' }).fill('50');
+  await page.getByRole('textbox', { name: 'Assigned to Groceries' }).fill('50');
   await expect(page.getByRole('button', { name: /Use \$50 for the next 12 months/ })).toBeVisible();
   await page.getByRole('button', { name: 'Cover $120 overspent' }).click();
-  await expect(page.getByRole('button', { name: /^Planned for Groceries: \$120/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Assigned to Groceries: \$120/ })).toBeVisible();
 
   await page.getByRole('button', { name: 'Assign', exact: true }).click();
   await page.getByRole('menuitem', { name: /Auto-assign/ }).click();

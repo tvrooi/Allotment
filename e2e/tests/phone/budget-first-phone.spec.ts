@@ -30,7 +30,7 @@ for (const width of [390, 320]) {
     await expect(page.getByRole('button', { name: 'Put the rest in…' })).toBeInViewport();
 
     // The first envelope's amount is on screen without scrolling
-    const planned = page.getByRole('button', { name: /^Planned for / }).first();
+    const planned = page.getByRole('button', { name: /^Assigned to / }).first();
     await expect(planned).toBeInViewport();
     const box = (await planned.boundingBox())!;
     expect(box.y + box.height).toBeLessThanOrEqual(844);

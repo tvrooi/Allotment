@@ -40,7 +40,13 @@ import { PaydayPlan } from '../components/budget/PaydayPlan';
 import { MissingRatesBanner } from '../components/currency/MissingRatesBanner';
 import { useIsPhone } from '../hooks/useIsPhone';
 import { useCanSave } from '../hooks/useConnection';
-import { availability, categoryFigures, splitCategories } from '../utils/budgetFigures';
+import {
+  availability,
+  availableTone,
+  captionTone,
+  categoryFigures,
+  splitCategories,
+} from '../utils/budgetFigures';
 import { TransferredNote, useLinkedAccount } from '../components/budget/TransferredNote';
 import { ExpectedNote } from '../components/budget/ExpectedNote';
 import type { BudgetCategory, BudgetGroup, BudgetType } from '../types';
@@ -299,19 +305,9 @@ function CategoryRow({
           : []),
       ];
 
-  // Available is the column to read: a pill only when there's something in it (or it's
-  // overspent), plain grey for $0
-  let remainingClass: string;
-  const pillBase = 'font-semibold rounded-full px-2.5 py-0.5 text-text';
-  if (kind === 'overspent') {
-    remainingClass = `${pillBase} bg-negative/20`;
-  } else if (kind === 'short' || kind === 'carried') {
-    remainingClass = `${pillBase} bg-caution/20`;
-  } else if (remaining > 0) {
-    remainingClass = `${pillBase} bg-positive/20`;
-  } else {
-    remainingClass = 'px-2.5 py-0.5 text-text-tertiary';
-  }
+  // Available is the column to read. A pill marks only what needs a decision (overspent, short
+  // of a target); an envelope that is fine is a plain figure, and $0 is grey
+  const remainingClass = `rounded-full px-2.5 py-0.5 ${availableTone(kind, remaining)}`;
 
   return (
     <tr
@@ -366,7 +362,7 @@ function CategoryRow({
             <>
               <AmountInput
                 cents={cat.budgeted}
-                label={isIncome ? `Expected from ${cat.name}` : `Planned for ${cat.name}`}
+                label={isIncome ? `Expected from ${cat.name}` : `Assigned to ${cat.name}`}
                 closed={closed}
                 saving={saving}
                 error={failure}
@@ -394,7 +390,7 @@ function CategoryRow({
               onClick={() => onStartEdit(cat.id)}
               disabled={!canSave}
               title={canSave ? undefined : 'Saving is paused until Allotment reconnects'}
-              aria-label={`${isIncome ? 'Expected from' : 'Planned for'} ${cat.name}: ${formatCurrency(cat.budgeted)}`}
+              aria-label={`${isIncome ? 'Expected from' : 'Assigned to'} ${cat.name}: ${formatCurrency(cat.budgeted)}`}
               // Plain text until pointed at or focused: a column of empty boxes says nothing
               className="tabular-nums text-sm rounded px-2 py-0.5 min-w-[5.5rem] text-right border border-transparent bg-transparent transition-colors hover:border-border hover:bg-surface focus-visible:border-brand-500 focus-visible:bg-surface cursor-text disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -439,7 +435,7 @@ function CategoryRow({
             {formatCurrency(remaining)}
           </span>
         )}
-        {caption && <span className="block text-xs text-text-tertiary mt-0.5">{caption}</span>}
+        {caption && <span className={`block text-xs mt-0.5 ${captionTone(kind)}`}>{caption}</span>}
       </td>
     </tr>
   );
@@ -1234,9 +1230,7 @@ export default function BudgetPage() {
                       <span className="text-text-tertiary shrink-0">
                         {incomeCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
                       </span>
-                      <span className="text-xs font-semibold text-text-tertiary uppercase tracking-wide">
-                        Income
-                      </span>
+                      <span className="text-xs font-semibold text-text-secondary">Income</span>
                     </div>
                   </td>
                   <td
@@ -1294,9 +1288,7 @@ export default function BudgetPage() {
                       <span className="text-text-tertiary shrink-0">
                         {expensesCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
                       </span>
-                      <span className="text-xs font-semibold text-text-tertiary uppercase tracking-wide">
-                        Expenses
-                      </span>
+                      <span className="text-xs font-semibold text-text-secondary">Expenses</span>
                     </div>
                   </td>
                   <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
@@ -1384,9 +1376,10 @@ export default function BudgetPage() {
           !needle && <div className="p-4 space-y-4">{sideExtras}</div>
         ) : (
           <div className="w-80 shrink-0 border-l border-border p-4 self-start sticky top-0">
-            <div className="flex flex-col">
+            {/* Ready to assign leads: it is the next step for the whole month */}
+            <div className="flex flex-col gap-4">
+              <div>{summaryPanel}</div>
               {sideExtras}
-              {summaryPanel}
             </div>
           </div>
         )}

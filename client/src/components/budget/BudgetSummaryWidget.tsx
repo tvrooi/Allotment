@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { formatAsOfDay } from '../../utils/dates';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { HoldMoney } from './HoldMoney';
+import { AlertCircle, ChevronRight } from 'lucide-react';
 
 interface ExpenseBreakdown {
   planned: number;
@@ -40,7 +41,7 @@ interface BudgetSummaryWidgetProps {
   canHold?: boolean;
 }
 
-/** On a phone the working behind Ready to assign folds away, so the envelopes come sooner */
+/** The working behind Ready to assign folds away (on a phone with Hold, so the envelopes come sooner) */
 const READY_HELP =
   "Ready to assign is the money in your accounts that you haven't given a job yet. Give it to categories (envelopes) until this reaches $0, so every dollar is planned. Spending takes money out of its envelope, not out of here.";
 
@@ -199,8 +200,12 @@ export function BudgetSummaryWidget({
       : formatCurrency(toBeBudgeted);
   const canPutRest =
     !!putRest && toBeBudgeted > 0 && !funding?.accountIssues?.length && funding?.complete !== false;
+  // Only balances that disagree with the bank or missing rates make the figure itself doubtful.
+  // Overspending, uncategorised spending and card shortfalls are jobs to do beside a figure that
+  // holds, so they get their own line instead of turning the whole of Ready to assign yellow.
+  const doubtful = !!funding?.accountIssues?.length || funding?.complete === false;
   const hero =
-    funding && (!funding.complete || !funding.resolved)
+    funding && doubtful
       ? {
           bg: 'bg-caution-subtle',
           text: 'text-caution',
@@ -211,6 +216,70 @@ export function BudgetSummaryWidget({
           incomePlanned,
           !funding || funding.resources !== 0 || (funding.envelopes ?? funding.reserved) !== 0,
         );
+  // A negative figure already says "Assigned more than you have", so it isn't repeated here
+  const todo =
+    funding && !doubtful && !funding.resolved
+      ? unresolvedReason({ ...funding, toBeBudgeted: Math.max(funding.toBeBudgeted, 0) })
+      : null;
+  const todoNotice = todo && !(toBeBudgeted < 0 && todo === 'Check the Review page') && (
+    <p className="mt-2 flex items-start gap-1.5 px-1 text-xs text-text-secondary">
+      <AlertCircle size={14} className="text-caution shrink-0 mt-px" aria-hidden />
+      <span>
+        {todo}.{' '}
+        <Link to="/review" className="font-medium text-brand-700 underline underline-offset-2">
+          Review
+        </Link>
+      </span>
+    </p>
+  );
+
+  // Only the rows with something in them: a column of $0 says nothing
+  const issueRows = funding
+    ? (
+        [
+          ['Overspent envelopes', funding.overspent],
+          ['Uncategorised spending', funding.uncategorized],
+          ['Assigned in later months', funding.laterDeduction ?? funding.futureAssigned],
+          ['Held for next month', funding.held ?? 0],
+          ['Card payment shortfall', funding.paymentShortfall ?? 0],
+          ['Payments without funding', funding.uncoveredCardPayments ?? 0],
+        ] as const
+      ).filter(([, value]) => value !== 0)
+    : [];
+  const workings = funding && (
+    <div className="px-4 pb-3 text-xs">
+      <p className="text-text-tertiary mb-1.5">
+        Ready to assign as of {formatAsOfDay(funding.asOf)}
+      </p>
+      <CashBridge
+        breakdown={funding.breakdown}
+        resources={funding.resources}
+        readyToAssign={toBeBudgeted}
+      />
+      <p className="text-text-tertiary">
+        A Saver is still yours to assign: put the money in an envelope to set it aside.
+      </p>
+      {issueRows.length > 0 && (
+        <dl className="grid gap-1 mt-2">
+          {issueRows.map(([label, value]) => (
+            <div key={label} className="flex justify-between gap-2">
+              <dt className="text-text-secondary">{label}</dt>
+              <dd
+                className={`tabular-nums ${value > 0 && !SETTING_ASIDE.has(label) ? 'text-negative font-medium' : 'text-text'}`}
+              >
+                {formatCurrency(value)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {(funding.cashOverspent ?? 0) > 0 && (
+        <p className="text-text-tertiary mt-1.5">
+          {`${formatCurrency(funding.cashOverspent ?? 0)} overspent from cash comes out of next month's Ready to assign.`}
+        </p>
+      )}
+    </div>
+  );
 
   return (
     <div className="rounded-lg shadow-card border border-border-light overflow-hidden bg-surface">
@@ -224,7 +293,7 @@ export function BudgetSummaryWidget({
             className={`${hero.bg} rounded-lg px-3 py-2 flex items-center justify-between gap-3`}
           >
             <div className={`min-w-0 text-left text-xs ${hero.text}`}>
-              <p className="font-medium uppercase tracking-wide">
+              <p className="font-medium">
                 Ready to assign
                 <HelpTip label="What is Ready to assign?" inline>
                   {READY_HELP}
@@ -241,21 +310,26 @@ export function BudgetSummaryWidget({
             role="status"
             aria-label="Ready to assign"
             data-guide="budget.ready"
-            className={`${hero.bg} rounded-lg px-4 py-3 text-center`}
+            className={`${hero.bg} rounded-lg px-4 pt-3 pb-3.5`}
           >
-            <p className={`text-xs font-medium uppercase tracking-wide ${hero.text}`}>
+            <p className={`text-sm font-medium ${hero.text}`}>
               Ready to assign
-            </p>
-            <p className={`text-lg font-semibold tabular-nums ${hero.text}`}>{readyAmount}</p>
-            <p className={`text-xs ${hero.text} mt-0.5`}>{hero.label}</p>
-            <p className={`text-xs ${hero.text} mt-1`}>
-              Money you have that isn't in a category yet.
               <HelpTip label="What is Ready to assign?" inline>
                 {READY_HELP}
               </HelpTip>
             </p>
+            <p
+              className={`mt-0.5 text-title font-semibold tracking-tight tabular-nums ${hero.text}`}
+            >
+              {readyAmount}
+            </p>
+            <p className={`text-sm font-medium ${hero.text}`}>{hero.label}</p>
+            <p className={`text-xs text-pretty ${hero.text} mt-1`}>
+              Money you have that isn't in a category yet.
+            </p>
           </div>
         )}
+        {todoNotice}
         {funding?.pools?.map((p) => (
           <div
             key={p.accountId}
@@ -263,7 +337,7 @@ export function BudgetSummaryWidget({
             aria-label={`${p.name}: ready to assign`}
             className={`mt-2 rounded-lg px-4 py-2 text-center ${p.readyToAssign < 0 ? 'bg-caution-subtle text-caution' : 'bg-surface-alt text-text'}`}
           >
-            <p className="text-xs font-medium uppercase tracking-wide">{p.name}</p>
+            <p className="text-xs font-medium">{p.name}</p>
             <p className="text-base font-semibold tabular-nums">
               {formatCurrency(p.readyToAssign)}
             </p>
@@ -336,47 +410,22 @@ export function BudgetSummaryWidget({
             <HoldMoney summary={funding} />
           </div>
         )}
-        {funding && (
-          <div className="px-4 pb-3 text-xs">
-            <p className="text-text-tertiary mb-1.5">
-              Ready to assign as of {formatAsOfDay(funding.asOf)}
-            </p>
-            <CashBridge
-              breakdown={funding.breakdown}
-              resources={funding.resources}
-              readyToAssign={toBeBudgeted}
-            />
-            <p className="text-text-tertiary mb-2">
-              A Saver is still yours to assign: put the money in an envelope to set it aside.
-            </p>
-            <dl className="grid gap-1">
-              {(
-                [
-                  ['Overspent envelopes', funding.overspent],
-                  ['Uncategorised spending', funding.uncategorized],
-                  ['Assigned in later months', funding.laterDeduction ?? funding.futureAssigned],
-                  ['Held for next month', funding.held ?? 0],
-                  ['Card payment shortfall', funding.paymentShortfall ?? 0],
-                  ['Payments without funding', funding.uncoveredCardPayments ?? 0],
-                ] as const
-              ).map(([label, value]) => (
-                <div key={label} className="flex justify-between gap-2">
-                  <dt className="text-text-secondary">{label}</dt>
-                  <dd
-                    className={`tabular-nums ${value > 0 && !SETTING_ASIDE.has(label) ? 'text-negative font-medium' : 'text-text'}`}
-                  >
-                    {formatCurrency(value)}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-            <p className="text-text-tertiary mt-1.5">
-              {(funding.cashOverspent ?? 0) > 0
-                ? `${formatCurrency(funding.cashOverspent ?? 0)} overspent from cash comes out of next month's Ready to assign.`
-                : ''}
-            </p>
-          </div>
-        )}
+        {isPhone
+          ? workings
+          : // Desktop folds the working too, so the rail leads with Ready to assign and its actions
+            workings && (
+              <details className="group border-t border-border-light">
+                <summary className="px-4 min-h-9 flex items-center gap-1 cursor-pointer select-none text-xs text-text-secondary hover:text-text">
+                  <ChevronRight
+                    size={14}
+                    aria-hidden
+                    className="shrink-0 transition-transform group-open:rotate-90"
+                  />
+                  How this is worked out
+                </summary>
+                {workings}
+              </details>
+            )}
         <div className="flex justify-center gap-4 px-4 pb-2">
           {TABS.map((tab) => (
             <button
