@@ -860,8 +860,8 @@ function sharedRecurringBills(
         payments,
         /** Expected dates in the coverage window (today to COVERAGE_DAYS ahead) */
         upcoming,
-        /** Its newest payment against the expected amount, when outside tolerance (billDrift) */
-        drift: billDrift(amount, schedule.amountType, payments),
+        /** Its newest payment since the owner set the amount, when outside tolerance (billDrift) */
+        drift: billDrift(amount, schedule.amountType, payments, schedule.amountConfirmedAt),
       },
     ];
   });

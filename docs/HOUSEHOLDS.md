@@ -179,8 +179,11 @@ Each recurring bill is a tile with its due date in words ("Due in 3 days", "Over
 its newest payment is outside the schedule's tolerance of the expected amount, the tile says
 **amount changed** and offers **Update to** the last amount or **Use the average of the last 3**
 (`services/billDrift.ts`, the tolerance from `matchingEngine.ts`: exact 0%, approximate 10%,
-variable 25%). Nothing changes without that click. **Edit amount** sets the expected amount and how
-it varies. Both save the schedule through `PUT /api/schedules/:id`, with Undo, so Recurring and the
+variable 25%), or **Keep** when the change was intentional, such as a price rise not billed yet.
+Nothing changes without that click. **Edit amount** sets the expected amount and how it varies.
+Setting the amount or how it varies, anywhere, records the day in `schedules.amount_confirmed_at`
+(migration 0087); **Keep** records it without changing the amount. Payments on or before that day
+never flag the bill again, so only a later payment that still differs does. All of these save the schedule through `PUT /api/schedules/:id`, with Undo, so Recurring and the
 forecast follow. The same update moves the schedule's household bills that are due from today and
 have no payment matched to them to the new amount, with my share recomputed by the bill's split
 (`followScheduleAmount`), in the same database transaction. Bills already paid, due before today, or

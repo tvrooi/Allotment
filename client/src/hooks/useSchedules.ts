@@ -112,6 +112,7 @@ export function useUpdateSchedule() {
             autoCreate: snapshot.autoCreate,
             status: snapshot.status,
             confirmedActiveAt: snapshot.confirmedActiveAt,
+            amountConfirmedAt: snapshot.amountConfirmedAt,
           });
           invalidateAll(qc);
         },

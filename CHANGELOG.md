@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.150
+
+- **Bills you changed on purpose stay changed.** A household bill no longer says **amount changed** because of payments made before you set its amount. Raise a bill for a price rise and the old, lower payments stop flagging it; only a later bill that still doesn't match does.
+- **Keep** joins **Update to** and the average on a bill's amount-changed prompt, for when the amount it expects is right. Undo takes it back.
+- An amount you already raised before this update is still flagged once: choose **Keep** to clear it.
+
 ## 0.2.0-up.149
 
 The last two of four Household updates that bring the page closer to Up's Essentials. Part three was merged as 0.2.0-up.148 but that version was already released with paying ahead, so it ships here.

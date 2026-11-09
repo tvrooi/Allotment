@@ -95,6 +95,8 @@ const scheduleFields = {
   autoCreate: z.number().int().min(0).max(1),
   /** "Still active": misses up to this date don't make it look ended */
   confirmedActiveAt: isoDate.nullable().optional(),
+  /** "Keep this amount": payments up to this date don't suggest it changed (billDrift) */
+  amountConfirmedAt: isoDate.nullable().optional(),
   /** Days before an occurrence to send a Home Assistant reminder (FINX-02); null = none */
   reminderDays: z.number().int().min(0).max(MAX_REMINDER_DAYS).nullable().optional(),
 };
@@ -417,6 +419,16 @@ schedulesRouter.put('/:id', (req, res) => {
     updates.recurrenceRule = JSON.stringify(
       buildRecurrenceRule(data.recurrenceType as RecurrenceType, startDate),
     );
+  }
+
+  // Setting the amount is the owner confirming it: payments before today no longer argue with it
+  // (billDrift). An explicit value, such as Undo restoring the previous one, wins.
+  if (
+    data.amountConfirmedAt === undefined &&
+    ((data.amount !== undefined && data.amount !== existing.amount) ||
+      (data.amountType !== undefined && data.amountType !== existing.amountType))
+  ) {
+    updates.amountConfirmedAt = format(new Date(), 'yyyy-MM-dd');
   }
 
   if (data.autoCreate === 1 && existing.autoCreate === 0) {

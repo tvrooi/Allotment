@@ -308,6 +308,8 @@ export const schedules = sqliteTable(
     occurrenceHorizon: text('occurrence_horizon'),
     /** "Still active": occurrences missed on or before this date don't suggest it ended */
     confirmedActiveAt: text('confirmed_active_at'),
+    /** Expected amount set or kept by the owner on this date: earlier payments don't flag it (billDrift) */
+    amountConfirmedAt: text('amount_confirmed_at'),
     /** Days before an occurrence to send a Home Assistant reminder (FINX-02); null = none */
     reminderDays: integer('reminder_days'),
     createdAt: text('created_at')

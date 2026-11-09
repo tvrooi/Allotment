@@ -76,7 +76,8 @@ describe('migration 0078 drop legacy recurring', () => {
     expect(kept('id, account_id, date, amount, payee_name, schedule_id')).toEqual(
       transactionsBefore,
     );
-    expect(sqlite.prepare('SELECT * FROM schedules').all()).toEqual(schedulesBefore);
+    // Every value kept; later additive migrations may add columns to schedules
+    expect(sqlite.prepare('SELECT * FROM schedules').all()).toMatchObject(schedulesBefore);
     expect(sqlite.pragma('foreign_key_check')).toEqual([]);
     // The other indexes on transactions are untouched
     expect(has(sqlite, 'idx_transactions_schedule')).toBe(true);
