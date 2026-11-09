@@ -28,6 +28,18 @@ Last updated: 9 November 2026 (live app on up.149: the household bills hub, cove
   Next: Phase 2 (goal summaries, merged goal and target, one expected-income source). Later list:
   the Review queue redesign, the Cash flow personal-share view, and Household screens by type.
 
+- **Impeccable design record (9 November 2026; documentation only):** `DESIGN.md` captures
+  the existing light/dark tokens, shared components, responsive sizing and motion. The owner
+  confirmed “The Tended Ledger”, established color names, softly layered depth and gentle,
+  precise controls. `.impeccable/design.json` provides component previews and token metadata;
+  preview ramps beyond the existing brand scale are illustrative, not application tokens.
+  The mobile dashboard was inspected; dark mode was extracted from code, not visually verified.
+
+- **Impeccable product context (9 November 2026; documentation/configuration only):**
+  `PRODUCT.md` records the owner-confirmed audience, purpose and constraints. The owner chose
+  code-first builds in `.impeccable/config.json`. The Vite app's live-mode entry is configured in
+  `client/.impeccable/live/config.json`; no picker is injected or running. The detected Vite CSP
+  applies only to demo builds, so no security policy was changed for the development entry.
 - **Paid ahead for a shared expense (up.148; owner-requested 8 November 2026; server and client,
   no migration):** see [docs/HOUSEHOLDS.md](docs/HOUSEHOLDS.md) "Paying ahead for a shared
   expense". The register's menu (**Paid ahead to ▸ person**) and the details panel
