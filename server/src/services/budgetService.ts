@@ -163,6 +163,8 @@ export function fundingState(asOf = todayIso(), month = asOf.slice(0, 7), today 
   const cashOverspent = viewed.reduce((s, c) => s + Math.max(0, -held(c)), 0);
   const {
     resources,
+    cash: accountCash,
+    otherDebt,
     openingFunds,
     complete: accountsComplete,
   } = resourcesAt(l, asOf, enrolledCards, LIQUID_ACCOUNT_TYPES);
@@ -201,13 +203,44 @@ export function fundingState(asOf = todayIso(), month = asOf.slice(0, 7), today 
   });
   const pooled = pools.reduce((s, p) => s + p.readyToAssign, 0);
   const unassigned = allUnassigned - pooled;
+  // What resources are made of, for the Budget and Review breakdown. Nothing here feeds back
+  // into the figures above: it only names their parts. Enrolled card debt is not in resources;
+  // `reserved` is the part a payment envelope covers, `unreserved` is the payment shortfall.
+  const cardDebt = card.positions.reduce((s, p) => s + p.debt, 0);
+  const unreservedCardDebt = card.positions.reduce((s, p) => s + p.shortfall, 0);
+  const accountNames = new Map(l.accounts.map((h) => [h.account.id, h.account.name]));
+  const linked = viewed
+    .filter((c) => c.linkedAccountId)
+    .map((c) => ({
+      categoryId: c.id,
+      name: c.name,
+      accountName: accountNames.get(c.linkedAccountId!) ?? '',
+      amount: held(c),
+    }));
+  const linkedTotal = linked.reduce((s, r) => s + r.amount, 0);
+  const breakdown = {
+    cash: accountCash,
+    otherDebt,
+    cardDebt: {
+      total: cardDebt,
+      reserved: cardDebt - unreservedCardDebt,
+      unreserved: unreservedCardDebt,
+    },
+    /** Envelopes linked to a savings account, held by the account's balance */
+    linked,
+    /** Every other envelope: `envelopes` less the linked ones */
+    everydayEnvelopes: envelopes - linkedTotal,
+    /** Taken from Ready to assign besides envelopes: later assignments, holds and separate pools */
+    setAside: laterDeduction + holdBack + pooled,
+  };
   return {
     balances,
     cards: card.positions.map((p) => ({ ...p })),
-    paymentShortfall: card.positions.reduce((s, p) => s + p.shortfall, 0),
+    paymentShortfall: unreservedCardDebt,
     uncoveredCardPayments: card.positions.reduce((s, p) => s + p.uncoveredPayments, 0),
     asOf,
     resources,
+    breakdown,
     openingFunds,
     reserved,
     envelopes,

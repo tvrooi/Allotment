@@ -242,6 +242,10 @@ export function bufferState(today = todayIso()) {
     },
     runway: {
       resources: state.complete ? state.resources : null,
+      /** The parts of `resources` and of Ready to assign, for the cash breakdown */
+      breakdown: state.breakdown,
+      envelopes: state.envelopes,
+      readyToAssign: state.unassigned,
       restricted,
       restrictedRows,
       cardDebtWithoutReserve: state.paymentShortfall,
@@ -254,11 +258,12 @@ export function bufferState(today = todayIso()) {
           : null,
       incomplete,
       assumptions: [
-        'Counts cash in personal, on-budget checking, savings, cash and card accounts; debts reduce it.',
+        'Counts cash in personal, on-budget checking, savings and cash accounts; overdrafts and unreviewed card debt reduce it, and debt on a card with card payments set up is subtracted separately unless a reserve covers it.',
         'Investment, retirement, property and off-budget accounts are not cash and are excluded.',
         'Money set aside for bills with a date target and card payment reserves is restricted and excluded.',
         `Spending continues at its average over the last ${SPENDING_MONTHS} complete months, excluding restricted categories; uncategorised spending is included.`,
         'No income is assumed to arrive.',
+        'Money assigned to everyday envelopes is still counted; only bill reserves and card payments are taken out.',
       ],
     },
   };

@@ -812,9 +812,10 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         body: (
           <p>
             <b>Next month and buffer</b> shows what’s already assigned to next month and what its
-            targets still need. Its cash runway estimates how many days your cash would last at your
-            spending over the last three months, assuming no more pay. Money set aside for dated
-            bills and cards isn’t counted, and super and investments never are.
+            targets still need. Its cash coverage estimates how many days your cash would last at
+            your spending over the last three months, assuming no more pay. It still includes money
+            assigned to everyday envelopes, but not money set aside for dated bills and cards, and
+            super and investments never count.
           </p>
         ),
       },

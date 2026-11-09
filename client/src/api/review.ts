@@ -70,6 +70,9 @@ export interface BufferState {
   };
   runway: {
     resources: number | null;
+    breakdown: import('../types').CashBreakdown;
+    envelopes: number;
+    readyToAssign: number;
     restricted: number;
     restrictedRows: {
       categoryId: string;

@@ -55,6 +55,6 @@ for (const width of [390, 320]) {
     await expect(page.getByRole('button', { name: 'Hold money…' })).toBeHidden();
     await page.getByText('Hold money, and how this is worked out').click();
     await expect(page.getByRole('button', { name: 'Hold money…' })).toBeVisible();
-    await expect(page.getByText('In your accounts, less card debt')).toBeVisible();
+    await expect(page.getByText('Cash in your budget accounts')).toBeVisible();
   });
 }

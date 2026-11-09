@@ -175,7 +175,7 @@ export function ResilienceCard({ data }: { data: api.ResilienceState }) {
                     </tr>
                   ))}
                 <tr className="font-medium text-text border-t border-border-light">
-                  <td className="py-0.5">Cash after debts</td>
+                  <td className="py-0.5">Cash in your budget accounts</td>
                   <td className="py-0.5 text-right">{formatCurrency(data.resources ?? 0)}</td>
                 </tr>
               </tbody>

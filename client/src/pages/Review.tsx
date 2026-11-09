@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CashBridge } from '../components/budget/CashBridge';
 import { format, parseISO } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -497,12 +498,15 @@ function Buffer({ buffer }: { buffer: api.BufferState }) {
             Next month's targets assume nothing more is spent or assigned this month.
           </p>
         </Section>
-        {/* What your cash after debts would cover: balances, so Safe mode hides it */}
+        {/* What the cash would cover with no income: balances, so Safe mode hides it */}
         {!hideBalances && (
-          <Section title="Cash runway (optional)">
+          <Section title="Cash coverage with no income (optional)">
             {r.unrestricted !== null && (
               <>
-                <Row label="Cash after debts" value={formatCurrency(r.resources ?? 0)} />
+                <Row
+                  label="Cash in your budget accounts"
+                  value={formatCurrency(r.resources ?? 0)}
+                />
                 <Row
                   label="Restricted: bill reserves and card payments"
                   value={formatCurrency(-r.restricted)}
@@ -514,13 +518,29 @@ function Buffer({ buffer }: { buffer: api.BufferState }) {
                     tone="neg"
                   />
                 )}
-                <Row label="Unrestricted" value={formatCurrency(r.unrestricted)} tone="pos" />
+                <Row
+                  label="No-income cash coverage"
+                  value={formatCurrency(r.unrestricted)}
+                  tone="pos"
+                />
                 <Row label="Average monthly spending" value={formatCurrency(r.monthlySpending)} />
+                <p className="text-xs text-text-tertiary">
+                  Assumes no income arrives. Still includes money assigned to everyday envelopes;
+                  only bill reserves and card payments are taken out.
+                </p>
+                <div className="text-xs pt-1">
+                  <p className="text-text-secondary mb-1">How that cash becomes Ready to assign</p>
+                  <CashBridge
+                    breakdown={r.breakdown}
+                    resources={r.resources ?? 0}
+                    readyToAssign={r.readyToAssign}
+                  />
+                </div>
               </>
             )}
             {r.days !== null ? (
               <p className="text-sm text-text">
-                Unrestricted money would cover about{' '}
+                With no income, this cash would cover about{' '}
                 <strong>{(r.days / (365 / 12)).toFixed(1)} months</strong> ({r.days} days) of
                 everyday spending.
               </p>

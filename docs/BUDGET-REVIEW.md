@@ -61,15 +61,19 @@ what its targets still need, and what is unresolved this month. Next month's tar
 from today's availability, as if nothing more is spent or assigned this month; overspending
 carries into it as it does in the budget.
 
-**Cash runway** (optional) is shown with its assumptions:
+**Cash coverage with no income** (optional, the runway) is shown with its assumptions. It assumes no
+income arrives and still includes money assigned to everyday envelopes:
 
-- `Cash after debts` is the shared service's resources: personal, on-budget checking, savings,
-  cash and card accounts. Unreviewed debt nets against cash. Investment, retirement, property and
+- `Cash in your budget accounts` is the shared service's resources: personal, on-budget checking,
+  savings, cash and card accounts. Unreviewed debt and overdrafts net against cash; debt on a card
+  enrolled in card payments does not (only its positive balance counts), so this is cash before
+  that debt. The response's `breakdown` names the parts (see ENVELOPE-FUNDING.md). Investment, retirement, property and
   off-budget accounts contribute nothing, so retirement assets never extend the runway.
 - **Restricted** money is excluded: balances (and later assignments) of categories with a
   _balance by date_ or _recurring bill_ target, and card payment reserves. Reviewed card debt
   without a payment reserve is subtracted too, so borrowing never looks like saving.
-- `Unrestricted` = cash after debts − restricted − card debt without a reserve.
+- `No-income cash coverage` (API field `unrestricted`) = cash in budget accounts − restricted − card
+  debt without a reserve.
 - Spending rate: net spending (refunds reduce it) over the last three complete calendar months,
   excluding restricted categories; uncategorised debits are included. Runway days =
   unrestricted ÷ daily rate. No income is assumed.
