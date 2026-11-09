@@ -35,6 +35,7 @@ import { FundTargets } from '../components/budget/FundTargets';
 import { AutoAssign } from '../components/budget/AutoAssign';
 import { AssignMenu } from '../components/budget/AssignMenu';
 import { SpentBar } from '../components/budget/SpentBar';
+import { Plot, PlotsContext, useBareName, usePlots } from '../components/budget/Plot';
 import { PhoneBudget } from '../components/budget/PhoneBudget';
 import { PaydayPlan } from '../components/budget/PaydayPlan';
 import { MissingRatesBanner } from '../components/currency/MissingRatesBanner';
@@ -216,6 +217,8 @@ function CategoryRow({
   const isEditing = editingId === cat.id && canSave;
   const { actual } = categoryFigures(cat, isIncome);
   const { kind, remaining, caption } = availability(cat, isIncome);
+  const bareName = useBareName(cat) && !isIncome;
+  const plotsOn = usePlots();
   const askToMove = useMoveRequest((s) => s.ask);
   // An envelope linked to an account holds what the account holds: a transfer moves its money
   const linked = useLinkedAccount(cat);
@@ -325,19 +328,27 @@ function CategoryRow({
             className="absolute left-4 top-2.5 h-3.5 w-3.5 accent-brand-600"
           />
         )}
-        <div className="text-sm text-text">
+        <div className={`text-sm ${bareName ? 'text-text-secondary' : 'text-text'}`}>
+          {!isIncome && (
+            <span className="mr-1.5">
+              <Plot cat={cat} />
+            </span>
+          )}
           {showCategoryIcons && (
             <CategoryIcon icon={cat.icon} size={14} className="mr-1.5 inline" />
           )}
           {cat.name}
         </div>
-        <SpentBar
-          spent={isIncome ? actual : cat.spent}
-          budgeted={cat.budgeted + (cat.transferred ?? 0)}
-          isIncome={isIncome}
-          expected={cat.expected}
-          covered={kind !== 'overspent'}
-        />
+        {/* In the plots variant the plot beside the name stands in for this bar */}
+        {!(plotsOn && !isIncome) && (
+          <SpentBar
+            spent={isIncome ? actual : cat.spent}
+            budgeted={cat.budgeted + (cat.transferred ?? 0)}
+            isIncome={isIncome}
+            expected={cat.expected}
+            covered={kind !== 'overspent'}
+          />
+        )}
         <TransferredNote cat={cat} className="mt-0.5" />
         {card && <CardRowNotes card={card} className="mt-0.5" />}
         {cat.target && (
@@ -682,7 +693,8 @@ const BUDGET_TYPES: { key: BudgetType; label: string }[] = [
   { key: 'savings', label: 'Savings/Investments' },
 ];
 
-export default function BudgetPage() {
+/** `plots`: the /budget/plots design variant, each envelope shown as a plot (Plot.tsx) */
+export default function BudgetPage({ plots = false }: { plots?: boolean }) {
   const [paydayView, setPaydayView] = useState(false);
   const { selectedMonth, setSelectedMonth } = useAppStore();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -958,432 +970,438 @@ export default function BudgetPage() {
   );
 
   return (
-    <div className="flex flex-col h-full bg-surface">
-      <div
-        data-testid="budget-header"
-        className="px-6 max-md:px-4 py-4 max-md:py-3 border-b border-border shrink-0"
-      >
-        <div className="flex flex-wrap gap-3 max-md:gap-2 items-center justify-between">
-          <div className="flex items-center gap-1">
-            <h1 className="text-lg font-semibold text-text">
-              <span className="sr-only">Budget, </span>
-              <span>{format(monthDate, 'MMMM yyyy')}</span>
-            </h1>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {!isPhone && (
-              <>
-                <BudgetViewSwitch
-                  current="month"
-                  year={selectedMonth.slice(0, 4)}
-                  onMonth={() => setPaydayView(false)}
-                  onPayday={() => setPaydayView(true)}
-                />
-                <AssignMenu
-                  disabled={!canSaveBudget}
-                  underfundedCount={underfundedCount}
-                  onAutoAssign={() => autoAssignRef.current?.open()}
-                  onFundTargets={() => fundTargetsRef.current?.open()}
-                  onPayday={() => setPaydayView(true)}
-                />
-              </>
-            )}
-            <AutoAssign ref={autoAssignRef} month={selectedMonth} hideButton />
-            <FundTargets ref={fundTargetsRef} month={selectedMonth} groups={groups} hideButton />
-            <button
-              onClick={() => setSelectedMonth(format(subMonths(monthDate, 1), 'yyyy-MM'))}
-              aria-label="Previous month"
-              className="p-1.5 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md border border-border bg-surface-alt hover:bg-hover text-text-secondary hover:text-text transition-colors"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <button
-              onClick={() => setSelectedMonth(format(addMonths(monthDate, 1), 'yyyy-MM'))}
-              aria-label="Next month"
-              className="p-1.5 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md border border-border bg-surface-alt hover:bg-hover text-text-secondary hover:text-text transition-colors"
-            >
-              <ChevronRight size={18} />
-            </button>
-            <Button variant="secondary" size="sm" onClick={goToToday}>
-              Today
-            </Button>
-            {isPhone && (
-              <div className="relative">
-                <button
-                  ref={menuButtonRef}
-                  type="button"
-                  onClick={() => setMenuOpen((o) => !o)}
-                  aria-label="More budget actions"
-                  aria-haspopup="menu"
-                  aria-expanded={menuOpen}
-                  className="min-w-11 min-h-11 flex items-center justify-center rounded-md border border-border bg-surface-alt text-text-secondary"
-                >
-                  <MoreHorizontal size={18} />
-                </button>
-                {menuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-                    <div
-                      ref={menuRef}
-                      role="menu"
-                      aria-label="More budget actions"
-                      className="absolute right-0 top-full mt-1 z-40 w-56 rounded-lg border border-border bg-surface shadow-lg py-1"
-                    >
-                      <Link
-                        role="menuitem"
-                        to={`/budget/year/${selectedMonth.slice(0, 4)}`}
-                        className="flex items-center min-h-11 px-4 text-sm text-text hover:bg-hover"
+    <PlotsContext.Provider value={plots}>
+      <div className="flex flex-col h-full bg-surface">
+        <div
+          data-testid="budget-header"
+          className="px-6 max-md:px-4 py-4 max-md:py-3 border-b border-border shrink-0"
+        >
+          <div className="flex flex-wrap gap-3 max-md:gap-2 items-center justify-between">
+            <div className="flex items-center gap-1">
+              <h1 className="text-lg font-semibold text-text">
+                <span className="sr-only">Budget, </span>
+                <span>{format(monthDate, 'MMMM yyyy')}</span>
+              </h1>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {!isPhone && (
+                <>
+                  <BudgetViewSwitch
+                    current="month"
+                    year={selectedMonth.slice(0, 4)}
+                    onMonth={() => setPaydayView(false)}
+                    onPayday={() => setPaydayView(true)}
+                  />
+                  <AssignMenu
+                    disabled={!canSaveBudget}
+                    underfundedCount={underfundedCount}
+                    onAutoAssign={() => autoAssignRef.current?.open()}
+                    onFundTargets={() => fundTargetsRef.current?.open()}
+                    onPayday={() => setPaydayView(true)}
+                  />
+                </>
+              )}
+              <AutoAssign ref={autoAssignRef} month={selectedMonth} hideButton />
+              <FundTargets ref={fundTargetsRef} month={selectedMonth} groups={groups} hideButton />
+              <button
+                onClick={() => setSelectedMonth(format(subMonths(monthDate, 1), 'yyyy-MM'))}
+                aria-label="Previous month"
+                className="p-1.5 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md border border-border bg-surface-alt hover:bg-hover text-text-secondary hover:text-text transition-colors"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                onClick={() => setSelectedMonth(format(addMonths(monthDate, 1), 'yyyy-MM'))}
+                aria-label="Next month"
+                className="p-1.5 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md border border-border bg-surface-alt hover:bg-hover text-text-secondary hover:text-text transition-colors"
+              >
+                <ChevronRight size={18} />
+              </button>
+              <Button variant="secondary" size="sm" onClick={goToToday}>
+                Today
+              </Button>
+              {isPhone && (
+                <div className="relative">
+                  <button
+                    ref={menuButtonRef}
+                    type="button"
+                    onClick={() => setMenuOpen((o) => !o)}
+                    aria-label="More budget actions"
+                    aria-haspopup="menu"
+                    aria-expanded={menuOpen}
+                    className="min-w-11 min-h-11 flex items-center justify-center rounded-md border border-border bg-surface-alt text-text-secondary"
+                  >
+                    <MoreHorizontal size={18} />
+                  </button>
+                  {menuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+                      <div
+                        ref={menuRef}
+                        role="menu"
+                        aria-label="More budget actions"
+                        className="absolute right-0 top-full mt-1 z-40 w-56 rounded-lg border border-border bg-surface shadow-lg py-1"
                       >
-                        Year
-                      </Link>
-                      <button
-                        role="menuitem"
-                        disabled={!canSaveBudget}
-                        onClick={() => {
-                          setMenuOpen(false);
-                          autoAssignRef.current?.open();
-                        }}
-                        className="flex w-full items-center min-h-11 px-4 text-sm text-text hover:bg-hover disabled:opacity-50"
-                      >
-                        Auto-assign
-                      </button>
-                      {underfundedCount > 0 && (
+                        <Link
+                          role="menuitem"
+                          to={`/budget/year/${selectedMonth.slice(0, 4)}`}
+                          className="flex items-center min-h-11 px-4 text-sm text-text hover:bg-hover"
+                        >
+                          Year
+                        </Link>
                         <button
                           role="menuitem"
                           disabled={!canSaveBudget}
                           onClick={() => {
                             setMenuOpen(false);
-                            fundTargetsRef.current?.open();
+                            autoAssignRef.current?.open();
                           }}
                           className="flex w-full items-center min-h-11 px-4 text-sm text-text hover:bg-hover disabled:opacity-50"
                         >
-                          Fund targets ({underfundedCount})
+                          Auto-assign
                         </button>
-                      )}
-                      <button
-                        role="menuitem"
-                        onClick={() => {
-                          setMenuOpen(false);
-                          setPaydayView(true);
-                        }}
-                        className="flex w-full items-center min-h-11 px-4 text-sm text-text hover:bg-hover"
-                      >
-                        Until next payday
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
+                        {underfundedCount > 0 && (
+                          <button
+                            role="menuitem"
+                            disabled={!canSaveBudget}
+                            onClick={() => {
+                              setMenuOpen(false);
+                              fundTargetsRef.current?.open();
+                            }}
+                            className="flex w-full items-center min-h-11 px-4 text-sm text-text hover:bg-hover disabled:opacity-50"
+                          >
+                            Fund targets ({underfundedCount})
+                          </button>
+                        )}
+                        <button
+                          role="menuitem"
+                          onClick={() => {
+                            setMenuOpen(false);
+                            setPaydayView(true);
+                          }}
+                          className="flex w-full items-center min-h-11 px-4 text-sm text-text hover:bg-hover"
+                        >
+                          Until next payday
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-        <div className="relative mt-3 max-md:mt-2">
-          <Search
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
-            aria-hidden
-          />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find a category"
-            aria-label="Find a category"
-            className="w-full max-w-sm max-md:max-w-none text-sm border border-border rounded-lg pl-8 pr-8 py-1.5 max-md:min-h-11 bg-surface text-text focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600 [&::-webkit-search-cancel-button]:hidden"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => setQuery('')}
-              aria-label="Clear category search"
-              className="absolute right-1 top-1/2 -translate-y-1/2 min-w-8 min-h-8 flex items-center justify-center text-text-tertiary hover:text-text-secondary"
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {!nothingPlanned && !beforeStart && (
-        <Tip
-          tip={TIPS.budgetCarry}
-          className="px-6 max-md:px-4 py-3 border-b border-border-light shrink-0"
-        />
-      )}
-      {nothingPlanned && !beforeStart && !(isPhone && needle) && (
-        <div className="flex items-start gap-3 px-6 max-md:px-4 py-3 bg-brand-50 border-b border-border-light text-sm text-text-secondary shrink-0">
-          <Lightbulb size={16} className="text-brand-600 shrink-0 mt-0.5" aria-hidden />
-          <div>
-            <p>
-              No money assigned for {format(monthDate, 'MMMM')} yet. {isPhone ? 'Tap' : 'Click'} an
-              amount to give money you already have a job.
-            </p>
-            {!isPhone && (
-              <details className="mt-1">
-                <summary className="cursor-pointer w-fit font-medium text-brand-600 hover:text-brand-700">
-                  How this works
-                </summary>
-                <p className="mt-1">
-                  Pay you’ve received is ready to assign straight away; the amounts beside income
-                  are only what you expect. What’s left in an envelope carries into next month.
-                  Envelopes you leave empty are tucked away once you’ve planned something.{' '}
-                  <GuideLink
-                    page="budgeting"
-                    className="font-medium text-brand-600 hover:text-brand-700"
-                  >
-                    Read the guide
-                  </GuideLink>
-                </p>
-              </details>
-            )}
-            <RentOrOwn />
-          </div>
-        </div>
-      )}
-
-      {(setBudgetMutation.error || setBulkMutation.error) && (
-        <AssignBlockError
-          error={(setBudgetMutation.error || setBulkMutation.error)!}
-          onResolved={() => {
-            setBudgetMutation.reset();
-            setBulkMutation.reset();
-          }}
-        />
-      )}
-      <MissingRatesBanner className="mx-6 mt-3 shrink-0" />
-      <AssistantSuggestions />
-      {beforeStart && (
-        <p role="status" className="mx-6 max-md:mx-4 mt-3 shrink-0 text-sm text-text-secondary">
-          This month is before your budget start. Activity is what you really spent, shown for
-          reference: nothing is assigned or carried, and it can't be edited. Its transactions are
-          also in your accounts and reports.{' '}
-          <Link to="/settings?tab=budget" className="text-brand-700 underline">
-            Budget start
-          </Link>
-        </p>
-      )}
-
-      {/* While the next month loads, the previous one stays (faded) so nothing jumps */}
-      <div
-        aria-busy={switchingMonth}
-        inert={switchingMonth}
-        className={`flex max-md:flex-col flex-1 overflow-y-auto transition-opacity ${switchingMonth ? 'opacity-60 pointer-events-none' : ''}`}
-      >
-        {/* Phones (UX audit AU-002): a compact Ready to assign, then the envelopes, then the
-            month's inspector, card payments and moves; searching shows only the envelopes */}
-        {isPhone && !needle && <div className="px-4 pt-3">{summaryPanel}</div>}
-        <div
-          data-guide="budget.categories"
-          className="flex-1 max-md:flex-none max-md:overflow-x-auto"
-        >
-          {isPhone ? (
-            <PhoneBudget
-              // The envelopes you assign to first (UX audit AU-002); expected income after them
-              sections={[
-                ...shownExpensesByType.map((bt) => ({
-                  key: bt.key,
-                  label: bt.label,
-                  isIncome: false,
-                  categories: bt.categories,
-                })),
-                ...(shownCardCategories.length
-                  ? [
-                      {
-                        key: 'card-payments',
-                        label: 'Card payments',
-                        isIncome: false,
-                        categories: shownCardCategories,
-                        always: true,
-                      },
-                    ]
-                  : []),
-                ...shownIncomeGroups.map((g) => ({
-                  key: g.id,
-                  label: g.name,
-                  isIncome: true,
-                  categories: g.categories,
-                })),
-              ]}
-              cards={cardPositions}
-              month={selectedMonth}
-              onSave={handleSave}
-              onApplyBulk={handleApplyBulk}
-              showAll={showEvery}
-              readOnly={beforeStart}
+          <div className="relative mt-3 max-md:mt-2">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+              aria-hidden
             />
-          ) : (
-            <table className="w-full border-collapse">
-              <colgroup>
-                <col style={{ width: '55%' }} />
-                <col style={{ width: '15%' }} />
-                <col style={{ width: '15%' }} />
-                <col style={{ width: '15%' }} />
-              </colgroup>
-              <tbody>
-                {/* Income section header */}
-                <tr
-                  className="bg-surface-alt border-y border-border cursor-pointer select-none hover:bg-hover transition-colors"
-                  onClick={() => setIncomeCollapsed((c) => !c)}
-                >
-                  <td className="py-2 px-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-text-tertiary shrink-0">
-                        {incomeCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-                      </span>
-                      <span className="text-xs font-semibold text-text-secondary">Income</span>
-                    </div>
-                  </td>
-                  <td
-                    className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary"
-                    title="What you expect to earn. It's a plan, not money: only income you've received is ready to assign."
-                  >
-                    Expected
-                  </td>
-                  <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
-                    Received
-                  </td>
-                  <td className="py-2 pl-3 pr-6 text-right text-xs font-bold text-text">
-                    Still to come
-                  </td>
-                </tr>
-
-                {!incomeCollapsed && (
-                  <>
-                    {shownIncomeGroups.map((group) => (
-                      <IncomeGroupSection
-                        key={group.id}
-                        group={group}
-                        editingId={editingId}
-                        month={selectedMonth}
-                        onStartEdit={beforeStart ? () => undefined : setEditingId}
-                        onSave={handleSave}
-                        onCancel={() => setEditingId(null)}
-                        onApplyBulk={handleApplyBulk}
-                        showAll={showEvery}
-                      />
-                    ))}
-
-                    {/* Total Income row */}
-                    <tr className="bg-surface border-y border-border">
-                      <td className="py-2 px-4 text-sm font-bold text-text">Total income</td>
-                      <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text-secondary">
-                        {formatCurrency(incomeTotals.budgeted)}
-                      </td>
-                      <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text">
-                        {formatCurrency(incomeTotals.received)}
-                      </td>
-                      <td className="py-2 pl-3 pr-6" />
-                    </tr>
-                  </>
-                )}
-
-                {/* Expenses section header */}
-                <tr
-                  data-guide="budget.columns"
-                  className="bg-surface-alt border-y border-border cursor-pointer select-none hover:bg-hover transition-colors"
-                  onClick={() => setExpensesCollapsed((c) => !c)}
-                >
-                  <td className="py-2 px-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-text-tertiary shrink-0">
-                        {expensesCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-                      </span>
-                      <span className="text-xs font-semibold text-text-secondary">Expenses</span>
-                    </div>
-                  </td>
-                  <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
-                    Assigned
-                  </td>
-                  <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
-                    Activity
-                  </td>
-                  <td className="py-2 pl-3 pr-6 text-right text-xs font-bold text-text">
-                    Available
-                  </td>
-                </tr>
-
-                {!expensesCollapsed && (
-                  <>
-                    {shownExpensesByType.map((bt) => (
-                      <BudgetTypeSection
-                        key={bt.key}
-                        label={bt.label}
-                        categories={bt.categories}
-                        editingId={editingId}
-                        month={selectedMonth}
-                        onStartEdit={beforeStart ? () => undefined : setEditingId}
-                        onSave={handleSave}
-                        onCancel={() => setEditingId(null)}
-                        onApplyBulk={handleApplyBulk}
-                        showAll={showEvery}
-                        selectedIds={selectedIds}
-                        onToggleSelect={toggleSelected}
-                      />
-                    ))}
-
-                    {/* Total Expenses row */}
-                    <tr className="bg-surface border-y border-border">
-                      <td className="py-2 px-4 text-sm font-bold text-text">Total expenses</td>
-                      <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text-secondary">
-                        {formatCurrency(expenseTotals.budgeted)}
-                      </td>
-                      <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text-secondary">
-                        {formatCurrency(expenseTotals.spent)}
-                      </td>
-                      <td
-                        className={`py-2 pl-3 pr-6 text-right tabular-nums text-sm font-semibold ${expBalColor}`}
-                      >
-                        {formatCurrency(expRemaining)}
-                      </td>
-                    </tr>
-                  </>
-                )}
-
-                {shownCardCategories.length > 0 && (
-                  <BudgetTypeSection
-                    label="Card payments"
-                    categories={shownCardCategories}
-                    editingId={editingId}
-                    month={selectedMonth}
-                    onStartEdit={beforeStart ? () => undefined : setEditingId}
-                    onSave={handleSave}
-                    onCancel={() => setEditingId(null)}
-                    onApplyBulk={handleApplyBulk}
-                    showAll
-                    cards={cardPositions}
-                  />
-                )}
-
-                {groups.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="py-16 text-center text-sm text-text-tertiary">
-                      No categories yet.{' '}
-                      <Link
-                        to="/settings?tab=categories"
-                        className="font-medium text-brand-600 hover:text-brand-700"
-                      >
-                        Add some in Settings
-                      </Link>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Find a category"
+              aria-label="Find a category"
+              className="w-full max-w-sm max-md:max-w-none text-sm border border-border rounded-lg pl-8 pr-8 py-1.5 max-md:min-h-11 bg-surface text-text focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600 [&::-webkit-search-cancel-button]:hidden"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                aria-label="Clear category search"
+                className="absolute right-1 top-1/2 -translate-y-1/2 min-w-8 min-h-8 flex items-center justify-center text-text-tertiary hover:text-text-secondary"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
         </div>
 
-        {isPhone ? (
-          !needle && <div className="p-4 space-y-4">{sideExtras}</div>
-        ) : (
-          <div className="w-80 shrink-0 border-l border-border p-4 self-start sticky top-0">
-            {/* Ready to assign leads: it is the next step for the whole month */}
-            <div className="flex flex-col gap-4">
-              <div>{summaryPanel}</div>
-              {sideExtras}
+        {!nothingPlanned && !beforeStart && (
+          <Tip
+            tip={TIPS.budgetCarry}
+            className="px-6 max-md:px-4 py-3 border-b border-border-light shrink-0"
+          />
+        )}
+        {nothingPlanned && !beforeStart && !(isPhone && needle) && (
+          <div className="flex items-start gap-3 px-6 max-md:px-4 py-3 bg-brand-50 border-b border-border-light text-sm text-text-secondary shrink-0">
+            <Lightbulb size={16} className="text-brand-600 shrink-0 mt-0.5" aria-hidden />
+            <div>
+              <p>
+                No money assigned for {format(monthDate, 'MMMM')} yet. {isPhone ? 'Tap' : 'Click'}{' '}
+                an amount to give money you already have a job.
+              </p>
+              {!isPhone && (
+                <details className="mt-1">
+                  <summary className="cursor-pointer w-fit font-medium text-brand-600 hover:text-brand-700">
+                    How this works
+                  </summary>
+                  <p className="mt-1">
+                    Pay you’ve received is ready to assign straight away; the amounts beside income
+                    are only what you expect. What’s left in an envelope carries into next month.
+                    Envelopes you leave empty are tucked away once you’ve planned something.{' '}
+                    <GuideLink
+                      page="budgeting"
+                      className="font-medium text-brand-600 hover:text-brand-700"
+                    >
+                      Read the guide
+                    </GuideLink>
+                  </p>
+                </details>
+              )}
+              <RentOrOwn />
             </div>
           </div>
         )}
+
+        {(setBudgetMutation.error || setBulkMutation.error) && (
+          <AssignBlockError
+            error={(setBudgetMutation.error || setBulkMutation.error)!}
+            onResolved={() => {
+              setBudgetMutation.reset();
+              setBulkMutation.reset();
+            }}
+          />
+        )}
+        <MissingRatesBanner className="mx-6 mt-3 shrink-0" />
+        <AssistantSuggestions />
+        {beforeStart && (
+          <p role="status" className="mx-6 max-md:mx-4 mt-3 shrink-0 text-sm text-text-secondary">
+            This month is before your budget start. Activity is what you really spent, shown for
+            reference: nothing is assigned or carried, and it can't be edited. Its transactions are
+            also in your accounts and reports.{' '}
+            <Link to="/settings?tab=budget" className="text-brand-700 underline">
+              Budget start
+            </Link>
+          </p>
+        )}
+
+        {/* While the next month loads, the previous one stays (faded) so nothing jumps */}
+        <div
+          aria-busy={switchingMonth}
+          inert={switchingMonth}
+          className={`flex max-md:flex-col flex-1 overflow-y-auto transition-opacity ${switchingMonth ? 'opacity-60 pointer-events-none' : ''}`}
+        >
+          {/* Phones (UX audit AU-002): a compact Ready to assign, then the envelopes, then the
+            month's inspector, card payments and moves; searching shows only the envelopes */}
+          {isPhone && !needle && <div className="px-4 pt-3">{summaryPanel}</div>}
+          <div
+            data-guide="budget.categories"
+            className="flex-1 max-md:flex-none max-md:overflow-x-auto"
+          >
+            {isPhone ? (
+              <PhoneBudget
+                // The envelopes you assign to first (UX audit AU-002); expected income after them
+                sections={[
+                  ...shownExpensesByType.map((bt) => ({
+                    key: bt.key,
+                    label: bt.label,
+                    isIncome: false,
+                    categories: bt.categories,
+                  })),
+                  ...(shownCardCategories.length
+                    ? [
+                        {
+                          key: 'card-payments',
+                          label: 'Card payments',
+                          isIncome: false,
+                          categories: shownCardCategories,
+                          always: true,
+                        },
+                      ]
+                    : []),
+                  ...shownIncomeGroups.map((g) => ({
+                    key: g.id,
+                    label: g.name,
+                    isIncome: true,
+                    categories: g.categories,
+                  })),
+                ]}
+                cards={cardPositions}
+                month={selectedMonth}
+                onSave={handleSave}
+                onApplyBulk={handleApplyBulk}
+                showAll={showEvery}
+                readOnly={beforeStart}
+              />
+            ) : (
+              <table className="w-full border-collapse">
+                <colgroup>
+                  <col style={{ width: '55%' }} />
+                  <col style={{ width: '15%' }} />
+                  <col style={{ width: '15%' }} />
+                  <col style={{ width: '15%' }} />
+                </colgroup>
+                <tbody>
+                  {/* Income section header */}
+                  <tr
+                    className="bg-surface-alt border-y border-border cursor-pointer select-none hover:bg-hover transition-colors"
+                    onClick={() => setIncomeCollapsed((c) => !c)}
+                  >
+                    <td className="py-2 px-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-text-tertiary shrink-0">
+                          {incomeCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                        </span>
+                        <span className="text-xs font-semibold text-text-secondary">Income</span>
+                      </div>
+                    </td>
+                    <td
+                      className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary"
+                      title="What you expect to earn. It's a plan, not money: only income you've received is ready to assign."
+                    >
+                      Expected
+                    </td>
+                    <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
+                      Received
+                    </td>
+                    <td className="py-2 pl-3 pr-6 text-right text-xs font-bold text-text">
+                      Still to come
+                    </td>
+                  </tr>
+
+                  {!incomeCollapsed && (
+                    <>
+                      {shownIncomeGroups.map((group) => (
+                        <IncomeGroupSection
+                          key={group.id}
+                          group={group}
+                          editingId={editingId}
+                          month={selectedMonth}
+                          onStartEdit={beforeStart ? () => undefined : setEditingId}
+                          onSave={handleSave}
+                          onCancel={() => setEditingId(null)}
+                          onApplyBulk={handleApplyBulk}
+                          showAll={showEvery}
+                        />
+                      ))}
+
+                      {/* Total Income row */}
+                      <tr className="bg-surface border-y border-border">
+                        <td className="py-2 px-4 text-sm font-bold text-text">Total income</td>
+                        <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text-secondary">
+                          {formatCurrency(incomeTotals.budgeted)}
+                        </td>
+                        <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text">
+                          {formatCurrency(incomeTotals.received)}
+                        </td>
+                        <td className="py-2 pl-3 pr-6" />
+                      </tr>
+                    </>
+                  )}
+
+                  {/* Expenses section header */}
+                  <tr
+                    data-guide="budget.columns"
+                    className="bg-surface-alt border-y border-border cursor-pointer select-none hover:bg-hover transition-colors"
+                    onClick={() => setExpensesCollapsed((c) => !c)}
+                  >
+                    <td className="py-2 px-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-text-tertiary shrink-0">
+                          {expensesCollapsed ? (
+                            <ChevronRight size={14} />
+                          ) : (
+                            <ChevronDown size={14} />
+                          )}
+                        </span>
+                        <span className="text-xs font-semibold text-text-secondary">Expenses</span>
+                      </div>
+                    </td>
+                    <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
+                      Assigned
+                    </td>
+                    <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
+                      Activity
+                    </td>
+                    <td className="py-2 pl-3 pr-6 text-right text-xs font-bold text-text">
+                      Available
+                    </td>
+                  </tr>
+
+                  {!expensesCollapsed && (
+                    <>
+                      {shownExpensesByType.map((bt) => (
+                        <BudgetTypeSection
+                          key={bt.key}
+                          label={bt.label}
+                          categories={bt.categories}
+                          editingId={editingId}
+                          month={selectedMonth}
+                          onStartEdit={beforeStart ? () => undefined : setEditingId}
+                          onSave={handleSave}
+                          onCancel={() => setEditingId(null)}
+                          onApplyBulk={handleApplyBulk}
+                          showAll={showEvery}
+                          selectedIds={selectedIds}
+                          onToggleSelect={toggleSelected}
+                        />
+                      ))}
+
+                      {/* Total Expenses row */}
+                      <tr className="bg-surface border-y border-border">
+                        <td className="py-2 px-4 text-sm font-bold text-text">Total expenses</td>
+                        <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text-secondary">
+                          {formatCurrency(expenseTotals.budgeted)}
+                        </td>
+                        <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text-secondary">
+                          {formatCurrency(expenseTotals.spent)}
+                        </td>
+                        <td
+                          className={`py-2 pl-3 pr-6 text-right tabular-nums text-sm font-semibold ${expBalColor}`}
+                        >
+                          {formatCurrency(expRemaining)}
+                        </td>
+                      </tr>
+                    </>
+                  )}
+
+                  {shownCardCategories.length > 0 && (
+                    <BudgetTypeSection
+                      label="Card payments"
+                      categories={shownCardCategories}
+                      editingId={editingId}
+                      month={selectedMonth}
+                      onStartEdit={beforeStart ? () => undefined : setEditingId}
+                      onSave={handleSave}
+                      onCancel={() => setEditingId(null)}
+                      onApplyBulk={handleApplyBulk}
+                      showAll
+                      cards={cardPositions}
+                    />
+                  )}
+
+                  {groups.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="py-16 text-center text-sm text-text-tertiary">
+                        No categories yet.{' '}
+                        <Link
+                          to="/settings?tab=categories"
+                          className="font-medium text-brand-600 hover:text-brand-700"
+                        >
+                          Add some in Settings
+                        </Link>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {isPhone ? (
+            !needle && <div className="p-4 space-y-4">{sideExtras}</div>
+          ) : (
+            <div className="w-80 shrink-0 border-l border-border p-4 self-start sticky top-0">
+              {/* Ready to assign leads: it is the next step for the whole month */}
+              <div className="flex flex-col gap-4">
+                <div>{summaryPanel}</div>
+                {sideExtras}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </PlotsContext.Provider>
   );
 }

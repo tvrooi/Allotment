@@ -5,6 +5,7 @@ import {
   availableTone,
   captionTone,
   categoryFigures,
+  plotOf,
   isActiveCategory,
   selectionFigures,
   splitCategories,
@@ -277,5 +278,49 @@ describe('availableTone', () => {
     expect(availableTone('zero', 0)).toBe('text-text-tertiary');
     expect(captionTone('overspent')).toBe('text-negative');
     expect(captionTone('short')).toBe('text-caution');
+  });
+});
+
+describe('plotOf', () => {
+  const base: BudgetCategory = {
+    id: 'c',
+    groupId: 'g',
+    name: 'Rent',
+    icon: null,
+    budgetType: null,
+    sortOrder: 0,
+    createdAt: '',
+    budgeted: 0,
+    spent: 0,
+    carryOver: 0,
+    balance: 0,
+  };
+  const target = (underfunded: number) =>
+    ({ underfunded }) as unknown as NonNullable<BudgetCategory['target']>;
+
+  it('fills with the money still in the envelope, so spending empties it', () => {
+    expect(plotOf(base)).toEqual({ state: 'bare', fill: 0 });
+    expect(plotOf({ ...base, budgeted: 230_000, balance: 230_000 })).toEqual({
+      state: 'planted',
+      fill: 1,
+    });
+    expect(plotOf({ ...base, budgeted: 230_000, spent: 115_000, balance: 115_000 })).toEqual({
+      state: 'planted',
+      fill: 0.5,
+    });
+    expect(plotOf({ ...base, budgeted: 6_500, spent: 6_500, balance: 0 })).toEqual({
+      state: 'used',
+      fill: 0,
+    });
+    // Carried-in money counts as given, so it isn't bare
+    expect(plotOf({ ...base, carryOver: 5_000, balance: 5_000 }).state).toBe('planted');
+    // Short of a target: growing, filled by how much of the need is in
+    expect(plotOf({ ...base, budgeted: 3_000, balance: 3_000, target: target(1_000) })).toEqual({
+      state: 'growing',
+      fill: 0.75,
+    });
+    expect(plotOf({ ...base, budgeted: 1_000, spent: 1_500, balance: -500 }).state).toBe(
+      'overspent',
+    );
   });
 });

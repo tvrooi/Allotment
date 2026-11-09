@@ -63,6 +63,25 @@ export function captionTone(kind: AvailabilityKind): string {
   return 'text-text-tertiary';
 }
 
+export type PlotState = 'bare' | 'used' | 'growing' | 'planted' | 'overspent';
+
+/**
+ * An envelope as a plot, for the /budget/plots variant. `fill` is how much of its money is
+ * still in it: what is available over what it was given (plus any shortfall to its target), so
+ * spending empties it. Bare: nothing given this month or carried in. Used: given money that has
+ * all gone. Growing: short of its target. Overspent: a negative balance.
+ */
+export function plotOf(cat: BudgetCategory): { state: PlotState; fill: number } {
+  if (availability(cat, false).kind === 'overspent') return { state: 'overspent', fill: 1 };
+  const funded = cat.budgeted + (cat.transferred ?? 0) + Math.max(cat.carryOver, 0);
+  const left = Math.max(cat.balance, 0);
+  if (funded <= 0 && left === 0) return { state: 'bare', fill: 0 };
+  if (left === 0) return { state: 'used', fill: 0 };
+  const short = cat.target?.underfunded ?? 0;
+  const fill = Math.min(left / Math.max(funded + short, left), 1);
+  return { state: short > 0 ? 'growing' : 'planted', fill };
+}
+
 /** A category with nothing planned and no activity is "inactive" and tucked away. */
 export function isActiveCategory(cat: BudgetCategory, isIncome: boolean) {
   return (

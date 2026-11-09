@@ -17,9 +17,11 @@ Last updated: 9 November 2026 (live app on up.149: the household bills hub, cove
   `utils/currency.ts`); `AuthGate` holds pages on first load until the budget currency is in the
   store; the rail's working folds and hides $0 rows; Available pills only for exceptions
   (`availableTone`/`captionTone` in `budgetFigures.ts`); copy fixes ("Assigned to", sentence case).
-  Still open from the critique: a bolder "plots" variant as a separate route, the "Find a
-  category" placeholder contrast (3.1:1), and one recommended action between Hold money and
-  Put the rest in.
+  The "plots" variant is `/budget/plots` (`BudgetPlots.tsx` renders `BudgetPage plots`;
+  `PlotsContext`/`Plot.tsx`; rule `plotOf` in `budgetFigures.ts`). Still open from the critique:
+  the "Find a category" placeholder contrast (3.1:1), and one recommended action between Hold
+  money and Put the rest in. This work lives on the `redesign` branch, developed alongside the
+  pre-redesign app on `main`; PR #209 was closed unmerged to reconcile later.
 
 - **Dashboard comparison route (up.154):** `/dashboard/refined` is a
   lazy-loaded design alternative built from the existing Dashboard components. `/dashboard`

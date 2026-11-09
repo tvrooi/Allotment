@@ -3,6 +3,7 @@ import { CategoryIcon } from '../ui/CategoryIcon';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight, Eye, Pencil } from 'lucide-react';
 import { SpentBar } from './SpentBar';
+import { Plot, useBareName, usePlots } from './Plot';
 import { BudgetAmountSheet } from './BudgetAmountSheet';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { useCanSave } from '../../hooks/useConnection';
@@ -189,6 +190,8 @@ function CategoryCard({
   const canSave = useCanSave();
   const { actual } = categoryFigures(cat, isIncome);
   const { kind, remaining, caption } = availability(cat, isIncome);
+  const bareName = useBareName(cat) && !isIncome;
+  const plotsOn = usePlots();
   const askToMove = useMoveRequest((s) => s.ask);
   // An envelope linked to an account holds what the account holds: a transfer moves its money
   const linked = useLinkedAccount(cat);
@@ -204,7 +207,10 @@ function CategoryCard({
       data-testid="budget-card"
     >
       <div className="flex items-center gap-2">
-        <span className="flex-1 min-w-0 truncate text-row font-medium text-text inline-flex items-center gap-1.5">
+        <span
+          className={`flex-1 min-w-0 truncate text-row font-medium inline-flex items-center gap-1.5 ${bareName ? 'text-text-secondary' : 'text-text'}`}
+        >
+          {!isIncome && <Plot cat={cat} />}
           {showCategoryIcons && <CategoryIcon icon={cat.icon} size={15} />}
           {cat.name}
         </span>
@@ -236,14 +242,17 @@ function CategoryCard({
         )}
       </div>
       {caption && <p className={`mt-1 text-right text-xs ${captionTone(kind)}`}>{caption}</p>}
-      <SpentBar
-        spent={isIncome ? actual : cat.spent}
-        budgeted={cat.budgeted + (cat.transferred ?? 0)}
-        isIncome={isIncome}
-        expected={cat.expected}
-        covered={kind !== 'overspent'}
-        className="h-1.5 w-full mt-2"
-      />
+      {/* In the plots variant the plot beside the name stands in for this bar */}
+      {!(plotsOn && !isIncome) && (
+        <SpentBar
+          spent={isIncome ? actual : cat.spent}
+          budgeted={cat.budgeted + (cat.transferred ?? 0)}
+          isIncome={isIncome}
+          expected={cat.expected}
+          covered={kind !== 'overspent'}
+          className="h-1.5 w-full mt-2"
+        />
+      )}
       <TransferredNote cat={cat} className="mt-1" />
       {card && <CardRowNotes card={card} className="mt-1" />}
       {cat.target && (
