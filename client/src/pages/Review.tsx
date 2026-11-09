@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CashBridge } from '../components/budget/CashBridge';
 import { format, parseISO } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -41,6 +42,12 @@ const STEP_TITLES: Record<api.GuideStepId, string> = {
   irregular: 'Prepare for irregular expenses',
   'before-spending': 'Check categories before spending',
   priorities: 'Move money when priorities change',
+};
+/** Why a bill in the window is left out of the coverage figures */
+const EXCLUDED_REASON: Record<api.GuideState['excludedBills'][number]['reason'], string> = {
+  'no-category': 'needs a category',
+  'household-pool': 'household pool',
+  'outside-budget': 'paid outside the budget',
 };
 const monthLabel = (month: string) => format(parseISO(`${month}-01`), 'MMMM yyyy');
 
@@ -163,7 +170,14 @@ function StepDetail({ id, guide }: { id: api.GuideStepId; guide: api.GuideState 
             : `No payday plan or scheduled income yet, so this shows bills in the next 14 days, until ${formatDay(guide.needsUntil)}.`}{' '}
           Expected pay is only a date here; it is not money you can assign.
         </p>
-        {guide.needs.length === 0 && guide.billsComplete && <p>No unpaid scheduled bills.</p>}
+        {guide.nextIncome && (
+          <p>Bills due on {formatDay(guide.nextIncome)} count towards the next pay.</p>
+        )}
+        <p
+          className={guide.coverage.kind === 'unconfirmed' ? 'text-caution font-medium' : undefined}
+        >
+          {guide.coverage.message}
+        </p>
         <ul className="space-y-1">
           {guide.needs.map((n) => (
             <li key={n.categoryId} className="flex flex-wrap justify-between gap-2 tabular-nums">
@@ -182,6 +196,36 @@ function StepDetail({ id, guide }: { id: api.GuideStepId; guide: api.GuideState 
             </li>
           ))}
         </ul>
+        {guide.excludedBills.length > 0 && (
+          <div>
+            <ul aria-label="Bills not counted" className="space-y-1 text-text-secondary">
+              {guide.excludedBills.map((b) => (
+                <li
+                  key={`${b.scheduleId}:${b.expectedDate}`}
+                  className="flex flex-wrap justify-between gap-2 tabular-nums"
+                >
+                  <span>
+                    {b.name} · {formatDay(b.expectedDate)}
+                  </span>
+                  <span>
+                    {formatCurrency(b.amount)} · {EXCLUDED_REASON[b.reason]}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {guide.coverage.householdMessage && (
+              <p className="mt-1 text-text-secondary">{guide.coverage.householdMessage}</p>
+            )}
+            {guide.coverage.needCategory > 0 && (
+              <Link
+                to="/recurring?filter=needs-category"
+                className="text-brand-600 hover:text-brand-700 font-medium max-md:min-h-11 max-md:inline-flex max-md:items-center"
+              >
+                Choose categories
+              </Link>
+            )}
+          </div>
+        )}
       </>
     );
   if (id === 'assign')
@@ -497,12 +541,15 @@ function Buffer({ buffer }: { buffer: api.BufferState }) {
             Next month's targets assume nothing more is spent or assigned this month.
           </p>
         </Section>
-        {/* What your cash after debts would cover: balances, so Safe mode hides it */}
+        {/* What the cash would cover with no income: balances, so Safe mode hides it */}
         {!hideBalances && (
-          <Section title="Cash runway (optional)">
+          <Section title="Cash coverage with no income (optional)">
             {r.unrestricted !== null && (
               <>
-                <Row label="Cash after debts" value={formatCurrency(r.resources ?? 0)} />
+                <Row
+                  label="Cash in your budget accounts"
+                  value={formatCurrency(r.resources ?? 0)}
+                />
                 <Row
                   label="Restricted: bill reserves and card payments"
                   value={formatCurrency(-r.restricted)}
@@ -514,13 +561,29 @@ function Buffer({ buffer }: { buffer: api.BufferState }) {
                     tone="neg"
                   />
                 )}
-                <Row label="Unrestricted" value={formatCurrency(r.unrestricted)} tone="pos" />
+                <Row
+                  label="No-income cash coverage"
+                  value={formatCurrency(r.unrestricted)}
+                  tone="pos"
+                />
                 <Row label="Average monthly spending" value={formatCurrency(r.monthlySpending)} />
+                <p className="text-xs text-text-tertiary">
+                  Assumes no income arrives. Still includes money assigned to everyday envelopes;
+                  only bill reserves and card payments are taken out.
+                </p>
+                <div className="text-xs pt-1">
+                  <p className="text-text-secondary mb-1">How that cash becomes Ready to assign</p>
+                  <CashBridge
+                    breakdown={r.breakdown}
+                    resources={r.resources ?? 0}
+                    readyToAssign={r.readyToAssign}
+                  />
+                </div>
               </>
             )}
             {r.days !== null ? (
               <p className="text-sm text-text">
-                Unrestricted money would cover about{' '}
+                With no income, this cash would cover about{' '}
                 <strong>{(r.days / (365 / 12)).toFixed(1)} months</strong> ({r.days} days) of
                 everyday spending.
               </p>

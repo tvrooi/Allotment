@@ -280,6 +280,114 @@ describe('guided setup (6G)', () => {
       .run();
     expect(step('before-income').status).toBe('done');
   });
+  describe('how sure the bill coverage is', () => {
+    const monthly = (anchorDay: number) =>
+      JSON.stringify({ type: 'monthly', interval: 1, anchorDay });
+    const bill = (id: string, extra: Record<string, unknown> = {}) =>
+      db
+        .insert(schedules)
+        .values({
+          id,
+          name: id,
+          amount: -10000,
+          recurrenceType: 'monthly',
+          recurrenceRule: monthly(25),
+          startDate: '2026-10-25',
+          accountId: 'cash',
+          categoryId: 'rent',
+          ...extra,
+        })
+        .run();
+    it('says no bills are due when the window is empty', () => {
+      expect(guideState().coverage).toMatchObject({ kind: 'none-due' });
+      expect(step('before-income').status).toBe('done');
+      expect(step('before-income').summary).toBe('No tracked bills due before 4 Nov 2026.');
+    });
+    it("can't confirm coverage while a personal bill has no category", () => {
+      bill('gym', { categoryId: null });
+      const guide = guideState();
+      expect(guide.coverage.kind).toBe('unconfirmed');
+      expect(guide.excludedBills).toEqual([
+        {
+          scheduleId: 'gym',
+          name: 'gym',
+          expectedDate: '2026-10-25',
+          amount: 10000,
+          reason: 'no-category',
+        },
+      ]);
+      expect(step('before-income').status).toBe('todo');
+      expect(step('before-income').summary).toBe(
+        "Can't confirm coverage: 1 bill needs a category.",
+      );
+      // Choosing a category brings it into the figures
+      db.update(schedules).set({ categoryId: 'rent' }).where(eq(schedules.id, 'gym')).run();
+      expect(guideState().excludedBills).toEqual([]);
+      expect(guideState().coverage.kind).toBe('short');
+    });
+    it('lists a household pool bill without blocking', () => {
+      db.insert(accounts)
+        .values({ id: 'pool', name: '2Up', type: 'checking', createdAt: '2026-06-01' })
+        .run();
+      db.insert(householdGroups)
+        .values({ id: 'hh', name: 'Home', currency: 'AUD', accountId: 'pool' })
+        .run();
+      bill('pool-power', { accountId: 'pool', categoryId: null });
+      const guide = guideState();
+      expect(guide.excludedBills).toMatchObject([
+        { scheduleId: 'pool-power', reason: 'household-pool' },
+      ]);
+      expect(guide.coverage).toMatchObject({
+        kind: 'none-due',
+        householdMessage: 'Household pool bills are handled in the household.',
+      });
+      expect(step('before-income').status).toBe('done');
+    });
+    it('names a bill paid from an off-budget account as outside the budget, not the household', () => {
+      db.insert(accounts)
+        .values({
+          id: 'broker',
+          name: 'Broker',
+          type: 'investment',
+          isOffBudget: 1,
+          createdAt: '2026-06-01',
+        })
+        .run();
+      bill('broker-fee', { accountId: 'broker', categoryId: null });
+      const guide = guideState();
+      expect(guide.excludedBills).toMatchObject([
+        { scheduleId: 'broker-fee', reason: 'outside-budget' },
+      ]);
+      expect(guide.coverage).toMatchObject({ kind: 'none-due', householdMessage: null });
+      expect(step('before-income').status).toBe('done');
+    });
+    it('funds every tracked bill, and leaves a bill dated on the next income day to the next pay', () => {
+      db.insert(paydayPlans)
+        .values({
+          id: 'plan',
+          configJson: JSON.stringify({
+            name: 'Work',
+            anchorDate: '2026-10-15',
+            expectedIncome: 9_000_000,
+            weekendAdjust: 'none',
+            timeZone: 'Australia/Melbourne',
+            rules: [],
+          }),
+        })
+        .run();
+      // The next pay is 29 October: a bill that day is not in the window, one the day before is
+      bill('on-payday', { startDate: '2026-10-29', recurrenceRule: monthly(29) });
+      expect(guideState().needs).toEqual([]);
+      expect(guideState().coverage.kind).toBe('none-due');
+      bill('day-before', { startDate: '2026-10-28', recurrenceRule: monthly(28) });
+      assign('rent', 10000);
+      expect(guideState().needs).toMatchObject([{ categoryId: 'rent', due: 10000, uncovered: 0 }]);
+      expect(guideState().coverage.kind).toBe('all-funded');
+      expect(step('before-income').summary).toBe(
+        'All tracked bills before 29 Oct 2026 are funded.',
+      );
+    });
+  });
   it("doesn't take a housemate's deposit into a household account as the next pay", () => {
     db.insert(accounts)
       .values({ id: 'pool', name: '2Up', type: 'checking', createdAt: '2026-06-01' })

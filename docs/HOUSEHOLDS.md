@@ -471,9 +471,11 @@ Where it is used:
   "Next pay" is the owner's own income only.
 - **Forecast** and **Review** (`isPersonalIncomeSchedule`): household money is never expected
   pay. A housemate's deposit saved without an account isn't forecast at all; one into a personal
-  account still counts as cash coming in, but not as income. Household bill shares in the
-  forecast are unchanged (`includeHousehold`), so the owner's transfer into the household
-  account and their share of the rent aren't both counted.
+  account still counts as cash coming in, but not as income. With `includeHousehold`, the
+  forecast counts a shared recurring bill in full when a personal account pays it, and the
+  owner's share when the household account pays; a scheduled transfer into that account
+  replaces those shares, so the transfer and the share of the rent aren't both counted
+  (docs/FORECASTS.md).
 - **Budget page and payday plan** (`plansInPersonalBudget` in `services/balances.ts`): an
   envelope expects a recurring payment, and the payday plan funds it, only when it leaves one of
   the owner's open personal accounts, spent or moved into a household or off-budget account. A

@@ -155,3 +155,37 @@ export function occurrenceBadgeStatus(
     return 'scheduled';
   return occ.displayStatus;
 }
+
+export interface CategoryNeedSchedule {
+  status?: string;
+  amount: number;
+  accountId: string | null;
+  transferAccountId: string | null;
+  categoryId: string | null;
+}
+
+/**
+ * An expense the personal budget should plan for but can't, because it has no category.
+ * Mirrors the server's `plansInPersonalBudget` (balances.ts): money out of an open personal
+ * account, or across the boundary into a household or off-budget one.
+ */
+export function needsCategory(
+  schedule: CategoryNeedSchedule,
+  accounts: {
+    id: string;
+    isOffBudget: number;
+    closedAt: string | null;
+    householdPool?: string | null;
+  }[],
+): boolean {
+  if (schedule.categoryId || schedule.amount >= 0 || (schedule.status ?? 'active') !== 'active')
+    return false;
+  const find = (id: string) => accounts.find((a) => a.id === id);
+  const personal = (id: string) => {
+    const a = find(id);
+    return !!a && !a.isOffBudget && !a.householdPool;
+  };
+  if (schedule.accountId && (!personal(schedule.accountId) || find(schedule.accountId)?.closedAt))
+    return false;
+  return !schedule.transferAccountId || !personal(schedule.transferAccountId);
+}

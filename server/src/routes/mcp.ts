@@ -228,7 +228,8 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'financial_resilience',
-    description: 'Cash after debts by purpose, the flexibility reserve and months of essentials.',
+    description:
+      'Cash in your budget accounts by purpose, the flexibility reserve and months of essentials.',
     path: () => '/review/resilience',
   },
   {

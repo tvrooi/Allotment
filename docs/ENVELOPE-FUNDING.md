@@ -28,6 +28,16 @@ overspending) and that no money figure is ever fractional.
   inflow is ready to assign; uncategorised spending leaves it at once and is listed for
   review.
 
+**The cash breakdown.** `fundingState` also returns `breakdown`, naming the parts without changing
+any figure: `cash` (the positive side of resources) and `otherDebt` (overdrafts and unreviewed
+card debt it nets off), so `cash + otherDebt = resources`; `cardDebt` (`total`, `reserved`,
+`unreserved`) for cards enrolled in card payments, whose debt resources leave out, with
+`unreserved` the payment shortfall; `linked` (each linked envelope with its account's name and
+amount) and `everydayEnvelopes`, which add up to `envelopes`; and `setAside` (later assignments,
+holds and separate pools). So `cash + otherDebt − envelopes − setAside = unassigned`. Budget's
+"How this is worked out" and Review show it with `CashBridge`. Ready to assign does not subtract
+unreserved card debt; the bridge shows it apart, with net cash `resources − unreserved`.
+
 ### The overspending rule
 
 An envelope that ends a month below zero starts the next month at zero (`rollOver`).

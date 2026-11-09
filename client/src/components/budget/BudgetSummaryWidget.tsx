@@ -1,4 +1,5 @@
 import type { BudgetSummary } from '../../types';
+import { CashBridge } from './CashBridge';
 import { unresolvedReason } from '../../utils/fundingStatus';
 import { useState } from 'react';
 import { CategoryPicker } from '../transactions/CategoryPicker';
@@ -340,20 +341,11 @@ export function BudgetSummaryWidget({
             <p className="text-text-tertiary mb-1.5">
               Ready to assign as of {formatAsOfDay(funding.asOf)}
             </p>
-            <dl className="grid gap-1 mb-2 border-b border-border-light pb-2">
-              {(
-                [
-                  ['In your accounts, less card debt', funding.resources],
-                  ['Held in envelopes', funding.envelopes ?? funding.reserved],
-                  ['Ready to assign', toBeBudgeted],
-                ] as const
-              ).map(([label, value]) => (
-                <div key={label} className="flex justify-between gap-2">
-                  <dt>{label}</dt>
-                  <dd className="tabular-nums">{formatCurrency(value)}</dd>
-                </div>
-              ))}
-            </dl>
+            <CashBridge
+              breakdown={funding.breakdown}
+              resources={funding.resources}
+              readyToAssign={toBeBudgeted}
+            />
             <p className="text-text-tertiary mb-2">
               A Saver is still yours to assign: put the money in an envelope to set it aside.
             </p>
