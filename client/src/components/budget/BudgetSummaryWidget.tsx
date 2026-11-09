@@ -224,12 +224,14 @@ export function BudgetSummaryWidget({
   const todoNotice = todo && !(toBeBudgeted < 0 && todo === 'Check the Review page') && (
     <p className="mt-2 flex items-start gap-1.5 px-1 text-xs text-text-secondary">
       <AlertCircle size={14} className="text-caution shrink-0 mt-px" aria-hidden />
-      <span>
-        {todo}.{' '}
-        <Link to="/review" className="font-medium text-brand-700 underline underline-offset-2">
-          Review
-        </Link>
-      </span>
+      <span className="flex-1 min-w-0">{todo}.</span>
+      {/* At the end of the line, so it never wraps alone under the reason */}
+      <Link
+        to="/review"
+        className="shrink-0 font-medium text-brand-700 underline underline-offset-2"
+      >
+        Review
+      </Link>
     </p>
   );
 
@@ -426,7 +428,7 @@ export function BudgetSummaryWidget({
                 {workings}
               </details>
             )}
-        <div className="flex justify-center gap-4 px-4 pb-2">
+        <div className="flex justify-center gap-4 px-4 pt-2 pb-2">
           {TABS.map((tab) => (
             <button
               key={tab.key}

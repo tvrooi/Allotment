@@ -53,7 +53,8 @@ export function BudgetEditPopover({
   }));
 
   const hasData = chartData.some((d) => d.amount > 0);
-  const barColor = isIncome ? chartColors.positive : chartColors.negative;
+  // Past spending is ordinary history, not a problem: the chart colour, not the error red
+  const barColor = isIncome ? chartColors.positive : chartColors.brand;
   const xAxis = useXAxisLayout({
     labels: chartData.map((d) => d.month),
     kind: 'band',

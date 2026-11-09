@@ -1102,7 +1102,7 @@ export default function BudgetPage({ plots = false }: { plots?: boolean }) {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Find a category"
               aria-label="Find a category"
-              className="w-full max-w-sm max-md:max-w-none text-sm border border-border rounded-lg pl-8 pr-8 py-1.5 max-md:min-h-11 bg-surface text-text focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600 [&::-webkit-search-cancel-button]:hidden"
+              className="w-full max-w-sm max-md:max-w-none text-sm border border-border rounded-lg pl-8 pr-8 py-1.5 max-md:min-h-11 bg-surface text-text placeholder:text-text-tertiary focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600 [&::-webkit-search-cancel-button]:hidden"
             />
             {query && (
               <button

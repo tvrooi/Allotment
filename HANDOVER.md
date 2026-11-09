@@ -18,9 +18,9 @@ Last updated: 9 November 2026 (live app on up.149: the household bills hub, cove
   store; the rail's working folds and hides $0 rows; Available pills only for exceptions
   (`availableTone`/`captionTone` in `budgetFigures.ts`); copy fixes ("Assigned to", sentence case).
   The "plots" variant is `/budget/plots` (`BudgetPlots.tsx` renders `BudgetPage plots`;
-  `PlotsContext`/`Plot.tsx`; rule `plotOf` in `budgetFigures.ts`). Still open from the critique:
-  the "Find a category" placeholder contrast (3.1:1), and one recommended action between Hold
-  money and Put the rest in. This work lives on the `redesign` branch, developed alongside the
+  `PlotsContext`/`Plot.tsx`; rule `plotOf` in `budgetFigures.ts`). A polish pass fixed the
+  "Find a category" placeholder contrast and drew amount-editor history in the chart colour.
+  Still open from the critique: one recommended action between Hold money and Put the rest in. This work lives on the `redesign` branch, developed alongside the
   pre-redesign app on `main`; PR #209 was closed unmerged to reconcile later.
 
 - **Dashboard comparison route (up.154):** `/dashboard/refined` is a
