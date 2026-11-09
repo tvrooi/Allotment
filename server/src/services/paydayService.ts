@@ -133,7 +133,22 @@ export function incomeOptions(today: string) {
   );
 }
 
-export function billCoverage(from: string, to: string, today: string) {
+/** A bill in the window that the coverage figures leave out, and why (see `billCoverageDetail`). */
+export type ExcludedBill = {
+  scheduleId: string;
+  name: string;
+  expectedDate: string;
+  amount: number;
+  reason: 'no-category' | 'household-pool';
+};
+
+/**
+ * Bills due in [from, to): a bill dated on `to` belongs to the next cycle. Bills without a
+ * category, or paid from a household pool account, can't be tied to an envelope, so they come
+ * back in `excluded` instead of vanishing; callers must not call coverage settled while a
+ * personal bill is excluded.
+ */
+export function billCoverageDetail(from: string, to: string, today: string) {
   const accountRows = db.select().from(accounts).all();
   const budgetScope = budgetAccountScope();
   const expenseIds = new Set(expenseCategories().map((c) => c.id));
@@ -146,12 +161,21 @@ export function billCoverage(from: string, to: string, today: string) {
     amount: number;
     estimated: boolean;
   }[] = [];
+  const excluded: ExcludedBill[] = [];
   for (const schedule of db.select().from(schedules).where(eq(schedules.status, 'active')).all()) {
-    if (
-      !schedule.categoryId ||
-      !expenseIds.has(schedule.categoryId) ||
-      !plansInPersonalBudget(schedule, budgetScope)
-    )
+    const inPersonal = plansInPersonalBudget(schedule, budgetScope);
+    let reason: ExcludedBill['reason'] | null = null;
+    if (schedule.amount < 0) {
+      if (
+        !inPersonal &&
+        schedule.accountId &&
+        !budgetScope.personal.has(schedule.accountId) &&
+        !(schedule.transferAccountId && budgetScope.personal.has(schedule.transferAccountId))
+      )
+        reason = 'household-pool';
+      else if (inPersonal && !schedule.categoryId) reason = 'no-category';
+    }
+    if (!reason && (!schedule.categoryId || !expenseIds.has(schedule.categoryId) || !inPersonal))
       continue;
     const account = accountRows.find((a) => a.id === schedule.accountId);
     const stored = db
@@ -193,17 +217,36 @@ export function billCoverage(from: string, to: string, today: string) {
         ctx,
       );
       if (amount === null) throw new PaydayError(`Add an exchange rate for ${schedule.name}`);
+      if (reason) {
+        excluded.push({
+          scheduleId: schedule.id,
+          name: schedule.name,
+          expectedDate: occurrence.expectedDate,
+          amount,
+          reason,
+        });
+        continue;
+      }
       bills.push({
         id: `${schedule.id}:${scheduledDate}`,
         name: schedule.name,
-        categoryId: schedule.categoryId,
+        categoryId: schedule.categoryId!,
         date: occurrence.expectedDate,
         amount,
         estimated: schedule.amountType !== 'exact',
       });
     }
   }
-  return bills.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+  bills.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+  excluded.sort(
+    (a, b) =>
+      a.expectedDate.localeCompare(b.expectedDate) || a.scheduleId.localeCompare(b.scheduleId),
+  );
+  return { bills, excluded };
+}
+
+export function billCoverage(from: string, to: string, today: string) {
+  return billCoverageDetail(from, to, today).bills;
 }
 
 export function previewPayday(planId: string, request: PaydayRequest) {

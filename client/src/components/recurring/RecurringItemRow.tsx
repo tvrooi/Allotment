@@ -2,6 +2,7 @@ import { parseISO, differenceInCalendarDays } from 'date-fns';
 import { formatCurrency } from '../../utils/currency';
 import type { ScheduleOccurrence } from '../../types';
 import StatusBadge from './StatusBadge';
+import NeedsCategoryBadge from './NeedsCategoryBadge';
 import RowMenu, { type RowMenuItem } from '../ui/RowMenu';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import {
@@ -20,6 +21,10 @@ export const OCCURRENCE_GRID =
 interface Props {
   occurrence: ScheduleOccurrence;
   accountName?: string;
+  /** The schedule's category, when it has one */
+  categoryName?: string | null;
+  /** An expense the budget can't plan for: no category */
+  needsCategory?: boolean;
   upcomingDays: number;
   highlighted?: boolean;
   onMarkPaid?: () => void;
@@ -32,6 +37,8 @@ interface Props {
 export default function RecurringItemRow({
   occurrence: occ,
   accountName,
+  categoryName,
+  needsCategory,
   upcomingDays,
   highlighted,
   onMarkPaid,
@@ -102,9 +109,11 @@ export default function RecurringItemRow({
   const detail = occ.shareOf
     ? `${formatCurrency(occ.shareOf)} in all`
     : (householdLabel(occ.scope) ?? null);
-  const frequency = [FREQ_LABEL.get(occ.recurrenceType) ?? occ.recurrenceType, detail]
+  const frequency = [FREQ_LABEL.get(occ.recurrenceType) ?? occ.recurrenceType, detail, categoryName]
     .filter(Boolean)
     .join(' · ');
+
+  const categoryBadge = <NeedsCategoryBadge />;
 
   // Phones: a card. Name and amount on top; date, account and status below
   if (isPhone) {
@@ -132,6 +141,7 @@ export default function RecurringItemRow({
           </p>
           <div className="mt-1.5 flex items-center gap-2">
             <StatusBadge status={occurrenceBadgeStatus(occ, upcomingDays)} />
+            {needsCategory && categoryBadge}
             {hasDifferentAmount && (
               <span className="text-xs text-caution tabular-nums" title="Actual paid amount">
                 Paid {formatCurrency(occ.matchedAmount!)}
@@ -161,6 +171,7 @@ export default function RecurringItemRow({
           {occ.scheduleName}
         </p>
         <p className="text-xs text-text-tertiary truncate">{frequency}</p>
+        {needsCategory && <div className="mt-0.5">{categoryBadge}</div>}
       </div>
 
       <div className="min-w-0">

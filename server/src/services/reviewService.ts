@@ -21,7 +21,7 @@ import { budgetWithTargets, pausedStatus, targetStatus } from './targetService.j
 import { inactiveGoalCategories } from './goalLifecycle.js';
 import { addMonthsTo, monthEnd } from './fundingMath.js';
 import { todayIso } from './mainAmountService.js';
-import { billCoverage, paydays, PaydayError } from './paydayService.js';
+import { billCoverageDetail, paydays, PaydayError, type ExcludedBill } from './paydayService.js';
 import { paydayConfigSchema } from './paydayConfig.js';
 import { computeOccurrenceDates, type RecurrenceDefinition } from '../utils/recurrence.js';
 import { bankVerifiedAccountIds } from './bankVerified.js';
@@ -418,10 +418,11 @@ export function guideState(today = todayIso()) {
 
   const nextIncome = nextIncomeDate(today);
   const until = nextIncome ?? day(today, 14);
-  let bills: ReturnType<typeof billCoverage> = [];
+  let bills: ReturnType<typeof billCoverageDetail>['bills'] = [];
+  let excluded: ExcludedBill[] = [];
   let billsComplete = true;
   try {
-    bills = billCoverage(today, until, today);
+    ({ bills, excluded } = billCoverageDetail(today, until, today));
   } catch (error) {
     if (!(error instanceof PaydayError)) throw error;
     billsComplete = false;
@@ -456,6 +457,42 @@ export function guideState(today = todayIso()) {
     .map((c) => ({ categoryId: c.id, name: c.name, hasTarget: !!c.target }));
 
   const uncovered = sum(needs.map((n) => n.uncovered));
+  const untilText = format(parseISO(until), 'd MMM yyyy');
+  // A bill with no category can't be matched to an envelope, so "covered" would be a guess.
+  // Household pool bills are the household's to cover and never block the step.
+  const needCategory = new Set(
+    excluded.filter((b) => b.reason === 'no-category').map((b) => b.scheduleId),
+  ).size;
+  const coverage: {
+    kind: 'incomplete' | 'unconfirmed' | 'short' | 'none-due' | 'all-funded';
+    needCategory: number;
+    householdPool: number;
+    message: string;
+    householdMessage: string | null;
+  } = {
+    kind: !billsComplete
+      ? 'incomplete'
+      : needCategory > 0
+        ? 'unconfirmed'
+        : uncovered > 0
+          ? 'short'
+          : bills.length === 0
+            ? 'none-due'
+            : 'all-funded',
+    needCategory,
+    householdPool: excluded.filter((b) => b.reason === 'household-pool').length,
+    message: '',
+    householdMessage: null,
+  };
+  coverage.message = {
+    incomplete: `Add missing exchange rates to see bills before ${untilText}.`,
+    unconfirmed: `Can't confirm coverage: ${needCategory} ${needCategory === 1 ? 'bill needs a category' : 'bills need categories'}.`,
+    short: `Some bills before ${untilText} are not covered yet.`,
+    'none-due': `No tracked bills due before ${untilText}.`,
+    'all-funded': `All tracked bills before ${untilText} are funded.`,
+  }[coverage.kind];
+  if (coverage.householdPool > 0)
+    coverage.householdMessage = 'Household pool bills are handled in the household.';
   const steps: Step[] = [
     {
       id: 'balances',
@@ -466,12 +503,12 @@ export function guideState(today = todayIso()) {
     },
     {
       id: 'before-income',
-      status: !billsComplete ? 'attention' : uncovered > 0 ? 'todo' : 'done',
-      summary: !billsComplete
-        ? 'Add missing exchange rates to see bills before your next income.'
-        : uncovered > 0
-          ? 'Some bills before your next income are not covered yet.'
-          : 'Bills before your next income are covered.',
+      status: !billsComplete
+        ? 'attention'
+        : coverage.kind === 'unconfirmed' || coverage.kind === 'short'
+          ? 'todo'
+          : 'done',
+      summary: coverage.message,
     },
     {
       id: 'assign',
@@ -528,6 +565,8 @@ export function guideState(today = todayIso()) {
     needsUntil: until,
     needs,
     billsComplete,
+    coverage,
+    excludedBills: excluded,
     irregular,
   };
 }

@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, Sparkles } from 'lucide-react';
 import MonthlyTab from '../components/recurring/MonthlyTab';
 import AllTab from '../components/recurring/AllTab';
+import NeedsCategoryList from '../components/recurring/NeedsCategoryList';
 import RecurringFormModal from '../components/recurring/RecurringFormModal';
 import MatchSuggestionsPanel from '../components/recurring/MatchSuggestionsPanel';
 import PossiblyEndedPanel from '../components/recurring/PossiblyEndedPanel';
@@ -32,6 +34,9 @@ type TabId = (typeof tabs)[number]['id'];
 
 export default function RecurringTransactionsPage() {
   const [activeTab, setActiveTab] = useState<TabId>('monthly');
+  // /recurring?filter=needs-category: only the bills with no category, each with a picker
+  const [searchParams] = useSearchParams();
+  const needsCategoryOnly = searchParams.get('filter') === 'needs-category';
   const [formOpen, setFormOpen] = useState(false);
   const [editItem, setEditItem] = useState<Schedule | null>(null);
   const [draft, setDraft] = useState<ScheduleDraft | null>(null);
@@ -156,7 +161,8 @@ export default function RecurringTransactionsPage() {
         id={tabIds('recurring', activeTab).panel}
         aria-labelledby={tabIds('recurring', activeTab).tab}
       >
-        {activeTab === 'monthly' && (
+        {needsCategoryOnly && <NeedsCategoryList allRecurring={allRecurring} />}
+        {!needsCategoryOnly && activeTab === 'monthly' && (
           <MonthlyTab
             onEdit={handleEdit}
             onAdd={handleAdd}
@@ -165,7 +171,7 @@ export default function RecurringTransactionsPage() {
             onMatchOccurrence={setMatchOccurrenceId}
           />
         )}
-        {activeTab === 'all' && (
+        {!needsCategoryOnly && activeTab === 'all' && (
           <AllTab
             allRecurring={allRecurring}
             onEdit={handleEdit}

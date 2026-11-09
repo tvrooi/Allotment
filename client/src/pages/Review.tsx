@@ -164,7 +164,14 @@ function StepDetail({ id, guide }: { id: api.GuideStepId; guide: api.GuideState 
             : `No payday plan or scheduled income yet, so this shows bills in the next 14 days, until ${formatDay(guide.needsUntil)}.`}{' '}
           Expected pay is only a date here; it is not money you can assign.
         </p>
-        {guide.needs.length === 0 && guide.billsComplete && <p>No unpaid scheduled bills.</p>}
+        {guide.nextIncome && (
+          <p>Bills due on {formatDay(guide.nextIncome)} count towards the next pay.</p>
+        )}
+        <p
+          className={guide.coverage.kind === 'unconfirmed' ? 'text-caution font-medium' : undefined}
+        >
+          {guide.coverage.message}
+        </p>
         <ul className="space-y-1">
           {guide.needs.map((n) => (
             <li key={n.categoryId} className="flex flex-wrap justify-between gap-2 tabular-nums">
@@ -183,6 +190,37 @@ function StepDetail({ id, guide }: { id: api.GuideStepId; guide: api.GuideState 
             </li>
           ))}
         </ul>
+        {guide.excludedBills.length > 0 && (
+          <div>
+            <ul aria-label="Bills not counted" className="space-y-1 text-text-secondary">
+              {guide.excludedBills.map((b) => (
+                <li
+                  key={`${b.scheduleId}:${b.expectedDate}`}
+                  className="flex flex-wrap justify-between gap-2 tabular-nums"
+                >
+                  <span>
+                    {b.name} · {formatDay(b.expectedDate)}
+                  </span>
+                  <span>
+                    {formatCurrency(b.amount)} ·{' '}
+                    {b.reason === 'no-category' ? 'needs a category' : 'household pool'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {guide.coverage.householdMessage && (
+              <p className="mt-1 text-text-secondary">{guide.coverage.householdMessage}</p>
+            )}
+            {guide.coverage.needCategory > 0 && (
+              <Link
+                to="/recurring?filter=needs-category"
+                className="text-brand-600 hover:text-brand-700 font-medium max-md:min-h-11 max-md:inline-flex max-md:items-center"
+              >
+                Choose categories
+              </Link>
+            )}
+          </div>
+        )}
       </>
     );
   if (id === 'assign')

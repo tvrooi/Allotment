@@ -44,7 +44,17 @@ disagree with the budget):
 2. **Cover what is due before your next income** — unpaid scheduled bills (the payday
    planner's bill coverage) up to the next expected income: the next payday of any active plan,
    or the next pending scheduled income, whichever is earlier. With neither, the next 14 days.
-   Expected pay is only a date: it never becomes money to assign.
+   Expected pay is only a date: it never becomes money to assign. The window is up to, but not
+   including, that date: a bill due on the next income day counts towards the next pay, and the
+   step says so. The step reports one of three outcomes and the horizon date:
+   _No tracked bills due before {date}_, _All tracked bills before {date} are funded_, or
+   _Can't confirm coverage: N bills need categories_ (never done). A personal bill with no
+   category can't be matched to an envelope, so it is listed and links to
+   `/recurring?filter=needs-category`, where a category is chosen on the row (only `categoryId`
+   is sent, so the confirmed amount is untouched). Bills a household pool account pays are listed
+   as information (_Household pool bills are handled in the household_) and never block done.
+   `guideState` returns this as `coverage` and `excludedBills`; the figures come from
+   `billCoverageDetail` (payday), whose `excluded` list carries each bill's reason.
 3. **Assign the money you already have** — unassigned today; attention when over-assigned or
    when rates are missing.
 4. **Prepare for irregular expenses** — non-monthly categories and categories with quarterly,
