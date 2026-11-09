@@ -2,21 +2,19 @@
 
 ## 0.2.0-up.149
 
-The last of four Household updates that bring the page closer to Up's Essentials.
-
-- **Bills you haven't set up yet.** With a household account, **Looks like a bill** lists payees the account pays again and again that aren't recurring bills, such as power every two months or water every quarter. It reads a year of payments and shows how often each one comes, the range of amounts, and when the next one is about due.
-- **Add as household bill** makes it a recurring bill shared with the household, with an amount that's allowed to change. Its expected amount is the middle of its last three payments. **Not a bill** stops suggesting it. Nothing is added unless you choose it.
-- Backups are now version 34 and include the payees you said aren't bills. An older backup restores with none.
-
-## 0.2.0-up.148
-
-Part three of four of the Household updates that bring the page closer to Up's Essentials, and paying ahead for a shared expense (merged while 0.2.0-up.147 was already released, so it ships here).
+The last two of four Household updates that bring the page closer to Up's Essentials. Part three was merged as 0.2.0-up.148 but that version was already released with paying ahead, so it ships here.
 
 - **When a bill's amount changes.** Each shared recurring bill is now a tile that says when it's due ("Due in 3 days"). When its last payment doesn't match what it expects, it says **amount changed** and offers **Update to A$107** or the average of the last three payments. Nothing changes until you click. The tolerance is the one Recurring uses for matching: exact bills prompt on any change, "about the same" bills beyond 10%, and changing bills beyond 25%.
 - **Edit amount** on the tile sets the expected amount and how it varies, with Undo. Recurring and your forecast follow.
 - **Household bills follow an amount you change.** Editing a recurring amount, here or in Recurring, now also updates that bill's household bills that aren't paid yet, with your share recomputed. Paid and past bills keep what they were, and so does a bill with more set aside for it than the new amount (lower what's set aside first). Undo puts it all back.
 - Each tile lists its latest payments (up to six, from the last six months), newest first, with their total.
 - **One-off bills** (formerly "Bills to reserve for") now sit under the recurring bills.
+- **Bills you haven't set up yet.** With a household account, **Looks like a bill** lists payees the account pays again and again that aren't recurring bills, such as power every two months or water every quarter. It reads a year of payments and shows how often each one comes, the range of amounts, and when the next one is about due.
+- **Add as household bill** makes it a recurring bill shared with the household, with an amount that's allowed to change. Its expected amount is the middle of its last three payments. **Not a bill** stops suggesting it. Nothing is added unless you choose it.
+- Backups are now version 34 and include the payees you said aren't bills. An older backup restores with none.
+
+## 0.2.0-up.148
+
 - **Pay your share ahead.** Sent a housemate money towards a shared bill they haven't recorded yet? Right-click the payment in your register (or tap ⋯ on a phone) and choose **Paid ahead to** and their name, or open the payment and choose **Paid ahead for a shared expense**. Until the bill is recorded in the household they owe it back to you; once it is, by you or by them in a combined household, your share comes off it. **Undo** in the toast, or **Remove from** the household in the menu, takes it back.
 - Only your own money out can be paid ahead. A payment from a household account can't be recorded as a repayment from you any more: it is the household's money, so it is a contribution or an expense.
 
