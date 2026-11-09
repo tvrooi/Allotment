@@ -29,6 +29,7 @@ function demoServerModules(): Plugin {
       if (!importer || !normalizePath(importer).startsWith(file(''))) return null;
       if (source === 'express') return file('browser/expressShim.ts');
       if (source === 'path') return file('browser/path.ts');
+      if (source === 'crypto' || source === 'node:crypto') return file('browser/crypto.ts');
       const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
       const swap = resolved && swaps[normalizePath(resolved.id)];
       return swap ?? null;

@@ -20,6 +20,8 @@ visitor gets a private copy that disappears when they close the tab, and nothing
     (synchronous, like better-sqlite3's, so every query runs as is).
   - `db/secretCrypto.ts` → `secretCrypto.ts`: no encryption (the demo never stores credentials).
   - `path` → `path.ts`: throws if used (only restore's safety copy of the database file needs it).
+  - `crypto` → `crypto.ts`: throws if used (only sign-in, bank, receipt and file code needs it).
+    Every name a server file imports from `crypto` must be exported there, or the demo build fails.
 - `app.ts` mounts the budget routers like `index.ts` does and answers `/health`, `/auth/status` and
   `/server/info` itself. Bank connections (`/plaid`, `/simplefin`) and sign-in are refused, and the
   app shows "needs the Allotment app" instead of their setup screens (`NotInDemo`).
@@ -64,7 +66,8 @@ cd e2e && npm test -- --project=demo         # the demo's end-to-end tests
 - **New routes**: mount them in `app.ts` too, or the demo answers 404.
 - **Node-only code in a route** (the file system, `crypto`, network requests) won't run in the
   browser: keep it in a service the demo doesn't load, or give the demo an answer in `app.ts`.
-  Building the demo (`--mode demo`) fails or warns when such an import sneaks in.
+  Building the demo (`--mode demo`) fails or warns when such an import sneaks in (a new
+  `crypto` function also needs a stand-in in `crypto.ts`).
 - **New Express features** in routes need the same in `expressShim.ts`.
 - **New features** should show up in the demo budget (`demoBudget.ts`), kept lean: every account
   and payee has a logo, and `demoBudget.test.ts` checks the budget still adds up for any day.
