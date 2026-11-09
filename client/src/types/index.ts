@@ -866,6 +866,8 @@ export interface Schedule {
   occurrenceHorizon: string | null;
   /** "Still active": misses up to this date don't make it look ended */
   confirmedActiveAt: string | null;
+  /** The owner set or kept the expected amount on this date; earlier payments don't flag it */
+  amountConfirmedAt: string | null;
   /** Days before an occurrence to send a Home Assistant reminder (FINX-02); null = none */
   reminderDays: number | null;
   /** The last two occurrences went by unpaid (GET /schedules only) */

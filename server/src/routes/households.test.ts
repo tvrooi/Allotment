@@ -774,6 +774,71 @@ describe('household attribution', () => {
     expect(bill.shares.map((s: any) => s.amount)).toEqual([165100, 165100, 165100]);
   });
 
+  it('stops flagging old payments once the owner sets or keeps the amount', async () => {
+    const g = await group();
+    const day = (offset: number) =>
+      new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+    db.insert(payees).values({ id: 'ovo-rise', name: 'OVO Energy' }).run();
+    db.insert(schedules)
+      .values({
+        id: 'energy',
+        name: 'OVO Energy',
+        amount: -10700,
+        recurrenceType: 'monthly',
+        startDate: day(-90),
+        accountId: 'mine',
+        payeeId: 'ovo-rise',
+      })
+      .run();
+    db.insert(transactions)
+      .values({
+        id: 'ovo-oct',
+        accountId: 'mine',
+        date: day(-10),
+        amount: -10700,
+        payeeId: 'ovo-rise',
+      })
+      .run();
+    await call(`/${g.group.id}/recurring-bills`, { scheduleIds: ['energy'] });
+    const put = (body: unknown) =>
+      fetch(base.replace('/households', '/schedules/energy'), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).then((r) => r.json());
+    const drift = async () =>
+      (await call(`/${g.group.id}`)).data.recurringBills.find((b: any) => b.scheduleId === 'energy')
+        .drift;
+    expect(await drift()).toBeNull();
+
+    // A known price rise: the owner raises it before the first bill at the new price
+    const raised = await put({ amount: -15000 });
+    expect(raised.amountConfirmedAt).toBe(day(0));
+    expect(await drift()).toBeNull();
+
+    // Undo restores the earlier confirmation exactly, so the old payment flags it again
+    await put({ amount: -15000, amountConfirmedAt: null });
+    expect(await drift()).toMatchObject({ lastPaid: 10700 });
+    // "Keep A$150" confirms it without changing the amount
+    const kept = await put({ amountConfirmedAt: day(0) });
+    expect(kept.amount).toBe(-15000);
+    expect(await drift()).toBeNull();
+    // Editing anything else leaves the confirmation alone
+    expect((await put({ notes: 'Price rise from November' })).amountConfirmedAt).toBe(day(0));
+
+    // A later bill still at the old price is new evidence
+    db.insert(transactions)
+      .values({
+        id: 'ovo-nov',
+        accountId: 'mine',
+        date: day(1),
+        amount: -10800,
+        payeeId: 'ovo-rise',
+      })
+      .run();
+    expect(await drift()).toMatchObject({ lastPaid: 10800, averageOf: 1 });
+  });
+
   it('gauges the household account against the bills due in the next 30 days', async () => {
     db.insert(accounts)
       .values({ id: 'cov-pool', name: '2Up Essentials', type: 'savings', startingBalance: 20000 })

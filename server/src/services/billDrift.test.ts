@@ -33,6 +33,21 @@ describe('billDrift', () => {
     });
   });
 
+  it('ignores payments on or before the day the owner set or kept the amount', () => {
+    // Energy: paid A$107 on 27 Oct, owner raised it to A$150 on 2 Nov for a known price rise
+    const history = [
+      { date: '2026-10-27', amount: 10700 },
+      { date: '2026-09-27', amount: 10100 },
+    ];
+    expect(billDrift(15000, 'exact', history, '2026-11-02')).toBeNull();
+    expect(billDrift(15000, 'exact', history, '2026-10-27')).toBeNull();
+    expect(billDrift(15000, 'exact', history, null)).toMatchObject({ lastPaid: 10700 });
+    // The next bill still at the old price is new evidence, and averages only what came after
+    expect(
+      billDrift(15000, 'exact', [{ date: '2026-11-28', amount: 10800 }, ...history], '2026-11-02'),
+    ).toEqual({ lastPaid: 10800, lastDate: '2026-11-28', average: 10800, averageOf: 1 });
+  });
+
   it('always gives whole cents between the smallest and largest of the payments averaged', () => {
     fc.assert(
       fc.property(

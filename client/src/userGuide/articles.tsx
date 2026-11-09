@@ -1185,9 +1185,12 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
           <p>
             Bills like power often cost a little more or less each time. When a shared bill&rsquo;s
             last payment doesn&rsquo;t match what it expects, its tile says <b>amount changed</b>{' '}
-            and offers <b>Update to</b> the last amount or the average of the last three. You can
-            also choose <b>Edit amount</b>. Recurring, your forecast and the household&rsquo;s bills
-            that aren&rsquo;t paid yet all follow, and Undo takes it back.
+            and offers <b>Update to</b> the last amount or the average of the last three. If you
+            changed the amount on purpose, such as a price rise that hasn&rsquo;t been billed yet,
+            choose <b>Keep</b>. Payments from before you set or kept an amount never flag it again;
+            only a later bill that still doesn&rsquo;t match does. You can also choose{' '}
+            <b>Edit amount</b>. Recurring, your forecast and the household&rsquo;s bills that
+            aren&rsquo;t paid yet all follow, and Undo takes it back.
           </p>
         ),
       },

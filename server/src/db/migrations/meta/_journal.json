@@ -610,6 +610,13 @@
       "when": 1797091200000,
       "tag": "0086_household_bill_dismissals",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "6",
+      "when": 1797177600000,
+      "tag": "0087_schedule_amount_confirmed",
+      "breakpoints": true
     }
   ]
 }

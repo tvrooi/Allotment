@@ -4,6 +4,7 @@ import { useCanSave } from '../../hooks/useConnection';
 import type { SharedRecurringBill } from '../../api/households';
 import type { AmountType } from '../../types';
 import { formatMoney } from '../../utils/currency';
+import { todayIso } from '../../utils/calendarDay';
 import { formatDay } from '../../utils/dates';
 import { Button } from '../ui/Button';
 import { CurrencyInput } from '../ui/CurrencyInput';
@@ -11,7 +12,8 @@ import { Select } from '../ui/Input';
 
 // A shared bill's amount, the Up "Edit Regular" way: its payments newest first with their total,
 // a prompt when real payments have moved away from what it expects (server billDrift; the
-// owner's click is the only thing that changes it), and an in-place edit of the expected amount.
+// owner's click is the only thing that changes it, and "Keep" says the amount is right, such as a
+// price rise not billed yet), and an in-place edit of the expected amount.
 // Every change goes through the schedule (PUT /api/schedules/:id), with Undo, so Recurring,
 // the forecast and the household's bills all follow.
 
@@ -36,12 +38,17 @@ export function BillAmount({ bill, currency }: Props) {
   const [error, setError] = useState('');
   // Keep the schedule's sign: a bill is money out, so its schedule amount is negative
   const signed = (positive: number) => (bill.scheduleAmount < 0 ? -positive : positive);
-  const apply = (changes: { amount?: number; amountType?: AmountType }) =>
+  const apply = (changes: {
+    amount?: number;
+    amountType?: AmountType;
+    amountConfirmedAt?: string;
+  }) =>
     save.mutate(
       {
         id: bill.scheduleId,
         ...(changes.amount !== undefined ? { amount: signed(changes.amount) } : {}),
         ...(changes.amountType ? { amountType: changes.amountType } : {}),
+        ...(changes.amountConfirmedAt ? { amountConfirmedAt: changes.amountConfirmedAt } : {}),
       },
       {
         onSuccess: () => {
@@ -77,6 +84,14 @@ export function BillAmount({ bill, currency }: Props) {
                 Use the average of the last {drift.averageOf} ({money(drift.average)})
               </Button>
             )}
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => apply({ amountConfirmedAt: todayIso() })}
+            >
+              Keep {money(bill.amount)}
+            </Button>
           </div>
         </div>
       )}

@@ -30,6 +30,7 @@ export interface CreateScheduleData {
   status?: string;
   autoCreate?: number;
   confirmedActiveAt?: string | null;
+  amountConfirmedAt?: string | null;
   reminderDays?: number | null;
 }
 
