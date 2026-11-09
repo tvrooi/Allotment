@@ -11,7 +11,11 @@ the monthly envelope budget remains the source of allocations and rollover.
    to choose its position. A remainder rule always runs last.
 3. Choose a payday and adjust its actual date if it arrived early or late (within
    13 days). Select the actual income deposits for that pay. Income must be in an
-   on-budget income category, dated no later than today in the plan's time zone.
+   on-budget income category, dated no later than today in the plan's time zone, and
+   not paid into an account an envelope is linked to (that money is the envelope's).
+   The panel ticks a deposit only when exactly one lands within 7 days of the payday
+   and within 15% of the plan's expected pay (`suggestDeposit`; a plan stores no salary
+   payee). Otherwise nothing is ticked, and "Choose another deposit" shows the rest.
 4. **Preview funding** shows category balances, amounts needed, proposed additions,
    funding shortfalls and bills left uncovered before the next payday. Nothing is
    written by a preview. Review the bill list; variable/approximate bills are estimates.

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import * as api from '../../api/payday';
 import { formatCurrency, centsToInput, parseCents, isUnreadableAmount } from '../../utils/currency';
@@ -384,13 +384,16 @@ function PayCandidates({ onPay }: { onPay: (transactionId: string) => void }) {
 function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => void }) {
   const qc = useQueryClient();
   const canSave = useCanSave();
-  const context = useQuery({
-    queryKey: ['payday', plan.id],
-    queryFn: () => api.getPaydayContext(plan.id),
-  });
   const [chosenDate, setChosenDate] = useState('');
+  // The suggestion depends on the payday shown, so the chosen date is part of the key
+  const context = useQuery({
+    queryKey: ['payday', plan.id, chosenDate],
+    queryFn: () => api.getPaydayContext(plan.id, chosenDate || undefined),
+    placeholderData: keepPreviousData,
+  });
+  const [showOthers, setShowOthers] = useState(false);
   const [actualDate, setActualDate] = useState('');
-  // null = untouched: the newest unused deposit is ticked until the person chooses
+  // null = untouched: only the server's suggested deposit (if any) is ticked until the person chooses
   const [picked, setPicked] = useState<string[] | null>(null);
   const [preview, setPreview] = useState<api.PaydayPreview | null>(null);
   const [message, setMessage] = useState('');
@@ -398,7 +401,7 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
   // The funding just applied, so Undo sits next to the confirmation
   const [justApplied, setJustApplied] = useState<string | null>(null);
   const data = context.data;
-  const incomeIds = picked ?? (data?.income[0] ? [data.income[0].id] : []);
+  const incomeIds = picked ?? (data?.suggestion ? [data.suggestion.id] : []);
   const setIncomeIds = (ids: string[]) => {
     setPicked(ids);
     setNeedDeposit(false);
@@ -493,6 +496,7 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
               setActualDate('');
               setPreview(null);
               setPicked(null);
+              setShowOthers(false);
               setMessage('');
             }}
           >
@@ -538,8 +542,19 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
                 }}
               />
             )}
-            <div className="max-h-56 overflow-y-auto space-y-2">
-              {data!.income.map((income) => (
+            {data!.suggestion ? (
+              <p className="text-sm" role="status">
+                Suggested: {data!.suggestion.reasons.join('. ')}.
+              </p>
+            ) : (
+              data!.income.length > 0 && (
+                <p className="text-sm" role="status">
+                  Choose the deposit that pays this cycle
+                </p>
+              )
+            )}
+            {(() => {
+              const row = (income: api.PaydayContext['income'][number]) => (
                 <label key={income.id} className="flex items-center gap-3 text-sm min-h-11">
                   <input
                     type="checkbox"
@@ -558,8 +573,33 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
                     {formatCurrency(income.amount)}
                   </span>
                 </label>
-              ))}
-            </div>
+              );
+              const suggested = data!.income.filter((i) => i.id === data!.suggestion?.id);
+              const others = data!.income.filter((i) => i.id !== data!.suggestion?.id);
+              // Nothing is suggested: the person has to choose, so the list is open
+              const open = !data!.suggestion || showOthers;
+              return (
+                <>
+                  {suggested.map(row)}
+                  {data!.suggestion && others.length > 0 && (
+                    <button
+                      type="button"
+                      className="text-sm underline min-h-11"
+                      aria-expanded={showOthers}
+                      aria-controls="payday-other-deposits"
+                      onClick={() => setShowOthers(!showOthers)}
+                    >
+                      Choose another deposit
+                    </button>
+                  )}
+                  {open && (
+                    <div id="payday-other-deposits" className="max-h-56 overflow-y-auto space-y-2">
+                      {others.map(row)}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </fieldset>
           <Button
             variant="secondary"

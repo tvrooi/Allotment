@@ -19,6 +19,7 @@ import {
   useUnmatchOccurrence,
 } from '../../hooks/useSchedules';
 import { useAccounts } from '../../hooks/useAccounts';
+import { useScheduleCategory } from '../../hooks/useScheduleCategory';
 import { formatCurrency } from '../../utils/currency';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
@@ -108,6 +109,7 @@ export default function MonthlyTab({
   const { data: allOccurrences = [], isLoading } = useScheduleOccurrences(from, to);
   const occurrences = useMemo(() => shownInMonth(allOccurrences), [allOccurrences]);
   const { data: accounts = [] } = useAccounts();
+  const categoryOf = useScheduleCategory();
   const markPaid = useMarkOccurrencePaid();
   const skipOcc = useSkipOccurrence();
   const unmatchOcc = useUnmatchOccurrence();
@@ -143,6 +145,12 @@ export default function MonthlyTab({
     return () => clearTimeout(t);
   }, [highlightDate, view]);
 
+  function categoryProps(schedule: Schedule | undefined) {
+    if (!schedule) return {};
+    const c = categoryOf(schedule);
+    return { categoryName: c.name, needsCategory: c.needsCategory };
+  }
+
   function renderSection(title: string, items: ScheduleOccurrence[]) {
     if (!items.length) return null;
     return (
@@ -168,6 +176,7 @@ export default function MonthlyTab({
             upcomingDays={upcomingDays}
             highlighted={highlightDate === occ.expectedDate}
             accountName={occ.scheduleAccountId ? accountMap.get(occ.scheduleAccountId) : undefined}
+            {...categoryProps(recMap.get(occ.scheduleId))}
             onMarkPaid={() =>
               markPaid.mutate({
                 scheduleId: occ.scheduleId,

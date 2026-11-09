@@ -458,6 +458,22 @@ export interface BudgetGroup {
   categories: BudgetCategory[];
 }
 
+/** The parts of the resources figure and of Ready to assign (server: fundingState `breakdown`) */
+export interface CashBreakdown {
+  /** The positive side of resources: cash in budget accounts */
+  cash: number;
+  /** Overdrafts and unreviewed card debt that resources net off (zero or less) */
+  otherDebt: number;
+  /** Debt on cards enrolled in card payments, which resources leave out */
+  cardDebt: { total: number; reserved: number; unreserved: number };
+  /** Envelopes linked to a savings account, held by that account's balance */
+  linked: { categoryId: string; name: string; accountName: string; amount: number }[];
+  /** Envelope Available other than the linked envelopes */
+  everydayEnvelopes: number;
+  /** Later assignments, holds and separate pools: taken from Ready to assign besides envelopes */
+  setAside: number;
+}
+
 export interface BudgetSummary {
   accountIssues?: {
     accountId: string;
@@ -490,6 +506,7 @@ export interface BudgetSummary {
   /** This month's cash overspending, which leaves next month's Ready to Assign */
   cashOverspent?: number;
   resources: number;
+  breakdown: CashBreakdown;
   reserved: number;
   month: string;
   income: number;

@@ -9,6 +9,7 @@ import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { db } from '../db/index.js';
 import { BudgetError } from './budgetMoves.js';
 import { addAssigned } from './fundingPlan.js';
+import { allPoolAccountIds } from './householdService.js';
 import {
   accounts,
   budgetMonths,
@@ -106,12 +107,22 @@ export function incomeOptions(today: string) {
       .all()
       .map((r) => r.transactionId),
   ]);
+  // Money paid into an account an envelope is linked to is that envelope's money (PR 204),
+  // not income to assign, so it never pays a payday.
+  const linkedAccounts = new Set(
+    db
+      .select({ id: categories.linkedAccountId })
+      .from(categories)
+      .all()
+      .flatMap((c) => (c.id ? [c.id] : [])),
+  );
   return (
     db
       .select({
         id: transactions.id,
         date: transactions.date,
         name: transactions.payeeName,
+        accountId: transactions.accountId,
         amount: mainAmount,
         importedId: transactions.importedId,
         reconciled: transactions.reconciled,
@@ -127,13 +138,65 @@ export function incomeOptions(today: string) {
         (r) =>
           r.amount > 0 &&
           !used.has(r.id) &&
+          !linkedAccounts.has(r.accountId) &&
           !(r.importedId?.startsWith('schedule:') && !r.reconciled),
       )
       .sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id))
   );
 }
 
-export function billCoverage(from: string, to: string, today: string) {
+/** A deposit counts as the pay when it lands within a week of the payday. */
+const SUGGEST_WINDOW_DAYS = 7;
+/** ...and is within this many percent of the plan's expected pay. */
+const SUGGEST_TOLERANCE_PERCENT = 15;
+
+/** The unused deposit that most plausibly pays `expectedDate`, or null when it is not
+ * exactly one. A plan records no salary payee or category, so the evidence is the date
+ * and the amount: a 12-cent interest deposit is never the pay, however recent. Cents only. */
+export function suggestDeposit(
+  plan: Pick<PaydayConfig, 'expectedIncome'>,
+  options: { id: string; date: string; amount: number }[],
+  expectedDate: string,
+): { id: string; reasons: string[] } | null {
+  if (plan.expectedIncome <= 0) return null;
+  const candidates = options.filter(
+    (r) =>
+      Math.abs(differenceInCalendarDays(parseISO(r.date), parseISO(expectedDate))) <=
+        SUGGEST_WINDOW_DAYS &&
+      Math.abs(r.amount - plan.expectedIncome) * 100 <=
+        plan.expectedIncome * SUGGEST_TOLERANCE_PERCENT,
+  );
+  if (candidates.length !== 1) return null;
+  return {
+    id: candidates[0].id,
+    reasons: [
+      `Arrived within ${SUGGEST_WINDOW_DAYS} days of the expected payday`,
+      `Within ${SUGGEST_TOLERANCE_PERCENT}% of the plan's expected pay`,
+    ],
+  };
+}
+
+/** The payday the panel opens on: the latest one that has arrived, else the first. */
+export function defaultPayday<T extends { expectedDate: string }>(list: T[], today: string) {
+  return list.filter((p) => p.expectedDate <= today).at(-1) ?? list[0];
+}
+
+/** A bill in the window that the coverage figures leave out, and why (see `billCoverageDetail`). */
+export type ExcludedBill = {
+  scheduleId: string;
+  name: string;
+  expectedDate: string;
+  amount: number;
+  reason: 'no-category' | 'household-pool' | 'outside-budget';
+};
+
+/**
+ * Bills due in [from, to): a bill dated on `to` belongs to the next cycle. Bills without a
+ * category, or paid from a household pool or another off-budget account, can't be tied to an
+ * envelope, so they come back in `excluded` instead of vanishing; callers must not call
+ * coverage settled while a personal bill is excluded.
+ */
+export function billCoverageDetail(from: string, to: string, today: string) {
   const accountRows = db.select().from(accounts).all();
   const budgetScope = budgetAccountScope();
   const expenseIds = new Set(expenseCategories().map((c) => c.id));
@@ -146,12 +209,22 @@ export function billCoverage(from: string, to: string, today: string) {
     amount: number;
     estimated: boolean;
   }[] = [];
+  const excluded: ExcludedBill[] = [];
+  const pools = allPoolAccountIds();
   for (const schedule of db.select().from(schedules).where(eq(schedules.status, 'active')).all()) {
-    if (
-      !schedule.categoryId ||
-      !expenseIds.has(schedule.categoryId) ||
-      !plansInPersonalBudget(schedule, budgetScope)
-    )
+    const inPersonal = plansInPersonalBudget(schedule, budgetScope);
+    let reason: ExcludedBill['reason'] | null = null;
+    if (schedule.amount < 0) {
+      if (
+        !inPersonal &&
+        schedule.accountId &&
+        !budgetScope.personal.has(schedule.accountId) &&
+        !(schedule.transferAccountId && budgetScope.personal.has(schedule.transferAccountId))
+      )
+        reason = pools.has(schedule.accountId) ? 'household-pool' : 'outside-budget';
+      else if (inPersonal && !schedule.categoryId) reason = 'no-category';
+    }
+    if (!reason && (!schedule.categoryId || !expenseIds.has(schedule.categoryId) || !inPersonal))
       continue;
     const account = accountRows.find((a) => a.id === schedule.accountId);
     const stored = db
@@ -193,17 +266,36 @@ export function billCoverage(from: string, to: string, today: string) {
         ctx,
       );
       if (amount === null) throw new PaydayError(`Add an exchange rate for ${schedule.name}`);
+      if (reason) {
+        excluded.push({
+          scheduleId: schedule.id,
+          name: schedule.name,
+          expectedDate: occurrence.expectedDate,
+          amount,
+          reason,
+        });
+        continue;
+      }
       bills.push({
         id: `${schedule.id}:${scheduledDate}`,
         name: schedule.name,
-        categoryId: schedule.categoryId,
+        categoryId: schedule.categoryId!,
         date: occurrence.expectedDate,
         amount,
         estimated: schedule.amountType !== 'exact',
       });
     }
   }
-  return bills.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+  bills.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+  excluded.sort(
+    (a, b) =>
+      a.expectedDate.localeCompare(b.expectedDate) || a.scheduleId.localeCompare(b.scheduleId),
+  );
+  return { bills, excluded };
+}
+
+export function billCoverage(from: string, to: string, today: string) {
+  return billCoverageDetail(from, to, today).bills;
 }
 
 export function previewPayday(planId: string, request: PaydayRequest) {

@@ -550,6 +550,7 @@ export function envelopeGroups(l: Ledger, month: string, today: string) {
 /** Ready to Assign's account side: what the accounts hold on `asOf` */
 export function resourcesAt(l: Ledger, asOf: string, enrolledCards: Set<string>, liquid: string[]) {
   let resources = 0;
+  let cash = 0;
   let openingFunds = 0;
   let complete = true;
   for (const h of l.accounts) {
@@ -567,9 +568,13 @@ export function resourcesAt(l: Ledger, asOf: string, enrolledCards: Set<string>,
           ? amount
           : Math.min(0, amount);
     resources += kind(value);
+    cash += Math.max(0, kind(value));
     openingFunds += kind(h.opening);
   }
-  return { resources, openingFunds, complete };
+  // `cash` is the positive side of `resources`; `otherDebt` (zero or less) is what it nets off
+  // for overdrawn and unreviewed accounts, so cash + otherDebt = resources. Debt on enrolled
+  // cards is in neither: resources count only an enrolled card's positive balance.
+  return { resources, cash, otherDebt: resources - cash, openingFunds, complete };
 }
 
 /** Received activity up to `asOf`: uncategorized spending, and whether any row awaits a rate */

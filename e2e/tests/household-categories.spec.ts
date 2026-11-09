@@ -24,7 +24,7 @@ test('Tidy up lists a recurring bill with no category', async ({ page, api }) =>
   await expect(list.getByText(/Streaming service/)).toBeVisible();
   await expect(list.getByText(/Dinner club/)).toHaveCount(0);
   await page.getByRole('link', { name: 'Open Recurring' }).click();
-  await expect(page).toHaveURL(/recurring/);
+  await expect(page).toHaveURL(/recurring\?filter=needs-category/);
 });
 
 test('offers a category for your repayment to someone, from what they paid', async ({
