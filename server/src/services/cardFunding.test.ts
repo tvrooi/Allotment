@@ -283,6 +283,20 @@ describe('card payment reserves', () => {
     expect(cat().balance).toBe(20000);
     expect(state().unassigned).toBe(80000);
   });
+  it('keeps an envelope linked to an account at its balance when a card refund lands in it', () => {
+    // A refund against reviewed opening debt adjusts its category; a linked envelope already
+    // holds its account's balance, so the adjustment must not count twice (Codex on #204)
+    db.insert(accounts)
+      .values({ id: 'saver', name: 'Saver', type: 'savings', createdAt: '2026-09-01' })
+      .run();
+    db.update(categories).set({ linkedAccountId: 'saver' }).where(eq(categories.id, 'food')).run();
+    db.update(accounts).set({ startingBalance: -10000 }).where(eq(accounts.id, 'card')).run();
+    setup(0);
+    const before = state().unassigned;
+    entry('refund', 10000);
+    expect(cat().balance).toBe(0);
+    expect(state().unassigned).toBe(before);
+  });
   it('returns an unreserved payment followed by refund to its original funding position', () => {
     setup();
     entry('1purchase', -8000);

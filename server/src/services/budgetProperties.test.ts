@@ -397,10 +397,13 @@ function recompute(raw: Raw, month: string) {
     const months = new Map<string, number>();
     for (const m of MONTHS.filter((m) => m >= startMonth && m <= month)) {
       const carriedIn = raw.kept.includes(c) ? avail : Math.max(0, avail);
+      // Later months add nothing to it: an assignment there is inert
       avail =
-        c === LINKED && m >= mirrorFrom && m <= CURRENT
-          ? saverBalance(minDate(monthBounds(m).to, TODAY))
-          : carriedIn + assignedIn(c, m) + activity(c, m);
+        c === LINKED && m > CURRENT
+          ? carriedIn
+          : c === LINKED && m >= mirrorFrom
+            ? saverBalance(minDate(monthBounds(m).to, TODAY))
+            : carriedIn + assignedIn(c, m) + activity(c, m);
       months.set(m, avail);
     }
     available.set(c, avail);
@@ -424,7 +427,7 @@ function recompute(raw: Raw, month: string) {
   const envelopes = ENVELOPES.reduce((s, c) => s + held(c), 0);
   const cashOverspent = ENVELOPES.reduce((s, c) => s + Math.max(0, -held(c)), 0);
   const futureAssigned = raw.assigned
-    .filter((a) => a.month > month)
+    .filter((a) => a.month > month && a.categoryId !== LINKED)
     .reduce((s, a) => s + Math.max(0, a.budgeted), 0);
   const pool = resources - envelopes;
   // A past month shows what it closed with; later assignments take only what it had left

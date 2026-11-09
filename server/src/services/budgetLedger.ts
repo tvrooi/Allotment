@@ -200,18 +200,6 @@ function build(): Ledger {
     catsByGroup.set(c.groupId, list);
   }
 
-  // Positive assignments after each month, for money already promised to later months
-  const expenseGroups = new Set(groups.filter((g) => !g.isIncome).map((g) => g.id));
-  const expenseIds = new Set(cats.filter((c) => expenseGroups.has(c.groupId)).map((c) => c.id));
-  const promised = new Map<string, number>();
-  for (const r of budgetRows)
-    if (expenseIds.has(r.categoryId))
-      promised.set(r.month, (promised.get(r.month) ?? 0) + Math.max(0, r.budgeted));
-  const laterMonths = [...promised.keys()].sort();
-  const laterTotals = new Array<number>(laterMonths.length + 1).fill(0);
-  for (let i = laterMonths.length - 1; i >= 0; i--)
-    laterTotals[i] = laterTotals[i + 1] + promised.get(laterMonths[i])!;
-
   const ctx = currencyContext();
   const received = db
     .select({
@@ -271,6 +259,19 @@ function build(): Ledger {
     };
     mirrorSteps(history, lastMonth, ctx);
   }
+
+  // Positive assignments after each month, for money already promised to later months
+  const expenseGroups = new Set(groups.filter((g) => !g.isIncome).map((g) => g.id));
+  const expenseIds = new Set(cats.filter((c) => expenseGroups.has(c.groupId)).map((c) => c.id));
+  const promised = new Map<string, number>();
+  // A linked envelope mirrors its account, so an assignment to it promises nothing
+  for (const r of budgetRows)
+    if (expenseIds.has(r.categoryId) && !envelopes.get(r.categoryId)?.mirror)
+      promised.set(r.month, (promised.get(r.month) ?? 0) + Math.max(0, r.budgeted));
+  const laterMonths = [...promised.keys()].sort();
+  const laterTotals = new Array<number>(laterMonths.length + 1).fill(0);
+  for (let i = laterMonths.length - 1; i >= 0; i--)
+    laterTotals[i] = laterTotals[i + 1] + promised.get(laterMonths[i])!;
 
   const dayRows = db
     .select({
@@ -459,10 +460,11 @@ function monthlyNet(l: Ledger, h: CategoryHistory, month: string, today: string)
   if (current < month) {
     const net = currentMonthNet(l, h, today);
     if (net !== undefined) months.set(current, net);
-    // Later months than `today` hold assignments only: their activity is still to come
-    for (const m of h.assignedMonths.slice(
-      lowerBound(h.assignedMonths, current + '\u0000', (m) => m),
-    ))
+    // Later months than `today` hold assignments only: their activity is still to come. A
+    // linked envelope's are inert (it mirrors its account)
+    for (const m of h.mirror
+      ? []
+      : h.assignedMonths.slice(lowerBound(h.assignedMonths, current + '\u0000', (m) => m)))
       if (m < month) months.set(m, h.assigned.get(m)!);
   }
   return months;
@@ -473,6 +475,8 @@ function carryInto(l: Ledger, h: CategoryHistory, month: string, today: string):
   const current = today.slice(0, 7);
   if (month <= current) return carryBefore(h, month);
   let carry = settle(carryBefore(h, current), currentMonthNet(l, h, today) ?? 0, h.resets);
+  // A linked envelope holds its account's balance: later assignments to it change nothing
+  if (h.mirror) return carry;
   for (const m of h.assignedMonths.slice(
     lowerBound(h.assignedMonths, current + '\u0000', (m) => m),
   )) {
@@ -499,7 +503,8 @@ export function cashDeficitInto(
   if (!h || h.resets) return 0;
   let carry = balance;
   let cash = Math.max(0, -balance);
-  for (const m of h.assignedMonths) {
+  // A linked envelope's later assignments are inert (it mirrors its account)
+  for (const m of h.mirror ? [] : h.assignedMonths) {
     if (m <= fromMonth) continue;
     if (m >= month) break;
     carry += h.assigned.get(m)!;
@@ -524,13 +529,16 @@ export function envelopeGroups(l: Ledger, month: string, today: string) {
           : month === current
             ? (currentActivity(l, h, today) ?? 0)
             : 0;
-      // A linked envelope: what brings it to its account's balance, like an assignment
+      // A linked envelope: what brings it to its account's balance, like an assignment. In a
+      // later month it cancels any leftover assignment, which changes nothing there
       const transferred =
         month < current
           ? (h.transferred.get(month) ?? 0)
           : month === current
             ? (currentTransferred(l, h, today) ?? 0)
-            : 0;
+            : h.mirror && budgeted
+              ? -budgeted
+              : 0;
       const carryOver = carryInto(l, h, month, today);
       return {
         ...h.category,
@@ -542,6 +550,7 @@ export function envelopeGroups(l: Ledger, month: string, today: string) {
         balance: carryOver + budgeted + transferred + activity,
         history: () => monthlyNet(l, h, month, today),
         resets: h.resets,
+        mirrored: h.mirror !== null,
       };
     }),
   }));

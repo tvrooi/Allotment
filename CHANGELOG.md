@@ -1,5 +1,14 @@
 # Changes
 
+## 0.2.0-up.152
+
+Follow-ups to linked categories (0.2.0-up.151):
+
+- **Payday plans and assignment suggestions leave a linked category out.** A payday rule for a category that follows an account now gives it nothing, so the money goes to the next rules. Suggestions can't assign to it either.
+- **An old assignment to a linked category in a later month no longer holds back money,** and you can clear it to zero.
+- **A card refund categorised to a linked category no longer counts twice.**
+- **The linked account's balance is shown in that account's own currency.**
+
 ## 0.2.0-up.151
 
 - **A category that follows an account now holds exactly what that account holds.** Link Rent to your Rent saver and Rent shows the saver's balance, nothing more or less. Before, an assignment and a transfer into the account could both count, so Rent could show more than the account held. Money left over from an earlier assignment goes back to Ready to Assign.

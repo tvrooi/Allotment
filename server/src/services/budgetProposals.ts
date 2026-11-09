@@ -8,7 +8,7 @@ import {
   categories,
   categoryGroups,
 } from '../db/schema.js';
-import { BudgetError, fundedWrite } from './budgetMoves.js';
+import { BudgetError, fundedWrite, refuseLinked } from './budgetMoves.js';
 import { fundingState } from './budgetService.js';
 import { addAssigned } from './fundingPlan.js';
 import { todayIso } from './mainAmountService.js';
@@ -92,6 +92,7 @@ export function createProposal(
       `${bad.categoryId} isn't an expense category (income and payment envelopes can't be assigned)`,
       400,
     );
+  refuseLinked(input.rows.filter((r) => r.amount > 0).map((r) => r.categoryId));
   const total = input.rows.reduce((s, r) => s + r.amount, 0);
   const { available, complete } = fundingState();
   if (!complete) throw new BudgetError('Add missing exchange rates before assigning money.');

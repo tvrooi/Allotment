@@ -194,6 +194,23 @@ describe('payday funding', () => {
     ).toEqual([20000, 10000]);
     expect(db.select().from(transactions).all()).toEqual(ledger);
   });
+  it('gives a rule for an envelope linked to an account nothing, so the money flows on', () => {
+    db.insert(accounts).values({ id: 'saver', name: 'Rent saver', type: 'savings' }).run();
+    db.update(categories).set({ linkedAccountId: 'saver' }).where(eq(categories.id, 'rent')).run();
+    plan(config([rule('rent', 'fixed', 10000), rule('food', 'remainder')]));
+    income();
+    const preview = previewPayday('plan', request);
+    expect(preview.rows.find((r) => r.categoryId === 'rent')).toMatchObject({ allocated: 0 });
+    expect(preview.rows.find((r) => r.categoryId === 'food')!.allocated).toBe(preview.available);
+    applyPayday('plan', request, JSON.stringify(preview));
+    expect(
+      db
+        .select()
+        .from(budgetMonths)
+        .all()
+        .map((b) => b.categoryId),
+    ).toEqual(['food']);
+  });
   it('funds bills once per category, reuses rollover and excludes paid/skipped/internal/off-budget bills', () => {
     plan(config([]));
     income();

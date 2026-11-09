@@ -3,7 +3,7 @@ import { fundingState } from './budgetService.js';
 import { budgetWithTargets } from './targetService.js';
 import { inactiveGoalCategories } from './goalLifecycle.js';
 import { budgetAccountScope, plansInPersonalBudget } from './balances.js';
-import { and, eq, lte } from 'drizzle-orm';
+import { and, eq, isNotNull, lte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { db } from '../db/index.js';
@@ -293,6 +293,15 @@ export function previewPayday(planId: string, request: PaydayRequest) {
     ).filter((p) => p.scheduledDate > request.scheduledDate).length;
   // A paused, completed or retired goal (7D) gets no new funding from any rule.
   const inactive = inactiveGoalCategories();
+  // An envelope linked to an account mirrors it: a transfer funds it, so its rule takes nothing
+  const linked = new Set(
+    db
+      .select({ id: categories.id })
+      .from(categories)
+      .where(isNotNull(categories.linkedAccountId))
+      .all()
+      .map((c) => c.id),
+  );
   let remaining = available;
   const rows = rules
     .filter((r) => r.method !== 'remainder')
@@ -324,7 +333,7 @@ export function previewPayday(planId: string, request: PaydayRequest) {
       const target = rule.method === 'target' ? targets.get(rule.categoryId) : null;
       if (target && !target.ended) needed = perPeriodNeed(target.underfunded, 0, paysLeftInMonth);
       if (rule.method === 'remainder') needed = remaining;
-      if (inactive.has(rule.categoryId)) needed = 0;
+      if (inactive.has(rule.categoryId) || linked.has(rule.categoryId)) needed = 0;
       const allocated = Math.min(needed, remaining);
       remaining -= allocated;
       return {
