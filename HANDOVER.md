@@ -21,6 +21,58 @@ Last updated: 9 November 2026 (live app on up.149: the household bills hub, cove
   category" placeholder contrast (3.1:1), and one recommended action between Hold money and
   Put the rest in.
 
+- **Dashboard comparison route (up.154):** `/dashboard/refined` is a
+  lazy-loaded design alternative built from the existing Dashboard components. `/dashboard`
+  keeps its previous presentation. The alternative removes the repeated opening balance,
+  compacts the phone review prompt, moves phone averages/savings after commitments, labels
+  the 30-day bills window and omitted entries, uses content-height desktop cards and a quieter
+  savings-target editor. Alternative layout customisation is local to the mounted preview,
+  per form factor, and does not overwrite saved home layouts. Its Customise dialog explicitly
+  labels changes as temporary and explains that leaving or reloading resets them. The refined phone
+  commitments digest shows two bills and the next income entry, retaining remaining-count links;
+  desktop and the original route keep their existing row limits. Refined desktop gives current
+  available money a wider panel and larger amount; historical figures retain their individual cards
+  and semantic value colours. The refined review prompt leads with the task, with the step count
+  secondary and both links at least 44px tall. The refined phone balance has its own calculation
+  disclosure immediately below the amount; historical definitions stay with the historical figures.
+  Regression coverage lives in
+  `e2e/tests/dashboard-refined.spec.ts`.
+
+- **Dashboard finish (up.154):** compact dropdowns share the existing
+  `Select` component’s new opt-in compact finish, with stronger borders and consistent
+  sizing/focus. The comparison series uses the theme’s axis colour and a dashed stroke;
+  cash-flow hover uses the chart palette. The definitions disclosure has an open-state
+  chevron. Browser contrast checks cover chart legends, the comparison stroke and control
+  text/borders in light and dark themes.
+
+- **Dashboard phone viewport checks (up.154):** chart selectors stack
+  where needed and use 16 px text on phones. Customise has 44 px reorder buttons and
+  tappable, wrapping labels. `dashboard-viewport.spec.ts` covers the iPhone 14 Pro Max
+  CSS viewport (430×932), a shorter 430×740 browser area, and 390/320 px phones;
+  checks cover sideways overflow, scrolling, selects, the Customise sheet and navigation.
+
+- **Phone dashboard summary (up.154):** one compact panel leads with
+  left to spend, groups monthly income/expenses under one shared period label and puts
+  savings rate and its editable target in a single row. Definitions remain expandable.
+  Desktop keeps its four tiles. Large-amount coverage at 320/390 px checks the phone labels,
+  target and expandable definitions in `amounts-phone.spec.ts`.
+
+- **Dashboard definitions (up.154):** summary tiles label their actual
+  month range, including the current month. Expandable definitions explain the
+  averaging window, savings rate, comparison target and savings/goal exclusions from left
+  to spend. Cash flow and category spending also show their periods. Calculations stay the same.
+
+- **Dashboard resilience (up.154):** all eight home cards and the opening
+  status use the shared `QueryProblem` presentation. Missing inputs show unavailable with
+  Retry; failed refreshes retain earlier data with a stale notice. Multi-input cards retry
+  failed inputs together. Browser regression coverage is in `home-cards.spec.ts`.
+
+- **Dashboard decision hierarchy (up.154; 9 November 2026):** desktop
+  defaults lead with Summary, Bills and income, then Budget progress; net worth follows
+  the everyday cards and trends. Saved custom orders stay intact. `Dashboard.tsx` surfaces
+  the existing `useNextSteps` result above the cards, moves the privacy tip below them,
+  and makes Customise a compact, labelled icon on phones. No ledger or review rules change.
+
 - **Budgeting review, Phase 1 (up.152; owner-requested 9 November 2026; server and client, no
   migration):** the plan from the 9 November UX audit is four phases with one release per phase.
   The owner decided: forecast household bills count the cash paid out, otherwise the owner's share;

@@ -1,3 +1,4 @@
+import { DataFeedback, dataUnavailable } from './DataFeedback';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { format, addDays, parseISO, differenceInCalendarDays } from 'date-fns';
@@ -10,13 +11,17 @@ import { ButtonLink } from '../ui/Button';
 import { useSchedules } from '../../hooks/useSchedules';
 import { formatShortDay } from '../../utils/dates';
 import { groupOccurrences } from '../recurring/scheduleFormat';
+import { useIsPhone } from '../../hooks/useIsPhone';
 
-export default function UpcomingBills() {
+export default function UpcomingBills({ refined = false }: { refined?: boolean }) {
+  const compact = useIsPhone() && refined;
   const today = format(new Date(), 'yyyy-MM-dd');
   const thirtyDaysOut = format(addDays(new Date(), 30), 'yyyy-MM-dd');
 
-  const { data: occurrences = [], isLoading } = useScheduleOccurrences(today, thirtyDaysOut);
-  const { data: schedules = [] } = useSchedules();
+  const scheduleOccurrencesQuery = useScheduleOccurrences(today, thirtyDaysOut);
+  const { data: occurrences = [] } = scheduleOccurrencesQuery;
+  const schedulesQuery = useSchedules();
+  const { data: schedules = [] } = schedulesQuery;
 
   const pending = useMemo(
     () =>
@@ -31,11 +36,15 @@ export default function UpcomingBills() {
   // Money going out and money coming in, listed apart: pay isn't a bill. A household bill shows
   // the owner's share, and housemates' money is neither
   const grouped = groupOccurrences(pending);
-  const bills = grouped.expenses.filter((o) => o.expectedAmount < 0).slice(0, 4);
-  const income = grouped.income.slice(0, 3);
+  const allBills = grouped.expenses.filter((o) => o.expectedAmount < 0);
+  const bills = allBills.slice(0, compact ? 2 : 4);
+  const income = grouped.income.slice(0, compact ? 1 : 3);
   const upcoming = [...bills, ...income];
 
-  if (isLoading) {
+  const sources = [scheduleOccurrencesQuery, schedulesQuery];
+  if (dataUnavailable(sources)) return <DataFeedback title="Bills and income" sources={sources} />;
+
+  if (sources.some((q) => q.isLoading)) {
     return (
       <Card>
         <div className="h-5 w-32 bg-surface-alt rounded animate-pulse mb-4" />
@@ -50,6 +59,7 @@ export default function UpcomingBills() {
 
   return (
     <Card>
+      <DataFeedback title="Bills and income" sources={sources} />
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-text">Bills and income</h2>
         <Link
@@ -61,6 +71,7 @@ export default function UpcomingBills() {
         </Link>
       </div>
 
+      {refined && <p className="text-xs text-text-tertiary -mt-2 mb-4">Next 30 days</p>}
       {upcoming.length === 0 ? (
         schedules.length === 0 ? (
           <EmptyState
@@ -82,8 +93,18 @@ export default function UpcomingBills() {
       ) : (
         <div className="space-y-4">
           {[
-            { title: 'Bills', rows: bills, none: 'No bills due in the next 30 days.' },
-            { title: 'Income', rows: income, none: 'No pay expected in the next 30 days.' },
+            {
+              title: 'Bills',
+              rows: bills,
+              total: allBills.length,
+              none: 'No bills due in the next 30 days.',
+            },
+            {
+              title: 'Income',
+              rows: income,
+              total: grouped.income.length,
+              none: 'No pay expected in the next 30 days.',
+            },
           ].map((list) => (
             <section key={list.title} aria-label={list.title}>
               <h3 className="text-xs font-medium uppercase tracking-wide text-text-tertiary mb-1">
@@ -97,6 +118,22 @@ export default function UpcomingBills() {
                     <UpcomingRow key={`${occ.scheduleId}-${occ.id}-${i}`} occ={occ} />
                   ))}
                 </div>
+              )}
+              {refined && list.total > list.rows.length && (
+                <Link
+                  to="/recurring"
+                  className="inline-flex min-h-11 items-center text-xs font-medium text-brand-600 underline underline-offset-4"
+                >
+                  {list.total - list.rows.length} more{' '}
+                  {list.title === 'Bills'
+                    ? list.total - list.rows.length === 1
+                      ? 'bill'
+                      : 'bills'
+                    : list.total - list.rows.length === 1
+                      ? 'income entry'
+                      : 'income entries'}{' '}
+                  · View all
+                </Link>
               )}
             </section>
           ))}

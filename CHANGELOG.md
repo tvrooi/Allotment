@@ -2,6 +2,16 @@
 
 ## 0.2.0-up.154
 
+The Dashboard:
+
+- **A separate refined Dashboard is available for comparison.** The `/dashboard/refined` design alternative prioritises upcoming commitments, reduces repeated information, labels the bill window and omitted entries, and quiets the savings-target editor. The original Dashboard remains available; the alternative’s layout customisation does not overwrite saved home layouts.
+- **Dashboard contrast and controls are more consistent.** The comparison chart uses a darker, theme-aware dashed line. Dropdowns share one finish with clearer borders and focus rings, chart hover follows the palette, and the definitions disclosure indicates when it is open.
+- **Dashboard controls fit phone viewports.** Chart selectors have room for their labels and larger text. Customise uses larger reorder targets and wraps card names instead of clipping them. Viewport checks cover 430×932 for iPhone 14 Pro Max and shorter, narrower phone screens.
+- **The phone dashboard summary is easier to scan.** One compact panel puts left to spend first, shares one period label across averages and savings, and keeps the savings target beside its rate. Definitions remain a tap away; desktop keeps its four tiles.
+- **Dashboard figures explain their periods and definitions.** Monthly averages and savings rate show their actual date range and note that the current month is included. An expandable explanation distinguishes unspent income from savings balances, explains the goal target and names what left to spend excludes. Cash flow and category spending show their periods too.
+- **Dashboard data failures are clear and recoverable.** Cards show a retry action instead of zero balances or empty lists when a read fails. If a refresh fails, earlier figures stay visible with a warning.
+- **The dashboard leads with everyday decisions.** The default desktop layout puts the spending summary, bills and budget progress before longer-term charts. A review prompt brings the existing next steps onto the home page. Custom card orders stay as saved, and the privacy tip moves below the cards. On phones Customise becomes a compact, labelled icon control.
+
 The Budget page, from the 9 November design critique (docs/critiques/2026-11-09-budget.md):
 
 - **Ready to assign leads the right rail,** as its largest figure. It stays green while the figure holds; uncategorised spending, overspending and card shortfalls get their own line under it with a **Review** link, instead of turning it yellow. Yellow is kept for balances that disagree with the bank or missing exchange rates.

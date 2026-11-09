@@ -184,6 +184,11 @@ The first brief left these decisions open. They are binding for phase 8 PRs.
   action. A phone and a desktop may reasonably want different home screens.
   These preferences are presentation only. They are not budget data and are not
   part of backups.
+- Desktop defaults put the summary, bills and budget progress first, with net worth
+  after everyday activity and spending trends. Existing custom orders are preserved.
+  The dashboard shows the first shared `useNextSteps` action and an Open review link
+  above the cards when there is attention to give; it does not infer new review rules.
+  The privacy tip follows the cards rather than delaying the spending summary.
 - Onboarding (`GettingStarted`) and the 7E review reminder stay outside the
   customisable cards and keep their own show/hide rules. Net worth, summary and
   every existing card can be hidden or moved; hiding everything shows a restore

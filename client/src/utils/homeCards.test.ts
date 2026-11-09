@@ -20,6 +20,16 @@ describe('home card layout', () => {
     expect(new Set(DEFAULT_LAYOUTS.phone.order)).toEqual(new Set(ids));
   });
 
+  it('puts spending and commitments before trends without replacing a complete custom order', () => {
+    expect(DEFAULT_LAYOUTS.desktop.order.slice(0, 3)).toEqual([
+      'summary',
+      'upcoming-bills',
+      'budget-progress',
+    ]);
+    const custom = { order: [...ids].reverse(), hidden: ['summary'] as HomeCardId[] };
+    expect(normalizeLayout(custom, 'desktop')).toEqual(custom);
+  });
+
   it('always draws every known card exactly once, whatever was saved', () => {
     const saved = fc.record({
       order: fc.array(fc.oneof(fc.constantFrom(...ids), fc.string()), { maxLength: 12 }),
@@ -38,16 +48,18 @@ describe('home card layout', () => {
   it('keeps a saved order and slots in a card added later where the default has it', () => {
     const saved = { order: ['recent-transactions', 'net-worth'], hidden: ['net-worth'] };
     const layout = normalizeLayout(saved, 'desktop');
-    expect(layout.order.slice(0, 2)).toEqual(['recent-transactions', 'net-worth']);
-    expect(layout.order.indexOf('summary')).toBe(layout.order.indexOf('net-worth') + 1);
+    expect(layout.order.indexOf('recent-transactions')).toBeLessThan(
+      layout.order.indexOf('net-worth'),
+    );
+    expect(layout.order[0]).toBe('summary');
     expect(visibleCards(layout)).not.toContain('net-worth');
   });
 
   it('moves and hides cards without losing any', () => {
     let layout = DEFAULT_LAYOUTS.desktop;
-    layout = moveCard(layout, 'summary', -1);
-    expect(layout.order.slice(0, 2)).toEqual(['summary', 'net-worth']);
-    expect(moveCard(layout, 'summary', -1)).toBe(layout);
+    layout = moveCard(layout, 'upcoming-bills', -1);
+    expect(layout.order.slice(0, 2)).toEqual(['upcoming-bills', 'summary']);
+    expect(moveCard(layout, 'upcoming-bills', -1)).toBe(layout);
     layout = setCardHidden(layout, 'summary', true);
     layout = setCardHidden(layout, 'summary', true);
     expect(layout.hidden).toEqual(['summary']);

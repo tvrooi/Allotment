@@ -1,3 +1,5 @@
+import { Select } from '../ui/Input';
+import { DataFeedback, dataUnavailable } from './DataFeedback';
 import { useState, useMemo } from 'react';
 import { format, subMonths, subDays, startOfYear } from 'date-fns';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -85,9 +87,11 @@ export default function NetWorthMini() {
   const [preset, setPreset] = useState<Preset>('1m');
 
   const { from, to, granularity } = useMemo(() => computeRange(preset), [preset]);
-  const { data = [], isLoading } = useNetWorth(from, to, granularity);
-  const { data: accounts, isLoading: accountsLoading } = useAccounts();
-  const noAccounts = !accountsLoading && accounts?.length === 0;
+  const netWorthQuery = useNetWorth(from, to, granularity);
+  const { data = [] } = netWorthQuery;
+  const accountsQuery = useAccounts();
+  const { data: accounts } = accountsQuery;
+  const noAccounts = !accountsQuery.isLoading && accounts?.length === 0;
   const onboarding = useOnboardingActive();
 
   const dateLabels = useMemo(() => formatDateAxisLabels(data.map((d) => d.month)), [data]);
@@ -116,7 +120,10 @@ export default function NetWorthMini() {
   const pct = first !== 0 ? (change / Math.abs(first)) * 100 : 0;
   const hide = useHideBalances();
 
-  if (isLoading) {
+  const sources = [netWorthQuery, accountsQuery];
+  if (dataUnavailable(sources)) return <DataFeedback title="Net worth" sources={sources} />;
+
+  if (sources.some((q) => q.isLoading)) {
     return (
       <Card>
         <div className="flex items-center justify-between mb-2">
@@ -130,6 +137,7 @@ export default function NetWorthMini() {
 
   return (
     <Card>
+      <DataFeedback title="Net worth" sources={sources} />
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <p className="text-sm font-medium text-text-secondary">Net worth</p>
@@ -161,18 +169,19 @@ export default function NetWorthMini() {
             </ButtonLink>
           )
         ) : (
-          <select
+          <Select
+            compact
             aria-label="Net worth period"
             value={preset}
             onChange={(e) => setPreset(e.target.value as Preset)}
-            className="text-sm max-md:min-h-11 border border-border rounded-lg px-3 py-1.5 bg-surface text-text cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-600"
+            className="w-auto"
           >
             {PRESETS.map((p) => (
               <option key={p.value} value={p.value}>
                 {p.label}
               </option>
             ))}
-          </select>
+          </Select>
         )}
       </div>
 

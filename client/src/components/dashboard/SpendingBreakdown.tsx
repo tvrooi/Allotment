@@ -1,7 +1,9 @@
+import { DataFeedback, dataUnavailable } from './DataFeedback';
 import { useMemo } from 'react';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import { Link } from 'react-router-dom';
 import { useSpendingByCategory } from '../../hooks/useReports';
+import { formatMonth } from '../../utils/dateRange';
 import { formatCurrency } from '../../utils/currency';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { PieChart } from 'lucide-react';
@@ -15,10 +17,11 @@ interface Props {
 
 export default function SpendingBreakdown({ currentMonth }: Props) {
   const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
-  const { data = [], isLoading } = useSpendingByCategory(currentMonth, currentMonth);
+  const spendingByCategoryQuery = useSpendingByCategory(currentMonth, currentMonth);
+  const { data = [] } = spendingByCategoryQuery;
 
   const topCategories = useMemo(() => {
-    return data
+    return [...data]
       .sort((a, b) => b.totalSpent - a.totalSpent)
       .slice(0, 7)
       .map((c) => ({ ...c, amount: c.totalSpent }));
@@ -26,7 +29,11 @@ export default function SpendingBreakdown({ currentMonth }: Props) {
 
   const maxAmount = topCategories.length > 0 ? topCategories[0].amount : 1;
 
-  if (isLoading) {
+  const sources = [spendingByCategoryQuery];
+  if (dataUnavailable(sources))
+    return <DataFeedback title="Spending by category" sources={sources} />;
+
+  if (sources.some((q) => q.isLoading)) {
     return (
       <Card>
         <div className="h-5 w-40 bg-surface-alt rounded animate-pulse mb-4" />
@@ -45,6 +52,7 @@ export default function SpendingBreakdown({ currentMonth }: Props) {
 
   return (
     <Card className="h-full flex flex-col">
+      <DataFeedback title="Spending by category" sources={sources} />
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-text">Spending by category</h2>
         <Link
@@ -56,6 +64,9 @@ export default function SpendingBreakdown({ currentMonth }: Props) {
         </Link>
       </div>
 
+      <p className="text-xs text-text-tertiary mb-3">
+        {formatMonth(currentMonth)} · recorded transactions
+      </p>
       {topCategories.length === 0 ? (
         <EmptyState
           compact

@@ -1,3 +1,5 @@
+import { Select } from '../ui/Input';
+import { DataFeedback, dataUnavailable } from './DataFeedback';
 import { useState, useMemo } from 'react';
 import {
   AreaChart,
@@ -55,7 +57,8 @@ function ComparisonTooltip({ active, payload, label }: any) {
 
 export default function SpendingComparison() {
   const [mode, setMode] = useState<Mode>('month_vs_last_month');
-  const { data, isLoading } = useSpendingComparison(mode);
+  const spendingComparisonQuery = useSpendingComparison(mode);
+  const { data } = spendingComparisonQuery;
 
   const chartData = useMemo(() => {
     if (!data) return [];
@@ -93,7 +96,11 @@ export default function SpendingComparison() {
     inset: { left: 50, right: 8 },
   });
 
-  if (isLoading || !data) {
+  const sources = [spendingComparisonQuery];
+  if (dataUnavailable(sources))
+    return <DataFeedback title="Spending comparison" sources={sources} />;
+
+  if (sources.some((q) => q.isLoading) || !data) {
     return (
       <Card>
         <div className="flex items-center justify-between mb-2">
@@ -108,7 +115,8 @@ export default function SpendingComparison() {
 
   return (
     <Card>
-      <div className="flex items-start justify-between mb-1">
+      <DataFeedback title="Spending comparison" sources={sources} />
+      <div className="flex items-start justify-between mb-1 max-md:flex-col max-md:gap-3">
         <div>
           <h2 className="text-sm font-semibold text-text">
             Spending{' '}
@@ -117,18 +125,19 @@ export default function SpendingComparison() {
             </span>
           </h2>
         </div>
-        <select
+        <Select
+          compact
           aria-label="Compare spending"
           value={mode}
           onChange={(e) => setMode(e.target.value as Mode)}
-          className="text-xs max-md:min-h-11 border border-border rounded-lg px-2 py-1.5 bg-surface text-text cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-600 min-w-0 max-w-[200px]"
+          className="w-auto min-w-0 max-w-[200px] max-md:w-full max-md:max-w-none"
         >
           {MODES.map((m) => (
             <option key={m.value} value={m.value}>
               {m.label}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {hasData && chartData.length > 0 ? (
@@ -156,8 +165,9 @@ export default function SpendingComparison() {
                 type="monotone"
                 dataKey="comparison"
                 name={data.comparisonLabel}
-                stroke="#9CA3AF"
-                strokeWidth={1.5}
+                stroke={chartColors.axis}
+                strokeWidth={2}
+                strokeDasharray="5 4"
                 dot={false}
                 activeDot={false}
                 connectNulls={false}

@@ -64,7 +64,16 @@ for (const width of [320, 390]) {
     expect(await brokenAmounts(page)).toEqual([]);
 
     await open(page, '/dashboard');
-    await expect(page.getByText('Avg monthly income', { exact: true })).toBeVisible();
+    // Phone summary keeps the figures visible but groups them under one period label.
+    const summary = page.getByTestId('home-card-summary');
+    await expect(summary.getByText('Income / month', { exact: true })).toBeVisible();
+    await expect(summary.getByText('Expenses / month', { exact: true })).toBeVisible();
+    await expect(summary.getByText(/Includes current month/)).toHaveCount(1);
+    const target = summary.getByRole('combobox', { name: 'Savings rate goal' });
+    await target.selectOption('25');
+    await expect(target).toHaveValue('25');
+    await summary.getByText('How these figures are calculated', { exact: true }).click();
+    await expect(summary.getByText(/It measures the share of income/)).toBeVisible();
     expect(await brokenAmounts(page)).toEqual([]);
     expect(await sidewaysOverflow(page)).toEqual([]);
   });

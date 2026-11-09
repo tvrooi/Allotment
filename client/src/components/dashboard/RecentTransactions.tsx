@@ -1,3 +1,4 @@
+import { DataFeedback, dataUnavailable } from './DataFeedback';
 import { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTransactions } from '../../hooks/useTransactions';
@@ -14,10 +15,14 @@ import { ButtonLink } from '../ui/Button';
 import type { CategoryGroup } from '../../types';
 
 export default function RecentTransactions() {
-  const { data: transactions = [], isLoading } = useTransactions({ limit: 5 });
-  const { data: groups = [] } = useCategories();
-  const { data: accounts = [] } = useAccounts();
-  const { data: payees = [] } = usePayees();
+  const transactionsQuery = useTransactions({ limit: 5 });
+  const { data: transactions = [] } = transactionsQuery;
+  const categoriesQuery = useCategories();
+  const { data: groups = [] } = categoriesQuery;
+  const accountsQuery = useAccounts();
+  const { data: accounts = [] } = accountsQuery;
+  const payeesQuery = usePayees();
+  const { data: payees = [] } = payeesQuery;
   const navigate = useNavigate();
   const isPhone = useIsPhone();
 
@@ -36,7 +41,11 @@ export default function RecentTransactions() {
     [accounts],
   );
 
-  if (isLoading) {
+  const sources = [transactionsQuery, categoriesQuery, accountsQuery, payeesQuery];
+  if (dataUnavailable(sources))
+    return <DataFeedback title="Recent transactions" sources={sources} />;
+
+  if (sources.some((q) => q.isLoading)) {
     return (
       <Card>
         <div className="h-5 w-40 bg-surface-alt rounded animate-pulse mb-4" />
@@ -51,6 +60,7 @@ export default function RecentTransactions() {
 
   return (
     <Card padding="none" className="h-full flex flex-col">
+      <DataFeedback title="Recent transactions" sources={sources} />
       <div className="flex items-center justify-between px-5 pt-4 pb-3">
         <h2 className="text-sm font-semibold text-text">Recent transactions</h2>
         <Link

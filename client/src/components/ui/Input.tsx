@@ -12,8 +12,19 @@ export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTML
   ),
 );
 
-export const Select = forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(
-  ({ className = 'w-full', ...props }, ref) => (
-    <select ref={ref} className={`${inputClass} ${className}`} {...props} />
-  ),
-);
+// Compact toolbar controls keep the same finish and focus treatment, with stronger borders
+// against a card surface. Phone targets stay 44px tall with 16px text. Only the shadow
+// animates: foreground/background colours change together without a low-contrast fade.
+const compactSelectClass =
+  'block h-8 max-md:h-11 rounded-md border border-text-tertiary/75 px-3 text-xs max-md:text-base bg-surface text-text cursor-pointer transition-shadow focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600 focus:ring-offset-2 focus:ring-offset-surface';
+
+export const Select = forwardRef<
+  HTMLSelectElement,
+  React.SelectHTMLAttributes<HTMLSelectElement> & { compact?: boolean }
+>(({ className = 'w-full', compact = false, ...props }, ref) => (
+  <select
+    ref={ref}
+    className={`${compact ? compactSelectClass : inputClass} ${className}`}
+    {...props}
+  />
+));

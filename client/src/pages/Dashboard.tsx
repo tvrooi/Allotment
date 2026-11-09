@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { format, subMonths } from 'date-fns';
-import { LayoutGrid } from 'lucide-react';
+import { ClipboardCheck, LayoutGrid } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useNextSteps } from '../hooks/useNextSteps';
 import SummaryStats from '../components/dashboard/SummaryStats';
 import GettingStarted from '../components/dashboard/GettingStarted';
 import BudgetProgress from '../components/dashboard/BudgetProgress';
@@ -19,7 +21,14 @@ import { getResume } from '../api/review';
 import { ReminderBanner } from '../components/review/Resilience';
 import { useIsPhone } from '../hooks/useIsPhone';
 import { usePreferencesStore } from '../store/preferencesStore';
-import { HOME_CARDS, normalizeLayout, visibleCards, type HomeCardId } from '../utils/homeCards';
+import {
+  HOME_CARDS,
+  normalizeLayout,
+  visibleCards,
+  type HomeCardId,
+  type HomeLayout,
+  type FormFactor,
+} from '../utils/homeCards';
 import { Tip } from '../components/guide/Tip';
 import { TIPS } from '../guides';
 import { useGuideStore } from '../store/guideStore';
@@ -36,12 +45,62 @@ function Reminder() {
   return resume.data ? <ReminderBanner resume={resume.data} /> : null;
 }
 
-function HomeCard({ id }: { id: HomeCardId }) {
+/** Use the same ordered next steps and destinations as Review and its sidebar count. */
+function ReviewAttention({ refined = false }: { refined?: boolean }) {
+  const steps = useNextSteps();
+  const first = steps[0];
+  if (!first) return null;
+  return (
+    <section
+      aria-label="Review attention"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface px-4 py-3"
+    >
+      <div className="flex items-start gap-3 min-w-0">
+        <ClipboardCheck size={20} aria-hidden className="mt-3 shrink-0 text-brand-600" />
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-text">
+            <Link
+              to={refined ? first.to : '/review'}
+              className="inline-flex min-h-11 items-center hover:underline underline-offset-4"
+            >
+              {refined
+                ? first.title
+                : `${steps.length} ${steps.length === 1 ? 'next step' : 'next steps'} for your budget`}
+            </Link>
+          </h2>
+          <Link
+            to={refined ? '/review' : first.to}
+            className={`inline-flex items-center min-h-11 underline underline-offset-4 ${refined ? 'text-xs text-text-secondary hover:text-text' : 'text-sm text-brand-600 hover:text-brand-700'}`}
+          >
+            {refined
+              ? `${steps.length} ${steps.length === 1 ? 'next step' : 'next steps'} for your budget`
+              : first.title}
+          </Link>
+        </div>
+      </div>
+      <Link
+        to="/review"
+        className="hidden md:inline-flex items-center min-h-11 text-sm font-medium text-brand-600 hover:text-brand-700"
+      >
+        Open review
+      </Link>
+    </section>
+  );
+}
+
+function HomeCard({ id, refined, phone }: { id: HomeCardId; refined: boolean; phone: boolean }) {
   switch (id) {
     case 'net-worth':
       return <NetWorthMini />;
     case 'summary':
-      return <SummaryStats currentMonth={currentMonth} sixMonthsAgo={sixMonthsAgo} />;
+      return (
+        <SummaryStats
+          currentMonth={currentMonth}
+          sixMonthsAgo={sixMonthsAgo}
+          refined={refined}
+          section={refined && phone ? 'current' : 'all'}
+        />
+      );
     case 'income-expenses':
       return <IncomeExpensesMini sixMonthsAgo={sixMonthsAgo} currentMonth={currentMonth} />;
     case 'spending-comparison':
@@ -49,7 +108,7 @@ function HomeCard({ id }: { id: HomeCardId }) {
     case 'budget-progress':
       return <BudgetProgress currentMonth={currentMonth} />;
     case 'upcoming-bills':
-      return <UpcomingBills />;
+      return <UpcomingBills refined={refined} />;
     case 'spending-breakdown':
       return <SpendingBreakdown currentMonth={currentMonth} />;
     case 'recent-transactions':
@@ -59,12 +118,25 @@ function HomeCard({ id }: { id: HomeCardId }) {
 
 const isWide = (id: HomeCardId) => HOME_CARDS.find((c) => c.id === id)?.wide;
 
-export default function Dashboard() {
+export default function Dashboard({ refined = false }: { refined?: boolean }) {
   const factor = useIsPhone() ? 'phone' : 'desktop';
   const saved = usePreferencesStore((s) => s.homeLayouts[factor]);
   const setHomeLayout = usePreferencesStore((s) => s.setHomeLayout);
-  const layout = normalizeLayout(saved, factor);
+  const [previewLayouts, setPreviewLayouts] = useState<Partial<Record<FormFactor, HomeLayout>>>({});
+  const changeLayout = (next: HomeLayout | null) =>
+    refined
+      ? setPreviewLayouts((previous) => ({
+          ...previous,
+          [factor]: next ?? normalizeLayout(null, factor),
+        }))
+      : setHomeLayout(factor, next);
+  const layout = normalizeLayout(refined ? (previewLayouts[factor] ?? saved) : saved, factor);
   const cards = visibleCards(layout);
+  const historyAfter = cards.includes('budget-progress')
+    ? 'budget-progress'
+    : cards.includes('upcoming-bills')
+      ? 'upcoming-bills'
+      : 'summary';
   const [customizing, setCustomizing] = useState(false);
   const [onboarding, setOnboarding] = useState(false);
   // While the Get started card shows, it is this page's one onboarding element: the guide
@@ -84,33 +156,27 @@ export default function Dashboard() {
       {/* One gap between every block, the same as between cards. A block with nothing to show is
           hidden (empty:hidden), and a hidden block takes no gap. */}
       <div className="p-8 max-md:p-4 max-w-[1400px] mx-auto flex flex-col gap-6 max-md:gap-4">
-        <div className="flex items-center justify-between gap-4">
-          <DashboardStatus currentMonth={currentMonth} />
+        <div className="flex items-start justify-between gap-3 md:items-center md:gap-4">
+          <DashboardStatus currentMonth={currentMonth} refined={refined} />
           <Button
             variant="secondary"
             size="sm"
             onClick={() => setCustomizing(true)}
             data-guide="dashboard.customize"
+            className="shrink-0 max-md:w-11 max-md:px-0"
           >
-            <LayoutGrid size={15} aria-hidden /> Customise
+            <LayoutGrid size={15} aria-hidden /> <span className="max-md:sr-only">Customise</span>
           </Button>
         </div>
         {/* Not cards: they keep their own show/hide rules */}
         <div className="empty:hidden">
           <Reminder />
         </div>
-        {!onboarding && (
-          <div className="empty:hidden">
-            <Tip
-              tip={TIPS.safeModeKey}
-              desktopOnly
-              className="rounded-lg border border-border-light p-4"
-            />
-          </div>
-        )}
         <div className="empty:hidden">
           <GettingStarted currentMonth={currentMonth} onVisibleChange={onChecklistChange} />
         </div>
+
+        {!onboarding && <ReviewAttention refined={refined} />}
 
         {cards.length === 0 ? (
           <EmptyState
@@ -120,35 +186,62 @@ export default function Dashboard() {
             title="All cards are hidden"
             description="Your home page is empty on this device. Nothing in your budget changed."
             actions={
-              <Button variant="secondary" size="sm" onClick={() => setHomeLayout(factor, null)}>
+              <Button variant="secondary" size="sm" onClick={() => changeLayout(null)}>
                 Show the default cards
               </Button>
             }
           />
         ) : (
           // Rows take their tallest card's height, so side-by-side cards line up
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-md:gap-4">
+          <div
+            className={`grid grid-cols-1 lg:grid-cols-2 gap-6 max-md:gap-4 ${refined ? 'items-start' : ''}`}
+          >
             {cards.map((id) => (
-              <section
-                key={id}
-                data-testid={`home-card-${id}`}
-                className={`min-w-0 [&>*]:h-full ${isWide(id) ? 'lg:col-span-2' : ''}`}
-              >
-                <HomeCard id={id} />
-              </section>
+              <Fragment key={id}>
+                <section
+                  data-testid={`home-card-${id}`}
+                  className={`min-w-0 ${refined ? '' : '[&>*]:h-full'} ${isWide(id) ? 'lg:col-span-2' : ''}`}
+                >
+                  <HomeCard id={id} refined={refined} phone={factor === 'phone'} />
+                </section>
+                {refined &&
+                  factor === 'phone' &&
+                  cards.includes('summary') &&
+                  id === historyAfter && (
+                    <section data-testid="home-history" className="min-w-0">
+                      <SummaryStats
+                        currentMonth={currentMonth}
+                        sixMonthsAgo={sixMonthsAgo}
+                        refined
+                        section="history"
+                      />
+                    </section>
+                  )}
+              </Fragment>
             ))}
+          </div>
+        )}
+
+        {!onboarding && (
+          <div className="empty:hidden">
+            <Tip
+              tip={TIPS.safeModeKey}
+              desktopOnly
+              className="rounded-lg border border-border-light p-4"
+            />
           </div>
         )}
 
         {/* Not part of the cards: further from them than they are from each other */}
         <HelpFooter className="mt-4" />
         <CustomizeHome
+          preview={refined}
           isOpen={customizing}
           onClose={() => setCustomizing(false)}
           factor={factor}
           layout={layout}
-          onChange={(next) => setHomeLayout(factor, next)}
-          onReset={() => setHomeLayout(factor, null)}
+          onChange={changeLayout}
+          onReset={() => changeLayout(null)}
         />
       </div>
     </OnboardingContext.Provider>

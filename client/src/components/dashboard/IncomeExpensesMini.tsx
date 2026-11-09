@@ -1,8 +1,10 @@
+import { DataFeedback, dataUnavailable } from './DataFeedback';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { useIncomeVsExpenses } from '../../hooks/useReports';
+import { formatDateRange } from '../../utils/dateRange';
 import { formatCurrency } from '../../utils/currency';
 import { ArrowLeftRight } from 'lucide-react';
 import { Card } from '../ui/Card';
@@ -31,7 +33,8 @@ interface Props {
 }
 
 export default function IncomeExpensesMini({ sixMonthsAgo, currentMonth }: Props) {
-  const { data = [], isLoading } = useIncomeVsExpenses(sixMonthsAgo, currentMonth);
+  const incomeVsExpensesQuery = useIncomeVsExpenses(sixMonthsAgo, currentMonth);
+  const { data = [] } = incomeVsExpensesQuery;
 
   const chartData = useMemo(
     () => data.map((d) => ({ ...d, month: format(parseISO(`${d.month}-01`), 'MMM yy') })),
@@ -49,7 +52,10 @@ export default function IncomeExpensesMini({ sixMonthsAgo, currentMonth }: Props
   const latestNet = data.length > 0 ? data[data.length - 1].net : 0;
   const hasData = data.some((d) => d.income !== 0 || d.expenses !== 0);
 
-  if (isLoading) {
+  const sources = [incomeVsExpensesQuery];
+  if (dataUnavailable(sources)) return <DataFeedback title="Cash flow" sources={sources} />;
+
+  if (sources.some((q) => q.isLoading)) {
     return (
       <Card>
         <div className="h-5 w-36 bg-surface-alt rounded animate-pulse mb-2" />
@@ -64,6 +70,7 @@ export default function IncomeExpensesMini({ sixMonthsAgo, currentMonth }: Props
 
   return (
     <Card>
+      <DataFeedback title="Cash flow" sources={sources} />
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-sm font-semibold text-text">Cash flow</h2>
         <Link
@@ -74,9 +81,13 @@ export default function IncomeExpensesMini({ sixMonthsAgo, currentMonth }: Props
           View all
         </Link>
       </div>
+      <p className="text-xs text-text-tertiary mb-2">
+        {formatDateRange({ preset: 'custom', from: sixMonthsAgo, to: currentMonth })} · includes
+        this month so far
+      </p>
       {hasData && (
         <p className="text-sm text-text-tertiary mb-3">
-          Net this month:{' '}
+          Income minus expenses this month:{' '}
           <span
             className={`font-semibold tabular-nums ${latestNet >= 0 ? 'text-positive' : 'text-text'}`}
           >
@@ -90,7 +101,7 @@ export default function IncomeExpensesMini({ sixMonthsAgo, currentMonth }: Props
           <ResponsiveContainer width="100%" height={192}>
             <BarChart data={chartData} margin={{ top: 4, right: 4, left: 4, bottom: 0 }} barGap={2}>
               <XAxis dataKey="month" axisLine={false} tickLine={false} {...xAxis.axisProps} />
-              <Tooltip content={<CurrencyTooltip />} cursor={{ fill: 'rgba(37,99,235,0.1)' }} />
+              <Tooltip content={<CurrencyTooltip />} cursor={{ fill: chartColors.brandSubtle }} />
               <Legend iconSize={8} wrapperStyle={{ fontSize: 11, color: chartColors.axis }} />
               <Bar
                 dataKey="income"

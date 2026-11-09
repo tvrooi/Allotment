@@ -3,14 +3,14 @@
 // never budget data, never in backups. Onboarding and the review reminder are not cards.
 
 export const HOME_CARDS = [
-  { id: 'net-worth', label: 'Net worth', wide: true },
   { id: 'summary', label: 'Summary', wide: true },
+  { id: 'upcoming-bills', label: 'Bills and income', wide: false },
+  { id: 'budget-progress', label: 'Budget progress', wide: false },
+  { id: 'recent-transactions', label: 'Recent transactions', wide: false },
+  { id: 'spending-breakdown', label: 'Spending breakdown', wide: false },
   { id: 'income-expenses', label: 'Income & expenses', wide: false },
   { id: 'spending-comparison', label: 'Spending comparison', wide: false },
-  { id: 'budget-progress', label: 'Budget progress', wide: false },
-  { id: 'upcoming-bills', label: 'Bills and income', wide: false },
-  { id: 'spending-breakdown', label: 'Spending breakdown', wide: false },
-  { id: 'recent-transactions', label: 'Recent transactions', wide: false },
+  { id: 'net-worth', label: 'Net worth', wide: true },
 ] as const;
 
 export type HomeCardId = (typeof HOME_CARDS)[number]['id'];
@@ -24,7 +24,7 @@ export interface HomeLayout {
 const IDS = HOME_CARDS.map((c) => c.id) as HomeCardId[];
 const isCardId = (v: unknown): v is HomeCardId => IDS.includes(v as HomeCardId);
 
-/** Desktop keeps the original arrangement; phones lead with what needs attention today */
+/** Both defaults lead with spending and commitments; saved custom orders stay unchanged. */
 export const DEFAULT_LAYOUTS: Record<FormFactor, HomeLayout> = {
   desktop: { order: IDS, hidden: [] },
   phone: {
