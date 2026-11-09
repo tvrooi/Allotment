@@ -1,5 +1,12 @@
 # Changes
 
+## 0.2.0-up.151
+
+- **A category that follows an account now holds exactly what that account holds.** Link Rent to your Rent saver and Rent shows the saver's balance, nothing more or less. Before, an assignment and a transfer into the account could both count, so Rent could show more than the account held. Money left over from an earlier assignment goes back to Ready to Assign.
+- **Interest passed straight on no longer comes out of the category.** If interest is paid into a linked account and forwarded to another account (Up's "Forward to"), the category is unchanged and the interest is ready to assign.
+- **Fund a linked category by transferring into its account.** You can't assign to it or move money in or out of it any more, because that would change nothing. Its row says "Follows Rent saver · holds A$825.50", the Assigned column shows what moved in this month, and its target reads "Move A$X more to Rent saver". Auto-assign and Fund targets leave it out.
+- Spending in a linked category from a different account comes out of Ready to Assign, since the linked account didn't pay it.
+
 ## 0.2.0-up.150
 
 - **Bills you changed on purpose stay changed.** A household bill no longer says **amount changed** because of payments made before you set its amount. Raise a bill for a price rise and the old, lower payments stop flagging it; only a later bill that still doesn't match does.

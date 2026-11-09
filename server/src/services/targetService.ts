@@ -96,7 +96,7 @@ export function budgetWithTargets(month: string, today = todayIso()) {
     categories: g.categories.map((c) => {
       const target = targets.get(c.id);
       if (!target || g.isIncome) return { ...c, target: null };
-      // Money transferred into a linked account counts toward the target like an assignment
+      // A linked envelope: what moved it to its account's balance counts like an assignment
       const status = targetStatus(
         target,
         { budgeted: c.budgeted + c.transferred, carryOver: c.carryOver },

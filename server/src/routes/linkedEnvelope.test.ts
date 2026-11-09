@@ -21,12 +21,15 @@ import {
 } from '../db/schema.js';
 import { errorHandler } from '../middleware/security.js';
 import { budgetGroups, budgetSummary } from '../services/budgetService.js';
+import { BudgetError, fundedWrite, previewMove, READY_TO_ASSIGN } from '../services/budgetMoves.js';
+import { previewAutoAssign } from '../services/autoAssign.js';
 import { budgetWithTargets } from '../services/targetService.js';
 import { ratesChanged } from '../services/mainAmountService.js';
 import { categoriesRouter } from './categories.js';
 
-// An envelope linked to an account (docs/ENVELOPE-FUNDING.md): moving rent money into the rent
-// account funds the Rent envelope, from Ready to Assign, without a separate assignment.
+// An envelope linked to an account (docs/ENVELOPE-FUNDING.md) mirrors it: Rent holds what the
+// rent account holds. Moving rent money into the account funds it from Ready to Assign, and
+// nothing else (an assignment, interest passing through) can make the two differ.
 
 const TODAY = '2026-10-21';
 
@@ -166,32 +169,96 @@ describe('an envelope linked to an account', () => {
     expect(rent('2026-11')).toMatchObject({ carryOver: 150000, transferred: 0, balance: 150000 });
   });
 
-  it('adds to what is assigned, and an assignment still works as before', () => {
+  it('holds what the account holds, whatever an earlier assignment said', () => {
+    // As the live budget had it: October assigned A$1,722.67 to Rent, A$1,642.67 was spent from
+    // another account, then A$825.50 moved into the rent account. Rent holds A$825.50, not 905.50.
     link('rent', 'rentSaver');
     db.insert(budgetMonths)
-      .values({ id: 'a', month: '2026-10', categoryId: 'rent', budgeted: 30000 })
+      .values({ id: 'a', month: '2026-10', categoryId: 'rent', budgeted: 172267 })
       .run();
-    transfer('spending', 'rentSaver', '2026-10-04', 200000);
-    expect(rent('2026-10')).toMatchObject({ budgeted: 30000, transferred: 200000 });
-    expect(rent('2026-10').balance).toBe(230000);
-    expect(rta('2026-10')).toBe(70000);
+    txn('spending', '2026-10-05', -164267, 'rent');
+    transfer('spending', 'rentSaver', '2026-10-06', 82550);
+    expect(rent('2026-10')).toMatchObject({
+      budgeted: 172267,
+      activity: -164267,
+      transferred: 74550,
+      balance: 82550,
+    });
+    // The A$80 the assignment left over is back in Ready to Assign
+    expect(rta('2026-10')).toBe(300000 - 164267 - 82550);
   });
 
-  it('counts only confirmed transfers, from the budget, up to today', () => {
+  it('passes interest forwarded to another account through, leaving it ready to assign', () => {
     link('rent', 'rentSaver');
-    // Not confirmed as a transfer: an ordinary inflow, ready to assign
+    transfer('spending', 'rentSaver', '2026-10-04', 82550);
+    // Up pays interest into the rent account and forwards it straight on to another saver
+    txn('rentSaver', '2026-10-05', 51, 'salary');
+    transfer('rentSaver', 'holiday', '2026-10-05', 51);
+    expect(rent('2026-10')).toMatchObject({ transferred: 82550, balance: 82550 });
+    expect(rta('2026-10')).toBe(300000 + 51 - 82550);
+    // Interest kept in the account is the envelope's, like everything else there
+    txn('rentSaver', '2026-10-06', 20, 'salary');
+    expect(rent('2026-10').balance).toBe(82570);
+  });
+
+  it('follows the account balance, whatever moved it, up to today', () => {
+    link('rent', 'rentSaver');
+    // An inflow that isn't a transfer, and money from a tracking account, are in the account
     txn('rentSaver', '2026-10-05', 40000);
-    // A move from a tracking account is new money in the budget, not a contribution
     transfer('broker', 'rentSaver', '2026-10-06', 10000);
     // Another account's transfer has nothing to do with Rent
     transfer('spending', 'holiday', '2026-10-07', 20000);
-    expect(rent('2026-10').transferred).toBe(0);
-    expect(rta('2026-10')).toBe(350000);
+    expect(rent('2026-10')).toMatchObject({ transferred: 50000, balance: 50000 });
+    expect(rta('2026-10')).toBe(300000);
 
     // A transfer later this month counts when its day comes
     transfer('spending', 'rentSaver', '2026-10-25', 100000);
-    expect(rent('2026-10').transferred).toBe(0);
-    expect(rent('2026-10', '2026-10-25').transferred).toBe(100000);
+    expect(rent('2026-10').transferred).toBe(50000);
+    expect(rent('2026-10', '2026-10-25').transferred).toBe(150000);
+  });
+
+  it('takes rent paid from another account out of Ready to Assign, not the envelope', () => {
+    link('rent', 'rentSaver');
+    transfer('spending', 'rentSaver', '2026-10-04', 82550);
+    txn('spending', '2026-10-08', -10000, 'rent');
+    expect(rent('2026-10')).toMatchObject({ activity: -10000, balance: 82550 });
+    expect(rta('2026-10')).toBe(300000 - 82550 - 10000);
+  });
+
+  it('refuses assignments and moves: money reaches it by a transfer', () => {
+    link('rent', 'rentSaver');
+    transfer('spending', 'rentSaver', '2026-10-04', 82550);
+    const assign = () =>
+      fundedWrite(() => {
+        db.insert(budgetMonths)
+          .values({ id: 'b', month: '2026-10', categoryId: 'rent', budgeted: 1000 })
+          .run();
+      });
+    expect(assign).toThrow(BudgetError);
+    expect(assign).toThrow('Rent follows the rentSaver account');
+    expect(db.select().from(budgetMonths).all()).toEqual([]);
+    expect(() =>
+      previewMove('2026-10', { sourceId: 'rent', destinationId: READY_TO_ASSIGN, amount: 100 }),
+    ).toThrow(/Transfer money to or from rentSaver/);
+    expect(() =>
+      previewMove('2026-10', { sourceId: 'food', destinationId: 'rent', amount: 100 }),
+    ).toThrow(BudgetError);
+    // An unlinked envelope still takes an assignment
+    fundedWrite(() => {
+      db.insert(budgetMonths)
+        .values({ id: 'c', month: '2026-10', categoryId: 'food', budgeted: 1000 })
+        .run();
+    });
+    expect(rta('2026-10')).toBe(300000 - 82550 - 1000);
+    // Auto-assign leaves it out
+    db.insert(categoryTargets)
+      .values({ categoryId: 'rent', type: 'monthly', amount: 200000, createdMonth: '2026-10' })
+      .run();
+    expect(
+      previewAutoAssign('2026-10', { strategy: 'underfunded' }, TODAY).rows.map(
+        (c: { categoryId: string }) => c.categoryId,
+      ),
+    ).not.toContain('rent');
   });
 
   it('stops counting when unlinked, without rewriting anything', () => {

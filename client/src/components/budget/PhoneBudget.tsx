@@ -9,7 +9,7 @@ import { useCanSave } from '../../hooks/useConnection';
 import { canMoveIn, useMoveRequest } from '../../store/moveRequestStore';
 import { formatCurrency } from '../../utils/currency';
 import { availability, categoryFigures, splitCategories } from '../../utils/budgetFigures';
-import { TransferredNote } from './TransferredNote';
+import { TransferredNote, useLinkedAccount } from './TransferredNote';
 import { ExpectedNote } from './ExpectedNote';
 import { CardRowNotes } from './CardRowNotes';
 import type { CardPosition } from '../../api/budget';
@@ -184,7 +184,10 @@ function CategoryCard({
   const { actual } = categoryFigures(cat, isIncome);
   const { kind, remaining, caption } = availability(cat, isIncome);
   const askToMove = useMoveRequest((s) => s.ask);
-  const movable = !isIncome && canSave && !readOnly && remaining !== 0 && canMoveIn(month);
+  // An envelope linked to an account holds what the account holds: a transfer moves its money
+  const linked = useLinkedAccount(cat);
+  const movable =
+    !isIncome && !linked && canSave && !readOnly && remaining !== 0 && canMoveIn(month);
   const pill =
     kind === 'overspent'
       ? 'bg-negative/20'
@@ -250,25 +253,37 @@ function CategoryCard({
         <p
           className={`text-xs mt-1 ${cat.target.underfunded ? 'text-caution' : 'text-text-tertiary'}`}
         >
-          {targetLabel(cat.target)}
+          {targetLabel(cat.target, linked?.name)}
         </p>
       )}
       <div className="mt-1 grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={onEdit}
-          disabled={!canSave || readOnly}
-          aria-label={`Planned for ${cat.name}: ${formatCurrency(cat.budgeted)}`}
-          className="min-h-11 flex items-center gap-1.5 text-left disabled:opacity-50"
-        >
-          <span className="grid">
-            <span className="text-xs text-text-tertiary">{isIncome ? 'Expected' : 'Assigned'}</span>
+        {linked && !isIncome ? (
+          // It holds what the account holds: a transfer moves its money, not an assignment
+          <span className="min-h-11 grid content-center text-left">
+            <span className="text-xs text-text-tertiary">Moved to {linked.name}</span>
             <span className="text-sm font-medium tabular-nums text-text">
-              {formatCurrency(cat.budgeted)}
+              {formatCurrency(cat.budgeted + (cat.transferred ?? 0))}
             </span>
           </span>
-          <Pencil size={13} className="text-text-tertiary" aria-hidden />
-        </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onEdit}
+            disabled={!canSave || readOnly}
+            aria-label={`Planned for ${cat.name}: ${formatCurrency(cat.budgeted)}`}
+            className="min-h-11 flex items-center gap-1.5 text-left disabled:opacity-50"
+          >
+            <span className="grid">
+              <span className="text-xs text-text-tertiary">
+                {isIncome ? 'Expected' : 'Assigned'}
+              </span>
+              <span className="text-sm font-medium tabular-nums text-text">
+                {formatCurrency(cat.budgeted)}
+              </span>
+            </span>
+            <Pencil size={13} className="text-text-tertiary" aria-hidden />
+          </button>
+        )}
         <Link
           to={`/budget/category/${cat.id}`}
           className="min-h-11 grid justify-items-end content-center text-right"

@@ -425,66 +425,19 @@ describe('auto-assign', () => {
     ).toBe(30000);
   });
 
-  it('does not take an assignment below zero to offset a transfer into a linked account', async () => {
+  it('leaves an envelope linked to an account out: a transfer funds it', async () => {
     db.insert(accounts)
       .values({ id: 'saver', name: 'Saver', type: 'savings', createdAt: '2020-01-01' })
       .run();
     db.insert(categories)
       .values({ id: 'goal', name: 'goal', groupId: 'bills', linkedAccountId: 'saver' })
       .run();
-    db.insert(transactions)
-      .values([
-        {
-          id: 'out',
-          accountId: 'cash',
-          date: '2026-10-02',
-          amount: -20000,
-          transferTransactionId: 'in',
-        },
-        {
-          id: 'in',
-          accountId: 'saver',
-          date: '2026-10-02',
-          amount: 20000,
-          transferTransactionId: 'out',
-        },
-      ])
-      .run();
+    // An assignment from before it was linked: the envelope mirrors the saver regardless
     assign('goal', '2026-10', 5000);
-    const zero = await postPreview({ strategy: 'zero', categoryIds: ['goal'] });
-    // $200 already arrived by transfer, so the $50 assignment goes to zero and no further
-    expect(zero.rows).toEqual([expect.objectContaining({ categoryId: 'goal', proposed: -5000 })]);
-  });
-
-  it('Set to zero clears the assignment whatever transfers moved through a linked account', async () => {
-    db.insert(accounts)
-      .values({ id: 'saver', name: 'Saver', type: 'savings', createdAt: '2020-01-01' })
-      .run();
-    db.insert(categories)
-      .values({ id: 'goal', name: 'goal', groupId: 'bills', linkedAccountId: 'saver' })
-      .run();
-    // $200 left the saver this month
-    db.insert(transactions)
-      .values([
-        {
-          id: 'out',
-          accountId: 'saver',
-          date: '2026-10-02',
-          amount: -20000,
-          transferTransactionId: 'in',
-        },
-        {
-          id: 'in',
-          accountId: 'cash',
-          date: '2026-10-02',
-          amount: 20000,
-          transferTransactionId: 'out',
-        },
-      ])
-      .run();
-    assign('goal', '2026-10', 5000);
-    const zero = await postPreview({ strategy: 'zero', categoryIds: ['goal'] });
-    expect(zero.rows).toEqual([expect.objectContaining({ categoryId: 'goal', proposed: -5000 })]);
+    for (const strategy of ['zero', 'assigned_last_month', 'overspent'] as const) {
+      const preview = await postPreview({ strategy, categoryIds: ['goal'] });
+      expect(preview.rows).toEqual([]);
+    }
   });
 
   it('averages over 3, 6 or 12 months, counting months without spending', async () => {

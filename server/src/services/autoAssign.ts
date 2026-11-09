@@ -59,19 +59,21 @@ function needs(month: string, options: AutoAssignOptions, today: string) {
   const { strategy } = options;
   const replace = effectiveMode(options) === 'replace';
   const averageMonths = options.months ?? 3;
-  const expense = <C extends { paymentAccountId: string | null; hidden: number }>(
+  // A linked envelope mirrors its account, so a transfer funds it, never an assignment
+  const expense = <
+    C extends { paymentAccountId: string | null; linkedAccountId: string | null; hidden: number },
+  >(
     groups: { isIncome: number; categories: C[] }[],
   ) =>
     groups
       .filter((g) => !g.isIncome)
       .flatMap((g) => g.categories)
-      .filter((c) => !c.paymentAccountId && !c.hidden);
+      .filter((c) => !c.paymentAccountId && !c.linkedAccountId && !c.hidden);
   const current = expense(budgetWithTargets(month, today));
   const previous = (n: number) =>
     new Map(expense(budgetGroups(addMonthsTo(month, -n), today)).map((c) => [c.id, c]));
-  // What a month already put in: assignments plus transfers into a linked account
-  const funded = (c?: { budgeted: number; transferred: number }) =>
-    (c?.budgeted ?? 0) + (c?.transferred ?? 0);
+  // What a month already put in (`transferred` is only ever set on a linked envelope, left out above)
+  const funded = (c?: { budgeted: number }) => c?.budgeted ?? 0;
   let level: ((c: (typeof current)[number]) => number) | null = null;
   let need: (c: (typeof current)[number]) => number = () => 0;
   if (strategy === 'underfunded') need = (c) => c.target?.underfunded ?? 0;
@@ -86,7 +88,7 @@ function needs(month: string, options: AutoAssignOptions, today: string) {
     const months = Array.from({ length: averageMonths }, (_, i) => previous(i + 1));
     level = (c) =>
       Math.round(months.reduce((s, m) => s + (m.get(c.id)?.spent ?? 0), 0) / averageMonths);
-  } else need = (c) => -Math.max(c.budgeted, 0); // zero clears the assignment itself, not transfers
+  } else need = (c) => -Math.max(c.budgeted, 0); // zero clears the assignment
   if (level) {
     const want = level;
     // Taking money back never lowers an assignment below zero

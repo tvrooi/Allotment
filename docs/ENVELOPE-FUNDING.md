@@ -129,24 +129,31 @@ engine. `budgetEngine.test.ts` holds it to the previous per-month engine, figure
 ## Envelopes linked to an account
 
 An expense envelope can follow one account (`categories.linked_account_id`, set in **Settings →
-Categories → Edit**). The linked account's side of a confirmed transfer with another personal
-budget account counts in the envelope as `transferred`: into the account adds, back out takes
-away (`linkedTransfers` in `budgetLedger.ts`). It sits next to `budgeted`, so:
+Categories → Edit → Follows the account**). Owner-requested on 9 November 2026, it **mirrors**
+that account: from the month the account takes effect (the earlier of its creation and first
+transaction, and not before the budget start), Available at the end of each month, or on today
+in the current month, is the account's balance. What brings it there after assignments and the
+category's own activity is `transferred` (`mirrorSteps` and `currentTransferred` in
+`budgetLedger.ts`, balances by `accountBalanceAt`, the same rule as Ready to Assign's resources):
 
-`Available = carry + budgeted + transferred + activity`
+`Available = carry + budgeted + transferred + activity` = the account's balance
 
-Resources don't change (an internal transfer), so the envelope's larger Available comes out of
-Ready to Assign, exactly like an assignment. Nothing is stored: the figure is read from
-transactions, from the budget start on and up to the assessment date, with the same rule as
-income for generated, unreconciled rows. Unlinking or deleting the account (`ON DELETE SET
-NULL`) stops it without rewriting a transaction or an assignment.
-
-- Only confirmed transfers count; an unpaired inflow stays ready to assign, and a transfer from
-  an off-budget or household account is new money, not a contribution.
+- Everything in the account is the envelope's: transfers in and out, an unpaired inflow, money
+  from an off-budget or household account. Interest that lands and is forwarded on (Up's
+  "Forward to") nets to nothing; interest kept there stays in the envelope.
+- Spending in this category from another account doesn't lower the envelope (the account didn't
+  pay it), so it comes out of Ready to Assign.
+- Resources include the account, and envelopes hold the same amount, so a transfer in moves money
+  from Ready to Assign to the envelope and nothing else does. An assignment would change nothing,
+  so `refuseLinked` (`budgetMoves.ts`) refuses assignments and Move money for a linked envelope,
+  in every writer that goes through `fundedWrite`; auto-assign and **Fund targets** leave it out.
+  Earlier stored assignments stay as history and are balanced out.
+- Targets, goals and the annual overview count `transferred` with `budgeted`; the Budget page
+  shows "Move A$X more to <account>" for a linked envelope's target.
 - One envelope per account (a unique index), only expense envelopes (not income or card
-  payment), and only open checking, savings or cash accounts in the personal budget.
-- Targets, auto-assign, goals and the annual overview count `transferred` with `budgeted`.
-  The assignment guard and Move money are unchanged: `budgeted` is still only stored assignments.
+  payment), and only open checking, savings or cash accounts in the personal budget. Nothing is
+  stored: unlinking or deleting the account (`ON DELETE SET NULL`) returns the envelope to plain
+  assignments without rewriting a transaction or an assignment.
 - Read-only tokens can't set the link (`categoryManageAllows` in `auth/assistantPolicy.ts` lists the fields they may edit).
 - Reports still leave internal transfers out.
 

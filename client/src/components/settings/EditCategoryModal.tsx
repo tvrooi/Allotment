@@ -208,7 +208,7 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
         {!isIncome && (
           <div>
             <label htmlFor="linked-account" className="block text-sm font-medium text-text mb-1.5">
-              Funded by transfers to
+              Follows the account
             </label>
             <select
               id="linked-account"
@@ -224,8 +224,9 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
               ))}
             </select>
             <p className="mt-1 text-xs text-text-tertiary">
-              Money you transfer into this account from another budget account goes into this
-              envelope, as if you had assigned it. Moving money back out takes it out again.
+              This envelope holds exactly what the account holds. Fund it by transferring money into
+              the account; you can&rsquo;t assign to it. Interest that lands and is forwarded on
+              passes straight through.
             </p>
           </div>
         )}

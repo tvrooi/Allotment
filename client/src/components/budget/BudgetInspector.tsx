@@ -8,6 +8,7 @@ import { formatCurrency } from '../../utils/currency';
 import { targetLabel } from '../../utils/targets';
 import { Button } from '../ui/Button';
 import { NoteField } from './NoteField';
+import { useLinkedAccount } from './TransferredNote';
 
 /**
  * The budget's inspector (BUD-10), beside the table. With nothing ticked it shows the month: the
@@ -53,7 +54,8 @@ function Figures({ cats }: { cats: BudgetCategory[] }) {
   const rows: [string, number][] = [
     ['Carried in', f.carriedIn],
     ['Assigned', f.assigned],
-    ...(f.transferred ? ([['Transferred in', f.transferred]] as [string, number][]) : []),
+    // An envelope linked to an account: what moved it to the account's balance this month
+    ...(f.transferred ? ([['Account in and out', f.transferred]] as [string, number][]) : []),
     ['Activity', f.activity],
     ['Available', f.available],
   ];
@@ -103,7 +105,8 @@ function MonthView({ month, categories }: { month: string; categories: BudgetCat
 
 function FundButton({ cats, onFund }: { cats: BudgetCategory[]; onFund: (ids: string[]) => void }) {
   const canSave = useCanSave();
-  const short = cats.filter((c) => c.target?.underfunded);
+  // An envelope linked to an account is funded by a transfer into it, not an assignment
+  const short = cats.filter((c) => c.target?.underfunded && !c.linkedAccountId);
   if (!short.length) return null;
   return (
     <Button
@@ -130,6 +133,7 @@ function OneView({
 }) {
   const setNote = useSetCategoryNote();
   const { caption } = availability(cat, false);
+  const linked = useLinkedAccount(cat);
   return (
     <div className="grid gap-3">
       <div>
@@ -139,7 +143,7 @@ function OneView({
       <Figures cats={[cat]} />
       {cat.target && (
         <p className={`text-xs ${cat.target.underfunded ? 'text-caution' : 'text-text-tertiary'}`}>
-          {targetLabel(cat.target)}
+          {targetLabel(cat.target, linked?.name)}
         </p>
       )}
       <NoteField
