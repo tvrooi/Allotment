@@ -1,5 +1,14 @@
 # Changes
 
+## 0.2.0-up.153
+
+Follow-ups to linked categories (0.2.0-up.151):
+
+- **Payday plans and assignment suggestions leave a linked category out.** A payday rule for a category that follows an account now gives it nothing, so the money goes to the next rules. Suggestions can't assign to it either.
+- **An old assignment to a linked category in a later month no longer holds back money,** and you can clear it to zero.
+- **A card refund categorised to a linked category no longer counts twice.**
+- **The linked account's balance is shown in that account's own currency.**
+
 ## 0.2.0-up.152
 
 Phase 1 of the fixes from the 9 November budgeting review, for the figures that affect money decisions.

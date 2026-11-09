@@ -283,6 +283,41 @@ describe('card payment reserves', () => {
     expect(cat().balance).toBe(20000);
     expect(state().unassigned).toBe(80000);
   });
+  it('keeps an envelope linked to an account at its balance when a card refund lands in it', () => {
+    // A refund against reviewed opening debt adjusts its category; a linked envelope already
+    // holds its account's balance, so the adjustment must not count twice (Codex on #204)
+    db.insert(accounts)
+      .values({ id: 'saver', name: 'Saver', type: 'savings', createdAt: '2026-09-01' })
+      .run();
+    db.update(categories).set({ linkedAccountId: 'saver' }).where(eq(categories.id, 'food')).run();
+    db.update(accounts).set({ startingBalance: -10000 }).where(eq(accounts.id, 'card')).run();
+    setup(0);
+    const before = state().unassigned;
+    entry('refund', 10000);
+    expect(cat().balance).toBe(0);
+    expect(state().unassigned).toBe(before);
+  });
+  it('still applies a card refund adjustment in a month before the linked account takes effect', () => {
+    db.update(accounts).set({ startingBalance: -10000 }).where(eq(accounts.id, 'card')).run();
+    setup(0);
+    entry('refund', 10000);
+    const unlinked = { balance: cat().balance, unassigned: state().unassigned };
+    // A saver first effective next month: October follows the usual rules, refund included
+    db.insert(accounts)
+      .values({ id: 'saver', name: 'Saver', type: 'savings', createdAt: '2026-11-01' })
+      .run();
+    db.update(categories).set({ linkedAccountId: 'saver' }).where(eq(categories.id, 'food')).run();
+    expect({ balance: cat().balance, unassigned: state().unassigned }).toEqual(unlinked);
+    // November too: the mirror hasn't settled anything yet, so the adjustment still counts
+    const november = () =>
+      budgetGroups('2026-11')
+        .flatMap((g) => g.categories)
+        .find((c) => c.id === 'food')!.balance;
+    db.update(categories).set({ linkedAccountId: null }).where(eq(categories.id, 'food')).run();
+    const novemberUnlinked = november();
+    db.update(categories).set({ linkedAccountId: 'saver' }).where(eq(categories.id, 'food')).run();
+    expect(november()).toBe(novemberUnlinked);
+  });
   it('returns an unreserved payment followed by refund to its original funding position', () => {
     setup();
     entry('1purchase', -8000);

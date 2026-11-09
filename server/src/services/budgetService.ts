@@ -70,8 +70,10 @@ function assessment(month: string, today = todayIso()) {
   const groups = raw.map((g) => ({
     ...g,
     categories: g.categories.map((c) => {
-      const { history, resets, ...category } = c;
-      const changes = adjustments.get(c.id) ?? [];
+      const { history, resets, mirrored, ...category } = c;
+      // A linked envelope holds its account's balance, so a card's refund adjustment would count
+      // twice (the mirror already settled it)
+      const changes = mirrored ? [] : (adjustments.get(c.id) ?? []);
       const earlier = changes.filter((a) => a.date.slice(0, 7) < month);
       const carryOver = earlier.length
         ? rollOver(

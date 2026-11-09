@@ -156,8 +156,12 @@ category's own activity is `transferred` (`mirrorSteps` and `currentTransferred`
 - Resources include the account, and envelopes hold the same amount, so a transfer in moves money
   from Ready to Assign to the envelope and nothing else does. An assignment would change nothing,
   so `refuseLinked` (`budgetMoves.ts`) refuses assignments and Move money for a linked envelope,
-  in every writer that goes through `fundedWrite`; auto-assign and **Fund targets** leave it out.
-  Earlier stored assignments stay as history and are balanced out.
+  in every writer that goes through `fundedWrite` and in `fundingPlan.addAssigned` (payday plans,
+  suggestions); auto-assign, **Fund targets** and payday rules leave it out. Earlier stored
+  assignments stay as history and are balanced out; a later month's leftover assignment reserves
+  nothing (`promised`, `carryInto`, `cashDeficitInto` skip it) and may be cleared to zero.
+- A reviewed card's refund adjustment to a linked envelope is ignored (`budgetService.assessment`):
+  the mirror already settled it.
 - Targets, goals and the annual overview count `transferred` with `budgeted`; the Budget page
   shows "Move A$X more to <account>" for a linked envelope's target.
 - One envelope per account (a unique index), only expense envelopes (not income or card
