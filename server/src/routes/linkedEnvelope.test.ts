@@ -284,6 +284,17 @@ describe('an envelope linked to an account', () => {
     ).toThrow(BudgetError);
   });
 
+  it('keeps an assignment from before the account takes effect promised (Codex on #206)', () => {
+    // A saver first effective in December: November's assignment still follows the usual rules
+    db.update(accounts).set({ createdAt: '2026-12-01' }).where(eq(accounts.id, 'rentSaver')).run();
+    link('rent', 'rentSaver');
+    db.insert(budgetMonths)
+      .values({ id: 'nov', month: '2026-11', categoryId: 'rent', budgeted: 10000 })
+      .run();
+    expect(rta('2026-10')).toBe(300000 - 10000);
+    expect(rent('2026-11')).toMatchObject({ budgeted: 10000, transferred: 0, balance: 10000 });
+  });
+
   it('refuses suggestions and plan writes that would assign to it', () => {
     link('rent', 'rentSaver');
     expect(() =>

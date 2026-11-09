@@ -266,7 +266,7 @@ function build(): Ledger {
   const promised = new Map<string, number>();
   // A linked envelope mirrors its account, so an assignment to it promises nothing
   for (const r of budgetRows)
-    if (expenseIds.has(r.categoryId) && !envelopes.get(r.categoryId)?.mirror)
+    if (expenseIds.has(r.categoryId) && !inert(envelopes.get(r.categoryId), r.month))
       promised.set(r.month, (promised.get(r.month) ?? 0) + Math.max(0, r.budgeted));
   const laterMonths = [...promised.keys()].sort();
   const laterTotals = new Array<number>(laterMonths.length + 1).fill(0);
@@ -414,6 +414,15 @@ function currentActivity(l: Ledger, h: CategoryHistory, today: string): number |
     : partialMonth(l, today).activity.get(h.category.id);
 }
 
+/**
+ * Whether `month` is one where `h` mirrors its linked account: from the month the mirror starts,
+ * an assignment to it (or a card adjustment) changes nothing, so it promises and carries nothing.
+ * Months before follow the usual rules.
+ */
+function inert(h: CategoryHistory | undefined, month: string): boolean {
+  return !!h?.mirror && month >= h.mirror.from;
+}
+
 /** What carries out of the months before `month`, from the walked steps */
 function carryBefore(h: CategoryHistory, month: string): number {
   const i = lowerBound(h.steps, month, (s) => s.month);
@@ -460,12 +469,11 @@ function monthlyNet(l: Ledger, h: CategoryHistory, month: string, today: string)
   if (current < month) {
     const net = currentMonthNet(l, h, today);
     if (net !== undefined) months.set(current, net);
-    // Later months than `today` hold assignments only: their activity is still to come. A
-    // linked envelope's are inert (it mirrors its account)
-    for (const m of h.mirror
-      ? []
-      : h.assignedMonths.slice(lowerBound(h.assignedMonths, current + '\u0000', (m) => m)))
-      if (m < month) months.set(m, h.assigned.get(m)!);
+    // Later months than `today` hold assignments only: their activity is still to come
+    for (const m of h.assignedMonths.slice(
+      lowerBound(h.assignedMonths, current + '\u0000', (m) => m),
+    ))
+      if (m < month && !inert(h, m)) months.set(m, h.assigned.get(m)!);
   }
   return months;
 }
@@ -475,13 +483,11 @@ function carryInto(l: Ledger, h: CategoryHistory, month: string, today: string):
   const current = today.slice(0, 7);
   if (month <= current) return carryBefore(h, month);
   let carry = settle(carryBefore(h, current), currentMonthNet(l, h, today) ?? 0, h.resets);
-  // A linked envelope holds its account's balance: later assignments to it change nothing
-  if (h.mirror) return carry;
   for (const m of h.assignedMonths.slice(
     lowerBound(h.assignedMonths, current + '\u0000', (m) => m),
   )) {
     if (m >= month) break;
-    carry = settle(carry, h.assigned.get(m)!, h.resets);
+    if (!inert(h, m)) carry = settle(carry, h.assigned.get(m)!, h.resets);
   }
   return carry;
 }
@@ -503,9 +509,8 @@ export function cashDeficitInto(
   if (!h || h.resets) return 0;
   let carry = balance;
   let cash = Math.max(0, -balance);
-  // A linked envelope's later assignments are inert (it mirrors its account)
-  for (const m of h.mirror ? [] : h.assignedMonths) {
-    if (m <= fromMonth) continue;
+  for (const m of h.assignedMonths) {
+    if (m <= fromMonth || inert(h, m)) continue;
     if (m >= month) break;
     carry += h.assigned.get(m)!;
     cash = Math.min(cash, Math.max(0, -carry));
@@ -536,7 +541,7 @@ export function envelopeGroups(l: Ledger, month: string, today: string) {
           ? (h.transferred.get(month) ?? 0)
           : month === current
             ? (currentTransferred(l, h, today) ?? 0)
-            : h.mirror && budgeted
+            : budgeted && inert(h, month)
               ? -budgeted
               : 0;
       const carryOver = carryInto(l, h, month, today);
@@ -551,7 +556,7 @@ export function envelopeGroups(l: Ledger, month: string, today: string) {
         history: () => monthlyNet(l, h, month, today),
         resets: h.resets,
         // Only from the month the mirror starts: before it the envelope follows the usual rules
-        mirrored: h.mirror !== null && month >= h.mirror.from,
+        mirrored: inert(h, month),
       };
     }),
   }));
