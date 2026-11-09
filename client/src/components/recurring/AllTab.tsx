@@ -3,6 +3,7 @@ import { format, subDays, addDays } from 'date-fns';
 import { Search, Sparkles, Clock, Plus, Repeat } from 'lucide-react';
 import { useAccounts } from '../../hooks/useAccounts';
 import { usePayees } from '../../hooks/usePayees';
+import { useScheduleCategory } from '../../hooks/useScheduleCategory';
 import {
   useUpdateSchedule,
   useDeleteSchedule,
@@ -11,6 +12,7 @@ import {
   useSkipOccurrence,
 } from '../../hooks/useSchedules';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import NeedsCategoryBadge from './NeedsCategoryBadge';
 import StatusBadge, { statusLabel, type RecurringBadgeStatus } from './StatusBadge';
 import RowMenu, { type RowMenuItem } from '../ui/RowMenu';
 import { useIsPhone } from '../../hooks/useIsPhone';
@@ -95,6 +97,7 @@ export default function AllTab({
 
   const { data: accounts = [] } = useAccounts();
   const { data: payees = [] } = usePayees();
+  const categoryOf = useScheduleCategory();
   const updateSchedule = useUpdateSchedule();
   const deleteSchedule = useDeleteSchedule();
   const markPaid = useMarkOccurrencePaid();
@@ -226,6 +229,8 @@ export default function AllTab({
     );
     const nextDate = r.nextDate ? formatDay(r.nextDate) : '—';
     const frequency = FREQ_LABEL.get(s.recurrenceType) ?? s.recurrenceType;
+    const category = categoryOf(s);
+    const categoryBadge = category.needsCategory ? <NeedsCategoryBadge /> : null;
 
     // Phones: a card. Name and amount on top; payee, account and frequency, then the status
     // and next date
@@ -247,10 +252,11 @@ export default function AllTab({
               {amount}
             </div>
             <p className="text-xs text-text-tertiary truncate mt-0.5">
-              {[frequency, r.payeeName, r.accountName].filter(Boolean).join(' · ')}
+              {[frequency, r.payeeName, r.accountName, category.name].filter(Boolean).join(' · ')}
             </p>
             <div className="mt-1.5 flex items-center gap-2 text-xs text-text-secondary">
               <StatusBadge status={r.status} />
+              {categoryBadge}
               {r.nextDate && <span className="tabular-nums">Next {nextDate}</span>}
             </div>
           </div>
@@ -267,13 +273,19 @@ export default function AllTab({
         onClick={() => onEdit(s)}
         className={`${GRID} px-5 py-2.5 border-b border-border-light hover:bg-hover transition-colors cursor-pointer`}
       >
-        <span
-          className={`flex items-center gap-1.5 min-w-0 text-sm font-medium ${muted ? 'text-text-tertiary' : 'text-text'}`}
-          title={s.name}
-        >
-          {badge}
-          <span className="truncate">{s.name}</span>
-        </span>
+        <div className="min-w-0">
+          <span
+            className={`flex items-center gap-1.5 min-w-0 text-sm font-medium ${muted ? 'text-text-tertiary' : 'text-text'}`}
+            title={s.name}
+          >
+            {badge}
+            <span className="truncate">{s.name}</span>
+            {categoryBadge}
+          </span>
+          {category.name && (
+            <span className="block text-xs text-text-tertiary truncate">{category.name}</span>
+          )}
+        </div>
         <span className="text-sm text-text-secondary truncate">{r.payeeName || '—'}</span>
         <span className="text-sm text-text-secondary truncate">{r.accountName || '—'}</span>
         <span className="text-sm text-text-secondary tabular-nums">{nextDate}</span>

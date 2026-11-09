@@ -28,6 +28,16 @@ overspending) and that no money figure is ever fractional.
   inflow is ready to assign; uncategorised spending leaves it at once and is listed for
   review.
 
+**The cash breakdown.** `fundingState` also returns `breakdown`, naming the parts without changing
+any figure: `cash` (the positive side of resources) and `otherDebt` (overdrafts and unreviewed
+card debt it nets off), so `cash + otherDebt = resources`; `cardDebt` (`total`, `reserved`,
+`unreserved`) for cards enrolled in card payments, whose debt resources leave out, with
+`unreserved` the payment shortfall; `linked` (each linked envelope with its account's name and
+amount) and `everydayEnvelopes`, which add up to `envelopes`; and `setAside` (later assignments,
+holds and separate pools). So `cash + otherDebt − envelopes − setAside = unassigned`. Budget's
+"How this is worked out" and Review show it with `CashBridge`. Ready to assign does not subtract
+unreserved card debt; the bridge shows it apart, with net cash `resources − unreserved`.
+
 ### The overspending rule
 
 An envelope that ends a month below zero starts the next month at zero (`rollOver`).
@@ -146,8 +156,12 @@ category's own activity is `transferred` (`mirrorSteps` and `currentTransferred`
 - Resources include the account, and envelopes hold the same amount, so a transfer in moves money
   from Ready to Assign to the envelope and nothing else does. An assignment would change nothing,
   so `refuseLinked` (`budgetMoves.ts`) refuses assignments and Move money for a linked envelope,
-  in every writer that goes through `fundedWrite`; auto-assign and **Fund targets** leave it out.
-  Earlier stored assignments stay as history and are balanced out.
+  in every writer that goes through `fundedWrite` and in `fundingPlan.addAssigned` (payday plans,
+  suggestions); auto-assign, **Fund targets** and payday rules leave it out. Earlier stored
+  assignments stay as history and are balanced out; a later month's leftover assignment reserves
+  nothing (`promised`, `carryInto`, `cashDeficitInto` skip it) and may be cleared to zero.
+- A reviewed card's refund adjustment to a linked envelope is ignored (`budgetService.assessment`):
+  the mirror already settled it.
 - Targets, goals and the annual overview count `transferred` with `budgeted`; the Budget page
   shows "Move A$X more to <account>" for a linked envelope's target.
 - One envelope per account (a unique index), only expense envelopes (not income or card

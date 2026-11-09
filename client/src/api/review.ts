@@ -70,6 +70,9 @@ export interface BufferState {
   };
   runway: {
     resources: number | null;
+    breakdown: import('../types').CashBreakdown;
+    envelopes: number;
+    readyToAssign: number;
     restricted: number;
     restrictedRows: {
       categoryId: string;
@@ -115,6 +118,22 @@ export interface GuideState {
     bills: { id: string; name: string; date: string; amount: number; estimated: boolean }[];
   }[];
   billsComplete: boolean;
+  /** How sure the bills-before-income step is (server reviewService); `message` is its wording */
+  coverage: {
+    kind: 'incomplete' | 'unconfirmed' | 'short' | 'none-due' | 'all-funded';
+    needCategory: number;
+    householdPool: number;
+    message: string;
+    householdMessage: string | null;
+  };
+  /** Bills in the window the figures leave out: no category, or a household pool pays them */
+  excludedBills: {
+    scheduleId: string;
+    name: string;
+    expectedDate: string;
+    amount: number;
+    reason: 'no-category' | 'household-pool' | 'outside-budget';
+  }[];
   irregular: { categoryId: string; name: string; hasTarget: boolean }[];
 }
 

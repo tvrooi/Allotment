@@ -191,4 +191,50 @@ test.describe('recurring', () => {
       source: 'detected',
     });
   });
+  test('shows which bills need a category and lets the owner choose one inline', async ({
+    page,
+    api,
+  }) => {
+    const checking = await api.createAccount('Checking', 500_000);
+    const group = await api.call('POST', '/categories/groups', { name: 'Home', isIncome: 0 });
+    const power = await api.call('POST', '/categories', { name: 'Power', groupId: group.id });
+    await createRent(api, checking.id);
+    const gym = await createRent(api, checking.id, { name: 'Gym', amount: -4_500 });
+    await api.call('PUT', `/schedules/${gym.id}`, { categoryId: null });
+    await api.call('POST', '/schedules', {
+      name: 'Electricity',
+      amount: -12_000,
+      recurrenceType: 'monthly',
+      startDate: isoDay(3),
+      accountId: checking.id,
+      categoryId: power.id,
+    });
+
+    await openAll(page);
+    // Rent and Gym have no category; Electricity shows its category name instead
+    await expect(page.getByText('Needs category', { exact: true })).toHaveCount(2);
+    await expect(page.getByText('Power', { exact: true })).toBeVisible();
+
+    // The filtered view lists only bills with no category
+    await open(page, '/recurring?filter=needs-category');
+    const list = page.getByRole('list', { name: 'Recurring bills that need a category' });
+    await expect(list.getByRole('listitem')).toHaveCount(2);
+    await expect(list).not.toContainText('Electricity');
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+
+    const before = await api.call<any>('GET', `/schedules/${gym.id}`);
+    await list
+      .getByRole('listitem')
+      .filter({ hasText: 'Gym' })
+      .getByRole('button', { name: /^Category:/ })
+      .click();
+    await page.getByRole('button', { name: 'Power', exact: true }).click();
+    await expect(list.getByRole('listitem')).toHaveCount(1);
+    const after = await api.call<any>('GET', `/schedules/${gym.id}`);
+    expect(after).toMatchObject({ categoryId: power.id, amount: before.amount });
+    expect(after.amountConfirmedAt).toBe(before.amountConfirmedAt);
+  });
 });

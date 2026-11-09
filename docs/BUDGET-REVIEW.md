@@ -44,7 +44,17 @@ disagree with the budget):
 2. **Cover what is due before your next income** — unpaid scheduled bills (the payday
    planner's bill coverage) up to the next expected income: the next payday of any active plan,
    or the next pending scheduled income, whichever is earlier. With neither, the next 14 days.
-   Expected pay is only a date: it never becomes money to assign.
+   Expected pay is only a date: it never becomes money to assign. The window is up to, but not
+   including, that date: a bill due on the next income day counts towards the next pay, and the
+   step says so. The step reports one of three outcomes and the horizon date:
+   _No tracked bills due before {date}_, _All tracked bills before {date} are funded_, or
+   _Can't confirm coverage: N bills need categories_ (never done). A personal bill with no
+   category can't be matched to an envelope, so it is listed and links to
+   `/recurring?filter=needs-category`, where a category is chosen on the row (only `categoryId`
+   is sent, so the confirmed amount is untouched). Bills a household pool account pays are listed
+   as information (_Household pool bills are handled in the household_) and never block done.
+   `guideState` returns this as `coverage` and `excludedBills`; the figures come from
+   `billCoverageDetail` (payday), whose `excluded` list carries each bill's reason.
 3. **Assign the money you already have** — unassigned today; attention when over-assigned or
    when rates are missing.
 4. **Prepare for irregular expenses** — non-monthly categories and categories with quarterly,
@@ -61,15 +71,19 @@ what its targets still need, and what is unresolved this month. Next month's tar
 from today's availability, as if nothing more is spent or assigned this month; overspending
 carries into it as it does in the budget.
 
-**Cash runway** (optional) is shown with its assumptions:
+**Cash coverage with no income** (optional, the runway) is shown with its assumptions. It assumes no
+income arrives and still includes money assigned to everyday envelopes:
 
-- `Cash after debts` is the shared service's resources: personal, on-budget checking, savings,
-  cash and card accounts. Unreviewed debt nets against cash. Investment, retirement, property and
+- `Cash in your budget accounts` is the shared service's resources: personal, on-budget checking,
+  savings, cash and card accounts. Unreviewed debt and overdrafts net against cash; debt on a card
+  enrolled in card payments does not (only its positive balance counts), so this is cash before
+  that debt. The response's `breakdown` names the parts (see ENVELOPE-FUNDING.md). Investment, retirement, property and
   off-budget accounts contribute nothing, so retirement assets never extend the runway.
 - **Restricted** money is excluded: balances (and later assignments) of categories with a
   _balance by date_ or _recurring bill_ target, and card payment reserves. Reviewed card debt
   without a payment reserve is subtracted too, so borrowing never looks like saving.
-- `Unrestricted` = cash after debts − restricted − card debt without a reserve.
+- `No-income cash coverage` (API field `unrestricted`) = cash in budget accounts − restricted − card
+  debt without a reserve.
 - Spending rate: net spending (refunds reduce it) over the last three complete calendar months,
   excluding restricted categories; uncategorised debits are included. Runway days =
   unrestricted ÷ daily rate. No income is assumed.

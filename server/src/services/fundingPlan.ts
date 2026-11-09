@@ -8,7 +8,7 @@ import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import { budgetMonths } from '../db/schema.js';
 import { fundingRevision, fundingState } from './budgetService.js';
-import { BudgetError } from './budgetMoves.js';
+import { BudgetError, refuseLinked } from './budgetMoves.js';
 import { todayIso } from './mainAmountService.js';
 
 export type PlannedRow<T> = T & { proposed: number; shortfall: number };
@@ -66,6 +66,8 @@ export function planFunding<T extends { categoryId: string; need: number }>(
  * uses; callers run it inside fundedWrite (or their own guarded transaction).
  */
 export function addAssigned(month: string, categoryId: string, amount: number) {
+  // An envelope linked to an account mirrors it: payday plans and suggestions can't fund it
+  if (amount > 0) refuseLinked([categoryId]);
   const existing = db
     .select()
     .from(budgetMonths)

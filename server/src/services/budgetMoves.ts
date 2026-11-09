@@ -252,7 +252,10 @@ export function fundedWrite(action: () => void) {
       (k) => before.get(k)?.budgeted !== after.get(k)?.budgeted,
     );
     if (!changed.length) return;
-    refuseLinked([...new Set(changed.map((k) => k.split('|')[1]))]);
+    // Clearing a leftover assignment to a linked envelope is allowed; anything else is refused
+    refuseLinked([
+      ...new Set(changed.filter((k) => after.get(k)?.budgeted).map((k) => k.split('|')[1])),
+    ]);
     const today = todayIso();
     const current = today.slice(0, 7);
     // Every past month from the earliest change (activity differs each month), this month and

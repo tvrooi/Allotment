@@ -1,6 +1,6 @@
 import { addMonthsTo, monthEnd, perPeriodNeed } from './fundingMath.js';
 import { resilienceState } from './resilienceService.js';
-import { and, eq, gt, inArray, isNotNull, lte, notInArray, sql } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNotNull, lte, notInArray, or, sql } from 'drizzle-orm';
 import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { db } from '../db/index.js';
 import {
@@ -11,7 +11,7 @@ import {
   householdBills,
   householdEvents,
   householdGroups,
-  householdPoolAccounts,
+  householdRecurringBills,
   paydayPlans,
   scheduleOccurrences,
   schedules,
@@ -24,9 +24,10 @@ import { convertAmount, currencyContext, todayIso } from './mainAmountService.js
 import { UNCATEGORISED_WARN_SHARE, uncategorisedSummary } from './importTidy.js';
 import { loadPlan, paydays, paydaysInYear } from './paydayService.js';
 import type { PaydayConfig } from './paydayConfig.js';
-import { computeOccurrenceDates, type RecurrenceDefinition } from '../utils/recurrence.js';
 import { possiblyEndedIds } from './scheduleActivity.js';
 import type { ForecastRequest, ForecastScenario } from './forecastConfig.js';
+import { pendingOccurrences } from './scheduleService.js';
+import { allPoolAccountIds, sharedRecurringDue } from './householdService.js';
 import { incomeCategoryIds, isPersonalIncomeSchedule, scheduleScopes } from './scheduleScope.js';
 
 // Read-only projection. Every input comes from the same definitions as the budget and
@@ -157,34 +158,11 @@ function scheduledEvents(
       continue;
     }
     const account = accountRows.find((a) => a.id === schedule.accountId);
-    const stored = db
-      .select()
-      .from(scheduleOccurrences)
-      .where(eq(scheduleOccurrences.scheduleId, schedule.id))
-      .all();
-    const def = {
-      ...schedule,
-      recurrenceRule: JSON.parse(schedule.recurrenceRule),
-    } as RecurrenceDefinition;
-    const candidates = new Map(
-      computeOccurrenceDates(def, day(today, -31), day(end, 3)).map((p) => [
-        p.scheduledDate,
-        {
-          ...p,
-          status: 'pending',
-          expectedAmount: schedule.amount,
-          matchedTransactionId: null as string | null,
-        },
-      ]),
-    );
-    for (const occurrence of stored) candidates.set(occurrence.scheduledDate, occurrence);
-    for (const [scheduledDate, occurrence] of candidates) {
-      if (occurrence.status !== 'pending' || occurrence.matchedTransactionId) continue;
+    for (const occurrence of pendingOccurrences(schedule, day(today, -31), end)) {
       if (occurrence.expectedDate < today) {
-        if (occurrence.expectedDate >= day(today, -31)) overdue++;
+        overdue++;
         continue;
       }
-      if (occurrence.expectedDate > end) continue;
       const converted = convertAmount(
         sign * occurrence.expectedAmount,
         (fromPersonal
@@ -202,7 +180,7 @@ function scheduledEvents(
         ? Number(floorDiv(BigInt(converted) * BigInt(incomePercent), 100n))
         : converted;
       events.push({
-        id: `schedule:${schedule.id}:${scheduledDate}`,
+        id: `schedule:${schedule.id}:${occurrence.scheduledDate}`,
         date: occurrence.expectedDate,
         kind: isIncome ? 'income' : amount < 0 ? 'bill' : 'scheduled',
         description: schedule.name,
@@ -252,43 +230,35 @@ function paydayEvents(
 }
 
 /** Pool accounts receiving scheduled personal transfers already forecast as outflows. */
-function scheduledHouseholdContributions() {
-  const pools = new Set([
-    ...db
-      .select({ accountId: householdGroups.accountId })
-      .from(householdGroups)
-      .where(isNotNull(householdGroups.accountId))
-      .all()
-      .map((g) => g.accountId!),
-    ...db
-      .select({ accountId: householdPoolAccounts.accountId })
-      .from(householdPoolAccounts)
-      .all()
-      .map((p) => p.accountId),
-  ]);
+function contributionPools() {
+  const pools = allPoolAccountIds();
   const personal = personalAccountIds();
-  return db
-    .select()
-    .from(schedules)
-    .where(eq(schedules.status, 'active'))
-    .all()
-    .some(
-      (s) =>
-        (s.accountId &&
-          personal.has(s.accountId) &&
-          s.transferAccountId &&
-          pools.has(s.transferAccountId)) ||
-        (s.transferAccountId &&
-          personal.has(s.transferAccountId) &&
-          s.accountId &&
-          pools.has(s.accountId)),
-    );
+  const funded = new Set<string>();
+  for (const s of db.select().from(schedules).where(eq(schedules.status, 'active')).all()) {
+    if (s.accountId && s.transferAccountId) {
+      if (personal.has(s.accountId) && pools.has(s.transferAccountId))
+        funded.add(s.transferAccountId);
+      if (personal.has(s.transferAccountId) && pools.has(s.accountId)) funded.add(s.accountId);
+    }
+  }
+  return funded;
 }
 
-/** Your unreserved share of unpaid household bills, due on the bill date. The pool's own
- * cash is outside the personal budget, so only the personal contribution is forecast. */
+const scheduledHouseholdContributions = () => contributionPools().size > 0;
+
+/**
+ * What a household's bills ask of the owner's cash (decision: count the cash you pay out,
+ * otherwise your share). A shared recurring bill paid from a personal account is already
+ * forecast in full by scheduledEvents, so nothing is added for it. One paid from anywhere else
+ * (the pool) adds the owner's share on each date, unless a scheduled transfer already funds
+ * that pool. One-off bills add your unreserved share on the due date, as before. Repayments
+ * from housemates are not forecast.
+ */
 function householdEventsFor(today: string, end: string, warnings: string[]) {
   const budget = currencyContext().budget;
+  const personal = personalAccountIds();
+  const funded = contributionPools();
+  const ended = possiblyEndedIds(today);
   const out: ForecastEvent[] = [];
   for (const group of db.select().from(householdGroups).all()) {
     const bills = db
@@ -305,14 +275,38 @@ function householdEventsFor(today: string, end: string, warnings: string[]) {
         .map((e) => e.billId),
     );
     const due = bills.filter((b) => !paid.has(b.id) && b.dueDate >= today && b.dueDate <= end);
-    if (!due.length) continue;
+    const shared = sharedRecurringDue(group.id, today, end);
+    const recurring = shared.filter(
+      (r) =>
+        !ended.has(r.schedule.id) &&
+        !(r.schedule.accountId && personal.has(r.schedule.accountId)) &&
+        !(r.schedule.accountId && funded.has(r.schedule.accountId)),
+    );
+    if (!due.length && !recurring.length) continue;
     if (budget && group.currency !== budget) {
       warnings.push(
         `${group.name} bills are excluded: the household currency differs from the budget.`,
       );
       continue;
     }
+    // A one-off bill that belongs to a shared recurring item is counted by its dates
+    const sharedIds = new Set(shared.map((r) => r.schedule.id));
+    for (const r of recurring)
+      for (const o of r.occurrences) {
+        const mine = o.shares.find((x) => x.personId === r.selfId)?.amount ?? 0;
+        if (mine <= 0) continue;
+        out.push({
+          id: `household:${r.schedule.id}:${o.date}`,
+          date: o.date,
+          kind: 'household',
+          description: `${r.schedule.name} (your share)`,
+          amount: -mine,
+          categoryId: r.schedule.categoryId,
+          estimated: r.schedule.amountType !== 'exact',
+        });
+      }
     for (const bill of due) {
+      if (bill.scheduleId && sharedIds.has(bill.scheduleId)) continue;
       const covered =
         bill.amount > 0
           ? Number(
@@ -326,7 +320,7 @@ function householdEventsFor(today: string, end: string, warnings: string[]) {
         id: `household:${bill.id}`,
         date: bill.dueDate,
         kind: 'household',
-        description: `${bill.description} (my share)`,
+        description: `${bill.description} (your share)`,
         amount: -outstanding,
         categoryId: null,
         estimated: true,
@@ -337,17 +331,42 @@ function householdEventsFor(today: string, end: string, warnings: string[]) {
 }
 
 /** Net personal variable spending: expense-category budget activity, excluding scheduled
- * payments, generated rows and (when shares are forecast) household-linked payments. */
+ * payments, generated rows and (when household bills are forecast) the payments those
+ * forecasts replace: payments of one-off bills, of a payee a shared recurring bill pays, and
+ * contributions into the pool. Everyday purchases shared with a household stay in the average:
+ * no forecast event stands in for them. */
 function variableSpending(today: string, lookbackDays: number, excludeHousehold: boolean) {
   const from = day(today, 1 - lookbackDays);
   const matched = db
     .select({ id: scheduleOccurrences.matchedTransactionId })
     .from(scheduleOccurrences)
     .where(isNotNull(scheduleOccurrences.matchedTransactionId));
+  // Only households the forecast models: one in another currency is skipped with a warning
+  // (householdEventsFor), so its past payments stay in the average rather than vanish.
+  const budget = currencyContext().budget;
+  const modelled = db
+    .select({ id: householdGroups.id })
+    .from(householdGroups)
+    .where(budget ? eq(householdGroups.currency, budget) : undefined);
+  const sharedBillPayees = db
+    .select({ id: schedules.payeeId })
+    .from(schedules)
+    .innerJoin(householdRecurringBills, eq(householdRecurringBills.scheduleId, schedules.id))
+    .where(and(isNotNull(schedules.payeeId), inArray(householdRecurringBills.groupId, modelled)));
   const linked = db
     .select({ id: householdEvents.transactionId })
     .from(householdEvents)
-    .where(isNotNull(householdEvents.transactionId));
+    .innerJoin(transactions, eq(transactions.id, householdEvents.transactionId))
+    .where(
+      and(
+        inArray(householdEvents.groupId, modelled),
+        or(
+          isNotNull(householdEvents.billId),
+          eq(householdEvents.kind, 'contribution'),
+          inArray(transactions.payeeId, sharedBillPayees),
+        ),
+      ),
+    );
   const expenseCategories = db
     .select({ id: categories.id })
     .from(categories)
@@ -751,7 +770,7 @@ export function buildForecast(request: ForecastRequest) {
       'Bills and other movements are pending, unmatched recurring occurrences and future-dated register entries. Matched payments replace their forecast.',
       'Variable spending is the net daily average of expense-category activity over the lookback, excluding transfers, uncategorized adjustments and scheduled payments.',
       includeHousehold
-        ? 'Household bills add your unreserved personal share on each due date.'
+        ? 'Household bills add your unreserved share on each due date. Shared recurring bills paid from a household account add your share; those you pay from a personal account count in full as scheduled bills.'
         : 'Household bill shares are not added.',
       'Goal contributions are envelope assignments and do not move cash. Growth is credited at month end and starts at zero unless set.',
       ...notes,

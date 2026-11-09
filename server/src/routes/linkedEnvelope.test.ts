@@ -23,6 +23,8 @@ import { errorHandler } from '../middleware/security.js';
 import { budgetGroups, budgetSummary } from '../services/budgetService.js';
 import { BudgetError, fundedWrite, previewMove, READY_TO_ASSIGN } from '../services/budgetMoves.js';
 import { previewAutoAssign } from '../services/autoAssign.js';
+import { createProposal } from '../services/budgetProposals.js';
+import { addAssigned } from '../services/fundingPlan.js';
 import { budgetWithTargets } from '../services/targetService.js';
 import { ratesChanged } from '../services/mainAmountService.js';
 import { categoriesRouter } from './categories.js';
@@ -259,6 +261,47 @@ describe('an envelope linked to an account', () => {
         (c: { categoryId: string }) => c.categoryId,
       ),
     ).not.toContain('rent');
+  });
+
+  it('lets a leftover later assignment reserve nothing, and lets the owner clear it', () => {
+    link('rent', 'rentSaver');
+    transfer('spending', 'rentSaver', '2026-10-04', 82550);
+    // From before the envelope was linked: assigned to December
+    db.insert(budgetMonths)
+      .values({ id: 'dec', month: '2026-12', categoryId: 'rent', budgeted: 50000 })
+      .run();
+    expect(rta('2026-10')).toBe(300000 - 82550);
+    expect(rent('2026-12')).toMatchObject({ budgeted: 50000, transferred: -50000, balance: 82550 });
+    // Clearing it is allowed; raising it is not
+    fundedWrite(() => {
+      db.update(budgetMonths).set({ budgeted: 0 }).where(eq(budgetMonths.id, 'dec')).run();
+    });
+    expect(db.select().from(budgetMonths).all()[0].budgeted).toBe(0);
+    expect(() =>
+      fundedWrite(() => {
+        db.update(budgetMonths).set({ budgeted: 100 }).where(eq(budgetMonths.id, 'dec')).run();
+      }),
+    ).toThrow(BudgetError);
+  });
+
+  it('keeps an assignment from before the account takes effect promised (Codex on #206)', () => {
+    // A saver first effective in December: November's assignment still follows the usual rules
+    db.update(accounts).set({ createdAt: '2026-12-01' }).where(eq(accounts.id, 'rentSaver')).run();
+    link('rent', 'rentSaver');
+    db.insert(budgetMonths)
+      .values({ id: 'nov', month: '2026-11', categoryId: 'rent', budgeted: 10000 })
+      .run();
+    expect(rta('2026-10')).toBe(300000 - 10000);
+    expect(rent('2026-11')).toMatchObject({ budgeted: 10000, transferred: 0, balance: 10000 });
+  });
+
+  it('refuses suggestions and plan writes that would assign to it', () => {
+    link('rent', 'rentSaver');
+    expect(() =>
+      createProposal({ month: '2026-10', rows: [{ categoryId: 'rent', amount: 1000 }] }),
+    ).toThrow(/follows the rentSaver account/);
+    expect(() => fundedWrite(() => addAssigned('2026-10', 'rent', 1000))).toThrow(BudgetError);
+    expect(db.select().from(budgetMonths).all()).toEqual([]);
   });
 
   it('stops counting when unlinked, without rewriting anything', () => {

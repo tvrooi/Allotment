@@ -19,14 +19,23 @@ import {
 import {
   LIQUID_ACCOUNT_TYPES,
   budgetGroups,
-  budgetSummary,
+  budgetSummary as currentBudgetSummary,
   clearBudgetCache,
   fundingRevision,
-  fundingState,
+  fundingState as currentFundingState,
   receivedActivity,
   rollOver,
 } from './budgetService.js';
 import { BudgetError, fundedWrite } from './budgetMoves.js';
+
+// `breakdown` only names the parts of figures the previous engine also produced (see
+// cashBreakdown.test.ts), so these comparisons leave it out
+const withoutBreakdown = <T extends { breakdown: unknown }>(state: T) =>
+  ({ ...state, breakdown: undefined }) as Omit<T, 'breakdown'>;
+const budgetSummary = (...args: Parameters<typeof currentBudgetSummary>) =>
+  withoutBreakdown(currentBudgetSummary(...args));
+const fundingState = (...args: Parameters<typeof currentFundingState>) =>
+  withoutBreakdown(currentFundingState(...args));
 import { calculateCardFunding } from './cardFunding.js';
 import {
   budgetStartDate,

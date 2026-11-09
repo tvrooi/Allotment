@@ -9,6 +9,8 @@ import {
   applyPayday,
   expenseCategories,
   incomeOptions,
+  suggestDeposit,
+  defaultPayday,
   loadPlan,
   PaydayError,
   paydays,
@@ -17,6 +19,9 @@ import {
   validateCategories,
 } from '../services/paydayService.js';
 import { addMonths, format, parseISO } from 'date-fns';
+import { isoDate } from '../utils/validation.js';
+
+const contextQuery = z.object({ scheduledDate: isoDate.optional() });
 
 export const paydayRouter = Router();
 // This router is mounted behind the same session/host/origin guards as the budget.
@@ -73,10 +78,16 @@ paydayRouter.get(
     const today = dateInZone(plan.timeZone);
     const from = format(addMonths(parseISO(today), -1), 'yyyy-MM-dd');
     const to = format(addMonths(parseISO(today), 12), 'yyyy-MM-dd');
+    const list = paydays(plan, from, to);
+    const income = incomeOptions(today);
+    // The panel asks about the payday it shows; with none, the one it opens on.
+    const { scheduledDate } = contextQuery.parse(req.query);
+    const pay = list.find((p) => p.scheduledDate === scheduledDate) ?? defaultPayday(list, today);
     res.json({
       today,
-      paydays: paydays(plan, from, to),
-      income: incomeOptions(today),
+      paydays: list,
+      income,
+      suggestion: pay ? suggestDeposit(plan, income, pay.expectedDate) : null,
       history: db
         .select()
         .from(paydayFundingEvents)

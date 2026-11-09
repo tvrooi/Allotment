@@ -74,7 +74,7 @@ export function Housekeeping() {
                 </li>
               ))}
             </ul>
-            <Link to="/recurring" className="text-brand-700 underline">
+            <Link to="/recurring?filter=needs-category" className="text-brand-700 underline">
               Open Recurring
             </Link>
           </div>

@@ -65,6 +65,57 @@ export function ensureOccurrences(scheduleId: string, throughDate: string): numb
   return created;
 }
 
+/**
+ * A schedule's pending, unmatched occurrences expected from `from` to `to`: those stored, plus
+ * the dates its rule produces beyond what has been stored. The one place the forecast and
+ * Household coverage read upcoming dates, so they cannot disagree about them.
+ */
+export function pendingOccurrences(
+  schedule: typeof schedules.$inferSelect,
+  from: string,
+  to: string,
+): { scheduledDate: string; expectedDate: string; expectedAmount: number }[] {
+  const def = {
+    ...schedule,
+    recurrenceRule: JSON.parse(schedule.recurrenceRule),
+  } as RecurrenceDefinition;
+  const candidates = new Map<
+    string,
+    {
+      scheduledDate: string;
+      expectedDate: string;
+      expectedAmount: number;
+      status: string;
+      matchedTransactionId: string | null;
+    }
+  >(
+    computeOccurrenceDates(def, addDaysIso(from, -3), addDaysIso(to, 3)).map((p) => [
+      p.scheduledDate,
+      {
+        ...p,
+        status: 'pending',
+        expectedAmount: schedule.amount,
+        matchedTransactionId: null,
+      },
+    ]),
+  );
+  for (const o of db
+    .select()
+    .from(scheduleOccurrences)
+    .where(eq(scheduleOccurrences.scheduleId, schedule.id))
+    .all())
+    candidates.set(o.scheduledDate, o);
+  return [...candidates.values()]
+    .filter(
+      (o) =>
+        o.status === 'pending' &&
+        !o.matchedTransactionId &&
+        o.expectedDate >= from &&
+        o.expectedDate <= to,
+    )
+    .sort((a, b) => a.expectedDate.localeCompare(b.expectedDate));
+}
+
 export function ensureOccurrencesForAll(throughDate: string): number {
   const activeSchedules = db
     .select({ id: schedules.id })

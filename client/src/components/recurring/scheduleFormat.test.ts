@@ -3,9 +3,37 @@ import {
   formatScheduleAmount,
   groupOccurrences,
   isIncomeAmount,
+  needsCategory,
   shownInMonth,
 } from './scheduleFormat';
 import type { ScheduleOccurrence, ScheduleScope } from '../../types';
+
+describe('needsCategory', () => {
+  const accounts = [
+    { id: 'cash', isOffBudget: 0, closedAt: null },
+    { id: 'pool', isOffBudget: 0, closedAt: null, householdPool: 'hh' },
+    { id: 'old', isOffBudget: 0, closedAt: '2026-01-01' },
+    { id: 'save', isOffBudget: 0, closedAt: null },
+  ];
+  const bill = (extra = {}) => ({
+    amount: -5000,
+    accountId: 'cash',
+    transferAccountId: null,
+    categoryId: null,
+    ...extra,
+  });
+  it('flags an uncategorised expense from a personal account', () => {
+    expect(needsCategory(bill(), accounts)).toBe(true);
+  });
+  it('leaves out categorised, income, household, closed, personal-transfer and inactive items', () => {
+    expect(needsCategory(bill({ categoryId: 'rent' }), accounts)).toBe(false);
+    expect(needsCategory(bill({ amount: 5000 }), accounts)).toBe(false);
+    expect(needsCategory(bill({ accountId: 'pool' }), accounts)).toBe(false);
+    expect(needsCategory(bill({ accountId: 'old' }), accounts)).toBe(false);
+    expect(needsCategory(bill({ transferAccountId: 'save' }), accounts)).toBe(false);
+    expect(needsCategory(bill({ status: 'paused' }), accounts)).toBe(false);
+  });
+});
 
 const household = (
   role: 'bill' | 'contribution',

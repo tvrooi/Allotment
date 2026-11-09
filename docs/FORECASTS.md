@@ -24,14 +24,28 @@ A day-by-day balance from today to the chosen horizon (30 days to two years):
   occurrence is replaced by its real transaction. Internal transfers between personal accounts
   net to zero. Overdue unmatched occurrences are reported as a warning, not guessed as paid
   or unpaid.
-- **Household shares** add your unreserved personal share of each unpaid household bill on its
-  due date: `personal share − personal share × reserved ÷ bill total`. They are off by default
-  when contributions into a household pool are already scheduled, so a contribution is not
-  counted twice. Household groups in another currency are excluded with a warning.
+- **Household shares** (`includeHousehold`) follow one rule: count the cash you pay out,
+  otherwise your share.
+  - A shared recurring bill paid from one of your personal accounts is already a scheduled bill
+    in full, so household shares add nothing more for it.
+  - One paid from a household account adds your share (its own split, or the household's: a
+    percentage, weight, equal part or fixed amount) on each expected date, labelled
+    "<bill> (your share)".
+  - A one-off household bill adds your unreserved share on its due date,
+    `personal share − personal share × reserved ÷ bill total`, unless its recurring item is
+    already shared (then its dates count).
+  - They are off by default when contributions into a household pool are already scheduled, so a
+    contribution is not counted twice. If you switch them on anyway, shared recurring bills a
+    funded pool pays add nothing (the transfer covers them); one-off bills still add their share.
+  - What others repay you is not forecast. Household groups in another currency are excluded
+    with a warning. Shares come from `sharedRecurringDue` (`services/householdService.ts`), the
+    same occurrences Household coverage reads.
 - **Variable spending** is the net daily average of expense-category budget activity over the
   lookback (28–365 days, or less when history is shorter). Transfers, uncategorized balance
   adjustments, payments matched to schedules, generated rows and (when household shares are
-  forecast) household-linked payments are excluded. Refunds reduce the average. Spending is
+  forecast) the payments those shares replace are excluded: payments of one-off household bills,
+  of a payee a shared recurring bill pays, and your contributions into the pool. Everyday
+  purchases you share with a household stay in the average. Refunds reduce the average. Spending is
   applied with cumulative rounding, so the daily cents add back to the exact average.
 
 The summary shows cash today, the lowest balance before the next payday, the lowest balance in

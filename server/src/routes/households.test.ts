@@ -13,6 +13,8 @@ import {
   payees,
   schedules,
   scheduleOccurrences,
+  categories,
+  categoryGroups,
 } from '../db/schema.js';
 import { transactionsRouter } from './transactions.js';
 import { householdsRouter } from './households.js';
@@ -825,6 +827,16 @@ describe('household attribution', () => {
     expect(await drift()).toBeNull();
     // Editing anything else leaves the confirmation alone
     expect((await put({ notes: 'Price rise from November' })).amountConfirmedAt).toBe(day(0));
+    // Choosing a category from Recurring (?filter=needs-category) sends categoryId alone: the
+    // amount is unchanged, so the confirmation isn't reset
+    db.insert(categoryGroups).values({ id: 'bills-group', name: 'Bills' }).run();
+    db.insert(categories).values({ id: 'power', name: 'Power', groupId: 'bills-group' }).run();
+    const categorised = await put({ categoryId: 'power' });
+    expect(categorised).toMatchObject({
+      categoryId: 'power',
+      amount: -15000,
+      amountConfirmedAt: day(0),
+    });
 
     // A later bill still at the old price is new evidence
     db.insert(transactions)

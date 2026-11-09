@@ -200,18 +200,6 @@ function build(): Ledger {
     catsByGroup.set(c.groupId, list);
   }
 
-  // Positive assignments after each month, for money already promised to later months
-  const expenseGroups = new Set(groups.filter((g) => !g.isIncome).map((g) => g.id));
-  const expenseIds = new Set(cats.filter((c) => expenseGroups.has(c.groupId)).map((c) => c.id));
-  const promised = new Map<string, number>();
-  for (const r of budgetRows)
-    if (expenseIds.has(r.categoryId))
-      promised.set(r.month, (promised.get(r.month) ?? 0) + Math.max(0, r.budgeted));
-  const laterMonths = [...promised.keys()].sort();
-  const laterTotals = new Array<number>(laterMonths.length + 1).fill(0);
-  for (let i = laterMonths.length - 1; i >= 0; i--)
-    laterTotals[i] = laterTotals[i + 1] + promised.get(laterMonths[i])!;
-
   const ctx = currencyContext();
   const received = db
     .select({
@@ -265,12 +253,26 @@ function build(): Ledger {
       : undefined;
     if (!history.expense || !account) continue;
     const effectiveMonth = account.effective.slice(0, 7);
-    history.mirror = {
-      account,
-      from: effectiveMonth > startMonth ? effectiveMonth : startMonth,
-    };
+    const from = effectiveMonth > startMonth ? effectiveMonth : startMonth;
+    // Mirror only once the account is in effect: before that nothing has settled the envelope to
+    // a balance, so every month (later ones included) follows the usual rules
+    if (from > todayIso().slice(0, 7)) continue;
+    history.mirror = { account, from };
     mirrorSteps(history, lastMonth, ctx);
   }
+
+  // Positive assignments after each month, for money already promised to later months
+  const expenseGroups = new Set(groups.filter((g) => !g.isIncome).map((g) => g.id));
+  const expenseIds = new Set(cats.filter((c) => expenseGroups.has(c.groupId)).map((c) => c.id));
+  const promised = new Map<string, number>();
+  // A linked envelope mirrors its account, so an assignment to it promises nothing
+  for (const r of budgetRows)
+    if (expenseIds.has(r.categoryId) && !inert(envelopes.get(r.categoryId), r.month))
+      promised.set(r.month, (promised.get(r.month) ?? 0) + Math.max(0, r.budgeted));
+  const laterMonths = [...promised.keys()].sort();
+  const laterTotals = new Array<number>(laterMonths.length + 1).fill(0);
+  for (let i = laterMonths.length - 1; i >= 0; i--)
+    laterTotals[i] = laterTotals[i + 1] + promised.get(laterMonths[i])!;
 
   const dayRows = db
     .select({
@@ -413,6 +415,15 @@ function currentActivity(l: Ledger, h: CategoryHistory, today: string): number |
     : partialMonth(l, today).activity.get(h.category.id);
 }
 
+/**
+ * Whether `month` is one where `h` mirrors its linked account: from the month the mirror starts,
+ * an assignment to it (or a card adjustment) changes nothing, so it promises and carries nothing.
+ * Months before follow the usual rules.
+ */
+function inert(h: CategoryHistory | undefined, month: string): boolean {
+  return !!h?.mirror && month >= h.mirror.from;
+}
+
 /** What carries out of the months before `month`, from the walked steps */
 function carryBefore(h: CategoryHistory, month: string): number {
   const i = lowerBound(h.steps, month, (s) => s.month);
@@ -463,7 +474,7 @@ function monthlyNet(l: Ledger, h: CategoryHistory, month: string, today: string)
     for (const m of h.assignedMonths.slice(
       lowerBound(h.assignedMonths, current + '\u0000', (m) => m),
     ))
-      if (m < month) months.set(m, h.assigned.get(m)!);
+      if (m < month && !inert(h, m)) months.set(m, h.assigned.get(m)!);
   }
   return months;
 }
@@ -477,7 +488,7 @@ function carryInto(l: Ledger, h: CategoryHistory, month: string, today: string):
     lowerBound(h.assignedMonths, current + '\u0000', (m) => m),
   )) {
     if (m >= month) break;
-    carry = settle(carry, h.assigned.get(m)!, h.resets);
+    if (!inert(h, m)) carry = settle(carry, h.assigned.get(m)!, h.resets);
   }
   return carry;
 }
@@ -500,7 +511,7 @@ export function cashDeficitInto(
   let carry = balance;
   let cash = Math.max(0, -balance);
   for (const m of h.assignedMonths) {
-    if (m <= fromMonth) continue;
+    if (m <= fromMonth || inert(h, m)) continue;
     if (m >= month) break;
     carry += h.assigned.get(m)!;
     cash = Math.min(cash, Math.max(0, -carry));
@@ -524,13 +535,16 @@ export function envelopeGroups(l: Ledger, month: string, today: string) {
           : month === current
             ? (currentActivity(l, h, today) ?? 0)
             : 0;
-      // A linked envelope: what brings it to its account's balance, like an assignment
+      // A linked envelope: what brings it to its account's balance, like an assignment. In a
+      // later month it cancels any leftover assignment, which changes nothing there
       const transferred =
         month < current
           ? (h.transferred.get(month) ?? 0)
           : month === current
             ? (currentTransferred(l, h, today) ?? 0)
-            : 0;
+            : budgeted && inert(h, month)
+              ? -budgeted
+              : 0;
       const carryOver = carryInto(l, h, month, today);
       return {
         ...h.category,
@@ -542,6 +556,8 @@ export function envelopeGroups(l: Ledger, month: string, today: string) {
         balance: carryOver + budgeted + transferred + activity,
         history: () => monthlyNet(l, h, month, today),
         resets: h.resets,
+        // Only from the month the mirror starts: before it the envelope follows the usual rules
+        mirrored: inert(h, month),
       };
     }),
   }));
@@ -550,6 +566,7 @@ export function envelopeGroups(l: Ledger, month: string, today: string) {
 /** Ready to Assign's account side: what the accounts hold on `asOf` */
 export function resourcesAt(l: Ledger, asOf: string, enrolledCards: Set<string>, liquid: string[]) {
   let resources = 0;
+  let cash = 0;
   let openingFunds = 0;
   let complete = true;
   for (const h of l.accounts) {
@@ -567,9 +584,13 @@ export function resourcesAt(l: Ledger, asOf: string, enrolledCards: Set<string>,
           ? amount
           : Math.min(0, amount);
     resources += kind(value);
+    cash += Math.max(0, kind(value));
     openingFunds += kind(h.opening);
   }
-  return { resources, openingFunds, complete };
+  // `cash` is the positive side of `resources`; `otherDebt` (zero or less) is what it nets off
+  // for overdrawn and unreviewed accounts, so cash + otherDebt = resources. Debt on enrolled
+  // cards is in neither: resources count only an enrolled card's positive balance.
+  return { resources, cash, otherDebt: resources - cash, openingFunds, complete };
 }
 
 /** Received activity up to `asOf`: uncategorized spending, and whether any row awaits a rate */

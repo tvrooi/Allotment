@@ -24,9 +24,11 @@ import {
   paydays,
   paydaysInYear,
   incomeOptions,
+  suggestDeposit,
   billCoverage,
 } from './paydayService.js';
 import { paydayConfigSchema, dateInZone, type PaydayConfig } from './paydayConfig.js';
+import fc from 'fast-check';
 import { createBackup, parseBackup, restoreBackup } from './backupService.js';
 
 const request = { scheduledDate: '2026-10-15', actualPayDate: '2026-10-15', incomeIds: ['pay'] };
@@ -193,6 +195,23 @@ describe('payday funding', () => {
         .map((b) => b.budgeted),
     ).toEqual([20000, 10000]);
     expect(db.select().from(transactions).all()).toEqual(ledger);
+  });
+  it('gives a rule for an envelope linked to an account nothing, so the money flows on', () => {
+    db.insert(accounts).values({ id: 'saver', name: 'Rent saver', type: 'savings' }).run();
+    db.update(categories).set({ linkedAccountId: 'saver' }).where(eq(categories.id, 'rent')).run();
+    plan(config([rule('rent', 'fixed', 10000), rule('food', 'remainder')]));
+    income();
+    const preview = previewPayday('plan', request);
+    expect(preview.rows.find((r) => r.categoryId === 'rent')).toMatchObject({ allocated: 0 });
+    expect(preview.rows.find((r) => r.categoryId === 'food')!.allocated).toBe(preview.available);
+    applyPayday('plan', request, JSON.stringify(preview));
+    expect(
+      db
+        .select()
+        .from(budgetMonths)
+        .all()
+        .map((b) => b.categoryId),
+    ).toEqual(['food']);
   });
   it('funds bills once per category, reuses rollover and excludes paid/skipped/internal/off-budget bills', () => {
     plan(config([]));
@@ -678,5 +697,56 @@ describe('undoing a payday funding', () => {
     expect(() => undoPayday('other', event.id)).toThrow(/not found/);
     undoPayday('plan', event.id);
     expect(() => undoPayday('plan', event.id)).toThrow(/already undone/);
+  });
+});
+
+describe('payday deposit suggestion', () => {
+  // expectedIncome is 300000 and the 2026-10-15 payday is the one being asked about
+  const suggest = () => {
+    const c = config();
+    return suggestDeposit(c, incomeOptions('2026-10-21'), '2026-10-15');
+  };
+  it('suggests the salary, not the newer interest deposit', () => {
+    income('pay', 290000);
+    income('interest', 12, { date: '2026-10-20' });
+    expect(incomeOptions('2026-10-21').map((r) => r.id)[0]).toBe('interest');
+    expect(suggest()?.id).toBe('pay');
+    expect(suggest()?.reasons.length).toBeGreaterThan(0);
+  });
+  it('suggests nothing when two deposits look like the pay', () => {
+    income('a', 300000);
+    income('b', 295000, { date: '2026-10-16' });
+    expect(suggest()).toBeNull();
+  });
+  it('suggests nothing when the only close amount is outside the payday window', () => {
+    income('old', 300000, { date: '2026-09-01' });
+    expect(suggest()).toBeNull();
+  });
+  it('leaves out deposits into an account an envelope is linked to', () => {
+    income('pay', 300000);
+    db.insert(accounts).values({ id: 'saver', name: 'Saver', type: 'savings' }).run();
+    db.insert(categories)
+      .values({ id: 'env', name: 'Env', groupId: 'expenses', linkedAccountId: 'saver' })
+      .run();
+    income('saved', 300000, { accountId: 'saver' });
+    expect(incomeOptions('2026-10-21').map((r) => r.id)).toEqual(['pay']);
+    expect(suggest()?.id).toBe('pay');
+  });
+  it('never suggests a deposit far below the expected pay', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 84 }),
+        fc.integer({ min: 1000, max: 10_000_000 }),
+        (pct, expectedIncome) => {
+          const amount = Math.floor((expectedIncome * pct) / 100);
+          const found = suggestDeposit(
+            { expectedIncome },
+            [{ id: 'low', date: '2026-10-15', amount }],
+            '2026-10-15',
+          );
+          expect(found).toBeNull();
+        },
+      ),
+    );
   });
 });

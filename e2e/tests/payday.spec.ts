@@ -100,7 +100,7 @@ test('a changed budget requires a refreshed preview', async ({ page, api }) => {
   expect((await api.call('GET', `/budget/${thisMonth()}/summary`)).totalBudgeted).toBe(100000);
 });
 
-test('the newest pay is ticked, a preview needs a deposit, and an empty preview says why', async ({
+test('only the pay that matches the plan is ticked, a preview needs a deposit, and an empty preview says why', async ({
   page,
   api,
 }) => {
@@ -108,10 +108,10 @@ test('the newest pay is ticked, a preview needs a deposit, and an empty preview 
   const salary = await api.category('Paychecks');
   await api.createTransaction({
     accountId: account.id,
-    date: isoDay(-14),
-    amount: 90000,
+    date: isoDay(),
+    amount: 12,
     categoryId: salary.id,
-    payeeName: 'Older pay',
+    payeeName: 'Interest',
   });
   await api.createTransaction({
     accountId: account.id,
@@ -127,10 +127,16 @@ test('the newest pay is ticked, a preview needs a deposit, and an empty preview 
   await page.getByLabel('Expected take-home pay').fill('1000');
   await page.getByRole('button', { name: 'Save payday plan' }).click();
 
-  // The newest deposit starts ticked; the older one does not
+  // The deposit that matches the plan starts ticked and says why; the others sit behind a button
   const newest = page.getByRole('checkbox', { name: /Newest pay/ });
   await expect(newest).toBeChecked();
-  await expect(page.getByRole('checkbox', { name: /Older pay/ })).not.toBeChecked();
+  await expect(page.getByText('Within 15% of the plan')).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: /Interest/ })).toHaveCount(0);
+  const other = page.getByRole('button', { name: 'Choose another deposit' });
+  await expect(other).toHaveAttribute('aria-expanded', 'false');
+  await other.click();
+  await expect(other).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByRole('checkbox', { name: /Interest/ })).not.toBeChecked();
 
   // Unticking is allowed, and previewing with nothing ticked says so instead of showing $0
   await newest.uncheck();
