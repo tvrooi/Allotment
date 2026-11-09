@@ -297,6 +297,18 @@ describe('card payment reserves', () => {
     expect(cat().balance).toBe(0);
     expect(state().unassigned).toBe(before);
   });
+  it('still applies a card refund adjustment in a month before the linked account takes effect', () => {
+    db.update(accounts).set({ startingBalance: -10000 }).where(eq(accounts.id, 'card')).run();
+    setup(0);
+    entry('refund', 10000);
+    const unlinked = { balance: cat().balance, unassigned: state().unassigned };
+    // A saver first effective next month: October follows the usual rules, refund included
+    db.insert(accounts)
+      .values({ id: 'saver', name: 'Saver', type: 'savings', createdAt: '2026-11-01' })
+      .run();
+    db.update(categories).set({ linkedAccountId: 'saver' }).where(eq(categories.id, 'food')).run();
+    expect({ balance: cat().balance, unassigned: state().unassigned }).toEqual(unlinked);
+  });
   it('returns an unreserved payment followed by refund to its original funding position', () => {
     setup();
     entry('1purchase', -8000);

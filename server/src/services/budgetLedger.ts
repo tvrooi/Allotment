@@ -550,7 +550,8 @@ export function envelopeGroups(l: Ledger, month: string, today: string) {
         balance: carryOver + budgeted + transferred + activity,
         history: () => monthlyNet(l, h, month, today),
         resets: h.resets,
-        mirrored: h.mirror !== null,
+        // Only from the month the mirror starts: before it the envelope follows the usual rules
+        mirrored: h.mirror !== null && month >= h.mirror.from,
       };
     }),
   }));
