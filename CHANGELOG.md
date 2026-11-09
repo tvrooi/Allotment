@@ -20,6 +20,7 @@ The Budget page, from the 9 November design critique (docs/critiques/2026-11-09-
 - **Only envelopes that need a decision are pills:** overspent in red, short of a target in amber, with their caption in the same colour. An envelope with money in it is a plain figure. Hover a spending bar to see what it measures.
 - Section headers are in sentence case. The amount you assign is named **Assigned to Rent** (it was "Planned for"). The Move money button says **Cover overspending** only when an envelope is overspent, and **Move between envelopes** otherwise. Phones no longer ask you to tick envelopes in a table they don't have.
 - The category search hint is easier to read, the Review link sits beside its reason, and the amount editor's history shows past spending in the chart colour rather than red.
+- **"Put the rest in…" is the clear next step** under Ready to assign; "Hold money…" follows as the quieter alternative.
 - **A Budget design variant at /budget/plots** shows each envelope as a small plot holding the money still in it, in place of the spending bar: full when untouched, emptying as you spend, dashed when given nothing, red when overspent. `/budget` is unchanged.
 
 ## 0.2.0-up.153

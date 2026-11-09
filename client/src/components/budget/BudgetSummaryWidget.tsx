@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { formatAsOfDay } from '../../utils/dates';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { HoldMoney } from './HoldMoney';
+import { Button } from '../ui/Button';
 import { AlertCircle, ChevronRight } from 'lucide-react';
 
 interface ExpenseBreakdown {
@@ -346,7 +347,6 @@ export function BudgetSummaryWidget({
             <p className="text-xs text-text-secondary">to assign to the bills paid from {p.name}</p>
           </div>
         ))}
-        {showHold && !isPhone && <HoldMoney summary={funding} />}
         {showHold && isPhone && (funding.holdAmount ?? 0) > 0 && (
           <p className="mt-2 text-center text-xs text-text-secondary">
             {formatCurrency(funding.holdAmount ?? 0)} held for next month.
@@ -354,17 +354,18 @@ export function BudgetSummaryWidget({
         )}
         {canPutRest && (
           <div className="relative mt-2 text-center">
-            <button
+            {/* The recommended next step for what is ready: give it all a job */}
+            <Button
               ref={setPickerButton}
-              type="button"
+              size="sm"
+              className="w-full"
               onClick={() => setPicking((o) => !o)}
               disabled={putRest.disabled}
               aria-haspopup="listbox"
               aria-expanded={picking}
-              className="min-h-11 md:min-h-0 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-surface-alt text-text hover:bg-hover disabled:opacity-50"
             >
               Put the rest in…
-            </button>
+            </Button>
             {picking && (
               <CategoryPicker
                 anchor={pickerButton}
@@ -382,6 +383,8 @@ export function BudgetSummaryWidget({
             )}
           </div>
         )}
+        {/* The alternative, quieter: keep some of it for next month */}
+        {showHold && !isPhone && <HoldMoney summary={funding} />}
       </div>
 
       {!!funding?.accountIssues?.length && (
