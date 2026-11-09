@@ -6,18 +6,18 @@ const pay = (date: string, dollars: number, i = 0) => ({
   date,
   amount: Math.round(-dollars * 100),
   payeeId: 'p',
-  payeeName: 'CovaU Energy',
+  payeeName: 'Northwind Power',
   categoryId: 'power',
 });
 
 describe('household bill suggestions', () => {
-  it('reads a power bill about every two months, like the live CovaU payments', () => {
+  it('reads a power bill about every two months', () => {
     const bill = billFromPayments(
       [
-        pay('2026-05-04', 265.53),
-        pay('2026-06-25', 288.89),
-        pay('2026-08-28', 536.92),
-        pay('2026-10-27', 292.48),
+        pay('2026-05-04', 241.1),
+        pay('2026-06-25', 263.4),
+        pay('2026-08-28', 498.75),
+        pay('2026-10-27', 270.2),
       ],
       '2026-11-08',
     );
@@ -25,10 +25,10 @@ describe('household bill suggestions', () => {
       frequency: 'every 2 months',
       count: 4,
       lastDate: '2026-10-27',
-      // Median of the last three: 288.89, 536.92, 292.48
-      amount: 29248,
-      minAmount: 26553,
-      maxAmount: 53692,
+      // Median of the last three: 263.40, 498.75, 270.20
+      amount: 27020,
+      minAmount: 24110,
+      maxAmount: 49875,
       categoryId: 'power',
     });
     expect(bill!.nextDate > '2026-12-15').toBe(true);
@@ -36,8 +36,8 @@ describe('household bill suggestions', () => {
 
   it('reads quarterly water from two payments', () => {
     expect(
-      billFromPayments([pay('2026-07-16', 183.53), pay('2026-10-09', 167.98)], '2026-11-08'),
-    ).toMatchObject({ frequency: 'quarterly', count: 2, amount: 17576 });
+      billFromPayments([pay('2026-07-16', 172.4), pay('2026-10-09', 158.9)], '2026-11-08'),
+    ).toMatchObject({ frequency: 'quarterly', count: 2, amount: 16565 });
   });
 
   it('ignores one payment, irregular payments and a bill that stopped', () => {

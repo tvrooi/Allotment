@@ -7,22 +7,22 @@ const paid = (...amounts: number[]) =>
 
 describe('billDrift', () => {
   it('prompts when the newest payment is outside the tolerance, with the last 3 averaged', () => {
-    // OVO: expected A$150, paid A$107 then A$100 twice
-    expect(billDrift(15000, 'variable', paid(10700, 10000, 10000, 10000))).toEqual({
-      lastPaid: 10700,
+    // Power: expected A$120, paid A$86.50 then A$80 twice
+    expect(billDrift(12000, 'variable', paid(8650, 8000, 8000, 8000))).toEqual({
+      lastPaid: 8650,
       lastDate: '2026-11-09',
-      average: 10233,
+      average: 8217,
       averageOf: 3,
     });
   });
 
   it('stays quiet within the tolerance Recurring matching uses', () => {
-    // Superloop: A$115 expected, A$114 paid: within 10% (approximate) and 25% (variable)
-    expect(billDrift(11500, 'approximate', paid(11400))).toBeNull();
-    expect(billDrift(11500, 'variable', paid(11400))).toBeNull();
+    // Internet: A$99 expected, A$98 paid: within 10% (approximate) and 25% (variable)
+    expect(billDrift(9900, 'approximate', paid(9800))).toBeNull();
+    expect(billDrift(9900, 'variable', paid(9800))).toBeNull();
     // An exact bill prompts on any change
-    expect(billDrift(11500, 'exact', paid(11400))).toMatchObject({ lastPaid: 11400 });
-    expect(billDrift(11500, 'exact', paid(11500))).toBeNull();
+    expect(billDrift(9900, 'exact', paid(9800))).toMatchObject({ lastPaid: 9800 });
+    expect(billDrift(9900, 'exact', paid(9900))).toBeNull();
   });
 
   it('needs a payment, and averages however many there are', () => {

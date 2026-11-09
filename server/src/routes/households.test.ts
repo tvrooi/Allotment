@@ -951,16 +951,16 @@ describe('household attribution', () => {
         payeeName: payee,
       });
     for (const [i, daysAgo] of [190, 128, 66, 4].entries())
-      pay(`power-${i}`, 'CovaU Energy', daysAgo, -26000 - i * 1000);
-    pay('water-0', 'Yarra Valley Water', 115, -18353);
-    pay('water-1', 'Yarra Valley Water', 30, -16798);
+      pay(`power-${i}`, 'Northwind Power', daysAgo, -26000 - i * 1000);
+    pay('water-0', 'Riverbend Water', 115, -17240);
+    pay('water-1', 'Riverbend Water', 30, -15890);
     pay('once', 'Plumber', 20, -45000);
 
     const suggested = (await call(`/${g.group.id}/bill-suggestions`)).data;
     // Soonest due first: power about 57 days away, water about 63
     expect(suggested.map((s: any) => [s.payeeName, s.frequency])).toEqual([
-      ['CovaU Energy', 'every 2 months'],
-      ['Yarra Valley Water', 'quarterly'],
+      ['Northwind Power', 'every 2 months'],
+      ['Riverbend Water', 'quarterly'],
     ]);
     const [power, water] = suggested;
     expect(power).toMatchObject({ count: 4, amount: 28000, accountId: 'sugg-pool' });
@@ -969,12 +969,18 @@ describe('household attribution', () => {
     const left = await call(`/${g.group.id}/bill-suggestions/dismiss`, {
       payeeKey: water.payeeKey,
     });
-    expect(left.data.map((s: any) => s.payeeName)).toEqual(['CovaU Energy']);
+    expect(left.data.map((s: any) => s.payeeName)).toEqual(['Northwind Power']);
+    // A key the backup couldn't restore is refused, and an accepted one survives a backup
+    for (const payeeKey of ['id:', 'name:', 'payee:1', `name:${'x'.repeat(501)}`])
+      expect((await call(`/${g.group.id}/bill-suggestions/dismiss`, { payeeKey })).status).toBe(
+        400,
+      );
+    expect(() => parseBackup(JSON.parse(JSON.stringify(createBackup())))).not.toThrow();
 
     // Added: a variable recurring item from the household account, shared with the household
     const added = await call(`/${g.group.id}/bill-suggestions/add`, { id: power.id });
     expect(added.status).toBe(200);
-    const bill = added.data.recurringBills.find((b: any) => b.name === 'CovaU Energy');
+    const bill = added.data.recurringBills.find((b: any) => b.name === 'Northwind Power');
     expect(bill).toMatchObject({ amountType: 'variable', amount: 28000, paidFromPool: true });
     expect(bill.nextDate > today).toBe(true);
     expect((await call(`/${g.group.id}/bill-suggestions`)).data).toEqual([]);

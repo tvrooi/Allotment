@@ -109,6 +109,7 @@ import { SECURITY_KINDS } from './investmentService.js';
 import { INCOME_KINDS } from './investmentIncome.js';
 import { validRatio } from './splitMath.js';
 import { isCurrencyCode } from '../utils/currencies.js';
+import { PAYEE_KEY } from '../utils/payeeKey.js';
 
 // Full JSON backup of the user's data, and restoring one.
 //
@@ -582,7 +583,7 @@ export function parseBackup(input: unknown): ParsedBackup {
   // household itself is checked by its foreign key on restore. Older backups have none.
   for (const d of result.householdBillDismissals)
     if (
-      !/^(id|name):.{1,500}$/s.test(String(d.payeeKey)) ||
+      !PAYEE_KEY.test(String(d.payeeKey)) ||
       !isoDate.safeParse(String(d.dismissedAt).slice(0, 10)).success
     )
       throw new InvalidBackupError('Invalid household bill dismissal');

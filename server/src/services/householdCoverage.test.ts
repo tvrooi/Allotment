@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import { householdCoverage, type CoverageItem } from './householdCoverage.js';
 
-const members = [{ id: 'me' }, { id: 'juno' }, { id: 'zephyr' }];
+const members = [{ id: 'me' }, { id: 'alex' }, { id: 'sam' }];
 const item = (name: string, date: string, shares: number[]): CoverageItem => ({
   id: name,
   source: 'recurring',
@@ -17,42 +17,42 @@ describe('householdCoverage', () => {
     const coverage = householdCoverage({
       from: '2026-11-08',
       to: '2026-12-08',
-      cash: 17693,
+      cash: 15040,
       due: [
-        item('Rent', '2026-11-19', [165100, 171700, 141200]),
-        item('OVO Energy', '2026-11-28', [5000, 5000, 5000]),
+        item('Rent', '2026-11-19', [140000, 150000, 120000]),
+        item('Power', '2026-11-28', [4000, 4000, 4000]),
         item('Next year', '2026-12-09', [100, 100, 100]),
       ],
       members,
       contributions: [
-        { payerId: 'juno', date: '2026-11-06', amount: 8800 },
-        { payerId: 'juno', date: '2026-10-30', amount: 5000 },
-        { payerId: 'zephyr', date: '2026-11-06', amount: 8800 },
+        { payerId: 'alex', date: '2026-11-06', amount: 7500 },
+        { payerId: 'alex', date: '2026-10-30', amount: 5000 },
+        { payerId: 'sam', date: '2026-11-06', amount: 7500 },
         { payerId: null, date: '2026-11-07', amount: 100 },
       ],
     });
-    expect(coverage.due.map((d) => d.name)).toEqual(['Rent', 'OVO Energy']);
-    expect(coverage.needed).toBe(493000);
-    expect(coverage.covered).toBe(17693);
-    expect(coverage.shortfall).toBe(493000 - 17693);
+    expect(coverage.due.map((d) => d.name)).toEqual(['Rent', 'Power']);
+    expect(coverage.needed).toBe(422000);
+    expect(coverage.covered).toBe(15040);
+    expect(coverage.shortfall).toBe(422000 - 15040);
     expect(coverage.people).toEqual([
-      { personId: 'me', shareDue: 170100, paidIn: 0 },
-      { personId: 'juno', shareDue: 176700, paidIn: 8800 },
-      { personId: 'zephyr', shareDue: 146200, paidIn: 8800 },
+      { personId: 'me', shareDue: 144000, paidIn: 0 },
+      { personId: 'alex', shareDue: 154000, paidIn: 7500 },
+      { personId: 'sam', shareDue: 124000, paidIn: 7500 },
     ]);
   });
 
   it('covers everything when the cash is enough, and nothing when the account is overdrawn', () => {
-    const due = [item('Internet', '2026-11-10', [3800, 3800, 3800])];
+    const due = [item('Internet', '2026-11-10', [3300, 3300, 3300])];
     const base = { from: '2026-11-08', to: '2026-12-08', due, members, contributions: [] };
     expect(householdCoverage({ ...base, cash: 50000 })).toMatchObject({
-      needed: 11400,
-      covered: 11400,
+      needed: 9900,
+      covered: 9900,
       shortfall: 0,
     });
     expect(householdCoverage({ ...base, cash: -500 })).toMatchObject({
       covered: 0,
-      shortfall: 11400,
+      shortfall: 9900,
     });
   });
 

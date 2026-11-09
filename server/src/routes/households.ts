@@ -49,6 +49,7 @@ import {
 } from '../services/householdService.js';
 import { todayIso } from '../services/mainAmountService.js';
 import { logoSchema } from '../utils/logo.js';
+import { payeeKeySchema } from '../utils/payeeKey.js';
 
 export const householdsRouter = Router();
 const money = z.number().int().min(1).max(1e12);
@@ -351,14 +352,7 @@ householdsRouter.post('/:id/bill-suggestions/add', (req, res) => {
   run(res, () => addSuggestedBill(req.params.id, parsed.data.id));
 });
 householdsRouter.post('/:id/bill-suggestions/dismiss', (req, res) => {
-  const parsed = z
-    .object({
-      payeeKey: z
-        .string()
-        .regex(/^(id|name):/)
-        .max(520),
-    })
-    .safeParse(req.body);
+  const parsed = z.object({ payeeKey: payeeKeySchema }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   run(res, () => {
     dismissSuggestedBill(req.params.id, parsed.data.payeeKey);

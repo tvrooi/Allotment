@@ -36,7 +36,7 @@ only the page reverses them.
 
 With a household account, **Bills coverage** sits at the top of the page, like the dial in Up's
 Essentials. It compares what the household accounts hold now with the bills they will pay in the
-next 30 days (`COVERAGE_DAYS`): "A$176 of A$4,930 needed by 8 Dec", a meter, and what is still to
+next 30 days (`COVERAGE_DAYS`): "A$150 of A$1,320 needed by 8 Dec", a meter, and what is still to
 be paid in. The bills it counts are:
 
 - every expected date of a shared recurring bill paid from a household account
@@ -177,7 +177,7 @@ older backups restore without them.
 
 Each recurring bill is a tile with its due date in words ("Due in 3 days", "Overdue since …"). When
 its newest payment is outside the schedule's tolerance of the expected amount, the tile says
-**amount changed** and offers **Update to A$107** or **Use the average of the last 3**
+**amount changed** and offers **Update to** the last amount or **Use the average of the last 3**
 (`services/billDrift.ts`, the tolerance from `matchingEngine.ts`: exact 0%, approximate 10%,
 variable 25%). Nothing changes without that click. **Edit amount** sets the expected amount and how
 it varies. Both save the schedule through `PUT /api/schedules/:id`, with Undo, so Recurring and the

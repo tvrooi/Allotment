@@ -998,7 +998,7 @@ test('a gauge shows whether the household account covers the next 30 days of bil
     new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   const schedule = await api.call('POST', '/schedules', {
     name: 'Internet',
-    amount: -11400,
+    amount: -10500,
     recurrenceType: 'monthly',
     recurrenceRule: { type: 'monthly', interval: 1, anchorDay: Number(day(3).slice(8)) },
     startDate: day(3),
@@ -1008,7 +1008,7 @@ test('a gauge shows whether the household account covers the next 30 days of bil
     name: 'Flat',
     currency: 'AUD',
     accountId: pool.id,
-    people: ['Me', 'Juno', 'Zephyr'],
+    people: ['Me', 'Alex', 'Sam'],
     selfIndex: 0,
   });
   await api.call('POST', `/households/${group.group.id}/recurring-bills`, {
@@ -1018,14 +1018,14 @@ test('a gauge shows whether the household account covers the next 30 days of bil
   const gauge = page.getByRole('region', { name: 'Bills coverage' });
   await expect(gauge.getByRole('meter', { name: 'Bills covered' })).toHaveAttribute(
     'aria-valuenow',
-    '88',
+    '95',
   );
-  await expect(gauge).toContainText(/A\$100\s*of A\$114 needed by/);
-  await expect(gauge).toContainText('A$14 still to be paid in');
-  await expect(gauge.getByRole('listitem').filter({ hasText: 'Internet' })).toContainText('114');
+  await expect(gauge).toContainText(/A\$100\s*of A\$105 needed by/);
+  await expect(gauge).toContainText('A$5 still to be paid in');
+  await expect(gauge.getByRole('listitem').filter({ hasText: 'Internet' })).toContainText('105');
   await expect(
     gauge.getByRole('list', { name: "Each person's part" }).getByRole('listitem').nth(1),
-  ).toContainText(/Juno.*A\$38 of these bills · paid in A\$0/);
+  ).toContainText(/Alex.*A\$35 of these bills · paid in A\$0/);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
@@ -1041,21 +1041,21 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
     new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   let payeeId = '';
   for (const [offset, amount] of [
-    [-70, -10000],
-    [-40, -10000],
-    [-10, -10700],
+    [-70, -8000],
+    [-40, -8000],
+    [-10, -8650],
   ] as const) {
     const paid = await api.createTransaction({
       accountId: account.id,
       date: day(offset),
       amount,
-      payeeName: 'OVO Energy',
+      payeeName: 'Brightside Energy',
     });
     payeeId = paid.payeeId;
   }
   const schedule = await api.call('POST', '/schedules', {
-    name: 'Electricity (OVO)',
-    amount: -15000,
+    name: 'Electricity (Brightside)',
+    amount: -12000,
     amountType: 'variable',
     recurrenceType: 'monthly',
     recurrenceRule: { type: 'monthly', interval: 1, anchorDay: Number(day(20).slice(8)) },
@@ -1067,7 +1067,7 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
     name: 'Flat',
     currency: 'AUD',
     accountId: null,
-    people: ['Me', 'Juno', 'Zephyr'],
+    people: ['Me', 'Alex', 'Sam'],
     selfIndex: 0,
   });
   await api.call('POST', `/households/${group.group.id}/recurring-bills`, {
@@ -1076,26 +1076,26 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
   await open(page, '/household');
   const tile = page
     .getByRole('region', { name: 'Recurring bills' })
-    .getByRole('listitem', { name: 'Electricity (OVO)' });
+    .getByRole('listitem', { name: 'Electricity (Brightside)' });
   await expect(tile).toContainText('amount changed');
-  await expect(tile).toContainText('Last paid A$107');
-  await tile.getByText(/Last 3 payments: A\$307/).click();
-  await expect(tile.getByRole('listitem').first()).toContainText('107');
-  await tile.getByRole('button', { name: 'Update to A$107' }).click();
+  await expect(tile).toContainText('Last paid A$86.50');
+  await tile.getByText(/Last 3 payments: A\$246\.50/).click();
+  await expect(tile.getByRole('listitem').first()).toContainText('86.50');
+  await tile.getByRole('button', { name: 'Update to A$86.50' }).click();
   await expect(tile).not.toContainText('amount changed');
   await expect
     .poll(async () => (await api.call('GET', `/schedules/${schedule.id}`)).amount)
-    .toBe(-10700);
+    .toBe(-8650);
 
-  await tile.getByRole('button', { name: 'Edit amount of Electricity (OVO)' }).click();
-  const form = tile.getByRole('form', { name: 'Edit Electricity (OVO)' });
-  await typeAmount(form.getByLabel('Expected amount'), '112.50');
+  await tile.getByRole('button', { name: 'Edit amount of Electricity (Brightside)' }).click();
+  const form = tile.getByRole('form', { name: 'Edit Electricity (Brightside)' });
+  await typeAmount(form.getByLabel('Expected amount'), '105.00');
   await form.getByRole('button', { name: 'Save' }).click();
-  await expect(tile).toContainText('A$112.50');
+  await expect(tile).toContainText('A$105');
   await expect
     .poll(async () => (await api.call('GET', `/schedules/${schedule.id}`)).amount)
-    .toBe(-11250);
-  await expect(tile.getByText(/Juno\s*A\$37\.50/)).toBeVisible();
+    .toBe(-10500);
+  await expect(tile.getByText(/Alex\s*A\$35/)).toBeVisible();
 });
 
 test('suggests bills the household account pays, to add or dismiss', async ({ page, api }) => {
@@ -1103,48 +1103,48 @@ test('suggests bills the household account pays, to add or dismiss', async ({ pa
   const day = (offset: number) =>
     new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   for (const [offset, amount] of [
-    [-190, -26553],
-    [-128, -28889],
-    [-66, -53692],
-    [-4, -29248],
+    [-190, -24110],
+    [-128, -26340],
+    [-66, -49875],
+    [-4, -27020],
   ] as const)
     await api.createTransaction({
       accountId: pool.id,
       date: day(offset),
       amount,
-      payeeName: 'CovaU Energy',
+      payeeName: 'Northwind Power',
     });
   for (const [offset, amount] of [
-    [-115, -18353],
-    [-30, -16798],
+    [-115, -17240],
+    [-30, -15890],
   ] as const)
     await api.createTransaction({
       accountId: pool.id,
       date: day(offset),
       amount,
-      payeeName: 'Yarra Valley Water',
+      payeeName: 'Riverbend Water',
     });
   await api.call('POST', '/households', {
     name: 'Flat',
     currency: 'AUD',
     accountId: pool.id,
-    people: ['Me', 'Juno', 'Zephyr'],
+    people: ['Me', 'Alex', 'Sam'],
     selfIndex: 0,
   });
   await open(page, '/household');
   const suggestions = page.getByRole('list', { name: 'Looks like a bill' });
-  const water = suggestions.getByRole('listitem', { name: 'Yarra Valley Water' });
+  const water = suggestions.getByRole('listitem', { name: 'Riverbend Water' });
   await expect(water).toContainText('quarterly · 2 payments');
   await water.getByRole('button', { name: 'Not a bill' }).click();
   await expect(water).toHaveCount(0);
 
-  const power = suggestions.getByRole('listitem', { name: 'CovaU Energy' });
-  await expect(power).toContainText('every 2 months · 4 payments, A$265.53–A$536.92');
+  const power = suggestions.getByRole('listitem', { name: 'Northwind Power' });
+  await expect(power).toContainText('every 2 months · 4 payments, A$241.10–A$498.75');
   await power.getByRole('button', { name: 'Add as household bill' }).click();
   const tile = page
     .getByRole('region', { name: 'Recurring bills' })
-    .getByRole('listitem', { name: 'CovaU Energy' });
-  await expect(tile).toContainText('A$292.48');
+    .getByRole('listitem', { name: 'Northwind Power' });
+  await expect(tile).toContainText('A$270.20');
   await expect(tile).toContainText('paid from the household account');
   await expect(page.getByRole('list', { name: 'Looks like a bill' })).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });

@@ -41,9 +41,9 @@ Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminder
   monthly to yearly, excluding scheduled payees (`scheduledPayeeKeys`, now shared with discovery);
   **Add as household bill** goes through `createDiscoveredSchedules` and `shareRecurringBills`;
   **Not a bill** goes into `household_bill_dismissals` (migration 0086, backup version 34). After
-  the live update, CovaU Energy and Yarra Valley Water should be suggested; the owner chooses.
-  Live facts behind it: OVO is expected at A$150 but was paid A$100–107; Superloop is A$115 against
-  A$114.
+  the live update, check the live household's suggestions with the owner; nothing is added unless
+  they choose it. Keep live amounts, merchants and people out of tests, docs and PRs (mock data
+  only).
 - **Working from home (up.144, D4a of the Larger features group; server, client, demo and MCP text;
   migration 0085, additive; backup version 33):** built to
   [docs/TAX-CAR-AND-HOME.md](docs/TAX-CAR-AND-HOME.md), whose §10 "As built" lists where it differs.
