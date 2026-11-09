@@ -363,22 +363,132 @@ describe('household shares', () => {
     expect(water).toMatchObject({ date: '2026-10-25', amount: -10000 });
   });
 
-  it('excludes household-linked payments from the variable average', () => {
-    tx('mine', '2026-10-10', -14000, { categoryId: 'house' });
+  const linkedPayment = (id: string, extra = {}, event = {}) => {
+    tx(id, '2026-10-10', -14000, { categoryId: 'house', ...extra });
     db.insert(householdEvents)
       .values({
-        id: 'e',
+        id: `e-${id}`,
         groupId: 'hh',
         kind: 'expense',
         date: '2026-10-10',
-        description: 'Groceries',
+        description: 'Shared',
         amount: 14000,
         payerId: 'me',
-        transactionId: 'mine',
+        transactionId: id,
+        ...event,
       })
       .run();
-    expect(forecast({ lookbackDays: 28 }).spending.total).toBe(28000);
+  };
+
+  it('keeps everyday purchases shared with a household in the variable average', () => {
+    linkedPayment('groceries');
+    // No forecast event stands in for an everyday shared purchase, so it stays in the average
+    expect(forecast({ lookbackDays: 28 }).spending.total).toBe(42000);
     expect(forecast({ lookbackDays: 28, includeHousehold: false }).spending.total).toBe(42000);
+  });
+
+  it('removes only the payments a household forecast replaces from the variable average', () => {
+    // A one-off bill's payment and a pool contribution are replaced by share events
+    linkedPayment('water-paid', {}, { billId: 'water' });
+    linkedPayment('top-up', {}, { kind: 'contribution' });
+    // So is a payment to the payee of a shared recurring bill
+    db.insert(payees).values({ id: 'landlord', name: 'Landlord' }).run();
+    schedule('rent', -20000, '2026-10-28', { accountId: 'joint', payeeId: 'landlord' });
+    db.insert(householdRecurringBills).values({ scheduleId: 'rent', groupId: 'hh' }).run();
+    linkedPayment('rent-paid', { payeeId: 'landlord' });
+    expect(forecast({ lookbackDays: 28 }).spending.total).toBe(28000);
+    expect(forecast({ lookbackDays: 28, includeHousehold: false }).spending.total).toBe(70000);
+  });
+
+  describe('shared recurring bills', () => {
+    const split = JSON.stringify({
+      mode: 'percentage',
+      shares: [
+        { personId: 'me', value: 60 },
+        { personId: 'sam', value: 40 },
+      ],
+    });
+    const share = (accountId: string | null, extra = {}) => {
+      schedule('rent', -200000, '2026-10-28', { accountId, ...extra });
+      db.insert(householdRecurringBills)
+        .values({ scheduleId: 'rent', groupId: 'hh', splitJson: split })
+        .run();
+    };
+    const events = (input = {}) =>
+      forecast({ horizonDays: 70, includeHousehold: true, ...input }).scenarios[0].events.filter(
+        (e) => e.description.startsWith('rent'),
+      );
+
+    it("adds the owner's configured share on each date when the pool pays", () => {
+      share('joint');
+      expect(events().map((e) => [e.date, e.kind, e.description, e.amount])).toEqual([
+        ['2026-10-28', 'household', 'rent (your share)', -120000],
+        ['2026-11-28', 'household', 'rent (your share)', -120000],
+        ['2026-12-28', 'household', 'rent (your share)', -120000],
+      ]);
+    });
+
+    it('uses a fixed amount as the share when the split gives one', () => {
+      share('joint');
+      db.update(householdRecurringBills)
+        .set({
+          splitJson: JSON.stringify({
+            mode: 'exact',
+            shares: [
+              { personId: 'me', value: 70000 },
+              { personId: 'sam', value: 130000 },
+            ],
+          }),
+        })
+        .run();
+      expect(events({ horizonDays: 14 }).map((e) => e.amount)).toEqual([-70000]);
+    });
+
+    it('counts the full amount, once, when a personal account pays', () => {
+      share('cash');
+      expect(events({ horizonDays: 14 }).map((e) => [e.kind, e.amount])).toEqual([
+        ['bill', -200000],
+      ]);
+    });
+
+    it('adds nothing for the bills a scheduled transfer into the pool already funds', () => {
+      share('joint');
+      schedule('top-up', -150000, '2026-10-27', {
+        transferAccountId: 'joint',
+        categoryId: 'house',
+      });
+      expect(events({ horizonDays: 14 }).filter((e) => e.kind === 'household')).toEqual([]);
+      // The one-off bill is unchanged by the scheduled transfer
+      const all = forecast({ horizonDays: 14, includeHousehold: true }).scenarios[0].events;
+      expect(all.filter((e) => e.kind === 'household').map((e) => e.description)).toEqual([
+        'Water (your share)',
+      ]);
+    });
+
+    it('does not count a one-off bill again when its schedule is shared', () => {
+      share('joint');
+      db.insert(householdBills)
+        .values({
+          id: 'rent-bill',
+          groupId: 'hh',
+          description: 'Rent',
+          dueDate: '2026-10-28',
+          amount: 200000,
+          personalShare: 120000,
+          scheduleId: 'rent',
+        })
+        .run();
+      expect(
+        forecast({ horizonDays: 14, includeHousehold: true }).scenarios[0].events.filter(
+          (e) => e.kind === 'household' && e.date === '2026-10-28',
+        ),
+      ).toHaveLength(1);
+    });
+
+    it('adds nothing when household shares are off', () => {
+      share('joint');
+      expect(events({ includeHousehold: false })).toEqual([]);
+    });
   });
 
   it('turns shares off by default when pool contributions are already scheduled', () => {
