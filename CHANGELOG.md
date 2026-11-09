@@ -1,5 +1,13 @@
 # Changes
 
+## 0.2.0-up.149
+
+The last of four Household updates that bring the page closer to Up's Essentials.
+
+- **Bills you haven't set up yet.** With a household account, **Looks like a bill** lists payees the account pays again and again that aren't recurring bills, such as power every two months or water every quarter. It reads a year of payments and shows how often each one comes, the range of amounts, and when the next one is about due.
+- **Add as household bill** makes it a recurring bill shared with the household, with an amount that's allowed to change. Its expected amount is the middle of its last three payments. **Not a bill** stops suggesting it. Nothing is added unless you choose it.
+- Backups are now version 34 and include the payees you said aren't bills. An older backup restores with none.
+
 ## 0.2.0-up.148
 
 Part three of four of the Household updates that bring the page closer to Up's Essentials, and paying ahead for a shared expense (merged while 0.2.0-up.147 was already released, so it ships here).

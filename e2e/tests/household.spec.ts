@@ -1097,3 +1097,58 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
     .toBe(-11250);
   await expect(tile.getByText(/Juno\s*A\$37\.50/)).toBeVisible();
 });
+
+test('suggests bills the household account pays, to add or dismiss', async ({ page, api }) => {
+  const pool = await api.createAccount('2Up Essentials', 500000, 'savings', { currency: 'AUD' });
+  const day = (offset: number) =>
+    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+  for (const [offset, amount] of [
+    [-190, -26553],
+    [-128, -28889],
+    [-66, -53692],
+    [-4, -29248],
+  ] as const)
+    await api.createTransaction({
+      accountId: pool.id,
+      date: day(offset),
+      amount,
+      payeeName: 'CovaU Energy',
+    });
+  for (const [offset, amount] of [
+    [-115, -18353],
+    [-30, -16798],
+  ] as const)
+    await api.createTransaction({
+      accountId: pool.id,
+      date: day(offset),
+      amount,
+      payeeName: 'Yarra Valley Water',
+    });
+  await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: pool.id,
+    people: ['Me', 'Juno', 'Zephyr'],
+    selfIndex: 0,
+  });
+  await open(page, '/household');
+  const suggestions = page.getByRole('list', { name: 'Looks like a bill' });
+  const water = suggestions.getByRole('listitem', { name: 'Yarra Valley Water' });
+  await expect(water).toContainText('quarterly · 2 payments');
+  await water.getByRole('button', { name: 'Not a bill' }).click();
+  await expect(water).toHaveCount(0);
+
+  const power = suggestions.getByRole('listitem', { name: 'CovaU Energy' });
+  await expect(power).toContainText('every 2 months · 4 payments, A$265.53–A$536.92');
+  await power.getByRole('button', { name: 'Add as household bill' }).click();
+  const tile = page
+    .getByRole('region', { name: 'Recurring bills' })
+    .getByRole('listitem', { name: 'CovaU Energy' });
+  await expect(tile).toContainText('A$292.48');
+  await expect(tile).toContainText('paid from the household account');
+  await expect(page.getByRole('list', { name: 'Looks like a bill' })).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+});

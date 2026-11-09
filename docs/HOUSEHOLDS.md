@@ -189,6 +189,22 @@ puts everything back. The tile also lists its payments from
 the last six months, newest first, with their total. Frequency and dates are still changed in
 Recurring.
 
+### Bills the household account pays
+
+With a household account, **Looks like a bill** lists payees the account pays again and again that
+aren't recurring bills yet, like power every two months or water every quarter
+(`services/householdBillSuggestions.ts`). Schedule discovery only finds weekly to monthly habits over
+four months, so this reads a year of money out of the household's own accounts. It skips transfers,
+split parents, and payees a live recurring item already covers (`scheduledPayeeKeys`). It needs two
+payments or more whose median gap reads as monthly, every 2 months, quarterly, every 6 months or
+yearly, and the last payment can be no more than one and a half usual gaps ago. **Add as household
+bill** creates a variable recurring item from the last payment on (its amount the median of the last
+three, linked to that payment, through `createDiscoveredSchedules`) and shares it with the household.
+**Not a bill** stops suggesting that payee for this household (`household_bill_dismissals`, migration
+0086, backup version 34; older backups restore with none). Routes: `GET
+/api/households/:id/bill-suggestions`, `POST …/bill-suggestions/add` with `{ id }`, `POST
+…/bill-suggestions/dismiss` with `{ payeeKey }`. They are owner only, not on the token allowlist.
+
 **One-off bills** (formerly "Bills to reserve for") sit under the recurring bills: a bill that
 doesn't repeat, with money set aside for it from the household account.
 

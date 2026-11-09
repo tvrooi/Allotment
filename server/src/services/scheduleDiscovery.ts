@@ -74,7 +74,7 @@ export interface DiscoveredSchedule {
   payeeId: string | null;
   payeeName: string;
   amount: number;
-  amountType: 'exact' | 'approximate';
+  amountType: 'exact' | 'approximate' | 'variable';
   recurrenceType: RecurrenceType;
   recurrenceRule: RecurrenceRule;
   startDate: string;
@@ -119,7 +119,7 @@ const dayDiff = (a: string, b: string) =>
   Math.abs(differenceInCalendarDays(parseISO(a), parseISO(b)));
 const rankOf = (a: string, b: string) => 1 / (dayDiff(a, b) + 1);
 
-function payeeKeyOf(t: { payeeId: string | null; payeeName: string | null }): string {
+export function payeeKeyOf(t: { payeeId: string | null; payeeName: string | null }): string {
   if (t.payeeId) return `id:${t.payeeId}`;
   const name = t.payeeName?.trim().toLowerCase();
   return name ? `name:${name}` : '';
@@ -381,19 +381,16 @@ export function nearMissReason(
 }
 
 /** Most common category among some transactions */
-function commonCategory(txs: Tx[]): string | null {
+export function commonCategory(txs: { categoryId: string | null }[]): string | null {
   const counts = new Map<string, number>();
   for (const t of txs)
     if (t.categoryId) counts.set(t.categoryId, (counts.get(t.categoryId) ?? 0) + 1);
   return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 }
 
-export function discoverSchedules(): { found: DiscoveredSchedule[]; nearMisses: NearMiss[] } {
-  const openAccounts = db.select().from(accounts).where(isNull(accounts.closedAt)).all();
-  const accountName = new Map(openAccounts.map((a) => [a.id, a.name]));
-
-  // Payees already covered by a live schedule are excluded
-  const scheduledPayees = new Set(
+/** Payee keys (payeeKeyOf) a live schedule already covers, by its payee or by its name */
+export function scheduledPayeeKeys(): Set<string> {
+  return new Set(
     db
       .select({ payeeId: schedules.payeeId, name: schedules.name })
       .from(schedules)
@@ -401,6 +398,14 @@ export function discoverSchedules(): { found: DiscoveredSchedule[]; nearMisses: 
       .all()
       .flatMap((s) => [s.payeeId ? `id:${s.payeeId}` : '', `name:${s.name.trim().toLowerCase()}`]),
   );
+}
+
+export function discoverSchedules(): { found: DiscoveredSchedule[]; nearMisses: NearMiss[] } {
+  const openAccounts = db.select().from(accounts).where(isNull(accounts.closedAt)).all();
+  const accountName = new Map(openAccounts.map((a) => [a.id, a.name]));
+
+  // Payees already covered by a live schedule are excluded
+  const scheduledPayees = scheduledPayeeKeys();
 
   const claimed = matchedTxIds();
   const suggested = suggestedTransferIds();

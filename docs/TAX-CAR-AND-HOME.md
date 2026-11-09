@@ -318,7 +318,8 @@ Every migration also needs:
 - the matching `schema.ts` change, and a `_journal.json` entry with the next `idx`, the same
   `tag` and a `when` one day after the previous one;
 - the new tables in `TABLES` in `services/backupService.ts`, after `depreciatingAssetYears` and
-  before `documentLinks` (parents first): backup version 33 in D4a and 34 in D4b. An older backup
+  before `documentLinks` (parents first): backup version 33 in D4a, and the next free version in D4b (34 went to household bill
+  dismissals in up.149). An older backup
   restores with the new tables empty. Every test that hard-codes the version moves with it
   (`grep -rn "toBe(32)" server/src`);
 - a migration test on a populated database, like `loanDetails.test.ts`.

@@ -1433,6 +1433,20 @@ export const householdRecurringBills = sqliteTable(
   (table) => [index('household_recurring_bills_group').on(table.groupId)],
 );
 
+/** A payee the owner said isn't a household bill: not suggested again (migration 0086) */
+export const householdBillDismissals = sqliteTable(
+  'household_bill_dismissals',
+  {
+    groupId: text('group_id')
+      .notNull()
+      .references(() => householdGroups.id, { onDelete: 'cascade' }),
+    /** payeeKeyOf: `id:<payee id>` or `name:<lower-case name>` */
+    payeeKey: text('payee_key').notNull(),
+    dismissedAt: text('dismissed_at').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.groupId, table.payeeKey] })],
+);
+
 /**
  * What happened in a household (SPL-04): an entry added, changed, removed or settled, and who
  * did it. `event_id` has no foreign key so a removed entry keeps its line; `summary` is the

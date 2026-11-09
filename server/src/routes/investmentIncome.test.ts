@@ -364,7 +364,7 @@ describe('investment income', () => {
 
   it('backs income up and restores it; an older backup restores with none', () => {
     const backup = createBackup() as any;
-    expect(backup.version).toBe(33);
+    expect(backup.version).toBe(34);
     expect(backup.investmentIncome.length).toBeGreaterThanOrEqual(5);
     restoreBackup(parseBackup(JSON.parse(JSON.stringify(backup))));
     expect(taxYear(2025).investmentIncome.dividends.franked).toBeGreaterThan(0);

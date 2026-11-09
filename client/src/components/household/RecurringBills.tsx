@@ -16,6 +16,7 @@ import { formatMoney } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { Button } from '../ui/Button';
 import { BillAmount } from './BillAmount';
+import { BillSuggestions } from './BillSuggestions';
 import { dueLabel } from './dueLabel';
 import { todayIso } from '../../utils/calendarDay';
 
@@ -33,9 +34,11 @@ interface Props {
   currency: string;
   people: { id: string; name: string; isSelf: number }[];
   bills: SharedRecurringBill[];
+  /** A household account to look for bills in ("Looks like a bill") */
+  hasPool?: boolean;
 }
 
-export function RecurringBills({ groupId, currency, people, bills }: Props) {
+export function RecurringBills({ groupId, currency, people, bills, hasPool = false }: Props) {
   const qc = useQueryClient();
   const { data: schedules = [] } = useSchedules();
   const [error, setError] = useState('');
@@ -273,6 +276,8 @@ export function RecurringBills({ groupId, currency, people, bills }: Props) {
           })}
         </ul>
       )}
+
+      {hasPool && <BillSuggestions groupId={groupId} currency={currency} />}
 
       {adding && (
         <div className="mt-3 border-t border-border-light pt-3">

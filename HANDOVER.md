@@ -19,7 +19,7 @@ Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminder
   a repayment exceeds what was owed. `GET /households` returns `people`. Tests:
   `routes/households.test.ts` ("pays ahead…"), e2e `household.spec.ts` ("a payment to someone is
   marked as paid ahead…"). Not built: tying an advance to one expense, or to a recurring bill.
-- **Household as an Essentials-style bills hub (up.147 carried PRs 1 and 2 of 4; up.148 is PR 3):** plan from the
+- **Household as an Essentials-style bills hub (up.147 carried PRs 1 and 2 of 4, up.148 PR 3, up.149 PR 4):** plan from the
   owner's 8 November request, with the decisions the owner made: drift only prompts, the gauge covers
   the next 30 days, both bill sections merge into one hub, and all four parts get built. PR 1 puts
   Recurring bills first and lists household entries newest first, from the newest entry's month and
@@ -35,7 +35,12 @@ Last updated: 8 November 2026 (live app on up.129: D2a email codes, D2b reminder
   due from today in the schedule update's transaction. **One-off bills** (formerly "Bills to
   reserve for") moved under the recurring bills. Not built yet: editing frequency or the next
   date in place (still in Recurring), and the drift prompt on the Recurring page itself.
-  PR 4: suggest missing bills from the household account (live: CovaU Energy, Yarra Valley Water).
+  PR 4 (up.149): **Looks like a bill** (`services/householdBillSuggestions.ts`,
+  `components/household/BillSuggestions.tsx`): a year of money out of the household's accounts,
+  monthly to yearly, excluding scheduled payees (`scheduledPayeeKeys`, now shared with discovery);
+  **Add as household bill** goes through `createDiscoveredSchedules` and `shareRecurringBills`;
+  **Not a bill** goes into `household_bill_dismissals` (migration 0086, backup version 34). After
+  the live update, CovaU Energy and Yarra Valley Water should be suggested; the owner chooses.
   Live facts behind it: OVO is expected at A$150 but was paid A$100–107; Superloop is A$115 against
   A$114.
 - **Working from home (up.144, D4a of the Larger features group; server, client, demo and MCP text;
