@@ -120,6 +120,10 @@ export default defineConfig(({ mode }) => ({
     plugins: () => (mode === 'demo' ? [demoServerModules()] : []),
   },
   server: {
+    // Exact extra hostnames for a hosted dev preview, comma-separated; set outside the repo
+    allowedHosts: process.env.VITE_ALLOWED_HOSTS?.split(',')
+      .map((host) => host.trim())
+      .filter(Boolean),
     // The demo worker imports the server's route files
     fs: { allow: [path.resolve(import.meta.dirname, '..')] },
     proxy:
