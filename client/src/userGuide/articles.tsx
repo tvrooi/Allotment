@@ -322,7 +322,9 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         body: (
           <p>
             Money you have that isn’t in an envelope yet. Assign it until it reaches $0. If it goes
-            below $0, you’ve assigned more than you have: take some back from an envelope.
+            below $0, you’ve assigned more than you have: take some back from an envelope. Under it,{' '}
+            <b>Put $X in an envelope…</b> gives all of it to one envelope you choose; when a target
+            is still short, <b>Fund targets</b> comes first.
           </p>
         ),
       },
@@ -346,6 +348,17 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         ),
       },
       {
+        heading: 'Bills coming that an envelope can’t cover',
+        body: (
+          <p>
+            An envelope that isn’t overspent but has less than the recurring bills still to come is
+            amber, and says how much it is short, such as “$25 short for Food bank”. Select it to
+            see Available <b>After expected bills</b>. Once the bill is paid it stops counting as
+            expected, so it is never taken off twice.
+          </p>
+        ),
+      },
+      {
         heading: 'Spending you’ll be paid back for',
         body: (
           <p>
@@ -364,11 +377,11 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
           <p>
             If you’re living on last month’s pay, or some of this month’s money isn’t for this
             month, choose <b>Hold money…</b> under Ready to assign in the current month and enter
-            how much (on a phone, open <b>Hold money, and how this is worked out</b> first). It
-            leaves Ready to assign now, so the month can reach $0 and read fully budgeted, and it
-            comes back when next month starts. It can’t be given to a category until then, and you
-            can only hold what is ready to assign. <b>Change hold</b> and <b>Release hold</b> put it
-            back. Nothing is spent or moved out of your accounts.
+            how much (on a phone, open <b>Hold money for next month</b> first). It leaves Ready to
+            assign now, so the month can reach $0 and read fully budgeted, and it comes back when
+            next month starts. It can’t be given to a category until then, and you can only hold
+            what is ready to assign. <b>Change hold</b> and <b>Release hold</b> put it back. Nothing
+            is spent or moved out of your accounts.
           </p>
         ),
       },

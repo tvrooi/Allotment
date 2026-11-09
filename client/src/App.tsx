@@ -11,7 +11,6 @@ import { useSafeMode } from './utils/safeMode';
 // Audit F-11: only the three pages people open first are in the main bundle; every other page
 // is its own chunk, loaded when it is first opened. The app shell stays drawn while it loads.
 const DashboardRefinedPage = lazy(() => import('./pages/DashboardRefined'));
-const BudgetPlotsPage = lazy(() => import('./pages/BudgetPlots'));
 const WelcomePage = lazy(() => import('./pages/Welcome'));
 const HouseholdPage = lazy(() => import('./pages/Household'));
 const PaymentPlansPage = lazy(() => import('./pages/PaymentPlans'));
@@ -71,7 +70,6 @@ export default function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/dashboard/refined" element={page(DashboardRefinedPage)} />
             <Route path="/budget" element={<BudgetPage />} />
-            <Route path="/budget/plots" element={page(BudgetPlotsPage)} />
             <Route path="/budget/year" element={page(AnnualBudgetPage)} />
             <Route path="/budget/year/:year" element={page(AnnualBudgetPage)} />
             <Route path="/budget/category/:id" element={page(CategoryDetailPage)} />

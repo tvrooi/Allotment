@@ -167,7 +167,7 @@ const GROUPS: {
     key: 'transport',
     name: 'Getting Around',
     cats: [
-      ['carPayment', 'Car Loan', 'Car', 'fixed'],
+      ['carPayment', 'Car loan', 'Car', 'fixed'],
       ['carInsurance', 'Car Insurance', 'ShieldCheck', 'fixed'],
       ['gas', 'Fuel', 'Fuel', 'flexible'],
       ['transit', 'Public Transport', 'TrainFront', 'flexible'],

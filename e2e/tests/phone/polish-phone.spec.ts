@@ -83,12 +83,15 @@ test.describe('the budget header', () => {
     await expect(page.getByRole('dialog', { name: 'Plan Groceries' })).toBeVisible();
   });
 
-  test('the Ready to assign help does not cover "Put the rest in…"', async ({ page, api }) => {
+  test('the Ready to assign help does not cover "Put $X in an envelope…"', async ({
+    page,
+    api,
+  }) => {
     await api.createAccount('Everyday', 100_000);
     await open(page, '/budget');
     await page.getByRole('button', { name: 'What is Ready to assign?' }).click();
     const note = await box(page.getByRole('note'));
-    const put = await box(page.getByRole('button', { name: 'Put the rest in…' }));
+    const put = await box(page.getByRole('button', { name: /^Put .* in an envelope/ }));
     expect(note.y + note.height).toBeLessThanOrEqual(put.y + 1);
     expect(note.x).toBeGreaterThanOrEqual(0);
     expect(note.x + note.width).toBeLessThanOrEqual(WIDTH);

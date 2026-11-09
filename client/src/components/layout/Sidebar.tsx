@@ -409,7 +409,8 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
             className="shrink-0 inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-2xs text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi"
           >
             <Pin size={12} aria-hidden fill={pinned ? 'currentColor' : 'none'} />
-            {pinned ? 'Pinned' : 'Pin'}
+            {/* Icon only: the words took the room the server status needs to read in full */}
+            <span className="sr-only">{pinned ? 'Pinned' : 'Pin'}</span>
           </button>
         )}
       </div>

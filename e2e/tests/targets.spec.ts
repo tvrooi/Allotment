@@ -40,9 +40,9 @@ for (const phone of [false, true])
       .toBe(30000);
     await expect(page.getByRole('button', { name: /Fund targets/ })).toHaveCount(0);
     if (!phone) {
-      await page.getByRole('button', { name: 'Assign', exact: true }).click();
-      await expect(page.getByRole('menuitem', { name: /Fund targets/ })).toHaveCount(0);
-      await page.keyboard.press('Escape');
+      // Nothing underfunded: no menu, just the one Auto-assign action
+      await expect(page.getByRole('button', { name: 'Assign', exact: true })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Auto-assign…' })).toBeVisible();
     }
     await expect(page.getByText('Target funded').first()).toBeVisible();
   });

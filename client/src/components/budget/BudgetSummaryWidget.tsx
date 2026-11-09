@@ -20,13 +20,9 @@ interface ExpenseBreakdown {
 
 interface BudgetSummaryWidgetProps {
   funding?: BudgetSummary;
-  expenseAvailable?: number;
   toBeBudgeted: number;
-  carryOver: number;
   incomePlanned: number;
   incomeEarned: number;
-  expensesPlanned: number;
-  expensesSpent: number;
   savingsPlanned: number;
   savingsContributed: number;
   fixedExpenses?: ExpenseBreakdown;
@@ -38,6 +34,8 @@ interface BudgetSummaryWidgetProps {
     disabled: boolean;
     onPick: (categoryId: string, categoryName: string) => void;
   };
+  /** Targets still short: Fund targets becomes the recommended action, "Put the rest in" the other */
+  fundTargets?: { count: number; disabled: boolean; onOpen: () => void };
   /** Hold money for next month (the current month only) */
   canHold?: boolean;
 }
@@ -46,19 +44,15 @@ interface BudgetSummaryWidgetProps {
 const READY_HELP =
   "Ready to assign is the money in your accounts that you haven't given a job yet. Give it to categories (envelopes) until this reaches $0, so every dollar is planned. Spending takes money out of its envelope, not out of here.";
 
-function PhoneCollapsed({
-  collapsed,
-  label,
-  children,
-}: {
-  collapsed: boolean;
-  label: string;
-  children: React.ReactNode;
-}) {
-  if (!collapsed) return <>{children}</>;
+function PhoneCollapsed({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <details>
-      <summary className="px-4 min-h-11 flex items-center cursor-pointer select-none text-xs text-text-secondary">
+    <details className="group">
+      <summary className="px-4 min-h-11 flex items-center gap-1 cursor-pointer select-none text-nav text-text-secondary">
+        <ChevronRight
+          size={14}
+          aria-hidden
+          className="shrink-0 transition-transform group-open:rotate-90"
+        />
         {label}
       </summary>
       {children}
@@ -96,20 +90,11 @@ interface SummarySectionProps {
   actual: number;
   actualLabel: string;
   type: 'income' | 'expenses' | 'savings';
-  available?: number;
 }
 
-function SummarySection({
-  label,
-  planned,
-  actual,
-  actualLabel,
-  type,
-  available,
-}: SummarySectionProps) {
+function SummarySection({ label, planned, actual, actualLabel, type }: SummarySectionProps) {
   const rawRemaining = planned - actual;
-  const displayRemaining =
-    available ?? (type === 'income' ? Math.max(rawRemaining, 0) : rawRemaining);
+  const displayRemaining = type === 'income' ? Math.max(rawRemaining, 0) : rawRemaining;
   const ratio =
     type === 'income' ? (actual > 0 ? 1 : 0) : planned > 0 ? Math.min(actual / planned, 1) : 0;
   const barColor = getBarColor(actual, planned, type);
@@ -143,18 +128,16 @@ function SummarySection({
           <span className="text-sm font-semibold tabular-nums text-text">
             {formatCurrency(actual)}
           </span>
-          <span className="text-xs text-text-tertiary">{actualLabel}</span>
+          <span className="text-nav text-text-tertiary">{actualLabel}</span>
         </div>
         <div className="flex flex-col items-end">
           <span className={`text-sm font-medium tabular-nums ${remainingColor}`}>
             {displayRemaining === 0 ? '$0' : formatCurrency(displayRemaining)}
           </span>
-          <span className="text-xs text-text-tertiary">
-            {available !== undefined
-              ? 'Available'
-              : type === 'income'
-                ? 'expected income remaining'
-                : 'monthly spending progress remaining'}
+          <span className="text-nav text-text-tertiary">
+            {type === 'income'
+              ? 'expected income remaining'
+              : 'monthly spending progress remaining'}
           </span>
         </div>
       </div>
@@ -175,18 +158,16 @@ const TABS: { key: Tab; label: string }[] = [
 
 export function BudgetSummaryWidget({
   funding,
-  expenseAvailable,
   toBeBudgeted,
   incomePlanned,
   incomeEarned,
-  expensesPlanned,
-  expensesSpent,
   savingsPlanned,
   savingsContributed,
   fixedExpenses,
   flexibleExpenses,
   nonMonthlyExpenses,
   putRest,
+  fundTargets,
   canHold,
 }: BudgetSummaryWidgetProps) {
   const [activeTab, setActiveTab] = useState<Tab>('summary');
@@ -201,6 +182,7 @@ export function BudgetSummaryWidget({
       : formatCurrency(toBeBudgeted);
   const canPutRest =
     !!putRest && toBeBudgeted > 0 && !funding?.accountIssues?.length && funding?.complete !== false;
+  const fundFirst = canPutRest && !!fundTargets && fundTargets.count > 0;
   // Only balances that disagree with the bank or missing rates make the figure itself doubtful.
   // Overspending, uncategorised spending and card shortfalls are jobs to do beside a figure that
   // holds, so they get their own line instead of turning the whole of Ready to assign yellow.
@@ -223,13 +205,13 @@ export function BudgetSummaryWidget({
       ? unresolvedReason({ ...funding, toBeBudgeted: Math.max(funding.toBeBudgeted, 0) })
       : null;
   const todoNotice = todo && !(toBeBudgeted < 0 && todo === 'Check the Review page') && (
-    <p className="mt-2 flex items-start gap-1.5 px-1 text-xs text-text-secondary">
+    <p className="mt-2.5 flex items-start gap-1.5 px-1 text-nav text-text-secondary">
       <AlertCircle size={14} className="text-caution shrink-0 mt-px" aria-hidden />
       <span className="flex-1 min-w-0">{todo}.</span>
       {/* At the end of the line, so it never wraps alone under the reason */}
       <Link
         to="/review"
-        className="shrink-0 font-medium text-brand-700 underline underline-offset-2"
+        className="shrink-0 py-3.5 -my-3.5 font-medium text-brand-700 underline underline-offset-2"
       >
         Review
       </Link>
@@ -250,7 +232,7 @@ export function BudgetSummaryWidget({
       ).filter(([, value]) => value !== 0)
     : [];
   const workings = funding && (
-    <div className="px-4 pb-3 text-xs">
+    <div className="px-4 pb-3 text-nav">
       <p className="text-text-tertiary mb-1.5">
         Ready to assign as of {formatAsOfDay(funding.asOf)}
       </p>
@@ -268,7 +250,13 @@ export function BudgetSummaryWidget({
             <div key={label} className="flex justify-between gap-2">
               <dt className="text-text-secondary">{label}</dt>
               <dd
-                className={`tabular-nums ${value > 0 && !SETTING_ASIDE.has(label) ? 'text-negative font-medium' : 'text-text'}`}
+                className={`tabular-nums ${
+                  value <= 0 || SETTING_ASIDE.has(label)
+                    ? 'text-text'
+                    : label === 'Overspent envelopes'
+                      ? 'text-negative font-medium'
+                      : 'text-caution font-medium'
+                }`}
               >
                 {formatCurrency(value)}
               </dd>
@@ -295,7 +283,7 @@ export function BudgetSummaryWidget({
             data-guide="budget.ready"
             className={`${hero.bg} rounded-lg px-3 py-2 flex items-center justify-between gap-3`}
           >
-            <div className={`min-w-0 text-left text-xs ${hero.text}`}>
+            <div className={`min-w-0 text-left text-nav ${hero.text}`}>
               <p className="font-medium">
                 Ready to assign
                 <HelpTip label="What is Ready to assign?" inline>
@@ -327,12 +315,11 @@ export function BudgetSummaryWidget({
               {readyAmount}
             </p>
             <p className={`text-sm font-medium ${hero.text}`}>{hero.label}</p>
-            <p className={`text-xs text-pretty ${hero.text} mt-1`}>
+            <p className={`text-nav text-pretty ${hero.text} mt-1`}>
               Money you have that isn't in a category yet.
             </p>
           </div>
         )}
-        {todoNotice}
         {funding?.pools?.map((p) => (
           <div
             key={p.accountId}
@@ -340,31 +327,45 @@ export function BudgetSummaryWidget({
             aria-label={`${p.name}: ready to assign`}
             className={`mt-2 rounded-lg px-4 py-2 text-center ${p.readyToAssign < 0 ? 'bg-caution-subtle text-caution' : 'bg-surface-alt text-text'}`}
           >
-            <p className="text-xs font-medium">{p.name}</p>
+            <p className="text-nav font-medium">{p.name}</p>
             <p className="text-base font-semibold tabular-nums">
               {formatCurrency(p.readyToAssign)}
             </p>
-            <p className="text-xs text-text-secondary">to assign to the bills paid from {p.name}</p>
+            <p className="text-nav text-text-secondary">
+              to assign to the bills paid from {p.name}
+            </p>
           </div>
         ))}
         {showHold && isPhone && (funding.holdAmount ?? 0) > 0 && (
-          <p className="mt-2 text-center text-xs text-text-secondary">
+          <p className="mt-2 text-center text-nav text-text-secondary">
             {formatCurrency(funding.holdAmount ?? 0)} held for next month.
           </p>
         )}
         {canPutRest && (
-          <div className="relative mt-2 text-center">
-            {/* The recommended next step for what is ready: give it all a job */}
+          <div className="relative mt-2 grid gap-2 text-center">
+            {/* Targets still short come first: that is the job the money is for. Otherwise the
+                whole of Ready to assign goes to one envelope, chosen from a list. */}
+            {fundFirst && (
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={fundTargets.onOpen}
+                disabled={fundTargets.disabled}
+              >
+                Fund targets ({fundTargets.count})
+              </Button>
+            )}
             <Button
               ref={setPickerButton}
               size="sm"
+              variant={fundFirst ? 'secondary' : 'primary'}
               className="w-full"
               onClick={() => setPicking((o) => !o)}
               disabled={putRest.disabled}
               aria-haspopup="listbox"
               aria-expanded={picking}
             >
-              Put the rest in…
+              Put {formatCurrency(toBeBudgeted)} in an envelope…
             </Button>
             {picking && (
               <CategoryPicker
@@ -383,12 +384,14 @@ export function BudgetSummaryWidget({
             )}
           </div>
         )}
+        {/* What is left to sort out, under the action rather than ahead of it */}
+        {todoNotice}
         {/* The alternative, quieter: keep some of it for next month */}
         {showHold && !isPhone && <HoldMoney summary={funding} />}
       </div>
 
       {!!funding?.accountIssues?.length && (
-        <div role="alert" className="px-4 pb-3 text-xs text-caution">
+        <div role="alert" className="px-4 pb-3 text-nav text-caution">
           <p>Ready to assign is unverified. Resolve these balances before funding categories.</p>
           <ul className="mt-2 space-y-2">
             {funding.accountIssues.map((issue) => (
@@ -406,50 +409,78 @@ export function BudgetSummaryWidget({
           </ul>
         </div>
       )}
-      <PhoneCollapsed
-        collapsed={isPhone}
-        label={showHold ? 'Hold money, and how this is worked out' : 'How this is worked out'}
-      >
-        {showHold && isPhone && (
+      {/* On a phone each fold has its own plain label, so the envelopes come sooner */}
+      {showHold && isPhone && (
+        <PhoneCollapsed label="Hold money for next month">
           <div className="px-4 pb-3">
             <HoldMoney summary={funding} />
           </div>
-        )}
-        {isPhone
-          ? workings
-          : // Desktop folds the working too, so the rail leads with Ready to assign and its actions
-            workings && (
-              <details className="group border-t border-border-light">
-                <summary className="px-4 min-h-9 flex items-center gap-1 cursor-pointer select-none text-xs text-text-secondary hover:text-text">
-                  <ChevronRight
-                    size={14}
-                    aria-hidden
-                    className="shrink-0 transition-transform group-open:rotate-90"
-                  />
-                  How this is worked out
-                </summary>
-                {workings}
-              </details>
-            )}
-        <div className="flex justify-center gap-4 px-4 pt-2 pb-2">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`pb-1.5 max-md:min-h-11 max-md:px-2 text-xs transition-colors border-b-2 ${
-                activeTab === tab.key
-                  ? 'border-text text-text font-semibold'
-                  : 'border-transparent text-text-tertiary hover:text-text-secondary'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        </PhoneCollapsed>
+      )}
+      {isPhone
+        ? workings && (
+            <PhoneCollapsed label="How Ready to assign is worked out">{workings}</PhoneCollapsed>
+          )
+        : // Desktop folds the working too, so the rail leads with Ready to assign and its actions
+          workings && (
+            <details className="group border-t border-border-light">
+              <summary className="px-4 min-h-11 md:min-h-9 flex items-center gap-1 cursor-pointer select-none text-nav text-text-secondary hover:text-text">
+                <ChevronRight
+                  size={14}
+                  aria-hidden
+                  className="shrink-0 transition-transform group-open:rotate-90"
+                />
+                How Ready to assign is worked out
+              </summary>
+              {workings}
+            </details>
+          )}
+      {/* The desktop table already totals income and each budget type, so only phones, with no
+          table, keep this summary */}
+      {isPhone && (
+        <PhoneCollapsed label="Income and expenses">
+          <div className="flex justify-center gap-4 px-4 pt-2 pb-2">
+            {TABS.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`pb-1.5 max-md:min-h-11 max-md:px-2 text-nav transition-colors border-b-2 ${
+                  activeTab === tab.key
+                    ? 'border-text text-text font-semibold'
+                    : 'border-transparent text-text-tertiary hover:text-text-secondary'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-        <div className="px-4 pb-2">
-          {activeTab === 'summary' && (
-            <div>
+          <div className="px-4 pb-2">
+            {activeTab === 'summary' && (
+              <div>
+                <SummarySection
+                  label="Income"
+                  planned={incomePlanned}
+                  actual={incomeEarned}
+                  actualLabel="earned"
+                  type="income"
+                />
+                <div className="border-t border-border-light" />
+                {savingsPlanned > 0 && (
+                  <>
+                    <div className="border-t border-border-light" />
+                    <SummarySection
+                      label="Save up"
+                      planned={savingsPlanned}
+                      actual={savingsContributed}
+                      actualLabel="spent from savings categories"
+                      type="savings"
+                    />
+                  </>
+                )}
+              </div>
+            )}
+            {activeTab === 'income' && (
               <SummarySection
                 label="Income"
                 planned={incomePlanned}
@@ -457,80 +488,51 @@ export function BudgetSummaryWidget({
                 actualLabel="earned"
                 type="income"
               />
-              <div className="border-t border-border-light" />
-              <SummarySection
-                label="Expense envelopes"
-                available={expenseAvailable}
-                planned={expensesPlanned}
-                actual={expensesSpent}
-                actualLabel="Spent this month"
-                type="expenses"
-              />
-              {savingsPlanned > 0 && (
-                <>
-                  <div className="border-t border-border-light" />
+            )}
+            {activeTab === 'expenses' && (
+              <div>
+                {fixedExpenses && (fixedExpenses.planned > 0 || fixedExpenses.spent > 0) && (
                   <SummarySection
-                    label="Save up"
-                    planned={savingsPlanned}
-                    actual={savingsContributed}
-                    actualLabel="spent from savings categories"
-                    type="savings"
-                  />
-                </>
-              )}
-            </div>
-          )}
-          {activeTab === 'income' && (
-            <SummarySection
-              label="Income"
-              planned={incomePlanned}
-              actual={incomeEarned}
-              actualLabel="earned"
-              type="income"
-            />
-          )}
-          {activeTab === 'expenses' && (
-            <div>
-              {fixedExpenses && (fixedExpenses.planned > 0 || fixedExpenses.spent > 0) && (
-                <SummarySection
-                  label="Fixed"
-                  planned={fixedExpenses.planned}
-                  actual={fixedExpenses.spent}
-                  actualLabel="spent"
-                  type="expenses"
-                />
-              )}
-              {flexibleExpenses && (flexibleExpenses.planned > 0 || flexibleExpenses.spent > 0) && (
-                <>
-                  {fixedExpenses && (fixedExpenses.planned > 0 || fixedExpenses.spent > 0) && (
-                    <div className="border-t border-border-light" />
-                  )}
-                  <SummarySection
-                    label="Flexible"
-                    planned={flexibleExpenses.planned}
-                    actual={flexibleExpenses.spent}
+                    label="Fixed"
+                    planned={fixedExpenses.planned}
+                    actual={fixedExpenses.spent}
                     actualLabel="spent"
                     type="expenses"
                   />
-                </>
-              )}
-              {nonMonthlyExpenses &&
-                (nonMonthlyExpenses.planned > 0 || nonMonthlyExpenses.spent > 0) && (
-                  <>
-                    <div className="border-t border-border-light" />
-                    <SummarySection
-                      label="Non-Monthly"
-                      planned={nonMonthlyExpenses.planned}
-                      actual={nonMonthlyExpenses.spent}
-                      actualLabel="spent"
-                      type="expenses"
-                    />
-                  </>
                 )}
-            </div>
-          )}
-        </div>
-      </PhoneCollapsed>
+                {flexibleExpenses &&
+                  (flexibleExpenses.planned > 0 || flexibleExpenses.spent > 0) && (
+                    <>
+                      {fixedExpenses && (fixedExpenses.planned > 0 || fixedExpenses.spent > 0) && (
+                        <div className="border-t border-border-light" />
+                      )}
+                      <SummarySection
+                        label="Flexible"
+                        planned={flexibleExpenses.planned}
+                        actual={flexibleExpenses.spent}
+                        actualLabel="spent"
+                        type="expenses"
+                      />
+                    </>
+                  )}
+                {nonMonthlyExpenses &&
+                  (nonMonthlyExpenses.planned > 0 || nonMonthlyExpenses.spent > 0) && (
+                    <>
+                      <div className="border-t border-border-light" />
+                      <SummarySection
+                        label="Non-monthly"
+                        planned={nonMonthlyExpenses.planned}
+                        actual={nonMonthlyExpenses.spent}
+                        actualLabel="spent"
+                        type="expenses"
+                      />
+                    </>
+                  )}
+              </div>
+            )}
+          </div>
+        </PhoneCollapsed>
+      )}
     </div>
   );
 }

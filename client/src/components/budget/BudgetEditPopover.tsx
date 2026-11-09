@@ -66,7 +66,7 @@ export function BudgetEditPopover({
   return (
     <div
       ref={ref}
-      className="absolute right-0 top-full mt-1 z-50 w-72 rounded-lg shadow-card border border-border-light bg-surface p-4 origin-top-right animate-menu-in"
+      className="absolute right-0 top-full mt-1 z-50 w-72 rounded-lg shadow-card border border-border-light bg-surface p-4 text-left origin-top-right animate-menu-in"
       onMouseDown={(e) => e.preventDefault()}
     >
       {quickAmounts.length > 0 && (
@@ -133,6 +133,12 @@ export function BudgetEditPopover({
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+            {chartData[chartData.length - 1]?.amount === 0 && (
+              <p className="mt-1 text-2xs text-text-tertiary text-right">
+                {chartData[chartData.length - 1].month} has no {isIncome ? 'income' : 'spending'}{' '}
+                yet
+              </p>
+            )}
           </div>
         ) : (
           <p className="text-xs text-text-tertiary text-center py-6">No history available</p>

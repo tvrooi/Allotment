@@ -331,7 +331,7 @@ test.describe('budget', () => {
       categoryId: groceries.id,
     });
     await open(page, '/budget');
-    await page.getByRole('row').filter({ hasText: 'Groceries' }).getByRole('link').click();
+    await page.getByRole('link', { name: 'Open Groceries' }).click();
     await expect(page).toHaveURL(new RegExp(`#/budget/category/${groceries.id}$`));
     await expect(
       page.getByTestId('transaction-row').filter({ hasText: 'Farm Stand' }),
@@ -393,7 +393,7 @@ test.describe('budget', () => {
       await route.fallback();
     });
     await page.getByRole('button', { name: 'Next month' }).click({ force: true });
-    // The editor closed with the month change (blur may save October: that's its own month)
+    // The editor closed with the month change (clicking away cancels, so nothing is saved)
     await expect(page.getByRole('textbox', { name: 'Assigned to Groceries' })).toHaveCount(0);
     const loading = page.locator('[aria-busy="true"]');
     await expect(loading).toHaveAttribute('inert', '');
@@ -405,6 +405,13 @@ test.describe('budget', () => {
     expect(writes.filter((u) => u.includes(`/budget/${nextMonth}/`))).toEqual([]);
   });
 });
+
+/** Assign opens a menu only when targets are underfunded; otherwise Auto-assign… is a button */
+async function openAutoAssign(page: Page) {
+  await page.getByRole('button', { name: /^(Assign|Auto-assign…)$/ }).click();
+  const item = page.getByRole('menuitem', { name: /Auto-assign/ });
+  if (await item.isVisible()) await item.click();
+}
 
 test('overspending is covered from the amount editor or by auto-assign', async ({ page, api }) => {
   const checking = await api.createAccount('Checking', 100_000);
@@ -430,8 +437,7 @@ test('overspending is covered from the amount editor or by auto-assign', async (
   await page.getByRole('button', { name: 'Cover $120 overspent' }).click();
   await expect(page.getByRole('button', { name: /^Assigned to Groceries: \$120/ })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Assign', exact: true }).click();
-  await page.getByRole('menuitem', { name: /Auto-assign/ }).click();
+  await openAutoAssign(page);
   const preview = page.getByRole('region', { name: 'Auto-assign preview' });
   await expect(preview).toContainText('Electric');
   await expect(preview).not.toContainText('Groceries');
@@ -461,8 +467,7 @@ test('a quick fill can leave envelopes out, and Replace or Set to zero takes mon
     });
   }
   await open(page, '/budget');
-  await page.getByRole('button', { name: 'Assign', exact: true }).click();
-  await page.getByRole('menuitem', { name: /Auto-assign/ }).click();
+  await openAutoAssign(page);
   const preview = page.getByRole('region', { name: 'Auto-assign preview' });
   await expect(preview).toContainText('Groceries');
   await expect(preview).toContainText('Electric');
@@ -490,8 +495,7 @@ test('a quick fill can leave envelopes out, and Replace or Set to zero takes mon
   expect(await budgeted('Groceries')).toBe(0);
 
   // Set to zero takes the $80 back, and says so
-  await page.getByRole('button', { name: 'Assign', exact: true }).click();
-  await page.getByRole('menuitem', { name: /Auto-assign/ }).click();
+  await openAutoAssign(page);
   await page.getByRole('radio', { name: /Set to zero/ }).check();
   await expect(preview).toContainText('take back $80');
   await expect(preview).toContainText('will be overspent');

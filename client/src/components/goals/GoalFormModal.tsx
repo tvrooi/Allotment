@@ -3,6 +3,7 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Input';
 import { CurrencyInput } from '../ui/CurrencyInput';
+import { DatePicker } from '../ui/DatePicker';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useCategories } from '../../hooks/useCategories';
 import type { Goal } from '../../types';
@@ -209,19 +210,12 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
           )}
         </div>
 
-        <div className="space-y-1.5">
-          <label htmlFor={`${fieldId}-date`} className="text-sm font-medium text-text-secondary">
-            Target date (optional)
-          </label>
-          <input
-            id={`${fieldId}-date`}
-            type="date"
-            aria-label="Target date"
-            value={targetDate}
-            onChange={(e) => setTargetDate(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
-          />
-        </div>
+        <DatePicker
+          label="Target date (optional)"
+          value={targetDate}
+          onChange={setTargetDate}
+          optional
+        />
 
         <div className="space-y-1.5">
           <label htmlFor={`${fieldId}-account`} className="text-sm font-medium text-text-secondary">

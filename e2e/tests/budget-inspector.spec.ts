@@ -80,10 +80,69 @@ test.describe('budget keyboard and inspector', () => {
     await page.getByRole('button', { name: new RegExp(`^Assigned to ${b}:`) }).click();
     await field(b).fill('-20');
     await field(b).press('Enter');
+    await expect(page.getByRole('button', { name: `Assigned to ${b}: -$20` })).toBeVisible();
     await page.getByRole('button', { name: new RegExp(`^Assigned to ${b}:`) }).click();
-    await expect(field(b)).toHaveValue('-20.00');
+    await expect(field(b)).toHaveValue('-20');
     await field(b).press('Enter');
     await expect(page.getByRole('button', { name: `Assigned to ${b}: -$20` })).toBeVisible();
+  });
+
+  test('Escape and clicking away cancel; only Enter, Tab and the arrows save', async ({
+    page,
+    api,
+  }) => {
+    await open(page, '/budget');
+    await page.getByRole('searchbox', { name: 'Find a category' }).fill('e');
+    await expect(page.getByRole('button', { name: /^Assigned to / }).first()).toBeVisible();
+    // b is the last row, well clear of the History popover that hangs under a
+    const names = await plannedNames(page);
+    const a = names[0];
+    const b = names[names.length - 1];
+    const field = (name: string) => page.getByRole('textbox', { name: `Assigned to ${name}` });
+    const open_ = (name: string) =>
+      page.getByRole('button', { name: new RegExp(`^Assigned to ${name}:`) }).click();
+    const puts: string[] = [];
+    page.on('request', (r) => {
+      if (r.method() === 'PUT' && r.url().includes('/api/budget/')) puts.push(r.url());
+    });
+
+    // Escape: nothing is saved
+    await open_(a);
+    await field(a).fill('123');
+    await field(a).press('Escape');
+    await expect(field(a)).toBeHidden();
+
+    // A click elsewhere on the page: the typed amount is dropped, not saved
+    await open_(a);
+    await field(a).fill('123');
+    await page.getByRole('heading', { level: 1 }).click();
+    await expect(field(a)).toBeHidden();
+
+    // A click on another envelope's amount: the first is dropped, the second opens
+    await open_(a);
+    await field(a).fill('123');
+    await open_(b);
+    await expect(field(b)).toBeFocused();
+    await expect(field(a)).toBeHidden();
+    expect(puts).toEqual([]);
+
+    // The History popover is part of the editor: using it keeps the editor open
+    await field(b).fill('45');
+    await page.getByText('History', { exact: true }).click();
+    await expect(field(b)).toBeVisible();
+    await expect(field(b)).toHaveValue('45');
+    expect(puts).toEqual([]);
+    await field(b).press('Escape');
+
+    const saved = await budgetOf(api);
+    expect(saved.get(a)!.budgeted).toBe(0);
+    expect(saved.get(b)!.budgeted).toBe(0);
+
+    // Enter still saves
+    await open_(a);
+    await field(a).fill('12');
+    await field(a).press('Enter');
+    await expect(page.getByRole('button', { name: `Assigned to ${a}: $12` })).toBeVisible();
   });
 
   test('the inspector shows the month, one envelope or several, with notes', async ({
@@ -115,6 +174,9 @@ test.describe('budget keyboard and inspector', () => {
     await expect(inspector.getByText('Note saved.')).toBeVisible();
 
     // One envelope: its figures and its own note
+    // The ticks stay hidden until Select is turned on
+    await expect(page.getByRole('checkbox', { name: 'Select Groceries' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Select', exact: true }).click();
     await page.getByRole('checkbox', { name: 'Select Groceries' }).check();
     await expect(inspector.getByRole('heading', { name: 'Groceries' })).toBeVisible();
     await expect(inspector).toContainText('Activity-$125');
@@ -140,6 +202,7 @@ test.describe('budget keyboard and inspector', () => {
         name: 'Note for this month',
       }),
     ).toHaveValue('Bonus lands mid-month 🎉');
+    await page.getByRole('button', { name: 'Select', exact: true }).click();
     await page.getByRole('checkbox', { name: 'Select Groceries' }).check();
     await expect(
       page.getByRole('region', { name: 'Inspector' }).getByRole('textbox', {
@@ -154,6 +217,7 @@ test.describe('budget keyboard and inspector', () => {
     for (const c of [groceries, rent])
       await api.call('PUT', `/budget/category/${c.id}/target`, { type: 'monthly', amount: 20000 });
     await open(page, '/budget');
+    await page.getByRole('button', { name: 'Select', exact: true }).click();
     await page.getByRole('checkbox', { name: 'Select Groceries' }).check();
     await page
       .getByRole('region', { name: 'Inspector' })

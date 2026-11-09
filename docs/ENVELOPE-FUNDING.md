@@ -35,7 +35,7 @@ card debt it nets off), so `cash + otherDebt = resources`; `cardDebt` (`total`, 
 `unreserved` the payment shortfall; `linked` (each linked envelope with its account's name and
 amount) and `everydayEnvelopes`, which add up to `envelopes`; and `setAside` (later assignments,
 holds and separate pools). So `cash + otherDebt − envelopes − setAside = unassigned`. Budget's
-"How this is worked out" and Review show it with `CashBridge`. Ready to assign does not subtract
+"How Ready to assign is worked out" and Review show it with `CashBridge`. Ready to assign does not subtract
 unreserved card debt; the bridge shows it apart, with net cash `resources − unreserved`.
 
 ### The overspending rule
@@ -276,7 +276,9 @@ The desktop table's Assigned editor and the phone sheet read what is typed with
   sections, inactive rows, the filter's misses) are skipped, because the neighbour is read from the
   rendered rows (`tr[data-budget-row]`). An unchanged amount isn't saved again (no empty undo step).
   A refused save keeps the editor open with its reason and doesn't move. With no row that way, an
-  arrow saves and closes and Tab saves and leaves the table.
+  arrow saves and closes and Tab saves and leaves the table. Clicking away cancels (the typed amount
+  is dropped, nothing is saved); the History popover counts as part of the editor, and the window
+  losing focus leaves the editor as it was.
 
 Not built: one typed amount applied to several selected envelopes at once (a batch write needs its
 own reviewed endpoint); Fund targets from a selection covers the common case.
@@ -286,11 +288,20 @@ own reviewed endpoint); Fund targets from a selection covers the common case.
 `BudgetInspector.tsx` sits at the top of the sidebar (after Ready to assign on a phone). Ticking
 envelopes changes no money.
 
-- **Nothing ticked:** the month, with every expense envelope's Carried in, Assigned, Activity and
-  Available (`selectionFigures` in `utils/budgetFigures.ts`, so Assigned and Activity match the
-  Total expenses row), and the month's note.
-- **One ticked:** that envelope's figures, its availability caption and target, its note, Fund
-  target when it is short, and a link to its history and transactions.
+- **Nothing ticked:** the month, with every expense envelope's total up front as **In envelopes**
+  (quieter than Ready to assign, and not the table's Available column), split into
+  spending envelopes and saved (envelopes with the Savings budget type, `savedSplit`), and
+  From last month, Assigned and Activity folded under "What makes up In envelopes"
+  (`selectionFigures` in `utils/budgetFigures.ts`, so Assigned and Activity match the Total
+  expenses row), and the month's note.
+- **One ticked:** that envelope's figures (plus **After expected bills** when recurring debits are
+  still to come), its availability caption and target, its note, Fund target when it is short,
+  and a link to its history and transactions.
+- **Uncovered bills.** `availability()` reports `uncovered` (amber, "$25 short for Food bank", or
+  "short of expected bills" for several) when `expected` exceeds a non-negative balance. The server's
+  `expected` leaves out matched, paid and skipped occurrences, so a posted bill is in the balance
+  and not counted twice. The rail's primary is "Put $X in an envelope…", or **Fund targets (n)**
+  when a target is short.
 - **Several ticked:** only their sums, their names, and **Fund N targets**, which opens Fund targets
   with only those ticked (`useScopedPlan.load(fetch, only)`; the others stay listed, unticked).
   Card payment rows have no tick.

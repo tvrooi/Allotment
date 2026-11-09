@@ -49,7 +49,7 @@ export function NoteField({
 
   return (
     <div className="grid gap-1">
-      <label htmlFor={id} className="text-xs font-medium text-text-secondary">
+      <label htmlFor={id} className="text-nav font-medium text-text-secondary">
         {label}
       </label>
       <textarea
@@ -68,7 +68,7 @@ export function NoteField({
         placeholder="Add a note"
         className="w-full resize-y rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text focus:outline-none focus:ring-1 focus:ring-brand-600 read-only:opacity-60"
       />
-      <span id={`${id}-status`} role="status" className="text-xs">
+      <span id={`${id}-status`} role="status" className="text-nav">
         {status === 'saving' && <span className="text-text-tertiary">Saving…</span>}
         {status === 'saved' && <span className="text-text-tertiary">Note saved.</span>}
         {status === 'error' && <span className="text-negative">Note not saved. {error}</span>}

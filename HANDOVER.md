@@ -17,11 +17,16 @@ Last updated: 9 November 2026 (live app on up.149: the household bills hub, cove
   `utils/currency.ts`); `AuthGate` holds pages on first load until the budget currency is in the
   store; the rail's working folds and hides $0 rows; Available pills only for exceptions
   (`availableTone`/`captionTone` in `budgetFigures.ts`); copy fixes ("Assigned to", sentence case).
-  The "plots" variant is `/budget/plots` (`BudgetPlots.tsx` renders `BudgetPage plots`;
-  `PlotsContext`/`Plot.tsx`; rule `plotOf` in `budgetFigures.ts`). A polish pass fixed the
+  The "plots" variant at `/budget/plots` was tried and removed; its money-left rule (`plotOf`
+  in `budgetFigures.ts`) now drives the spending bar (`barOf`). A polish pass fixed the
   "Find a category" placeholder contrast and drew amount-editor history in the chart colour.
-  "Put the rest in…" is the primary action under Ready to assign, with "Hold money…" a quiet
-  ghost button after it. Every priority issue from the critique is now addressed. This work lives on the `redesign` branch, developed alongside the
+  "Put $X in an envelope…" (`BudgetSummaryWidget`, picker then `putRest.onPick`) is the primary
+  action under Ready to assign, unless a target is underfunded: then "Fund targets (n)" leads and
+  Put-in is secondary; the "Resolve uncategorised…" line sits under them, and "Hold money…" is a
+  quiet ghost button after it. An envelope whose balance cannot cover its expected debits is
+  `uncovered` in `availability()` (amber, "$25 short for Food bank"); `expected` already excludes
+  matched, paid and skipped occurrences, so a posted bill is not counted twice. The inspector
+  shows "After expected bills". Desktop has no Summary/Income/Expenses tabs (the table totals them; the phone keeps its "Income and expenses" fold); the inspector's month total is "In envelopes" with its own fold, and the rail fold is "How Ready to assign is worked out". Every priority issue from the critique is now addressed. This work lives on the `redesign` branch, developed alongside the
   pre-redesign app on `main`; PR #209 was closed unmerged to reconcile later.
 
 - **Dashboard comparison route (up.154):** `/dashboard/refined` is a

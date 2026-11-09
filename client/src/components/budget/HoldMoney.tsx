@@ -46,7 +46,7 @@ export function HoldMoney({ summary }: { summary: BudgetSummary }) {
               {formatCurrency(held)} held for next month.
             </p>
           )}
-          {/* A quiet alternative to "Put the rest in…", which leads */}
+          {/* A quiet alternative to "Put $X in an envelope…", which leads */}
           <Button
             size="sm"
             variant="ghost"

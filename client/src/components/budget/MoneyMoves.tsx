@@ -158,7 +158,7 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
       data-guide="budget.move"
       className="mb-4 bg-surface rounded-lg shadow-card border border-border-light p-4 text-sm space-y-3"
     >
-      <h2 className="font-semibold text-text">Move money</h2>
+      <h2 className="text-base font-semibold text-text">Move money</h2>
       <Button
         size="sm"
         variant="secondary"

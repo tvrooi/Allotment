@@ -1,4 +1,5 @@
 import type { BudgetCategory } from '../types';
+import { formatCurrency } from './currency';
 
 // How one budget category reads, shared by the desktop table and the phone cards.
 
@@ -16,12 +17,29 @@ export function categoryFigures(cat: BudgetCategory, isIncome: boolean) {
 
 /**
  * What an envelope's Available figure means, for the desktop table, the phone cards and the
- * progress bar. Wording and colour only: the arithmetic is `categoryFigures`. The progress bar
- * compares spending with this month's assignment, so spending above it can still be fully
- * covered by money carried in: that is `carried`, not a deficit. Only a negative balance is
- * `overspent`.
+ * progress bar. Wording and colour only: the arithmetic is `categoryFigures`. The bar shows money
+ * left (see `barOf`). Spending above this month's assignment can still be fully covered by
+ * money carried in: that is `carried`, not a deficit. Only a negative balance is `overspent`.
  */
-export type AvailabilityKind = 'overspent' | 'short' | 'carried' | 'available' | 'zero';
+export type AvailabilityKind =
+  'overspent' | 'uncovered' | 'short' | 'carried' | 'available' | 'zero';
+
+/**
+ * What recurring debits still to come would leave short: expected minus what is available,
+ * 0 when the envelope covers them. The server only expects occurrences that have not arrived
+ * (a matched, paid or skipped one is out of `expected` and already in `balance`), so the two
+ * never count the same bill twice.
+ */
+export function expectedShortfall(cat: BudgetCategory): number {
+  return Math.max(Math.max(cat.expected ?? 0, 0) - Math.max(cat.balance, 0), 0);
+}
+
+/** "$25 short for Food bank", or "$25 short of expected bills" when there are several or none named */
+export function uncoveredCaption(cat: BudgetCategory): string {
+  const items = cat.expectedItems ?? [];
+  const where = items.length === 1 ? `for ${items[0].name}` : 'of expected bills';
+  return `${formatCurrency(expectedShortfall(cat))} short ${where}`;
+}
 
 export function availability(
   cat: BudgetCategory,
@@ -36,6 +54,9 @@ export function availability(
       // An overspent month the category keeps for repayment, carried in from an earlier one
       caption: cat.keepOverspending === 1 && cat.carryOver < 0 ? 'Overspending kept' : 'Overspent',
     };
+  // Not overspent yet, but the bills still to come would take it below zero
+  if (expectedShortfall(cat) > 0)
+    return { kind: 'uncovered', remaining, caption: uncoveredCaption(cat) };
   if (remaining === 0) return { kind: 'zero', remaining, caption: null };
   if (cat.target && cat.target.underfunded > 0)
     return { kind: 'short', remaining, caption: 'Short of target' };
@@ -52,28 +73,92 @@ export function availability(
  */
 export function availableTone(kind: AvailabilityKind, remaining: number): string {
   if (kind === 'overspent') return 'font-semibold bg-negative-subtle text-negative';
-  if (kind === 'short' || kind === 'carried') return 'font-semibold bg-caution-subtle text-caution';
+  if (kind === 'uncovered' || kind === 'short' || kind === 'carried')
+    return 'font-semibold bg-caution-subtle text-caution';
   return remaining > 0 ? 'font-medium text-text' : 'text-text-tertiary';
 }
 
 /** The caption under the figure ("Overspent", "Short of target") in the same colour */
 export function captionTone(kind: AvailabilityKind): string {
   if (kind === 'overspent') return 'text-negative';
-  if (kind === 'short' || kind === 'carried') return 'text-caution';
+  if (kind === 'uncovered' || kind === 'short' || kind === 'carried') return 'text-caution';
   return 'text-text-tertiary';
 }
 
 export type PlotState = 'bare' | 'used' | 'growing' | 'planted' | 'overspent';
 
+/** What an envelope had to spend this month: carried in plus assigned plus transferred in */
+export function envelopeFunds(cat: BudgetCategory): number {
+  return cat.budgeted + (cat.transferred ?? 0) + Math.max(cat.carryOver, 0);
+}
+
 /**
- * An envelope as a plot, for the /budget/plots variant. `fill` is how much of its money is
+ * The spending bar for the Budget page, drawn from the same idea as the plots: the share of
+ * what the envelope had this month that is still in it, so spending empties the bar. `fill` and
+ * `expectedFill` are 0 to 1 shares of `funded`; recurring debits still expected come out of
+ * what is left, so `fill` is the part that is free of them. Income reads the other way: how
+ * much of the plan has arrived. `label` is the whole meaning in words, for assistive tech and
+ * hover, so colour is never the only carrier. Null when there is nothing to draw.
+ */
+export type BarState = 'overspent' | 'empty' | 'low' | 'ok' | 'income';
+
+export function barOf(
+  cat: BudgetCategory,
+  isIncome: boolean,
+): { state: BarState; fill: number; expectedFill: number; label: string } | null {
+  if (isIncome) {
+    const { actual } = categoryFigures(cat, true);
+    const planned = cat.budgeted;
+    if (planned <= 0 && actual <= 0) return null;
+    const fill = planned > 0 ? Math.min(Math.max(actual, 0) / planned, 1) : 1;
+    return {
+      state: 'income',
+      fill,
+      expectedFill: 0,
+      label:
+        planned > 0
+          ? `${formatCurrency(actual)} received of ${formatCurrency(planned)} planned`
+          : `${formatCurrency(actual)} received`,
+    };
+  }
+  const { state } = plotOf(cat);
+  const funded = envelopeFunds(cat);
+  const expected = Math.max(cat.expected ?? 0, 0);
+  if (state === 'bare' && expected <= 0) return null;
+  if (state === 'overspent')
+    return {
+      state: 'overspent',
+      fill: 1,
+      expectedFill: 0,
+      label: `Overspent by ${formatCurrency(-cat.balance)}`,
+    };
+  const left = Math.max(cat.balance, 0);
+  const share = (cents: number) => (funded > 0 ? Math.min(Math.max(cents / funded, 0), 1) : 0);
+  const expectedLeft = Math.min(expected, left);
+  const fill = share(left - expectedLeft);
+  const expectedFill = Math.min(share(expectedLeft), 1 - fill);
+  const gap = expectedShortfall(cat);
+  const soon =
+    expected > 0
+      ? `, ${formatCurrency(expected)} still expected${gap > 0 ? `, ${formatCurrency(gap)} short` : ''}`
+      : '';
+  const label =
+    funded > 0
+      ? `${formatCurrency(left)} left of ${formatCurrency(funded)}${soon}`
+      : `Nothing in this envelope yet${soon}`;
+  const barState: BarState = left === 0 ? 'empty' : share(left) < 0.2 ? 'low' : 'ok';
+  return { state: barState, fill, expectedFill, label };
+}
+
+/**
+ * An envelope as a plot, which the spending bar builds on (`barOf`). `fill` is how much of its money is
  * still in it: what is available over what it was given (plus any shortfall to its target), so
  * spending empties it. Bare: nothing given this month or carried in. Used: given money that has
  * all gone. Growing: short of its target. Overspent: a negative balance.
  */
 export function plotOf(cat: BudgetCategory): { state: PlotState; fill: number } {
   if (availability(cat, false).kind === 'overspent') return { state: 'overspent', fill: 1 };
-  const funded = cat.budgeted + (cat.transferred ?? 0) + Math.max(cat.carryOver, 0);
+  const funded = envelopeFunds(cat);
   const left = Math.max(cat.balance, 0);
   if (funded <= 0 && left === 0) return { state: 'bare', fill: 0 };
   if (left === 0) return { state: 'used', fill: 0 };
@@ -176,8 +261,28 @@ export function selectionFigures(cats: BudgetCategory[]) {
       transferred: sum.transferred + (c.transferred ?? 0),
       activity: sum.activity + categoryFigures(c, false).actual,
       available: sum.available + categoryFigures(c, false).remaining,
+      expected: sum.expected + Math.max(c.expected ?? 0, 0),
       underfunded: sum.underfunded + (c.target?.underfunded ?? 0),
     }),
-    { carriedIn: 0, assigned: 0, transferred: 0, activity: 0, available: 0, underfunded: 0 },
+    {
+      carriedIn: 0,
+      assigned: 0,
+      transferred: 0,
+      activity: 0,
+      available: 0,
+      expected: 0,
+      underfunded: 0,
+    },
   );
+}
+
+/**
+ * An envelope total split into what is for spending and what is saved. "Saved" is an envelope
+ * whose budget type is Savings (the same set the Save up summary counts), so a big Emergency
+ * Fund doesn't pass for spending money. The two parts always add up to the total.
+ */
+export function savedSplit(cats: BudgetCategory[]) {
+  const saved = selectionFigures(cats.filter((c) => c.budgetType === 'savings')).available;
+  const total = selectionFigures(cats).available;
+  return { spending: total - saved, saved, total };
 }

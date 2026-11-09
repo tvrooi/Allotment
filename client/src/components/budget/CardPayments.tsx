@@ -63,7 +63,7 @@ export function CardPayments({
       aria-label="Card payment funding"
       className="mb-4 bg-surface rounded-lg shadow-card border border-border-light p-4 text-sm space-y-3"
     >
-      <h2 className="font-semibold text-text">Card payments</h2>
+      <h2 className="text-base font-semibold text-text">Card payments</h2>
       <p className="text-xs text-text-secondary">
         Payment reserves as of {summary?.asOf ? formatAsOfDay(summary.asOf) : 'today'}. Record bank
         repayments as linked transfers.{' '}

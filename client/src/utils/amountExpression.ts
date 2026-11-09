@@ -164,9 +164,11 @@ class Reader {
 /**
  * An assignment as the text its editor starts with. Unlike other amount fields it keeps a minus
  * sign: an assignment can be negative (money taken back), and an editor that dropped the sign
- * would save it positive on Enter.
+ * would save it positive on Enter. A whole amount drops its trailing zero decimals.
  */
 export function assignmentToInput(cents: number, style: AmountStyle = amountStyle()): string {
-  const text = amountToInput(cents, style);
+  let text = amountToInput(cents, style);
+  // A whole amount reads as 2300, not 2300.00; the parser takes either
+  text = text.replace(/[.,]0+$/, '');
   return cents < 0 ? `-${text}` : text;
 }

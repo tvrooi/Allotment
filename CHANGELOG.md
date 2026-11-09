@@ -16,12 +16,13 @@ The Budget page, from the 9 November design critique (docs/critiques/2026-11-09-
 
 - **Ready to assign leads the right rail,** as its largest figure. It stays green while the figure holds; uncategorised spending, overspending and card shortfalls get their own line under it with a **Review** link, instead of turning it yellow. Yellow is kept for balances that disagree with the bank or missing exchange rates.
 - **A budget in Australian dollars writes $, never A$,** on any device. Another currency that would then look the same is written as its code (USD beside an Australian $). Amounts drawn before the budget's currency had loaded no longer keep the wrong symbol.
-- **The working behind Ready to assign is folded under "How this is worked out"** on desktop too, and its rows that are $0 are left out.
+- **The working behind Ready to assign is folded under "How Ready to assign is worked out"** on desktop too, and its rows that are $0 are left out.
+- **The rail no longer repeats the table.** On desktop the Summary, Income and Expenses tabs are gone: the table's Total income and Total expenses rows and each section's totals already show them. The inspector's month total is **In envelopes** (it was "Available", which means something else in the table), smaller than Ready to assign, and its own fold is **What makes up In envelopes**. The second "November 2026" heading is gone. Phones keep the Income and expenses fold.
 - **Only envelopes that need a decision are pills:** overspent in red, short of a target in amber, with their caption in the same colour. An envelope with money in it is a plain figure. Hover a spending bar to see what it measures.
 - Section headers are in sentence case. The amount you assign is named **Assigned to Rent** (it was "Planned for"). The Move money button says **Cover overspending** only when an envelope is overspent, and **Move between envelopes** otherwise. Phones no longer ask you to tick envelopes in a table they don't have.
 - The category search hint is easier to read, the Review link sits beside its reason, and the amount editor's history shows past spending in the chart colour rather than red.
-- **"Put the rest in…" is the clear next step** under Ready to assign; "Hold money…" follows as the quieter alternative.
-- **A Budget design variant at /budget/plots** shows each envelope as a small plot holding the money still in it, in place of the spending bar: full when untouched, emptying as you spend, dashed when given nothing, red when overspent. `/budget` is unchanged.
+- **The next step under Ready to assign says where the money goes:** **Put $3,476.51 in an envelope…** (it was "Put the rest in"). When a target is still short, **Fund targets (n)** leads and Put-in is the quieter button. "Hold money…" follows, and the uncategorised or overspent line sits under the buttons, in amber rather than red.
+- **An envelope that can't cover its upcoming bills is amber.** A $0 Charity envelope with a $25 Food bank debit still to come shows **$25 short for Food bank** (or "short of expected bills" for several), in the table, on phone cards and in the bar's hover text. A bill that has already posted isn't counted again. The inspector adds **After expected bills** under an envelope's Available.
 
 ## 0.2.0-up.153
 

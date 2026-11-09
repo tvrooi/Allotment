@@ -75,7 +75,7 @@ export function TargetCard({
       aria-label="Category target"
       className="bg-surface rounded-lg shadow-card border border-border-light p-4 space-y-3"
     >
-      <h2 className="text-sm font-semibold text-text">Target</h2>
+      <h2 className="text-base font-semibold text-text">Target</h2>
       {target && (
         <p className={`text-sm ${target.underfunded ? 'text-caution' : 'text-text-secondary'}`}>
           {targetLabel(target)}. This month needs {formatCurrency(target.required)}

@@ -3,7 +3,7 @@ import { formatCurrency } from '../../utils/currency';
 import type { BudgetCategory } from '../../types';
 
 /**
- * Recurring debits still expected in this category this month, in orange: planned to leave
+ * Recurring debits still expected in this category this month, in a quiet grey: planned to leave
  * the account but not spent yet. They don't change Activity or Available until they arrive.
  */
 export function ExpectedNote({ cat, className = '' }: { cat: BudgetCategory; className?: string }) {
@@ -16,7 +16,7 @@ export function ExpectedNote({ cat, className = '' }: { cat: BudgetCategory; cla
   const title = `Recurring, not debited yet:\n${list}\nAvailable after these: ${formatCurrency(cat.balance - expected)}`;
   return (
     <span
-      className={`block text-xs tabular-nums text-expected ${className}`}
+      className={`block whitespace-nowrap text-xs tabular-nums text-expected ${className}`}
       title={title}
       data-testid="expected-debit"
     >

@@ -35,7 +35,6 @@ import { FundTargets } from '../components/budget/FundTargets';
 import { AutoAssign } from '../components/budget/AutoAssign';
 import { AssignMenu } from '../components/budget/AssignMenu';
 import { SpentBar } from '../components/budget/SpentBar';
-import { Plot, PlotsContext, useBareName, usePlots } from '../components/budget/Plot';
 import { PhoneBudget } from '../components/budget/PhoneBudget';
 import { PaydayPlan } from '../components/budget/PaydayPlan';
 import { MissingRatesBanner } from '../components/currency/MissingRatesBanner';
@@ -78,7 +77,7 @@ function AmountInput({
   saving: boolean;
   /** Why the last save was refused; the typed amount stays to correct */
   error: string | null;
-  /** Set once the editor has already saved or cancelled, so leaving the field does nothing */
+  /** Set once the editor has already saved or cancelled, so the blur that follows does nothing */
   closed: { current: boolean };
   /** The amount typed so far, or null while it isn't readable */
   onDraft: (c: number | null) => void;
@@ -105,6 +104,13 @@ function AmountInput({
     }
   }, [error]);
 
+  // Saving is explicit; marking the editor closed first means the blur that follows Tab, or the
+  // field locking, isn't taken for a click away. A refused save reopens it (commit)
+  function save(amount: number) {
+    closed.current = true;
+    onSave(amount);
+  }
+
   return (
     <>
       <input
@@ -129,13 +135,13 @@ function AmountInput({
         // Keys (BUD-05, docs/ENVELOPE-FUNDING.md "Typing assignments"): Enter saves, Escape
         // cancels, Down or Tab saves and opens the next envelope shown, Up or Shift+Tab the one
         // before. A sum (100+50) is worked out first; text that isn't one stays open to fix,
-        // rather than saving 0
+        // rather than saving 0. Only these keys save: clicking away cancels (see onBlur)
         onKeyDown={(e) => {
           if (saving) return;
           const amount = readAmountExpression(raw);
           if (e.key === 'Enter') {
             if (amount === null) setInvalid(true);
-            else (e.target as HTMLInputElement).blur();
+            else save(amount);
           }
           if (e.key === 'Escape') {
             closed.current = true;
@@ -155,14 +161,14 @@ function AmountInput({
           }
           // With nowhere to go, an arrow saves and closes; Tab saves and leaves the table as usual
           if (onMove(direction, amount)) e.preventDefault();
-          else if (e.key !== 'Tab') (e.target as HTMLInputElement).blur();
+          else save(amount);
         }}
+        // Leaving the field any other way (a click elsewhere) cancels: money is never moved by
+        // a stray click, and there is no undo. The window losing focus (switching tabs) isn't
+        // leaving the field: the amount typed is still there on return
         onBlur={() => {
-          if (closed.current) return;
-          const amount = readAmountExpression(raw);
-          // Left with text that isn't an amount: keep the planned amount it had
-          if (amount === null) onCancel();
-          else onSave(amount);
+          if (closed.current || !document.hasFocus()) return;
+          onCancel();
         }}
         className={`w-28 text-right tabular-nums text-sm bg-surface border rounded-md px-2 py-0.5 focus:outline-none focus:ring-1 read-only:opacity-60 ${invalid || error ? 'border-negative focus:ring-negative' : 'border-brand-500 focus:ring-brand-600'}`}
       />
@@ -217,8 +223,6 @@ function CategoryRow({
   const isEditing = editingId === cat.id && canSave;
   const { actual } = categoryFigures(cat, isIncome);
   const { kind, remaining, caption } = availability(cat, isIncome);
-  const bareName = useBareName(cat) && !isIncome;
-  const plotsOn = usePlots();
   const askToMove = useMoveRequest((s) => s.ask);
   // An envelope linked to an account holds what the account holds: a transfer moves its money
   const linked = useLinkedAccount(cat);
@@ -318,37 +322,32 @@ function CategoryRow({
       data-budget-row={cat.id}
       className={`border-b border-border-light ${selected ? 'bg-brand-50' : ''}`}
     >
-      <td className="relative py-1.5 pb-2 pl-10 pr-3">
+      {/* Every row is two lines tall (h-14 is a floor): the figures, then a quiet line under
+          them for the bar, the expected debit and the notes, so rows keep one rhythm */}
+      <td className="relative h-14 py-1.5 pl-10 pr-3 align-top">
         {onToggleSelect && (
           <input
             type="checkbox"
             checked={selected}
             onChange={() => onToggleSelect(cat.id)}
             aria-label={`Select ${cat.name}`}
-            className="absolute left-4 top-2.5 h-3.5 w-3.5 accent-brand-600"
+            className="absolute left-4 top-3 h-3.5 w-3.5 accent-brand-600"
           />
         )}
-        <div className={`text-sm ${bareName ? 'text-text-secondary' : 'text-text'}`}>
-          {!isIncome && (
-            <span className="mr-1.5">
-              <Plot cat={cat} />
-            </span>
-          )}
+        <div className="py-0.5 text-sm text-text">
           {showCategoryIcons && (
             <CategoryIcon icon={cat.icon} size={14} className="mr-1.5 inline" />
           )}
-          {cat.name}
+          {/* The name opens the envelope, as its Activity figure does */}
+          <Link
+            to={`/budget/category/${cat.id}`}
+            aria-label={`Open ${cat.name}`}
+            className="rounded-sm hover:text-brand-600 hover:underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors"
+          >
+            {cat.name}
+          </Link>
         </div>
-        {/* In the plots variant the plot beside the name stands in for this bar */}
-        {!(plotsOn && !isIncome) && (
-          <SpentBar
-            spent={isIncome ? actual : cat.spent}
-            budgeted={cat.budgeted + (cat.transferred ?? 0)}
-            isIncome={isIncome}
-            expected={cat.expected}
-            covered={kind !== 'overspent'}
-          />
-        )}
+        <SpentBar cat={cat} isIncome={isIncome} />
         <TransferredNote cat={cat} className="mt-0.5" />
         {card && <CardRowNotes card={card} className="mt-0.5" />}
         {cat.target && (
@@ -359,7 +358,7 @@ function CategoryRow({
           </p>
         )}
       </td>
-      <td className="py-1.5 px-3 text-right align-top">
+      <td className="h-14 py-1.5 px-3 text-right align-top">
         <div className="relative inline-block">
           {linked && !isIncome ? (
             <span
@@ -412,20 +411,20 @@ function CategoryRow({
           )}
         </div>
       </td>
-      <td className="py-1.5 px-3 align-top">
+      <td className="h-14 py-1.5 px-3 align-top">
         <div className="text-right">
           <Link
             to={`/budget/category/${cat.id}`}
             // The figure alone ("$0") says nothing to a screen reader
             aria-label={`${isIncome ? 'Received for' : 'Activity in'} ${cat.name}: ${formatCurrency(actual)}`}
-            className="tabular-nums text-sm text-text-secondary hover:text-brand-600 cursor-pointer transition-colors"
+            className="inline-block py-0.5 tabular-nums text-sm text-text-secondary hover:text-brand-600 cursor-pointer transition-colors"
           >
             {formatCurrency(actual)}
           </Link>
-          <ExpectedNote cat={cat} />
+          <ExpectedNote cat={cat} className="mt-0.5" />
         </div>
       </td>
-      <td className="py-1.5 pl-3 pr-6 text-right align-top">
+      <td className="h-14 py-1.5 pl-3 pr-6 text-right align-top">
         {movable ? (
           // Clicking the figure opens Move money with this envelope filled in (BUD-06)
           <button
@@ -446,7 +445,12 @@ function CategoryRow({
             {formatCurrency(remaining)}
           </span>
         )}
-        {caption && <span className={`block text-xs mt-0.5 ${captionTone(kind)}`}>{caption}</span>}
+        {caption && (
+          // One line so rows keep their rhythm; the full wording is on hover
+          <span title={caption} className={`block truncate text-xs mt-0.5 ${captionTone(kind)}`}>
+            {caption}
+          </span>
+        )}
       </td>
     </tr>
   );
@@ -689,17 +693,28 @@ function BudgetTypeSection({
 const BUDGET_TYPES: { key: BudgetType; label: string }[] = [
   { key: 'fixed', label: 'Fixed' },
   { key: 'flexible', label: 'Flexible' },
-  { key: 'non_monthly', label: 'Non-Monthly' },
+  { key: 'non_monthly', label: 'Non-monthly' },
   { key: 'savings', label: 'Savings/Investments' },
 ];
 
-/** `plots`: the /budget/plots design variant, each envelope shown as a plot (Plot.tsx) */
-export default function BudgetPage({ plots = false }: { plots?: boolean }) {
+/** A section's column labels stay pinned to the top of the scrolling table while the section is in
+ * view. Sticky goes on the cells (a collapsed-border <tr> can't carry it), so the band paints its own
+ * background and bottom rule; the Expenses band is later in the table, so it covers Income's. */
+const BAND =
+  'sticky top-0 z-10 bg-surface-alt group-hover:bg-hover transition-colors shadow-[0_1px_0_var(--color-border),0_-1px_0_var(--color-border)]';
+
+export default function BudgetPage() {
   const [paydayView, setPaydayView] = useState(false);
   const { selectedMonth, setSelectedMonth } = useAppStore();
   const [editingId, setEditingId] = useState<string | null>(null);
   // Envelopes ticked for the inspector (BUD-10). Ticking changes no money
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
+  // The ticks are hidden until asked for; leaving select mode clears them
+  const [selectMode, setSelectMode] = useState(false);
+  const toggleSelectMode = () => {
+    if (selectMode) setSelectedIds(new Set());
+    setSelectMode(!selectMode);
+  };
   const toggleSelected = (id: string) =>
     setSelectedIds((now) => {
       const next = new Set(now);
@@ -876,7 +891,6 @@ export default function BudgetPage({ plots = false }: { plots?: boolean }) {
     .flatMap((g) => g.categories)
     .filter((c) => c.target?.underfunded && !c.linkedAccountId).length;
   const tbb = summary?.toBeBudgeted ?? 0;
-  const carryOver = summary?.carryOver ?? 0;
   const expRemaining = expenseTotals.balance;
   const expBalColor =
     expRemaining > 0 ? 'text-positive' : expRemaining < 0 ? 'text-negative' : 'text-text-tertiary';
@@ -901,23 +915,24 @@ export default function BudgetPage({ plots = false }: { plots?: boolean }) {
       </div>
     );
 
-  // Ready to assign, Put the rest in…, Hold and how it's worked out
+  // Ready to assign, Put it in an envelope…, Hold and how it's worked out
   const summaryPanel = (
     <>
       <BudgetSummaryWidget
         funding={summary}
-        expenseAvailable={expenseTotals.balance}
         toBeBudgeted={tbb}
-        carryOver={carryOver}
         incomePlanned={incomeTotals.budgeted}
         incomeEarned={incomeTotals.received}
-        expensesPlanned={expenseTotals.budgeted}
-        expensesSpent={Math.max(0, -expenseTotals.spent)}
         savingsPlanned={savingsTotals.budgeted}
         savingsContributed={savingsTotals.spent}
         fixedExpenses={expensesByBudgetType.fixed}
         flexibleExpenses={expensesByBudgetType.flexible}
         nonMonthlyExpenses={expensesByBudgetType.nonMonthly}
+        fundTargets={{
+          count: underfundedCount,
+          disabled: !canSaveBudget || switchingMonth,
+          onOpen: () => fundTargetsRef.current?.open(),
+        }}
         canHold={!beforeStart && selectedMonth === format(new Date(), 'yyyy-MM')}
         putRest={
           beforeStart
@@ -970,7 +985,7 @@ export default function BudgetPage({ plots = false }: { plots?: boolean }) {
   );
 
   return (
-    <PlotsContext.Provider value={plots}>
+    <>
       <div className="flex flex-col h-full bg-surface">
         <div
           data-testid="budget-header"
@@ -978,7 +993,7 @@ export default function BudgetPage({ plots = false }: { plots?: boolean }) {
         >
           <div className="flex flex-wrap gap-3 max-md:gap-2 items-center justify-between">
             <div className="flex items-center gap-1">
-              <h1 className="text-lg font-semibold text-text">
+              <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
                 <span className="sr-only">Budget, </span>
                 <span>{format(monthDate, 'MMMM yyyy')}</span>
               </h1>
@@ -997,26 +1012,29 @@ export default function BudgetPage({ plots = false }: { plots?: boolean }) {
                     underfundedCount={underfundedCount}
                     onAutoAssign={() => autoAssignRef.current?.open()}
                     onFundTargets={() => fundTargetsRef.current?.open()}
-                    onPayday={() => setPaydayView(true)}
                   />
                 </>
               )}
               <AutoAssign ref={autoAssignRef} month={selectedMonth} hideButton />
               <FundTargets ref={fundTargetsRef} month={selectedMonth} groups={groups} hideButton />
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => setSelectedMonth(format(subMonths(monthDate, 1), 'yyyy-MM'))}
                 aria-label="Previous month"
-                className="p-1.5 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md border border-border bg-surface-alt hover:bg-hover text-text-secondary hover:text-text transition-colors"
+                className="w-8 px-0 max-md:w-11"
               >
-                <ChevronLeft size={18} />
-              </button>
-              <button
+                <ChevronLeft size={16} className="shrink-0" />
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => setSelectedMonth(format(addMonths(monthDate, 1), 'yyyy-MM'))}
                 aria-label="Next month"
-                className="p-1.5 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md border border-border bg-surface-alt hover:bg-hover text-text-secondary hover:text-text transition-colors"
+                className="w-8 px-0 max-md:w-11"
               >
-                <ChevronRight size={18} />
-              </button>
+                <ChevronRight size={16} className="shrink-0" />
+              </Button>
               <Button variant="secondary" size="sm" onClick={goToToday}>
                 Today
               </Button>
@@ -1225,20 +1243,21 @@ export default function BudgetPage({ plots = false }: { plots?: boolean }) {
                 readOnly={beforeStart}
               />
             ) : (
-              <table className="w-full border-collapse">
+              <table className="w-full table-fixed border-collapse">
                 <colgroup>
-                  <col style={{ width: '55%' }} />
-                  <col style={{ width: '15%' }} />
-                  <col style={{ width: '15%' }} />
-                  <col style={{ width: '15%' }} />
+                  <col />
+                  <col style={{ width: '6.75rem' }} />
+                  {/* Activity holds "-$1,150 expected" on one line, so rows stay one height */}
+                  <col style={{ width: '8rem' }} />
+                  <col style={{ width: '6.75rem' }} />
                 </colgroup>
                 <tbody>
                   {/* Income section header */}
                   <tr
-                    className="bg-surface-alt border-y border-border cursor-pointer select-none hover:bg-hover transition-colors"
+                    className="group cursor-pointer select-none"
                     onClick={() => setIncomeCollapsed((c) => !c)}
                   >
-                    <td className="py-2 px-4">
+                    <td className={`${BAND} py-2 px-4`}>
                       <div className="flex items-center gap-2">
                         <span className="text-text-tertiary shrink-0">
                           {incomeCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
@@ -1247,15 +1266,17 @@ export default function BudgetPage({ plots = false }: { plots?: boolean }) {
                       </div>
                     </td>
                     <td
-                      className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary"
+                      className={`${BAND} py-2 px-3 text-right text-xs font-semibold text-text-tertiary`}
                       title="What you expect to earn. It's a plan, not money: only income you've received is ready to assign."
                     >
                       Expected
                     </td>
-                    <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
+                    <td
+                      className={`${BAND} py-2 px-3 text-right text-xs font-semibold text-text-tertiary`}
+                    >
                       Received
                     </td>
-                    <td className="py-2 pl-3 pr-6 text-right text-xs font-bold text-text">
+                    <td className={`${BAND} py-2 pl-3 pr-6 text-right text-xs font-bold text-text`}>
                       Still to come
                     </td>
                   </tr>
@@ -1285,7 +1306,13 @@ export default function BudgetPage({ plots = false }: { plots?: boolean }) {
                         <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text">
                           {formatCurrency(incomeTotals.received)}
                         </td>
-                        <td className="py-2 pl-3 pr-6" />
+                        <td
+                          className={`py-2 pl-3 pr-6 text-right tabular-nums text-sm font-semibold ${incomeTotals.budgeted > incomeTotals.received ? 'text-positive' : 'text-text-tertiary'}`}
+                        >
+                          {formatCurrency(
+                            Math.max(incomeTotals.budgeted - incomeTotals.received, 0),
+                          )}
+                        </td>
                       </tr>
                     </>
                   )}
@@ -1293,10 +1320,10 @@ export default function BudgetPage({ plots = false }: { plots?: boolean }) {
                   {/* Expenses section header */}
                   <tr
                     data-guide="budget.columns"
-                    className="bg-surface-alt border-y border-border cursor-pointer select-none hover:bg-hover transition-colors"
+                    className="group cursor-pointer select-none"
                     onClick={() => setExpensesCollapsed((c) => !c)}
                   >
-                    <td className="py-2 px-4">
+                    <td className={`${BAND} py-2 px-4`}>
                       <div className="flex items-center gap-2">
                         <span className="text-text-tertiary shrink-0">
                           {expensesCollapsed ? (
@@ -1306,15 +1333,31 @@ export default function BudgetPage({ plots = false }: { plots?: boolean }) {
                           )}
                         </span>
                         <span className="text-xs font-semibold text-text-secondary">Expenses</span>
+                        <button
+                          type="button"
+                          aria-pressed={selectMode}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSelectMode();
+                          }}
+                          title="Tick envelopes to see only those in the side panel"
+                          className={`ml-2 rounded-md px-2 py-0.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${selectMode ? 'bg-brand-50 text-brand-700' : 'border border-border text-text-secondary hover:bg-hover hover:text-text'}`}
+                        >
+                          {selectMode ? 'Done selecting' : 'Select'}
+                        </button>
                       </div>
                     </td>
-                    <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
+                    <td
+                      className={`${BAND} py-2 px-3 text-right text-xs font-semibold text-text-tertiary`}
+                    >
                       Assigned
                     </td>
-                    <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
+                    <td
+                      className={`${BAND} py-2 px-3 text-right text-xs font-semibold text-text-tertiary`}
+                    >
                       Activity
                     </td>
-                    <td className="py-2 pl-3 pr-6 text-right text-xs font-bold text-text">
+                    <td className={`${BAND} py-2 pl-3 pr-6 text-right text-xs font-bold text-text`}>
                       Available
                     </td>
                   </tr>
@@ -1334,7 +1377,7 @@ export default function BudgetPage({ plots = false }: { plots?: boolean }) {
                           onApplyBulk={handleApplyBulk}
                           showAll={showEvery}
                           selectedIds={selectedIds}
-                          onToggleSelect={toggleSelected}
+                          onToggleSelect={selectMode ? toggleSelected : undefined}
                         />
                       ))}
 
@@ -1402,6 +1445,6 @@ export default function BudgetPage({ plots = false }: { plots?: boolean }) {
           )}
         </div>
       </div>
-    </PlotsContext.Provider>
+    </>
   );
 }

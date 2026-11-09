@@ -178,13 +178,13 @@ test.describe('the budget page', () => {
     await expect(page.getByRole('button', { name: /^Show \d+ inactive/ }).first()).toBeVisible();
   });
 
-  test('"Put the rest in…" assigns everything that is ready', async ({ page, api }) => {
+  test('"Put $X in an envelope…" assigns everything that is ready', async ({ page, api }) => {
     await api.createAccount('Everyday', 100_000);
     const groceries = await api.category('Groceries');
     await open(page, '/budget');
     await expect(readyToAssign(page)).toContainText('$1,000');
 
-    await page.getByRole('button', { name: 'Put the rest in…' }).click();
+    await page.getByRole('button', { name: /^Put .* in an envelope/ }).click();
     const search = page.getByRole('textbox', { name: 'Search categories' });
     await expect(search).toBeFocused();
     // No "Uncategorised" here: the money has to go somewhere
@@ -198,7 +198,7 @@ test.describe('the budget page', () => {
     const cat = groups.flatMap((g) => g.categories).find((c) => c.id === groceries.id);
     expect(cat.budgeted).toBe(100_000);
     // Nothing left to put anywhere
-    await expect(page.getByRole('button', { name: 'Put the rest in…' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Put .* in an envelope/ })).toHaveCount(0);
   });
 
   test('explains Ready to assign, the anchor payday and funding rules in plain words', async ({
@@ -211,7 +211,7 @@ test.describe('the budget page', () => {
     await page.getByRole('button', { name: 'What is Ready to assign?' }).click();
     await expect(page.getByRole('note')).toContainText('haven’t given a job yet'.replace('’', "'"));
     // The words sit in the page and never cover the controls below them
-    const put = page.getByRole('button', { name: 'Put the rest in…' });
+    const put = page.getByRole('button', { name: /^Put .* in an envelope/ });
     const note = await page.getByRole('note').boundingBox();
     const putBox = await put.boundingBox();
     expect(note!.y + note!.height).toBeLessThanOrEqual(putBox!.y + 1);

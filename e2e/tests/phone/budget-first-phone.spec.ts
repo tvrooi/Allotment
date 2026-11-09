@@ -27,7 +27,7 @@ for (const width of [390, 320]) {
     // Ready to assign, compact, with the assign action beside it
     const ready = page.getByRole('status', { name: 'Ready to assign' });
     await expect(ready).toContainText('$2,500');
-    await expect(page.getByRole('button', { name: 'Put the rest in…' })).toBeInViewport();
+    await expect(page.getByRole('button', { name: /^Put .* in an envelope/ })).toBeInViewport();
 
     // The first envelope's amount is on screen without scrolling
     const planned = page.getByRole('button', { name: /^Assigned to / }).first();
@@ -51,10 +51,12 @@ for (const width of [390, 320]) {
     expect(order.expenses).toBeLessThan(order.income);
     expect(order.income).toBeLessThan(order.note);
 
-    // Hold money and the calculation are still there, in a labelled disclosure
+    // Hold money and the calculation are still there, each in its own labelled disclosure
     await expect(page.getByRole('button', { name: 'Hold money…' })).toBeHidden();
-    await page.getByText('Hold money, and how this is worked out').click();
+    await page.getByText('Hold money for next month').click();
     await expect(page.getByRole('button', { name: 'Hold money…' })).toBeVisible();
+    await expect(page.getByText('Cash in your budget accounts')).toBeHidden();
+    await page.getByText('How Ready to assign is worked out').first().click();
     await expect(page.getByText('Cash in your budget accounts')).toBeVisible();
   });
 }

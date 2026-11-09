@@ -1,63 +1,54 @@
-import { formatCurrency } from '../../utils/currency';
+import type { BudgetCategory } from '../../types';
+import { barOf, type BarState } from '../../utils/budgetFigures';
+
+const FILL: Record<BarState, string> = {
+  overspent: 'bg-negative',
+  empty: 'bg-positive',
+  low: 'bg-caution',
+  ok: 'bg-positive',
+  income: 'bg-positive',
+};
 
 /**
- * How much of a category's plan is used: green, amber from 80%, red when over. Recurring
- * debits still expected this month follow in grey.
+ * Money left in an envelope out of what it had this month (carried in plus assigned), so
+ * spending empties the bar: the same idea as the plots variant. Amber when under a fifth is
+ * left, a full red bar when overspent. Recurring debits still expected follow in grey. Income
+ * fills as the plan arrives. The bar carries its meaning as a text label ("$106 left of $288"),
+ * so state never rests on colour alone.
  */
 export function SpentBar({
-  spent,
-  budgeted,
-  isIncome,
-  expected = 0,
-  covered = false,
-  className = 'h-[3px] w-[90%] mt-1',
+  cat,
+  isIncome = false,
+  className = 'h-1.5 w-[90%] mt-1',
 }: {
-  spent: number;
-  budgeted: number;
+  cat: BudgetCategory;
   isIncome?: boolean;
-  /** Positive cents still expected to be spent this month */
-  expected?: number;
-  /** Spending above the assignment is paid for by money carried in: a caution, not a deficit */
-  covered?: boolean;
   className?: string;
 }) {
-  if (budgeted <= 0 && spent <= 0 && expected <= 0) return null;
-  const effectiveBudget = Math.max(budgeted, 1);
-  const ratio = spent / effectiveBudget;
-  const fillWidth = Math.min(ratio * 100, 100);
-
-  let color: string;
-  if (isIncome || ratio < 0.8 || ratio === 1) {
-    color = 'bg-positive';
-  } else if (ratio < 1) {
-    color = 'bg-caution';
-  } else if (covered) {
-    color = 'bg-caution';
-  } else {
-    color = 'bg-negative';
-  }
-
-  const expectedWidth = Math.min(
-    Math.max((expected / effectiveBudget) * 100, 0),
-    100 - Math.max(fillWidth, 0),
-  );
-
-  // The bar has no legend, so hovering it says what it measures (the figures beside it are what
-  // a screen reader reads)
-  const label = `${isIncome ? 'Received' : 'Spent'} ${formatCurrency(spent)} of ${formatCurrency(budgeted)}${
-    expected > 0 ? `, ${formatCurrency(expected)} still expected` : ''
-  }`;
+  const bar = barOf(cat, isIncome);
+  if (!bar) return null;
+  const { state, fill, expectedFill, label } = bar;
+  const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
 
   return (
-    <div title={label} className={`${className} bg-surface-alt rounded-full overflow-hidden flex`}>
-      <div
-        className={`h-full rounded-full transition-all ${color}`}
-        style={{ width: `${fillWidth.toFixed(1)}%` }}
-      />
-      {expectedWidth > 0 && (
+    <div
+      role="img"
+      aria-label={label}
+      title={label}
+      className={`${className} bg-surface-alt rounded-full overflow-hidden flex ${
+        state === 'overspent' ? 'ring-1 ring-inset ring-negative' : ''
+      }`}
+    >
+      {fill > 0 && (
+        <div
+          className={`h-full rounded-full transition-all ${FILL[state]}`}
+          style={{ width: pct(fill) }}
+        />
+      )}
+      {expectedFill > 0 && (
         <div
           className="h-full rounded-full transition-all bg-expected opacity-70"
-          style={{ width: `${expectedWidth.toFixed(1)}%` }}
+          style={{ width: pct(expectedFill) }}
           data-testid="expected-bar"
         />
       )}
