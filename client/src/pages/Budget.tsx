@@ -41,7 +41,7 @@ import { MissingRatesBanner } from '../components/currency/MissingRatesBanner';
 import { useIsPhone } from '../hooks/useIsPhone';
 import { useCanSave } from '../hooks/useConnection';
 import { availability, categoryFigures, splitCategories } from '../utils/budgetFigures';
-import { TransferredNote } from '../components/budget/TransferredNote';
+import { TransferredNote, useLinkedAccount } from '../components/budget/TransferredNote';
 import { ExpectedNote } from '../components/budget/ExpectedNote';
 import type { BudgetCategory, BudgetGroup, BudgetType } from '../types';
 import { RentOrOwn } from '../components/budget/RentOrOwn';
@@ -211,7 +211,9 @@ function CategoryRow({
   const { actual } = categoryFigures(cat, isIncome);
   const { kind, remaining, caption } = availability(cat, isIncome);
   const askToMove = useMoveRequest((s) => s.ask);
-  const movable = !isIncome && canSave && remaining !== 0 && canMoveIn(month);
+  // An envelope linked to an account holds what the account holds: a transfer moves its money
+  const linked = useLinkedAccount(cat);
+  const movable = !isIncome && !linked && canSave && remaining !== 0 && canMoveIn(month);
   const [draft, setDraft] = useState<number | null>(cat.budgeted);
   const closed = useRef(false);
   const [saving, setSaving] = useState(false);
@@ -346,13 +348,21 @@ function CategoryRow({
           <p
             className={`text-xs mt-0.5 ${cat.target.underfunded ? 'text-caution' : 'text-text-tertiary'}`}
           >
-            {targetLabel(cat.target)}
+            {targetLabel(cat.target, linked?.name)}
           </p>
         )}
       </td>
       <td className="py-1.5 px-3 text-right align-top">
         <div className="relative inline-block">
-          {isEditing ? (
+          {linked && !isIncome ? (
+            <span
+              className="inline-block tabular-nums text-sm px-2 py-0.5 min-w-[5.5rem] text-right text-text-secondary"
+              title={`${cat.name} follows ${linked.name}. Transfer money to or from ${linked.name} to change it.`}
+              aria-label={`Moved to ${linked.name} for ${cat.name}: ${formatCurrency(cat.budgeted + (cat.transferred ?? 0))}`}
+            >
+              {formatCurrency(cat.budgeted + (cat.transferred ?? 0))}
+            </span>
+          ) : isEditing ? (
             <>
               <AmountInput
                 cents={cat.budgeted}
@@ -856,7 +866,7 @@ export default function BudgetPage() {
   const beforeStart = !!summary?.budgetStartMonth && selectedMonth < summary.budgetStartMonth;
   const underfundedCount = groups
     .flatMap((g) => g.categories)
-    .filter((c) => c.target?.underfunded).length;
+    .filter((c) => c.target?.underfunded && !c.linkedAccountId).length;
   const tbb = summary?.toBeBudgeted ?? 0;
   const carryOver = summary?.carryOver ?? 0;
   const expRemaining = expenseTotals.balance;

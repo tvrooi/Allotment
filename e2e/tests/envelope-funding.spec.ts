@@ -172,3 +172,42 @@ test('Move money has its own guide page, linked from the panel', async ({ page }
     page.getByRole('heading', { name: 'Giving money back to Ready to assign' }),
   ).toBeVisible();
 });
+
+for (const phone of [false, true]) {
+  test(`an envelope linked to an account holds what the account holds${phone ? ' on phone' : ''}`, async ({
+    page,
+    api,
+  }) => {
+    if (phone) await page.setViewportSize({ width: 390, height: 844 });
+    const spending = await api.createAccount('Spending', 0);
+    const saver = await api.createAccount('Rent saver', 0, 'savings');
+    const rent = await api.category('Rent / Mortgage');
+    await api.createTransaction({
+      accountId: spending.id,
+      date: isoDay(),
+      amount: 300000,
+      categoryId: (await api.category('Paychecks')).id,
+    });
+    await api.call('PUT', `/categories/${rent.id}`, { linkedAccountId: saver.id });
+    await api.call('POST', '/transactions/transfer', {
+      fromAccountId: spending.id,
+      toAccountId: saver.id,
+      date: isoDay(),
+      amount: 82550,
+    });
+    // An assignment would change nothing, so the server refuses it
+    await expect(
+      api.call('PUT', `/budget/${thisMonth()}/${rent.id}`, { budgeted: 1000 }),
+    ).rejects.toThrow(/409.*follows the Rent saver account/);
+
+    await open(page, '/budget');
+    const row = phone
+      ? page.getByTestId('budget-card').filter({ hasText: 'Rent / Mortgage' })
+      : page.locator('tr').filter({ hasText: 'Rent / Mortgage' });
+    await expect(row.getByTestId('transferred-note')).toContainText('Follows Rent saver');
+    await expect(row.getByTestId('transferred-note')).toContainText('holds $825.50');
+    await expect(row).toContainText('$825.50');
+    // Funded by a transfer, never an assignment
+    await expect(row.getByRole('button', { name: /^Planned for Rent/ })).toHaveCount(0);
+  });
+}

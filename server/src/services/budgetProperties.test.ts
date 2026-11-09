@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import fc from 'fast-check';
+import { inArray } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { db } from '../db/index.js';
 import {
@@ -40,7 +41,7 @@ const TODAY = '2026-10-21';
 const MONTHS = ['2026-07', '2026-08', '2026-09', '2026-10', '2026-11', '2026-12'];
 const CURRENT = TODAY.slice(0, 7);
 const EXPENSES = ['food', 'rent', 'fun'];
-/** An expense envelope linked to the saver: confirmed transfers into it count as `transferred` */
+/** An expense envelope linked to the saver: from the month the saver opens, it holds the saver's balance */
 const LINKED = 'goal';
 const ENVELOPES = [...EXPENSES, LINKED];
 /** Personal budget accounts: the ones whose balances are resources */
@@ -370,17 +371,18 @@ function recompute(raw: Raw, month: string) {
         return other === null || !personal(other);
       })
       .reduce((s, t) => s + t.amount, 0);
-  // The linked envelope also counts the saver's side of a transfer with another personal account
-  const transferred = (c: string, m: string) =>
-    c !== LINKED
+  // The linked envelope mirrors the saver: from the month it opens (the earlier of its creation
+  // and first row), and not before the budget start, Available is its balance (a split counts
+  // once, by its parent). Later months than today's add only their assignments.
+  const saver = raw.accounts.find((a) => a.id === 'saver')!;
+  const saverRows = raw.txns.filter((t) => t.accountId === 'saver' && !t.parentTransactionId);
+  const saverOpens = [saver.createdAt.slice(0, 10), ...saverRows.map((t) => t.date)].sort()[0];
+  const saverBalance = (date: string) =>
+    saverOpens > date
       ? 0
-      : raw.txns
-          .filter((t) => t.accountId === 'saver' && counts(t, m))
-          .filter((t) => {
-            const other = counterpartAccount(t);
-            return other !== null && other !== 'saver' && personal(other);
-          })
-          .reduce((s, t) => s + t.amount, 0);
+      : saver.startingBalance +
+        saverRows.filter((t) => t.date <= date).reduce((s, t) => s + t.amount, 0);
+  const mirrorFrom = [saverOpens.slice(0, 7), startMonth].sort().at(-1)!;
   const assignedIn = (c: string, m: string) =>
     raw.assigned
       .filter((a) => a.categoryId === c && a.month === m)
@@ -395,7 +397,10 @@ function recompute(raw: Raw, month: string) {
     const months = new Map<string, number>();
     for (const m of MONTHS.filter((m) => m >= startMonth && m <= month)) {
       const carriedIn = raw.kept.includes(c) ? avail : Math.max(0, avail);
-      avail = carriedIn + assignedIn(c, m) + transferred(c, m) + activity(c, m);
+      avail =
+        c === LINKED && m >= mirrorFrom && m <= CURRENT
+          ? saverBalance(minDate(monthBounds(m).to, TODAY))
+          : carriedIn + assignedIn(c, m) + activity(c, m);
       months.set(m, avail);
     }
     available.set(c, avail);
@@ -608,7 +613,8 @@ describe('budget properties (audit F-16)', () => {
       fc.assert(
         fc.property(
           scenarioArb,
-          fc.constantFrom(...ENVELOPES),
+          // A linked envelope mirrors its account, so money moves through a transfer instead
+          fc.constantFrom(...EXPENSES),
           fc.double({ min: 0, max: 1, noNaN: true }),
           (raw, source, share) => {
             baseBudget(raw);
@@ -677,7 +683,10 @@ describe('budget properties (audit F-16)', () => {
             baseBudget(raw);
             const before = figures();
             // Both accounts exist from the first scenario month, whatever the scenario chose
-            db.update(accounts).set({ createdAt: '2026-06-01' }).run();
+            db.update(accounts)
+              .set({ createdAt: '2026-06-01' })
+              .where(inArray(accounts.id, [from, to]))
+              .run();
             const opened = figures();
             db.insert(transactions)
               .values([

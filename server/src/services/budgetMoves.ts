@@ -1,8 +1,15 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 import { accountIssues, describeIssues } from './accountIntegrity.js';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
-import { budgetMonths, budgetMoves, categoryPurposes, financialPriorities } from '../db/schema.js';
+import {
+  accounts,
+  budgetMonths,
+  budgetMoves,
+  categories,
+  categoryPurposes,
+  financialPriorities,
+} from '../db/schema.js';
 import { budgetGroups, fundingRevision, fundingState } from './budgetService.js';
 import { todayIso } from './mainAmountService.js';
 import { monthBounds } from '../utils/date.js';
@@ -23,6 +30,25 @@ export class BudgetError extends Error {
     super(message);
   }
 }
+/**
+ * An envelope linked to an account mirrors that account's balance (docs/ENVELOPE-FUNDING.md), so
+ * an assignment or a move would change nothing: money reaches it by a transfer. Refuses a write
+ * to any of `categoryIds` that is linked, naming the envelope and its account.
+ */
+export function refuseLinked(categoryIds: string[]) {
+  if (!categoryIds.length) return;
+  const linked = db
+    .select({ name: categories.name, account: accounts.name })
+    .from(categories)
+    .innerJoin(accounts, eq(accounts.id, categories.linkedAccountId))
+    .where(and(inArray(categories.id, categoryIds), isNotNull(categories.linkedAccountId)))
+    .get();
+  if (linked)
+    throw new BudgetError(
+      `${linked.name} follows the ${linked.account} account. Transfer money to or from ${linked.account} instead.`,
+    );
+}
+
 function assignment(month: string, categoryId: string) {
   return (
     db
@@ -78,6 +104,7 @@ export function previewMove(month: string, request: MoveRequest) {
   const destination = toReady ? null : cats.find((c) => c.id === destinationId);
   if (!source || (!toReady && !destination))
     throw new BudgetError('Choose existing expense categories', 400);
+  refuseLinked(toReady ? [sourceId] : [sourceId, destinationId]);
   if (!fundingState(today).complete)
     throw new BudgetError('Add missing exchange rates before moving money');
   // A historical move also changes every subsequent month. Never take money already
@@ -225,6 +252,7 @@ export function fundedWrite(action: () => void) {
       (k) => before.get(k)?.budgeted !== after.get(k)?.budgeted,
     );
     if (!changed.length) return;
+    refuseLinked([...new Set(changed.map((k) => k.split('|')[1]))]);
     const today = todayIso();
     const current = today.slice(0, 7);
     // Every past month from the earliest change (activity differs each month), this month and

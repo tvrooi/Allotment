@@ -1,5 +1,4 @@
-import { and, eq, inArray, sql } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/sqlite-core';
+import { and, sql } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import {
   accounts,
@@ -16,7 +15,6 @@ import {
   budgetStartDate,
   inAccountBalance,
   mainAmount,
-  onBudget,
   personalBudgetAccount,
   sinceBudgetStart,
 } from './balances.js';
@@ -27,7 +25,7 @@ import {
   todayIso,
   type CurrencyContext,
 } from './mainAmountService.js';
-import { monthBounds } from '../utils/date.js';
+import { addMonthsIso, monthBounds } from '../utils/date.js';
 import type { CardData, calculateCardFunding } from './cardFunding.js';
 
 // Everything the budget engine needs from history, computed in one pass and kept until the
@@ -44,43 +42,6 @@ export const receivedSpending = and(
 )!;
 /** What the envelopes count: received activity from the budget start on */
 export const receivedActivity = and(receivedSpending, sinceBudgetStart)!;
-
-/**
- * Transfers that move money into or out of an envelope's linked account (categories
- * .linked_account_id): the linked account's side of a confirmed transfer with another personal
- * budget account, from the budget start on. Into the account adds to the envelope; back out
- * takes from it. Internal transfers are otherwise no activity (balances.ts budgetActivity),
- * and reports still leave them out.
- */
-const counterpart = alias(transactions, 'counterpart');
-function linkedTransfers(...where: ReturnType<typeof sql>[]) {
-  return db
-    .select({
-      categoryId: categories.id,
-      month: sql<string>`substr(${transactions.date}, 1, 7)`,
-      total: sql<number>`coalesce(sum(${mainAmount}), 0)`,
-    })
-    .from(transactions)
-    .innerJoin(categories, eq(categories.linkedAccountId, transactions.accountId))
-    .innerJoin(counterpart, eq(counterpart.id, transactions.transferTransactionId))
-    .where(
-      and(
-        inAccountBalance,
-        onBudget,
-        sinceBudgetStart,
-        sql`${counterpart.accountId} != ${transactions.accountId}`,
-        inArray(
-          counterpart.accountId,
-          db.select({ id: accounts.id }).from(accounts).where(personalBudgetAccount),
-        ),
-        // A generated, unreconciled transfer in is still an expectation, like income
-        sql`not (${transactions.amount} > 0 and coalesce(${transactions.importedId}, '') like 'schedule:%' and ${transactions.reconciled} = 0)`,
-        ...where,
-      ),
-    )
-    .groupBy(categories.id, sql`substr(${transactions.date}, 1, 7)`)
-    .all();
-}
 
 export const fundingRevision = () =>
   `${todayIso()}:${db.select().from(budgetRevision).get()?.revision ?? 'initial'}`;
@@ -101,8 +62,11 @@ interface CategoryHistory {
   assigned: Map<string, number>;
   /** Received activity by month, for the whole month (a date cut-off only matters in its own) */
   activity: Map<string, number>;
-  /** Net transfers into the linked account by month (linkedTransfers), counted like activity */
+  /** For an envelope linked to an account: what brings it to the account's balance each month,
+   * counted like an assignment (mirrorSteps) */
   transferred: Map<string, number>;
+  /** The account a linked envelope mirrors, and the first month it does */
+  mirror: { account: AccountHistory; from: string } | null;
   /** Every month holding an assignment or activity with what the category carries out of it */
   steps: { month: string; net: number; after: number }[];
   /** The months holding an assignment, oldest first */
@@ -137,8 +101,8 @@ export interface Ledger {
   ctx: CurrencyContext;
   /** Received activity by date: uncategorized spending, and rows still awaiting a rate */
   days: { dates: string[]; uncategorized: number[]; missing: number[] };
-  /** Category activity, and linked transfers, in the part of a month up to a date, by date */
-  partial: Map<string, { activity: Map<string, number>; transferred: Map<string, number> }>;
+  /** Category activity in the part of a month up to a date, by date */
+  partial: Map<string, { activity: Map<string, number> }>;
   /** What card funding reads from the database, loaded when the first card figure is asked */
   cardData: CardData | null;
   /** Card funding replayed as of a date */
@@ -198,6 +162,7 @@ function build(): Ledger {
         assigned: new Map(),
         activity: new Map(),
         transferred: new Map(),
+        mirror: null,
         steps: [],
         assignedMonths: [],
       },
@@ -218,25 +183,11 @@ function build(): Ledger {
     .all();
   for (const r of activityRows)
     if (r.categoryId) envelopes.get(r.categoryId)?.activity.set(r.month, r.total);
-  // Only an expense envelope follows its account (the categories route allows no other)
-  for (const r of linkedTransfers()) {
-    const history = envelopes.get(r.categoryId);
-    if (history?.expense) history.transferred.set(r.month, r.total);
-  }
   for (const history of envelopes.values()) {
-    const months = [
-      ...new Set([
-        ...history.assigned.keys(),
-        ...history.activity.keys(),
-        ...history.transferred.keys(),
-      ]),
-    ].sort();
+    const months = [...new Set([...history.assigned.keys(), ...history.activity.keys()])].sort();
     let carry = 0;
     history.steps = months.map((month) => {
-      const net =
-        (history.assigned.get(month) ?? 0) +
-        (history.activity.get(month) ?? 0) +
-        (history.transferred.get(month) ?? 0);
+      const net = (history.assigned.get(month) ?? 0) + (history.activity.get(month) ?? 0);
       carry = settle(carry, net, history.resets);
       return { month, net, after: carry };
     });
@@ -303,6 +254,24 @@ function build(): Ledger {
       return { account, effective, opening, dates, received };
     });
 
+  // Only an expense envelope follows its account (the categories route allows no other), and
+  // only while the account is an open personal budget account
+  const lastMonth = [todayIso(), ...accountHistories.map((a) => a.dates.at(-1) ?? '')]
+    .reduce((a, b) => (a > b ? a : b))
+    .slice(0, 7);
+  for (const history of envelopes.values()) {
+    const account = history.category.linkedAccountId
+      ? accountHistories.find((a) => a.account.id === history.category.linkedAccountId)
+      : undefined;
+    if (!history.expense || !account) continue;
+    const effectiveMonth = account.effective.slice(0, 7);
+    history.mirror = {
+      account,
+      from: effectiveMonth > startMonth ? effectiveMonth : startMonth,
+    };
+    mirrorSteps(history, lastMonth, ctx);
+  }
+
   const dayRows = db
     .select({
       date: transactions.date,
@@ -352,6 +321,46 @@ function build(): Ledger {
   };
 }
 
+/** An account's balance at the end of `date` in budget minor units (null: no rate) */
+function accountBalanceAt(a: AccountHistory, date: string, ctx: CurrencyContext): number | null {
+  if (a.effective > date) return 0;
+  const count = countThrough(a.dates, date, (d) => d);
+  return convertAmount(
+    a.account.startingBalance + (count ? a.received[count - 1] : 0),
+    a.account.currency ?? ctx.budget,
+    ctx.budget,
+    date,
+    ctx,
+  );
+}
+
+/**
+ * A linked envelope mirrors its account (owner-requested 9 November 2026): from the month the
+ * account takes effect, Available at the end of each month is the account's balance. What
+ * brings it there, after assignments and the category's own activity, is `transferred`:
+ * transfers in and out, interest that lands and is forwarded on, and this category's spending
+ * paid from another account (which then comes out of Ready to Assign instead). Months before
+ * keep the ordinary rule; months after `lastMonth` hold assignments only.
+ */
+function mirrorSteps(h: CategoryHistory, lastMonth: string, ctx: CurrencyContext) {
+  const { account, from } = h.mirror!;
+  const months = new Set([...h.assigned.keys(), ...h.activity.keys()]);
+  for (let m = from; m <= lastMonth; m = addMonthsIso(`${m}-01`, 1).slice(0, 7)) months.add(m);
+  let carry = 0;
+  h.steps = [...months].sort().map((month) => {
+    const assigned = h.assigned.get(month) ?? 0;
+    const activity = h.activity.get(month) ?? 0;
+    if (month >= from && month <= lastMonth) {
+      const balance = accountBalanceAt(account, monthBounds(month).to, ctx);
+      const moved = balance === null ? 0 : balance - carry - assigned - activity;
+      if (moved) h.transferred.set(month, moved);
+    }
+    const net = assigned + activity + (h.transferred.get(month) ?? 0);
+    carry = settle(carry, net, h.resets);
+    return { month, net, after: carry };
+  });
+}
+
 // The ledger is rebuilt when fundingRevision() changes: it combines today with a revision
 // that SQLite triggers bump on every write to the tables this reads (transactions, accounts,
 // budget_months, budget_holds, categories and groups, exchange rates, budget settings, card funding and the
@@ -369,7 +378,7 @@ export function clearLedger() {
   cached = null;
 }
 
-/** Activity and linked transfers in `date`'s month up to and including `date`, by category */
+/** Activity in `date`'s month up to and including `date`, by category */
 function partialMonth(l: Ledger, date: string) {
   let found = l.partial.get(date);
   if (!found) {
@@ -390,8 +399,7 @@ function partialMonth(l: Ledger, date: string) {
         .all()
         .flatMap((r) => (r.categoryId ? [[r.categoryId, r.total] as const] : [])),
     );
-    const transferred = new Map(linkedTransfers(...inMonth).map((r) => [r.categoryId, r.total]));
-    found = { activity, transferred };
+    found = { activity };
     l.partial.set(date, found);
   }
   return found;
@@ -405,14 +413,26 @@ function currentActivity(l: Ledger, h: CategoryHistory, today: string): number |
     : partialMonth(l, today).activity.get(h.category.id);
 }
 
-/** Linked transfers in the month `today` falls in, up to and including `today` */
+/** What carries out of the months before `month`, from the walked steps */
+function carryBefore(h: CategoryHistory, month: string): number {
+  const i = lowerBound(h.steps, month, (s) => s.month);
+  return i ? h.steps[i - 1].after : 0;
+}
+
+/** What brings a linked envelope to its account's balance on `today`, in `today`'s month */
 function currentTransferred(l: Ledger, h: CategoryHistory, today: string): number | undefined {
   const month = today.slice(0, 7);
-  // Only envelopes that follow an account have any (and never an income category)
-  if (!h.transferred.size) return undefined;
-  return today >= monthBounds(month).to
-    ? h.transferred.get(month)
-    : partialMonth(l, today).transferred.get(h.category.id);
+  // Only envelopes that mirror an account have any (and never an income category)
+  if (!h.mirror || month < h.mirror.from) return undefined;
+  if (today >= monthBounds(month).to) return h.transferred.get(month);
+  const balance = accountBalanceAt(h.mirror.account, today, l.ctx);
+  if (balance === null) return undefined;
+  return (
+    balance -
+    carryBefore(h, month) -
+    (h.assigned.get(month) ?? 0) -
+    (currentActivity(l, h, today) ?? 0)
+  );
 }
 
 /** The category's net change in the month `today` falls in (undefined: no assignment or rows) */
@@ -451,12 +471,8 @@ function monthlyNet(l: Ledger, h: CategoryHistory, month: string, today: string)
 /** What the category carries into `month`, counting activity up to `today` */
 function carryInto(l: Ledger, h: CategoryHistory, month: string, today: string): number {
   const current = today.slice(0, 7);
-  const before = (until: string) => {
-    const i = lowerBound(h.steps, until, (s) => s.month);
-    return i ? h.steps[i - 1].after : 0;
-  };
-  if (month <= current) return before(month);
-  let carry = settle(before(current), currentMonthNet(l, h, today) ?? 0, h.resets);
+  if (month <= current) return carryBefore(h, month);
+  let carry = settle(carryBefore(h, current), currentMonthNet(l, h, today) ?? 0, h.resets);
   for (const m of h.assignedMonths.slice(
     lowerBound(h.assignedMonths, current + '\u0000', (m) => m),
   )) {
@@ -508,7 +524,7 @@ export function envelopeGroups(l: Ledger, month: string, today: string) {
           : month === current
             ? (currentActivity(l, h, today) ?? 0)
             : 0;
-      // Money moved into the linked account this month: in the envelope like an assignment
+      // A linked envelope: what brings it to its account's balance, like an assignment
       const transferred =
         month < current
           ? (h.transferred.get(month) ?? 0)
@@ -539,14 +555,7 @@ export function resourcesAt(l: Ledger, asOf: string, enrolledCards: Set<string>,
   for (const h of l.accounts) {
     const { account } = h;
     if (h.effective > asOf) continue;
-    const count = countThrough(h.dates, asOf, (d) => d);
-    const value = convertAmount(
-      account.startingBalance + (count ? h.received[count - 1] : 0),
-      account.currency ?? l.ctx.budget,
-      l.ctx.budget,
-      asOf,
-      l.ctx,
-    );
+    const value = accountBalanceAt(h, asOf, l.ctx);
     if (value === null || h.opening === null) {
       complete = false;
       continue;
