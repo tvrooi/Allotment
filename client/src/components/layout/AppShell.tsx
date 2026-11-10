@@ -28,12 +28,14 @@ export function AppShell() {
   useSafeModeKeyboard();
   useUpFreshness();
   useGuideKeyboard();
-  const { data: accounts = [], isLoading } = useAccounts();
+  const { data: accounts = [], isLoading, isError } = useAccounts();
   const setupSkipped = usePreferencesStore((s) => s.setupSkipped);
   const isPhone = useIsPhone();
   const { pathname } = useLocation();
 
-  if (isLoading) {
+  // Direct routes own their loading/error UI. Unmounting them on a shared account
+  // retry remounts observers and can keep an initial failure in a fetch loop.
+  if (isLoading && FRONT_DOOR.has(pathname)) {
     return (
       <div className="h-screen flex items-center justify-center bg-page">
         <Loader2 size={32} className="animate-spin text-text-tertiary" />
@@ -43,7 +45,7 @@ export function AppShell() {
 
   // A new budget opens on the welcome page, but only from the front door: a link to another
   // page (opened on a phone, or a second browser that hasn't seen "Skip for now") goes there
-  if (accounts.length === 0 && !setupSkipped && FRONT_DOOR.has(pathname)) {
+  if (!isError && accounts.length === 0 && !setupSkipped && FRONT_DOOR.has(pathname)) {
     return <Navigate to="/welcome" replace />;
   }
 

@@ -129,6 +129,11 @@
   }
 
   /* Chart */
+  --color-chart-account-investments: #637b9c;
+  --color-chart-account-property: #9a7a43;
+  --color-chart-account-other: #907565;
+  --color-chart-account-loans: #a66e50;
+  --color-chart-account-other-debt: #a86269;
   --color-chart-brand: #487a78;
   --color-chart-brand-light: #68908c;
   --color-chart-brand-subtle: #dceae6;
@@ -204,6 +209,11 @@
   --color-sidebar-text: #c9c3bb;
   --color-sidebar-text-hi: #f4f1ec;
 
+  --color-chart-account-investments: #9baec7;
+  --color-chart-account-property: #c3aa7a;
+  --color-chart-account-other: #bca99a;
+  --color-chart-account-loans: #c99574;
+  --color-chart-account-other-debt: #cf9ba1;
   --color-chart-brand: #92bdb4;
   --color-chart-brand-light: #b2d1c8;
   --color-chart-brand-subtle: #304540;

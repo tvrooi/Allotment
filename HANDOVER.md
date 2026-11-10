@@ -9,6 +9,39 @@ Last updated: 10 November 2026 (local Transactions and iPhone web-app refinement
 
 ## State
 
+- **Muted account overview palette (up.163; local design work, not released):**
+  AssetLiabilitySummary uses ACCOUNT_OVERVIEW_COLORS from chartColors, backed by light/dark
+  roles in index.css and recorded in DESIGN.md. Cash reuses chart teal, super the investment
+  text colour, and credit the softer negative chart colour. Other categories use muted denim,
+  ochre, cocoa, clay and rose. Forecast colours and account icons retain their existing roles.
+  Verification: client build and targeted lint pass; desktop light/dark and phone overview
+  visually checked. Visible legend marks contrast at least 4:1 on light cards and 5.9:1 on dark;
+  labels and exact balances also identify each category.
+
+- **Account budget scope (up.162; local design work, not released):** account rows now
+  show For budget, Off budget, or Household followed by the existing householdPool name,
+  beside the account type. Household membership takes precedence over isOffBudget, matching
+  sidebar scope. Context wraps without truncating the household name on phones; links and
+  balance alignment remain intact. Browser coverage includes all three scopes and long
+  household names at desktop and 390px, alongside the existing account access/demo checks.
+  Verification: eight browser checks passed (six existing plus two scope checks), client build,
+  E2E types, targeted lint and design detector passed; populated desktop/mobile reviewed visually.
+
+- **Accounts access and mobile hierarchy (up.161; local design work, not released):**
+  account rows are semantic links with visible keyboard focus; group buttons announce their
+  expanded state and retain their controlled region. Group headings separate name/total from
+  monthly change and omit orphan period labels. Phones lead with current net worth from the
+  shared currency-aware account total and the account list; Show overview reveals the existing
+  chart and asset/liability summary. Desktop retains the full overview, with no nested net-worth
+  card. Accounts and balance comparisons reuse QueryProblem for missing/stale data and Retry.
+  Direct routes keep their own loading UI instead of being repeatedly unmounted by the shared
+  account query; an account failure cannot trigger the shell's first-account redirect.
+  Regression coverage: keyboard account opening/disclosures, 390/430px first-screen access and
+  header containment, overview access, failed-load Retry, genuine empty state and offline demo.
+  Verification: 450 client tests, client build, E2E types, targeted lint, formatting and design
+  detector pass; all six targeted browser checks pass. Populated desktop, 430px and 390px layouts
+  were visually inspected. Phone checks use Chromium emulation, not physical iOS hardware.
+
 - **Inspect grouped Review transactions (up.160; local design work, not released):** each
   repeated payee has a View transactions link scoped to its uncategorised personal-budget
   entries across all dates. The register URL and grouped mutation share personalPayeeSelection,

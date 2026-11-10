@@ -1,5 +1,17 @@
 # Changes
 
+## 0.2.0-up.163
+
+- **A calmer account overview.** Asset and liability charts use muted teal, denim, mauve, ochre and clay, with lighter shades for dark mode. Category labels and balances remain the primary reading cues.
+
+## 0.2.0-up.162
+
+- **Accounts show where their money belongs.** Each account type is followed by For budget, Off budget, or its household name. Household accounts are labelled separately from the personal budget, and longer context wraps on phones.
+
+## 0.2.0-up.161
+
+- **Accounts are easier to reach and navigate.** Account rows support keyboard navigation, group disclosures announce their state, and phone group totals stay separate from change figures. Phones lead with a compact net-worth total and the account list, with the full overview available on request. Failed account loads offer Retry instead of first-account guidance; balance-comparison failures are reported. Net worth uses a single card boundary.
+
 ## 0.2.0-up.160
 
 - **Inspect a grouped payee before categorising.** Each repeated payee in Review links to its uncategorised personal-budget transactions across all dates. Inspection and grouped categorisation share the same account and merchant selection; household, off-budget and already categorised entries stay outside the view.
