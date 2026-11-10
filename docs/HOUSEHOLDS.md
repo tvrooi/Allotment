@@ -235,6 +235,8 @@ for, amount and who paid, dated today and split with the household's default spl
 "50/50" for two people sharing equally, with a link to change it in Settings). It records the same
 `expense` entry as **Record something else**, which stays for other dates, repayments and unequal
 splits.
+Under it, **Recent** lists the last four shared expenses with who paid and each person's share;
+**All activity** opens the Activity tab.
 
 ## Where the balances come from, and reconciling them
 

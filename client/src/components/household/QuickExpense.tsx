@@ -3,10 +3,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { recordSharedExpense, type HouseholdSplit } from '../../api/households';
 import { useCanSave } from '../../hooks/useConnection';
 import { todayIso } from '../../utils/calendarDay';
+import { formatMoney } from '../../utils/currency';
+import { formatDay } from '../../utils/dates';
 import { Button } from '../ui/Button';
 import { CurrencyInput } from '../ui/CurrencyInput';
 import { Input, Select } from '../ui/Input';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
+import { latestExpenses, type LedgerEntry } from './latestExpenses';
 import { splitLabel } from './splitLabel';
 
 // Household → Overview, for a household without a shared account (people pay as they go): add a
@@ -19,12 +22,26 @@ const label = 'grid gap-1 text-sm font-medium text-text-secondary';
 
 interface Props {
   groupId: string;
+  currency: string;
+  /** The household's entries, oldest first */
+  events: LedgerEntry[];
   people: { id: string; name: string; isSelf: number }[];
   defaultSplit: HouseholdSplit | null;
   onChangeSplit: () => void;
+  onSeeAll: () => void;
 }
 
-export function QuickExpense({ groupId, people, defaultSplit, onChangeSplit }: Props) {
+const RECENT = 4;
+
+export function QuickExpense({
+  groupId,
+  currency,
+  events,
+  people,
+  defaultSplit,
+  onChangeSplit,
+  onSeeAll,
+}: Props) {
   const qc = useQueryClient();
   const canSave = useCanSave();
   const self = people.find((p) => p.isSelf) ?? people[0];
@@ -53,6 +70,9 @@ export function QuickExpense({ groupId, people, defaultSplit, onChangeSplit }: P
     onError: (e: Error) => setError(e.message),
   });
   const ready = description.trim() !== '' && amount > 0;
+  const money = (n: number) => formatMoney(n, currency);
+  const name = (id: string | null) => people.find((p) => p.id === id)?.name ?? 'The household';
+  const recent = latestExpenses(events, RECENT);
   const others = people.filter((p) => p.id !== payerId).map((p) => p.name);
 
   return (
@@ -111,6 +131,36 @@ export function QuickExpense({ groupId, people, defaultSplit, onChangeSplit }: P
         </p>
       )}
       <SavingPausedHint className="mt-1" />
+      {recent.length > 0 && (
+        <div className="mt-3 border-t border-border-light pt-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-xs font-semibold text-text-secondary">Recent</h3>
+            <button
+              type="button"
+              onClick={onSeeAll}
+              className="text-xs font-medium text-text-secondary underline-offset-2 hover:underline max-md:min-h-11"
+            >
+              All activity
+            </button>
+          </div>
+          <ul aria-label="Recent shared expenses" className="divide-y divide-border-light">
+            {recent.map((e) => (
+              <li key={e.id} className="flex items-start justify-between gap-3 py-2 text-sm">
+                <div className="min-w-0">
+                  <p className="text-text">{e.description}</p>
+                  <p className="text-xs text-text-tertiary">
+                    {formatDay(e.date)} · {name(e.payerId)} paid ·{' '}
+                    {e.shares.map((s) => `${name(s.personId)} ${money(s.amount)}`).join(' · ')}
+                  </p>
+                </div>
+                <span className="shrink-0 tabular-nums font-medium text-text">
+                  {money(e.amount)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }

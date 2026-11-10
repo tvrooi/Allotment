@@ -541,9 +541,12 @@ export default function HouseholdPage() {
                   <QuickExpense
                     key={`quick-${state.group.id}`}
                     groupId={state.group.id}
+                    currency={state.group.currency}
+                    events={state.events}
                     people={state.people}
                     defaultSplit={state.group.defaultSplit}
                     onChangeSplit={() => showTab('settings')}
+                    onSeeAll={() => showTab('activity')}
                   />
                 )}
 
