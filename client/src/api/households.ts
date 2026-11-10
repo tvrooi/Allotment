@@ -42,6 +42,12 @@ export interface ShareResult {
 
 export const getHouseholds = () => apiFetch<HouseholdSummary[]>('/households');
 
+export const setHouseholdIncludesBills = (groupId: string, includeBills: boolean) =>
+  apiFetch<unknown>(`/households/${groupId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ includeBills }),
+  });
+
 export const addPoolAccount = (groupId: string, accountId: string) =>
   apiFetch<unknown>(`/households/${groupId}/pool-accounts`, {
     method: 'POST',
@@ -292,6 +298,29 @@ export const updateRecurringBill = (
     body: JSON.stringify(changes),
   });
 /** Shares a bill's payments with the bill's own split */
+/** What sharing would record, with nothing recorded: `shares` is each person's part */
+export interface SharePreview {
+  results: (
+    | {
+        transactionId: string;
+        ok: true;
+        amount: number;
+        shares: { personId: string; amount: number }[];
+      }
+    | { transactionId: string; ok: false; error: string }
+  )[];
+}
+
+export const previewBillPayments = (
+  groupId: string,
+  scheduleId: string,
+  transactionIds: string[],
+) =>
+  apiFetch<SharePreview>(`/households/${groupId}/recurring-bills/${scheduleId}/share`, {
+    method: 'POST',
+    body: JSON.stringify({ transactionIds, preview: true }),
+  });
+
 export const shareBillPayments = (groupId: string, scheduleId: string, transactionIds: string[]) =>
   apiFetch<ShareResult>(`/households/${groupId}/recurring-bills/${scheduleId}/share`, {
     method: 'POST',

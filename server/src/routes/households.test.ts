@@ -670,6 +670,16 @@ describe('household attribution', () => {
     expect(bill.split).toEqual(split);
     expect(bill.shares.map((s: any) => s.amount)).toEqual([4500, 2250, 2250]);
 
+    // A preview shows that split's result and records nothing
+    const previewed = await call(`/${g.group.id}/recurring-bills/net/share`, {
+      transactionIds: ['loop-old'],
+      preview: true,
+    });
+    expect(previewed.data.results[0].shares.map((s: any) => s.amount)).toEqual([4500, 2250, 2250]);
+    expect(previewed.data.results[0].eventId).toBeNull();
+    const beforeShare = await call(`/${g.group.id}`, undefined, 'GET');
+    expect(beforeShare.data.events.some((e: any) => e.transactionId === 'loop-old')).toBe(false);
+
     // Sharing its past payment uses that split
     const shared = await call(`/${g.group.id}/recurring-bills/net/share`, {
       transactionIds: ['loop-old'],
@@ -1082,6 +1092,33 @@ describe('household attribution', () => {
     expect(
       (createBackup().householdGroups as any[]).find((g) => g.id === b.group.id),
     ).toMatchObject({ isDefault: 1 });
+  });
+
+  it('includes bills by default, and a household can turn them off and on', async () => {
+    const flat = await group();
+    expect(flat.group.includeBills).toBe(1);
+    const partner = (
+      await call('', {
+        name: 'Us',
+        currency: 'AUD',
+        people: ['Me', 'Partner'],
+        selfIndex: 0,
+        includeBills: false,
+      })
+    ).data;
+    expect(partner.group.includeBills).toBe(0);
+
+    const on = await call(`/${partner.group.id}`, { includeBills: true }, 'PUT');
+    expect(on.data.group.includeBills).toBe(1);
+    const off = await call(`/${partner.group.id}`, { includeBills: false }, 'PUT');
+    expect(off.data.group.includeBills).toBe(0);
+    expect((await call(`/${partner.group.id}`, { includeBills: 'no' }, 'PUT')).status).toBe(400);
+    // Turning it off hides bills only: the other household is untouched
+    const listed = (await call('')).data as { id: string; includeBills: number }[];
+    expect(listed.find((g) => g.id === flat.group.id)?.includeBills).toBe(1);
+    expect(
+      (createBackup().householdGroups as any[]).find((g) => g.id === partner.group.id),
+    ).toMatchObject({ includeBills: 0 });
   });
 
   it('adds and renames people, keeping their entries and balance', async () => {

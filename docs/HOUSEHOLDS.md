@@ -220,6 +220,16 @@ sidebar's Household link open it unless the address names another (`?household=`
 household is the default; with none, the first one opens. Both are owner-only settings, so access
 tokens can't change them; `list_households` shows which one is the default.
 
+### Mode and bills
+
+A household is either **Shared account** (it has a pool account) or **Split as you go** (people pay
+and settle up); the Household page says which, from the pool accounts, at the top. Whether it
+**includes bills** is a separate, stored choice (`{ includeBills }`, the `include_bills` column,
+kept in backups; existing households and new ones default to on). Off hides the Bills tab, coverage
+and unshared-payment prompts, for a household such as a partner split of groceries and outings;
+nothing is deleted, and turning it back on restores them. Set it when creating the household or in
+Settings → Bills.
+
 ## Where the balances come from, and reconciling them
 
 Each person's balance is two parts (`householdLedger`): **household account**, money they put

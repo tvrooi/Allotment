@@ -40,7 +40,7 @@ export function HouseholdBreakdown({ groupId, currency, from, to, scope }: Props
         type="button"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 text-sm font-semibold text-text"
+        className="flex w-full items-center gap-2 text-sm font-semibold text-text max-md:min-h-11"
       >
         {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
         Spending by month, person and category

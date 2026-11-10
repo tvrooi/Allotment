@@ -97,7 +97,7 @@ export function BillAmount({ bill, currency }: Props) {
       )}
       {bill.payments.length > 0 && (
         <details className="text-xs text-text-tertiary">
-          <summary className="cursor-pointer w-fit">
+          <summary className="cursor-pointer w-fit max-md:py-3.5">
             {bill.payments.length === 1 ? 'Last payment' : `Last ${bill.payments.length} payments`}:{' '}
             <span className="tabular-nums">{money(total)}</span>
           </summary>

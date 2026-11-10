@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSchedules } from '../../hooks/useSchedules';
 import {
+  previewBillPayments,
   shareBillPayments,
   shareRecurringBills,
   unshareRecurringBill,
   updateRecurringBill,
   type HouseholdSplit,
   type SharedRecurringBill,
+  type SharePreview,
 } from '../../api/households';
 import { SplitEditor, describeSplit } from './SplitEditor';
 import { FREQ_LABEL } from '../recurring/scheduleFormat';
@@ -16,6 +18,7 @@ import { formatMoney } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { Button } from '../ui/Button';
 import { BillAmount } from './BillAmount';
+import { summarisePreview } from './sharePreview';
 import { BillSuggestions } from './BillSuggestions';
 import { dueLabel } from './dueLabel';
 import { todayIso } from '../../utils/calendarDay';
@@ -77,10 +80,26 @@ export function RecurringBills({ groupId, currency, people, bills, hasPool = fal
     },
     onError,
   });
+  // Sharing several payments at once is checked first: what it would add, before anything is recorded
+  const [previewing, setPreviewing] = useState<{
+    scheduleId: string;
+    ids: string[];
+    preview: SharePreview;
+  } | null>(null);
+  const preview = useMutation({
+    mutationFn: (v: { scheduleId: string; ids: string[] }) =>
+      previewBillPayments(groupId, v.scheduleId, v.ids).then((p) => ({ ...v, preview: p })),
+    onSuccess: (p) => {
+      setError('');
+      setPreviewing(p);
+    },
+    onError,
+  });
   const share = useMutation({
     mutationFn: (v: { scheduleId: string; ids: string[] }) =>
       shareBillPayments(groupId, v.scheduleId, v.ids),
     onSuccess: async (r) => {
+      setPreviewing(null);
       await refresh();
       const failed = r.results.find((x) => !x.ok);
       if (failed) setError(failed.error ?? 'Some payments could not be shared');
@@ -98,7 +117,8 @@ export function RecurringBills({ groupId, currency, people, bills, hasPool = fal
       !s.transferAccountId &&
       !shownIds.has(s.id),
   );
-  const busy = add.isPending || stop.isPending || share.isPending || update.isPending;
+  const busy =
+    add.isPending || stop.isPending || share.isPending || update.isPending || preview.isPending;
   const today = todayIso();
 
   return (
@@ -208,7 +228,7 @@ export function RecurringBills({ groupId, currency, people, bills, hasPool = fal
                   </div>
                 ) : null}
                 <BillAmount bill={b} currency={currency} />
-                <label className="flex items-center gap-2 text-xs text-text-secondary min-h-8">
+                <label className="flex items-center gap-2 text-xs text-text-secondary min-h-8 max-md:min-h-11">
                   <input
                     type="checkbox"
                     className="h-4 w-4 accent-brand-600"
@@ -235,16 +255,18 @@ export function RecurringBills({ groupId, currency, people, bills, hasPool = fal
                         : `${unshared.length === b.payments.length ? count(unshared.length) : `${unshared.length} of the last ${plural(b.payments.length)}`} not shared yet (latest ${formatDay(unshared[0].date)}, ${money(unshared[0].amount)})`}
                   </p>
                   <div className="flex gap-1">
-                    {unshared.length > 0 && (
+                    {unshared.length > 0 && previewing?.scheduleId !== b.scheduleId && (
                       <Button
                         size="sm"
                         disabled={busy}
-                        onClick={() =>
-                          share.mutate({
+                        onClick={() => {
+                          const v = {
                             scheduleId: b.scheduleId,
                             ids: unshared.map((p) => p.transactionId),
-                          })
-                        }
+                          };
+                          if (v.ids.length === 1) share.mutate(v);
+                          else preview.mutate(v);
+                        }}
                       >
                         {unshared.length === 1
                           ? 'Share payment'
@@ -271,6 +293,17 @@ export function RecurringBills({ groupId, currency, people, bills, hasPool = fal
                     </Button>
                   </div>
                 </div>
+                {previewing?.scheduleId === b.scheduleId && (
+                  <SharePreviewPanel
+                    preview={previewing.preview}
+                    people={people}
+                    fromPool={b.paidFromPool}
+                    money={money}
+                    busy={busy}
+                    onConfirm={() => share.mutate(previewing)}
+                    onCancel={() => setPreviewing(null)}
+                  />
+                )}
               </li>
             );
           })}
@@ -313,5 +346,61 @@ export function RecurringBills({ groupId, currency, people, bills, hasPool = fal
         </div>
       )}
     </section>
+  );
+}
+
+function SharePreviewPanel({
+  preview,
+  people,
+  fromPool,
+  money,
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  preview: SharePreview;
+  people: { id: string; name: string; isSelf: number }[];
+  fromPool: boolean;
+  money: (n: number) => string;
+  busy: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const { count, total, lines, refused } = summarisePreview(preview, people, fromPool);
+  const owed = fromPool ? 'the household account' : 'you';
+  return (
+    <div
+      className="mt-2 rounded-lg bg-surface-alt p-3 text-sm"
+      role="group"
+      aria-label="Sharing preview"
+    >
+      <p className="font-medium text-text">
+        {count} {count === 1 ? 'payment' : 'payments'} ({money(total)}) would add:
+      </p>
+      <ul className="mt-1 space-y-0.5">
+        {lines.map((l) => {
+          const p = people.find((x) => x.id === l.personId);
+          return (
+            <li key={l.personId} className="text-text-secondary">
+              {p?.isSelf ? 'You' : (p?.name ?? '?')} {p?.isSelf ? 'owe' : 'owes'} {owed}{' '}
+              <span className="tabular-nums font-medium text-text">{money(l.amount)}</span>
+            </li>
+          );
+        })}
+      </ul>
+      {refused.length > 0 && (
+        <p role="alert" className="mt-1 text-xs text-negative">
+          {refused.length} can’t be shared: {refused[0]}
+        </p>
+      )}
+      <div className="mt-2 flex gap-1">
+        <Button size="sm" disabled={busy || count === 0} onClick={onConfirm}>
+          Share {count} {count === 1 ? 'payment' : 'payments'}
+        </Button>
+        <Button size="sm" variant="ghost" disabled={busy} onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </div>
   );
 }

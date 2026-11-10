@@ -61,6 +61,7 @@ const groupSchema = z.object({
   accountId: z.string().nullable().default(null),
   people: z.array(name).min(2).max(50),
   selfIndex: z.number().int().min(0),
+  includeBills: z.boolean().default(true),
 });
 function run(res: Response, fn: () => unknown, status = 200) {
   try {
@@ -118,6 +119,7 @@ householdsRouter.post('/', (req, res) =>
         name: input.name,
         currency: input.currency,
         accountId: input.accountId,
+        includeBills: input.includeBills ? 1 : 0,
       };
       db.insert(groups).values(group).run();
       input.people.forEach((n, i) =>
@@ -370,7 +372,11 @@ householdsRouter.put('/:id/recurring-bills/:scheduleId', (req, res) => {
 // Shares a bill's payments with its own split
 householdsRouter.post('/:id/recurring-bills/:scheduleId/share', (req, res) => {
   const parsed = z
-    .object({ transactionIds: z.array(z.string().min(1).max(64)).min(1).max(500) })
+    .object({
+      transactionIds: z.array(z.string().min(1).max(64)).min(1).max(500),
+      /** Check and show who would owe what, recording nothing */
+      preview: z.boolean().optional(),
+    })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -378,7 +384,9 @@ householdsRouter.post('/:id/recurring-bills/:scheduleId/share', (req, res) => {
       req.params.id,
       req.params.scheduleId,
       parsed.data.transactionIds,
+      parsed.data.preview,
     );
+    if (parsed.data.preview) return res.json({ results });
     res.json({
       shared: results.filter((r) => r.ok).length,
       results,
