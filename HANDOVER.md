@@ -5,9 +5,21 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 10 November 2026 (Forecast page polish, up.165 prepared; day-first dates and Household refinements, up.164 prepared; local Transactions and iPhone web-app refinements; live app on up.149: the household bills hub, coverage gauge, amount-changed prompt and bill suggestions; D4a working from home in up.144; D4b car next).
+Last updated: 10 November 2026 (Goals page critique fixes; Forecast page polish, up.165 prepared; day-first dates and Household refinements, up.164 prepared; local Transactions and iPhone web-app refinements; live app on up.149: the household bills hub, coverage gauge, amount-changed prompt and bill suggestions; D4a working from home in up.144; D4b car next).
 
 ## State
+
+- **Goals page critique fixes (local design work, not released):** `pages/Goals.tsx` leads with one
+  summary line and bar ("saved of target", "n of m reached") instead of four stat cards, and a line
+  after the groups gives the in-progress "left to save" with a link to assign money to the
+  category-funded goal furthest from its target. Each row carries a "Category funded" or "Tracked by
+  hand" tag; the old footnote is replaced by a yellow warning shown only when two or more non-retired
+  goals link to the same account (`sharedAccounts`). An account link is documented as reference only,
+  so the warning says the money "may" be counted twice, and it cannot see overlap between unlinked
+  manual goals. In-progress bars are one brand colour and reached goals green; `goal.color` now
+  only tints the dot when category icons are off. On phones the amount sits under the goal name,
+  the funding line aligns with the name and its links are 44px tall. `category-goals.spec.ts` was
+  updated for the new tag wording but not run. Critique snapshot: `.impeccable/critique/` (23/36 before).
 
 - **Forecast page critique and polish (up.165; local design work, not released):** `LongTermForecast.tsx`
   leads with a headline sentence and the net worth at the plan's end (`summary` in the component),

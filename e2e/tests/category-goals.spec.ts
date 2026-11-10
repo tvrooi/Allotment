@@ -18,7 +18,8 @@ for (const phone of [false, true]) {
     await expect(dialog.getByLabel('Saved so far')).toHaveCount(0);
     await dialog.getByRole('button', { name: 'Add goal' }).click();
     await expect(dialog).toBeHidden();
-    await expect(page.getByText('Category funded: Groceries', { exact: true })).toBeVisible();
+    await expect(page.getByText('Category funded', { exact: true })).toBeVisible();
+    await expect(page.getByText('Groceries', { exact: true })).toBeVisible();
     await expect(
       page.getByText('Assigned this month $200 · Activity $0 · Available $200', { exact: true }),
     ).toBeVisible();
@@ -36,7 +37,7 @@ for (const phone of [false, true]) {
     await expect(dialog).toBeHidden();
     const rows = await api.call('GET', '/goals');
     expect(rows[0]).toMatchObject({ categoryId: null, currentAmount: 7500 });
-    await expect(page.getByText('Manual tracking', { exact: true })).toBeVisible();
+    await expect(page.getByText('Tracked by hand', { exact: true })).toBeVisible();
   });
 }
 
