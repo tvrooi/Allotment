@@ -304,6 +304,11 @@ body {
   font-weight: 500;
 }
 
+/* Safari paints system chrome from the root background; match the opaque app header. */
+html {
+  background: var(--color-sidebar-bg);
+}
+
 body {
   background: var(--color-page);
   color: var(--color-text);

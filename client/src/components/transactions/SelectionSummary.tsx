@@ -68,163 +68,177 @@ export function SelectionSummary({ params, loadedCount }: Props) {
   }
 
   return (
-    <div className="flex items-center gap-x-3 gap-y-1 flex-wrap text-xs text-text-tertiary">
-      <span>
-        {count.toLocaleString()} transaction{count === 1 ? '' : 's'}
-      </span>
+    <div className="w-full flex flex-col gap-3 text-xs text-text-secondary">
       {data && data.leafCount > 0 && (
-        <>
-          <span className="tabular-nums" title={inBudget}>
-            In <span className="text-positive font-medium">{formatCurrency(data.moneyIn)}</span>
-          </span>
-          <span className="tabular-nums" title={inBudget}>
-            Out{' '}
-            <span className="text-text-secondary font-medium">{formatCurrency(data.moneyOut)}</span>
-          </span>
-          <span className="tabular-nums" title={inBudget}>
-            Net <span className="font-medium text-text-secondary">{formatCurrency(data.net)}</span>
-          </span>
-          {data.firstDate && data.lastDate && (
-            <span>
-              {data.firstDate === data.lastDate
-                ? formatDay(data.firstDate)
-                : `${formatDay(data.firstDate)} – ${formatDay(data.lastDate)}`}
-            </span>
-          )}
-          {data.missingRateCount > 0 && (
-            <span className="text-caution" title="Their exchange rate is missing">
-              {data.missingRateCount} without a rate left out
-            </span>
-          )}
-        </>
-      )}
-      {reviewCount > 0 && !acting && (
-        <button
-          type="button"
-          onClick={() => setActing(true)}
-          className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
-          title="Choose an action for every transaction in this list"
+        <dl
+          aria-label="Money movement"
+          className="grid grid-cols-3 gap-3 border-b border-border-light pb-3"
+          title={inBudget}
         >
-          <ListChecks size={12} /> Select all {reviewCount.toLocaleString()}
-        </button>
+          <div>
+            <dt className="text-xs text-text-secondary">Money in</dt>
+            <dd className="mt-1 text-xl max-md:text-base font-medium tabular-nums text-positive whitespace-nowrap">
+              {formatCurrency(data.moneyIn)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-text-secondary">Money out</dt>
+            <dd className="mt-1 text-xl max-md:text-base font-medium tabular-nums text-text whitespace-nowrap">
+              {formatCurrency(data.moneyOut)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-text-secondary">Net movement</dt>
+            <dd className="mt-1 text-xl max-md:text-base font-medium tabular-nums text-text whitespace-nowrap">
+              {formatCurrency(data.net)}
+            </dd>
+          </div>
+        </dl>
       )}
-      {reviewCount > 0 && acting && (
-        <span
-          role="group"
-          aria-label={`Actions for ${reviewCount.toLocaleString()} transactions`}
-          className="inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-full bg-brand-50 px-3 py-0.5"
-        >
-          <span className="font-medium text-text">{reviewCount.toLocaleString()} selected</span>
+      <div className="flex items-center gap-x-3 gap-y-1 flex-wrap">
+        <span className="font-medium text-text">
+          {count.toLocaleString()} transaction{count === 1 ? '' : 's'}
+        </span>
+        {data?.firstDate && data.lastDate && (
+          <span className="max-md:order-last max-md:w-full">
+            {data.firstDate === data.lastDate
+              ? formatDay(data.firstDate)
+              : `${formatDay(data.firstDate)} – ${formatDay(data.lastDate)}`}
+          </span>
+        )}
+        {data && data.missingRateCount > 0 && (
+          <span className="text-caution" title="Their exchange rate is missing">
+            {data.missingRateCount} without a rate left out
+          </span>
+        )}
+        {reviewCount > 0 && !acting && (
           <button
             type="button"
-            onClick={() => setConfirming(true)}
-            disabled={review.isPending}
+            onClick={() => setActing(true)}
             className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
-            title="Mark every transaction in this list reviewed (you can undo it)"
+            title="Choose an action for every transaction in this list"
           >
-            <CheckCheck size={12} /> Mark reviewed
+            <ListChecks size={12} /> Select all {reviewCount.toLocaleString()}
           </button>
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
-            title="Change category, payee, notes, tags or visibility on every transaction in this list"
+        )}
+        {reviewCount > 0 && acting && (
+          <span
+            role="group"
+            aria-label={`Actions for ${reviewCount.toLocaleString()} transactions`}
+            className="inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-full bg-brand-50 px-3 py-0.5"
           >
-            <PencilLine size={12} /> Edit {reviewCount.toLocaleString()}
-          </button>
-          <ShareWithHousehold params={params} variant="link" />
-          <span className="relative">
+            <span className="font-medium text-text">{reviewCount.toLocaleString()} selected</span>
             <button
               type="button"
-              aria-label="More actions"
-              aria-expanded={moreOpen}
-              onClick={() => setMoreOpen((o) => !o)}
-              className="inline-flex items-center text-text-secondary hover:text-text max-md:min-h-11 max-md:min-w-11 justify-center"
+              onClick={() => setConfirming(true)}
+              disabled={review.isPending}
+              className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
+              title="Mark every transaction in this list reviewed (you can undo it)"
             >
-              <MoreHorizontal size={14} />
+              <CheckCheck size={12} /> Mark reviewed
             </button>
-            {moreOpen && (
-              <span
-                role="menu"
-                className="absolute left-0 top-full z-20 mt-1 block min-w-[11rem] rounded-md border border-border bg-surface py-1 shadow-hover"
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
+              title="Change category, payee, notes, tags or visibility on every transaction in this list"
+            >
+              <PencilLine size={12} /> Edit {reviewCount.toLocaleString()}
+            </button>
+            <ShareWithHousehold params={params} variant="link" />
+            <span className="relative">
+              <button
+                type="button"
+                aria-label="More actions"
+                aria-expanded={moreOpen}
+                onClick={() => setMoreOpen((o) => !o)}
+                className="inline-flex items-center text-text-secondary hover:text-text max-md:min-h-11 max-md:min-w-11 justify-center"
               >
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setMoreOpen(false);
-                    setDeleting(true);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-negative hover:bg-hover max-md:min-h-11"
-                  title="Delete every transaction in this list (reconciled ones are kept)"
+                <MoreHorizontal size={14} />
+              </button>
+              {moreOpen && (
+                <span
+                  role="menu"
+                  className="absolute left-0 top-full z-20 mt-1 block min-w-[11rem] rounded-md border border-border bg-surface py-1 shadow-hover"
                 >
-                  <Trash2 size={12} /> Delete {reviewCount.toLocaleString()}
-                </button>
-              </span>
-            )}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMoreOpen(false);
+                      setDeleting(true);
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-negative hover:bg-hover max-md:min-h-11"
+                    title="Delete every transaction in this list (reconciled ones are kept)"
+                  >
+                    <Trash2 size={12} /> Delete {reviewCount.toLocaleString()}
+                  </button>
+                </span>
+              )}
+            </span>
+            <button
+              type="button"
+              aria-label="Clear selection"
+              onClick={() => {
+                setActing(false);
+                setMoreOpen(false);
+              }}
+              className="inline-flex items-center text-text-tertiary hover:text-text max-md:min-h-11 max-md:min-w-11 justify-center"
+            >
+              <X size={12} />
+            </button>
           </span>
+        )}
+        <BulkEditModal
+          params={params}
+          count={reviewCount}
+          isOpen={editing}
+          onClose={() => setEditing(false)}
+        />
+        <BulkDeleteModal params={params} isOpen={deleting} onClose={() => setDeleting(false)} />
+        {marked && (
+          <span role="status" className="text-text-secondary">
+            Marked {marked.length.toLocaleString()} reviewed.{' '}
+            <button
+              type="button"
+              onClick={() => restore.mutate(marked, { onSuccess: () => setMarked(null) })}
+              disabled={restore.isPending}
+              className="text-brand-600 hover:text-brand-700 font-medium"
+            >
+              Undo
+            </button>
+          </span>
+        )}
+        {review.error && (
+          <span role="alert" className="text-negative">
+            {review.error.message}
+          </span>
+        )}
+        <ConfirmModal
+          isOpen={confirming}
+          onClose={() => setConfirming(false)}
+          onConfirm={() => {
+            setConfirming(false);
+            review.mutate(
+              { params, reviewed: true, expectedCount: reviewCount },
+              { onSuccess: (result) => setMarked(result.changes) },
+            );
+          }}
+          title="Mark reviewed"
+          message={`Mark ${reviewCount.toLocaleString()} transaction${reviewCount === 1 ? '' : 's'} reviewed? This only records that you have looked at them; amounts and reconciliation are unchanged. You can undo it.`}
+          confirmLabel={`Mark ${reviewCount.toLocaleString()} reviewed`}
+        />
+        {count > 0 && (
           <button
             type="button"
-            aria-label="Clear selection"
-            onClick={() => {
-              setActing(false);
-              setMoreOpen(false);
-            }}
-            className="inline-flex items-center text-text-tertiary hover:text-text max-md:min-h-11 max-md:min-w-11 justify-center"
+            onClick={exportCsv}
+            className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
+            title="Download these transactions as a CSV file (a split's matching parts)"
           >
-            <X size={12} />
+            <Download size={12} /> Export
           </button>
-        </span>
-      )}
-      <BulkEditModal
-        params={params}
-        count={reviewCount}
-        isOpen={editing}
-        onClose={() => setEditing(false)}
-      />
-      <BulkDeleteModal params={params} isOpen={deleting} onClose={() => setDeleting(false)} />
-      {marked && (
-        <span role="status" className="text-text-secondary">
-          Marked {marked.length.toLocaleString()} reviewed.{' '}
-          <button
-            type="button"
-            onClick={() => restore.mutate(marked, { onSuccess: () => setMarked(null) })}
-            disabled={restore.isPending}
-            className="text-brand-600 hover:text-brand-700 font-medium"
-          >
-            Undo
-          </button>
-        </span>
-      )}
-      {review.error && (
-        <span role="alert" className="text-negative">
-          {review.error.message}
-        </span>
-      )}
-      <ConfirmModal
-        isOpen={confirming}
-        onClose={() => setConfirming(false)}
-        onConfirm={() => {
-          setConfirming(false);
-          review.mutate(
-            { params, reviewed: true, expectedCount: reviewCount },
-            { onSuccess: (result) => setMarked(result.changes) },
-          );
-        }}
-        title="Mark reviewed"
-        message={`Mark ${reviewCount.toLocaleString()} transaction${reviewCount === 1 ? '' : 's'} reviewed? This only records that you have looked at them; amounts and reconciliation are unchanged. You can undo it.`}
-        confirmLabel={`Mark ${reviewCount.toLocaleString()} reviewed`}
-      />
-      {count > 0 && (
-        <button
-          type="button"
-          onClick={exportCsv}
-          className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
-          title="Download these transactions as a CSV file (a split's matching parts)"
-        >
-          <Download size={12} /> Export
-        </button>
-      )}
+        )}
+      </div>
     </div>
   );
 }

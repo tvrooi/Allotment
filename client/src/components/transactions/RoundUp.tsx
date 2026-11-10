@@ -1,6 +1,7 @@
 import { CircleArrowUp } from 'lucide-react';
 import type { Transaction } from '../../types';
 import { formatMoney } from '../../utils/currency';
+import { hidesAllAmounts } from '../../utils/safeMode';
 
 // Up round-ups, as Up shows them (owner-requested 8 November 2026): the purchase is listed once
 // at its total, with a mark; its details show the parts. The server folds the round-up's own rows
@@ -8,6 +9,13 @@ import { formatMoney } from '../../utils/currency';
 
 /** What a list shows for the row: a purchase with a round-up shows its total */
 export const listedAmount = (tx: Transaction) => tx.amount + (tx.roundUp?.amount ?? 0);
+
+/** A paired transfer is one movement between accounts, not an inflow or outflow. */
+export function formatRegisterAmount(tx: Transaction, currency: string | null) {
+  const amount = listedAmount(tx);
+  const sign = amount > 0 && !tx.transferPair && !hidesAllAmounts() ? '+' : '';
+  return sign + formatMoney(tx.transferPair ? Math.abs(amount) : amount, currency);
+}
 
 export function RoundUpMark({ tx, currency }: { tx: Transaction; currency: string | null }) {
   if (!tx.roundUp) return null;

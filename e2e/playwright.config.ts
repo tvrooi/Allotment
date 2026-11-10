@@ -53,6 +53,18 @@ export default defineConfig({
         hasTouch: true,
       },
     },
+    // Safari's engine at iPhone 14 Pro Max dimensions. System status-bar blur still needs
+    // a physical Home Screen install; desktop WebKit does not emulate the iOS compositor.
+    {
+      name: 'iphone-webkit',
+      testMatch: /\/tests\/phone\/iphone-webapp\.spec\.ts$/,
+      use: {
+        ...devices['iPhone 14 Pro Max'],
+        browserName: 'webkit',
+        baseURL: `http://localhost:${DESKTOP_PORT}`,
+        launchOptions: {},
+      },
+    },
     // The in-browser demo: the app with its API in a Web Worker, on a sample budget
     {
       name: 'demo',

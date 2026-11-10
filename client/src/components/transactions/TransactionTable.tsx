@@ -387,7 +387,7 @@ export function TransactionTable({
         externalRange={from && to ? `${formatDay(from)} – ${formatDay(to)}` : undefined}
       />
       {savingView && <SaveViewModal filters={filters} onClose={() => setSavingView(false)} />}
-      <div className="px-4 py-2 border-b border-border-light bg-surface flex flex-wrap gap-2 justify-between items-center">
+      <div className="px-6 max-md:px-4 py-4 max-md:py-3 border-b border-border-light bg-page flex flex-wrap gap-2 justify-between items-center">
         <SelectionSummary
           params={params}
           loadedCount={transactions.length}
@@ -460,7 +460,8 @@ export function TransactionTable({
           </Button>
         </div>
       )}
-      <div className="flex-1 flex overflow-hidden">
+      {/* Short Safari viewports can scroll the surrounding page instead of collapsing the ledger. */}
+      <div className="flex-1 flex overflow-hidden min-h-40">
         <div className="flex-1 overflow-y-auto">
           {/* Not in a category or month view: they may not belong there */}
           {!categoryId && !categoryIds?.length && !categoryGroupId && !month && (
@@ -560,18 +561,19 @@ export function TransactionTable({
             <>
               {visibleGroups.map((group) => (
                 <div key={group.date}>
-                  <div className="flex items-center justify-between px-4 py-2 bg-surface-alt border-b border-border-light">
+                  <div className="flex items-center justify-between gap-3 px-4 py-2 bg-surface-alt border-b border-border-light">
                     <span className="text-sm font-medium text-text-secondary">
                       {formatDayLong(group.date)}
                     </span>
                     <span
-                      className="text-sm font-medium text-text-secondary tabular-nums"
+                      className="text-xs font-medium text-text-secondary tabular-nums whitespace-nowrap"
                       title={
                         !accountId && budgetCurrency
                           ? `In ${budgetCurrency}, at each day's rate`
                           : undefined
                       }
                     >
+                      <span className="mr-2 font-normal">Total moved</span>
                       {accountId
                         ? formatMoney(group.total, ownCurrency)
                         : formatCurrency(group.total)}

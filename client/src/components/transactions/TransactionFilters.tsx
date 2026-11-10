@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useId, useCallback, type ReactNode } from 'react';
 import { Search, X, SlidersHorizontal } from 'lucide-react';
 import { useCategories } from '../../hooks/useCategories';
 import { usePayees } from '../../hooks/usePayees';
@@ -13,6 +13,7 @@ import {
 } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { ScrollCue } from '../ui/ScrollCue';
+import { TabList, tabIds } from '../ui/tabList';
 import {
   activeFilterCount,
   DEFAULT_FILTERS,
@@ -108,6 +109,35 @@ function Chip({ label, onClear }: { label: string; onClear: () => void }) {
   );
 }
 
+/** Keep each group's local search and unfinished amount input when switching tabs. */
+function FilterGroup({
+  id,
+  name,
+  active,
+  prefix,
+  children,
+}: {
+  id: string;
+  name: string;
+  active: string;
+  prefix: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      role="tabpanel"
+      id={tabIds(prefix, id).panel}
+      aria-labelledby={tabIds(prefix, id).tab}
+      hidden={active !== id}
+      tabIndex={0}
+      className="h-44 overflow-y-auto overscroll-contain px-4 py-3"
+      aria-label={`${name} filters`}
+    >
+      {children}
+    </div>
+  );
+}
+
 /** A searchable list of checkboxes; nothing ticked means "any" */
 function CheckList({
   label,
@@ -149,12 +179,12 @@ function CheckList({
           onChange={(e) => setQuery(e.target.value)}
           placeholder={`Find ${label.toLowerCase()}…`}
           aria-label={`Find ${label.toLowerCase()}`}
-          className="w-full mb-1 px-2 py-1 text-xs border border-border rounded bg-surface text-text focus:border-brand-600 focus:outline-none"
+          className="w-full max-w-sm mb-1 px-2 py-1 text-xs max-md:text-base max-md:min-h-11 border border-border rounded bg-surface text-text placeholder:text-text-tertiary focus:border-brand-600 focus:outline-none"
         />
       )}
-      <div className="max-h-40 overflow-y-auto pr-1 space-y-0.5">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-0.5 pr-1">
         {special && (
-          <label className="flex items-center gap-2 py-0.5 cursor-pointer">
+          <label className="flex items-center gap-2 py-0.5 max-md:min-h-11 cursor-pointer">
             <input
               type="checkbox"
               checked={special.checked}
@@ -165,7 +195,10 @@ function CheckList({
           </label>
         )}
         {shown.map((o) => (
-          <label key={o.id} className="flex items-center gap-2 py-0.5 cursor-pointer">
+          <label
+            key={o.id}
+            className="flex items-center gap-2 py-0.5 max-md:min-h-11 cursor-pointer"
+          >
             <input
               type="checkbox"
               checked={selected.includes(o.id)}
@@ -178,9 +211,11 @@ function CheckList({
               }
               className="rounded border-border text-brand-600 focus:ring-brand-600"
             />
-            <span className="text-sm text-text-secondary truncate">
-              {o.name}
-              {o.group && <span className="text-text-tertiary"> · {o.group}</span>}
+            <span className="flex min-w-0 text-sm text-text-secondary">
+              <span className="truncate">{o.name}</span>
+              {o.group && (
+                <span className="text-text-tertiary truncate shrink-[2]"> · {o.group}</span>
+              )}
             </span>
           </label>
         ))}
@@ -230,7 +265,7 @@ function AmountBound({
         }}
         aria-invalid={invalid || undefined}
         title={invalid ? UNREADABLE_AMOUNT : undefined}
-        className={`w-full px-2 py-1 text-sm border rounded bg-surface text-text tabular-nums focus:outline-none focus:border-brand-600 ${invalid ? 'border-negative' : 'border-border'}`}
+        className={`w-full px-2 py-1 text-sm max-md:text-base max-md:min-h-11 border rounded bg-surface text-text tabular-nums focus:outline-none focus:border-brand-600 ${invalid ? 'border-negative' : 'border-border'}`}
       />
     </label>
   );
@@ -246,6 +281,26 @@ export function TransactionFilters({
 }: Props) {
   const [rawSearch, setRawSearch] = useState(state.search);
   const [open, setOpen] = useState(false);
+  const [section, setSection] = useState('categories');
+  const prefix = useId();
+  const filterButton = useRef<HTMLButtonElement>(null);
+  const close = useCallback(() => {
+    setOpen(false);
+    filterButton.current?.focus();
+  }, []);
+  useEffect(() => {
+    if (!open) return;
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.key !== 'Escape') return;
+      const panel = document.getElementById(`${prefix}-filters`);
+      if (event.target instanceof Node && panel?.contains(event.target)) {
+        event.stopPropagation();
+        close();
+      }
+    };
+    document.addEventListener('keydown', onEscape);
+    return () => document.removeEventListener('keydown', onEscape);
+  }, [open, prefix, close]);
   const { data: groups = [] } = useCategories();
   const { data: payees = [] } = usePayees();
   const { data: accounts = [] } = useAccounts();
@@ -271,7 +326,36 @@ export function TransactionFilters({
   const nameOf = (list: { id: string; name: string }[], id: string) =>
     list.find((x) => x.id === id)?.name ?? 'Unknown';
   const set = (patch: Partial<FilterState>) => onChange({ ...state, ...patch });
+  const toggleUncategorised = () =>
+    set({
+      uncategorized: !state.uncategorized,
+      categoryIds: [],
+      categoryGroupId: null,
+    });
+  const quickFilters = [
+    { label: 'Uncategorised', active: state.uncategorized, toggle: toggleUncategorised },
+    {
+      label: 'Not reviewed',
+      active: state.reviewed === 'no',
+      toggle: () => set({ reviewed: state.reviewed === 'no' ? 'all' : 'no' }),
+    },
+    {
+      label: 'No receipts or files',
+      active: state.hasFiles === 'no',
+      toggle: () => set({ hasFiles: state.hasFiles === 'no' ? 'all' : 'no' }),
+    },
+  ];
   const count = activeFilterCount(state);
+  const sections = [
+    { id: 'categories', name: 'Categories' },
+    ...(!fixedAccount ? [{ id: 'accounts', name: 'Accounts' }] : []),
+    { id: 'payees', name: 'Payees' },
+    { id: 'money', name: 'Money' },
+    { id: 'status', name: 'Status' },
+    ...(tags.length > 0 ? [{ id: 'tags', name: 'Tags' }] : []),
+  ];
+
+  const activeSection = sections.some(({ id }) => id === section) ? section : 'categories';
 
   function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
     const search = e.target.value;
@@ -290,15 +374,16 @@ export function TransactionFilters({
 
   return (
     <div data-guide="transactions.filters" className="border-b border-border-light bg-surface">
-      <div className="flex items-center gap-3 px-4 py-2 flex-wrap">
+      <div className="flex items-center gap-3 px-6 max-md:px-4 py-3 flex-wrap">
         <div className="relative flex items-center flex-1 min-w-40">
           <Search size={14} className="absolute left-2.5 text-text-tertiary pointer-events-none" />
           <input
             type="text"
             value={rawSearch}
             onChange={handleSearchChange}
+            aria-label="Search payee or notes"
             placeholder="Search payee or notes…"
-            className="w-full pl-8 pr-3 py-1.5 text-sm border border-border rounded-full bg-surface text-text focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+            className="w-full pl-8 pr-3 py-1.5 text-sm max-md:text-base max-md:min-h-11 border border-border rounded-lg bg-surface text-text placeholder:text-text-tertiary focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
           />
           {rawSearch && (
             <button
@@ -316,8 +401,10 @@ export function TransactionFilters({
 
         <button
           type="button"
+          ref={filterButton}
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
+          aria-controls={`${prefix}-filters`}
           className={`flex items-center gap-1.5 px-2.5 py-1 max-md:min-h-11 text-xs font-medium rounded-full border transition-colors ${
             open || count > 0
               ? 'border-brand-200 bg-brand-50 text-brand-700'
@@ -357,14 +444,14 @@ export function TransactionFilters({
         </ScrollCue>
 
         {!externalRange && !externalMonth && state.datePreset === 'custom' && (
-          <div className="flex items-center gap-1.5 text-xs text-text-secondary">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-text-secondary">
             <input
               type="date"
               aria-label="From"
               value={state.from}
               max={state.to || undefined}
               onChange={(e) => set({ from: e.target.value })}
-              className="px-2 py-1 border border-border rounded bg-surface text-text"
+              className="min-w-0 px-2 py-1 max-md:min-h-11 max-md:text-base border border-border rounded bg-surface text-text"
             />
             <span>to</span>
             <input
@@ -373,126 +460,196 @@ export function TransactionFilters({
               value={state.to}
               min={state.from || undefined}
               onChange={(e) => set({ to: e.target.value })}
-              className="px-2 py-1 border border-border rounded bg-surface text-text"
+              className="min-w-0 px-2 py-1 max-md:min-h-11 max-md:text-base border border-border rounded bg-surface text-text"
             />
           </div>
         )}
       </div>
 
+      <div
+        role="group"
+        aria-label="Quick filters"
+        className="px-6 max-md:px-4 pb-3 flex max-md:grid max-md:grid-cols-3 gap-2"
+      >
+        {quickFilters.map(({ label, active, toggle }) => (
+          <button
+            key={label}
+            type="button"
+            aria-pressed={active}
+            onClick={toggle}
+            className={`rounded-full border px-3 py-1.5 max-md:px-2 max-md:min-h-11 text-xs font-medium leading-tight transition-colors ${active ? 'border-brand-200 bg-brand-50 text-brand-700' : 'border-border text-text-secondary hover:bg-hover hover:text-text'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {open && (
-        <div className="px-4 pb-3 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          {!fixedAccount && (
+        <section
+          id={`${prefix}-filters`}
+          aria-label="Advanced filters"
+          className="mx-6 max-md:mx-4 mb-3 rounded-lg border border-border bg-surface"
+        >
+          <div className="flex items-center border-b border-border-light px-2">
+            <ScrollCue
+              className="flex-1 min-w-0"
+              scrollerClassName="flex"
+              activeKey={activeSection}
+            >
+              <TabList label="Filter groups" className="flex">
+                {sections.map(({ id, name }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    id={tabIds(prefix, id).tab}
+                    aria-controls={tabIds(prefix, id).panel}
+                    aria-selected={activeSection === id}
+                    tabIndex={activeSection === id ? 0 : -1}
+                    data-scroll-active={activeSection === id}
+                    onClick={() => setSection(id)}
+                    className={`min-h-11 px-3 text-xs font-medium whitespace-nowrap border-b-2 ${activeSection === id ? 'border-brand-600 text-brand-700' : 'border-transparent text-text-secondary hover:text-text'}`}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </TabList>
+            </ScrollCue>
+            <button
+              type="button"
+              onClick={close}
+              className="min-h-11 px-3 text-xs font-medium text-brand-600 hover:text-brand-700"
+            >
+              Done
+            </button>
+          </div>
+          <FilterGroup id="categories" name="Categories" active={activeSection} prefix={prefix}>
             <CheckList
-              label="Accounts"
-              options={accountOptions}
-              selected={state.accountIds}
-              onChange={(accountIds) => set({ accountIds })}
+              label="Categories"
+              options={categoryOptions}
+              selected={state.categoryIds}
+              onChange={(categoryIds) => set({ categoryIds, uncategorized: false })}
+              special={{
+                label: 'Not categorised yet',
+                checked: state.uncategorized,
+                onToggle: toggleUncategorised,
+              }}
             />
-          )}
-          <CheckList
-            label="Categories"
-            options={categoryOptions}
-            selected={state.categoryIds}
-            onChange={(categoryIds) => set({ categoryIds, uncategorized: false })}
-            special={{
-              label: 'Not categorised yet',
-              checked: state.uncategorized,
-              onToggle: () => set({ uncategorized: !state.uncategorized, categoryIds: [] }),
-            }}
-          />
-          <CheckList
-            label="Payees"
-            options={payeeOptions}
-            selected={state.payeeIds}
-            onChange={(payeeIds) => set({ payeeIds })}
-          />
-          <div className="space-y-3 min-w-0">
-            <Segmented
-              legend="Direction"
-              options={DIRECTIONS}
-              value={state.direction}
-              onChange={(direction) => set({ direction })}
-            />
-            <fieldset>
-              <legend className="text-xs font-medium text-text-secondary mb-1">
-                Amount (inclusive, either direction)
-              </legend>
-              <div className="grid grid-cols-2 gap-2">
-                <AmountBound
-                  label="At least"
-                  value={state.minAmount}
-                  onChange={(minAmount) =>
-                    set({
-                      minAmount,
-                      maxAmount:
-                        minAmount !== null &&
-                        state.maxAmount !== null &&
-                        state.maxAmount < minAmount
-                          ? null
-                          : state.maxAmount,
-                    })
-                  }
-                />
-                <AmountBound
-                  label="At most"
-                  value={state.maxAmount}
-                  onChange={(maxAmount) =>
-                    set({
-                      maxAmount,
-                      minAmount:
-                        maxAmount !== null &&
-                        state.minAmount !== null &&
-                        state.minAmount > maxAmount
-                          ? null
-                          : state.minAmount,
-                    })
-                  }
-                />
-              </div>
-            </fieldset>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={state.excludeTransfers}
-                onChange={(e) => set({ excludeTransfers: e.target.checked })}
-                className="rounded border-border text-brand-600 focus:ring-brand-600"
+          </FilterGroup>
+          <FilterGroup id="accounts" name="Accounts" active={activeSection} prefix={prefix}>
+            {!fixedAccount && (
+              <CheckList
+                label="Accounts"
+                options={accountOptions}
+                selected={state.accountIds}
+                onChange={(accountIds) => set({ accountIds })}
               />
-              <span className="text-sm text-text-secondary">Hide transfers</span>
-            </label>
-          </div>
-          {tags.length > 0 && (
+            )}
+          </FilterGroup>
+          <FilterGroup id="payees" name="Payees" active={activeSection} prefix={prefix}>
             <CheckList
-              label="Tags"
-              options={tags}
-              selected={state.tagIds}
-              onChange={(tagIds) => set({ tagIds })}
+              label="Payees"
+              options={payeeOptions}
+              selected={state.payeeIds}
+              onChange={(payeeIds) => set({ payeeIds })}
             />
-          )}
-          <div className="space-y-3 min-w-0">
-            <Segmented
-              legend="Reviewed"
-              options={TRISTATE}
-              value={state.reviewed}
-              onChange={(reviewed) => set({ reviewed })}
-            />
-            <Segmented
-              legend="Hidden from reports"
-              options={TRISTATE}
-              value={state.hidden}
-              onChange={(hidden) => set({ hidden })}
-            />
-            <Segmented
-              legend="Receipts and files"
-              options={TRISTATE}
-              value={state.hasFiles}
-              onChange={(hasFiles) => set({ hasFiles })}
-            />
-          </div>
-        </div>
+          </FilterGroup>
+          <FilterGroup id="money" name="Money" active={activeSection} prefix={prefix}>
+            <div className="flex flex-wrap items-start gap-4 min-w-0">
+              <Segmented
+                legend="Direction"
+                options={DIRECTIONS}
+                value={state.direction}
+                onChange={(direction) => set({ direction })}
+              />
+              <fieldset>
+                <legend className="text-xs font-medium text-text-secondary mb-1">
+                  Amount (inclusive, either direction)
+                </legend>
+                <div className="grid grid-cols-2 gap-2">
+                  <AmountBound
+                    label="At least"
+                    value={state.minAmount}
+                    onChange={(minAmount) =>
+                      set({
+                        minAmount,
+                        maxAmount:
+                          minAmount !== null &&
+                          state.maxAmount !== null &&
+                          state.maxAmount < minAmount
+                            ? null
+                            : state.maxAmount,
+                      })
+                    }
+                  />
+                  <AmountBound
+                    label="At most"
+                    value={state.maxAmount}
+                    onChange={(maxAmount) =>
+                      set({
+                        maxAmount,
+                        minAmount:
+                          maxAmount !== null &&
+                          state.minAmount !== null &&
+                          state.minAmount > maxAmount
+                            ? null
+                            : state.minAmount,
+                      })
+                    }
+                  />
+                </div>
+              </fieldset>
+              <label className="flex items-center gap-2 cursor-pointer min-h-11">
+                <input
+                  type="checkbox"
+                  checked={state.excludeTransfers}
+                  onChange={(e) => set({ excludeTransfers: e.target.checked })}
+                  className="rounded border-border text-brand-600 focus:ring-brand-600"
+                />
+                <span className="text-sm text-text-secondary">Hide transfers</span>
+              </label>
+            </div>
+          </FilterGroup>
+          <FilterGroup id="status" name="Status" active={activeSection} prefix={prefix}>
+            <div className="flex flex-wrap gap-4 min-w-0">
+              <Segmented
+                legend="Reviewed"
+                options={TRISTATE}
+                value={state.reviewed}
+                onChange={(reviewed) => set({ reviewed })}
+              />
+              <Segmented
+                legend="Hidden from reports"
+                options={TRISTATE}
+                value={state.hidden}
+                onChange={(hidden) => set({ hidden })}
+              />
+              <Segmented
+                legend="Receipts and files"
+                options={TRISTATE}
+                value={state.hasFiles}
+                onChange={(hasFiles) => set({ hasFiles })}
+              />
+            </div>
+          </FilterGroup>
+          <FilterGroup id="tags" name="Tags" active={activeSection} prefix={prefix}>
+            {tags.length > 0 && (
+              <CheckList
+                label="Tags"
+                options={tags}
+                selected={state.tagIds}
+                onChange={(tagIds) => set({ tagIds })}
+              />
+            )}
+          </FilterGroup>
+        </section>
       )}
 
       {count > 0 && (
-        <div className="flex items-center gap-2 px-4 pb-2 flex-wrap">
+        <ScrollCue
+          className="px-6 max-md:px-4 pb-2"
+          scrollerClassName="flex items-center gap-2 [&>*]:shrink-0"
+        >
           {state.search && <Chip label={`“${state.search}”`} onClear={() => set({ search: '' })} />}
           {state.budgetReport && (
             <Chip
@@ -598,7 +755,7 @@ export function TransactionFilters({
               {state.to ? formatDay(state.to) : 'today'}
             </span>
           )}
-        </div>
+        </ScrollCue>
       )}
     </div>
   );

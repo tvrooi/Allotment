@@ -121,7 +121,7 @@ jobs:
       - run: npm audit signatures
         working-directory: e2e
       # Install scripts are disabled (.npmrc), so the browser is installed explicitly
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
         working-directory: e2e
       - run: npx tsc --noEmit
         working-directory: e2e

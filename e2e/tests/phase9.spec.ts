@@ -37,6 +37,7 @@ test('tags a transaction, filters by the tag and manages it in Settings', async 
   await expect(row(page, 'Mock hotel').getByText('Holiday')).toBeVisible();
 
   await page.getByRole('button', { name: 'Filters' }).click();
+  await page.getByRole('tab', { name: 'Tags', exact: true }).click();
   await page.getByRole('checkbox', { name: 'Holiday' }).check();
   await expect(page.getByText('1 transaction', { exact: true })).toBeVisible();
   await expect(row(page, 'Mock cafe')).toHaveCount(0);

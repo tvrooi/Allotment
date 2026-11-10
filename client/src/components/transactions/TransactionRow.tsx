@@ -1,7 +1,7 @@
 import { transferLabel } from './transferLabel';
 import { useAccountName } from '../../hooks/useAccounts';
 import { RowMarks } from './TransactionMarks';
-import { listedAmount, RoundUpMark } from './RoundUp';
+import { formatRegisterAmount, RoundUpMark } from './RoundUp';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import { useMemo, useState } from 'react';
 import { ChevronRight, ChevronDown, ArrowRight, Lock } from 'lucide-react';
@@ -211,9 +211,9 @@ export function TransactionRow({
                   <CategoryIcon icon={categoryEntry.icon} size={15} />
                 )}
                 <span
-                  className={`text-sm truncate ${categoryEntry ? 'text-text-secondary' : 'text-text-tertiary'}`}
+                  className={`text-sm truncate ${categoryEntry ? 'text-text-secondary' : 'text-caution'}`}
                 >
-                  {categoryEntry?.name ?? '—'}
+                  {categoryEntry?.name ?? 'Uncategorised'}
                 </span>
                 {canEditCategory && (
                   <ChevronDown
@@ -288,7 +288,7 @@ export function TransactionRow({
             className={`flex items-center justify-end gap-1 text-sm font-medium tabular-nums ${tx.amount > 0 && !tx.transferPair ? 'text-positive' : 'text-text'}`}
           >
             <RoundUpMark tx={tx} currency={currency} />
-            {formatMoney(Math.abs(listedAmount(tx)), currency)}
+            {formatRegisterAmount(tx, currency)}
           </span>
           <ForeignValue tx={tx} className="block" />
         </div>
@@ -327,7 +327,7 @@ export function TransactionRow({
               <span
                 className={`text-xs tabular-nums shrink-0 ${child.amount > 0 ? 'text-positive' : 'text-text-secondary'}`}
               >
-                {formatMoney(Math.abs(child.amount), currency)}
+                {formatMoney(child.amount, currency)}
               </span>
             </div>
           );

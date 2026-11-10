@@ -1,12 +1,11 @@
 import { transferLabel } from './transferLabel';
 import { useAccountName } from '../../hooks/useAccounts';
-import { listedAmount, RoundUpMark } from './RoundUp';
+import { formatRegisterAmount, RoundUpMark } from './RoundUp';
 import { RowMarks } from './TransactionMarks';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import { useMemo } from 'react';
 import { ArrowLeftRight, ChevronRight, Lock, MoreHorizontal, Split } from 'lucide-react';
 import { PayeeIcon } from '../payees/PayeeIcon';
-import { formatMoney } from '../../utils/currency';
 import { useAccountCurrency } from '../../hooks/useCurrency';
 import { ForeignValue } from '../currency/ForeignValue';
 import { usePreferencesStore } from '../../store/preferencesStore';
@@ -89,8 +88,7 @@ export function TransactionCard({
             className={`shrink-0 inline-flex items-center gap-1 text-row font-medium tabular-nums ${tx.amount > 0 && !tx.transferPair ? 'text-positive' : 'text-text'}`}
           >
             <RoundUpMark tx={tx} currency={currencyOf(tx.accountId)} />
-            {tx.amount > 0 ? '+' : ''}
-            {formatMoney(Math.abs(listedAmount(tx)), currencyOf(tx.accountId))}
+            {formatRegisterAmount(tx, currencyOf(tx.accountId))}
           </span>
         </span>
         <ForeignValue tx={tx} className="justify-self-end" />

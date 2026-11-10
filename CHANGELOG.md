@@ -1,5 +1,16 @@
 # Changes
 
+## 0.2.0-up.155
+
+- **The iPhone web-app shell uses an opaque, isolated header.** Safari chooses its status-bar treatment without a legacy override; the root matches the header colour. Landscape uses the dynamic viewport height. Transactions search and custom dates use 16px phone text and 44px fields, and short viewports retain a scrollable ledger when filters are open. Safari-engine and simulated safe-area checks cover iPhone 14 Pro Max portrait, landscape and shorter browser viewports; native Home Screen blur still requires device confirmation.
+
+- **Common transaction review filters are one tap away.** Uncategorised, Not reviewed, and No receipts or files can be combined without opening advanced filters. They keep the current date range, account and search, use the existing shareable filter URL, and toggle off individually.
+
+- **Advanced transaction filters stay compact.** Categories, accounts, payees, money, status and tags appear one group at a time, leaving the ledger visible. Active chips remain available below; Done or Escape closes the panel and returns focus to Filters. Switching groups keeps searches and unfinished amount input.
+
+- **Transactions makes money direction explicit.** Money in, Money out and Net movement share a quieter summary inspired by Dashboard. Expenses and deposits show consistent signs on desktop and phones, including rounded-up purchases; folded transfer pairs stay neutral. Day headers label their existing aggregate as Total moved rather than implying a net balance.
+- **Transactions follows Budget’s register hierarchy.** Warm summary bands, readable search hints and explicit Uncategorised labels make the ledger easier to scan. On phones the receipt action becomes a labelled camera control, keeping the title and Add on one row.
+
 ## 0.2.0-up.154
 
 The Dashboard:

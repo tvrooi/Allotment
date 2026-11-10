@@ -49,12 +49,25 @@ export function useAddReceipts(onAdded?: (first: Receipt) => void) {
 }
 
 /** "Scan receipt": on a phone the picker opens the camera */
-export function ScanReceiptButton({ onFiles }: { onFiles: (files: File[]) => void }) {
+export function ScanReceiptButton({
+  onFiles,
+  compactOnPhone = false,
+}: {
+  onFiles: (files: File[]) => void;
+  compactOnPhone?: boolean;
+}) {
   const input = useRef<HTMLInputElement>(null);
   return (
     <>
-      <Button size="sm" variant="secondary" onClick={() => input.current?.click()}>
-        <Camera size={13} /> Scan receipt
+      <Button
+        size="sm"
+        variant="secondary"
+        aria-label="Scan receipt"
+        className={compactOnPhone ? 'max-md:w-11 max-md:px-0' : ''}
+        onClick={() => input.current?.click()}
+      >
+        <Camera size={13} aria-hidden />{' '}
+        <span className={compactOnPhone ? 'max-md:sr-only' : ''}>Scan receipt</span>
       </Button>
       <input
         ref={input}

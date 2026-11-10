@@ -2,12 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- viewport-fit=cover lets the phone header run up behind the iPhone status bar; pages pad
-         themselves with env(safe-area-inset-*) -->
+    <!-- Respect the available viewport and safe areas in Safari and Home Screen web apps. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- Let Safari choose the status-bar treatment; avoid the legacy translucent mode. -->
     <meta name="apple-mobile-web-app-title" content="Allotment" />
     <!-- The header colour; utils/applyTheme.ts keeps it in step with the theme -->
     <meta name="theme-color" content="#f7f5ef" />

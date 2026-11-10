@@ -65,13 +65,13 @@ export default function TransactionsPage() {
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className="px-6 pt-4 max-md:px-4 border-b border-border shrink-0">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
-            {view === 'receipts' ? 'Receipts' : 'All transactions'}
+            {view === 'receipts' ? 'Receipts' : 'Transactions'}
           </h1>
           <div className="flex items-center gap-2">
             {view === 'all' && <SavedViewsMenu />}
-            {view === 'all' && <ScanReceiptButton onFiles={scan.add} />}
+            {view === 'all' && <ScanReceiptButton onFiles={scan.add} compactOnPhone />}
             <Button size="sm" onClick={() => setShowAdd(true)} data-guide="transactions.add">
               <Plus size={13} /> Add
             </Button>

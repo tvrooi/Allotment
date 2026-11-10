@@ -336,14 +336,18 @@ test.describe('account register', () => {
     }
     await open(page, '/transactions');
     await page.getByRole('button', { name: 'Filters' }).click();
+    await page.getByRole('tab', { name: 'Accounts', exact: true }).click();
     await page.getByRole('checkbox', { name: 'Everyday Checking' }).check();
+    await page.getByRole('tab', { name: 'Money', exact: true }).click();
     await page.getByRole('button', { name: 'Money out', exact: true }).click();
     await page.getByLabel('At least').fill('100.01');
     await page.getByLabel('At least').press('Enter');
 
     await expect(page.getByText('1 transaction', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Mock grocer', exact: true })).toHaveCount(1);
-    await expect(page.getByText(/^Out/)).toHaveText('Out $120');
+    await expect(
+      page.getByRole('term').filter({ hasText: 'Money out' }).locator('..').getByRole('definition'),
+    ).toHaveText('$120');
 
     // The selection is in the URL: a reload keeps it
     await page.reload();
@@ -354,7 +358,9 @@ test.describe('account register', () => {
     // Search covers payees across accounts
     await page.getByPlaceholder('Search payee or notes…').fill('grocer');
     await expect(page.getByText('3 transactions', { exact: true })).toBeVisible();
-    await expect(page.getByText(/^Out/)).toHaveText('Out $410');
+    await expect(
+      page.getByRole('term').filter({ hasText: 'Money out' }).locator('..').getByRole('definition'),
+    ).toHaveText('$410');
   });
 });
 

@@ -5,9 +5,41 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 9 November 2026 (live app on up.149: the household bills hub, coverage gauge, amount-changed prompt and bill suggestions; D4a working from home in up.144; D4b car next).
+Last updated: 10 November 2026 (local Transactions and iPhone web-app refinements; live app on up.149: the household bills hub, coverage gauge, amount-changed prompt and bill suggestions; D4a working from home in up.144; D4b car next).
 
 ## State
+
+- **iPhone Safari web-app hardening (up.155; local, not released):** the shared PhoneShell
+  header is sticky, opaque and isolated, with existing env(safe-area-inset-*) padding retained.
+  The root background follows the header token, the legacy Apple status-bar-style meta is
+  removed, and the landscape shell uses dvh. No app CSS blur was found on the header; the
+  attached real-device blur cannot be reproduced or confirmed fixed by desktop emulation.
+  Transactions search/custom dates have 16px phone text and 44px fields; the ledger keeps a
+  minimum phone scroll area when controls exceed a short viewport. iphone-webapp.spec.ts runs
+  in Chromium with real env() safe-area overrides and in a dedicated iphone-webkit project
+  at 430×932, 430×740 and 932×430. CI installs WebKit alongside Chromium. A physical Home Screen
+  install remains necessary to verify native status-bar compositing and the software keyboard. Client
+  tests/build, lint, E2E types and targeted desktop/phone/WebKit checks pass.
+
+- **Transactions money clarity (up.155; local design work, not released):** draws on Budget’s
+  quiet ledger bands and signed activity, and Dashboard’s labelled money hierarchy. The existing
+  SelectionSummary now separates Money in/out and Net movement from count, dates and bulk actions.
+  Day aggregates retain their arithmetic and are labelled Total moved. Shared formatRegisterAmount
+  in RoundUp.tsx signs deposits/expenses consistently on desktop and phones, includes round-ups,
+  keeps folded transfer pairs neutral and honours full Safe mode. Desktop missing categories say
+  Uncategorised; search has an accessible name and stronger placeholder contrast. Scan receipt is
+  compact on phones. No ledger or API changes. Unit coverage includes signs, pairs, round-ups and
+  privacy; transaction-clarity.spec.ts covers desktop and 390px money labels and rows. The
+  advanced filter panel now shows one keyboard-accessible group at a time in a bounded scrolling
+  area, retaining local search and amount drafts between groups. Done/Escape restore focus to
+  Filters; active chips stay in a horizontal row below. transaction-filters.spec.ts covers the
+  bounded panel, visible ledger, tab keys, drafts, chips, closing and clearing at desktop/390px.
+  Existing account/category/tag filter tests follow the new group navigation. Quick filters
+  for Uncategorised, Not reviewed and No receipts or files use existing FilterState and URL
+  fields, combine, and preserve date/account/search scope. Uncategorised clears conflicting
+  category and group selections through the same toggle as the advanced panel. The preset
+  buttons reflect URL/restored state; transaction-presets.spec.ts covers combinations, a linked
+  document, reviewed rows, reload, scope and keyboard activation at desktop/390px.
 
 - **Budget page design pass (up.154; owner-requested 9 November 2026; client only):** from the
   impeccable critique in `docs/critiques/2026-11-09-budget.md` (27/40). Done: Ready to assign
