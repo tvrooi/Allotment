@@ -7,6 +7,7 @@ import {
   Legend,
   Line,
   LineChart,
+  ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -35,6 +36,8 @@ import { onTabListKeyDown } from '../ui/tabList';
 import { addDaysIso, todayIso } from '../../utils/calendarDay';
 
 const COLORS = [chartColors.brand, chartColors.caution, chartColors.positive];
+// Inline, because index.css clears the dash recharts leaves on a line after it animates
+const DOTTED = { strokeDasharray: '0.1 5' };
 const KIND_LABEL: Record<api.ForecastEvent['kind'], string> = {
   income: 'Expected pay',
   bill: 'Bill',
@@ -560,6 +563,13 @@ export function CashRunway() {
     return [...rows.values()].sort((a, b) => String(a.date).localeCompare(String(b.date)));
   }, [data]);
 
+  // The ring where the forecasts leave the history: the balance today
+  const todayBalance = data
+    ? ([chart.find((r) => r.date === data.today)]
+        .flatMap((r) => (r ? [r.Actual, ...data.scenarios.map((sc) => r[sc.name])] : []))
+        .find((v) => typeof v === 'number') as number | undefined)
+    : undefined;
+
   function exportCsv() {
     if (!data) return;
     downloadCsv(
@@ -743,18 +753,24 @@ export function CashRunway() {
                         dataKey="date"
                         tickFormatter={(d) => formatDay(d)}
                         minTickGap={40}
-                        tick={{ fontSize: 11, fill: chartColors.axis }}
+                        tick={{ fontSize: 12, fill: chartColors.axis }}
+                        tickMargin={8}
+                        axisLine={false}
+                        tickLine={false}
                       />
                       <YAxis
                         tickFormatter={formatCentsAxis}
                         width={70}
-                        tick={{ fontSize: 11, fill: chartColors.axis }}
+                        tick={{ fontSize: 12, fill: chartColors.axis }}
+                        tickMargin={4}
+                        axisLine={false}
+                        tickLine={false}
                       />
                       <Tooltip
                         formatter={(v) => formatCurrency(Number(v))}
                         labelFormatter={(d) => formatDay(String(d))}
                       />
-                      <Legend />
+                      <Legend iconType="plainline" wrapperStyle={{ fontSize: 12 }} />
                       <ReferenceLine y={0} stroke={chartColors.negative} strokeOpacity={0.4} />
                       <ReferenceLine
                         x={data.today}
@@ -768,13 +784,25 @@ export function CashRunway() {
                         dot={false}
                         connectNulls
                       />
+                      {todayBalance !== undefined && (
+                        <ReferenceDot
+                          x={data.today}
+                          y={todayBalance}
+                          r={5}
+                          fill="var(--color-surface, #fff)"
+                          stroke={chartColors.axis}
+                          strokeWidth={2.5}
+                          ifOverflow="visible"
+                        />
+                      )}
                       {data.scenarios.map((s, i) => (
                         <Line
                           key={s.name}
                           dataKey={s.name}
                           stroke={COLORS[i]}
-                          strokeDasharray="6 3"
-                          strokeWidth={i === selected ? 2.5 : 1.5}
+                          style={DOTTED}
+                          strokeLinecap="round"
+                          strokeWidth={i === selected ? 3 : 2}
                           dot={false}
                           connectNulls
                         />

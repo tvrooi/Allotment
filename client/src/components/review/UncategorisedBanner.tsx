@@ -38,7 +38,7 @@ export function UncategorisedNotice({
       </span>
       <Link
         to={transactionsLink({ uncategorized: true, datePreset: 'custom', from, to })}
-        className="font-medium text-brand-600 hover:underline"
+        className="font-medium text-brand-600 hover:underline max-md:min-h-11 max-md:inline-flex max-md:items-center"
       >
         Sort it
       </Link>

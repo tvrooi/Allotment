@@ -12,7 +12,7 @@ import {
   YAxis,
 } from 'recharts';
 import type { Comparison, PlanEvent, YearResult } from '../../api/longTerm';
-import { ACCESSIBLE_COLOR, chartColors, SUPER_COLOR } from '../../utils/chartColors';
+import { chartColors } from '../../utils/chartColors';
 import { formatCentsAxis, formatCurrency } from '../../utils/currency';
 import { eventYear, inDollars, kindLabel, type Dollars } from '../../utils/longTerm';
 
@@ -31,6 +31,9 @@ interface Row {
   preserved: number;
   reference?: number;
 }
+
+// Inline, because index.css clears the dash recharts leaves on a line after it animates
+const DOTTED = { strokeDasharray: '0.1 5' };
 
 const GLYPH: Record<PlanEvent['kind'], string> = {
   home: 'H',
@@ -113,19 +116,29 @@ export function NetWorthChart({
             if (row && row.index >= 1) onSelect(row.index);
           }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light, #eee)" />
+          <CartesianGrid vertical={false} stroke={chartColors.grid} />
           <XAxis
             dataKey="year"
             type="number"
             domain={['dataMin', 'dataMax']}
-            tick={{ fontSize: 11 }}
+            tick={{ fontSize: 12, fill: chartColors.axis }}
             tickCount={8}
+            tickMargin={8}
+            axisLine={false}
+            tickLine={false}
           />
-          <YAxis tickFormatter={formatCentsAxis} tick={{ fontSize: 11 }} width={64} />
+          <YAxis
+            tickFormatter={formatCentsAxis}
+            tick={{ fontSize: 12, fill: chartColors.axis }}
+            tickMargin={4}
+            axisLine={false}
+            tickLine={false}
+            width={64}
+          />
           <Tooltip
             content={({ active, payload }) =>
               active && payload?.length ? (
-                <div className="bg-surface border border-border rounded-md shadow-hover px-3 py-2 text-xs">
+                <div className="bg-surface border border-border rounded-lg shadow-hover px-3 py-2 text-xs">
                   <p className="text-text-tertiary mb-1">
                     {(payload[0].payload as Row).label} · age {(payload[0].payload as Row).age}
                   </p>
@@ -138,7 +151,7 @@ export function NetWorthChart({
               ) : null
             }
           />
-          <ReferenceLine y={0} stroke="var(--color-border, #ccc)" />
+          <ReferenceLine y={0} stroke={chartColors.axis} strokeOpacity={0.4} />
           {selectedRow && (
             <ReferenceLine x={selectedRow.year} stroke={chartColors.brand} strokeDasharray="2 2" />
           )}
@@ -156,8 +169,10 @@ export function NetWorthChart({
               type="monotone"
               dataKey="accessible"
               name="Accessible (cash, investments, released super)"
-              stroke={ACCESSIBLE_COLOR}
-              strokeWidth={1.5}
+              stroke={chartColors.positive}
+              strokeWidth={3}
+              strokeLinecap="round"
+              style={DOTTED}
               dot={false}
               isAnimationActive={false}
             />
@@ -167,9 +182,10 @@ export function NetWorthChart({
               type="monotone"
               dataKey="preserved"
               name="Preserved super"
-              stroke={SUPER_COLOR}
-              strokeWidth={1.5}
-              strokeDasharray="4 3"
+              stroke={chartColors.caution}
+              strokeWidth={3}
+              strokeLinecap="round"
+              style={DOTTED}
               dot={false}
               isAnimationActive={false}
             />
@@ -186,6 +202,16 @@ export function NetWorthChart({
               isAnimationActive={false}
             />
           )}
+          {/* The ring where the forecasts leave from: today's net worth */}
+          <ReferenceDot
+            x={rows[0].year}
+            y={rows[0].active}
+            r={5}
+            fill="var(--color-surface, #fff)"
+            stroke={chartColors.brand}
+            strokeWidth={2.5}
+            ifOverflow="visible"
+          />
           {markers.map(({ e, row }) => (
             <ReferenceDot
               key={e.id}
@@ -200,7 +226,7 @@ export function NetWorthChart({
               aria-label={`${kindLabel(e.kind)}: ${e.name}, ${row.year}`}
             />
           ))}
-          {(comparison || split) && <Legend wrapperStyle={{ fontSize: 11 }} />}
+          {(comparison || split) && <Legend iconType="plainline" wrapperStyle={{ fontSize: 12 }} />}
         </LineChart>
       </ResponsiveContainer>
     </div>

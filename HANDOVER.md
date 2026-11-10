@@ -5,10 +5,19 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 10 November 2026 (day-first dates and Household refinements, up.164 prepared; local Transactions and iPhone web-app refinements; live app on up.149: the household bills hub, coverage gauge, amount-changed prompt and bill suggestions; D4a working from home in up.144; D4b car next).
+Last updated: 10 November 2026 (Forecast page polish, up.165 prepared; day-first dates and Household refinements, up.164 prepared; local Transactions and iPhone web-app refinements; live app on up.149: the household bills hub, coverage gauge, amount-changed prompt and bill suggestions; D4a working from home in up.144; D4b car next).
 
 ## State
 
+- **Forecast page critique and polish (up.165; local design work, not released):** `LongTermForecast.tsx`
+  leads with a headline sentence and the net worth at the plan's end (`summary` in the component),
+  plan actions sit in a `RowMenu`, the disclaimer and tip moved under the chart, and a plan with no
+  income shows a callout (`noIncome`, from `point.income.source` and an empty take-home override)
+  that opens the Assumptions tab or links to Budget. It hides the matching server warning by its
+  leading text (`longTermInputs.ts`), so change both together. Long-range amounts use
+  `formatWholeCurrency`. Both charts (`NetWorthChart`, `CashRunway`) draw a ring at today and
+  dotted forecasts; the dash is an inline style because `index.css` clears recharts' dash on line
+  curves. Not yet run: the long-term browser spec (one expected string changed).
 - **Day-first dates and a calmer Household page (up.164; local design work, not released):**
   the word date format is now `d MMM yyyy` ("5 Jan 2026"), the long form "5 January 2026"
   (`formatDayLong`, used by Transactions day headings, report detail and the calendar), and short

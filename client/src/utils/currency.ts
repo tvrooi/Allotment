@@ -373,6 +373,12 @@ export function formatAmount(cents: number, style: AmountStyle): string {
   return withSymbol(number, cents < 0, style);
 }
 
+/** An amount rounded to the whole unit, half away from zero: "$1,082,794" for a projection decades out */
+export function formatWholeAmount(cents: number, style: AmountStyle): string {
+  const unit = 10 ** decimalsOf(style);
+  return formatAmount(Math.sign(cents) * Math.round(Math.abs(cents) / unit) * unit, style);
+}
+
 /** Short axis label: "$950", "$12.5k", "-1,2M €". Thresholds sit where rounding would reach the next unit. */
 export function formatAxisAmount(cents: number, style: AmountStyle): string {
   if (hidesAllAmounts()) return HIDDEN_AMOUNT;
@@ -394,6 +400,7 @@ export function formatAxisAmount(cents: number, style: AmountStyle): string {
 export const centsToInput = (cents: number) => amountToInput(cents, amountStyle());
 export const parseCents = (s: string) => parseAmount(s, amountStyle());
 export const formatCurrency = (cents: number) => formatAmount(cents, amountStyle());
+export const formatWholeCurrency = (cents: number) => formatWholeAmount(cents, amountStyle());
 export const formatCentsAxis = (cents: number) => formatAxisAmount(cents, amountStyle());
 
 /** An amount in a currency (an account's own): "12,50 zł", "¥1,500"; null = the budget's */

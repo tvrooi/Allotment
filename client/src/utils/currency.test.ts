@@ -8,6 +8,7 @@ import {
   amountToInput,
   formatAmount,
   formatAxisAmount,
+  formatWholeAmount,
   localeAmountStyle,
   isUnreadableAmount,
   parseAmount,
@@ -190,6 +191,15 @@ describe('currency helpers (property-based)', () => {
     expect(formatAmount(123_456, { format: 'apostrophe', position: 'before', symbol: 'CHF' })).toBe(
       "CHF1'234.56",
     );
+  });
+
+  it('formatWholeAmount rounds to the whole unit, half away from zero', () => {
+    expect(formatWholeAmount(-108_279_411, US)).toBe('-$1,082,794');
+    expect(formatWholeAmount(16_484_955, US)).toBe('$164,850');
+    expect(formatWholeAmount(149, US)).toBe('$1');
+    expect(formatWholeAmount(150, US)).toBe('$2');
+    expect(formatWholeAmount(-150, US)).toBe('-$2');
+    expect(formatWholeAmount(-49, US)).toBe('$0');
   });
 
   it('uses the preferences when no style is given', () => {

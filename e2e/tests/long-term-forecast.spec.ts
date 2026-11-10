@@ -59,7 +59,7 @@ test('the long-term forecast: plans, drafts, years, dollars and comparison', asy
   );
   await expect(page.getByText('Preserved super', { exact: true })).toBeVisible();
   await expect(page.getByText('Super opens', { exact: true }).locator('..')).toContainText(
-    'At 65Super opensReached 65, while still working',
+    'Super opensReached 65, while still workingAt 65',
   );
   const plans = await api.call('GET', `${LT}/plans`);
   expect(plans).toHaveLength(1);

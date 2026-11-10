@@ -71,11 +71,6 @@ export const CATEGORY_COLORS = [
   '#9C7060', // cocoa
 ] as const;
 
-/** Preserved super in the forecast; the account overview has its own muted palette. */
-export const SUPER_COLOR = '#C026D3';
-/** Wealth that can be spent now, beside net worth on the forecast */
-export const ACCESSIBLE_COLOR = '#2563EB';
-
 /** Muted balance-sheet categories, with explicit light/dark roles in index.css. */
 export const ACCOUNT_OVERVIEW_COLORS = {
   investments: cssVar('--color-chart-account-investments', '#637B9C'),

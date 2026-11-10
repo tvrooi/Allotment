@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.165
+
+- **The Forecast page leads with the answer.** Long term opens with the plan select and a Plan actions menu, then one headline sentence and a large net-worth figure, with the supporting numbers in a compact row; duplicate and empty cards are gone and long-range amounts show in whole dollars. A forecast with no income now says so first, with buttons to enter take-home pay or set up a payday plan. Both charts draw a ring at today with dotted forecast lines, minimal gridlines and 12px labels, and the phone header keeps the dollars toggle full width. The Sort it link in the uncategorised notice has a 44px tap target on phones.
+
 ## 0.2.0-up.164
 
 - **Dates read day-first, and Household is easier to scan.** The word date format now writes 5 Jan 2026, and full dates such as day headings write 5 January 2026; people who chose the old month-first format are moved to the new one and numeric formats are unchanged. On Household, the balance band is the one place to settle up, card titles are larger, and the header fits on phones with 44px tap targets. Two-person households set the split of a new shared expense with a 0–100 slider in steps of 5, which starts at 50.
