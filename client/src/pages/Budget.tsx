@@ -43,6 +43,7 @@ import { useCanSave } from '../hooks/useConnection';
 import {
   availability,
   availableTone,
+  expectedFundingNote,
   captionTone,
   categoryFigures,
   splitCategories,
@@ -195,7 +196,7 @@ interface CategoryRowProps {
   /** Ticked for the inspector (BUD-10); income rows have no tick */
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
-  onStartEdit: (id: string) => void;
+  onStartEdit: ((id: string) => void) | undefined;
   /** Resolves to why the save was refused, or null once it has been saved */
   onSave: (cents: number) => Promise<string | null>;
   onCancel: () => void;
@@ -276,11 +277,11 @@ function CategoryRow({
     closed.current = true;
     // An amount left as it was isn't saved again (no undo step for nothing)
     if (cents === cat.budgeted) {
-      onStartEdit(next);
+      onStartEdit?.(next);
       return true;
     }
     void commit(cents).then((saved) => {
-      if (saved) onStartEdit(next);
+      if (saved) onStartEdit?.(next);
     });
     return true;
   }
@@ -314,7 +315,7 @@ function CategoryRow({
 
   // Available is the column to read. A pill marks only what needs a decision (overspent, short
   // of a target); an envelope that is fine is a plain figure, and $0 is grey
-  const remainingClass = `rounded-full px-2.5 py-0.5 ${availableTone(kind, remaining)}`;
+  const remainingClass = `rounded-full px-2.5 py-0.5 ${availableTone(kind, remaining, !isIncome && expectedFundingNote(cat, format(new Date(), 'yyyy-MM-dd')).overdue)}`;
 
   return (
     <tr
@@ -334,18 +335,24 @@ function CategoryRow({
             className="absolute left-4 top-3 h-3.5 w-3.5 accent-brand-600"
           />
         )}
-        <div className="py-0.5 text-sm text-text">
-          {showCategoryIcons && (
-            <CategoryIcon icon={cat.icon} size={14} className="mr-1.5 inline" />
-          )}
-          {/* The name opens the envelope, as its Activity figure does */}
-          <Link
-            to={`/budget/category/${cat.id}`}
-            aria-label={`Open ${cat.name}`}
-            className="rounded-sm hover:text-brand-600 hover:underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors"
-          >
-            {cat.name}
-          </Link>
+        <div className="flex w-[90%] flex-wrap items-baseline justify-between gap-x-3 py-0.5 text-sm text-text">
+          <span className="min-w-0">
+            {showCategoryIcons && (
+              <CategoryIcon icon={cat.icon} size={14} className="mr-1.5 inline" />
+            )}
+            {/* The name opens the envelope, as its Activity figure does */}
+            <Link
+              to={`/budget/category/${cat.id}`}
+              aria-label={`Open ${cat.name}`}
+              className="rounded-sm hover:text-brand-600 hover:underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors"
+            >
+              {cat.name}
+            </Link>
+          </span>
+          <ExpectedNote
+            cat={cat}
+            onAssign={canSave && !linked && onStartEdit ? () => onStartEdit(cat.id) : undefined}
+          />
         </div>
         <SpentBar cat={cat} isIncome={isIncome} />
         <TransferredNote cat={cat} className="mt-0.5" />
@@ -397,7 +404,7 @@ function CategoryRow({
             </>
           ) : (
             <button
-              onClick={() => onStartEdit(cat.id)}
+              onClick={() => onStartEdit?.(cat.id)}
               disabled={!canSave}
               title={canSave ? undefined : 'Saving is paused until Allotment reconnects'}
               aria-label={`${isIncome ? 'Expected from' : 'Assigned to'} ${cat.name}: ${formatCurrency(cat.budgeted)}`}
@@ -421,7 +428,6 @@ function CategoryRow({
           >
             {formatCurrency(actual)}
           </Link>
-          <ExpectedNote cat={cat} className="mt-0.5" />
         </div>
       </td>
       <td className="h-14 py-1.5 pl-3 pr-6 text-right align-top">
@@ -445,7 +451,8 @@ function CategoryRow({
             {formatCurrency(remaining)}
           </span>
         )}
-        {caption && (
+        {caption && !(kind === 'uncovered' && cat.expectedItems?.length) && (
+          // Bill shortfalls already have a dated funding note above the bar.
           // One line so rows keep their rhythm; the full wording is on hover
           <span title={caption} className={`block truncate text-xs mt-0.5 ${captionTone(kind)}`}>
             {caption}
@@ -460,7 +467,7 @@ interface IncomeGroupProps {
   group: BudgetGroup;
   editingId: string | null;
   month: string;
-  onStartEdit: (id: string) => void;
+  onStartEdit: ((id: string) => void) | undefined;
   onSave: (categoryId: string, cents: number) => Promise<string | null>;
   onCancel: () => void;
   onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
@@ -566,7 +573,7 @@ interface BudgetTypeSectionProps {
   categories: BudgetCategory[];
   editingId: string | null;
   month: string;
-  onStartEdit: (id: string) => void;
+  onStartEdit: ((id: string) => void) | undefined;
   onSave: (categoryId: string, cents: number) => Promise<string | null>;
   onCancel: () => void;
   onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
@@ -1289,7 +1296,7 @@ export default function BudgetPage() {
                           group={group}
                           editingId={editingId}
                           month={selectedMonth}
-                          onStartEdit={beforeStart ? () => undefined : setEditingId}
+                          onStartEdit={beforeStart ? undefined : setEditingId}
                           onSave={handleSave}
                           onCancel={() => setEditingId(null)}
                           onApplyBulk={handleApplyBulk}
@@ -1371,7 +1378,7 @@ export default function BudgetPage() {
                           categories={bt.categories}
                           editingId={editingId}
                           month={selectedMonth}
-                          onStartEdit={beforeStart ? () => undefined : setEditingId}
+                          onStartEdit={beforeStart ? undefined : setEditingId}
                           onSave={handleSave}
                           onCancel={() => setEditingId(null)}
                           onApplyBulk={handleApplyBulk}
@@ -1405,7 +1412,7 @@ export default function BudgetPage() {
                       categories={shownCardCategories}
                       editingId={editingId}
                       month={selectedMonth}
-                      onStartEdit={beforeStart ? () => undefined : setEditingId}
+                      onStartEdit={beforeStart ? undefined : setEditingId}
                       onSave={handleSave}
                       onCancel={() => setEditingId(null)}
                       onApplyBulk={handleApplyBulk}

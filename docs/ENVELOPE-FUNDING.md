@@ -430,3 +430,35 @@ actual receipt; it does not auto-create another deposit. A legacy generated inco
 must be reviewed against its bank receipt before reconciliation can make it received cash.
 Schedules never auto-create entries in closed accounts. Existing transactions survive the
 upgrade unchanged; these safeguards do not perform a live budget repair automatically.
+
+### Expected bill details
+
+The funding note above the category bar opens a read-only popover (`ExpectedNote`) on desktop and
+phones. It lists the remaining recurring bills with dates, shows how much their envelope
+covers, and gives the balance after those bills. Enter opens it; Escape or Close dismisses
+it. The phone Activity link remains separate. Displayed dates follow the date preference.
+
+Each bill name links to `/recurring?schedule=<id>`, opening its existing recurring editor.
+The page waits for schedules to load and consumes the parameter so reload does not reopen
+the editor. A missing schedule leaves the recurring page open without creating a new item.
+
+The note reads "$X needed by the 10th" for the first day whose remaining bills exceed
+what is available, combining bills due that day. It shows only that first gap, not later
+funding needs; the popover lists all remaining bills. Covered bills show "Funded".
+
+"Assign to [envelope]…" in the breakdown closes it and opens the existing desktop amount
+editor or phone planning sheet. It changes no money until the owner saves. The shortcut is
+omitted when offline, before the budget start, or for an account-linked envelope.
+
+The dated funding note replaces the repeated bill-shortfall caption beside Available.
+The amber Available figure, overspending and target warnings remain. If bill detail is
+missing, the shortfall caption stays as a fallback.
+
+A funding deadline before the current local calendar day turns the deadline text and
+Available bubble red, without a visible overdue suffix. The original due day stays visible,
+and the accessible label names the overdue state. Due today and funded envelopes are not overdue.
+
+The breakdown explains the next funding gap with bills due by that date, the amount already
+covered, and what is still needed. Its bill list separates everything due by that deadline
+(including earlier bills) from later bills, so the gap is not confused with the whole-month
+shortfall. The overall coverage and balance after all expected bills remain visible.

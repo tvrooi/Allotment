@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { format } from 'date-fns';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight, Eye, Pencil } from 'lucide-react';
@@ -11,6 +12,7 @@ import { formatCurrency } from '../../utils/currency';
 import {
   availability,
   availableTone,
+  expectedFundingNote,
   captionTone,
   categoryFigures,
   splitCategories,
@@ -194,7 +196,11 @@ function CategoryCard({
   const linked = useLinkedAccount(cat);
   const movable =
     !isIncome && !linked && canSave && !readOnly && remaining !== 0 && canMoveIn(month);
-  const pill = availableTone(kind, remaining);
+  const pill = availableTone(
+    kind,
+    remaining,
+    !isIncome && expectedFundingNote(cat, format(new Date(), 'yyyy-MM-dd')).overdue,
+  );
 
   return (
     // relative: keeps the sr-only text inside the card, or it's placed against the page and
@@ -243,7 +249,10 @@ function CategoryCard({
           </span>
         )}
       </div>
-      {caption && <p className={`mt-1 text-right text-xs ${captionTone(kind)}`}>{caption}</p>}
+      {caption && !(kind === 'uncovered' && cat.expectedItems?.length) && (
+        <p className={`mt-1 text-right text-xs ${captionTone(kind)}`}>{caption}</p>
+      )}
+      <ExpectedNote cat={cat} onAssign={canSave && !readOnly && !linked ? onEdit : undefined} />
       <SpentBar cat={cat} isIncome={isIncome} className="h-1.5 w-full mt-2" />
       <TransferredNote cat={cat} className="mt-1" />
       {card && <CardRowNotes card={card} className="mt-1" />}
@@ -282,16 +291,14 @@ function CategoryCard({
             <Pencil size={13} className="text-text-tertiary" aria-hidden />
           </button>
         )}
-        <Link
-          to={`/budget/category/${cat.id}`}
-          className="min-h-11 grid justify-items-end content-center text-right"
-        >
-          <span className="text-xs text-text-tertiary">{isIncome ? 'Received' : 'Activity'}</span>
-          <span className="text-sm font-medium tabular-nums text-text">
-            {formatCurrency(actual)}
-          </span>
-          <ExpectedNote cat={cat} />
-        </Link>
+        <div className="grid justify-items-end content-center text-right">
+          <Link to={`/budget/category/${cat.id}`} className="min-h-11 grid content-center">
+            <span className="text-xs text-text-tertiary">{isIncome ? 'Received' : 'Activity'}</span>
+            <span className="text-sm font-medium tabular-nums text-text">
+              {formatCurrency(actual)}
+            </span>
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import type { BudgetCategory } from '../types';
 import { formatCurrency } from './currency';
+import { formatOrdinalDay } from './dates';
 
 // How one budget category reads, shared by the desktop table and the phone cards.
 
@@ -71,8 +72,9 @@ export function availability(
  * (overspent red, short of a target or covered by carried money amber); an envelope with money
  * in it is a plain figure, so the exceptions stand out; $0 is grey.
  */
-export function availableTone(kind: AvailabilityKind, remaining: number): string {
-  if (kind === 'overspent') return 'font-semibold bg-negative-subtle text-negative';
+export function availableTone(kind: AvailabilityKind, remaining: number, overdue = false): string {
+  if (kind === 'overspent' || (kind === 'uncovered' && overdue))
+    return 'font-semibold bg-negative-subtle text-negative';
   if (kind === 'uncovered' || kind === 'short' || kind === 'carried')
     return 'font-semibold bg-caution-subtle text-caution';
   return remaining > 0 ? 'font-medium text-text' : 'text-text-tertiary';
@@ -285,4 +287,39 @@ export function savedSplit(cats: BudgetCategory[]) {
   const saved = selectionFigures(cats.filter((c) => c.budgetType === 'savings')).available;
   const total = selectionFigures(cats).available;
   return { spending: total - saved, saved, total };
+}
+
+/** First day the remaining bills exceed the envelope, grouping bills due on the same day. */
+export function nextExpectedFunding(cat: Pick<BudgetCategory, 'balance' | 'expectedItems'>) {
+  const byDay = new Map<string, number>();
+  for (const item of cat.expectedItems ?? [])
+    byDay.set(item.date, (byDay.get(item.date) ?? 0) + item.amount);
+  let due = 0;
+  for (const [date, amount] of [...byDay].sort(([a], [b]) => a.localeCompare(b))) {
+    due += amount;
+    const needed = due - Math.max(cat.balance, 0);
+    if (needed > 0)
+      return {
+        date,
+        needed,
+        due,
+        covered: Math.min(Math.max(cat.balance, 0), due),
+        items: (cat.expectedItems ?? [])
+          .filter((item) => item.date <= date)
+          .sort((a, b) => a.date.localeCompare(b.date)),
+      };
+  }
+  return null;
+}
+
+/** Compare whole local calendar days; a bill due today is not overdue. */
+export function expectedFundingNote(
+  cat: Pick<BudgetCategory, 'balance' | 'expectedItems'>,
+  today: string,
+) {
+  const funding = nextExpectedFunding(cat);
+  if (!funding) return { label: 'Funded', overdue: false };
+  const overdue = funding.date < today;
+  const label = `${formatCurrency(funding.needed)} needed by the ${formatOrdinalDay(funding.date)}`;
+  return { label, overdue };
 }

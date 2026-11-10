@@ -48,7 +48,16 @@ export default function RecurringTransactionsPage() {
     setFormOpen(true);
   });
 
-  const { data: allRecurring = [] } = useSchedules();
+  const { data: allRecurring = [], isSuccess: schedulesReady } = useSchedules();
+  const linkedScheduleId = searchParams.get('schedule');
+  useOpenFromLink(
+    'schedule',
+    () => {
+      const schedule = allRecurring.find((item) => item.id === linkedScheduleId);
+      if (schedule) handleEdit(schedule);
+    },
+    { value: linkedScheduleId, ready: schedulesReady },
+  );
   const createSchedule = useCreateSchedule();
   const updateSchedule = useUpdateSchedule();
 

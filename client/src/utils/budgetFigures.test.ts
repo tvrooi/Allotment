@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
+  nextExpectedFunding,
+  expectedFundingNote,
   availability,
   availableTone,
   captionTone,
@@ -459,4 +461,83 @@ describe('savedSplit', () => {
   it('has nothing saved when no envelope is a Savings one', () => {
     expect(savedSplit([env(null, 1_000)]).saved).toBe(0);
   });
+});
+
+describe('next expected funding deadline', () => {
+  const item = (date: string, amount: number) => ({ date, amount, name: 'Bill', scheduleId: date });
+  it('finds the first gap in date order, combining bills on the same day', () => {
+    const expectedItems = [
+      item('2026-11-25', 9000),
+      item('2026-11-10', 3000),
+      item('2026-11-10', 2000),
+    ];
+    expect(nextExpectedFunding({ balance: 1000, expectedItems })).toMatchObject({
+      date: '2026-11-10',
+      needed: 4000,
+    });
+    expect(nextExpectedFunding({ balance: 6000, expectedItems })).toMatchObject({
+      date: '2026-11-25',
+      needed: 8000,
+    });
+    expect(expectedItems[0].date).toBe('2026-11-25');
+  });
+  it('shows no deadline when covered or empty; overspending cannot fund a future bill', () => {
+    expect(
+      nextExpectedFunding({ balance: 5000, expectedItems: [item('2026-11-10', 5000)] }),
+    ).toBeNull();
+    expect(nextExpectedFunding({ balance: 0, expectedItems: [] })).toBeNull();
+    expect(
+      nextExpectedFunding({ balance: -2000, expectedItems: [item('2026-11-10', 5000)] }),
+    ).toMatchObject({ date: '2026-11-10', needed: 5000 });
+  });
+});
+
+describe('overdue funding notes', () => {
+  const cat = {
+    balance: 0,
+    expectedItems: [{ date: '2026-11-07', amount: 2500, name: 'Bill', scheduleId: 'bill' }],
+  };
+  it('keeps the due day and marks a past funding gap overdue', () => {
+    expect(expectedFundingNote(cat, '2026-11-10')).toEqual({
+      label: '$25 needed by the 7th',
+      overdue: true,
+    });
+  });
+  it('does not mark today, future deadlines or funded bills overdue', () => {
+    for (const today of ['2026-11-07', '2026-11-06'])
+      expect(expectedFundingNote(cat, today)).toEqual({
+        label: '$25 needed by the 7th',
+        overdue: false,
+      });
+    expect(expectedFundingNote({ ...cat, balance: 2500 }, '2026-11-10')).toEqual({
+      label: 'Funded',
+      overdue: false,
+    });
+  });
+  it('compares full dates across months and years, not just the day number', () => {
+    expect(expectedFundingNote(cat, '2027-01-01').overdue).toBe(true);
+    expect(expectedFundingNote(cat, '2026-10-31').overdue).toBe(false);
+  });
+});
+
+it('makes only overdue bill shortfalls red, retaining amber before the deadline', () => {
+  expect(availableTone('uncovered', 0, true)).toContain('bg-negative-subtle text-negative');
+  expect(availableTone('uncovered', 0, false)).toContain('bg-caution-subtle text-caution');
+  expect(availableTone('available', 500, true)).not.toContain('text-negative');
+});
+
+it('explains the first gap using all bills due by then, without counting later bills', () => {
+  const items = [
+    { scheduleId: 'later', name: 'Later', date: '2026-11-25', amount: 9000 },
+    { scheduleId: 'earlier', name: 'Earlier', date: '2026-11-05', amount: 3000 },
+    { scheduleId: 'next', name: 'Next', date: '2026-11-10', amount: 4000 },
+  ];
+  expect(nextExpectedFunding({ balance: 5000, expectedItems: items })).toEqual({
+    date: '2026-11-10',
+    due: 7000,
+    covered: 5000,
+    needed: 2000,
+    items: [items[1], items[2]],
+  });
+  expect(items[0].scheduleId).toBe('later');
 });

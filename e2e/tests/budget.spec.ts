@@ -521,8 +521,126 @@ test('a recurring bill shows as expected in its category before it is debited', 
 
   await open(page, '/budget');
   const expected = page.getByTestId('expected-debit');
-  await expect(expected).toContainText(/\$45(\.00)? expected/);
-  await expect(expected).toHaveAttribute('title', /Mobile plan/);
-  // Orange, not the red of overspending
+  await expect(expected).toContainText(/\$45(\.00)? needed by the/);
+  await expected.click();
+  const details = page.getByRole('dialog', { name: 'Expected bills for Phone' });
+  await expect(details).toContainText('Mobile plan');
+  await expect(details).toContainText('After expected bills');
+  await expect(
+    details.getByRole('progressbar', { name: 'Expected bills covered' }),
+  ).toHaveAttribute('aria-valuenow', '0');
+  await page.keyboard.press('Escape');
+  await expect(details).toBeHidden();
+  await expect(expected).toBeFocused();
+  await expected.press('Enter');
+  await expect(details).toBeVisible();
+  await details.getByRole('button', { name: 'Close expected bills' }).click();
+  await expect(details).toBeHidden();
   await expect(expected).toHaveClass(/text-expected/);
+
+  // The phone disclosure is independent of the activity link, and fits a narrow viewport.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expected.click();
+  await expect(details).toBeVisible();
+  await expect(page).toHaveURL(/\/budget$/);
+  const bounds = await details.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+  await details.getByRole('button', { name: 'Close expected bills' }).click();
+  await expect(details).toBeHidden();
+});
+
+for (const width of [1400, 390]) {
+  test(`expected bills open their recurring editor at ${width}px`, async ({ page, api }) => {
+    const checking = await api.createAccount('Checking', 100_000);
+    const phone = await api.category('Phone');
+    await api.call('POST', '/schedules', {
+      name: 'Mobile plan',
+      amount: -4_500,
+      recurrenceType: 'once',
+      startDate: isoDay(),
+      accountId: checking.id,
+      categoryId: phone.id,
+    });
+    await page.setViewportSize({ width, height: 844 });
+    await open(page, '/budget');
+    await page.getByTestId('expected-debit').click();
+    const breakdown = page.getByRole('dialog', { name: 'Expected bills for Phone' });
+    await breakdown.getByRole('button', { name: 'Assign to Phone…' }).click();
+    await expect(breakdown).toBeHidden();
+    const amount = page.getByRole('textbox', { name: 'Assigned to Phone', exact: true });
+    await expect(amount).toBeVisible();
+    // The existing amount editor represents an unassigned zero as an empty field.
+    await expect(amount).toHaveValue('');
+    if (width === 1400) {
+      await expect(amount).toBeFocused();
+      await amount.press('Escape');
+    } else {
+      await page
+        .getByRole('dialog', { name: 'Plan Phone', exact: true })
+        .getByRole('button', { name: 'Cancel', exact: true })
+        .click();
+    }
+    await page.getByTestId('expected-debit').click();
+    await page.getByRole('link', { name: 'Open recurring bill: Mobile plan' }).click();
+    const edit = page.getByRole('dialog', { name: 'Edit recurring', exact: true });
+    await expect(edit.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue(
+      'Mobile plan',
+    );
+    await expect(page).toHaveURL(/\/recurring$/);
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Recurring', exact: true })).toBeVisible();
+    await expect(edit).toBeHidden();
+  });
+}
+
+test('a deleted schedule link does not open a new recurring form', async ({ page }) => {
+  await open(page, '/recurring?schedule=missing-schedule');
+  await expect(page).toHaveURL(/\/recurring$/);
+  await expect(page.getByRole('dialog')).toBeHidden();
+});
+
+test('the next funding gap separates bills due by the deadline from later bills', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Checking', 100_000);
+  const phone = await api.category('Phone');
+  for (const [name, day, amount] of [
+    ['Earlier bill', '01', -3000],
+    ['Next bill', '10', -4000],
+    ['Later bill', '25', -9000],
+  ] as const) {
+    await api.call('POST', '/schedules', {
+      name,
+      amount,
+      recurrenceType: 'once',
+      startDate: `${thisMonth()}-${day}`,
+      accountId: checking.id,
+      categoryId: phone.id,
+    });
+  }
+  await open(page, '/budget');
+  await plan(page, 'Phone', '50');
+  const trigger = page.getByTestId('expected-debit');
+  await expect(trigger).toContainText('$20 needed by the 10th');
+  for (const width of [1400, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await trigger.click();
+    const dialog = page.getByRole('dialog', { name: 'Expected bills for Phone' });
+    const gap = dialog.getByRole('region', { name: 'Next funding gap', exact: true });
+    await expect(gap).toContainText('Bills due by then$70');
+    await expect(gap).toContainText('Covered by this envelope$50');
+    await expect(gap).toContainText('Still needed$20');
+    const due = dialog.getByRole('region', { name: /^Due by / });
+    await expect(due.getByRole('link')).toHaveCount(2);
+    await expect(due).toContainText('Earlier bill');
+    await expect(due).toContainText('Next bill');
+    await expect(dialog.getByRole('region', { name: 'Later this month' })).toContainText(
+      'Later bill',
+    );
+    await dialog.getByRole('button', { name: 'Close expected bills' }).click();
+    await expect(dialog).toBeHidden();
+  }
 });

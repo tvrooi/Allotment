@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { format, parse } from 'date-fns';
 import {
+  formatOrdinalDay,
   formatAsOfDay,
   formatDay,
   formatDayTime,
@@ -74,4 +75,18 @@ describe('dates that do not parse (audit F-20)', () => {
     expect(formatDayTime(new Date(2026, 0, 5, 14, 30), 'dd/MM/yyyy')).toBe('05/01/2026, 2:30 pm');
     expect(formatDayTime(new Date(2026, 0, 5, 0, 5), 'MMM d, yyyy')).toBe('Jan 5, 2026, 12:05 am');
   });
+});
+
+it('formats funding deadline days with their ordinal suffix', () => {
+  for (const [day, label] of [
+    ['01', '1st'],
+    ['02', '2nd'],
+    ['03', '3rd'],
+    ['11', '11th'],
+    ['12', '12th'],
+    ['13', '13th'],
+    ['21', '21st'],
+    ['31', '31st'],
+  ])
+    expect(formatOrdinalDay(`2026-01-${day}`)).toBe(label);
 });

@@ -77,3 +77,8 @@ export function formatShortDay(
 ): string {
   return format(toDate(date), shortDayPattern({ long }, pattern));
 }
+
+/** Day of the month for a funding deadline: "1st", "22nd", "31st". */
+export function formatOrdinalDay(date: DateInput): string {
+  return format(toDate(date), 'do');
+}
