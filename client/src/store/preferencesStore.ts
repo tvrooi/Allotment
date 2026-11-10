@@ -5,7 +5,7 @@ import type { FormFactor, HomeLayout } from '../utils/homeCards';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type DateFormatOption =
-  'MMM d, yyyy' | 'MM/dd/yyyy' | 'dd/MM/yyyy' | 'dd.MM.yyyy' | 'yyyy-MM-dd';
+  'd MMM yyyy' | 'MM/dd/yyyy' | 'dd/MM/yyyy' | 'dd.MM.yyyy' | 'yyyy-MM-dd';
 /** How amounts are written: 1,234.56 / 1.234,56 / 1 234,56 / 1'234.56 */
 export type AmountFormat = 'dot' | 'comma' | 'space' | 'apostrophe';
 /** Whether the currency symbol goes before (€12.50) or after (12,50 €) the amount */
@@ -85,18 +85,19 @@ const PREFERENCES_KEY = 'budget-preferences';
 
 /**
  * 1: amount format and symbol position (Automatic for new installs). 2: home card layouts.
- * 3: Safe mode hides every amount unless the owner chose a level
+ * 3: Safe mode hides every amount unless the owner chose a level. 4: the word date format
+ * is day-first ("5 Jan 2026"), not "Jan 5, 2026"
  */
-export const PREFERENCES_VERSION = 3;
+export const PREFERENCES_VERSION = 4;
 
 /**
  * The date format to start with, from the browser's language: en-AU writes 05/01/2026, German
- * 05.01.2026, Swedish 2026-01-05. US English and anything unclear keep "Jan 5, 2026".
+ * 05.01.2026, Swedish 2026-01-05. US English and anything unclear get "5 Jan 2026".
  */
 export function dateFormatForLocale(locale?: string): DateFormatOption {
   try {
     const tag = locale ?? (typeof navigator === 'undefined' ? undefined : navigator.language);
-    if (!tag || /^en-US$/i.test(tag) || /^en$/i.test(tag)) return 'MMM d, yyyy';
+    if (!tag || /^en-US$/i.test(tag) || /^en$/i.test(tag)) return 'd MMM yyyy';
     const parts = new Intl.DateTimeFormat(tag, {
       year: 'numeric',
       month: '2-digit',
@@ -107,9 +108,9 @@ export function dateFormatForLocale(locale?: string): DateFormatOption {
     const separator = parts.find((p) => p.type === 'literal')?.value.trim() ?? '';
     if (order[0] === 'year') return 'yyyy-MM-dd';
     if (order[0] === 'day') return separator === '.' ? 'dd.MM.yyyy' : 'dd/MM/yyyy';
-    return 'MMM d, yyyy';
+    return 'd MMM yyyy';
   } catch {
-    return 'MMM d, yyyy';
+    return 'd MMM yyyy';
   }
 }
 
@@ -127,6 +128,10 @@ export function migratePreferences(persisted: unknown, version: number): unknown
   // Safe mode used to start on "balances" for everyone. Whoever never chose it gets the new default.
   if (version < 3 && !(state as { safeModeLevelChosen?: boolean }).safeModeLevelChosen) {
     delete (state as { safeModeLevel?: unknown }).safeModeLevel;
+  }
+  // The word date format used to be month-first; its stored value is the date pattern itself
+  if (version < 4 && (state as { dateFormat?: unknown }).dateFormat === 'MMM d, yyyy') {
+    (state as { dateFormat?: unknown }).dateFormat = 'd MMM yyyy';
   }
   // Layouts are checked card by card when drawn; something that isn't one is dropped
   const layouts = (state as { homeLayouts?: unknown }).homeLayouts;

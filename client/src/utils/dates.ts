@@ -10,9 +10,9 @@ const toDate = (date: DateInput) => (typeof date === 'string' ? parseISO(date) :
 const preference = () => usePreferencesStore.getState().dateFormat;
 
 /** Whether the day comes before the month (05/01/2026 is 5 January) */
-const dayFirst = (pattern: DateFormatOption) => pattern.startsWith('dd');
+const dayFirst = (pattern: DateFormatOption) => pattern.startsWith('d');
 
-/** A full date: "Jan 5, 2026", "05/01/2026", "05.01.2026", "2026-01-05" */
+/** A full date: "5 Jan 2026", "05/01/2026", "05.01.2026", "2026-01-05" */
 export function formatDay(date: DateInput, pattern: DateFormatOption = preference()): string {
   const day = toDate(date);
   // A date a bank file or server gave us that doesn't parse is shown as it came, not thrown on
@@ -37,14 +37,12 @@ export function formatAsOfDay(day: string, pattern: DateFormatOption = preferenc
   return format(new Date(y, m - 1, Math.min(d, last)), pattern);
 }
 
-/** A full date with the month written out where the format has words: "January 5, 2026" */
+/** A full date with the month written out where the format has words: "5 January 2026" */
 export function formatDayLong(date: DateInput, pattern: DateFormatOption = preference()): string {
-  return pattern === 'MMM d, yyyy'
-    ? format(toDate(date), 'MMMM d, yyyy')
-    : formatDay(date, pattern);
+  return pattern === 'd MMM yyyy' ? format(toDate(date), 'd MMMM yyyy') : formatDay(date, pattern);
 }
 
-/** A full date after the weekday: "Mon, Jan 5, 2026" or "Mon, 05.01.2026" (`long`: "Monday, …") */
+/** A full date after the weekday: "Mon, 5 Jan 2026" or "Mon, 05.01.2026" (`long`: "Monday, …") */
 export function formatWeekday(
   date: DateInput,
   { long = false }: { long?: boolean } = {},
@@ -55,9 +53,9 @@ export function formatWeekday(
 }
 
 /**
- * The date-fns pattern for a day and month: "Jan 5", "5 Jan" where the day comes first, and
+ * The date-fns pattern for a day and month: "5 Jan", "Jan 5" where the month comes first (MM/dd/yyyy), and
  * "5. Jan" with dd.MM.yyyy (as German and other Central European dates write it). `year` adds
- * a short year for chart axes: "Jan 5 '26", "5. Jan '26".
+ * a short year for chart axes: "5 Jan '26", "5. Jan '26".
  */
 export function shortDayPattern(
   { long = false, year = false }: { long?: boolean; year?: boolean } = {},

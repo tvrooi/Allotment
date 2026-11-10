@@ -22,7 +22,7 @@ export function formatDateAxisLabels(values: string[]): string[] {
   return dates.map((d) => format(d, pattern));
 }
 
-/** Tooltip label for a date string: "Mar 5, 2026" or "March 2026". */
+/** Tooltip label for a date string: "5 Mar 2026" or "March 2026". */
 export function formatDateLabel(dateStr: unknown): string {
   const s = String(dateStr ?? '');
   if (s.length === 10) return formatDay(s);

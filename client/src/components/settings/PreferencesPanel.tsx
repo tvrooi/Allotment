@@ -29,7 +29,7 @@ const sidebarModes: { value: SidebarMode; label: string; description: string }[]
 ];
 
 const dateFormats: { value: DateFormatOption; label: string; example: string }[] = [
-  { value: 'MMM d, yyyy', label: 'MMM d, yyyy', example: 'Jan 5, 2026' },
+  { value: 'd MMM yyyy', label: 'd MMM yyyy', example: '5 Jan 2026' },
   { value: 'MM/dd/yyyy', label: 'MM/dd/yyyy', example: '01/05/2026' },
   { value: 'dd/MM/yyyy', label: 'dd/MM/yyyy', example: '05/01/2026' },
   { value: 'dd.MM.yyyy', label: 'dd.MM.yyyy', example: '05.01.2026' },
@@ -103,7 +103,7 @@ export function PreferencesPanel() {
     setCurrencySymbol('$');
     setAmountFormat('auto');
     setSymbolPosition('auto');
-    setDateFormat('MMM d, yyyy');
+    setDateFormat('d MMM yyyy');
     setShowMerchantIcons(true);
     setShowCategoryIcons(true);
     setShowAccountIcons(true);
