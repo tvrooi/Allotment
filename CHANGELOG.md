@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.164
+
+- **Dates read day-first, and Household is easier to scan.** The word date format now writes 5 Jan 2026, and full dates such as day headings write 5 January 2026; people who chose the old month-first format are moved to the new one and numeric formats are unchanged. On Household, the balance band is the one place to settle up, card titles are larger, and the header fits on phones with 44px tap targets. Two-person households set the split of a new shared expense with a 0–100 slider in steps of 5, which starts at 50.
+
 ## 0.2.0-up.163
 
 - **A calmer account overview.** Asset and liability charts use muted teal, denim, mauve, ochre and clay, with lighter shades for dark mode. Category labels and balances remain the primary reading cues.

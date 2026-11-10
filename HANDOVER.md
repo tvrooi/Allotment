@@ -5,9 +5,27 @@ Read this after [CLAUDE.md](CLAUDE.md) (rules and checks). Keep it current: upda
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 10 November 2026 (local Transactions and iPhone web-app refinements; live app on up.149: the household bills hub, coverage gauge, amount-changed prompt and bill suggestions; D4a working from home in up.144; D4b car next).
+Last updated: 10 November 2026 (day-first dates and Household refinements, up.164 prepared; local Transactions and iPhone web-app refinements; live app on up.149: the household bills hub, coverage gauge, amount-changed prompt and bill suggestions; D4a working from home in up.144; D4b car next).
 
 ## State
+
+- **Day-first dates and a calmer Household page (up.164; local design work, not released):**
+  the word date format is now `d MMM yyyy` ("5 Jan 2026"), the long form "5 January 2026"
+  (`formatDayLong`, used by Transactions day headings, report detail and the calendar), and short
+  days/chart axes read "5 Jan" (`dayFirst` in `utils/dates.ts`). The option's stored value changed,
+  so `PREFERENCES_VERSION` is 4 and `migratePreferences` moves a saved `MMM d, yyyy` to it;
+  numeric formats are untouched. Household: the balance band (`BalanceSummary`) now holds the
+  repayment rows (`SettleUp` is passed in as `settle`), People & balances is read-only;
+  card titles are 16px; the phone header keeps the picker, Edit and New household on one row
+  with icon buttons; inline text actions have 44px hit areas. For a two-person household the
+  quick expense card (`QuickExpense.tsx`) replaces "Change split" with a `ui/Slider.tsx` (a native
+  range input adapted from shadcn's slider with tooltip, 0-100 in steps of 5, starting at 50 or
+  your percentage in a percentage default). `sliderSplit.ts` turns it into the split sent: null
+  (equal) at 50, else percentages in basis points. Three or more people keep "Change split". The
+  disabled Add expense button says what is missing. Tests: `utils/dates.test.ts`,
+  `store/preferencesStore.test.ts`, `components/household/sliderSplit.test.ts`; the quick-expense
+  wording and hint have no component test. The `docs/ux-ui-evidence/` captures still show the
+  old date wording.
 
 - **Muted account overview palette (up.163; local design work, not released):**
   AssetLiabilitySummary uses ACCOUNT_OVERVIEW_COLORS from chartColors, backed by light/dark
