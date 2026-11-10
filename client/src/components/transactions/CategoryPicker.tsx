@@ -42,6 +42,7 @@ export function CategoryPicker({
     bottom?: number;
     left: number;
     width: number;
+    maxHeight: number;
   } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
@@ -67,8 +68,13 @@ export function CategoryPicker({
       const below = window.innerHeight - r.bottom;
       setFloatPos(
         below < 340 && r.top > below
-          ? { bottom: window.innerHeight - r.top + 4, left, width }
-          : { top: r.bottom + 4, left, width },
+          ? {
+              bottom: window.innerHeight - r.top + 4,
+              left,
+              width,
+              maxHeight: Math.max(0, r.top - 12),
+            }
+          : { top: r.bottom + 4, left, width, maxHeight: Math.max(0, below - 12) },
       );
     };
     place();
@@ -170,14 +176,14 @@ export function CategoryPicker({
     <div
       ref={containerRef}
       style={anchor && floatPos ? { position: 'fixed', ...floatPos } : undefined}
-      className={`z-50 bg-surface border border-border rounded-lg shadow-lg animate-menu-in ${
+      className={`z-50 flex flex-col overflow-y-auto bg-surface border border-border rounded-lg shadow-lg animate-menu-in ${
         anchor
           ? ''
           : `absolute left-0 ${fullWidth ? 'w-64 max-md:w-full' : 'w-64'} ${position === 'above' ? 'bottom-full mb-1 origin-bottom-left' : 'top-full mt-1 origin-top-left'}`
       }`}
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="p-2 border-b border-border-light">
+      <div className="p-2 border-b border-border-light shrink-0">
         <div className="relative">
           <Search
             size={14}
@@ -191,18 +197,18 @@ export function CategoryPicker({
             onKeyDown={handleSearchKey}
             placeholder="Search categories..."
             aria-label="Search categories"
-            className="w-full pl-8 pr-3 py-1.5 text-sm border border-border rounded-md bg-surface text-text focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+            className="w-full pl-8 pr-3 py-1.5 text-sm max-md:text-base max-md:min-h-11 border border-border rounded-md bg-surface text-text focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
           />
         </div>
       </div>
 
-      <div className="overflow-y-auto max-h-72">
+      <div className="overflow-y-auto max-h-72 min-h-0">
         {allowNone && (
           <button
             type="button"
             onClick={() => onChange(null)}
             data-active={optionIndex(null) === activeIndex}
-            className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between hover:bg-hover ${optionIndex(null) === activeIndex ? 'bg-hover ' : ''}${value === null ? 'bg-brand-50 text-brand-700' : 'text-text-secondary'}`}
+            className={`w-full text-left px-3 py-2 text-sm max-md:min-h-11 flex items-center justify-between hover:bg-hover ${optionIndex(null) === activeIndex ? 'bg-hover ' : ''}${value === null ? 'bg-brand-50 text-brand-700' : 'text-text-secondary'}`}
           >
             <span className="italic">Uncategorised</span>
             {value === null && <Check size={14} className="text-brand-600 shrink-0" />}
@@ -220,7 +226,7 @@ export function CategoryPicker({
                 key={cat.id}
                 onClick={() => onChange(cat.id)}
                 data-active={optionIndex(cat.id) === activeIndex}
-                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-hover ${rowCls(cat.id)}`}
+                className={`w-full text-left px-3 py-2 text-sm max-md:min-h-11 flex items-center gap-2 hover:bg-hover ${rowCls(cat.id)}`}
               >
                 {showCategoryIcons && cat.icon && <CategoryIcon icon={cat.icon} size={16} />}
                 <span className="truncate flex-1">{cat.name}</span>
@@ -243,7 +249,7 @@ export function CategoryPicker({
                   key={a.id}
                   onClick={() => onChange(id)}
                   data-active={optionIndex(id) === activeIndex}
-                  className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-hover ${rowCls(id)}`}
+                  className={`w-full text-left px-3 py-2 text-sm max-md:min-h-11 flex items-center gap-2 hover:bg-hover ${rowCls(id)}`}
                 >
                   <span className="truncate flex-1">Transfer: {a.name}</span>
                   {value === id && <Check size={14} className="text-brand-600 shrink-0" />}
@@ -260,7 +266,7 @@ export function CategoryPicker({
         )}
       </div>
 
-      <div className="border-t border-border-light">
+      <div className="border-t border-border-light shrink-0">
         {showCreate ? (
           <div className="p-3 space-y-2">
             <select

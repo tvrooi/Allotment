@@ -1,8 +1,10 @@
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import * as payeesApi from '../api/payees';
+import { personalPayeeSelection } from '../utils/payeeSelection';
+import { getAllAccounts } from '../api/accounts';
 import * as txApi from '../api/transactions';
 import { useUndoStore } from '../store/undoStore';
-import type { PayeeWithCount, TransactionQueryParams } from '../types';
+import type { PayeeWithCount } from '../types';
 
 export interface PayeeTarget {
   payeeId: string | null;
@@ -25,16 +27,11 @@ function refresh(qc: QueryClient) {
     void qc.invalidateQueries({ queryKey: [key] });
 }
 
-const paramsFor = (p: PayeeTarget): TransactionQueryParams => ({
-  uncategorized: true,
-  ...(p.payeeId ? { payeeIds: [p.payeeId] } : { payeeName: p.payeeName }),
-});
-
 /**
  * Put a payee's uncategorised transactions in one category and, if asked, make it the payee's
  * default so later ones follow. It is one step on the undo stack (Ctrl+Z, or the Undo the
  * caller shows): the rows go back exactly as they were and the old default comes back.
- * Reconciled, split and transfer rows are left alone by the bulk edit itself.
+ * Split parents, transfers and household-linked rows are left alone by the bulk edit itself.
  */
 export function useCategorisePayee() {
   const qc = useQueryClient();
@@ -49,8 +46,12 @@ export function useCategorisePayee() {
       categoryName: string;
       /** Also make this the payee's default category */
       future: boolean;
+      /** Announce the grouped change when used outside the first-import dialog. */
+      notify?: boolean;
     }) => {
-      const params = paramsFor(payee);
+      // The report separates personal, household and off-budget payees. Keep that same
+      // account boundary when the same merchant appears in more than one scope.
+      const params = personalPayeeSelection(payee, await getAllAccounts());
       let previousDefault: string | null = null;
       const setDefault = future && !!payee.payeeId;
       if (setDefault) {
@@ -76,7 +77,10 @@ export function useCategorisePayee() {
         throw error;
       }
     },
-    onSuccess: ({ result, previousDefault, setDefault }, { payee, categoryId, categoryName }) => {
+    onSuccess: (
+      { result, previousDefault, setDefault },
+      { payee, categoryId, categoryName, notify },
+    ) => {
       refresh(qc);
       if (!result.restore.length && !setDefault) return;
       const ids = result.restore.map((r) => r.id);
@@ -96,6 +100,13 @@ export function useCategorisePayee() {
           refresh(qc);
         },
       });
+      if (notify)
+        useUndoStore
+          .getState()
+          .announce(
+            `${result.changed} transaction${result.changed === 1 ? '' : 's'} for ${payee.payeeName || 'No payee'} categorised as ${categoryName}.${setDefault ? ' Future transactions will use this category too.' : ''}`,
+            true,
+          );
     },
   });
 }

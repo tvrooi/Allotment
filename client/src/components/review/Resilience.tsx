@@ -251,7 +251,7 @@ export function ResumeCard({ resume }: { resume: api.ResumeState }) {
         <h2 className="text-base font-semibold text-text">Resume budgeting</h2>
         <p className="text-sm text-text-secondary">
           {resume.lastReview
-            ? `Last review ${formatDay(resume.lastReview.asOf)} (${resume.daysSince} days ago). Start with today's plan; older items stay listed below.`
+            ? `Last review ${formatDay(resume.lastReview.asOf)} (${resume.daysSince} days ago). Start with today's plan; unresolved items stay in Needs attention.`
             : "Start with today's plan. You don't need to sort out old transactions first."}
         </p>
         <ul className="text-sm space-y-1">
@@ -312,13 +312,14 @@ export function ResumeCard({ resume }: { resume: api.ResumeState }) {
             />
           </div>
         )}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="space-y-2">
+          <p className="text-sm text-text-secondary">
+            Save today’s figures to compare next time. Unresolved items stay open; this does not
+            reconcile accounts or move money.
+          </p>
           <Button size="sm" disabled={!canSave || busy} onClick={complete}>
-            Mark review complete
+            {busy ? 'Recording…' : 'Record today’s review'}
           </Button>
-          <span className="text-xs text-text-tertiary">
-            Records today's figures for next time. It does not reconcile anything.
-          </span>
         </div>
         {resume.reminder && (
           <p className="text-xs text-text-tertiary">

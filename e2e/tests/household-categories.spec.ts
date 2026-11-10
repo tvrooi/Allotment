@@ -1,10 +1,10 @@
 import { test, expect, open, isoDay } from './fixtures';
 
-// Recurring bills and shared costs reaching the right categories: Review → Tidy up lists a
+// Recurring bills and shared costs reaching the right categories: Review → Check budget setup lists a
 // recurring bill with no category, and a repayment you made for things someone else paid is
 // offered the categories of what you owed them for. Disposable data only.
 
-test('Tidy up lists a recurring bill with no category', async ({ page, api }) => {
+test('Check budget setup lists a recurring bill with no category', async ({ page, api }) => {
   const spending = await api.createAccount('Spending', 100_000);
   const dining = await api.category('Restaurants');
   const monthly = (name: string, categoryId?: string) =>
@@ -19,6 +19,7 @@ test('Tidy up lists a recurring bill with no category', async ({ page, api }) =>
   await monthly('Streaming service');
   await monthly('Dinner club', dining.id);
   await open(page, '/review');
+  await page.getByText('Check budget setup', { exact: true }).click();
   await expect(page.getByText('1 recurring bill has no category')).toBeVisible();
   const list = page.getByRole('list', { name: 'Recurring bills with no category' });
   await expect(list.getByText(/Streaming service/)).toBeVisible();

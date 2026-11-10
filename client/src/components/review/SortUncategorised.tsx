@@ -1,9 +1,13 @@
+import { useQuery } from '@tanstack/react-query';
+import { getAllAccounts } from '../../api/accounts';
+import { personalPayeeSelection } from '../../utils/payeeSelection';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, ChevronDown } from 'lucide-react';
 import { CategoryPicker } from '../transactions/CategoryPicker';
 import type { CategoryGroup } from '../../types';
 import { Button } from '../ui/Button';
+import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { Private } from '../ui/Private';
 import { useCategories } from '../../hooks/useCategories';
 import { useCategorisePayee, type PayeeTarget } from '../../hooks/useCategorisePayee';
@@ -129,7 +133,7 @@ function PayeeCategoryButton({
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="w-48 max-w-full min-h-11 md:min-h-0 border border-border rounded-md px-2 py-1.5 bg-surface text-text-secondary text-sm text-left flex items-center justify-between gap-1 focus:outline-none focus:ring-1 focus:ring-brand-600 disabled:opacity-50"
+        className="w-48 max-md:w-full max-w-full min-h-11 md:min-h-0 border border-border rounded-md px-2 py-1.5 bg-surface text-text-secondary text-sm text-left flex items-center justify-between gap-1 focus:outline-none focus:ring-1 focus:ring-brand-600 disabled:opacity-50"
       >
         <span className="truncate">Choose a category…</span>
         <ChevronDown size={14} className="shrink-0 text-text-tertiary" aria-hidden />
@@ -158,7 +162,15 @@ function PayeeCategoryButton({
  * sorts all of a payee's transactions and, by default, the ones that arrive later. Every pick
  * can be undone.
  */
-export function SortUncategorised({ onDone }: { onDone?: () => void }) {
+export function SortUncategorised({
+  onDone,
+  mode = 'import',
+}: {
+  onDone?: () => void;
+  mode?: 'import' | 'review';
+}) {
+  const accounts = useQuery({ queryKey: ['accounts', 'all'], queryFn: getAllAccounts });
+  const reviewMode = mode === 'review';
   const canSave = useCanSave();
   const { data: groups = [] } = useCategories();
   const salary = useSalaryGuess();
@@ -168,7 +180,7 @@ export function SortUncategorised({ onDone }: { onDone?: () => void }) {
   const pairs = useTransferSuggestions().data?.length ?? 0;
   const undo = useUndoStore((s) => s.undo);
   const top = useUndoStore((s) => s.undoStack.at(-1)?.description);
-  const [future, setFuture] = useState(true);
+  const [future, setFuture] = useState(!reviewMode);
   const [showAll, setShowAll] = useState(false);
   // Newest pick first: only the latest can be undone from here (it is the top of the undo stack)
   const [sorted, setSorted] = useState<{ key: string; name: string; category: string }[]>([]);
@@ -183,24 +195,34 @@ export function SortUncategorised({ onDone }: { onDone?: () => void }) {
     return { sortable: all.filter((p) => p.scope === 'personal' && !isTransfer(p)) };
   }, [list.data]);
   const salaryPayeeId =
-    salary.data?.categoryId && salary.data.uncategorisedCount ? salary.data.payeeId : null;
-  const rows = payees.sortable.filter((p) => !salaryPayeeId || p.payeeId !== salaryPayeeId);
+    !reviewMode && salary.data?.categoryId && salary.data.uncategorisedCount
+      ? salary.data.payeeId
+      : null;
+  const rows = payees.sortable.filter(
+    (p) => (!reviewMode || p.count > 1) && (!salaryPayeeId || p.payeeId !== salaryPayeeId),
+  );
   const visible = showAll ? rows : rows.slice(0, SHOWN);
   const key = (p: PayeeTarget) => p.payeeId ?? `name:${p.payeeName}`;
 
   function pick(p: (typeof rows)[number], categoryId: string) {
-    if (!categoryId) return;
+    if (!categoryId || !canSave || sort.isPending) return;
     const category = groups.flatMap((g) => g.categories).find((c) => c.id === categoryId);
     if (!category) return;
     setError('');
     sort.mutate(
-      { payee: p, categoryId, categoryName: category.name, future },
+      { payee: p, categoryId, categoryName: category.name, future, notify: reviewMode },
       {
-        onSuccess: () =>
-          setSorted((prev) => [
-            { key: key(p), name: p.payeeName, category: category.name },
-            ...prev,
-          ]),
+        onSuccess: ({ result, setDefault }) => {
+          if (!result.changed && !setDefault) {
+            setError('No eligible transactions changed. Review these items in Transactions.');
+            return;
+          }
+          if (!reviewMode)
+            setSorted((prev) => [
+              { key: key(p), name: p.payeeName, category: category.name },
+              ...prev,
+            ]);
+        },
         onError: (e) => setError(e.message),
       },
     );
@@ -214,24 +236,54 @@ export function SortUncategorised({ onDone }: { onDone?: () => void }) {
       .filter((g) => g.categories.some((c) => !c.hidden))
       .sort((a, b) => (incomeFirst(p) ? b.isIncome - a.isIncome : a.isIncome - b.isIncome));
 
+  if (list.error)
+    return (
+      <p role="alert" className="text-sm text-negative">
+        Could not load payees.{' '}
+        <Button size="sm" variant="ghost" onClick={() => void list.refetch()}>
+          Try again
+        </Button>
+      </p>
+    );
   if (list.isPending) return <p role="status">Looking for what is left to sort…</p>;
   return (
-    <section aria-label="Sort your first import" className="space-y-3">
+    <section
+      aria-label={reviewMode ? 'Sort repeated payees' : 'Sort your first import'}
+      className="space-y-3 py-2"
+    >
       <div>
-        <h3 className="text-sm font-semibold text-text">Sort your first import</h3>
+        <h3 className="text-sm font-semibold text-text">
+          {reviewMode ? 'Sort repeated payees' : 'Sort your first import'}
+        </h3>
         <p className="text-xs text-text-secondary mt-0.5">
-          {rows.length || salaryPayeeId
-            ? 'Pick a category for each payee. It sorts all of their transactions at once.'
-            : 'Everything has a category. You can change any of them later.'}
+          {reviewMode
+            ? rows.length
+              ? 'Choose one category for each repeated payee’s uncategorised transactions in your personal budget. View a payee’s transactions before choosing a category. Already categorised items stay unchanged.'
+              : 'No repeated payees to sort. You can categorise individual transactions below.'
+            : rows.length || salaryPayeeId
+              ? 'Pick a category for each payee. It sorts all of their transactions at once.'
+              : 'Everything has a category. You can change any of them later.'}
         </p>
       </div>
-      {salary.data && <SalaryOffer salary={salary.data} future={future} />}
+      {!reviewMode && salary.data && <SalaryOffer salary={salary.data} future={future} />}
       {rows.length > 0 && (
         <>
           <label className="flex items-center gap-2 text-sm text-text min-h-11 md:min-h-0">
-            <input type="checkbox" checked={future} onChange={(e) => setFuture(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={future}
+              disabled={!canSave || sort.isPending}
+              onChange={(e) => setFuture(e.target.checked)}
+            />
             Also apply to future transactions
           </label>
+          <SavingPausedHint />
+          {reviewMode && (
+            <p className="text-xs text-text-secondary">
+              Split transactions, transfers and household entries are left unchanged. Each payee’s
+              change has one Undo.
+            </p>
+          )}
           <ul className="divide-y divide-border-light border border-border rounded-lg max-h-72 overflow-y-auto">
             {visible.map((p) => (
               <li
@@ -254,6 +306,18 @@ export function SortUncategorised({ onDone }: { onDone?: () => void }) {
                       {p.moneyIn > 0 && `${formatCurrency(p.moneyIn)} in`}
                     </Private>
                   </p>
+                  {reviewMode && accounts.data?.some((a) => !a.isOffBudget && !a.householdPool) && (
+                    <Link
+                      to={transactionsLink({
+                        ...personalPayeeSelection(p, accounts.data),
+                        datePreset: 'all',
+                      })}
+                      aria-label={`View transactions for ${p.payeeName || 'No payee'}`}
+                      className="inline-flex items-center min-h-11 md:min-h-0 text-xs text-brand-600 underline underline-offset-2 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-600"
+                    >
+                      View transactions
+                    </Link>
+                  )}
                 </div>
                 <PayeeCategoryButton
                   payeeName={p.payeeName}
@@ -271,7 +335,7 @@ export function SortUncategorised({ onDone }: { onDone?: () => void }) {
           )}
         </>
       )}
-      {sorted.length > 0 && (
+      {!reviewMode && sorted.length > 0 && (
         <p role="status" className="text-xs text-text-secondary flex flex-wrap gap-x-3">
           <span>
             Sorted {sorted.length} payee{sorted.length === 1 ? '' : 's'}. Latest: {sorted[0].name}{' '}
@@ -299,6 +363,14 @@ export function SortUncategorised({ onDone }: { onDone?: () => void }) {
             transfers
           </Link>
           .
+        </p>
+      )}
+      {reviewMode && accounts.error && (
+        <p role="alert" className="text-sm text-negative">
+          Could not load transaction links.{' '}
+          <Button size="sm" variant="ghost" onClick={() => void accounts.refetch()}>
+            Try again
+          </Button>
         </p>
       )}
       {error && (

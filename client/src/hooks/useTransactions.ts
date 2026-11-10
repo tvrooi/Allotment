@@ -87,28 +87,35 @@ export function useUpdateTransaction() {
     }: {
       id: string;
       data: Parameters<typeof txApi.updateTransaction>[1];
+      /** Known previous fields when editing outside the register; undo touches only these. */
+      undo?: { description: string; data: Parameters<typeof txApi.updateTransaction>[1] };
     }) => txApi.updateTransaction(id, data),
     onMutate: async ({ id }) => {
       return { old: findTxInCache(qc, id) };
     },
-    onSuccess: (_, { id, data }, ctx) => {
+    onSuccess: (_, { id, data, undo }, ctx) => {
       qc.invalidateQueries({ queryKey: ['transactions'] });
       qc.invalidateQueries({ queryKey: ['review'] });
       qc.invalidateQueries({ queryKey: ['accounts'] });
-      if (!ctx?.old) return;
-      const snapshot = ctx.old;
+      const snapshot = ctx?.old;
+      const previous =
+        undo?.data ??
+        (snapshot
+          ? {
+              accountId: snapshot.accountId,
+              date: snapshot.date,
+              amount: snapshot.amount,
+              payeeId: snapshot.payeeId,
+              payeeName: snapshot.payeeName,
+              categoryId: snapshot.categoryId,
+              notes: snapshot.notes,
+            }
+          : null);
+      if (!previous) return;
       useUndoStore.getState().push({
-        description: `Edit transaction`,
+        description: undo?.description ?? 'Edit transaction',
         undo: async () => {
-          await txApi.updateTransaction(id, {
-            accountId: snapshot.accountId,
-            date: snapshot.date,
-            amount: snapshot.amount,
-            payeeId: snapshot.payeeId,
-            payeeName: snapshot.payeeName,
-            categoryId: snapshot.categoryId,
-            notes: snapshot.notes,
-          });
+          await txApi.updateTransaction(id, previous);
           qc.invalidateQueries({ queryKey: ['transactions'] });
           qc.invalidateQueries({ queryKey: ['review'] });
           qc.invalidateQueries({ queryKey: ['accounts'] });

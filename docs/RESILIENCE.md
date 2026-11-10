@@ -76,11 +76,11 @@ explicit move, and the unique category link still prevents two goals sharing mon
 
 ## Resume budgeting and reminders (7E)
 
-The Review page starts with **Resume budgeting**: days since the last completed review,
+The Review page ends with **Resume budgeting**: days since the last completed review,
 transactions dated since, uncategorised spending, accounts to reconcile and, with Up connected,
 bank changes waiting in Settings → Connected banks. Today's budget is always available first.
 
-**Mark review complete** stores the date and a snapshot of the reserve and unfunded figures. It
+**Record today’s review** stores the date and a snapshot of the reserve and unfunded figures. It
 reconciles nothing, acknowledges no bank change and moves no money. With a reminder cadence, a
 dismissible banner appears on Review and the Dashboard when a review is due; **Remind me in a
 week** stores a snooze date and nothing else.

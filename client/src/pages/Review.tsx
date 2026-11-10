@@ -1,18 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CashBridge } from '../components/budget/CashBridge';
 import { format, parseISO } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, Circle, AlertTriangle, Info } from 'lucide-react';
+import { CheckCircle2, Circle, AlertTriangle, Info, ChevronDown } from 'lucide-react';
 import * as api from '../api/review';
-import { updateTransaction } from '../api/transactions';
+import { useUpdateTransaction } from '../hooks/useTransactions';
+import { useUndoStore } from '../store/undoStore';
 import { useBudget } from '../hooks/useBudget';
+import { useCategories } from '../hooks/useCategories';
+import { CategoryPicker } from '../components/transactions/CategoryPicker';
 import { useCanSave } from '../hooks/useConnection';
 import { Card } from '../components/ui/Card';
 import { GuideLink } from '../components/guide/GuideLink';
 import { Tip } from '../components/guide/Tip';
 import { TIPS } from '../guides';
-import { ButtonLink } from '../components/ui/Button';
+import { Button, ButtonLink } from '../components/ui/Button';
 import { Select } from '../components/ui/Input';
 import { MoneyMoves } from '../components/budget/MoneyMoves';
 import { FundTargets } from '../components/budget/FundTargets';
@@ -30,6 +33,7 @@ import {
 import { Housekeeping } from '../components/review/Housekeeping';
 import { PaymentMatches } from '../components/plans/PaymentMatches';
 import { DoThisNext } from '../components/review/DoThisNext';
+import { SortUncategorised } from '../components/review/SortUncategorised';
 
 // Phases 6F–6G: a read-only review of everything the budget has not resolved, a guided
 // setup, and next month's commitments with an optional runway. Every figure comes from the
@@ -102,7 +106,7 @@ function GuideStep({
   step: api.GuideState['steps'][number];
   guide: api.GuideState;
 }) {
-  const [open, setOpen] = useState(step.status === 'todo' || step.status === 'attention');
+  const [open, setOpen] = useState(false);
   return (
     <li className="border-t border-border-light first:border-t-0">
       <button
@@ -235,7 +239,9 @@ function StepDetail({ id, guide }: { id: api.GuideStepId; guide: api.GuideState 
           {guide.accountIssues?.length
             ? 'Account balances need reconciliation before Ready to assign can be relied on.'
             : guide.complete
-              ? `${formatCurrency(guide.unassigned)} is ready to assign today. Give every dollar you already have a job; money you expect later is assigned when it arrives.`
+              ? guide.unassigned < 0
+                ? `${formatCurrency(-guide.unassigned)} more is assigned than you have. Reduce assignments or move money back before assigning more.`
+                : `${formatCurrency(guide.unassigned)} is ready to assign today. Give every dollar you already have a job; money you expect later is assigned when it arrives.`
               : 'Some exchange rates are missing, so Ready to assign is unknown.'}
         </p>
         <ButtonLink size="sm" variant="secondary" to="/budget">
@@ -280,30 +286,76 @@ function StepDetail({ id, guide }: { id: api.GuideStepId; guide: api.GuideState 
   );
 }
 
-function Uncategorised({
-  review,
-  categories,
-}: {
-  review: api.BudgetReview;
-  categories: { id: string; name: string }[];
-}) {
+function Uncategorised({ review }: { review: api.BudgetReview }) {
   const qc = useQueryClient();
+  const update = useUpdateTransaction();
   const canSave = useCanSave();
   const [error, setError] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const [grouped, setGrouped] = useState(false);
+  const { data: groups = [] } = useCategories();
+  const [picker, setPicker] = useState<{ id: string; anchor: HTMLButtonElement } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const listRef = useRef<HTMLUListElement>(null);
+  const focusAfterSave = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (saving || !focusAfterSave.current) return;
+    const anchor = focusAfterSave.current;
+    focusAfterSave.current = null;
+    // Wait for enabled buttons to commit before moving keyboard focus.
+    const next = anchor.isConnected
+      ? anchor
+      : listRef.current?.querySelector<HTMLButtonElement>('[data-category-trigger]:not(:disabled)');
+    next?.focus();
+  }, [saving]);
+  const visible = showAll ? review.uncategorised : review.uncategorised.slice(0, 3);
   async function categorise(id: string, categoryId: string) {
+    focusAfterSave.current = picker?.anchor ?? null;
+    setPicker(null);
+    setSaving(true);
     setError(null);
     try {
-      await updateTransaction(id, { categoryId });
+      const transaction = review.uncategorised.find((item) => item.id === id);
+      const category = groups
+        .flatMap((group) => group.categories)
+        .find((item) => item.id === categoryId);
+      const description = `Categorise ${transaction?.payee ?? 'transaction'} as ${category?.name ?? 'category'}`;
+      await update.mutateAsync({
+        id,
+        data: { categoryId },
+        undo: { description, data: { categoryId: null } },
+      });
+      useUndoStore
+        .getState()
+        .announce(
+          `${transaction?.payee ?? 'Transaction'} categorised as ${category?.name ?? 'category'}.`,
+          true,
+        );
       for (const key of [...FUNDING_VIEWS, 'transactions', 'accounts'])
         await qc.invalidateQueries({ queryKey: [key] });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not categorise the transaction.');
+    } finally {
+      setSaving(false);
     }
   }
   return (
     <Section title={`Uncategorised spending (${review.uncategorisedCount})`}>
-      <ul className="space-y-2">
-        {review.uncategorised.map((t) => (
+      <Button
+        size="sm"
+        variant="secondary"
+        aria-expanded={grouped}
+        disabled={saving}
+        onClick={() => {
+          setPicker(null);
+          setGrouped(!grouped);
+        }}
+      >
+        {grouped ? 'Hide grouped sorting' : 'Sort repeated payees together'}
+      </Button>
+      {grouped && <SortUncategorised mode="review" />}
+      <ul ref={listRef} className="space-y-2" aria-busy={saving}>
+        {visible.map((t) => (
           <li key={t.id} className="flex flex-wrap items-center gap-2 text-sm">
             <span className="flex-1 min-w-40">
               <span className="text-text">{t.payee ?? 'No payee'}</span>
@@ -313,23 +365,48 @@ function Uncategorised({
             </span>
             <span className="tabular-nums text-negative">{formatCurrency(t.amount)}</span>
             <span className="w-48 max-md:w-full">
-              <Select
+              <button
+                type="button"
+                data-category-trigger
                 aria-label={`Category for ${t.payee ?? 'transaction'} on ${formatDay(t.date)}`}
-                value=""
-                disabled={!canSave}
-                onChange={(e) => e.target.value && categorise(t.id, e.target.value)}
+                aria-expanded={picker?.id === t.id}
+                disabled={!canSave || saving}
+                onClick={(event) => setPicker({ id: t.id, anchor: event.currentTarget })}
+                className="w-full min-h-11 flex items-center justify-between gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-secondary text-left hover:bg-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-brand-600"
               >
-                <option value="">Choose a category…</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
+                <span className="truncate">Choose a category…</span>
+                <ChevronDown size={14} className="shrink-0" aria-hidden />
+              </button>
             </span>
           </li>
         ))}
       </ul>
+      {picker && canSave && !saving && (
+        <CategoryPicker
+          anchor={picker.anchor}
+          groups={groups.filter((group) => !group.isIncome)}
+          allowNone={false}
+          onClose={() => {
+            setPicker(null);
+            picker.anchor.focus();
+          }}
+          onChange={(id) => {
+            if (id) void categorise(picker.id, id);
+          }}
+        />
+      )}
+      {review.uncategorised.length > 3 && (
+        <Button
+          size="sm"
+          variant="secondary"
+          aria-expanded={showAll}
+          onClick={() => setShowAll(!showAll)}
+        >
+          {showAll
+            ? 'Show fewer transactions'
+            : `Show all ${review.uncategorised.length} transactions`}
+        </Button>
+      )}
       {review.uncategorisedCount > review.uncategorised.length && (
         <p className="text-xs text-text-tertiary">
           Showing the latest {review.uncategorised.length}.{' '}
@@ -347,7 +424,8 @@ function Uncategorised({
   );
 }
 
-function NeedsAttention({ review, group }: { review: api.BudgetReview; group: string }) {
+function NeedsAttention({ review }: { review: api.BudgetReview }) {
+  const [group, setGroup] = useState('');
   const budget = useBudget(review.month);
   const groups = budget.data ?? [];
   const expense = groups.filter((g) => !g.isIncome).flatMap((g) => g.categories);
@@ -418,7 +496,28 @@ function NeedsAttention({ review, group }: { review: api.BudgetReview; group: st
         {nothing && review.complete && (
           <p className="text-sm text-positive">Nothing needs attention. Your budget is resolved.</p>
         )}
-        {review.uncategorisedCount > 0 && <Uncategorised review={review} categories={expense} />}
+        {review.uncategorisedCount > 0 && <Uncategorised review={review} />}
+        {review.groups.length > 1 && (
+          <label className="flex flex-wrap items-center gap-2 text-sm text-text-secondary">
+            Category details
+            <span className="w-48 max-md:w-full">
+              <Select value={group} onChange={(e) => setGroup(e.target.value)}>
+                <option value="">All groups</option>
+                {review.groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </Select>
+            </span>
+          </label>
+        )}
+        {group && (
+          <p className="text-xs text-text-secondary">
+            Only overspent categories, target shortfalls and later-month category details are
+            filtered. Totals and other review items include all groups.
+          </p>
+        )}
         {deficits.length > 0 && (
           <Section title="Overspent categories">
             <ul className="space-y-1 text-sm">
@@ -617,7 +716,6 @@ function Buffer({ buffer }: { buffer: api.BufferState }) {
 }
 
 export default function ReviewPage() {
-  const [group, setGroup] = useState('');
   const review = useQuery({ queryKey: ['review'], queryFn: api.getReview });
   const buffer = useQuery({ queryKey: ['review', 'buffer'], queryFn: api.getBuffer });
   const guide = useQuery({ queryKey: ['review', 'guide'], queryFn: api.getGuide });
@@ -626,7 +724,7 @@ export default function ReviewPage() {
   const hideBalances = useHideBalances();
   const error = review.error ?? buffer.error ?? guide.error ?? resilience.error ?? resume.error;
   return (
-    <div className="flex flex-col h-full bg-surface">
+    <div className="h-full overflow-y-auto bg-surface">
       <div className="px-6 max-md:px-4 py-4 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-3">
         <div data-guide="review.header">
           <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
@@ -640,23 +738,8 @@ export default function ReviewPage() {
             </GuideLink>
           </p>
         </div>
-        {review.data && review.data.groups.length > 1 && (
-          <label className="flex items-center gap-2 text-sm text-text-secondary">
-            Category group
-            <span className="w-48">
-              <Select value={group} onChange={(e) => setGroup(e.target.value)}>
-                <option value="">All groups</option>
-                {review.data.groups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-              </Select>
-            </span>
-          </label>
-        )}
       </div>
-      <div className="flex-1 overflow-y-auto p-6 max-md:p-4">
+      <div className="p-6 max-md:p-4">
         {error && (
           <p role="alert" className="text-sm text-negative">
             {error instanceof Error ? error.message : 'Could not load the review.'}
@@ -667,7 +750,6 @@ export default function ReviewPage() {
             <ReminderBanner resume={resume.data} />
           </div>
         )}
-        <Tip tip={TIPS.reviewComplete} className="mb-4 rounded-lg border border-border-light p-4" />
         {/* Afterpay-style payments waiting to be linked to their purchase */}
         <div className="mb-4 empty:hidden">
           <PaymentMatches compact />
@@ -675,8 +757,8 @@ export default function ReviewPage() {
         {/* One list to work through first; the detail behind it follows in one column */}
         <div className="max-w-3xl mx-auto space-y-4">
           <DoThisNext />
-          {resume.data && <ResumeCard resume={resume.data} />}
-          {review.data && <NeedsAttention review={review.data} group={group} />}
+          <Housekeeping />
+          {review.data && <NeedsAttention review={review.data} />}
           {guide.data && (
             <Card>
               <h2 className="text-base font-semibold text-text">Guided setup</h2>
@@ -694,7 +776,15 @@ export default function ReviewPage() {
           {resilience.data && !hideBalances && <ResilienceCard data={resilience.data} />}
           {buffer.data && <Buffer buffer={buffer.data} />}
           {resilience.data && <ExtraIncome resilience={resilience.data} />}
-          <Housekeeping />
+          {resume.data && (
+            <>
+              <Tip
+                tip={TIPS.reviewComplete}
+                className="rounded-lg border border-border-light p-4"
+              />
+              <ResumeCard resume={resume.data} />
+            </>
+          )}
         </div>
       </div>
     </div>

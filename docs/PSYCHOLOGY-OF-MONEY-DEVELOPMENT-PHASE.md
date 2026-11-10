@@ -229,12 +229,12 @@ Acceptance:
 
 Book basis: chapters 1, 2, 11 and 19.
 
-The Review page opens with **Resume budgeting**: days since the last completed review,
+The Review page ends with **Resume budgeting**: days since the last completed review,
 transactions dated since then, uncategorised spending, Up bank-source items awaiting
 review (linked to the existing queue), unreconciled accounts and today's resolution. It
 never requires historical categorisation before today's budget is visible.
 
-**Mark review complete** stores the date and a snapshot (flexibility, assigned to
+**Record today’s review** stores the date and a snapshot (flexibility, assigned to
 flexibility to date, essentials, unfunded obligations, resolution). It is not a
 reconciliation and does not change any bank observation or funding.
 

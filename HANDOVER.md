@@ -9,6 +9,56 @@ Last updated: 10 November 2026 (local Transactions and iPhone web-app refinement
 
 ## State
 
+- **Inspect grouped Review transactions (up.160; local design work, not released):** each
+  repeated payee has a View transactions link scoped to its uncategorised personal-budget
+  entries across all dates. The register URL and grouped mutation share personalPayeeSelection,
+  including exact-name/no-payee fallbacks and refusal of an empty personal scope. Links preserve
+  the register’s existing reload and browser history filters. Browser Back returns to Review;
+  reopen grouped sorting before choosing a category. Phone links have 44px targets.
+  Verification: 450 client tests, client build, E2E types, targeted lint and design detector pass.
+  All 19 targeted desktop, 390px and offline-demo browser checks pass, including scoped results, reload and Back;
+  populated grouped layouts were visually inspected at desktop and 390px.
+
+- **Grouped payee sorting in Review (up.159; local design work, not released):** an optional
+  panel reuses SortUncategorised in review mode for repeated personal-budget payees. Its
+  future-default checkbox starts off; import mode keeps its existing default. Shared
+  useCategorisePayee now scopes edits to personal account IDs, so matching merchants in
+  household/off-budget accounts remain separate. Review gets the shared Undo/Redo notification
+  with the actual changed count; failures restore the previous payee default. Individual queue
+  keyboard focus now moves after enabled controls commit, removing a save-completion race.
+  Verification: 446 client tests, client build, lint (152 existing warnings), E2E types,
+  design detector and 19 desktop/390px/demo/import browser checks pass. Populated grouped
+  layouts were inspected on desktop and at 390px.
+
+- **Review category undo (up.158; local design work, not released):** Review uses the shared
+  transaction mutation with an explicit category-only previous value, then announces the change
+  through the existing UndoToast. Undo survives an emptied queue and dismissal through keyboard
+  history; Redo reapplies only the category. Later note/amount edits are preserved. No new server
+  path or undo stack. The shared toast wraps long merchant names and has 44px phone actions.
+  The demo Express shim now supplies a fresh res.locals per response: the shared transaction
+  route’s assistant guard otherwise threw before a demo category save. Shim isolation tests and
+  the demo save/undo/redo browser flow cover this compatibility fix; policy checks are unchanged.
+  Verification: 446 client tests, 2 shim tests, client build, server/browser/E2E types, lint
+  (152 existing warnings), design detector and 12 targeted desktop/390px/demo browser checks pass.
+  Desktop and 390px screenshots cover the success notice after the last queue item is saved.
+
+- **Searchable Review categories (up.157; local design work, not released):** queue rows reuse
+  CategoryPicker with grouped expense categories and an anchored portal. Search, arrows/Enter,
+  Escape cancellation, save-in-progress disabling, failed-save retry and keyboard focus back
+  into the queue preserve the existing single-transaction categorisation API. Shared picker
+  phone fields use 16px text and 44px targets; floating menus have a viewport height limit.
+  Verification: 446 client tests, build, lint (152 existing warnings), E2E types, design
+  detector and 8 targeted desktop/390px/demo/import browser checks pass.
+
+- **Review sequence and mobile density (up.156; local design work, not released):** setup
+  diagnostics now sit after next actions in a disclosure. Uncategorised transactions preview
+  three rows with an expand control; guided setup details open on request. The page header
+  scrolls with content. The category filter lives beside the details it affects and describes
+  its scope; negative Ready to assign explains overassignment. Record today’s review is at
+  the end and explicitly leaves unresolved work open. Financial APIs/calculations are unchanged.
+  Verification: 446 client tests, client build, lint (existing 152-warning cap), E2E types,
+  13 targeted desktop/390px/demo browser checks and the design detector pass.
+
 - **iPhone Safari web-app hardening (up.155; local, not released):** the shared PhoneShell
   header is sticky, opaque and isolated, with existing env(safe-area-inset-*) padding retained.
   The root background follows the header token, the legacy Apple status-bar-style meta is

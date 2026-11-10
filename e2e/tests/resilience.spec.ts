@@ -48,7 +48,7 @@ for (const phone of [false, true])
     );
 
     const resume = page.getByLabel('Resume budgeting');
-    await resume.getByRole('button', { name: 'Mark review complete' }).click();
+    await resume.getByRole('button', { name: 'Record today’s review' }).click();
     await expect(resume).toContainText('Last review');
     expect((await api.call('GET', '/review/resume')).lastReview).not.toBeNull();
     if (phone) await noSideScroll(page);

@@ -1,5 +1,25 @@
 # Changes
 
+## 0.2.0-up.160
+
+- **Inspect a grouped payee before categorising.** Each repeated payee in Review links to its uncategorised personal-budget transactions across all dates. Inspection and grouped categorisation share the same account and merchant selection; household, off-budget and already categorised entries stay outside the view.
+
+## 0.2.0-up.159
+
+- **Review can sort repeated payees together.** An optional grouped view reuses the first-import sorting flow for merchants with multiple uncategorised transactions. Each payee’s changes have one Undo and Redo. Future categorisation is opt-in, existing categories stay intact, and matching household or off-budget transactions stay separate. Failed grouped saves restore the previous payee default.
+
+## 0.2.0-up.158
+
+- **Review category changes offer Undo.** A notification names the transaction and category, with Undo even after the queue empties. Redo and the existing keyboard history also work. Only the category is restored, preserving later notes and amount changes; failed undo reports the error. Long names wrap and phone actions have 44px targets. The offline demo’s response context now supports the shared transaction route, fixing category saves there.
+
+## 0.2.0-up.157
+
+- **Review categories are searchable.** The transaction queue uses the existing grouped category picker with type-to-filter, arrow keys, Enter and Escape. Cancelling returns focus without saving; successful categorisation keeps keyboard focus in the queue and failed saves keep the row available to retry. Phone search uses 16px text and 44px targets; floating category menus stay within the viewport.
+
+## 0.2.0-up.156
+
+- **Review follows the work through to a check-in.** Setup checks sit beside the next actions, uncategorised spending begins with a short expandable queue, and guided steps open on request. The page header scrolls away on phones. Category detail filters explain their scope, negative Ready to assign explains overassignment, and **Record today’s review** at the end clearly saves figures without resolving outstanding work.
+
 ## 0.2.0-up.155
 
 - **The iPhone web-app shell uses an opaque, isolated header.** Safari chooses its status-bar treatment without a legacy override; the root matches the header colour. Landscape uses the dynamic viewport height. Transactions search and custom dates use 16px phone text and 44px fields, and short viewports retain a scrollable ledger when filters are open. Safari-engine and simulated safe-area checks cover iPhone 14 Pro Max portrait, landscape and shorter browser viewports; native Home Screen blur still requires device confirmation.

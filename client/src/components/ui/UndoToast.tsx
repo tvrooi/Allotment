@@ -41,10 +41,10 @@ export function UndoToast() {
       role={action === 'error' ? 'alert' : undefined}
       aria-live={action === 'error' ? 'assertive' : 'polite'}
       data-testid="undo-toast"
-      className="pointer-events-auto flex items-center gap-3 bg-text text-surface rounded-lg shadow-lg px-4 py-2.5 text-sm"
+      className="pointer-events-auto max-w-full flex items-center gap-3 bg-text text-surface rounded-lg shadow-lg px-4 py-2.5 text-sm"
     >
       {icon}
-      <span>{text}</span>
+      <span className="min-w-0 break-words">{text}</span>
       {button && (
         <button
           onClick={() => {
@@ -52,7 +52,7 @@ export function UndoToast() {
             if (action === 'undo') void redo();
             else void undo();
           }}
-          className="ml-1 font-medium text-brand-300 hover:text-brand-200 transition-colors"
+          className="ml-1 shrink-0 max-md:min-h-11 max-md:min-w-11 font-medium text-brand-300 hover:text-brand-200 transition-colors"
         >
           {button}
         </button>
@@ -60,7 +60,7 @@ export function UndoToast() {
       <button
         onClick={clearToast}
         aria-label="Dismiss"
-        className="ml-1 text-surface/60 hover:text-surface transition-colors"
+        className="ml-1 shrink-0 max-md:min-h-11 max-md:min-w-11 flex items-center justify-center text-surface/60 hover:text-surface transition-colors"
       >
         <X size={14} />
       </button>

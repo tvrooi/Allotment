@@ -8,16 +8,22 @@ and nothing changes until you act on an item. Resolving an item from the page (c
 transaction, moving money, funding targets) refreshes the review, the budget, its summary, payday
 plans, goals and the forecast together.
 
+The review starts with next actions and an expandable **Check budget setup** section, then
+Needs attention. Uncategorised spending shows a short preview with a control to show the
+remaining fetched transactions. Guided setup steps open on request. The page header scrolls
+with the content, leaving more working room on phones. **Record today’s review** at the end
+saves a comparison snapshot; unresolved work remains open.
+
 ## Needs attention (6G review)
 
-| Item                          | Total equals the budget summary's | Resolve it                                              |
-| ----------------------------- | --------------------------------- | ------------------------------------------------------- |
-| Uncategorised spending        | `uncategorized`                   | Choose a category inline (latest 100 are listed)        |
-| Overspent categories          | `overspent`                       | **Move money** (click its Available), from a funded one |
-| Targets underfunded           | each target's `underfunded`       | **Fund targets** (previewed, applied once)              |
-| Card debt without a reserve   | `paymentShortfall` + uncovered    | Card payments on the budget                             |
-| Assigned to later months      | `futureAssigned`                  | Listed by month; it is reserved today                   |
-| Unassigned (or over-assigned) | `toBeBudgeted`                    | Assign it, or reduce an assignment                      |
+| Item                          | Total equals the budget summary's | Resolve it                                                  |
+| ----------------------------- | --------------------------------- | ----------------------------------------------------------- |
+| Uncategorised spending        | `uncategorized`                   | Search categories inline; expand the short preview for more |
+| Overspent categories          | `overspent`                       | **Move money** (click its Available), from a funded one     |
+| Targets underfunded           | each target's `underfunded`       | **Fund targets** (previewed, applied once)                  |
+| Card debt without a reserve   | `paymentShortfall` + uncovered    | Card payments on the budget                                 |
+| Assigned to later months      | `futureAssigned`                  | Listed by month; it is reserved today                       |
+| Unassigned (or over-assigned) | `toBeBudgeted`                    | Assign it, or reduce an assignment                          |
 
 A category set to **Keep overspending** (for spending that will be paid back) stays in the
 overspent list, marked `kept`, until its deficit is covered or repaid; see
@@ -25,11 +31,27 @@ overspent list, marked `kept`, until its deficit is covered or repaid; see
 (ACT-03) is not ready to assign, so a month with a hold can read fully budgeted; see
 [holding money](ENVELOPE-FUNDING.md#holding-money-for-next-month).
 
-Missing exchange rates mark the review incomplete. A reconciled transaction cannot be
-categorised from here, as anywhere else in the app.
+The queue uses the shared searchable category picker, grouped by expense category group.
+Type to narrow the list, use arrows and Enter to choose, or Escape to cancel without saving.
+A successful pick refreshes the review and keeps keyboard focus in the queue; a failed save
+leaves the row available to retry. A success notification offers **Undo**, even when the queue
+is now empty; **Redo** follows an undo. The shared keyboard undo history also keeps the change
+after the notification is dismissed. Undo and redo change only the category, preserving later
+edits to the transaction’s other fields.
+
+**Sort repeated payees together** opens the existing payee-level sorting flow inside the queue.
+Each payee’s **View transactions** link opens its uncategorised personal-budget entries across all dates in Transactions. Browser Back returns to Review; reopen grouped sorting to choose a category.
+It lists repeated payees in personal budget accounts, leaving already categorised transactions,
+transfers, split parents and household-linked entries unchanged. Household and off-budget accounts
+are excluded even when they use the same merchant. One choice categorises the matching eligible
+transactions, with one Undo/Redo for the group. **Also apply to future transactions** starts off
+in Review; opting in changes the payee default as part of the same undoable action.
+
+Missing exchange rates mark the review incomplete. Category changes leave reconciled amounts,
+dates and accounts locked.
 
 **Personal spending categories in one shared budget.** Give each person's own spending
-categories a category group (for example "Sam personal") and filter the review by group. This
+categories a category group (for example "Sam personal") and filter category details inside Needs attention by group. This filter affects overspent categories, target shortfalls and later-month category details; totals and other review items remain budget-wide. This
 is only a way of organising categories inside the one shared budget: the shared password
 session cannot tell who made an edit, so nothing records or implies authorship. Phase 4's
 household contribution and share ledger is separate and unchanged.

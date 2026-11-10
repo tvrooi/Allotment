@@ -15,6 +15,7 @@ export interface ShimRequest {
 }
 
 export interface ShimResponse {
+  locals: Record<string, unknown>;
   statusCode: number;
   headers: Record<string, string>;
   body: string | undefined;
@@ -144,6 +145,7 @@ export function Router(): ShimRouter {
 
 export function createResponse(): ShimResponse {
   const res: ShimResponse = {
+    locals: {},
     statusCode: 200,
     headers: {},
     body: undefined,

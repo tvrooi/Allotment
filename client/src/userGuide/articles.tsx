@@ -768,12 +768,12 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         heading: 'Coming back after a break',
         body: (
           <p>
-            <b>Resume budgeting</b> says how long since your last review, how many transactions
-            arrived since, what spending has no category, which accounts to reconcile and, with Up
-            connected, the bank changes to look at. Start with today’s plan: you don’t need to sort
-            out old transactions first. <b>Mark review complete</b> saves the date and today’s
-            figures, so next time <b>Since your last review</b> can compare. It moves no money and
-            reconciles nothing.
+            At the end of Review, <b>Resume budgeting</b> says how long since your last review, how
+            many transactions arrived since, what spending has no category, which accounts to
+            reconcile and, with Up connected, the bank changes to look at. Start with today’s plan:
+            you don’t need to sort out old transactions first. <b>Record today’s review</b> saves
+            the date and today’s figures, so next time <b>Since your last review</b> can compare. It
+            moves no money and reconciles nothing.
           </p>
         ),
       },
@@ -781,7 +781,15 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         heading: 'Needs attention',
         body: (
           <ul>
-            <li>Spending with no category: choose one right there.</li>
+            <li>
+              Spending with no category: open the category picker and type to search. Enter chooses
+              a match; Escape cancels without saving. After saving, the notification offers Undo,
+              even if that was the last item in the queue. For repeated merchants, use Sort repeated
+              payees together to categorise their uncategorised personal-budget transactions in one
+              step. Use View transactions beside a payee to inspect its uncategorised entries across
+              all dates before choosing. Browser Back returns to Review. Applying the category to
+              future transactions is optional.
+            </li>
             <li>
               Overspent envelopes: <L to="move-money">move money</L> from one that has some.
             </li>
