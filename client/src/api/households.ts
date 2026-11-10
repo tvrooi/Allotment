@@ -120,6 +120,31 @@ export interface SettleUpTransfer {
 }
 
 /** Records a suggested transfer as a repayment, with no bank payment linked */
+/** A shared expense, dated today, split with the household's default split (equal when none) */
+export const recordSharedExpense = (
+  groupId: string,
+  e: {
+    description: string;
+    amount: number;
+    payerId: string;
+    date: string;
+    people: { id: string }[];
+    split: HouseholdSplit | null;
+  },
+) =>
+  apiFetch<unknown>(`/households/${groupId}/events`, {
+    method: 'POST',
+    body: JSON.stringify({
+      kind: 'expense',
+      date: e.date,
+      description: e.description,
+      amount: e.amount,
+      payerId: e.payerId,
+      mode: e.split?.mode ?? 'equal',
+      shares: e.split?.shares ?? e.people.map((p) => ({ personId: p.id, value: 1 })),
+    }),
+  });
+
 export const recordSettleUp = (
   groupId: string,
   t: SettleUpTransfer,

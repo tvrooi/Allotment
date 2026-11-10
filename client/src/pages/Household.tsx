@@ -15,6 +15,7 @@ import { formatMoney } from '../utils/currency';
 import { formatDay } from '../utils/dates';
 import { HouseholdSharing } from '../components/household/HouseholdSharing';
 import { HouseholdBills } from '../components/household/HouseholdBills';
+import { QuickExpense } from '../components/household/QuickExpense';
 import { HouseholdIcon } from '../components/household/HouseholdIcon';
 import { CombinedHousehold } from '../components/household/CombinedHousehold';
 import { RecurringBills } from '../components/household/RecurringBills';
@@ -195,6 +196,8 @@ export default function HouseholdPage() {
     onSuccess: async (data) => {
       setError('');
       setCreating(false);
+      setNewPool('');
+      setNewBills(null);
       setEditingGroup(false);
       setEditingPerson('');
       setAddingPerson(false);
@@ -233,6 +236,9 @@ export default function HouseholdPage() {
     setParams(nextParams, { replace: true });
   }
   const [creating, setCreating] = useState(false);
+  // A new household includes bills when it has a shared account, until the person says otherwise
+  const [newPool, setNewPool] = useState('');
+  const [newBills, setNewBills] = useState<boolean | null>(null);
   const [editingGroup, setEditingGroup] = useState(false);
   const [editingPerson, setEditingPerson] = useState('');
   const [addingPerson, setAddingPerson] = useState(false);
@@ -321,7 +327,7 @@ export default function HouseholdPage() {
               .map((n) => n.trim())
               .filter(Boolean),
             selfIndex: 0,
-            includeBills: f.get('includeBills') === 'on',
+            includeBills: newBills ?? newPool !== '',
           },
         }))
       }
@@ -342,7 +348,7 @@ export default function HouseholdPage() {
       </label>
       <label className={field}>
         Household pool account (AUD)
-        <Select name="accountId">
+        <Select name="accountId" value={newPool} onChange={(e) => setNewPool(e.target.value)}>
           <option value="">No pool — direct payments only</option>
           {accounts
             .filter((a) => !a.closedAt && (!a.currency || a.currency === 'AUD'))
@@ -359,14 +365,14 @@ export default function HouseholdPage() {
       <label className="flex items-start gap-3 text-sm text-text min-h-9 max-md:min-h-11">
         <input
           type="checkbox"
-          name="includeBills"
-          defaultChecked
+          checked={newBills ?? newPool !== ''}
+          onChange={(e) => setNewBills(e.target.checked)}
           className="mt-0.5 h-4 w-4 accent-brand-600"
         />
         <span>
           Include bills
           <span className="block text-xs text-text-tertiary">
-            Turn off to just split shared costs, like groceries with a partner.
+            On with a shared account, off without one. Change it if you like.
           </span>
         </span>
       </label>
@@ -491,8 +497,8 @@ export default function HouseholdPage() {
                 onSettle={() => showTab('overview', 'household-people')}
                 onReview={() => showTab('bills', 'household-bills')}
                 onRecord={() => {
-                  setRecording(true);
-                  showTab('overview', 'household-record');
+                  if (hasPool) setRecording(true);
+                  showTab('overview', hasPool ? 'household-record' : 'quick-expense');
                 }}
               />
 
@@ -531,6 +537,16 @@ export default function HouseholdPage() {
                 hidden={tab !== 'overview'}
                 className="space-y-4"
               >
+                {!hasPool && (
+                  <QuickExpense
+                    key={`quick-${state.group.id}`}
+                    groupId={state.group.id}
+                    people={state.people}
+                    defaultSplit={state.group.defaultSplit}
+                    onChangeSplit={() => showTab('settings')}
+                  />
+                )}
+
                 {withBills && hasPool && state.coverage && (
                   <BillsCoverage
                     coverage={state.coverage}

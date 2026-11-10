@@ -230,6 +230,12 @@ and unshared-payment prompts, for a household such as a partner split of groceri
 nothing is deleted, and turning it back on restores them. Set it when creating the household or in
 Settings → Bills.
 
+A Split as you go household (no pool account) opens its Overview with **Add a shared expense**: what
+for, amount and who paid, dated today and split with the household's default split (shown as
+"50/50" for two people sharing equally, with a link to change it in Settings). It records the same
+`expense` entry as **Record something else**, which stays for other dates, repayments and unequal
+splits.
+
 ## Where the balances come from, and reconciling them
 
 Each person's balance is two parts (`householdLedger`): **household account**, money they put
