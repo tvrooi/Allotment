@@ -125,7 +125,7 @@ export function RecurringBills({ groupId, currency, people, bills, hasPool = fal
     <section data-guide="household.bills" className={card} aria-labelledby="household-recurring">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 id="household-recurring" className="text-sm font-semibold text-text">
+          <h2 id="household-recurring" className="text-base font-semibold text-text">
             Recurring bills
           </h2>
           <p className="text-xs text-text-tertiary mt-0.5">

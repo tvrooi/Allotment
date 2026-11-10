@@ -98,7 +98,7 @@ export function HouseholdSharing({ group, people }: Props) {
         </p>
       )}
 
-      <h3 className="text-xs font-semibold text-text-secondary mt-3">Picture</h3>
+      <h3 className="text-sm font-semibold text-text mt-3">Picture</h3>
       <p className="text-xs text-text-tertiary">
         Shown next to each payment shared with {group.name}. Without one, its initial is shown.
       </p>
@@ -111,7 +111,7 @@ export function HouseholdSharing({ group, people }: Props) {
         />
       </div>
 
-      <h3 className="text-xs font-semibold text-text-secondary mt-3">Household accounts</h3>
+      <h3 className="text-sm font-semibold text-text mt-3">Household accounts</h3>
       <p className="text-xs text-text-tertiary">
         Payments from these accounts are the household's, not yours, so they stay out of your
         budget. Your own transfers into them count as your share, in the category you give them. Add
@@ -163,7 +163,7 @@ export function HouseholdSharing({ group, people }: Props) {
         </Button>
       </div>
 
-      <h3 className="text-xs font-semibold text-text-secondary mt-4">Default split</h3>
+      <h3 className="text-sm font-semibold text-text mt-4">Default split</h3>
       <p className="text-xs text-text-tertiary">
         Used by <strong>Share with household</strong> in transactions and by rules. Now{' '}
         {describeSplit(current, people)}.
@@ -179,7 +179,7 @@ export function HouseholdSharing({ group, people }: Props) {
 
       {suggestions.length > 0 && self && (
         <>
-          <h3 className="text-xs font-semibold text-text-secondary mt-4">
+          <h3 className="text-sm font-semibold text-text mt-4">
             Looks like repayments or contributions
           </h3>
           <ul

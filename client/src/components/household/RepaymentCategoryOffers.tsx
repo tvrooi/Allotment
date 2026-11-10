@@ -71,7 +71,7 @@ export function RepaymentCategoryOffers({
       className="rounded-lg border border-border-light p-4 space-y-3"
     >
       <div>
-        <h2 className="text-sm font-semibold text-text">Categorise repayments</h2>
+        <h2 className="text-base font-semibold text-text">Categorise repayments</h2>
         <p className="text-xs text-text-tertiary">
           A repayment in the same category as what it paid for makes your reports show your share:
           money back nets against the whole bill you paid, and money you pay back counts as your

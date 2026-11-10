@@ -412,7 +412,10 @@ export default function HouseholdPage() {
             Household
           </h1>
           <div className="text-sm text-text-tertiary mt-0.5">
-            Split bills with the people you live with and see who owes whom.{' '}
+            <span className="max-md:hidden">
+              Split bills with the people you live with and see who owes whom.
+            </span>
+            <span className="md:hidden">Split bills and see who owes whom.</span>{' '}
             <details className="inline">
               <summary className="inline cursor-pointer font-medium text-text-secondary">
                 How this works
@@ -429,13 +432,13 @@ export default function HouseholdPage() {
           </div>
         </div>
         {groups.length > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 max-md:w-full">
             {current && <HouseholdIcon name={current.name} logo={current.logo} size="sm" />}
             {groups.length === 1 && current && (
               <span className="text-sm font-medium text-text">{current.name}</span>
             )}
             {groups.length > 1 && (
-              <div className="w-48">
+              <div className="w-48 max-md:w-auto max-md:flex-1 max-md:min-w-0">
                 <Select
                   aria-label="Household"
                   value={selected}
@@ -450,12 +453,24 @@ export default function HouseholdPage() {
               </div>
             )}
             {current && (
-              <Button size="sm" variant="ghost" onClick={() => setEditingGroup(true)}>
-                <Pencil size={14} /> Edit
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label="Edit household"
+                className="max-md:min-w-11"
+                onClick={() => setEditingGroup(true)}
+              >
+                <Pencil size={14} /> <span className="max-md:hidden">Edit</span>
               </Button>
             )}
-            <Button size="sm" variant="secondary" onClick={() => setCreating(true)}>
-              <Plus size={14} /> New household
+            <Button
+              size="sm"
+              variant="secondary"
+              aria-label="New household"
+              className="max-md:min-w-11"
+              onClick={() => setCreating(true)}
+            >
+              <Plus size={14} /> <span className="max-md:hidden">New household</span>
             </Button>
           </div>
         )}
@@ -494,7 +509,16 @@ export default function HouseholdPage() {
                 unshared={unshared}
                 sharedAccount={hasPool}
                 withBills={withBills}
-                onSettle={() => showTab('overview', 'household-people')}
+                settle={
+                  <SettleUp
+                    key={`settle-${state.group.id}`}
+                    groupId={state.group.id}
+                    currency={state.group.currency}
+                    people={state.people}
+                    settlements={state.settlements ?? []}
+                    poolOwed={state.poolOwed ?? []}
+                  />
+                }
                 onReview={() => showTab('bills', 'household-bills')}
                 onRecord={() => {
                   if (hasPool) setRecording(true);
@@ -559,8 +583,8 @@ export default function HouseholdPage() {
                 )}
 
                 <section id="household-people" data-guide="household.people" className={card}>
-                  <h2 className="text-sm font-semibold text-text">People & balances</h2>
-                  <p className="text-xs text-text-tertiary mt-0.5 mb-3">
+                  <h2 className="text-base font-semibold text-text">People & balances</h2>
+                  <p className="text-xs text-text-tertiary mt-1 mb-4">
                     Across everything shared: who has paid more than their share, and who owes.
                   </p>
                   <div className="border-t border-border-light divide-y divide-border-light">
@@ -684,14 +708,6 @@ export default function HouseholdPage() {
                         out until you change it in Household settings.
                       </p>
                     )}
-                  <SettleUp
-                    key={`settle-${state.group.id}`}
-                    groupId={state.group.id}
-                    currency={state.group.currency}
-                    people={state.people}
-                    settlements={state.settlements ?? []}
-                    poolOwed={state.poolOwed ?? []}
-                  />
                   <ReconcileBalances
                     key={`reconcile-${state.group.id}`}
                     groupId={state.group.id}
@@ -703,7 +719,7 @@ export default function HouseholdPage() {
                   />
                   {hasPool && (
                     <details className="mt-3 text-xs text-text-tertiary">
-                      <summary className="cursor-pointer w-fit font-medium text-text-secondary max-md:py-3.5">
+                      <summary className="cursor-pointer w-fit text-sm font-medium text-text-secondary max-md:py-3.5">
                         Household account figures
                       </summary>
                       <div className="mt-2 grid gap-2 sm:grid-cols-3">
@@ -740,7 +756,7 @@ export default function HouseholdPage() {
                 <div className="grid gap-4 items-start">
                   <section id="household-record" data-guide="household.record" className={card}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h2 className="text-sm font-semibold text-text">Record something else</h2>
+                      <h2 className="text-base font-semibold text-text">Record something else</h2>
                       <Button
                         size="sm"
                         variant="secondary"
@@ -1013,8 +1029,8 @@ export default function HouseholdPage() {
 
                   {(hasPool || state.bills.length > 0) && (
                     <section className={card}>
-                      <h2 className="text-sm font-semibold text-text">One-off bills</h2>
-                      <p className="text-xs text-text-tertiary mt-0.5 mb-3">
+                      <h2 className="text-base font-semibold text-text">One-off bills</h2>
+                      <p className="text-xs text-text-tertiary mt-1 mb-4">
                         A bill that doesn't repeat, like a plumber or a bond top-up. Set money aside
                         from the household account for it before it is due: an account balance alone
                         does not mean a bill is funded.
@@ -1280,7 +1296,7 @@ export default function HouseholdPage() {
               >
                 <section className={card}>
                   <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
-                    <h2 className="text-sm font-semibold text-text">
+                    <h2 className="text-base font-semibold text-text">
                       {scope === 'personal' ? 'My expense shares' : 'Household spending'}:{' '}
                       <span className="tabular-nums">{money(total)}</span>
                     </h2>

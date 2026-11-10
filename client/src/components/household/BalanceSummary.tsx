@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { formatMoney } from '../../utils/currency';
 import { Button } from '../ui/Button';
 
@@ -14,7 +15,8 @@ interface Props {
   sharedAccount: boolean;
   /** Whether the household includes bills (its Bills tab, coverage and prompts) */
   withBills: boolean;
-  onSettle: () => void;
+  /** The repayments that clear what is owed, recorded here so the band is the one place to settle */
+  settle: ReactNode;
   onReview: () => void;
   onRecord: () => void;
 }
@@ -33,7 +35,7 @@ export function BalanceSummary({
   unshared,
   sharedAccount,
   withBills,
-  onSettle,
+  settle,
   onReview,
   onRecord,
 }: Props) {
@@ -64,45 +66,44 @@ export function BalanceSummary({
   return (
     <section
       aria-label="Who owes whom"
-      className="rounded-lg border border-border-light bg-surface-alt p-4 md:p-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+      className="rounded-lg border border-border-light bg-surface-alt p-4 md:p-5 flex flex-col gap-4"
     >
-      <div className="min-w-0">
-        <p className={`text-xl font-semibold tracking-tight ${tone}`}>{headline}</p>
-        <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm">
-          {others.map((p) => {
-            const b = balances[p.id] ?? 0;
-            return (
-              <li key={p.id} className="text-text-secondary">
-                {p.name}{' '}
-                <span
-                  className={`tabular-nums font-medium ${b < 0 ? 'text-negative' : b > 0 ? 'text-positive' : 'text-text-tertiary'}`}
-                >
-                  {b < 0 ? `owes ${money(-b)}` : b > 0 ? `is owed ${money(b)}` : 'settled'}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-        {note && <p className="mt-2 text-sm text-text-secondary">{note}</p>}
-        <p className="mt-2 text-xs text-text-tertiary">
-          {sharedAccount ? 'Shared account' : 'Split as you go'}
-          {' · '}
-          {withBills ? 'Bills included' : 'Bills not included'}
-        </p>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0">
+          <p className={`text-xl font-semibold tracking-tight ${tone}`}>{headline}</p>
+          <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+            {others.map((p) => {
+              const b = balances[p.id] ?? 0;
+              return (
+                <li key={p.id} className="text-text-secondary">
+                  {p.name}{' '}
+                  <span
+                    className={`tabular-nums font-medium ${b < 0 ? 'text-negative' : b > 0 ? 'text-positive' : 'text-text-tertiary'}`}
+                  >
+                    {b < 0 ? `owes ${money(-b)}` : b > 0 ? `is owed ${money(b)}` : 'settled'}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          {note && <p className="mt-2 text-sm text-text-secondary">{note}</p>}
+          <p className="mt-2 text-xs text-text-tertiary">
+            {sharedAccount ? 'Shared account' : 'Split as you go'}
+            {' · '}
+            {withBills ? 'Bills included' : 'Bills not included'}
+          </p>
+        </div>
+        {canSettle ? null : unshared.count > 0 ? (
+          <Button onClick={onReview} className="max-md:w-full">
+            Review unshared payments
+          </Button>
+        ) : (
+          <Button onClick={onRecord} className="max-md:w-full">
+            Record an expense
+          </Button>
+        )}
       </div>
-      {canSettle ? (
-        <Button onClick={onSettle} className="max-md:w-full">
-          Settle up
-        </Button>
-      ) : unshared.count > 0 ? (
-        <Button onClick={onReview} className="max-md:w-full">
-          Review unshared payments
-        </Button>
-      ) : (
-        <Button onClick={onRecord} className="max-md:w-full">
-          Record an expense
-        </Button>
-      )}
+      {canSettle && <div className="border-t border-border pt-3">{settle}</div>}
     </section>
   );
 }

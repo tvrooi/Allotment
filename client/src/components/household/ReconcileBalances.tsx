@@ -56,7 +56,7 @@ export function ReconcileBalances({ groupId, currency, people, balances, toPool,
   return (
     <>
       <details className="mt-3 text-xs text-text-secondary">
-        <summary className="cursor-pointer text-text-tertiary max-md:py-3.5">
+        <summary className="cursor-pointer w-fit text-sm font-medium text-text-secondary max-md:py-3.5">
           Where these figures come from
         </summary>
         <p className="mt-2">

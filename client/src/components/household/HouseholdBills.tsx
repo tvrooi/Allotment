@@ -29,7 +29,7 @@ export function HouseholdBills({ groupId, includeBills }: Props) {
   });
   return (
     <section className={card} aria-labelledby="household-bills-setting">
-      <h2 id="household-bills-setting" className="text-sm font-semibold text-text">
+      <h2 id="household-bills-setting" className="text-base font-semibold text-text">
         Bills
       </h2>
       <label className="mt-2 flex items-start gap-3 text-sm text-text min-h-9 max-md:min-h-11">

@@ -56,7 +56,7 @@ export function HouseholdBreakdown({ groupId, currency, from, to, scope }: Props
       {open && data && data.byMonth.length > 0 && (
         <div className="mt-3 grid gap-5">
           <div>
-            <h3 className="text-xs font-semibold text-text-secondary">By month</h3>
+            <h3 className="text-sm font-semibold text-text">By month</h3>
             {data.byMonth.length > 1 && (
               <div
                 role="img"
@@ -122,7 +122,7 @@ export function HouseholdBreakdown({ groupId, currency, from, to, scope }: Props
           </div>
 
           <div>
-            <h3 className="text-xs font-semibold text-text-secondary">By person</h3>
+            <h3 className="text-sm font-semibold text-text">By person</h3>
             <p className="text-xs text-text-tertiary">
               What each person paid for shared expenses, what their share of them came to, and the
               difference. Repayments are not included.
@@ -152,7 +152,7 @@ export function HouseholdBreakdown({ groupId, currency, from, to, scope }: Props
           </div>
 
           <div>
-            <h3 className="text-xs font-semibold text-text-secondary">By category</h3>
+            <h3 className="text-sm font-semibold text-text">By category</h3>
             <p className="text-xs text-text-tertiary">
               From the category of the bank payment an entry is linked to. Entries with no payment,
               or a payment with no category, are under Uncategorised.

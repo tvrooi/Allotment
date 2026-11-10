@@ -234,7 +234,7 @@ function Register({ linkId }: { linkId: string }) {
   return (
     <div className="mt-3 space-y-4">
       <div>
-        <h3 className="text-xs font-semibold text-text-secondary">Balances, both households</h3>
+        <h3 className="text-sm font-semibold text-text">Balances, both households</h3>
         <ul className="mt-1 divide-y divide-border-light border-t border-border-light">
           {data.people.map((p) => (
             <li key={p.key} className="flex justify-between py-1.5 text-sm">
@@ -253,7 +253,7 @@ function Register({ linkId }: { linkId: string }) {
       </div>
 
       <div>
-        <h3 className="text-xs font-semibold text-text-secondary">Entries</h3>
+        <h3 className="text-sm font-semibold text-text">Entries</h3>
         {data.entries.length === 0 ? (
           <p className="text-xs text-text-tertiary mt-1">No entries in either household yet.</p>
         ) : (
@@ -306,7 +306,7 @@ function Register({ linkId }: { linkId: string }) {
 
       {data.activity.length > 0 && (
         <div>
-          <h3 className="text-xs font-semibold text-text-secondary">Activity</h3>
+          <h3 className="text-sm font-semibold text-text">Activity</h3>
           <ul
             className="mt-1 divide-y divide-border-light border-t border-border-light"
             aria-label="Combined household activity"
