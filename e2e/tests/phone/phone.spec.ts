@@ -86,7 +86,12 @@ test('the sidebar is a drawer behind a menu button', async ({ page, api }) => {
   // The page gets the full width; the navigation is hidden until asked for
   const menu = page.getByRole('button', { name: 'Open menu' });
   await expect(menu).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.getByRole('link', { name: 'Budget', exact: true })).toBeHidden();
+  // (The tab bar has a Budget link of its own: the drawer's is the one that's hidden)
+  const drawerBudget = page.locator('#app-sidebar').getByRole('link', {
+    name: 'Budget',
+    exact: true,
+  });
+  await expect(drawerBudget).toBeHidden();
   const mainBox = await page.getByRole('main').boundingBox();
   expect(mainBox!.width).toBeGreaterThanOrEqual(389);
 
@@ -101,7 +106,7 @@ test('the sidebar is a drawer behind a menu button', async ({ page, api }) => {
   await page.keyboard.press('Escape');
   await expect(menu).toHaveAttribute('aria-expanded', 'false');
   await expect(menu).toBeFocused();
-  await expect(page.getByRole('link', { name: 'Budget', exact: true })).toBeHidden();
+  await expect(drawerBudget).toBeHidden();
 
   // Following a link closes it
   await menu.click();
@@ -115,6 +120,53 @@ test('the sidebar is a drawer behind a menu button', async ({ page, api }) => {
   await page.getByRole('button', { name: 'Close menu' }).click();
   await expect(menu).toHaveAttribute('aria-expanded', 'false');
   await expect(menu).toBeFocused();
+});
+
+test('the tab bar reaches the everyday pages and Add (#225)', async ({ page, api }, testInfo) => {
+  await api.createAccount('Everyday Checking', 150_000);
+  await open(page, '/dashboard');
+  const tabs = page.getByRole('navigation', { name: 'Main pages' });
+  const home = tabs.getByRole('link', { name: 'Home' });
+  await expect(home).toHaveAttribute('aria-current', 'page');
+
+  for (const [name, route] of [
+    ['Transactions', '/transactions'],
+    ['Budget', '/budget'],
+    ['Review', '/review'],
+    ['Home', '/dashboard'],
+  ]) {
+    const tab = tabs.getByRole('link', { name, exact: true });
+    await tab.click();
+    await expect(page).toHaveURL(new RegExp(`#${route}$`));
+    await expect(tab).toHaveAttribute('aria-current', 'page');
+    await expect(tabs.locator('[aria-current="page"]')).toHaveCount(1);
+    await page.waitForLoadState('networkidle');
+    expect(await sidewaysOverflow(page), route).toEqual([]);
+  }
+
+  // Every tab is a full-size touch target, and the bar sits below the page, not over it
+  for (const item of await tabs.locator('a, button').all()) {
+    const box = (await item.boundingBox())!;
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(box.width).toBeGreaterThanOrEqual(44);
+  }
+  const main = (await page.getByRole('main').boundingBox())!;
+  const bar = (await tabs.boundingBox())!;
+  expect(main.y + main.height).toBeLessThanOrEqual(bar.y + 1);
+  await screenshot(page, testInfo, 'tab-bar');
+
+  // The centre Add opens Add transaction, ready for the amount
+  await tabs.getByRole('button', { name: 'Add a transaction' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add transaction' });
+  await expect(dialog.getByLabel('Amount', { exact: true })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+
+  // Behind the open drawer the tab bar can't be reached
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  expect(await tabs.evaluate((el) => !!el.closest('[inert]'))).toBe(true);
+  await page.keyboard.press('Escape');
+  expect(await tabs.evaluate((el) => !!el.closest('[inert]'))).toBe(false);
 });
 
 test('adding a transaction works on a phone', async ({ page, api }) => {

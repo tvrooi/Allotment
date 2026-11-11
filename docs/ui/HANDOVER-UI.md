@@ -5,6 +5,11 @@ Overwritten at the end of each UI session, never appended. Last written 11 Novem
 
 ## Done this session
 
+- Add transaction from every page (up.167, branch `feat/wave-a-add-and-tabs`): one shell-level
+  `AddTransactionModal` opened by the sidebar's Add a transaction button, the phone tab bar's
+  centre Add, the N key and the Transactions page's Add (#223). It opens on Amount, with the
+  page's account or else the last one used on this device (#222). Phones get a bottom tab bar:
+  Home, Transactions, Add, Budget, Review (#225).
 - Dashboard: the refined design is now `/dashboard` (`pages/Dashboard.tsx`), with a shared chart
   kit; `/dashboard/refined` and DashboardRefined are gone (`cf2e2f0`, up.166).
 - Investments: holding cards on phones, a desktop table, a summary strip and one shared holding
@@ -27,8 +32,8 @@ Overwritten at the end of each UI session, never appended. Last written 11 Novem
 - #213 quick expense test; #214 refresh `docs/ux-ui-evidence/` dates; #215 iPhone check; #216 dark mode.
 - #217 Review queue redesign; #218 Cash flow personal share; #219 Household screens by type.
 - #220 sidebar item count (UX review item 7).
-- Design re-review at `cf2e2f0`, P0: #222 add-transaction focus/account; #223 add from every page;
-  #224 command palette; #225 phone tab bar; #226 sidebar set-up rows; #227 category empty state.
+- Design re-review at `cf2e2f0`, P0: #224 command palette; #226 sidebar set-up rows; #227 category
+  empty state.
 - P1: #228 chart palette; #229 category dead space; #230 dashboard next-step card; #231 dashboard
   value strip; #233 delete demotion; #234 recurring banner; #235 goal/payee links; #236 transfers
   step; #237 empty states; #242 a11y labels; #243 desktop row click; #245 undo and keep filters.
@@ -45,6 +50,8 @@ Overwritten at the end of each UI session, never appended. Last written 11 Novem
 
 ## Traps
 
+- The phone tab bar carries the bottom safe-area inset (not `<main>`), and phone toasts sit
+  5rem up to clear it (`Toasts aboveTabBar`): change the bar's height and that offset together.
 - The Forecast no-income callout hides a server warning by its leading text (`longTermInputs.ts`):
   change both together.
 - The date option's stored value changed: `PREFERENCES_VERSION` is 4 with a migration step.

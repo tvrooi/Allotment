@@ -403,18 +403,7 @@ export function TransactionTable({
             <Button variant="secondary" size="sm" onClick={() => setShowImport(true)}>
               <Upload size={13} /> Import CSV
             </Button>
-            <Button
-              size="sm"
-              disabled={!newTx.allowed}
-              title={
-                !newTx.allowed
-                  ? 'Saving is paused until Allotment reconnects'
-                  : newTx.onDevice
-                    ? 'Saved on this device and sent when Allotment reconnects'
-                    : undefined
-              }
-              onClick={startAdd}
-            >
+            <Button size="sm" disabled={!newTx.allowed} title={newTx.hint} onClick={startAdd}>
               <Plus size={13} /> Add Transaction
             </Button>
           </div>

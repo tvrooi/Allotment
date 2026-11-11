@@ -19,6 +19,10 @@ import { GuideBanner } from '../guide/GuideBanner';
 import { GuideTour } from '../guide/GuideTour';
 import { GuidesDialog } from '../guide/GuidesDialog';
 import { PullToRefresh } from './PullToRefresh';
+import { PhoneTabBar } from './PhoneTabBar';
+import { AddTransactionModal } from '../transactions/AddTransactionModal';
+import { useAddTransactionStore } from '../../store/addTransactionStore';
+import { useAddTransactionKeyboard } from '../../hooks/useAddTransactionKeyboard';
 
 /** Where opening the app lands: the root, which goes on to the dashboard */
 const FRONT_DOOR = new Set(['/', '/dashboard']);
@@ -28,6 +32,7 @@ export function AppShell() {
   useSafeModeKeyboard();
   useUpFreshness();
   useGuideKeyboard();
+  useAddTransactionKeyboard();
   const { data: accounts = [], isLoading, isError } = useAccounts();
   const setupSkipped = usePreferencesStore((s) => s.setupSkipped);
   const isPhone = useIsPhone();
@@ -73,8 +78,16 @@ export function AppShell() {
       <Toasts />
       <GuideTour />
       <GuidesDialog />
+      <ShellAddTransaction />
     </div>
   );
+}
+
+/** The one Add transaction dialog, for every page (store/addTransactionStore.ts opens it) */
+function ShellAddTransaction() {
+  const open = useAddTransactionStore((s) => s.open);
+  const hide = useAddTransactionStore((s) => s.hide);
+  return <AddTransactionModal isOpen={open} onClose={hide} />;
 }
 
 /**
@@ -97,7 +110,8 @@ function SkipToContent() {
 }
 
 /**
- * Phones: a top bar with a menu button; the sidebar slides in as a drawer. Escape, the
+ * Phones: a top bar with a menu button, and a tab bar at the foot for the everyday pages and
+ * Add; the sidebar slides in as a drawer. Escape, the
  * backdrop, the close button or following a link closes it, and focus goes back to the
  * menu button. While it's open the page behind is inert.
  */
@@ -171,15 +185,18 @@ function PhoneShell() {
           <PullToRefresh scroller={phoneMain} />
           <main
             ref={phoneMain}
-            className="flex-1 min-h-0 overflow-y-auto pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
+            className="flex-1 min-h-0 overflow-y-auto pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
           >
             <Outlet />
           </main>
         </div>
+        {/* Inert with the rest while the drawer is open */}
+        <PhoneTabBar />
       </div>
-      <Toasts />
+      <Toasts aboveTabBar />
       <GuideTour />
       <GuidesDialog />
+      <ShellAddTransaction />
     </div>
   );
 }

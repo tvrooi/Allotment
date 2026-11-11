@@ -11,8 +11,8 @@ interface Props extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 // A disabled filled button turns neutral grey: a pale brand colour reads as a style, not as
-// "not yet". Outlined and ghost buttons just fade.
-const filledDisabled =
+// "not yet". Outlined and ghost buttons just fade. (Also the sidebar's Add a transaction.)
+export const filledDisabled =
   'disabled:bg-surface-alt disabled:text-text-tertiary disabled:shadow-none disabled:ring-1 disabled:ring-inset disabled:ring-border';
 // Every variant has a 1px border (transparent unless outlined), so a primary button and a
 // secondary one beside it are the same height

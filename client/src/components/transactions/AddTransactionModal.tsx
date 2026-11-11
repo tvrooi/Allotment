@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useId } from 'react';
+import { useMatch } from 'react-router-dom';
 import { format, isValid as isValidDate, parseISO } from 'date-fns';
 import { MinusCircle, PlusCircle, ChevronDown } from 'lucide-react';
 import { Modal } from '../ui/Modal';
@@ -17,6 +18,11 @@ import { AccountIcon } from '../accounts/AccountIcon';
 import { useHideBalances } from '../../utils/safeMode';
 import { Private } from '../ui/Private';
 import { formatDay } from '../../utils/dates';
+import {
+  defaultAddAccount,
+  readLastAddAccount,
+  rememberAddAccount,
+} from '../../utils/addTransaction';
 
 interface Props {
   isOpen: boolean;
@@ -47,6 +53,8 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
   const accountRef = useRef<HTMLDivElement>(null);
 
   const { data: accounts = [] } = useAccounts();
+  // On an account's page (its register or reconcile), that account
+  const pageAccountId = useMatch('/accounts/:id/*')?.params.id ?? null;
   const newTx = useAddTransaction();
   const createAccount = useCreateAccount();
   const canSave = useCanSave();
@@ -109,14 +117,18 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  useEffect(() => {
+  // Each opening starts afresh, before its first render: the Amount field takes focus straight
+  // away, and must not show what was typed last time
+  const [shownOpen, setShownOpen] = useState(false);
+  if (isOpen !== shownOpen) {
+    setShownOpen(isOpen);
     if (isOpen) {
       setType('debit');
       setAmount(0);
       setPayeeName('');
       setPayeeId(null);
       setDate(format(new Date(), 'yyyy-MM-dd'));
-      setAccountId('');
+      setAccountId(defaultAddAccount(accounts, pageAccountId, readLastAddAccount()));
       setAccountError('');
       setShowAccountPicker(false);
       setCategoryId(null);
@@ -124,7 +136,13 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
       setOtherAmount(0);
       setOtherTyped(false);
     }
-  }, [isOpen]);
+  }
+
+  // Ready to type the amount. This runs after ui/Modal's own effect, which focuses the dialog
+  // itself (child effects run first); focus still goes back to the opener on close.
+  useEffect(() => {
+    if (isOpen) document.getElementById(`${fieldId}-amount`)?.focus();
+  }, [isOpen, fieldId]);
 
   function chooseAccount(id: string) {
     setAccountId(id);
@@ -151,6 +169,7 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
 
   function handleSubmit() {
     if (!isValid) return;
+    rememberAddAccount(accountId);
     if (transferToId) {
       // A debit moves money out of this account, a credit brings it in. Between currencies,
       // each side's amount is in its own account's currency.
