@@ -2,23 +2,21 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { UncategorisedNotice } from '../review/UncategorisedBanner';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Copy, Download, Plus, Save, Trash2, X } from 'lucide-react';
-import {
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ReferenceDot,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { defineChart, lineY } from '@tanstack/charts';
+import type { ChartMark, ChartPoint } from '@tanstack/charts';
+import { dot } from '@tanstack/charts/dot';
+import { decorative } from '@tanstack/charts/mark/decorative';
+import { ruleX, ruleY } from '@tanstack/charts/rule';
+import { tooltip } from '@tanstack/charts/tooltip';
+import type { ChartTooltipContent } from '@tanstack/charts/tooltip';
 import * as api from '../../api/forecast';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input, Select } from '../ui/Input';
 import { StatCardRow } from '../reports/ChartHelpers';
+import { FillChart } from '../charts/FillChart';
+import { LegendKey } from '../charts/ChartLegend';
+import { pointScale, valueScale } from '../charts/kit';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useGoals } from '../../hooks/useGoals';
 import { MAX_SLOTS, useScenarioSlots, type Slot } from '../../hooks/useScenarioSlots';
@@ -36,8 +34,8 @@ import { onTabListKeyDown } from '../ui/tabList';
 import { addDaysIso, todayIso } from '../../utils/calendarDay';
 
 const COLORS = [chartColors.brand, chartColors.caution, chartColors.positive];
-// Inline, because index.css clears the dash recharts leaves on a line after it animates
-const DOTTED = { strokeDasharray: '0.1 5' };
+// Round-capped near-zero dashes draw a dotted line
+const DOTTED = '0.1 5';
 const KIND_LABEL: Record<api.ForecastEvent['kind'], string> = {
   income: 'Expected pay',
   bill: 'Bill',
@@ -570,6 +568,80 @@ export function CashRunway() {
         .find((v) => typeof v === 'number') as number | undefined)
     : undefined;
 
+  const runway = useMemo(() => {
+    if (!data) return null;
+    const today = data.today;
+    const names = ['Actual', ...data.scenarios.map((s) => s.name)];
+    const colors: Record<string, string> = { Actual: chartColors.axis };
+    data.scenarios.forEach((s, i) => (colors[s.name] = COLORS[i]));
+    const value = (name: string) => (r: Record<string, number | string>) =>
+      typeof r[name] === 'number' ? (r[name] as number) : null;
+    // Data lines lead: the date axis takes its order from the first mark, so a lone 'today' rule must not
+    const marks: ChartMark[] = [
+      lineY(chart, {
+        x: 'date',
+        y: value('Actual'),
+        z: () => 'Actual',
+        stroke: chartColors.axis,
+        strokeWidth: 2,
+      }),
+      ...data.scenarios.map((s, i) =>
+        lineY(chart, {
+          x: 'date',
+          y: value(s.name),
+          z: () => s.name,
+          stroke: COLORS[i],
+          strokeDasharray: DOTTED,
+          strokeWidth: i === selected ? 3 : 2,
+        }),
+      ),
+      decorative(ruleY([0], { stroke: chartColors.negative, strokeOpacity: 0.4 })),
+      decorative(
+        ruleX([today], {
+          stroke: chartColors.axis,
+          strokeDasharray: '2 2',
+          strokeOpacity: 0.7,
+        }),
+      ),
+      ...(todayBalance !== undefined
+        ? [
+            decorative(
+              dot([{ date: today, balance: todayBalance }], {
+                x: 'date',
+                y: 'balance',
+                r: 5,
+                fill: 'var(--color-surface, #fff)',
+                stroke: chartColors.axis,
+                strokeWidth: 2.5,
+              }),
+            ),
+          ]
+        : []),
+    ];
+    return defineChart({
+      marks,
+      scales: {
+        x: pointScale((d) => formatDay(d), 40),
+        y: valueScale(),
+      },
+      focus: 'group-x',
+      maxFocusDistance: Number.POSITIVE_INFINITY,
+      tooltip: {
+        use: tooltip,
+        content: (points: readonly ChartPoint[]): ChartTooltipContent => ({
+          title: points[0] ? formatDay(String(points[0].xValue)) : '',
+          rows: points
+            .filter((p) => names.includes(p.groupLabel))
+            .map((p) => ({
+              label: p.groupLabel,
+              value: formatCurrency(Number(p.yValue)),
+              color: colors[p.groupLabel],
+            })),
+        }),
+      },
+    });
+  }, [data, chart, selected, todayBalance]);
+
   function exportCsv() {
     if (!data) return;
     downloadCsv(
@@ -745,70 +817,14 @@ export function CashRunway() {
               </p>
               <Card padding="sm">
                 <p className="text-sm font-semibold text-text mb-2">Cash runway</p>
+                <div className="flex items-center gap-3 flex-wrap pb-2 text-xs text-text-secondary">
+                  <LegendKey color={chartColors.axis} label="Actual" line />
+                  {data.scenarios.map((s, i) => (
+                    <LegendKey key={s.name} color={COLORS[i]} label={s.name} line dashed />
+                  ))}
+                </div>
                 <div className="h-72" aria-label="Cash runway chart">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chart} margin={{ left: 8, right: 16, top: 8 }}>
-                      <CartesianGrid stroke={chartColors.grid} vertical={false} />
-                      <XAxis
-                        dataKey="date"
-                        tickFormatter={(d) => formatDay(d)}
-                        minTickGap={40}
-                        tick={{ fontSize: 12, fill: chartColors.axis }}
-                        tickMargin={8}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        tickFormatter={formatCentsAxis}
-                        width={70}
-                        tick={{ fontSize: 12, fill: chartColors.axis }}
-                        tickMargin={4}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <Tooltip
-                        formatter={(v) => formatCurrency(Number(v))}
-                        labelFormatter={(d) => formatDay(String(d))}
-                      />
-                      <Legend iconType="plainline" wrapperStyle={{ fontSize: 12 }} />
-                      <ReferenceLine y={0} stroke={chartColors.negative} strokeOpacity={0.4} />
-                      <ReferenceLine
-                        x={data.today}
-                        stroke={chartColors.axis}
-                        strokeDasharray="2 2"
-                      />
-                      <Line
-                        dataKey="Actual"
-                        stroke={chartColors.axis}
-                        strokeWidth={2}
-                        dot={false}
-                        connectNulls
-                      />
-                      {todayBalance !== undefined && (
-                        <ReferenceDot
-                          x={data.today}
-                          y={todayBalance}
-                          r={5}
-                          fill="var(--color-surface, #fff)"
-                          stroke={chartColors.axis}
-                          strokeWidth={2.5}
-                          ifOverflow="visible"
-                        />
-                      )}
-                      {data.scenarios.map((s, i) => (
-                        <Line
-                          key={s.name}
-                          dataKey={s.name}
-                          stroke={COLORS[i]}
-                          style={DOTTED}
-                          strokeLinecap="round"
-                          strokeWidth={i === selected ? 3 : 2}
-                          dot={false}
-                          connectNulls
-                        />
-                      ))}
-                    </LineChart>
-                  </ResponsiveContainer>
+                  {runway && <FillChart definition={runway} ariaLabel="Cash runway by scenario" />}
                 </div>
               </Card>
 

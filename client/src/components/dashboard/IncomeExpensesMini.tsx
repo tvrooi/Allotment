@@ -2,7 +2,8 @@ import { DataFeedback, dataUnavailable } from './DataFeedback';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { barY, defineChart, group } from '@tanstack/charts';
+import { scaleLinear } from '@tanstack/charts/scales/linear';
 import { useIncomeVsExpenses } from '../../hooks/useReports';
 import { formatDateRange } from '../../utils/dateRange';
 import { formatCurrency } from '../../utils/currency';
@@ -11,21 +12,9 @@ import { Card } from '../ui/Card';
 import { EmptyState } from '../ui/EmptyState';
 import { ButtonLink } from '../ui/Button';
 import { chartColors } from '../../utils/chartColors';
-import { useXAxisLayout } from '../../hooks/useXAxisLayout';
-
-function CurrencyTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-surface border border-border rounded-lg shadow-hover px-3 py-2">
-      <p className="text-xs text-text-tertiary mb-1">{label}</p>
-      {payload.map((p: any) => (
-        <p key={p.name} className="text-xs font-medium" style={{ color: p.color }}>
-          {p.name}: {formatCurrency(p.value)}
-        </p>
-      ))}
-    </div>
-  );
-}
+import { FillChart } from '../charts/FillChart';
+import { LegendKey } from '../charts/ChartLegend';
+import { bandScale, currencyTooltip } from '../charts/kit';
 
 interface Props {
   sixMonthsAgo: string;
@@ -40,14 +29,37 @@ export default function IncomeExpensesMini({ sixMonthsAgo, currentMonth }: Props
     () => data.map((d) => ({ ...d, month: format(parseISO(`${d.month}-01`), 'MMM yy') })),
     [data],
   );
-  const monthLabels = useMemo(() => chartData.map((d) => d.month), [chartData]);
-  const xAxis = useXAxisLayout({
-    labels: monthLabels,
-    kind: 'band',
-    ordered: true,
-    fontSize: 11,
-    inset: { left: 4, right: 4 },
-  });
+  const rows = useMemo(
+    () =>
+      chartData.flatMap((d) => [
+        { month: d.month, series: 'Income', value: d.income, net: d.net },
+        { month: d.month, series: 'Expenses', value: d.expenses, net: d.net },
+      ]),
+    [chartData],
+  );
+  const definition = useMemo(
+    () =>
+      defineChart({
+        marks: [
+          barY(rows, {
+            x: 'month',
+            y: 'value',
+            z: 'series',
+            layout: group({ padding: 0.12 }),
+            fill: (d) => (d.series === 'Income' ? chartColors.positive : chartColors.negative),
+            radius: [4, 4, 0, 0],
+            maxThickness: 22,
+          }),
+        ],
+        scales: { x: bandScale(), y: { scale: scaleLinear, nice: true, axis: false } },
+        focus: 'group-x',
+        maxFocusDistance: Number.POSITIVE_INFINITY,
+        tooltip: currencyTooltip({
+          colors: { Income: chartColors.positive, Expenses: chartColors.negative },
+        }),
+      }),
+    [rows],
+  );
 
   const latestNet = data.length > 0 ? data[data.length - 1].net : 0;
   const hasData = data.some((d) => d.income !== 0 || d.expenses !== 0);
@@ -97,27 +109,20 @@ export default function IncomeExpensesMini({ sixMonthsAgo, currentMonth }: Props
       )}
 
       {hasData ? (
-        <div ref={xAxis.ref}>
-          <ResponsiveContainer width="100%" height={192}>
-            <BarChart data={chartData} margin={{ top: 4, right: 4, left: 4, bottom: 0 }} barGap={2}>
-              <XAxis dataKey="month" axisLine={false} tickLine={false} {...xAxis.axisProps} />
-              <Tooltip content={<CurrencyTooltip />} cursor={{ fill: chartColors.brandSubtle }} />
-              <Legend iconSize={8} wrapperStyle={{ fontSize: 11, color: chartColors.axis }} />
-              <Bar
-                dataKey="income"
-                name="Income"
-                fill={chartColors.positive}
-                radius={[3, 3, 0, 0]}
-              />
-              <Bar
-                dataKey="expenses"
-                name="Expenses"
-                fill={chartColors.negative}
-                radius={[3, 3, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <>
+          <FillChart
+            definition={definition}
+            height={176}
+            ariaLabel="Income and expenses by month"
+          />
+          <div
+            data-testid="chart-legend"
+            className="flex items-center justify-center gap-3 pt-1 text-2xs text-text-secondary"
+          >
+            <LegendKey color={chartColors.positive} label="Income" />
+            <LegendKey color={chartColors.negative} label="Expenses" />
+          </div>
+        </>
       ) : (
         <EmptyState
           compact

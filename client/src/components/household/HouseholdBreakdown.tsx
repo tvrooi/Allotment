@@ -1,11 +1,16 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { barY, defineChart } from '@tanstack/charts';
+import type { ChartPoint } from '@tanstack/charts';
+import { tooltip } from '@tanstack/charts/tooltip';
+import type { ChartTooltipContent } from '@tanstack/charts/tooltip';
 import { getHouseholdStatement } from '../../api/households';
 import { currencyAmountStyle, formatAxisAmount, formatMoney } from '../../utils/currency';
 import { chartColors } from '../../utils/chartColors';
-import { CurrencyTooltip, monthLabel } from '../reports/ChartHelpers';
+import { monthLabel } from '../reports/ChartHelpers';
+import { FillChart } from '../charts/FillChart';
+import { bandScale, valueScale } from '../charts/kit';
 
 interface Props {
   groupId: string;
@@ -34,6 +39,43 @@ export function HouseholdBreakdown({ groupId, currency, from, to, scope }: Props
     enabled: open && (!from || !to || from <= to),
   });
   const key = scope === 'household' ? 'household' : 'myShare';
+  const byMonth = data?.byMonth;
+  const definition = useMemo(() => {
+    const name = scope === 'household' ? 'Household' : 'My share';
+    return defineChart({
+      marks: [
+        barY(byMonth ?? [], {
+          x: 'month',
+          y: key,
+          z: () => name,
+          fill: chartColors.brand,
+          radius: [4, 4, 0, 0],
+          maxThickness: 28,
+          inset: 1,
+        }),
+      ],
+      scales: {
+        x: bandScale(monthLabel),
+        y: {
+          ...valueScale({ format: (n) => formatAxisAmount(n, currencyAmountStyle(currency)) }),
+        },
+      },
+      focus: 'nearest-x',
+      maxFocusDistance: Number.POSITIVE_INFINITY,
+      tooltip: {
+        use: tooltip,
+        content: (points: readonly ChartPoint[]): ChartTooltipContent => {
+          const p = points[0];
+          if (!p) return { rows: [] };
+          return {
+            title: monthLabel(String(p.xValue)),
+            rows: [{ label: name, value: money(Number(p.yValue)), color: chartColors.brand }],
+          };
+        },
+      },
+    });
+    // `money` only reads currency
+  }, [byMonth, key, scope, currency]);
   return (
     <section className="bg-surface rounded-lg shadow-card border border-border-light p-4">
       <button
@@ -58,45 +100,11 @@ export function HouseholdBreakdown({ groupId, currency, from, to, scope }: Props
           <div>
             <h3 className="text-sm font-semibold text-text">By month</h3>
             {data.byMonth.length > 1 && (
-              <div
-                role="img"
-                aria-label={`Chart of ${scope === 'household' ? 'household spending' : 'your share'} by month; the table below has the same figures`}
-                className="h-40 mt-1"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.byMonth} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke={chartColors.grid}
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="month"
-                      tickFormatter={monthLabel}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tickFormatter={(n: number) =>
-                        formatAxisAmount(n, currencyAmountStyle(currency))
-                      }
-                      axisLine={false}
-                      tickLine={false}
-                      width={48}
-                    />
-                    <Tooltip
-                      content={
-                        <CurrencyTooltip labelFormatter={(m: string) => monthLabel(m)} hideZero />
-                      }
-                    />
-                    <Bar
-                      dataKey={key}
-                      name={scope === 'household' ? 'Household' : 'My share'}
-                      fill={chartColors.brand}
-                      radius={[3, 3, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="h-40 mt-1">
+                <FillChart
+                  definition={definition}
+                  ariaLabel={`Chart of ${scope === 'household' ? 'household spending' : 'your share'} by month; the table below has the same figures`}
+                />
               </div>
             )}
             <div className="overflow-x-auto">

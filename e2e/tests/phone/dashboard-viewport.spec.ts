@@ -24,14 +24,19 @@ for (const [width, height] of [
     });
     await api.call('PUT', `/budget/${thisMonth()}/${groceries.id}`, { budgeted: 50_000 });
     await open(page, '/dashboard');
-    const summary = page.getByTestId('home-card-summary');
-    const target = summary.getByRole('combobox', { name: 'Savings rate goal' });
+    // The phone keeps the savings target in its history block, behind an Edit link
+    const history = page.getByTestId('home-history');
+    await history.getByRole('button', { name: 'Edit savings target' }).click();
+    const target = history.getByRole('combobox', { name: 'Savings rate goal' });
     await expect(target).toBeVisible();
-    await target.selectOption('25');
-    await expect(target).toHaveValue('25');
     expect(
       await target.evaluate((e) => parseFloat(getComputedStyle(e).fontSize)),
     ).toBeGreaterThanOrEqual(16);
+    await target.selectOption('25');
+    // Choosing a target closes the dropdown and shows it as text again
+    await expect(history.getByRole('button', { name: 'Edit savings target' })).toHaveText(
+      'Target 25% · Edit',
+    );
     expect(await sidewaysOverflow(page)).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath('dashboard.png') });
 

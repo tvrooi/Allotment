@@ -1,21 +1,12 @@
 import { useMemo } from 'react';
-import {
-  AreaChart,
-  Area,
-  ComposedChart,
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  Legend,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-  ReferenceLine,
-} from 'recharts';
+import { areaY, barX, barY, defineChart, group, lineY } from '@tanstack/charts';
+import { decorative } from '@tanstack/charts/mark/decorative';
+import { ruleY } from '@tanstack/charts/rule';
+import { text } from '@tanstack/charts/text';
+import { scaleLinear } from '@tanstack/charts/scales/linear';
+import { tooltip } from '@tanstack/charts/tooltip';
+import type { ChartPoint } from '@tanstack/charts';
+import type { ChartTooltipContent } from '@tanstack/charts/tooltip';
 import {
   useNetWorthSeries,
   useIncomeVsExpenses,
@@ -30,21 +21,19 @@ import { dayBounds, monthCount, monthsBetween } from '../../utils/dateRange';
 import { eachDayOfInterval, format, parseISO } from 'date-fns';
 import { chartColors, CATEGORY_COLORS } from '../../utils/chartColors';
 import { formatDateAxisLabels, formatDateLabel } from '../../utils/chartTicks';
+import { ChartSkeleton, EmptyState, EXPENSE_COLORS, monthLabel } from './ChartHelpers';
+import { FillChart } from '../charts/FillChart';
+import { LegendKey } from '../charts/ChartLegend';
 import {
-  CurrencyTooltip,
-  TOOLTIP_CLASS,
-  ShareTooltip,
-  sumSeries,
-  ChartSkeleton,
-  EmptyState,
-  EXPENSE_COLORS,
-  monthLabel,
-} from './ChartHelpers';
-import { useXAxisLayout } from '../../hooks/useXAxisLayout';
+  areaGradient,
+  bandScale,
+  currencyTooltip,
+  pointScale,
+  smooth,
+  stepAfter,
+  valueScale,
+} from '../charts/kit';
 import type { NetWorthPoint } from '../../types';
-
-// Plot insets for charts with 16px margins and a 60px y-axis
-const INSET = { left: 76, right: 16 };
 
 // The built-in reports. Each takes a month range (yyyy-MM) and fills its container.
 
@@ -64,36 +53,8 @@ export function formatChange(change: number, percent: number | null): string {
   return `${sign}${formatCurrency(change)}${pct}`;
 }
 
-function NetWorthTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-  const d: NetWorthPoint = payload[0].payload;
-  return (
-    <div className={TOOLTIP_CLASS}>
-      <p className="text-xs text-text-tertiary mb-1">{formatDateLabel(label)}</p>
-      <p className="text-xs font-semibold" style={{ color: chartColors.brand }}>
-        Net worth: {formatCurrency(d.netWorth)}
-      </p>
-      <p className="text-xs font-medium mt-1" style={{ color: chartColors.positive }}>
-        Assets: {formatCurrency(d.assets)}
-      </p>
-      <p className="text-xs font-medium" style={{ color: chartColors.negative }}>
-        Liabilities: {formatCurrency(d.liabilities)}
-      </p>
-    </div>
-  );
-}
-
-function LegendKey({ color, label, line }: { color: string; label: string; line?: boolean }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span
-        className={line ? 'w-3 h-0.5 rounded-full' : 'w-2.5 h-2.5 rounded-sm'}
-        style={{ backgroundColor: color }}
-      />
-      {label}
-    </span>
-  );
-}
+const INFINITE = Number.POSITIVE_INFINITY;
+const labelFor = (labels: Map<string, string>) => (k: string) => labels.get(k) ?? k;
 
 /**
  * Net worth and assets as lines on an axis zoomed to their range, so growth reads at a glance,
@@ -112,17 +73,145 @@ export function NetWorthChart({
 }) {
   const { data = [], isLoading } = useNetWorthSeries(from, to);
   const dateLabels = useMemo(() => formatDateAxisLabels(data.map((d) => d.month)), [data]);
-  const xAxis = useXAxisLayout({
-    labels: dateLabels,
-    kind: 'point',
-    ordered: true,
-    inset: { left: 76, right: 24 },
-  });
+  const labels = useMemo(
+    () => new Map(data.map((d, i) => [d.month, dateLabels[i]] as [string, string])),
+    [data, dateLabels],
+  );
   const yAxis = useMemo(() => valueAxis(data.flatMap((d) => [d.assets, d.netWorth])), [data]);
   const debtMax = useMemo(() => Math.max(0, ...data.map((d) => d.liabilities)), [data]);
   const debtTop =
     debtMax > 0 ? Math.ceil(debtMax / niceStep(debtMax, 2)) * niceStep(debtMax, 2) : 0;
   const summary = useMemo(() => netWorthChange(data), [data]);
+  const showDebt = debtMax > 0;
+
+  const main = useMemo(
+    () =>
+      defineChart({
+        marks: [
+          decorative(
+            areaY(data, {
+              x: 'month',
+              y1: yAxis.domain[0],
+              y2: 'netWorth',
+              fill: 'url(#gNet)',
+              fillOpacity: 1,
+              curve: smooth,
+            }),
+          ),
+          lineY(data, {
+            x: 'month',
+            y: 'assets',
+            z: () => 'Assets',
+            stroke: chartColors.positiveLight,
+            strokeWidth: 2,
+            curve: smooth,
+          }),
+          lineY(data, {
+            x: 'month',
+            y: 'netWorth',
+            z: () => 'Net worth',
+            stroke: chartColors.brand,
+            strokeWidth: 2.5,
+            curve: smooth,
+            points: data.length <= 24,
+          }),
+        ],
+        scales: {
+          x: showDebt ? { ...pointScale(), axis: false } : pointScale(labelFor(labels)),
+          y: {
+            ...valueScale(),
+            scale: scaleLinear().domain(yAxis.domain),
+            nice: false,
+            axis: { line: false, ticks: { size: 0, values: yAxis.ticks, format: formatCentsAxis } },
+          },
+        },
+        gradients: [areaGradient('gNet', chartColors.brand)],
+        focus: 'group-x',
+        maxFocusDistance: INFINITE,
+        tooltip: {
+          use: tooltip,
+          content: (points: readonly ChartPoint[]): ChartTooltipContent => {
+            const d = points[0]?.datum as NetWorthPoint | undefined;
+            if (!d) return { rows: [] };
+            return {
+              title: formatDateLabel(d.month),
+              rows: [
+                { label: 'Net worth', value: formatCurrency(d.netWorth), color: chartColors.brand },
+                {
+                  label: 'Assets',
+                  value: formatCurrency(d.assets),
+                  color: chartColors.positiveLight,
+                },
+                {
+                  label: 'Liabilities',
+                  value: formatCurrency(d.liabilities),
+                  color: chartColors.negativeLight,
+                },
+              ],
+            };
+          },
+        },
+      }),
+    [data, yAxis, labels, showDebt],
+  );
+
+  const debt = useMemo(
+    () =>
+      defineChart({
+        marks: [
+          decorative(
+            areaY(data, {
+              x: 'month',
+              y: 'liabilities',
+              fill: chartColors.negativeLight,
+              fillOpacity: 0.15,
+              curve: smooth,
+            }),
+          ),
+          lineY(data, {
+            x: 'month',
+            y: 'liabilities',
+            z: () => 'Liabilities',
+            stroke: chartColors.negativeLight,
+            strokeWidth: 2,
+            curve: smooth,
+          }),
+        ],
+        scales: {
+          x: pointScale(labelFor(labels)),
+          y: {
+            ...valueScale(),
+            scale: scaleLinear().domain([0, debtTop]),
+            nice: false,
+            axis: {
+              line: false,
+              ticks: { size: 0, values: [0, debtTop], format: formatCentsAxis },
+            },
+          },
+        },
+        focus: 'group-x',
+        maxFocusDistance: INFINITE,
+        tooltip: {
+          use: tooltip,
+          content: (points: readonly ChartPoint[]): ChartTooltipContent => {
+            const d = points[0]?.datum as NetWorthPoint | undefined;
+            return d
+              ? {
+                  title: formatDateLabel(d.month),
+                  rows: [
+                    {
+                      label: 'Liabilities',
+                      value: formatCurrency(d.liabilities),
+                      color: chartColors.negativeLight,
+                    },
+                  ],
+                }
+              : { rows: [] };
+          },
+        },
+      }),
+    [data, labels, debtTop],
+  );
 
   if (isLoading) return <ChartSkeleton />;
   const hasData =
@@ -130,19 +219,6 @@ export function NetWorthChart({
   if (!hasData) return <EmptyState />;
 
   const trend = summary && summary.change < 0 ? chartColors.negative : chartColors.positive;
-  const showDebt = debtMax > 0;
-  const dot = (color: string) =>
-    data.length <= 24 ? { r: 3, fill: color, strokeWidth: 0 } : false;
-  const yAxisProps = {
-    tickFormatter: formatCentsAxis,
-    tick: { fontSize: 11, fill: chartColors.axis },
-    axisLine: false,
-    tickLine: false,
-    width: 60,
-    // The ticks are already picked to fit; Recharts would otherwise drop the bottom one
-    interval: 0,
-  };
-  const margin = { right: 24, left: 16 };
 
   return (
     <div className="w-full h-full flex flex-col">
@@ -165,75 +241,14 @@ export function NetWorthChart({
       </div>
 
       <div className="flex-[3] min-h-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} syncId="net-worth" margin={{ ...margin, top: 8, bottom: 8 }}>
-            <defs>
-              <linearGradient id="gNet" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={chartColors.brand} stopOpacity={0.25} />
-                <stop offset="95%" stopColor={chartColors.brand} stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
-            <XAxis
-              dataKey="month"
-              hide={showDebt}
-              axisLine={false}
-              tickLine={false}
-              {...xAxis.axisProps}
-            />
-            <YAxis {...yAxisProps} domain={yAxis.domain} ticks={yAxis.ticks} />
-            <Tooltip content={<NetWorthTooltip />} />
-            <Line
-              type="monotone"
-              dataKey="assets"
-              name="Assets"
-              stroke={chartColors.positiveLight}
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4 }}
-            />
-            <Area
-              type="monotone"
-              dataKey="netWorth"
-              name="Net worth"
-              stroke={chartColors.brand}
-              strokeWidth={2.5}
-              fill="url(#gNet)"
-              baseValue={yAxis.domain[0]}
-              dot={dot(chartColors.brand)}
-              activeDot={{ r: 4.5 }}
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
+        <FillChart definition={main} ariaLabel="Net worth and assets over time" />
       </div>
 
       {showDebt && (
-        <div
-          ref={xAxis.ref}
-          className="flex-1 min-h-[72px] max-h-[140px] mt-1 pt-1 border-t border-border-light"
-        >
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} syncId="net-worth" margin={{ ...margin, top: 6, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
-              <XAxis dataKey="month" axisLine={false} tickLine={false} {...xAxis.axisProps} />
-              <YAxis {...yAxisProps} domain={[0, debtTop]} ticks={[0, debtTop]} />
-              <Tooltip content={() => null} />
-              <Area
-                type="monotone"
-                dataKey="liabilities"
-                name="Liabilities"
-                stroke={chartColors.negativeLight}
-                strokeWidth={2}
-                fill={chartColors.negativeLight}
-                fillOpacity={0.15}
-                dot={false}
-                activeDot={{ r: 4 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+        <div className="flex-1 min-h-[72px] max-h-[140px] mt-1 pt-1 border-t border-border-light">
+          <FillChart definition={debt} ariaLabel="Liabilities over time" />
         </div>
       )}
-      {!showDebt && <div ref={xAxis.ref} className="h-0" />}
     </div>
   );
 }
@@ -241,51 +256,49 @@ export function NetWorthChart({
 export function IncomeExpensesChart({ from, to }: { from: string; to: string }) {
   const { data = [], isLoading } = useIncomeVsExpenses(from, to);
   const chartData = useMemo(() => data.map((d) => ({ ...d, month: monthLabel(d.month) })), [data]);
-  const monthLabels = useMemo(() => chartData.map((d) => d.month), [chartData]);
-  const xAxis = useXAxisLayout({ labels: monthLabels, kind: 'band', ordered: true, inset: INSET });
+
+  const rows = useMemo(
+    () =>
+      chartData.flatMap((d) => [
+        { month: d.month, series: 'Income', value: d.income, net: d.net },
+        { month: d.month, series: 'Expenses', value: d.expenses, net: d.net },
+      ]),
+    [chartData],
+  );
+
+  const definition = useMemo(
+    () =>
+      defineChart({
+        marks: [
+          barY(rows, {
+            x: 'month',
+            y: 'value',
+            z: 'series',
+            layout: group({ padding: 0.12 }),
+            fill: (d) => (d.series === 'Income' ? chartColors.positive : chartColors.negativeLight),
+            radius: [4, 4, 0, 0],
+            maxThickness: 24,
+          }),
+        ],
+        scales: { x: bandScale(), y: valueScale() },
+        focus: 'group-x',
+        maxFocusDistance: INFINITE,
+        tooltip: currencyTooltip({
+          colors: { Income: chartColors.positive, Expenses: chartColors.negativeLight },
+          summary: (points) => {
+            const row = (points[0] as any)?.datum as { net: number } | undefined;
+            return row ? { label: 'Net', value: row.net } : null;
+          },
+        }),
+      }),
+    [rows],
+  );
 
   if (isLoading) return <ChartSkeleton />;
   const hasData = chartData.length > 0 && data.some((d) => d.income !== 0 || d.expenses !== 0);
   if (!hasData) return <EmptyState />;
 
-  return (
-    <div ref={xAxis.ref} className="w-full h-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData} margin={{ top: 4, right: 16, left: 16, bottom: 0 }} barGap={2}>
-          <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
-          <XAxis dataKey="month" axisLine={false} tickLine={false} {...xAxis.axisProps} />
-          <YAxis
-            tickFormatter={formatCentsAxis}
-            tick={{ fontSize: 11, fill: chartColors.axis }}
-            axisLine={false}
-            tickLine={false}
-            width={60}
-          />
-          <Tooltip
-            content={
-              <CurrencyTooltip
-                summary={(payload: any[]) => ({ label: 'Net', value: payload[0].payload.net })}
-              />
-            }
-          />
-          <Bar
-            dataKey="income"
-            name="Income"
-            fill={chartColors.positive}
-            radius={[3, 3, 0, 0]}
-            maxBarSize={32}
-          />
-          <Bar
-            dataKey="expenses"
-            name="Expenses"
-            fill={chartColors.negativeLight}
-            radius={[3, 3, 0, 0]}
-            maxBarSize={32}
-          />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
+  return <FillChart definition={definition} ariaLabel="Income and expenses by month" />;
 }
 
 export function SpendingChart({ from, to }: { from: string; to: string }) {
@@ -310,42 +323,51 @@ export function SpendingChart({ from, to }: { from: string; to: string }) {
   // Shares are of all spending, not just the ten categories drawn
   const total = useMemo(() => data.reduce((s, d) => s + d.totalSpent, 0), [data]);
 
+  const definition = useMemo(
+    () =>
+      defineChart({
+        marks: [
+          barX(chartData, {
+            x: 'value',
+            y: 'name',
+            fill: (d) => d.color,
+            radius: [0, 4, 4, 0],
+            maxThickness: 18,
+            inset: 1,
+          }),
+        ],
+        scales: {
+          x: {
+            ...valueScale(),
+            axis: { line: false, ticks: { size: 0, count: 4, format: formatCentsAxis } },
+          },
+          y: { ...bandScale(undefined, 0.3), grid: false },
+        },
+        focus: 'nearest-y',
+        maxFocusDistance: INFINITE,
+        tooltip: {
+          use: tooltip,
+          content: (points: readonly ChartPoint[]): ChartTooltipContent => {
+            const d = points[0]?.datum as (typeof chartData)[number] | undefined;
+            if (!d) return { rows: [] };
+            const share = total > 0 ? ` · ${((d.value / total) * 100).toFixed(1)}%` : '';
+            return {
+              title: d.fullName,
+              color: d.color,
+              rows: [
+                { label: 'Spent', value: `${formatCurrency(d.value)}${share}`, color: d.color },
+              ],
+            };
+          },
+        },
+      }),
+    [chartData, total],
+  );
+
   if (isLoading) return <ChartSkeleton />;
   if (!chartData.length) return <EmptyState />;
 
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart
-        data={chartData}
-        layout="vertical"
-        margin={{ top: 4, right: 24, left: 8, bottom: 0 }}
-      >
-        <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} horizontal={false} />
-        <XAxis
-          type="number"
-          tickFormatter={formatCentsAxis}
-          tick={{ fontSize: 11, fill: chartColors.axis }}
-          axisLine={false}
-          tickLine={false}
-        />
-        <YAxis
-          type="category"
-          dataKey="name"
-          tick={{ fontSize: 11, fill: chartColors.axis }}
-          axisLine={false}
-          tickLine={false}
-          width={160}
-          interval={0}
-        />
-        <Tooltip content={<ShareTooltip total={total} />} />
-        <Bar dataKey="value" name="Spent" radius={[0, 3, 3, 0]} maxBarSize={20}>
-          {chartData.map((d, i) => (
-            <Cell key={i} fill={d.color} />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  );
+  return <FillChart definition={definition} ariaLabel="Spending by category" />;
 }
 
 /** Summary's full view: expenses (net of refunds) per month against the monthly average. */
@@ -355,55 +377,59 @@ export function MonthlySpendingChart({ from, to }: { from: string; to: string })
     () => data.map((d) => ({ month: monthLabel(d.month), spending: -d.expenseNet })),
     [data],
   );
-  const monthLabels = useMemo(() => chartData.map((d) => d.month), [chartData]);
-  const xAxis = useXAxisLayout({ labels: monthLabels, kind: 'band', ordered: true, inset: INSET });
   const average = chartData.length
     ? chartData.reduce((s, d) => s + d.spending, 0) / chartData.length
     : 0;
+
+  const definition = useMemo(
+    () =>
+      defineChart({
+        marks: [
+          barY(chartData, {
+            x: 'month',
+            y: 'spending',
+            z: () => 'Expenses',
+            fill: chartColors.negativeLight,
+            radius: [4, 4, 0, 0],
+            maxThickness: 36,
+            inset: 1,
+          }),
+          ...(chartData.length > 1
+            ? [
+                decorative(
+                  ruleY([average], {
+                    stroke: chartColors.label,
+                    strokeDasharray: '4 4',
+                    strokeOpacity: 0.8,
+                  }),
+                ),
+              ]
+            : []),
+        ],
+        scales: { x: bandScale(), y: valueScale() },
+        focus: 'nearest-x',
+        maxFocusDistance: INFINITE,
+        tooltip: currencyTooltip({
+          colors: { Expenses: chartColors.negativeLight },
+          summary: () => ({ label: 'Monthly average', value: average }),
+        }),
+      }),
+    [chartData, average],
+  );
 
   if (isLoading) return <ChartSkeleton />;
   if (!chartData.some((d) => d.spending !== 0)) return <EmptyState />;
 
   return (
-    <div ref={xAxis.ref} className="w-full h-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData} margin={{ top: 4, right: 16, left: 16, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
-          <XAxis dataKey="month" axisLine={false} tickLine={false} {...xAxis.axisProps} />
-          <YAxis
-            tickFormatter={formatCentsAxis}
-            tick={{ fontSize: 11, fill: chartColors.axis }}
-            axisLine={false}
-            tickLine={false}
-            width={60}
-          />
-          <Tooltip
-            content={
-              <CurrencyTooltip summary={() => ({ label: 'Monthly average', value: average })} />
-            }
-          />
-          <Bar
-            dataKey="spending"
-            name="Expenses"
-            fill={chartColors.negativeLight}
-            radius={[3, 3, 0, 0]}
-            maxBarSize={40}
-          />
-          {chartData.length > 1 && (
-            <ReferenceLine
-              y={average}
-              stroke={chartColors.label}
-              strokeDasharray="4 4"
-              label={{
-                value: `Avg ${formatCurrency(Math.round(average))}`,
-                position: 'insideTopRight',
-                fontSize: 11,
-                fill: chartColors.label,
-              }}
-            />
-          )}
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="w-full h-full flex flex-col">
+      {chartData.length > 1 && (
+        <p className="text-2xs text-text-tertiary px-1 pb-1 shrink-0">
+          Dashed line: monthly average {formatCurrency(Math.round(average))}
+        </p>
+      )}
+      <div className="flex-1 min-h-0">
+        <FillChart definition={definition} ariaLabel="Monthly spending against the average" />
+      </div>
     </div>
   );
 }
@@ -485,84 +511,90 @@ export function SpendingTrendsChart({
   }, [trendData, categoryIds, daily, from, to]);
 
   const single = chartData.length === 1;
-  const monthLabels = useMemo(
-    () =>
-      daily
-        ? formatDateAxisLabels(chartData.map((d) => String(d.month)))
-        : chartData.map((d) => String(d.month)),
-    [chartData, daily],
-  );
-  const xAxis = useXAxisLayout({
-    labels: monthLabels,
-    // One point can't make a line, so it shows as bars
-    kind: single ? 'band' : 'point',
-    ordered: true,
-    inset: INSET,
-  });
+  const axisLabels = useMemo(() => {
+    const keys = chartData.map((d) => String(d.month));
+    const out = daily ? formatDateAxisLabels(keys) : keys;
+    return new Map(keys.map((k, i) => [k, out[i]] as [string, string]));
+  }, [chartData, daily]);
 
-  const TrendChart = single ? BarChart : LineChart;
+  const definition = useMemo(() => {
+    const colors: Record<string, string> = {};
+    categoryIds.forEach((_, i) => (colors[names[i]] = EXPENSE_COLORS[i % EXPENSE_COLORS.length]));
+    const marks = single
+      ? [
+          barY(
+            categoryIds.map((id, i) => ({
+              month: String(chartData[0].month),
+              series: names[i],
+              value: Number((chartData[0] as Record<string, unknown>)[id] ?? 0),
+            })),
+            {
+              x: 'month',
+              y: 'value',
+              z: 'series',
+              layout: group({ padding: 0.12 }),
+              fill: (d) => colors[d.series],
+              radius: [4, 4, 0, 0],
+              maxThickness: 32,
+            },
+          ),
+        ]
+      : categoryIds.map((id, i) => {
+          const color = EXPENSE_COLORS[i % EXPENSE_COLORS.length];
+          return lineY(chartData, {
+            x: 'month',
+            y: (d) => Number((d as Record<string, unknown>)[id] ?? 0),
+            z: () => names[i],
+            stroke: color,
+            strokeWidth: 2,
+            curve: daily ? stepAfter : smooth,
+          });
+        });
+    return defineChart({
+      marks,
+      scales: {
+        x: single ? bandScale(labelFor(axisLabels)) : pointScale(labelFor(axisLabels)),
+        y: valueScale(),
+      },
+      focus: 'group-x',
+      maxFocusDistance: INFINITE,
+      tooltip: currencyTooltip({
+        colors,
+        title: (x) => (daily ? formatDateLabel(x) : x),
+        summary: (points) => {
+          if (points.length < 2) return null;
+          return {
+            label: 'Total',
+            value: points.reduce((s, p) => s + (Number(p.yValue) || 0), 0),
+          };
+        },
+      }),
+    });
+  }, [chartData, categoryIds, names, single, daily, axisLabels]);
+
+  if (isLoading) return <ChartSkeleton />;
+  if (!categoryIds.length || !chartData.length) return <EmptyState />;
 
   return (
-    <div ref={xAxis.ref} className="w-full h-full">
-      {isLoading ? (
-        <ChartSkeleton />
-      ) : !categoryIds.length || !chartData.length ? (
-        <EmptyState />
-      ) : (
-        <div className="h-full flex flex-col">
-          {(caption || daily) && (
-            <p className="text-2xs text-text-tertiary px-1 pb-1 shrink-0">
-              {caption
-                ? `${caption}${daily ? ' · running total' : ''}`
-                : 'Running total this month'}
-            </p>
-          )}
-          <div className="flex-1 min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <TrendChart data={chartData} margin={{ top: 4, right: 16, left: 16, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
-                <XAxis dataKey="month" axisLine={false} tickLine={false} {...xAxis.axisProps} />
-                <YAxis
-                  tickFormatter={formatCentsAxis}
-                  tick={{ fontSize: 11, fill: chartColors.axis }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={60}
-                />
-                <Tooltip
-                  content={<CurrencyTooltip summary={sumSeries} />}
-                  labelFormatter={daily ? formatDateLabel : undefined}
-                />
-                <Legend wrapperStyle={{ fontSize: 11 }} iconSize={8} />
-                {categoryIds.map((id, i) => {
-                  const color = EXPENSE_COLORS[i % EXPENSE_COLORS.length];
-                  return single ? (
-                    <Bar
-                      key={id}
-                      dataKey={id}
-                      name={names[i]}
-                      fill={color}
-                      radius={[4, 4, 0, 0]}
-                      maxBarSize={48}
-                    />
-                  ) : (
-                    <Line
-                      key={id}
-                      type={daily ? 'stepAfter' : 'monotone'}
-                      dataKey={id}
-                      name={names[i]}
-                      stroke={color}
-                      strokeWidth={2}
-                      dot={false}
-                      connectNulls
-                    />
-                  );
-                })}
-              </TrendChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+    <div className="h-full flex flex-col">
+      {(caption || daily) && (
+        <p className="text-2xs text-text-tertiary px-1 pb-1 shrink-0">
+          {caption ? `${caption}${daily ? ' · running total' : ''}` : 'Running total this month'}
+        </p>
       )}
+      <div className="flex items-center gap-3 flex-wrap px-1 pb-1 text-2xs text-text-secondary shrink-0">
+        {categoryIds.map((id, i) => (
+          <LegendKey
+            key={id}
+            color={EXPENSE_COLORS[i % EXPENSE_COLORS.length]}
+            label={names[i]}
+            line={!single}
+          />
+        ))}
+      </div>
+      <div className="flex-1 min-h-0">
+        <FillChart definition={definition} ariaLabel="Spending trends by category" />
+      </div>
     </div>
   );
 }

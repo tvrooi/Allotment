@@ -27,7 +27,6 @@ import {
   visibleCards,
   type HomeCardId,
   type HomeLayout,
-  type FormFactor,
 } from '../utils/homeCards';
 import { Tip } from '../components/guide/Tip';
 import { TIPS } from '../guides';
@@ -46,7 +45,7 @@ function Reminder() {
 }
 
 /** Use the same ordered next steps and destinations as Review and its sidebar count. */
-function ReviewAttention({ refined = false }: { refined?: boolean }) {
+function ReviewAttention() {
   const steps = useNextSteps();
   const first = steps[0];
   if (!first) return null;
@@ -60,21 +59,17 @@ function ReviewAttention({ refined = false }: { refined?: boolean }) {
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-text">
             <Link
-              to={refined ? first.to : '/review'}
+              to={first.to}
               className="inline-flex min-h-11 items-center hover:underline underline-offset-4"
             >
-              {refined
-                ? first.title
-                : `${steps.length} ${steps.length === 1 ? 'next step' : 'next steps'} for your budget`}
+              {first.title}
             </Link>
           </h2>
           <Link
-            to={refined ? '/review' : first.to}
-            className={`inline-flex items-center min-h-11 underline underline-offset-4 ${refined ? 'text-xs text-text-secondary hover:text-text' : 'text-sm text-brand-600 hover:text-brand-700'}`}
+            to="/review"
+            className="inline-flex items-center min-h-11 text-xs text-text-secondary underline underline-offset-4 hover:text-text"
           >
-            {refined
-              ? `${steps.length} ${steps.length === 1 ? 'next step' : 'next steps'} for your budget`
-              : first.title}
+            {`${steps.length} ${steps.length === 1 ? 'next step' : 'next steps'} for your budget`}
           </Link>
         </div>
       </div>
@@ -88,7 +83,7 @@ function ReviewAttention({ refined = false }: { refined?: boolean }) {
   );
 }
 
-function HomeCard({ id, refined, phone }: { id: HomeCardId; refined: boolean; phone: boolean }) {
+function HomeCard({ id, phone }: { id: HomeCardId; phone: boolean }) {
   switch (id) {
     case 'net-worth':
       return <NetWorthMini />;
@@ -97,8 +92,7 @@ function HomeCard({ id, refined, phone }: { id: HomeCardId; refined: boolean; ph
         <SummaryStats
           currentMonth={currentMonth}
           sixMonthsAgo={sixMonthsAgo}
-          refined={refined}
-          section={refined && phone ? 'current' : 'all'}
+          section={phone ? 'current' : 'all'}
         />
       );
     case 'income-expenses':
@@ -108,7 +102,7 @@ function HomeCard({ id, refined, phone }: { id: HomeCardId; refined: boolean; ph
     case 'budget-progress':
       return <BudgetProgress currentMonth={currentMonth} />;
     case 'upcoming-bills':
-      return <UpcomingBills refined={refined} />;
+      return <UpcomingBills />;
     case 'spending-breakdown':
       return <SpendingBreakdown currentMonth={currentMonth} />;
     case 'recent-transactions':
@@ -118,19 +112,12 @@ function HomeCard({ id, refined, phone }: { id: HomeCardId; refined: boolean; ph
 
 const isWide = (id: HomeCardId) => HOME_CARDS.find((c) => c.id === id)?.wide;
 
-export default function Dashboard({ refined = false }: { refined?: boolean }) {
+export default function Dashboard() {
   const factor = useIsPhone() ? 'phone' : 'desktop';
   const saved = usePreferencesStore((s) => s.homeLayouts[factor]);
   const setHomeLayout = usePreferencesStore((s) => s.setHomeLayout);
-  const [previewLayouts, setPreviewLayouts] = useState<Partial<Record<FormFactor, HomeLayout>>>({});
-  const changeLayout = (next: HomeLayout | null) =>
-    refined
-      ? setPreviewLayouts((previous) => ({
-          ...previous,
-          [factor]: next ?? normalizeLayout(null, factor),
-        }))
-      : setHomeLayout(factor, next);
-  const layout = normalizeLayout(refined ? (previewLayouts[factor] ?? saved) : saved, factor);
+  const changeLayout = (next: HomeLayout | null) => setHomeLayout(factor, next);
+  const layout = normalizeLayout(saved, factor);
   const cards = visibleCards(layout);
   const historyAfter = cards.includes('budget-progress')
     ? 'budget-progress'
@@ -157,7 +144,7 @@ export default function Dashboard({ refined = false }: { refined?: boolean }) {
           hidden (empty:hidden), and a hidden block takes no gap. */}
       <div className="p-8 max-md:p-4 max-w-[1400px] mx-auto flex flex-col gap-6 max-md:gap-4">
         <div className="flex items-start justify-between gap-3 md:items-center md:gap-4">
-          <DashboardStatus currentMonth={currentMonth} refined={refined} />
+          <DashboardStatus currentMonth={currentMonth} />
           <Button
             variant="secondary"
             size="sm"
@@ -176,7 +163,7 @@ export default function Dashboard({ refined = false }: { refined?: boolean }) {
           <GettingStarted currentMonth={currentMonth} onVisibleChange={onChecklistChange} />
         </div>
 
-        {!onboarding && <ReviewAttention refined={refined} />}
+        {!onboarding && <ReviewAttention />}
 
         {cards.length === 0 ? (
           <EmptyState
@@ -192,31 +179,25 @@ export default function Dashboard({ refined = false }: { refined?: boolean }) {
             }
           />
         ) : (
-          // Rows take their tallest card's height, so side-by-side cards line up
-          <div
-            className={`grid grid-cols-1 lg:grid-cols-2 gap-6 max-md:gap-4 ${refined ? 'items-start' : ''}`}
-          >
+          // Each card keeps its own height, so a short card doesn't stretch beside a tall one
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-md:gap-4 items-start">
             {cards.map((id) => (
               <Fragment key={id}>
                 <section
                   data-testid={`home-card-${id}`}
-                  className={`min-w-0 ${refined ? '' : '[&>*]:h-full'} ${isWide(id) ? 'lg:col-span-2' : ''}`}
+                  className={`min-w-0 ${isWide(id) ? 'lg:col-span-2' : ''}`}
                 >
-                  <HomeCard id={id} refined={refined} phone={factor === 'phone'} />
+                  <HomeCard id={id} phone={factor === 'phone'} />
                 </section>
-                {refined &&
-                  factor === 'phone' &&
-                  cards.includes('summary') &&
-                  id === historyAfter && (
-                    <section data-testid="home-history" className="min-w-0">
-                      <SummaryStats
-                        currentMonth={currentMonth}
-                        sixMonthsAgo={sixMonthsAgo}
-                        refined
-                        section="history"
-                      />
-                    </section>
-                  )}
+                {factor === 'phone' && cards.includes('summary') && id === historyAfter && (
+                  <section data-testid="home-history" className="min-w-0">
+                    <SummaryStats
+                      currentMonth={currentMonth}
+                      sixMonthsAgo={sixMonthsAgo}
+                      section="history"
+                    />
+                  </section>
+                )}
               </Fragment>
             ))}
           </div>
@@ -235,7 +216,6 @@ export default function Dashboard({ refined = false }: { refined?: boolean }) {
         {/* Not part of the cards: further from them than they are from each other */}
         <HelpFooter className="mt-4" />
         <CustomizeHome
-          preview={refined}
           isOpen={customizing}
           onClose={() => setCustomizing(false)}
           factor={factor}

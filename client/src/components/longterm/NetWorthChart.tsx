@@ -1,19 +1,19 @@
 import { useMemo } from 'react';
-import {
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ReferenceDot,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { defineChart, lineY } from '@tanstack/charts';
+import type { ChartMark, ChartPoint } from '@tanstack/charts';
+import { dot } from '@tanstack/charts/dot';
+import { decorative } from '@tanstack/charts/mark/decorative';
+import { ruleX, ruleY } from '@tanstack/charts/rule';
+import { scaleLinear } from '@tanstack/charts/scales/linear';
+import { text } from '@tanstack/charts/text';
+import { tooltip } from '@tanstack/charts/tooltip';
+import type { ChartTooltipContent } from '@tanstack/charts/tooltip';
+import { FillChart } from '../charts/FillChart';
+import { LegendKey } from '../charts/ChartLegend';
+import { smooth, valueScale } from '../charts/kit';
 import type { Comparison, PlanEvent, YearResult } from '../../api/longTerm';
 import { chartColors } from '../../utils/chartColors';
-import { formatCentsAxis, formatCurrency } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 import { eventYear, inDollars, kindLabel, type Dollars } from '../../utils/longTerm';
 
 /** Where a plan year's closing balance sits on the x axis: today, then one year further on each */
@@ -32,8 +32,8 @@ interface Row {
   reference?: number;
 }
 
-// Inline, because index.css clears the dash recharts leaves on a line after it animates
-const DOTTED = { strokeDasharray: '0.1 5' };
+// Round-capped near-zero dashes draw a dotted line
+const DOTTED = '0.1 5';
 
 const GLYPH: Record<PlanEvent['kind'], string> = {
   home: 'H',
@@ -95,140 +95,189 @@ export function NetWorthChart({
       }),
     [years, startYear, mode, comparison],
   );
-  const markers = events
-    .filter((e) => e.enabled)
-    .map((e) => ({ e, year: eventYear(e.start, birthYear) }))
-    .map(({ e, year }) => ({ e, row: rows.find((r) => r.year === year) }))
-    .filter((m): m is { e: PlanEvent; row: Row } => m.row !== undefined);
-  const selectedRow = rows.find((r) => r.index === selected);
+  const markers = useMemo(
+    () =>
+      events
+        .filter((e) => e.enabled)
+        .map((e) => ({ e, year: eventYear(e.start, birthYear) }))
+        .map(({ e, year }) => ({ e, row: rows.find((r) => r.year === year) }))
+        .filter((m): m is { e: PlanEvent; row: Row } => m.row !== undefined),
+    [events, rows, birthYear],
+  );
+  const selectedRow = useMemo(() => rows.find((r) => r.index === selected), [rows, selected]);
   // Without a comparison, show when the money can be spent: accessible now beside preserved super
   const split = !comparison && rows.some((r) => r.preserved !== 0);
 
+  const ACCESSIBLE = 'Accessible (cash, investments, released super)';
+  const definition = useMemo(() => {
+    const colors: Record<string, string> = {
+      [activeName]: chartColors.brand,
+      [ACCESSIBLE]: chartColors.positive,
+      'Preserved super': chartColors.caution,
+      [referenceName ?? 'Reference']: chartColors.caution,
+    };
+    // Data lines lead, so the year axis takes its range from them rather than a lone rule
+    const marks: ChartMark[] = [
+      lineY(rows, {
+        x: 'year',
+        y: 'active',
+        z: () => activeName,
+        stroke: chartColors.brand,
+        strokeWidth: 2.5,
+        curve: smooth,
+      }),
+      ...(split
+        ? [
+            lineY(rows, {
+              x: 'year',
+              y: 'accessible',
+              z: () => ACCESSIBLE,
+              stroke: chartColors.positive,
+              strokeWidth: 3,
+              strokeDasharray: DOTTED,
+              curve: smooth,
+            }),
+            lineY(rows, {
+              x: 'year',
+              y: 'preserved',
+              z: () => 'Preserved super',
+              stroke: chartColors.caution,
+              strokeWidth: 3,
+              strokeDasharray: DOTTED,
+              curve: smooth,
+            }),
+          ]
+        : []),
+      ...(comparison
+        ? [
+            lineY(rows, {
+              x: 'year',
+              y: 'reference',
+              z: () => referenceName ?? 'Reference',
+              stroke: chartColors.caution,
+              strokeWidth: 2,
+              strokeDasharray: '6 4',
+              curve: smooth,
+            }),
+          ]
+        : []),
+      decorative(ruleY([0], { stroke: chartColors.axis, strokeOpacity: 0.4 })),
+      ...(selectedRow
+        ? [
+            decorative(
+              ruleX([selectedRow.year], {
+                stroke: chartColors.brand,
+                strokeDasharray: '2 2',
+              }),
+            ),
+          ]
+        : []),
+      // The ring where the forecasts leave from: today's net worth
+      decorative(
+        dot([rows[0]], {
+          x: 'year',
+          y: 'active',
+          r: 5,
+          fill: 'var(--color-surface, #fff)',
+          stroke: chartColors.brand,
+          strokeWidth: 2.5,
+        }),
+      ),
+      ...(markers.length
+        ? [
+            decorative(
+              dot(
+                markers.map(({ e, row }) => ({
+                  glyph: GLYPH[e.kind],
+                  year: row.year,
+                  y: row.active,
+                })),
+                {
+                  x: 'year',
+                  y: 'y',
+                  r: 9,
+                  fill: chartColors.brand,
+                  stroke: 'var(--color-surface, #fff)',
+                  strokeWidth: 2,
+                },
+              ),
+            ),
+            decorative(
+              text(
+                markers.map(({ e, row }) => ({
+                  glyph: GLYPH[e.kind],
+                  year: row.year,
+                  y: row.active,
+                })),
+                { x: 'year', y: 'y', text: 'glyph', fill: '#fff', fontSize: 10, fontWeight: 700 },
+              ),
+            ),
+          ]
+        : []),
+    ];
+    return defineChart({
+      marks,
+      scales: {
+        x: {
+          scale: scaleLinear,
+          axis: {
+            line: false,
+            ticks: { size: 0, count: 8, format: (v: number) => String(Math.round(v)) },
+          },
+        },
+        y: valueScale(),
+      },
+      focus: 'nearest-x',
+      maxFocusDistance: Number.POSITIVE_INFINITY,
+      tooltip: {
+        use: tooltip,
+        content: (points: readonly ChartPoint[]): ChartTooltipContent => {
+          const row = points[0]?.datum as Row | undefined;
+          if (!row) return { rows: [] };
+          return {
+            title: `${row.label} · age ${row.age}`,
+            rows: points.map((p) => ({
+              label: p.groupLabel,
+              value: formatCurrency(Number(p.yValue)),
+              color: colors[p.groupLabel],
+            })),
+          };
+        },
+      },
+    });
+  }, [rows, markers, selectedRow, split, comparison, activeName, referenceName]);
+
   return (
-    <div className="h-72 max-md:h-60" role="img" aria-label={`Net worth by year, ${activeName}`}>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          data={rows}
-          margin={{ top: 12, right: 12, bottom: 0, left: 0 }}
-          onClick={(state) => {
-            const index = (state as { activeTooltipIndex?: number | string }).activeTooltipIndex;
-            const row = rows[Number(index)];
-            if (row && row.index >= 1) onSelect(row.index);
-          }}
-        >
-          <CartesianGrid vertical={false} stroke={chartColors.grid} />
-          <XAxis
-            dataKey="year"
-            type="number"
-            domain={['dataMin', 'dataMax']}
-            tick={{ fontSize: 12, fill: chartColors.axis }}
-            tickCount={8}
-            tickMargin={8}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            tickFormatter={formatCentsAxis}
-            tick={{ fontSize: 12, fill: chartColors.axis }}
-            tickMargin={4}
-            axisLine={false}
-            tickLine={false}
-            width={64}
-          />
-          <Tooltip
-            content={({ active, payload }) =>
-              active && payload?.length ? (
-                <div className="bg-surface border border-border rounded-lg shadow-hover px-3 py-2 text-xs">
-                  <p className="text-text-tertiary mb-1">
-                    {(payload[0].payload as Row).label} · age {(payload[0].payload as Row).age}
-                  </p>
-                  {payload.map((p) => (
-                    <p key={String(p.name)} className="font-medium" style={{ color: p.color }}>
-                      {p.name}: {formatCurrency(Number(p.value))}
-                    </p>
-                  ))}
-                </div>
-              ) : null
-            }
-          />
-          <ReferenceLine y={0} stroke={chartColors.axis} strokeOpacity={0.4} />
-          {selectedRow && (
-            <ReferenceLine x={selectedRow.year} stroke={chartColors.brand} strokeDasharray="2 2" />
-          )}
-          <Line
-            type="monotone"
-            dataKey="active"
-            name={activeName}
-            stroke={chartColors.brand}
-            strokeWidth={2.5}
-            dot={false}
-            isAnimationActive={false}
-          />
+    <div>
+      {(comparison || split) && (
+        <div className="flex items-center gap-3 flex-wrap pb-2 text-xs text-text-secondary">
+          <LegendKey color={chartColors.brand} label={activeName} line />
           {split && (
-            <Line
-              type="monotone"
-              dataKey="accessible"
-              name="Accessible (cash, investments, released super)"
-              stroke={chartColors.positive}
-              strokeWidth={3}
-              strokeLinecap="round"
-              style={DOTTED}
-              dot={false}
-              isAnimationActive={false}
-            />
-          )}
-          {split && (
-            <Line
-              type="monotone"
-              dataKey="preserved"
-              name="Preserved super"
-              stroke={chartColors.caution}
-              strokeWidth={3}
-              strokeLinecap="round"
-              style={DOTTED}
-              dot={false}
-              isAnimationActive={false}
-            />
+            <>
+              <LegendKey color={chartColors.positive} label={ACCESSIBLE} line dashed />
+              <LegendKey color={chartColors.caution} label="Preserved super" line dashed />
+            </>
           )}
           {comparison && (
-            <Line
-              type="monotone"
-              dataKey="reference"
-              name={referenceName ?? 'Reference'}
-              stroke={chartColors.caution}
-              strokeWidth={2}
-              strokeDasharray="6 4"
-              dot={false}
-              isAnimationActive={false}
+            <LegendKey
+              color={chartColors.caution}
+              label={referenceName ?? 'Reference'}
+              line
+              dashed
             />
           )}
-          {/* The ring where the forecasts leave from: today's net worth */}
-          <ReferenceDot
-            x={rows[0].year}
-            y={rows[0].active}
-            r={5}
-            fill="var(--color-surface, #fff)"
-            stroke={chartColors.brand}
-            strokeWidth={2.5}
-            ifOverflow="visible"
-          />
-          {markers.map(({ e, row }) => (
-            <ReferenceDot
-              key={e.id}
-              x={row.year}
-              y={row.active}
-              r={9}
-              fill={chartColors.brand}
-              stroke="var(--color-surface, #fff)"
-              strokeWidth={2}
-              ifOverflow="visible"
-              label={{ value: GLYPH[e.kind], fill: '#fff', fontSize: 10, fontWeight: 700 }}
-              aria-label={`${kindLabel(e.kind)}: ${e.name}, ${row.year}`}
-            />
-          ))}
-          {(comparison || split) && <Legend iconType="plainline" wrapperStyle={{ fontSize: 12 }} />}
-        </LineChart>
-      </ResponsiveContainer>
+        </div>
+      )}
+      <div className="h-72 max-md:h-60">
+        <FillChart
+          definition={definition}
+          ariaLabel={`Net worth by year, ${activeName}`}
+          onSelect={(point) => {
+            const row = point?.datum as Row | undefined;
+            if (row && row.index >= 1) onSelect(row.index);
+          }}
+        />
+      </div>
     </div>
   );
 }

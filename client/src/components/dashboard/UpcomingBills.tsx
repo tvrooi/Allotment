@@ -13,8 +13,8 @@ import { formatShortDay } from '../../utils/dates';
 import { groupOccurrences } from '../recurring/scheduleFormat';
 import { useIsPhone } from '../../hooks/useIsPhone';
 
-export default function UpcomingBills({ refined = false }: { refined?: boolean }) {
-  const compact = useIsPhone() && refined;
+export default function UpcomingBills() {
+  const compact = useIsPhone();
   const today = format(new Date(), 'yyyy-MM-dd');
   const thirtyDaysOut = format(addDays(new Date(), 30), 'yyyy-MM-dd');
 
@@ -71,7 +71,7 @@ export default function UpcomingBills({ refined = false }: { refined?: boolean }
         </Link>
       </div>
 
-      {refined && <p className="text-xs text-text-tertiary -mt-2 mb-4">Next 30 days</p>}
+      <p className="text-xs text-text-tertiary -mt-2 mb-4">Next 30 days</p>
       {upcoming.length === 0 ? (
         schedules.length === 0 ? (
           <EmptyState
@@ -119,7 +119,7 @@ export default function UpcomingBills({ refined = false }: { refined?: boolean }
                   ))}
                 </div>
               )}
-              {refined && list.total > list.rows.length && (
+              {list.total > list.rows.length && (
                 <Link
                   to="/recurring"
                   className="inline-flex min-h-11 items-center text-xs font-medium text-brand-600 underline underline-offset-4"

@@ -17,17 +17,16 @@ import { usePreferencesStore } from '../../store/preferencesStore';
 interface Props {
   currentMonth: string;
   sixMonthsAgo: string;
-  refined?: boolean;
   section?: 'all' | 'current' | 'history';
 }
 
 const GOAL_OPTIONS = [10, 15, 20, 25, 30];
 
-export default function SummaryStats({ currentMonth, refined = false, section = 'all' }: Props) {
+export default function SummaryStats({ currentMonth, section = 'all' }: Props) {
   const [editingGoal, setEditingGoal] = useState(false);
   const isPhone = useIsPhone();
   const phoneTile = isPhone ? '!border-0 !shadow-none !bg-transparent !p-0' : undefined;
-  const desktopHierarchy = refined && !isPhone;
+  const desktopHierarchy = !isPhone;
   const currentTile = desktopHierarchy
     ? '!basis-[calc(40%-1rem)] [&>p:nth-child(2)]:text-3xl [&>p:nth-child(2)]:leading-10'
     : phoneTile;
@@ -132,14 +131,12 @@ export default function SummaryStats({ currentMonth, refined = false, section = 
               className={historyTile}
               label={isPhone ? 'Income / month' : 'Avg monthly income'}
               value={formatCurrency(avgIncome)}
-              sub={isPhone || refined ? undefined : periodNote}
               valueColor={avgIncome > 0 ? 'text-positive' : undefined}
             />
             <StatCard
               className={historyTile}
               label={isPhone ? 'Expenses / month' : 'Avg monthly expenses'}
               value={formatCurrency(avgExpenses)}
-              sub={isPhone || refined ? undefined : periodNote}
               // Spending isn't an error: red is kept for overspent and negative balances
             />
             <div
@@ -159,7 +156,7 @@ export default function SummaryStats({ currentMonth, refined = false, section = 
                 }
               >
                 <p className="text-xs font-medium text-text-secondary">Savings rate</p>
-                {refined && !editingGoal ? (
+                {!editingGoal ? (
                   <button
                     type="button"
                     aria-label="Edit savings target"
@@ -175,7 +172,7 @@ export default function SummaryStats({ currentMonth, refined = false, section = 
                     value={savingsGoal}
                     onChange={(e) => {
                       setSavingsGoal(Number(e.target.value));
-                      if (refined) setEditingGoal(false);
+                      setEditingGoal(false);
                     }}
                     className={`w-auto ${desktopHierarchy ? 'order-last self-start mt-2' : ''}`}
                   >
@@ -199,14 +196,11 @@ export default function SummaryStats({ currentMonth, refined = false, section = 
                   <p className="text-xs text-text-tertiary mt-0.5">Shown once you have income</p>
                 </>
               )}
-              {!isPhone && !refined && (
-                <p className="text-xs text-text-tertiary mt-0.5">{periodNote}</p>
-              )}
             </div>
           </>
         )}
       </StatGrid>
-      {refined && !isPhone && section !== 'current' && (
+      {!isPhone && section !== 'current' && (
         <p className="text-xs text-text-tertiary">Monthly averages &amp; savings · {periodNote}</p>
       )}
       <details className="group text-xs text-text-secondary">

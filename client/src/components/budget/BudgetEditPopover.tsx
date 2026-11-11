@@ -1,11 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { format, parseISO } from 'date-fns';
-import { BarChart, Bar, XAxis, YAxis, LabelList, ResponsiveContainer } from 'recharts';
+import { barY, defineChart } from '@tanstack/charts';
+import { text } from '@tanstack/charts/text';
 import { useCategoryHistory } from '../../hooks/useBudget';
 import { formatCentsAxis, formatCurrency } from '../../utils/currency';
 import { chartColors } from '../../utils/chartColors';
 import { BulkPreview } from './BulkPreview';
-import { useXAxisLayout } from '../../hooks/useXAxisLayout';
+import { FillChart } from '../charts/FillChart';
+import { bandScale, valueScale } from '../charts/kit';
 
 interface BudgetEditPopoverProps {
   categoryId: string;
@@ -47,21 +49,48 @@ export function BudgetEditPopover({
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  const chartData = (data?.history ?? []).map((h) => ({
-    month: format(parseISO(`${h.month}-01`), 'MMM'),
-    amount: h.amount / 100,
-  }));
+  const chartData = useMemo(
+    () =>
+      (data?.history ?? []).map((h) => ({
+        month: format(parseISO(`${h.month}-01`), 'MMM'),
+        amount: h.amount / 100,
+      })),
+    [data],
+  );
 
   const hasData = chartData.some((d) => d.amount > 0);
   // Past spending is ordinary history, not a problem: the chart colour, not the error red
   const barColor = isIncome ? chartColors.positive : chartColors.brand;
-  const xAxis = useXAxisLayout({
-    labels: chartData.map((d) => d.month),
-    kind: 'band',
-    ordered: true,
-    fontSize: 10,
-    inset: { left: 30, right: 2 },
-  });
+  const definition = useMemo(() => {
+    // Dollars here: the axis and labels take cents, hidden in Safe mode
+    const cents = (v: number) => formatCentsAxis(Math.round(v * 100));
+    return defineChart({
+      marks: [
+        barY(chartData, {
+          x: 'month',
+          y: 'amount',
+          fill: barColor,
+          radius: [3, 3, 0, 0],
+          maxThickness: 22,
+          inset: 1,
+        }),
+        text(chartData, {
+          x: 'month',
+          y: 'amount',
+          text: (d) => cents(d.amount),
+          dy: -7,
+          fontSize: 9,
+          fontWeight: 600,
+          fill: chartColors.label,
+        }),
+      ],
+      scales: {
+        x: bandScale(),
+        y: valueScale({ format: cents }),
+      },
+      margin: { top: 14 },
+    });
+  }, [chartData, barColor]);
 
   return (
     <div
@@ -110,29 +139,12 @@ export function BudgetEditPopover({
 
       <div className="bg-surface-alt rounded-lg p-3 mb-3">
         {hasData ? (
-          <div ref={xAxis.ref}>
-            <ResponsiveContainer width="100%" height={90}>
-              <BarChart data={chartData} margin={{ top: 14, right: 2, left: -10, bottom: 0 }}>
-                <XAxis dataKey="month" axisLine={false} tickLine={false} {...xAxis.axisProps} />
-                <YAxis
-                  tick={{ fontSize: 9, fill: chartColors.axis }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={40}
-                  domain={[0, 'auto']}
-                  // Dollars here: the axis takes cents, hidden in Safe mode
-                  tickFormatter={(v: number) => formatCentsAxis(Math.round(v * 100))}
-                />
-                <Bar dataKey="amount" fill={barColor} radius={[3, 3, 0, 0]}>
-                  <LabelList
-                    dataKey="amount"
-                    position="top"
-                    formatter={(v) => formatCentsAxis(Math.round(Number(v) * 100))}
-                    style={{ fontSize: 9, fontWeight: 600, fill: chartColors.label }}
-                  />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <div>
+            <FillChart
+              definition={definition}
+              height={90}
+              ariaLabel={`${isIncome ? 'Income' : 'Spending'} by month`}
+            />
             {chartData[chartData.length - 1]?.amount === 0 && (
               <p className="mt-1 text-2xs text-text-tertiary text-right">
                 {chartData[chartData.length - 1].month} has no {isIncome ? 'income' : 'spending'}{' '}

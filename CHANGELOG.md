@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.166
+
+- **The refined Dashboard is now the Dashboard.** The opening line says when your next pay arrives, and Left to spend leads the summary in a wider panel with a larger figure. The review prompt leads with the task and keeps the step count as a quieter link. Bills and income are labelled Next 30 days and link to the entries that don't fit, cards keep their own height, and the savings target is a quiet Target link that opens the dropdown. On phones, averages and savings follow the commitments. Customise saves for your device again, and the temporary `/dashboard/refined` route is gone. A `?theme=dark` or `?theme=light` link parameter pins one window's theme without changing your saved setting.
+
 ## 0.2.0-up.165
 
 - **The Forecast page leads with the answer.** Long term opens with the plan select and a Plan actions menu, then one headline sentence and a large net-worth figure, with the supporting numbers in a compact row; duplicate and empty cards are gone and long-range amounts show in whole dollars. A forecast with no income now says so first, with buttons to enter take-home pay or set up a payday plan. Both charts draw a ring at today with dotted forecast lines, minimal gridlines and 12px labels, and the phone header keeps the dollars toggle full width. The Sort it link in the uncategorised notice has a 44px tap target on phones.

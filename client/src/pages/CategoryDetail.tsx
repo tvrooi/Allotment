@@ -4,16 +4,12 @@ import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { ChevronRight } from 'lucide-react';
-import {
-  BarChart,
-  Bar,
-  Cell,
-  XAxis,
-  YAxis,
-  LabelList,
-  ResponsiveContainer,
-  Tooltip,
-} from 'recharts';
+import { barY, defineChart } from '@tanstack/charts';
+import type { ChartPoint } from '@tanstack/charts';
+import { text } from '@tanstack/charts/text';
+import { tooltip } from '@tanstack/charts/tooltip';
+import type { ChartTooltipContent } from '@tanstack/charts/tooltip';
+import { useRef } from 'react';
 import { useBudget, useCategoryHistory } from '../hooks/useBudget';
 import { useTransactions } from '../hooks/useTransactions';
 import { useAppStore } from '../store/appStore';
@@ -22,22 +18,11 @@ import { formatCentsAxis, formatCurrency } from '../utils/currency';
 import { chartColors } from '../utils/chartColors';
 import { TransactionTable } from '../components/transactions/TransactionTable';
 import type { Transaction } from '../types';
-import { useXAxisLayout } from '../hooks/useXAxisLayout';
+import { FillChart } from '../components/charts/FillChart';
+import { bandScale, valueScale } from '../components/charts/kit';
 import { formatDay } from '../utils/dates';
 import { TargetCard } from '../components/budget/TargetCard';
 import { FilesSection } from '../components/files/FilesSection';
-
-function ChartTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-surface border border-border rounded-lg shadow-hover px-3 py-2">
-      <p className="text-xs text-text-tertiary mb-1">{label}</p>
-      <p className="text-xs font-medium text-text">
-        {formatCurrency(Math.round(payload[0].value * 100))}
-      </p>
-    </div>
-  );
-}
 
 interface HistoryChartProps {
   categoryId: string;
@@ -68,67 +53,79 @@ function HistoryChart({
 
   const hasData = chartData.some((d) => d.amount > 0);
   const barColor = isIncome ? chartColors.positive : chartColors.negative;
-  const monthLabels = useMemo(() => chartData.map((d) => d.label), [chartData]);
-  const xAxis = useXAxisLayout({
-    labels: monthLabels,
-    kind: 'band',
-    ordered: true,
-    inset: { left: 50, right: 8 },
-  });
+  // A click on a bar selects its month; the card's own click (below) clears the selection
+  const picked = useRef(false);
+  const definition = useMemo(() => {
+    // Dollars here: the axis and labels take cents, in the budget's currency, hidden in Safe mode
+    const cents = (v: number) => formatCentsAxis(Math.round(v * 100));
+    return defineChart({
+      marks: [
+        barY(chartData, {
+          x: 'label',
+          y: 'amount',
+          // Bars other than the selected month fade back (fillOpacity is one value for the whole mark)
+          fill: (d) =>
+            selectedBarMonth == null || d.rawMonth === selectedBarMonth
+              ? barColor
+              : `color-mix(in srgb, ${barColor} 35%, transparent)`,
+          radius: [3, 3, 0, 0],
+          maxThickness: 36,
+          inset: 1,
+        }),
+        text(chartData, {
+          x: 'label',
+          y: 'amount',
+          text: (d) => cents(d.amount),
+          dy: -8,
+          fontSize: 10,
+          fontWeight: 600,
+          fill: chartColors.label,
+        }),
+      ],
+      scales: { x: bandScale(), y: valueScale({ format: cents }) },
+      margin: { top: 16 },
+      focus: 'nearest-x',
+      maxFocusDistance: Number.POSITIVE_INFINITY,
+      tooltip: {
+        use: tooltip,
+        content: (points: readonly ChartPoint[]): ChartTooltipContent => {
+          const p = points[0];
+          return p
+            ? {
+                title: String(p.xValue),
+                rows: [
+                  { label: 'Amount', value: formatCurrency(Math.round(Number(p.yValue) * 100)) },
+                ],
+              }
+            : { rows: [] };
+        },
+      },
+    });
+  }, [chartData, barColor, selectedBarMonth]);
 
   return (
     <div
       className="bg-surface rounded-lg shadow-card border border-border-light p-4"
-      onClick={() => onBarClick(null)}
+      onClick={() => {
+        if (picked.current) picked.current = false;
+        else onBarClick(null);
+      }}
     >
       <h2 className="text-sm font-semibold text-text mb-3">
         {isIncome ? 'Income history' : 'Spending history'}
       </h2>
       {hasData ? (
-        <div ref={xAxis.ref}>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={chartData} margin={{ top: 16, right: 8, left: 0, bottom: 0 }}>
-              <XAxis dataKey="label" axisLine={false} tickLine={false} {...xAxis.axisProps} />
-              <YAxis
-                tick={{ fontSize: 10, fill: chartColors.axis }}
-                axisLine={false}
-                tickLine={false}
-                width={50}
-                domain={[0, 'auto']}
-                // Dollars here: the axis takes cents, in the budget's currency, hidden in Safe mode
-                tickFormatter={(v: number) => formatCentsAxis(Math.round(v * 100))}
-              />
-              <Tooltip content={<ChartTooltip />} cursor={false} />
-              <Bar
-                dataKey="amount"
-                fill={barColor}
-                radius={[3, 3, 0, 0]}
-                className="cursor-pointer"
-                onClick={(entry: any, _index: number, e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  const clickedMonth = entry.rawMonth as string;
-                  onBarClick(clickedMonth === selectedBarMonth ? null : clickedMonth);
-                }}
-              >
-                {chartData.map((entry) => (
-                  <Cell
-                    key={entry.rawMonth}
-                    fill={barColor}
-                    fillOpacity={
-                      selectedBarMonth == null || entry.rawMonth === selectedBarMonth ? 1 : 0.35
-                    }
-                  />
-                ))}
-                <LabelList
-                  dataKey="amount"
-                  position="top"
-                  formatter={(v: any) => formatCentsAxis(Math.round(Number(v) * 100))}
-                  style={{ fontSize: 10, fontWeight: 600, fill: chartColors.label }}
-                />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <FillChart
+          definition={definition}
+          height={200}
+          ariaLabel={isIncome ? 'Income by month' : 'Spending by month'}
+          onSelect={(point) => {
+            const row = point?.datum as (typeof chartData)[number] | undefined;
+            if (!row) return;
+            picked.current = true;
+            onBarClick(row.rawMonth === selectedBarMonth ? null : row.rawMonth);
+          }}
+        />
       ) : (
         <div className="h-[200px] flex items-center justify-center">
           <p className="text-sm text-text-tertiary">No history available</p>

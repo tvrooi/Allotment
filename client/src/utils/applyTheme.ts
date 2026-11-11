@@ -20,7 +20,19 @@ function apply(theme: Theme) {
   }
 }
 
+// `?theme=dark|light` pins one window's theme without touching the saved preference,
+// so design tools can show light and dark side by side.
+function themeOverride(): Theme | null {
+  const value = new URLSearchParams(window.location.search).get('theme');
+  return value === 'dark' || value === 'light' ? value : null;
+}
+
 export function initTheme() {
+  const override = themeOverride();
+  if (override) {
+    apply(override);
+    return;
+  }
   const theme = usePreferencesStore.getState().theme;
   apply(theme);
 

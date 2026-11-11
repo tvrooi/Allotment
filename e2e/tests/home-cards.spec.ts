@@ -126,8 +126,10 @@ test('dashboard chart labels and compact controls keep contrast in both themes',
     payeeName: 'Corner shop',
   });
   await open(page, '/dashboard');
+  // The savings goal dropdown shows once its Edit link is opened
+  await page.getByRole('button', { name: 'Edit savings target' }).click();
   const comparison = page.getByTestId('home-card-spending-comparison');
-  await expect(comparison.locator('.recharts-line-curve')).toHaveAttribute(
+  await expect(comparison.locator('path[stroke-dasharray="5 4"]').first()).toHaveAttribute(
     'stroke-dasharray',
     '5 4',
   );
@@ -165,13 +167,13 @@ test('dashboard chart labels and compact controls keep contrast in both themes',
             radius: style.borderRadius,
           };
         }),
-        labels: [...document.querySelectorAll('.recharts-legend-item-text')].map((el) =>
+        labels: [...document.querySelectorAll('[data-testid="chart-legend"] > span')].map((el) =>
           contrast(getComputedStyle(el).color, surface),
         ),
         line: contrast(
           getComputedStyle(
             document.querySelector(
-              '[data-testid="home-card-spending-comparison"] .recharts-line-curve',
+              '[data-testid="home-card-spending-comparison"] path[stroke-dasharray="5 4"]',
             )!,
           ).stroke,
           surface,

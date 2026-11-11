@@ -217,7 +217,7 @@ test('a chart shows the keyboard focus ring, but not after a click', async ({ pa
     });
   }
   await open(page, '/dashboard');
-  const chart = page.locator('.recharts-surface[tabindex="0"]').first();
+  const chart = page.locator('svg.ts-chart[tabindex="0"]').first();
   await expect(chart).toBeVisible();
   const outline = () => chart.evaluate((el) => getComputedStyle(el).outlineStyle);
 

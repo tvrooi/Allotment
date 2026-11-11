@@ -1,20 +1,19 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Area,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { areaY, defineChart, lineY } from '@tanstack/charts';
+import type { ChartPoint } from '@tanstack/charts';
+import { decorative } from '@tanstack/charts/mark/decorative';
+import { scaleLinear } from '@tanstack/charts/scales/linear';
+import { tooltip } from '@tanstack/charts/tooltip';
+import type { ChartTooltipContent } from '@tanstack/charts/tooltip';
+import { FillChart } from '../charts/FillChart';
+import { LegendKey } from '../charts/ChartLegend';
+import { smooth, valueScale } from '../charts/kit';
 import * as api from '../../api/longTerm';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Input';
 import { chartColors } from '../../utils/chartColors';
-import { formatCentsAxis, formatCurrency } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 import { CLASS_LABEL, chanceLabel, inDollars, type Dollars } from '../../utils/longTerm';
 import { Field, WholeNumberField } from './fields';
 import { AmountFields, useAmountValidity } from '../ui/amountValidity';
@@ -67,6 +66,88 @@ export function SimulationPanel({
       };
     });
   }, [s, mode, result]);
+
+  const definition = useMemo(
+    () =>
+      defineChart({
+        marks: [
+          decorative(
+            areaY(rows, {
+              x: 'year',
+              y1: (r) => r.wide[0],
+              y2: (r) => r.wide[1],
+              fill: chartColors.brandSubtle,
+              fillOpacity: 0.8,
+              curve: smooth,
+            }),
+          ),
+          decorative(
+            areaY(rows, {
+              x: 'year',
+              y1: (r) => r.middle[0],
+              y2: (r) => r.middle[1],
+              fill: chartColors.brandLight,
+              fillOpacity: 0.45,
+              curve: smooth,
+            }),
+          ),
+          lineY(rows, {
+            x: 'year',
+            y: 'median',
+            z: () => 'Median',
+            stroke: chartColors.brand,
+            strokeWidth: 2.5,
+            curve: smooth,
+          }),
+          lineY(rows, {
+            x: 'year',
+            y: 'forecast',
+            z: () => 'Forecast (steady returns)',
+            stroke: chartColors.caution,
+            strokeWidth: 1.5,
+            strokeDasharray: '6 4',
+            curve: smooth,
+          }),
+        ],
+        scales: {
+          x: {
+            scale: scaleLinear,
+            axis: {
+              line: false,
+              ticks: { size: 0, count: 8, format: (v: number) => String(Math.round(v)) },
+            },
+          },
+          y: valueScale(),
+        },
+        focus: 'nearest-x',
+        maxFocusDistance: Number.POSITIVE_INFINITY,
+        tooltip: {
+          use: tooltip,
+          content: (points: readonly ChartPoint[]): ChartTooltipContent => {
+            const row = points[0]?.datum as (typeof rows)[number] | undefined;
+            if (!row) return { rows: [] };
+            return {
+              title: `${row.year} · age ${row.age}`,
+              rows: [
+                { label: 'Best 5%', value: `${formatCurrency(row.wide[1])} or more` },
+                { label: 'Middle', value: formatCurrency(row.median), color: chartColors.brand },
+                { label: 'Worst 5%', value: `${formatCurrency(row.wide[0])} or less` },
+                ...(row.forecast !== undefined
+                  ? [
+                      {
+                        label: 'Steady-return forecast',
+                        value: formatCurrency(row.forecast),
+                        color: chartColors.caution,
+                      },
+                    ]
+                  : []),
+              ],
+            };
+          },
+        },
+      }),
+    [rows],
+  );
 
   const successPercent = s ? s.successBps / 100 : 0;
   const otherSwing = s
@@ -155,76 +236,17 @@ export function SimulationPanel({
             </p>
           </div>
 
-          <div
-            className="h-72 max-md:h-60"
-            role="img"
-            aria-label={`Range of net worth across ${s.paths} simulated paths`}
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={rows} margin={{ top: 12, right: 12, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light, #eee)" />
-                <XAxis
-                  dataKey="year"
-                  type="number"
-                  domain={['dataMin', 'dataMax']}
-                  tick={{ fontSize: 11 }}
-                  tickCount={8}
-                />
-                <YAxis tickFormatter={formatCentsAxis} tick={{ fontSize: 11 }} width={64} />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (!active || !payload?.length) return null;
-                    const row = payload[0].payload as (typeof rows)[number];
-                    return (
-                      <div className="bg-surface border border-border rounded-md shadow-hover px-3 py-2 text-xs space-y-0.5">
-                        <p className="text-text-tertiary">
-                          {row.year} · age {row.age}
-                        </p>
-                        <p>Best 5%: {formatCurrency(row.wide[1])} or more</p>
-                        <p>Middle: {formatCurrency(row.median)}</p>
-                        <p>Worst 5%: {formatCurrency(row.wide[0])} or less</p>
-                        {row.forecast !== undefined && (
-                          <p>Steady-return forecast: {formatCurrency(row.forecast)}</p>
-                        )}
-                      </div>
-                    );
-                  }}
-                />
-                <Area
-                  dataKey="wide"
-                  name="5th to 95th percentile"
-                  stroke="none"
-                  fill={chartColors.brandSubtle}
-                  fillOpacity={0.8}
-                  isAnimationActive={false}
-                />
-                <Area
-                  dataKey="middle"
-                  name="25th to 75th percentile"
-                  stroke="none"
-                  fill={chartColors.brandLight}
-                  fillOpacity={0.45}
-                  isAnimationActive={false}
-                />
-                <Line
-                  dataKey="median"
-                  name="Median"
-                  stroke={chartColors.brand}
-                  strokeWidth={2.5}
-                  dot={false}
-                  isAnimationActive={false}
-                />
-                <Line
-                  dataKey="forecast"
-                  name="Forecast (steady returns)"
-                  stroke={chartColors.caution}
-                  strokeWidth={1.5}
-                  strokeDasharray="6 4"
-                  dot={false}
-                  isAnimationActive={false}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
+          <div className="flex items-center gap-3 flex-wrap text-xs text-text-secondary">
+            <LegendKey color={chartColors.brandSubtle} label="5th to 95th percentile" />
+            <LegendKey color={chartColors.brandLight} label="25th to 75th percentile" />
+            <LegendKey color={chartColors.brand} label="Median" line />
+            <LegendKey color={chartColors.caution} label="Forecast (steady returns)" line dashed />
+          </div>
+          <div className="h-72 max-md:h-60">
+            <FillChart
+              definition={definition}
+              ariaLabel={`Range of net worth across ${s.paths} simulated paths`}
+            />
           </div>
           <p className="text-xs text-text-tertiary">
             The darker band holds the middle half of outcomes (25th to 75th percentile) and the

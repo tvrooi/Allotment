@@ -16,28 +16,17 @@ interface Props {
   layout: HomeLayout;
   onChange: (layout: HomeLayout) => void;
   onReset: () => void;
-  preview?: boolean;
 }
 
 const labelOf = (id: string) => HOME_CARDS.find((c) => c.id === id)?.label ?? id;
 
 /** Show, hide and reorder the home cards for this device's width. Changes apply at once. */
-export function CustomizeHome({
-  isOpen,
-  onClose,
-  factor,
-  layout,
-  onChange,
-  onReset,
-  preview = false,
-}: Props) {
+export function CustomizeHome({ isOpen, onClose, factor, layout, onChange, onReset }: Props) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Customise home" size="sm">
       <p className="text-xs text-text-tertiary mb-3">
-        {preview
-          ? 'Layout changes are temporary in this preview. They reset when you leave or reload this page.'
-          : `Saved on this device for ${factor === 'phone' ? 'phone' : 'desktop'} screens.`}{' '}
-        Hiding a card never changes your budget.
+        Saved on this device for {factor === 'phone' ? 'phone' : 'desktop'} screens. Hiding a card
+        never changes your budget.
       </p>
       <ul className="divide-y divide-border-light border border-border-light rounded-md">
         {layout.order.map((id, i) => {

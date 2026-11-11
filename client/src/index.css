@@ -358,20 +358,8 @@ body {
 
 /* Charts: no focus box after a click or tap, but keyboard focus keeps the shared ring
    (UX audit AU-003). A blanket outline: none here hid where the keyboard was. */
-.recharts-wrapper:focus:not(:focus-visible),
-.recharts-wrapper *:focus:not(:focus-visible) {
+.allotment-chart .ts-chart:focus:not(:focus-visible) {
   outline: none;
-}
-
-.recharts-area-area,
-.recharts-area-curve,
-.recharts-line-curve,
-.recharts-bar-rectangle {
-  stroke-dasharray: none;
-}
-
-.recharts-active-dot circle {
-  stroke: none;
 }
 
 /* Report dashboards (react-grid-layout): brand-colored drop placeholder and resize handle */
@@ -406,4 +394,20 @@ body {
 .guide-prose b {
   color: var(--color-text);
   font-weight: 600;
+}
+
+/* Charts (TanStack Charts, shadcn look): palette, axis text and tooltip chrome follow the theme */
+.allotment-chart {
+  color: var(--color-chart-axis);
+  font-size: 11px;
+  --ts-chart-1: var(--color-chart-brand);
+  --ts-chart-2: var(--color-chart-positive-light);
+  --ts-chart-3: var(--color-chart-negative-light);
+  --ts-chart-tooltip-background: var(--color-surface);
+  --ts-chart-tooltip-color: var(--color-text);
+  --ts-chart-tooltip-border: 1px solid var(--color-border);
+  --ts-chart-tooltip-border-radius: 0.5rem;
+  --ts-chart-tooltip-padding: 0.5rem 0.75rem;
+  --ts-chart-tooltip-shadow: var(--shadow-hover, 0 8px 24px rgb(0 0 0 / 0.12));
+  --ts-chart-tooltip-font: 12px/1.45 inherit;
 }

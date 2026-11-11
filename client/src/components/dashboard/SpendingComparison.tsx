@@ -1,23 +1,20 @@
 import { Select } from '../ui/Input';
 import { DataFeedback, dataUnavailable } from './DataFeedback';
 import { useState, useMemo } from 'react';
-import {
-  AreaChart,
-  Area,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts';
+import { areaY, defineChart, lineY } from '@tanstack/charts';
+import type { ChartPoint } from '@tanstack/charts';
+import { decorative } from '@tanstack/charts/mark/decorative';
+import { tooltip } from '@tanstack/charts/tooltip';
+import type { ChartTooltipContent } from '@tanstack/charts/tooltip';
 import { useSpendingComparison } from '../../hooks/useReports';
-import { formatCentsAxis, formatCurrency } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 import { TrendingDown } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { EmptyState } from '../ui/EmptyState';
 import { chartColors } from '../../utils/chartColors';
-import { useXAxisLayout } from '../../hooks/useXAxisLayout';
+import { FillChart } from '../charts/FillChart';
+import { LegendKey } from '../charts/ChartLegend';
+import { areaGradient, pointScale, smooth, valueScale } from '../charts/kit';
 
 type Mode =
   | 'week_vs_last_week'
@@ -33,27 +30,6 @@ const MODES: { value: Mode; label: string }[] = [
   { value: 'month_vs_average', label: 'This month vs. average month' },
   { value: 'year_vs_last_year', label: 'This year vs. last year' },
 ];
-
-function ComparisonTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-surface border border-border rounded-lg shadow-hover px-3 py-2">
-      <p className="text-xs text-text-tertiary mb-1">{label}</p>
-      {payload.map(
-        (p: any) =>
-          p.value != null && (
-            <p
-              key={p.dataKey}
-              className="text-xs font-medium"
-              style={{ color: p.stroke || p.color }}
-            >
-              {p.name}: {formatCurrency(p.value)}
-            </p>
-          ),
-      )}
-    </div>
-  );
-}
 
 export default function SpendingComparison() {
   const [mode, setMode] = useState<Mode>('month_vs_last_month');
@@ -86,15 +62,58 @@ export default function SpendingComparison() {
     (data.current.some((p) => p.cumulative !== 0) ||
       data.comparison.some((p) => p.cumulative !== 0));
 
-  const labels = useMemo(() => chartData.map((d) => d.label), [chartData]);
-  // Inset: y-axis width (50) on the left, chart margin (8) on the right
-  const xAxis = useXAxisLayout({
-    labels,
-    kind: 'point',
-    ordered: true,
-    fontSize: 11,
-    inset: { left: 50, right: 8 },
-  });
+  const definition = useMemo(
+    () =>
+      defineChart({
+        marks: [
+          decorative(
+            areaY(chartData, {
+              x: 'label',
+              y: 'current',
+              fill: 'url(#gSpendingCur)',
+              fillOpacity: 1,
+              curve: smooth,
+            }),
+          ),
+          lineY(chartData, {
+            x: 'label',
+            y: 'comparison',
+            z: () => data?.comparisonLabel ?? 'Comparison',
+            stroke: chartColors.axis,
+            strokeWidth: 2,
+            strokeDasharray: '5 4',
+            curve: smooth,
+          }),
+          lineY(chartData, {
+            x: 'label',
+            y: 'current',
+            z: () => data?.currentLabel ?? 'Current',
+            stroke: chartColors.brand,
+            strokeWidth: 2,
+            curve: smooth,
+          }),
+        ],
+        scales: {
+          x: pointScale((k) => k.replace('Day ', ''), 14),
+          y: valueScale(),
+        },
+        gradients: [areaGradient('gSpendingCur', chartColors.brand, 0.2)],
+        focus: 'group-x',
+        maxFocusDistance: Number.POSITIVE_INFINITY,
+        tooltip: {
+          use: tooltip,
+          content: (points: readonly ChartPoint[]): ChartTooltipContent => ({
+            title: points[0] ? String(points[0].xValue) : '',
+            rows: points.map((p) => ({
+              label: p.groupLabel,
+              value: formatCurrency(Number(p.yValue)),
+              color: p.groupLabel === data?.comparisonLabel ? chartColors.axis : chartColors.brand,
+            })),
+          }),
+        },
+      }),
+    [chartData, data?.comparisonLabel, data?.currentLabel],
+  );
 
   const sources = [spendingComparisonQuery];
   if (dataUnavailable(sources))
@@ -141,48 +160,15 @@ export default function SpendingComparison() {
       </div>
 
       {hasData && chartData.length > 0 ? (
-        <div className="mt-2" ref={xAxis.ref}>
-          <ResponsiveContainer width="100%" height={192}>
-            <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="gSpendingCur" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={chartColors.brand} stopOpacity={0.15} />
-                  <stop offset="95%" stopColor={chartColors.brand} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="label" axisLine={false} tickLine={false} {...xAxis.axisProps} />
-              <YAxis
-                tick={{ fontSize: 11, fill: chartColors.axis }}
-                axisLine={false}
-                tickLine={false}
-                // Inline, so switching Safe mode redraws the axis
-                tickFormatter={(v: number) => formatCentsAxis(v)}
-                width={50}
-              />
-              <Tooltip content={<ComparisonTooltip />} />
-              <Legend iconSize={8} wrapperStyle={{ fontSize: 11, color: chartColors.axis }} />
-              <Line
-                type="monotone"
-                dataKey="comparison"
-                name={data.comparisonLabel}
-                stroke={chartColors.axis}
-                strokeWidth={2}
-                strokeDasharray="5 4"
-                dot={false}
-                activeDot={false}
-                connectNulls={false}
-              />
-              <Area
-                type="monotone"
-                dataKey="current"
-                name={data.currentLabel}
-                stroke={chartColors.brand}
-                strokeWidth={2}
-                fill="url(#gSpendingCur)"
-                connectNulls={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+        <div className="mt-2">
+          <FillChart definition={definition} height={176} ariaLabel="Spending so far compared" />
+          <div
+            data-testid="chart-legend"
+            className="flex items-center justify-center gap-3 pt-1 text-2xs text-text-secondary"
+          >
+            <LegendKey color={chartColors.axis} label={data.comparisonLabel} line dashed />
+            <LegendKey color={chartColors.brand} label={data.currentLabel} line />
+          </div>
         </div>
       ) : (
         <EmptyState

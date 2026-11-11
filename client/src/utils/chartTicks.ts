@@ -10,7 +10,7 @@ function parseDate(s: string): Date {
 /**
  * Short x-axis labels for a run of dates: "Mar 5" (or "5 Mar") for days, "Mar" for months,
  * adding the year ("Mar '25") when the range spans more than one year. Which labels are
- * actually drawn is decided by useXAxisLayout.
+ * actually drawn is decided by the chart's tick thinning (`minGap` in `charts/kit.ts`).
  */
 export function formatDateAxisLabels(values: string[]): string[] {
   if (!values.length) return [];

@@ -28,8 +28,7 @@ Last updated: 10 November 2026 (Goals page critique fixes; Forecast page polish,
   that opens the Assumptions tab or links to Budget. It hides the matching server warning by its
   leading text (`longTermInputs.ts`), so change both together. Long-range amounts use
   `formatWholeCurrency`. Both charts (`NetWorthChart`, `CashRunway`) draw a ring at today and
-  dotted forecasts; the dash is an inline style because `index.css` clears recharts' dash on line
-  curves. Not yet run: the long-term browser spec (one expected string changed).
+  dotted forecasts (a `0.1 5` dash with round caps). Not yet run: the long-term browser spec (one expected string changed).
 - **Day-first dates and a calmer Household page (up.164; local design work, not released):**
   the word date format is now `d MMM yyyy` ("5 Jan 2026"), the long form "5 January 2026"
   (`formatDayLong`, used by Transactions day headings, report detail and the calendar), and short
@@ -183,22 +182,17 @@ Last updated: 10 November 2026 (Goals page critique fixes; Forecast page polish,
   shows "After expected bills". `ExpectedNote` opens a React Aria popover with the remaining bills, funding coverage and balance after bills; keyboard and phone access replace the native title tooltip. The dated note replaces the duplicate bill-shortfall caption beside Available (the amber balance and other warning captions remain). The note sits beside the category name above its bar (above the bar on phones), showing the first funding gap as "$X needed by the 10th" or "Funded"; `nextExpectedFunding` groups due days and finds the first shortfall, returning the cumulative bills due by that date and their covered amount. The popup explains this next gap and separates its contributing bills from later bills. `expectedFundingNote` marks a funding gap before today’s local date: the deadline text and Available bubble turn red, with no visible overdue suffix; the due day stays visible and the accessible label names the overdue state. The breakdown’s "Assign to [envelope]…" shortcut opens the existing editor without saving, respecting connection, budget-start and linked-account restrictions. Bill names link by schedule ID to the existing recurring editor; `useOpenFromLink` waits for schedules to load and consumes the link parameter. Desktop has no Summary/Income/Expenses tabs (the table totals them; the phone keeps its "Income and expenses" fold); the inspector's month total is "In envelopes" with its own fold, and the rail fold is "How Ready to assign is worked out". Every priority issue from the critique is now addressed. This work lives on the `redesign` branch, developed alongside the
   pre-redesign app on `main`; PR #209 was closed unmerged to reconcile later.
 
-- **Dashboard comparison route (up.154):** `/dashboard/refined` is a
-  lazy-loaded design alternative built from the existing Dashboard components. `/dashboard`
-  keeps its previous presentation. The alternative removes the repeated opening balance,
-  compacts the phone review prompt, moves phone averages/savings after commitments, labels
-  the 30-day bills window and omitted entries, uses content-height desktop cards and a quieter
-  savings-target editor. Alternative layout customisation is local to the mounted preview,
-  per form factor, and does not overwrite saved home layouts. Its Customise dialog explicitly
-  labels changes as temporary and explains that leaving or reloading resets them. The refined phone
-  commitments digest shows two bills and the next income entry, retaining remaining-count links;
-  desktop and the original route keep their existing row limits. Refined desktop gives current
-  available money a wider panel and larger amount; historical figures retain their individual cards
-  and semantic value colours. The refined review prompt leads with the task, with the step count
-  secondary and both links at least 44px tall. The refined phone balance has its own calculation
-  disclosure immediately below the amount; historical definitions stay with the historical figures.
-  Regression coverage lives in
-  `e2e/tests/dashboard-refined.spec.ts`.
+- **Refined Dashboard is the Dashboard:** the comparison route `/dashboard/refined` is gone and
+  `/dashboard` uses its design. The opening line says only when the next pay arrives; the
+  left-to-spend figure leads the summary, in a wider panel with a larger amount, and the
+  historical figures keep their individual cards with a single period note under them. The review
+  prompt leads with the task, with the step count secondary (both links at least 44px tall).
+  Bills and income are labelled "Next 30 days", name omitted entries with remaining-count links,
+  and cards keep their own height. The savings target is a quiet "Target N% · Edit" link that opens
+  the dropdown. On a phone the commitments digest shows two bills and the next income entry, the
+  averages and savings move after the commitments (`home-history`), and the balance has its own
+  calculation disclosure. Customise saves per device like before. Regression coverage lives in
+  `e2e/tests/dashboard.spec.ts`.
 
 - **Dashboard finish (up.154):** compact dropdowns share the existing
   `Select` component’s new opt-in compact finish, with stronger borders and consistent

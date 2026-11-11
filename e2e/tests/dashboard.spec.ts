@@ -2,7 +2,10 @@ import { test, expect, open, isoDay, thisMonth } from './fixtures';
 import { sidewaysOverflow } from './phone/overflow';
 
 for (const width of [430, 1512]) {
-  test(`refined dashboard preserves the original at ${width}px`, async ({ page, api }) => {
+  test(`dashboard leads with the next step and the 30-day commitments at ${width}px`, async ({
+    page,
+    api,
+  }) => {
     await page.setViewportSize({ width, height: 932 });
     const account = await api.createAccount('Everyday', 250_000);
     const groceries = await api.category('Groceries');
@@ -31,7 +34,7 @@ for (const width of [430, 1512]) {
         accountId: account.id,
       });
     }
-    await open(page, '/dashboard/refined');
+    await open(page, '/dashboard');
     await page.getByRole('button', { name: 'Hide getting started' }).click();
     await expect(page.getByRole('heading', { level: 1 })).not.toContainText('left to spend');
     const attention = page.getByRole('region', { name: 'Review attention' });
@@ -77,20 +80,5 @@ for (const width of [430, 1512]) {
     await page.getByRole('button', { name: 'Edit savings target' }).click();
     await expect(page.getByRole('combobox', { name: 'Savings rate goal' })).toBeVisible();
     expect(await sidewaysOverflow(page)).toEqual([]);
-
-    // Customising the exploration does not alter the original dashboard's saved layout.
-    await page.getByRole('button', { name: 'Customise', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'Customise home' });
-    await dialog.getByRole('checkbox', { name: 'Budget progress' }).uncheck();
-    await dialog.getByRole('button', { name: 'Done', exact: true }).click();
-    await expect(page.getByTestId('home-card-budget-progress')).toHaveCount(0);
-    await open(page, '/dashboard');
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('left to spend');
-    await expect(page.getByTestId('home-card-budget-progress')).toBeVisible();
-    await expect(page.getByText('Next 30 days', { exact: true })).toHaveCount(0);
-    await expect(page.getByRole('combobox', { name: 'Savings rate goal' })).toBeVisible();
-    const originalBills = page.getByTestId('home-card-upcoming-bills');
-    await expect(originalBills.getByText('Bill 2', { exact: true })).toBeVisible();
-    await expect(originalBills.getByText('Pay 1', { exact: true })).toBeVisible();
   });
 }
