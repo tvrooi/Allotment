@@ -11,6 +11,8 @@ const option = (page: Page, name: string | RegExp) => palette(page).getByRole('o
 /** ⌘K / Ctrl+K once the page has loaded (the shortcut is the app's, so it needs the app) */
 async function openPalette(page: Page) {
   await page.getByRole('heading', { level: 1 }).first().waitFor();
+  // A dialog still fading out counts as open, and the shortcut waits for it to go
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.keyboard.press('ControlOrMeta+k');
   await expect(palette(page)).toBeVisible();
 }
