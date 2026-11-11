@@ -469,13 +469,14 @@ export function SafeModeButton({ className }: { className: string }) {
       type="button"
       onClick={toggle}
       aria-pressed={on}
-      aria-label="Safe mode"
+      // Says what the eye does, as its tooltip does (and keeps "Safe mode", its name in Settings)
+      aria-label="Hide balances (Safe mode)"
       aria-keyshortcuts="Alt+Shift+H"
       data-guide="nav.safe-mode"
       className={className}
     >
       <Icon size={16} aria-hidden className={on ? 'text-brand-600' : undefined} />
-      <HeaderTooltip>{on ? 'Show balances' : 'Hide balances'}</HeaderTooltip>
+      <HeaderTooltip>{on ? 'Hide balances: on' : 'Hide balances'}</HeaderTooltip>
     </button>
   );
 }
