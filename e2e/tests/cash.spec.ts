@@ -69,11 +69,12 @@ test('Cash (create) in the account picker makes the Cash account, and later purc
   const cash = (await api.accounts()).find((a) => a.name === 'Cash')!;
   expect(cash.balance).toBe(-1_450);
 
-  // With a Cash account there is nothing to create, and a manual account shows no warning
+  // With a Cash account there is nothing to create, and a manual account shows no warning.
+  // The dialog now starts on the account used last (Cash), so the picker shows that.
   await open(page, '/transactions?add=1');
   await page
     .getByRole('dialog', { name: 'Add transaction' })
-    .getByRole('button', { name: /Select account/ })
+    .getByRole('button', { name: /C Cash/ })
     .click();
   await expect(page.getByRole('button', { name: 'Cash (create)' })).toHaveCount(0);
   await page

@@ -27,9 +27,9 @@ export const welcomeTour: Guide = {
     },
     {
       title: 'Transactions',
-      body: 'Every transaction from every account, in one list. Select one to change its category, payee or notes, or use Add to enter one by hand. Changed something by mistake? Ctrl+Z (⌘Z on a Mac) undoes it.',
+      body: 'Every transaction from every account, in one list. Select one to change its category, payee or notes, or use Add (on any page, or press N) to enter one by hand. Changed something by mistake? Ctrl+Z (⌘Z on a Mac) undoes it.',
       phoneBody:
-        'Every transaction from every account, in one list. Tap one to change its category, payee or notes, or tap Add to enter one by hand.',
+        'Every transaction from every account, in one list. Tap one to change its category, payee or notes, or tap Add at the foot of the screen to enter one by hand.',
       route: '/transactions',
       target: 'transactions.add',
     },

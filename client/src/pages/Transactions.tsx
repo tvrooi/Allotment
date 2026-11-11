@@ -1,11 +1,11 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { TransactionTable } from '../components/transactions/TransactionTable';
-import { AddTransactionModal } from '../components/transactions/AddTransactionModal';
 import { Button } from '../components/ui/Button';
 import { SavedViewsMenu } from '../components/transactions/SavedViews';
 import { useOpenFromLink } from '../hooks/useOpenFromLink';
+import { useAddTransactionStore } from '../store/addTransactionStore';
 import { ReceiptsTab, ScanReceiptButton, useAddReceipts } from '../components/receipts/ReceiptsTab';
 import { Tip } from '../components/guide/Tip';
 import { TIPS } from '../guides';
@@ -18,8 +18,9 @@ import {
 } from '../utils/transactionFilters';
 
 export default function TransactionsPage() {
-  const [showAdd, setShowAdd] = useState(false);
-  useOpenFromLink('add', () => setShowAdd(true));
+  // The app shell's Add transaction dialog (one for every page)
+  const showAdd = useAddTransactionStore((s) => s.show);
+  useOpenFromLink('add', showAdd);
 
   // The filters live in the URL, so reload, back and drill-down links keep them. A URL the
   // register didn't write itself (a link followed while already here) starts it afresh.
@@ -72,7 +73,7 @@ export default function TransactionsPage() {
           <div className="flex items-center gap-2">
             {view === 'all' && <SavedViewsMenu />}
             {view === 'all' && <ScanReceiptButton onFiles={scan.add} compactOnPhone />}
-            <Button size="sm" onClick={() => setShowAdd(true)} data-guide="transactions.add">
+            <Button size="sm" onClick={showAdd} data-guide="transactions.add">
               <Plus size={13} /> Add
             </Button>
           </div>
@@ -134,11 +135,10 @@ export default function TransactionsPage() {
             initialFilters={filtersFromSearch(params)}
             onFiltersChange={onFiltersChange}
             canSaveView
-            onAddTransaction={() => setShowAdd(true)}
+            onAddTransaction={showAdd}
           />
         )}
       </div>
-      <AddTransactionModal isOpen={showAdd} onClose={() => setShowAdd(false)} />
     </div>
   );
 }

@@ -44,6 +44,15 @@ Every page also uses `components/ui`, and most use `components/guide` for the pa
 Cross-cutting specs: accessibility, dialog-focus, load-errors, menus, navigation, tabs,
 unsaved-drafts, phone/phone, phone/polish-phone, phone/iphone-webapp, phone/amounts-phone.
 
+## Shell (every page)
+
+- `components/layout/AppShell.tsx`: desktop shell and `PhoneShell`; mounts the one
+  `AddTransactionModal` (opened through `store/addTransactionStore.ts`) and the N key
+  (`hooks/useAddTransactionKeyboard.ts`; one-key guard in `utils/pageShortcut.ts`).
+- `components/layout/Sidebar.tsx`: desktop sidebar (Add a transaction at its top) and the phone drawer.
+- `components/layout/PhoneTabBar.tsx`: phone tab bar (Home, Transactions, Add, Budget, Review).
+- Specs: navigation, dialog-focus, transactions ("Add transaction from any page"), phone/phone.
+
 ## Component files over 800 lines (split candidates)
 
 - `components/transactions/ImportModal.tsx` (1147)

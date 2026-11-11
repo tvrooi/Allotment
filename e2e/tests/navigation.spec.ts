@@ -98,3 +98,68 @@ test('auto-hidden navigation expands for keyboard focus and collapses after leav
   await page.getByRole('textbox', { name: 'Search payee or notes' }).focus();
   await expect(dashboard.locator('span')).toHaveCSS('opacity', '0');
 });
+
+test('Add a transaction is one click away, the folded sidebar included (#223)', async ({
+  page,
+  api,
+}) => {
+  await api.createAccount('Everyday Checking');
+  await open(page, '/dashboard');
+  const sidebar = page.getByRole('complementary');
+  const add = sidebar.getByRole('button', { name: 'Add a transaction' });
+  const dialog = page.getByRole('dialog', { name: 'Add transaction' });
+  await add.click();
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(add).toBeFocused();
+
+  // Unpinned, the rail still shows it (as an icon), and it still opens the dialog. (Keyboard
+  // focus in the sidebar keeps it open, so leave it first.)
+  await add.blur();
+  await sidebar.getByRole('button', { name: 'Pin sidebar' }).click();
+  await page.mouse.move(1000, 100);
+  await expect(
+    sidebar.getByRole('link', { name: 'Dashboard', exact: true }).locator('span'),
+  ).toHaveCSS('opacity', '0');
+  const box = (await add.boundingBox())!;
+  expect(box.x + box.width).toBeLessThanOrEqual(64);
+  await add.click();
+  await expect(dialog).toBeVisible();
+});
+
+test('N opens Add transaction, but not while typing or with a dialog open (#223)', async ({
+  page,
+  api,
+}) => {
+  await api.createAccount('Everyday Checking');
+  await open(page, '/transactions');
+  const dialog = page.getByRole('dialog', { name: 'Add transaction' });
+  const search = page.getByRole('textbox', { name: 'Search payee or notes' });
+  await expect(search).toBeVisible();
+
+  // Typing an n in a field is just typing
+  await search.click();
+  await page.keyboard.type('n');
+  await expect(search).toHaveValue('n');
+  await expect(dialog).toHaveCount(0);
+
+  // With a modifier it belongs to the browser
+  await page.getByRole('heading', { level: 1, name: 'Transactions' }).click();
+  await page.keyboard.press('Alt+n');
+  await expect(dialog).toHaveCount(0);
+
+  // Another dialog open: n does nothing there
+  await page.keyboard.press('?');
+  const guides = page.getByRole('dialog').first();
+  await expect(guides).toBeVisible();
+  await page.keyboard.press('n');
+  await expect(dialog).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  // On the page itself it opens the dialog
+  await page.keyboard.press('n');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel('Amount', { exact: true })).toBeFocused();
+});

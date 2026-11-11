@@ -664,3 +664,58 @@ test.describe('long histories', () => {
     await expect(page.getByText('Shop 249')).toBeVisible();
   });
 });
+
+test.describe('Add transaction from any page (#222, #223)', () => {
+  const sidebarAdd = (page: Page) =>
+    page.getByRole('complementary').getByRole('button', { name: 'Add a transaction' });
+
+  test("opens on Amount, with the page's account or else the last one used", async ({
+    page,
+    api,
+  }) => {
+    const { checking, savings } = await setup(api);
+    const dialog = page.getByRole('dialog', { name: 'Add transaction' });
+    const amount = dialog.getByLabel('Amount', { exact: true });
+
+    // On an account's page: that account
+    await open(page, `/accounts/${savings.id}`);
+    await sidebarAdd(page).click();
+    await expect(amount).toBeFocused();
+    await expect(dialog.getByRole('button', { name: /Rainy Day Savings/ })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+
+    // From the dashboard, with none used yet on this device: no account until one is chosen
+    await open(page, '/dashboard');
+    await sidebarAdd(page).click();
+    await expect(amount).toBeFocused();
+    await page.keyboard.type('12.50');
+    await dialog.getByPlaceholder('Search payees...').fill('Corner cafe');
+    await dialog.getByRole('button', { name: /Create new payee/ }).click();
+    await dialog.getByRole('button', { name: /Select account/ }).click();
+    await dialog.getByRole('button', { name: /Everyday Checking/ }).click();
+    await dialog.getByRole('button', { name: 'Add transaction' }).click();
+    await expect(dialog).toBeHidden();
+    await expect.poll(() => api.balance(checking.id)).toBe(100_000 - 1_250);
+
+    // Next time, on any page (here with N): the account used last
+    await open(page, '/reports');
+    await expect(page.getByRole('heading', { level: 1, name: 'Reports' })).toBeVisible();
+    await page.keyboard.press('n');
+    await expect(amount).toBeFocused();
+    // A fresh form: not the amount typed last time
+    await expect(amount).toHaveValue('');
+    await expect(dialog.getByRole('button', { name: /Everyday Checking/ })).toBeVisible();
+  });
+
+  test('a closed account is never chosen for you', async ({ page, api }) => {
+    const old = await api.createAccount('Old savings', 0);
+    await api.createAccount('Everyday Checking', 100_000);
+    // Closing is DELETE (an account at zero); it stays in the database as closed
+    await api.call('DELETE', `/accounts/${old.id}`);
+    await open(page, `/accounts/${old.id}`);
+    await sidebarAdd(page).click();
+    const dialog = page.getByRole('dialog', { name: 'Add transaction' });
+    await expect(dialog.getByRole('button', { name: /Select account/ })).toBeVisible();
+  });
+});

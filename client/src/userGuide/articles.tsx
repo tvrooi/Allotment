@@ -275,6 +275,17 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         ),
       },
       {
+        heading: 'Adding one by hand',
+        body: (
+          <p>
+            For cash, or anything a bank won’t send: choose <b>Add a transaction</b> at the top of
+            the sidebar, or press <b>N</b>, on any page. On a phone, tap <b>Add</b> in the middle of
+            the bar at the foot of the screen. The amount is ready to type, and the account is the
+            one whose page you’re on, or else the one you used last on this device.
+          </p>
+        ),
+      },
+      {
         heading: 'Working through the list',
         body: (
           <p>

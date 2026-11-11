@@ -36,6 +36,9 @@ import { BrandName } from '../ui/BrandName';
 import { useGuideProgress } from '../../hooks/useGuides';
 import { featureShown, hiddenFeatureCount } from '../../utils/navFeatures';
 import type { NavFeature } from '../../api/guides';
+import { useAddTransactionStore } from '../../store/addTransactionStore';
+import { useCanAddTransaction } from '../../hooks/useOffline';
+import { filledDisabled } from '../ui/Button';
 import logoUrl from '/logo.png';
 
 interface NavItemProps {
@@ -252,6 +255,10 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
         </div>
       </div>
 
+      {/* Desktop: adding a transaction is one click from every page, the rail included.
+          Phones have the tab bar's Add (PhoneTabBar.tsx) instead. */}
+      {!onClose && <AddTransactionButton isExpanded={isExpanded} />}
+
       {/* Navigation and accounts share a scroll area on short screens. */}
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
         {/* Primary nav: the everyday pages, then Planning and Tools (audit decision I-4).
@@ -414,6 +421,40 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Opens the app shell's Add transaction dialog; the N key does the same */
+function AddTransactionButton({ isExpanded }: { isExpanded: boolean }) {
+  const show = useAddTransactionStore((s) => s.show);
+  const { allowed, hint } = useCanAddTransaction();
+  return (
+    <div className="shrink-0 px-3 pt-4">
+      <button
+        type="button"
+        onClick={show}
+        disabled={!allowed}
+        aria-label="Add a transaction"
+        aria-keyshortcuts="N"
+        title={hint ?? (isExpanded ? undefined : 'Add a transaction (N)')}
+        className={`h-10 flex items-center justify-center gap-2 rounded-full border border-transparent bg-brand-600 text-brand-contrast hover:bg-brand-700 shadow-xs text-sm font-medium whitespace-nowrap transition-colors disabled:pointer-events-none ${filledDisabled} ${
+          isExpanded ? 'w-full px-4' : 'w-10'
+        }`}
+      >
+        <Plus size={18} aria-hidden className="shrink-0" />
+        {isExpanded && (
+          <>
+            <span aria-hidden>Add a transaction</span>
+            <kbd
+              aria-hidden
+              className="ml-1 rounded border border-current/40 px-1 font-sans text-2xs leading-4 opacity-80"
+            >
+              N
+            </kbd>
+          </>
+        )}
+      </button>
     </div>
   );
 }
