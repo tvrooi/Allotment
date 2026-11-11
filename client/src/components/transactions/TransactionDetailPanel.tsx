@@ -156,7 +156,9 @@ export function TransactionDetailPanel({
       : tx.payeeName
         ? transactionsLink({ payeeName: tx.payeeName, datePreset: 'all' })
         : null;
-  const linkCls = 'hover:text-brand-600 hover:underline underline-offset-2';
+  // Always underlined (touch has no hover), 44px tall on phones
+  const linkCls =
+    'inline-flex items-center max-md:min-h-11 underline decoration-border decoration-1 underline-offset-4 hover:text-brand-600 hover:decoration-brand-600';
   // Making or undoing a transfer needs the server: not offered while saving is paused, and a
   // balance correction can't be a transfer
   const canSave = useCanSave();
@@ -293,13 +295,13 @@ export function TransactionDetailPanel({
                 payee ? (logo) => updatePayee.mutate({ id: payee.id, logo }) : undefined
               }
             />
-            <div>
+            <div className="flex flex-col items-start">
               {payeeLink ? (
                 <Link
                   to={payeeLink}
                   onClick={onClose}
-                  aria-label={`All transactions from ${payeeName}`}
-                  className={`block text-base font-semibold text-text ${linkCls}`}
+                  aria-label={`All ${payeeName} transactions`}
+                  className={`text-base font-semibold text-text ${linkCls}`}
                 >
                   {payeeName}
                 </Link>
@@ -310,8 +312,8 @@ export function TransactionDetailPanel({
                 <Link
                   to={transactionsLink({ accountIds: [tx.accountId], datePreset: 'all' })}
                   onClick={onClose}
-                  aria-label={`All transactions in ${accountName}`}
-                  className={`flex items-center gap-1.5 mt-0.5 text-xs text-text-tertiary ${linkCls}`}
+                  aria-label={`All ${accountName} transactions`}
+                  className={`gap-1.5 mt-0.5 max-md:mt-0 text-xs text-text-tertiary ${linkCls}`}
                 >
                   <AccountIcon name={accountName} type={accountType} logo={accountLogo} size="xs" />
                   {accountName}

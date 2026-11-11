@@ -111,6 +111,52 @@ test.describe('register', () => {
     await expect.poll(() => api.balance(checking.id)).toBe(100_000 - 4_250);
   });
 
+  test('the detail sheet links the payee and account, shown as links without hover', async ({
+    page,
+    api,
+  }) => {
+    const { checking } = await seedAccount(api);
+    const other = await api.createAccount('Travel Card', 50_000);
+    await api.createTransaction({
+      accountId: other.id,
+      date: isoDay(),
+      amount: -700,
+      payeeName: 'Corner Grocery',
+    });
+    const cards = page.getByTestId('transaction-card');
+    const details = page.getByRole('complementary', { name: 'Transaction details' });
+    const openGrocery = async () => {
+      await open(page, `/accounts/${checking.id}`);
+      await cards.filter({ hasText: 'Corner Grocery' }).click();
+      await expect(details).toBeVisible();
+    };
+
+    await openGrocery();
+    const payee = details.getByRole('link', { name: 'All Corner Grocery transactions' });
+    const account = details.getByRole('link', { name: 'All Everyday Checking transactions' });
+    for (const link of [payee, account]) {
+      // 44px tall; the text sets the width
+      const { height } = await size(link);
+      expect(height).toBeGreaterThanOrEqual(TOUCH);
+      // Underlined from the start: a phone has no hover to reveal it
+      const line = await link.evaluate((el) => getComputedStyle(el).textDecorationLine);
+      expect(line).toContain('underline');
+    }
+
+    await payee.click();
+    await expect(details).toBeHidden();
+    await expect(page).toHaveURL(/#\/transactions\?/);
+    // Both Corner Grocery payments, in either account, and nothing else
+    await expect(cards).toHaveCount(2);
+    await expect(cards.filter({ hasText: 'Streamflix' })).toHaveCount(0);
+
+    await openGrocery();
+    await account.click();
+    await expect(page).toHaveURL(/#\/transactions\?/);
+    await expect(cards.filter({ hasText: 'Streamflix' })).toBeVisible();
+    await expect(cards).toHaveCount(2);
+  });
+
   test('adds a split transaction from a bottom sheet', async ({ page, api }) => {
     const { checking } = await seedAccount(api);
     await open(page, `/accounts/${checking.id}`);

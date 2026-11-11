@@ -270,7 +270,22 @@ test.describe('account register', () => {
     // Delete is in the details' menu, not a big red button; Done is the main action
     await expect(details.getByRole('button', { name: 'Delete transaction' })).toHaveCount(0);
     await expect(details.getByRole('button', { name: 'Done' })).toBeVisible();
-    await details.getByRole('button', { name: 'More actions' }).click();
+    // The ⋮ menu closes if its button moves, so wait for the panel to settle
+    const more = details.getByRole('button', { name: 'More actions' });
+    let last = '';
+    await expect
+      .poll(
+        async () => {
+          const box = await more.boundingBox();
+          const at = box ? `${box.x},${box.y}` : '';
+          const settled = at !== '' && at === last;
+          last = at;
+          return settled;
+        },
+        { intervals: [100] },
+      )
+      .toBe(true);
+    await more.click();
     await page.getByRole('menuitem', { name: 'Delete transaction' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
     await expect(page.getByText('No transactions yet')).toBeVisible();
@@ -312,7 +327,7 @@ test.describe('account register', () => {
     };
 
     await openDetails();
-    await details.getByRole('link', { name: 'All transactions from Corner Grocery' }).click();
+    await details.getByRole('link', { name: 'All Corner Grocery transactions' }).click();
     await expect(details).toBeHidden();
     await expect(row(page, 'Corner Grocery')).toBeVisible();
     await expect(row(page, 'Other Shop')).toHaveCount(0);
@@ -325,7 +340,7 @@ test.describe('account register', () => {
     await expect(row(page, 'Bus Fare')).toHaveCount(0);
 
     await openDetails();
-    await details.getByRole('link', { name: 'All transactions in Everyday Checking' }).click();
+    await details.getByRole('link', { name: 'All Everyday Checking transactions' }).click();
     await expect(row(page, 'Bus Fare')).toBeVisible();
     await expect(row(page, 'Corner Grocery')).toBeVisible();
     await expect(row(page, 'Other Shop')).toHaveCount(0);
