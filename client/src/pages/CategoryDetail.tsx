@@ -19,7 +19,7 @@ import { chartColors } from '../utils/chartColors';
 import { TransactionTable } from '../components/transactions/TransactionTable';
 import type { Transaction } from '../types';
 import { FillChart } from '../components/charts/FillChart';
-import { bandScale, valueScale } from '../components/charts/kit';
+import { bandScale, INCOME_EXPENSE_COLORS, valueScale } from '../components/charts/kit';
 import { formatDay } from '../utils/dates';
 import { TargetCard } from '../components/budget/TargetCard';
 import { FilesSection } from '../components/files/FilesSection';
@@ -52,7 +52,7 @@ function HistoryChart({
   );
 
   const hasData = chartData.some((d) => d.amount > 0);
-  const barColor = isIncome ? chartColors.positive : chartColors.negative;
+  const barColor = INCOME_EXPENSE_COLORS[isIncome ? 'Income' : 'Expenses'];
   // A click on a bar selects its month; the card's own click (below) clears the selection
   const picked = useRef(false);
   const definition = useMemo(() => {
@@ -259,7 +259,10 @@ function SummaryWidget({
 export default function CategoryDetailPage() {
   const { id } = useParams<{ id: string }>();
   const selectedMonth = useAppStore((s) => s.selectedMonth);
-  const [selectedBarMonth, setSelectedBarMonth] = useState<string | null>(selectedMonth);
+  // Opens on all of the category's history (the list's "All time"), as the chart shows several
+  // months: starting on the budget month left the list and Summary empty whenever that month
+  // had no activity yet, beside a chart full of spending. A bar click narrows all three.
+  const [selectedBarMonth, setSelectedBarMonth] = useState<string | null>(null);
 
   const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
   const { data: budgetData } = useBudget(selectedMonth);
@@ -302,9 +305,12 @@ export default function CategoryDetailPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2">
+      <div className="flex-1 overflow-y-auto p-6">
+        {/* Wide screens: the list sits right under the chart while Budget and Target (often
+            taller than the chart) fill the side column above Summary. The last row is 1fr so
+            the list, which spans it, never pushes Summary down. Phones keep the DOM order. */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:grid-rows-[auto_auto_1fr] lg:items-start">
+          <div className="lg:col-span-2 lg:col-start-1 lg:row-start-1">
             {id && (
               <HistoryChart
                 categoryId={id}
@@ -315,7 +321,7 @@ export default function CategoryDetailPage() {
               />
             )}
           </div>
-          <div>
+          <div className="lg:col-start-3 lg:row-start-1 lg:row-span-2">
             <BudgetWidget
               budgeted={cat?.budgeted ?? 0}
               actual={actual}
@@ -329,10 +335,7 @@ export default function CategoryDetailPage() {
               </div>
             )}
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 bg-surface rounded-lg shadow-card border border-border-light overflow-hidden">
+          <div className="lg:col-span-2 lg:col-start-1 lg:row-start-2 lg:row-span-2 bg-surface rounded-lg shadow-card border border-border-light overflow-hidden">
             {id && (
               <TransactionTable
                 categoryId={id}
@@ -342,7 +345,7 @@ export default function CategoryDetailPage() {
               />
             )}
           </div>
-          <div className="space-y-4">
+          <div className="lg:col-start-3 lg:row-start-3 space-y-4">
             <SummaryWidget transactions={transactions} categoryId={id ?? ''} isIncome={isIncome} />
             {id && (
               <div className="bg-surface rounded-lg shadow-card border border-border-light p-4">

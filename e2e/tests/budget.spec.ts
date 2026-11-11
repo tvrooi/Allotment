@@ -337,6 +337,57 @@ test.describe('budget', () => {
       page.getByTestId('transaction-row').filter({ hasText: 'Farm Stand' }),
     ).toBeVisible();
   });
+  test('a category with no spending this month opens on all its history, not an empty month', async ({
+    page,
+    api,
+  }) => {
+    const checking = await api.createAccount('Checking', 100000);
+    const groceries = await api.category('Groceries');
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(-45),
+      amount: -4_321,
+      payeeName: 'Old Market',
+      categoryId: groceries.id,
+    });
+    await open(page, `/budget/category/${groceries.id}`);
+    // The chart shows that spending, so the list and summary show it too, under a chosen tab
+    await expect(page.getByRole('img', { name: 'Spending by month' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'All time' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(
+      page.getByTestId('transaction-row').filter({ hasText: 'Old Market' }),
+    ).toBeVisible();
+    await expect(page.getByText('No transactions found')).toHaveCount(0);
+    await expect(page.getByText('No data')).toHaveCount(0);
+  });
+
+  test('the transactions sit right under the spending history on a wide screen', async ({
+    page,
+    api,
+  }) => {
+    const checking = await api.createAccount('Checking', 100000);
+    const groceries = await api.category('Groceries');
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: -4_321,
+      payeeName: 'Farm Stand',
+      categoryId: groceries.id,
+    });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await open(page, `/budget/category/${groceries.id}`);
+    // The Budget and Target cards beside the chart are taller than it; the list doesn't wait
+    const chart = page.getByRole('heading', { name: 'Spending history' }).locator('..');
+    const search = page.getByRole('textbox', { name: 'Search payee or notes' });
+    await expect(page.getByRole('heading', { name: 'Target' })).toBeVisible();
+    const chartBox = (await chart.boundingBox())!;
+    const listBox = (await search.boundingBox())!;
+    expect(listBox.y - (chartBox.y + chartBox.height)).toBeLessThan(48);
+  });
+
   test('switching months keeps the budget on screen while the next month loads', async ({
     page,
     api,
