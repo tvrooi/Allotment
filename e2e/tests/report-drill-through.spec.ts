@@ -1,4 +1,9 @@
+import type { Locator } from '@playwright/test';
 import { test, expect, open, isoDay } from './fixtures';
+
+/** The register's "Net movement" figure (SelectionSummary's Money movement list) */
+const netMovement = (scope: Locator) =>
+  scope.getByRole('term').filter({ hasText: 'Net movement' }).locator('..').getByRole('definition');
 
 // UX audit AU-014: a category's total in Spending by category was plain text, so checking a
 // surprising number meant rebuilding its filters on Transactions. Each category now opens
@@ -70,7 +75,7 @@ for (const phone of [false, true]) {
     for (const payee of ['Old shop', 'Unknown merchant'])
       await expect(main.getByText(payee, { exact: true })).toHaveCount(0);
     // The register's own total agrees with the report's
-    await expect(main.getByText(/^Net\s*[−-]\$90(\.00)?$/)).toBeVisible();
+    await expect(netMovement(main)).toHaveText(/^[−-]\$90(\.00)?$/);
 
     // Back returns to the report, and the uncategorised total opens its own transactions
     await page.goBack();
@@ -124,7 +129,7 @@ test('a custom report table row opens the transactions that make it up', async (
   await open(page, '/reports');
   await page.getByRole('link', { name: 'View transactions: Groceries' }).click();
   await expect(page).toHaveURL(/transactions/);
-  await expect(page.getByRole('main').getByText(/^Net\s*[−-]\$100(\.00)?$/)).toBeVisible();
+  await expect(netMovement(page.getByRole('main'))).toHaveText(/^[−-]\$100(\.00)?$/);
 
   await open(page, `/reports/custom/${report.id}`);
   // $40 + the $60 part of the split; the refund is income, not counted against it
@@ -137,7 +142,7 @@ test('a custom report table row opens the transactions that make it up', async (
     await expect(main.getByText(payee, { exact: true }).first()).toBeVisible();
   for (const payee of ['Market refund', 'Old shop'])
     await expect(main.getByText(payee, { exact: true })).toHaveCount(0);
-  await expect(main.getByText(/^Net\s*[−-]\$100(\.00)?$/)).toBeVisible();
+  await expect(netMovement(main)).toHaveText(/^[−-]\$100(\.00)?$/);
 
   // With unsaved settings, the link asks first; Keep editing stays, Discard follows it
   await page.goBack();
@@ -152,5 +157,5 @@ test('a custom report table row opens the transactions that make it up', async (
   await prompt.getByRole('button', { name: 'Discard' }).click();
   await expect(page).toHaveURL(/transactions/);
   await expect(main.getByText('Market refund', { exact: true }).first()).toBeVisible();
-  await expect(main.getByText(/^Net\s*[−-]\$90(\.00)?$/)).toBeVisible();
+  await expect(netMovement(main)).toHaveText(/^[−-]\$90(\.00)?$/);
 });

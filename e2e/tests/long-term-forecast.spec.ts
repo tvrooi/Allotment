@@ -1,4 +1,11 @@
+import type { Page } from '@playwright/test';
 import { test, expect, open, isoDay } from './fixtures';
+
+/** Duplicate, Rename and Delete are items of the "Plan actions" menu */
+async function planAction(page: Page, name: 'Duplicate' | 'Rename' | 'Delete') {
+  await page.getByRole('button', { name: 'Plan actions' }).click();
+  await page.getByRole('menuitem', { name, exact: true }).click();
+}
 
 // The long-term forecast (docs/LONG-TERM-FORECAST.md): the Forecast page opens on it, plans
 // and events are saved only when asked, and nothing it does touches the budget.
@@ -143,7 +150,8 @@ test('the long-term forecast: plans, drafts, years, dollars and comparison', asy
     .toBe(2);
   // A second plan, compared: the percentage names its denominator
   await page.getByRole('tab', { name: 'Life events' }).click();
-  await page.getByRole('button', { name: 'Duplicate' }).click();
+  // Plan actions live in one menu since fa588b5
+  await planAction(page, 'Duplicate');
   await page.getByRole('dialog').getByLabel('Plan name').fill('Retire early');
   await page.getByRole('dialog').getByRole('button', { name: 'Duplicate' }).click();
   await expect(page.getByLabel('Plan', { exact: true }).locator('option:checked')).toHaveText(
@@ -165,7 +173,7 @@ test('the long-term forecast: plans, drafts, years, dollars and comparison', asy
   ).toBeVisible();
 
   // Deleting a plan deletes only the plan
-  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  await planAction(page, 'Delete');
   await page.getByRole('dialog').getByRole('button', { name: 'Delete plan' }).click();
   await expect.poll(async () => (await api.call('GET', `${LT}/plans`)).length).toBe(1);
 
@@ -288,7 +296,7 @@ test('plans: a taken name is not a conflict, and unsaved edits are not dropped s
   await expect(page.getByLabel('Plan', { exact: true })).toBeVisible();
 
   // Renaming to a name another plan has says so, in the dialog
-  await page.getByRole('button', { name: 'Rename' }).click();
+  await planAction(page, 'Rename');
   await page.getByRole('dialog').getByLabel('Plan name').fill('second');
   await page.getByRole('dialog').getByRole('button', { name: 'Rename' }).click();
   const dialog = page.getByRole('dialog');

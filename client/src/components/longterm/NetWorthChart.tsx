@@ -14,7 +14,7 @@ import { smooth, valueScale } from '../charts/kit';
 import type { Comparison, PlanEvent, YearResult } from '../../api/longTerm';
 import { chartColors } from '../../utils/chartColors';
 import { formatCurrency } from '../../utils/currency';
-import { eventYear, inDollars, kindLabel, type Dollars } from '../../utils/longTerm';
+import { eventYear, inDollars, type Dollars } from '../../utils/longTerm';
 
 /** Where a plan year's closing balance sits on the x axis: today, then one year further on each */
 export const pointYear = (y: YearResult, startYear: number) => startYear + y.index;

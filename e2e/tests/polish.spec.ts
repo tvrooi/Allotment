@@ -249,7 +249,7 @@ test.describe('category picker from the keyboard', () => {
       await page
         .getByTestId('transaction-row')
         .filter({ hasText: payee })
-        .getByRole('button', { name: '—' })
+        .getByRole('button', { name: 'Uncategorised' })
         .click();
       const search = page.getByRole('textbox', { name: 'Search categories' });
       await expect(search).toBeFocused();
@@ -301,7 +301,7 @@ test.describe('category picker from the keyboard', () => {
     await page
       .getByTestId('transaction-row')
       .filter({ hasText: 'Mystery C' })
-      .getByRole('button', { name: '—' })
+      .getByRole('button', { name: 'Uncategorised' })
       .click();
     await expect(page.getByRole('textbox', { name: 'Search categories' })).toBeFocused();
     // No arrow key and no waiting for the highlight
@@ -323,7 +323,10 @@ test.describe('category picker from the keyboard', () => {
       payeeName: 'Mystery A',
     });
     await open(page, `/accounts/${acct.id}`);
-    await page.getByTestId('transaction-row').getByRole('button', { name: '—' }).click();
+    await page
+      .getByTestId('transaction-row')
+      .getByRole('button', { name: 'Uncategorised' })
+      .click();
     await page.getByRole('textbox', { name: 'Search categories' }).fill('Gro');
     await page.keyboard.press('Escape');
     await expect(page.getByRole('textbox', { name: 'Search categories' })).toHaveCount(0);

@@ -1,4 +1,13 @@
+import type { Page } from '@playwright/test';
 import { test, expect, open, isoDay, typeAmount } from './fixtures';
+
+/**
+ * The page groups its sections in tabs (da18c99): Overview (balances, recording), Bills,
+ * Activity (statement, breakdown, every entry, the log) and Settings (bills, sharing). The
+ * Bills tab's name can carry a count of unshared payments, so names match from the start.
+ */
+const openTab = (page: Page, name: 'Overview' | 'Bills' | 'Activity' | 'Settings') =>
+  page.getByRole('tab', { name: new RegExp(`^${name}`) }).click();
 
 test('records shared expenses, exports personal scope and keeps the bank debit intact', async ({
   page,
@@ -16,7 +25,7 @@ test('records shared expenses, exports personal scope and keeps the bank debit i
   await page.getByLabel('People, one per line; put yourself first').fill('Me\nAlex');
   await page.getByRole('button', { name: 'Create household', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'People & balances' })).toBeVisible();
-  await page.getByRole('button', { name: 'Expense, advance or repayment' }).click();
+  await page.getByRole('button', { name: 'Expense or repayment' }).click();
   const event = page.getByRole('heading', { name: 'Record something else' }).locator('../..');
   await event.getByLabel('Description', { exact: true }).fill('Shared dinner');
   await event.getByLabel('Date', { exact: true }).fill('2026-10-21');
@@ -24,6 +33,7 @@ test('records shared expenses, exports personal scope and keeps the bank debit i
   await event.getByLabel('Paid by').selectOption({ label: 'Me' });
   await event.getByLabel('Existing bank payment (optional)').selectOption(payment.id);
   await event.getByRole('button', { name: 'Save event' }).click();
+  await openTab(page, 'Activity');
   await expect(page.getByRole('heading', { name: /My expense shares:.*60/ })).toBeVisible();
   await page.getByLabel('Report scope').selectOption('household');
   await expect(page.getByRole('heading', { name: /Household spending:.*120/ })).toBeVisible();
@@ -98,6 +108,7 @@ test('shares a payment with the household in one step, with the default split', 
     selfIndex: 0,
   });
   await open(page, '/household');
+  await openTab(page, 'Settings');
   const sharing = page.getByRole('region', { name: 'Sharing' });
   await sharing.getByLabel('Split').selectOption('percentage');
   await sharing.getByLabel("Me's percentage").fill('40');
@@ -143,6 +154,7 @@ test('a household picture shows on the payments shared with it', async ({ page, 
 
   // Upload a picture in Household → Sharing (a 1×1 PNG, resized to a small square)
   await open(page, '/household');
+  await openTab(page, 'Settings');
   const sharing = page.getByRole('region', { name: 'Sharing' });
   await sharing.getByTestId('household-logo-input').setInputFiles({
     name: 'flat.png',
@@ -180,6 +192,7 @@ test('a household picture shows on the payments shared with it', async ({ page, 
   await expect(page.getByRole('heading', { name: 'People & balances' })).toBeVisible();
 
   // Without a picture, the household's initial shows instead
+  await openTab(page, 'Settings');
   await page
     .getByRole('region', { name: 'Sharing' })
     .getByRole('button', { name: 'Remove the picture for Flat' })
@@ -559,6 +572,7 @@ test('lists recurring bills shared with housemates, with shares and one-click sh
     selfIndex: 0,
   });
   await open(page, '/household');
+  await openTab(page, 'Bills');
   const recurring = page.getByRole('region', { name: 'Recurring bills' });
   await expect(recurring).toContainText('No recurring bills shared yet');
   // No household account: the pool figures stay out of the way
@@ -573,9 +587,13 @@ test('lists recurring bills shared with housemates, with shares and one-click sh
   await expect(power).toContainText('1 payment not shared yet');
   await power.getByRole('button', { name: 'Share payment' }).click();
   await expect(power).toContainText('Last payment shared');
+  await openTab(page, 'Activity');
   await expect(page.getByRole('heading', { name: /My expense shares:.*61\.50/ })).toBeVisible();
-  await expect(page.getByText(/^owes A?\$61\.50$/)).toHaveCount(2);
-  await expect(page.getByText(/^is owed A?\$123$/)).toBeVisible();
+  // People & balances lists everyone; the band above the tabs repeats the others' figures
+  await openTab(page, 'Overview');
+  const people = page.getByRole('tabpanel', { name: 'Overview' });
+  await expect(people.getByText(/^owes A?\$61\.50$/)).toHaveCount(2);
+  await expect(people.getByText(/^is owed A?\$123$/)).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
@@ -632,6 +650,7 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
   await expect(page.getByRole('button', { name: 'Rename Samantha' })).toBeVisible();
 
   // A split of its own for the internet bill, then share its payment with it
+  await openTab(page, 'Bills');
   const recurring = page.getByRole('region', { name: 'Recurring bills' });
   const net = recurring.getByRole('listitem').filter({ hasText: 'Internet (Superloop)' });
   await expect(net).toContainText("household's default split");
@@ -710,6 +729,7 @@ test('a rent with fixed amounts from the household account shows what each owes 
   });
   await open(page, '/household');
 
+  await openTab(page, 'Bills');
   const recurring = page.getByRole('region', { name: 'Recurring bills' });
   const bill = recurring.getByRole('listitem').filter({ hasText: 'Rent' });
   await bill.getByRole('button', { name: 'Change split' }).click();
@@ -726,6 +746,7 @@ test('a rent with fixed amounts from the household account shows what each owes 
   // The household account paid before anyone put their part in: each owes the account
   await bill.getByRole('button', { name: 'Share payment' }).click();
   await expect(bill).toContainText('Last payment shared');
+  await openTab(page, 'Overview');
   await expect(page.getByText(/^owes the household account A?\$1,200$/)).toBeVisible();
   await expect(page.getByText(/^owes the household account A?\$800$/)).toBeVisible();
 
@@ -738,8 +759,10 @@ test('a rent with fixed amounts from the household account shows what each owes 
     date: day(-1),
   });
   await page.reload();
+  await openTab(page, 'Settings');
   const sharing = page.getByRole('region', { name: 'Sharing' });
   await sharing.getByRole('button', { name: 'Record your contribution' }).click();
+  await openTab(page, 'Overview');
   await expect(page.getByText(/^owes the household account A?\$1,200$/)).toHaveCount(0);
 });
 
@@ -799,6 +822,7 @@ test('edits an entry in place, and the activity log keeps what was changed and r
     shares: group.people.map((p: any) => ({ personId: p.id, value: 1 })),
   });
   await open(page, '/household');
+  await openTab(page, 'Activity');
   await page.getByRole('button', { name: /^All contributions, payments & repayments/ }).click();
   await page.getByRole('button', { name: 'Edit Groceries' }).click();
   const dialog = page.getByRole('dialog', { name: 'Edit entry' });
@@ -869,6 +893,7 @@ test('breaks household spending down by month, person and category', async ({ pa
   });
 
   await open(page, '/household');
+  await openTab(page, 'Activity');
   await page.getByRole('button', { name: 'Spending by month, person and category' }).click();
   const section = page.locator('section', {
     has: page.getByRole('button', { name: 'Spending by month, person and category' }),
@@ -907,7 +932,7 @@ test('renames a household and chooses which one opens first', async ({ page }) =
   const picker = page.getByRole('combobox', { name: 'Household', exact: true });
   await expect(picker.locator('option:checked')).toHaveText('Beach house');
 
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit household', exact: true }).click();
   const edit = page.getByRole('dialog', { name: 'Edit household' });
   await edit.getByLabel('Name').fill('Coast house');
   await edit.getByLabel('Open this household first').check();
@@ -925,14 +950,16 @@ test('reconciles household balances to zero, and removing the adjustments undoes
   await page.getByLabel('Name', { exact: true }).fill('Home');
   await page.getByLabel('People, one per line; put yourself first').fill('Me\nAlex');
   await page.getByRole('button', { name: 'Create household', exact: true }).click();
-  await page.getByRole('button', { name: 'Expense, advance or repayment' }).click();
+  await page.getByRole('button', { name: 'Expense or repayment' }).click();
   const event = page.getByRole('heading', { name: 'Record something else' }).locator('../..');
   await event.getByLabel('Description', { exact: true }).fill('Groceries');
   await event.getByLabel('Date', { exact: true }).fill('2026-10-21');
   await event.getByLabel('Amount (AUD)').fill('80.00');
   await event.getByLabel('Paid by').selectOption({ label: 'Me' });
   await event.getByRole('button', { name: 'Save event' }).click();
-  await expect(page.getByText('owes A$40', { exact: true })).toBeVisible();
+  // People & balances; the band above the tabs repeats the figure
+  const people = page.getByRole('tabpanel', { name: 'Overview' });
+  await expect(people.getByText('owes A$40', { exact: true })).toBeVisible();
 
   await page.getByText('Where these figures come from').click();
   await page.getByRole('button', { name: 'Reconcile balances' }).click();
@@ -941,10 +968,12 @@ test('reconciles household balances to zero, and removing the adjustments undoes
   await expect(dialog).toBeHidden();
   await expect(page.getByText('owes A$40', { exact: true })).toHaveCount(0);
 
+  await openTab(page, 'Activity');
   await page.getByRole('button', { name: /All contributions, payments & repayments/ }).click();
   await expect(page.getByText('Balances agreed (between people)')).toBeVisible();
   await page.getByRole('button', { name: 'Remove entry' }).last().click();
-  await expect(page.getByText('owes A$40', { exact: true })).toBeVisible();
+  await openTab(page, 'Overview');
+  await expect(people.getByText('owes A$40', { exact: true })).toBeVisible();
 });
 
 test('lists recent entries newest first, with older months a click away', async ({ page, api }) => {
@@ -969,6 +998,7 @@ test('lists recent entries newest first, with older months a click away', async 
       shares: group.people.map((p: any) => ({ personId: p.id, value: 1 })),
     });
   await open(page, '/household');
+  await openTab(page, 'Activity');
   const statement = page.getByRole('heading', { name: /My expense shares/ }).locator('../..');
   // The total still covers every expense; the rows open on the newest two months
   await expect(statement.getByRole('heading', { name: /My expense shares:.*150/ })).toBeVisible();
@@ -1074,6 +1104,7 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
     scheduleIds: [schedule.id],
   });
   await open(page, '/household');
+  await openTab(page, 'Bills');
   const tile = page
     .getByRole('region', { name: 'Recurring bills' })
     .getByRole('listitem', { name: 'Electricity (Brightside)' });
@@ -1132,6 +1163,7 @@ test('suggests bills the household account pays, to add or dismiss', async ({ pa
     selfIndex: 0,
   });
   await open(page, '/household');
+  await openTab(page, 'Bills');
   const suggestions = page.getByRole('list', { name: 'Looks like a bill' });
   const water = suggestions.getByRole('listitem', { name: 'Riverbend Water' });
   await expect(water).toContainText('quarterly · 2 payments');

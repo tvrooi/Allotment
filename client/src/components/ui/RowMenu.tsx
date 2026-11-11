@@ -15,7 +15,7 @@ const MENU_W = 200;
 
 /**
  * ⋮ button that opens a portal popover of actions. Arrow keys move through it; it closes on
- * Escape (focus back on ⋮), an outside press, focus leaving it, or a scroll.
+ * Escape (focus back on ⋮), an outside press, focus leaving it, or a scroll that moves ⋮.
  */
 export default function RowMenu({
   items,
@@ -34,7 +34,15 @@ export default function RowMenu({
   useMenuKeyboard({ open, menuRef, buttonRef: btnRef, onClose: () => setPos(null) });
   useEffect(() => {
     if (!open) return;
-    const close = () => setPos(null);
+    const at = btnRef.current?.getBoundingClientRect();
+    const close = () => {
+      // The menu is fixed, so a scroll that moves ⋮ leaves it behind. A scroll event that
+      // arrives after opening without moving ⋮ (the one from scrolling it into view just
+      // before the click) closed the menu as it opened.
+      const now = btnRef.current?.getBoundingClientRect();
+      if (at && now && now.top === at.top && now.left === at.left) return;
+      setPos(null);
+    };
     window.addEventListener('scroll', close, true);
     return () => window.removeEventListener('scroll', close, true);
   }, [open]);

@@ -6,7 +6,7 @@ import { test, expect, open, isoDay } from './fixtures';
 const PAGES: { link: string; route: string; heading?: string }[] = [
   { link: 'Dashboard', route: '/dashboard' },
   { link: 'Accounts', route: '/accounts', heading: 'Accounts' },
-  { link: 'Transactions', route: '/transactions', heading: 'All transactions' },
+  { link: 'Transactions', route: '/transactions', heading: 'Transactions' },
   { link: 'Budget', route: '/budget' },
   { link: 'Recurring', route: '/recurring', heading: 'Recurring' },
   { link: 'Reports', route: '/reports', heading: 'Reports' },
@@ -95,6 +95,6 @@ test('auto-hidden navigation expands for keyboard focus and collapses after leav
   await sidebar.getByRole('link', { name: 'Transactions', exact: true }).press('Enter');
   await expect(page).toHaveURL(/#\/transactions$/);
 
-  await page.getByRole('textbox', { name: 'Search payee or notes…' }).focus();
+  await page.getByRole('textbox', { name: 'Search payee or notes' }).focus();
   await expect(dashboard.locator('span')).toHaveCSS('opacity', '0');
 });

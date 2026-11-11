@@ -25,18 +25,22 @@ async function openDemo(page: Page, route = '/dashboard') {
   await expect(page.getByRole('region', { name: 'Demo' })).toBeVisible();
 }
 
+/** The dashboard's "Left to spend · <month>" figure: the budget has loaded */
+const leftToSpend = (page: Page) => page.getByText(/^Left to spend · /);
+
 test('the demo opens on a finished budget, and every page works', async ({ page }) => {
   // It never talks to a server: every request stays on the demo's own files
   const requests: string[] = [];
   page.on('request', (r) => requests.push(new URL(r.url()).pathname));
 
   await openDemo(page);
-  await expect(page.getByText('Left to spend', { exact: true })).toBeVisible();
+  await expect(leftToSpend(page)).toBeVisible();
   await expect(page.getByText('Bills and income')).toBeVisible();
 
   for (const [route, text] of [
     ['/budget', 'Contents Insurance'],
-    ['/transactions', 'All transactions'],
+    // The heading is now just "Transactions", like the sidebar link, so look for the count
+    ['/transactions', /^[\d,]+ transactions?$/],
     ['/accounts', 'Synced from Up'],
     ['/recurring', "Riley's pay"],
     ['/reports', 'Where the money goes'],
@@ -109,7 +113,7 @@ test('changes stay in the tab, and "Start over" brings the demo budget back', as
   await expect(page.getByRole('row', { name: /Corner Grocer/ })).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Start over' }).click();
-  await expect(page.getByText('Left to spend', { exact: true })).toBeVisible();
+  await expect(leftToSpend(page)).toBeVisible();
   await page.getByRole('link', { name: 'Payees' }).click();
   await expect(page.getByRole('row', { name: /Corner Grocer/ })).toBeVisible();
 });
@@ -139,6 +143,8 @@ test("bank connections can't be set up in the demo", async ({ page }) => {
   expect(status).toBe(403);
 
   await page.keyboard.press('Escape');
+  // The SimpleFIN dialog closes first, so the next one is the only "Connect a bank"
+  await expect(dialog).toBeHidden();
   await page.getByRole('button', { name: 'Add account' }).click();
   await page.getByRole('button', { name: 'Connect via Enable Banking' }).click();
   await expect(page.getByRole('dialog', { name: 'Connect a bank' })).toContainText(
@@ -257,7 +263,7 @@ test("the demo's preferences stay in the tab, and Start over resets them", async
   expect(stored.session).toContain('dark');
 
   await page.getByRole('button', { name: 'Start over' }).click();
-  await expect(page.getByText('Left to spend', { exact: true })).toBeVisible();
+  await expect(leftToSpend(page)).toBeVisible();
   await expect(page.locator('html')).not.toHaveClass(/dark/);
 });
 
@@ -277,7 +283,7 @@ test('the demo runs under a strict Content Security Policy', async ({ page }) =>
   expect(meta).toContain("default-src 'self'");
   expect(meta).toContain("connect-src 'self'");
   await expect(page.getByRole('region', { name: 'Demo' })).toBeVisible();
-  await expect(page.getByText('Left to spend', { exact: true })).toBeVisible();
+  await expect(leftToSpend(page)).toBeVisible();
 
   // A request to another site is blocked
   const blocked = await page.evaluate(() =>

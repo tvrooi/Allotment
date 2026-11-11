@@ -18,8 +18,10 @@ for (const phone of [false, true]) {
     await expect(dialog.getByLabel('Saved so far')).toHaveCount(0);
     await dialog.getByRole('button', { name: 'Add goal' }).click();
     await expect(dialog).toBeHidden();
-    await expect(page.getByText('Category funded', { exact: true })).toBeVisible();
-    await expect(page.getByText('Groceries', { exact: true })).toBeVisible();
+    // The tag, then the category name as bare text beside it in the same line (b47ddd5)
+    const funded = page.getByText('Category funded', { exact: true });
+    await expect(funded).toBeVisible();
+    await expect(funded.locator('..')).toHaveText(/^Category funded\s*Groceries$/);
     await expect(
       page.getByText('Assigned this month $200 · Activity $0 · Available $200', { exact: true }),
     ).toBeVisible();

@@ -121,8 +121,12 @@ test('imports a YNAB register with several accounts, from the welcome page', asy
   const dialog = page.getByRole('dialog', { name: 'Import from YNAB' });
   const header =
     'Account,Flag,Date,Payee,Category Group/Category,Category Group,Category,Memo,Outflow,Inflow,Cleared\n';
-  const d1 = dmy(isoDay(-40));
-  const d2 = dmy(isoDay(-39));
+  // Days after the 12th, so the file reads only as day/month: on, say, 2/10 and 3/10 it is
+  // honestly ambiguous and the import asks instead of guessing (this failed early in a month)
+  let start = -40;
+  while (!/-(1[3-9]|2[0-7])$/.test(isoDay(start))) start--;
+  const d1 = dmy(isoDay(start));
+  const d2 = dmy(isoDay(start + 1));
   const file =
     header +
     `Everyday,,${d1},Coles,Food & Dining: Groceries,Food & Dining,Groceries,weekly,"$1,234.56",$0.00,Cleared\n` +

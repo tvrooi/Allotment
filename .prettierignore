@@ -11,3 +11,6 @@ server/src/db/migrations/meta
 e2e/test-results
 e2e/playwright-report
 
+
+# Vendored third-party skill (skills-lock.json): kept as published upstream, so updates stay clean diffs
+.agents/skills/impeccable
