@@ -261,7 +261,7 @@ Last updated: 10 November 2026 (Goals page critique fixes; Forecast page polish,
   `client/.impeccable/live/config.json`; no picker is injected or running. The detected Vite CSP
   applies only to demo builds, so no security policy was changed for the development entry.
 - **Paid ahead for a shared expense (up.148; owner-requested 8 November 2026; server and client,
-  no migration):** see [docs/HOUSEHOLDS.md](docs/HOUSEHOLDS.md) "Paying ahead for a shared
+  no migration):** see [docs/HOUSEHOLDS.md](../HOUSEHOLDS.md) "Paying ahead for a shared
   expense". The register's menu (**Paid ahead to ▸ person**) and the details panel
   (`components/household/PayAhead.tsx`) record the owner's money out as a settlement with
   `advance: true` linked to the payment (`recordPaidAhead` in `api/households.ts`); Undo and
@@ -297,7 +297,7 @@ Last updated: 10 November 2026 (Goals page critique fixes; Forecast page polish,
   only).
 - **Working from home (up.144, D4a of the Larger features group; server, client, demo and MCP text;
   migration 0085, additive; backup version 33):** built to
-  [docs/TAX-CAR-AND-HOME.md](docs/TAX-CAR-AND-HOME.md), whose §10 "As built" lists where it differs.
+  [docs/TAX-CAR-AND-HOME.md](../TAX-CAR-AND-HOME.md), whose §10 "As built" lists where it differs.
   Tax time has a **Car and home** tab (`?tab=car-home`) with the day-by-day hours at home, **Fill a
   pattern** (never overwrites a day), the year's rate (built-in ATO table for 2022 to 2025 in
   `services/taxRates.ts`; none for 2026, so the owner types it) and the year's **Bills** (Files link
@@ -308,7 +308,7 @@ Last updated: 10 November 2026 (Goals page critique fixes; Forecast page polish,
   $1,000 instant deduction is not built (not confirmed as law); D4b, the car, is next.
 - **Splits and consolidations (up.143, D3c of the Larger features group; server, client and MCP
   read; migration 0084, additive; backup version 32):** see
-  [docs/INVESTMENT-SALES-AND-INCOME.md](docs/INVESTMENT-SALES-AND-INCOME.md) §10 "D3c". A holding's
+  [docs/INVESTMENT-SALES-AND-INCOME.md](../INVESTMENT-SALES-AND-INCOME.md) §10 "D3c". A holding's
   **Split or consolidate** (date and ratio, previewed) scales the units held and rewrites nothing:
   a lot's units on a day are its recorded units times the splits since it was bought
   (`services/splitMath.ts`, `investmentSplits.ts`), a sale's quantity and parcels are as of its
@@ -318,7 +318,7 @@ Last updated: 10 November 2026 (Goals page critique fixes; Forecast page polish,
   distribution's annual statement (T2) waits for demand.
 - **Dividends, franking and deposits (up.142, D3b of the Larger features group; server, client,
   demo and MCP; migration 0083, additive; backup version 31):** see
-  [docs/INVESTMENT-SALES-AND-INCOME.md](docs/INVESTMENT-SALES-AND-INCOME.md) §10 "D3b". A holding's
+  [docs/INVESTMENT-SALES-AND-INCOME.md](../INVESTMENT-SALES-AND-INCOME.md) §10 "D3b". A holding's
   **Record a payment** (dividend, distribution or interest; franked, unfranked, credit with a
   30%/25% prefill, tax withheld, units reinvested as their own lot) and **Income**, where a payment
   or a sale links to its deposit (suggested by amount within 7 days) and keeps its statement or
@@ -329,7 +329,7 @@ Last updated: 10 November 2026 (Goals page critique fixes; Forecast page polish,
   writes any of it. D3c, splits, followed.
 - **Investment sales and capital gains (up.141, D3a of the Larger features group; server, client
   and demo; migration 0082, additive; backup version 30):** built to
-  [docs/INVESTMENT-SALES-AND-INCOME.md](docs/INVESTMENT-SALES-AND-INCOME.md), whose §10 "As built"
+  [docs/INVESTMENT-SALES-AND-INCOME.md](../INVESTMENT-SALES-AND-INCOME.md), whose §10 "As built"
   lists where it differs from the design. Investments → a holding's **Sell** (FIFO or **Choose
   parcels**, a preview of each parcel's gain and the 12-month discount) and **Sales**. Fully sold
   holdings sit under **Sold**. Tax time → Deductions has **Capital gains (item 18)**: 18H, 18A and
@@ -338,8 +338,8 @@ Last updated: 10 November 2026 (Goals page critique fixes; Forecast page polish,
   change that moves their item 18 (`keepingLodgedYears`). A new guide article, Investments. No
   token reaches any of it yet: D3b adds dividends, franking, register links, the `investment` file
   link kind and the read-only `investments` MCP tool for organise tokens; D3c added splits.
-- **UI/UX audit (7 November 2026; documentation only):** see [the report](docs/UX-UI-AUDIT.md)
-  and [evidence guide](docs/ux-ui-evidence/README.md). Fourteen stable findings, ranked work,
+- **UI/UX audit (7 November 2026; documentation only):** see [the report](../UX-UI-AUDIT.md)
+  and [evidence guide](../ux-ui-evidence/README.md). Fourteen stable findings, ranked work,
   acceptance criteria and a phased roadmap are ready for implementation. Start with shared
   load/save failure handling, modal focus and whole financial amounts. Review the coverage
   gaps before claiming completion; 176 browser checks passed, one was environment-blocked
@@ -869,7 +869,7 @@ Last updated: 10 November 2026 (Goals page critique fixes; Forecast page polish,
   reported plus open holds, a weekly full sweep, **Check all history**); up.94 to up.96 depreciating
   assets phases 1 to 3 (#134, #135, #136: Tax time → Assets, **Depreciate instead**, lodged-year
   locks, the low-value pool; migrations 0066 and 0067, backup format 25; see Open items 7).
-- **Full audit and Stage 1 fixes (up.85, up.86):** an owner-requested repository, architecture, financial, security and UX audit on 3 November is in [docs/AUDIT-2026-11.md](docs/AUDIT-2026-11.md) (findings F-01–F-24, roadmap, owner decisions I-1–I-11; the status table at its top says what has landed). Owner decisions taken: left to spend excludes savings (I-1), a new budget starts the day it connects Up (I-2), bank deletes warn and offer Restore (I-3). **up.85 (#122, released):** `client/src/utils/ledgerViews.ts` lists every ledger-derived query; the global `MutationCache.onSuccess` in `main.tsx` refreshes them after any save, and `setAfterUndoChange` in `store/undoStore.ts` after Undo/Redo (e2e `freshness.spec.ts`). `utils/leftToSpend.ts` leaves out Savings-type envelopes and goals' categories (`savingsCategoryIds`), and the dashboard card says what it leaves out; the full template's Savings and the demo's Emergency Fund are type `savings`, and the demo trip goal saves in Holidays. `AssignBlockError` lists Up rows deleted here, with Restore (`GET /up/review`, `POST /up/review/restore`; e2e in `assign-block.spec.ts`), and the delete confirmations say assigning pauses. `utils/fundingStatus.ts` names only the real causes on the Ready to assign hero. Full Backup copy says file bytes aren't in it. `config.ts` `unprotectedBindError`: the server refuses `FLYBUDGET_HOST` beyond loopback outside server mode and the desktop app. **up.86 (#123, merged 3 November; its tag and release follow main CI, check before relying on it):** `budget_settings.budget_start_day` (migration 0063, additive, CHECKed; backup format unchanged). The shared `budgetStartDay` SQL in `services/balances.ts` uses it, so envelope activity, card funding and the guards all honour a mid-month start without engine changes. `startBudgetIfNew` (called by `POST /up/map-accounts`) starts a new budget today; the Up dialog's `FreshStartNote` offers "Count all of _month_ instead"; Settings → Budget start shows and changes the day; `GET/PUT /budget/start` carry `{ month, day }`. Tests: `readyToAssign.test.ts`, `budgetFunding.test.ts`, `budgetService.test.ts`, `budgetEngine.test.ts` (generator includes a day start), e2e `first-import.spec.ts`. Neither release has been installed on the live app by these sessions.
+- **Full audit and Stage 1 fixes (up.85, up.86):** an owner-requested repository, architecture, financial, security and UX audit on 3 November is in [docs/AUDIT-2026-11.md](../AUDIT-2026-11.md) (findings F-01–F-24, roadmap, owner decisions I-1–I-11; the status table at its top says what has landed). Owner decisions taken: left to spend excludes savings (I-1), a new budget starts the day it connects Up (I-2), bank deletes warn and offer Restore (I-3). **up.85 (#122, released):** `client/src/utils/ledgerViews.ts` lists every ledger-derived query; the global `MutationCache.onSuccess` in `main.tsx` refreshes them after any save, and `setAfterUndoChange` in `store/undoStore.ts` after Undo/Redo (e2e `freshness.spec.ts`). `utils/leftToSpend.ts` leaves out Savings-type envelopes and goals' categories (`savingsCategoryIds`), and the dashboard card says what it leaves out; the full template's Savings and the demo's Emergency Fund are type `savings`, and the demo trip goal saves in Holidays. `AssignBlockError` lists Up rows deleted here, with Restore (`GET /up/review`, `POST /up/review/restore`; e2e in `assign-block.spec.ts`), and the delete confirmations say assigning pauses. `utils/fundingStatus.ts` names only the real causes on the Ready to assign hero. Full Backup copy says file bytes aren't in it. `config.ts` `unprotectedBindError`: the server refuses `FLYBUDGET_HOST` beyond loopback outside server mode and the desktop app. **up.86 (#123, merged 3 November; its tag and release follow main CI, check before relying on it):** `budget_settings.budget_start_day` (migration 0063, additive, CHECKed; backup format unchanged). The shared `budgetStartDay` SQL in `services/balances.ts` uses it, so envelope activity, card funding and the guards all honour a mid-month start without engine changes. `startBudgetIfNew` (called by `POST /up/map-accounts`) starts a new budget today; the Up dialog's `FreshStartNote` offers "Count all of _month_ instead"; Settings → Budget start shows and changes the day; `GET/PUT /budget/start` carry `{ month, day }`. Tests: `readyToAssign.test.ts`, `budgetFunding.test.ts`, `budgetService.test.ts`, `budgetEngine.test.ts` (generator includes a day start), e2e `first-import.spec.ts`. Neither release has been installed on the live app by these sessions.
 - **UX review (up.83):** owner-requested teardown in `docs/UX-REVIEW.md`, implemented except #7 (the sidebar's item count). Pull to refresh is back on phones as an in-app gesture (`hooks/usePullToRefresh.ts`, `components/layout/PullToRefresh.tsx`: refetches active queries) because `html, body` keep `overscroll-behavior: none`. The demo is an Australian Up budget (`server/src/demo/demoBudget.ts`: AUD, Spending/Rainy Day/Holiday/2Up keyed `checking`/`savings`/`holiday`/`card`, fortnightly pay and rent, every envelope funded to stay ≥ $0 and a $300 buffer; property test in `demoBudget.test.ts`) with a pretend Up connection in `server/src/browser/app.ts`; its links go to GitHub (`DemoBanner.tsx`). Category and goal icons are Lucide names (`client/src/utils/categoryIcons.ts`, emoji mapped at render time, no data migration); the short Australian template is the default unless the time zone is outside Australia (`db/defaultCategories.ts`), and `upCategoryMap.ts` knows its merged names. Allotment's own guide is `client/src/userGuide/articles.tsx` at `/guide`; Enable Banking's setup steps are its `enable-banking` article (up.122); nothing links to flybudget.org. Welcome redirects only from `/` and `/dashboard` (`AppShell.tsx`). Review's `utils/reviewNext.ts` drives both "Do this next" and the sidebar badge. First-visit intros: `guides/intros.ts` (seen under `intro.*` ids). Transactions bulk actions need **Select all** (`SelectionSummary.tsx`).
 - **Menu bars and buttons (up.82):** owner-requested review after a Settings tab bar on a phone could be dragged up and down (a tab's `-mb-px` hung 1px out of an `overflow-x-auto` row, and `overflow-x` alone makes a row scroll vertically too). Every sideways row now uses the `scroll-row` utility (`index.css`: `overflow-y: hidden`, `overscroll-behavior-x: contain`, no scrollbar, focus ring drawn inside); the underline overlap moved from the tabs to the row. Long rows use `ScrollCue` (fade, arrow, wheel scrolls it sideways, `activeKey` keeps the open tab in view). `role="tablist"` rows use `TabList` from `components/ui/tabList.tsx` (arrow keys, roving tabindex). Drop-down menus use `hooks/useMenuKeyboard.ts` (focus first item, arrows, Escape returns focus, outside press or focus leaving closes; a nested menu counts as inside). `html, body` have `overscroll-behavior: none` (the frame never bounces; pull to refresh is off). The global button cursor moved into `@layer base`, so `cursor-grab` and disabled cursors apply. Checks: `e2e/tests/menus.spec.ts`, and the tab-bar tests in `e2e/tests/phone/polish-phone.spec.ts`.
 - **Repayments paid ahead (up.80), Tricount history recorded, temporary token permission removed (up.81):** owner-approved on 3 November. `eventSchema.advance` lets a settlement exceed what is owed (`recordEvent` skips only the outstanding-balance check; still a repayment between two different people); the Household form's **Paid ahead** tick sets it, and Undo (`restoreHouseholdEvent`) sends it for settlements so a removed advance comes back. up.80 also carried a temporary organise-token permission (`householdEntryAllows`, MCP `record_household_entries`), used once on 3 November to record the owner's Tricount history in their two-person household (169 past expenses and repayments, 89 linked to the owner's bank payments, none refused); up.81 removes it and `routes/assistantTools.test.ts` now checks every token is refused. The owner revokes the organise token used for it.
@@ -982,7 +982,7 @@ site in `website/` was removed (audit decision I-9).
    (up.122): no help link goes to flybudget.org. Done: incremental Up fetch (F-10, up.93),
    route splitting (F-11, up.100).
 7. **Depreciating assets on Tax time (phases 1 to 3 released, up.94 to up.96):** owner request of 3 November.
-   [docs/DEPRECIATING-ASSETS-PLAN.md](docs/DEPRECIATING-ASSETS-PLAN.md) has the ATO rules
+   [docs/DEPRECIATING-ASSETS-PLAN.md](../DEPRECIATING-ASSETS-PLAN.md) has the ATO rules
    (prime cost and diminishing value), the design, four phases and five owner decisions (§7).
    The owner took the five decisions on 4 November: low-value pool in phase 3; organise tokens
    read assets, and an assistant's changes are proposals the owner approves one at a time
@@ -1016,7 +1016,7 @@ site in `website/` was removed (audit decision I-9).
    next month (up.111); ACT-05 month quick fills and BUD-07 selected-category funding are done
    (up.112); BUD-06 row-anchored moves and returning money to Ready to assign (up.115).
 
-10. **Audit roadmap, next round** ([docs/AUDIT-2026-11.md](docs/AUDIT-2026-11.md) section H): Stage 1
+10. **Audit roadmap, next round** ([docs/AUDIT-2026-11.md](../AUDIT-2026-11.md) section H): Stage 1
     leftovers are financial property tests across transfers, cards, splits, linked envelopes and
     household pools, plus "sync twice equals sync once" (F-16); deleted-import memory for Enable
     Banking and SimpleFIN like Up's `up_deleted_imports` (F-14, probable, verify first). Stage 2:
