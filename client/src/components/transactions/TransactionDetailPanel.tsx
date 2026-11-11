@@ -6,19 +6,9 @@ import { PayAhead } from '../household/PayAhead';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import { HouseholdIcon } from '../household/HouseholdIcon';
 import { useHouseholds } from '../../hooks/useHouseholds';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useId } from 'react';
-import {
-  X,
-  Lock,
-  Trash2,
-  Repeat,
-  Unlink,
-  Wand2,
-  Split,
-  ChevronDown,
-  ChevronUp,
-} from 'lucide-react';
+import { X, Lock, Repeat, Unlink, Wand2, Split, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   useUpdateTransaction,
   useDeleteTransaction,
@@ -31,6 +21,7 @@ import { useSchedules, useUnmatchByTransaction } from '../../hooks/useSchedules'
 import { CategoryPicker } from './CategoryPicker';
 import { PayeeCombobox } from './PayeeCombobox';
 import { Button } from '../ui/Button';
+import RowMenu from '../ui/RowMenu';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { useModalValue } from '../ui/Modal';
 import { RuleEditorFlow } from '../rules/RuleEditorFlow';
@@ -39,6 +30,7 @@ import { useUpdatePayee } from '../../hooks/usePayees';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { AccountIcon } from '../accounts/AccountIcon';
 import { formatMoney } from '../../utils/currency';
+import { transactionsLink } from '../../utils/transactionFilters';
 import { useAccountCurrency } from '../../hooks/useCurrency';
 import { MainAmountField } from '../currency/MainAmountField';
 import { RECURRENCE_TYPE_LABELS } from '../../types';
@@ -126,6 +118,8 @@ export function TransactionDetailPanel({
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
+      // Escape in the ⋮ menu closes only the menu
+      if ((e.target as Element | null)?.closest?.('[role="menu"]')) return;
       if (
         e.key === 'Escape' &&
         !showCategoryPicker &&
@@ -154,6 +148,15 @@ export function TransactionDetailPanel({
     transferLabel(tx, accountNameOf) ?? (tx.payeeName || (isTransfer ? 'Transfer' : '—'));
   const payee = tx.payeeId ? payees.find((p) => p.id === tx.payeeId) : undefined;
   const categoryEntry = tx.categoryId ? (categoryMap.get(tx.categoryId) ?? null) : null;
+  // The register filtered to this payee, category or account, over all dates
+  const payeeLink = isTransfer
+    ? null
+    : tx.payeeId
+      ? transactionsLink({ payeeIds: [tx.payeeId], datePreset: 'all' })
+      : tx.payeeName
+        ? transactionsLink({ payeeName: tx.payeeName, datePreset: 'all' })
+        : null;
+  const linkCls = 'hover:text-brand-600 hover:underline underline-offset-2';
   // Making or undoing a transfer needs the server: not offered while saving is paused, and a
   // balance correction can't be a transfer
   const canSave = useCanSave();
@@ -257,6 +260,17 @@ export function TransactionDetailPanel({
           >
             <ChevronDown size={16} />
           </button>
+          <RowMenu
+            label="More actions"
+            items={[
+              {
+                label: 'Delete transaction',
+                danger: true,
+                hidden: isReconciled,
+                onClick: () => setShowDeleteConfirm(true),
+              },
+            ]}
+          />
           <button
             onClick={onClose}
             aria-label="Close details"
@@ -280,12 +294,28 @@ export function TransactionDetailPanel({
               }
             />
             <div>
-              <div className="text-base font-semibold text-text">{payeeName}</div>
+              {payeeLink ? (
+                <Link
+                  to={payeeLink}
+                  onClick={onClose}
+                  aria-label={`All transactions from ${payeeName}`}
+                  className={`block text-base font-semibold text-text ${linkCls}`}
+                >
+                  {payeeName}
+                </Link>
+              ) : (
+                <div className="text-base font-semibold text-text">{payeeName}</div>
+              )}
               {accountName && (
-                <div className="flex items-center gap-1.5 mt-0.5">
+                <Link
+                  to={transactionsLink({ accountIds: [tx.accountId], datePreset: 'all' })}
+                  onClick={onClose}
+                  aria-label={`All transactions in ${accountName}`}
+                  className={`flex items-center gap-1.5 mt-0.5 text-xs text-text-tertiary ${linkCls}`}
+                >
                   <AccountIcon name={accountName} type={accountType} logo={accountLogo} size="xs" />
-                  <span className="text-xs text-text-tertiary">{accountName}</span>
-                </div>
+                  {accountName}
+                </Link>
               )}
             </div>
           </div>
@@ -433,6 +463,15 @@ export function TransactionDetailPanel({
                   <ChevronDown size={14} className="ml-auto text-text-tertiary" aria-hidden />
                 )}
               </button>
+              {categoryEntry && tx.categoryId && (
+                <Link
+                  to={transactionsLink({ categoryIds: [tx.categoryId], datePreset: 'all' })}
+                  onClick={onClose}
+                  className="inline-flex items-center mt-1.5 max-md:min-h-11 text-xs text-brand-600 hover:text-brand-700 hover:underline underline-offset-2"
+                >
+                  All {categoryEntry.name} transactions
+                </Link>
+              )}
               {showCategoryPicker && (
                 <CategoryPicker
                   value={tx.categoryId}
@@ -588,12 +627,10 @@ export function TransactionDetailPanel({
             Create rule
           </Button>
         )}
-        {!isReconciled && (
-          <Button variant="danger" onClick={() => setShowDeleteConfirm(true)} className="w-full">
-            <Trash2 size={14} />
-            Delete transaction
-          </Button>
-        )}
+        {/* Changes save as they're made; Done is the way out (Delete is in the ⋮ menu) */}
+        <Button onClick={onClose} className="w-full">
+          Done
+        </Button>
       </div>
 
       <SplitTransactionModal
