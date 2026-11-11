@@ -41,13 +41,14 @@ describe('monthsToAverage (property-based)', () => {
 });
 
 describe('expenseFigure (property-based)', () => {
-  it('shows spending as a plain amount and money back with a plus sign', () => {
+  it('shows spending as a plain amount in plain text and money back with a plus sign', () => {
     fc.assert(
       fc.property(cents, (net) => {
         const { value, tone } = expenseFigure(net);
         if (net < 0) {
           expect(value).toBe(formatCurrency(-net));
-          expect(tone).toBe('negative');
+          // Spending is normal, not an alarm: red is kept for overspending
+          expect(tone).toBeUndefined();
         } else if (net > 0) {
           expect(value).toBe(`+${formatCurrency(net)}`);
           expect(tone).toBe('positive');
@@ -62,7 +63,7 @@ describe('expenseFigure (property-based)', () => {
 
   it('a $250 balance correction left as money back reads "+$250", not "$250" spent', () => {
     expect(expenseFigure(25_000)).toEqual({ value: '+$250', tone: 'positive' });
-    expect(expenseFigure(-5_250)).toEqual({ value: '$52.50', tone: 'negative' });
+    expect(expenseFigure(-5_250)).toEqual({ value: '$52.50' });
   });
 });
 

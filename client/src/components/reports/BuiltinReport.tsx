@@ -42,7 +42,7 @@ export const BUILTIN_REPORTS: Record<BuiltinWidgetType, { label: string; descrip
 export const BUILTIN_TYPES = Object.keys(BUILTIN_REPORTS) as BuiltinWidgetType[];
 
 /**
- * Totals for the range. Expenses show what was spent (red), or "+$X" in green when refunds
+ * Totals for the range. Expenses show what was spent (plain), or "+$X" in green when refunds
  * outweighed spending. The monthly average counts only months since the budget's first
  * activity in the range.
  */
