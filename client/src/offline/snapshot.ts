@@ -4,6 +4,7 @@ import type { AuthStatus } from '../api/auth';
 import { signedInPerson } from '../api/person';
 import { useConnectionStore } from '../store/connectionStore';
 import { usePreferencesStore } from '../store/preferencesStore';
+import { clearRecents } from '../utils/paletteRecents';
 import {
   SNAPSHOT_VERSION,
   isOfflineQuery,
@@ -145,8 +146,12 @@ export function shownDataAsOf(qc: QueryClient): number | null {
   return oldest ?? useOfflineCopy.getState().dataAsOf;
 }
 
-/** Deletes the copy from this device (sign-out, login required again, or turned off). */
+/**
+ * Deletes the copy from this device (sign-out, login required again, or turned off), and the
+ * search palette's recent destinations with it: both name things in this budget.
+ */
 export function clearOfflineCopy(): Promise<void> {
+  clearRecents();
   clearTimeout(saveTimer);
   saveTimer = undefined;
   useOfflineCopy.setState({ restored: false });

@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { Loader2, Menu } from 'lucide-react';
+import { Loader2, Menu, Search } from 'lucide-react';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { usePreferencesStore } from '../../store/preferencesStore';
@@ -23,6 +23,11 @@ import { PhoneTabBar } from './PhoneTabBar';
 import { AddTransactionModal } from '../transactions/AddTransactionModal';
 import { useAddTransactionStore } from '../../store/addTransactionStore';
 import { useAddTransactionKeyboard } from '../../hooks/useAddTransactionKeyboard';
+import { useCommandPaletteStore } from '../../store/commandPaletteStore';
+import { useCommandPaletteKeyboard } from '../../hooks/useCommandPaletteKeyboard';
+
+// Loaded the first time it opens, so it stays out of the first download
+const CommandPalette = lazy(() => import('./CommandPalette'));
 
 /** Where opening the app lands: the root, which goes on to the dashboard */
 const FRONT_DOOR = new Set(['/', '/dashboard']);
@@ -33,6 +38,7 @@ export function AppShell() {
   useUpFreshness();
   useGuideKeyboard();
   useAddTransactionKeyboard();
+  useCommandPaletteKeyboard();
   const { data: accounts = [], isLoading, isError } = useAccounts();
   const setupSkipped = usePreferencesStore((s) => s.setupSkipped);
   const isPhone = useIsPhone();
@@ -79,7 +85,22 @@ export function AppShell() {
       <GuideTour />
       <GuidesDialog />
       <ShellAddTransaction />
+      <ShellCommandPalette />
     </div>
+  );
+}
+
+/** The search palette (store/commandPaletteStore.ts opens it), fetched the first time it opens */
+function ShellCommandPalette() {
+  const open = useCommandPaletteStore((s) => s.open);
+  const hide = useCommandPaletteStore((s) => s.hide);
+  const [wanted, setWanted] = useState(open);
+  if (open && !wanted) setWanted(true);
+  if (!wanted) return null;
+  return (
+    <Suspense fallback={null}>
+      <CommandPalette isOpen={open} onClose={hide} />
+    </Suspense>
   );
 }
 
@@ -121,6 +142,7 @@ function PhoneShell() {
   const phoneMain = useRef<HTMLElement>(null);
   const refocusMenuButton = useRef(false);
   const location = useLocation();
+  const showSearch = useCommandPaletteStore((s) => s.show);
 
   // Closing by hand (Escape, backdrop, close button) puts focus back on the menu button,
   // once the page behind is no longer inert
@@ -176,7 +198,15 @@ function PhoneShell() {
           </button>
           <img src={logoUrl} alt="" className="w-6 h-6" />
           <BrandName className="text-base" textClassName="text-sidebar-text-hi" />
-          <SafeModeButton className="relative ml-auto p-2 min-w-11 min-h-11 flex items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi no-drag-region" />
+          <button
+            type="button"
+            onClick={showSearch}
+            aria-label="Search"
+            className="ml-auto p-2 min-w-11 min-h-11 flex items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi no-drag-region"
+          >
+            <Search size={18} aria-hidden />
+          </button>
+          <SafeModeButton className="relative p-2 min-w-11 min-h-11 flex items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi no-drag-region" />
         </header>
         <DemoBanner />
         <ConnectionBanner />
@@ -197,6 +227,7 @@ function PhoneShell() {
       <GuideTour />
       <GuidesDialog />
       <ShellAddTransaction />
+      <ShellCommandPalette />
     </div>
   );
 }

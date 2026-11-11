@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.169
+
+- **Search from any page.** Press Cmd+K (Ctrl+K on Windows and Linux) or / to open a search over pages, accounts, categories, payees and goals, plus a few actions: add a transaction, turn Safe mode on or off, and open the guides. Type a few letters, use the arrow keys and press Enter. With nothing typed it shows the places you opened from it last on this device (names only, forgotten when you sign out or restore a backup). Features you haven't set up are listed with a Set up tag that opens the sidebar setting. On phones, tap the magnifying glass in the header. It searches what the app has already loaded, so it works offline and in the demo, and it shows no amounts. The guides list (?) now lists every keyboard shortcut.
+
 ## 0.2.0-up.168
 
 - **Seven small fixes from the design review.** A category's page opens on All time, so the chart, the transaction list and the summary agree instead of showing an empty month beside a full chart; on a wide screen the list sits right under the chart. Income and expenses use the same muted colours on the Dashboard, in Reports and on a category's chart, and the Reports summary and the full Income & Expenses report show spending in plain text: red is kept for overspending. The summary card no longer cuts off its bottom labels on phones. In a transaction's details, Delete moves into the ⋮ menu (still asking first), Done is the main button, and the payee, category and account are underlined links to the register filtered to them. On Recurring, possible matches show as a quiet note with a Review now link instead of a solid orange bar. The arrow at the end of a transaction row and the hide-balances eye now have names a screen reader can read.

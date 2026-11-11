@@ -61,6 +61,18 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         ),
       },
       {
+        heading: 'Finding your way',
+        body: (
+          <p>
+            The sidebar lists every page. To jump straight to a page, account, category, payee or
+            goal, search for it: press <b>Cmd+K</b> on a Mac (<b>Ctrl+K</b> elsewhere) or <b>/</b>{' '}
+            on any page, type a few letters and press Enter. On a phone, tap the magnifying glass at
+            the top. With nothing typed, it shows where you went last on this device. Press <b>?</b>{' '}
+            for the list of guides and every keyboard shortcut.
+          </p>
+        ),
+      },
+      {
         heading: 'Where your data is',
         body: (
           <p>
