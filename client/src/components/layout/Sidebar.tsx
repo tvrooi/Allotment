@@ -1,31 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  Landmark,
-  ArrowLeftRight,
-  Wallet,
-  Repeat,
-  BarChart3,
-  Workflow,
-  Target,
-  House,
-  TrendingUp,
-  Users,
-  Zap,
-  Settings,
-  Pin,
-  X,
-  ClipboardCheck,
-  CandlestickChart,
-  Receipt,
-  Eye,
-  EyeOff,
-  CalendarClock,
-  FolderOpen,
-  ChevronDown,
-  Plus,
-} from 'lucide-react';
+import { Pin, X, Eye, EyeOff, ChevronDown, Plus } from 'lucide-react';
 import { usePreferencesStore, type NavGroup } from '../../store/preferencesStore';
 import { useSafeModeStore } from '../../store/safeModeStore';
 import { SidebarAccountList } from './SidebarAccountList';
@@ -35,7 +10,7 @@ import { HelpMenu } from '../guide/HelpMenu';
 import { BrandName } from '../ui/BrandName';
 import { useGuideProgress } from '../../hooks/useGuides';
 import { featureShown, hiddenFeatureCount } from '../../utils/navFeatures';
-import type { NavFeature } from '../../api/guides';
+import { MORE_FEATURES_LINK, NAV_PAGES, type NavPage } from './navPages';
 import { useAddTransactionStore } from '../../store/addTransactionStore';
 import { useCanAddTransaction } from '../../hooks/useOffline';
 import { filledDisabled } from '../ui/Button';
@@ -85,12 +60,6 @@ function NavItem({ to, icon, label, collapsed, badge }: NavItemProps) {
   );
 }
 
-interface SectionItem {
-  to: string;
-  icon: React.ReactNode;
-  label: string;
-}
-
 /**
  * A heading that folds its links away (remembered on this device). A folded group still lists
  * the page you're on. In the collapsed rail the heading is a thin rule and every link shows.
@@ -104,17 +73,16 @@ function NavSection({
   group: NavGroup;
   label: string;
   collapsed: boolean;
-  items: (SectionItem | false)[];
+  items: NavPage[];
 }) {
   const { pathname } = useLocation();
   const folded = usePreferencesStore((s) => !!s.navGroupsFolded[group]);
   const setFolded = usePreferencesStore((s) => s.setNavGroupFolded);
   const listId = `nav-group-${group}`;
-  const listed = items.filter((i): i is SectionItem => !!i);
   const visible =
     collapsed || !folded
-      ? listed
-      : listed.filter((i) => pathname === i.to || pathname.startsWith(`${i.to}/`));
+      ? items
+      : items.filter((i) => pathname === i.path || pathname.startsWith(`${i.path}/`));
   return (
     <div className="pt-3">
       {collapsed ? (
@@ -137,7 +105,13 @@ function NavSection({
       )}
       <div id={listId} role="group" aria-label={label} className="mt-1 space-y-1">
         {visible.map((i) => (
-          <NavItem key={i.to} to={i.to} icon={i.icon} label={i.label} collapsed={collapsed} />
+          <NavItem
+            key={i.path}
+            to={i.path}
+            icon={<i.icon size={18} />}
+            label={i.label}
+            collapsed={collapsed}
+          />
         ))}
       </div>
     </div>
@@ -206,7 +180,23 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
   const reviewCount = useNextSteps().length;
   const { pathname } = useLocation();
   const { data: progress, isError } = useGuideProgress();
-  const shown = (feature: NavFeature) => featureShown(feature, progress, pathname, isError);
+  // The pages a part of the sidebar lists (navPages.ts), less optional features left out
+  const pagesIn = (section: NavPage['section']) =>
+    NAV_PAGES.filter(
+      (p) =>
+        p.section === section &&
+        (!p.feature || featureShown(p.feature, progress, pathname, isError)),
+    );
+  const navItem = (p: NavPage) => (
+    <NavItem
+      key={p.path}
+      to={p.path}
+      icon={<p.icon size={18} />}
+      label={p.label}
+      collapsed={!isExpanded}
+      badge={p.path === '/review' ? reviewCount : undefined}
+    />
+  );
   const hiddenCount = hiddenFeatureCount(progress, pathname, isError);
   const sidebarMode = usePreferencesStore((s) => s.sidebarMode);
   const setSidebarMode = usePreferencesStore((s) => s.setSidebarMode);
@@ -264,100 +254,23 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
         {/* Primary nav: the everyday pages, then Planning and Tools (audit decision I-4).
             Optional features appear once they hold something or are turned on (navFeatures.ts). */}
         <nav data-guide="nav.main" aria-label="Main" className="pt-4 px-3 space-y-1">
-          <NavItem
-            to="/dashboard"
-            icon={<LayoutDashboard size={18} />}
-            label="Dashboard"
-            collapsed={!isExpanded}
-          />
-          <NavItem
-            to="/accounts"
-            icon={<Landmark size={18} />}
-            label="Accounts"
-            collapsed={!isExpanded}
-          />
-          <NavItem
-            to="/transactions"
-            icon={<ArrowLeftRight size={18} />}
-            label="Transactions"
-            collapsed={!isExpanded}
-          />
-          <NavItem
-            to="/budget"
-            icon={<Wallet size={18} />}
-            label="Budget"
-            collapsed={!isExpanded}
-          />
-          <NavItem
-            to="/review"
-            icon={<ClipboardCheck size={18} />}
-            label="Review"
-            collapsed={!isExpanded}
-            badge={reviewCount}
-          />
-          <NavItem
-            to="/recurring"
-            icon={<Repeat size={18} />}
-            label="Recurring"
-            collapsed={!isExpanded}
-          />
-          {shown('pay-later') && (
-            <NavItem
-              to="/payment-plans"
-              icon={<CalendarClock size={18} />}
-              label="Pay later"
-              collapsed={!isExpanded}
-            />
-          )}
-          {shown('household') && (
-            <NavItem
-              to="/household"
-              icon={<House size={18} />}
-              label="Household"
-              collapsed={!isExpanded}
-            />
-          )}
-          <NavItem
-            to="/reports"
-            icon={<BarChart3 size={18} />}
-            label="Reports"
-            collapsed={!isExpanded}
-          />
-          <NavItem
-            to="/cash-flow"
-            icon={<Workflow size={18} />}
-            label="Cash flow"
-            collapsed={!isExpanded}
-          />
+          {pagesIn('main').map(navItem)}
           <NavSection
             group="planning"
             label="Planning"
             collapsed={!isExpanded}
-            items={[
-              { to: '/goals', icon: <Target size={18} />, label: 'Goals' },
-              { to: '/forecast', icon: <TrendingUp size={18} />, label: 'Forecast' },
-              shown('investments') && {
-                to: '/investments',
-                icon: <CandlestickChart size={18} />,
-                label: 'Investments',
-              },
-              shown('tax') && { to: '/tax', icon: <Receipt size={18} />, label: 'Tax time' },
-            ]}
+            items={pagesIn('planning')}
           />
           <NavSection
             group="tools"
             label="Tools"
             collapsed={!isExpanded}
-            items={[
-              { to: '/payees', icon: <Users size={18} />, label: 'Payees' },
-              { to: '/rules', icon: <Zap size={18} />, label: 'Rules' },
-              shown('files') && { to: '/files', icon: <FolderOpen size={18} />, label: 'Files' },
-            ]}
+            items={pagesIn('tools')}
           />
           {hiddenCount > 0 && (
             <Link
-              to="/settings?tab=preferences"
-              state={{ focus: 'sidebar-features' }}
+              to={MORE_FEATURES_LINK.to}
+              state={MORE_FEATURES_LINK.state}
               title={!isExpanded ? 'More features' : undefined}
               className="flex items-center gap-3 py-2 max-md:min-h-11 px-3 rounded-md text-xs text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi"
             >
@@ -388,12 +301,7 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
         aria-label="Settings"
         className="shrink-0 py-3 px-3 border-t border-sidebar-border space-y-1"
       >
-        <NavItem
-          to="/settings"
-          icon={<Settings size={18} />}
-          label="Settings"
-          collapsed={!isExpanded}
-        />
+        {pagesIn('footer').map(navItem)}
       </nav>
 
       {/* Where the data lives and whether the server is reachable, and (desktop) the pin:

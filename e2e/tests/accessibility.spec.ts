@@ -259,3 +259,36 @@ test('the row-end arrow and the hide-balances button have names and room to pres
   const eye = (await hide.boundingBox())!;
   expect(Math.min(eye.width, eye.height)).toBeGreaterThanOrEqual(24);
 });
+
+test('the search palette is a named combobox over a grouped listbox', async ({ page, api }) => {
+  await api.createAccount('Checking', 100_000);
+  await open(page, '/dashboard');
+  await page.getByRole('heading', { level: 1 }).first().waitFor();
+  await page.keyboard.press('ControlOrMeta+k');
+  const dialog = page.getByRole('dialog', { name: 'Search' });
+  const box = dialog.getByRole('combobox', { name: /^Search pages/ });
+  await expect(box).toBeFocused();
+  await expect(box).toHaveAttribute('aria-expanded', 'true');
+  const list = dialog.getByRole('listbox', { name: 'Results' });
+  await expect(box).toHaveAttribute('aria-controls', (await list.getAttribute('id'))!);
+  // The highlighted option exists, and every option sits in a named group
+  const active = await box.getAttribute('aria-activedescendant');
+  await expect(page.locator(`[id="${active}"]`)).toHaveAttribute('role', 'option');
+  const problems = await list.evaluate((el) =>
+    [...el.querySelectorAll('[role=option]')]
+      .filter((o) => {
+        const group = o.closest('[role=group]');
+        const heading = group && document.getElementById(group.getAttribute('aria-labelledby')!);
+        return !heading?.textContent?.trim() || !o.textContent?.trim();
+      })
+      .map((o) => o.outerHTML.slice(0, 120)),
+  );
+  expect(problems).toEqual([]);
+  // Nothing nameless in the dialog either
+  const nameless = await dialog.evaluate((el) =>
+    [...el.querySelectorAll('button, a[href], input')]
+      .filter((c) => !(c.getAttribute('aria-label') ?? c.textContent ?? '').trim())
+      .map((c) => c.outerHTML.slice(0, 120)),
+  );
+  expect(nameless).toEqual([]);
+});

@@ -5,6 +5,11 @@ Overwritten at the end of each UI session, never appended. Last written 11 Novem
 
 ## Done this session
 
+- Search palette, part 1 of #224 (up.169, branch `feat/command-palette-1`): Cmd/Ctrl+K, `/` and
+  the phone header's Search open one palette over pages, actions (Add a transaction, Safe mode,
+  guides), accounts, categories, payees and goals, from cached lists only; recents on the device;
+  hidden features marked Set up. The sidebar now reads its pages from `layout/navPages.ts`. The
+  guides dialog lists the keyboard shortcuts.
 - Wave B fixes (up.168): #227 category opens on All time, #228 one Income/Expenses palette in
   the chart kit, #229 category layout, #233 Delete in the details menu plus filter links, #234
   quiet Recurring callout, #238 Reports summary on phones, #242 row arrow and eye names.
@@ -35,7 +40,10 @@ Overwritten at the end of each UI session, never appended. Last written 11 Novem
 - #213 quick expense test; #214 refresh `docs/ux-ui-evidence/` dates; #215 iPhone check; #216 dark mode.
 - #217 Review queue redesign; #218 Cash flow personal share; #219 Household screens by type.
 - #220 sidebar item count (UX review item 7).
-- Design re-review at `cf2e2f0`, P0: #224 command palette; #226 sidebar set-up rows.
+- #224 PR 2: Files and Transactions search in the palette, "Not available offline" for those
+  two groups, and the demo's Files message. Seams: add a group id in `utils/commandPalette.ts`
+  `PALETTE_GROUPS` and its entries in `CommandPalette.tsx`.
+- Design re-review at `cf2e2f0`, P0: #226 sidebar set-up rows.
 - P1: #230 dashboard next-step card; #231 dashboard value strip; #235 goal/payee links;
   #236 transfers step; #237 empty states; #243 desktop row click; #245 undo and keep filters.
 - P2: #232 dashboard grid; #239 onboarding step; #240 headers and pickers;

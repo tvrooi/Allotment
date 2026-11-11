@@ -376,3 +376,27 @@ test('the demo has working-from-home hours, and lodging a year records them in t
   await page.getByRole('tab', { name: 'Deductions' }).click();
   await expect(page.getByRole('region', { name: 'Amended since lodging' })).toBeVisible();
 });
+
+test('the search palette finds the sample budget’s payees and goals', async ({ page }) => {
+  await openDemo(page);
+  await expect(leftToSpend(page)).toBeVisible();
+  await page.keyboard.press('ControlOrMeta+k');
+  const palette = page.getByRole('dialog', { name: 'Search' });
+  await palette.getByRole('combobox').fill('grind');
+  await palette.getByRole('option', { name: /^Daily Grind Coffee/ }).click();
+  await expect(page).toHaveURL(/#\/transactions\?/);
+  await expect(page.getByText('Daily Grind Coffee').first()).toBeVisible();
+  await expect(palette).toBeHidden();
+
+  await page.keyboard.press('ControlOrMeta+k');
+  await palette.getByRole('combobox').fill('emergency');
+  // The goal, and the envelope of the same name under Categories
+  await expect(
+    palette.getByRole('option', { name: 'Emergency Fund · Savings Goals' }),
+  ).toBeVisible();
+  await palette
+    .getByRole('group', { name: 'Goals' })
+    .getByRole('option', { name: 'Emergency fund' })
+    .click();
+  await expect(page).toHaveURL(/#\/goals$/);
+});

@@ -14,6 +14,7 @@ import {
 import { IS_DEMO, downloadFromApi } from '../../demo/demoApi';
 import { YnabImportModal } from '../transactions/YnabImportModal';
 import { decimalSeparator, useAmountStyle } from '../../utils/currency';
+import { clearRecents } from '../../utils/paletteRecents';
 
 const API_BASE = '/api/export';
 
@@ -82,7 +83,8 @@ export function DataExport() {
             ? ` Your previous data was saved as ${result.safetyCopy} next to the database.`
             : ''),
       });
-      // Everything on screen is from before the restore
+      // Everything on screen is from before the restore, and so are the search palette's recents
+      clearRecents();
       await queryClient.invalidateQueries();
     } catch (err) {
       setRestoreMessage({ ok: false, text: err instanceof Error ? err.message : 'Restore failed' });

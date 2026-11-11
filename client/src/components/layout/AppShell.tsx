@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { Loader2, Menu } from 'lucide-react';
+import { Loader2, Menu, Search } from 'lucide-react';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { usePreferencesStore } from '../../store/preferencesStore';
@@ -23,6 +23,16 @@ import { PhoneTabBar } from './PhoneTabBar';
 import { AddTransactionModal } from '../transactions/AddTransactionModal';
 import { useAddTransactionStore } from '../../store/addTransactionStore';
 import { useAddTransactionKeyboard } from '../../hooks/useAddTransactionKeyboard';
+import { useCommandPaletteStore } from '../../store/commandPaletteStore';
+import { useCommandPaletteKeyboard } from '../../hooks/useCommandPaletteKeyboard';
+import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
+import { retryingImport } from '../../utils/retryingImport';
+
+// Out of the first download: fetched once the app is idle (so it's also kept for offline use)
+// or when Search first opens, whichever comes first
+const commandPalette = retryingImport(() => import('./CommandPalette'));
+type PaletteComponent = ComponentType<{ isOpen: boolean; onClose: () => void }>;
 
 /** Where opening the app lands: the root, which goes on to the dashboard */
 const FRONT_DOOR = new Set(['/', '/dashboard']);
@@ -33,6 +43,7 @@ export function AppShell() {
   useUpFreshness();
   useGuideKeyboard();
   useAddTransactionKeyboard();
+  useCommandPaletteKeyboard();
   const { data: accounts = [], isLoading, isError } = useAccounts();
   const setupSkipped = usePreferencesStore((s) => s.setupSkipped);
   const isPhone = useIsPhone();
@@ -79,7 +90,55 @@ export function AppShell() {
       <GuideTour />
       <GuidesDialog />
       <ShellAddTransaction />
+      <ShellCommandPalette />
     </div>
+  );
+}
+
+/**
+ * The search palette (store/commandPaletteStore.ts opens it). If its code can't be fetched (the
+ * device went offline before it was ever loaded) the shell stays up and says so; opening Search
+ * again tries again.
+ */
+function ShellCommandPalette() {
+  const open = useCommandPaletteStore((s) => s.open);
+  const hide = useCommandPaletteStore((s) => s.hide);
+  const [Palette, setPalette] = useState<PaletteComponent | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  // Fetched in the background once the page has settled, while it can still be reached
+  useEffect(() => {
+    const t = setTimeout(commandPalette.warm, 3_000);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (!open || Palette) return;
+    let current = true;
+    commandPalette.load().then(
+      (m) => current && setPalette(() => m.default),
+      () => current && setFailed(true),
+    );
+    return () => {
+      current = false;
+    };
+  }, [open, Palette]);
+
+  if (Palette) return <Palette isOpen={open} onClose={hide} />;
+  const close = () => {
+    hide();
+    setFailed(false);
+  };
+  return (
+    <Modal isOpen={open && failed} onClose={close} title="Search" size="sm">
+      <p className="text-sm text-text-secondary">
+        Search isn’t on this device yet, and Allotment can’t be reached to fetch it. It works once
+        Allotment reconnects.
+      </p>
+      <div className="mt-4 flex justify-end">
+        <Button onClick={close}>OK</Button>
+      </div>
+    </Modal>
   );
 }
 
@@ -121,6 +180,7 @@ function PhoneShell() {
   const phoneMain = useRef<HTMLElement>(null);
   const refocusMenuButton = useRef(false);
   const location = useLocation();
+  const showSearch = useCommandPaletteStore((s) => s.show);
 
   // Closing by hand (Escape, backdrop, close button) puts focus back on the menu button,
   // once the page behind is no longer inert
@@ -176,7 +236,15 @@ function PhoneShell() {
           </button>
           <img src={logoUrl} alt="" className="w-6 h-6" />
           <BrandName className="text-base" textClassName="text-sidebar-text-hi" />
-          <SafeModeButton className="relative ml-auto p-2 min-w-11 min-h-11 flex items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi no-drag-region" />
+          <button
+            type="button"
+            onClick={showSearch}
+            aria-label="Search"
+            className="ml-auto p-2 min-w-11 min-h-11 flex items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi no-drag-region"
+          >
+            <Search size={18} aria-hidden />
+          </button>
+          <SafeModeButton className="relative p-2 min-w-11 min-h-11 flex items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi no-drag-region" />
         </header>
         <DemoBanner />
         <ConnectionBanner />
@@ -197,6 +265,7 @@ function PhoneShell() {
       <GuideTour />
       <GuidesDialog />
       <ShellAddTransaction />
+      <ShellCommandPalette />
     </div>
   );
 }

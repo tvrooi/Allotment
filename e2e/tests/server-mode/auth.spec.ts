@@ -454,6 +454,38 @@ test('with the server unreachable, the app opens with the offline copy and keeps
   expect(all.filter((t: { payeeName: string }) => t.payeeName === 'Coffee Cart')).toHaveLength(1);
 });
 
+test('offline, search still opens: its code was kept while connected', async ({ baseURL }) => {
+  await owner.goto(`${baseURL}/budget`);
+  await owner.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
+  await expect.poll(() => owner.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+  // Fetched in the background once the app settles, without opening Search, and kept by the
+  // service worker
+  await expect
+    .poll(
+      () =>
+        owner.evaluate(async () => {
+          for (const name of await caches.keys())
+            for (const req of await (await caches.open(name)).keys())
+              if (/\/assets\/CommandPalette-[^/]+\.js$/.test(req.url)) return true;
+          return false;
+        }),
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+
+  // Opened fresh with no network at all
+  await owner.context().setOffline(true);
+  await owner.goto(`${baseURL}/budget`);
+  await expect(owner.getByRole('status', { name: 'Ready to assign' })).toBeVisible();
+  await owner.keyboard.press('ControlOrMeta+k');
+  const palette = owner.getByRole('dialog', { name: 'Search' });
+  await expect(palette.getByRole('combobox')).toBeFocused();
+  await palette.getByRole('combobox').fill('credit');
+  await expect(palette.getByRole('option', { name: 'Credit Union' })).toBeVisible();
+  await owner.keyboard.press('Escape');
+  await owner.context().setOffline(false);
+});
+
 test('the offline copy can be turned off, and signing out deletes it', async ({ baseURL }) => {
   await owner.goto(`${baseURL}/settings?tab=server`);
   const keep = owner.getByRole('checkbox', { name: /Keep a copy of my budget on this device/ });

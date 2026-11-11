@@ -50,8 +50,16 @@ unsaved-drafts, phone/phone, phone/polish-phone, phone/iphone-webapp, phone/amou
   `AddTransactionModal` (opened through `store/addTransactionStore.ts`) and the N key
   (`hooks/useAddTransactionKeyboard.ts`; one-key guard in `utils/pageShortcut.ts`).
 - `components/layout/Sidebar.tsx`: desktop sidebar (Add a transaction at its top) and the phone drawer.
+- `components/layout/navPages.ts`: the one list of pages (path, label, icon, section, optional
+  feature) that the sidebar and the search palette both read; `MORE_FEATURES_LINK`.
+- `components/layout/CommandPalette.tsx` (lazy): search palette over pages, actions, accounts,
+  categories, payees and goals; opened by `store/commandPaletteStore.ts`, Cmd/Ctrl+K and `/`
+  (`hooks/useCommandPaletteKeyboard.ts`, guard `isPaletteShortcut`) and the phone header's
+  Search. Ranking in `utils/commandPalette.ts`; recents in `utils/paletteRecents.ts`.
+- `components/guide/KeyboardShortcuts.tsx`: the shortcut list in the guides dialog.
 - `components/layout/PhoneTabBar.tsx`: phone tab bar (Home, Transactions, Add, Budget, Review).
-- Specs: navigation, dialog-focus, transactions ("Add transaction from any page"), phone/phone.
+- Specs: navigation, dialog-focus, transactions ("Add transaction from any page"), command-palette,
+  phone/phone, phone/command-palette-phone, demo/demo (palette case).
 
 ## Component files over 800 lines (split candidates)
 
