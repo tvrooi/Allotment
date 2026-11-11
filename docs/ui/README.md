@@ -3,6 +3,8 @@
 For any UI or design work. Read in this order and stop as soon as you have enough:
 
 1. [HANDOVER-UI.md](HANDOVER-UI.md): what the last UI session did, what is next, traps.
+   While the design re-review waves are running, also read [WAVES.md](WAVES.md): wave status,
+   open PRs, owner decisions and the per-wave routine.
 2. The screen's row in [MAP.md](MAP.md): route, page file, component folder, hooks, e2e spec.
 3. Only the files that row names. Use `wc -l` before opening a large file and read the part you need.
 4. [DESIGN.md](../../DESIGN.md) only when a visual decision is needed (colour, type, spacing, motion).
