@@ -266,10 +266,104 @@ test.describe('account register', () => {
     });
     await open(page, `/accounts/${checking.id}`);
     await row(page, 'Oops Store').click();
-    await page.getByRole('button', { name: 'Delete transaction' }).click();
+    const details = page.getByRole('complementary', { name: 'Transaction details' });
+    // Delete is in the details' menu, not a big red button; Done is the main action
+    await expect(details.getByRole('button', { name: 'Delete transaction' })).toHaveCount(0);
+    await expect(details.getByRole('button', { name: 'Done' })).toBeVisible();
+    await details.getByRole('button', { name: 'More actions' }).click();
+    await page.getByRole('menuitem', { name: 'Delete transaction' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
     await expect(page.getByText('No transactions yet')).toBeVisible();
     expect(await api.balance(checking.id)).toBe(100_000);
+  });
+
+  test('opening the details menu while the panel slides in keeps it open', async ({
+    page,
+    api,
+  }) => {
+    const { checking } = await setup(api);
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: -5_000,
+      payeeName: 'Oops Store',
+    });
+    await open(page, `/accounts/${checking.id}`);
+    await row(page, 'Oops Store').click();
+    const details = page.getByRole('complementary', { name: 'Transaction details' });
+    await expect(details).toBeVisible();
+    // Hold the panel part-way through its slide-in (the translate it animates) and focus ⋮, as
+    // Tab or a click's scroll-into-view does then. No box around ⋮ may scroll: the slide kept
+    // moving that scroll position, and the scroll events closed a ⋮ menu opened then
+    const scrolled = await details.evaluate((aside) => {
+      const slide = aside.parentElement!;
+      slide.style.transition = 'none';
+      slide.style.translate = '50% 0';
+      aside.querySelector<HTMLElement>('button[aria-label="More actions"]')!.focus();
+      let max = 0;
+      for (let el = slide.parentElement; el; el = el.parentElement)
+        max = Math.max(max, el.scrollLeft);
+      slide.style.translate = '';
+      slide.style.transition = '';
+      return max;
+    });
+    expect(scrolled).toBe(0);
+    await details.getByRole('button', { name: 'More actions' }).click();
+    await expect(page.getByRole('menuitem', { name: 'Delete transaction' })).toBeVisible();
+  });
+
+  test('details link the payee, category and account to the filtered register', async ({
+    page,
+    api,
+  }) => {
+    const { checking, savings } = await setup(api);
+    const groceries = await api.category('Groceries');
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: -1_234,
+      payeeName: 'Corner Grocery',
+      categoryId: groceries.id,
+    });
+    await api.createTransaction({
+      accountId: savings.id,
+      date: isoDay(),
+      amount: -999,
+      payeeName: 'Other Shop',
+      categoryId: groceries.id,
+    });
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: -500,
+      payeeName: 'Bus Fare',
+    });
+    const details = page.getByRole('complementary', { name: 'Transaction details' });
+    const openDetails = async () => {
+      await open(page, '/transactions');
+      // The row's middle is its inline category editor here; the row-end arrow opens details
+      await page.getByRole('button', { name: 'Open details for Corner Grocery' }).click();
+      await expect(details).toBeVisible();
+    };
+
+    await openDetails();
+    await details.getByRole('link', { name: 'All Corner Grocery transactions' }).click();
+    await expect(details).toBeHidden();
+    await expect(row(page, 'Corner Grocery')).toBeVisible();
+    await expect(row(page, 'Other Shop')).toHaveCount(0);
+    await expect(row(page, 'Bus Fare')).toHaveCount(0);
+
+    await openDetails();
+    await details.getByRole('link', { name: 'All Groceries transactions' }).click();
+    await expect(row(page, 'Other Shop')).toBeVisible();
+    await expect(row(page, 'Corner Grocery')).toBeVisible();
+    await expect(row(page, 'Bus Fare')).toHaveCount(0);
+
+    await openDetails();
+    await details.getByRole('link', { name: 'All Everyday Checking transactions' }).click();
+    await expect(row(page, 'Bus Fare')).toBeVisible();
+    await expect(row(page, 'Corner Grocery')).toBeVisible();
+    await expect(row(page, 'Other Shop')).toHaveCount(0);
   });
 
   test('searches and filters by date range', async ({ page, api }) => {

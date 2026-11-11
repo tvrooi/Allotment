@@ -1,3 +1,4 @@
+import { barY, group } from '@tanstack/charts';
 import type { ChartPoint, ChartTooltipContentContext } from '@tanstack/charts';
 import type { ChartTooltipContent } from '@tanstack/charts/tooltip';
 import { scaleBand } from '@tanstack/charts/scales/band';
@@ -7,6 +8,7 @@ import { tooltip } from '@tanstack/charts/tooltip';
 import { d3Curve } from '@tanstack/charts/d3/shape';
 import { curveMonotoneX, curveStepAfter } from 'd3-shape';
 import { formatCentsAxis, formatCurrency } from '../../utils/currency';
+import { chartColors } from '../../utils/chartColors';
 
 /** Class every chart sits in: palette, tooltip chrome and axis text come from index.css. */
 export const CHART_CLASS = 'allotment-chart';
@@ -102,4 +104,38 @@ export function currencyTooltip(opts: {
       return content;
     },
   };
+}
+
+/**
+ * Income and expenses, wherever they are compared (Dashboard, Reports, a category's history):
+ * expenses in the muted red, because full red means overspending.
+ */
+export const INCOME_EXPENSE_COLORS = {
+  Income: chartColors.positive,
+  Expenses: chartColors.negativeLight,
+} as const;
+
+type IncomeExpenseSeries = keyof typeof INCOME_EXPENSE_COLORS;
+
+/** A month's income and expenses as two bars, each carrying the month's net for the tooltip */
+export function incomeExpenseRows(
+  months: { month: string; income: number; expenses: number; net: number }[],
+) {
+  return months.flatMap((d) => [
+    { month: d.month, series: 'Income' as IncomeExpenseSeries, value: d.income, net: d.net },
+    { month: d.month, series: 'Expenses' as IncomeExpenseSeries, value: d.expenses, net: d.net },
+  ]);
+}
+
+/** The grouped Income and Expenses bars by month, drawn the same on every screen */
+export function incomeExpenseBars(rows: ReturnType<typeof incomeExpenseRows>) {
+  return barY(rows, {
+    x: 'month',
+    y: 'value',
+    z: 'series',
+    layout: group({ padding: 0.12 }),
+    fill: (d) => INCOME_EXPENSE_COLORS[d.series],
+    radius: [4, 4, 0, 0],
+    maxThickness: 24,
+  });
 }

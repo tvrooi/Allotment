@@ -231,3 +231,31 @@ test('a chart shows the keyboard focus ring, but not after a click', async ({ pa
   await expect(chart).toBeFocused();
   expect(await outline()).not.toBe('none');
 });
+
+test('the row-end arrow and the hide-balances button have names and room to press', async ({
+  page,
+  api,
+}) => {
+  const acct = await api.createAccount('Checking', 100_000);
+  await api.createTransaction({
+    accountId: acct.id,
+    date: isoDay(0),
+    amount: -4_000,
+    payeeName: 'Corner Grocery',
+  });
+  await open(page, '/transactions');
+  const arrow = page.getByRole('button', { name: 'Open details for Corner Grocery' });
+  const box = (await arrow.boundingBox())!;
+  // WCAG 2.5.8: at least 24 px; the row itself is the keyboard's way in
+  expect(Math.min(box.width, box.height)).toBeGreaterThanOrEqual(24);
+  await expect(arrow).toHaveAttribute('tabindex', '-1');
+  await arrow.click();
+  await expect(page.getByRole('complementary', { name: 'Transaction details' })).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  // The name says what the eye does, as its tooltip does
+  const hide = page.getByRole('complementary').getByRole('button', { name: /Hide balances/ });
+  await expect(hide).toHaveAttribute('aria-pressed', 'false');
+  const eye = (await hide.boundingBox())!;
+  expect(Math.min(eye.width, eye.height)).toBeGreaterThanOrEqual(24);
+});

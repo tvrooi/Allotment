@@ -24,6 +24,7 @@ import { useTransactions } from '../../hooks/useTransactions';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { formatCurrency } from '../../utils/currency';
 import { downloadCsv } from '../../utils/exportCsv';
+import { expenseFigure } from '../../utils/reportSummary';
 import { dayBounds, monthCount } from '../../utils/dateRange';
 import { CALENDAR_MONTHS_MAX } from '../../utils/calendarLayout';
 import { PayeeIcon } from '../payees/PayeeIcon';
@@ -430,7 +431,8 @@ function IncomeExpensesDetail({ from, to }: DetailProps) {
   const rate = (i: number, n: number) => (i > 0 ? `${Math.round((n / i) * 100)}%` : '—');
   const stats: StatCard[] = [
     { label: 'Income', value: formatCurrency(income), tone: 'positive' },
-    { label: 'Expenses', value: formatCurrency(expenses), tone: 'negative' },
+    // Plain, as on the Summary: red is kept for overspending
+    { label: 'Expenses', ...expenseFigure(-expenses) },
     { label: 'Net savings', value: formatCurrency(net), tone: toneOf(net) },
     { label: 'Savings rate', value: rate(income, net), tone: income > 0 ? toneOf(net) : undefined },
   ];

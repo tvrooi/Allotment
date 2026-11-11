@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { currencyTooltip } from './kit';
+import { chartColors } from '../../utils/chartColors';
+import { currencyTooltip, INCOME_EXPENSE_COLORS, incomeExpenseRows } from './kit';
 
 describe('currencyTooltip', () => {
   const points = [
@@ -33,5 +34,27 @@ describe('currencyTooltip', () => {
   it('uses a series colour override over the palette colour', () => {
     const { content } = currencyTooltip({ colors: { Household: '#abc' } });
     expect(content(points, ctx).rows[0].color).toBe('#abc');
+  });
+});
+
+describe('income and expenses', () => {
+  it('draws expenses in the muted colour everywhere: red is kept for overspending', () => {
+    expect(INCOME_EXPENSE_COLORS.Expenses).toBe(chartColors.negativeLight);
+    expect(INCOME_EXPENSE_COLORS.Expenses).not.toBe(chartColors.negative);
+    expect(INCOME_EXPENSE_COLORS.Income).toBe(chartColors.positive);
+  });
+
+  it('turns months into one Income and one Expenses bar each, keeping the net', () => {
+    expect(
+      incomeExpenseRows([
+        { month: 'Oct', income: 500, expenses: 200, net: 300 },
+        { month: 'Nov', income: 0, expenses: 50, net: -50 },
+      ]),
+    ).toEqual([
+      { month: 'Oct', series: 'Income', value: 500, net: 300 },
+      { month: 'Oct', series: 'Expenses', value: 200, net: 300 },
+      { month: 'Nov', series: 'Income', value: 0, net: -50 },
+      { month: 'Nov', series: 'Expenses', value: 50, net: -50 },
+    ]);
   });
 });

@@ -5,6 +5,9 @@ Overwritten at the end of each UI session, never appended. Last written 11 Novem
 
 ## Done this session
 
+- Wave B fixes (up.168): #227 category opens on All time, #228 one Income/Expenses palette in
+  the chart kit, #229 category layout, #233 Delete in the details menu plus filter links, #234
+  quiet Recurring callout, #238 Reports summary on phones, #242 row arrow and eye names.
 - Add transaction from every page (up.167, branch `feat/wave-a-add-and-tabs`): one shell-level
   `AddTransactionModal` opened by the sidebar's Add a transaction button, the phone tab bar's
   centre Add, the N key and the Transactions page's Add (#223). It opens on Amount, with the
@@ -32,12 +35,10 @@ Overwritten at the end of each UI session, never appended. Last written 11 Novem
 - #213 quick expense test; #214 refresh `docs/ux-ui-evidence/` dates; #215 iPhone check; #216 dark mode.
 - #217 Review queue redesign; #218 Cash flow personal share; #219 Household screens by type.
 - #220 sidebar item count (UX review item 7).
-- Design re-review at `cf2e2f0`, P0: #224 command palette; #226 sidebar set-up rows; #227 category
-  empty state.
-- P1: #228 chart palette; #229 category dead space; #230 dashboard next-step card; #231 dashboard
-  value strip; #233 delete demotion; #234 recurring banner; #235 goal/payee links; #236 transfers
-  step; #237 empty states; #242 a11y labels; #243 desktop row click; #245 undo and keep filters.
-- P2: #232 dashboard grid; #238 reports clip; #239 onboarding step; #240 headers and pickers;
+- Design re-review at `cf2e2f0`, P0: #224 command palette; #226 sidebar set-up rows.
+- P1: #230 dashboard next-step card; #231 dashboard value strip; #235 goal/payee links;
+  #236 transfers step; #237 empty states; #243 desktop row click; #245 undo and keep filters.
+- P2: #232 dashboard grid; #239 onboarding step; #240 headers and pickers;
   #241 delight moments; #244 split Settings tabs.
 
 ## Decisions

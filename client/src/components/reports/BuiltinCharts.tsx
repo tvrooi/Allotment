@@ -27,6 +27,9 @@ import {
   areaGradient,
   bandScale,
   currencyTooltip,
+  INCOME_EXPENSE_COLORS,
+  incomeExpenseBars,
+  incomeExpenseRows,
   pointScale,
   smooth,
   stepAfter,
@@ -256,34 +259,17 @@ export function IncomeExpensesChart({ from, to }: { from: string; to: string }) 
   const { data = [], isLoading } = useIncomeVsExpenses(from, to);
   const chartData = useMemo(() => data.map((d) => ({ ...d, month: monthLabel(d.month) })), [data]);
 
-  const rows = useMemo(
-    () =>
-      chartData.flatMap((d) => [
-        { month: d.month, series: 'Income', value: d.income, net: d.net },
-        { month: d.month, series: 'Expenses', value: d.expenses, net: d.net },
-      ]),
-    [chartData],
-  );
+  const rows = useMemo(() => incomeExpenseRows(chartData), [chartData]);
 
   const definition = useMemo(
     () =>
       defineChart({
-        marks: [
-          barY(rows, {
-            x: 'month',
-            y: 'value',
-            z: 'series',
-            layout: group({ padding: 0.12 }),
-            fill: (d) => (d.series === 'Income' ? chartColors.positive : chartColors.negativeLight),
-            radius: [4, 4, 0, 0],
-            maxThickness: 24,
-          }),
-        ],
+        marks: [incomeExpenseBars(rows)],
         scales: { x: bandScale(), y: valueScale() },
         focus: 'group-x',
         maxFocusDistance: INFINITE,
         tooltip: currencyTooltip({
-          colors: { Income: chartColors.positive, Expenses: chartColors.negativeLight },
+          colors: INCOME_EXPENSE_COLORS,
           summary: (points) => {
             const row = points[0]?.datum as { net: number } | undefined;
             return row ? { label: 'Net', value: row.net } : null;

@@ -27,12 +27,13 @@ export function incomeFigure(cents: number): { value: string; tone: Tone } {
 }
 
 /**
- * An expenses figure from net spending (negative = money out): shown as the amount spent,
- * or "+$X" when refunds outweighed spending, so money back never reads as money spent.
+ * An expenses figure from net spending (negative = money out): shown as the amount spent, in
+ * plain text (red means overspending, which a total can't tell), or "+$X" when refunds
+ * outweighed spending, so money back never reads as money spent.
  */
-export function expenseFigure(netCents: number): { value: string; tone: Tone } {
+export function expenseFigure(netCents: number): { value: string; tone?: Tone } {
   const v = Math.round(netCents);
-  if (v < 0) return { value: formatCurrency(-v), tone: 'negative' };
+  if (v < 0) return { value: formatCurrency(-v) };
   if (v > 0) return { value: `+${formatCurrency(v)}`, tone: 'positive' };
   return { value: formatCurrency(0), tone: 'neutral' };
 }

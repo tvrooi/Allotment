@@ -158,6 +158,7 @@ export function TransactionRow({
                 onFilterSearch(tx.payeeName!);
               }}
               title={`Show all "${tx.payeeName}" transactions`}
+              aria-label={`Show all "${tx.payeeName}" transactions`}
             >
               <ArrowRight size={12} />
             </button>
@@ -230,6 +231,7 @@ export function TransactionRow({
                     onFilterCategory(tx.categoryId!);
                   }}
                   title={`Show all "${categoryEntry?.name}" transactions`}
+                  aria-label={`Show all "${categoryEntry?.name}" transactions`}
                 >
                   <ArrowRight size={12} />
                 </button>
@@ -267,6 +269,7 @@ export function TransactionRow({
                 navigate(`/accounts/${tx.accountId}`);
               }}
               title={`Go to ${accountName}`}
+              aria-label={`Go to ${accountName}`}
             >
               <ArrowRight size={12} />
             </button>
@@ -293,10 +296,22 @@ export function TransactionRow({
           <ForeignValue tx={tx} className="block" />
         </div>
 
-        {/* Detail panel arrow */}
-        <div className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-200 transition-colors shrink-0">
-          <ArrowRight size={14} className="text-text-tertiary" />
-        </div>
+        {/* Detail panel arrow: named for screen readers and voice control. Out of the tab order,
+            as the row itself opens the details from the keyboard. Touch screens get 44px, the
+            negative margin keeping the row's layout as it was. */}
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label={`Open details for ${payeeName}`}
+          title="Open details"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenDetail(tx.id);
+          }}
+          className="w-9 h-9 max-md:w-11 max-md:h-11 max-md:-m-1 flex items-center justify-center rounded-full hover:bg-hover transition-colors shrink-0 cursor-pointer"
+        >
+          <ArrowRight size={14} className="text-text-tertiary" aria-hidden />
+        </button>
       </div>
 
       {/* Split children */}

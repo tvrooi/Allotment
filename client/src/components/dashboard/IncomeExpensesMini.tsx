@@ -2,7 +2,7 @@ import { DataFeedback, dataUnavailable } from './DataFeedback';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
-import { barY, defineChart, group } from '@tanstack/charts';
+import { defineChart } from '@tanstack/charts';
 import { scaleLinear } from '@tanstack/charts/scales/linear';
 import { useIncomeVsExpenses } from '../../hooks/useReports';
 import { formatDateRange } from '../../utils/dateRange';
@@ -11,10 +11,15 @@ import { ArrowLeftRight } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { EmptyState } from '../ui/EmptyState';
 import { ButtonLink } from '../ui/Button';
-import { chartColors } from '../../utils/chartColors';
 import { FillChart } from '../charts/FillChart';
 import { LegendKey } from '../charts/ChartLegend';
-import { bandScale, currencyTooltip } from '../charts/kit';
+import {
+  bandScale,
+  currencyTooltip,
+  INCOME_EXPENSE_COLORS,
+  incomeExpenseBars,
+  incomeExpenseRows,
+} from '../charts/kit';
 
 interface Props {
   sixMonthsAgo: string;
@@ -29,34 +34,15 @@ export default function IncomeExpensesMini({ sixMonthsAgo, currentMonth }: Props
     () => data.map((d) => ({ ...d, month: format(parseISO(`${d.month}-01`), 'MMM yy') })),
     [data],
   );
-  const rows = useMemo(
-    () =>
-      chartData.flatMap((d) => [
-        { month: d.month, series: 'Income', value: d.income, net: d.net },
-        { month: d.month, series: 'Expenses', value: d.expenses, net: d.net },
-      ]),
-    [chartData],
-  );
+  const rows = useMemo(() => incomeExpenseRows(chartData), [chartData]);
   const definition = useMemo(
     () =>
       defineChart({
-        marks: [
-          barY(rows, {
-            x: 'month',
-            y: 'value',
-            z: 'series',
-            layout: group({ padding: 0.12 }),
-            fill: (d) => (d.series === 'Income' ? chartColors.positive : chartColors.negative),
-            radius: [4, 4, 0, 0],
-            maxThickness: 22,
-          }),
-        ],
+        marks: [incomeExpenseBars(rows)],
         scales: { x: bandScale(), y: { scale: scaleLinear, nice: true, axis: false } },
         focus: 'group-x',
         maxFocusDistance: Number.POSITIVE_INFINITY,
-        tooltip: currencyTooltip({
-          colors: { Income: chartColors.positive, Expenses: chartColors.negative },
-        }),
+        tooltip: currencyTooltip({ colors: INCOME_EXPENSE_COLORS }),
       }),
     [rows],
   );
@@ -119,8 +105,8 @@ export default function IncomeExpensesMini({ sixMonthsAgo, currentMonth }: Props
             data-testid="chart-legend"
             className="flex items-center justify-center gap-3 pt-1 text-2xs text-text-secondary"
           >
-            <LegendKey color={chartColors.positive} label="Income" />
-            <LegendKey color={chartColors.negative} label="Expenses" />
+            <LegendKey color={INCOME_EXPENSE_COLORS.Income} label="Income" />
+            <LegendKey color={INCOME_EXPENSE_COLORS.Expenses} label="Expenses" />
           </div>
         </>
       ) : (
