@@ -214,3 +214,17 @@ change is sound, say so briefly.
 `CHANGELOG.md` entry; check that all three agree and that the version is not already tagged. A
 documentation-only change leaves the version alone. Tags are never moved. A PR keeps to one
 purpose: unrelated reformatting or drive-by refactors are P2, because they hide the real change.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on `tvrooi/Allotment` (use `gh --repo tvrooi/Allotment`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: root `GLOSSARY.md` and `docs/adr/`, created lazily. See `docs/agents/domain.md`.
