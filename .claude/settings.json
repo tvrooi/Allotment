@@ -1,3 +1,14 @@
 {
-  "enabledMcpjsonServers": ["flybudget"]
+  "enabledMcpjsonServers": ["flybudget"],
+  "enabledPlugins": {
+    "mattpocock-skills@mattpocock": true
+  },
+  "extraKnownMarketplaces": {
+    "mattpocock": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/mattpocock/skills.git"
+      }
+    }
+  }
 }
