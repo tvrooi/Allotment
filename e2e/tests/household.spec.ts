@@ -6,6 +6,16 @@ import { test, expect, open, isoDay, typeAmount } from './fixtures';
  * Activity (statement, breakdown, every entry, the log) and Settings (bills, sharing). The
  * Bills tab's name can carry a count of unshared payments, so names match from the start.
  */
+/**
+ * Narrows the window to a phone's width and waits for the phone layout. The app switches layout
+ * on the media query's change event, a frame after the resize: measuring before that sees the
+ * desktop sidebar squeezed into 390px.
+ */
+async function phoneWidth(page: Page) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId('phone-header')).toBeVisible();
+}
+
 const openTab = (page: Page, name: 'Overview' | 'Bills' | 'Activity' | 'Settings') =>
   page.getByRole('tab', { name: new RegExp(`^${name}`) }).click();
 
@@ -43,7 +53,7 @@ test('records shared expenses, exports personal scope and keeps the bank debit i
   await page.getByRole('button', { name: 'Export this statement' }).click();
   expect((await download).suggestedFilename()).toBe('household-household-statement.json');
   expect((await api.transactions()).find((t) => t.id === payment.id).amount).toBe(-12000);
-  await page.setViewportSize({ width: 390, height: 844 });
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -594,7 +604,7 @@ test('lists recurring bills shared with housemates, with shares and one-click sh
   const people = page.getByRole('tabpanel', { name: 'Overview' });
   await expect(people.getByText(/^owes A?\$61\.50$/)).toHaveCount(2);
   await expect(people.getByText(/^is owed A?\$123$/)).toBeVisible();
-  await page.setViewportSize({ width: 390, height: 844 });
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -795,7 +805,7 @@ test('lists who should pay whom and records a suggested repayment in one click',
   await page.getByRole('button', { name: 'Record: Sam pays Alex $30' }).click();
   await expect(list.getByText('Sam pays Alex $30')).toHaveCount(0);
   await expect(list.getByText('You pay Alex $30')).toBeVisible();
-  await page.setViewportSize({ width: 390, height: 844 });
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -843,7 +853,7 @@ test('edits an entry in place, and the activity log keeps what was changed and r
   await expect(log.getByText(/^Removed “Groceries and bread”/)).toBeVisible();
   await expect(log.getByText(/^Changed “Groceries and bread” \(description, amount/)).toBeVisible();
   await expect(log.getByText(/^Shared “Groceries”/)).toBeVisible();
-  await page.setViewportSize({ width: 390, height: 844 });
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -911,7 +921,7 @@ test('breaks household spending down by month, person and category', async ({ pa
   await page.getByLabel('From').fill('2026-10-01');
   await expect(section.getByRole('row', { name: /^Groceries / })).toHaveCount(0);
   await expect(month('Sep 26')).toHaveCount(0);
-  await page.setViewportSize({ width: 390, height: 844 });
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -1056,7 +1066,7 @@ test('a gauge shows whether the household account covers the next 30 days of bil
   await expect(
     gauge.getByRole('list', { name: "Each person's part" }).getByRole('listitem').nth(1),
   ).toContainText(/Alex.*\$35 of these bills · paid in \$0/);
-  await page.setViewportSize({ width: 390, height: 844 });
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -1179,7 +1189,7 @@ test('suggests bills the household account pays, to add or dismiss', async ({ pa
   await expect(tile).toContainText('$270.20');
   await expect(tile).toContainText('paid from the household account');
   await expect(page.getByRole('list', { name: 'Looks like a bill' })).toHaveCount(0);
-  await page.setViewportSize({ width: 390, height: 844 });
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
