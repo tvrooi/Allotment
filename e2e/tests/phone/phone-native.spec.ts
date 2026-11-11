@@ -91,6 +91,26 @@ test.describe('register', () => {
     await expect(card).toContainText('Streaming Services');
   });
 
+  test('the detail sheet keeps Delete in its menu, behind a confirm', async ({ page, api }) => {
+    const { checking } = await seedAccount(api);
+    await open(page, `/accounts/${checking.id}`);
+    await page.getByTestId('transaction-card').filter({ hasText: 'Streamflix' }).click();
+    const details = page.getByRole('complementary', { name: 'Transaction details' });
+    await expect(details.getByRole('button', { name: 'Delete transaction' })).toHaveCount(0);
+    await expectTouchSize(details.getByRole('button', { name: 'Done' }));
+    const more = details.getByRole('button', { name: 'More actions' });
+    await expectTouchSize(more);
+    await more.click();
+    await page.getByRole('menuitem', { name: 'Delete transaction' }).click();
+    const confirm = page.getByRole('dialog');
+    await expect(confirm).toContainText('Are you sure you want to delete this transaction?');
+    await confirm.getByRole('button', { name: 'Delete' }).click();
+    await expect(
+      page.getByTestId('transaction-card').filter({ hasText: 'Streamflix' }),
+    ).toHaveCount(0);
+    await expect.poll(() => api.balance(checking.id)).toBe(100_000 - 4_250);
+  });
+
   test('adds a split transaction from a bottom sheet', async ({ page, api }) => {
     const { checking } = await seedAccount(api);
     await open(page, `/accounts/${checking.id}`);
@@ -322,6 +342,14 @@ test.describe('dialogs and touch targets', () => {
       expect(height, name).toBeGreaterThanOrEqual(TOUCH);
     }
   });
+
+  test('the hide-balances eye is named and 44px', async ({ page, api }) => {
+    await seedAccount(api);
+    await open(page, '/dashboard');
+    const eye = page.getByRole('button', { name: /Hide balances/ });
+    await expect(eye).toHaveAttribute('aria-pressed', 'false');
+    await expectTouchSize(eye);
+  });
 });
 
 test('the month picker fits the screen and is easy to tap', async ({ page, api }) => {
@@ -362,6 +390,15 @@ test('report summary figures fit their card', async ({ page, api }) => {
       .map((p) => p.textContent),
   );
   expect(clipped).toEqual([]);
+  // The card grows to fit its labels instead of cutting off the bottom row
+  const card = page
+    .getByText('Total expenses')
+    .locator('xpath=ancestor::*[contains(@class,"@container")][1]');
+  const cardBox = (await card.boundingBox())!;
+  for (const label of ['Avg monthly expenses', 'Avg per transaction']) {
+    const box = (await card.getByText(label).boundingBox())!;
+    expect(box.y + box.height, label).toBeLessThanOrEqual(cardBox.y + cardBox.height - 4);
+  }
 });
 
 test.describe('recurring', () => {
@@ -395,6 +432,50 @@ test.describe('recurring', () => {
     await expect(page.getByText('Rent', { exact: true })).toBeVisible();
     await expect(page.getByText('Frequency', { exact: true })).toBeHidden();
     await expect(page.getByPlaceholder('Filter recurring…')).toBeVisible();
+  });
+
+  test('possible matches are a quiet callout, not a solid bar', async ({ page, api }) => {
+    const { checking } = await seedAccount(api);
+    await api.call('POST', '/schedules', {
+      name: 'Gym',
+      amount: -5_000,
+      recurrenceType: 'monthly',
+      startDate: isoDay(),
+      accountId: checking.id,
+    });
+    // Same day and amount but another payee: a possible match to review, not a sure one
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: -5_000,
+      payeeName: 'Fitness Co',
+    });
+    await open(page, '/recurring');
+
+    const callout = page.getByRole('region', { name: 'Possible matches' });
+    await expect(callout).toContainText('may match your recurring items');
+    // A tinted surface with the page's text colour, not the brand-filled bar
+    const colors = await callout.evaluate((el) => {
+      const probe = document.createElement('div');
+      probe.className = 'bg-brand-600';
+      document.body.append(probe);
+      const brand = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return { background: getComputedStyle(el).backgroundColor, brand };
+    });
+    expect(colors.background).not.toBe(colors.brand);
+    // "Review now" stays on one line and is easy to tap
+    const review = callout.getByRole('button', { name: 'Review now' });
+    await expectTouchSize(review);
+    const lines = await review.evaluate((el) => {
+      const label = [...el.childNodes].find((n) => n.nodeType === Node.TEXT_NODE)!;
+      const range = document.createRange();
+      range.selectNodeContents(label);
+      return range.getClientRects().length;
+    });
+    expect(lines).toBe(1);
+    await review.click();
+    await expect(callout.getByText('Fitness Co')).toBeVisible();
   });
 });
 
