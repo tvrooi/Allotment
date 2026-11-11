@@ -32,7 +32,10 @@ export function unsharedPayments(
   };
 }
 
-/** The household the Household page opens on (the default, else the first), when it's shown */
+/**
+ * The household the Household page opens on when none is named (the default, else the first),
+ * and the one the dashboard's strip shows; none when the feature is hidden
+ */
 export function householdToShow<T extends { isDefault?: number }>(
   households: T[],
   featureShown: boolean,

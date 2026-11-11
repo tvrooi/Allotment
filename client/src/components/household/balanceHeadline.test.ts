@@ -56,6 +56,8 @@ describe('householdToShow', () => {
   it('is the household the Household page opens on: the default, else the first', () => {
     expect(householdToShow([flat, home], true)).toBe(home);
     expect(householdToShow([flat], true)).toBe(flat);
+    const other = { id: 'other', isDefault: 0 };
+    expect(householdToShow([flat, other], true)).toBe(flat);
   });
   it('is none without a household, or when the feature is hidden', () => {
     expect(householdToShow([], true)).toBeNull();

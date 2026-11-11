@@ -30,7 +30,7 @@ import { recentEntries } from '../components/household/recentEntries';
 import type { HouseholdCoverage, HouseholdSplit, SharedRecurringBill } from '../api/households';
 import { BillsCoverage } from '../components/household/BillsCoverage';
 import { BalanceSummary } from '../components/household/BalanceSummary';
-import { unsharedPayments } from '../components/household/balanceHeadline';
+import { householdToShow, unsharedPayments } from '../components/household/balanceHeadline';
 import { useHousehold } from '../hooks/useHouseholds';
 
 type Group = {
@@ -165,9 +165,7 @@ export default function HouseholdPage() {
     queryKey: ['households'],
     queryFn: () => apiFetch<Group[]>('/households'),
   });
-  const selected =
-    (groups.some((g) => g.id === id) ? id : (groups.find((g) => g.isDefault) ?? groups[0])?.id) ??
-    '';
+  const selected = (groups.some((g) => g.id === id) ? id : householdToShow(groups, true)?.id) ?? '';
   const current = groups.find((g) => g.id === selected);
   const { data: state, isLoading, error: loadError } = useHousehold<State>(selected);
   const { data: accounts = [] } = useAccounts();
