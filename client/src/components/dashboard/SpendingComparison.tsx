@@ -1,4 +1,3 @@
-import { Select } from '../ui/Input';
 import { DataFeedback, dataUnavailable } from './DataFeedback';
 import { useState, useMemo } from 'react';
 import { areaY, defineChart, lineY } from '@tanstack/charts';
@@ -11,6 +10,7 @@ import { formatCurrency } from '../../utils/currency';
 import { TrendingDown } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { EmptyState } from '../ui/EmptyState';
+import { SegmentedControl, type Segment } from '../ui/SegmentedControl';
 import { chartColors } from '../../utils/chartColors';
 import { FillChart } from '../charts/FillChart';
 import { LegendKey } from '../charts/ChartLegend';
@@ -23,12 +23,13 @@ type Mode =
   | 'month_vs_average'
   | 'year_vs_last_year';
 
-const MODES: { value: Mode; label: string }[] = [
-  { value: 'week_vs_last_week', label: 'This week vs. last week' },
-  { value: 'month_vs_last_month', label: 'This month vs. last month' },
-  { value: 'month_vs_last_year', label: 'This month vs. last year' },
-  { value: 'month_vs_average', label: 'This month vs. average month' },
-  { value: 'year_vs_last_year', label: 'This year vs. last year' },
+// What this period is compared with; the heading and legend name both periods
+const MODES: Segment<Mode>[] = [
+  { value: 'week_vs_last_week', label: 'Last week', title: 'This week vs. last week' },
+  { value: 'month_vs_last_month', label: 'Last month', title: 'This month vs. last month' },
+  { value: 'month_vs_last_year', label: 'Same month last year', title: 'This month vs. last year' },
+  { value: 'month_vs_average', label: 'Average month', title: 'This month vs. average month' },
+  { value: 'year_vs_last_year', label: 'Last year', title: 'This year vs. last year' },
 ];
 
 export default function SpendingComparison() {
@@ -135,7 +136,7 @@ export default function SpendingComparison() {
   return (
     <Card>
       <DataFeedback title="Spending comparison" sources={sources} />
-      <div className="flex items-start justify-between mb-1 max-md:flex-col max-md:gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1 mb-1">
         <div>
           <h2 className="text-sm font-semibold text-text">
             Spending{' '}
@@ -144,19 +145,12 @@ export default function SpendingComparison() {
             </span>
           </h2>
         </div>
-        <Select
-          compact
-          aria-label="Compare spending"
+        <SegmentedControl
+          label="Compare spending with"
+          options={MODES}
           value={mode}
-          onChange={(e) => setMode(e.target.value as Mode)}
-          className="w-auto min-w-0 max-w-[200px] max-md:w-full max-md:max-w-none"
-        >
-          {MODES.map((m) => (
-            <option key={m.value} value={m.value}>
-              {m.label}
-            </option>
-          ))}
-        </Select>
+          onChange={setMode}
+        />
       </div>
 
       {hasData && chartData.length > 0 ? (

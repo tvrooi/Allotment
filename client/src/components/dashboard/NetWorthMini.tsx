@@ -1,4 +1,3 @@
-import { Select } from '../ui/Input';
 import { DataFeedback, dataUnavailable } from './DataFeedback';
 import { useState, useMemo } from 'react';
 import { format, subMonths, subDays, startOfYear } from 'date-fns';
@@ -11,6 +10,7 @@ import type { ChartTooltipContent } from '@tanstack/charts/tooltip';
 import { useNetWorth } from '../../hooks/useReports';
 import { useAccounts } from '../../hooks/useAccounts';
 import { ButtonLink } from '../ui/Button';
+import { SegmentedControl, type Segment } from '../ui/SegmentedControl';
 import { Card } from '../ui/Card';
 import { formatCurrency } from '../../utils/currency';
 import { chartColors } from '../../utils/chartColors';
@@ -24,13 +24,14 @@ import { useOnboardingActive } from './onboarding';
 
 type Preset = '1m' | '3m' | '6m' | 'ytd' | '1y' | 'all';
 
-const PRESETS: { value: Preset; label: string }[] = [
-  { value: '1m', label: '1 month' },
-  { value: '3m', label: '3 months' },
-  { value: '6m', label: '6 months' },
-  { value: 'ytd', label: 'Year to date' },
-  { value: '1y', label: '1 year' },
-  { value: 'all', label: 'All time' },
+// Short labels like Reports' range control, with the long wording on hover
+const PRESETS: Segment<Preset>[] = [
+  { value: '1m', label: '1M', title: '1 month' },
+  { value: '3m', label: '3M', title: '3 months' },
+  { value: '6m', label: '6M', title: '6 months' },
+  { value: 'ytd', label: 'YTD', title: 'Year to date' },
+  { value: '1y', label: '1Y', title: '1 year' },
+  { value: 'all', label: 'All', title: 'All time' },
 ];
 
 function computeRange(preset: Preset): {
@@ -208,19 +209,12 @@ export default function NetWorthMini() {
             </ButtonLink>
           )
         ) : (
-          <Select
-            compact
-            aria-label="Net worth period"
+          <SegmentedControl
+            label="Net worth period"
+            options={PRESETS}
             value={preset}
-            onChange={(e) => setPreset(e.target.value as Preset)}
-            className="w-auto"
-          >
-            {PRESETS.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </Select>
+            onChange={setPreset}
+          />
         )}
       </div>
 

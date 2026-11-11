@@ -7,7 +7,7 @@ test('account access and the compact overview work in the offline demo', async (
   const spending = main.getByRole('link', { name: /^Spending Everyday/ });
   await expect(spending).toBeInViewport({ ratio: 1 });
   await main.getByRole('button', { name: 'Show overview' }).click();
-  await expect(main.getByRole('combobox', { name: 'Net worth period' })).toBeVisible();
+  await expect(main.getByRole('group', { name: 'Net worth period' })).toBeVisible();
   await main.getByRole('button', { name: 'Hide overview' }).click();
   const cash = main.getByRole('button', { name: /^Cash/ });
   await cash.focus();

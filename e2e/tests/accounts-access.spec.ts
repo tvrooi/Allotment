@@ -31,16 +31,16 @@ for (const width of [390, 430]) {
     const main = page.getByRole('main');
     const accountLink = main.getByRole('link', { name: /Phone spending/ });
     await expect(accountLink).toBeInViewport({ ratio: 1 });
-    await expect(main.getByRole('combobox', { name: 'Net worth period' })).toBeHidden();
+    await expect(main.getByRole('group', { name: 'Net worth period' })).toBeHidden();
     const disclosure = main.getByRole('button', { name: 'Show overview' });
     await disclosure.click();
     await expect(main.getByRole('button', { name: 'Hide overview' })).toHaveAttribute(
       'aria-expanded',
       'true',
     );
-    await expect(main.getByRole('combobox', { name: 'Net worth period' })).toBeVisible();
+    await expect(main.getByRole('group', { name: 'Net worth period' })).toBeVisible();
     // The chart's card is a direct child of the overview, without another card around it.
-    const period = main.getByRole('combobox', { name: 'Net worth period' });
+    const period = main.getByRole('group', { name: 'Net worth period' });
     expect(
       await period.evaluate((el) => {
         const card = el.closest('.shadow-card');

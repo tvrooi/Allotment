@@ -29,10 +29,11 @@ test('Budget and Category detail each have one page heading', async ({ page, api
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Groceries');
 });
 
-test('the dashboard names its selects and orders its headings', async ({ page, api }) => {
+test('the dashboard names its range controls and orders its headings', async ({ page, api }) => {
   await api.createAccount('Checking', 100_000);
   await open(page, '/dashboard');
-  await expect(page.getByRole('combobox', { name: 'Compare spending' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Compare spending with' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Net worth period' })).toBeVisible();
   // h1, then h2 widget titles: no heading skips a level
   const levels = await page
     .locator('h1, h2, h3, h4')

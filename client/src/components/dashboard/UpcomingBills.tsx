@@ -37,8 +37,9 @@ export default function UpcomingBills() {
   // the owner's share, and housemates' money is neither
   const grouped = groupOccurrences(pending);
   const allBills = grouped.expenses.filter((o) => o.expectedAmount < 0);
-  const bills = allBills.slice(0, compact ? 2 : 4);
-  const income = grouped.income.slice(0, compact ? 1 : 3);
+  // Capped so the card stays about as tall as Budget beside it; the rest are a View all away
+  const bills = allBills.slice(0, compact ? 2 : 3);
+  const income = grouped.income.slice(0, compact ? 1 : 2);
   const upcoming = [...bills, ...income];
 
   const sources = [scheduleOccurrencesQuery, schedulesQuery];
