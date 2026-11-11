@@ -26,9 +26,12 @@ async function household(api: Api) {
       startDate: start,
       accountId,
     });
-  // Juno pays in a day before the owner's pay, so a sign-only rule would take it as pay
-  const juno = await weekly('Juno rent', 80_000, pool.id, thisMonth());
-  const pay = await weekly('ACME pay', 300_000, spending.id, thisMonth(1));
+  // Juno pays in a day before the owner's pay, so a sign-only rule would take it as pay. Both
+  // start this month but at most one payment back (four days ago, or the 1st early in the
+  // month): two missed in a row would make them "possibly ended", which lists them by name
+  const start = Math.max(0, dayOfMonth - 5);
+  const juno = await weekly('Juno rent', 80_000, pool.id, thisMonth(start));
+  const pay = await weekly('ACME pay', 300_000, spending.id, thisMonth(start + 1));
   await api.call('POST', '/schedules', {
     name: 'Rent',
     amount: -240_000,

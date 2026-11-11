@@ -6,6 +6,16 @@ import { test, expect, open, isoDay, typeAmount } from './fixtures';
  * Activity (statement, breakdown, every entry, the log) and Settings (bills, sharing). The
  * Bills tab's name can carry a count of unshared payments, so names match from the start.
  */
+/**
+ * Narrows the window to a phone's width and waits for the phone layout. The app switches layout
+ * on the media query's change event, a frame after the resize: measuring before that sees the
+ * desktop sidebar squeezed into 390px.
+ */
+async function phoneWidth(page: Page) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId('phone-header')).toBeVisible();
+}
+
 const openTab = (page: Page, name: 'Overview' | 'Bills' | 'Activity' | 'Settings') =>
   page.getByRole('tab', { name: new RegExp(`^${name}`) }).click();
 
@@ -43,7 +53,7 @@ test('records shared expenses, exports personal scope and keeps the bank debit i
   await page.getByRole('button', { name: 'Export this statement' }).click();
   expect((await download).suggestedFilename()).toBe('household-household-statement.json');
   expect((await api.transactions()).find((t) => t.id === payment.id).amount).toBe(-12000);
-  await page.setViewportSize({ width: 390, height: 844 });
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -541,8 +551,6 @@ test('lists recurring bills shared with housemates, with shares and one-click sh
   api,
 }) => {
   const account = await api.createAccount('Up Spending', 100000);
-  const day = (offset: number) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   const bills = [
     ['Electricity (OVO)', 'OVO Energy', -18450],
     ['Internet (Superloop)', 'Superloop', -8999],
@@ -550,7 +558,7 @@ test('lists recurring bills shared with housemates, with shares and one-click sh
   for (const [name, payeeName, amount] of bills) {
     const paid = await api.createTransaction({
       accountId: account.id,
-      date: day(-5),
+      date: isoDay(-5),
       amount,
       payeeName,
     });
@@ -559,7 +567,7 @@ test('lists recurring bills shared with housemates, with shares and one-click sh
       amount,
       recurrenceType: 'monthly',
       recurrenceRule: { type: 'monthly', interval: 1, anchorDay: 1 },
-      startDate: day(-5),
+      startDate: isoDay(-5),
       accountId: account.id,
       payeeId: paid.payeeId,
     });
@@ -594,7 +602,7 @@ test('lists recurring bills shared with housemates, with shares and one-click sh
   const people = page.getByRole('tabpanel', { name: 'Overview' });
   await expect(people.getByText(/^owes A?\$61\.50$/)).toHaveCount(2);
   await expect(people.getByText(/^is owed A?\$123$/)).toBeVisible();
-  await page.setViewportSize({ width: 390, height: 844 });
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -605,11 +613,9 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
   api,
 }) => {
   const account = await api.createAccount('Up Spending', 100000);
-  const day = (offset: number) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   const paid = await api.createTransaction({
     accountId: account.id,
-    date: day(-5),
+    date: isoDay(-5),
     amount: -10000,
     payeeName: 'Superloop',
   });
@@ -618,7 +624,7 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
     amount: -10000,
     recurrenceType: 'monthly',
     recurrenceRule: { type: 'monthly', interval: 1, anchorDay: 1 },
-    startDate: day(-5),
+    startDate: isoDay(-5),
     accountId: account.id,
     payeeId: paid.payeeId,
   });
@@ -634,7 +640,7 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
   });
   await api.call('POST', `/households/${group.group.id}/bills`, {
     description: 'Council rates',
-    dueDate: day(30),
+    dueDate: isoDay(30),
     amount: 30000,
   });
   await open(page, '/household');
@@ -674,7 +680,7 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
   await expect(net).toContainText('(from ');
   const next = await api.createTransaction({
     accountId: account.id,
-    date: day(0),
+    date: isoDay(0),
     amount: -10000,
     payeeName: 'Superloop',
   });
@@ -700,11 +706,9 @@ test('a rent with fixed amounts from the household account shows what each owes 
 }) => {
   const joint = await api.createAccount('2Up Bills', 0);
   const mine = await api.createAccount('Up Spending', 100000);
-  const day = (offset: number) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   const rent = await api.createTransaction({
     accountId: joint.id,
-    date: day(-3),
+    date: isoDay(-3),
     amount: -300000,
     payeeName: 'Ray White',
   });
@@ -713,7 +717,7 @@ test('a rent with fixed amounts from the household account shows what each owes 
     amount: -300000,
     recurrenceType: 'monthly',
     recurrenceRule: { type: 'monthly', interval: 1, anchorDay: 1 },
-    startDate: day(-3),
+    startDate: isoDay(-3),
     accountId: joint.id,
     payeeId: rent.payeeId,
   });
@@ -756,7 +760,7 @@ test('a rent with fixed amounts from the household account shows what each owes 
     toAccountId: joint.id,
     amount: 120000,
     toAmount: 120000,
-    date: day(-1),
+    date: isoDay(-1),
   });
   await page.reload();
   await openTab(page, 'Settings');
@@ -795,7 +799,7 @@ test('lists who should pay whom and records a suggested repayment in one click',
   await page.getByRole('button', { name: 'Record: Sam pays Alex $30' }).click();
   await expect(list.getByText('Sam pays Alex $30')).toHaveCount(0);
   await expect(list.getByText('You pay Alex $30')).toBeVisible();
-  await page.setViewportSize({ width: 390, height: 844 });
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -843,7 +847,7 @@ test('edits an entry in place, and the activity log keeps what was changed and r
   await expect(log.getByText(/^Removed “Groceries and bread”/)).toBeVisible();
   await expect(log.getByText(/^Changed “Groceries and bread” \(description, amount/)).toBeVisible();
   await expect(log.getByText(/^Shared “Groceries”/)).toBeVisible();
-  await page.setViewportSize({ width: 390, height: 844 });
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -911,7 +915,7 @@ test('breaks household spending down by month, person and category', async ({ pa
   await page.getByLabel('From').fill('2026-10-01');
   await expect(section.getByRole('row', { name: /^Groceries / })).toHaveCount(0);
   await expect(month('Sep 26')).toHaveCount(0);
-  await page.setViewportSize({ width: 390, height: 844 });
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -1024,14 +1028,12 @@ test('a gauge shows whether the household account covers the next 30 days of bil
   api,
 }) => {
   const pool = await api.createAccount('2Up Essentials', 10000, 'savings', { currency: 'AUD' });
-  const day = (offset: number) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   const schedule = await api.call('POST', '/schedules', {
     name: 'Internet',
     amount: -10500,
     recurrenceType: 'monthly',
-    recurrenceRule: { type: 'monthly', interval: 1, anchorDay: Number(day(3).slice(8)) },
-    startDate: day(3),
+    recurrenceRule: { type: 'monthly', interval: 1, anchorDay: Number(isoDay(3).slice(8)) },
+    startDate: isoDay(3),
     accountId: pool.id,
   });
   const group = await api.call('POST', '/households', {
@@ -1056,7 +1058,7 @@ test('a gauge shows whether the household account covers the next 30 days of bil
   await expect(
     gauge.getByRole('list', { name: "Each person's part" }).getByRole('listitem').nth(1),
   ).toContainText(/Alex.*\$35 of these bills · paid in \$0/);
-  await page.setViewportSize({ width: 390, height: 844 });
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -1067,8 +1069,6 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
   api,
 }) => {
   const account = await api.createAccount('Up Spending', 100000);
-  const day = (offset: number) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   let payeeId = '';
   for (const [offset, amount] of [
     [-70, -8000],
@@ -1077,7 +1077,7 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
   ] as const) {
     const paid = await api.createTransaction({
       accountId: account.id,
-      date: day(offset),
+      date: isoDay(offset),
       amount,
       payeeName: 'Brightside Energy',
     });
@@ -1088,8 +1088,8 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
     amount: -12000,
     amountType: 'variable',
     recurrenceType: 'monthly',
-    recurrenceRule: { type: 'monthly', interval: 1, anchorDay: Number(day(20).slice(8)) },
-    startDate: day(20),
+    recurrenceRule: { type: 'monthly', interval: 1, anchorDay: Number(isoDay(20).slice(8)) },
+    startDate: isoDay(20),
     accountId: account.id,
     payeeId,
   });
@@ -1131,8 +1131,6 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
 
 test('suggests bills the household account pays, to add or dismiss', async ({ page, api }) => {
   const pool = await api.createAccount('2Up Essentials', 500000, 'savings', { currency: 'AUD' });
-  const day = (offset: number) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   for (const [offset, amount] of [
     [-190, -24110],
     [-128, -26340],
@@ -1141,7 +1139,7 @@ test('suggests bills the household account pays, to add or dismiss', async ({ pa
   ] as const)
     await api.createTransaction({
       accountId: pool.id,
-      date: day(offset),
+      date: isoDay(offset),
       amount,
       payeeName: 'Northwind Power',
     });
@@ -1151,7 +1149,7 @@ test('suggests bills the household account pays, to add or dismiss', async ({ pa
   ] as const)
     await api.createTransaction({
       accountId: pool.id,
-      date: day(offset),
+      date: isoDay(offset),
       amount,
       payeeName: 'Riverbend Water',
     });
@@ -1179,7 +1177,7 @@ test('suggests bills the household account pays, to add or dismiss', async ({ pa
   await expect(tile).toContainText('$270.20');
   await expect(tile).toContainText('paid from the household account');
   await expect(page.getByRole('list', { name: 'Looks like a bill' })).toHaveCount(0);
-  await page.setViewportSize({ width: 390, height: 844 });
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
