@@ -65,6 +65,32 @@ test.describe('reports', () => {
     }
   });
 
+  test('the full Income & Expenses report shows spending in plain text, not red', async ({
+    page,
+    api,
+  }) => {
+    await seed(api);
+    await open(page, '/reports');
+    await page.getByRole('main').getByText('Income & Expenses', { exact: true }).click();
+    await expect(page.getByText('Income vs. expenses')).toBeVisible();
+    // Red is kept for overspending: total spending reads like the other figures
+    const expenses = page
+      .getByRole('main')
+      .getByText('Expenses', { exact: true })
+      .first()
+      .locator('xpath=following-sibling::p[1]');
+    await expect(expenses).toHaveText('$52.50');
+    const colors = await expenses.evaluate((el) => {
+      const probe = document.createElement('p');
+      probe.className = 'text-negative';
+      document.body.append(probe);
+      const red = getComputedStyle(probe).color;
+      probe.remove();
+      return { value: getComputedStyle(el).color, red };
+    });
+    expect(colors.value).not.toBe(colors.red);
+  });
+
   test('builds, saves and reopens a custom report', async ({ page, api }) => {
     await seed(api);
     await open(page, '/reports');
