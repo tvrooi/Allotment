@@ -21,13 +21,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useGoals } from '../../hooks/useGoals';
 import { MAX_SLOTS, useScenarioSlots, type Slot } from '../../hooks/useScenarioSlots';
 import { chartColors } from '../../utils/chartColors';
-import {
-  centsToInput,
-  formatCentsAxis,
-  formatCurrency,
-  isUnreadableAmount,
-  parseCents,
-} from '../../utils/currency';
+import { centsToInput, formatCurrency, isUnreadableAmount, parseCents } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { downloadCsv } from '../../utils/exportCsv';
 import { onTabListKeyDown } from '../ui/tabList';

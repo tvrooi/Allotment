@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { areaY, barX, barY, defineChart, group, lineY } from '@tanstack/charts';
 import { decorative } from '@tanstack/charts/mark/decorative';
 import { ruleY } from '@tanstack/charts/rule';
-import { text } from '@tanstack/charts/text';
 import { scaleLinear } from '@tanstack/charts/scales/linear';
 import { tooltip } from '@tanstack/charts/tooltip';
 import type { ChartPoint } from '@tanstack/charts';
@@ -286,7 +285,7 @@ export function IncomeExpensesChart({ from, to }: { from: string; to: string }) 
         tooltip: currencyTooltip({
           colors: { Income: chartColors.positive, Expenses: chartColors.negativeLight },
           summary: (points) => {
-            const row = (points[0] as any)?.datum as { net: number } | undefined;
+            const row = points[0]?.datum as { net: number } | undefined;
             return row ? { label: 'Net', value: row.net } : null;
           },
         }),

@@ -1,3 +1,4 @@
+import type { ChartPoint, ChartTooltipContentContext } from '@tanstack/charts';
 import type { ChartTooltipContent } from '@tanstack/charts/tooltip';
 import { scaleBand } from '@tanstack/charts/scales/band';
 import { scaleLinear } from '@tanstack/charts/scales/linear';
@@ -60,10 +61,14 @@ export function bandScale(format?: (v: string) => string, padding = 0.28) {
   };
 }
 
+/** What the tooltip reads of a hovered point (a full ChartPoint satisfies it) */
+export type TooltipPoint = Pick<ChartPoint, 'groupLabel' | 'xValue' | 'yValue'> &
+  Partial<Pick<ChartPoint, 'color' | 'datum'>>;
+
 /** Tooltip showing one currency row per series, with an optional bold summary line. */
 export function currencyTooltip(opts: {
   title?: (xLabel: string) => string;
-  summary?: (points: readonly { yValue: number }[]) => { label: string; value: number } | null;
+  summary?: (points: readonly TooltipPoint[]) => { label: string; value: number } | null;
   hideZero?: boolean;
   format?: (v: number) => string;
   /** Series colours by name, when a series is not drawn in its default palette colour */
@@ -72,14 +77,17 @@ export function currencyTooltip(opts: {
   const fmt = opts.format ?? formatCurrency;
   return {
     use: tooltip,
-    content: (points: readonly any[], ctx: { xLabel: string; formatX: (v: any) => string }) => {
+    content: (
+      points: readonly TooltipPoint[],
+      ctx: Pick<ChartTooltipContentContext, 'formatX'>,
+    ) => {
       const first = points[0];
       const rows = points
         .filter((p) => !opts.hideZero || Number(p.yValue) !== 0)
         .map((p) => ({
           label: String(p.groupLabel ?? ''),
           value: fmt(Number(p.yValue)),
-          color: opts.colors?.[String(p.groupLabel)] ?? (p.color as string | undefined),
+          color: opts.colors?.[String(p.groupLabel)] ?? p.color,
         }));
       const extra = opts.summary?.(points);
       if (extra) rows.push({ label: extra.label, value: fmt(extra.value), color: undefined });

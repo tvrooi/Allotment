@@ -1,6 +1,5 @@
 import { format, parseISO } from 'date-fns';
 import { ChartNoAxesColumn } from 'lucide-react';
-import { formatCurrency } from '../../utils/currency';
 import { CATEGORY_COLORS } from '../../utils/chartColors';
 import { StatGrid } from '../ui/StatCard';
 
