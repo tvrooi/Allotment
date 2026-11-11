@@ -270,26 +270,46 @@ test.describe('account register', () => {
     // Delete is in the details' menu, not a big red button; Done is the main action
     await expect(details.getByRole('button', { name: 'Delete transaction' })).toHaveCount(0);
     await expect(details.getByRole('button', { name: 'Done' })).toBeVisible();
-    // The ⋮ menu closes if its button moves, so wait for the panel to settle
-    const more = details.getByRole('button', { name: 'More actions' });
-    let last = '';
-    await expect
-      .poll(
-        async () => {
-          const box = await more.boundingBox();
-          const at = box ? `${box.x},${box.y}` : '';
-          const settled = at !== '' && at === last;
-          last = at;
-          return settled;
-        },
-        { intervals: [100] },
-      )
-      .toBe(true);
-    await more.click();
+    await details.getByRole('button', { name: 'More actions' }).click();
     await page.getByRole('menuitem', { name: 'Delete transaction' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
     await expect(page.getByText('No transactions yet')).toBeVisible();
     expect(await api.balance(checking.id)).toBe(100_000);
+  });
+
+  test('opening the details menu while the panel slides in keeps it open', async ({
+    page,
+    api,
+  }) => {
+    const { checking } = await setup(api);
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: -5_000,
+      payeeName: 'Oops Store',
+    });
+    await open(page, `/accounts/${checking.id}`);
+    await row(page, 'Oops Store').click();
+    const details = page.getByRole('complementary', { name: 'Transaction details' });
+    await expect(details).toBeVisible();
+    // Hold the panel part-way through its slide-in (the translate it animates) and focus ⋮, as
+    // Tab or a click's scroll-into-view does then. No box around ⋮ may scroll: the slide kept
+    // moving that scroll position, and the scroll events closed a ⋮ menu opened then
+    const scrolled = await details.evaluate((aside) => {
+      const slide = aside.parentElement!;
+      slide.style.transition = 'none';
+      slide.style.translate = '50% 0';
+      aside.querySelector<HTMLElement>('button[aria-label="More actions"]')!.focus();
+      let max = 0;
+      for (let el = slide.parentElement; el; el = el.parentElement)
+        max = Math.max(max, el.scrollLeft);
+      slide.style.translate = '';
+      slide.style.transition = '';
+      return max;
+    });
+    expect(scrolled).toBe(0);
+    await details.getByRole('button', { name: 'More actions' }).click();
+    await expect(page.getByRole('menuitem', { name: 'Delete transaction' })).toBeVisible();
   });
 
   test('details link the payee, category and account to the filtered register', async ({

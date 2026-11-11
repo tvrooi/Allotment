@@ -173,22 +173,7 @@ test('a deleted Up transaction stays deleted until it is restored from Up review
   await page.getByRole('button', { name: 'All time' }).click();
   await page.getByTestId('transaction-row').filter({ hasText: victim.payeeName }).click();
   const details = page.getByRole('complementary', { name: 'Transaction details' });
-  // The ⋮ menu closes if its button moves, so wait for the panel to settle
-  const more = details.getByRole('button', { name: 'More actions' });
-  let last = '';
-  await expect
-    .poll(
-      async () => {
-        const box = await more.boundingBox();
-        const at = box ? `${box.x},${box.y}` : '';
-        const settled = at !== '' && at === last;
-        last = at;
-        return settled;
-      },
-      { intervals: [100] },
-    )
-    .toBe(true);
-  await more.click();
+  await details.getByRole('button', { name: 'More actions' }).click();
   await page.getByRole('menuitem', { name: 'Delete transaction' }).click();
   const confirm = page.getByRole('dialog');
   await expect(confirm.getByText('Up still has it, so it stays deleted')).toBeVisible();

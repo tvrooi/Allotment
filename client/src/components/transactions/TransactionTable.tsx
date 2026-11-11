@@ -648,7 +648,9 @@ export function TransactionTable({
         </div>
 
         {panelMounted && panelTx && !overlay && (
-          <div className="w-96 shrink-0 overflow-hidden">
+          // overflow-clip, not hidden: a hidden box still scrolls, so focusing ⋮ mid-slide
+          // scrolled it and the slide's scroll events closed the ⋮ menu (as in the Sidebar)
+          <div className="w-96 shrink-0 overflow-clip">
             <div
               className={`h-full transition-transform duration-200 ease-out ${panelVisible ? 'translate-x-0' : 'translate-x-full'}`}
               onTransitionEnd={handlePanelTransitionEnd}
