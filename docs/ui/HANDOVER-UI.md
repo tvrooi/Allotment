@@ -28,6 +28,11 @@ Overwritten at the end of each UI session, never appended. Last written 11 Novem
 - #215 physical iPhone check; #216 dark mode visual check.
 - #217 Review queue redesign; #218 Cash flow personal share; #219 Household screens by type.
 - #220 sidebar item count (UX review item 7).
+- Design re-review at `cf2e2f0`, P0: #222 add-transaction focus/account; #223 add from every page;
+  #224 command palette; #225 phone tab bar; #226 sidebar set-up rows; #227 category empty state.
+- P1: #228 chart palette; #229 category dead space; #230 dashboard next-step card; #231 dashboard
+  value strip; #233 delete demotion; #234 recurring banner; #235 goal/payee links; #236 transfers
+  step; #237 empty states. P2: #232 dashboard grid; #238 reports clip; #239 onboarding step.
 
 ## Decisions
 
