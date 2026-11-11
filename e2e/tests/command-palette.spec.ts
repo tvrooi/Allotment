@@ -232,3 +232,26 @@ test('Safe mode: the palette shows no amounts, and it can switch Safe mode', asy
   await expect(option(page, 'Turn Safe mode off')).toBeVisible();
   await expect(palette(page)).not.toContainText(/\$\s?\d/);
 });
+
+test('if its code can’t be fetched, the app stays up, says so, and the next open tries again', async ({
+  page,
+}) => {
+  // The palette's own file can't be fetched (offline before it was ever loaded)
+  const chunk = '**/assets/CommandPalette-*.js';
+  await page.route(chunk, (route) => route.abort('internetdisconnected'));
+  await open(page, '/budget');
+  await page.getByRole('heading', { level: 1 }).first().waitFor();
+  await page.keyboard.press('ControlOrMeta+k');
+  const notice = page.getByRole('dialog', { name: 'Search' });
+  await expect(notice).toContainText('Search isn’t on this device yet');
+  await notice.getByRole('button', { name: 'OK' }).click();
+  await expect(notice).toBeHidden();
+  // The rest of the app carried on
+  await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
+
+  // Reachable again: the next open fetches it
+  await page.unroute(chunk);
+  await openPalette(page);
+  await expect(searchBox(page)).toBeFocused();
+});

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Loader2, Menu, Search } from 'lucide-react';
 import { useAccounts } from '../../hooks/useAccounts';
@@ -25,9 +25,14 @@ import { useAddTransactionStore } from '../../store/addTransactionStore';
 import { useAddTransactionKeyboard } from '../../hooks/useAddTransactionKeyboard';
 import { useCommandPaletteStore } from '../../store/commandPaletteStore';
 import { useCommandPaletteKeyboard } from '../../hooks/useCommandPaletteKeyboard';
+import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
+import { retryingImport } from '../../utils/retryingImport';
 
-// Loaded the first time it opens, so it stays out of the first download
-const CommandPalette = lazy(() => import('./CommandPalette'));
+// Out of the first download: fetched once the app is idle (so it's also kept for offline use)
+// or when Search first opens, whichever comes first
+const commandPalette = retryingImport(() => import('./CommandPalette'));
+type PaletteComponent = ComponentType<{ isOpen: boolean; onClose: () => void }>;
 
 /** Where opening the app lands: the root, which goes on to the dashboard */
 const FRONT_DOOR = new Set(['/', '/dashboard']);
@@ -90,17 +95,50 @@ export function AppShell() {
   );
 }
 
-/** The search palette (store/commandPaletteStore.ts opens it), fetched the first time it opens */
+/**
+ * The search palette (store/commandPaletteStore.ts opens it). If its code can't be fetched (the
+ * device went offline before it was ever loaded) the shell stays up and says so; opening Search
+ * again tries again.
+ */
 function ShellCommandPalette() {
   const open = useCommandPaletteStore((s) => s.open);
   const hide = useCommandPaletteStore((s) => s.hide);
-  const [wanted, setWanted] = useState(open);
-  if (open && !wanted) setWanted(true);
-  if (!wanted) return null;
+  const [Palette, setPalette] = useState<PaletteComponent | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  // Fetched in the background once the page has settled, while it can still be reached
+  useEffect(() => {
+    const t = setTimeout(commandPalette.warm, 3_000);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (!open || Palette) return;
+    let current = true;
+    commandPalette.load().then(
+      (m) => current && setPalette(() => m.default),
+      () => current && setFailed(true),
+    );
+    return () => {
+      current = false;
+    };
+  }, [open, Palette]);
+
+  if (Palette) return <Palette isOpen={open} onClose={hide} />;
+  const close = () => {
+    hide();
+    setFailed(false);
+  };
   return (
-    <Suspense fallback={null}>
-      <CommandPalette isOpen={open} onClose={hide} />
-    </Suspense>
+    <Modal isOpen={open && failed} onClose={close} title="Search" size="sm">
+      <p className="text-sm text-text-secondary">
+        Search isn’t on this device yet, and Allotment can’t be reached to fetch it. It works once
+        Allotment reconnects.
+      </p>
+      <div className="mt-4 flex justify-end">
+        <Button onClick={close}>OK</Button>
+      </div>
+    </Modal>
   );
 }
 
