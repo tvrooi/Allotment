@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.168
+
+- **Seven small fixes from the design review.** A category's page opens on All time, so the chart, the transaction list and the summary agree instead of showing an empty month beside a full chart; on a wide screen the list sits right under the chart. Income and expenses use the same muted colours on the Dashboard, in Reports and on a category's chart, and the Reports summary and the full Income & Expenses report show spending in plain text: red is kept for overspending. The summary card no longer cuts off its bottom labels on phones. In a transaction's details, Delete moves into the ⋮ menu (still asking first), Done is the main button, and the payee, category and account are underlined links to the register filtered to them. On Recurring, possible matches show as a quiet note with a Review now link instead of a solid orange bar. The arrow at the end of a transaction row and the hide-balances eye now have names a screen reader can read.
+
 ## 0.2.0-up.167
 
 - **Add a transaction from any page.** The sidebar has an Add a transaction button at its top (an icon when the sidebar is folded), and pressing N on any page opens the same dialog, except while you're typing or another dialog is open. The dialog opens ready to type the amount, on the account whose page you're on, or else the account you used last on this device; a closed account is never picked. On phones a tab bar at the foot of the screen reaches Home, Transactions, Budget and Review in one tap, with Add in the middle; everything else stays in the menu, and notices sit above the bar.
