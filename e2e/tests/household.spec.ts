@@ -551,8 +551,6 @@ test('lists recurring bills shared with housemates, with shares and one-click sh
   api,
 }) => {
   const account = await api.createAccount('Up Spending', 100000);
-  const day = (offset: number) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   const bills = [
     ['Electricity (OVO)', 'OVO Energy', -18450],
     ['Internet (Superloop)', 'Superloop', -8999],
@@ -560,7 +558,7 @@ test('lists recurring bills shared with housemates, with shares and one-click sh
   for (const [name, payeeName, amount] of bills) {
     const paid = await api.createTransaction({
       accountId: account.id,
-      date: day(-5),
+      date: isoDay(-5),
       amount,
       payeeName,
     });
@@ -569,7 +567,7 @@ test('lists recurring bills shared with housemates, with shares and one-click sh
       amount,
       recurrenceType: 'monthly',
       recurrenceRule: { type: 'monthly', interval: 1, anchorDay: 1 },
-      startDate: day(-5),
+      startDate: isoDay(-5),
       accountId: account.id,
       payeeId: paid.payeeId,
     });
@@ -615,11 +613,9 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
   api,
 }) => {
   const account = await api.createAccount('Up Spending', 100000);
-  const day = (offset: number) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   const paid = await api.createTransaction({
     accountId: account.id,
-    date: day(-5),
+    date: isoDay(-5),
     amount: -10000,
     payeeName: 'Superloop',
   });
@@ -628,7 +624,7 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
     amount: -10000,
     recurrenceType: 'monthly',
     recurrenceRule: { type: 'monthly', interval: 1, anchorDay: 1 },
-    startDate: day(-5),
+    startDate: isoDay(-5),
     accountId: account.id,
     payeeId: paid.payeeId,
   });
@@ -644,7 +640,7 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
   });
   await api.call('POST', `/households/${group.group.id}/bills`, {
     description: 'Council rates',
-    dueDate: day(30),
+    dueDate: isoDay(30),
     amount: 30000,
   });
   await open(page, '/household');
@@ -684,7 +680,7 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
   await expect(net).toContainText('(from ');
   const next = await api.createTransaction({
     accountId: account.id,
-    date: day(0),
+    date: isoDay(0),
     amount: -10000,
     payeeName: 'Superloop',
   });
@@ -710,11 +706,9 @@ test('a rent with fixed amounts from the household account shows what each owes 
 }) => {
   const joint = await api.createAccount('2Up Bills', 0);
   const mine = await api.createAccount('Up Spending', 100000);
-  const day = (offset: number) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   const rent = await api.createTransaction({
     accountId: joint.id,
-    date: day(-3),
+    date: isoDay(-3),
     amount: -300000,
     payeeName: 'Ray White',
   });
@@ -723,7 +717,7 @@ test('a rent with fixed amounts from the household account shows what each owes 
     amount: -300000,
     recurrenceType: 'monthly',
     recurrenceRule: { type: 'monthly', interval: 1, anchorDay: 1 },
-    startDate: day(-3),
+    startDate: isoDay(-3),
     accountId: joint.id,
     payeeId: rent.payeeId,
   });
@@ -766,7 +760,7 @@ test('a rent with fixed amounts from the household account shows what each owes 
     toAccountId: joint.id,
     amount: 120000,
     toAmount: 120000,
-    date: day(-1),
+    date: isoDay(-1),
   });
   await page.reload();
   await openTab(page, 'Settings');
@@ -1034,14 +1028,12 @@ test('a gauge shows whether the household account covers the next 30 days of bil
   api,
 }) => {
   const pool = await api.createAccount('2Up Essentials', 10000, 'savings', { currency: 'AUD' });
-  const day = (offset: number) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   const schedule = await api.call('POST', '/schedules', {
     name: 'Internet',
     amount: -10500,
     recurrenceType: 'monthly',
-    recurrenceRule: { type: 'monthly', interval: 1, anchorDay: Number(day(3).slice(8)) },
-    startDate: day(3),
+    recurrenceRule: { type: 'monthly', interval: 1, anchorDay: Number(isoDay(3).slice(8)) },
+    startDate: isoDay(3),
     accountId: pool.id,
   });
   const group = await api.call('POST', '/households', {
@@ -1077,8 +1069,6 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
   api,
 }) => {
   const account = await api.createAccount('Up Spending', 100000);
-  const day = (offset: number) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   let payeeId = '';
   for (const [offset, amount] of [
     [-70, -8000],
@@ -1087,7 +1077,7 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
   ] as const) {
     const paid = await api.createTransaction({
       accountId: account.id,
-      date: day(offset),
+      date: isoDay(offset),
       amount,
       payeeName: 'Brightside Energy',
     });
@@ -1098,8 +1088,8 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
     amount: -12000,
     amountType: 'variable',
     recurrenceType: 'monthly',
-    recurrenceRule: { type: 'monthly', interval: 1, anchorDay: Number(day(20).slice(8)) },
-    startDate: day(20),
+    recurrenceRule: { type: 'monthly', interval: 1, anchorDay: Number(isoDay(20).slice(8)) },
+    startDate: isoDay(20),
     accountId: account.id,
     payeeId,
   });
@@ -1141,8 +1131,6 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
 
 test('suggests bills the household account pays, to add or dismiss', async ({ page, api }) => {
   const pool = await api.createAccount('2Up Essentials', 500000, 'savings', { currency: 'AUD' });
-  const day = (offset: number) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   for (const [offset, amount] of [
     [-190, -24110],
     [-128, -26340],
@@ -1151,7 +1139,7 @@ test('suggests bills the household account pays, to add or dismiss', async ({ pa
   ] as const)
     await api.createTransaction({
       accountId: pool.id,
-      date: day(offset),
+      date: isoDay(offset),
       amount,
       payeeName: 'Northwind Power',
     });
@@ -1161,7 +1149,7 @@ test('suggests bills the household account pays, to add or dismiss', async ({ pa
   ] as const)
     await api.createTransaction({
       accountId: pool.id,
-      date: day(offset),
+      date: isoDay(offset),
       amount,
       payeeName: 'Riverbend Water',
     });
