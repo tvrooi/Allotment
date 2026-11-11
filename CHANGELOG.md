@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.167
+
+- **Add a transaction from any page.** The sidebar has an Add a transaction button at its top (an icon when the sidebar is folded), and pressing N on any page opens the same dialog, except while you're typing or another dialog is open. The dialog opens ready to type the amount, on the account whose page you're on, or else the account you used last on this device; a closed account is never picked. On phones a tab bar at the foot of the screen reaches Home, Transactions, Budget and Review in one tap, with Add in the middle; everything else stays in the menu, and notices sit above the bar.
+
 ## 0.2.0-up.166
 
 - **The refined Dashboard is now the Dashboard.** The opening line says when your next pay arrives, and Left to spend leads the summary in a wider panel with a larger figure. The review prompt leads with the task and keeps the step count as a quieter link. Bills and income are labelled Next 30 days and link to the entries that don't fit, cards keep their own height, and the savings target is a quiet Target link that opens the dropdown. On phones, averages and savings follow the commitments. Customise saves for your device again, and the temporary `/dashboard/refined` route is gone. A `?theme=dark` or `?theme=light` link parameter pins one window's theme without changing your saved setting.
