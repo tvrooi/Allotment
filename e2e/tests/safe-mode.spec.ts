@@ -60,6 +60,15 @@ test.describe('Safe mode', () => {
       await expectNoBalances(page);
     }
 
+    // The dashboard's pace cue is still there, without the share of spending money used
+    await open(page, '/dashboard');
+    const pace = page
+      .getByTestId('home-card-summary')
+      .getByText(/of spending money used · \d+% through the month$/);
+    await expect(pace).toBeVisible();
+    await expect(pace.getByRole('img', { name: 'Hidden' })).toBeVisible();
+    expect(await pace.innerText()).not.toMatch(/^\d+%/);
+
     // By default Safe mode hides every amount, so a friend sees none on the pages that matter
     await api.createTransaction({
       accountId: everyday.id,
