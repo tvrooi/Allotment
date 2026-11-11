@@ -47,3 +47,6 @@ flybudget_data_key.txt
 __pycache__/
 *.pyc
 release-output/
+
+# UI review screenshots: attach to the PR or issue, never commit (docs/ui/README.md)
+.ui-evidence/

@@ -5,12 +5,14 @@ fork of `dtymoszenko/FlyBudget`, detached from its fork network. Brand: [docs/BR
 Read only the files relevant to the request. Do not read the entire repository or long conversation history.
 Detailed upstream architecture: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md), on demand.
 Release process and known limitations: [MAINTENANCE.md](MAINTENANCE.md).
-Current state, live setup and where to pick up: [HANDOVER.md](HANDOVER.md). Update it as work lands.
+Current state, live setup and where to pick up: [HANDOVER.md](HANDOVER.md), kept short; update it as
+work lands. History is archived in docs/handover/ARCHIVE.md (grep it, never read it whole).
 Keep AGENTS.md and CLAUDE.md byte-identical (Codex reads one, Claude Code the other).
 
 ## Where to work
 
 - React UI: `client/src/`; Express + SQLite: `server/src/`.
+- UI work: read docs/ui/README.md, then docs/ui/HANDOVER-UI.md and the screen's row in docs/ui/MAP.md; do not read HANDOVER.md history.
 - Up API: `server/src/services/upService.ts`, `upSyncService.ts`, `upTransactions.ts`, `routes/up.ts`.
 - Up UI: `client/src/components/up/`, `hooks/useUp.ts`, `api/up.ts`.
 - Files (documents, links, receipts as documents): `server/src/services/documentService.ts`,
