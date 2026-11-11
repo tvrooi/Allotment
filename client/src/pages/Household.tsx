@@ -30,6 +30,8 @@ import { recentEntries } from '../components/household/recentEntries';
 import type { HouseholdCoverage, HouseholdSplit, SharedRecurringBill } from '../api/households';
 import { BillsCoverage } from '../components/household/BillsCoverage';
 import { BalanceSummary } from '../components/household/BalanceSummary';
+import { unsharedPayments } from '../components/household/balanceHeadline';
+import { useHousehold } from '../hooks/useHouseholds';
 
 type Group = {
   id: string;
@@ -167,15 +169,7 @@ export default function HouseholdPage() {
     (groups.some((g) => g.id === id) ? id : (groups.find((g) => g.isDefault) ?? groups[0])?.id) ??
     '';
   const current = groups.find((g) => g.id === selected);
-  const {
-    data: state,
-    isLoading,
-    error: loadError,
-  } = useQuery({
-    queryKey: ['households', selected],
-    queryFn: () => apiFetch<State>(`/households/${selected}`),
-    enabled: !!selected,
-  });
+  const { data: state, isLoading, error: loadError } = useHousehold<State>(selected);
   const { data: accounts = [] } = useAccounts();
   const { data: schedules = [] } = useSchedules();
   const linkId = params.get('transaction');
@@ -249,15 +243,7 @@ export default function HouseholdPage() {
   const [historyMonths, setHistoryMonths] = useState(RECENT_MONTHS);
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
   const money = (n: number) => formatMoney(n, state?.group.currency ?? 'AUD');
-  const unsharedBills = (state?.recurringBills ?? []).filter((b) =>
-    b.payments.some((p) => !p.shared),
-  );
-  const unshared = {
-    count: withBills
-      ? unsharedBills.reduce((n, b) => n + b.payments.filter((p) => !p.shared).length, 0)
-      : 0,
-    bills: withBills ? unsharedBills.map((b) => b.name) : [],
-  };
+  const unshared = unsharedPayments(state?.recurringBills ?? [], withBills);
   const hasPool = (state?.group.poolAccountIds.length ?? 0) > 0;
   function submit(
     e: React.FormEvent<HTMLFormElement>,

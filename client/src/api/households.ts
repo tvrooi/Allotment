@@ -19,6 +19,17 @@ export interface HouseholdSummary {
   /** Its picture (small image data URL), shown on payments shared with it; null = initial */
   logo: string | null;
   people: { id: string; name: string; isSelf: boolean }[];
+  /** 1 = the Household page opens on it when none is named */
+  isDefault?: number;
+}
+
+/** The part of GET /households/:id that says who owes whom (the page's BalanceSummary) */
+export interface HouseholdBalances {
+  group: { id: string; name: string; currency: string; includeBills?: number };
+  people: { id: string; name: string; isSelf: number }[];
+  /** Per person, across everything shared: negative = owes, positive = is owed */
+  balances: Record<string, number>;
+  recurringBills: { name: string; payments: { shared: boolean }[] }[];
 }
 
 export interface RepaymentSuggestion {
