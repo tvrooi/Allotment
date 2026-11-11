@@ -397,7 +397,8 @@ test('report summary figures fit their card', async ({ page, api }) => {
   const cardBox = (await card.boundingBox())!;
   for (const label of ['Avg monthly expenses', 'Avg per transaction']) {
     const box = (await card.getByText(label).boundingBox())!;
-    expect(box.y + box.height, label).toBeLessThanOrEqual(cardBox.y + cardBox.height - 4);
+    // Inside the card's 12px padding, where its body cuts content off
+    expect(box.y + box.height, label).toBeLessThanOrEqual(cardBox.y + cardBox.height - 12);
   }
 });
 

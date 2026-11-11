@@ -306,7 +306,8 @@ test.describe('account register', () => {
     const details = page.getByRole('complementary', { name: 'Transaction details' });
     const openDetails = async () => {
       await open(page, '/transactions');
-      await row(page, 'Corner Grocery').click();
+      // The row's middle is its inline category editor here; the row-end arrow opens details
+      await page.getByRole('button', { name: 'Open details for Corner Grocery' }).click();
       await expect(details).toBeVisible();
     };
 
