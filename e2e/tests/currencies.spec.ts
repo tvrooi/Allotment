@@ -63,7 +63,8 @@ test('the złoty is written after the amount, the dollar before', async ({ page,
   await api.createAccount('Konto', 123_456, 'checking', { currency: 'PLN' });
   await open(page, '/accounts');
   const main = page.getByRole('main');
-  await expect(main.getByText('$1,234.56').first()).toBeVisible();
+  // The phone-only net worth line comes first in the page and is hidden at this width
+  await expect(main.getByText('$1,234.56').filter({ visible: true }).first()).toBeVisible();
   await expect(main.getByText(/^1,234\.56\szł$/)).toBeVisible();
 });
 
