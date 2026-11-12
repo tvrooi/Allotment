@@ -32,6 +32,8 @@ import NetWorthMini from '../components/dashboard/NetWorthMini';
 import { ACCOUNT_GROUPS, type Account, type AccountGroup } from '../types';
 import { AccountIcon } from '../components/accounts/AccountIcon';
 import { accountTypeInfo, accountTypeLabel } from '../utils/accountTypes';
+import { useScrollMemory } from '../hooks/useScrollMemory';
+import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 function groupAccountsByType(accounts: Account[]) {
   const groups = new Map<AccountGroup, Account[]>();
@@ -163,6 +165,8 @@ function AccountGroup({ label, accounts, balancesAgo }: AccountGroupProps) {
 }
 
 export default function AccountsPage() {
+  // Back and Forward return to where this list was (#245)
+  const scrollMemory = useScrollMemory('accounts');
   const accountsQuery = useAccounts();
   const { data: accounts = [], isLoading } = accountsQuery;
   const balancesQuery = useBalancesAgo();
@@ -175,10 +179,10 @@ export default function AccountsPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col h-full bg-surface">
-        <div className="px-6 py-4 border-b border-border shrink-0">
+        <div className={`py-4 border-b border-border shrink-0 ${PAGE_GUTTER}`}>
           <div className="h-5 w-32 bg-surface-alt rounded animate-pulse" />
         </div>
-        <div className="p-6 space-y-2">
+        <div className={`py-6 space-y-2 ${PAGE_GUTTER}`}>
           {[...Array(5)].map((_, i) => (
             <div key={i} className="h-12 bg-surface-alt rounded animate-pulse" />
           ))}
@@ -189,7 +193,9 @@ export default function AccountsPage() {
 
   return (
     <div className="flex flex-col h-full bg-surface">
-      <div className="px-6 py-4 border-b border-border shrink-0 flex items-center justify-between">
+      <div
+        className={`py-4 border-b border-border shrink-0 flex items-center justify-between ${PAGE_GUTTER}`}
+      >
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
             Accounts
@@ -224,8 +230,8 @@ export default function AccountsPage() {
           />
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto">
-          <div className="px-6 pt-5 pb-3">
+        <div ref={scrollMemory} className="flex-1 overflow-y-auto">
+          <div className={`pt-5 pb-3 ${PAGE_GUTTER}`}>
             <div className="mb-2 flex items-center justify-between gap-3 md:hidden">
               <div className="min-w-0">
                 <p className="text-sm text-text-secondary">Net worth</p>
@@ -266,7 +272,7 @@ export default function AccountsPage() {
             query={balancesQuery}
             className="mx-6 mb-4"
           />
-          <div data-guide="accounts.list" className="px-6 pb-6 space-y-4">
+          <div data-guide="accounts.list" className={`pb-6 space-y-4 ${PAGE_GUTTER}`}>
             {allGroups.map((g) => (
               <AccountGroup
                 key={g.label}

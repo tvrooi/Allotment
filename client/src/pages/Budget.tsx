@@ -57,6 +57,7 @@ import { GuideLink } from '../components/guide/GuideLink';
 import { Tip } from '../components/guide/Tip';
 import { TIPS } from '../guides';
 import { useMenuKeyboard } from '../hooks/useMenuKeyboard';
+import { useScrollMemory } from '../hooks/useScrollMemory';
 
 function AmountInput({
   cents,
@@ -711,6 +712,8 @@ const BAND =
   'sticky top-0 z-10 bg-surface-alt group-hover:bg-hover transition-colors shadow-[0_1px_0_var(--color-border),0_-1px_0_var(--color-border)]';
 
 export default function BudgetPage() {
+  // Back and Forward return to where this list was (#245)
+  const scrollMemory = useScrollMemory('budget');
   const [paydayView, setPaydayView] = useState(false);
   const { selectedMonth, setSelectedMonth } = useAppStore();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -916,7 +919,7 @@ export default function BudgetPage() {
             onPayday={() => setPaydayView(true)}
           />
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div ref={scrollMemory} className="flex-1 overflow-y-auto">
           <PaydayPlan />
         </div>
       </div>
@@ -1203,6 +1206,7 @@ export default function BudgetPage() {
 
         {/* While the next month loads, the previous one stays (faded) so nothing jumps */}
         <div
+          ref={scrollMemory}
           aria-busy={switchingMonth}
           inert={switchingMonth}
           className={`flex max-md:flex-col flex-1 overflow-y-auto transition-opacity ${switchingMonth ? 'opacity-60 pointer-events-none' : ''}`}

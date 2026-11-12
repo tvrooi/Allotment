@@ -31,6 +31,7 @@ import { usePreferencesStore } from '../../store/preferencesStore';
 import { AccountIcon } from '../accounts/AccountIcon';
 import { formatMoney } from '../../utils/currency';
 import { transactionsLink } from '../../utils/transactionFilters';
+import { payeeCondition } from '../../utils/ruleFormat';
 import { useAccountCurrency } from '../../hooks/useCurrency';
 import { MainAmountField } from '../currency/MainAmountField';
 import { RECURRENCE_TYPE_LABELS } from '../../types';
@@ -41,14 +42,7 @@ import { TaxClaimSection } from '../tax/TaxClaimSection';
 import { FilesSection } from '../files/FilesSection';
 import { InvestmentMoney } from '../investments/InvestmentMoney';
 import { SplitTransactionModal } from './SplitTransactionModal';
-import type {
-  Transaction,
-  CategoryGroup,
-  Payee,
-  Account,
-  RuleCondition,
-  RuleInput,
-} from '../../types';
+import type { Transaction, CategoryGroup, Payee, Account, RuleInput } from '../../types';
 
 interface Props {
   transaction: Transaction;
@@ -210,12 +204,9 @@ export function TransactionDetailPanel({
 
   /** A rule matching this transaction's payee that sets its current category */
   function startRule() {
-    const condition: RuleCondition = tx.payeeId
-      ? { field: 'payee', op: 'is', value: tx.payeeId }
-      : { field: 'payee_name', op: 'is', value: tx.payeeName ?? '' };
     setRuleDraft({
       conditionsOp: 'and',
-      conditions: [condition],
+      conditions: [payeeCondition(tx)],
       actions: [{ type: 'set_category', value: tx.categoryId ?? '' }],
       enabled: true,
     });
@@ -295,17 +286,29 @@ export function TransactionDetailPanel({
               }
             />
             <div className="flex flex-col items-start">
-              {payeeLink ? (
+              {/* The payee's own page (#235); transfers have none */}
+              {payee && !isTransfer ? (
                 <Link
-                  to={payeeLink}
+                  to={`/payees/${payee.id}`}
                   onClick={onClose}
-                  aria-label={`All ${payeeName} transactions`}
+                  aria-label={`Payee page for ${payeeName}`}
                   className={`text-base font-semibold text-text ${linkCls}`}
                 >
                   {payeeName}
                 </Link>
               ) : (
                 <div className="text-base font-semibold text-text">{payeeName}</div>
+              )}
+              {/* The register filtered to this payee (the row's old payee arrow, #243) */}
+              {payeeLink && (
+                <Link
+                  to={payeeLink}
+                  onClick={onClose}
+                  aria-label={`All ${payeeName} transactions`}
+                  className={`mt-0.5 max-md:mt-0 text-xs text-text-tertiary ${linkCls}`}
+                >
+                  All transactions
+                </Link>
               )}
               {accountName && (
                 <Link

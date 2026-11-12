@@ -30,7 +30,17 @@ for (const phone of [false, true]) {
     await expect(
       page.getByText('Assigned this month $150 · Activity $0 · Available $150', { exact: true }),
     ).toBeVisible();
+    // A category-funded row opens its category (#235), by click and by Enter
     await page.getByText('Trip', { exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`#/budget/category/${category.id}$`));
+    await page.goBack();
+    await page.getByTestId('goal-row').filter({ hasText: 'Trip' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(new RegExp(`#/budget/category/${category.id}$`));
+    await page.goBack();
+    // Every row has a visible Edit, which does not open the category
+    await page.getByRole('button', { name: 'Edit Trip' }).click();
+    await expect(page).toHaveURL(/#\/goals$/);
     await dialog.getByLabel('Progress source').selectOption('');
     await expect(dialog.getByLabel('Saved so far')).toHaveValue('');
     await dialog.getByLabel('Saved so far').fill('75');
@@ -40,6 +50,10 @@ for (const phone of [false, true]) {
     const rows = await api.call('GET', '/goals');
     expect(rows[0]).toMatchObject({ categoryId: null, currentAmount: 7500 });
     await expect(page.getByText('Tracked by hand', { exact: true })).toBeVisible();
+    // A row tracked by hand keeps opening the edit dialog
+    await page.getByText('Trip', { exact: true }).click();
+    await expect(dialog.getByLabel('Saved so far')).toBeVisible();
+    await expect(page).toHaveURL(/#\/goals$/);
   });
 }
 

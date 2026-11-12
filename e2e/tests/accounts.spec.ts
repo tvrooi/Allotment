@@ -155,7 +155,8 @@ test.describe('accounts', () => {
     await expect.poll(async () => (await api.accounts()).map((a) => a.name)).toEqual(['Keep Me']);
     await open(page, '/accounts');
     await expect(page.getByRole('heading', { level: 1, name: 'Accounts' })).toBeVisible();
-    await expect(page.getByText('Old Card')).toBeHidden();
+    // In the page (the undo toast names it too, offering Undo, #245)
+    await expect(page.getByRole('main').getByText('Old Card')).toBeHidden();
   });
 
   test('updating an investment value records the change', async ({ page, api }) => {

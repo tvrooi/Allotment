@@ -4,15 +4,12 @@ import { RowMarks } from './TransactionMarks';
 import { formatRegisterAmount, RoundUpMark } from './RoundUp';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import { useMemo, useState } from 'react';
-import { ChevronRight, ChevronDown, ArrowRight, Lock } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ChevronRight, ChevronDown, Lock, Pencil } from 'lucide-react';
 import { useUpdateTransaction } from '../../hooks/useTransactions';
 import { useOfferCategoryFollowup } from '../../hooks/useCategoryFollowup';
 import { useTransferToAccount } from '../../hooks/useTransfers';
 import { useCanSave } from '../../hooks/useConnection';
-import { useUpdatePayee } from '../../hooks/usePayees';
 import { CategoryPicker } from './CategoryPicker';
-import { PayeePicker } from './PayeePicker';
 import { PayeeIcon } from '../payees/PayeeIcon';
 import { formatMoney } from '../../utils/currency';
 import { useAccountCurrency } from '../../hooks/useCurrency';
@@ -33,8 +30,6 @@ interface Props {
   showAccountCol?: boolean;
   isSelected?: boolean;
   onOpenDetail: (id: string) => void;
-  onFilterCategory?: (catId: string) => void;
-  onFilterSearch?: (search: string) => void;
   /** Open accounts, offered as "Transfer: name" in the category picker (except this one's) */
   transferAccounts?: { id: string; name: string }[];
 }
@@ -51,27 +46,20 @@ export function TransactionRow({
   showAccountCol,
   isSelected,
   onOpenDetail,
-  onFilterCategory,
-  onFilterSearch,
   transferAccounts = [],
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const currency = useAccountCurrency()(tx.accountId);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
-  const [showPayeePicker, setShowPayeePicker] = useState(false);
   const updateTx = useUpdateTransaction();
   const offerFollowup = useOfferCategoryFollowup();
   const transferTo = useTransferToAccount();
   // Making a transfer needs the server: not offered while saving is paused
   const canSave = useCanSave();
-  const updatePayee = useUpdatePayee();
-  const navigate = useNavigate();
   const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
 
   const isTransfer = !!tx.transferTransactionId;
   const isSplitParent = tx.isParent === 1 && tx.children && tx.children.length > 0;
-  const canEditCategory = (!isTransfer || !!tx.isBudgetBoundary) && !isSplitParent;
-  const canEditPayee = !isTransfer;
   // A round-up's own row, listed only when round-ups are shown: part of its purchase
   const roundUpOf = tx.roundUpOf ? (tx.roundUpOf.payeeName ?? 'a purchase') : null;
 
@@ -82,31 +70,42 @@ export function TransactionRow({
     [payees, tx.payeeId],
   );
 
+  const categoryName = (
+    <>
+      {showCategoryIcons && categoryEntry?.icon && (
+        <CategoryIcon icon={categoryEntry.icon} size={15} />
+      )}
+      <span
+        className={`text-sm truncate ${categoryEntry ? 'text-text-secondary' : 'text-caution'}`}
+      >
+        {categoryEntry?.name ?? 'Uncategorised'}
+      </span>
+    </>
+  );
+
   function handleCategoryChange(catId: string | null) {
     if (catId?.startsWith('transfer:')) {
       transferTo.mutate({ id: tx.id, accountId: catId.slice('transfer:'.length) });
     } else {
+      const name = catId ? (categoryMap.get(catId)?.name ?? 'a category') : 'Uncategorised';
       updateTx
-        .mutateAsync({ id: tx.id, data: { categoryId: catId } })
+        .mutateAsync({
+          id: tx.id,
+          data: { categoryId: catId },
+          // Said by the undo toast, with Undo (#245)
+          message: catId ? `${payeeName} categorised as ${name}.` : `${payeeName} uncategorised.`,
+        })
         .then(() => offerFollowup(tx, catId))
         .catch(() => {});
     }
     setShowCategoryPicker(false);
   }
 
-  function handlePayeeChange(payeeId: string, name: string) {
-    updateTx.mutate({ id: tx.id, data: { payeeId, payeeName: name } });
-    setShowPayeePicker(false);
-  }
-
-  const arrowBase =
-    'opacity-0 w-9 h-9 max-md:hidden flex items-center justify-center border border-border rounded-lg hover:bg-hover text-text-tertiary hover:text-text-secondary transition-opacity shrink-0';
-
   return (
     <div>
       <div
         // Phones: the payee gets its own line, the other columns wrap below it
-        className={`group/row flex max-md:flex-wrap items-center px-4 py-2 cursor-pointer border-b border-border-light transition-colors ${
+        className={`flex max-md:flex-wrap items-center px-4 py-2 cursor-pointer border-b border-border-light transition-colors ${
           isSelected ? 'bg-brand-50 border-l-2 border-l-brand-600' : 'bg-surface hover:bg-hover'
         }`}
         onClick={() => onOpenDetail(tx.id)}
@@ -121,61 +120,24 @@ export function TransactionRow({
         data-testid="transaction-row"
         data-tx-id={tx.id}
       >
-        {/* Payee */}
-        <div className="group/payee flex items-center gap-1 flex-[3] max-md:basis-full min-w-0 relative mr-3">
-          <PayeeIcon
-            name={payeeName}
-            logo={payee?.logo}
-            transfer={isTransfer}
-            onLogoChange={payee ? (logo) => updatePayee.mutate({ id: payee.id, logo }) : undefined}
-          />
-          {canEditPayee ? (
-            <button
-              className="flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-all group-hover/payee:border group-hover/payee:border-border group-hover/payee:bg-surface cursor-pointer border border-transparent min-w-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowPayeePicker(!showPayeePicker);
-              }}
-            >
-              <span className="text-sm font-medium text-text truncate">{payeeName}</span>
-              <ChevronDown
-                size={12}
-                className="opacity-0 group-hover/payee:opacity-100 text-text-tertiary shrink-0 transition-opacity ml-auto"
-              />
-            </button>
-          ) : roundUpOf ? (
-            <span className="text-xs text-text-tertiary truncate">↳ Round-up of {roundUpOf}</span>
+        {/* Payee: part of the row, so a click on it opens the details too (#243). The payee
+            is changed there, and its logo on the payee's page. */}
+        <div className="flex items-center gap-1 flex-[3] max-md:basis-full min-w-0 mr-3">
+          <PayeeIcon name={payeeName} logo={payee?.logo} transfer={isTransfer} />
+          {roundUpOf ? (
+            <span className="px-2.5 text-xs text-text-tertiary truncate">
+              ↳ Round-up of {roundUpOf}
+            </span>
           ) : (
-            <span className="text-sm font-medium text-text truncate">{payeeName}</span>
+            <span className="px-2.5 py-1.5 text-sm font-medium text-text truncate">
+              {payeeName}
+            </span>
           )}
           <RowMarks tx={tx} />
-          {tx.payeeName && onFilterSearch && (
-            <button
-              className={`${arrowBase} group-hover/payee:opacity-100`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onFilterSearch(tx.payeeName!);
-              }}
-              title={`Show all "${tx.payeeName}" transactions`}
-              aria-label={`Show all "${tx.payeeName}" transactions`}
-            >
-              <ArrowRight size={12} />
-            </button>
-          )}
-
-          {showPayeePicker && (
-            <PayeePicker
-              value={tx.payeeId ?? null}
-              payeeName={tx.payeeName ?? null}
-              onChange={handlePayeeChange}
-              payees={payees}
-              onClose={() => setShowPayeePicker(false)}
-            />
-          )}
         </div>
 
         {/* Category */}
-        <div className="group/cat flex items-center gap-1 flex-[2] min-w-0 relative mr-3">
+        <div className="flex items-center gap-1 flex-[2] min-w-0 relative mr-3">
           {isSplitParent ? (
             <button
               onClick={(e) => {
@@ -190,52 +152,20 @@ export function TransactionRow({
           ) : isTransfer && !tx.isBudgetBoundary ? (
             <span className="text-sm text-brand-600">Transfer</span>
           ) : (
-            <>
-              <button
-                className={`flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-all min-w-0 ${
-                  canEditCategory
-                    ? 'group-hover/cat:border group-hover/cat:border-border group-hover/cat:bg-surface cursor-pointer'
-                    : ''
-                } border border-transparent`}
-                onClick={
-                  canEditCategory
-                    ? (e) => {
-                        e.stopPropagation();
-                        setShowCategoryPicker(!showCategoryPicker);
-                      }
-                    : (e) => e.stopPropagation()
-                }
-                disabled={!canEditCategory}
-              >
-                {showCategoryIcons && categoryEntry?.icon && (
-                  <CategoryIcon icon={categoryEntry.icon} size={15} />
-                )}
-                <span
-                  className={`text-sm truncate ${categoryEntry ? 'text-text-secondary' : 'text-caution'}`}
-                >
-                  {categoryEntry?.name ?? 'Uncategorised'}
-                </span>
-                {canEditCategory && (
-                  <ChevronDown
-                    size={12}
-                    className="opacity-0 group-hover/cat:opacity-100 text-text-tertiary shrink-0 transition-opacity ml-auto"
-                  />
-                )}
-              </button>
-              {tx.categoryId && onFilterCategory && (
-                <button
-                  className={`${arrowBase} group-hover/cat:opacity-100`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onFilterCategory(tx.categoryId!);
-                  }}
-                  title={`Show all "${categoryEntry?.name}" transactions`}
-                  aria-label={`Show all "${categoryEntry?.name}" transactions`}
-                >
-                  <ArrowRight size={12} />
-                </button>
-              )}
-            </>
+            // The one edit in the row: drawn as a control (its chevron always shown, #243)
+            <button
+              type="button"
+              aria-label={`Category for ${payeeName}: ${categoryEntry?.name ?? 'Uncategorised'}`}
+              aria-expanded={showCategoryPicker}
+              className="inline-flex max-w-full items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border bg-surface hover:bg-hover hover:border-text-tertiary cursor-pointer transition-colors min-w-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowCategoryPicker(!showCategoryPicker);
+              }}
+            >
+              {categoryName}
+              <ChevronDown size={12} className="text-text-tertiary shrink-0" aria-hidden />
+            </button>
           )}
 
           {showCategoryPicker && (
@@ -254,24 +184,11 @@ export function TransactionRow({
           )}
         </div>
 
-        {/* Account */}
+        {/* Account (its register is linked from the details) */}
         {showAccountCol && (
-          <div className="group/acct flex items-center gap-1 flex-[2] min-w-0">
-            <div className="flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-transparent group-hover/acct:border-border group-hover/acct:bg-surface transition-all min-w-0">
-              <AccountIcon name={accountName} type={accountType} logo={accountLogo} size="sm" />
-              <span className="text-sm text-text-secondary truncate">{accountName || '—'}</span>
-            </div>
-            <button
-              className={`${arrowBase} group-hover/acct:opacity-100`}
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/accounts/${tx.accountId}`);
-              }}
-              title={`Go to ${accountName}`}
-              aria-label={`Go to ${accountName}`}
-            >
-              <ArrowRight size={12} />
-            </button>
+          <div className="flex items-center gap-2 flex-[2] px-2.5 min-w-0">
+            <AccountIcon name={accountName} type={accountType} logo={accountLogo} size="sm" />
+            <span className="text-sm text-text-secondary truncate">{accountName || '—'}</span>
           </div>
         )}
 
@@ -295,21 +212,22 @@ export function TransactionRow({
           <ForeignValue tx={tx} className="block" />
         </div>
 
-        {/* Detail panel arrow: named for screen readers and voice control. Out of the tab order,
-            as the row itself opens the details from the keyboard. Touch screens get 44px, the
-            negative margin keeping the row's layout as it was. */}
+        {/* Edit: always shown, so the row says it can be changed (#243), and named for screen
+            readers and voice control (#242). Out of the tab order, as the row itself opens the
+            details from the keyboard. Touch screens get 44px, the negative margin keeping the
+            row's layout as it was. */}
         <button
           type="button"
           tabIndex={-1}
-          aria-label={`Open details for ${payeeName}`}
-          title="Open details"
+          aria-label={`Edit details for ${payeeName}`}
+          title="Edit details"
           onClick={(e) => {
             e.stopPropagation();
             onOpenDetail(tx.id);
           }}
-          className="w-9 h-9 max-md:w-11 max-md:h-11 max-md:-m-1 flex items-center justify-center rounded-full hover:bg-hover transition-colors shrink-0 cursor-pointer"
+          className="w-9 h-9 max-md:w-11 max-md:h-11 max-md:-m-1 flex items-center justify-center rounded-full text-text-tertiary hover:bg-hover hover:text-text-secondary transition-colors shrink-0 cursor-pointer"
         >
-          <ArrowRight size={14} className="text-text-tertiary" aria-hidden />
+          <Pencil size={14} aria-hidden />
         </button>
       </div>
 

@@ -18,6 +18,8 @@ import { UndoReconciliation } from '../components/accounts/UndoReconciliation';
 import { BankBalanceHint } from '../components/accounts/BankBalanceHint';
 import { FilesSection } from '../components/files/FilesSection';
 import { Modal } from '../components/ui/Modal';
+import { useFilterSearch } from '../hooks/useFilterSearch';
+import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 export default function AccountTransactionsPage() {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +30,8 @@ export default function AccountTransactionsPage() {
   const [updateValueOpen, setUpdateValueOpen] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
   const hide = useHideBalances();
+  // The register's filters live in the URL, so Back returns to them (#245)
+  const filters = useFilterSearch();
 
   if (!account) {
     if (isLoading) return null;
@@ -44,7 +48,7 @@ export default function AccountTransactionsPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-6 py-3 border-b border-border bg-surface shrink-0">
+      <div className={`py-3 border-b border-border bg-surface shrink-0 ${PAGE_GUTTER}`}>
         <div className="flex items-center gap-1.5 text-xs text-text-tertiary mb-1">
           <Link to="/accounts" className="hover:text-brand-600 transition-colors">
             Accounts
@@ -104,7 +108,12 @@ export default function AccountTransactionsPage() {
           </div>
         </div>
       </div>
-      <TransactionTable accountId={account.id} />
+      <TransactionTable
+        key={filters.generation}
+        accountId={account.id}
+        initialFilters={filters.initialFilters}
+        onFiltersChange={filters.onFiltersChange}
+      />
       <EditAccountModal account={editOpen ? account : null} onClose={() => setEditOpen(false)} />
       {updateValueOpen && (
         <UpdateValueModal account={account} onClose={() => setUpdateValueOpen(false)} />

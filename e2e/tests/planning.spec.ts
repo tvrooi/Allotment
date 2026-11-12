@@ -88,10 +88,10 @@ test('a category-funded goal links to its category and transactions', async ({ p
   });
 
   await open(page, '/goals');
-  await expect(page.getByRole('link', { name: 'Assign or move money' })).toHaveAttribute(
-    'href',
-    new RegExp(`/budget/category/${holiday.id}$`),
-  );
+  // The row itself opens the category (#235)
+  await page.getByText('Mock holiday', { exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/budget/category/${holiday.id}$`));
+  await page.goBack();
   await page.getByRole('main').getByRole('link', { name: 'Transactions', exact: true }).click();
   await expect(page).toHaveURL(/category_ids=/);
   await page.getByTestId('transaction-row').filter({ hasText: 'Mock deposit' }).focus();

@@ -33,6 +33,7 @@ import { ImportModal } from './ImportModal';
 import { Button, ButtonLink } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { useOpenFromLink } from '../../hooks/useOpenFromLink';
+import { useScrollMemory } from '../../hooks/useScrollMemory';
 import { useAddTransaction } from '../../hooks/useOffline';
 import { formatCurrency } from '../../utils/currency';
 import { transactionValue } from '../../utils/accountMoney';
@@ -100,8 +101,11 @@ export function TransactionTable({
     () =>
       initialFilters ?? {
         ...DEFAULT_FILTERS,
+        // A category's or payee's list shows all of its history
         datePreset:
-          categoryId || categoryIds?.length || categoryGroupId ? 'all' : DEFAULT_FILTERS.datePreset,
+          categoryId || categoryIds?.length || categoryGroupId || payeeIds?.length
+            ? 'all'
+            : DEFAULT_FILTERS.datePreset,
       },
   );
   // Report changes after render, so the URL follows the filters (and back/forward restore them)
@@ -117,6 +121,8 @@ export function TransactionTable({
   const target = addTo ?? accountId;
   const [savingView, setSavingView] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(initialDetailId ?? null);
+  // Back and Forward return to where the list was (#245)
+  const scrollMemory = useScrollMemory('register');
   const [showImport, setShowImport] = useState(false);
   // Picking payments to share with a household: null when not picking
   const [picked, setPicked] = useState<Set<string> | null>(null);
@@ -454,7 +460,7 @@ export function TransactionTable({
       )}
       {/* Short Safari viewports can scroll the surrounding page instead of collapsing the ledger. */}
       <div className="flex-1 flex overflow-hidden min-h-40">
-        <div className="flex-1 overflow-y-auto">
+        <div ref={scrollMemory} className="flex-1 overflow-y-auto">
           {/* Not in a category or month view: they may not belong there */}
           {!categoryId && !categoryIds?.length && !categoryGroupId && !month && (
             <>
@@ -613,17 +619,6 @@ export function TransactionTable({
                             showAccountCol={showAccountCol}
                             isSelected={detailId === tx.id}
                             onOpenDetail={setDetailId}
-                            onFilterCategory={(catId) =>
-                              setFilters((f) => ({
-                                ...f,
-                                categoryIds: [catId],
-                                uncategorized: false,
-                                datePreset: 'all',
-                              }))
-                            }
-                            onFilterSearch={(search) =>
-                              setFilters((f) => ({ ...f, search, datePreset: 'all' }))
-                            }
                             transferAccounts={transferAccounts}
                           />
                         ),

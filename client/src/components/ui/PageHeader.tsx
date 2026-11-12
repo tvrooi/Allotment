@@ -1,5 +1,6 @@
 import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { PAGE_GUTTER } from './pageGutter';
 
 interface Breadcrumb {
   label: string;
@@ -18,7 +19,7 @@ interface Props {
 export function PageHeader({ title, subtitle, actions, tabs, breadcrumbs, children }: Props) {
   return (
     <div className="bg-page border-b border-border-light shrink-0">
-      <div className="px-6 py-4 max-md:px-4">
+      <div className={`py-4 ${PAGE_GUTTER}`}>
         {breadcrumbs && breadcrumbs.length > 0 && (
           <nav className="flex items-center gap-1 text-xs text-text-tertiary mb-2">
             {breadcrumbs.map((crumb, i) => (
@@ -45,8 +46,8 @@ export function PageHeader({ title, subtitle, actions, tabs, breadcrumbs, childr
           {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
         </div>
       </div>
-      {tabs && <div className="px-6 max-md:px-4">{tabs}</div>}
-      {children && <div className="px-6 pb-4 max-md:px-4">{children}</div>}
+      {tabs && <div className={PAGE_GUTTER}>{tabs}</div>}
+      {children && <div className={`pb-4 ${PAGE_GUTTER}`}>{children}</div>}
     </div>
   );
 }

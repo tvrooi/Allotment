@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { TransactionTable } from '../components/transactions/TransactionTable';
@@ -10,12 +10,8 @@ import { ReceiptsTab, ScanReceiptButton, useAddReceipts } from '../components/re
 import { Tip } from '../components/guide/Tip';
 import { TIPS } from '../guides';
 import { tabIds, TabList } from '../components/ui/tabList';
-import {
-  FILTER_KEYS,
-  filtersFromSearch,
-  filtersToSearch,
-  type FilterState,
-} from '../utils/transactionFilters';
+import { useFilterSearch } from '../hooks/useFilterSearch';
+import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 export default function TransactionsPage() {
   // The app shell's Add transaction dialog (one for every page)
@@ -45,16 +41,8 @@ export default function TransactionsPage() {
     );
   }, [initialDetailId, state, navigate, location.pathname, location.search, location.hash]);
   const [params, setParams] = useSearchParams();
-  // Dialog parameters are consumed in place; only filters restart the register.
-  const search = new URLSearchParams(
-    [...params].filter(([key]) => FILTER_KEYS.has(key)),
-  ).toString();
-  const own = useRef({ search, detailKey: initialDetailId ? location.key : null, generation: 0 });
   // A new palette choice also reopens details when the search URL itself is unchanged.
-  const detailKey = initialDetailId ? location.key : null;
-  if (search !== own.current.search || (detailKey && detailKey !== own.current.detailKey)) {
-    own.current = { search, detailKey, generation: own.current.generation + 1 };
-  }
+  const filters = useFilterSearch(initialDetailId ? location.key : null);
   // The Receipts tab, and the receipt open on it, live in the URL too
   const view = params.get('view') === 'receipts' ? 'receipts' : 'all';
   const openReceipt = params.get('receipt');
@@ -72,25 +60,9 @@ export default function TransactionsPage() {
     );
   // Like Monarch's Add > Scan receipt: upload, then open it on the Receipts tab
   const scan = useAddReceipts((r) => setPageParam({ view: 'receipts', receipt: r.id }));
-  const onFiltersChange = useCallback(
-    (filters: FilterState) => {
-      setParams(
-        (prev) => {
-          // Other keys (like ?add=1) belong to the page
-          const next = filtersToSearch(filters);
-          for (const [key, value] of prev) if (!FILTER_KEYS.has(key)) next.set(key, value);
-          own.current = { ...own.current, search: filtersToSearch(filters).toString() };
-          return next;
-        },
-        { replace: true },
-      );
-    },
-    [setParams],
-  );
-
   return (
     <div className="flex flex-col h-full bg-surface">
-      <div className="px-6 pt-4 max-md:px-4 border-b border-border shrink-0">
+      <div className={`pt-4 border-b border-border shrink-0 ${PAGE_GUTTER}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
             {view === 'receipts' ? 'Receipts' : 'Transactions'}
@@ -135,7 +107,7 @@ export default function TransactionsPage() {
         </TabList>
       </div>
       {scan.error && (
-        <p role="alert" className="px-6 max-md:px-4 py-2 text-sm text-negative">
+        <p role="alert" className={`py-2 text-sm text-negative ${PAGE_GUTTER}`}>
           {scan.error}
         </p>
       )}
@@ -143,7 +115,7 @@ export default function TransactionsPage() {
         <Tip
           tip={TIPS.undoKey}
           desktopOnly
-          className="px-6 py-2.5 border-b border-border-light shrink-0"
+          className={`py-2.5 border-b border-border-light shrink-0 ${PAGE_GUTTER}`}
         />
       )}
       <div
@@ -156,10 +128,10 @@ export default function TransactionsPage() {
           <ReceiptsTab openId={openReceipt} onOpen={(id) => setPageParam({ receipt: id })} />
         ) : (
           <TransactionTable
-            key={own.current.generation}
-            initialFilters={filtersFromSearch(params)}
+            key={filters.generation}
+            initialFilters={filters.initialFilters}
             initialDetailId={initialDetailId}
-            onFiltersChange={onFiltersChange}
+            onFiltersChange={filters.onFiltersChange}
             canSaveView
             onAddTransaction={showAdd}
           />

@@ -122,9 +122,10 @@ test('an account, category, payee and goal each open their own view', async ({ p
   await go('groc', /^Groceries/);
   await expect(page).toHaveURL(new RegExp(`#/budget/category/${groceries.id}$`));
 
-  await go('grind', /^Daily Grind Coffee · Transactions$/);
-  await expect(page).toHaveURL(new RegExp(`#/transactions\\?.*payee_ids=${coffee.id}`));
-  await expect(page.getByText('Daily Grind Coffee').first()).toBeVisible();
+  // A payee opens its own page (#235)
+  await go('grind', /^Daily Grind Coffee · Payee$/);
+  await expect(page).toHaveURL(new RegExp(`#/payees/${coffee.id}$`));
+  await expect(page.getByRole('heading', { level: 1, name: 'Daily Grind Coffee' })).toBeVisible();
 
   await go('holi', 'Holiday fund');
   await expect(page).toHaveURL(/#\/goals$/);

@@ -68,9 +68,13 @@ test.describe('payees', () => {
     const checking = await seed(api);
     const shopping = await api.category('Groceries');
     await open(page, '/payees');
-    await page
-      .getByRole('combobox', { name: 'Default category for Amazon' })
-      .selectOption(shopping.id);
+    // The searchable category picker, as everywhere a category is chosen (#240)
+    await page.getByRole('button', { name: 'Default category for Amazon: none' }).click();
+    await page.getByRole('textbox', { name: 'Search categories' }).fill('Groceries');
+    await page.keyboard.press('Enter');
+    await expect(
+      page.getByRole('button', { name: 'Default category for Amazon: Groceries' }),
+    ).toBeVisible();
     await expect
       .poll(async () => (await api.call<any[]>('GET', '/payees')).find((p) => p.name === 'Amazon'))
       .toMatchObject({ defaultCategoryId: shopping.id });
@@ -84,10 +88,10 @@ test.describe('payees', () => {
     expect(tx.categoryId).toBe(shopping.id);
   });
 
-  test('renames a payee in place', async ({ page, api }) => {
+  test('renames a payee in place with its Rename button', async ({ page, api }) => {
     await seed(api);
     await open(page, '/payees');
-    await page.getByTitle('Double-click to rename').filter({ hasText: 'AMZN Mktp' }).dblclick();
+    await page.getByRole('button', { name: 'Rename AMZN Mktp' }).click();
     const input = page.getByRole('textbox', { name: 'Rename AMZN Mktp' });
     await input.fill('Amazon Marketplace');
     await input.press('Enter');
@@ -107,5 +111,76 @@ test.describe('payees', () => {
       .click();
     await expect(row(page, 'AMZN Mktp')).toBeHidden();
     expect(await api.transactions()).toHaveLength(3);
+  });
+
+  test("a payee's page: spending, default category, rules and transactions (#235)", async ({
+    page,
+    api,
+  }) => {
+    await seed(api);
+    const groceries = await api.category('Groceries');
+    const amazon = (await api.call<{ id: string; name: string }[]>('GET', '/payees')).find(
+      (p) => p.name === 'Amazon',
+    )!;
+    await api.call('POST', '/rules', {
+      conditions: [{ field: 'payee', op: 'is', value: amazon.id }],
+      actions: [{ type: 'set_category', value: groceries.id }],
+    });
+    await api.call('POST', '/rules', {
+      conditions: [{ field: 'notes', op: 'contains', value: 'unrelated' }],
+      actions: [{ type: 'set_category', value: groceries.id }],
+    });
+    await open(page, '/payees');
+    await row(page, 'Amazon').getByRole('link', { name: 'Amazon', exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`#/payees/${amazon.id}$`));
+    await expect(page.getByRole('heading', { level: 1, name: 'Amazon' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Summary' })).toContainText('Total spent$16');
+    // Only the rule that names this payee
+    const rules = page.getByRole('region', { name: 'Rules' });
+    await expect(rules.getByRole('link')).toHaveCount(1);
+    await expect(rules.getByRole('link')).toContainText('Set category to Groceries');
+    // Its transactions, through the shared register
+    const list = page.getByRole('region', { name: 'Amazon transactions' });
+    await expect(list.getByTestId('transaction-row')).toHaveCount(2);
+
+    await page.getByRole('button', { name: 'Default category for Amazon: none' }).click();
+    await page.getByRole('textbox', { name: 'Search categories' }).fill('Groceries');
+    await page.keyboard.press('Enter');
+    await expect
+      .poll(async () => (await api.call<any[]>('GET', '/payees')).find((p) => p.name === 'Amazon'))
+      .toMatchObject({ defaultCategoryId: groceries.id });
+    // And back to no default
+    await page.getByRole('button', { name: 'Default category for Amazon: Groceries' }).click();
+    await page.getByRole('button', { name: 'No default category' }).click();
+    await expect
+      .poll(async () => (await api.call<any[]>('GET', '/payees')).find((p) => p.name === 'Amazon'))
+      .toMatchObject({ defaultCategoryId: null });
+
+    await rules.getByRole('link').click();
+    await expect(page).toHaveURL(/#\/rules$/);
+    await page.goBack();
+    await page.getByRole('link', { name: 'Payees', exact: true }).first().click();
+    await expect(page).toHaveURL(/#\/payees$/);
+  });
+
+  test('an unknown payee shows a plain not-found page with a way back', async ({ page }) => {
+    await open(page, '/payees/no-such-payee');
+    await expect(
+      page.getByRole('main').getByText('Payee not found', { exact: true }),
+    ).toBeVisible();
+    await page.getByRole('link', { name: 'Go to payees' }).click();
+    await expect(page).toHaveURL(/#\/payees$/);
+  });
+
+  test('the search stays in the link, so Back returns to it (#245)', async ({ page, api }) => {
+    await seed(api);
+    await open(page, '/payees');
+    await page.getByPlaceholder('Search payees…').fill('amz');
+    await expect(page).toHaveURL(/search=amz/);
+    await row(page, 'AMZN Mktp').getByRole('link', { name: 'AMZN Mktp' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'AMZN Mktp' })).toBeVisible();
+    await page.goBack();
+    await expect(page.getByPlaceholder('Search payees…')).toHaveValue('amz');
+    await expect(row(page, 'Amazon')).toBeHidden();
   });
 });

@@ -274,3 +274,36 @@ export function ruleSearchText(r: Rule, l: RuleLookups): string {
     .join(' ')
     .toLowerCase();
 }
+
+// ---------------------------------------------------------------------------
+// A payee's rules
+
+/** The condition a rule made from a transaction uses: its payee record, else the name shown */
+export function payeeCondition(tx: {
+  payeeId: string | null;
+  payeeName: string | null;
+}): RuleCondition {
+  return tx.payeeId
+    ? { field: 'payee', op: 'is', value: tx.payeeId }
+    : { field: 'payee_name', op: 'is', value: tx.payeeName ?? '' };
+}
+
+/**
+ * Whether a rule names this payee the way payeeCondition does (its record, or exactly its
+ * name), alone or in a list: the rules a payee's page lists.
+ */
+export function ruleMentionsPayee(rule: Rule, payee: { id: string; name: string }): boolean {
+  const name = payee.name.trim().toLowerCase();
+  const values = (c: RuleCondition) =>
+    'value' in c && (c.op === 'is' || c.op === 'one_of')
+      ? Array.isArray(c.value)
+        ? (c.value as (string | number)[])
+        : [c.value]
+      : [];
+  return rule.conditions.some((c) =>
+    c.field === 'payee'
+      ? values(c).includes(payee.id)
+      : c.field === 'payee_name' &&
+        values(c).some((v) => typeof v === 'string' && v.trim().toLowerCase() === name),
+  );
+}

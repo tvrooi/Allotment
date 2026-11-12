@@ -13,31 +13,32 @@ const action =
 
 /**
  * Fix the cause, not just the row: after a category change, change the payee's other
- * transactions too, make it the payee's default, or start a rule. Each choice can be undone
- * from here. It stays while the pointer or focus is on it.
+ * transactions too, make it the payee's default, or start a rule. What a choice did is then
+ * said by the undo toast, with Undo (its push announces it). It stays while the pointer or
+ * focus is on it.
  */
 export function CategoryFollowupToast() {
   const offer = useFollowupStore((s) => s.offer);
   const clear = useFollowupStore((s) => s.clear);
-  const undo = useUndoStore((s) => s.undo);
+  const announce = useUndoStore((s) => s.announce);
   const bulkEdit = useBulkEdit();
   const updatePayee = useUpdatePayee();
-  // What happened, and whether an undo command was recorded for it
-  const [done, setDone] = useState<{ message: string; undoable: boolean } | null>(null);
   const [rule, setRule] = useState<RuleInput | null>(null);
   const [holding, setHolding] = useState(false);
 
-  useEffect(() => setDone(null), [offer?.key]);
   useEffect(() => {
     if (!offer || holding) return;
-    const t = setTimeout(clear, done ? 5000 : 12000);
+    const t = setTimeout(clear, 12000);
     return () => clearTimeout(t);
-  }, [offer, holding, done, clear]);
+  }, [offer, holding, clear]);
 
   const busy = bulkEdit.isPending || updatePayee.isPending;
-  const after = (message: string) => ({
-    onSuccess: () => setDone({ message, undoable: true }),
-  });
+  /** The offer is done with: the undo toast says what happened (and offers Undo when it can) */
+  const finish = (message: string, undoable: boolean) => {
+    clear();
+    announce(message, undoable);
+  };
+  const after = (message: string) => ({ onSuccess: () => finish(message, true) });
 
   return (
     <>
@@ -51,100 +52,80 @@ export function CategoryFollowupToast() {
           onBlur={() => setHolding(false)}
           className="pointer-events-auto flex flex-wrap items-center gap-x-4 gap-y-1 max-w-[min(720px,100%)] bg-text text-surface rounded-lg shadow-lg px-4 py-2.5 text-sm"
         >
-          {done ? (
-            <>
-              <span>{done.message}</span>
-              {done.undoable && (
-                <button
-                  className={action}
-                  onClick={() => {
-                    clear();
-                    undo();
-                  }}
-                >
-                  Undo
-                </button>
-              )}
-            </>
-          ) : (
-            <>
-              <span className="min-w-0">
-                <strong className="font-semibold">{offer.categoryName}</strong> for{' '}
-                {offer.payeeName}.
-              </span>
-              {offer.others > 0 && (
-                <button
-                  className={action}
-                  disabled={busy}
-                  onClick={() =>
-                    bulkEdit.mutate(
-                      {
-                        params: { payeeIds: [offer.payeeId] },
-                        changes: { categoryId: offer.categoryId },
-                        expectedCount: offer.matched,
-                      },
-                      {
-                        // Nothing restorable means nothing was recorded to undo
-                        onSuccess: (r) =>
-                          setDone({
-                            message: `Changed ${plural(r.changed, 'transaction')} to ${offer.categoryName}`,
-                            undoable: r.restore.length > 0,
-                          }),
-                        onError: () =>
-                          setDone({
-                            message: `${offer.payeeName}'s transactions changed meanwhile; nothing was changed`,
-                            undoable: false,
-                          }),
-                      },
-                    )
-                  }
-                >
-                  Also change {plural(offer.others, 'other')}
-                </button>
-              )}
-              {!offer.isDefault && (
-                <button
-                  className={action}
-                  disabled={busy}
-                  onClick={() =>
-                    updatePayee.mutate(
-                      { id: offer.payeeId, defaultCategoryId: offer.categoryId },
-                      after(`New ${offer.payeeName} transactions will use ${offer.categoryName}`),
-                    )
-                  }
-                >
-                  Always use for this payee
-                </button>
-              )}
-              <button
-                className={action}
-                disabled={busy}
-                onClick={() => {
-                  setRule({
-                    conditionsOp: 'and',
-                    conditions: [{ field: 'payee', op: 'is', value: offer.payeeId }],
-                    actions: [{ type: 'set_category', value: offer.categoryId }],
-                    enabled: true,
-                  });
-                  clear();
-                }}
-              >
-                Create rule
-              </button>
-              <button
-                className="text-surface/70 hover:text-surface transition-colors whitespace-nowrap max-md:min-h-11"
-                disabled={busy}
-                onClick={() =>
-                  updatePayee.mutate(
-                    { id: offer.payeeId, skipCategoryFollowup: 1 },
-                    after(`Won't ask again for ${offer.payeeName}`),
-                  )
-                }
-              >
-                Don't ask for this payee
-              </button>
-            </>
+          <span className="min-w-0">
+            <strong className="font-semibold">{offer.categoryName}</strong> for {offer.payeeName}.
+          </span>
+          {offer.others > 0 && (
+            <button
+              className={action}
+              disabled={busy}
+              onClick={() =>
+                bulkEdit.mutate(
+                  {
+                    params: { payeeIds: [offer.payeeId] },
+                    changes: { categoryId: offer.categoryId },
+                    expectedCount: offer.matched,
+                  },
+                  {
+                    // Nothing restorable means nothing was recorded to undo
+                    onSuccess: (r) =>
+                      finish(
+                        `Changed ${plural(r.changed, 'transaction')} to ${offer.categoryName}`,
+                        r.restore.length > 0,
+                      ),
+                    onError: () =>
+                      finish(
+                        `${offer.payeeName}'s transactions changed meanwhile; nothing was changed`,
+                        false,
+                      ),
+                  },
+                )
+              }
+            >
+              Also change {plural(offer.others, 'other')}
+            </button>
           )}
+          {!offer.isDefault && (
+            <button
+              className={action}
+              disabled={busy}
+              onClick={() =>
+                updatePayee.mutate(
+                  { id: offer.payeeId, defaultCategoryId: offer.categoryId },
+                  after(`New ${offer.payeeName} transactions will use ${offer.categoryName}`),
+                )
+              }
+            >
+              Always use for this payee
+            </button>
+          )}
+          <button
+            className={action}
+            disabled={busy}
+            onClick={() => {
+              setRule({
+                conditionsOp: 'and',
+                conditions: [{ field: 'payee', op: 'is', value: offer.payeeId }],
+                actions: [{ type: 'set_category', value: offer.categoryId }],
+                enabled: true,
+              });
+              clear();
+            }}
+          >
+            Create rule
+          </button>
+          <button
+            className="text-surface/70 hover:text-surface transition-colors whitespace-nowrap max-md:min-h-11"
+            disabled={busy}
+            onClick={() =>
+              updatePayee.mutate(
+                { id: offer.payeeId, skipCategoryFollowup: 1 },
+                after(`Won't ask again for ${offer.payeeName}`),
+              )
+            }
+          >
+            Don't ask for this payee
+          </button>
           <button
             aria-label="Dismiss"
             onClick={clear}

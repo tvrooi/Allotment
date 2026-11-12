@@ -301,10 +301,11 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         heading: 'Working through the list',
         body: (
           <p>
-            Click a transaction (or tap it on a phone) to open its details. Use the up and down
-            arrows beside <b>Close</b> to open the one above or below without closing the panel.
-            They follow the list as you see it, search and filters included. What you typed is saved
-            before the next one opens.
+            Click anywhere on a transaction (or tap it on a phone) to open its details, where its
+            payee and everything else can change; its category button changes the category right in
+            the list. Use the up and down arrows beside <b>Close</b> to open the one above or below
+            without closing the panel. They follow the list as you see it, search and filters
+            included. What you typed is saved before the next one opens.
           </p>
         ),
       },

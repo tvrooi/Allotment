@@ -83,22 +83,24 @@ export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onC
       refresh();
       // Undo records it again exactly as it was, split included (with a new id, so redo and an
       // earlier share's undo find it by its payment)
-      useUndoStore.getState().push({
-        description: `Remove ${what.toLowerCase()} from ${h.name}`,
-        undo: async () => {
-          await restoreHouseholdEvent(h.id, entry);
-          refresh();
+      useUndoStore.getState().push(
+        {
+          description: `Remove ${what.toLowerCase()} from ${h.name}`,
+          undo: async () => {
+            await restoreHouseholdEvent(h.id, entry);
+            refresh();
+          },
+          redo: async () => {
+            await removeSharedEntries(h.id, [entry.transactionId!], kind);
+            refresh();
+          },
         },
-        redo: async () => {
-          await removeSharedEntries(h.id, [entry.transactionId!], kind);
-          refresh();
+        {
+          message:
+            kind === 'settlement'
+              ? `Removed the payment ahead from ${h.name}.`
+              : `Stopped sharing ${name} with ${h.name}.`,
         },
-      });
-      announce(
-        kind === 'settlement'
-          ? `Removed the payment ahead from ${h.name}.`
-          : `Stopped sharing ${name} with ${h.name}.`,
-        true,
       );
     },
     onError: (e: Error) => announce(e.message, false),

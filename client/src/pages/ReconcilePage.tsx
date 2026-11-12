@@ -12,6 +12,7 @@ import { useHideBalances } from '../utils/safeMode';
 import { SafeModeNotice } from '../components/ui/Private';
 import type { Transaction } from '../types';
 import { formatDay } from '../utils/dates';
+import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 export default function ReconcilePage() {
   const { id } = useParams<{ id: string }>();
@@ -105,7 +106,7 @@ export default function ReconcilePage() {
   // Reconciling is all balances: the bank's and the register's
   if (hideBalances) {
     return (
-      <div className="flex-1 overflow-y-auto px-6 pt-5">
+      <div className={`flex-1 overflow-y-auto pt-5 ${PAGE_GUTTER}`}>
         <SafeModeNotice title="Reconciling is hidden in Safe mode" />
       </div>
     );
@@ -114,7 +115,7 @@ export default function ReconcilePage() {
   if (step === 1) {
     return (
       <div className="flex flex-col h-full bg-surface">
-        <div className="px-6 py-3 border-b border-border shrink-0">
+        <div className={`py-3 border-b border-border shrink-0 ${PAGE_GUTTER}`}>
           <div className="flex items-center gap-1.5 text-xs text-text-tertiary mb-1">
             <Link to="/accounts" className="hover:text-brand-600 transition-colors">
               Accounts
@@ -194,7 +195,7 @@ export default function ReconcilePage() {
 
   return (
     <div className="flex flex-col h-full bg-surface">
-      <div className="px-6 py-3 border-b border-border shrink-0">
+      <div className={`py-3 border-b border-border shrink-0 ${PAGE_GUTTER}`}>
         <div className="flex items-center gap-1.5 text-xs text-text-tertiary mb-1">
           <Link to="/accounts" className="hover:text-brand-600 transition-colors">
             Accounts

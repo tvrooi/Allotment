@@ -24,6 +24,7 @@ import { BudgetStartSettings } from '../components/settings/BudgetStartSettings'
 import { LICENSE_URL, SOURCE_CODE_URL } from '../utils/project';
 import { ScrollCue } from '../components/ui/ScrollCue';
 import { onTabListKeyDown, tabIds as tabPanelIds } from '../components/ui/tabList';
+import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 const tabs = [
   { id: 'categories', label: 'Categories', icon: Layers },
@@ -57,7 +58,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col h-full bg-surface">
-      <div className="px-6 py-4 border-b border-border shrink-0">
+      <div className={`py-4 border-b border-border shrink-0 ${PAGE_GUTTER}`}>
         <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
           Settings
         </h1>
@@ -103,7 +104,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+      <div className={`flex-1 overflow-y-auto py-6 ${PAGE_GUTTER}`}>
         <div
           className="max-w-2xl"
           role="tabpanel"

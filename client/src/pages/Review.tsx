@@ -6,7 +6,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Circle, AlertTriangle, Info, ChevronDown } from 'lucide-react';
 import * as api from '../api/review';
 import { useUpdateTransaction } from '../hooks/useTransactions';
-import { useUndoStore } from '../store/undoStore';
 import { useBudget } from '../hooks/useBudget';
 import { useCategories } from '../hooks/useCategories';
 import { CategoryPicker } from '../components/transactions/CategoryPicker';
@@ -34,6 +33,8 @@ import { Housekeeping } from '../components/review/Housekeeping';
 import { PaymentMatches } from '../components/plans/PaymentMatches';
 import { DoThisNext } from '../components/review/DoThisNext';
 import { SortUncategorised } from '../components/review/SortUncategorised';
+import { useScrollMemory } from '../hooks/useScrollMemory';
+import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 // Phases 6F–6G: a read-only review of everything the budget has not resolved, a guided
 // setup, and next month's commitments with an optional runway. Every figure comes from the
@@ -324,13 +325,8 @@ function Uncategorised({ review }: { review: api.BudgetReview }) {
         id,
         data: { categoryId },
         undo: { description, data: { categoryId: null } },
+        message: `${transaction?.payee ?? 'Transaction'} categorised as ${category?.name ?? 'category'}.`,
       });
-      useUndoStore
-        .getState()
-        .announce(
-          `${transaction?.payee ?? 'Transaction'} categorised as ${category?.name ?? 'category'}.`,
-          true,
-        );
       for (const key of [...FUNDING_VIEWS, 'transactions', 'accounts'])
         await qc.invalidateQueries({ queryKey: [key] });
     } catch (err) {
@@ -716,6 +712,8 @@ function Buffer({ buffer }: { buffer: api.BufferState }) {
 }
 
 export default function ReviewPage() {
+  // Back and Forward return to where this list was (#245)
+  const scrollMemory = useScrollMemory('review');
   const review = useQuery({ queryKey: ['review'], queryFn: api.getReview });
   const buffer = useQuery({ queryKey: ['review', 'buffer'], queryFn: api.getBuffer });
   const guide = useQuery({ queryKey: ['review', 'guide'], queryFn: api.getGuide });
@@ -724,8 +722,10 @@ export default function ReviewPage() {
   const hideBalances = useHideBalances();
   const error = review.error ?? buffer.error ?? guide.error ?? resilience.error ?? resume.error;
   return (
-    <div className="h-full overflow-y-auto bg-surface">
-      <div className="px-6 max-md:px-4 py-4 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-3">
+    <div ref={scrollMemory} className="h-full overflow-y-auto bg-surface">
+      <div
+        className={`py-4 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-3 ${PAGE_GUTTER}`}
+      >
         <div data-guide="review.header">
           <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
             Review
