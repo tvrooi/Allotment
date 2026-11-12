@@ -66,7 +66,8 @@ Overwritten at the end of each UI session, never appended. Wave D and palette en
 - #220 sidebar item count (UX review item 7).
 - P1: #235 goal/payee links;
   #243 desktop row click; #245 undo and keep filters.
-- P2: #239 partly done (welcome step only); #240 headers and pickers;
+- P2: #263 Review checklist in place of guide banners (rest of #239, needs an owner decision);
+  #264 disabled switch looks enabled; #240 headers and pickers;
   #241 delight moments; #244 split Settings tabs.
 
 ## Decisions

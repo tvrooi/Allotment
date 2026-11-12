@@ -3,13 +3,15 @@
 How the design re-review backlog (issues #222 to #245) is being worked through on `redesign`, and
 where to pick up. Read after [README.md](README.md) and [HANDOVER-UI.md](HANDOVER-UI.md). Update
 the **Status** and **Open PRs** sections whenever a wave PR opens, merges or is sent back; delete
-this file when Wave F has merged. Last written 12 November 2026 after palette part 2 merged (PR #259).
+this file when Wave F has merged. Last written 12 November 2026 after Wave D merged (PR #262).
 
 ## Roles
 
 - **Orchestrator (Fable):** triages, writes one spec per wave, delegates, reviews, decides merges.
   Writes no code unless the task is trivial.
-- **Coder (Codex, high effort):** one wave per fresh `omc team` worker, from the orchestrator's spec.
+- **Coder:** one wave per fresh `omc team` worker, from the orchestrator's spec. Waves A to D used
+  Codex (high effort). On 12 November the owner changed the coder to Claude Opus 5.5, medium effort
+  (`executor` in `.claude/omc.jsonc`); launch it with `omc team 1:claude:executor`, not yet tried here.
 - **Explorer and reviewer (Antigravity, `agy`):** maps the files before the spec, reviews the diff
   against the spec and the AGENTS.md review guidelines, and reads the screenshots. A different
   model family from the coder on purpose.
@@ -24,7 +26,7 @@ this file when Wave F has merged. Last written 12 November 2026 after palette pa
 | A palette part 2    | #224 (rest)                              | Merged, PR #259, up.171. #224 closed.     |
 | B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.   |
 | C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.   |
-| D discoverability   | #226, #237, #239, #236                   | PR open, #262.                            |
+| D discoverability   | #226, #237, #239, #236                   | Merged, PR #262, up.172. Issues closed.   |
 | E navigation depth  | #235, #243, #245, #240                   | Not started.                              |
 | F settings, delight | #244, #241                               | Not started.                              |
 
@@ -39,11 +41,16 @@ Not in any wave:
 - Filed during the waves, still `needs-triage`: #249 bulk selection bar at 390, #250 category
   Summary ignores the date tab, #251 configurable e2e ports, #252 add-in-place from account pages
   and dashboard empty states, #254 shortcuts ignored while a dialog fades out, #260 long payee
-  name overflows the Dashboard's Recent transactions at 390.
+  name overflows the Dashboard's Recent transactions at 390, #263 the rest of #239 (one Review
+  checklist in place of the first-visit guide banners; needs an owner design decision), #264 a
+  disabled `ui/Switch` looks enabled.
 
 ## Open PRs
 
-- Wave D: [PR #262](https://github.com/tvrooi/Allotment/pull/262), discoverability.
+- None. The owner can still overrule Wave D's choices, listed in the body of PR #262: the
+  transfers step counts in the sidebar Review badge and the Dashboard review card; the demo budget
+  seeds no transfer suggestion; the empty-state copy and example values; Cash keeps its warning
+  view when accounts are excluded for a missing exchange rate.
 - The owner can still overrule Wave C's choices, listed in the body of PR #255: the status
   strip is always on; the Dashboard makes three extra connection requests; Bills is capped at 3
   bills and 2 pay days; Tax and Files are left out of the strip; the stretched Budget card has
@@ -68,8 +75,9 @@ Not in any wave:
   "Set up" rows; explicit Hidden still hides them, and Pay later/Investments keep their existing
   behaviour. #237 Household uses a promise, example and one button opening the existing New
   household dialog; do not split its page. #239 covers the welcome step only: leave first-visit
-  guide banners, the Dashboard checklist and Review Guided setup unchanged. #217–#219 remain
-  shelved; do not start Wave E in this change.
+  guide banners, the Dashboard checklist and Review Guided setup unchanged (the rest is #263).
+  #217–#219 remain shelved. The fix round of PR #262 was merged on the Antigravity re-review
+  because the GitHub Codex review limit was reached; that exception was for that round only.
 - **#244:** the Settings split is endorsed.
 - **Release:** undecided. `redesign` carries up.154 to up.171 prepared and untagged. The
   orchestrator's recommendation is one release from `redesign` soon, because the Safe mode chart
@@ -134,7 +142,17 @@ Not in any wave:
   browser tests and push. `codex exec` in its default sandbox cannot launch Chromium or commit in
   a worktree, and it hangs unless standard input is closed (`< /dev/null`).
 - **Antigravity as a team worker is killed at OMC's fixed 30-second startup limit.** Run it
-  directly instead: `agy -p "<brief>" --mode plan --sandbox --dangerously-skip-permissions`.
+  directly instead: `agy --model gemini-4-argon-<medium|high> --mode plan --sandbox --print-timeout
+900s -p "$(cat <brief>)" < /dev/null`. Without `--dangerously-skip-permissions` any shell command
+  it tries is auto-denied and the run ends with no output, so the brief must forbid shell commands
+  and, for a review, point at a diff saved under the worktree's `.omc/research/`. Check
+  `git status` afterwards.
+- **GitHub Codex review has a usage limit.** After about five `@codex review` requests in one
+  evening the bot answered that the limit was reached. Ask the owner before merging without it.
+- **Sending a fix brief to the same coder:** `omc team api send-message` (from `leader-fixed` to
+  `worker-1`) was picked up within a minute. The team's task never left `in_progress`, so wait on
+  a marker line in the coder's report, not on `omc team status`, and shut the team down with
+  `--force` after the merge.
 - **A row that is `aria-disabled`:** Playwright's `click()` waits forever for it; dispatch the
   click event and assert that nothing happened.
 - **Usage limits:** coder sessions stop mid-task at the five-hour limit. Their work is saved;
