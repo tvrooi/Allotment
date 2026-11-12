@@ -662,7 +662,7 @@ export function CashRunway() {
     );
   }
 
-  if (data && !error && data.accounts.length === 0)
+  if (data && !error && data.accounts.length === 0 && data.warnings.length === 0)
     return (
       <EmptyState
         title="See how long your cash could last"

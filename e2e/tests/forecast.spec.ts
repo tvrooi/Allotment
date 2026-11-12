@@ -67,3 +67,16 @@ for (const width of [1280, 390])
     await action.click();
     await expect(page).toHaveURL(/#\/accounts$/);
   });
+
+test('Wave D: excluded cash accounts keep their actionable forecast warnings', async ({
+  page,
+  api,
+}) => {
+  await api.call('PUT', '/currency', { currency: 'USD' });
+  await api.createAccount('Euro spending', 10_000, 'checking', { currency: 'EUR' });
+  await open(page, '/forecast?tab=cash');
+  await expect(page.getByRole('list', { name: 'Forecast warnings' })).toContainText(
+    'Euro spending is excluded: add an exchange rate for EUR.',
+  );
+  await expect(page.getByRole('link', { name: 'Add an account', exact: true })).toHaveCount(0);
+});
