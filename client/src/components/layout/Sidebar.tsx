@@ -9,7 +9,7 @@ import { useNextSteps } from '../../hooks/useNextSteps';
 import { HelpMenu } from '../guide/HelpMenu';
 import { BrandName } from '../ui/BrandName';
 import { useGuideProgress } from '../../hooks/useGuides';
-import { featureShown, hiddenFeatureCount } from '../../utils/navFeatures';
+import { featureShown, featureState, hiddenFeatureCount } from '../../utils/navFeatures';
 import { MORE_FEATURES_LINK, NAV_PAGES, type NavPage } from './navPages';
 import { useAddTransactionStore } from '../../store/addTransactionStore';
 import { useCanAddTransaction } from '../../hooks/useOffline';
@@ -23,19 +23,29 @@ interface NavItemProps {
   collapsed: boolean;
   /** A count of things waiting there (Review's "Do this next") */
   badge?: number;
+  setup?: boolean;
 }
 
-function NavItem({ to, icon, label, collapsed, badge }: NavItemProps) {
+function NavItem({ to, icon, label, collapsed, badge, setup }: NavItemProps) {
   return (
     <NavLink
       to={to}
-      title={badge ? `${label}: ${badge} to do` : collapsed ? label : undefined}
+      aria-label={setup ? label + ', set up' : undefined}
+      title={
+        badge
+          ? `${label}: ${badge} to do`
+          : collapsed
+            ? label + (setup ? ', set up' : '')
+            : undefined
+      }
       className={({ isActive }) =>
         // Phones (the drawer): full-size touch targets
         `flex items-center gap-3 py-2 max-md:min-h-11 max-md:text-row px-3 rounded-md text-sm font-medium transition-colors ${
           isActive
             ? 'bg-sidebar-active text-sidebar-text-hi'
-            : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi'
+            : setup
+              ? 'text-text-tertiary hover:bg-sidebar-hover hover:text-sidebar-text-hi'
+              : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi'
         }`
       }
     >
@@ -47,6 +57,14 @@ function NavItem({ to, icon, label, collapsed, badge }: NavItemProps) {
       >
         {label}
       </span>
+      {setup && (
+        <span
+          aria-hidden
+          className={`ml-auto shrink-0 text-2xs text-text-tertiary ${collapsed ? 'opacity-0' : ''}`}
+        >
+          Set up
+        </span>
+      )}
       {!!badge && (
         // Kept out of the link's name ("Review"); the count is in its tooltip and on the page
         <span
@@ -76,6 +94,7 @@ function NavSection({
   items: NavPage[];
 }) {
   const { pathname } = useLocation();
+  const { data: progress, isError } = useGuideProgress();
   const folded = usePreferencesStore((s) => !!s.navGroupsFolded[group]);
   const setFolded = usePreferencesStore((s) => s.setNavGroupFolded);
   const listId = `nav-group-${group}`;
@@ -111,6 +130,7 @@ function NavSection({
             icon={<i.icon size={18} />}
             label={i.label}
             collapsed={collapsed}
+            setup={!!i.feature && featureState(i.feature, progress, pathname, isError) === 'setup'}
           />
         ))}
       </div>
@@ -194,6 +214,7 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
       icon={<p.icon size={18} />}
       label={p.label}
       collapsed={!isExpanded}
+      setup={!!p.feature && featureState(p.feature, progress, pathname, isError) === 'setup'}
       badge={p.path === '/review' ? reviewCount : undefined}
     />
   );
@@ -252,7 +273,7 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
       {/* Navigation and accounts share a scroll area on short screens. */}
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
         {/* Primary nav: the everyday pages, then Planning and Tools (audit decision I-4).
-            Optional features appear once they hold something or are turned on (navFeatures.ts). */}
+            Optional features use normal, setup or hidden rows (navFeatures.ts). */}
         <nav data-guide="nav.main" aria-label="Main" className="pt-4 px-3 space-y-1">
           {pagesIn('main').map(navItem)}
           <NavSection

@@ -325,9 +325,9 @@ export const filesGuide: Guide = {
     },
     {
       title: 'Find anything',
-      body: 'Search names, descriptions and labels, and the words inside PDFs, Word and Excel files. Narrow it by kind of file or by date.',
+      body: 'After you add a file, search names, descriptions and labels, and the words inside PDFs, Word and Excel files. Narrow it by kind of file or by date.',
       route: '/files',
-      target: 'files.search',
+      target: ['files.search', 'files.add'],
     },
     {
       title: 'Add and link',

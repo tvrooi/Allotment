@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { getResume, getReview } from '../api/review';
+import { useTransferSuggestions } from './useTransfers';
+import { useCanSave } from './useConnection';
 import { useAccounts } from './useAccounts';
 import { nextSteps } from '../utils/reviewNext';
 import { transactionsLink } from '../utils/transactionFilters';
@@ -11,6 +13,8 @@ import { transactionsLink } from '../utils/transactionFilters';
 export function useNextSteps() {
   const { data: accounts = [] } = useAccounts();
   const enabled = accounts.length > 0;
+  const connected = useCanSave();
+  const transfers = useTransferSuggestions(undefined, enabled);
   const review = useQuery({
     queryKey: ['review'],
     queryFn: getReview,
@@ -28,5 +32,6 @@ export function useNextSteps() {
     review.data,
     resume.data,
     transactionsLink({ uncategorized: true, datePreset: 'all' }),
+    connected && transfers.isSuccess && !transfers.isFetching ? transfers.data.length : 0,
   );
 }

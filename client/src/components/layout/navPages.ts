@@ -32,7 +32,7 @@ export interface NavPage {
   icon: LucideIcon;
   /** Where the sidebar lists it: the everyday list, a folding group, or the footer */
   section: 'main' | NavGroup | 'footer';
-  /** An optional feature (utils/navFeatures.ts): listed once it holds something or is turned on */
+  /** An optional feature (utils/navFeatures.ts): shown normally, as a setup row, or hidden */
   feature?: NavFeature;
 }
 

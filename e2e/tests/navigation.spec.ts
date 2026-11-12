@@ -163,3 +163,21 @@ test('N opens Add transaction, but not while typing or with a dialog open (#223)
   await expect(dialog).toBeVisible();
   await expect(dialog.getByLabel('Amount', { exact: true })).toBeFocused();
 });
+
+test('Wave D: setup rows keep their places and explicit Hidden removes a row', async ({ page }) => {
+  await open(page, '/settings?tab=preferences');
+  const nav = page.getByRole('complementary').first();
+  for (const name of ['Household', 'Tax time', 'Files']) {
+    await expect(nav.getByRole('link', { name: name + ', set up', exact: true })).toBeVisible();
+  }
+  await expect(nav.getByRole('link', { name: 'More features (2)' })).toBeVisible();
+  await page
+    .getByRole('radiogroup', { name: 'Files in the menu' })
+    .getByRole('radio', { name: 'Hidden', exact: true })
+    .click();
+  await expect(nav.getByRole('link', { name: 'Files, set up', exact: true })).toHaveCount(0);
+  await expect(nav.getByRole('link', { name: 'More features (3)' })).toBeVisible();
+  await nav.getByRole('link', { name: 'Household, set up', exact: true }).click();
+  await expect(page).toHaveURL(/#\/household$/);
+  await expect(page.getByRole('button', { name: 'Set up a household', exact: true })).toBeVisible();
+});

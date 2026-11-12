@@ -8,6 +8,8 @@ interface Props {
   description?: React.ReactNode;
   /** Buttons or links: what the user can do about it */
   actions?: React.ReactNode;
+  /** Illustrative content, with one accessible sentence instead of decorative details. */
+  example?: { content: React.ReactNode; description: string };
   /** The page of Allotment's guide that explains this part of the app */
   learnMore?: DocsPage;
   /** Smaller, for inside a dashboard card */
@@ -26,6 +28,7 @@ export function EmptyState({
   title,
   description,
   actions,
+  example,
   learnMore,
   compact = false,
   keepActions = false,
@@ -48,13 +51,20 @@ export function EmptyState({
           {icon}
         </div>
       )}
-      <p className={`font-semibold text-text ${compact ? 'text-sm' : 'text-base'}`}>{title}</p>
+      <h2 className={`font-semibold text-text ${compact ? 'text-sm' : 'text-base'}`}>{title}</h2>
       {description && (
         <p
           className={`text-text-tertiary mt-1 max-w-sm leading-relaxed ${compact ? 'text-xs' : 'text-sm'}`}
         >
           {description}
         </p>
+      )}
+      {example && (
+        <div className="mt-4 w-full max-w-sm rounded-md bg-surface-alt p-4 text-left text-sm text-text-secondary">
+          <p className="mb-2 font-medium text-text">Example</p>
+          <div aria-hidden="true">{example.content}</div>
+          <p className="sr-only">{example.description}</p>
+        </div>
       )}
       {shownActions && (
         <div

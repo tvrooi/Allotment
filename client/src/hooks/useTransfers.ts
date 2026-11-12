@@ -14,10 +14,11 @@ const refresh = (qc: QueryClient) => {
 };
 
 /** Pairs that look like one transfer; with `accountId`, those with a side in that account */
-export function useTransferSuggestions(accountId?: string) {
+export function useTransferSuggestions(accountId?: string, enabled = true) {
   return useQuery({
     queryKey: ['transactions', 'transfer-suggestions', accountId ?? null],
     queryFn: () => txApi.getTransferSuggestions(accountId),
+    enabled,
   });
 }
 

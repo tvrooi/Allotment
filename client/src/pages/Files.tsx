@@ -4,6 +4,10 @@ import { Download, FolderOpen, Search, Star, Tag as TagIcon } from 'lucide-react
 import { filesExportUrl, type FileFilter, type FileKind } from '../api/files';
 import { FileDetailModal } from '../components/files/FileDetailModal';
 import { FileDrop, FileThumb, formatBytes, KIND_LABELS } from '../components/files/FileParts';
+import { EmptyState } from '../components/ui/EmptyState';
+import { useCanSave } from '../hooks/useConnection';
+import { SavingPausedHint } from '../components/connection/SavingPausedHint';
+import { formatCurrency } from '../utils/currency';
 import { Button } from '../components/ui/Button';
 import { Input, Select } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
@@ -159,6 +163,7 @@ export default function FilesPage() {
   const filesQuery = useFilePages(filter, PAGE);
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = filesQuery;
   const upload = useUploadFile();
+  const canSave = useCanSave();
   const [errors, setErrors] = useState<string[]>([]);
   const docs = data?.pages.flatMap((p) => p.documents) ?? [];
   const total = data?.pages[0]?.total ?? 0;
@@ -209,7 +214,9 @@ export default function FilesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shared]);
 
-  const filtered = !!(q || tag || kind || from || to || view);
+  const filtered = !!(search.trim() || q || tag || kind || from || to || view);
+  const emptyLibrary =
+    !isLoading && !loadFailed(filesQuery) && !!data && docs.length === 0 && !filtered;
 
   return (
     <div className="flex flex-col h-full">
@@ -272,54 +279,84 @@ export default function FilesPage() {
           </aside>
 
           <div className="flex-1 min-w-0 space-y-4">
-            <div data-guide="files.search" className="flex flex-wrap items-center gap-2">
-              <div className="relative flex-1 min-w-48">
-                <Search
-                  size={14}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+            {!emptyLibrary && (
+              <div data-guide="files.search" className="flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-48">
+                  <Search
+                    size={14}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+                  />
+                  <Input
+                    className="w-full pl-8"
+                    placeholder="Search names, descriptions, labels and what files say"
+                    aria-label="Search files"
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      set({ q: e.target.value.trim() || null });
+                    }}
+                  />
+                </div>
+                <Select
+                  aria-label="Kind of file"
+                  value={kind}
+                  onChange={(e) => set({ kind: e.target.value || null })}
+                  className="w-auto"
+                >
+                  <option value="">Any kind</option>
+                  {(Object.keys(KIND_LABELS) as FileKind[]).map((k) => (
+                    <option key={k} value={k}>
+                      {KIND_LABELS[k]}
+                    </option>
+                  ))}
+                </Select>
+                <Input
+                  type="date"
+                  aria-label="From"
+                  value={from}
+                  onChange={(e) => set({ from: e.target.value || null })}
+                  className="w-auto"
                 />
                 <Input
-                  className="w-full pl-8"
-                  placeholder="Search names, descriptions, labels and what files say"
-                  aria-label="Search files"
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    set({ q: e.target.value.trim() || null });
-                  }}
+                  type="date"
+                  aria-label="To"
+                  value={to}
+                  onChange={(e) => set({ to: e.target.value || null })}
+                  className="w-auto"
                 />
               </div>
-              <Select
-                aria-label="Kind of file"
-                value={kind}
-                onChange={(e) => set({ kind: e.target.value || null })}
-                className="w-auto"
-              >
-                <option value="">Any kind</option>
-                {(Object.keys(KIND_LABELS) as FileKind[]).map((k) => (
-                  <option key={k} value={k}>
-                    {KIND_LABELS[k]}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                type="date"
-                aria-label="From"
-                value={from}
-                onChange={(e) => set({ from: e.target.value || null })}
-                className="w-auto"
-              />
-              <Input
-                type="date"
-                aria-label="To"
-                value={to}
-                onChange={(e) => set({ to: e.target.value || null })}
-                className="w-auto"
-              />
-            </div>
+            )}
 
             <div data-guide="files.add">
-              <FileDrop onFiles={add} busy={upload.isPending} label="Add files" />
+              <FileDrop onFiles={add} busy={upload.isPending || !canSave} label="Add files">
+                {emptyLibrary
+                  ? (choose) => (
+                      <EmptyState
+                        title="Keep your files together"
+                        description="Keep receipts, warranties and bills linked to the money they belong to."
+                        example={{
+                          content: (
+                            <>
+                              <p>Fridge warranty · {formatDay('2026-11-01')}</p>
+                              <p>Linked to Home · {formatCurrency(149_900)}</p>
+                            </>
+                          ),
+                          description:
+                            'A fridge warranty linked to the Home category and a purchase of ' +
+                            formatCurrency(149_900) +
+                            '.',
+                        }}
+                        keepActions
+                        actions={
+                          <Button disabled={!canSave || upload.isPending} onClick={choose}>
+                            Add a file
+                          </Button>
+                        }
+                      />
+                    )
+                  : undefined}
+              </FileDrop>
+              <SavingPausedHint />
             </div>
             {sharedNote && (
               <p role="status" className="text-sm text-text-secondary">
@@ -338,11 +375,9 @@ export default function FilesPage() {
             ) : loadFailed(filesQuery) ? (
               <QueryProblem what="files" query={filesQuery} />
             ) : docs.length === 0 ? (
-              <p className="text-sm text-text-tertiary">
-                {filtered
-                  ? 'No files match.'
-                  : 'No files yet. Add bills, warranties, insurance policies or photos of what you own, then link each to the transactions, categories, goals and accounts it belongs to.'}
-              </p>
+              filtered ? (
+                <p className="text-sm text-text-tertiary">No files match.</p>
+              ) : null
             ) : (
               <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                 {docs.map((d) => (

@@ -5,6 +5,14 @@ Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Ol
 
 ## Done this session
 
+- Wave D discoverability (up.172): #226 fixed sidebar Set up rows for Household, Tax time and
+  Files, respecting explicit Hidden and keeping their fixed positions; palette Set up links open
+  their pages, while hidden entries still open Preferences. #237 shared EmptyState examples for
+  Files, Household and Forecast; Household and long-term creation forms open after one action.
+  #236 possible transfers join the shared next-steps list and open the existing owner-review
+  dialog. #239 partly done: welcome switches only; guide banners, Get started and Guided setup
+  stay as they are. Illustrative examples remain visible in Safe mode; actual forecasts stay hidden.
+
 - Wave C dashboard (up.170, branch `feat/wave-c-dashboard`): #230 the review card keeps an Open
   review button at every width, with steps 2 and 3 as quiet rows beside it on wider screens, and
   Left to spend has a pace bar (`spendingPace`, `monthProgress` in `utils/leftToSpend.ts`). #231
@@ -46,7 +54,7 @@ Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Ol
 
 ## In progress
 
-- None committed half-done. `redesign` is ahead of `main`; up.154 to up.171 are prepared, not tagged.
+- None committed half-done. `redesign` is ahead of `main`; up.154 to up.172 are prepared, not tagged.
 
 ## Next up (issues)
 
@@ -54,10 +62,9 @@ Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Ol
 - #213 quick expense test; #214 refresh `docs/ux-ui-evidence/` dates; #215 iPhone check; #216 dark mode.
 - #217 Review queue redesign; #218 Cash flow personal share; #219 Household screens by type.
 - #220 sidebar item count (UX review item 7).
-- Design re-review at `cf2e2f0`, P0: #226 sidebar set-up rows.
 - P1: #235 goal/payee links;
-  #236 transfers step; #237 empty states; #243 desktop row click; #245 undo and keep filters.
-- P2: #239 onboarding step; #240 headers and pickers;
+  #243 desktop row click; #245 undo and keep filters.
+- P2: #239 partly done (welcome step only); #240 headers and pickers;
   #241 delight moments; #244 split Settings tabs.
 
 ## Decisions

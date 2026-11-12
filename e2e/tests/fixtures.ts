@@ -1,3 +1,4 @@
+import { NAV_FEATURES } from '../../client/src/utils/navFeatures';
 import { gunzipSync } from 'zlib';
 import {
   test as base,
@@ -108,7 +109,15 @@ export const test = base.extend<Fixtures>({
       // (a dashboard visit can turn down the welcome tour). Start each test as a new budget.
       for (const [method, path, data] of [
         ['POST', '/api/guides/reset', undefined],
-        ['PUT', '/api/guides', { tipsEnabled: true, pageGuidesEnabled: true }],
+        [
+          'PUT',
+          '/api/guides',
+          {
+            tipsEnabled: true,
+            pageGuidesEnabled: true,
+            navFeatures: Object.fromEntries(NAV_FEATURES.map((f) => [f.key, 'auto'])),
+          },
+        ],
       ] as const) {
         const guides = await request.fetch(path, { method, data });
         if (!guides.ok()) throw new Error(`Guide reset failed: ${await guides.text()}`);

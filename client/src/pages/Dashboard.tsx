@@ -109,8 +109,11 @@ function ReviewAttention() {
           ))}
         </ol>
       )}
-      <ButtonLink to="/review" className="shrink-0 max-md:w-full">
-        Open review
+      <ButtonLink
+        to={first.id === 'transfers' ? first.to : '/review'}
+        className="shrink-0 max-md:w-full"
+      >
+        {first.id === 'transfers' ? 'Check transfers' : 'Open review'}
       </ButtonLink>
     </section>
   );

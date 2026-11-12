@@ -177,3 +177,39 @@ for (const phone of [false, true])
     await expect(page.getByRole('button', { name: /Category for Next shop/ })).toBeFocused();
     await expect(page.getByRole('alert')).toHaveCount(0);
   });
+
+test('Wave D: possible transfers open for owner review and dismissal refreshes the step', async ({
+  page,
+  api,
+}) => {
+  const a = await api.createAccount('Everyday', 100_000);
+  const b = await api.createAccount('Savings', 0, 'savings');
+  await api.createTransaction({
+    accountId: a.id,
+    date: '2026-11-01',
+    amount: -12_345,
+    payeeName: 'Move out',
+  });
+  await api.createTransaction({
+    accountId: b.id,
+    date: '2026-11-01',
+    amount: 12_345,
+    payeeName: 'Move in',
+  });
+  await open(page, '/dashboard');
+  await page.getByRole('button', { name: 'Hide getting started', exact: true }).click();
+  await page.getByRole('link', { name: 'Check transfers', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Possible transfers' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await open(page, '/review');
+  const step = page.getByRole('link', { name: 'Check 1 possible transfer', exact: true });
+  await expect(step).toBeVisible();
+  await step.click();
+  await expect(page).toHaveURL(/#\/transactions/);
+  const dialog = page.getByRole('dialog', { name: 'Possible transfers' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: /^Not a transfer:/ }).click();
+  await page.keyboard.press('Escape');
+  await open(page, '/review');
+  await expect(step).toHaveCount(0);
+});

@@ -2,7 +2,14 @@ import type { BudgetReview, ResumeState } from '../api/review';
 
 export interface NextStep {
   id:
-    'overspent' | 'over-assigned' | 'uncategorised' | 'cards' | 'targets' | 'assign' | 'reconcile';
+    | 'overspent'
+    | 'over-assigned'
+    | 'transfers'
+    | 'uncategorised'
+    | 'cards'
+    | 'targets'
+    | 'assign'
+    | 'reconcile';
   title: string;
   /** Where doing it happens */
   to: string;
@@ -21,6 +28,7 @@ export function nextSteps(
   review: BudgetReview | undefined,
   resume: ResumeState | undefined,
   uncategorisedLink: string,
+  transferCount = 0,
 ): NextStep[] {
   const steps: NextStep[] = [];
   if (review) {
@@ -40,6 +48,12 @@ export function nextSteps(
         amount: -review.unassigned,
       });
   }
+  if (transferCount > 0)
+    steps.push({
+      id: 'transfers',
+      title: `Check ${plural(transferCount, 'possible transfer')}`,
+      to: '/transactions?possible-transfers=1',
+    });
   const uncategorised = review?.uncategorisedCount ?? resume?.uncategorisedCount ?? 0;
   if (uncategorised > 0)
     steps.push({

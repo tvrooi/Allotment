@@ -75,3 +75,24 @@ describe('nextSteps', () => {
     );
   });
 });
+
+it('checks possible transfers after money problems and before categorising', () => {
+  const steps = nextSteps(
+    review({ unassigned: -100, uncategorisedCount: 2, totals: { deficits: 100 } }),
+    undefined,
+    '/t',
+    2,
+  );
+  expect(steps.map((s) => s.id)).toEqual([
+    'overspent',
+    'over-assigned',
+    'transfers',
+    'uncategorised',
+  ]);
+  expect(steps[2]).toMatchObject({
+    title: 'Check 2 possible transfers',
+    to: '/transactions?possible-transfers=1',
+  });
+  expect(nextSteps(undefined, undefined, '/t', 1)[0].title).toBe('Check 1 possible transfer');
+  expect(nextSteps(undefined, undefined, '/t', 0)).toEqual([]);
+});

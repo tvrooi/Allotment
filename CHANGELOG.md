@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.172
+
+- **Discover shared costs, tax and files.** Household, Tax time and Files stay in the menu as dimmed Set up links until used; an explicit Hidden preference still hides them. The welcome screen can pin these features. Files, Household and both Forecast tabs explain an empty page with an illustrative example and one next action. Review and the Dashboard now surface possible transfers and open the existing dialog for the owner to check each pair.
+
 ## 0.2.0-up.171
 
 - **Find transactions and files from Search.** The palette now searches payees and notes across all transaction dates and finds files by the existing Files search. Type two characters to start; choose a transaction to open its details or See all in Transactions for the full search. Files open directly, and stay out of Search when the feature is hidden. These searches pause offline while cached destinations still work, the demo explains Files availability, and Safe mode hides every result amount. Search results are never saved as recents or in the offline copy.

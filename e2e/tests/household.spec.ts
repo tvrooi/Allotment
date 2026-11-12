@@ -31,6 +31,7 @@ test('records shared expenses, exports personal scope and keeps the bank debit i
     payeeName: 'Dinner',
   });
   await open(page, '/household');
+  await page.getByRole('button', { name: 'Set up a household', exact: true }).click();
   await page.getByLabel('Name', { exact: true }).fill('Home');
   await page.getByLabel('People, one per line; put yourself first').fill('Me\nAlex');
   await page.getByRole('button', { name: 'Create household', exact: true }).click();
@@ -923,6 +924,7 @@ test('breaks household spending down by month, person and category', async ({ pa
 
 test('renames a household and chooses which one opens first', async ({ page }) => {
   await open(page, '/household');
+  await page.getByRole('button', { name: 'Set up a household', exact: true }).click();
   await page.getByLabel('Name', { exact: true }).fill('Home');
   await page.getByLabel('People, one per line; put yourself first').fill('Me\nAlex');
   await page.getByRole('button', { name: 'Create household', exact: true }).click();
@@ -951,6 +953,7 @@ test('reconciles household balances to zero, and removing the adjustments undoes
   page,
 }) => {
   await open(page, '/household');
+  await page.getByRole('button', { name: 'Set up a household', exact: true }).click();
   await page.getByLabel('Name', { exact: true }).fill('Home');
   await page.getByLabel('People, one per line; put yourself first').fill('Me\nAlex');
   await page.getByRole('button', { name: 'Create household', exact: true }).click();
@@ -1182,3 +1185,29 @@ test('suggests bills the household account pays, to add or dismiss', async ({ pa
     true,
   );
 });
+
+for (const width of [1280, 390])
+  test('Wave D: empty state at ' + width, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await open(page, '/household');
+    const main = page.getByRole('main');
+    await expect(
+      main.getByRole('heading', { name: 'Share costs with your household', exact: true }),
+    ).toBeVisible();
+    await expect(main.getByText('Example', { exact: true })).toBeVisible();
+    await page.keyboard.press('Alt+Shift+H');
+    await expect(main.getByText('Example', { exact: true })).toBeVisible();
+    await expect(
+      main.locator('[aria-hidden="true"]').filter({ hasText: '$' }).first(),
+    ).toBeVisible();
+    await page.keyboard.press('Alt+Shift+H');
+    const action = main.getByRole('button', { name: 'Set up a household', exact: true });
+    await expect(action).toHaveCount(1);
+    await expect(action).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await expect(main.getByLabel('People, one per line; put yourself first')).toHaveCount(0);
+    await action.click();
+    await expect(page.getByRole('dialog', { name: 'New household' })).toBeVisible();
+  });

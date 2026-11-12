@@ -163,7 +163,7 @@ test('Add a transaction opens the shared dialog', async ({ page }) => {
   await expect(palette(page)).toBeHidden();
 });
 
-test('a feature the sidebar leaves out is listed as Set up', async ({ page }) => {
+test('Wave D: a setup feature opens its own page', async ({ page }) => {
   await open(page, '/dashboard');
   await openPalette(page);
   await searchBox(page).fill('house');
@@ -171,7 +171,7 @@ test('a feature the sidebar leaves out is listed as Set up', async ({ page }) =>
   await expect(household).toContainText('Set up');
   await page.screenshot({ path: test.info().outputPath('palette-set-up.png') });
   await household.click();
-  await expect(page).toHaveURL(/#\/settings\?tab=preferences$/);
+  await expect(page).toHaveURL(/#\/household$/);
 });
 
 test('places visited from it come back as recents', async ({ page }) => {
@@ -588,4 +588,26 @@ test('loading and failure are unavailable; changing the query removes the old ro
     group(page, 'Transactions').getByRole('option', { name: /^Daily Grind/ }),
   ).toHaveCount(0);
   await expect(group(page, 'Transactions')).toHaveCount(0);
+});
+
+test('Wave D: explicitly hidden Files is not searched and opens Preferences', async ({
+  page,
+  api,
+}) => {
+  await api.call('PUT', '/guides', { navFeatures: { files: 'hidden' } });
+  await open(page, '/dashboard');
+  await openPalette(page);
+  const requests: string[] = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/files') requests.push(request.url());
+  });
+  await searchBox(page).fill('Daily Grind');
+  await expect(
+    group(page, 'Transactions').getByRole('option', { name: /^Daily Grind/ }),
+  ).toBeVisible();
+  await expect(group(page, 'Files')).toHaveCount(0);
+  expect(requests).toEqual([]);
+  await searchBox(page).fill('files');
+  await option(page, /^Files/).click();
+  await expect(page).toHaveURL(/#\/settings\?tab=preferences$/);
 });

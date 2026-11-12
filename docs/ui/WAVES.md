@@ -63,7 +63,12 @@ Not in any wave:
   `/` opens the palette everywhere. Recent destinations are remembered on the device.
   "Sync now" was left out of part 1 because no shell-level sync exists and a sync is a write; the
   owner has not been asked to rule on that.
-- **#226:** Household, Tax time and Files show to everyone as dimmed "Set up" rows.
+- **Wave D, 12 November:** #226 Household, Tax time and Files show to everyone as dimmed
+  "Set up" rows; explicit Hidden still hides them, and Pay later/Investments keep their existing
+  behaviour. #237 Household uses a promise, example and one button opening the existing New
+  household dialog; do not split its page. #239 covers the welcome step only: leave first-visit
+  guide banners, the Dashboard checklist and Review Guided setup unchanged. #217–#219 remain
+  shelved; do not start Wave E in this change.
 - **#244:** the Settings split is endorsed.
 - **Release:** undecided. `redesign` carries up.154 to up.171 prepared and untagged. The
   orchestrator's recommendation is one release from `redesign` soon, because the Safe mode chart

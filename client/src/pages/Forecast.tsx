@@ -2,7 +2,6 @@ import { useSearchParams } from 'react-router-dom';
 import { CashRunway } from '../components/forecast/CashRunway';
 import { GuideLink } from '../components/guide/GuideLink';
 import { LongTermForecast } from '../components/longterm/LongTermForecast';
-import { PrivateSection } from '../components/ui/Private';
 import { tabIds, TabList } from '../components/ui/tabList';
 
 // The Forecast page: the long-term, decades-long view first, with the cash runway (the next
@@ -65,9 +64,7 @@ export default function ForecastPage() {
         aria-labelledby={tabIds('forecast', tab).tab}
         className="flex flex-col flex-1 min-h-0"
       >
-        <PrivateSection title="Forecasts are hidden in Safe mode">
-          {tab === 'cash' ? <CashRunway /> : <LongTermForecast />}
-        </PrivateSection>
+        {tab === 'cash' ? <CashRunway /> : <LongTermForecast />}
       </div>
     </div>
   );

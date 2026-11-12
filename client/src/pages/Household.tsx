@@ -7,6 +7,9 @@ import { useSchedules } from '../hooks/useSchedules';
 import { useTransactions } from '../hooks/useTransactions';
 import { useAccounts } from '../hooks/useAccounts';
 import { ChevronDown, ChevronRight, Pencil, Plus } from 'lucide-react';
+import { useCanSave } from '../hooks/useConnection';
+import { SavingPausedHint } from '../components/connection/SavingPausedHint';
+import { EmptyState } from '../components/ui/EmptyState';
 import { Button } from '../components/ui/Button';
 import { TabList, tabIds } from '../components/ui/tabList';
 import { Input, Select } from '../components/ui/Input';
@@ -151,6 +154,7 @@ function cents(value: FormDataEntryValue | null) {
 export default function HouseholdPage() {
   const [params, setParams] = useSearchParams();
   const cache = useQueryClient();
+  const canSave = useCanSave();
   // ?household= opens that household (e.g. "View in household" on a shared payment)
   const [id, setId] = useState(() => params.get('household') ?? '');
   const [error, setError] = useState('');
@@ -161,7 +165,11 @@ export default function HouseholdPage() {
   );
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const { data: groups = [] } = useQuery({
+  const {
+    data: groups = [],
+    isLoading: groupsLoading,
+    error: groupsError,
+  } = useQuery({
     queryKey: ['households'],
     queryFn: () => apiFetch<Group[]>('/households'),
   });
@@ -248,6 +256,7 @@ export default function HouseholdPage() {
     build: (f: FormData) => { path: string; body: unknown; method?: string },
   ) {
     e.preventDefault();
+    if (!canSave) return;
     try {
       mutation.mutate(build(new FormData(e.currentTarget)));
     } catch (e) {
@@ -376,10 +385,11 @@ export default function HouseholdPage() {
             Cancel
           </Button>
         )}
-        <Button type="submit" disabled={mutation.isPending}>
+        <Button type="submit" disabled={mutation.isPending || !canSave}>
           Create household
         </Button>
       </div>
+      <SavingPausedHint />
     </form>
   );
   const myShare = (e: Entry) =>
@@ -462,27 +472,41 @@ export default function HouseholdPage() {
 
       <div className="flex-1 overflow-y-auto">
         <div className="px-6 pt-5 pb-6 space-y-4">
-          {(error || loadError) && (
+          {(error || loadError || groupsError) && (
             <p role="alert" className="text-sm text-negative">
-              {error || loadError?.message}
+              {error || loadError?.message || groupsError?.message}
             </p>
           )}
-          {groups.length === 0 && (
-            <section
-              data-guide="household.create"
-              className={`${card} max-w-xl`}
-              aria-labelledby="create-household"
-            >
-              <h2 id="create-household" className="text-sm font-semibold text-text mb-1">
-                Create a household
-              </h2>
-              <p className="text-sm text-text-secondary mb-4">
-                Who do you share costs with? They don’t get access to your budget.
-              </p>
-              {createForm}
+          {groups.length === 0 && !groupsLoading && !groupsError && !isLoading && !loadError && (
+            <section data-guide="household.create">
+              <EmptyState
+                title="Share costs with your household"
+                description="Keep shared bills and what each person owes in one place."
+                example={{
+                  content: (
+                    <>
+                      <p>Electricity · {formatDay('2026-11-01')}</p>
+                      <p>
+                        You paid {formatMoney(12_000, 'AUD')} · Alex owes{' '}
+                        {formatMoney(6_000, 'AUD')}
+                      </p>
+                    </>
+                  ),
+                  description:
+                    'You paid a shared electricity bill of ' +
+                    formatMoney(12_000, 'AUD') +
+                    ' and Alex owes ' +
+                    formatMoney(6_000, 'AUD') +
+                    '.',
+                }}
+                keepActions
+                actions={<Button onClick={() => setCreating(true)}>Set up a household</Button>}
+              />
             </section>
           )}
-          {isLoading && <div className="h-40 bg-surface-alt rounded-lg animate-pulse" />}
+          {(isLoading || groupsLoading) && (
+            <div className="h-40 bg-surface-alt rounded-lg animate-pulse" />
+          )}
           {state && (
             <>
               <BalanceSummary

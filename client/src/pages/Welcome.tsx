@@ -1,3 +1,7 @@
+import { useGuideProgress, useUpdateGuides } from '../hooks/useGuides';
+import { useCanSave } from '../hooks/useConnection';
+import { SETUP_FEATURES, NAV_FEATURES } from '../utils/navFeatures';
+import { SavingPausedHint } from '../components/connection/SavingPausedHint';
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { PencilLine, Loader2, ShieldCheck, ChevronRight, Clock, Euro } from 'lucide-react';
@@ -17,6 +21,12 @@ import { PlaidLogo, SimplefinLogo } from '../components/ui/BankLogos';
 import { BrandName } from '../components/ui/BrandName';
 import { YnabImportModal } from '../components/transactions/YnabImportModal';
 import { CommunitySupportedNote } from '../components/banks/CommunitySupported';
+
+const FEATURE_PROMPTS = {
+  household: 'Sharing costs with a partner or housemates',
+  tax: 'Claiming work expenses at tax time',
+  files: 'Keeping receipts, warranties and documents',
+};
 
 interface OptionProps {
   icon: React.ReactNode;
@@ -68,6 +78,9 @@ export default function WelcomePage() {
   const setSetupSkipped = usePreferencesStore((s) => s.setSetupSkipped);
   const mode = useAppMode();
   const navigate = useNavigate();
+  const { data: progress, isError: guidesFailed } = useGuideProgress();
+  const updateGuides = useUpdateGuides();
+  const canSave = useCanSave();
 
   const [showPlaid, setShowPlaid] = useState(false);
   const [showPlaidSetup, setShowPlaidSetup] = useState(false);
@@ -230,6 +243,43 @@ export default function WelcomePage() {
               : 'Your budget stays on this computer. No Allotment account, no tracking.'}
           </p>
 
+          {!guidesFailed && (
+            <section aria-labelledby="welcome-features" className="mt-6 text-left">
+              <h2 id="welcome-features" className="text-base font-semibold text-text">
+                What else do you share or claim?
+              </h2>
+              <div className="mt-3 divide-y divide-border">
+                {SETUP_FEATURES.map((feature) => {
+                  const label = NAV_FEATURES.find((f) => f.key === feature)!.label;
+                  return (
+                    <label
+                      key={feature}
+                      className="flex min-h-11 items-center justify-between gap-4 py-3 text-sm text-text-secondary"
+                    >
+                      <span>
+                        {FEATURE_PROMPTS[feature]}{' '}
+                        <span className="text-text-tertiary">({label})</span>
+                      </span>
+                      <input
+                        type="checkbox"
+                        role="switch"
+                        className="h-5 w-5 shrink-0 accent-brand-600"
+                        aria-label={FEATURE_PROMPTS[feature] + ' (' + label + ')'}
+                        checked={progress?.navFeatures?.[feature] === 'shown'}
+                        disabled={!progress || !canSave || updateGuides.isPending}
+                        onChange={(e) =>
+                          updateGuides.mutate({
+                            navFeatures: { [feature]: e.target.checked ? 'shown' : 'auto' },
+                          })
+                        }
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+              <SavingPausedHint />
+            </section>
+          )}
           <button
             onClick={() => {
               setSetupSkipped(true);
