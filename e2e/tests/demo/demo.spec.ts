@@ -395,7 +395,10 @@ test('the search palette finds the sample budget’s payees and goals', async ({
   await page.keyboard.press('ControlOrMeta+k');
   const palette = page.getByRole('dialog', { name: 'Search' });
   await palette.getByRole('combobox').fill('grind');
-  await palette.getByRole('option', { name: /^Daily Grind Coffee/ }).click();
+  await palette
+    .getByRole('group', { name: 'Payees', exact: true })
+    .getByRole('option', { name: /^Daily Grind Coffee/ })
+    .click();
   await expect(page).toHaveURL(/#\/transactions\?/);
   await expect(page.getByText('Daily Grind Coffee').first()).toBeVisible();
   await expect(palette).toBeHidden();
@@ -411,4 +414,30 @@ test('the search palette finds the sample budget’s payees and goals', async ({
     .getByRole('option', { name: 'Emergency fund' })
     .click();
   await expect(page).toHaveURL(/#\/goals$/);
+});
+
+test('the palette searches demo transactions and explains Files availability', async ({ page }) => {
+  await openDemo(page, '/files');
+  await page.getByRole('heading', { level: 1 }).first().waitFor();
+  await page.keyboard.press('ControlOrMeta+k');
+  const palette = page.getByRole('dialog', { name: 'Search' });
+  await palette.getByRole('combobox').fill('Daily Grind');
+  await expect(
+    palette
+      .getByRole('group', { name: 'Transactions', exact: true })
+      .getByRole('option', { name: /^Daily Grind Coffee/ })
+      .first(),
+  ).toBeVisible();
+  const files = palette.getByRole('group', { name: 'Files', exact: true }).getByRole('option');
+  await expect(files).toHaveText('Files are not available in the demo');
+  await expect(files).toHaveAttribute('aria-disabled', 'true');
+  await files.press('Enter');
+  await expect(palette).toBeVisible();
+  await page.screenshot({ path: '../.ui-evidence/2026-11-12-palette-2/demo-files.png' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId('phone-header')).toBeVisible();
+  await palette.getByRole('combobox').fill('Daily Grind');
+  await expect(files).toHaveText('Files are not available in the demo');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: '../.ui-evidence/2026-11-12-palette-2/phone-demo-files.png' });
 });

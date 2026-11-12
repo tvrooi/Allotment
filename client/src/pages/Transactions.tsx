@@ -1,5 +1,5 @@
-import { useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useRef } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { TransactionTable } from '../components/transactions/TransactionTable';
 import { Button } from '../components/ui/Button';
@@ -24,11 +24,33 @@ export default function TransactionsPage() {
 
   // The filters live in the URL, so reload, back and drill-down links keep them. A URL the
   // register didn't write itself (a link followed while already here) starts it afresh.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const state: unknown = location.state;
+  const initialDetailId =
+    state &&
+    typeof state === 'object' &&
+    'transactionDetailId' in state &&
+    typeof state.transactionDetailId === 'string'
+      ? state.transactionDetailId
+      : undefined;
+  // Consume the palette's router state after the table has taken its initial selection.
+  useEffect(() => {
+    if (!initialDetailId) return;
+    const nextState = { ...(state as Record<string, unknown>) };
+    delete nextState.transactionDetailId;
+    navigate(
+      { pathname: location.pathname, search: location.search, hash: location.hash },
+      { replace: true, state: nextState },
+    );
+  }, [initialDetailId, state, navigate, location.pathname, location.search, location.hash]);
   const [params, setParams] = useSearchParams();
   const search = params.toString();
-  const own = useRef({ search, generation: 0 });
-  if (search !== own.current.search) {
-    own.current = { search, generation: own.current.generation + 1 };
+  const own = useRef({ search, detailKey: initialDetailId ? location.key : null, generation: 0 });
+  // A new palette choice also reopens details when the search URL itself is unchanged.
+  const detailKey = initialDetailId ? location.key : null;
+  if (search !== own.current.search || (detailKey && detailKey !== own.current.detailKey)) {
+    own.current = { search, detailKey, generation: own.current.generation + 1 };
   }
   // The Receipts tab, and the receipt open on it, live in the URL too
   const view = params.get('view') === 'receipts' ? 'receipts' : 'all';
@@ -133,6 +155,7 @@ export default function TransactionsPage() {
           <TransactionTable
             key={own.current.generation}
             initialFilters={filtersFromSearch(params)}
+            initialDetailId={initialDetailId}
             onFiltersChange={onFiltersChange}
             canSaveView
             onAddTransaction={showAdd}

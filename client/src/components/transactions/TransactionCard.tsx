@@ -1,4 +1,4 @@
-import { transferLabel } from './transferLabel';
+import { transactionPayeeName } from './transferLabel';
 import { useAccountName } from '../../hooks/useAccounts';
 import { formatRegisterAmount, RoundUpMark } from './RoundUp';
 import { RowMarks } from './TransactionMarks';
@@ -43,8 +43,7 @@ export function TransactionCard({
   const isTransfer = !!tx.transferTransactionId;
   const isSplit = tx.isParent === 1 && !!tx.children?.length;
   const accountNameOf = useAccountName();
-  const payeeName =
-    transferLabel(tx, accountNameOf) ?? (tx.payeeName || (isTransfer ? 'Transfer' : '—'));
+  const payeeName = transactionPayeeName(tx, accountNameOf);
   const payee = useMemo(
     () => (tx.payeeId ? payees.find((p) => p.id === tx.payeeId) : undefined),
     [payees, tx.payeeId],

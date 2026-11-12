@@ -42,3 +42,14 @@ export function transferLabel(
   if (tx.transferPair) return `Transfer from ${sides.from} to ${sides.to}`;
   return tx.amount < 0 ? `Transfer to ${sides.to}` : `Transfer from ${sides.from}`;
 }
+
+/** Shared payee wording for the register, phone card, details and search results. */
+export function transactionPayeeName(
+  tx: Parameters<typeof transferLabel>[0],
+  accountName: Parameters<typeof transferLabel>[1],
+): string {
+  return (
+    transferLabel(tx, accountName) ??
+    (tx.payeeName || (tx.transferTransactionId ? 'Transfer' : '—'))
+  );
+}

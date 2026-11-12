@@ -1,4 +1,4 @@
-import { transferLabel, transferSides } from './transferLabel';
+import { transactionPayeeName, transferSides } from './transferLabel';
 import { useAccountName } from '../../hooks/useAccounts';
 import { listedAmount, RoundUpDetails } from './RoundUp';
 import { ShareWithHousehold } from '../household/ShareWithHousehold';
@@ -144,8 +144,7 @@ export function TransactionDetailPanel({
 
   const accountNameOf = useAccountName();
   const transferWay = transferSides(tx, accountNameOf);
-  const payeeName =
-    transferLabel(tx, accountNameOf) ?? (tx.payeeName || (isTransfer ? 'Transfer' : '—'));
+  const payeeName = transactionPayeeName(tx, accountNameOf);
   const payee = tx.payeeId ? payees.find((p) => p.id === tx.payeeId) : undefined;
   const categoryEntry = tx.categoryId ? (categoryMap.get(tx.categoryId) ?? null) : null;
   // The register filtered to this payee, category or account, over all dates

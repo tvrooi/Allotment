@@ -1,6 +1,9 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
+  ArrowLeftRight,
+  FileText,
   BookOpen,
   Clock,
   Eye,
@@ -14,37 +17,50 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
-import { useAccounts } from '../../hooks/useAccounts';
+import { useAccountName, useAccounts } from '../../hooks/useAccounts';
 import { useCategories } from '../../hooks/useCategories';
 import { usePayees } from '../../hooks/usePayees';
 import { useGoals } from '../../hooks/useGoals';
 import { useGuideProgress } from '../../hooks/useGuides';
 import { useCanAddTransaction } from '../../hooks/useOffline';
+import { useCanSave } from '../../hooks/useConnection';
+import { useDebounce } from '../../hooks/useDebounce';
+import { useAccountCurrency } from '../../hooks/useCurrency';
+import { getTransactions } from '../../api/transactions';
+import { listFiles } from '../../api/files';
+import { IS_DEMO } from '../../demo/isDemo';
+import { formatDay } from '../../utils/dates';
+import { formatMoney } from '../../utils/currency';
+import { Private } from '../ui/Private';
+import { transactionPayeeName } from '../transactions/transferLabel';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { useAddTransactionStore } from '../../store/addTransactionStore';
 import { useGuideStore } from '../../store/guideStore';
 import { useSafeModeStore } from '../../store/safeModeStore';
 import { featureShown } from '../../utils/navFeatures';
-import { paletteSections, type PaletteEntry } from '../../utils/commandPalette';
+import {
+  PALETTE_SEARCH_LABEL,
+  paletteCanSearch,
+  paletteResultCount,
+  paletteSections,
+  paletteTransactionNote,
+  type PaletteEntry,
+} from '../../utils/commandPalette';
 import { readRecents, rememberRecent } from '../../utils/paletteRecents';
 import { transactionsLink } from '../../utils/transactionFilters';
 import { MORE_FEATURES_LINK, NAV_PAGES } from './navPages';
 
-// The search palette (issue #224): pages, actions and the lists the app already holds
-// (accounts, categories, payees, goals), all searched in the browser, so it works offline and in
-// the demo from what is cached. It writes nothing: the one action that saves opens the shared
-// Add transaction dialog. No amounts are shown, so Safe mode has nothing to hide here.
+// Cached destinations work offline; server search is read-only and stays in this lazy chunk.
 
 interface Result extends PaletteEntry {
   icon: LucideIcon;
+  amount?: { value: number; currency: string | null };
   /** A second, quieter line: a category's group, where a recent goes */
   detail?: string;
   /** "Set up": a page for a feature the sidebar leaves out */
   badge?: string;
   /** The key that does the same, shown beside it */
   shortcut?: string;
-  /** Why it can't be used right now (it stays listed, unavailable) */
-  unavailable?: string;
   /** Somewhere to go… */
   to?: string;
   state?: unknown;
@@ -91,6 +107,9 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
   const { data: goals = [] } = useGoals();
   const { data: progress, isError: progressFailed } = useGuideProgress();
   const add = useCanAddTransaction();
+  const canSave = useCanSave();
+  const accountCurrency = useAccountCurrency();
+  const accountNameOf = useAccountName();
   const safeModeOn = useSafeModeStore((s) => s.on);
   const [recents] = useState(readRecents);
 
@@ -201,6 +220,83 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
     safeModeOn,
   ]);
 
+  const trimmed = query.trim();
+  const debounced = useDebounce(trimmed, 250);
+  const ready = paletteCanSearch(trimmed) && trimmed === debounced;
+  // The same visibility rule as the Files page row; wait for progress before asking for files.
+  const filesShown = featureShown('files', progress, pathname, progressFailed);
+  const transactions = useQuery({
+    queryKey: ['palette-search', 'transactions', debounced],
+    queryFn: () => getTransactions({ search: debounced, limit: 8 }),
+    enabled: ready && canSave,
+    retry: false,
+    gcTime: 0,
+  });
+  const files = useQuery({
+    queryKey: ['palette-search', 'files', debounced],
+    queryFn: () => listFiles({ q: debounced, limit: 5 }),
+    enabled: ready && canSave && filesShown && !IS_DEMO,
+    retry: false,
+    gcTime: 0,
+  });
+  const serverResults: Result[] = [];
+  const message = (group: 'transactions' | 'files', label: string): Result => ({
+    id: `${group}:message`,
+    group,
+    label,
+    icon: group === 'files' ? FileText : Search,
+    message: true,
+    unavailable: label,
+  });
+  const searchLink = transactionsLink({ search: trimmed, datePreset: 'all' });
+  if (paletteCanSearch(trimmed)) {
+    if (!canSave) serverResults.push(message('transactions', 'Not available offline'));
+    else if (!ready || transactions.isPending)
+      serverResults.push(message('transactions', 'Searching…'));
+    else if (transactions.isError) serverResults.push(message('transactions', 'Search failed'));
+    else if (transactions.data.length) {
+      serverResults.push(
+        ...transactions.data.slice(0, 8).map<Result>((tx) => {
+          const matchingNote = paletteTransactionNote(tx, trimmed);
+          return {
+            id: `transaction:${tx.id}`,
+            group: 'transactions',
+            label: transactionPayeeName(tx, accountNameOf),
+            icon: ArrowLeftRight,
+            detail: `${formatDay(tx.date)} · ${matchingNote ?? accountNameOf(tx.accountId) ?? ''}`,
+            amount: { value: tx.amount, currency: accountCurrency(tx.accountId) },
+            to: searchLink,
+            state: { transactionDetailId: tx.id },
+          };
+        }),
+        {
+          id: 'transactions:all',
+          group: 'transactions',
+          label: 'See all in Transactions',
+          icon: ArrowLeftRight,
+          to: searchLink,
+        },
+      );
+    }
+    if (filesShown) {
+      if (!canSave) serverResults.push(message('files', 'Not available offline'));
+      else if (IS_DEMO) serverResults.push(message('files', 'Files are not available in the demo'));
+      else if (!ready || files.isPending) serverResults.push(message('files', 'Searching…'));
+      else if (files.isError) serverResults.push(message('files', 'Search failed'));
+      else
+        serverResults.push(
+          ...files.data.documents.slice(0, 5).map<Result>((file) => ({
+            id: `file:${file.id}`,
+            group: 'files',
+            label: file.fileName,
+            icon: FileText,
+            detail: formatDay(file.date),
+            to: `/files?file=${encodeURIComponent(file.id)}`,
+          })),
+        );
+    }
+  }
+
   const recentResults = useMemo<Result[]>(
     () =>
       recents.map((r) => {
@@ -218,10 +314,8 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
     [recents],
   );
 
-  const sections = useMemo(
-    () => paletteSections(entries, query, recentResults),
-    [entries, query, recentResults],
-  );
+  const sections = paletteSections([...entries, ...serverResults], query, recentResults);
+  const count = paletteResultCount(sections);
   const flat = sections.flatMap((s) => s.items);
   const current = Math.min(active, flat.length - 1);
   const optionId = (i: number) => `${listId}-option-${i}`;
@@ -271,7 +365,7 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
           ref={inputRef}
           type="text"
           role="combobox"
-          aria-label="Search pages, accounts, categories, payees and goals"
+          aria-label={PALETTE_SEARCH_LABEL}
           aria-expanded={flat.length > 0}
           aria-controls={flat.length > 0 ? listId : undefined}
           aria-autocomplete="list"
@@ -342,14 +436,28 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
                       <span className="min-w-0 flex-1 truncate">
                         <span className="text-text">{item.label}</span>
                         {item.detail && (
-                          <span className="text-text-tertiary"> · {item.detail}</span>
+                          <span
+                            className={
+                              item.group === 'transactions' || item.group === 'files'
+                                ? 'block truncate text-xs text-text-tertiary'
+                                : 'text-text-tertiary'
+                            }
+                          >
+                            {item.group !== 'transactions' && item.group !== 'files' && ' · '}
+                            {item.detail}
+                          </span>
                         )}
-                        {item.unavailable && (
+                        {item.unavailable && !item.message && (
                           <span className="block truncate text-xs text-text-tertiary">
                             {item.unavailable}
                           </span>
                         )}
                       </span>
+                      {item.amount && (
+                        <span className="shrink-0 text-sm tabular-nums text-text">
+                          <Private>{formatMoney(item.amount.value, item.amount.currency)}</Private>
+                        </span>
+                      )}
                       {item.badge && (
                         <span className="shrink-0 rounded-full border border-border px-2 text-2xs leading-5 text-text-secondary">
                           {item.badge}
@@ -372,7 +480,7 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
         </div>
       )}
       <p role="status" aria-live="polite" className="sr-only">
-        {flat.length === 1 ? '1 result' : `${flat.length} results`}
+        {count === 1 ? '1 result' : `${count} results`}
       </p>
     </div>
   );

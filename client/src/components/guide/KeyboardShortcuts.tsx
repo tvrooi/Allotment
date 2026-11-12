@@ -1,3 +1,4 @@
+import { PALETTE_SEARCH_LABEL } from '../../utils/commandPalette';
 import { modifierKeyName } from '../../utils/pageShortcut';
 
 // The app's keyboard shortcuts, listed in the guides dialog so they can be found. Each is set up
@@ -8,7 +9,7 @@ export function KeyboardShortcuts() {
   const mod = modifierKeyName();
   const alt = mod === 'Cmd' ? 'Option' : 'Alt';
   const shortcuts: [keys: string[][], what: string][] = [
-    [[[mod, 'K'], ['/']], 'Search pages, accounts, categories, payees and goals'],
+    [[[mod, 'K'], ['/']], PALETTE_SEARCH_LABEL],
     [[['N']], 'Add a transaction'],
     [[['?']], 'Open this list of guides'],
     [[[mod, 'Z']], 'Undo the last change'],

@@ -68,6 +68,8 @@ interface Props {
   onAddTransaction?: () => void;
   /** Filters to start with (All Transactions reads them from its URL) */
   initialFilters?: FilterState;
+  /** A palette destination, consumed once when this register mounts */
+  initialDetailId?: string;
   /** Called whenever the filters change (All Transactions writes them to its URL) */
   onFiltersChange?: (filters: FilterState) => void;
   /** All Transactions: the filters can be saved as a view */
@@ -90,6 +92,7 @@ export function TransactionTable({
   overlayDetail,
   onAddTransaction,
   initialFilters,
+  initialDetailId,
   onFiltersChange,
   canSaveView,
 }: Props) {
@@ -113,7 +116,7 @@ export function TransactionTable({
   const [addTo, setAddTo] = useState<string | null>(null);
   const target = addTo ?? accountId;
   const [savingView, setSavingView] = useState(false);
-  const [detailId, setDetailId] = useState<string | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(initialDetailId ?? null);
   const [showImport, setShowImport] = useState(false);
   // Picking payments to share with a household: null when not picking
   const [picked, setPicked] = useState<Set<string> | null>(null);

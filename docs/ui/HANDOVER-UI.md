@@ -1,7 +1,7 @@
 # UI handover
 
-Overwritten at the end of each UI session, never appended. Last written 11 November 2026 from
-`git log -25` on `redesign` (head `cf2e2f0`). Older detail: grep `docs/handover/ARCHIVE.md`.
+Overwritten at the end of each UI session, never appended. Palette entry updated 12 November 2026 on `feat/command-palette-2`.
+Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Older detail: grep `docs/handover/ARCHIVE.md`.
 
 ## Done this session
 
@@ -13,11 +13,16 @@ Overwritten at the end of each UI session, never appended. Last written 11 Novem
   shared with `BalanceSummary`); always on, not a Customise card; Tax and Files left out (no cheap
   count). #232 paired cards share a height, desktop Bills lists 3 bills and 2 pay days, one
   summary disclosure on phones, and `ui/SegmentedControl` replaces the charts' range selects.
-- Search palette, part 1 of #224 (up.169, branch `feat/command-palette-1`): Cmd/Ctrl+K, `/` and
-  the phone header's Search open one palette over pages, actions (Add a transaction, Safe mode,
-  guides), accounts, categories, payees and goals, from cached lists only; recents on the device;
-  hidden features marked Set up. The sidebar now reads its pages from `layout/navPages.ts`. The
-  guides dialog lists the keyboard shortcuts.
+- Search palette, parts 1 and 2 of #224 (up.169/up.171, branch `feat/command-palette-2`):
+  Cmd/Ctrl+K, `/` and phone Search cover pages, actions and cached accounts, categories, payees
+  and goals, then read-only Transactions (8 rows plus See all, all dates, details on selection)
+  and Files (5 rows, opens the file). Server searches start at two trimmed characters after
+  250 ms; palette-only query keys never enter the offline copy or recents. Hidden Files stays
+  hidden; offline groups say Not available offline, demo Files explains its availability;
+  loading/failure rows are unavailable, amounts use Private at every Safe mode level. Split-note
+  matches show the child's note; register, card, details and palette share payee/transfer wording
+  in `transactions/transferLabel.ts`. The orchestrator's first browser run passed 506 tests with
+  4 failures; fix round 1 is ready for its rerun and remaining Safe mode/offline screenshots.
 - Wave B fixes (up.168): #227 category opens on All time, #228 one Income/Expenses palette in
   the chart kit, #229 category layout, #233 Delete in the details menu plus filter links, #234
   quiet Recurring callout, #238 Reports summary on phones, #242 row arrow and eye names.
@@ -40,7 +45,7 @@ Overwritten at the end of each UI session, never appended. Last written 11 Novem
 
 ## In progress
 
-- None committed half-done. `redesign` is ahead of `main`; up.154 to up.170 are prepared, not tagged.
+- None committed half-done. `redesign` is ahead of `main`; up.154 to up.171 are prepared, not tagged.
 
 ## Next up (issues)
 
@@ -48,9 +53,6 @@ Overwritten at the end of each UI session, never appended. Last written 11 Novem
 - #213 quick expense test; #214 refresh `docs/ux-ui-evidence/` dates; #215 iPhone check; #216 dark mode.
 - #217 Review queue redesign; #218 Cash flow personal share; #219 Household screens by type.
 - #220 sidebar item count (UX review item 7).
-- #224 PR 2: Files and Transactions search in the palette, "Not available offline" for those
-  two groups, and the demo's Files message. Seams: add a group id in `utils/commandPalette.ts`
-  `PALETTE_GROUPS` and its entries in `CommandPalette.tsx`.
 - Design re-review at `cf2e2f0`, P0: #226 sidebar set-up rows.
 - P1: #235 goal/payee links;
   #236 transfers step; #237 empty states; #243 desktop row click; #245 undo and keep filters.
