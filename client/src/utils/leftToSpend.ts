@@ -1,5 +1,8 @@
 import type { BudgetCategory, BudgetGroup, Goal } from '../types';
+import { endOfMonth, getDaysInMonth, parseISO } from 'date-fns';
 import { categoryFigures } from './budgetFigures';
+import { isIsoDay } from './calendarDay';
+import { isMonth } from './dateRange';
 
 /**
  * Envelopes that hold savings rather than this month's spending money: a category whose type
@@ -34,4 +37,44 @@ export function leftToSpend(groups: BudgetGroup[], goalCategories = new Set<stri
     (c) => c.budgeted !== 0 || c.carryOver !== 0 || (c.transferred ?? 0) !== 0,
   );
   return { left, setAside, planned };
+}
+
+/**
+ * How far through `month` (YYYY-MM) `today` (YYYY-MM-DD) is, as a whole percentage of its days
+ * with today counted: 0 before the month, 100 once it's over. Throws on a month or day that
+ * isn't real (`isMonth`, `isIsoDay`).
+ */
+export function monthProgress(month: string, today: string): number {
+  if (!isMonth(month) || !isIsoDay(today))
+    throw new Error(`Not a month and day: ${month}, ${today}`);
+  const start = parseISO(`${month}-01`);
+  const day = parseISO(today);
+  if (day < start) return 0;
+  if (day > endOfMonth(start)) return 100;
+  return Math.round((day.getDate() * 100) / getDaysInMonth(start));
+}
+
+/**
+ * The dashboard's pace cue: how much of this month's spending money is used, beside how far
+ * through the month today is. Spending money is what the spending envelopes (not savings ones,
+ * as in `leftToSpend`) were given this month plus what came into them, so it's what's spent
+ * there plus what's left. Over 100 when they're overspent. Null when nothing is planned.
+ */
+export function spendingPace(
+  groups: BudgetGroup[],
+  goalCategories: Set<string>,
+  { month, today }: { month: string; today: string },
+) {
+  const { left, planned } = leftToSpend(groups, goalCategories);
+  if (!planned) return null;
+  const activity = groups
+    .filter((g) => g.isIncome === 0)
+    .flatMap((g) => g.categories)
+    .filter((c) => !isSavings(c, goalCategories))
+    .reduce((sum, c) => sum + categoryFigures(c, false).actual, 0);
+  // Refunds count against spending, but never below nothing spent
+  const spent = Math.max(-activity, 0);
+  const money = spent + left;
+  const usedPercent = money > 0 ? Math.round((spent * 100) / money) : spent > 0 ? 100 : 0;
+  return { usedPercent, monthPercent: monthProgress(month, today), overspent: left < 0 };
 }

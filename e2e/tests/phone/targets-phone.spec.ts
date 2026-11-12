@@ -59,7 +59,11 @@ test('the dashboard lists recent transactions as cards, with full-size links', a
       recent.getByRole('button', { name: /Corner Grocery/ }),
     ]),
   ).toEqual([]);
-  expect(await undersized([page.getByRole('combobox', { name: 'Compare spending' })])).toEqual([]);
+  expect(
+    await undersized([
+      page.getByRole('group', { name: 'Compare spending with' }).getByRole('button'),
+    ]),
+  ).toEqual([]);
 });
 
 test('the Payees list and the cash flow presets have full-size controls', async ({ page, api }) => {

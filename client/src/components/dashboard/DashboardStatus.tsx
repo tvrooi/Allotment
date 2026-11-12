@@ -5,7 +5,6 @@ import { useBudget } from '../../hooks/useBudget';
 import { useScheduleOccurrences } from '../../hooks/useSchedules';
 import { leftToSpend as figureLeftToSpend, savingsCategoryIds } from '../../utils/leftToSpend';
 import { useGoals } from '../../hooks/useGoals';
-import { UpSyncBadge } from '../up/UpSyncBadge';
 import { groupOccurrences } from '../recurring/scheduleFormat';
 
 /**
@@ -54,7 +53,6 @@ export function DashboardStatus({ currentMonth }: { currentMonth: string }) {
       <h1 className="font-display text-2xl max-md:text-xl tracking-tight text-text-secondary">
         {line}
       </h1>
-      <UpSyncBadge />
     </div>
   );
 }

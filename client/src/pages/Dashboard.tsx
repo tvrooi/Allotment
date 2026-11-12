@@ -14,7 +14,9 @@ import RecentTransactions from '../components/dashboard/RecentTransactions';
 import UpcomingBills from '../components/dashboard/UpcomingBills';
 import { CustomizeHome } from '../components/dashboard/CustomizeHome';
 import { HelpFooter } from '../components/layout/HelpFooter';
-import { Button } from '../components/ui/Button';
+import { Button, ButtonLink } from '../components/ui/Button';
+import { Private } from '../components/ui/Private';
+import { formatCurrency } from '../utils/currency';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useQuery } from '@tanstack/react-query';
 import { getResume } from '../api/review';
@@ -33,6 +35,7 @@ import { TIPS } from '../guides';
 import { useGuideStore } from '../store/guideStore';
 import { OnboardingContext } from '../components/dashboard/onboarding';
 import { DashboardStatus } from '../components/dashboard/DashboardStatus';
+import { StatusStrip } from '../components/dashboard/StatusStrip';
 
 const now = new Date();
 const currentMonth = format(now, 'yyyy-MM');
@@ -44,17 +47,22 @@ function Reminder() {
   return resume.data ? <ReminderBanner resume={resume.data} /> : null;
 }
 
-/** Use the same ordered next steps and destinations as Review and its sidebar count. */
+/**
+ * Use the same ordered next steps and destinations as Review and its sidebar count. The first
+ * leads with Open review as the card's one button; the two after it are quiet rows beside it on
+ * wider screens, so the card holds the list instead of an empty row.
+ */
 function ReviewAttention() {
   const steps = useNextSteps();
-  const first = steps[0];
+  const [first, ...rest] = steps;
   if (!first) return null;
+  const after = rest.slice(0, 2);
   return (
     <section
       aria-label="Review attention"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface px-4 py-3"
+      className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-lg border border-border bg-surface px-4 py-3"
     >
-      <div className="flex items-start gap-3 min-w-0">
+      <div className="flex min-w-0 flex-1 basis-64 items-start gap-3">
         <ClipboardCheck size={20} aria-hidden className="mt-3 shrink-0 text-brand-600" />
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-text">
@@ -65,20 +73,45 @@ function ReviewAttention() {
               {first.title}
             </Link>
           </h2>
-          <Link
-            to="/review"
-            className="inline-flex items-center min-h-11 text-xs text-text-secondary underline underline-offset-4 hover:text-text"
-          >
-            {`${steps.length} ${steps.length === 1 ? 'next step' : 'next steps'} for your budget`}
-          </Link>
+          <p className="text-xs text-text-secondary">
+            {steps.length === 1
+              ? 'The one next step for your budget'
+              : `1 of ${steps.length} next steps for your budget`}
+          </p>
         </div>
       </div>
-      <Link
-        to="/review"
-        className="hidden md:inline-flex items-center min-h-11 text-sm font-medium text-brand-600 hover:text-brand-700"
-      >
+      {after.length > 0 && (
+        <ol
+          aria-label="Then"
+          start={2}
+          className="hidden min-w-0 flex-1 basis-64 md:block divide-y divide-border-light"
+        >
+          {after.map((step, i) => (
+            <li key={step.id}>
+              <Link
+                to={step.to}
+                className="flex min-h-9 items-center gap-2 text-sm text-text-secondary hover:text-text"
+              >
+                <span
+                  aria-hidden
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-surface-alt text-2xs font-semibold text-text-tertiary"
+                >
+                  {i + 2}
+                </span>
+                <span className="min-w-0 flex-1 truncate">{step.title}</span>
+                {step.amount !== undefined && (
+                  <span className="tabular-nums">
+                    <Private>{formatCurrency(step.amount)}</Private>
+                  </span>
+                )}
+              </Link>
+            </li>
+          ))}
+        </ol>
+      )}
+      <ButtonLink to="/review" className="shrink-0 max-md:w-full">
         Open review
-      </Link>
+      </ButtonLink>
     </section>
   );
 }
@@ -156,6 +189,7 @@ export default function Dashboard() {
           </Button>
         </div>
         {/* Not cards: they keep their own show/hide rules */}
+        <StatusStrip />
         <div className="empty:hidden">
           <Reminder />
         </div>
@@ -179,13 +213,13 @@ export default function Dashboard() {
             }
           />
         ) : (
-          // Each card keeps its own height, so a short card doesn't stretch beside a tall one
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-md:gap-4 items-start">
+          // Cards side by side share a height, so a row ends in one line (Budget beside Bills)
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-md:gap-4">
             {cards.map((id) => (
               <Fragment key={id}>
                 <section
                   data-testid={`home-card-${id}`}
-                  className={`min-w-0 ${isWide(id) ? 'lg:col-span-2' : ''}`}
+                  className={`min-w-0 *:h-full ${isWide(id) ? 'lg:col-span-2' : ''}`}
                 >
                   <HomeCard id={id} phone={factor === 'phone'} />
                 </section>

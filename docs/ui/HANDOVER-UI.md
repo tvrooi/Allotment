@@ -5,6 +5,14 @@ Overwritten at the end of each UI session, never appended. Last written 11 Novem
 
 ## Done this session
 
+- Wave C dashboard (up.170, branch `feat/wave-c-dashboard`): #230 the review card keeps an Open
+  review button at every width, with steps 2 and 3 as quiet rows beside it on wider screens, and
+  Left to spend has a pace bar (`spendingPace`, `monthProgress` in `utils/leftToSpend.ts`). #231
+  `StatusStrip` under the opening line: bank feed freshness (`utils/bankSync.ts`, shared with
+  `UpSyncBadge`) and the default household's balance (`components/household/balanceHeadline.ts`,
+  shared with `BalanceSummary`); always on, not a Customise card; Tax and Files left out (no cheap
+  count). #232 paired cards share a height, desktop Bills lists 3 bills and 2 pay days, one
+  summary disclosure on phones, and `ui/SegmentedControl` replaces the charts' range selects.
 - Search palette, part 1 of #224 (up.169, branch `feat/command-palette-1`): Cmd/Ctrl+K, `/` and
   the phone header's Search open one palette over pages, actions (Add a transaction, Safe mode,
   guides), accounts, categories, payees and goals, from cached lists only; recents on the device;
@@ -44,9 +52,9 @@ Overwritten at the end of each UI session, never appended. Last written 11 Novem
   two groups, and the demo's Files message. Seams: add a group id in `utils/commandPalette.ts`
   `PALETTE_GROUPS` and its entries in `CommandPalette.tsx`.
 - Design re-review at `cf2e2f0`, P0: #226 sidebar set-up rows.
-- P1: #230 dashboard next-step card; #231 dashboard value strip; #235 goal/payee links;
+- P1: #235 goal/payee links;
   #236 transfers step; #237 empty states; #243 desktop row click; #245 undo and keep filters.
-- P2: #232 dashboard grid; #239 onboarding step; #240 headers and pickers;
+- P2: #239 onboarding step; #240 headers and pickers;
   #241 delight moments; #244 split Settings tabs.
 
 ## Decisions
@@ -66,6 +74,8 @@ Overwritten at the end of each UI session, never appended. Last written 11 Novem
 - The date option's stored value changed: `PREFERENCES_VERSION` is 4 with a migration step.
 - Bulk UI text rewrites hit strings the code compares (stored category names); search `server/src`
   and tests for the old text.
+- The dashboard's status strip and the Household band share `balanceHeadline`; the strip's
+  bank pills and the Accounts page's Up badge share `bankSyncLabel`: change wording there once.
 - `E2E_SKIP_BUILD=1` reuses the last client build; run once without it after changing UI text.
 - Global CSS in `index.css` must sit in an `@layer`, or it beats every Tailwind utility.
 

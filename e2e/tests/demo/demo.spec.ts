@@ -36,6 +36,18 @@ test('the demo opens on a finished budget, and every page works', async ({ page 
   await openDemo(page);
   await expect(leftToSpend(page)).toBeVisible();
   await expect(page.getByText('Bills and income')).toBeVisible();
+  // The status strip names the sample's Up feed; the sample has no household to show
+  const strip = page.getByRole('region', { name: 'Budget status' });
+  await expect(strip.getByRole('link', { name: /^Synced from Up / })).toHaveAttribute(
+    'href',
+    '#/settings?tab=connections',
+  );
+  await expect(strip.getByRole('listitem')).toHaveCount(1);
+  await expect(
+    page
+      .getByRole('region', { name: 'Review attention' })
+      .getByRole('link', { name: 'Open review' }),
+  ).toBeVisible();
 
   for (const [route, text] of [
     ['/budget', 'Contents Insurance'],

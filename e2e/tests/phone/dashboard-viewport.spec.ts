@@ -24,6 +24,21 @@ for (const [width, height] of [
     });
     await api.call('PUT', `/budget/${thisMonth()}/${groceries.id}`, { budgeted: 50_000 });
     await open(page, '/dashboard');
+    await page.getByRole('button', { name: 'Hide getting started' }).click();
+    // The next step keeps its button on a phone: full width and big enough to tap
+    const review = page
+      .getByRole('region', { name: 'Review attention' })
+      .getByRole('link', { name: 'Open review', exact: true });
+    await expect(review).toBeVisible();
+    const reviewBox = (await review.boundingBox())!;
+    expect(reviewBox.height).toBeGreaterThanOrEqual(44);
+    expect(reviewBox.x + reviewBox.width).toBeLessThanOrEqual(width);
+    // Left to spend shows its pace: $42.50 of $500 is 9% of the spending money
+    await expect(
+      page
+        .getByTestId('home-card-summary')
+        .getByText(/^9% of spending money used · \d+% through the month$/),
+    ).toBeVisible();
     // The phone keeps the savings target in its history block, behind an Edit link
     const history = page.getByTestId('home-history');
     await history.getByRole('button', { name: 'Edit savings target' }).click();
@@ -40,12 +55,24 @@ for (const [width, height] of [
     expect(await sidewaysOverflow(page)).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath('dashboard.png') });
 
-    // Scrolling can reach the last card and its complete period selector.
-    const comparison = page.getByRole('combobox', { name: 'Compare spending' });
+    // Scrolling can reach the last card and every option of its range control, which
+    // changes what the chart compares with
+    const comparison = page.getByRole('group', { name: 'Compare spending with' });
     await comparison.scrollIntoViewIfNeeded();
-    await expect(comparison).toBeVisible();
-    await comparison.selectOption('month_vs_average');
-    await expect(comparison).toHaveValue('month_vs_average');
+    for (const option of await comparison.getByRole('button').all()) {
+      const box = (await option.boundingBox())!;
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(box.x + box.width).toBeLessThanOrEqual(width);
+    }
+    const average = comparison.getByRole('button', { name: 'Average month', exact: true });
+    await average.click();
+    await expect(average).toHaveAttribute('aria-pressed', 'true');
+    await expect(
+      comparison.getByRole('button', { name: 'Last month', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'false');
+    await expect(
+      page.getByTestId('home-card-spending-comparison').getByTestId('chart-legend'),
+    ).toContainText('Average month (last 12 months)');
     expect(await sidewaysOverflow(page)).toEqual([]);
 
     await page.getByRole('button', { name: 'Customise', exact: true }).click();

@@ -55,7 +55,7 @@ for (const [width, height] of [
       await page.getByRole('button', { name: 'Close menu', exact: true }).click();
       await expect(menu).toBeFocused();
       const headerTop = (await header.boundingBox())!.y;
-      const comparison = page.getByRole('combobox', { name: 'Compare spending' });
+      const comparison = page.getByRole('group', { name: 'Compare spending with' });
       await comparison.scrollIntoViewIfNeeded();
       expect((await header.boundingBox())!.y).toBe(headerTop);
     }

@@ -14,7 +14,7 @@ Dashboard, Budget and Transactions are in the main bundle; every other page is `
 | ---------------------------------------- | ---------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | `/welcome`                               | Welcome.tsx (261)                        | accounts, banks, up, plaid, simplefin, enablebanking | useAccounts, usePlaid, useServer                                     | first-run, first-import, switchers                                           |
 | `/`                                      | redirects to `/dashboard`                |                                                      |                                                                      |                                                                              |
-| `/dashboard`                             | Dashboard.tsx (229)                      | dashboard, review, layout                            | useNextSteps, useIsPhone                                             | dashboard, home-cards, phone/dashboard-viewport                              |
+| `/dashboard`                             | Dashboard.tsx (263)                      | dashboard, review, layout, household, up             | useNextSteps, useIsPhone (StatusStrip: bank and household hooks)     | dashboard, home-cards, safe-mode, phone/dashboard-viewport, demo/demo        |
 | `/budget`                                | Budget.tsx (1457) **split candidate**    | budget                                               | useBudget, useCategories, useConnection, useIsPhone, useMenuKeyboard | budget, budget-inspector, envelope-funding, assign-block, targets            |
 | `/budget/year`, `/budget/year/:year`     | AnnualBudget.tsx (439)                   | (ui only)                                            | none                                                                 | phone/annual-budget-phone                                                    |
 | `/budget/category/:id`                   | CategoryDetail.tsx (357)                 | budget, charts, transactions, files                  | useBudget, useTransactions                                           | budget                                                                       |
@@ -97,9 +97,11 @@ unsaved-drafts, phone/phone, phone/polish-phone, phone/iphone-webapp, phone/amou
 - `Private.tsx`: `Private`, `HiddenAmount`, `PrivateChart`; Safe mode blurring.
 - `QueryProblem.tsx`: `QueryProblem`, `loadFailed`; unavailable or stale data with Retry.
 - `RowMenu.tsx`: `RowMenu`, a row's overflow actions menu.
+- `SegmentedControl.tsx`: `SegmentedControl`, a named group of `aria-pressed` buttons for one choice (Reports' date range, the dashboard charts' ranges).
 - `ScrollCue.tsx`: `ScrollCue`, a hint that a strip scrolls sideways.
 - `Slider.tsx`: `Slider`, range input with value bubble (adapted from shadcn).
-- `StatCard.tsx`: `StatCard`, `StatGrid`.
+- `StatCard.tsx`: `StatCard` (optional `footer`), `StatGrid`.
+- `StatusPill.tsx`: `StatusPill`, a small rounded status link with an optional dot (bank sync, household balance).
 - `tabList.tsx`: `TabList`, `tabIds`, `onTabListKeyDown`; accessible tabs.
 - `Toasts.tsx`: `Toasts`, the toast stack.
 - `UndoToast.tsx`: `UndoToast`, a notice with Undo and Redo.

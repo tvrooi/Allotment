@@ -83,7 +83,7 @@ test('unavailable dashboard data is not shown as empty and can be retried', asyn
   await page.unroute('**/api/reports/spending-comparison*');
   await card.getByRole('button', { name: 'Retry', exact: true }).click();
   await expect(card.getByRole('alert')).toHaveCount(0);
-  await expect(card.getByRole('combobox', { name: 'Compare spending' })).toBeVisible();
+  await expect(card.getByRole('group', { name: 'Compare spending with' })).toBeVisible();
 });
 
 test('a failed refresh keeps earlier dashboard figures with a retry notice', async ({
@@ -136,6 +136,8 @@ test('dashboard chart labels and compact controls keep contrast in both themes',
   for (const dark of [false, true]) {
     await page.evaluate((dark) => document.documentElement.classList.toggle('dark', dark), dark);
     const results = await page.evaluate(() => {
+      // Read the theme's colours, not a colour transition part way through
+      for (const animation of document.getAnimations()) animation.finish();
       const canvas = document.createElement('canvas');
       canvas.width = canvas.height = 1;
       const ctx = canvas.getContext('2d')!;
@@ -158,7 +160,12 @@ test('dashboard chart labels and compact controls keep contrast in both themes',
       };
       const selects = [...document.querySelectorAll<HTMLSelectElement>('main select')];
       const surface = getComputedStyle(selects[0]).backgroundColor;
+      // The charts' range controls: every option, chosen or not, reads against the card
+      const segments = [
+        ...document.querySelectorAll<HTMLButtonElement>('main [role="group"] button[aria-pressed]'),
+      ];
       return {
+        segments: segments.map((el) => contrast(getComputedStyle(el).color, surface)),
         controls: selects.map((el) => {
           const style = getComputedStyle(el);
           return {
@@ -180,7 +187,10 @@ test('dashboard chart labels and compact controls keep contrast in both themes',
         ),
       };
     });
-    expect(results.controls).toHaveLength(3);
+    // The savings target is the one dropdown left; the chart ranges are segmented controls
+    expect(results.controls).toHaveLength(1);
+    expect(results.segments.length).toBeGreaterThanOrEqual(11);
+    for (const ratio of results.segments) expect(ratio).toBeGreaterThanOrEqual(4.5);
     for (const control of results.controls) {
       expect(control.text).toBeGreaterThanOrEqual(4.5);
       expect(control.border).toBeGreaterThanOrEqual(3);
