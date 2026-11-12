@@ -111,9 +111,11 @@ test('Wave D: switching a welcome feature off restores its default setup row', a
   const files = page.getByRole('switch', {
     name: 'Keeping receipts, warranties and documents (Files)',
   });
-  await files.check();
+  await files.click();
+  await expect(files).toBeChecked();
   await expect.poll(async () => (await api.call('GET', '/guides')).navFeatures.files).toBe('shown');
-  await files.uncheck();
+  await files.click();
+  await expect(files).not.toBeChecked();
   await expect
     .poll(async () => (await api.call('GET', '/guides')).navFeatures.files)
     .toBeUndefined();
