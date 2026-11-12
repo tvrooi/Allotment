@@ -1,6 +1,6 @@
 # UI handover
 
-Overwritten at the end of each UI session, never appended. Palette entry updated 12 November 2026 on `feat/command-palette-2`.
+Overwritten at the end of each UI session, never appended. Palette entry updated 12 November 2026 (PR #259).
 Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Older detail: grep `docs/handover/ARCHIVE.md`.
 
 ## Done this session
@@ -13,7 +13,7 @@ Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Ol
   shared with `BalanceSummary`); always on, not a Customise card; Tax and Files left out (no cheap
   count). #232 paired cards share a height, desktop Bills lists 3 bills and 2 pay days, one
   summary disclosure on phones, and `ui/SegmentedControl` replaces the charts' range selects.
-- Search palette, parts 1 and 2 of #224 (up.169/up.171, branch `feat/command-palette-2`):
+- Search palette, parts 1 and 2 of #224 (up.169/up.171, PRs #253 and #259):
   Cmd/Ctrl+K, `/` and phone Search cover pages, actions and cached accounts, categories, payees
   and goals, then read-only Transactions (8 rows plus See all, all dates, details on selection)
   and Files (5 rows, opens the file). Server searches start at two trimmed characters after
@@ -21,8 +21,9 @@ Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Ol
   hidden; offline groups say Not available offline, demo Files explains its availability;
   loading/failure rows are unavailable, amounts use Private at every Safe mode level. Split-note
   matches show the child's note; register, card, details and palette share payee/transfer wording
-  in `transactions/transferLabel.ts`. The orchestrator's first browser run passed 506 tests with
-  4 failures; fix round 1 is ready for its rerun and remaining Safe mode/offline screenshots.
+  in `transactions/transferLabel.ts`. Transaction amounts come from the register's
+  `formatRegisterAmount`, so round-ups and folded transfers read the same in both. Choosing a
+  transaction opens its details only when the row is in the first loaded page of the search.
 - Wave B fixes (up.168): #227 category opens on All time, #228 one Income/Expenses palette in
   the chart kit, #229 category layout, #233 Delete in the details menu plus filter links, #234
   quiet Recurring callout, #238 Reports summary on phones, #242 row arrow and eye names.
