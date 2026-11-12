@@ -40,7 +40,7 @@ Overwritten at the end of each UI session, never appended. Last written 11 Novem
 
 ## In progress
 
-- None committed half-done. `redesign` is ahead of `main`; up.154 to up.166 are prepared, not tagged.
+- None committed half-done. `redesign` is ahead of `main`; up.154 to up.170 are prepared, not tagged.
 
 ## Next up (issues)
 

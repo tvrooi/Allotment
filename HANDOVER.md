@@ -13,7 +13,7 @@ Last updated: 12 November 2026 (design re-review waves on `redesign`; see `docs/
 
 - **Released:** the newest tag is `v0.2.0-up.153`; `main` carries the pre-redesign app.
 - **Live:** `0.2.0-up.149` on the catalog app `24ff2149_flybudget_up` since 9 November 2026, auto update on.
-- **Unreleased on `redesign`:** up.154 to up.169 are prepared (versions and CHANGELOG entries) but not tagged.
+- **Unreleased on `redesign`:** up.154 to up.170 are prepared (versions and CHANGELOG entries) but not tagged.
   The owner has not yet decided how `redesign` is released; do not tag or publish until they do.
 - Design re-review waves (issues #222 to #245) are in progress on `redesign`: status, open PRs and
   the routine are in `docs/ui/WAVES.md`.

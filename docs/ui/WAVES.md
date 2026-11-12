@@ -3,7 +3,7 @@
 How the design re-review backlog (issues #222 to #245) is being worked through on `redesign`, and
 where to pick up. Read after [README.md](README.md) and [HANDOVER-UI.md](HANDOVER-UI.md). Update
 the **Status** and **Open PRs** sections whenever a wave PR opens, merges or is sent back; delete
-this file when Wave F has merged. Last written 12 November 2026 with `redesign` at `28eb8e6`.
+this file when Wave F has merged. Last written 12 November 2026 with `redesign` at `4821d99`.
 
 ## Roles
 
@@ -14,16 +14,16 @@ this file when Wave F has merged. Last written 12 November 2026 with `redesign` 
 
 ## Status
 
-| Wave                | Issues                                   | State                                         |
-| ------------------- | ---------------------------------------- | --------------------------------------------- |
-| A shell             | #222, #223, #225                         | Merged, PR #247, up.167. Issues closed.       |
-| A palette part 1    | #224 (part)                              | Merged, PR #253, up.169. #224 stays open.     |
-| A palette part 2    | #224 (rest)                              | Not started. Next to dispatch.                |
-| B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.       |
-| C dashboard         | #230, #231, #232                         | PR #255 open, up.170, reviewed; see Open PRs. |
-| D discoverability   | #226, #237, #239, #236                   | Not started.                                  |
-| E navigation depth  | #235, #243, #245, #240                   | Not started.                                  |
-| F settings, delight | #244, #241                               | Not started.                                  |
+| Wave                | Issues                                   | State                                     |
+| ------------------- | ---------------------------------------- | ----------------------------------------- |
+| A shell             | #222, #223, #225                         | Merged, PR #247, up.167. Issues closed.   |
+| A palette part 1    | #224 (part)                              | Merged, PR #253, up.169. #224 stays open. |
+| A palette part 2    | #224 (rest)                              | Not started. Next to dispatch.            |
+| B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.   |
+| C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.   |
+| D discoverability   | #226, #237, #239, #236                   | Not started.                              |
+| E navigation depth  | #235, #243, #245, #240                   | Not started.                              |
+| F settings, delight | #244, #241                               | Not started.                              |
 
 Also merged: PR #256, test-only fixes for date- and timing-dependent Household specs.
 
@@ -39,26 +39,21 @@ Not in any wave:
 
 ## Open PRs
 
-- **#255 Wave C** (`feat/wave-c-dashboard`): screenshot review passed for #230, #231 and #232; CI
-  and Codex were clean at `73b0b3b`. The coder was asked on 12 November to rebase onto `28eb8e6`
-  (keeping up.170), run the full desktop, phone, demo and `iphone-webkit` projects, and report.
-  To finish: confirm the push, comment `@codex review`, wait for **CI passed** and a Codex result
-  on the head commit, squash-merge, close #230, #231 and #232 with a comment naming the PR.
-  Owner-overrulable choices are listed in the PR body (status strip always on; three extra
-  connection requests on the Dashboard; Bills capped at 3 bills and 2 pay days; Tax and Files left
-  out of the strip; the stretched Budget card has empty space below its rows).
+- None. The owner can still overrule Wave C's choices, listed in the body of PR #255: the status
+  strip is always on; the Dashboard makes three extra connection requests; Bills is capped at 3
+  bills and 2 pay days; Tax and Files are left out of the strip; the stretched Budget card has
+  empty space below its rows.
 
 ## What to do next, in order
 
-1. Finish #255 as above.
-2. Dispatch **palette part 2** (#224): Files search (`GET /api/files?q=`) and Transactions search
+1. Dispatch **palette part 2** (#224), next version up.171: Files search (`GET /api/files?q=`) and Transactions search
    (`GET /api/transactions?search=`, 8 rows, "See all in Transactions"), both debounced from two
    characters; "Not available offline" for those two groups; "Files are not available in the demo"
    in the demo (its in-browser server answers `/files` with an empty list). Seams are named in
    HANDOVER-UI.md. Close #224 when it merges.
-3. Waves D, E, F, one PR each. D and E both touch the sidebar and shared headers, so run them one
+2. Waves D, E, F, one PR each. D and E both touch the sidebar and shared headers, so run them one
    after the other, not in parallel.
-4. Triage the `needs-triage` issues above with the owner or by the routine in
+3. Triage the `needs-triage` issues above with the owner or by the routine in
    [docs/agents/triage-labels.md](../agents/triage-labels.md).
 
 ## Owner decisions on record
@@ -71,7 +66,7 @@ Not in any wave:
   owner has not been asked to rule on that.
 - **#226:** Household, Tax time and Files show to everyone as dimmed "Set up" rows.
 - **#244:** the Settings split is endorsed.
-- **Release:** undecided. `redesign` carries up.154 to up.169 prepared and untagged. The
+- **Release:** undecided. `redesign` carries up.154 to up.170 prepared and untagged. The
   orchestrator's recommendation is one release from `redesign` soon, because the Safe mode chart
   fix (#246) is a privacy fix; it and the menu fix must appear in the release notes. Do not tag,
   publish or update the live app until the owner decides.
