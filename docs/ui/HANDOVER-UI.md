@@ -1,7 +1,7 @@
 # UI handover
 
-Overwritten at the end of each UI session, never appended. Palette entry updated 12 November 2026 (PR #259).
-Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Older detail: grep `docs/handover/ARCHIVE.md`.
+Overwritten at the end of each UI session, never appended. Wave D and palette entries updated
+12 November 2026 (PRs #262 and #259). Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Older detail: grep `docs/handover/ARCHIVE.md`.
 
 ## Done this session
 

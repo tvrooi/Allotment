@@ -1,7 +1,7 @@
 # UI map
 
-One row per route in `client/src/App.tsx`. Line counts are from `wc -l` on 11 November 2026;
-recount with `wc -l client/src/pages/*.tsx` rather than trusting them. Page files are under
+One row per route in `client/src/App.tsx`. Line counts are snapshots from `wc -l`: Wave D rows were refreshed on 12 November 2026,
+other rows on 11 November. Recount with `wc -l client/src/pages/*.tsx` rather than trusting them. Page files are under
 `client/src/pages/`, component folders under `client/src/components/`, hooks under
 `client/src/hooks/` (only hooks the page imports directly are listed), specs under `e2e/tests/`.
 **split candidate** marks a file over 800 lines.
