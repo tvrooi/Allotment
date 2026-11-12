@@ -1,10 +1,82 @@
 import { describe, expect, it } from 'vitest';
-import { PER_GROUP, fold, matchRank, paletteSections, type PaletteEntry } from './commandPalette';
+import type { Transaction } from '../types';
+import { formatRegisterAmount } from '../components/transactions/RoundUp';
+import { formatMoney } from './currency';
+import {
+  PER_GROUP,
+  paletteCanSearch,
+  paletteResultCount,
+  fold,
+  matchRank,
+  paletteSections,
+  paletteTransactionNote,
+  paletteTransactionResult,
+  type PaletteEntry,
+} from './commandPalette';
 
 const entry = (group: PaletteEntry['group'], label: string): PaletteEntry => ({
   id: `${group}:${label}`,
   group,
   label,
+});
+
+describe('palette transaction amounts', () => {
+  const tx: Transaction = {
+    id: 'purchase',
+    accountId: 'spending',
+    date: '2026-01-01',
+    amount: -452,
+    payeeId: null,
+    payeeName: 'Corner Store',
+    categoryId: null,
+    notes: null,
+    reconciled: 0,
+    transferTransactionId: null,
+    isParent: 0,
+    parentTransactionId: null,
+    importedId: null,
+    importedPayee: null,
+    scheduleId: null,
+    createdAt: '2026-01-01',
+    roundUp: { amount: -48, transactionId: 'round-up', toAccountName: 'Savings', boost: null },
+  };
+
+  it('shows the same purchase total including its round-up as the register', () => {
+    const result = paletteTransactionResult(tx, 'corner', () => 'Spending', 'AUD');
+    expect(result.amount).toBe(formatMoney(-500, 'AUD'));
+    expect(result.amount).toBe(formatRegisterAmount(tx, 'AUD'));
+  });
+
+  it('keeps folded transfer amounts neutral for either stored side', () => {
+    for (const amount of [-500, 500]) {
+      const transfer = { ...tx, amount, roundUp: undefined, transferPair: true };
+      const result = paletteTransactionResult(transfer, 'corner', () => 'Spending', 'AUD');
+      expect(result.amount).toBe(formatMoney(500, 'AUD'));
+      expect(result.amount).toBe(formatRegisterAmount(transfer, 'AUD'));
+    }
+  });
+});
+
+describe('paletteTransactionNote', () => {
+  const tx = {
+    payeeName: 'Corner Store',
+    notes: 'Weekly shop',
+    children: [{ notes: 'Food' }, { notes: 'Palette secret café note' }],
+  };
+
+  it('shows the matching split child note, including when the parent has no note', () => {
+    expect(paletteTransactionNote(tx, 'SECRET CAFE')).toBe('Palette secret café note');
+    expect(paletteTransactionNote({ ...tx, notes: null }, 'secret')).toBe(
+      'Palette secret café note',
+    );
+  });
+
+  it('uses a matching parent note, but leaves account details for payee-only or absent matches', () => {
+    expect(paletteTransactionNote(tx, 'weekly')).toBe('Weekly shop');
+    expect(paletteTransactionNote(tx, 'corner')).toBeUndefined();
+    expect(paletteTransactionNote(tx, 'missing')).toBeUndefined();
+    expect(paletteTransactionNote({ ...tx, payeeName: 'Secret shop' }, 'secret')).toBeUndefined();
+  });
 });
 
 describe('matchRank', () => {
@@ -91,5 +163,40 @@ describe('paletteSections', () => {
 
   it('finds nothing for a query nothing matches', () => {
     expect(paletteSections(entries, 'zzz')).toEqual([]);
+  });
+});
+
+describe('server search groups', () => {
+  const transactions = Array.from({ length: 8 }, (_, i) => entry('transactions', `Unmatched ${i}`));
+  const files = [entry('files', 'Unmatched file')];
+  it('keeps server order and all eight rows after cached groups, without label matching', () => {
+    const all = [
+      ...files,
+      ...transactions,
+      entry('transactions', 'See all in Transactions'),
+      entry('goals', 'Coffee goal'),
+    ];
+    const sections = paletteSections(all, 'coffee');
+    expect(sections.map((s) => s.group)).toEqual(['goals', 'transactions', 'files']);
+    expect(sections[1].items).toEqual([...transactions, all[9]]);
+    expect(sections[2].items).toEqual(files);
+  });
+  it('omits server groups below two trimmed characters', () => {
+    for (const q of ['', ' ', ' a ']) {
+      expect(paletteCanSearch(q)).toBe(false);
+      expect(paletteSections([...transactions, ...files], q)).toEqual([]);
+    }
+    expect(paletteCanSearch(' ab ')).toBe(true);
+  });
+  it('does not count message rows', () => {
+    const sections = paletteSections(
+      [
+        entry('transactions', 'Coffee'),
+        { ...entry('files', 'Searching…'), message: true, unavailable: 'Searching…' },
+      ],
+      'coffee',
+    );
+    expect(sections.map((s) => s.group)).toEqual(['transactions', 'files']);
+    expect(paletteResultCount(sections)).toBe(1);
   });
 });

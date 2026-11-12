@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.0-up.171
+
+- **Find transactions and files from Search.** The palette now searches payees and notes across all transaction dates and finds files by the existing Files search. Type two characters to start; choose a transaction to open its details or See all in Transactions for the full search. Files open directly, and stay out of Search when the feature is hidden. These searches pause offline while cached destinations still work, the demo explains Files availability, and Safe mode hides every result amount. Search results are never saved as recents or in the offline copy.
+
 ## 0.2.0-up.170
 
 - **A Dashboard that keeps its next step and says how things stand.** The review card always has an Open review button, full width and easy to tap on phones, and on wider screens the next two steps sit beside the first as quiet rows instead of leaving an empty row. Left to spend gains a slim pace bar and one line: how much of this month's spending money is used beside how far through the month you are, red only when you're overspent, with the share hidden in Safe mode. Under the opening line a small status strip shows how fresh each bank feed is (Up, Plaid, SimpleFIN, Enable Banking) and, when you have a household, who owes whom, each linking to its page; with nothing to say it isn't there. Cards side by side now end together, and Bills and income lists three bills and two pay days on wide screens with the rest a View all away. On phones the summary has one "How these figures are calculated" instead of two. The Net worth and Spending comparison cards choose their range with the same segmented buttons as Reports instead of dropdowns.

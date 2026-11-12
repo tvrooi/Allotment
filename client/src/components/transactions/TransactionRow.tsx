@@ -1,4 +1,4 @@
-import { transferLabel } from './transferLabel';
+import { transactionPayeeName } from './transferLabel';
 import { useAccountName } from '../../hooks/useAccounts';
 import { RowMarks } from './TransactionMarks';
 import { formatRegisterAmount, RoundUpMark } from './RoundUp';
@@ -76,8 +76,7 @@ export function TransactionRow({
   const roundUpOf = tx.roundUpOf ? (tx.roundUpOf.payeeName ?? 'a purchase') : null;
 
   const accountNameOf = useAccountName();
-  const payeeName =
-    transferLabel(tx, accountNameOf) ?? (tx.payeeName || (isTransfer ? 'Transfer' : '—'));
+  const payeeName = transactionPayeeName(tx, accountNameOf);
   const payee = useMemo(
     () => (tx.payeeId ? payees.find((p) => p.id === tx.payeeId) : undefined),
     [payees, tx.payeeId],

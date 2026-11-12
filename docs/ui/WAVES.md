@@ -14,16 +14,16 @@ this file when Wave F has merged. Last written 12 November 2026 with `redesign` 
 
 ## Status
 
-| Wave                | Issues                                   | State                                     |
-| ------------------- | ---------------------------------------- | ----------------------------------------- |
-| A shell             | #222, #223, #225                         | Merged, PR #247, up.167. Issues closed.   |
-| A palette part 1    | #224 (part)                              | Merged, PR #253, up.169. #224 stays open. |
-| A palette part 2    | #224 (rest)                              | Not started. Next to dispatch.            |
-| B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.   |
-| C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.   |
-| D discoverability   | #226, #237, #239, #236                   | Not started.                              |
-| E navigation depth  | #235, #243, #245, #240                   | Not started.                              |
-| F settings, delight | #244, #241                               | Not started.                              |
+| Wave                | Issues                                   | State                                                            |
+| ------------------- | ---------------------------------------- | ---------------------------------------------------------------- |
+| A shell             | #222, #223, #225                         | Merged, PR #247, up.167. Issues closed.                          |
+| A palette part 1    | #224 (part)                              | Merged, PR #253, up.169. #224 stays open.                        |
+| A palette part 2    | #224 (rest)                              | Fix round 1 ready, up.171; orchestrator's browser rerun pending. |
+| B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.                          |
+| C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.                          |
+| D discoverability   | #226, #237, #239, #236                   | Not started.                                                     |
+| E navigation depth  | #235, #243, #245, #240                   | Not started.                                                     |
+| F settings, delight | #244, #241                               | Not started.                                                     |
 
 Also merged: PR #256, test-only fixes for date- and timing-dependent Household specs.
 
@@ -46,11 +46,11 @@ Not in any wave:
 
 ## What to do next, in order
 
-1. Dispatch **palette part 2** (#224), next version up.171: Files search (`GET /api/files?q=`) and Transactions search
-   (`GET /api/transactions?search=`, 8 rows, "See all in Transactions"), both debounced from two
-   characters; "Not available offline" for those two groups; "Files are not available in the demo"
-   in the demo (its in-browser server answers `/files` with an empty list). Seams are named in
-   HANDOVER-UI.md. Close #224 when it merges.
+1. Rerun the full desktop, phone, demo and server-mode e2e projects for **palette part 2**
+   (#224, up.171) outside the sandbox after fix round 1, and capture the remaining Safe mode
+   and offline evidence. The first external run passed 506 tests with 4 failures; causes and
+   fixes are in `.omc/research/report-224-part2.md`. Review its PR against `redesign`; close #224
+   when it merges.
 2. Waves D, E, F, one PR each. D and E both touch the sidebar and shared headers, so run them one
    after the other, not in parallel.
 3. Triage the `needs-triage` issues above with the owner or by the routine in
@@ -66,7 +66,7 @@ Not in any wave:
   owner has not been asked to rule on that.
 - **#226:** Household, Tax time and Files show to everyone as dimmed "Set up" rows.
 - **#244:** the Settings split is endorsed.
-- **Release:** undecided. `redesign` carries up.154 to up.170 prepared and untagged. The
+- **Release:** undecided. `redesign` carries up.154 to up.171 prepared and untagged. The
   orchestrator's recommendation is one release from `redesign` soon, because the Safe mode chart
   fix (#246) is a privacy fix; it and the menu fix must appear in the release notes. Do not tag,
   publish or update the live app until the owner decides.

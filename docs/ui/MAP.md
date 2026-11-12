@@ -53,9 +53,14 @@ unsaved-drafts, phone/phone, phone/polish-phone, phone/iphone-webapp, phone/amou
 - `components/layout/navPages.ts`: the one list of pages (path, label, icon, section, optional
   feature) that the sidebar and the search palette both read; `MORE_FEATURES_LINK`.
 - `components/layout/CommandPalette.tsx` (lazy): search palette over pages, actions, accounts,
-  categories, payees and goals; opened by `store/commandPaletteStore.ts`, Cmd/Ctrl+K and `/`
+  categories, payees and goals, plus debounced read-only transactions/files search; opened by `store/commandPaletteStore.ts`, Cmd/Ctrl+K and `/`
   (`hooks/useCommandPaletteKeyboard.ts`, guard `isPaletteShortcut`) and the phone header's
-  Search. Ranking in `utils/commandPalette.ts`; recents in `utils/paletteRecents.ts`.
+  Search. Ranking/grouping and the shared search label in `utils/commandPalette.ts`; recents in
+  `utils/paletteRecents.ts`. Transaction selection passes one initial detail id through
+  `pages/Transactions.tsx` to `components/transactions/TransactionTable.tsx`.
+  Payee/transfer labels share `components/transactions/transferLabel.ts` with the register and details.
+  Transaction result rows are built in `utils/commandPalette.ts`, using the register's
+  `components/transactions/RoundUp.tsx` amount formatter for round-ups and folded transfers.
 - `components/guide/KeyboardShortcuts.tsx`: the shortcut list in the guides dialog.
 - `components/layout/PhoneTabBar.tsx`: phone tab bar (Home, Transactions, Add, Budget, Review).
 - Specs: navigation, dialog-focus, transactions ("Add transaction from any page"), command-palette,
