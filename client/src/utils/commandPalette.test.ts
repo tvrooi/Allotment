@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import type { Transaction } from '../types';
+import { formatRegisterAmount } from '../components/transactions/RoundUp';
+import { formatMoney } from './currency';
 import {
   PER_GROUP,
   paletteCanSearch,
@@ -7,6 +10,7 @@ import {
   matchRank,
   paletteSections,
   paletteTransactionNote,
+  paletteTransactionResult,
   type PaletteEntry,
 } from './commandPalette';
 
@@ -14,6 +18,43 @@ const entry = (group: PaletteEntry['group'], label: string): PaletteEntry => ({
   id: `${group}:${label}`,
   group,
   label,
+});
+
+describe('palette transaction amounts', () => {
+  const tx: Transaction = {
+    id: 'purchase',
+    accountId: 'spending',
+    date: '2026-01-01',
+    amount: -452,
+    payeeId: null,
+    payeeName: 'Corner Store',
+    categoryId: null,
+    notes: null,
+    reconciled: 0,
+    transferTransactionId: null,
+    isParent: 0,
+    parentTransactionId: null,
+    importedId: null,
+    importedPayee: null,
+    scheduleId: null,
+    createdAt: '2026-01-01',
+    roundUp: { amount: -48, transactionId: 'round-up', toAccountName: 'Savings', boost: null },
+  };
+
+  it('shows the same purchase total including its round-up as the register', () => {
+    const result = paletteTransactionResult(tx, 'corner', () => 'Spending', 'AUD');
+    expect(result.amount).toBe(formatMoney(-500, 'AUD'));
+    expect(result.amount).toBe(formatRegisterAmount(tx, 'AUD'));
+  });
+
+  it('keeps folded transfer amounts neutral for either stored side', () => {
+    for (const amount of [-500, 500]) {
+      const transfer = { ...tx, amount, roundUp: undefined, transferPair: true };
+      const result = paletteTransactionResult(transfer, 'corner', () => 'Spending', 'AUD');
+      expect(result.amount).toBe(formatMoney(500, 'AUD'));
+      expect(result.amount).toBe(formatRegisterAmount(transfer, 'AUD'));
+    }
+  });
 });
 
 describe('paletteTransactionNote', () => {

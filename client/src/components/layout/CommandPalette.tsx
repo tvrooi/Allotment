@@ -30,9 +30,7 @@ import { getTransactions } from '../../api/transactions';
 import { listFiles } from '../../api/files';
 import { IS_DEMO } from '../../demo/isDemo';
 import { formatDay } from '../../utils/dates';
-import { formatMoney } from '../../utils/currency';
 import { Private } from '../ui/Private';
-import { transactionPayeeName } from '../transactions/transferLabel';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { useAddTransactionStore } from '../../store/addTransactionStore';
 import { useGuideStore } from '../../store/guideStore';
@@ -43,7 +41,7 @@ import {
   paletteCanSearch,
   paletteResultCount,
   paletteSections,
-  paletteTransactionNote,
+  paletteTransactionResult,
   type PaletteEntry,
 } from '../../utils/commandPalette';
 import { readRecents, rememberRecent } from '../../utils/paletteRecents';
@@ -54,7 +52,7 @@ import { MORE_FEATURES_LINK, NAV_PAGES } from './navPages';
 
 interface Result extends PaletteEntry {
   icon: LucideIcon;
-  amount?: { value: number; currency: string | null };
+  amount?: string;
   /** A second, quieter line: a category's group, where a recent goes */
   detail?: string;
   /** "Set up": a page for a feature the sidebar leaves out */
@@ -256,19 +254,11 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
     else if (transactions.isError) serverResults.push(message('transactions', 'Search failed'));
     else if (transactions.data.length) {
       serverResults.push(
-        ...transactions.data.slice(0, 8).map<Result>((tx) => {
-          const matchingNote = paletteTransactionNote(tx, trimmed);
-          return {
-            id: `transaction:${tx.id}`,
-            group: 'transactions',
-            label: transactionPayeeName(tx, accountNameOf),
-            icon: ArrowLeftRight,
-            detail: `${formatDay(tx.date)} · ${matchingNote ?? accountNameOf(tx.accountId) ?? ''}`,
-            amount: { value: tx.amount, currency: accountCurrency(tx.accountId) },
-            to: searchLink,
-            state: { transactionDetailId: tx.id },
-          };
-        }),
+        ...transactions.data.slice(0, 8).map<Result>((tx) => ({
+          ...paletteTransactionResult(tx, trimmed, accountNameOf, accountCurrency(tx.accountId)),
+          icon: ArrowLeftRight,
+          to: searchLink,
+        })),
         {
           id: 'transactions:all',
           group: 'transactions',
@@ -455,7 +445,7 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
                       </span>
                       {item.amount && (
                         <span className="shrink-0 text-sm tabular-nums text-text">
-                          <Private>{formatMoney(item.amount.value, item.amount.currency)}</Private>
+                          <Private>{item.amount}</Private>
                         </span>
                       )}
                       {item.badge && (

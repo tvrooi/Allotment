@@ -1,6 +1,9 @@
-// The search palette's matching and grouping (components/layout/CommandPalette.tsx): pure, so
-// it is tested on its own. Server matches keep their returned order.
+// The search palette's matching, grouping and transaction rows (layout/CommandPalette.tsx),
+// tested independently. Server matches keep their returned order.
 import type { Transaction } from '../types';
+import { transactionPayeeName } from '../components/transactions/transferLabel';
+import { formatRegisterAmount } from '../components/transactions/RoundUp';
+import { formatDay } from './dates';
 
 export type PaletteGroupId =
   | 'recent'
@@ -64,6 +67,24 @@ export function paletteTransactionNote(
     [tx, ...(tx.children ?? [])].find((part) => part.notes && fold(part.notes).includes(q))
       ?.notes ?? undefined
   );
+}
+
+/** Transaction search rows use the register's labels and listed amounts. */
+export function paletteTransactionResult(
+  tx: Transaction,
+  query: string,
+  accountName: (id: string) => string | undefined,
+  currency: string | null,
+) {
+  const matchingNote = paletteTransactionNote(tx, query);
+  return {
+    id: `transaction:${tx.id}`,
+    group: 'transactions' as const,
+    label: transactionPayeeName(tx, accountName),
+    detail: `${formatDay(tx.date)} · ${matchingNote ?? accountName(tx.accountId) ?? ''}`,
+    amount: formatRegisterAmount(tx, currency),
+    state: { transactionDetailId: tx.id },
+  };
 }
 
 /**
