@@ -49,16 +49,16 @@ function NavItem({ to, icon, label, collapsed, badge, setup }: NavItemProps) {
         }`
       }
     >
-      <span
-        aria-hidden
-        className={
-          setup
-            ? 'shrink-0 opacity-60 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100'
-            : 'shrink-0'
-        }
-      >
-        {icon}
-      </span>
+      {setup ? (
+        <span
+          aria-hidden
+          className="shrink-0 opacity-60 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
+        >
+          {icon}
+        </span>
+      ) : (
+        icon
+      )}
       <span
         className={`truncate transition-opacity duration-200 ${
           collapsed ? 'opacity-0' : 'opacity-100'
