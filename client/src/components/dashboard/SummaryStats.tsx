@@ -13,6 +13,7 @@ import {
   spendingPace,
 } from '../../utils/leftToSpend';
 import { Private } from '../ui/Private';
+import { todayIso } from '../../utils/calendarDay';
 import { useHideBalances } from '../../utils/safeMode';
 import { useGoals } from '../../hooks/useGoals';
 import { StatCard, StatGrid } from '../ui/StatCard';
@@ -105,7 +106,7 @@ export default function SummaryStats({ currentMonth, section = 'all' }: Props) {
   } = envelopeLeftToSpend(budgetData, savingsCategoryIds(goals));
   const pace = spendingPace(budgetData, savingsCategoryIds(goals), {
     month: currentMonth,
-    today: format(new Date(), 'yyyy-MM-dd'),
+    today: todayIso(),
   });
 
   const ltsColor =

@@ -28,7 +28,10 @@ export function bankFeeds(connections: BankConnectionState[]): BankFeed[] {
       continue;
     }
     if (RANK[state] > RANK[seen.state]) seen.state = state;
-    if (seen.lastSyncedAt && (!c.lastSyncedAt || c.lastSyncedAt < seen.lastSyncedAt))
+    if (
+      seen.lastSyncedAt &&
+      (!c.lastSyncedAt || new Date(c.lastSyncedAt) < new Date(seen.lastSyncedAt))
+    )
       seen.lastSyncedAt = c.lastSyncedAt;
   }
   return [...feeds.values()];

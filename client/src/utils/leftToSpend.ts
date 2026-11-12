@@ -1,5 +1,8 @@
 import type { BudgetCategory, BudgetGroup, Goal } from '../types';
+import { endOfMonth, getDaysInMonth, parseISO } from 'date-fns';
 import { categoryFigures } from './budgetFigures';
+import { isIsoDay } from './calendarDay';
+import { isMonth } from './dateRange';
 
 /**
  * Envelopes that hold savings rather than this month's spending money: a category whose type
@@ -36,24 +39,19 @@ export function leftToSpend(groups: BudgetGroup[], goalCategories = new Set<stri
   return { left, setAside, planned };
 }
 
-const MONTH = /^(\d{4})-(0[1-9]|1[0-2])$/;
-const daysIn = (year: number, month: number) => new Date(Date.UTC(year, month, 0)).getUTCDate();
-
 /**
  * How far through `month` (YYYY-MM) `today` (YYYY-MM-DD) is, as a whole percentage of its days
- * with today counted: 0 before the month, 100 once it's over. Throws on a date that isn't real.
+ * with today counted: 0 before the month, 100 once it's over. Throws on a month or day that
+ * isn't real (`isMonth`, `isIsoDay`).
  */
 export function monthProgress(month: string, today: string): number {
-  const m = MONTH.exec(month);
-  const t = /^(\d{4}-\d{2})-(\d{2})$/.exec(today);
-  const tm = t && MONTH.exec(t[1]);
-  if (!m || !t || !tm) throw new Error(`Not a month and day: ${month}, ${today}`);
-  const day = Number(t[2]);
-  if (day < 1 || day > daysIn(Number(tm[1]), Number(tm[2])))
-    throw new Error(`Not a real date: ${today}`);
-  if (t[1] < month) return 0;
-  if (t[1] > month) return 100;
-  return Math.round((day * 100) / daysIn(Number(m[1]), Number(m[2])));
+  if (!isMonth(month) || !isIsoDay(today))
+    throw new Error(`Not a month and day: ${month}, ${today}`);
+  const start = parseISO(`${month}-01`);
+  const day = parseISO(today);
+  if (day < start) return 0;
+  if (day > endOfMonth(start)) return 100;
+  return Math.round((day.getDate() * 100) / getDaysInMonth(start));
 }
 
 /**
