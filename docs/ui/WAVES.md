@@ -43,7 +43,7 @@ Not in any wave:
 
 ## Open PRs
 
-- Wave D: [PR #262](https://github.com/tvrooi/Allotment/pull/262), discoverability (draft while full checks run).
+- Wave D: [PR #262](https://github.com/tvrooi/Allotment/pull/262), discoverability.
 - The owner can still overrule Wave C's choices, listed in the body of PR #255: the status
   strip is always on; the Dashboard makes three extra connection requests; Bills is capped at 3
   bills and 2 pay days; Tax and Files are left out of the strip; the stretched Budget card has

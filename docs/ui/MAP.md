@@ -22,7 +22,7 @@ Dashboard, Budget and Transactions are in the main bundle; every other page is `
 | `/accounts/:id/reconcile`                | ReconcilePage.tsx (374)                  | (ui only)                                            | none                                                                 | accounts, financial-integrity                                                |
 | `/accounts/:id`                          | AccountTransactions.tsx (122)            | accounts, transactions, files                        | useAccounts                                                          | accounts, transactions                                                       |
 | `/transactions`                          | Transactions.tsx (168)                   | transactions, receipts                               | useOpenFromLink                                                      | transactions, transaction-clarity, transaction-filters, transaction-presets  |
-| `/household`                             | Household.tsx (1593) **split candidate** | household                                            | useAccounts, useSchedules, useTransactions, useConnection            | household, household-categories, housemate-money, phone/household-menu-phone |
+| `/household`                             | Household.tsx (1595) **split candidate** | household                                            | useAccounts, useSchedules, useTransactions, useConnection            | household, household-categories, housemate-money, phone/household-menu-phone |
 | `/payment-plans`                         | PaymentPlans.tsx (157)                   | plans                                                | useAccounts, useConnection, usePaymentPlans                          | payment-plans                                                                |
 | `/recurring`                             | RecurringTransactions.tsx (221)          | recurring                                            | useSchedules, useOpenFromLink                                        | recurring                                                                    |
 | `/cash-flow`                             | CashFlow.tsx (1328) **split candidate**  | reports, transactions                                | useReports, useIsPhone                                               | cash-flow                                                                    |
@@ -70,7 +70,7 @@ unsaved-drafts, phone/phone, phone/polish-phone, phone/iphone-webapp, phone/amou
 
 - `components/transactions/ImportModal.tsx` (1147)
 - `components/reports/ReportDetail.tsx` (1067)
-- `components/forecast/CashRunway.tsx` (1050)
+- `components/forecast/CashRunway.tsx` (1056)
 - `components/tax/Assets.tsx` (910)
 - `components/budget/PaydayPlan.tsx` (903)
 - `components/longterm/LongTermForecast.tsx` (904)
