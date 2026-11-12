@@ -864,10 +864,13 @@ test.describe('one click model on desktop rows (#243) and Back (#245)', () => {
     await expect(details).toBeHidden();
     const toast = page.getByTestId('undo-toast');
     await expect(toast).toContainText('Mock Bakery categorised as Groceries.');
+    // Undo reverses exactly the category: a note added since stays
+    await api.call('PUT', `/transactions/${tx.id}`, { notes: 'Added elsewhere' });
     await toast.getByRole('button', { name: 'Undo' }).click();
     await expect
       .poll(async () => (await api.transactions()).find((t) => t.id === tx.id)?.categoryId)
       .toBeNull();
+    expect((await api.transactions()).find((t) => t.id === tx.id)?.notes).toBe('Added elsewhere');
   });
 
   test("Back returns to an account's filters and the register's scroll; a fresh visit starts afresh", async ({
@@ -908,4 +911,104 @@ test.describe('one click model on desktop rows (#243) and Back (#245)', () => {
     await expect(row(page, 'Mock Shop 59')).toHaveCount(0);
     await expect.poll(() => register.evaluate((el) => el.scrollTop)).toBe(0);
   });
+
+  test('a filter change keeps the scroll for Back, though it replaces the history entry', async ({
+    page,
+    api,
+  }) => {
+    const { checking } = await setup(api);
+    for (let i = 0; i < 60; i++) {
+      await api.createTransaction({
+        accountId: checking.id,
+        date: isoDay(-i),
+        amount: -(100 + i),
+        payeeName: `Mock Shop ${String(i).padStart(2, '0')}`,
+      });
+    }
+    await open(page, `/accounts/${checking.id}?range=all`);
+    const register = row(page, 'Mock Shop 00')
+      .locator('xpath=ancestor::div[contains(@class, "overflow-y-auto")][1]')
+      .first();
+    await expect(row(page, 'Mock Shop 59')).toBeAttached();
+    // Every row is uncategorised, so with both lists loaded once, the filter swaps one list for
+    // the same rows at once, and the page keeps its offset while the URL entry is replaced
+    const uncategorised = page.getByRole('button', { name: 'Uncategorised', exact: true }).first();
+    await uncategorised.click();
+    await expect(page).toHaveURL(/uncategorized=1/);
+    await expect(row(page, 'Mock Shop 59')).toBeAttached();
+    await uncategorised.click();
+    await expect(page).not.toHaveURL(/uncategorized=1/);
+    await expect(row(page, 'Mock Shop 59')).toBeAttached();
+    await register.evaluate((el) => (el.scrollTop = 1200));
+    await expect.poll(() => register.evaluate((el) => el.scrollTop)).toBe(1200);
+    await uncategorised.click();
+    await expect(page).toHaveURL(/uncategorized=1/);
+    await expect(row(page, 'Mock Shop 59')).toBeAttached();
+    const before = await register.evaluate((el) => el.scrollTop);
+    expect(before).toBeGreaterThan(500);
+    // Away without scrolling the list, then Back
+    await page
+      .getByRole('navigation', { name: 'Main' })
+      .getByRole('link', { name: 'Budget' })
+      .click();
+    await expect(page).toHaveURL(/#\/budget/);
+    await page.goBack();
+    await expect(page).toHaveURL(/uncategorized=1/);
+    await expect(row(page, 'Mock Shop 59')).toBeAttached();
+    await expect.poll(() => register.evaluate((el) => el.scrollTop)).toBe(before);
+  });
+
+  for (const phone of [false, true]) {
+    test(`the follow-up and undo toasts form one tidy stack${phone ? ' on a phone' : ''}`, async ({
+      page,
+      api,
+    }) => {
+      if (phone) await page.setViewportSize({ width: 390, height: 844 });
+      const { checking } = await setup(api);
+      for (const day of [0, -1]) {
+        await api.createTransaction({
+          accountId: checking.id,
+          date: isoDay(day),
+          amount: -1_250,
+          payeeName: 'Mock Bakery',
+        });
+      }
+      await open(page, `/accounts/${checking.id}`);
+      if (phone) {
+        await page.getByTestId('transaction-card').first().click();
+        const panel = page.getByRole('complementary', { name: 'Transaction details' });
+        await panel.getByRole('button', { name: 'Uncategorised' }).click();
+      } else {
+        await page
+          .getByRole('button', { name: 'Category for Mock Bakery: Uncategorised' })
+          .first()
+          .click();
+      }
+      await page.getByRole('textbox', { name: 'Search categories' }).fill('Groceries');
+      await page.keyboard.press('Enter');
+      const followup = page.getByRole('status', { name: 'Category follow-up' });
+      const undo = page.getByTestId('undo-toast');
+      await expect(followup).toBeVisible();
+      await expect(undo).toBeVisible();
+      const a = (await followup.boundingBox())!;
+      const b = (await undo.boundingBox())!;
+      // One column: the same width and centre, one gap, the undo toast under the follow-up
+      expect(Math.round(a.width)).toBe(Math.round(b.width));
+      expect(Math.round(a.x)).toBe(Math.round(b.x));
+      expect(Math.round(b.y - (a.y + a.height))).toBe(8);
+      const view = page.viewportSize()!;
+      expect(a.x).toBeGreaterThanOrEqual(0);
+      expect(a.x + a.width).toBeLessThanOrEqual(view.width);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(view.width);
+      if (phone) {
+        const tabs = (await page.getByRole('navigation', { name: 'Main pages' }).boundingBox())!;
+        expect(b.y + b.height).toBeLessThanOrEqual(tabs.y);
+      }
+      // Neither toast lost its actions
+      await expect(
+        followup.getByRole('button', { name: 'Always use for this payee' }),
+      ).toBeVisible();
+      await expect(undo.getByRole('button', { name: 'Undo' })).toBeVisible();
+    });
+  }
 });

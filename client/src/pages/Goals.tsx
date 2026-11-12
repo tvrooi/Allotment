@@ -121,7 +121,19 @@ function GoalRow({
         <GoalIcon goal={goal} />
         <div className="min-w-0 flex-1">
           <span className="text-sm font-medium text-text truncate flex items-center gap-2">
-            {goal.name}
+            {goal.categoryId ? (
+              // Says where the row leads; the row's own click and Enter go the same way
+              <Link
+                to={`/budget/category/${goal.categoryId}`}
+                aria-label={`${goal.name}: open ${goal.categoryName ?? 'its category'} in Budget`}
+                onClick={(e) => e.stopPropagation()}
+                className="truncate hover:text-brand-600"
+              >
+                {goal.name}
+              </Link>
+            ) : (
+              goal.name
+            )}
             {goal.status !== 'active' && (
               <span className="text-2xs font-medium rounded px-1.5 py-0.5 bg-surface-alt text-text-secondary">
                 {STATUS_LABEL[goal.status]}
@@ -178,6 +190,15 @@ function GoalRow({
               { label: 'Delete goal', onClick: onDelete, danger: true },
             ]}
           />
+          {/* A quiet cue that this row leads to its category (#235); a hand-tracked row has none */}
+          {goal.categoryId && (
+            <ChevronRight
+              size={16}
+              aria-hidden
+              data-testid="goal-opens-category"
+              className="text-text-tertiary shrink-0"
+            />
+          )}
         </div>
       </div>
 

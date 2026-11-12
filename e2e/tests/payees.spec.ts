@@ -183,4 +183,46 @@ test.describe('payees', () => {
     await expect(page.getByPlaceholder('Search payees…')).toHaveValue('amz');
     await expect(row(page, 'Amazon')).toBeHidden();
   });
+
+  test("a payee page's failed requests say so, never zeros or 'no rules' (#235)", async ({
+    page,
+    api,
+  }) => {
+    await seed(api);
+    const amazon = (await api.call<{ id: string; name: string }[]>('GET', '/payees')).find(
+      (p) => p.name === 'Amazon',
+    )!;
+    let refusing = true;
+    const refuse = (path: string) =>
+      page.route(
+        (url) => url.pathname === path,
+        (route) =>
+          refusing && route.request().method() === 'GET'
+            ? route.fulfill({
+                status: 422,
+                contentType: 'application/json',
+                body: JSON.stringify({ error: 'The server refused this for the test.' }),
+              })
+            : route.continue(),
+      );
+    await refuse('/api/transactions/summary');
+    await refuse('/api/rules');
+    await refuse('/api/transactions');
+    await open(page, `/payees/${amazon.id}`);
+    const summary = page.getByRole('region', { name: 'Summary' });
+    await expect(summary.getByRole('alert')).toContainText('Couldn’t load your totals');
+    await expect(summary).not.toContainText('$0');
+    const rules = page.getByRole('region', { name: 'Rules' });
+    await expect(rules.getByRole('alert')).toContainText('Couldn’t load your rules');
+    await expect(rules).not.toContainText('No rules');
+    const chart = page.getByRole('region', { name: 'Spending by month' });
+    await expect(chart.getByRole('alert')).toContainText('Couldn’t load your spending');
+    await expect(chart).not.toContainText('No spending');
+
+    refusing = false;
+    await summary.getByRole('button', { name: 'Retry' }).click();
+    await expect(summary).toContainText('Total spent$16');
+    await rules.getByRole('button', { name: 'Retry' }).click();
+    await expect(rules).toContainText('No rules mention Amazon.');
+  });
 });

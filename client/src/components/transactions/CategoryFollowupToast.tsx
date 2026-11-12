@@ -50,7 +50,7 @@ export function CategoryFollowupToast() {
           onPointerLeave={() => setHolding(false)}
           onFocus={() => setHolding(true)}
           onBlur={() => setHolding(false)}
-          className="pointer-events-auto flex flex-wrap items-center gap-x-4 gap-y-1 max-w-[min(720px,100%)] bg-text text-surface rounded-lg shadow-lg px-4 py-2.5 text-sm"
+          className="pointer-events-auto flex flex-wrap items-center gap-x-4 gap-y-1 bg-text text-surface rounded-lg shadow-lg px-4 py-2.5 text-sm"
         >
           <span className="min-w-0">
             <strong className="font-semibold">{offer.categoryName}</strong> for {offer.payeeName}.

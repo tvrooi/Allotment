@@ -28,7 +28,7 @@ export interface Scroller {
 }
 
 /** Calls onChange whenever the container's content may have grown; returns a stop function */
-type Watch = (onChange: () => void) => () => void;
+export type Watch = (onChange: () => void) => () => void;
 
 const watchContent =
   (el: HTMLElement): Watch =>
@@ -74,4 +74,30 @@ export function restoreScroll(
   unwatch = watch(tryRestore);
   for (const type of INTENT) el.addEventListener(type, stop, { passive: true });
   return stop;
+}
+
+export interface Entry {
+  key: string;
+  pathname: string;
+}
+
+/**
+ * What a scroll container does as the app moves from one history entry to another (or mounts
+ * on one): Back and Forward put back the offset saved for the entry, the top included; a
+ * filter change that replaces the entry carries the current offset over to its new key, so
+ * Back finds it; a different page starts at the top. Returns a function that stops restoring.
+ */
+export function enterEntry(
+  el: Scroller,
+  from: Entry,
+  to: Entry & { navigation: 'POP' | 'PUSH' | 'REPLACE' },
+  watch?: Watch,
+): () => void {
+  const saved = recallScroll(to.key);
+  if (to.navigation === 'POP' && saved !== undefined) return restoreScroll(el, saved, watch);
+  if (from.key !== to.key) {
+    if (from.pathname !== to.pathname) el.scrollTop = 0;
+    else if (to.navigation === 'REPLACE') rememberScroll(to.key, el.scrollTop);
+  }
+  return () => {};
 }

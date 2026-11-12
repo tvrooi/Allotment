@@ -30,6 +30,12 @@ for (const phone of [false, true]) {
     await expect(
       page.getByText('Assigned this month $150 · Activity $0 · Available $150', { exact: true }),
     ).toBeVisible();
+    // It shows and says where it leads: a chevron, and a link named for its category
+    const tripRow = page.getByTestId('goal-row').filter({ hasText: 'Trip' });
+    await expect(tripRow.getByTestId('goal-opens-category')).toBeVisible();
+    await expect(
+      tripRow.getByRole('link', { name: 'Trip: open Groceries in Budget' }),
+    ).toBeVisible();
     // A category-funded row opens its category (#235), by click and by Enter
     await page.getByText('Trip', { exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`#/budget/category/${category.id}$`));
@@ -50,7 +56,10 @@ for (const phone of [false, true]) {
     const rows = await api.call('GET', '/goals');
     expect(rows[0]).toMatchObject({ categoryId: null, currentAmount: 7500 });
     await expect(page.getByText('Tracked by hand', { exact: true })).toBeVisible();
-    // A row tracked by hand keeps opening the edit dialog
+    // A row tracked by hand has neither, and keeps opening the edit dialog
+    await expect(tripRow.getByTestId('goal-opens-category')).toHaveCount(0);
+    await expect(tripRow.getByRole('link', { name: /open .* in Budget/ })).toHaveCount(0);
+
     await page.getByText('Trip', { exact: true }).click();
     await expect(dialog.getByLabel('Saved so far')).toBeVisible();
     await expect(page).toHaveURL(/#\/goals$/);

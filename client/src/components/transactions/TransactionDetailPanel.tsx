@@ -19,6 +19,7 @@ import { useTransferToAccount, useUnlinkTransfer } from '../../hooks/useTransfer
 import { useCanSave } from '../../hooks/useConnection';
 import { useSchedules, useUnmatchByTransaction } from '../../hooks/useSchedules';
 import { CategoryPicker } from './CategoryPicker';
+import { categoriseEdit } from './categoriseEdit';
 import { PayeeCombobox } from './PayeeCombobox';
 import { Button } from '../ui/Button';
 import RowMenu from '../ui/RowMenu';
@@ -195,7 +196,9 @@ export function TransactionDetailPanel({
       transferTo.mutate({ id: tx.id, accountId: catId.slice('transfer:'.length) });
     } else {
       updateTx
-        .mutateAsync({ id: tx.id, data: { categoryId: catId } })
+        .mutateAsync(
+          categoriseEdit(tx, payeeName, catId, catId ? categoryMap.get(catId)?.name : undefined),
+        )
         .then(() => offerFollowup(tx, catId))
         .catch(() => {});
     }

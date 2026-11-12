@@ -21,6 +21,7 @@ import {
   valueScale,
 } from '../components/charts/kit';
 import { EmptyState } from '../components/ui/EmptyState';
+import { QueryProblem, loadFailed } from '../components/ui/QueryProblem';
 import { ButtonLink } from '../components/ui/Button';
 import { PAGE_GUTTER } from '../components/ui/pageGutter';
 import { formatCurrency } from '../utils/currency';
@@ -31,10 +32,18 @@ import { actionText, conditionText, ruleMentionsPayee } from '../utils/ruleForma
 
 const card = 'bg-surface rounded-lg shadow-card border border-border-light p-4';
 
+/** Stands in for figures still loading: never a zero that could be read as a result */
+const Loading = ({ className = 'h-5 w-24' }: { className?: string }) => (
+  <span aria-hidden className={`block rounded bg-surface-alt animate-pulse ${className}`} />
+);
+
 /** Money out by month over the last year, drawn like a category's spending history */
 function SpendChart({ payeeId }: { payeeId: string }) {
-  const { data: transactions = [] } = useTransactions({ payeeIds: [payeeId] });
-  const months = useMemo(() => spendByMonth(transactions, todayIso()), [transactions]);
+  const query = useTransactions({ payeeIds: [payeeId] });
+  const months = useMemo(
+    () => (query.data ? spendByMonth(query.data, todayIso()) : []),
+    [query.data],
+  );
   const rows = months.map((m) => ({
     label: format(parseISO(`${m.month}-01`), 'MMM'),
     amount: m.amount,
@@ -61,16 +70,20 @@ function SpendChart({ payeeId }: { payeeId: string }) {
     [rows],
   );
   return (
-    <div className={card}>
+    <section aria-label="Spending by month" className={card}>
       <h2 className="text-sm font-semibold text-text mb-3">Spending by month</h2>
-      {months.some((m) => m.amount > 0) ? (
+      {/* A failed or unfinished read is not "no spending" */}
+      <QueryProblem what="spending" query={query} className="py-6" />
+      {loadFailed(query) ? null : query.data === undefined ? (
+        <Loading className="h-[200px] w-full" />
+      ) : months.some((m) => m.amount > 0) ? (
         <FillChart definition={definition} height={200} ariaLabel="Spending by month" />
       ) : (
         <div className="h-[200px] flex items-center justify-center">
           <p className="text-sm text-text-tertiary">No spending in the last 12 months</p>
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -78,8 +91,9 @@ export default function PayeeDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
   const payeesQuery = usePayees();
   const payee = payeesQuery.data?.find((p) => p.id === id);
-  const { data: summary } = useTransactionSummary({ payeeIds: [id] }, !!payee);
-  const { data: rules = [] } = useRules();
+  const summaryQuery = useTransactionSummary({ payeeIds: [id] }, !!payee);
+  const summary = summaryQuery.data;
+  const rulesQuery = useRules();
   const { lookups } = useRuleLookups();
   const updatePayee = useUpdatePayee();
   const canSave = useCanSave();
@@ -88,12 +102,15 @@ export default function PayeeDetailPage() {
   const filters = useFilterSearch();
 
   const payeeRules = useMemo(
-    () => (payee ? rules.filter((r) => ruleMentionsPayee(r, payee)) : []),
-    [rules, payee],
+    () =>
+      payee && rulesQuery.data ? rulesQuery.data.filter((r) => ruleMentionsPayee(r, payee)) : [],
+    [rulesQuery.data, payee],
   );
 
   if (!payee) {
     if (payeesQuery.isLoading) return null;
+    // Unavailable is not "not found"
+    if (loadFailed(payeesQuery)) return <QueryProblem what="payees" query={payeesQuery} />;
     return (
       <EmptyState
         icon={<Store size={26} />}
@@ -138,29 +155,34 @@ export default function PayeeDetailPage() {
           <div className="space-y-4">
             <section aria-label="Summary" className={card}>
               <h2 className="text-sm font-semibold text-text">Total spent</h2>
-              <p className="mt-1 text-xl font-semibold tabular-nums text-text">
-                {formatCurrency(summary?.moneyOut ?? 0)}
-              </p>
-              <dl className="mt-3 border-t border-border-light pt-3 space-y-2 text-sm">
-                <div className="flex justify-between gap-3">
-                  <dt className="text-text-secondary">Money in</dt>
-                  <dd className="tabular-nums text-text">
-                    {formatCurrency(summary?.moneyIn ?? 0)}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-text-secondary">Transactions</dt>
-                  <dd className="tabular-nums text-text">{summary?.count ?? 0}</dd>
-                </div>
-                {summary?.firstDate && summary.lastDate && (
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-text-secondary">Dates</dt>
-                    <dd className="text-text text-right">
-                      {formatDay(summary.firstDate)} to {formatDay(summary.lastDate)}
-                    </dd>
-                  </div>
-                )}
-              </dl>
+              <QueryProblem what="totals" query={summaryQuery} className="py-6" />
+              {loadFailed(summaryQuery) ? null : !summary ? (
+                <Loading className="mt-2 h-7 w-32" />
+              ) : (
+                <>
+                  <p className="mt-1 text-xl font-semibold tabular-nums text-text">
+                    {formatCurrency(summary.moneyOut)}
+                  </p>
+                  <dl className="mt-3 border-t border-border-light pt-3 space-y-2 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-text-secondary">Money in</dt>
+                      <dd className="tabular-nums text-text">{formatCurrency(summary.moneyIn)}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-text-secondary">Transactions</dt>
+                      <dd className="tabular-nums text-text">{summary.count}</dd>
+                    </div>
+                    {summary.firstDate && summary.lastDate && (
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-text-secondary">Dates</dt>
+                        <dd className="text-text text-right">
+                          {formatDay(summary.firstDate)} to {formatDay(summary.lastDate)}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                </>
+              )}
             </section>
             <section aria-label="Default category" className={card}>
               <h2 className="text-sm font-semibold text-text">Default category</h2>
@@ -171,7 +193,10 @@ export default function PayeeDetailPage() {
             </section>
             <section aria-label="Rules" className={card}>
               <h2 className="text-sm font-semibold text-text">Rules</h2>
-              {payeeRules.length === 0 ? (
+              <QueryProblem what="rules" query={rulesQuery} className="py-6" />
+              {loadFailed(rulesQuery) ? null : !rulesQuery.data ? (
+                <Loading className="mt-2 h-4 w-40" />
+              ) : payeeRules.length === 0 ? (
                 <p className="mt-1 text-sm text-text-tertiary">No rules mention {payee.name}.</p>
               ) : (
                 <ul className="mt-2 space-y-2">

@@ -139,6 +139,56 @@ export function filtersToParams(
   return p;
 }
 
+/** What a register is fixed to by its page (an account, a category, a payee, a chart month) */
+export interface RegisterScope {
+  accountId?: string;
+  budgetReport?: boolean;
+  categoryId?: string;
+  categoryIds?: string[];
+  categoryGroupId?: string;
+  uncategorized?: boolean;
+  payeeIds?: string[];
+  payeeName?: string;
+  from?: string;
+  to?: string;
+  month?: string;
+}
+
+/**
+ * The register's server selection: its filters, inside its page's scope. The scope always
+ * wins, so filters read from a URL can't widen an account's, a category's or a payee's list.
+ */
+export function registerParams(f: FilterState, scope: RegisterScope): TransactionQueryParams {
+  const base = filtersToParams(f, scope.accountId);
+  if (scope.budgetReport) base.budgetReport = true;
+  if (scope.categoryIds?.length || scope.categoryId) {
+    delete base.categoryIds;
+    delete base.uncategorized;
+    if (scope.categoryIds?.length) base.categoryIds = scope.categoryIds;
+    else base.categoryId = scope.categoryId;
+  }
+  if (scope.categoryGroupId) base.categoryGroupId = scope.categoryGroupId;
+  if (scope.uncategorized) {
+    delete base.categoryId;
+    delete base.categoryIds;
+    base.uncategorized = true;
+  }
+  if (scope.payeeIds?.length || scope.payeeName !== undefined) {
+    delete base.payeeIds;
+    delete base.payeeName;
+    if (scope.payeeIds?.length) base.payeeIds = scope.payeeIds;
+    if (scope.payeeName !== undefined) base.payeeName = scope.payeeName;
+  }
+  if (scope.from) base.from = scope.from;
+  if (scope.to) base.to = scope.to;
+  if (scope.month) {
+    delete base.from;
+    delete base.to;
+    base.month = scope.month;
+  }
+  return base;
+}
+
 /** How many filters narrow the register beyond its date range (for the badge and "Clear") */
 export function activeFilterCount(f: FilterState): number {
   return [

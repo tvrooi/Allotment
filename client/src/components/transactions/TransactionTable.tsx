@@ -17,7 +17,7 @@ import { TransactionFilters } from './TransactionFilters';
 import {
   activeFilterCount,
   DEFAULT_FILTERS,
-  filtersToParams,
+  registerParams,
   type FilterState,
 } from '../../utils/transactionFilters';
 import { TransactionFormRow } from './TransactionFormRow';
@@ -132,41 +132,36 @@ export function TransactionTable({
 
   const showAccountCol = !accountId;
 
-  const params = useMemo(() => {
-    const base = filtersToParams(filters, accountId);
-    if (budgetReport) base.budgetReport = true;
-    if (categoryIds?.length) base.categoryIds = categoryIds;
-    else if (categoryId && !base.categoryIds?.length) base.categoryId = categoryId;
-    if (categoryGroupId) base.categoryGroupId = categoryGroupId;
-    if (uncategorized) {
-      delete base.categoryId;
-      delete base.categoryIds;
-      base.uncategorized = true;
-    }
-    if (payeeIds?.length) base.payeeIds = payeeIds;
-    if (payeeName !== undefined) base.payeeName = payeeName;
-    if (from) base.from = from;
-    if (to) base.to = to;
-    if (month) {
-      delete base.from;
-      delete base.to;
-      base.month = month;
-    }
-    return base;
-  }, [
-    budgetReport,
-    filters,
-    accountId,
-    categoryId,
-    categoryIds,
-    categoryGroupId,
-    uncategorized,
-    payeeIds,
-    payeeName,
-    from,
-    to,
-    month,
-  ]);
+  const params = useMemo(
+    () =>
+      registerParams(filters, {
+        accountId,
+        budgetReport,
+        categoryId,
+        categoryIds,
+        categoryGroupId,
+        uncategorized,
+        payeeIds,
+        payeeName,
+        from,
+        to,
+        month,
+      }),
+    [
+      budgetReport,
+      filters,
+      accountId,
+      categoryId,
+      categoryIds,
+      categoryGroupId,
+      uncategorized,
+      payeeIds,
+      payeeName,
+      from,
+      to,
+      month,
+    ],
+  );
   const { data: transactions = [], isLoading } = useTransactions(params);
   // Whether there are any transactions at all here, to tell "nothing yet" from "filtered out"
   const scoped = Boolean(

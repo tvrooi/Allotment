@@ -22,7 +22,7 @@ export function DemoFirstEditToast() {
   return (
     <div
       role="status"
-      className="pointer-events-auto flex items-center gap-3 rounded-lg bg-surface border border-border shadow-hover px-4 py-3 text-sm text-text max-w-md"
+      className="pointer-events-auto flex items-center gap-3 rounded-lg bg-surface border border-border shadow-hover px-4 py-3 text-sm text-text max-w-md self-center"
     >
       <p className="flex-1">
         Nice, that worked. The demo doesn’t keep it, though: download Allotment to keep a real

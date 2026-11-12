@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   MAX_REMEMBERED,
+  enterEntry,
   forgetScrolls,
   recallScroll,
   rememberScroll,
@@ -86,5 +87,63 @@ describe('scroll memory (#245)', () => {
     stop();
     el.grow(3000);
     expect(el.scrollTop).toBe(0);
+  });
+});
+
+describe('moving between history entries (#245)', () => {
+  beforeEach(forgetScrolls);
+  const at = (key: string, pathname: string, navigation: 'POP' | 'PUSH' | 'REPLACE') => ({
+    key,
+    pathname,
+    navigation,
+  });
+
+  it('Back to an entry saved at the top goes to the top, even on the same page', () => {
+    const { el, watch } = fakeScroller(3000);
+    rememberScroll('a', 0);
+    el.scrollTop = 900; // the other entry of the same page (other filters) was scrolled
+    enterEntry(el, { key: 'b', pathname: '/transactions' }, at('a', '/transactions', 'POP'), watch);
+    expect(el.scrollTop).toBe(0);
+  });
+
+  it('a filter change that replaces the entry keeps the offset for Back', () => {
+    const { el, watch } = fakeScroller(3000);
+    el.scrollTop = 1200;
+    rememberScroll('a', 1200);
+    enterEntry(
+      el,
+      { key: 'a', pathname: '/accounts/x' },
+      at('a2', '/accounts/x', 'REPLACE'),
+      watch,
+    );
+    expect(recallScroll('a2')).toBe(1200);
+    // Later, Back to the replaced entry
+    el.scrollTop = 0;
+    enterEntry(el, { key: 'p', pathname: '/payees/y' }, at('a2', '/accounts/x', 'POP'), watch);
+    expect(el.scrollTop).toBe(1200);
+  });
+
+  it('a new page starts at the top; a new entry of the same page keeps its place', () => {
+    const { el, watch } = fakeScroller(3000);
+    el.scrollTop = 700;
+    enterEntry(el, { key: 'a', pathname: '/goals' }, at('b', '/goals', 'PUSH'), watch);
+    expect(el.scrollTop).toBe(700);
+    enterEntry(el, { key: 'b', pathname: '/goals' }, at('c', '/budget', 'PUSH'), watch);
+    expect(el.scrollTop).toBe(0);
+  });
+
+  it('a container that mounts on its entry restores on Back, and stays put otherwise', () => {
+    const { el, watch } = fakeScroller(3000);
+    rememberScroll('a', 450);
+    enterEntry(el, { key: 'a', pathname: '/payees' }, at('a', '/payees', 'POP'), watch);
+    expect(el.scrollTop).toBe(450);
+    const other = fakeScroller(3000);
+    enterEntry(
+      other.el,
+      { key: 'b', pathname: '/payees' },
+      at('b', '/payees', 'PUSH'),
+      other.watch,
+    );
+    expect(other.el.scrollTop).toBe(0);
   });
 });

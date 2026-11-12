@@ -55,7 +55,7 @@ test('every page title starts 16 px from the edge on a phone', async ({ page, ap
     const title = page.getByRole('main').getByRole('heading', { level: 1 }).first();
     await expect(title).toBeVisible();
     starts[route] = await title.evaluate((h1) => {
-      for (let el: HTMLElement | null = h1; el; el = el.parentElement) {
+      for (let el: Element | null = h1; el; el = el.parentElement) {
         const pad = parseFloat(getComputedStyle(el).paddingLeft);
         if (pad > 0) return Math.round(el.getBoundingClientRect().left + pad);
       }

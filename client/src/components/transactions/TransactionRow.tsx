@@ -10,6 +10,7 @@ import { useOfferCategoryFollowup } from '../../hooks/useCategoryFollowup';
 import { useTransferToAccount } from '../../hooks/useTransfers';
 import { useCanSave } from '../../hooks/useConnection';
 import { CategoryPicker } from './CategoryPicker';
+import { categoriseEdit } from './categoriseEdit';
 import { PayeeIcon } from '../payees/PayeeIcon';
 import { formatMoney } from '../../utils/currency';
 import { useAccountCurrency } from '../../hooks/useCurrency';
@@ -87,14 +88,10 @@ export function TransactionRow({
     if (catId?.startsWith('transfer:')) {
       transferTo.mutate({ id: tx.id, accountId: catId.slice('transfer:'.length) });
     } else {
-      const name = catId ? (categoryMap.get(catId)?.name ?? 'a category') : 'Uncategorised';
       updateTx
-        .mutateAsync({
-          id: tx.id,
-          data: { categoryId: catId },
-          // Said by the undo toast, with Undo (#245)
-          message: catId ? `${payeeName} categorised as ${name}.` : `${payeeName} uncategorised.`,
-        })
+        .mutateAsync(
+          categoriseEdit(tx, payeeName, catId, catId ? categoryMap.get(catId)?.name : undefined),
+        )
         .then(() => offerFollowup(tx, catId))
         .catch(() => {});
     }
