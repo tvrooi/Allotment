@@ -67,3 +67,19 @@ for (const width of [1400, 390]) {
     );
   });
 }
+
+for (const width of [1400, 390]) {
+  test(`Wave D: an empty custom date range stays editable at ${width}px`, async ({ page, api }) => {
+    await api.createAccount('Everyday');
+    await page.setViewportSize({ width, height: 900 });
+    await open(page, '/transactions');
+    const custom = page.getByRole('button', { name: 'Custom', exact: true });
+    await custom.click();
+    await expect(custom).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByLabel('From', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('To', { exact: true })).toBeVisible();
+    await page.getByLabel('From', { exact: true }).fill('2026-11-01');
+    await expect(page.getByLabel('From', { exact: true })).toHaveValue('2026-11-01');
+    await expect(custom).toHaveAttribute('aria-pressed', 'true');
+  });
+}

@@ -46,7 +46,9 @@ export default function TransactionsPage() {
   }, [initialDetailId, state, navigate, location.pathname, location.search, location.hash]);
   const [params, setParams] = useSearchParams();
   // Dialog parameters are consumed in place; only filters restart the register.
-  const search = filtersToSearch(filtersFromSearch(params)).toString();
+  const search = new URLSearchParams(
+    [...params].filter(([key]) => FILTER_KEYS.has(key)),
+  ).toString();
   const own = useRef({ search, detailKey: initialDetailId ? location.key : null, generation: 0 });
   // A new palette choice also reopens details when the search URL itself is unchanged.
   const detailKey = initialDetailId ? location.key : null;
