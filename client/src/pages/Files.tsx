@@ -7,7 +7,7 @@ import { FileDrop, FileThumb, formatBytes, KIND_LABELS } from '../components/fil
 import { EmptyState } from '../components/ui/EmptyState';
 import { useCanSave } from '../hooks/useConnection';
 import { SavingPausedHint } from '../components/connection/SavingPausedHint';
-import { formatCurrency } from '../utils/currency';
+import { formatExampleMoney } from '../utils/currency';
 import { Button } from '../components/ui/Button';
 import { Input, Select } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
@@ -338,12 +338,12 @@ export default function FilesPage() {
                           content: (
                             <>
                               <p>Fridge warranty · {formatDay('2026-11-01')}</p>
-                              <p>Linked to Home · {formatCurrency(149_900)}</p>
+                              <p>Linked to Home · {formatExampleMoney(149_900)}</p>
                             </>
                           ),
                           description:
                             'A fridge warranty linked to the Home category and a purchase of ' +
-                            formatCurrency(149_900) +
+                            formatExampleMoney(149_900) +
                             '.',
                         }}
                         keepActions

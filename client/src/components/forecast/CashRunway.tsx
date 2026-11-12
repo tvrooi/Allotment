@@ -23,7 +23,13 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useGoals } from '../../hooks/useGoals';
 import { MAX_SLOTS, useScenarioSlots, type Slot } from '../../hooks/useScenarioSlots';
 import { chartColors } from '../../utils/chartColors';
-import { centsToInput, formatCurrency, isUnreadableAmount, parseCents } from '../../utils/currency';
+import {
+  centsToInput,
+  formatExampleMoney,
+  formatCurrency,
+  isUnreadableAmount,
+  parseCents,
+} from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { downloadCsv } from '../../utils/exportCsv';
 import { onTabListKeyDown } from '../ui/tabList';
@@ -666,13 +672,13 @@ export function CashRunway() {
             <>
               <p>Cash on {formatDay('2027-01-01')}</p>
               <p className="mt-1 font-medium text-text">
-                {formatCurrency(250_000)} after planned bills
+                {formatExampleMoney(250_000)} after planned bills
               </p>
             </>
           ),
           description:
             'An illustrative cash forecast leaves ' +
-            formatCurrency(250_000) +
+            formatExampleMoney(250_000) +
             ' after planned bills on ' +
             formatDay('2027-01-01') +
             '.',

@@ -363,8 +363,12 @@ function withSymbol(number: string, negative: boolean, style: AmountStyle): stri
 }
 
 /** An amount as this device writes it: "$1,234.56", "1.234,56 €"; whole amounts without cents */
-export function formatAmount(cents: number, style: AmountStyle): string {
-  if (hidesAllAmounts()) return HIDDEN_AMOUNT;
+export function formatAmount(
+  cents: number,
+  style: AmountStyle,
+  { example = false }: { example?: boolean } = {},
+): string {
+  if (!example && hidesAllAmounts()) return HIDDEN_AMOUNT;
   const { group, decimal } = SEPARATORS[style.format];
   const unit = 10 ** decimalsOf(style);
   const abs = Math.abs(cents);
@@ -406,6 +410,10 @@ export const formatCentsAxis = (cents: number) => formatAxisAmount(cents, amount
 /** An amount in a currency (an account's own): "12,50 zł", "¥1,500"; null = the budget's */
 export const formatMoney = (amount: number, currency: string | null | undefined) =>
   formatAmount(amount, currencyAmountStyle(currency));
+
+/** Labelled illustrative values only, never amounts read from the person's budget. */
+export const formatExampleMoney = (cents: number, currency?: string) =>
+  formatAmount(cents, currencyAmountStyle(currency), { example: true });
 
 /** Symbols people typed as their currency before Allotment knew currencies */
 const SYMBOL_CURRENCIES: Record<string, string> = {

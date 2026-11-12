@@ -13,7 +13,7 @@ import { Input, Select } from '../ui/Input';
 import { Modal } from '../ui/Modal';
 import RowMenu from '../ui/RowMenu';
 import { StatCardRow, type StatCard } from '../reports/ChartHelpers';
-import { formatCurrency, formatWholeCurrency } from '../../utils/currency';
+import { formatExampleMoney, formatCurrency, formatWholeCurrency } from '../../utils/currency';
 import { inDollars, newDraft, PPB, type Dollars } from '../../utils/longTerm';
 import { AccountsPanel } from './AccountsPanel';
 import { AssumptionsPanel } from './AssumptionsPanel';
@@ -210,13 +210,13 @@ export function LongTermForecast() {
                   <>
                     <p>At age 65</p>
                     <p className="mt-1 font-medium text-text">
-                      {formatWholeCurrency(85_000_000)} projected balance
+                      {formatExampleMoney(85_000_000)} projected balance
                     </p>
                   </>
                 ),
                 description:
                   'An illustrative plan projects a balance of ' +
-                  formatWholeCurrency(85_000_000) +
+                  formatExampleMoney(85_000_000) +
                   ' at age 65.',
               }}
               keepActions

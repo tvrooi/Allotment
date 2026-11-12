@@ -5,7 +5,7 @@ Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Ol
 
 ## Done this session
 
-- Wave D discoverability (up.172): #226 fixed sidebar Set up rows for Household, Tax time and
+- Wave D discoverability (up.172, PR #262): #226 fixed sidebar Set up rows for Household, Tax time and
   Files, respecting explicit Hidden and keeping their fixed positions; palette Set up links open
   their pages, while hidden entries still open Preferences. #237 shared EmptyState examples for
   Files, Household and Forecast; Household and long-term creation forms open after one action.

@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { usePreferencesStore } from '../store/preferencesStore';
 import { useSafeModeStore } from '../store/safeModeStore';
-import { formatAmount, formatAxisAmount, formatCurrency, formatMoney } from './currency';
+import {
+  formatAmount,
+  formatAxisAmount,
+  formatCurrency,
+  formatMoney,
+  formatExampleMoney,
+} from './currency';
 import { HIDDEN_AMOUNT, hidesAllAmounts, safeModeHides } from './safeMode';
 
 const style = { format: 'dot', position: 'before', symbol: '$' } as const;
@@ -55,4 +61,12 @@ describe('money formatters in Safe mode', () => {
       expect(text).not.toMatch(/\d/);
     }
   });
+});
+
+it('keeps labelled illustrative amounts visible while real amounts stay hidden', () => {
+  useSafeModeStore.setState({ on: true });
+  usePreferencesStore.setState({ safeModeLevel: 'all' });
+  expect(formatExampleMoney(12_000, 'AUD')).toMatch(/120/);
+  expect(formatMoney(12_000, 'AUD')).toBe(HIDDEN_AMOUNT);
+  expect(formatCurrency(12_000)).toBe(HIDDEN_AMOUNT);
 });

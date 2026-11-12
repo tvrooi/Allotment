@@ -14,7 +14,7 @@ import { Button } from '../components/ui/Button';
 import { TabList, tabIds } from '../components/ui/tabList';
 import { Input, Select } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
-import { formatMoney } from '../utils/currency';
+import { formatExampleMoney, formatMoney } from '../utils/currency';
 import { formatDay } from '../utils/dates';
 import { HouseholdSharing } from '../components/household/HouseholdSharing';
 import { HouseholdBills } from '../components/household/HouseholdBills';
@@ -487,16 +487,16 @@ export default function HouseholdPage() {
                     <>
                       <p>Electricity · {formatDay('2026-11-01')}</p>
                       <p>
-                        You paid {formatMoney(12_000, 'AUD')} · Alex owes{' '}
-                        {formatMoney(6_000, 'AUD')}
+                        You paid {formatExampleMoney(12_000, 'AUD')} · Alex owes{' '}
+                        {formatExampleMoney(6_000, 'AUD')}
                       </p>
                     </>
                   ),
                   description:
                     'You paid a shared electricity bill of ' +
-                    formatMoney(12_000, 'AUD') +
+                    formatExampleMoney(12_000, 'AUD') +
                     ' and Alex owes ' +
-                    formatMoney(6_000, 'AUD') +
+                    formatExampleMoney(6_000, 'AUD') +
                     '.',
                 }}
                 keepActions

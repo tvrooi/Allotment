@@ -37,6 +37,7 @@ export function EmptyState({
   // On the dashboard of a new budget the Get started checklist holds the next steps
   const onboarding = useOnboardingActive();
   const shownActions = onboarding && !keepActions ? undefined : actions;
+  const Heading = example ? 'h2' : 'p';
   return (
     <div
       className={`flex flex-col items-center text-center ${compact ? 'py-6 px-2' : 'py-14 px-6'} ${className}`}
@@ -51,7 +52,9 @@ export function EmptyState({
           {icon}
         </div>
       )}
-      <h2 className={`font-semibold text-text ${compact ? 'text-sm' : 'text-base'}`}>{title}</h2>
+      <Heading className={`font-semibold text-text ${compact ? 'text-sm' : 'text-base'}`}>
+        {title}
+      </Heading>
       {description && (
         <p
           className={`text-text-tertiary mt-1 max-w-sm leading-relaxed ${compact ? 'text-xs' : 'text-sm'}`}
