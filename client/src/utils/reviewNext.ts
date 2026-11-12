@@ -94,3 +94,11 @@ export function nextSteps(
     });
   return steps;
 }
+
+/** Keep the last successful suggestions during a refetch, but never show stale failed/offline data. */
+export function transferSuggestionCount(
+  connected: boolean,
+  query: { data?: readonly unknown[]; isSuccess: boolean; isFetching: boolean },
+): number {
+  return connected && query.isSuccess ? (query.data?.length ?? 0) : 0;
+}

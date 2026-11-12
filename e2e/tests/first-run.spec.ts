@@ -124,3 +124,60 @@ test('Wave D: switching a welcome feature off restores its default setup row', a
     page.getByRole('complementary').getByRole('link', { name: 'Files, set up', exact: true }),
   ).toBeVisible();
 });
+
+test('Fix round 1: welcome switches have full touch targets', async ({ page }) => {
+  await open(page, '/welcome');
+  const controls = page.getByRole('switch');
+  await expect(controls).toHaveCount(3);
+  for (const control of await controls.all()) {
+    await expect(control).toBeEnabled();
+    const box = (await control.boundingBox())!;
+    expect(box.width).toBeGreaterThanOrEqual(44);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+  }
+});
+
+test('Fix round 1: two welcome choices save while the first request is pending', async ({
+  page,
+  api,
+}) => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let started!: () => void;
+  const firstStarted = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  let held = false;
+  await page.route('**/api/guides', async (route) => {
+    if (route.request().method() === 'PUT' && !held) {
+      held = true;
+      started();
+      await gate;
+    }
+    await route.continue();
+  });
+  try {
+    await open(page, '/welcome');
+    const household = page.getByRole('switch', {
+      name: 'Sharing costs with a partner or housemates (Household)',
+    });
+    const files = page.getByRole('switch', {
+      name: 'Keeping receipts, warranties and documents (Files)',
+    });
+    await household.click();
+    await firstStarted;
+    await expect(files).toBeEnabled();
+    await files.click();
+    await expect(files).toBeChecked();
+    release();
+    await expect
+      .poll(async () => (await api.call('GET', '/guides')).navFeatures)
+      .toMatchObject({ household: 'shown', files: 'shown' });
+    await expect(household).toBeChecked();
+    await expect(files).toBeChecked();
+  } finally {
+    release();
+  }
+});

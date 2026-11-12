@@ -11,7 +11,9 @@ Overwritten at the end of each UI session, never appended. Wave D and palette en
   Files, Household and Forecast; Household and long-term creation forms open after one action.
   #236 possible transfers join the shared next-steps list and open the existing owner-review
   dialog. #239 partly done: welcome switches only; guide banners, Get started and Guided setup
-  stay as they are. Illustrative examples remain visible in Safe mode; actual forecasts stay hidden.
+  stay as they are. Illustrative examples use the budget currency and remain visible in Safe mode;
+  actual forecasts stay hidden. Review keeps successful transfer counts during background refresh,
+  and Welcome uses touch-sized switches that accept multiple pending choices.
 
 - Wave C dashboard (up.170, branch `feat/wave-c-dashboard`): #230 the review card keeps an Open
   review button at every width, with steps 2 and 3 as quiet rows beside it on wider screens, and

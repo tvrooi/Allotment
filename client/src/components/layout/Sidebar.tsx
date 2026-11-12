@@ -40,16 +40,25 @@ function NavItem({ to, icon, label, collapsed, badge, setup }: NavItemProps) {
       }
       className={({ isActive }) =>
         // Phones (the drawer): full-size touch targets
-        `flex items-center gap-3 py-2 max-md:min-h-11 max-md:text-row px-3 rounded-md text-sm font-medium transition-colors ${
+        `group flex items-center gap-3 py-2 max-md:min-h-11 max-md:text-row px-3 rounded-md text-sm transition-colors ${setup ? 'font-normal hover:font-medium focus-visible:font-medium' : 'font-medium'} ${
           isActive
             ? 'bg-sidebar-active text-sidebar-text-hi'
             : setup
-              ? 'text-text-tertiary hover:bg-sidebar-hover hover:text-sidebar-text-hi'
+              ? 'text-text-tertiary hover:bg-sidebar-hover hover:text-sidebar-text-hi focus-visible:bg-sidebar-hover focus-visible:text-sidebar-text-hi'
               : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi'
         }`
       }
     >
-      {icon}
+      <span
+        aria-hidden
+        className={
+          setup
+            ? 'shrink-0 opacity-60 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100'
+            : 'shrink-0'
+        }
+      >
+        {icon}
+      </span>
       <span
         className={`truncate transition-opacity duration-200 ${
           collapsed ? 'opacity-0' : 'opacity-100'
@@ -60,7 +69,7 @@ function NavItem({ to, icon, label, collapsed, badge, setup }: NavItemProps) {
       {setup && (
         <span
           aria-hidden
-          className={`ml-auto shrink-0 text-2xs text-text-tertiary ${collapsed ? 'opacity-0' : ''}`}
+          className={`ml-auto shrink-0 text-2xs transition-opacity duration-200 ${collapsed ? 'opacity-0' : 'opacity-100'}`}
         >
           Set up
         </span>

@@ -16,6 +16,7 @@ import { PlaidSetupModal } from '../components/plaid/PlaidSetupModal';
 import { SimplefinConnectModal } from '../components/simplefin/SimplefinConnectModal';
 import { UpConnectModal } from '../components/up/UpConnectModal';
 import { ConnectEnableBankingModal } from '../components/enablebanking/ConnectEnableBankingModal';
+import { Switch } from '../components/ui/Switch';
 import { Button } from '../components/ui/Button';
 import { PlaidLogo, SimplefinLogo } from '../components/ui/BankLogos';
 import { BrandName } from '../components/ui/BrandName';
@@ -260,16 +261,13 @@ export default function WelcomePage() {
                         {FEATURE_PROMPTS[feature]}{' '}
                         <span className="text-text-tertiary">({label})</span>
                       </span>
-                      <input
-                        type="checkbox"
-                        role="switch"
-                        className="h-5 w-5 shrink-0 accent-brand-600"
+                      <Switch
                         aria-label={FEATURE_PROMPTS[feature] + ' (' + label + ')'}
                         checked={progress?.navFeatures?.[feature] === 'shown'}
-                        disabled={!progress || !canSave || updateGuides.isPending}
-                        onChange={(e) =>
+                        disabled={!progress || !canSave}
+                        onCheckedChange={(checked) =>
                           updateGuides.mutate({
-                            navFeatures: { [feature]: e.target.checked ? 'shown' : 'auto' },
+                            navFeatures: { [feature]: checked ? 'shown' : 'auto' },
                           })
                         }
                       />

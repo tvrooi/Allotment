@@ -487,16 +487,16 @@ export default function HouseholdPage() {
                     <>
                       <p>Electricity · {formatDay('2026-11-01')}</p>
                       <p>
-                        You paid {formatExampleMoney(12_000, 'AUD')} · Alex owes{' '}
-                        {formatExampleMoney(6_000, 'AUD')}
+                        You paid {formatExampleMoney(12_000)} · Alex owes{' '}
+                        {formatExampleMoney(6_000)}
                       </p>
                     </>
                   ),
                   description:
                     'You paid a shared electricity bill of ' +
-                    formatExampleMoney(12_000, 'AUD') +
+                    formatExampleMoney(12_000) +
                     ' and Alex owes ' +
-                    formatExampleMoney(6_000, 'AUD') +
+                    formatExampleMoney(6_000) +
                     '.',
                 }}
                 keepActions

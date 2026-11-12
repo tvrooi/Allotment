@@ -12,7 +12,7 @@ Dashboard, Budget and Transactions are in the main bundle; every other page is `
 
 | route                                    | page file (lines)                        | component folder                                     | key hooks                                                            | e2e spec                                                                     |
 | ---------------------------------------- | ---------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `/welcome`                               | Welcome.tsx (311)                        | accounts, banks, up, plaid, simplefin, enablebanking | useAccounts, usePlaid, useServer, useGuides, useConnection           | first-run, first-import, switchers                                           |
+| `/welcome`                               | Welcome.tsx (309)                        | accounts, banks, up, plaid, simplefin, enablebanking | useAccounts, usePlaid, useServer, useGuides, useConnection           | first-run, first-import, switchers                                           |
 | `/`                                      | redirects to `/dashboard`                |                                                      |                                                                      |                                                                              |
 | `/dashboard`                             | Dashboard.tsx (266)                      | dashboard, review, layout, household, up             | useNextSteps, useIsPhone (StatusStrip: bank and household hooks)     | dashboard, home-cards, safe-mode, phone/dashboard-viewport, demo/demo        |
 | `/budget`                                | Budget.tsx (1457) **split candidate**    | budget                                               | useBudget, useCategories, useConnection, useIsPhone, useMenuKeyboard | budget, budget-inspector, envelope-funding, assign-block, targets            |
@@ -73,7 +73,7 @@ unsaved-drafts, phone/phone, phone/polish-phone, phone/iphone-webapp, phone/amou
 - `components/forecast/CashRunway.tsx` (1056)
 - `components/tax/Assets.tsx` (910)
 - `components/budget/PaydayPlan.tsx` (903)
-- `components/longterm/LongTermForecast.tsx` (904)
+- `components/longterm/LongTermForecast.tsx` (910)
 - `components/enablebanking/ConnectEnableBankingModal.tsx` (842)
 - Not UI components but over 800: `userGuide/articles.tsx` (1297), `types/index.ts` (1250).
 
@@ -105,6 +105,7 @@ unsaved-drafts, phone/phone, phone/polish-phone, phone/iphone-webapp, phone/amou
 - `SegmentedControl.tsx`: `SegmentedControl`, a named group of `aria-pressed` buttons for one choice (Reports' date range, the dashboard charts' ranges).
 - `ScrollCue.tsx`: `ScrollCue`, a hint that a strip scrolls sideways.
 - `Slider.tsx`: `Slider`, range input with value bubble (adapted from shadcn).
+- `Switch.tsx`: a switch with a 44 px target, token colours and reduced-motion support (Welcome).
 - `StatCard.tsx`: `StatCard` (optional `footer`), `StatGrid`.
 - `StatusPill.tsx`: `StatusPill`, a small rounded status link with an optional dot (bank sync, household balance).
 - `tabList.tsx`: `TabList`, `tabIds`, `onTabListKeyDown`; accessible tabs.

@@ -1211,3 +1211,19 @@ for (const width of [1280, 390])
     await action.click();
     await expect(page.getByRole('dialog', { name: 'New household' })).toBeVisible();
   });
+
+test('Fix round 1: all examples use the budget currency', async ({ page, api }) => {
+  await api.call('PUT', '/currency', { currency: 'EUR' });
+  for (const [route, heading] of [
+    ['/files', 'Keep your files together'],
+    ['/forecast', 'See where your plans could take you'],
+    ['/forecast?tab=cash', 'See how long your cash could last'],
+    ['/household', 'Share costs with your household'],
+  ]) {
+    await open(page, route);
+    await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+    const example = page.getByRole('main').getByText('Example', { exact: true }).locator('..');
+    await expect(example).toContainText('€');
+    await expect(example).not.toContainText('A$');
+  }
+});

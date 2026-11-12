@@ -199,7 +199,13 @@ export function LongTermForecast() {
           list.length === 0 &&
           (creating ? (
             <PrivateSection title="Forecasts are hidden in Safe mode">
-              <NewPlanForm first onCreated={setChosen} />
+              <NewPlanForm
+                first
+                onCreated={(id) => {
+                  setChosen(id);
+                  setCreating(false);
+                }}
+              />
             </PrivateSection>
           ) : (
             <EmptyState

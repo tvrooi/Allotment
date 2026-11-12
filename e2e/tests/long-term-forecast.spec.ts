@@ -450,3 +450,20 @@ for (const width of [1280, 390])
     await action.click();
     await expect(main.getByLabel('Plan name')).toBeVisible();
   });
+
+test('Fix round 1: deleting the first plan restores the empty state in the same visit', async ({
+  page,
+}) => {
+  await open(page, '/forecast');
+  await page.getByRole('button', { name: 'Create a plan', exact: true }).click();
+  await page.getByLabel('Plan name').fill('Temporary plan');
+  await page.getByRole('button', { name: 'Create plan', exact: true }).click();
+  await expect(page.getByText('Net worth today', { exact: true })).toBeVisible();
+  await planAction(page, 'Delete');
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete plan', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'See where your plans could take you', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Create a plan', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Plan name')).toHaveCount(0);
+});

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextSteps } from './reviewNext';
+import { nextSteps, transferSuggestionCount } from './reviewNext';
 import type { BudgetReview, ResumeState } from '../api/review';
 
 type ReviewOverrides = Omit<Partial<BudgetReview>, 'totals'> & {
@@ -95,4 +95,21 @@ it('checks possible transfers after money problems and before categorising', () 
   });
   expect(nextSteps(undefined, undefined, '/t', 1)[0].title).toBe('Check 1 possible transfer');
   expect(nextSteps(undefined, undefined, '/t', 0)).toEqual([]);
+});
+
+describe('transferSuggestionCount', () => {
+  it('keeps successful data during a background refetch', () => {
+    const data = [{}, {}];
+    expect(transferSuggestionCount(true, { data, isSuccess: true, isFetching: false })).toBe(2);
+    expect(transferSuggestionCount(true, { data, isSuccess: true, isFetching: true })).toBe(2);
+  });
+  it('omits the step before first success, on failure, and offline', () => {
+    expect(transferSuggestionCount(true, { isSuccess: false, isFetching: true })).toBe(0);
+    expect(transferSuggestionCount(true, { data: [{}], isSuccess: false, isFetching: false })).toBe(
+      0,
+    );
+    expect(transferSuggestionCount(false, { data: [{}], isSuccess: true, isFetching: false })).toBe(
+      0,
+    );
+  });
 });
