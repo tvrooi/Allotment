@@ -3,27 +3,30 @@
 How the design re-review backlog (issues #222 to #245) is being worked through on `redesign`, and
 where to pick up. Read after [README.md](README.md) and [HANDOVER-UI.md](HANDOVER-UI.md). Update
 the **Status** and **Open PRs** sections whenever a wave PR opens, merges or is sent back; delete
-this file when Wave F has merged. Last written 12 November 2026 with `redesign` at `4821d99`.
+this file when Wave F has merged. Last written 12 November 2026 after palette part 2 merged (PR #259).
 
 ## Roles
 
 - **Orchestrator (Fable):** triages, writes one spec per wave, delegates, reviews, decides merges.
   Writes no code unless the task is trivial.
-- **Coder (Opus 5.5, medium effort):** one wave per fresh session, from the orchestrator's spec.
+- **Coder (Codex, high effort):** one wave per fresh `omc team` worker, from the orchestrator's spec.
+- **Explorer and reviewer (Antigravity, `agy`):** maps the files before the spec, reviews the diff
+  against the spec and the AGENTS.md review guidelines, and reads the screenshots. A different
+  model family from the coder on purpose.
 - **Owner:** answers design questions; approves anything outward-facing (a release, a live update).
 
 ## Status
 
-| Wave                | Issues                                   | State                                                            |
-| ------------------- | ---------------------------------------- | ---------------------------------------------------------------- |
-| A shell             | #222, #223, #225                         | Merged, PR #247, up.167. Issues closed.                          |
-| A palette part 1    | #224 (part)                              | Merged, PR #253, up.169. #224 stays open.                        |
-| A palette part 2    | #224 (rest)                              | Fix round 1 ready, up.171; orchestrator's browser rerun pending. |
-| B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.                          |
-| C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.                          |
-| D discoverability   | #226, #237, #239, #236                   | Not started.                                                     |
-| E navigation depth  | #235, #243, #245, #240                   | Not started.                                                     |
-| F settings, delight | #244, #241                               | Not started.                                                     |
+| Wave                | Issues                                   | State                                     |
+| ------------------- | ---------------------------------------- | ----------------------------------------- |
+| A shell             | #222, #223, #225                         | Merged, PR #247, up.167. Issues closed.   |
+| A palette part 1    | #224 (part)                              | Merged, PR #253, up.169. #224 stays open. |
+| A palette part 2    | #224 (rest)                              | Merged, PR #259, up.171. #224 closed.     |
+| B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.   |
+| C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.   |
+| D discoverability   | #226, #237, #239, #236                   | Not started.                              |
+| E navigation depth  | #235, #243, #245, #240                   | Not started.                              |
+| F settings, delight | #244, #241                               | Not started.                              |
 
 Also merged: PR #256, test-only fixes for date- and timing-dependent Household specs.
 
@@ -35,7 +38,8 @@ Not in any wave:
 - `ready-for-agent` housekeeping with no wave yet: #211, #212, #213, #214, #216, #220.
 - Filed during the waves, still `needs-triage`: #249 bulk selection bar at 390, #250 category
   Summary ignores the date tab, #251 configurable e2e ports, #252 add-in-place from account pages
-  and dashboard empty states, #254 shortcuts ignored while a dialog fades out.
+  and dashboard empty states, #254 shortcuts ignored while a dialog fades out, #260 long payee
+  name overflows the Dashboard's Recent transactions at 390.
 
 ## Open PRs
 
@@ -46,14 +50,9 @@ Not in any wave:
 
 ## What to do next, in order
 
-1. Rerun the full desktop, phone, demo and server-mode e2e projects for **palette part 2**
-   (#224, up.171) outside the sandbox after fix round 1, and capture the remaining Safe mode
-   and offline evidence. The first external run passed 506 tests with 4 failures; causes and
-   fixes are in `.omc/research/report-224-part2.md`. Review its PR against `redesign`; close #224
-   when it merges.
-2. Waves D, E, F, one PR each. D and E both touch the sidebar and shared headers, so run them one
+1. Waves D, E, F, one PR each. D and E both touch the sidebar and shared headers, so run them one
    after the other, not in parallel.
-3. Triage the `needs-triage` issues above with the owner or by the routine in
+2. Triage the `needs-triage` issues above with the owner or by the routine in
    [docs/agents/triage-labels.md](../agents/triage-labels.md).
 
 ## Owner decisions on record
@@ -119,5 +118,18 @@ Not in any wave:
 - **Lazy chunks offline:** a lazily loaded shell feature must be warmed while online and must not
   take the shell down if its import fails (`utils/retryingImport.ts`).
 - **Lint cap:** 135 warnings, at the cap. A new warning must be fixed, not counted.
+- **Team workers need valid models:** OMC's built-in worker models are refused by this Codex
+  account and by `agy`, and a refused worker is rolled back after 30 seconds with no clear error.
+  The working models are set in the user-level `~/.config/claude-omc/config.jsonc`
+  (`externalModels.defaults`). `.claude/` is gitignored, so a worktree has no `.claude/omc.jsonc`:
+  copy it in before launching a team there.
+- **Launch teams with plain `omc team`** from a cmux terminal, not `cmux omc team`, which fails
+  with `worker_pane_split_target_unverified`. A Codex team worker runs unsandboxed, so it can run
+  browser tests and push. `codex exec` in its default sandbox cannot launch Chromium or commit in
+  a worktree, and it hangs unless standard input is closed (`< /dev/null`).
+- **Antigravity as a team worker is killed at OMC's fixed 30-second startup limit.** Run it
+  directly instead: `agy -p "<brief>" --mode plan --sandbox --dangerously-skip-permissions`.
+- **A row that is `aria-disabled`:** Playwright's `click()` waits forever for it; dispatch the
+  click event and assert that nothing happened.
 - **Usage limits:** coder sessions stop mid-task at the five-hour limit. Their work is saved;
   resume the same session with a message telling it to check `git status` and leftover processes.
