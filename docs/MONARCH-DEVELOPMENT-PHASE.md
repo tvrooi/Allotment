@@ -186,8 +186,8 @@ The first brief left these decisions open. They are binding for phase 8 PRs.
   part of backups.
 - Desktop defaults put the summary, bills and budget progress first, with net worth
   after everyday activity and spending trends. Existing custom orders are preserved.
-  The dashboard shows the first shared `useNextSteps` action and an Open review link
-  above the cards when there is attention to give; it does not infer new review rules.
+  The dashboard uses the shared `useNextSteps` actions above the cards, including possible
+  transfers. Its button opens Review, or the transfer-review dialog when transfers lead the list.
   The privacy tip follows the cards rather than delaying the spending summary.
 - Onboarding (`GettingStarted`) and the 7E review reminder stay outside the
   customisable cards and keep their own show/hide rules. Net worth, summary and

@@ -131,7 +131,8 @@ mention, and there are no paid plans: storage is the owner's own disk, with an o
 - **Files** in the sidebar (`/files`): views All files, Starred, Important, Receipts and Not
   linked; **labels** to drill into; search; kind and date filters; **Download all**; the storage
   meter and limit. URL state: `q`, `view`, `tag`, `kind`, `from`, `to`, and `file` for the one
-  open.
+  open. An unfiltered empty library shows a promise, an illustrative example and Add a file
+  using the existing picker and drop target; search and filter controls appear once useful.
 - **A file's details** (`FileDetailModal`): preview, Important, Star, Download, name, date,
   description, labels (choose or add one), **Linked to** with Link (a transaction by search, or a
   category, goal or account) and remove, Use as a receipt or Open the receipt, Read its text

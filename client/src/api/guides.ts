@@ -16,7 +16,7 @@ export interface GuideProgress {
   /** Guide id → the version seen */
   seenGuides: Record<string, number>;
   dismissedTips: string[];
-  /** The person's choice per optional sidebar feature; none = shown once in use (older servers: absent) */
+  /** The person's choice per optional sidebar feature; none = the default in utils/navFeatures.ts (older servers: absent) */
   navFeatures?: Partial<Record<NavFeature, NavChoice>>;
   /** Optional features holding something, worked out by the server (older servers: absent) */
   featuresInUse?: NavFeature[];
@@ -30,7 +30,7 @@ export interface GuideUpdate {
   guidesNotice?: false;
   seenGuides?: Record<string, number>;
   dismissedTips?: string[];
-  /** 'auto' forgets the choice: shown once in use */
+  /** 'auto' forgets the choice and restores the feature's default */
   navFeatures?: Partial<Record<NavFeature, NavChoice | 'auto'>>;
 }
 

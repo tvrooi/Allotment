@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from '../../api/longTerm';
+import { useCanSave } from '../../hooks/useConnection';
+import { SavingPausedHint } from '../connection/SavingPausedHint';
+import { PrivateSection } from '../ui/Private';
+import { EmptyState } from '../ui/EmptyState';
 import { usePlanEditor } from '../../hooks/usePlanEditor';
 import { Button, ButtonLink } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
@@ -9,7 +13,7 @@ import { Input, Select } from '../ui/Input';
 import { Modal } from '../ui/Modal';
 import RowMenu from '../ui/RowMenu';
 import { StatCardRow, type StatCard } from '../reports/ChartHelpers';
-import { formatCurrency, formatWholeCurrency } from '../../utils/currency';
+import { formatExampleMoney, formatCurrency, formatWholeCurrency } from '../../utils/currency';
 import { inDollars, newDraft, PPB, type Dollars } from '../../utils/longTerm';
 import { AccountsPanel } from './AccountsPanel';
 import { AssumptionsPanel } from './AssumptionsPanel';
@@ -60,6 +64,7 @@ function NewPlanForm({
   const [birthYear, setBirthYear] = useState(new Date().getFullYear() - 40);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const canSave = useCanSave();
   const { allValid, report } = useAmountValidity();
   async function create() {
     setBusy(true);
@@ -86,7 +91,7 @@ function NewPlanForm({
       className="space-y-4 max-w-md"
       onSubmit={(e) => {
         e.preventDefault();
-        if (name.trim() && !busy && allValid) void create();
+        if (name.trim() && !busy && allValid && canSave) void create();
       }}
     >
       {first && (
@@ -124,10 +129,11 @@ function NewPlanForm({
             Cancel
           </Button>
         )}
-        <Button type="submit" disabled={!name.trim() || busy || !allValid}>
+        <Button type="submit" disabled={!name.trim() || busy || !allValid || !canSave}>
           Create plan
         </Button>
       </div>
+      <SavingPausedHint />
     </form>
   );
 }
@@ -174,6 +180,7 @@ export function LongTermForecast() {
   const plans = useQuery({ queryKey: ['lt-plans'], queryFn: api.listPlans });
   const [chosen, setChosen] = useState<string | null>(() => remember('lt-plan'));
   const list = plans.data;
+  const [creating, setCreating] = useState(false);
   const selected = list?.find((p) => p.id === chosen)?.id ?? list?.[0]?.id ?? null;
   useEffect(() => {
     if (selected) remember('lt-plan', selected);
@@ -188,9 +195,45 @@ export function LongTermForecast() {
             {(plans.error as Error).message}
           </p>
         )}
-        {list && list.length === 0 && <NewPlanForm first onCreated={setChosen} />}
+        {list &&
+          list.length === 0 &&
+          (creating ? (
+            <PrivateSection title="Forecasts are hidden in Safe mode">
+              <NewPlanForm
+                first
+                onCreated={(id) => {
+                  setChosen(id);
+                  setCreating(false);
+                }}
+              />
+            </PrivateSection>
+          ) : (
+            <EmptyState
+              title="See where your plans could take you"
+              description="Explore how saving and life changes could shape your future balance."
+              example={{
+                content: (
+                  <>
+                    <p>At age 65</p>
+                    <p className="mt-1 font-medium text-text">
+                      {formatExampleMoney(85_000_000)} projected balance
+                    </p>
+                  </>
+                ),
+                description:
+                  'An illustrative plan projects a balance of ' +
+                  formatExampleMoney(85_000_000) +
+                  ' at age 65.',
+              }}
+              keepActions
+              actions={<Button onClick={() => setCreating(true)}>Create a plan</Button>}
+            />
+          ))}
+
         {list && selected && (
-          <Workspace key={selected} id={selected} plans={list} onSelect={setChosen} />
+          <PrivateSection title="Forecasts are hidden in Safe mode">
+            <Workspace key={selected} id={selected} plans={list} onSelect={setChosen} />
+          </PrivateSection>
         )}
       </div>
     </div>

@@ -10,7 +10,9 @@ import { ruleX, ruleY } from '@tanstack/charts/rule';
 import { tooltip } from '@tanstack/charts/tooltip';
 import type { ChartTooltipContent } from '@tanstack/charts/tooltip';
 import * as api from '../../api/forecast';
-import { Button } from '../ui/Button';
+import { PrivateSection } from '../ui/Private';
+import { EmptyState } from '../ui/EmptyState';
+import { Button, ButtonLink } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input, Select } from '../ui/Input';
 import { StatCardRow } from '../reports/ChartHelpers';
@@ -21,7 +23,13 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useGoals } from '../../hooks/useGoals';
 import { MAX_SLOTS, useScenarioSlots, type Slot } from '../../hooks/useScenarioSlots';
 import { chartColors } from '../../utils/chartColors';
-import { centsToInput, formatCurrency, isUnreadableAmount, parseCents } from '../../utils/currency';
+import {
+  centsToInput,
+  formatExampleMoney,
+  formatCurrency,
+  isUnreadableAmount,
+  parseCents,
+} from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { downloadCsv } from '../../utils/exportCsv';
 import { onTabListKeyDown } from '../ui/tabList';
@@ -654,7 +662,32 @@ export function CashRunway() {
     );
   }
 
-  return (
+  if (data && !error && data.accounts.length === 0 && data.warnings.length === 0)
+    return (
+      <EmptyState
+        title="See how long your cash could last"
+        description="Project your cash balance around upcoming pay and bills."
+        example={{
+          content: (
+            <>
+              <p>Cash on {formatDay('2027-01-01')}</p>
+              <p className="mt-1 font-medium text-text">
+                {formatExampleMoney(250_000)} after planned bills
+              </p>
+            </>
+          ),
+          description:
+            'An illustrative cash forecast leaves ' +
+            formatExampleMoney(250_000) +
+            ' after planned bills on ' +
+            formatDay('2027-01-01') +
+            '.',
+        }}
+        keepActions
+        actions={<ButtonLink to="/accounts">Add an account</ButtonLink>}
+      />
+    );
+  const content = (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="px-6 pt-4 max-md:px-4 shrink-0 flex justify-end">
         <Button size="sm" variant="secondary" onClick={exportCsv} disabled={!data}>
@@ -1019,4 +1052,5 @@ export function CashRunway() {
       </div>
     </div>
   );
+  return <PrivateSection title="Forecasts are hidden in Safe mode">{content}</PrivateSection>;
 }

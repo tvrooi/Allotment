@@ -43,6 +43,17 @@ test.describe('Safe mode', () => {
     await expectNoBalances(page);
     await page.screenshot({ path: test.info().outputPath('safe-mode-accounts.png') });
 
+    // Seed a real plan: illustrative empty-state examples stay visible in Safe mode.
+    const defaults = await api.call('GET', '/forecast/long-term/defaults?birthYear=1985');
+    await api.call('POST', '/forecast/long-term/plans', {
+      plan: {
+        name: 'Privacy check',
+        settings: { ...defaults.settings, birthYear: 1985 },
+        accounts: [],
+        splits: [],
+        events: [],
+      },
+    });
     const [everyday] = await api.accounts();
     // Each page shows that something is hidden once it has loaded, then has no figure on it
     const hiddenAmount = page.getByRole('img', { name: 'Hidden' }).first();

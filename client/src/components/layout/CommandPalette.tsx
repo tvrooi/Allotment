@@ -35,7 +35,7 @@ import { useIsPhone } from '../../hooks/useIsPhone';
 import { useAddTransactionStore } from '../../store/addTransactionStore';
 import { useGuideStore } from '../../store/guideStore';
 import { useSafeModeStore } from '../../store/safeModeStore';
-import { featureShown } from '../../utils/navFeatures';
+import { featureState } from '../../utils/navFeatures';
 import {
   PALETTE_SEARCH_LABEL,
   paletteCanSearch,
@@ -114,17 +114,20 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
   const entries = useMemo<Result[]>(() => {
     const pages: Result[] = NAV_PAGES.map((p) => {
       // Still loading: listed as it is, not as "Set up", so nothing flips while it loads
-      const setUp =
-        !!p.feature && !!progress && !featureShown(p.feature, progress, pathname, progressFailed);
-      return setUp
+      const state = p.feature
+        ? featureState(p.feature, progress, pathname, progressFailed)
+        : 'shown';
+      const hidden = state === 'hidden' && !!progress;
+      return state === 'setup' || hidden
         ? {
             id: `page:${p.path}`,
             group: 'pages',
             label: p.label,
             icon: p.icon,
             badge: 'Set up',
-            to: MORE_FEATURES_LINK.to,
-            state: MORE_FEATURES_LINK.state,
+            to: hidden ? MORE_FEATURES_LINK.to : p.path,
+            state: hidden ? MORE_FEATURES_LINK.state : undefined,
+            remember: !hidden,
           }
         : {
             id: `page:${p.path}`,
@@ -222,7 +225,7 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
   const debounced = useDebounce(trimmed, 250);
   const ready = paletteCanSearch(trimmed) && trimmed === debounced;
   // The same visibility rule as the Files page row; wait for progress before asking for files.
-  const filesShown = featureShown('files', progress, pathname, progressFailed);
+  const filesShown = featureState('files', progress, pathname, progressFailed) === 'shown';
   const transactions = useQuery({
     queryKey: ['palette-search', 'transactions', debounced],
     queryFn: () => getTransactions({ search: debounced, limit: 8 }),

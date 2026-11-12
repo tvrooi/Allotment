@@ -45,7 +45,10 @@ export default function TransactionsPage() {
     );
   }, [initialDetailId, state, navigate, location.pathname, location.search, location.hash]);
   const [params, setParams] = useSearchParams();
-  const search = params.toString();
+  // Dialog parameters are consumed in place; only filters restart the register.
+  const search = new URLSearchParams(
+    [...params].filter(([key]) => FILTER_KEYS.has(key)),
+  ).toString();
   const own = useRef({ search, detailKey: initialDetailId ? location.key : null, generation: 0 });
   // A new palette choice also reopens details when the search URL itself is unchanged.
   const detailKey = initialDetailId ? location.key : null;
@@ -76,7 +79,7 @@ export default function TransactionsPage() {
           // Other keys (like ?add=1) belong to the page
           const next = filtersToSearch(filters);
           for (const [key, value] of prev) if (!FILTER_KEYS.has(key)) next.set(key, value);
-          own.current = { ...own.current, search: next.toString() };
+          own.current = { ...own.current, search: filtersToSearch(filters).toString() };
           return next;
         },
         { replace: true },

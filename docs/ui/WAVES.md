@@ -24,7 +24,7 @@ this file when Wave F has merged. Last written 12 November 2026 after palette pa
 | A palette part 2    | #224 (rest)                              | Merged, PR #259, up.171. #224 closed.     |
 | B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.   |
 | C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.   |
-| D discoverability   | #226, #237, #239, #236                   | Not started.                              |
+| D discoverability   | #226, #237, #239, #236                   | PR open, #262.                            |
 | E navigation depth  | #235, #243, #245, #240                   | Not started.                              |
 | F settings, delight | #244, #241                               | Not started.                              |
 
@@ -43,7 +43,8 @@ Not in any wave:
 
 ## Open PRs
 
-- None. The owner can still overrule Wave C's choices, listed in the body of PR #255: the status
+- Wave D: [PR #262](https://github.com/tvrooi/Allotment/pull/262), discoverability.
+- The owner can still overrule Wave C's choices, listed in the body of PR #255: the status
   strip is always on; the Dashboard makes three extra connection requests; Bills is capped at 3
   bills and 2 pay days; Tax and Files are left out of the strip; the stretched Budget card has
   empty space below its rows.
@@ -63,7 +64,12 @@ Not in any wave:
   `/` opens the palette everywhere. Recent destinations are remembered on the device.
   "Sync now" was left out of part 1 because no shell-level sync exists and a sync is a write; the
   owner has not been asked to rule on that.
-- **#226:** Household, Tax time and Files show to everyone as dimmed "Set up" rows.
+- **Wave D, 12 November:** #226 Household, Tax time and Files show to everyone as dimmed
+  "Set up" rows; explicit Hidden still hides them, and Pay later/Investments keep their existing
+  behaviour. #237 Household uses a promise, example and one button opening the existing New
+  household dialog; do not split its page. #239 covers the welcome step only: leave first-visit
+  guide banners, the Dashboard checklist and Review Guided setup unchanged. #217–#219 remain
+  shelved; do not start Wave E in this change.
 - **#244:** the Settings split is endorsed.
 - **Release:** undecided. `redesign` carries up.154 to up.171 prepared and untagged. The
   orchestrator's recommendation is one release from `redesign` soon, because the Safe mode chart

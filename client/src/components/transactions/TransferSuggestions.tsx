@@ -1,3 +1,4 @@
+import { useOpenFromLink } from '../../hooks/useOpenFromLink';
 import { useState } from 'react';
 import { ArrowLeftRight, ArrowRight } from 'lucide-react';
 import {
@@ -36,6 +37,9 @@ export function TransferSuggestions({ accountId, accountName }: Props) {
   const linkMany = useLinkTransfers();
   const dismiss = useDismissTransferSuggestion();
   const canSave = useCanSave();
+  useOpenFromLink('possible-transfers', () => setOpen(true), {
+    ready: !accountId && suggestions.length > 0,
+  });
 
   if (suggestions.length === 0 && !notice) return null;
 

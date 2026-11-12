@@ -54,6 +54,7 @@ test('the long-term forecast: plans, drafts, years, dollars and comparison', asy
 
   // First visit: set up a plan. Opening the form saved nothing.
   expect(await api.call('GET', `${LT}/plans`)).toEqual([]);
+  await page.getByRole('button', { name: 'Create a plan', exact: true }).click();
   await page.getByLabel('Plan name').fill('Main plan');
   await page.getByRole('button', { name: 'Create plan' }).click();
   await expect(page.getByText('Net worth today', { exact: true })).toBeVisible();
@@ -231,6 +232,7 @@ test('typing, Enter and the first click work the way a person uses them', async 
   await open(page, '/forecast');
 
   // A year can be typed, one key at a time, without being clamped on the way
+  await page.getByRole('button', { name: 'Create a plan', exact: true }).click();
   await page.getByLabel('Plan name').fill('Typed plan');
   const birth = page.getByLabel('Birth year');
   await birth.click();
@@ -421,4 +423,47 @@ test('a HECS-HELP debt is repaid from pay, and extra payments bring it forward',
     .toEqual([{ accountId: hecs.id, kind: 'help', extraAnnual: 500_000 }]);
   await expect(summary).toContainText('With compulsory repayments only they would be repaid in');
   await expect(summary).toContainText('of indexation');
+});
+
+for (const width of [1280, 390])
+  test('Wave D: empty state at ' + width, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await open(page, '/forecast');
+    const main = page.getByRole('main');
+    await expect(
+      main.getByRole('heading', { name: 'See where your plans could take you', exact: true }),
+    ).toBeVisible();
+    await expect(main.getByText('Example', { exact: true })).toBeVisible();
+    await page.keyboard.press('Alt+Shift+H');
+    await expect(main.getByText('Example', { exact: true })).toBeVisible();
+    await expect(
+      main.locator('[aria-hidden="true"]').filter({ hasText: '$' }).first(),
+    ).toBeVisible();
+    await page.keyboard.press('Alt+Shift+H');
+    const action = main.getByRole('button', { name: 'Create a plan', exact: true });
+    await expect(action).toHaveCount(1);
+    await expect(action).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await expect(main.getByLabel('Plan name')).toHaveCount(0);
+    await action.click();
+    await expect(main.getByLabel('Plan name')).toBeVisible();
+  });
+
+test('Fix round 1: deleting the first plan restores the empty state in the same visit', async ({
+  page,
+}) => {
+  await open(page, '/forecast');
+  await page.getByRole('button', { name: 'Create a plan', exact: true }).click();
+  await page.getByLabel('Plan name').fill('Temporary plan');
+  await page.getByRole('button', { name: 'Create plan', exact: true }).click();
+  await expect(page.getByText('Net worth today', { exact: true })).toBeVisible();
+  await planAction(page, 'Delete');
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete plan', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'See where your plans could take you', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Create a plan', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Plan name')).toHaveCount(0);
 });

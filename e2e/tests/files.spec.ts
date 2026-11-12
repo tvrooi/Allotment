@@ -32,7 +32,7 @@ test('a file is added, labelled, found by what it says and linked to two transac
   });
 
   await open(page, '/files');
-  await expect(page.getByRole('heading', { name: 'Files' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Files', exact: true })).toBeVisible();
   await page
     .getByLabel('Add files: choose files')
     .setInputFiles([pdf('warranty.pdf'), csv('serials.csv')]);
@@ -117,3 +117,30 @@ test('a backup with files brings a deleted file back, contents and all (audit I-
   const bytes = await page.request.get(`/api/files/${restored.id}/file`);
   expect(await bytes.text()).toBe('Item,Serial\nFridge,AB-123\n');
 });
+
+for (const width of [1280, 390])
+  test('Wave D: empty state at ' + width, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await open(page, '/files');
+    const main = page.getByRole('main');
+    await expect(
+      main.getByRole('heading', { name: 'Keep your files together', exact: true }),
+    ).toBeVisible();
+    await expect(main.getByText('Example', { exact: true })).toBeVisible();
+    await page.keyboard.press('Alt+Shift+H');
+    await expect(main.getByText('Example', { exact: true })).toBeVisible();
+    await expect(
+      main.locator('[aria-hidden="true"]').filter({ hasText: '$' }).first(),
+    ).toBeVisible();
+    await page.keyboard.press('Alt+Shift+H');
+    const action = main.getByRole('button', { name: 'Add a file', exact: true });
+    await expect(action).toHaveCount(1);
+    await expect(action).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await expect(main.getByRole('textbox', { name: 'Search files' })).toHaveCount(0);
+    const chooser = page.waitForEvent('filechooser');
+    await action.click();
+    expect((await chooser).isMultiple()).toBe(true);
+  });

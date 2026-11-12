@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type DragEvent,
+  type ReactNode,
+} from 'react';
 import {
   File as FileIcon,
   FileImage,
@@ -128,17 +135,20 @@ export function FileDrop({
   busy,
   label = 'Add files',
   compact = false,
+  children,
 }: {
   onFiles: (files: File[]) => void;
   busy?: boolean;
   label?: string;
   compact?: boolean;
+  /** Alternative empty-library content using this same picker and drop target. */
+  children?: (choose: () => void) => ReactNode;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const take = (list: FileList | null | undefined) => {
     const files = [...(list ?? [])];
-    if (files.length) onFiles(files);
+    if (files.length && !busy) onFiles(files);
   };
   return (
     <div
@@ -156,28 +166,39 @@ export function FileDrop({
         setOver(false);
         take(e.dataTransfer?.files);
       }}
-      className={`rounded-lg border border-dashed ${compact ? 'px-3 py-2' : 'px-4 py-5'} text-xs text-text-tertiary flex items-center gap-2 focus:outline-none focus:ring-1 focus:ring-brand-600 ${over ? 'border-brand-600 bg-brand-50' : 'border-border'}`}
+      className={
+        children
+          ? `rounded-lg ${over ? 'bg-brand-50' : ''}`
+          : `rounded-lg border border-dashed ${compact ? 'px-3 py-2' : 'px-4 py-5'} text-xs text-text-tertiary flex items-center gap-2 focus:outline-none focus:ring-1 focus:ring-brand-600 ${over ? 'border-brand-600 bg-brand-50' : 'border-border'}`
+      }
     >
-      <Paperclip size={14} className="shrink-0" />
-      <span className="flex-1">
-        {busy ? 'Uploading…' : 'Drop, paste or '}
-        {!busy && (
-          <button
-            type="button"
-            className="font-medium text-brand-600 hover:text-brand-700"
-            onClick={() => input.current?.click()}
-          >
-            choose files
-          </button>
-        )}
-        {!busy && !compact && (
-          <span className="block mt-0.5">
-            Photos, PDFs, Word, Excel, PowerPoint, OpenDocument, CSV, Markdown, text and videos
+      {children ? (
+        children(() => input.current?.click())
+      ) : (
+        <>
+          <Paperclip size={14} className="shrink-0" />
+          <span className="flex-1">
+            {busy ? 'Uploading…' : 'Drop, paste or '}
+            {!busy && (
+              <button
+                type="button"
+                className="font-medium text-brand-600 hover:text-brand-700"
+                onClick={() => input.current?.click()}
+              >
+                choose files
+              </button>
+            )}
+            {!busy && !compact && (
+              <span className="block mt-0.5">
+                Photos, PDFs, Word, Excel, PowerPoint, OpenDocument, CSV, Markdown, text and videos
+              </span>
+            )}
           </span>
-        )}
-      </span>
+        </>
+      )}
       <input
         ref={input}
+        disabled={busy}
         type="file"
         accept={FILE_ACCEPT}
         multiple

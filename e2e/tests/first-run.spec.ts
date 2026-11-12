@@ -76,3 +76,108 @@ test('empty pages explain themselves and offer the first step', async ({ page, a
   await expect(page.getByRole('button', { name: /^Assigned to Groceries:/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Show \d+ inactive/ })).toHaveCount(0);
 });
+
+for (const width of [1280, 390])
+  test('Wave D: welcome pins only the chosen feature at ' + width, async ({ page, api }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await open(page, '/welcome');
+    await expect(
+      page.getByRole('heading', { name: 'What else do you share or claim?' }),
+    ).toBeVisible();
+    const household = page.getByRole('switch', {
+      name: 'Sharing costs with a partner or housemates (Household)',
+    });
+    await household.click();
+    await expect(household).toBeChecked();
+    await expect
+      .poll(async () => (await api.call('GET', '/guides')).navFeatures.household)
+      .toBe('shown');
+    await page.getByRole('button', { name: 'Skip for now and look around' }).click();
+    if (width === 390) await page.getByRole('button', { name: 'Open menu', exact: true }).click();
+    const nav = page.getByRole('complementary').first();
+    await expect(nav.getByRole('link', { name: 'Household', exact: true })).toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Tax time, set up', exact: true })).toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Files, set up', exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+  });
+
+test('Wave D: switching a welcome feature off restores its default setup row', async ({
+  page,
+  api,
+}) => {
+  await open(page, '/welcome');
+  const files = page.getByRole('switch', {
+    name: 'Keeping receipts, warranties and documents (Files)',
+  });
+  await files.click();
+  await expect(files).toBeChecked();
+  await expect.poll(async () => (await api.call('GET', '/guides')).navFeatures.files).toBe('shown');
+  await files.click();
+  await expect(files).not.toBeChecked();
+  await expect
+    .poll(async () => (await api.call('GET', '/guides')).navFeatures.files)
+    .toBeUndefined();
+  await page.getByRole('button', { name: 'Skip for now and look around' }).click();
+  await expect(
+    page.getByRole('complementary').getByRole('link', { name: 'Files, set up', exact: true }),
+  ).toBeVisible();
+});
+
+test('Fix round 1: welcome switches have full touch targets', async ({ page }) => {
+  await open(page, '/welcome');
+  const controls = page.getByRole('switch');
+  await expect(controls).toHaveCount(3);
+  for (const control of await controls.all()) {
+    await expect(control).toBeEnabled();
+    const box = (await control.boundingBox())!;
+    expect(box.width).toBeGreaterThanOrEqual(44);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+  }
+});
+
+test('Fix round 1: two welcome choices save while the first request is pending', async ({
+  page,
+  api,
+}) => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let started!: () => void;
+  const firstStarted = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  let held = false;
+  await page.route('**/api/guides', async (route) => {
+    if (route.request().method() === 'PUT' && !held) {
+      held = true;
+      started();
+      await gate;
+    }
+    await route.continue();
+  });
+  try {
+    await open(page, '/welcome');
+    const household = page.getByRole('switch', {
+      name: 'Sharing costs with a partner or housemates (Household)',
+    });
+    const files = page.getByRole('switch', {
+      name: 'Keeping receipts, warranties and documents (Files)',
+    });
+    await household.click();
+    await firstStarted;
+    await expect(files).toBeEnabled();
+    await files.click();
+    await expect(files).toBeChecked();
+    release();
+    await expect
+      .poll(async () => (await api.call('GET', '/guides')).navFeatures)
+      .toMatchObject({ household: 'shown', files: 'shown' });
+    await expect(household).toBeChecked();
+    await expect(files).toBeChecked();
+  } finally {
+    release();
+  }
+});
