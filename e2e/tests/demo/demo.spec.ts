@@ -136,7 +136,8 @@ test("bank connections can't be set up in the demo", async ({ page }) => {
   await expect(page.getByText('Not available in the demo')).toBeVisible();
   await expect(page.getByRole('textbox')).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Add account' }).click();
+  // The sidebar's add menu (Accounts, where banks now live, has its own Add account too)
+  await page.getByRole('complementary').getByRole('button', { name: 'Add account' }).click();
   await page.getByRole('button', { name: 'Connect via SimpleFIN' }).click();
   const dialog = page.getByRole('dialog', { name: 'Connect a bank' });
   await expect(dialog).toContainText('need the Allotment app');
@@ -158,7 +159,7 @@ test("bank connections can't be set up in the demo", async ({ page }) => {
   await page.keyboard.press('Escape');
   // The SimpleFIN dialog closes first, so the next one is the only "Connect a bank"
   await expect(dialog).toBeHidden();
-  await page.getByRole('button', { name: 'Add account' }).click();
+  await page.getByRole('complementary').getByRole('button', { name: 'Add account' }).click();
   await page.getByRole('button', { name: 'Connect via Enable Banking' }).click();
   await expect(page.getByRole('dialog', { name: 'Connect a bank' })).toContainText(
     'Enable Banking',
