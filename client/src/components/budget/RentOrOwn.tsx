@@ -30,7 +30,7 @@ function skipped() {
 
 /**
  * A new budget's one question: rent or own? The answer tucks away the housing envelopes that
- * don't apply (hidden, never deleted; Settings → Categories brings them back). Shown only while
+ * don't apply (hidden, never deleted; Budget → Manage categories brings them back). Shown only while
  * both kinds are still visible.
  */
 export function RentOrOwn() {

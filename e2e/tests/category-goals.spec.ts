@@ -112,3 +112,23 @@ test('a long goal name wraps on a phone instead of being cut off (#235)', async 
   expect(await name.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
   expect(await name.evaluate((el) => el.getBoundingClientRect().height)).toBeGreaterThan(24);
 });
+
+test('a goal grows from a sprout to a flower as it fills (#241)', async ({ page, api }) => {
+  await api.createAccount('Opening cash', 100000);
+  for (const [name, current] of [
+    ['Bike', 2_500],
+    ['Holiday', 7_500],
+    ['Laptop', 10_000],
+  ] as const)
+    await api.call('POST', '/goals', { name, targetAmount: 10_000, currentAmount: current });
+  await open(page, '/goals');
+  const bar = (name: string) => page.getByRole('progressbar', { name: `${name} progress` });
+  await expect(bar('Bike')).toHaveAttribute('aria-valuenow', '25');
+  await expect(bar('Bike')).toHaveAttribute('data-stage', 'sprout');
+  await expect(bar('Holiday')).toHaveAttribute('data-stage', 'bud');
+  await expect(bar('Laptop')).toHaveAttribute('data-stage', 'flower');
+  // A reached goal blooms the first time it is seen on this device, then stays still
+  await expect(bar('Laptop').getByTestId('goal-plant')).toHaveAttribute('data-bloom', 'true');
+  await page.reload();
+  await expect(bar('Laptop').getByTestId('goal-plant')).toHaveAttribute('data-bloom', 'false');
+});

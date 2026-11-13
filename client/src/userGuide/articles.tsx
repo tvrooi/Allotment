@@ -133,9 +133,9 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         heading: 'Keeping it up to date',
         body: (
           <p>
-            Allotment syncs when it starts and when you choose <b>Sync Now</b> in Settings →
-            Connected banks. You can also turn on background sync there. Each sync fetches recent
-            transactions; all of Up's history is checked once a week, or straight away with{' '}
+            Allotment syncs when it starts and when you choose <b>Sync Now</b> under Connected banks
+            on the Accounts page. You can also turn on background sync there. Each sync fetches
+            recent transactions; all of Up's history is checked once a week, or straight away with{' '}
             <b>Check all history</b>. Your token is stored encrypted and is never included in
             backups or exports.
           </p>
@@ -176,7 +176,7 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         body: (
           <ol>
             <li>
-              In Allotment, open Settings → Connected banks → <b>Enable Banking</b>, or choose{' '}
+              In Allotment, open Accounts → Connected banks → <b>Enable Banking</b>, or choose{' '}
               <b>Connect via Enable Banking</b> when you add an account. The setup form shows your
               redirect URL with a <b>Copy</b> button.
             </li>
@@ -234,9 +234,9 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
               until the bank books them.
             </li>
             <li>
-              Banks give access for a few months at most (180 days under the rules). Settings →
-              Connected banks says when it ends; choose <b>Reconnect</b> and log in again. Your
-              accounts and history stay as they are.
+              Banks give access for a few months at most (180 days under the rules). Connected
+              banks, on the Accounts page, says when it ends; choose <b>Reconnect</b> and log in
+              again. Your accounts and history stay as they are.
             </li>
             <li>
               Your private key is stored encrypted and is never included in backups or exports.
@@ -388,7 +388,7 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
           <p>
             Normally an envelope that ends the month overspent starts the next one at $0, and the
             money you spent comes out of Ready to assign. For spending someone will pay back, such
-            as a work expense, open the category (<b>Settings → Categories → Edit</b>) and tick{' '}
+            as a work expense, open the category (<b>Budget → Manage categories → Edit</b>) and tick{' '}
             <b>Keep overspending</b>. Its deficit then carries into the next month and Ready to
             assign isn’t reduced. When the repayment arrives and you give it that category, the
             envelope is back to $0. Review still lists it as overspent, marked as kept until repaid.

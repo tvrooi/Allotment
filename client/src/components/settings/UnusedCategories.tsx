@@ -4,7 +4,7 @@ import { Button } from '../ui/Button';
 import { getCategoriesWithUsage, setCategoryHidden } from '../../api/categories';
 import type { Category } from '../../types';
 
-// Settings → Categories: categories nothing has ever used (no transactions, never assigned),
+// Budget → Manage categories: categories nothing has ever used (no transactions, never assigned),
 // from a starter template, can be hidden in one go. A hidden category leaves pickers and the
 // budget while it holds no money; its history stays and it can be shown again.
 

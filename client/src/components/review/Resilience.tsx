@@ -10,6 +10,7 @@ import { Input, Select } from '../ui/Input';
 import { formatCurrency, isUnreadableAmount, parseCents } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { FUNDING_VIEWS } from '../../utils/fundingViews';
+import { CONNECTED_BANKS_LINK } from '../../utils/movedSections';
 
 // Phase 7 cards on the Review page: the flexibility reserve and resilience partition (7B), the
 // resume-after-a-lapse summary with reminders (7E) and the extra-income split (7F). They read
@@ -278,7 +279,7 @@ export function ResumeCard({ resume }: { resume: api.ResumeState }) {
                 {resume.bank.lastSyncedAt &&
                   ` · synced ${formatDay(resume.bank.lastSyncedAt.slice(0, 10))}`}
               </span>
-              <Link to="/settings?tab=connections" className="tabular-nums text-brand-600">
+              <Link to={CONNECTED_BANKS_LINK} className="tabular-nums text-brand-600">
                 {resume.bank.itemsToReview ?? 0}
               </Link>
             </li>

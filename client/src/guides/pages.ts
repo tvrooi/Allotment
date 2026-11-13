@@ -31,7 +31,7 @@ export const accountsGuide: Guide = {
     },
     {
       title: 'Bring in transactions automatically',
-      body: 'Connect Up under Settings → Connected banks and its settled transactions are imported for you.',
+      body: 'Connect Up under Connected banks, below your accounts, and its settled transactions are imported for you.',
       route: '/accounts',
     },
   ],
@@ -368,21 +368,17 @@ export const reportsGuide: Guide = {
 
 export const settingsGuide: Guide = {
   id: 'settings',
-  version: 1,
+  // 2: Connected banks moved to Accounts and Categories to Budget (#244)
+  version: 2,
   title: 'Settings',
-  summary: 'Categories, connecting Up, backups and preferences.',
+  summary: 'Preferences, account order, backups and the rest.',
   page: '/settings',
   steps: [
     {
       title: 'Everything in tabs',
-      body: 'Categories, account order, when your budget starts, tags, connected banks, currencies, data and preferences each have a tab.',
+      body: 'Preferences, account order, when your budget starts, tags, currencies, priorities, data and the server each have a tab. Connected banks are on the Accounts page, and categories on the Budget page.',
       route: '/settings',
       target: 'settings.tabs',
-    },
-    {
-      title: 'Connect Up',
-      body: 'Under Connected banks, connect Up and its settled transactions are imported for you, without duplicates. Your token is stored encrypted.',
-      route: '/settings',
     },
     {
       title: 'Back up and preferences',

@@ -1,6 +1,6 @@
 # UI map
 
-One row per route in `client/src/App.tsx`. Line counts are snapshots from `wc -l`, all refreshed on 13 November 2026 (Wave E). Recount with `wc -l client/src/pages/*.tsx` rather than trusting them. Page files are under
+One row per route in `client/src/App.tsx`. Line counts are snapshots from `wc -l`, all refreshed on 13 November 2026 (Wave E; Wave F pages recounted). Recount with `wc -l client/src/pages/*.tsx` rather than trusting them. Page files are under
 `client/src/pages/`, component folders under `client/src/components/`, hooks under
 `client/src/hooks/` (only hooks the page imports directly are listed), specs under `e2e/tests/`.
 **split candidate** marks a file over 800 lines.
@@ -14,10 +14,10 @@ Dashboard, Budget and Transactions are in the main bundle; every other page is `
 | `/welcome`                               | Welcome.tsx (309)                        | accounts, banks, up, plaid, simplefin, enablebanking | useAccounts, usePlaid, useServer, useGuides, useConnection                         | first-run, first-import, switchers                                           |
 | `/`                                      | redirects to `/dashboard`                |                                                      |                                                                                    |                                                                              |
 | `/dashboard`                             | Dashboard.tsx (266)                      | dashboard, review, layout, household, up             | useNextSteps, useIsPhone (StatusStrip: bank and household hooks)                   | dashboard, home-cards, safe-mode, phone/dashboard-viewport, demo/demo        |
-| `/budget`                                | Budget.tsx (1466) **split candidate**    | budget                                               | useBudget, useCategories, useConnection, useIsPhone, useMenuKeyboard               | budget, budget-inspector, envelope-funding, assign-block, targets            |
+| `/budget`                                | Budget.tsx (1519) **split candidate**    | budget, settings (CategoryManager)                   | useBudget, useCategories, useConnection, useIsPhone, useMenuKeyboard               | budget, budget-inspector, envelope-funding, assign-block, targets            |
 | `/budget/year`, `/budget/year/:year`     | AnnualBudget.tsx (440)                   | (ui only)                                            | none                                                                               | phone/annual-budget-phone                                                    |
 | `/budget/category/:id`                   | CategoryDetail.tsx (370)                 | budget, charts, transactions, files                  | useBudget, useTransactions                                                         | budget                                                                       |
-| `/accounts`                              | Accounts.tsx (291)                       | accounts, dashboard, up                              | useAccounts, useOpenFromLink                                                       | accounts, accounts-access, demo/accounts-access                              |
+| `/accounts`                              | Accounts.tsx (321)                       | accounts (ConnectedBanks), dashboard, up             | useAccounts, useOpenFromLink                                                       | accounts, accounts-access, demo/accounts-access                              |
 | `/accounts/:id/reconcile`                | ReconcilePage.tsx (375)                  | (ui only)                                            | none                                                                               | accounts, financial-integrity                                                |
 | `/accounts/:id`                          | AccountTransactions.tsx (131)            | accounts, transactions, files                        | useAccounts                                                                        | accounts, transactions                                                       |
 | `/transactions`                          | Transactions.tsx (142)                   | transactions, receipts                               | useOpenFromLink                                                                    | transactions, transaction-clarity, transaction-filters, transaction-presets  |
@@ -31,8 +31,8 @@ Dashboard, Budget and Transactions are in the main bundle; every other page is `
 | `/payees`                                | Payees.tsx (436)                         | payees                                               | usePayees, useIsPhone, useCanSave                                                  | payees, connection                                                           |
 | `/payees/:id`                            | PayeeDetail.tsx (263)                    | payees, transactions, charts, rules, currency        | usePayees, useRules, useTransactions, useFilterSearch, useScrollMemory, useCanSave | payees, transactions, command-palette, safe-mode, currencies                 |
 | `/rules`                                 | Rules.tsx (449)                          | rules                                                | useRules, useIsPhone, useOpenFromLink                                              | rules                                                                        |
-| `/settings`                              | Settings.tsx (149)                       | settings                                             | none                                                                               | settings, data, safe-mode                                                    |
-| `/goals`                                 | Goals.tsx (561)                          | goals, files                                         | useGoals, useAccounts                                                              | category-goals, demo/category-goals                                          |
+| `/settings`                              | Settings.tsx (146)                       | settings                                             | none                                                                               | settings, data, safe-mode                                                    |
+| `/goals`                                 | Goals.tsx (557)                          | goals (GoalGrowthBar), files                         | useGoals, useAccounts                                                              | category-goals, demo/category-goals                                          |
 | `/forecast`                              | Forecast.tsx (72)                        | forecast, longterm                                   | none                                                                               | forecast, long-term-forecast, phone/long-term-forecast                       |
 | `/investments`                           | Investments.tsx (786)                    | investments, accounts, reports                       | useInvestments, useAccounts                                                        | investments                                                                  |
 | `/tax`                                   | Tax.tsx (822) **split candidate**        | tax, reports, connection                             | useTax, useAssets, useInvestments, useConnection                                   | receipts-tax, depreciating-assets, tax-car-home                              |
@@ -86,7 +86,7 @@ unsaved-drafts, phone/phone, phone/polish-phone, phone/iphone-webapp, phone/amou
 - `components/budget/PaydayPlan.tsx` (903)
 - `components/longterm/LongTermForecast.tsx` (910)
 - `components/enablebanking/ConnectEnableBankingModal.tsx` (842)
-- Not UI components but over 800: `userGuide/articles.tsx` (1297), `types/index.ts` (1250).
+- Not UI components but over 800: `userGuide/articles.tsx` (1321), `types/index.ts` (1250).
 
 ## `client/src/components/ui` primitives
 

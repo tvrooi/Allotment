@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.174
+
+- **Banks with your accounts, categories with your budget.** Connected banks is now a section of the Accounts page, so Up is two clicks from the sidebar: Accounts, then Up. Categories are managed from the Budget page with Manage categories (in the ⋯ menu on a phone), which opens the category manager in place of the envelopes, and Back to budget returns. Settings keeps eight tabs and opens on Preferences. Old links to Settings' Connected banks and Categories tabs open the new places.
+- **Good moments are marked.** A goal's progress bar grows a little plant as it fills, from a sprout to leaves to a bud, and it flowers when the goal is reached, opening once the first time you see it. When Ready to assign reaches $0 a sprout tick appears beside Fully budgeted, with "Every dollar has a job." It grows in only when you get there, not every time you open the month, and stays still when your device asks for reduced motion.
+
 ## 0.2.0-up.173
 
 - **Payees and goals lead somewhere.** Each payee has its own page: its spending by month and in total, its default category, the rules that name it and its transactions. Open it from the Payees list, from a transaction's details or from Search. A goal funded by a category opens that category; every goal has an Edit button. Payees are renamed with a visible button, and a default category is chosen with the same searchable picker as everywhere else.

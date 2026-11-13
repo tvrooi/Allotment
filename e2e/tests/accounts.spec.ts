@@ -191,3 +191,27 @@ test.describe('accounts', () => {
     await expect(main).toContainText(/Loans\s*-\$12,000/);
   });
 });
+
+test('the Up connection is two clicks from the sidebar (#244)', async ({ page, api }) => {
+  await api.createAccount('Everyday', 0);
+  await open(page, '/dashboard');
+  await page
+    .getByRole('complementary')
+    .getByRole('link', { name: 'Accounts', exact: true })
+    .click();
+  const banks = page.getByRole('region', { name: 'Connected banks' });
+  await banks.getByRole('button', { name: 'Up', exact: true }).click();
+  // Up's own panel (Connect Up, or the connection when one is left from another test)
+  await expect(banks.getByRole('link', { name: 'How connecting Up works' })).toBeVisible();
+});
+
+test('a budget with no accounts yet can connect a bank from Accounts (#244)', async ({ page }) => {
+  await open(page, '/accounts');
+  await page.getByRole('button', { name: 'Connect a bank' }).click();
+  const banks = page.getByRole('region', { name: 'Connected banks' });
+  await expect(banks.getByRole('button', { name: 'Up', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(banks.getByRole('link', { name: 'How connecting Up works' })).toBeInViewport();
+});

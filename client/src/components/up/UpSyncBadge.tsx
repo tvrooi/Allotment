@@ -1,13 +1,14 @@
 import { useUpConnection } from '../../hooks/useUp';
 import { bankFeeds, bankSyncLabel, type BankFeed } from '../../utils/bankSync';
 import { StatusPill } from '../ui/StatusPill';
+import { CONNECTED_BANKS_LINK } from '../../utils/movedSections';
 
 const SYNC_DOT = { good: 'good', syncing: 'busy', attention: 'attention' } as const;
 
 /** One bank feed's state as a pill linking to Settings → Connections */
 export function BankSyncPill({ feed, className }: { feed: BankFeed; className?: string }) {
   return (
-    <StatusPill to="/settings?tab=connections" dot={SYNC_DOT[feed.state]} className={className}>
+    <StatusPill to={CONNECTED_BANKS_LINK} dot={SYNC_DOT[feed.state]} className={className}>
       {bankSyncLabel(feed)}
     </StatusPill>
   );

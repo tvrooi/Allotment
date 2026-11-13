@@ -20,9 +20,9 @@ async function undersized(locators: Locator[]) {
   return small;
 }
 
-test('the category list in Settings has full-size buttons', async ({ page, api }) => {
+test('the category list on the Budget page has full-size buttons', async ({ page, api }) => {
   await api.createAccount('Checking', 0);
-  await open(page, '/settings');
+  await open(page, '/budget?view=categories');
   await expect(page.getByRole('button', { name: 'Create category' }).first()).toBeVisible();
   expect(
     await undersized([

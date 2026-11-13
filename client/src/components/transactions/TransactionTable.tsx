@@ -43,6 +43,7 @@ import { useAccountCurrency, useBudgetCurrency } from '../../hooks/useCurrency';
 import type { CategoryGroup, Transaction } from '../../types';
 import type { CreateTransactionData } from '../../api/transactions';
 import { formatDay, formatDayLong } from '../../utils/dates';
+import { CONNECTED_BANKS_LINK } from '../../utils/movedSections';
 
 /** Rows drawn at a time: every match is loaded, but drawing thousands at once is slow */
 const ROWS_PER_PAGE = 300;
@@ -528,7 +529,7 @@ export function TransactionTable({
                     </>
                   ) : (
                     <>
-                      <ButtonLink variant="secondary" to="/settings?tab=connections">
+                      <ButtonLink variant="secondary" to={CONNECTED_BANKS_LINK}>
                         <Link2 size={14} /> Connect a bank
                       </ButtonLink>
                       {onAddTransaction && (

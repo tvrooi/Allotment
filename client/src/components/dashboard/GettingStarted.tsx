@@ -16,6 +16,7 @@ import { Card } from '../ui/Card';
 import { UpConnectModal } from '../up/UpConnectModal';
 import { useGuideProgress, useUpdateGuides } from '../../hooks/useGuides';
 import { useGuideStore } from '../../store/guideStore';
+import { CONNECTED_BANKS_LINK } from '../../utils/movedSections';
 
 interface Step {
   id: string;
@@ -83,7 +84,7 @@ export default function GettingStarted({
       done: (transactions.data?.length ?? 0) > 0,
       action: firstAccount
         ? { label: 'Import or add', to: `/accounts/${firstAccount.id}` }
-        : { label: 'Connect a bank', to: '/settings?tab=connections' },
+        : { label: 'Connect a bank', to: CONNECTED_BANKS_LINK },
     },
     // Only while there is pay in the register that is not yet income
     ...(salary?.categoryId && salary.uncategorisedCount

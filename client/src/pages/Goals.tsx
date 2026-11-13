@@ -7,6 +7,7 @@ import { useGoals, useCreateGoal, useUpdateGoal, useDeleteGoal } from '../hooks/
 import { useAccounts } from '../hooks/useAccounts';
 import { GoalFormModal } from '../components/goals/GoalFormModal';
 import { GoalStatusModal } from '../components/goals/GoalStatusModal';
+import { GoalGrowthBar } from '../components/goals/GoalGrowthBar';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Modal, useModalValue } from '../components/ui/Modal';
 import { FilesSection } from '../components/files/FilesSection';
@@ -227,13 +228,8 @@ function GoalRow({
           </span>
         </p>
       )}
-      <div className="mt-3 pl-12">
-        <div className="h-1.5 rounded-full bg-surface-alt overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${complete ? 'bg-positive' : 'bg-brand-500'}`}
-            style={{ width: complete ? '100%' : `${pct}%` }}
-          />
-        </div>
+      <div className="mt-2 pl-12">
+        <GoalGrowthBar goalId={goal.id} name={goal.name} pct={pct} complete={complete} />
         <div className="flex items-center justify-between mt-1.5 text-xs">
           <span className={complete ? 'text-positive font-medium' : 'text-text-secondary'}>
             {complete ? (

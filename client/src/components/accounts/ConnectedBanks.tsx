@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode, type Ref } from 'react';
 import { RefreshCw, Plus, Loader2 } from 'lucide-react';
 import { usePlaidStatus, usePlaidItems, useSyncAll } from '../../hooks/usePlaid';
 import { useSimplefinConnections, useSyncAllSimplefin } from '../../hooks/useSimplefin';
@@ -21,31 +21,69 @@ import type { SimplefinSetupResult } from '../../types';
 import { IS_DEMO } from '../../demo/demoApi';
 import { NotInDemo } from '../demo/NotInDemo';
 import { UpSettings } from '../up/UpSettings';
-import { DeletedBankImports } from './DeletedBankImports';
+import { DeletedBankImports } from '../settings/DeletedBankImports';
 import { useUpConnection } from '../../hooks/useUp';
 import { formatDistanceToNow } from 'date-fns';
 import { CommunitySupportedNote } from '../banks/CommunitySupported';
 
-type Provider = 'plaid' | 'simplefin' | 'enablebanking' | 'up';
+export type BankProvider = 'plaid' | 'simplefin' | 'enablebanking' | 'up';
 
-export function ConnectedAccounts() {
-  return IS_DEMO ? <ConnectedAccountsDemo /> : <ConnectedAccountsSettings />;
+interface ConnectedBanksProps {
+  /** The provider whose setup is open, or none: the section stays short on the Accounts page */
+  provider: BankProvider | null;
+  onProvider: (provider: BankProvider) => void;
+  /** The heading, so a link that opens the section can move focus to it */
+  headingRef?: Ref<HTMLHeadingElement>;
+}
+
+/**
+ * Connected banks, a section of the Accounts page (#244; it was a Settings tab): Up first,
+ * then the community-supported connections, each opened in place.
+ */
+export function ConnectedBanks(props: ConnectedBanksProps) {
+  return IS_DEMO ? <ConnectedBanksDemo {...props} /> : <ConnectedBanksSetup {...props} />;
+}
+
+const HEADING_ID = 'connected-banks-heading';
+
+function BanksSection({
+  headingRef,
+  description,
+  children,
+}: {
+  headingRef?: Ref<HTMLHeadingElement>;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <section aria-labelledby={HEADING_ID} className="space-y-5">
+      <div>
+        <h2
+          id={HEADING_ID}
+          ref={headingRef}
+          tabIndex={-1}
+          className="text-base font-semibold text-text focus:outline-none"
+        >
+          Connected banks
+        </h2>
+        <p className="text-sm text-text-secondary mt-0.5">{description}</p>
+      </div>
+      {children}
+    </section>
+  );
 }
 
 /**
  * The demo's sample budget came from Up: its (pretend) connection, and Connect Up shown but
  * switched off, since the demo can't connect banks
  */
-function ConnectedAccountsDemo() {
+function ConnectedBanksDemo({ headingRef }: ConnectedBanksProps) {
   const { data: up } = useUpConnection();
   return (
-    <div className="space-y-5 max-w-xl">
-      <div>
-        <h2 className="text-sm font-semibold text-text">Connected banks</h2>
-        <p className="text-xs text-text-tertiary mt-0.5">
-          Automatically import transactions from your financial institutions.
-        </p>
-      </div>
+    <BanksSection
+      headingRef={headingRef}
+      description="Automatically import transactions from your financial institutions."
+    >
       {up && (
         <div className="rounded-lg border border-border bg-surface p-4 space-y-2">
           <p className="text-sm font-medium text-text">Up</p>
@@ -70,11 +108,11 @@ function ConnectedAccountsDemo() {
         </span>
       </div>
       <NotInDemo />
-    </div>
+    </BanksSection>
   );
 }
 
-function ConnectedAccountsSettings() {
+function ConnectedBanksSetup({ provider, onProvider, headingRef }: ConnectedBanksProps) {
   const { data: status, isLoading: statusLoading } = usePlaidStatus();
   const { data: items = [], isLoading: itemsLoading } = usePlaidItems();
   const { data: sfConnections = [], isLoading: sfLoading } = useSimplefinConnections();
@@ -84,7 +122,6 @@ function ConnectedAccountsSettings() {
   const syncAllSf = useSyncAllSimplefin();
   const syncAllEb = useSyncAllEnableBanking();
   const [showEnableBanking, setShowEnableBanking] = useState(false);
-  const [provider, setProvider] = useState<Provider>('plaid');
   const [showConnect, setShowConnect] = useState(false);
   const [showSimplefin, setShowSimplefin] = useState(false);
   const [sfSetupResult, setSfSetupResult] = useState<SimplefinSetupResult | undefined>();
@@ -95,22 +132,19 @@ function ConnectedAccountsSettings() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 size={24} className="animate-spin text-text-tertiary" />
-      </div>
+      <BanksSection headingRef={headingRef} description="Checking your bank connections…">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 size={24} className="animate-spin text-text-tertiary" aria-hidden />
+        </div>
+      </BanksSection>
     );
   }
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h2 className="text-sm font-semibold text-text">Connected banks</h2>
-        <p className="text-xs text-text-tertiary mt-0.5">
-          Automatically import transactions from your financial institutions. Any other bank: import
-          its CSV files from the account's page.
-        </p>
-      </div>
-
+    <BanksSection
+      headingRef={headingRef}
+      description="Automatically import transactions from your financial institutions. Any other bank: import its CSV files from the account's page."
+    >
       {/* Provider toggle: one row that scrolls sideways when it's wider than the screen */}
       <div
         role="group"
@@ -143,7 +177,7 @@ function ConnectedAccountsSettings() {
           <button
             key={p.id}
             type="button"
-            onClick={() => setProvider(p.id)}
+            onClick={() => onProvider(p.id)}
             title={p.title}
             aria-pressed={provider === p.id}
             className={`flex items-center shrink-0 px-4 py-1.5 max-md:min-h-11 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${
@@ -162,7 +196,7 @@ function ConnectedAccountsSettings() {
         ))}
       </div>
 
-      {provider !== 'up' && <CommunitySupportedNote />}
+      {provider !== null && provider !== 'up' && <CommunitySupportedNote />}
 
       {/* Plaid content */}
       {provider === 'up' && <UpSettings />}
@@ -365,6 +399,6 @@ function ConnectedAccountsSettings() {
         initialSetupResult={sfSetupResult}
       />
       <DeletedBankImports />
-    </div>
+    </BanksSection>
   );
 }

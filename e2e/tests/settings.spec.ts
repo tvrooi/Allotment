@@ -2,7 +2,8 @@ import type { Page } from '@playwright/test';
 import fs from 'fs';
 import { test, expect, open, isoDay } from './fixtures';
 
-// Settings: managing categories and groups, and preferences.
+// Settings: preferences and the other sections, plus managing categories and groups, which
+// moved to the Budget page (#244).
 
 async function pickIcon(page: Page, name: string) {
   const picker = page.getByRole('dialog', { name: 'Choose an icon' });
@@ -10,10 +11,54 @@ async function pickIcon(page: Page, name: string) {
   await expect(picker).toBeHidden();
 }
 
+test.describe('where Settings sections live (#244)', () => {
+  test('Settings has eight tabs and opens on Preferences', async ({ page, api }) => {
+    await api.createAccount('Checking', 0);
+    await open(page, '/settings');
+    const list = page.getByRole('tablist', { name: 'Settings sections' });
+    await expect(list.getByRole('tab')).toHaveText([
+      'Preferences',
+      'Accounts',
+      'Budget',
+      'Tags',
+      'Currencies',
+      'Priorities',
+      'Data',
+      'Server',
+    ]);
+    await expect(list.getByRole('tab', { name: 'Preferences' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
+  test('old links to Connected banks and Categories open their new homes', async ({
+    page,
+    api,
+  }) => {
+    await api.createAccount('Checking', 0);
+    await open(page, '/settings?tab=connections');
+    await expect(page).toHaveURL(/#\/accounts$/);
+    const banks = page.getByRole('region', { name: 'Connected banks' });
+    await expect(banks.getByRole('button', { name: 'Up', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    // Up's own panel (Connect Up, or the connection when one is left from another test)
+    await expect(banks.getByRole('link', { name: 'How connecting Up works' })).toBeVisible();
+
+    await open(page, '/settings?tab=categories');
+    await expect(page).toHaveURL(/#\/budget\?view=categories$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Categories' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Edit Groceries' })).toBeVisible();
+  });
+});
+
+// The category manager now opens from the Budget page (#244)
 test.describe('categories', () => {
   test.beforeEach(async ({ api, page }) => {
     await api.createAccount('Checking', 0);
-    await open(page, '/settings');
+    await open(page, '/budget?view=categories');
   });
 
   test('creates a group and a category in it', async ({ page, api }) => {

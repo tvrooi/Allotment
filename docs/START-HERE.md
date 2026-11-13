@@ -67,7 +67,7 @@ Allow about 15 minutes.
    minutes.
 
 8. **Connect Up.** On the welcome screen select **Connect Up**. (Later you can find it under
-   **Settings → Connected banks → Up → Connect Up**.) Paste your token and select **Connect**. For
+   **Accounts → Connected banks → Up → Connect Up**.) Paste your token and select **Connect**. For
    each Up account, choose **Create a new account** unless you already have a matching account in
    Allotment, then select **Save & Sync**.
 
@@ -90,7 +90,7 @@ Allow about 15 minutes.
     [payday plans guide](PAYDAY-PLANS.md).
 
 That is all. Allotment imports from Up each time the app starts and when you select **Sync Now**
-in **Settings → Connected banks → Up**. You can also turn on background sync there (every 15, 30,
+in **Accounts → Connected banks → Up**. You can also turn on background sync there (every 15, 30,
 60 or 240 minutes). It is off until you choose.
 
 **Sharing with a partner or family?** Turn on **multi_user** in the app's **Configuration** tab to

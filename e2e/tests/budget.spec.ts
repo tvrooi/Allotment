@@ -695,3 +695,72 @@ test('the next funding gap separates bills due by the deadline from later bills'
     await expect(dialog).toBeHidden();
   }
 });
+
+test('Manage categories opens the category manager in place of the envelopes (#244)', async ({
+  page,
+  api,
+}) => {
+  await api.createAccount('Checking', 0);
+  await open(page, '/budget');
+  await expect(toBeBudgeted(page)).toBeVisible();
+  await page.getByRole('link', { name: 'Manage categories' }).click();
+  await expect(page).toHaveURL(/view=categories/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Categories' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit Groceries' })).toBeVisible();
+  // The envelopes are not under the manager: it is a view of its own
+  await expect(toBeBudgeted(page)).toHaveCount(0);
+
+  await page.getByRole('link', { name: 'Back to budget' }).click();
+  await expect(toBeBudgeted(page)).toBeVisible();
+  await expect(page).not.toHaveURL(/view=categories/);
+  // Browser Back returns to the manager it came from
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Categories' })).toBeVisible();
+});
+
+test('reaching $0 ready to assign is marked with a sprout tick (#241)', async ({ page, api }) => {
+  const checking = await api.createAccount('Checking', 0);
+  const paychecks = await api.category('Paychecks');
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: 50_000,
+    payeeName: 'Employer',
+    categoryId: paychecks.id,
+  });
+  await open(page, '/budget');
+  await expect(toBeBudgeted(page)).toContainText('$500');
+  await expect(toBeBudgeted(page).getByTestId('sprout-tick')).toHaveCount(0);
+
+  await plan(page, 'Groceries', '500');
+  await expect(toBeBudgeted(page)).toContainText('Fully budgeted');
+  await expect(toBeBudgeted(page)).toContainText('Every dollar has a job.');
+  const tick = toBeBudgeted(page).getByTestId('sprout-tick');
+  await expect(tick).toBeVisible();
+  // Reached while you watched, so it grows in once
+  await expect(tick).toHaveAttribute('data-animate', 'true');
+
+  // Opening a month that is already at $0 shows the tick still, with no fuss
+  await page.reload();
+  await expect(tick).toBeVisible();
+  await expect(tick).toHaveAttribute('data-animate', 'false');
+});
+
+test('with reduced motion the sprout tick is shown still (#241)', async ({ page, api }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const checking = await api.createAccount('Checking', 0);
+  const paychecks = await api.category('Paychecks');
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: 20_000,
+    payeeName: 'Employer',
+    categoryId: paychecks.id,
+  });
+  await open(page, '/budget');
+  await plan(page, 'Groceries', '200');
+  const tick = toBeBudgeted(page).getByTestId('sprout-tick');
+  await expect(tick).toBeVisible();
+  for (const part of await tick.locator('[data-motion]').all())
+    await expect(part).toHaveCSS('animation-name', 'none');
+});
