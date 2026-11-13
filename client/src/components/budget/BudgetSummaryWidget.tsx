@@ -12,6 +12,8 @@ import { useIsPhone } from '../../hooks/useIsPhone';
 import { HoldMoney } from './HoldMoney';
 import { Button } from '../ui/Button';
 import { AlertCircle, ChevronRight } from 'lucide-react';
+import { SproutTick } from './SproutTick';
+import { reachedZeroNow, type ReadySeen } from './readyReached';
 
 interface ExpenseBreakdown {
   planned: number;
@@ -187,6 +189,8 @@ export function BudgetSummaryWidget({
   // Overspending, uncategorised spending and card shortfalls are jobs to do beside a figure that
   // holds, so they get their own line instead of turning the whole of Ready to assign yellow.
   const doubtful = !!funding?.accountIssues?.length || funding?.complete === false;
+  const hasMoney =
+    !funding || funding.resources !== 0 || (funding.envelopes ?? funding.reserved) !== 0;
   const hero =
     funding && doubtful
       ? {
@@ -194,11 +198,24 @@ export function BudgetSummaryWidget({
           text: 'text-caution',
           label: unresolvedReason(funding),
         }
-      : getHeroStyle(
-          toBeBudgeted,
-          incomePlanned,
-          !funding || funding.resources !== 0 || (funding.envelopes ?? funding.reserved) !== 0,
-        );
+      : getHeroStyle(toBeBudgeted, incomePlanned, hasMoney);
+  // $0 with money in the budget: every dollar has a job (#241). Unknown until the summary is in.
+  const fullyBudgeted = !!funding && !doubtful && toBeBudgeted === 0 && hasMoney;
+  // The tick grows in when you bring this month there, and is still when you arrive at it
+  const [seen, setSeen] = useState<ReadySeen | null>(null);
+  const [celebrate, setCelebrate] = useState(false);
+  if (funding && (seen?.month !== funding.month || seen.full !== fullyBudgeted)) {
+    setCelebrate(reachedZeroNow(seen, funding.month, fullyBudgeted));
+    setSeen({ month: funding.month, full: fullyBudgeted });
+  }
+  const heroLabel = fullyBudgeted ? (
+    <span className="inline-flex items-center gap-1.5">
+      <SproutTick animate={celebrate} />
+      {hero.label}
+    </span>
+  ) : (
+    hero.label
+  );
   // A negative figure already says "Assigned more than you have", so it isn't repeated here
   const todo =
     funding && !doubtful && !funding.resolved
@@ -290,7 +307,7 @@ export function BudgetSummaryWidget({
                   {READY_HELP}
                 </HelpTip>
               </p>
-              <p>{hero.label}</p>
+              <p>{heroLabel}</p>
             </div>
             <p className={`text-lg font-semibold tabular-nums whitespace-nowrap ${hero.text}`}>
               {readyAmount}
@@ -314,9 +331,11 @@ export function BudgetSummaryWidget({
             >
               {readyAmount}
             </p>
-            <p className={`text-sm font-medium ${hero.text}`}>{hero.label}</p>
+            <p className={`text-sm font-medium ${hero.text}`}>{heroLabel}</p>
             <p className={`text-nav text-pretty ${hero.text} mt-1`}>
-              Money you have that isn't in a category yet.
+              {fullyBudgeted
+                ? 'Every dollar has a job.'
+                : "Money you have that isn't in a category yet."}
             </p>
           </div>
         )}

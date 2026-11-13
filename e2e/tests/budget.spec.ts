@@ -717,3 +717,50 @@ test('Manage categories opens the category manager in place of the envelopes (#2
   await page.goBack();
   await expect(page.getByRole('heading', { level: 1, name: 'Categories' })).toBeVisible();
 });
+
+test('reaching $0 ready to assign is marked with a sprout tick (#241)', async ({ page, api }) => {
+  const checking = await api.createAccount('Checking', 0);
+  const paychecks = await api.category('Paychecks');
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: 50_000,
+    payeeName: 'Employer',
+    categoryId: paychecks.id,
+  });
+  await open(page, '/budget');
+  await expect(toBeBudgeted(page)).toContainText('$500');
+  await expect(toBeBudgeted(page).getByTestId('sprout-tick')).toHaveCount(0);
+
+  await plan(page, 'Groceries', '500');
+  await expect(toBeBudgeted(page)).toContainText('Fully budgeted');
+  await expect(toBeBudgeted(page)).toContainText('Every dollar has a job.');
+  const tick = toBeBudgeted(page).getByTestId('sprout-tick');
+  await expect(tick).toBeVisible();
+  // Reached while you watched, so it grows in once
+  await expect(tick).toHaveAttribute('data-animate', 'true');
+
+  // Opening a month that is already at $0 shows the tick still, with no fuss
+  await page.reload();
+  await expect(tick).toBeVisible();
+  await expect(tick).toHaveAttribute('data-animate', 'false');
+});
+
+test('with reduced motion the sprout tick is shown still (#241)', async ({ page, api }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const checking = await api.createAccount('Checking', 0);
+  const paychecks = await api.category('Paychecks');
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: 20_000,
+    payeeName: 'Employer',
+    categoryId: paychecks.id,
+  });
+  await open(page, '/budget');
+  await plan(page, 'Groceries', '200');
+  const tick = toBeBudgeted(page).getByTestId('sprout-tick');
+  await expect(tick).toBeVisible();
+  for (const part of await tick.locator('[data-motion]').all())
+    await expect(part).toHaveCSS('animation-name', 'none');
+});
