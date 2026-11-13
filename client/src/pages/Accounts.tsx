@@ -310,7 +310,9 @@ export default function AccountsPage() {
             </div>
           </>
         )}
-        {banks}
+        {/* Not under a load failure: the section's own account lookups would retry the failed
+            query on mount and put the page back to loading, over and over */}
+        {loadFailed(accountsQuery) ? null : banks}
       </div>
 
       <AddAccountModal isOpen={addOpen} onClose={() => setAddOpen(false)} />
