@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { spendByMonth } from './payeeSpend';
+import { spendByMonth, spendWithoutRate } from './payeeSpend';
 
 const tx = (date: string, amount: number, extra: Record<string, unknown> = {}) => ({
   date,
@@ -40,5 +40,23 @@ describe("a payee's spending by month (#235)", () => {
       '2026-11-13',
     );
     expect(months.at(-1)!.amount).toBe(650);
+  });
+});
+
+describe('spending the chart leaves out for a missing rate (#235)', () => {
+  it('counts exactly the rows the chart would sum: top-level money out in the window', () => {
+    const missing = { mainAmount: null, mainAmountSource: 'missing' };
+    expect(
+      spendWithoutRate(
+        [
+          tx('2026-11-01', -1_000, missing), // counted
+          tx('2026-11-01', -400, { ...missing, parentTransactionId: 'p' }), // a split's part
+          tx('2026-11-02', 2_000, missing), // money in
+          tx('2025-09-01', -800, missing), // older than the window
+          tx('2026-10-01', -500), // has a value
+        ] as never,
+        '2026-11-13',
+      ),
+    ).toBe(1);
   });
 });

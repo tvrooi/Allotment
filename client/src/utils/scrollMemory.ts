@@ -81,62 +81,53 @@ export interface Entry {
   pathname: string;
 }
 
-/**
- * What a scroll container does as the app moves from one history entry to another (or mounts
- * on one): Back and Forward put back the offset saved for the entry, the top included; a
- * filter change that replaces the entry carries the current offset over to its new key, so
- * Back finds it; a different page starts at the top. Returns a function that stops restoring.
- */
-export function enterEntry(
-  el: Scroller,
-  from: Entry,
-  to: Entry & { navigation: 'POP' | 'PUSH' | 'REPLACE' },
-  watch?: Watch,
-): () => void {
-  const saved = recallScroll(to.key);
-  // Back and Forward, or a list mounting on an entry it was scrolled in before (it was still
-  // loading when the entry came back): a new entry has nothing saved
-  if (saved !== undefined && (to.navigation === 'POP' || from.key === to.key))
-    return restoreScroll(el, saved, watch);
-  if (from.key !== to.key) {
-    if (from.pathname !== to.pathname) el.scrollTop = 0;
-    else if (to.navigation === 'REPLACE') {
-      // The replaced entry's offset goes with it: as saved, or where the list is now. A list
-      // that mounted after the replace (still loading on Back) is moved there once it can be.
-      const carried = recallScroll(from.key) ?? el.scrollTop;
-      rememberScroll(to.key, carried);
-      if (el.scrollTop < carried) return restoreScroll(el, carried, watch);
-    }
-  }
-  return () => {};
-}
+type Navigation = 'POP' | 'PUSH' | 'REPLACE';
 
 /**
- * One scroll container's view of the history: the entry it is on, followed even while its
- * element is missing (a page drawing its loading state), with a replace in the meantime
- * handing the saved offset on, so the element finds it when it arrives. useScrollMemory
- * holds one per container.
+ * One scroll container's view of the history (useScrollMemory holds one per container). The
+ * page moves by itself only on Back and Forward: an entry reached that way gets its remembered
+ * offset back, the top included, until the person scrolls or shows they mean to (then their
+ * position is what's remembered). A filter change that replaces the entry carries the offset
+ * forward as the new entry's remembered value, for a later Back, but moves nothing. A
+ * different page starts at the top. It follows the entry even while its element is missing
+ * (a page drawing its loading state), so the element finds its offset when it arrives.
  */
-export function createScrollTracker(initial: Entry) {
+export function createScrollTracker(initial: Entry, arrival: Navigation) {
   let seen = initial;
+  // Reached by Back or Forward, and the person hasn't scrolled since (a replace keeps it)
+  let restoring = arrival === 'POP';
   return {
-    enter(
-      el: Scroller | null,
-      to: Entry & { navigation: 'POP' | 'PUSH' | 'REPLACE' },
-      watch?: Watch,
-    ) {
+    enter(el: Scroller | null, to: Entry & { navigation: Navigation }, watch?: Watch) {
       const from = seen;
       seen = { key: to.key, pathname: to.pathname };
-      if (el) return enterEntry(el, from, to, watch);
-      // No element yet: a replace still hands the saved offset on to the new entry
-      const saved = recallScroll(from.key);
-      if (to.navigation === 'REPLACE' && from.pathname === to.pathname && saved !== undefined)
-        rememberScroll(to.key, saved);
+      if (from.key !== to.key) {
+        if (to.navigation === 'POP') restoring = true;
+        else if (to.navigation === 'PUSH') restoring = false;
+        else if (from.pathname === to.pathname) {
+          const carried = recallScroll(from.key) ?? el?.scrollTop;
+          if (carried !== undefined) rememberScroll(to.key, carried);
+        }
+      }
+      if (!el) return () => {};
+      const saved = recallScroll(to.key);
+      if (restoring && saved !== undefined) return restoreScroll(el, saved, watch);
+      if (from.key !== to.key && from.pathname !== to.pathname) el.scrollTop = 0;
       return () => {};
     },
-    /** Files the element's offset under the entry it shows */
-    save(el: Scroller) {
-      rememberScroll(seen.key, el.scrollTop);
+    /** Listens to the element: its scrolls are remembered for the entry it shows, and scroll
+     * intent ends any restoring (its position, moved or not, becomes the remembered one) */
+    attach(el: Scroller) {
+      const save = () => rememberScroll(seen.key, el.scrollTop);
+      const intent = () => {
+        restoring = false;
+        save();
+      };
+      el.addEventListener('scroll', save, { passive: true });
+      for (const type of INTENT) el.addEventListener(type, intent, { passive: true });
+      return () => {
+        el.removeEventListener('scroll', save);
+        for (const type of INTENT) el.removeEventListener(type, intent);
+      };
     },
   };
 }

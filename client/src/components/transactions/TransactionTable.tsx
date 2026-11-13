@@ -19,6 +19,7 @@ import {
   DEFAULT_FILTERS,
   registerParams,
   type FilterState,
+  type ScopeDimension,
 } from '../../utils/transactionFilters';
 import { TransactionFormRow } from './TransactionFormRow';
 import { BankFedNotice } from './BankFedNotice';
@@ -132,6 +133,15 @@ export function TransactionTable({
 
   const showAccountCol = !accountId;
 
+  // What this page fixes the register to: not offered as a filter
+  const scopes = useMemo(() => {
+    const fixed: ScopeDimension[] = [];
+    if (accountId) fixed.push('account');
+    if (categoryId || categoryIds?.length || categoryGroupId || uncategorized)
+      fixed.push('category');
+    if (payeeIds?.length || payeeName !== undefined) fixed.push('payee');
+    return fixed;
+  }, [accountId, categoryId, categoryIds, categoryGroupId, uncategorized, payeeIds, payeeName]);
   const params = useMemo(
     () =>
       registerParams(filters, {
@@ -385,7 +395,7 @@ export function TransactionTable({
           if (month && onClearMonth) onClearMonth();
           setFilters(f);
         }}
-        fixedAccount={Boolean(accountId)}
+        scopes={scopes}
         onSaveView={canSaveView ? () => setSavingView(true) : undefined}
         externalMonth={month}
         externalRange={from && to ? `${formatDay(from)} – ${formatDay(to)}` : undefined}

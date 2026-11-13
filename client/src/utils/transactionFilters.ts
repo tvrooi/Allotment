@@ -185,6 +185,7 @@ export function registerParams(f: FilterState, scope: RegisterScope): Transactio
   if (scope.categoryIds?.length || scope.categoryId) {
     delete base.categoryIds;
     delete base.uncategorized;
+    delete base.categoryGroupId;
     if (scope.categoryIds?.length) base.categoryIds = scope.categoryIds;
     else base.categoryId = scope.categoryId;
   }

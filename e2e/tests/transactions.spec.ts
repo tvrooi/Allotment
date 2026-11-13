@@ -1052,3 +1052,36 @@ test("a scoped page's URL can't add a filter on its own account (#245)", async (
   // No filter count on the Filters button, as no filter narrows this list
   await expect(page.getByRole('button', { name: 'Filters', exact: true })).toBeVisible();
 });
+
+test("a category's and a payee's page don't offer their own dimension as a filter (#245)", async ({
+  page,
+  api,
+}) => {
+  const { checking } = await setup(api);
+  const groceries = await api.category('Groceries');
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: -1_000,
+    payeeName: 'Mock Bakery',
+    categoryId: groceries.id,
+  });
+  const panelTabs = () => page.getByRole('tablist').getByRole('tab');
+
+  await open(page, `/budget/category/${groceries.id}`);
+  await expect(row(page, 'Mock Bakery')).toBeVisible();
+  // No "Uncategorised" quick filter, no Categories section
+  await expect(page.getByRole('button', { name: 'Uncategorised', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Filters', exact: true }).click();
+  await expect(panelTabs().filter({ hasText: 'Payees' })).toBeVisible();
+  await expect(panelTabs().filter({ hasText: 'Categories' })).toHaveCount(0);
+
+  const bakery = (await api.call<{ id: string; name: string }[]>('GET', '/payees')).find(
+    (p) => p.name === 'Mock Bakery',
+  )!;
+  await open(page, `/payees/${bakery.id}`);
+  await expect(row(page, 'Mock Bakery')).toBeVisible();
+  await page.getByRole('button', { name: 'Filters', exact: true }).click();
+  await expect(panelTabs().filter({ hasText: 'Categories' })).toBeVisible();
+  await expect(panelTabs().filter({ hasText: 'Payees' })).toHaveCount(0);
+});

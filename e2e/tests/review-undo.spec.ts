@@ -133,3 +133,25 @@ test('categorising a saver in Review housekeeping offers Undo', async ({ page, a
     .poll(async () => (await api.transactions()).find((t) => t.id === moved.id)?.categoryId)
     .toBeNull();
 });
+
+test('a saver categorise that changes nothing offers no Undo', async ({ page, api }) => {
+  const account = await api.createAccount('Mock spending', 50_000);
+  const groceries = await api.category('Groceries');
+  const moved = await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -2_000,
+    payeeName: 'Transfer to Mock Splurge',
+  });
+  await open(page, '/review');
+  await page.getByText('Check budget setup').click();
+  // Meanwhile it gets that category elsewhere, so the categorise changes nothing
+  await api.call('PUT', `/transactions/${moved.id}`, { categoryId: groceries.id });
+  await page
+    .getByRole('combobox', { name: 'Category for Mock Splurge' })
+    .selectOption(groceries.id);
+  await page.getByRole('button', { name: 'Categorise', exact: true }).click();
+  const toast = page.getByTestId('undo-toast');
+  await expect(toast).toContainText('Categorised 0 saver transfers.');
+  await expect(toast.getByRole('button', { name: 'Undo' })).toHaveCount(0);
+});

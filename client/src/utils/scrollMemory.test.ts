@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   MAX_REMEMBERED,
-  enterEntry,
   createScrollTracker,
   forgetScrolls,
   recallScroll,
@@ -91,102 +90,110 @@ describe('scroll memory (#245)', () => {
   });
 });
 
+type Nav = 'POP' | 'PUSH' | 'REPLACE';
+const at = (key: string, pathname: string, navigation: Nav) => ({ key, pathname, navigation });
+
+/** A container on `first`, arrived at by `how`, with its element attached */
+function track(first: { key: string; pathname: string }, how: Nav, contentHeight = 3000) {
+  const scroller = fakeScroller(contentHeight);
+  const tracker = createScrollTracker(first, how);
+  const detach = tracker.attach(scroller.el);
+  tracker.enter(scroller.el, at(first.key, first.pathname, how), scroller.watch);
+  return { ...scroller, tracker, detach };
+}
+
 describe('moving between history entries (#245)', () => {
   beforeEach(forgetScrolls);
-  const at = (key: string, pathname: string, navigation: 'POP' | 'PUSH' | 'REPLACE') => ({
-    key,
-    pathname,
-    navigation,
-  });
 
   it('Back to an entry saved at the top goes to the top, even on the same page', () => {
-    const { el, watch } = fakeScroller(3000);
+    const { el, tracker, watch } = track({ key: 'b', pathname: '/transactions' }, 'PUSH');
     rememberScroll('a', 0);
-    el.scrollTop = 900; // the other entry of the same page (other filters) was scrolled
-    enterEntry(el, { key: 'b', pathname: '/transactions' }, at('a', '/transactions', 'POP'), watch);
+    el.scrollTop = 900;
+    tracker.enter(el, at('a', '/transactions', 'POP'), watch);
     expect(el.scrollTop).toBe(0);
   });
 
-  it('a filter change that replaces the entry keeps the offset for Back', () => {
-    const { el, watch } = fakeScroller(3000);
+  it('a filter change that replaces the entry keeps the offset for a later Back', () => {
+    const { el, tracker, watch } = track({ key: 'a', pathname: '/accounts/x' }, 'PUSH');
     el.scrollTop = 1200;
-    rememberScroll('a', 1200);
-    enterEntry(
-      el,
-      { key: 'a', pathname: '/accounts/x' },
-      at('a2', '/accounts/x', 'REPLACE'),
-      watch,
-    );
+    el.fire('scroll');
+    tracker.enter(el, at('a2', '/accounts/x', 'REPLACE'), watch);
     expect(recallScroll('a2')).toBe(1200);
-    // Later, Back to the replaced entry
-    el.scrollTop = 0;
-    enterEntry(el, { key: 'p', pathname: '/payees/y' }, at('a2', '/accounts/x', 'POP'), watch);
+    tracker.enter(el, at('p', '/payees/y', 'PUSH'), watch);
+    expect(el.scrollTop).toBe(0);
+    tracker.enter(el, at('a2', '/accounts/x', 'POP'), watch);
     expect(el.scrollTop).toBe(1200);
   });
 
   it('a new page starts at the top; a new entry of the same page keeps its place', () => {
-    const { el, watch } = fakeScroller(3000);
+    const { el, tracker, watch } = track({ key: 'a', pathname: '/goals' }, 'PUSH');
     el.scrollTop = 700;
-    enterEntry(el, { key: 'a', pathname: '/goals' }, at('b', '/goals', 'PUSH'), watch);
+    tracker.enter(el, at('b', '/goals', 'PUSH'), watch);
     expect(el.scrollTop).toBe(700);
-    enterEntry(el, { key: 'b', pathname: '/goals' }, at('c', '/budget', 'PUSH'), watch);
+    tracker.enter(el, at('c', '/budget', 'PUSH'), watch);
     expect(el.scrollTop).toBe(0);
   });
 
-  it('a container that mounts on its entry restores on Back, and stays put otherwise', () => {
-    const { el, watch } = fakeScroller(3000);
+  it('a container mounting on a Back entry restores; on a fresh visit it stays at the top', () => {
     rememberScroll('a', 450);
-    enterEntry(el, { key: 'a', pathname: '/payees' }, at('a', '/payees', 'POP'), watch);
-    expect(el.scrollTop).toBe(450);
+    const back = track({ key: 'a', pathname: '/payees' }, 'POP');
+    expect(back.el.scrollTop).toBe(450);
+    rememberScroll('b', 450);
+    const fresh = track({ key: 'b', pathname: '/payees' }, 'PUSH');
+    expect(fresh.el.scrollTop).toBe(0);
+  });
+
+  it('Back while loading, then a replace before the list mounts: the list finds its offset', () => {
+    rememberScroll('k1', 1200);
+    const scroller = fakeScroller(3000);
+    const tracker = createScrollTracker({ key: 'k1', pathname: '/accounts' }, 'POP');
+    tracker.enter(null, at('k1', '/accounts', 'POP'), scroller.watch);
+    tracker.enter(null, at('k2', '/accounts', 'REPLACE'), scroller.watch);
+    tracker.attach(scroller.el);
+    tracker.enter(scroller.el, at('k2', '/accounts', 'REPLACE'), scroller.watch);
+    expect(scroller.el.scrollTop).toBe(1200);
+    scroller.el.scrollTop = 300;
+    scroller.el.fire('scroll');
+    expect(recallScroll('k2')).toBe(300);
+  });
+});
+
+describe('the page moves by itself only on Back and Forward (#245)', () => {
+  beforeEach(forgetScrolls);
+
+  it('a filter change on a fresh visit never jumps back to the old offset', () => {
+    const { el, tracker, watch } = track({ key: 'a', pathname: '/transactions' }, 'PUSH');
+    el.scrollTop = 1200;
+    el.fire('scroll');
+    // The list reloads shorter and the browser clamps the offset
+    el.scrollHeight = 600;
+    el.scrollTop = 100;
+    tracker.enter(el, at('a2', '/transactions', 'REPLACE'), watch);
+    el.grow(5000);
+    expect(el.scrollTop).toBe(100);
+    // Its remembered value still serves a later Back to it
+    expect(recallScroll('a2')).toBe(1200);
+  });
+
+  it('a container that remounts on a fresh visit (Safe mode on Goals) stays put', () => {
+    const first = track({ key: 'g', pathname: '/goals' }, 'PUSH');
+    first.el.scrollTop = 800;
+    first.el.fire('scroll');
+    first.detach();
     const other = fakeScroller(3000);
-    enterEntry(
-      other.el,
-      { key: 'b', pathname: '/payees' },
-      at('b', '/payees', 'PUSH'),
-      other.watch,
-    );
+    first.tracker.attach(other.el);
+    first.tracker.enter(other.el, at('g', '/goals', 'PUSH'), other.watch);
     expect(other.el.scrollTop).toBe(0);
   });
-});
 
-describe('a container that mounts after its entry was replaced (#245)', () => {
-  beforeEach(forgetScrolls);
-
-  it('takes the offset saved for the entry it replaced, and keeps it for Back', () => {
-    // Back to K1 (saved at 1200) while the page was still loading: the list wasn't there yet,
-    // then the page replaced its entry (K2) before the list mounted
-    rememberScroll('k1', 1200);
-    const { el, watch } = fakeScroller(3000);
-    enterEntry(
-      el,
-      { key: 'k1', pathname: '/accounts' },
-      {
-        key: 'k2',
-        pathname: '/accounts',
-        navigation: 'REPLACE',
-      },
-      watch,
-    );
-    expect(el.scrollTop).toBe(1200);
-    expect(recallScroll('k2')).toBe(1200);
-  });
-});
-
-describe('the tracker a scroll container keeps (#245)', () => {
-  beforeEach(forgetScrolls);
-
-  it('keeps the entry it last saw while its element is missing (a loading page)', () => {
-    rememberScroll('k1', 1200);
-    const tracker = createScrollTracker({ key: 'k0', pathname: '/accounts' });
-    const { el, watch } = fakeScroller(3000);
-    // Back to K1 while loading, then a replace to K2, then the list mounts
-    tracker.enter(null, { key: 'k1', pathname: '/accounts', navigation: 'POP' }, watch);
-    tracker.enter(null, { key: 'k2', pathname: '/accounts', navigation: 'REPLACE' }, watch);
-    tracker.enter(el, { key: 'k2', pathname: '/accounts', navigation: 'REPLACE' }, watch);
-    expect(el.scrollTop).toBe(1200);
-    // Its scrolls are filed under the entry it shows
-    el.scrollTop = 300;
-    tracker.save(el);
-    expect(recallScroll('k2')).toBe(300);
+  it('once the person scrolls on a Back entry, a filter change arms no restore', () => {
+    rememberScroll('a', 1200);
+    const { el, tracker, watch } = track({ key: 'a', pathname: '/transactions' }, 'POP', 600);
+    expect(el.scrollTop).toBe(0); // still too short to restore
+    el.fire('wheel'); // the person scrolls (the short list doesn't move)
+    tracker.enter(el, at('a2', '/transactions', 'REPLACE'), watch);
+    el.grow(5000);
+    expect(el.scrollTop).toBe(0);
+    expect(recallScroll('a2')).toBe(0);
   });
 });

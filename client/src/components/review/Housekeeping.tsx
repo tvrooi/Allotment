@@ -146,6 +146,12 @@ function SaverItem({ savers }: { savers: HousekeepingData['unlinkedSavers'] }) {
     },
     onSuccess: ({ result, ids, categoryId }) => {
       void qc.invalidateQueries();
+      const message = `Categorised ${result.changed} saver transfer${result.changed === 1 ? '' : 's'}.`;
+      // Nothing changed (every row skipped, for example reconciled): say so, with no Undo
+      if (!result.restore.length) {
+        useUndoStore.getState().announce(message, false);
+        return;
+      }
       useUndoStore.getState().push(
         {
           description: `Categorise ${result.changed} saver transfers`,
@@ -158,9 +164,7 @@ function SaverItem({ savers }: { savers: HousekeepingData['unlinkedSavers'] }) {
             void qc.invalidateQueries();
           },
         },
-        {
-          message: `Categorised ${result.changed} saver transfer${result.changed === 1 ? '' : 's'}.`,
-        },
+        { message },
       );
     },
   });

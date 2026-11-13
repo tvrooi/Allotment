@@ -216,6 +216,12 @@ describe("a page's own scope wins over filters from its URL (#245)", () => {
     expect(p.accountIds).toBeUndefined();
   });
 
+  it("a category group from the filters can't widen or narrow a category's list", () => {
+    const p = registerParams(fromUrl('category_group_id=g&range=all'), { categoryId: 'mine' });
+    expect(p.categoryId).toBe('mine');
+    expect(p.categoryGroupId).toBeUndefined();
+  });
+
   it("a category's list stays on its category", () => {
     const p = registerParams(fromUrl('category_ids=other&uncategorized=1&range=all'), {
       categoryId: 'mine',

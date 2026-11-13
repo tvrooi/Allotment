@@ -29,7 +29,7 @@ import { PAGE_GUTTER } from '../components/ui/pageGutter';
 import { formatCurrency } from '../utils/currency';
 import { formatDay } from '../utils/dates';
 import { todayIso } from '../utils/calendarDay';
-import { spendByMonth } from '../utils/payeeSpend';
+import { spendByMonth, spendWithoutRate } from '../utils/payeeSpend';
 import { actionText, conditionText, ruleMentionsPayee } from '../utils/ruleFormat';
 
 const card = 'bg-surface rounded-lg shadow-card border border-border-light p-4';
@@ -44,6 +44,11 @@ function SpendChart({ payeeId }: { payeeId: string }) {
   const query = useTransactions({ payeeIds: [payeeId] });
   const months = useMemo(
     () => (query.data ? spendByMonth(query.data, todayIso()) : []),
+    [query.data],
+  );
+  // The bars' own rows that count as nothing for want of an exchange rate
+  const withoutRate = useMemo(
+    () => (query.data ? spendWithoutRate(query.data, todayIso()) : 0),
     [query.data],
   );
   const rows = months.map((m) => ({
@@ -85,16 +90,17 @@ function SpendChart({ payeeId }: { payeeId: string }) {
             <FillChart definition={definition} height={200} ariaLabel="Spending by month" />
           ) : (
             <div className="h-[200px] flex items-center justify-center">
-              <p className="text-sm text-text-tertiary">No spending in the last 12 months</p>
+              <p className="text-sm text-text-tertiary">
+                {withoutRate
+                  ? 'Spending in the last 12 months has no exchange rate yet'
+                  : 'No spending in the last 12 months'}
+              </p>
             </div>
           )}
         </PrivateChart>
       )}
       {/* Transactions with no exchange rate yet count as nothing in the bars: say so */}
-      <MissingRateNote
-        className="block mt-2 text-xs"
-        count={query.data?.filter((t) => t.mainAmountSource === 'missing').length ?? 0}
-      />
+      <MissingRateNote className="block mt-2 text-xs" count={withoutRate} />
     </section>
   );
 }

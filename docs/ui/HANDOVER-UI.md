@@ -106,7 +106,8 @@ Overwritten at the end of each UI session, never appended. Wave E entry written 
 
 - Scroll memory is keyed by the router's history key: a hand-typed hash URL gets the key
   `default`, like the first page load. A page-level scroll container must use `useScrollMemory`
-  or Back loses its place.
+  or Back loses its place. The page moves by itself only on Back and Forward (a replace only
+  carries the remembered offset; scroll intent ends a restore): keep it that way.
 - The phone tab bar carries the bottom safe-area inset (not `<main>`), and phone toasts sit
   5rem up to clear it (`Toasts aboveTabBar`): change the bar's height and that offset together.
 - The Forecast no-income callout hides a server warning by its leading text (`longTermInputs.ts`):
