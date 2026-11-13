@@ -1,11 +1,25 @@
 # UI handover
 
-Overwritten at the end of each UI session, never appended. Wave E entry written 13 November 2026
-(branch `feat/wave-e-navigation`, up.173); Wave D and palette entries updated 12 November 2026
+Overwritten at the end of each UI session, never appended. Wave F entry written 13 November 2026
+(branch `wave-f`, up.174); Wave E entry 13 November 2026 (branch `feat/wave-e-navigation`, up.173); Wave D and palette entries updated 12 November 2026
 (PRs #262 and #259). Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Older detail: grep `docs/handover/ARCHIVE.md`.
 
 ## Done this session
 
+- Wave F settings split and delight (up.174, branch `wave-f`): #244 Connected banks is a section
+  at the foot of the Accounts page (`components/accounts/ConnectedBanks.tsx`, moved from
+  `settings/ConnectedAccounts.tsx`; no provider open until one is chosen, so Up is Accounts → Up);
+  the category manager is a view of the Budget page (`/budget?view=categories`, lazy
+  `CategoryManager`, "Manage categories" beside Find a category, in the ⋯ menu on phones, "Back to
+  budget" returns). Settings has eight tabs and opens on Preferences (now first). Links to the new
+  homes come from `utils/movedSections.ts`; Settings redirects `?tab=connections` and
+  `?tab=categories` there. Settings guide is version 2. #241 goal rows use `GoalGrowthBar`
+  (`components/goals/`): a plant at the bar's leading edge grows seed → sprout → leaf → bud
+  (`growthStage`) and flowers when reached, blooming once per goal per device
+  (`firstBloom`, `flybudget:goals-bloomed`); Ready to assign at $0 shows `SproutTick` and "Every
+  dollar has a job.", drawn in only when you bring the month there (`readyReached.ts`). Motion
+  tokens `--animate-grow-in`, `bloom`, `bloom-ring`, `tick-draw`, `leaf-in` in `index.css`, all
+  `none` under reduced motion.
 - Wave E navigation depth (up.173, branch `feat/wave-e-navigation`): #235 a payee page
   (`/payees/:id`, `pages/PayeeDetail.tsx`: spending by month and total, default category, the
   rules naming it via `ruleMentionsPayee`, its transactions), opened from the Payees list, a
@@ -91,6 +105,9 @@ Overwritten at the end of each UI session, never appended. Wave E entry written 
 - Budget work lives on `redesign`, beside the pre-redesign app on `main`; PR #209 was closed
   unmerged and is reconciled later.
 - Goal in-progress bars use one brand colour, reached goals green; `goal.color` only tints the dot.
+  The plant on a goal bar is Sprout green with a Marigold bud and flower (#241).
+- Settings opens on Preferences; Connected banks lives on Accounts, categories on Budget (#244,
+  the orchestrator's pages-not-tabs reading, open to the owner).
 - Long-range forecast amounts use `formatWholeCurrency`; forecasts are dotted with a ring at today.
 - Pickers: a category is always chosen with the searchable `CategoryPicker`; a short fixed list
   uses the one shared styled `Select` (`components/ui/Input.tsx`) (#240, 13 November 2026).
@@ -103,6 +120,12 @@ Overwritten at the end of each UI session, never appended. Wave E entry written 
   announce again after a push, and never add an inline Undo beside the toast's.
 
 ## Traps
+
+- Connected banks sits after the account list in the same scroller as the empty state: the first
+  bank import turns the empty state into the list, and a section that moved in the tree would
+  remount and close the Connect dialog (`first-import.spec.ts` caught it).
+- Settings' moved tabs: add a moved section to `MOVED_SETTINGS_TABS` (`utils/movedSections.ts`)
+  and link to it through the exported constants, never a hand-typed `?tab=`.
 
 - Scroll memory is keyed by the router's history key: a hand-typed hash URL gets the key
   `default`, like the first page load. A page-level scroll container must use `useScrollMemory`
