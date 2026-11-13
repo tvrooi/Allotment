@@ -41,7 +41,7 @@ test('connects a European bank, syncs it, reconnects and disconnects', async ({
       payeeName: 'Kauppa',
     });
 
-    await open(page, '/settings?tab=connections');
+    await open(page, '/accounts');
     await page.getByRole('button', { name: 'Enable Banking' }).click();
     await page.getByLabel('Application ID').fill('3fa85f64-5717-4562-b3fc-2c963f66afa6');
     await page.getByLabel('Private key (.pem file)').setInputFiles({
@@ -148,8 +148,8 @@ test("the setup links to Allotment's own Enable Banking guide and closes the dia
   ).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Set up your application' })).toBeVisible();
 
-  // Settings shows the same form, with the same link
-  await open(page, '/settings?tab=connections');
+  // Connected banks on the Accounts page shows the same form, with the same link
+  await open(page, '/accounts');
   await page.getByRole('button', { name: 'Enable Banking' }).click();
   await expect(page.getByRole('link', { name: 'Step-by-step guide' })).toHaveAttribute(
     'href',

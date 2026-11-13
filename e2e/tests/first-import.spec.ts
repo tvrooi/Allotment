@@ -30,7 +30,7 @@ test('the first Up import arrives categorised, and the rest is sorted a payee at
   await mock('rich');
   await freshUpWindow(page, api);
   await api.createAccount('Manual account');
-  await open(page, '/settings?tab=connections');
+  await open(page, '/accounts');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
   await page.getByRole('button', { name: 'Connect Up', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Connect Up' });
@@ -242,7 +242,7 @@ test('connecting Up starts a new budget today, and the whole month is one click 
   test.slow();
   await mock('rich');
   await freshUpWindow(page, api);
-  await open(page, '/settings?tab=connections');
+  await open(page, '/accounts');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
   await page.getByRole('button', { name: 'Connect Up', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Connect Up' });

@@ -8,7 +8,7 @@ test('connects Up, imports settled history, resyncs and disconnects', async ({ p
   // Banks are intentionally retained by backup restore, so clear this connection explicitly.
   await freshUpWindow(page, api, 8);
   await api.createAccount('Manual account');
-  await open(page, '/settings?tab=connections');
+  await open(page, '/accounts');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
   await page.getByRole('button', { name: 'Connect Up', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Connect Up' });
@@ -52,7 +52,7 @@ test('shows an invalid Up token without saving a connection', async ({ page, api
     .annotations.push({ type: 'allow-page-errors', description: 'Expected rejected credentials' });
   await freshUpWindow(page, api, 4);
   await api.createAccount('Manual account');
-  await open(page, '/settings?tab=connections');
+  await open(page, '/accounts');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
   await page.getByRole('button', { name: 'Connect Up', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Connect Up' });
@@ -78,7 +78,7 @@ test('sets background sync, reviews imports, and expands daily round-up details 
   });
   await api.call('POST', '/up/sync');
   const before = await api.transactions();
-  await open(page, '/settings?tab=connections');
+  await open(page, '/accounts');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
   await expect(page.getByLabel('Background sync')).toHaveValue('0');
   await page.getByLabel('Background sync').selectOption('15');
@@ -127,7 +127,7 @@ test('adds balance-proven round-up debits only after an explicit choice', async 
   await mode('implicit-round-ups');
   await api.call('POST', '/up/sync');
   expect(await api.transactions()).toHaveLength(2);
-  await open(page, '/settings?tab=connections');
+  await open(page, '/accounts');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
   const check = page.getByRole('region', { name: 'Round-up accounting check', exact: true });
   await expect(check).toContainText('higher than Up by exactly the round-ups');
@@ -184,7 +184,7 @@ test('a deleted Up transaction stays deleted until it is restored from Up review
   await api.call('POST', '/up/sync');
   expect((await upRows()).some((t) => t.importedId === victim.importedId)).toBe(false);
 
-  await open(page, '/settings?tab=connections');
+  await open(page, '/accounts');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
   const deleted = page.getByRole('region', { name: 'Deleted here, still at Up' });
   await expect(deleted.getByText(victim.payeeName)).toBeVisible();

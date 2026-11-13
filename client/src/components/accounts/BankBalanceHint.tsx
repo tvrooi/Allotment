@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getAccountSyncStatus } from '../../api/accounts';
 import { formatMoney } from '../../utils/currency';
+import { CONNECTED_BANKS_LINK } from '../../utils/movedSections';
 
 // Like YNAB's "your bank says": when a synced account's register differs from the bank's
 // settled balance at the last sync, show the bank's figure beside it with a way to reconcile.
@@ -18,7 +19,7 @@ export function BankBalanceHint({ accountId }: { accountId: string }) {
     <span className="text-xs text-caution">
       Up says {formatMoney(status.bankBalance, 'AUD')} (
       {status.verdict === 'round-ups' ? (
-        <Link to="/settings?tab=connections" className="underline">
+        <Link to={CONNECTED_BANKS_LINK} className="underline">
           missing round-ups
         </Link>
       ) : (

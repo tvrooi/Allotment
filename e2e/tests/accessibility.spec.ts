@@ -181,7 +181,7 @@ test('every label in the account, goal, recurring and category forms points at i
   await expect(recurring.getByRole('group', { name: 'Type' })).toBeVisible();
   await page.keyboard.press('Escape');
 
-  await open(page, '/settings');
+  await open(page, '/budget?view=categories');
   await page.getByRole('button', { name: 'Edit Parking' }).click();
   const category = page.getByRole('dialog', { name: 'Edit category' });
   expect(await strayLabels(category)).toEqual([]);

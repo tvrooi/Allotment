@@ -211,7 +211,8 @@ test('tab bars scroll sideways only, never up and down', async ({ page, api }) =
   await api.createAccount('Everyday', 100_000);
   for (const route of [
     '/settings',
-    '/settings?tab=connections',
+    // The bank provider switch, now on the Accounts page (#244)
+    '/accounts',
     '/transactions',
     '/forecast',
     '/tax',
@@ -220,7 +221,11 @@ test('tab bars scroll sideways only, never up and down', async ({ page, api }) =
     await open(page, route);
     await page.waitForLoadState('networkidle');
     await expect(
-      page.locator('main [data-testid="scroll-cue-scroller"], main [role="tablist"]').first(),
+      page
+        .locator(
+          'main [data-testid="scroll-cue-scroller"], main [role="tablist"], main .scroll-row',
+        )
+        .first(),
     ).toBeVisible();
     const { count, problems } = await rowsThatScrollUpAndDown(page);
     expect(count, route).toBeGreaterThan(0);
@@ -230,9 +235,10 @@ test('tab bars scroll sideways only, never up and down', async ({ page, api }) =
 
 test('Settings opened on a later tab shows that tab whole', async ({ page, api }) => {
   await api.createAccount('Everyday', 100_000);
-  await open(page, '/settings?tab=connections');
+  // Connected banks, the tab this used, moved to Accounts (#244); Data is as far along
+  await open(page, '/settings?tab=data');
   const bar = page.getByTestId('scroll-cue').first();
-  const tab = bar.getByRole('tab', { name: 'Connected banks' });
+  const tab = bar.getByRole('tab', { name: 'Data' });
   await expect(tab).toHaveAttribute('aria-selected', 'true');
   // Clear of the fade at either edge, not half hidden under it
   const t = await box(tab);

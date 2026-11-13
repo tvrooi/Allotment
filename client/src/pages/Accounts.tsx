@@ -1,4 +1,4 @@
-import { useState, useMemo, useId } from 'react';
+import { useState, useMemo, useId, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Plus,
@@ -13,7 +13,8 @@ import { useAccounts, useBalancesAgo } from '../hooks/useAccounts';
 import { AddAccountModal } from '../components/accounts/AddAccountModal';
 import { AssetLiabilitySummary } from '../components/accounts/AssetLiabilitySummary';
 import { UpSyncBadge } from '../components/up/UpSyncBadge';
-import { Button, ButtonLink } from '../components/ui/Button';
+import { Button } from '../components/ui/Button';
+import { ConnectedBanks, type BankProvider } from '../components/accounts/ConnectedBanks';
 import { Card } from '../components/ui/Card';
 import { QueryProblem, loadFailed } from '../components/ui/QueryProblem';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -174,6 +175,28 @@ export default function AccountsPage() {
   const [overviewOpen, setOverviewOpen] = useState(false);
   const overviewId = useId();
   useOpenFromLink('add', () => setAddOpen(true));
+  // Connected banks lives here (#244). A link (?banks=up, the old Settings tab's address)
+  // or Connect a bank opens a provider and brings the section into view.
+  const [provider, setProvider] = useState<BankProvider | null>(null);
+  const [revealBanks, setRevealBanks] = useState(0);
+  const banksHeading = useRef<HTMLHeadingElement>(null);
+  const openBanks = (p: BankProvider) => {
+    setProvider(p);
+    setRevealBanks((n) => n + 1);
+  };
+  useOpenFromLink('banks', () => openBanks('up'), { value: 'up', ready: !isLoading });
+  useEffect(() => {
+    if (!revealBanks) return;
+    banksHeading.current?.scrollIntoView({ block: 'start' });
+    banksHeading.current?.focus({ preventScroll: true });
+  }, [revealBanks]);
+  const banks = (
+    <div className={`pt-2 pb-8 ${PAGE_GUTTER}`}>
+      <div className="max-w-2xl border-t border-border-light pt-6">
+        <ConnectedBanks provider={provider} onProvider={setProvider} headingRef={banksHeading} />
+      </div>
+    </div>
+  );
   const allGroups = useMemo(() => groupAccountsByType(accounts), [accounts]);
 
   if (isLoading) {
@@ -210,80 +233,85 @@ export default function AccountsPage() {
       {accountsQuery.isError && (
         <QueryProblem what="accounts" query={accountsQuery} className="m-6" />
       )}
-      {loadFailed(accountsQuery) ? null : accounts.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center overflow-y-auto">
-          <EmptyState
-            icon={<Landmark size={26} />}
-            title="Add the accounts you want to track"
-            description="Everyday and savings accounts, cards, loans, super or your home: each account keeps its own balance and transactions, and together they make up your net worth."
-            learnMore="accounts"
-            actions={
-              <>
-                <Button onClick={() => setAddOpen(true)}>
-                  <Plus size={14} /> Add your first account
-                </Button>
-                <ButtonLink variant="secondary" to="/settings?tab=connections">
-                  <Link2 size={14} /> Connect a bank
-                </ButtonLink>
-              </>
-            }
-          />
-        </div>
-      ) : (
-        <div ref={scrollMemory} className="flex-1 overflow-y-auto">
-          <div className={`pt-5 pb-3 ${PAGE_GUTTER}`}>
-            <div className="mb-2 flex items-center justify-between gap-3 md:hidden">
-              <div className="min-w-0">
-                <p className="text-sm text-text-secondary">Net worth</p>
-                <p className="text-2xl font-semibold tracking-tight tabular-nums break-words text-text">
-                  <Private>{formatCurrency(totalValue(accounts))}</Private>
-                </p>
-                <UnconvertedNote currencies={unconvertedCurrencies(accounts)} />
+      {/* One scroller, with Connected banks last in it whatever is above: the first import from
+          a bank turns the empty state into the list, and must not close the dialog doing it */}
+      <div ref={scrollMemory} className="flex-1 overflow-y-auto">
+        {loadFailed(accountsQuery) ? null : accounts.length === 0 ? (
+          <div className="min-h-[60%] flex items-center justify-center">
+            <EmptyState
+              icon={<Landmark size={26} />}
+              title="Add the accounts you want to track"
+              description="Everyday and savings accounts, cards, loans, super or your home: each account keeps its own balance and transactions, and together they make up your net worth."
+              learnMore="accounts"
+              actions={
+                <>
+                  <Button onClick={() => setAddOpen(true)}>
+                    <Plus size={14} /> Add your first account
+                  </Button>
+                  <Button variant="secondary" onClick={() => openBanks('up')}>
+                    <Link2 size={14} /> Connect a bank
+                  </Button>
+                </>
+              }
+            />
+          </div>
+        ) : (
+          <>
+            <div className={`pt-5 pb-3 ${PAGE_GUTTER}`}>
+              <div className="mb-2 flex items-center justify-between gap-3 md:hidden">
+                <div className="min-w-0">
+                  <p className="text-sm text-text-secondary">Net worth</p>
+                  <p className="text-2xl font-semibold tracking-tight tabular-nums break-words text-text">
+                    <Private>{formatCurrency(totalValue(accounts))}</Private>
+                  </p>
+                  <UnconvertedNote currencies={unconvertedCurrencies(accounts)} />
+                </div>
+                <button
+                  type="button"
+                  aria-expanded={overviewOpen}
+                  aria-controls={overviewId}
+                  onClick={() => setOverviewOpen(!overviewOpen)}
+                  className="min-h-11 shrink-0 flex items-center gap-1 rounded-md px-2 text-sm font-medium text-text-secondary hover:bg-hover focus-visible:outline-2 focus-visible:outline-brand-600"
+                >
+                  {overviewOpen ? 'Hide overview' : 'Show overview'}
+                  {overviewOpen ? (
+                    <ChevronDown size={16} aria-hidden />
+                  ) : (
+                    <ChevronRight size={16} aria-hidden />
+                  )}
+                </button>
               </div>
-              <button
-                type="button"
-                aria-expanded={overviewOpen}
-                aria-controls={overviewId}
-                onClick={() => setOverviewOpen(!overviewOpen)}
-                className="min-h-11 shrink-0 flex items-center gap-1 rounded-md px-2 text-sm font-medium text-text-secondary hover:bg-hover focus-visible:outline-2 focus-visible:outline-brand-600"
+              <div
+                id={overviewId}
+                data-guide="accounts.summary"
+                className={`${overviewOpen ? 'grid' : 'hidden md:grid'} grid-cols-1 lg:grid-cols-2 gap-5`}
               >
-                {overviewOpen ? 'Hide overview' : 'Show overview'}
-                {overviewOpen ? (
-                  <ChevronDown size={16} aria-hidden />
-                ) : (
-                  <ChevronRight size={16} aria-hidden />
-                )}
-              </button>
+                <NetWorthMini />
+                <Card>
+                  <AssetLiabilitySummary accounts={accounts} />
+                </Card>
+              </div>
             </div>
-            <div
-              id={overviewId}
-              data-guide="accounts.summary"
-              className={`${overviewOpen ? 'grid' : 'hidden md:grid'} grid-cols-1 lg:grid-cols-2 gap-5`}
-            >
-              <NetWorthMini />
-              <Card>
-                <AssetLiabilitySummary accounts={accounts} />
-              </Card>
-            </div>
-          </div>
 
-          <QueryProblem
-            what="account balance comparisons"
-            query={balancesQuery}
-            className="mx-6 mb-4"
-          />
-          <div data-guide="accounts.list" className={`pb-6 space-y-4 ${PAGE_GUTTER}`}>
-            {allGroups.map((g) => (
-              <AccountGroup
-                key={g.label}
-                label={g.label}
-                accounts={g.accounts}
-                balancesAgo={balancesQuery.isError ? undefined : balancesQuery.data}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+            <QueryProblem
+              what="account balance comparisons"
+              query={balancesQuery}
+              className="mx-6 mb-4"
+            />
+            <div data-guide="accounts.list" className={`pb-6 space-y-4 ${PAGE_GUTTER}`}>
+              {allGroups.map((g) => (
+                <AccountGroup
+                  key={g.label}
+                  label={g.label}
+                  accounts={g.accounts}
+                  balancesAgo={balancesQuery.isError ? undefined : balancesQuery.data}
+                />
+              ))}
+            </div>
+          </>
+        )}
+        {banks}
+      </div>
 
       <AddAccountModal isOpen={addOpen} onClose={() => setAddOpen(false)} />
     </div>

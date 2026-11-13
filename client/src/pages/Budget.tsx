@@ -6,14 +6,15 @@ import { CategoryIcon } from '../components/ui/CategoryIcon';
 import { MoneyMoves } from '../components/budget/MoneyMoves';
 import { canMoveIn, useMoveRequest } from '../store/moveRequestStore';
 import { AssistantSuggestions } from '../components/budget/AssistantSuggestions';
-import { useState, useRef, useMemo, useEffect, type ElementRef } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useRef, useMemo, useEffect, lazy, Suspense, type ElementRef } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { format, parseISO, addMonths, subMonths } from 'date-fns';
 import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
   Eye,
+  Layers,
   Lightbulb,
   MoreHorizontal,
   Search,
@@ -29,7 +30,7 @@ import { assignmentToInput, readAmountExpression } from '../utils/amountExpressi
 import { BudgetInspector } from '../components/budget/BudgetInspector';
 import { BudgetSummaryWidget } from '../components/budget/BudgetSummaryWidget';
 import { BudgetEditPopover } from '../components/budget/BudgetEditPopover';
-import { Button } from '../components/ui/Button';
+import { Button, ButtonLink } from '../components/ui/Button';
 import { targetLabel } from '../utils/targets';
 import { FundTargets } from '../components/budget/FundTargets';
 import { AutoAssign } from '../components/budget/AutoAssign';
@@ -59,6 +60,7 @@ import { TIPS } from '../guides';
 import { useMenuKeyboard } from '../hooks/useMenuKeyboard';
 import { useScrollMemory } from '../hooks/useScrollMemory';
 import { PAGE_GUTTER } from '../components/ui/pageGutter';
+import { MANAGE_CATEGORIES_LINK } from '../utils/movedSections';
 
 function AmountInput({
   cents,
@@ -699,6 +701,12 @@ function BudgetTypeSection({
   );
 }
 
+// Category management lives on the Budget page (#244), loaded when it is opened, as the
+// Settings tab it replaced was
+const CategoryManager = lazy(() =>
+  import('../components/settings/CategoryManager').then((m) => ({ default: m.CategoryManager })),
+);
+
 const BUDGET_TYPES: { key: BudgetType; label: string }[] = [
   { key: 'fixed', label: 'Fixed' },
   { key: 'flexible', label: 'Flexible' },
@@ -716,6 +724,9 @@ export default function BudgetPage() {
   // Back and Forward return to where this list was (#245)
   const scrollMemory = useScrollMemory('budget');
   const [paydayView, setPaydayView] = useState(false);
+  // ?view=categories: the category manager in place of the envelopes, so Back returns to it
+  const [searchParams] = useSearchParams();
+  const manageCategories = searchParams.get('view') === 'categories';
   const { selectedMonth, setSelectedMonth } = useAppStore();
   const [editingId, setEditingId] = useState<string | null>(null);
   // Envelopes ticked for the inspector (BUD-10). Ticking changes no money
@@ -906,6 +917,33 @@ export default function BudgetPage() {
   const expBalColor =
     expRemaining > 0 ? 'text-positive' : expRemaining < 0 ? 'text-negative' : 'text-text-tertiary';
 
+  if (manageCategories)
+    return (
+      <div className="flex flex-col h-full bg-surface text-text">
+        <div
+          className={`py-4 border-b border-border flex flex-wrap items-center justify-between gap-3 ${PAGE_GUTTER}`}
+        >
+          <h1 className="font-display text-title max-md:text-2xl tracking-tight">Categories</h1>
+          <ButtonLink variant="secondary" size="sm" to="/budget">
+            <ChevronLeft size={14} aria-hidden /> Back to budget
+          </ButtonLink>
+        </div>
+        <div ref={scrollMemory} className={`flex-1 overflow-y-auto py-6 ${PAGE_GUTTER}`}>
+          <div className="max-w-2xl">
+            <Suspense
+              fallback={
+                <p role="status" className="text-sm text-text-tertiary">
+                  Loading…
+                </p>
+              }
+            >
+              <CategoryManager />
+            </Suspense>
+          </div>
+        </div>
+      </div>
+    );
+
   if (paydayView)
     return (
       <div className="flex flex-col h-full bg-surface text-text">
@@ -1080,6 +1118,13 @@ export default function BudgetPage() {
                         >
                           Year
                         </Link>
+                        <Link
+                          role="menuitem"
+                          to={MANAGE_CATEGORIES_LINK}
+                          className="flex items-center min-h-11 px-4 text-sm text-text hover:bg-hover"
+                        >
+                          Manage categories
+                        </Link>
                         <button
                           role="menuitem"
                           disabled={!canSaveBudget}
@@ -1121,29 +1166,37 @@ export default function BudgetPage() {
               )}
             </div>
           </div>
-          <div className="relative mt-3 max-md:mt-2">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
-              aria-hidden
-            />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Find a category"
-              aria-label="Find a category"
-              className="w-full max-w-sm max-md:max-w-none text-sm border border-border rounded-lg pl-8 pr-8 py-1.5 max-md:min-h-11 bg-surface text-text placeholder:text-text-tertiary focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600 [&::-webkit-search-cancel-button]:hidden"
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={() => setQuery('')}
-                aria-label="Clear category search"
-                className="absolute right-1 top-1/2 -translate-y-1/2 min-w-8 min-h-8 flex items-center justify-center text-text-tertiary hover:text-text-secondary"
-              >
-                <X size={14} />
-              </button>
+          <div className="mt-3 max-md:mt-2 flex items-center gap-3">
+            <div className="relative flex-1 max-w-sm max-md:max-w-none">
+              <Search
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+                aria-hidden
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Find a category"
+                aria-label="Find a category"
+                className="w-full text-sm border border-border rounded-lg pl-8 pr-8 py-1.5 max-md:min-h-11 bg-surface text-text placeholder:text-text-tertiary focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600 [&::-webkit-search-cancel-button]:hidden"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  aria-label="Clear category search"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 min-w-8 min-h-8 flex items-center justify-center text-text-tertiary hover:text-text-secondary"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            {/* Adding, renaming, ordering and hiding categories (#244, formerly a Settings tab) */}
+            {!isPhone && (
+              <ButtonLink variant="ghost" size="sm" to={MANAGE_CATEGORIES_LINK}>
+                <Layers size={14} aria-hidden /> Manage categories
+              </ButtonLink>
             )}
           </div>
         </div>
@@ -1435,10 +1488,10 @@ export default function BudgetPage() {
                       <td colSpan={4} className="py-16 text-center text-sm text-text-tertiary">
                         No categories yet.{' '}
                         <Link
-                          to="/settings?tab=categories"
+                          to={MANAGE_CATEGORIES_LINK}
                           className="font-medium text-brand-600 hover:text-brand-700"
                         >
-                          Add some in Settings
+                          Add categories
                         </Link>
                       </td>
                     </tr>

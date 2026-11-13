@@ -40,7 +40,7 @@ test('the demo opens on a finished budget, and every page works', async ({ page 
   const strip = page.getByRole('region', { name: 'Budget status' });
   await expect(strip.getByRole('link', { name: /^Synced from Up / })).toHaveAttribute(
     'href',
-    '#/settings?tab=connections',
+    '#/accounts?banks=up',
   );
   await expect(strip.getByRole('listitem')).toHaveCount(1);
   await expect(
@@ -60,7 +60,8 @@ test('the demo opens on a finished budget, and every page works', async ({ page 
     ['/goals', 'Emergency fund'],
     ['/payees', 'Daily Grind Coffee'],
     ['/rules', 'Rename payee to Daily Grind Coffee'],
-    ['/settings', 'Pay'],
+    ['/settings', 'Theme'],
+    ['/budget?view=categories', 'Pay'],
   ] as const) {
     await page.evaluate((r) => (location.hash = `#${r}`), route);
     await expect(page.getByText(text).first(), route).toBeVisible();
@@ -131,7 +132,7 @@ test('changes stay in the tab, and "Start over" brings the demo budget back', as
 });
 
 test("bank connections can't be set up in the demo", async ({ page }) => {
-  await openDemo(page, '/settings?tab=connections');
+  await openDemo(page, '/accounts');
   await expect(page.getByText('Not available in the demo')).toBeVisible();
   await expect(page.getByRole('textbox')).toHaveCount(0);
 

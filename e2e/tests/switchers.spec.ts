@@ -220,7 +220,7 @@ test('links Up to an account that already has history, from a cut-over date', as
   );
   const cutover = isoDay(-30);
 
-  await open(page, '/settings?tab=connections');
+  await open(page, '/accounts');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
   await page.getByRole('button', { name: 'Connect Up', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Connect Up' });
@@ -345,7 +345,7 @@ test('the recommended order works on a fresh budget: YNAB import, then link Up t
   await ynab.getByRole('button', { name: 'View the account' }).click();
 
   // No currency step in between: AUD is the default and linking is available
-  await open(page, '/settings?tab=connections');
+  await open(page, '/accounts');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
   await page.getByRole('button', { name: 'Connect Up', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Connect Up' });
