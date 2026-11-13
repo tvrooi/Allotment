@@ -3,7 +3,7 @@
 How the design re-review backlog (issues #222 to #245) is being worked through on `redesign`, and
 where to pick up. Read after [README.md](README.md) and [HANDOVER-UI.md](HANDOVER-UI.md). Update
 the **Status** and **Open PRs** sections whenever a wave PR opens, merges or is sent back; delete
-this file when Wave F has merged. Last written 12 November 2026 after Wave D merged (PR #262).
+this file when Wave F has merged. Last written 13 November 2026 after Wave E merged (PR #266).
 
 ## Roles
 
@@ -11,7 +11,9 @@ this file when Wave F has merged. Last written 12 November 2026 after Wave D mer
   Writes no code unless the task is trivial.
 - **Coder:** one wave per fresh `omc team` worker, from the orchestrator's spec. Waves A to D used
   Codex (high effort). On 12 November the owner changed the coder to Claude Opus 5.5, medium effort
-  (`executor` in `.claude/omc.jsonc`); launch it with `omc team 1:claude:executor`, not yet tried here.
+  (`executor` in `.claude/omc.jsonc`). `omc team 1:claude:executor` did not work for Wave E (see
+  Traps), so the Wave E coder ran as a background subagent of the orchestrator (Agent tool, model
+  opus, medium effort), resumed for each fix round with SendMessage.
 - **Explorer and reviewer (Antigravity, `agy`):** maps the files before the spec, reviews the diff
   against the spec and the AGENTS.md review guidelines, and reads the screenshots. A different
   model family from the coder on purpose.
@@ -27,8 +29,9 @@ this file when Wave F has merged. Last written 12 November 2026 after Wave D mer
 | B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.   |
 | C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.   |
 | D discoverability   | #226, #237, #239, #236                   | Merged, PR #262, up.172. Issues closed.   |
-| E navigation depth  | #235, #243, #245, #240                   | Not started.                              |
+| E navigation depth  | #235, #243, #245, #240                   | Merged, PR #266, up.173. Issues closed.   |
 | F settings, delight | #244, #241                               | Not started.                              |
+| G form controls     | #267                                     | Not started. Needs owner decisions.       |
 
 Also merged: PR #256, test-only fixes for date- and timing-dependent Household specs.
 
@@ -44,10 +47,24 @@ Not in any wave:
   name overflows the Dashboard's Recent transactions at 390, #263 the rest of #239 (one Review
   checklist in place of the first-visit guide banners; needs an owner design decision), #264 a
   disabled `ui/Switch` looks enabled.
+- Filed during Wave E, `needs-triage`: #268 a payee's files on the payee page (needs a server
+  query; left out of #235), #269 single-row category undo overwrites newer changes and sticks on
+  a deleted row, #270 the register summary shows totals at the "Balances and totals" Safe mode
+  level (privacy), #271 a phone details sheet covers the toasts.
+- #267 Wave G (owner-requested 13 November): one set of shared field and selector components
+  (shadcn) on desktop in place of native fields. The issue holds the counts, a five-step plan and
+  five decisions the owner must make first (new dependencies, phones, scope, dates, and that it
+  replaces Wave E's "short lists use the styled native Select" rule on desktop).
 
 ## Open PRs
 
-- None. The owner can still overrule Wave D's choices, listed in the body of PR #262: the
+- None. Wave E (PR #266) merged after three fix rounds. Rounds 1 and 2 were reviewed by
+  Antigravity and the GitHub Codex review (no major issue on the round-2 commit); round 3 was
+  merged on green CI alone, on the owner's instruction, so it has had no second review. Its five
+  items: scroll moves by itself only on Back/Forward; category and payee pages hide their own
+  filter; the payee chart's missing-rate note; no Undo when Review housekeeping changed nothing;
+  MAP.md line counts. #235 is closed with the payee page's Files section left to #268.
+- The owner can still overrule Wave D's choices, listed in the body of PR #262: the
   transfers step counts in the sidebar Review badge and the Dashboard review card; the demo budget
   seeds no transfer suggestion; the empty-state copy and example values; Cash keeps its warning
   view when accounts are excluded for a missing exchange rate.
@@ -58,8 +75,7 @@ Not in any wave:
 
 ## What to do next, in order
 
-1. Waves D, E, F, one PR each. D and E both touch the sidebar and shared headers, so run them one
-   after the other, not in parallel.
+1. Wave F (#244, #241), one PR. Then Wave G (#267) once the owner has made its five decisions.
 2. Triage the `needs-triage` issues above with the owner or by the routine in
    [docs/agents/triage-labels.md](../agents/triage-labels.md).
 
@@ -78,6 +94,17 @@ Not in any wave:
   guide banners, the Dashboard checklist and Review Guided setup unchanged (the rest is #263).
   #217–#219 remain shelved. The fix round of PR #262 was merged on the Antigravity re-review
   because the GitHub Codex review limit was reached; that exception was for that round only.
+- **Wave E, 13 November:** #235 a category-funded goal row opens its category page, a
+  hand-tracked row keeps opening the edit dialog, every row has a visible Edit button; a new payee
+  page (`/payees/:id`: spend, default category, rules, transactions) opened from the Payees list,
+  transaction details and the palette; no server change, so Files was left out (#268). #243 one
+  click anywhere on a desktop row opens details; the category pill is the only inline edit; the
+  hover arrows, inline payee picker and row logo upload are gone. #245 every undoable change
+  announces itself (onboarding sorting stays quiet); a toast offering Undo stays 8 seconds and
+  holds while hovered or focused; Back/Forward restores filters and scroll, a fresh visit starts
+  at the top. #240 16 px title gutter on phones, 24 px from `md`; categories always use the
+  searchable `CategoryPicker`, short lists the shared styled `Select` (Wave G would change the
+  second half on desktop). The HIGH tier was not used: gutters are set per page, not in the shell.
 - **#244:** the Settings split is endorsed.
 - **Release:** undecided. `redesign` carries up.154 to up.171 prepared and untagged. The
   orchestrator's recommendation is one release from `redesign` soon, because the Safe mode chart
@@ -155,5 +182,18 @@ Not in any wave:
   `--force` after the merge.
 - **A row that is `aria-disabled`:** Playwright's `click()` waits forever for it; dispatch the
   click event and assert that nothing happened.
+- **Launching the coder from a `cmux claude-teams` session (Wave E):** `omc team` fails there
+  with `worker_pane_split_target_unverified` (the cmux tmux shim). In a real tmux session the
+  Claude worker stops on the one-time Bypass Permissions warning and is rolled back after 30
+  seconds; accepting that warning is the owner's decision. Named cmux teammates failed with
+  "Socket closed before reply" and left empty panes. A background subagent worked.
+- **Antigravity review size:** a 4,000-line diff timed out at 15 minutes with no output. Split
+  the diff by area into halves of about 2,000 lines, give each its own brief, run them in
+  parallel, and tell the reviewer not to open image files (an image read was auto-denied and
+  ended the first run with nothing). The orchestrator reads the screenshots.
+- **e2e type check:** CI runs `npx tsc --noEmit` in `e2e/` before the browser tests; a type error
+  there fails all four shards with no test run. Put it in the coder's checks.
+- **Making a shared call do more** (Wave E made the undo store's `push` announce): search every
+  caller. Callers that already announced, or had their own inline Undo, doubled up in six places.
 - **Usage limits:** coder sessions stop mid-task at the five-hour limit. Their work is saved;
   resume the same session with a message telling it to check `git status` and leftover processes.
