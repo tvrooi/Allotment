@@ -3,7 +3,7 @@
 How the design re-review backlog (issues #222 to #245) is being worked through on `redesign`, and
 where to pick up. Read after [README.md](README.md) and [HANDOVER-UI.md](HANDOVER-UI.md). Update
 the **Status** and **Open PRs** sections whenever a wave PR opens, merges or is sent back; delete
-this file when Wave F has merged. Last written 13 November 2026 while Wave E is in review (PR #266 open).
+this file when Wave F has merged. Last written 13 November 2026 after Wave E merged (PR #266).
 
 ## Roles
 
@@ -29,7 +29,7 @@ this file when Wave F has merged. Last written 13 November 2026 while Wave E is 
 | B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.   |
 | C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.   |
 | D discoverability   | #226, #237, #239, #236                   | Merged, PR #262, up.172. Issues closed.   |
-| E navigation depth  | #235, #243, #245, #240                   | PR #266 open, up.173. See Open PRs.       |
+| E navigation depth  | #235, #243, #245, #240                   | Merged, PR #266, up.173. Issues closed.   |
 | F settings, delight | #244, #241                               | Not started.                              |
 | G form controls     | #267                                     | Not started. Needs owner decisions.       |
 
@@ -58,15 +58,12 @@ Not in any wave:
 
 ## Open PRs
 
-- **PR #266, Wave E** (`feat/wave-e-navigation`, up.173). Implementation plus fix rounds 1 and 2
-  are pushed (head `ab83632`): CI passed, and the GitHub Codex review found no major issue on that
-  commit. The Antigravity re-review of round 2 then asked for fix round 3, which the coder was
-  working on when this was written; the five items are in a comment on the PR. The owner's
-  instruction (13 November): merge when round 3 is green. To finish: check that a round-3 commit
-  is pushed and **CI passed** is green, squash-merge with `--delete-branch`, close #235, #243,
-  #245 and #240 by hand (#235 is fixed except Files, which is #268), remove the worktree, then
-  rewrite this file's Status and Open PRs. If no round-3 commit is on the branch, the work was
-  lost with the session: redo it from the PR comment.
+- None. Wave E (PR #266) merged after three fix rounds. Rounds 1 and 2 were reviewed by
+  Antigravity and the GitHub Codex review (no major issue on the round-2 commit); round 3 was
+  merged on green CI alone, on the owner's instruction, so it has had no second review. Its five
+  items: scroll moves by itself only on Back/Forward; category and payee pages hide their own
+  filter; the payee chart's missing-rate note; no Undo when Review housekeeping changed nothing;
+  MAP.md line counts. #235 is closed with the payee page's Files section left to #268.
 - The owner can still overrule Wave D's choices, listed in the body of PR #262: the
   transfers step counts in the sidebar Review badge and the Dashboard review card; the demo budget
   seeds no transfer suggestion; the empty-state copy and example values; Cash keeps its warning
@@ -78,8 +75,7 @@ Not in any wave:
 
 ## What to do next, in order
 
-1. Waves D, E, F, one PR each. D and E both touch the sidebar and shared headers, so run them one
-   after the other, not in parallel.
+1. Wave F (#244, #241), one PR. Then Wave G (#267) once the owner has made its five decisions.
 2. Triage the `needs-triage` issues above with the owner or by the routine in
    [docs/agents/triage-labels.md](../agents/triage-labels.md).
 
