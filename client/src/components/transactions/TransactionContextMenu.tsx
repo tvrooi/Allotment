@@ -18,13 +18,8 @@ import {
 import { useHouseholds } from '../../hooks/useHouseholds';
 import { useUndoStore } from '../../store/undoStore';
 import { HouseholdIcon } from '../household/HouseholdIcon';
-import { describeShare, splitText, useShareWithHousehold } from '../household/ShareWithHousehold';
-import {
-  describePayAhead,
-  payAheadTargets,
-  usePayAhead,
-  whyNotPayAhead,
-} from '../household/PayAhead';
+import { splitText, useShareWithHousehold } from '../household/ShareWithHousehold';
+import { payAheadTargets, usePayAhead, whyNotPayAhead } from '../household/PayAhead';
 import { ContextMenu, type MenuItem, type MenuPoint } from '../ui/ContextMenu';
 import type { Transaction } from '../../types';
 
@@ -108,9 +103,8 @@ export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onC
 
   const shareWith = (h: HouseholdSummary, ids: string[]) =>
     share.mutate(
-      { groupId: h.id, ids },
+      { groupId: h.id, ids, householdName: h.name },
       {
-        onSuccess: ({ result }) => announce(describeShare(result, h.name), result.shared > 0),
         onError: (e: Error) => announce(e.message, false),
       },
     );
@@ -227,7 +221,6 @@ export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onC
           payAhead.mutate(
             { tx, target: t },
             {
-              onSuccess: () => announce(describePayAhead(t), true),
               onError: (e: Error) => announce(e.message, false),
             },
           ),

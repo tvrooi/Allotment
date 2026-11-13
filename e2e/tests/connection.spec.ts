@@ -159,3 +159,40 @@ test('server details are only for the app itself', async ({ playwright, baseURL,
   expect(await (await stranger.get('/api/health')).json()).toEqual({ status: 'ok' });
   await stranger.dispose();
 });
+
+test('while saving is paused, Payees offers no rename, logo or default-category change', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Everyday Checking', 150_000);
+  await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -4_250,
+    payeeName: 'Corner Grocery',
+  });
+  await open(page, '/payees');
+  await expect(page.getByRole('button', { name: 'Rename Corner Grocery' })).toBeEnabled();
+  await expect(
+    page.getByRole('button', { name: 'Upload an image for Corner Grocery' }),
+  ).toBeVisible();
+
+  await stopDesktopServer();
+  try {
+    const nav = page.getByRole('complementary');
+    await nav.getByRole('link', { name: 'Transactions', exact: true }).click();
+    await expect(page.getByRole('status', { name: 'Connection' })).toContainText(
+      "Can't reach Allotment",
+    );
+    await nav.getByRole('link', { name: 'Payees', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Rename Corner Grocery' })).toBeDisabled();
+    await expect(
+      page.getByRole('button', { name: 'Upload an image for Corner Grocery' }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: /^Default category for Corner Grocery/ }),
+    ).toBeDisabled();
+  } finally {
+    await startDesktopServer();
+  }
+});

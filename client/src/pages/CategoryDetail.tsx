@@ -263,7 +263,7 @@ export default function CategoryDetailPage() {
   // Back and Forward return to where this list was (#245)
   const scrollMemory = useScrollMemory('category');
   // The list's filters live in the URL, so Back returns to them (#245)
-  const filters = useFilterSearch();
+  const filters = useFilterSearch({ scope: 'category' });
   const { id } = useParams<{ id: string }>();
   const selectedMonth = useAppStore((s) => s.selectedMonth);
   // Opens on all of the category's history (the list's "All time"), as the chart shows several

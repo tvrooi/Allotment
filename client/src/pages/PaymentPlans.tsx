@@ -80,7 +80,7 @@ export default function PaymentPlansPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-4 md:px-6 py-5 space-y-4">
+        <div className={`max-w-3xl mx-auto py-5 space-y-4 ${PAGE_GUTTER}`}>
           {notice && <p className="text-sm text-text-secondary">{notice}</p>}
           {!isLoading && !hasAccount && (
             <EmptyState

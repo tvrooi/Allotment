@@ -18,6 +18,10 @@ Overwritten at the end of each UI session, never appended. Wave E entry written 
   while pointed at or focused; account, category and payee registers and the Payees search keep
   their filters in the URL (`useFilterSearch`); `useScrollMemory` restores scroll on Back and
   Forward. #240 one gutter (`PAGE_GUTTER`); the Payees default category uses `CategoryPicker`.
+  Fix rounds 1-2: payee-page failures show `QueryProblem`, totals and chart use `Private` /
+  `PrivateChart`, and missing rates show `MissingRateNote`; toasts stack in one column; one Undo
+  per change (Mark reviewed, follow-up toast, sharing, paying ahead all speak through `push`);
+  goal rows have one control per destination (the name's link or Edit) plus a chevron cue.
 
 - Wave D discoverability (up.172, PR #262): #226 fixed sidebar Set up rows for Household, Tax time and
   Files, respecting explicit Hidden and keeping their fixed positions; palette Set up links open
@@ -95,6 +99,8 @@ Overwritten at the end of each UI session, never appended. Wave E entry written 
   checks every route (#240).
 - Undo: announcing is part of `undoStore.push`; pass `message` for better words, `quiet` only
   where silence is the point (onboarding sorting) (#245).
+  A mutation that may record nothing takes the words and announces without Undo instead; never
+  announce again after a push, and never add an inline Undo beside the toast's.
 
 ## Traps
 

@@ -11,6 +11,7 @@ import { PayeeIcon } from '../components/payees/PayeeIcon';
 import { DefaultCategoryButton } from '../components/payees/DefaultCategoryButton';
 import RowMenu from '../components/ui/RowMenu';
 import { useIsPhone } from '../hooks/useIsPhone';
+import { useCanSave } from '../hooks/useConnection';
 import type { PayeeWithCount } from '../types';
 import { Tip } from '../components/guide/Tip';
 import { TIPS } from '../guides';
@@ -142,6 +143,8 @@ export default function PayeesPage() {
 
   const deleteTarget = payees.find((p) => p.id === deleteId);
   const isPhone = useIsPhone();
+  // Renaming and logos need the server: not offered while saving is paused
+  const canSave = useCanSave();
 
   return (
     <div className="flex flex-col h-full bg-surface">
@@ -248,7 +251,9 @@ export default function PayeesPage() {
                     logo={p.logo}
                     size="md"
                     force
-                    onLogoChange={(logo) => updatePayee.mutate({ id: p.id, logo })}
+                    onLogoChange={
+                      canSave ? (logo) => updatePayee.mutate({ id: p.id, logo }) : undefined
+                    }
                   />
                   {editingId === p.id ? (
                     <input
@@ -279,7 +284,7 @@ export default function PayeesPage() {
                   <RowMenu
                     label={`Actions for ${p.name}`}
                     items={[
-                      { label: 'Rename', onClick: () => startEditName(p) },
+                      { label: 'Rename', onClick: () => startEditName(p), hidden: !canSave },
                       { label: 'Delete', danger: true, onClick: () => setDeleteId(p.id) },
                     ]}
                   />
@@ -345,7 +350,9 @@ export default function PayeesPage() {
                           logo={p.logo}
                           size="md"
                           force
-                          onLogoChange={(logo) => updatePayee.mutate({ id: p.id, logo })}
+                          onLogoChange={
+                            canSave ? (logo) => updatePayee.mutate({ id: p.id, logo }) : undefined
+                          }
                         />
                         {editingId === p.id ? (
                           <input
@@ -381,9 +388,10 @@ export default function PayeesPage() {
                       <button
                         type="button"
                         onClick={() => startEditName(p)}
+                        disabled={!canSave}
                         aria-label={`Rename ${p.name}`}
                         title="Rename"
-                        className="p-1 text-text-tertiary hover:text-text-secondary transition-colors"
+                        className="p-1 text-text-tertiary hover:text-text-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         <Pencil size={14} />
                       </button>

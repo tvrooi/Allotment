@@ -94,10 +94,49 @@ export function enterEntry(
   watch?: Watch,
 ): () => void {
   const saved = recallScroll(to.key);
-  if (to.navigation === 'POP' && saved !== undefined) return restoreScroll(el, saved, watch);
+  // Back and Forward, or a list mounting on an entry it was scrolled in before (it was still
+  // loading when the entry came back): a new entry has nothing saved
+  if (saved !== undefined && (to.navigation === 'POP' || from.key === to.key))
+    return restoreScroll(el, saved, watch);
   if (from.key !== to.key) {
     if (from.pathname !== to.pathname) el.scrollTop = 0;
-    else if (to.navigation === 'REPLACE') rememberScroll(to.key, el.scrollTop);
+    else if (to.navigation === 'REPLACE') {
+      // The replaced entry's offset goes with it: as saved, or where the list is now. A list
+      // that mounted after the replace (still loading on Back) is moved there once it can be.
+      const carried = recallScroll(from.key) ?? el.scrollTop;
+      rememberScroll(to.key, carried);
+      if (el.scrollTop < carried) return restoreScroll(el, carried, watch);
+    }
   }
   return () => {};
+}
+
+/**
+ * One scroll container's view of the history: the entry it is on, followed even while its
+ * element is missing (a page drawing its loading state), with a replace in the meantime
+ * handing the saved offset on, so the element finds it when it arrives. useScrollMemory
+ * holds one per container.
+ */
+export function createScrollTracker(initial: Entry) {
+  let seen = initial;
+  return {
+    enter(
+      el: Scroller | null,
+      to: Entry & { navigation: 'POP' | 'PUSH' | 'REPLACE' },
+      watch?: Watch,
+    ) {
+      const from = seen;
+      seen = { key: to.key, pathname: to.pathname };
+      if (el) return enterEntry(el, from, to, watch);
+      // No element yet: a replace still hands the saved offset on to the new entry
+      const saved = recallScroll(from.key);
+      if (to.navigation === 'REPLACE' && from.pathname === to.pathname && saved !== undefined)
+        rememberScroll(to.key, saved);
+      return () => {};
+    },
+    /** Files the element's offset under the entry it shows */
+    save(el: Scroller) {
+      rememberScroll(seen.key, el.scrollTop);
+    },
+  };
 }

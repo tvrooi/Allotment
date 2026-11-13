@@ -184,3 +184,27 @@ test('amounts drawn before the budget currency arrives still use its symbol', as
   await expect(ready).not.toContainText('A$');
   await expect(page.getByRole('button', { name: /^Assigned to Groceries: \$400/ })).toBeVisible();
 });
+
+test("a payee's page says when a purchase without a rate is left out (#235)", async ({
+  page,
+  api,
+}) => {
+  await setCurrency(api, 'EUR');
+  const pounds = await api.createAccount('UK current account', 0, 'checking', { currency: 'GBP' });
+  await api.createTransaction({
+    accountId: pounds.id,
+    date: isoDay(),
+    amount: -4_000,
+    payeeName: 'Corner shop',
+  });
+  const payee = (await api.call<{ id: string; name: string }[]>('GET', '/payees')).find(
+    (p) => p.name === 'Corner shop',
+  )!;
+  await open(page, `/payees/${payee.id}`);
+  await expect(page.getByRole('region', { name: 'Summary' })).toContainText(
+    '1 without a rate left out',
+  );
+  await expect(page.getByRole('region', { name: 'Spending by month' })).toContainText(
+    '1 without a rate left out',
+  );
+});

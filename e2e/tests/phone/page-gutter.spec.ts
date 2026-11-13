@@ -50,17 +50,27 @@ test('every page title starts 16 px from the edge on a phone', async ({ page, ap
   ];
 
   const starts: Record<string, number> = {};
-  for (const route of routes) {
-    await open(page, route);
+  const measure = async (name: string) => {
     const title = page.getByRole('main').getByRole('heading', { level: 1 }).first();
     await expect(title).toBeVisible();
-    starts[route] = await title.evaluate((h1) => {
+    starts[name] = await title.evaluate((h1) => {
       for (let el: Element | null = h1; el; el = el.parentElement) {
         const pad = parseFloat(getComputedStyle(el).paddingLeft);
         if (pad > 0) return Math.round(el.getBoundingClientRect().left + pad);
       }
       return Math.round(h1.getBoundingClientRect().left);
     });
+  };
+  for (const route of routes) {
+    await open(page, route);
+    await measure(route);
   }
-  expect(starts).toEqual(Object.fromEntries(routes.map((r) => [r, 16])));
+  // Budget's payday view draws its own title row
+  await open(page, '/budget');
+  // On a phone it is in the More menu
+  await page.getByRole('button', { name: 'More budget actions' }).click();
+  await page.getByRole('menuitem', { name: 'Until next payday' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Until next payday' })).toBeVisible();
+  await measure('/budget (payday)');
+  expect(starts).toEqual(Object.fromEntries([...routes, '/budget (payday)'].map((r) => [r, 16])));
 });

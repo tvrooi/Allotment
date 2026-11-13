@@ -22,6 +22,8 @@ import {
 } from '../components/charts/kit';
 import { EmptyState } from '../components/ui/EmptyState';
 import { QueryProblem, loadFailed } from '../components/ui/QueryProblem';
+import { Private, PrivateChart } from '../components/ui/Private';
+import { MissingRateNote } from '../components/currency/MissingRateNote';
 import { ButtonLink } from '../components/ui/Button';
 import { PAGE_GUTTER } from '../components/ui/pageGutter';
 import { formatCurrency } from '../utils/currency';
@@ -76,13 +78,23 @@ function SpendChart({ payeeId }: { payeeId: string }) {
       <QueryProblem what="spending" query={query} className="py-6" />
       {loadFailed(query) ? null : query.data === undefined ? (
         <Loading className="h-[200px] w-full" />
-      ) : months.some((m) => m.amount > 0) ? (
-        <FillChart definition={definition} height={200} ariaLabel="Spending by month" />
       ) : (
-        <div className="h-[200px] flex items-center justify-center">
-          <p className="text-sm text-text-tertiary">No spending in the last 12 months</p>
-        </div>
+        // A total over time: hidden from the "Balances and totals" level of Safe mode up
+        <PrivateChart height={200}>
+          {months.some((m) => m.amount > 0) ? (
+            <FillChart definition={definition} height={200} ariaLabel="Spending by month" />
+          ) : (
+            <div className="h-[200px] flex items-center justify-center">
+              <p className="text-sm text-text-tertiary">No spending in the last 12 months</p>
+            </div>
+          )}
+        </PrivateChart>
       )}
+      {/* Transactions with no exchange rate yet count as nothing in the bars: say so */}
+      <MissingRateNote
+        className="block mt-2 text-xs"
+        count={query.data?.filter((t) => t.mainAmountSource === 'missing').length ?? 0}
+      />
     </section>
   );
 }
@@ -99,7 +111,7 @@ export default function PayeeDetailPage() {
   const canSave = useCanSave();
   // Back and Forward return to where the page was, with the list's filters (#245)
   const scrollMemory = useScrollMemory('payee');
-  const filters = useFilterSearch();
+  const filters = useFilterSearch({ scope: 'payee' });
 
   const payeeRules = useMemo(
     () =>
@@ -161,12 +173,15 @@ export default function PayeeDetailPage() {
               ) : (
                 <>
                   <p className="mt-1 text-xl font-semibold tabular-nums text-text">
-                    {formatCurrency(summary.moneyOut)}
+                    {/* Totals: hidden from the "Balances and totals" level of Safe mode up */}
+                    <Private>{formatCurrency(summary.moneyOut)}</Private>
                   </p>
                   <dl className="mt-3 border-t border-border-light pt-3 space-y-2 text-sm">
                     <div className="flex justify-between gap-3">
                       <dt className="text-text-secondary">Money in</dt>
-                      <dd className="tabular-nums text-text">{formatCurrency(summary.moneyIn)}</dd>
+                      <dd className="tabular-nums text-text">
+                        <Private>{formatCurrency(summary.moneyIn)}</Private>
+                      </dd>
                     </div>
                     <div className="flex justify-between gap-3">
                       <dt className="text-text-secondary">Transactions</dt>
@@ -181,6 +196,10 @@ export default function PayeeDetailPage() {
                       </div>
                     )}
                   </dl>
+                  <MissingRateNote
+                    className="block mt-2 text-xs"
+                    count={summary.missingRateCount}
+                  />
                 </>
               )}
             </section>

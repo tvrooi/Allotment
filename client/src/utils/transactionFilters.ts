@@ -139,6 +139,27 @@ export function filtersToParams(
   return p;
 }
 
+/** The dimension a page's own register is fixed to */
+export type ScopeDimension = 'account' | 'category' | 'payee';
+
+/**
+ * Filters read from a scoped page's URL, without its own dimension: the page's account,
+ * category or payee always wins (registerParams), so such a filter would only show as a chip
+ * and in the count while doing nothing.
+ */
+export function withoutScope(f: FilterState, dimension: ScopeDimension | null): FilterState {
+  switch (dimension) {
+    case 'account':
+      return { ...f, accountIds: [] };
+    case 'category':
+      return { ...f, categoryIds: [], uncategorized: false, categoryGroupId: null };
+    case 'payee':
+      return { ...f, payeeIds: [], payeeName: null };
+    default:
+      return f;
+  }
+}
+
 /** What a register is fixed to by its page (an account, a category, a payee, a chart month) */
 export interface RegisterScope {
   accountId?: string;

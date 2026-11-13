@@ -83,32 +83,28 @@ export function useReviewSelection() {
     onSuccess: (result, { reviewed }) => {
       refreshAfterMark(qc);
       if (!result.changes.length) return;
-      useUndoStore.getState().push({
-        description: `Mark ${result.changes.length} ${reviewed ? 'reviewed' : 'not reviewed'}`,
-        undo: async () => {
-          await txApi.restoreReview(result.changes);
-          refreshAfterMark(qc);
+      useUndoStore.getState().push(
+        {
+          description: `Mark ${result.changes.length} ${reviewed ? 'reviewed' : 'not reviewed'}`,
+          undo: async () => {
+            await txApi.restoreReview(result.changes);
+            refreshAfterMark(qc);
+          },
+          redo: async () => {
+            await txApi.restoreReview(
+              result.changes.map((c) => ({
+                id: c.id,
+                previous: reviewed ? new Date().toISOString() : null,
+              })),
+            );
+            refreshAfterMark(qc);
+          },
         },
-        redo: async () => {
-          await txApi.restoreReview(
-            result.changes.map((c) => ({
-              id: c.id,
-              previous: reviewed ? new Date().toISOString() : null,
-            })),
-          );
-          refreshAfterMark(qc);
+        {
+          message: `Marked ${result.changes.length.toLocaleString()} ${reviewed ? 'reviewed' : 'not reviewed'}.`,
         },
-      });
+      );
     },
-  });
-}
-
-/** Put rows' previous review states back (the inline Undo after Mark reviewed) */
-export function useRestoreReview() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: txApi.restoreReview,
-    onSuccess: () => refreshAfterMark(qc),
   });
 }
 

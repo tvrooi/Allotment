@@ -31,7 +31,7 @@ export default function AccountTransactionsPage() {
   const [filesOpen, setFilesOpen] = useState(false);
   const hide = useHideBalances();
   // The register's filters live in the URL, so Back returns to them (#245)
-  const filters = useFilterSearch();
+  const filters = useFilterSearch({ scope: 'account' });
 
   if (!account) {
     if (isLoading) return null;

@@ -79,16 +79,24 @@ export function useShareWithHousehold() {
     }: {
       groupId: string;
       ids: string[] | (() => Promise<string[]>);
+      /** Named in the toast that says what was shared */
+      householdName?: string;
     }) => ({
       groupId,
       result: await shareAll(groupId, typeof ids === 'function' ? await ids() : ids),
     }),
-    onSuccess: ({ groupId, result }) => {
+    onSuccess: ({ groupId, result }, { householdName }) => {
       void qc.invalidateQueries({ queryKey: ['households'] });
       void qc.invalidateQueries({ queryKey: ['transactions'] });
       const shared = result.results.filter((r) => r.ok && r.eventId).map((r) => r.transactionId);
-      if (shared.length)
-        useUndoStore.getState().push({
+      const message = describeShare(result, householdName);
+      // Nothing shared: say why, with no Undo and no command to undo
+      if (!shared.length) {
+        useUndoStore.getState().announce(message, false);
+        return;
+      }
+      useUndoStore.getState().push(
+        {
           description: `Share ${shared.length} with the household`,
           // By payment, not entry id: the entries may have been removed and recorded again
           // since (Stop sharing, then Undo), with new ids
@@ -102,7 +110,9 @@ export function useShareWithHousehold() {
             void qc.invalidateQueries({ queryKey: ['households'] });
             void qc.invalidateQueries({ queryKey: ['transactions'] });
           },
-        });
+        },
+        { message },
+      );
     },
   });
 }
@@ -135,6 +145,7 @@ export function ShareWithHousehold({
     share.mutate(
       {
         groupId: id,
+        householdName: groups.find((g) => g.id === id)?.name,
         ids: transactionId
           ? [transactionId]
           : (transactionIds ??

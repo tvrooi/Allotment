@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   MAX_REMEMBERED,
   enterEntry,
+  createScrollTracker,
   forgetScrolls,
   recallScroll,
   rememberScroll,
@@ -145,5 +146,47 @@ describe('moving between history entries (#245)', () => {
       other.watch,
     );
     expect(other.el.scrollTop).toBe(0);
+  });
+});
+
+describe('a container that mounts after its entry was replaced (#245)', () => {
+  beforeEach(forgetScrolls);
+
+  it('takes the offset saved for the entry it replaced, and keeps it for Back', () => {
+    // Back to K1 (saved at 1200) while the page was still loading: the list wasn't there yet,
+    // then the page replaced its entry (K2) before the list mounted
+    rememberScroll('k1', 1200);
+    const { el, watch } = fakeScroller(3000);
+    enterEntry(
+      el,
+      { key: 'k1', pathname: '/accounts' },
+      {
+        key: 'k2',
+        pathname: '/accounts',
+        navigation: 'REPLACE',
+      },
+      watch,
+    );
+    expect(el.scrollTop).toBe(1200);
+    expect(recallScroll('k2')).toBe(1200);
+  });
+});
+
+describe('the tracker a scroll container keeps (#245)', () => {
+  beforeEach(forgetScrolls);
+
+  it('keeps the entry it last saw while its element is missing (a loading page)', () => {
+    rememberScroll('k1', 1200);
+    const tracker = createScrollTracker({ key: 'k0', pathname: '/accounts' });
+    const { el, watch } = fakeScroller(3000);
+    // Back to K1 while loading, then a replace to K2, then the list mounts
+    tracker.enter(null, { key: 'k1', pathname: '/accounts', navigation: 'POP' }, watch);
+    tracker.enter(null, { key: 'k2', pathname: '/accounts', navigation: 'REPLACE' }, watch);
+    tracker.enter(el, { key: 'k2', pathname: '/accounts', navigation: 'REPLACE' }, watch);
+    expect(el.scrollTop).toBe(1200);
+    // Its scrolls are filed under the entry it shows
+    el.scrollTop = 300;
+    tracker.save(el);
+    expect(recallScroll('k2')).toBe(300);
   });
 });

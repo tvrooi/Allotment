@@ -4,7 +4,9 @@ import {
   FILTER_KEYS,
   filtersFromSearch,
   filtersToSearch,
+  withoutScope,
   type FilterState,
+  type ScopeDimension,
 } from '../utils/transactionFilters';
 
 /**
@@ -12,9 +14,13 @@ import {
  * Changes replace the history entry. Other parameters (like ?add=1) belong to the page and are
  * kept. A URL the register didn't write itself (a link followed while already here) starts it
  * afresh: pass `generation` as the TransactionTable's key. A new `restartKey` restarts it too.
- * With no filters in the URL, the register picks its own defaults.
+ * With no filters in the URL, the register picks its own defaults. A scoped page (an account,
+ * a category, a payee) passes its dimension, which the URL can't set.
  */
-export function useFilterSearch(restartKey: string | null = null) {
+export function useFilterSearch({
+  restartKey = null,
+  scope = null,
+}: { restartKey?: string | null; scope?: ScopeDimension | null } = {}) {
   const [params, setParams] = useSearchParams();
   const search = new URLSearchParams(
     [...params].filter(([key]) => FILTER_KEYS.has(key)),
@@ -38,7 +44,7 @@ export function useFilterSearch(restartKey: string | null = null) {
     [setParams],
   );
   return {
-    initialFilters: search ? filtersFromSearch(params) : undefined,
+    initialFilters: search ? withoutScope(filtersFromSearch(params), scope) : undefined,
     onFiltersChange,
     generation: own.current.generation,
   };

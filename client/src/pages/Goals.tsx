@@ -93,7 +93,8 @@ function GoalRow({
   const schedule = scheduleOf(goal, remaining);
   const navigate = useNavigate();
   // A category-funded goal's money lives in its category: the row opens it (#235). A goal
-  // tracked by hand has nowhere else to go, so its row opens the edit dialog.
+  // tracked by hand has nowhere else to go, so its row opens the edit dialog. The row is for
+  // the pointer; the keyboard has one control per destination (the name's link, Edit).
   const open = goal.categoryId ? () => navigate(`/budget/category/${goal.categoryId}`) : onEdit;
   const details = [
     goal.categoryId && goal.categoryName,
@@ -106,33 +107,28 @@ function GoalRow({
   return (
     <div
       onClick={open}
-      // Keyboard users open it with Enter, like a link
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.target === e.currentTarget && e.key === 'Enter') {
-          e.preventDefault();
-          open();
-        }
-      }}
       data-testid="goal-row"
       className="px-5 py-4 hover:bg-hover cursor-pointer transition-colors last:rounded-b-lg"
     >
       <div className="grid grid-cols-[auto_1fr_auto] md:grid-cols-[auto_1fr_auto_auto] items-center gap-x-3 gap-y-1">
         <GoalIcon goal={goal} />
         <div className="min-w-0 flex-1">
-          <span className="text-sm font-medium text-text truncate flex items-center gap-2">
+          {/* Phones: a long name wraps to two lines rather than lose its end to the actions */}
+          <span className="text-sm font-medium text-text flex items-start md:items-center gap-2 min-w-0">
             {goal.categoryId ? (
-              // Says where the row leads; the row's own click and Enter go the same way
+              // Says where the row leads; a click anywhere else on the row goes the same way
               <Link
                 to={`/budget/category/${goal.categoryId}`}
                 aria-label={`${goal.name}: open ${goal.categoryName ?? 'its category'} in Budget`}
                 onClick={(e) => e.stopPropagation()}
-                className="truncate hover:text-brand-600"
+                className="min-w-0 break-words max-md:line-clamp-2 md:truncate hover:text-brand-600"
               >
                 {goal.name}
               </Link>
             ) : (
-              goal.name
+              <span className="min-w-0 break-words max-md:line-clamp-2 md:truncate">
+                {goal.name}
+              </span>
             )}
             {goal.status !== 'active' && (
               <span className="text-2xs font-medium rounded px-1.5 py-0.5 bg-surface-alt text-text-secondary">
@@ -155,41 +151,41 @@ function GoalRow({
             of {formatCurrency(goal.targetAmount)}
           </span>
         </div>
-        <div
-          className="max-md:col-start-3 max-md:row-start-1 flex items-center gap-1"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Edit on every row, whichever way the row itself opens */}
-          <button
-            type="button"
-            onClick={onEdit}
-            aria-label={`Edit ${goal.name}`}
-            title="Edit goal"
-            className="w-9 h-9 max-md:w-11 max-md:h-11 flex items-center justify-center rounded-lg text-text-tertiary hover:bg-hover hover:text-text-secondary transition-colors"
-          >
-            <Pencil size={14} aria-hidden />
-          </button>
-          <RowMenu
-            items={[
-              { label: 'Edit goal', onClick: onEdit },
-              { label: 'Files', onClick: onFiles },
-              {
-                label: goal.status === 'active' ? 'Pause goal' : 'Make active again',
-                onClick: () => onStatus(goal.status === 'active' ? 'paused' : 'active'),
-              },
-              {
-                label: 'Mark completed',
-                onClick: () => onStatus('completed'),
-                hidden: goal.status === 'completed',
-              },
-              {
-                label: 'Retire goal',
-                onClick: () => onStatus('retired'),
-                hidden: goal.status === 'retired',
-              },
-              { label: 'Delete goal', onClick: onDelete, danger: true },
-            ]}
-          />
+        <div className="max-md:col-start-3 max-md:row-start-1 flex items-center gap-1">
+          {/* Edit and the menu act on their own; the chevron beside them is part of the row */}
+          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            {/* Edit on every row, whichever way the row itself opens */}
+            <button
+              type="button"
+              onClick={onEdit}
+              aria-label={`Edit ${goal.name}`}
+              title="Edit goal"
+              className="w-9 h-9 max-md:w-11 max-md:h-11 flex items-center justify-center rounded-lg text-text-tertiary hover:bg-hover hover:text-text-secondary transition-colors"
+            >
+              <Pencil size={14} aria-hidden />
+            </button>
+            <RowMenu
+              items={[
+                { label: 'Edit goal', onClick: onEdit },
+                { label: 'Files', onClick: onFiles },
+                {
+                  label: goal.status === 'active' ? 'Pause goal' : 'Make active again',
+                  onClick: () => onStatus(goal.status === 'active' ? 'paused' : 'active'),
+                },
+                {
+                  label: 'Mark completed',
+                  onClick: () => onStatus('completed'),
+                  hidden: goal.status === 'completed',
+                },
+                {
+                  label: 'Retire goal',
+                  onClick: () => onStatus('retired'),
+                  hidden: goal.status === 'retired',
+                },
+                { label: 'Delete goal', onClick: onDelete, danger: true },
+              ]}
+            />
+          </div>
           {/* A quiet cue that this row leads to its category (#235); a hand-tracked row has none */}
           {goal.categoryId && (
             <ChevronRight

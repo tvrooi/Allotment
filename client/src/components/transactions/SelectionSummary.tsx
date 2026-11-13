@@ -8,8 +8,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { useRestoreReview, useReviewSelection } from '../../hooks/useTags';
-import type { ReviewChange } from '../../api/transactions';
+import { useReviewSelection } from '../../hooks/useTags';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { BulkEditModal } from './BulkEditModal';
 import { BulkDeleteModal } from './BulkDeleteModal';
@@ -22,6 +21,7 @@ import { IS_DEMO, downloadFromApi } from '../../demo/demoApi';
 import { decimalSeparator, formatCurrency, useAmountStyle } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import type { TransactionQueryParams } from '../../types';
+import { MissingRateNote } from '../currency/MissingRateNote';
 
 interface Props {
   params: TransactionQueryParams;
@@ -42,7 +42,6 @@ export function SelectionSummary({ params, loadedCount }: Props) {
   const count = data?.count ?? loadedCount;
   const inBudget = budgetCurrency ? `In ${budgetCurrency}, at each day's rate` : undefined;
   const review = useReviewSelection();
-  const restore = useRestoreReview();
   const [confirming, setConfirming] = useState(false);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -50,10 +49,7 @@ export function SelectionSummary({ params, loadedCount }: Props) {
   // never a single click away from just looking at a filtered list
   const [acting, setActing] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  // The last Mark reviewed here, offered for undo until the selection changes
-  const [marked, setMarked] = useState<ReviewChange[] | null>(null);
   const paramsKey = JSON.stringify(params);
-  useEffect(() => setMarked(null), [paramsKey]);
   useEffect(() => {
     setActing(false);
     setMoreOpen(false);
@@ -106,11 +102,7 @@ export function SelectionSummary({ params, loadedCount }: Props) {
               : `${formatDay(data.firstDate)} – ${formatDay(data.lastDate)}`}
           </span>
         )}
-        {data && data.missingRateCount > 0 && (
-          <span className="text-caution" title="Their exchange rate is missing">
-            {data.missingRateCount} without a rate left out
-          </span>
-        )}
+        {data && <MissingRateNote count={data.missingRateCount} />}
         {reviewCount > 0 && !acting && (
           <button
             type="button"
@@ -196,19 +188,6 @@ export function SelectionSummary({ params, loadedCount }: Props) {
           onClose={() => setEditing(false)}
         />
         <BulkDeleteModal params={params} isOpen={deleting} onClose={() => setDeleting(false)} />
-        {marked && (
-          <span role="status" className="text-text-secondary">
-            Marked {marked.length.toLocaleString()} reviewed.{' '}
-            <button
-              type="button"
-              onClick={() => restore.mutate(marked, { onSuccess: () => setMarked(null) })}
-              disabled={restore.isPending}
-              className="text-brand-600 hover:text-brand-700 font-medium"
-            >
-              Undo
-            </button>
-          </span>
-        )}
         {review.error && (
           <span role="alert" className="text-negative">
             {review.error.message}
@@ -219,10 +198,8 @@ export function SelectionSummary({ params, loadedCount }: Props) {
           onClose={() => setConfirming(false)}
           onConfirm={() => {
             setConfirming(false);
-            review.mutate(
-              { params, reviewed: true, expectedCount: reviewCount },
-              { onSuccess: (result) => setMarked(result.changes) },
-            );
+            // The undo toast says what changed and offers Undo (its push announces it)
+            review.mutate({ params, reviewed: true, expectedCount: reviewCount });
           }}
           title="Mark reviewed"
           message={`Mark ${reviewCount.toLocaleString()} transaction${reviewCount === 1 ? '' : 's'} reviewed? This only records that you have looked at them; amounts and reconciliation are unchanged. You can undo it.`}

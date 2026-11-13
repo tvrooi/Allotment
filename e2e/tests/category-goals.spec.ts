@@ -36,11 +36,17 @@ for (const phone of [false, true]) {
     await expect(
       tripRow.getByRole('link', { name: 'Trip: open Groceries in Budget' }),
     ).toBeVisible();
-    // A category-funded row opens its category (#235), by click and by Enter
-    await page.getByText('Trip', { exact: true }).click();
+    // One tab stop per destination: the row itself is not focusable, its link is
+    await expect(tripRow).not.toHaveAttribute('tabindex');
+    // A category-funded row opens its category (#235): a click anywhere on it, the chevron
+    // included, and Enter on its link
+    await tripRow.getByText('Category funded').click();
     await expect(page).toHaveURL(new RegExp(`#/budget/category/${category.id}$`));
     await page.goBack();
-    await page.getByTestId('goal-row').filter({ hasText: 'Trip' }).focus();
+    await tripRow.getByTestId('goal-opens-category').click();
+    await expect(page).toHaveURL(new RegExp(`#/budget/category/${category.id}$`));
+    await page.goBack();
+    await tripRow.getByRole('link', { name: 'Trip: open Groceries in Budget' }).focus();
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(new RegExp(`#/budget/category/${category.id}$`));
     await page.goBack();
@@ -63,6 +69,11 @@ for (const phone of [false, true]) {
     await page.getByText('Trip', { exact: true }).click();
     await expect(dialog.getByLabel('Saved so far')).toBeVisible();
     await expect(page).toHaveURL(/#\/goals$/);
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    // Its Edit opens the dialog from the keyboard, Space as well as Enter
+    await page.getByRole('button', { name: 'Edit Trip' }).focus();
+    await page.keyboard.press('Space');
+    await expect(dialog.getByLabel('Saved so far')).toBeVisible();
   });
 }
 
@@ -85,4 +96,19 @@ test('deleting a goal says it can be undone, and Undo brings it back', async ({ 
   expect((await api.call('GET', '/goals')).map((g: { name: string }) => g.name)).toEqual([
     'Holiday',
   ]);
+});
+
+test('a long goal name wraps on a phone instead of being cut off (#235)', async ({ page, api }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const category = await api.category('Groceries');
+  await api.call('POST', '/goals', {
+    name: 'Anniversary trip to Tasmania with the family',
+    targetAmount: 450_000,
+    categoryId: category.id,
+  });
+  await open(page, '/goals');
+  const name = page.getByRole('link', { name: /^Anniversary trip to Tasmania with the family:/ });
+  await expect(name).toBeVisible();
+  expect(await name.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  expect(await name.evaluate((el) => el.getBoundingClientRect().height)).toBeGreaterThan(24);
 });

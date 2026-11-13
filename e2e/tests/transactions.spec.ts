@@ -1004,6 +1004,8 @@ test.describe('one click model on desktop rows (#243) and Back (#245)', () => {
         const tabs = (await page.getByRole('navigation', { name: 'Main pages' }).boundingBox())!;
         expect(b.y + b.height).toBeLessThanOrEqual(tabs.y);
       }
+      // It names the change, from the register and from the details alike
+      await expect(undo).toContainText('Mock Bakery categorised as Groceries.');
       // Neither toast lost its actions
       await expect(
         followup.getByRole('button', { name: 'Always use for this payee' }),
@@ -1011,4 +1013,42 @@ test.describe('one click model on desktop rows (#243) and Back (#245)', () => {
       await expect(undo.getByRole('button', { name: 'Undo' })).toBeVisible();
     });
   }
+});
+
+test("a payee's page leaves out other accounts' transfer suggestions (#235)", async ({
+  page,
+  api,
+}) => {
+  const { checking } = await setup(api);
+  const card = await api.createAccount('Travel Card', -30_000, 'credit');
+  await importRows(api, checking.id, [
+    { date: isoDay(), amount: -30_000, payeeName: 'CARD PAYMENT' },
+    { date: isoDay(), amount: -1_000, payeeName: 'Mock Bakery' },
+  ]);
+  await importRows(api, card.id, [
+    { date: isoDay(), amount: 30_000, payeeName: 'PAYMENT RECEIVED' },
+  ]);
+  // The account's register offers the pair
+  await open(page, `/accounts/${checking.id}`);
+  await expect(page.getByRole('region', { name: 'Possible transfers' })).toBeVisible();
+  const bakery = (await api.call<{ id: string; name: string }[]>('GET', '/payees')).find(
+    (p) => p.name === 'Mock Bakery',
+  )!;
+  await open(page, `/payees/${bakery.id}`);
+  await expect(row(page, 'Mock Bakery')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Possible transfers' })).toHaveCount(0);
+});
+
+test("a scoped page's URL can't add a filter on its own account (#245)", async ({ page, api }) => {
+  const { checking, savings } = await setup(api);
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: -1_000,
+    payeeName: 'Mock Bakery',
+  });
+  await open(page, `/accounts/${checking.id}?account_ids=${savings.id}&range=all`);
+  await expect(row(page, 'Mock Bakery')).toBeVisible();
+  // No filter count on the Filters button, as no filter narrows this list
+  await expect(page.getByRole('button', { name: 'Filters', exact: true })).toBeVisible();
 });

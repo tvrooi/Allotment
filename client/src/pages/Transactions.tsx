@@ -42,7 +42,7 @@ export default function TransactionsPage() {
   }, [initialDetailId, state, navigate, location.pathname, location.search, location.hash]);
   const [params, setParams] = useSearchParams();
   // A new palette choice also reopens details when the search URL itself is unchanged.
-  const filters = useFilterSearch(initialDetailId ? location.key : null);
+  const filters = useFilterSearch({ restartKey: initialDetailId ? location.key : null });
   // The Receipts tab, and the receipt open on it, live in the URL too
   const view = params.get('view') === 'receipts' ? 'receipts' : 'all';
   const openReceipt = params.get('receipt');

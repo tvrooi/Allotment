@@ -58,6 +58,7 @@ import { Tip } from '../components/guide/Tip';
 import { TIPS } from '../guides';
 import { useMenuKeyboard } from '../hooks/useMenuKeyboard';
 import { useScrollMemory } from '../hooks/useScrollMemory';
+import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 function AmountInput({
   cents,
@@ -908,7 +909,9 @@ export default function BudgetPage() {
   if (paydayView)
     return (
       <div className="flex flex-col h-full bg-surface text-text">
-        <div className="px-6 py-4 border-b border-border flex flex-wrap items-center gap-3">
+        <div
+          className={`py-4 border-b border-border flex flex-wrap items-center gap-3 ${PAGE_GUTTER}`}
+        >
           <h1 className="font-display text-title max-md:text-2xl tracking-tight">
             Until next payday
           </h1>
@@ -999,7 +1002,7 @@ export default function BudgetPage() {
       <div className="flex flex-col h-full bg-surface">
         <div
           data-testid="budget-header"
-          className="px-6 max-md:px-4 py-4 max-md:py-3 border-b border-border shrink-0"
+          className={`py-4 max-md:py-3 border-b border-border shrink-0 ${PAGE_GUTTER}`}
         >
           <div className="flex flex-wrap gap-3 max-md:gap-2 items-center justify-between">
             <div className="flex items-center gap-1">
@@ -1148,11 +1151,13 @@ export default function BudgetPage() {
         {!nothingPlanned && !beforeStart && (
           <Tip
             tip={TIPS.budgetCarry}
-            className="px-6 max-md:px-4 py-3 border-b border-border-light shrink-0"
+            className={`py-3 border-b border-border-light shrink-0 ${PAGE_GUTTER}`}
           />
         )}
         {nothingPlanned && !beforeStart && !(isPhone && needle) && (
-          <div className="flex items-start gap-3 px-6 max-md:px-4 py-3 bg-brand-50 border-b border-border-light text-sm text-text-secondary shrink-0">
+          <div
+            className={`flex items-start gap-3 py-3 bg-brand-50 border-b border-border-light text-sm text-text-secondary shrink-0 ${PAGE_GUTTER}`}
+          >
             <Lightbulb size={16} className="text-brand-600 shrink-0 mt-0.5" aria-hidden />
             <div>
               <p>

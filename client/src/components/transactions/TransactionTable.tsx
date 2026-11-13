@@ -456,20 +456,25 @@ export function TransactionTable({
       {/* Short Safari viewports can scroll the surrounding page instead of collapsing the ledger. */}
       <div className="flex-1 flex overflow-hidden min-h-40">
         <div ref={scrollMemory} className="flex-1 overflow-y-auto">
-          {/* Not in a category or month view: they may not belong there */}
-          {!categoryId && !categoryIds?.length && !categoryGroupId && !month && (
-            <>
-              <WaitingTransactions
-                accountId={accountId}
-                categoryName={(id) => categoryMap.get(id)?.name}
-                accountName={(id) => accountInfoMap.get(id)?.name}
-              />
-              <TransferSuggestions
-                accountId={accountId}
-                accountName={(id) => accountInfoMap.get(id)?.name}
-              />
-            </>
-          )}
+          {/* Not in a category, payee or month view: they may not belong there */}
+          {!categoryId &&
+            !categoryIds?.length &&
+            !categoryGroupId &&
+            !payeeIds?.length &&
+            payeeName === undefined &&
+            !month && (
+              <>
+                <WaitingTransactions
+                  accountId={accountId}
+                  categoryName={(id) => categoryMap.get(id)?.name}
+                  accountName={(id) => accountInfoMap.get(id)?.name}
+                />
+                <TransferSuggestions
+                  accountId={accountId}
+                  accountName={(id) => accountInfoMap.get(id)?.name}
+                />
+              </>
+            )}
           {showAdd && accountId && !isPhone && (
             <>
               <BankFedNotice

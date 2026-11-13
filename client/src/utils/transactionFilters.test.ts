@@ -9,6 +9,7 @@ import {
   filtersToParams,
   filtersToSearch,
   registerParams,
+  withoutScope,
   transactionsLink,
   type FilterState,
 } from './transactionFilters';
@@ -239,5 +240,31 @@ describe("a page's own scope wins over filters from its URL (#245)", () => {
     });
     expect(p).toMatchObject({ categoryId: 'c', month: '2026-03' });
     expect(p.from).toBeUndefined();
+  });
+});
+
+describe("a scoped page's URL can't set its own dimension (#245)", () => {
+  const fromUrl = (search: string) => filtersFromSearch(new URLSearchParams(search));
+
+  it('an account page drops account filters', () => {
+    const f = withoutScope(fromUrl('account_ids=other&search=milk&range=all'), 'account');
+    expect(f.accountIds).toEqual([]);
+    expect(f.search).toBe('milk');
+    expect(activeFilterCount(f)).toBe(1);
+  });
+
+  it('a category page drops category filters', () => {
+    const f = withoutScope(
+      fromUrl('category_ids=a&uncategorized=1&category_group_id=g&range=all'),
+      'category',
+    );
+    expect(f).toMatchObject({ categoryIds: [], uncategorized: false, categoryGroupId: null });
+    expect(activeFilterCount(f)).toBe(0);
+  });
+
+  it('a payee page drops payee filters', () => {
+    const f = withoutScope(fromUrl('payee_ids=a&payee_name=Other&range=all'), 'payee');
+    expect(f).toMatchObject({ payeeIds: [], payeeName: null });
+    expect(activeFilterCount(f)).toBe(0);
   });
 });

@@ -210,4 +210,35 @@ test.describe('Safe mode', () => {
     await expect(page.locator('svg text').first()).toBeAttached();
     expect(await chartAmounts(), 'budget editor').toEqual([]);
   });
+
+  for (const level of ['Balances and totals', 'All amounts']) {
+    test(`a payee's totals and chart are hidden at "${level}"`, async ({ page, api }) => {
+      const [everyday] = await api.accounts();
+      await api.createTransaction({
+        accountId: everyday.id,
+        date: isoDay(0),
+        amount: -5_555,
+        payeeName: 'Mock Cafe',
+      });
+      const payee = (await api.call<{ id: string; name: string }[]>('GET', '/payees')).find(
+        (p) => p.name === 'Mock Cafe',
+      )!;
+      await open(page, '/settings?tab=preferences');
+      const section = page.getByRole('region', { name: 'Safe mode' });
+      await section.getByRole('radio', { name: new RegExp(level) }).click();
+      await section.getByRole('button', { name: 'On', exact: true }).click();
+
+      await open(page, `/payees/${payee.id}`);
+      const summary = page.getByRole('region', { name: 'Summary' });
+      await expect(summary.getByRole('img', { name: 'Hidden' }).first()).toBeVisible();
+      await expect(summary).not.toContainText('55');
+      const chart = page.getByRole('region', { name: 'Spending by month' });
+      await expect(chart).toContainText('Hidden in Safe mode');
+      await expect(chart).not.toContainText('$');
+      // The transaction itself shows at the balances level, as on every register
+      const list = page.getByRole('region', { name: 'Mock Cafe transactions' });
+      if (level === 'Balances and totals') await expect(list).toContainText('55.55');
+      else await expect(list).not.toContainText('55.55');
+    });
+  }
 });

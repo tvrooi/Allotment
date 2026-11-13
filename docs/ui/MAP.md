@@ -29,11 +29,11 @@ Dashboard, Budget and Transactions are in the main bundle; every other page is `
 | `/reports`                               | Reports.tsx (251)                        | reports, review                                      | useCustomReports, useDashboards                                      | reports, report-drill-through                                                |
 | `/reports/custom`, `/reports/custom/:id` | CustomReportBuilder.tsx (190)            | reports                                              | useCustomReports, useDebounce                                        | reports                                                                      |
 | `/reports/widget/:id`                    | ReportWidgetView.tsx (187)               | reports                                              | useDashboards                                                        | reports                                                                      |
-| `/payees`                                | Payees.tsx (428)                         | payees                                               | usePayees, useIsPhone                                                | payees                                                                       |
-| `/payees/:id`                            | PayeeDetail.tsx (213)                    | payees, transactions, charts, rules                  | usePayees, useRules, useTransactions, useFilterSearch                | payees, transactions, command-palette                                        |
+| `/payees`                                | Payees.tsx (436)                         | payees                                               | usePayees, useIsPhone, useCanSave                                    | payees, connection                                                           |
+| `/payees/:id`                            | PayeeDetail.tsx (257)                    | payees, transactions, charts, rules                  | usePayees, useRules, useTransactions, useFilterSearch                | payees, transactions, command-palette, safe-mode, currencies                 |
 | `/rules`                                 | Rules.tsx (448)                          | rules                                                | useRules, useIsPhone, useOpenFromLink                                | rules                                                                        |
 | `/settings`                              | Settings.tsx (148)                       | settings                                             | none                                                                 | settings, data, safe-mode                                                    |
-| `/goals`                                 | Goals.tsx (544)                          | goals, files                                         | useGoals, useAccounts                                                | category-goals, demo/category-goals                                          |
+| `/goals`                                 | Goals.tsx (561)                          | goals, files                                         | useGoals, useAccounts                                                | category-goals, demo/category-goals                                          |
 | `/forecast`                              | Forecast.tsx (71)                        | forecast, longterm                                   | none                                                                 | forecast, long-term-forecast, phone/long-term-forecast                       |
 | `/investments`                           | Investments.tsx (786)                    | investments, accounts, reports                       | useInvestments, useAccounts                                          | investments                                                                  |
 | `/tax`                                   | Tax.tsx (822) **split candidate**        | tax, reports, connection                             | useTax, useAssets, useInvestments, useConnection                     | receipts-tax, depreciating-assets, tax-car-home                              |
@@ -64,13 +64,17 @@ unsaved-drafts, phone/phone, phone/polish-phone, phone/iphone-webapp, phone/amou
   `components/transactions/RoundUp.tsx` amount formatter for round-ups and folded transfers.
 - `components/guide/KeyboardShortcuts.tsx`: the shortcut list in the guides dialog.
 - `components/layout/PhoneTabBar.tsx`: phone tab bar (Home, Transactions, Add, Budget, Review).
-- `hooks/useScrollMemory.ts` (memory in `utils/scrollMemory.ts`): the shell's `<main>` and every
-  page-level list remember their scroll per history entry for Back and Forward (#245).
+- `hooks/useScrollMemory.ts` (memory and per-entry rules in `utils/scrollMemory.ts`: `enterEntry`,
+  `createScrollTracker`): the shell's `<main>` and every page-level list remember their scroll per
+  history entry for Back and Forward, a replaced entry keeping its offset (#245).
 - `hooks/useFilterSearch.ts`: register filters in the URL (Transactions, an account, a category,
-  a payee), changes replacing the history entry.
+  a payee), changes replacing the history entry; a scoped page drops its own dimension from the
+  URL (`withoutScope`), and `registerParams` keeps the page's scope over any filter.
 - `components/ui/pageGutter.ts`: `PAGE_GUTTER`, the one page side gutter (16 px phone, 24 px md+).
 - `store/undoStore.ts`: `push` announces the undo toast itself (`message`, or `quiet` for
   onboarding sorting); the store times the toast (8 s with Undo, held while pointed at or focused).
+  Mutations that may record nothing (`useUpdatePayee`, `useBulkEdit`, `useShareWithHousehold`)
+  take the toast's words and announce without Undo when they record no command.
 - Specs: navigation, dialog-focus, transactions ("Add transaction from any page"), command-palette,
   phone/phone, phone/command-palette-phone, demo/demo (palette case).
 

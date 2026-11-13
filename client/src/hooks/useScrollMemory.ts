@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigationType } from 'react-router-dom';
-import { enterEntry, rememberScroll, type Entry } from '../utils/scrollMemory';
+import { createScrollTracker } from '../utils/scrollMemory';
 
 /**
  * Remembers a page-level scroll container's offset for each history entry and puts it back on
@@ -14,22 +14,19 @@ export function useScrollMemory(name: string) {
   const location = useLocation();
   const navigation = useNavigationType();
   const key = `${location.key}:${name}`;
-  // Which entry a scroll belongs to; set during the commit, so a scroll event the browser
-  // fires after the next page replaced this one (the offset clamped) is never filed under
-  // the entry being left
-  const current = useRef<Entry>({ key, pathname: location.pathname });
+  // Moved on during the commit, so a scroll event the browser fires after the next page
+  // replaced this one (the offset clamped) is never filed under the entry being left
+  const tracker = useRef<ReturnType<typeof createScrollTracker> | null>(null);
+  tracker.current ??= createScrollTracker({ key, pathname: location.pathname });
 
-  useLayoutEffect(() => {
-    const from = current.current;
-    const to = { key, pathname: location.pathname, navigation };
-    current.current = to;
-    if (!el) return;
-    return enterEntry(el, from, to);
-  }, [el, key, navigation, location.pathname]);
+  useLayoutEffect(
+    () => tracker.current!.enter(el, { key, pathname: location.pathname, navigation }),
+    [el, key, navigation, location.pathname],
+  );
 
   useEffect(() => {
     if (!el) return;
-    const save = () => rememberScroll(current.current.key, el.scrollTop);
+    const save = () => tracker.current!.save(el);
     el.addEventListener('scroll', save, { passive: true });
     return () => el.removeEventListener('scroll', save);
   }, [el]);
