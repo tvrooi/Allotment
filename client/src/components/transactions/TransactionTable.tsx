@@ -17,8 +17,9 @@ import { TransactionFilters } from './TransactionFilters';
 import {
   activeFilterCount,
   DEFAULT_FILTERS,
-  filtersToParams,
+  registerParams,
   type FilterState,
+  type ScopeDimension,
 } from '../../utils/transactionFilters';
 import { TransactionFormRow } from './TransactionFormRow';
 import { BankFedNotice } from './BankFedNotice';
@@ -33,6 +34,7 @@ import { ImportModal } from './ImportModal';
 import { Button, ButtonLink } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { useOpenFromLink } from '../../hooks/useOpenFromLink';
+import { useScrollMemory } from '../../hooks/useScrollMemory';
 import { useAddTransaction } from '../../hooks/useOffline';
 import { formatCurrency } from '../../utils/currency';
 import { transactionValue } from '../../utils/accountMoney';
@@ -100,8 +102,11 @@ export function TransactionTable({
     () =>
       initialFilters ?? {
         ...DEFAULT_FILTERS,
+        // A category's or payee's list shows all of its history
         datePreset:
-          categoryId || categoryIds?.length || categoryGroupId ? 'all' : DEFAULT_FILTERS.datePreset,
+          categoryId || categoryIds?.length || categoryGroupId || payeeIds?.length
+            ? 'all'
+            : DEFAULT_FILTERS.datePreset,
       },
   );
   // Report changes after render, so the URL follows the filters (and back/forward restore them)
@@ -117,6 +122,8 @@ export function TransactionTable({
   const target = addTo ?? accountId;
   const [savingView, setSavingView] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(initialDetailId ?? null);
+  // Back and Forward return to where the list was (#245)
+  const scrollMemory = useScrollMemory('register');
   const [showImport, setShowImport] = useState(false);
   // Picking payments to share with a household: null when not picking
   const [picked, setPicked] = useState<Set<string> | null>(null);
@@ -126,41 +133,45 @@ export function TransactionTable({
 
   const showAccountCol = !accountId;
 
-  const params = useMemo(() => {
-    const base = filtersToParams(filters, accountId);
-    if (budgetReport) base.budgetReport = true;
-    if (categoryIds?.length) base.categoryIds = categoryIds;
-    else if (categoryId && !base.categoryIds?.length) base.categoryId = categoryId;
-    if (categoryGroupId) base.categoryGroupId = categoryGroupId;
-    if (uncategorized) {
-      delete base.categoryId;
-      delete base.categoryIds;
-      base.uncategorized = true;
-    }
-    if (payeeIds?.length) base.payeeIds = payeeIds;
-    if (payeeName !== undefined) base.payeeName = payeeName;
-    if (from) base.from = from;
-    if (to) base.to = to;
-    if (month) {
-      delete base.from;
-      delete base.to;
-      base.month = month;
-    }
-    return base;
-  }, [
-    budgetReport,
-    filters,
-    accountId,
-    categoryId,
-    categoryIds,
-    categoryGroupId,
-    uncategorized,
-    payeeIds,
-    payeeName,
-    from,
-    to,
-    month,
-  ]);
+  // What this page fixes the register to: not offered as a filter
+  const scopes = useMemo(() => {
+    const fixed: ScopeDimension[] = [];
+    if (accountId) fixed.push('account');
+    if (categoryId || categoryIds?.length || categoryGroupId || uncategorized)
+      fixed.push('category');
+    if (payeeIds?.length || payeeName !== undefined) fixed.push('payee');
+    return fixed;
+  }, [accountId, categoryId, categoryIds, categoryGroupId, uncategorized, payeeIds, payeeName]);
+  const params = useMemo(
+    () =>
+      registerParams(filters, {
+        accountId,
+        budgetReport,
+        categoryId,
+        categoryIds,
+        categoryGroupId,
+        uncategorized,
+        payeeIds,
+        payeeName,
+        from,
+        to,
+        month,
+      }),
+    [
+      budgetReport,
+      filters,
+      accountId,
+      categoryId,
+      categoryIds,
+      categoryGroupId,
+      uncategorized,
+      payeeIds,
+      payeeName,
+      from,
+      to,
+      month,
+    ],
+  );
   const { data: transactions = [], isLoading } = useTransactions(params);
   // Whether there are any transactions at all here, to tell "nothing yet" from "filtered out"
   const scoped = Boolean(
@@ -384,7 +395,7 @@ export function TransactionTable({
           if (month && onClearMonth) onClearMonth();
           setFilters(f);
         }}
-        fixedAccount={Boolean(accountId)}
+        scopes={scopes}
         onSaveView={canSaveView ? () => setSavingView(true) : undefined}
         externalMonth={month}
         externalRange={from && to ? `${formatDay(from)} – ${formatDay(to)}` : undefined}
@@ -454,21 +465,26 @@ export function TransactionTable({
       )}
       {/* Short Safari viewports can scroll the surrounding page instead of collapsing the ledger. */}
       <div className="flex-1 flex overflow-hidden min-h-40">
-        <div className="flex-1 overflow-y-auto">
-          {/* Not in a category or month view: they may not belong there */}
-          {!categoryId && !categoryIds?.length && !categoryGroupId && !month && (
-            <>
-              <WaitingTransactions
-                accountId={accountId}
-                categoryName={(id) => categoryMap.get(id)?.name}
-                accountName={(id) => accountInfoMap.get(id)?.name}
-              />
-              <TransferSuggestions
-                accountId={accountId}
-                accountName={(id) => accountInfoMap.get(id)?.name}
-              />
-            </>
-          )}
+        <div ref={scrollMemory} className="flex-1 overflow-y-auto">
+          {/* Not in a category, payee or month view: they may not belong there */}
+          {!categoryId &&
+            !categoryIds?.length &&
+            !categoryGroupId &&
+            !payeeIds?.length &&
+            payeeName === undefined &&
+            !month && (
+              <>
+                <WaitingTransactions
+                  accountId={accountId}
+                  categoryName={(id) => categoryMap.get(id)?.name}
+                  accountName={(id) => accountInfoMap.get(id)?.name}
+                />
+                <TransferSuggestions
+                  accountId={accountId}
+                  accountName={(id) => accountInfoMap.get(id)?.name}
+                />
+              </>
+            )}
           {showAdd && accountId && !isPhone && (
             <>
               <BankFedNotice
@@ -613,17 +629,6 @@ export function TransactionTable({
                             showAccountCol={showAccountCol}
                             isSelected={detailId === tx.id}
                             onOpenDetail={setDetailId}
-                            onFilterCategory={(catId) =>
-                              setFilters((f) => ({
-                                ...f,
-                                categoryIds: [catId],
-                                uncategorized: false,
-                                datePreset: 'all',
-                              }))
-                            }
-                            onFilterSearch={(search) =>
-                              setFilters((f) => ({ ...f, search, datePreset: 'all' }))
-                            }
                             transferAccounts={transferAccounts}
                           />
                         ),

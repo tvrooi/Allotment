@@ -146,17 +146,26 @@ function SaverItem({ savers }: { savers: HousekeepingData['unlinkedSavers'] }) {
     },
     onSuccess: ({ result, ids, categoryId }) => {
       void qc.invalidateQueries();
-      useUndoStore.getState().push({
-        description: `Categorise ${result.changed} saver transfers`,
-        undo: async () => {
-          await restoreBulkEdit(result.restore);
-          void qc.invalidateQueries();
+      const message = `Categorised ${result.changed} saver transfer${result.changed === 1 ? '' : 's'}.`;
+      // Nothing changed (every row skipped, for example reconciled): say so, with no Undo
+      if (!result.restore.length) {
+        useUndoStore.getState().announce(message, false);
+        return;
+      }
+      useUndoStore.getState().push(
+        {
+          description: `Categorise ${result.changed} saver transfers`,
+          undo: async () => {
+            await restoreBulkEdit(result.restore);
+            void qc.invalidateQueries();
+          },
+          redo: async () => {
+            await bulkEditTransactions({ params: {}, ids }, { categoryId }, ids.length);
+            void qc.invalidateQueries();
+          },
         },
-        redo: async () => {
-          await bulkEditTransactions({ params: {}, ids }, { categoryId }, ids.length);
-          void qc.invalidateQueries();
-        },
-      });
+        { message },
+      );
     },
   });
   const options = groups.flatMap((g) =>

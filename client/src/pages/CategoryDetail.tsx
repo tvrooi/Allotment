@@ -23,6 +23,9 @@ import { bandScale, INCOME_EXPENSE_COLORS, valueScale } from '../components/char
 import { formatDay } from '../utils/dates';
 import { TargetCard } from '../components/budget/TargetCard';
 import { FilesSection } from '../components/files/FilesSection';
+import { useFilterSearch } from '../hooks/useFilterSearch';
+import { useScrollMemory } from '../hooks/useScrollMemory';
+import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 interface HistoryChartProps {
   categoryId: string;
@@ -257,6 +260,10 @@ function SummaryWidget({
 }
 
 export default function CategoryDetailPage() {
+  // Back and Forward return to where this list was (#245)
+  const scrollMemory = useScrollMemory('category');
+  // The list's filters live in the URL, so Back returns to them (#245)
+  const filters = useFilterSearch({ scope: 'category' });
   const { id } = useParams<{ id: string }>();
   const selectedMonth = useAppStore((s) => s.selectedMonth);
   // Opens on all of the category's history (the list's "All time"), as the chart shows several
@@ -289,7 +296,7 @@ export default function CategoryDetailPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-6 py-3 border-b border-border bg-surface shrink-0">
+      <div className={`py-3 border-b border-border bg-surface shrink-0 ${PAGE_GUTTER}`}>
         <div className="flex items-center gap-1.5 text-base">
           <Link
             to="/budget"
@@ -305,7 +312,7 @@ export default function CategoryDetailPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div ref={scrollMemory} className={`flex-1 overflow-y-auto py-6 ${PAGE_GUTTER}`}>
         {/* Wide screens: the list sits right under the chart while Budget and Target (often
             taller than the chart) fill the side column above Summary. The last row is 1fr so
             the list, which spans it, never pushes Summary down. Phones keep the DOM order. */}
@@ -338,6 +345,9 @@ export default function CategoryDetailPage() {
           <div className="lg:col-span-2 lg:col-start-1 lg:row-start-2 lg:row-span-2 bg-surface rounded-lg shadow-card border border-border-light overflow-hidden">
             {id && (
               <TransactionTable
+                key={filters.generation}
+                initialFilters={filters.initialFilters}
+                onFiltersChange={filters.onFiltersChange}
                 categoryId={id}
                 month={txMonth}
                 onClearMonth={() => setSelectedBarMonth(null)}

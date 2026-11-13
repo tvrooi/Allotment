@@ -413,7 +413,7 @@ export const payeesGuide: Guide = {
     },
     {
       title: 'Tidy up names',
-      body: 'Double-click a name to rename it, tick two or more payees to merge them into one, and click a payee’s picture to give it a logo.',
+      body: 'Open a payee by its name to see its spending, rules and transactions. Rename one with its pencil button, tick two or more payees to merge them into one, and click a payee’s picture to give it a logo.',
       phoneBody:
         'Rename or delete a payee from its ⋮ menu, tick two or more to merge them into one, and tap a payee’s picture to give it a logo.',
       route: '/payees',

@@ -13,6 +13,7 @@ import { useCanSave } from '../hooks/useConnection';
 import { useCreatePlanAccount, usePaymentPlans } from '../hooks/usePaymentPlans';
 import { formatCurrency } from '../utils/currency';
 import type { HistoryGroup, PlanProvider } from '../api/paymentPlans';
+import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 /**
  * Pay later (docs/PAYMENT-PLANS.md): purchases made with Afterpay and similar, each recorded
@@ -52,7 +53,9 @@ export default function PaymentPlansPage() {
 
   return (
     <div className="flex flex-col h-full bg-surface">
-      <div className="px-6 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-x-4">
+      <div
+        className={`border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-x-4 ${PAGE_GUTTER}`}
+      >
         <h1
           data-guide="plans.header"
           className="font-display text-title max-md:text-2xl tracking-tight text-text py-4"
@@ -77,7 +80,7 @@ export default function PaymentPlansPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-4 md:px-6 py-5 space-y-4">
+        <div className={`max-w-3xl mx-auto py-5 space-y-4 ${PAGE_GUTTER}`}>
           {notice && <p className="text-sm text-text-secondary">{notice}</p>}
           {!isLoading && !hasAccount && (
             <EmptyState

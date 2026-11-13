@@ -45,8 +45,11 @@ test.describe('account register', () => {
     });
     await newForm(page).getByRole('button', { name: 'Save' }).click();
 
-    await expect(page.getByRole('button', { name: 'Corner Grocery', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Groceries', exact: true })).toBeVisible();
+    // The payee is row text (#243); the category is the row's one inline control
+    await expect(row(page, 'Corner Grocery')).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Category for Corner Grocery: Groceries' }),
+    ).toBeVisible();
     await expect(header(page)).toContainText('$957.50');
     expect(await api.balance(checking.id)).toBe(95_750);
 
@@ -341,8 +344,8 @@ test.describe('account register', () => {
     const details = page.getByRole('complementary', { name: 'Transaction details' });
     const openDetails = async () => {
       await open(page, '/transactions');
-      // The row's middle is its inline category editor here; the row-end arrow opens details
-      await page.getByRole('button', { name: 'Open details for Corner Grocery' }).click();
+      // One click model (#243): the payee text is part of the row, and opens the details
+      await row(page, 'Corner Grocery').getByText('Corner Grocery', { exact: true }).click();
       await expect(details).toBeVisible();
     };
 
@@ -364,6 +367,12 @@ test.describe('account register', () => {
     await expect(row(page, 'Bus Fare')).toBeVisible();
     await expect(row(page, 'Corner Grocery')).toBeVisible();
     await expect(row(page, 'Other Shop')).toHaveCount(0);
+
+    // The payee's name opens its own page (#235)
+    await openDetails();
+    await details.getByRole('link', { name: 'Payee page for Corner Grocery' }).click();
+    await expect(page).toHaveURL(/#\/payees\/[\w-]+$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Corner Grocery' })).toBeVisible();
   });
 
   test('searches and filters by date range', async ({ page, api }) => {
@@ -382,14 +391,14 @@ test.describe('account register', () => {
     });
     await open(page, `/accounts/${checking.id}`);
     // "This month" by default: the 2020 purchase is hidden
-    await expect(page.getByRole('button', { name: 'Coffee Corner', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Old Bookshop', exact: true })).toBeHidden();
+    await expect(row(page, 'Coffee Corner')).toBeVisible();
+    await expect(row(page, 'Old Bookshop')).toBeHidden();
 
     await page.getByRole('button', { name: 'All time' }).click();
     await expect(page.getByText('2 transactions')).toBeVisible();
     await page.getByPlaceholder('Search payee or notes…').fill('book');
     await expect(page.getByText('1 transaction', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Old Bookshop', exact: true })).toBeVisible();
+    await expect(row(page, 'Old Bookshop')).toBeVisible();
   });
 
   test('the all-transactions page lists every account', async ({ page, api }) => {
@@ -407,9 +416,10 @@ test.describe('account register', () => {
       payeeName: 'B-Bank',
     });
     await open(page, '/transactions');
-    await expect(page.getByRole('button', { name: 'A-Mart', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'B-Bank', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Go to Rainy Day Savings' })).toBeVisible();
+    await expect(row(page, 'A-Mart')).toBeVisible();
+    await expect(row(page, 'B-Bank')).toBeVisible();
+    // The account column names each row's account (its register is linked from the details)
+    await expect(row(page, 'B-Bank')).toContainText('Rainy Day Savings');
   });
 
   test('combines filters, summarises the selection and keeps it in the link', async ({
@@ -438,7 +448,7 @@ test.describe('account register', () => {
     await page.getByLabel('At least').press('Enter');
 
     await expect(page.getByText('1 transaction', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Mock grocer', exact: true })).toHaveCount(1);
+    await expect(row(page, 'Mock grocer')).toHaveCount(1);
     await expect(
       page.getByRole('term').filter({ hasText: 'Money out' }).locator('..').getByRole('definition'),
     ).toHaveText('$120');
@@ -812,4 +822,266 @@ test.describe('Add transaction from any page (#222, #223)', () => {
     const dialog = page.getByRole('dialog', { name: 'Add transaction' });
     await expect(dialog.getByRole('button', { name: /Select account/ })).toBeVisible();
   });
+});
+
+test.describe('one click model on desktop rows (#243) and Back (#245)', () => {
+  test('a click anywhere opens details; the category is the one inline edit, with Undo', async ({
+    page,
+    api,
+  }) => {
+    const { checking } = await setup(api);
+    const tx = await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: -1_250,
+      payeeName: 'Mock Bakery',
+    });
+    await open(page, `/accounts/${checking.id}`);
+    const details = page.getByRole('complementary', { name: 'Transaction details' });
+
+    // The payee text is part of the row: no inline payee picker any more
+    await row(page, 'Mock Bakery').getByText('Mock Bakery', { exact: true }).click();
+    await expect(details).toBeVisible();
+    await expect(page.getByPlaceholder('Search payees...')).toHaveCount(0);
+    await details.getByRole('button', { name: 'Close details' }).click();
+    // A double click does nothing more than a click
+    await row(page, 'Mock Bakery').getByText('Mock Bakery', { exact: true }).dblclick();
+    await expect(details).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Search categories' })).toHaveCount(0);
+    await details.getByRole('button', { name: 'Close details' }).click();
+    // The row-end Edit is always shown
+    await page.getByRole('button', { name: 'Edit details for Mock Bakery' }).click();
+    await expect(details).toBeVisible();
+    await details.getByRole('button', { name: 'Close details' }).click();
+    // No hover-only arrows
+    await expect(page.getByRole('button', { name: /^Show all "/ })).toHaveCount(0);
+
+    const pill = page.getByRole('button', { name: 'Category for Mock Bakery: Uncategorised' });
+    await expect(pill).toBeVisible();
+    await pill.click();
+    await page.getByRole('textbox', { name: 'Search categories' }).fill('Groceries');
+    await page.keyboard.press('Enter');
+    await expect(details).toBeHidden();
+    const toast = page.getByTestId('undo-toast');
+    await expect(toast).toContainText('Mock Bakery categorised as Groceries.');
+    // Undo reverses exactly the category: a note added since stays
+    await api.call('PUT', `/transactions/${tx.id}`, { notes: 'Added elsewhere' });
+    await toast.getByRole('button', { name: 'Undo' }).click();
+    await expect
+      .poll(async () => (await api.transactions()).find((t) => t.id === tx.id)?.categoryId)
+      .toBeNull();
+    expect((await api.transactions()).find((t) => t.id === tx.id)?.notes).toBe('Added elsewhere');
+  });
+
+  test("Back returns to an account's filters and the register's scroll; a fresh visit starts afresh", async ({
+    page,
+    api,
+  }) => {
+    const { checking } = await setup(api);
+    for (let i = 0; i < 60; i++) {
+      await api.createTransaction({
+        accountId: checking.id,
+        date: isoDay(-i),
+        amount: -(100 + i),
+        payeeName: `Mock Shop ${String(i).padStart(2, '0')}`,
+      });
+    }
+    await open(page, `/accounts/${checking.id}`);
+    await page.getByRole('button', { name: 'All time' }).click();
+    await expect(page).toHaveURL(/range=all/);
+    const register = row(page, 'Mock Shop 00')
+      .locator('xpath=ancestor::div[contains(@class, "overflow-y-auto")][1]')
+      .first();
+    await register.evaluate((el) => (el.scrollTop = 1200));
+    await expect.poll(() => register.evaluate((el) => el.scrollTop)).toBe(1200);
+    await row(page, 'Mock Shop 30').click();
+    const before = await register.evaluate((el) => el.scrollTop);
+    expect(before).toBeGreaterThan(500);
+    const details = page.getByRole('complementary', { name: 'Transaction details' });
+    await details.getByRole('link', { name: 'Payee page for Mock Shop 30' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Mock Shop 30' })).toBeVisible();
+
+    await page.goBack();
+    await expect(page).toHaveURL(/range=all/);
+    await expect(row(page, 'Mock Shop 59')).toBeAttached();
+    await expect.poll(() => register.evaluate((el) => el.scrollTop)).toBe(before);
+
+    // A fresh visit: default filters, at the top
+    await open(page, `/accounts/${checking.id}`);
+    await expect(row(page, 'Mock Shop 59')).toHaveCount(0);
+    await expect.poll(() => register.evaluate((el) => el.scrollTop)).toBe(0);
+  });
+
+  test('a filter change keeps the scroll for Back, though it replaces the history entry', async ({
+    page,
+    api,
+  }) => {
+    const { checking } = await setup(api);
+    for (let i = 0; i < 60; i++) {
+      await api.createTransaction({
+        accountId: checking.id,
+        date: isoDay(-i),
+        amount: -(100 + i),
+        payeeName: `Mock Shop ${String(i).padStart(2, '0')}`,
+      });
+    }
+    await open(page, `/accounts/${checking.id}?range=all`);
+    const register = row(page, 'Mock Shop 00')
+      .locator('xpath=ancestor::div[contains(@class, "overflow-y-auto")][1]')
+      .first();
+    await expect(row(page, 'Mock Shop 59')).toBeAttached();
+    // Every row is uncategorised, so with both lists loaded once, the filter swaps one list for
+    // the same rows at once, and the page keeps its offset while the URL entry is replaced
+    const uncategorised = page.getByRole('button', { name: 'Uncategorised', exact: true }).first();
+    await uncategorised.click();
+    await expect(page).toHaveURL(/uncategorized=1/);
+    await expect(row(page, 'Mock Shop 59')).toBeAttached();
+    await uncategorised.click();
+    await expect(page).not.toHaveURL(/uncategorized=1/);
+    await expect(row(page, 'Mock Shop 59')).toBeAttached();
+    await register.evaluate((el) => (el.scrollTop = 1200));
+    await expect.poll(() => register.evaluate((el) => el.scrollTop)).toBe(1200);
+    await uncategorised.click();
+    await expect(page).toHaveURL(/uncategorized=1/);
+    await expect(row(page, 'Mock Shop 59')).toBeAttached();
+    const before = await register.evaluate((el) => el.scrollTop);
+    expect(before).toBeGreaterThan(500);
+    // Away without scrolling the list, then Back
+    await page
+      .getByRole('navigation', { name: 'Main' })
+      .getByRole('link', { name: 'Budget' })
+      .click();
+    await expect(page).toHaveURL(/#\/budget/);
+    await page.goBack();
+    await expect(page).toHaveURL(/uncategorized=1/);
+    await expect(row(page, 'Mock Shop 59')).toBeAttached();
+    await expect.poll(() => register.evaluate((el) => el.scrollTop)).toBe(before);
+  });
+
+  for (const phone of [false, true]) {
+    test(`the follow-up and undo toasts form one tidy stack${phone ? ' on a phone' : ''}`, async ({
+      page,
+      api,
+    }) => {
+      if (phone) await page.setViewportSize({ width: 390, height: 844 });
+      const { checking } = await setup(api);
+      for (const day of [0, -1]) {
+        await api.createTransaction({
+          accountId: checking.id,
+          date: isoDay(day),
+          amount: -1_250,
+          payeeName: 'Mock Bakery',
+        });
+      }
+      await open(page, `/accounts/${checking.id}`);
+      if (phone) {
+        await page.getByTestId('transaction-card').first().click();
+        const panel = page.getByRole('complementary', { name: 'Transaction details' });
+        await panel.getByRole('button', { name: 'Uncategorised' }).click();
+      } else {
+        await page
+          .getByRole('button', { name: 'Category for Mock Bakery: Uncategorised' })
+          .first()
+          .click();
+      }
+      await page.getByRole('textbox', { name: 'Search categories' }).fill('Groceries');
+      await page.keyboard.press('Enter');
+      const followup = page.getByRole('status', { name: 'Category follow-up' });
+      const undo = page.getByTestId('undo-toast');
+      await expect(followup).toBeVisible();
+      await expect(undo).toBeVisible();
+      const a = (await followup.boundingBox())!;
+      const b = (await undo.boundingBox())!;
+      // One column: the same width and centre, one gap, the undo toast under the follow-up
+      expect(Math.round(a.width)).toBe(Math.round(b.width));
+      expect(Math.round(a.x)).toBe(Math.round(b.x));
+      expect(Math.round(b.y - (a.y + a.height))).toBe(8);
+      const view = page.viewportSize()!;
+      expect(a.x).toBeGreaterThanOrEqual(0);
+      expect(a.x + a.width).toBeLessThanOrEqual(view.width);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(view.width);
+      if (phone) {
+        const tabs = (await page.getByRole('navigation', { name: 'Main pages' }).boundingBox())!;
+        expect(b.y + b.height).toBeLessThanOrEqual(tabs.y);
+      }
+      // It names the change, from the register and from the details alike
+      await expect(undo).toContainText('Mock Bakery categorised as Groceries.');
+      // Neither toast lost its actions
+      await expect(
+        followup.getByRole('button', { name: 'Always use for this payee' }),
+      ).toBeVisible();
+      await expect(undo.getByRole('button', { name: 'Undo' })).toBeVisible();
+    });
+  }
+});
+
+test("a payee's page leaves out other accounts' transfer suggestions (#235)", async ({
+  page,
+  api,
+}) => {
+  const { checking } = await setup(api);
+  const card = await api.createAccount('Travel Card', -30_000, 'credit');
+  await importRows(api, checking.id, [
+    { date: isoDay(), amount: -30_000, payeeName: 'CARD PAYMENT' },
+    { date: isoDay(), amount: -1_000, payeeName: 'Mock Bakery' },
+  ]);
+  await importRows(api, card.id, [
+    { date: isoDay(), amount: 30_000, payeeName: 'PAYMENT RECEIVED' },
+  ]);
+  // The account's register offers the pair
+  await open(page, `/accounts/${checking.id}`);
+  await expect(page.getByRole('region', { name: 'Possible transfers' })).toBeVisible();
+  const bakery = (await api.call<{ id: string; name: string }[]>('GET', '/payees')).find(
+    (p) => p.name === 'Mock Bakery',
+  )!;
+  await open(page, `/payees/${bakery.id}`);
+  await expect(row(page, 'Mock Bakery')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Possible transfers' })).toHaveCount(0);
+});
+
+test("a scoped page's URL can't add a filter on its own account (#245)", async ({ page, api }) => {
+  const { checking, savings } = await setup(api);
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: -1_000,
+    payeeName: 'Mock Bakery',
+  });
+  await open(page, `/accounts/${checking.id}?account_ids=${savings.id}&range=all`);
+  await expect(row(page, 'Mock Bakery')).toBeVisible();
+  // No filter count on the Filters button, as no filter narrows this list
+  await expect(page.getByRole('button', { name: 'Filters', exact: true })).toBeVisible();
+});
+
+test("a category's and a payee's page don't offer their own dimension as a filter (#245)", async ({
+  page,
+  api,
+}) => {
+  const { checking } = await setup(api);
+  const groceries = await api.category('Groceries');
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: -1_000,
+    payeeName: 'Mock Bakery',
+    categoryId: groceries.id,
+  });
+  const panelTabs = () => page.getByRole('tablist').getByRole('tab');
+
+  await open(page, `/budget/category/${groceries.id}`);
+  await expect(row(page, 'Mock Bakery')).toBeVisible();
+  // No "Uncategorised" quick filter, no Categories section
+  await expect(page.getByRole('button', { name: 'Uncategorised', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Filters', exact: true }).click();
+  await expect(panelTabs().filter({ hasText: 'Payees' })).toBeVisible();
+  await expect(panelTabs().filter({ hasText: 'Categories' })).toHaveCount(0);
+
+  const bakery = (await api.call<{ id: string; name: string }[]>('GET', '/payees')).find(
+    (p) => p.name === 'Mock Bakery',
+  )!;
+  await open(page, `/payees/${bakery.id}`);
+  await expect(row(page, 'Mock Bakery')).toBeVisible();
+  await page.getByRole('button', { name: 'Filters', exact: true }).click();
+  await expect(panelTabs().filter({ hasText: 'Categories' })).toBeVisible();
+  await expect(panelTabs().filter({ hasText: 'Payees' })).toHaveCount(0);
 });

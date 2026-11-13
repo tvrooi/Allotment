@@ -132,7 +132,8 @@ test('shares a payment with the household in one step, with the default split', 
   await page.getByText('Groceries run').first().click();
   // Sharing the whole list waits for "Select all"
   await page.getByRole('button', { name: 'Select all 1' }).click();
-  await page.getByRole('button', { name: 'Share with household' }).click();
+  // The list's own Share (a row click opens the details, which have one for that payment, #243)
+  await page.getByTitle('Record the payments in this list as shared household expenses').click();
   const dialog = page.getByRole('dialog', { name: 'Share with household' });
   await dialog.getByRole('button', { name: 'Share', exact: true }).click();
   await expect(dialog.getByRole('status')).toHaveText('Shared 1.');

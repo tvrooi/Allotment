@@ -1,9 +1,27 @@
 # UI handover
 
-Overwritten at the end of each UI session, never appended. Wave D and palette entries updated
-12 November 2026 (PRs #262 and #259). Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Older detail: grep `docs/handover/ARCHIVE.md`.
+Overwritten at the end of each UI session, never appended. Wave E entry written 13 November 2026
+(branch `feat/wave-e-navigation`, up.173); Wave D and palette entries updated 12 November 2026
+(PRs #262 and #259). Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Older detail: grep `docs/handover/ARCHIVE.md`.
 
 ## Done this session
+
+- Wave E navigation depth (up.173, branch `feat/wave-e-navigation`): #235 a payee page
+  (`/payees/:id`, `pages/PayeeDetail.tsx`: spending by month and total, default category, the
+  rules naming it via `ruleMentionsPayee`, its transactions), opened from the Payees list, a
+  transaction's details and Search; a category-funded goal row opens its category, every goal row
+  has Edit. Files for a payee are left out: listing them needs one request per transaction or a
+  server change. #243 one click opens a desktop row's details; the category pill is the one
+  inline edit (chevron always shown), the row ends in Edit; `PayeePicker` and the hover arrows
+  are gone (details keep the payee, category and account links). #245 `undoStore.push` announces
+  the toast itself (`quiet` only for onboarding sorting); the toast stays 8 s with Undo and waits
+  while pointed at or focused; account, category and payee registers and the Payees search keep
+  their filters in the URL (`useFilterSearch`); `useScrollMemory` restores scroll on Back and
+  Forward. #240 one gutter (`PAGE_GUTTER`); the Payees default category uses `CategoryPicker`.
+  Fix rounds 1-2: payee-page failures show `QueryProblem`, totals and chart use `Private` /
+  `PrivateChart`, and missing rates show `MissingRateNote`; toasts stack in one column; one Undo
+  per change (Mark reviewed, follow-up toast, sharing, paying ahead all speak through `push`);
+  goal rows have one control per destination (the name's link or Edit) plus a chevron cue.
 
 - Wave D discoverability (up.172, PR #262): #226 fixed sidebar Set up rows for Household, Tax time and
   Files, respecting explicit Hidden and keeping their fixed positions; palette Set up links open
@@ -64,11 +82,8 @@ Overwritten at the end of each UI session, never appended. Wave D and palette en
 - #213 quick expense test; #214 refresh `docs/ux-ui-evidence/` dates; #215 iPhone check; #216 dark mode.
 - #217 Review queue redesign; #218 Cash flow personal share; #219 Household screens by type.
 - #220 sidebar item count (UX review item 7).
-- P1: #235 goal/payee links;
-  #243 desktop row click; #245 undo and keep filters.
 - P2: #263 Review checklist in place of guide banners (rest of #239, needs an owner decision);
-  #264 disabled switch looks enabled; #240 headers and pickers;
-  #241 delight moments; #244 split Settings tabs.
+  #264 disabled switch looks enabled; #241 delight moments; #244 split Settings tabs.
 
 ## Decisions
 
@@ -77,9 +92,22 @@ Overwritten at the end of each UI session, never appended. Wave D and palette en
   unmerged and is reconciled later.
 - Goal in-progress bars use one brand colour, reached goals green; `goal.color` only tints the dot.
 - Long-range forecast amounts use `formatWholeCurrency`; forecasts are dotted with a ring at today.
+- Pickers: a category is always chosen with the searchable `CategoryPicker`; a short fixed list
+  uses the one shared styled `Select` (`components/ui/Input.tsx`) (#240, 13 November 2026).
+- Gutter: page title rows and the content under them use `PAGE_GUTTER`
+  (`components/ui/pageGutter.ts`): 16 px on phones, 24 px from `md`; `e2e/tests/phone/page-gutter.spec.ts`
+  checks every route (#240).
+- Undo: announcing is part of `undoStore.push`; pass `message` for better words, `quiet` only
+  where silence is the point (onboarding sorting) (#245).
+  A mutation that may record nothing takes the words and announces without Undo instead; never
+  announce again after a push, and never add an inline Undo beside the toast's.
 
 ## Traps
 
+- Scroll memory is keyed by the router's history key: a hand-typed hash URL gets the key
+  `default`, like the first page load. A page-level scroll container must use `useScrollMemory`
+  or Back loses its place. The page moves by itself only on Back and Forward (a replace only
+  carries the remembered offset; scroll intent ends a restore): keep it that way.
 - The phone tab bar carries the bottom safe-area inset (not `<main>`), and phone toasts sit
   5rem up to clear it (`Toasts aboveTabBar`): change the bar's height and that offset together.
 - The Forecast no-income callout hides a server warning by its leading text (`longTermInputs.ts`):

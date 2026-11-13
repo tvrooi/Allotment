@@ -21,6 +21,7 @@ import {
   type Direction,
   type FilterState,
   type Tristate,
+  type ScopeDimension,
 } from '../../utils/transactionFilters';
 
 const DATE_PRESETS: { value: DatePreset; label: string }[] = [
@@ -85,8 +86,9 @@ interface Props {
   onChange: (s: FilterState) => void;
   /** All Transactions: offers to save the current filters as a view */
   onSaveView?: () => void;
-  /** An account's own register: no account filter */
-  fixedAccount?: boolean;
+  /** What the page fixes the register to (an account, a category, a payee): not offered as
+   * a filter, as registerParams would ignore it */
+  scopes?: ScopeDimension[];
   externalMonth?: string;
   externalRange?: string;
 }
@@ -274,7 +276,7 @@ function AmountBound({
 export function TransactionFilters({
   state,
   onChange,
-  fixedAccount,
+  scopes = [],
   externalMonth,
   externalRange,
   onSaveView,
@@ -332,8 +334,11 @@ export function TransactionFilters({
       categoryIds: [],
       categoryGroupId: null,
     });
+  const fixed = (d: ScopeDimension) => scopes.includes(d);
   const quickFilters = [
-    { label: 'Uncategorised', active: state.uncategorized, toggle: toggleUncategorised },
+    ...(!fixed('category')
+      ? [{ label: 'Uncategorised', active: state.uncategorized, toggle: toggleUncategorised }]
+      : []),
     {
       label: 'Not reviewed',
       active: state.reviewed === 'no',
@@ -347,15 +352,15 @@ export function TransactionFilters({
   ];
   const count = activeFilterCount(state);
   const sections = [
-    { id: 'categories', name: 'Categories' },
-    ...(!fixedAccount ? [{ id: 'accounts', name: 'Accounts' }] : []),
-    { id: 'payees', name: 'Payees' },
+    ...(!fixed('category') ? [{ id: 'categories', name: 'Categories' }] : []),
+    ...(!fixed('account') ? [{ id: 'accounts', name: 'Accounts' }] : []),
+    ...(!fixed('payee') ? [{ id: 'payees', name: 'Payees' }] : []),
     { id: 'money', name: 'Money' },
     { id: 'status', name: 'Status' },
     ...(tags.length > 0 ? [{ id: 'tags', name: 'Tags' }] : []),
   ];
 
-  const activeSection = sections.some(({ id }) => id === section) ? section : 'categories';
+  const activeSection = sections.some(({ id }) => id === section) ? section : sections[0].id;
 
   function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
     const search = e.target.value;
@@ -524,20 +529,22 @@ export function TransactionFilters({
             </button>
           </div>
           <FilterGroup id="categories" name="Categories" active={activeSection} prefix={prefix}>
-            <CheckList
-              label="Categories"
-              options={categoryOptions}
-              selected={state.categoryIds}
-              onChange={(categoryIds) => set({ categoryIds, uncategorized: false })}
-              special={{
-                label: 'Not categorised yet',
-                checked: state.uncategorized,
-                onToggle: toggleUncategorised,
-              }}
-            />
+            {!fixed('category') && (
+              <CheckList
+                label="Categories"
+                options={categoryOptions}
+                selected={state.categoryIds}
+                onChange={(categoryIds) => set({ categoryIds, uncategorized: false })}
+                special={{
+                  label: 'Not categorised yet',
+                  checked: state.uncategorized,
+                  onToggle: toggleUncategorised,
+                }}
+              />
+            )}
           </FilterGroup>
           <FilterGroup id="accounts" name="Accounts" active={activeSection} prefix={prefix}>
-            {!fixedAccount && (
+            {!fixed('account') && (
               <CheckList
                 label="Accounts"
                 options={accountOptions}
@@ -547,12 +554,14 @@ export function TransactionFilters({
             )}
           </FilterGroup>
           <FilterGroup id="payees" name="Payees" active={activeSection} prefix={prefix}>
-            <CheckList
-              label="Payees"
-              options={payeeOptions}
-              selected={state.payeeIds}
-              onChange={(payeeIds) => set({ payeeIds })}
-            />
+            {!fixed('payee') && (
+              <CheckList
+                label="Payees"
+                options={payeeOptions}
+                selected={state.payeeIds}
+                onChange={(payeeIds) => set({ payeeIds })}
+              />
+            )}
           </FilterGroup>
           <FilterGroup id="money" name="Money" active={activeSection} prefix={prefix}>
             <div className="flex flex-wrap items-start gap-4 min-w-0">

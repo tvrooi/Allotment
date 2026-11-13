@@ -20,6 +20,7 @@ const ReportsPage = lazy(() => import('./pages/Reports'));
 const CustomReportBuilder = lazy(() => import('./pages/CustomReportBuilder'));
 const ReportWidgetView = lazy(() => import('./pages/ReportWidgetView'));
 const PayeesPage = lazy(() => import('./pages/Payees'));
+const PayeeDetailPage = lazy(() => import('./pages/PayeeDetail'));
 const RulesPage = lazy(() => import('./pages/Rules'));
 const ReconcilePage = lazy(() => import('./pages/ReconcilePage'));
 const RecurringTransactionsPage = lazy(() => import('./pages/RecurringTransactions'));
@@ -84,6 +85,7 @@ export default function App() {
             <Route path="/reports/custom/:id" element={page(CustomReportBuilder)} />
             <Route path="/reports/widget/:id" element={page(ReportWidgetView)} />
             <Route path="/payees" element={page(PayeesPage)} />
+            <Route path="/payees/:id" element={page(PayeeDetailPage)} />
             <Route path="/rules" element={page(RulesPage)} />
             <Route path="/settings" element={page(SettingsPage)} />
             <Route path="/goals" element={page(GoalsPage)} />

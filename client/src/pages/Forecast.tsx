@@ -3,6 +3,7 @@ import { CashRunway } from '../components/forecast/CashRunway';
 import { GuideLink } from '../components/guide/GuideLink';
 import { LongTermForecast } from '../components/longterm/LongTermForecast';
 import { tabIds, TabList } from '../components/ui/tabList';
+import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 // The Forecast page: the long-term, decades-long view first, with the cash runway (the next
 // 30 days to two years) as its second tab. Neither writes to the budget.
@@ -16,7 +17,7 @@ export default function ForecastPage() {
   const tab = params.get('tab') === 'cash' ? 'cash' : 'long-term';
   return (
     <div className="flex flex-col h-full bg-surface">
-      <div className="px-6 pt-4 max-md:px-4 border-b border-border shrink-0">
+      <div className={`pt-4 border-b border-border shrink-0 ${PAGE_GUTTER}`}>
         <div className="flex flex-wrap items-center justify-between gap-x-4">
           <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
             Forecast

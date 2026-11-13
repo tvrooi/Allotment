@@ -399,8 +399,9 @@ test('the search palette finds the sample budget’s payees and goals', async ({
     .getByRole('group', { name: 'Payees', exact: true })
     .getByRole('option', { name: /^Daily Grind Coffee/ })
     .click();
-  await expect(page).toHaveURL(/#\/transactions\?/);
-  await expect(page.getByText('Daily Grind Coffee').first()).toBeVisible();
+  // A payee opens its own page (#235), in the demo too
+  await expect(page).toHaveURL(/#\/payees\/demo-payee-dailyGrind$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Daily Grind Coffee' })).toBeVisible();
   await expect(palette).toBeHidden();
 
   await page.keyboard.press('ControlOrMeta+k');

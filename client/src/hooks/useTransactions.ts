@@ -89,11 +89,13 @@ export function useUpdateTransaction() {
       data: Parameters<typeof txApi.updateTransaction>[1];
       /** Known previous fields when editing outside the register; undo touches only these. */
       undo?: { description: string; data: Parameters<typeof txApi.updateTransaction>[1] };
+      /** What the undo toast says, in place of the undo description */
+      message?: string;
     }) => txApi.updateTransaction(id, data),
     onMutate: async ({ id }) => {
       return { old: findTxInCache(qc, id) };
     },
-    onSuccess: (_, { id, data, undo }, ctx) => {
+    onSuccess: (_, { id, data, undo, message }, ctx) => {
       qc.invalidateQueries({ queryKey: ['transactions'] });
       qc.invalidateQueries({ queryKey: ['review'] });
       qc.invalidateQueries({ queryKey: ['accounts'] });
@@ -112,21 +114,24 @@ export function useUpdateTransaction() {
             }
           : null);
       if (!previous) return;
-      useUndoStore.getState().push({
-        description: undo?.description ?? 'Edit transaction',
-        undo: async () => {
-          await txApi.updateTransaction(id, previous);
-          qc.invalidateQueries({ queryKey: ['transactions'] });
-          qc.invalidateQueries({ queryKey: ['review'] });
-          qc.invalidateQueries({ queryKey: ['accounts'] });
+      useUndoStore.getState().push(
+        {
+          description: undo?.description ?? 'Edit transaction',
+          undo: async () => {
+            await txApi.updateTransaction(id, previous);
+            qc.invalidateQueries({ queryKey: ['transactions'] });
+            qc.invalidateQueries({ queryKey: ['review'] });
+            qc.invalidateQueries({ queryKey: ['accounts'] });
+          },
+          redo: async () => {
+            await txApi.updateTransaction(id, data);
+            qc.invalidateQueries({ queryKey: ['transactions'] });
+            qc.invalidateQueries({ queryKey: ['review'] });
+            qc.invalidateQueries({ queryKey: ['accounts'] });
+          },
         },
-        redo: async () => {
-          await txApi.updateTransaction(id, data);
-          qc.invalidateQueries({ queryKey: ['transactions'] });
-          qc.invalidateQueries({ queryKey: ['review'] });
-          qc.invalidateQueries({ queryKey: ['accounts'] });
-        },
-      });
+        { message },
+      );
     },
   });
 }

@@ -283,11 +283,13 @@ test.describe('payees', () => {
     await input.press('Enter');
     await expect(cards.filter({ hasText: 'Streamflix Premium' })).toBeVisible();
 
-    // Default category
+    // Default category, with the searchable picker every category uses (#240)
     const groceries = await api.category('Groceries');
-    await page
-      .getByRole('combobox', { name: 'Default category for Corner Grocery' })
-      .selectOption(groceries.id);
+    const choose = page.getByRole('button', { name: 'Default category for Corner Grocery: none' });
+    await expectTouchSize(choose);
+    await choose.click();
+    await page.getByRole('textbox', { name: 'Search categories' }).fill('Groceries');
+    await page.keyboard.press('Enter');
     await expect
       .poll(async () =>
         (await api.call<any[]>('GET', '/payees')).find((p) => p.name === 'Corner Grocery'),

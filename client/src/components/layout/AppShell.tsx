@@ -26,6 +26,7 @@ import { useAddTransactionKeyboard } from '../../hooks/useAddTransactionKeyboard
 import { useCommandPaletteStore } from '../../store/commandPaletteStore';
 import { useCommandPaletteKeyboard } from '../../hooks/useCommandPaletteKeyboard';
 import { Modal } from '../ui/Modal';
+import { useScrollMemory } from '../../hooks/useScrollMemory';
 import { Button } from '../ui/Button';
 import { retryingImport } from '../../utils/retryingImport';
 
@@ -48,6 +49,7 @@ export function AppShell() {
   const setupSkipped = usePreferencesStore((s) => s.setupSkipped);
   const isPhone = useIsPhone();
   const { pathname } = useLocation();
+  const mainScroll = useScrollMemory('main');
 
   // Direct routes own their loading/error UI. Unmounting them on a shared account
   // retry remounts observers and can keep an initial failure in a fetch loop.
@@ -82,7 +84,12 @@ export function AppShell() {
         <DemoBanner />
         <ConnectionBanner />
         <GuideBanner />
-        <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto focus:outline-none">
+        <main
+          ref={mainScroll}
+          id="main"
+          tabIndex={-1}
+          className="flex-1 overflow-y-auto focus:outline-none"
+        >
           <Outlet />
         </main>
       </div>
@@ -178,6 +185,7 @@ function PhoneShell() {
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   const phoneMain = useRef<HTMLElement>(null);
+  const mainScroll = useScrollMemory('main');
   const refocusMenuButton = useRef(false);
   const location = useLocation();
   const showSearch = useCommandPaletteStore((s) => s.show);
@@ -252,7 +260,10 @@ function PhoneShell() {
         <div className="relative flex-1 min-h-0 flex flex-col">
           <PullToRefresh scroller={phoneMain} />
           <main
-            ref={phoneMain}
+            ref={(node) => {
+              phoneMain.current = node;
+              mainScroll(node);
+            }}
             className="flex-1 min-h-0 overflow-y-auto pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
           >
             <Outlet />

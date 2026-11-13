@@ -77,22 +77,31 @@ export function useBulkEdit() {
       params: TransactionQueryParams;
       changes: txApi.BulkChanges;
       expectedCount: number;
+      /** What the toast says, from how many changed (it offers Undo only when one was recorded) */
+      message?: (changed: number) => string;
     }) => txApi.bulkEditTransactions({ params }, changes, expectedCount),
-    onSuccess: (result, { changes }) => {
+    onSuccess: (result, { changes, message }) => {
       refreshAfterEdit(qc);
-      if (!result.restore.length) return;
+      // Nothing restorable means nothing was recorded to undo
+      if (!result.restore.length) {
+        if (message) useUndoStore.getState().announce(message(result.changed), false);
+        return;
+      }
       const ids = result.restore.map((r) => r.id);
-      useUndoStore.getState().push({
-        description: `Edit ${ids.length} transaction${ids.length === 1 ? '' : 's'}`,
-        undo: async () => {
-          await txApi.restoreBulkEdit(result.restore);
-          refreshAfterEdit(qc);
+      useUndoStore.getState().push(
+        {
+          description: `Edit ${ids.length} transaction${ids.length === 1 ? '' : 's'}`,
+          undo: async () => {
+            await txApi.restoreBulkEdit(result.restore);
+            refreshAfterEdit(qc);
+          },
+          redo: async () => {
+            await txApi.bulkEditTransactions({ params: {}, ids }, changes, ids.length);
+            refreshAfterEdit(qc);
+          },
         },
-        redo: async () => {
-          await txApi.bulkEditTransactions({ params: {}, ids }, changes, ids.length);
-          refreshAfterEdit(qc);
-        },
-      });
+        { message: message?.(result.changed) },
+      );
     },
   });
 }

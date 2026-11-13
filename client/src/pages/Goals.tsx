@@ -1,7 +1,7 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { CategoryIcon } from '../components/ui/CategoryIcon';
 import { useMemo, useState } from 'react';
-import { Plus, ChevronDown, ChevronRight, Target } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Pencil, Target } from 'lucide-react';
 import { differenceInCalendarDays, differenceInCalendarMonths, parseISO } from 'date-fns';
 import { useGoals, useCreateGoal, useUpdateGoal, useDeleteGoal } from '../hooks/useGoals';
 import { useAccounts } from '../hooks/useAccounts';
@@ -23,6 +23,8 @@ import { SafeModeNotice } from '../components/ui/Private';
 import { usePreferencesStore } from '../store/preferencesStore';
 import type { Goal, GoalStatus } from '../types';
 import { formatDay } from '../utils/dates';
+import { useScrollMemory } from '../hooks/useScrollMemory';
+import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 function amountOf(goal: Goal) {
   return goal.categoryId ? (goal.fundedAmount ?? 0) : goal.currentAmount;
@@ -89,6 +91,11 @@ function GoalRow({
   const { pct, remaining } = progressOf(goal);
   const complete = remaining === 0 && goal.targetAmount > 0 && goal.fundingComplete !== false;
   const schedule = scheduleOf(goal, remaining);
+  const navigate = useNavigate();
+  // A category-funded goal's money lives in its category: the row opens it (#235). A goal
+  // tracked by hand has nowhere else to go, so its row opens the edit dialog. The row is for
+  // the pointer; the keyboard has one control per destination (the name's link, Edit).
+  const open = goal.categoryId ? () => navigate(`/budget/category/${goal.categoryId}`) : onEdit;
   const details = [
     goal.categoryId && goal.categoryName,
     schedule && `Target ${schedule.date}`,
@@ -99,14 +106,30 @@ function GoalRow({
 
   return (
     <div
-      onClick={onEdit}
+      onClick={open}
+      data-testid="goal-row"
       className="px-5 py-4 hover:bg-hover cursor-pointer transition-colors last:rounded-b-lg"
     >
       <div className="grid grid-cols-[auto_1fr_auto] md:grid-cols-[auto_1fr_auto_auto] items-center gap-x-3 gap-y-1">
         <GoalIcon goal={goal} />
         <div className="min-w-0 flex-1">
-          <span className="text-sm font-medium text-text truncate flex items-center gap-2">
-            {goal.name}
+          {/* Phones: a long name wraps to two lines rather than lose its end to the actions */}
+          <span className="text-sm font-medium text-text flex items-start md:items-center gap-2 min-w-0">
+            {goal.categoryId ? (
+              // Says where the row leads; a click anywhere else on the row goes the same way
+              <Link
+                to={`/budget/category/${goal.categoryId}`}
+                aria-label={`${goal.name}: open ${goal.categoryName ?? 'its category'} in Budget`}
+                onClick={(e) => e.stopPropagation()}
+                className="min-w-0 break-words max-md:line-clamp-2 md:truncate hover:text-brand-600"
+              >
+                {goal.name}
+              </Link>
+            ) : (
+              <span className="min-w-0 break-words max-md:line-clamp-2 md:truncate">
+                {goal.name}
+              </span>
+            )}
             {goal.status !== 'active' && (
               <span className="text-2xs font-medium rounded px-1.5 py-0.5 bg-surface-alt text-text-secondary">
                 {STATUS_LABEL[goal.status]}
@@ -128,28 +151,50 @@ function GoalRow({
             of {formatCurrency(goal.targetAmount)}
           </span>
         </div>
-        <div className="max-md:col-start-3 max-md:row-start-1" onClick={(e) => e.stopPropagation()}>
-          <RowMenu
-            items={[
-              { label: 'Edit goal', onClick: onEdit },
-              { label: 'Files', onClick: onFiles },
-              {
-                label: goal.status === 'active' ? 'Pause goal' : 'Make active again',
-                onClick: () => onStatus(goal.status === 'active' ? 'paused' : 'active'),
-              },
-              {
-                label: 'Mark completed',
-                onClick: () => onStatus('completed'),
-                hidden: goal.status === 'completed',
-              },
-              {
-                label: 'Retire goal',
-                onClick: () => onStatus('retired'),
-                hidden: goal.status === 'retired',
-              },
-              { label: 'Delete goal', onClick: onDelete, danger: true },
-            ]}
-          />
+        <div className="max-md:col-start-3 max-md:row-start-1 flex items-center gap-1">
+          {/* Edit and the menu act on their own; the chevron beside them is part of the row */}
+          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            {/* Edit on every row, whichever way the row itself opens */}
+            <button
+              type="button"
+              onClick={onEdit}
+              aria-label={`Edit ${goal.name}`}
+              title="Edit goal"
+              className="w-9 h-9 max-md:w-11 max-md:h-11 flex items-center justify-center rounded-lg text-text-tertiary hover:bg-hover hover:text-text-secondary transition-colors"
+            >
+              <Pencil size={14} aria-hidden />
+            </button>
+            <RowMenu
+              items={[
+                { label: 'Edit goal', onClick: onEdit },
+                { label: 'Files', onClick: onFiles },
+                {
+                  label: goal.status === 'active' ? 'Pause goal' : 'Make active again',
+                  onClick: () => onStatus(goal.status === 'active' ? 'paused' : 'active'),
+                },
+                {
+                  label: 'Mark completed',
+                  onClick: () => onStatus('completed'),
+                  hidden: goal.status === 'completed',
+                },
+                {
+                  label: 'Retire goal',
+                  onClick: () => onStatus('retired'),
+                  hidden: goal.status === 'retired',
+                },
+                { label: 'Delete goal', onClick: onDelete, danger: true },
+              ]}
+            />
+          </div>
+          {/* A quiet cue that this row leads to its category (#235); a hand-tracked row has none */}
+          {goal.categoryId && (
+            <ChevronRight
+              size={16}
+              aria-hidden
+              data-testid="goal-opens-category"
+              className="text-text-tertiary shrink-0"
+            />
+          )}
         </div>
       </div>
 
@@ -168,17 +213,11 @@ function GoalRow({
               ? 'Funding assessment incomplete — check exchange rates.'
               : `Assigned this month ${formatCurrency(goal.assignedThisMonth ?? 0)} · Activity ${formatCurrency(goal.activity ?? 0)} · Available ${formatCurrency(goal.available ?? 0)}`}
           </span>
-          {/* Progress comes only from the category: these lead to where its money is moved */}
+          {/* Progress comes only from the category, which the row opens; its spending is here */}
           <span
             className="ml-2 inline-flex gap-3 max-md:ml-0 max-md:flex max-md:gap-1"
             onClick={(e) => e.stopPropagation()}
           >
-            <Link
-              to={`/budget/category/${goal.categoryId}`}
-              className="text-brand-600 hover:text-brand-700 max-md:inline-flex max-md:min-h-11 max-md:items-center max-md:pr-3"
-            >
-              Assign or move money
-            </Link>
             <Link
               to={transactionsLink({ categoryIds: [goal.categoryId], datePreset: 'all' })}
               className="text-brand-600 hover:text-brand-700 max-md:inline-flex max-md:min-h-11 max-md:items-center max-md:pr-3"
@@ -290,6 +329,8 @@ function GoalGroup({
 }
 
 export default function GoalsPage() {
+  // Back and Forward return to where this list was (#245)
+  const scrollMemory = useScrollMemory('goals');
   const goalsQuery = useGoals();
   const { data: goals = [], isLoading } = goalsQuery;
   const { data: accounts = [] } = useAccounts();
@@ -353,10 +394,10 @@ export default function GoalsPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col h-full bg-surface">
-        <div className="px-6 py-4 border-b border-border shrink-0">
+        <div className={`py-4 border-b border-border shrink-0 ${PAGE_GUTTER}`}>
           <div className="h-5 w-32 bg-surface-alt rounded animate-pulse" />
         </div>
-        <div className="p-6 space-y-2">
+        <div className={`py-6 space-y-2 ${PAGE_GUTTER}`}>
           {[...Array(5)].map((_, i) => (
             <div key={i} className="h-12 bg-surface-alt rounded animate-pulse" />
           ))}
@@ -367,7 +408,9 @@ export default function GoalsPage() {
 
   return (
     <div className="flex flex-col h-full bg-surface">
-      <div className="px-6 py-4 border-b border-border shrink-0 flex items-center justify-between">
+      <div
+        className={`py-4 border-b border-border shrink-0 flex items-center justify-between ${PAGE_GUTTER}`}
+      >
         <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">Goals</h1>
         <Button size="sm" onClick={() => setAddOpen(true)} data-guide="goals.add">
           <Plus size={14} /> Add goal
@@ -396,12 +439,12 @@ export default function GoalsPage() {
           />
         </div>
       ) : hideBalances ? (
-        <div className="flex-1 overflow-y-auto px-6 pt-5">
+        <div className={`flex-1 overflow-y-auto pt-5 ${PAGE_GUTTER}`}>
           <SafeModeNotice title="Goals are hidden in Safe mode" />
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto">
-          <div className="px-6 pt-5 pb-6 space-y-4">
+        <div ref={scrollMemory} className="flex-1 overflow-y-auto">
+          <div className={`pt-5 pb-6 space-y-4 ${PAGE_GUTTER}`}>
             {sharedAccounts.length > 0 && (
               <p className="text-sm text-text-secondary rounded-lg bg-caution-subtle px-3 py-2">
                 {sharedAccounts.join(' and ')} {sharedAccounts.length > 1 ? 'are' : 'is'} linked to

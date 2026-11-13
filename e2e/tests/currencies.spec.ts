@@ -184,3 +184,52 @@ test('amounts drawn before the budget currency arrives still use its symbol', as
   await expect(ready).not.toContainText('A$');
   await expect(page.getByRole('button', { name: /^Assigned to Groceries: \$400/ })).toBeVisible();
 });
+
+test("a payee's page says when a purchase without a rate is left out (#235)", async ({
+  page,
+  api,
+}) => {
+  await setCurrency(api, 'EUR');
+  const pounds = await api.createAccount('UK current account', 0, 'checking', { currency: 'GBP' });
+  await api.createTransaction({
+    accountId: pounds.id,
+    date: isoDay(),
+    amount: -4_000,
+    payeeName: 'Corner shop',
+  });
+  const payee = (await api.call<{ id: string; name: string }[]>('GET', '/payees')).find(
+    (p) => p.name === 'Corner shop',
+  )!;
+  await open(page, `/payees/${payee.id}`);
+  await expect(page.getByRole('region', { name: 'Summary' })).toContainText(
+    '1 without a rate left out',
+  );
+  const chart = page.getByRole('region', { name: 'Spending by month' });
+  await expect(chart).toContainText('1 without a rate left out');
+  // Its only spending has no rate yet: that is not "no spending"
+  await expect(chart).not.toContainText('No spending');
+});
+
+test("the payee chart's note counts only what the chart would show (#235)", async ({
+  page,
+  api,
+}) => {
+  await setCurrency(api, 'EUR');
+  const pounds = await api.createAccount('UK current account', 0, 'checking', { currency: 'GBP' });
+  const old = new Date();
+  old.setMonth(old.getMonth() - 14);
+  // A deposit, long ago: neither spending nor in the chart's year
+  await api.createTransaction({
+    accountId: pounds.id,
+    date: old.toISOString().slice(0, 10),
+    amount: 4_000,
+    payeeName: 'Corner shop',
+  });
+  const payee = (await api.call<{ id: string; name: string }[]>('GET', '/payees')).find(
+    (p) => p.name === 'Corner shop',
+  )!;
+  await open(page, `/payees/${payee.id}`);
+  const chart = page.getByRole('region', { name: 'Spending by month' });
+  await expect(chart).toContainText('No spending in the last 12 months');
+  await expect(chart).not.toContainText('without a rate');
+});

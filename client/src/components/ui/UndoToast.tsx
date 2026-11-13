@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { AlertTriangle, Check, Info, Undo2, Redo2, X } from 'lucide-react';
 import { useUndoStore } from '../../store/undoStore';
 
@@ -8,13 +7,8 @@ export function UndoToast() {
   const clearToast = useUndoStore((s) => s.clearToast);
   const undo = useUndoStore((s) => s.undo);
   const redo = useUndoStore((s) => s.redo);
-
-  useEffect(() => {
-    if (!message) return;
-    // Something just done stays a little longer, so there's time to undo it
-    const t = setTimeout(clearToast, action === 'done' ? 6000 : action === 'error' ? 8000 : 4000);
-    return () => clearTimeout(t);
-  }, [message, action, clearToast]);
+  // The store times the toast (8 s with Undo); it waits while the pointer or focus is on it
+  const hold = useUndoStore((s) => s.holdToast);
 
   if (!message) return null;
 
@@ -41,10 +35,16 @@ export function UndoToast() {
       role={action === 'error' ? 'alert' : undefined}
       aria-live={action === 'error' ? 'assertive' : 'polite'}
       data-testid="undo-toast"
+      onPointerEnter={() => hold(true)}
+      onPointerLeave={() => hold(false)}
+      onFocus={() => hold(true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) hold(false);
+      }}
       className="pointer-events-auto max-w-full flex items-center gap-3 bg-text text-surface rounded-lg shadow-lg px-4 py-2.5 text-sm"
     >
       {icon}
-      <span className="min-w-0 break-words">{text}</span>
+      <span className="flex-1 min-w-0 break-words">{text}</span>
       {button && (
         <button
           onClick={() => {

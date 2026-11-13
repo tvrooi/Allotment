@@ -60,17 +60,21 @@ export function usePayAhead() {
     onSuccess: ({ tx, target }) => {
       refresh();
       const groupId = target.household.id;
-      useUndoStore.getState().push({
-        description: `Paid ahead to ${target.person.name}`,
-        undo: async () => {
-          await removeSharedEntries(groupId, [tx.id], 'settlement');
-          refresh();
+      useUndoStore.getState().push(
+        {
+          description: `Paid ahead to ${target.person.name}`,
+          undo: async () => {
+            await removeSharedEntries(groupId, [tx.id], 'settlement');
+            refresh();
+          },
+          redo: async () => {
+            await recordPaidAhead(groupId, tx, target.selfId, target.person);
+            refresh();
+          },
         },
-        redo: async () => {
-          await recordPaidAhead(groupId, tx, target.selfId, target.person);
-          refresh();
-        },
-      });
+        // The toast says what happened and offers Undo
+        { message: describePayAhead(target) },
+      );
     },
   });
 }
@@ -87,7 +91,6 @@ export function PayAhead({ tx }: { tx: Transaction }) {
   const [chosen, setChosen] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const payAhead = usePayAhead();
-  const announce = useUndoStore((s) => s.announce);
   const targets = payAheadTargets(households);
   if (!targets.length || whyNotPayAhead(tx, households)) return null;
   const target = targets[Math.min(chosen, targets.length - 1)];
@@ -143,10 +146,7 @@ export function PayAhead({ tx }: { tx: Transaction }) {
                   {
                     // The payment is linked now, so the panel shows that instead of this button;
                     // the toast says what happened and offers Undo
-                    onSuccess: () => {
-                      setOpen(false);
-                      announce(describePayAhead(target), true);
-                    },
+                    onSuccess: () => setOpen(false),
                     onError: (e: Error) => setError(e.message),
                   },
                 )

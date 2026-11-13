@@ -8,6 +8,8 @@ import {
   filtersFromSearch,
   filtersToParams,
   filtersToSearch,
+  registerParams,
+  withoutScope,
   transactionsLink,
   type FilterState,
 } from './transactionFilters';
@@ -202,5 +204,73 @@ describe('the Last Month preset', () => {
     expect(
       dateRangeFor({ datePreset: 'last-month', from: '', to: '' }, new Date(2026, 2, 31)),
     ).toEqual({ from: '2026-02-01', to: '2026-02-28' });
+  });
+});
+
+describe("a page's own scope wins over filters from its URL (#245)", () => {
+  const fromUrl = (search: string) => filtersFromSearch(new URLSearchParams(search));
+
+  it("an account's register stays on its account", () => {
+    const p = registerParams(fromUrl('account_ids=other&range=all'), { accountId: 'mine' });
+    expect(p.accountId).toBe('mine');
+    expect(p.accountIds).toBeUndefined();
+  });
+
+  it("a category group from the filters can't widen or narrow a category's list", () => {
+    const p = registerParams(fromUrl('category_group_id=g&range=all'), { categoryId: 'mine' });
+    expect(p.categoryId).toBe('mine');
+    expect(p.categoryGroupId).toBeUndefined();
+  });
+
+  it("a category's list stays on its category", () => {
+    const p = registerParams(fromUrl('category_ids=other&uncategorized=1&range=all'), {
+      categoryId: 'mine',
+    });
+    expect(p.categoryId).toBe('mine');
+    expect(p.categoryIds).toBeUndefined();
+    expect(p.uncategorized).toBeUndefined();
+  });
+
+  it("a payee's list stays on its payee", () => {
+    const p = registerParams(fromUrl('payee_ids=other&payee_name=Other&range=all'), {
+      payeeIds: ['mine'],
+    });
+    expect(p.payeeIds).toEqual(['mine']);
+    expect(p.payeeName).toBeUndefined();
+  });
+
+  it('a bar month replaces the date range', () => {
+    const p = registerParams(fromUrl('range=all&from=2026-01-01'), {
+      categoryId: 'c',
+      month: '2026-03',
+    });
+    expect(p).toMatchObject({ categoryId: 'c', month: '2026-03' });
+    expect(p.from).toBeUndefined();
+  });
+});
+
+describe("a scoped page's URL can't set its own dimension (#245)", () => {
+  const fromUrl = (search: string) => filtersFromSearch(new URLSearchParams(search));
+
+  it('an account page drops account filters', () => {
+    const f = withoutScope(fromUrl('account_ids=other&search=milk&range=all'), 'account');
+    expect(f.accountIds).toEqual([]);
+    expect(f.search).toBe('milk');
+    expect(activeFilterCount(f)).toBe(1);
+  });
+
+  it('a category page drops category filters', () => {
+    const f = withoutScope(
+      fromUrl('category_ids=a&uncategorized=1&category_group_id=g&range=all'),
+      'category',
+    );
+    expect(f).toMatchObject({ categoryIds: [], uncategorized: false, categoryGroupId: null });
+    expect(activeFilterCount(f)).toBe(0);
+  });
+
+  it('a payee page drops payee filters', () => {
+    const f = withoutScope(fromUrl('payee_ids=a&payee_name=Other&range=all'), 'payee');
+    expect(f).toMatchObject({ payeeIds: [], payeeName: null });
+    expect(activeFilterCount(f)).toBe(0);
   });
 });

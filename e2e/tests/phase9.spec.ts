@@ -94,8 +94,13 @@ test('marks the selection reviewed after confirming, and undoes it', async ({ pa
   const rows = await api.transactions(`?account_id=${account.id}`);
   expect(rows.every((r: { reviewedAt: string | null }) => r.reviewedAt)).toBe(true);
 
-  await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+  // One Undo, the undo toast's, wired to the undo stack (it then offers Redo) (#245)
+  const toast = page.getByTestId('undo-toast');
+  await expect(toast).toContainText('Marked 3 reviewed.');
+  await expect(page.getByRole('main').getByRole('button', { name: 'Undo' })).toHaveCount(0);
+  await toast.getByRole('button', { name: 'Undo' }).click();
   await expect(page.getByText('3 transactions', { exact: true })).toBeVisible();
+  await expect(toast.getByRole('button', { name: 'Redo' })).toBeVisible();
 });
 
 test('saves the current filters as a view and reopens it', async ({ page, api }) => {

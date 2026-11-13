@@ -190,9 +190,10 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
         id: `payee:${p.id}`,
         group: 'payees',
         label: p.name,
-        detail: 'Transactions',
+        detail: 'Payee',
         icon: Users,
-        to: transactionsLink({ payeeIds: [p.id], datePreset: 'all' }),
+        // Its own page (#235): spending, default category, rules and transactions
+        to: `/payees/${p.id}`,
         remember: true,
       })),
       // Goals have no page of their own: each opens Goals

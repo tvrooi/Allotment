@@ -1,5 +1,12 @@
 # Changes
 
+## 0.2.0-up.173
+
+- **Payees and goals lead somewhere.** Each payee has its own page: its spending by month and in total, its default category, the rules that name it and its transactions. Open it from the Payees list, from a transaction's details or from Search. A goal funded by a category opens that category; every goal has an Edit button. Payees are renamed with a visible button, and a default category is chosen with the same searchable picker as everywhere else.
+- **One click opens a transaction.** On a computer, a click anywhere on a row opens its details. The category button, now always drawn as a button, is the one change made right in the list, and the row ends in an Edit button. The payee is changed in the details, its logo on the payee's page; the small hover arrows are gone (the details link the payee, category and account).
+- **Undo is always offered, and Back keeps your place.** Every change that can be undone says so in a toast with Undo, including sorting in Review's budget setup and changing a category in the list. The toast stays 8 seconds, and as long as the pointer or keyboard is on it. Browser Back and Forward return to the filters of an account's and a category's transactions and to the Payees search, and lists return to where they were scrolled; a fresh visit starts at the top.
+- **Page titles line up.** On a phone every page title starts the same 16 px from the edge.
+
 ## 0.2.0-up.172
 
 - **Discover shared costs, tax and files.** Household, Tax time and Files stay in the menu as dimmed Set up links until used; an explicit Hidden preference still hides them. The welcome screen can pin these features. Files, Household and both Forecast tabs explain an empty page with an illustrative example and one next action. Review and the Dashboard now surface possible transfers and open the existing dialog for the owner to check each pair.

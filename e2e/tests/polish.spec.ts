@@ -104,8 +104,10 @@ test.describe('last month', () => {
     await expect(page.getByText('2 transactions', { exact: true })).toBeVisible();
     await page.getByPlaceholder('Search payee or notes…').fill('Market');
     await expect(page.getByText('1 transaction', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Market', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Market this month' })).toHaveCount(0);
+    // Payees are row text now, not buttons (#243)
+    const main = page.getByRole('main');
+    await expect(main.getByText('Market', { exact: true })).toBeVisible();
+    await expect(main.getByText('Market this month')).toHaveCount(0);
   });
 
   test('Reports has a Last month preset', async ({ page, api }) => {

@@ -18,13 +18,8 @@ import {
 import { useHouseholds } from '../../hooks/useHouseholds';
 import { useUndoStore } from '../../store/undoStore';
 import { HouseholdIcon } from '../household/HouseholdIcon';
-import { describeShare, splitText, useShareWithHousehold } from '../household/ShareWithHousehold';
-import {
-  describePayAhead,
-  payAheadTargets,
-  usePayAhead,
-  whyNotPayAhead,
-} from '../household/PayAhead';
+import { splitText, useShareWithHousehold } from '../household/ShareWithHousehold';
+import { payAheadTargets, usePayAhead, whyNotPayAhead } from '../household/PayAhead';
 import { ContextMenu, type MenuItem, type MenuPoint } from '../ui/ContextMenu';
 import type { Transaction } from '../../types';
 
@@ -83,22 +78,24 @@ export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onC
       refresh();
       // Undo records it again exactly as it was, split included (with a new id, so redo and an
       // earlier share's undo find it by its payment)
-      useUndoStore.getState().push({
-        description: `Remove ${what.toLowerCase()} from ${h.name}`,
-        undo: async () => {
-          await restoreHouseholdEvent(h.id, entry);
-          refresh();
+      useUndoStore.getState().push(
+        {
+          description: `Remove ${what.toLowerCase()} from ${h.name}`,
+          undo: async () => {
+            await restoreHouseholdEvent(h.id, entry);
+            refresh();
+          },
+          redo: async () => {
+            await removeSharedEntries(h.id, [entry.transactionId!], kind);
+            refresh();
+          },
         },
-        redo: async () => {
-          await removeSharedEntries(h.id, [entry.transactionId!], kind);
-          refresh();
+        {
+          message:
+            kind === 'settlement'
+              ? `Removed the payment ahead from ${h.name}.`
+              : `Stopped sharing ${name} with ${h.name}.`,
         },
-      });
-      announce(
-        kind === 'settlement'
-          ? `Removed the payment ahead from ${h.name}.`
-          : `Stopped sharing ${name} with ${h.name}.`,
-        true,
       );
     },
     onError: (e: Error) => announce(e.message, false),
@@ -106,9 +103,8 @@ export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onC
 
   const shareWith = (h: HouseholdSummary, ids: string[]) =>
     share.mutate(
-      { groupId: h.id, ids },
+      { groupId: h.id, ids, householdName: h.name },
       {
-        onSuccess: ({ result }) => announce(describeShare(result, h.name), result.shared > 0),
         onError: (e: Error) => announce(e.message, false),
       },
     );
@@ -225,7 +221,6 @@ export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onC
           payAhead.mutate(
             { tx, target: t },
             {
-              onSuccess: () => announce(describePayAhead(t), true),
               onError: (e: Error) => announce(e.message, false),
             },
           ),

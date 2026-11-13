@@ -20,6 +20,8 @@ interface Props {
   anchor?: HTMLElement | null;
   /** Offer "Uncategorised" (default). A sorting step that must pick a category turns it off. */
   allowNone?: boolean;
+  /** What the no-category choice says (a payee's default: "No default category") */
+  noneLabel?: string;
 }
 
 export function CategoryPicker({
@@ -32,6 +34,7 @@ export function CategoryPicker({
   fullWidth = false,
   anchor = null,
   allowNone = true,
+  noneLabel = 'Uncategorised',
 }: Props) {
   const [query, setQuery] = useState('');
   // The option the keyboard is on. With a search typed it starts on the first match, so Enter
@@ -210,7 +213,7 @@ export function CategoryPicker({
             data-active={optionIndex(null) === activeIndex}
             className={`w-full text-left px-3 py-2 text-sm max-md:min-h-11 flex items-center justify-between hover:bg-hover ${optionIndex(null) === activeIndex ? 'bg-hover ' : ''}${value === null ? 'bg-brand-50 text-brand-700' : 'text-text-secondary'}`}
           >
-            <span className="italic">Uncategorised</span>
+            <span className="italic">{noneLabel}</span>
             {value === null && <Check size={14} className="text-brand-600 shrink-0" />}
           </button>
         )}

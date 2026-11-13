@@ -84,29 +84,30 @@ export function useCategorisePayee() {
       refresh(qc);
       if (!result.restore.length && !setDefault) return;
       const ids = result.restore.map((r) => r.id);
-      useUndoStore.getState().push({
-        description: `Sort ${payee.payeeName} as ${categoryName}`,
-        undo: async () => {
-          if (result.restore.length) await txApi.restoreBulkEdit(result.restore);
-          if (setDefault)
-            await payeesApi.updatePayee(payee.payeeId!, { defaultCategoryId: previousDefault });
-          refresh(qc);
+      useUndoStore.getState().push(
+        {
+          description: `Sort ${payee.payeeName} as ${categoryName}`,
+          undo: async () => {
+            if (result.restore.length) await txApi.restoreBulkEdit(result.restore);
+            if (setDefault)
+              await payeesApi.updatePayee(payee.payeeId!, { defaultCategoryId: previousDefault });
+            refresh(qc);
+          },
+          redo: async () => {
+            if (setDefault)
+              await payeesApi.updatePayee(payee.payeeId!, { defaultCategoryId: categoryId });
+            if (ids.length)
+              await txApi.bulkEditTransactions({ params: {}, ids }, { categoryId }, ids.length);
+            refresh(qc);
+          },
         },
-        redo: async () => {
-          if (setDefault)
-            await payeesApi.updatePayee(payee.payeeId!, { defaultCategoryId: categoryId });
-          if (ids.length)
-            await txApi.bulkEditTransactions({ params: {}, ids }, { categoryId }, ids.length);
-          refresh(qc);
-        },
-      });
-      if (notify)
-        useUndoStore
-          .getState()
-          .announce(
-            `${result.changed} transaction${result.changed === 1 ? '' : 's'} for ${payee.payeeName || 'No payee'} categorised as ${categoryName}.${setDefault ? ' Future transactions will use this category too.' : ''}`,
-            true,
-          );
+        // Onboarding sorts quietly on purpose; Review says what changed and offers Undo
+        notify
+          ? {
+              message: `${result.changed} transaction${result.changed === 1 ? '' : 's'} for ${payee.payeeName || 'No payee'} categorised as ${categoryName}.${setDefault ? ' Future transactions will use this category too.' : ''}`,
+            }
+          : { quiet: true },
+      );
     },
   });
 }

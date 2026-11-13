@@ -24,6 +24,7 @@ import type { Schedule } from '../types';
 import { tabIds, TabList } from '../components/ui/tabList';
 import { format, subDays, addDays } from 'date-fns';
 import { nearMissDraft, type ScheduleDraft } from '../utils/nearMiss';
+import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 const tabs = [
   { id: 'monthly' as const, label: 'Monthly' },
@@ -108,7 +109,9 @@ export default function RecurringTransactionsPage() {
 
   return (
     <div className="flex flex-col h-full bg-surface">
-      <div className="px-6 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-x-4">
+      <div
+        className={`border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-x-4 ${PAGE_GUTTER}`}
+      >
         <div className="flex items-center gap-6">
           <h1
             data-guide="recurring.header"
@@ -159,7 +162,7 @@ export default function RecurringTransactionsPage() {
 
       <Tip
         tip={TIPS.findRecurring}
-        className="px-6 max-md:px-4 py-2.5 border-b border-border-light shrink-0"
+        className={`py-2.5 border-b border-border-light shrink-0 ${PAGE_GUTTER}`}
       />
       <MatchSuggestionsPanel />
       <PossiblyEndedPanel allRecurring={allRecurring} />

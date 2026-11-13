@@ -35,6 +35,7 @@ import { BillsCoverage } from '../components/household/BillsCoverage';
 import { BalanceSummary } from '../components/household/BalanceSummary';
 import { householdToShow, unsharedPayments } from '../components/household/balanceHeadline';
 import { useHousehold } from '../hooks/useHouseholds';
+import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 type Group = {
   id: string;
@@ -400,7 +401,9 @@ export default function HouseholdPage() {
   const shownEvents = history.shown;
   return (
     <div className="flex flex-col h-full bg-surface">
-      <div className="px-6 py-4 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-3">
+      <div
+        className={`py-4 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-3 ${PAGE_GUTTER}`}
+      >
         <div data-guide="household.header" className="min-w-0">
           <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
             Household

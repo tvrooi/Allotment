@@ -1,18 +1,22 @@
 import { useState, useMemo } from 'react';
-import { Trash2, GitMerge, Search, Store } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Trash2, GitMerge, Pencil, Search, Store } from 'lucide-react';
 import { usePayees, useUpdatePayee, useDeletePayee, useMergePayees } from '../hooks/usePayees';
-import { useCategories } from '../hooks/useCategories';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Modal, useModalValue } from '../components/ui/Modal';
 import { Button, ButtonLink } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { QueryProblem, loadFailed } from '../components/ui/QueryProblem';
 import { PayeeIcon } from '../components/payees/PayeeIcon';
+import { DefaultCategoryButton } from '../components/payees/DefaultCategoryButton';
 import RowMenu from '../components/ui/RowMenu';
 import { useIsPhone } from '../hooks/useIsPhone';
+import { useCanSave } from '../hooks/useConnection';
 import type { PayeeWithCount } from '../types';
 import { Tip } from '../components/guide/Tip';
 import { TIPS } from '../guides';
+import { useScrollMemory } from '../hooks/useScrollMemory';
+import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 function MergeModal({
   isOpen,
@@ -82,28 +86,33 @@ function MergeModal({
 }
 
 export default function PayeesPage() {
+  // Back and Forward return to where this list was (#245)
+  const scrollMemory = useScrollMemory('payees');
   const payeesQuery = usePayees();
   const { data: payees = [], isLoading } = payeesQuery;
-  const { data: groups = [] } = useCategories();
   const updatePayee = useUpdatePayee();
   const deletePayee = useDeletePayee();
   const mergePayees = useMergePayees();
 
-  const [search, setSearch] = useState('');
+  // The search lives in the URL, so Back returns to it (#245); typing replaces the entry
+  const [params, setParams] = useSearchParams();
+  const search = params.get('search') ?? '';
+  const setSearch = (value: string) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set('search', value);
+        else next.delete('search');
+        return next;
+      },
+      { replace: true },
+    );
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showMerge, setShowMerge] = useState(false);
   const mergeModal = useModalValue(showMerge);
-
-  const allCategories = useMemo(
-    () =>
-      (groups as any[]).flatMap((g: any) =>
-        g.categories.map((c: any) => ({ ...c, groupName: g.name })),
-      ),
-    [groups],
-  );
 
   const filtered = useMemo(
     () => payees.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())),
@@ -128,20 +137,18 @@ export default function PayeesPage() {
     setEditingId(null);
   }
 
-  function handleCategoryChange(id: string, categoryId: string) {
-    updatePayee.mutate({ id, defaultCategoryId: categoryId || null });
-  }
-
   function handleMerge(keepId: string, mergeIds: string[]) {
     mergePayees.mutate({ keepId, mergeIds }, { onSuccess: () => setSelected(new Set()) });
   }
 
   const deleteTarget = payees.find((p) => p.id === deleteId);
   const isPhone = useIsPhone();
+  // Renaming and logos need the server: not offered while saving is paused
+  const canSave = useCanSave();
 
   return (
     <div className="flex flex-col h-full bg-surface">
-      <div className="px-6 max-md:px-4 py-4 border-b border-border shrink-0">
+      <div className={`py-4 border-b border-border shrink-0 ${PAGE_GUTTER}`}>
         <div className="flex items-center justify-between gap-4">
           <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
             Payees
@@ -174,14 +181,14 @@ export default function PayeesPage() {
       {payees.length > 0 && (
         <Tip
           tip={TIPS.payeeDefault}
-          className="px-6 max-md:px-4 py-2.5 border-b border-border-light shrink-0"
+          className={`py-2.5 border-b border-border-light shrink-0 ${PAGE_GUTTER}`}
         />
       )}
 
       {!loadFailed(payeesQuery) && (
         <QueryProblem what="payees" query={payeesQuery} className="mx-6 my-3 max-md:mx-4" />
       )}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollMemory} className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center h-32 text-sm text-text-tertiary">
             Loading...
@@ -244,7 +251,9 @@ export default function PayeesPage() {
                     logo={p.logo}
                     size="md"
                     force
-                    onLogoChange={(logo) => updatePayee.mutate({ id: p.id, logo })}
+                    onLogoChange={
+                      canSave ? (logo) => updatePayee.mutate({ id: p.id, logo }) : undefined
+                    }
                   />
                   {editingId === p.id ? (
                     <input
@@ -261,7 +270,12 @@ export default function PayeesPage() {
                     />
                   ) : (
                     <span className="flex-1 min-w-0 grid">
-                      <span className="truncate text-row font-medium text-text">{p.name}</span>
+                      <Link
+                        to={`/payees/${p.id}`}
+                        className="truncate text-row font-medium text-text hover:text-brand-600"
+                      >
+                        {p.name}
+                      </Link>
                       <span className="text-xs text-text-tertiary">
                         {p.transactionCount} transaction{p.transactionCount === 1 ? '' : 's'}
                       </span>
@@ -270,24 +284,12 @@ export default function PayeesPage() {
                   <RowMenu
                     label={`Actions for ${p.name}`}
                     items={[
-                      { label: 'Rename', onClick: () => startEditName(p) },
+                      { label: 'Rename', onClick: () => startEditName(p), hidden: !canSave },
                       { label: 'Delete', danger: true, onClick: () => setDeleteId(p.id) },
                     ]}
                   />
                 </div>
-                <select
-                  aria-label={`Default category for ${p.name}`}
-                  value={p.defaultCategoryId ?? ''}
-                  onChange={(e) => handleCategoryChange(p.id, e.target.value)}
-                  className="w-full min-h-11 border border-border rounded-md px-3 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600"
-                >
-                  <option value="">No default category</option>
-                  {allCategories.map((c: any) => (
-                    <option key={c.id} value={c.id}>
-                      {c.groupName} → {c.name}
-                    </option>
-                  ))}
-                </select>
+                <DefaultCategoryButton payee={p} className="w-full" />
               </li>
             ))}
           </ul>
@@ -321,7 +323,7 @@ export default function PayeesPage() {
                   <th className="px-4 py-2 text-right text-xs font-medium text-text-tertiary">
                     Transactions
                   </th>
-                  <th className="w-12 px-4 py-2">
+                  <th className="w-20 px-4 py-2">
                     <span className="sr-only">Actions</span>
                   </th>
                 </tr>
@@ -348,7 +350,9 @@ export default function PayeesPage() {
                           logo={p.logo}
                           size="md"
                           force
-                          onLogoChange={(logo) => updatePayee.mutate({ id: p.id, logo })}
+                          onLogoChange={
+                            canSave ? (logo) => updatePayee.mutate({ id: p.id, logo }) : undefined
+                          }
                         />
                         {editingId === p.id ? (
                           <input
@@ -364,35 +368,33 @@ export default function PayeesPage() {
                             className="text-sm border border-brand-500 rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-brand-600 w-full max-w-xs"
                           />
                         ) : (
-                          <span
-                            className="text-sm font-medium text-text cursor-text hover:text-brand-600 transition-colors"
-                            onDoubleClick={() => startEditName(p)}
-                            title="Double-click to rename"
+                          <Link
+                            to={`/payees/${p.id}`}
+                            className="text-sm font-medium text-text hover:text-brand-600 transition-colors"
                           >
                             {p.name}
-                          </span>
+                          </Link>
                         )}
                       </div>
                     </td>
                     <td className="px-4 py-2">
-                      <select
-                        aria-label={`Default category for ${p.name}`}
-                        value={p.defaultCategoryId ?? ''}
-                        onChange={(e) => handleCategoryChange(p.id, e.target.value)}
-                        className="text-sm border border-border rounded-md px-2 py-1 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 max-w-[220px]"
-                      >
-                        <option value="">No default</option>
-                        {allCategories.map((c: any) => (
-                          <option key={c.id} value={c.id}>
-                            {c.groupName} → {c.name}
-                          </option>
-                        ))}
-                      </select>
+                      <DefaultCategoryButton payee={p} className="max-w-[260px]" />
                     </td>
                     <td className="px-4 py-2 text-right text-sm text-text-secondary">
                       {p.transactionCount}
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-2 whitespace-nowrap text-right">
+                      {/* Renaming is a visible button, as on phones (no double-click) */}
+                      <button
+                        type="button"
+                        onClick={() => startEditName(p)}
+                        disabled={!canSave}
+                        aria-label={`Rename ${p.name}`}
+                        title="Rename"
+                        className="p-1 text-text-tertiary hover:text-text-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <Pencil size={14} />
+                      </button>
                       <button
                         onClick={() => setDeleteId(p.id)}
                         aria-label={`Delete ${p.name}`}
