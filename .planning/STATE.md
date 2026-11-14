@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: Redesign finish
 current_phase: 1
 current_phase_name: Settings split and good moments
-status: planning
+status: executing
 stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-11-14T10:52:53.325Z"
+last_updated: "2026-11-14T23:03:15.530Z"
 last_activity: 2026-11-14
 last_activity_desc: Project initialised from the docs ingest; roadmap created
-state_head: 9564d498e85459ab6d3ccb750a35c68540b96925
+state_head: 9433bea15624cf9794aa13e8510336acc7153193
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 0
+  total_plans: 8
   completed_plans: 0
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-14)
 
 ## Current Position
 
-Phase: 1 of 4 (Settings split and good moments)
+Phase: 1 (Settings split and good moments) — READY TO EXECUTE
 Plan: 0 of TBD in current phase
-Status: Ready to plan
+Status: Ready to execute
 Last activity: 2026-11-14 — Project initialised from the docs ingest; roadmap created
 
 Progress: [░░░░░░░░░░] 0%

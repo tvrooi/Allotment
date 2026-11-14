@@ -44,13 +44,28 @@ Decimal phases appear between their surrounding integers in numeric order.
 **UI hint**: yes
 
 Plans:
+**Wave 1**
 - [ ] 01-01-PLAN.md — Repair the wave-f worktree; Connected banks becomes the page /accounts/connections, opened from Accounts
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 01-02-PLAN.md — Each bank pill and link opens its own provider (D-08, the Codex P1 on #273)
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 01-03-PLAN.md — Categories becomes the page /budget/categories; Settings has eight tabs, opens on Accounts and redirects the old tabs
+
+**Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 01-04-PLAN.md — The search palette opens both pages; in-app help and the server's account-deletion message name the new places (D-09)
+
+**Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 01-05-PLAN.md — The goal plant: four stages at the end of the bar, a flower when reached
+
+**Wave 6** *(blocked on Wave 5 completion)*
 - [ ] 01-06-PLAN.md — $0 Ready to assign: "Every dollar has a job" or the named caveat; the old label retired
+
+**Wave 7** *(blocked on Wave 6 completion)*
 - [ ] 01-07-PLAN.md — Guide steps, docs, WAVES.md note (D-10) and changelog; the full gate on Node 24
+
+**Wave 8** *(blocked on Wave 7 completion)*
 - [ ] 01-08-PLAN.md — Screenshots, release version check, push to PR #273 and its body (no merge)
 
 Notes: client only, except one server message string (accountDeletion.ts, owner D-09, 15 Nov 2026). Files from the `/settings`, `/accounts`, `/budget` and `/goals`
