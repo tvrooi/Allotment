@@ -71,6 +71,7 @@ test('no button, link or select on the main pages is nameless', async ({ page, a
     '/budget',
     '/transactions',
     '/accounts',
+    '/accounts/connections',
     '/payees',
     '/rules',
     '/reports',

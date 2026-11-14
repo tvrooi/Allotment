@@ -21,12 +21,18 @@ export function PageHeader({ title, subtitle, actions, tabs, breadcrumbs, childr
     <div className="bg-page border-b border-border-light shrink-0">
       <div className={`py-4 ${PAGE_GUTTER}`}>
         {breadcrumbs && breadcrumbs.length > 0 && (
-          <nav className="flex items-center gap-1 text-xs text-text-tertiary mb-2">
+          <nav
+            aria-label="Breadcrumb"
+            className="flex items-center gap-1 text-xs text-text-tertiary mb-2"
+          >
             {breadcrumbs.map((crumb, i) => (
               <span key={i} className="flex items-center gap-1">
-                {i > 0 && <ChevronRight size={12} />}
+                {i > 0 && <ChevronRight size={12} aria-hidden />}
                 {crumb.to ? (
-                  <Link to={crumb.to} className="hover:text-text-secondary transition-colors">
+                  <Link
+                    to={crumb.to}
+                    className="max-md:py-4 max-md:-my-4 hover:text-text-secondary transition-colors"
+                  >
                     {crumb.label}
                   </Link>
                 ) : (

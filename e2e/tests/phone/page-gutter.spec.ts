@@ -24,6 +24,7 @@ test('every page title starts 16 px from the edge on a phone', async ({ page, ap
   const routes = [
     '/dashboard',
     '/accounts',
+    '/accounts/connections',
     `/accounts/${checking.id}`,
     `/accounts/${checking.id}/reconcile`,
     '/transactions',

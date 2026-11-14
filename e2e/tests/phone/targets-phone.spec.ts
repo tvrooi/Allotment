@@ -36,6 +36,30 @@ test('the category list on the Budget page has full-size buttons', async ({ page
   ).toEqual([]);
 });
 
+test('the Connected banks page has a full-size way back and full-size header buttons (#244)', async ({
+  page,
+  api,
+}) => {
+  await open(page, '/accounts/connections');
+  const main = page.getByRole('main');
+  const back = main
+    .getByRole('navigation', { name: 'Breadcrumb' })
+    .getByRole('link', { name: 'Accounts', exact: true });
+  await expect(back).toBeVisible();
+  expect(await undersized([back])).toEqual([]);
+
+  await api.createAccount('Checking', 0);
+  await open(page, '/accounts');
+  const banks = main.getByRole('link', { name: 'Connected banks' });
+  const add = main.getByRole('button', { name: 'Add account' });
+  await expect(banks).toBeVisible();
+  expect(await undersized([banks, add])).toEqual([]);
+  // The title holds the first line and the two buttons wrap to the second
+  const title = await main.getByRole('heading', { level: 1, name: 'Accounts' }).boundingBox();
+  const link = await banks.boundingBox();
+  expect(link!.y).toBeGreaterThanOrEqual(title!.y + title!.height);
+});
+
 test('the dashboard lists recent transactions as cards, with full-size links', async ({
   page,
   api,

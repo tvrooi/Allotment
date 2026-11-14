@@ -43,6 +43,7 @@ test('every page fits a phone screen', async ({ page, api }, testInfo) => {
   const routes: [string, string][] = [
     ['dashboard', '/dashboard'],
     ['accounts', '/accounts'],
+    ['connected-banks', '/accounts/connections'],
     ['account', `/accounts/${checking.id}`],
     ['reconcile', `/accounts/${checking.id}/reconcile`],
     ['transactions', '/transactions'],
