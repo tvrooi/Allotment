@@ -73,6 +73,13 @@ decisions below, rather than close it or merge it as it is.
   `/accounts/connections` (up, plaid, simplefin, enablebanking), so the Up pill opens Up and a Plaid
   pill opens Plaid. This resolves the open Codex P1 on #273, which applies to this design too.
 
+- **D-09 (owner, 15 Nov 2026):** the server message in `server/src/services/accountDeletion.ts:83`
+  ("Unlink it first: Settings → Connections → Up") is fixed in this PR to name Accounts → Connected
+  banks → Up, with its server test and `e2e/tests/cleanup.spec.ts:94`. Message text only: no route,
+  allowlist, MCP or behaviour change. This is the phase's one server file.
+- **D-10 (owner, 15 Nov 2026):** `docs/ui/WAVES.md` stays until Wave G ends; its own note is changed
+  to say it is deleted after Wave G merges.
+
 ### Claude's Discretion
 - **Where Connected banks lives on Accounts:** a sub-page or section reached from the Accounts
   header (for example `/accounts/connections`) is preferred over a modal, so it has its own URL for
@@ -156,10 +163,6 @@ decisions below, rather than close it or merge it as it is.
 - **three.js bloom (optional, Phase 2 or later):** the owner first chose a 3D bloom; after seeing
   #273's CSS bloom it was kept for Phase 1 (D-03). A three.js version stays an idea only, to raise
   with Wave G's dependency decision if the owner still wants it. Not on the roadmap.
-- **Server message (not client-only):** `accountDeletion.ts:83` still says "Settings → Connections
-  → Up". It needs a server change; ask the owner whether to fix it in a later wave.
-- **Open, not decided here:** whether docs/ui/WAVES.md is deleted when Wave F merges (as it says)
-  or kept until Wave G ends (STATE.md blocker). Ask the owner before closing Phase 1.
 
 </deferred>
 

@@ -47,10 +47,10 @@ Plans:
 - [ ] 01-01-PLAN.md — Repair the wave-f worktree; Connected banks becomes the page /accounts/connections, opened from Accounts
 - [ ] 01-02-PLAN.md — Each bank pill and link opens its own provider (D-08, the Codex P1 on #273)
 - [ ] 01-03-PLAN.md — Categories becomes the page /budget/categories; Settings has eight tabs, opens on Accounts and redirects the old tabs
-- [ ] 01-04-PLAN.md — The search palette opens both pages; in-app help names the new places
+- [ ] 01-04-PLAN.md — The search palette opens both pages; in-app help and the server's account-deletion message name the new places (D-09)
 - [ ] 01-05-PLAN.md — The goal plant: four stages at the end of the bar, a flower when reached
 - [ ] 01-06-PLAN.md — $0 Ready to assign: "Every dollar has a job" or the named caveat; the old label retired
-- [ ] 01-07-PLAN.md — Guide steps, docs and changelog; the full gate on Node 24
+- [ ] 01-07-PLAN.md — Guide steps, docs, WAVES.md note (D-10) and changelog; the full gate on Node 24
 - [ ] 01-08-PLAN.md — Screenshots, release version check, push to PR #273 and its body (no merge)
 
 Notes: client only, no server change. Files from the `/settings`, `/accounts`, `/budget` and `/goals`

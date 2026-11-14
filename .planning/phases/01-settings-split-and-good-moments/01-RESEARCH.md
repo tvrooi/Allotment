@@ -614,20 +614,28 @@ this way without a router and a `window`. Test their logic through the extracted
 | A5 | The installed Chromium build matches what Playwright 1.64 wants; otherwise set `E2E_CHROMIUM_PATH` | Environment | First e2e run fails to launch |
 | A6 | Adding "Fully budgeted" to `lint/terms` RETIRED is acceptable (it is a wording guard, not a GLOSSARY term) | Don't Hand-Roll | Could be seen as scope creep; the alternative is a client unit test that globs sources |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All six resolved on 14-15 Nov 2026; the answers below bind the plans.
 
 1. **Clean $0 label when the summary is absent (UI-SPEC says "resolved (or absent)")**
    - What we know: `tbb` falls back to 0 while the summary loads or fails (Budget.tsx:904), so "absent" means "unknown".
    - Recommendation: show the clean label only when `funding?.resolved === true`, with no label while absent. Record the deviation in the PR body. Low-risk correction to the UI-SPEC.
+   - **RESOLVED:** adopted. The clean label needs a present, resolved summary; no label while absent (plan 01-06).
 2. **Provider deep link**
    - What we know: the default provider is Plaid; pills and Up-specific links all open there today, and Codex has already flagged the sibling path.
    - Recommendation: `connectedBanksLink(provider?)` in `movedSections.ts`, with an allowlist `up|plaid|simplefin|enablebanking`, read once to initialise `ConnectedAccounts`' toggle. Click count from the Accounts header stays 2 (or 1 for Up links).
+   - **RESOLVED:** owner decision D-08 (CONTEXT.md); default provider Up (plan 01-02).
 3. **Stale server string "Settings → Connections → Up"** (`accountDeletion.ts:83`, server test `:113`, e2e `cleanup.spec.ts:94`)
    - What we know: it was already wrong ("Connections") and becomes more wrong. The phase is client-only by owner rule.
    - Recommendation: leave it, record it in HANDOVER-UI Traps, and ask the owner whether a message-only server change may ride in this PR (it is not a route, allowlist or MCP change).
+   - **RESOLVED (owner, 15 Nov 2026):** fix the text in this PR. Message string only, naming "Accounts → Connected banks → Up", plus its server test and `cleanup.spec.ts:94`. No route, allowlist or MCP change (CONTEXT D-09).
 4. **Guide versions** — see A3. Recommendation: settings → 2, accounts → 2.
+   - **RESOLVED:** both at version 2 with ids unchanged (#273 already moved settings to 2; plan 01-07 moves accounts).
 5. **WAVES.md deletion** (deferred in CONTEXT): ask before closing the phase. Wave G is planned from it.
+   - **RESOLVED (owner, 15 Nov 2026):** keep it until Wave G ends; change its own note to say it is deleted after Wave G merges (CONTEXT D-10).
 6. **Budget header link `data-guide`**: use `budget.manage-categories` (or none) instead of the UI-SPEC's `budget.categories` (Pitfall 3).
+   - **RESOLVED:** `budget.manage-categories` (plan 01-03).
 
 ## Environment Availability
 
