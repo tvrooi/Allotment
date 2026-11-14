@@ -2,19 +2,19 @@
 gsd_state_version: "1.0"
 milestone: v1.0
 milestone_name: Redesign finish
-current_phase: 1
+current_phase: 01
 current_phase_name: Settings split and good moments
 status: executing
-stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-11-14T23:03:15.530Z"
-last_activity: 2026-11-14
-last_activity_desc: Project initialised from the docs ingest; roadmap created
-state_head: 9433bea15624cf9794aa13e8510336acc7153193
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-11-14T23:21:23.809Z"
+last_activity: 2026-11-15
+last_activity_desc: Phase 01 execution started
+state_head: c3e4b1c1406f91aa43a32c27778a606e3eea6522
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 8
-  completed_plans: 0
+  completed_plans: 1
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-14)
 
 **Core value:** Every figure the owner sees is right to the cent: bank money lands once, reconciles exactly, and each dollar sits in exactly one envelope.
-**Current focus:** Phase 1: Settings split and good moments (Wave F, #244 and #241)
+**Current focus:** Phase 01 — Settings split and good moments
 
 ## Current Position
 
-Phase: 1 (Settings split and good moments) — READY TO EXECUTE
-Plan: 0 of TBD in current phase
+Phase: 01 (Settings split and good moments) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-11-14 — Project initialised from the docs ingest; roadmap created
+Last activity: 2026-11-15 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -55,6 +55,11 @@ Branch: `redesign` at 0.2.0-up.173, ahead of `main`; latest tag v0.2.0-up.153; u
 - Trend: -
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 01 P01 | 15 min | 3 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -66,6 +71,10 @@ Decisions are logged in PROJECT.md Key Decisions (`<decisions>` block). Recent o
 - [Init]: Built PRD requirements (32 of 38) are recorded as Validated, not re-planned.
 - [Wave E]: Categories always use `CategoryPicker`; short lists use the shared styled `Select`. Wave G may replace the second half on desktop, pending decision 3.
 - [Release]: Do not tag, publish or update the live app from `redesign` until the owner decides.
+- [Phase 01]: Connected banks opens on Up when ?provider= is absent or not allowed (Up is the supported bank, first in the toggle)
+- [Phase 01]: The provider lives only in the URL (?provider=, replace: true), so a pill clicked while /accounts/connections is open still switches it
+- [Phase 01]: origin/redesign was already an ancestor of wave-f at 1627cae: no merge; wave-f holds no .planning file
+- [Phase 01]: CONNECTED_BANKS_LINK kept as an alias of CONNECTED_BANKS_PATH until plan 02 re-points its six importers
 
 ### Pending Todos
 
@@ -92,6 +101,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-14T10:52:53.299Z
-Stopped at: Phase 1 UI-SPEC approved
-Resume file: .planning/phases/01-settings-split-and-good-moments/01-UI-SPEC.md
+Last session: 2026-11-14T23:21:23.782Z
+Stopped at: Completed 01-01-PLAN.md
+Resume file: None

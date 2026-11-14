@@ -40,12 +40,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Every old way in still lands on the moved section: `/settings?tab=connections` and `?tab=categories` links, the sidebar, palette and Welcome entries, and guide steps, with guide and tip ids unchanged.
   4. When a goal reaches its target (the demo's "New laptop"), the user sees a small sprout-tick style moment instead of only a plain green bar. It shows in light and dark, at 390 px and in Safe mode without revealing hidden amounts.
   5. When Ready to assign reaches exactly $0, the user sees a brief acknowledgement that never reads as "Fully budgeted" while uncategorised spending, overspending or a missing exchange rate remains.
-**Plans**: 8 plans, one per wave, all delivered by revising PR #273 (WAVES.md plans Wave F as one PR)
+**Plans**: 1/8 plans executed, one per wave, all delivered by revising PR #273 (WAVES.md plans Wave F as one PR)
 **UI hint**: yes
 
 Plans:
 **Wave 1**
-- [ ] 01-01-PLAN.md — Repair the wave-f worktree; Connected banks becomes the page /accounts/connections, opened from Accounts
+- [x] 01-01-PLAN.md — Repair the wave-f worktree; Connected banks becomes the page /accounts/connections, opened from Accounts
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 01-02-PLAN.md — Each bank pill and link opens its own provider (D-08, the Codex P1 on #273)
@@ -136,7 +136,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Settings split and good moments | 0/8 | Planned | - |
+| 1. Settings split and good moments | 1/8 | In Progress | - |
 | 2. Shared form controls | 0/TBD | Not started | - |
 | 3. Screens on shared controls | 0/TBD | Not started | - |
 | 4. Remaining screens and the guard | 0/TBD | Not started | - |
