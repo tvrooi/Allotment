@@ -1,0 +1,24 @@
+{
+  "source_path": "/Users/tristanvanrooyen/Github/Allotment/docs/ENVELOPE-FUNDING.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Envelope funding (phase 6A)",
+  "summary": "Specifies the envelope funding calculation: Ready to Assign, Available balances, overspending rollover, and the cash breakdown shown in the budget and planner.",
+  "scope": [
+    "envelope funding",
+    "Ready to Assign",
+    "Expense Available",
+    "monthly summary",
+    "payday planner",
+    "card payment categories",
+    "fundingState",
+    "budgetService.ts",
+    "rollOver",
+    "CashBridge"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "MANIFEST_TYPE SPEC applied as authoritative. Only the first 50 lines were read; the rest of the document was not classified. Code files named in the text (budgetService.ts, readyToAssign.test.ts) are code references, not doc cross-references, so cross_refs is empty. source_hash could not be computed because this agent has no hashing tool, so the output filename uses the placeholder suffix 'hash-pending' instead of the 8-char SHA-256 prefix and must be renamed by the orchestrator. cross_refs cleared on 2026-11-14 by owner decision: they were see-also links, not dependencies."
+}

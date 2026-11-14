@@ -1,0 +1,27 @@
+{
+  "source_path": "/Users/tristanvanrooyen/Github/Allotment/docs/GLOSSARY.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Glossary",
+  "summary": "Plain-language definitions of installing, Up Bank, budgeting and in-app terms for Allotment users.",
+  "scope": [
+    "Home Assistant app",
+    "catalog repository",
+    "Up Bank",
+    "personal access token",
+    "Sync Now",
+    "payee",
+    "category",
+    "envelope",
+    "anchor payday",
+    "funding rule",
+    "reconcile",
+    "transfer",
+    "backup (JSON export)"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "cross_refs cleared on 2026-11-14 by owner decision: they were see-also links, not dependencies."
+}

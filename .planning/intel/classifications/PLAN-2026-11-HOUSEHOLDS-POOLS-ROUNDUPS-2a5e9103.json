@@ -1,0 +1,23 @@
+{
+  "source_path": "/Users/tristanvanrooyen/Github/Allotment/docs/PLAN-2026-11-HOUSEHOLDS-POOLS-ROUNDUPS.md",
+  "type": "PRD",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Plan: households, recurring, Up round-ups, Essentials pool, brand sweep (November 2026)",
+  "summary": "Owner-requested work plan covering household editing and settlement, cancelled recurring visibility, Up round-up linking, an Essentials pool account, and a FlyBudget branding sweep.",
+  "scope": [
+    "households",
+    "recurring schedules",
+    "Up round-ups",
+    "Essentials pool",
+    "household bill shares",
+    "forecast and calendar",
+    "browser tab icon",
+    "brand sweep",
+    "MCP tools"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "cross_refs cleared on 2026-11-14 by owner decision: they were see-also links, not dependencies."
+}

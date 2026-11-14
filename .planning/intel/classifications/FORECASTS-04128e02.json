@@ -1,0 +1,23 @@
+{
+  "source_path": "/Users/tristanvanrooyen/Github/Allotment/docs/FORECASTS.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Savings forecasts (phase 5)",
+  "summary": "Specifies the read-only Cash runway forecast: starting cash, income, bills, household shares and variable spending rules.",
+  "scope": [
+    "Cash runway forecast",
+    "starting cash",
+    "payday plans",
+    "scheduled bills",
+    "household shares",
+    "variable spending",
+    "saved scenarios",
+    "sharedRecurringDue",
+    "householdService"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "cross_refs cleared on 2026-11-14 by owner decision: they were see-also links, not dependencies."
+}

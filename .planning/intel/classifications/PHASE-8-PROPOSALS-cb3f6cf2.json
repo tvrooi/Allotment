@@ -1,0 +1,23 @@
+{
+  "source_path": "/Users/tristanvanrooyen/Github/Allotment/docs/PHASE-8-PROPOSALS.md",
+  "type": "PRD",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Phase 8 expansion proposals",
+  "summary": "Five bounded proposals for receipts, per-transaction review, tags and saved views, security holdings, and long-term forecasting, all status proposals only.",
+  "scope": [
+    "receipts and attachments",
+    "transaction review and visibility",
+    "tags",
+    "saved views",
+    "security holdings",
+    "long-term forecasting",
+    "transactions register",
+    "backup and export",
+    "forecast page"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "cross_refs cleared on 2026-11-14 by owner decision: they were see-also links, not dependencies."
+}
