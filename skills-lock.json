@@ -1,6 +1,438 @@
 {
   "version": 1,
   "skills": {
+    "gsd-add-tests": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-add-tests/SKILL.md",
+      "computedHash": "1e463f4000f7cd6f91d31bc89ecf1b487541360318470612ac1a43ec51ec54ef"
+    },
+    "gsd-ai-integration-phase": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-ai-integration-phase/SKILL.md",
+      "computedHash": "3d6ff7ac745b9638c2797be1226fa72d4dab52e4c761ff0f2c0cb612cd25947f"
+    },
+    "gsd-audit-fix": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-audit-fix/SKILL.md",
+      "computedHash": "4402bc3e6885843c924ebfcdb6c336aadf7b766e2ffd2b28f4ef43d2d751e9f1"
+    },
+    "gsd-audit-milestone": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-audit-milestone/SKILL.md",
+      "computedHash": "d49925fb54736c315c977dff8826b46d013e67e95f97fb042513758b65116215"
+    },
+    "gsd-audit-uat": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-audit-uat/SKILL.md",
+      "computedHash": "d6d843ddfc8a642c0386cd9bcf59e27995c53e8d6b920757d94f607ae3ccc891"
+    },
+    "gsd-autonomous": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-autonomous/SKILL.md",
+      "computedHash": "33f881c8921d34d8fd89706bd18915500220737390353ac17af2c8502c7fa3cd"
+    },
+    "gsd-capture": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-capture/SKILL.md",
+      "computedHash": "5ddaaf2f87633ffb6d96f2c9ef8f4645a486cf8565cff4914541d0dcb9277509"
+    },
+    "gsd-cleanup": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-cleanup/SKILL.md",
+      "computedHash": "411663af79565e7a88fbf362352d5c649dfc69df51d4b6cac871b67bed5d03a1"
+    },
+    "gsd-code-review": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-code-review/SKILL.md",
+      "computedHash": "c2046ed135ed7c08b7cc23de16bdeddb236135280f072763c664e430fca5a471"
+    },
+    "gsd-complete-milestone": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-complete-milestone/SKILL.md",
+      "computedHash": "b08710ea00e81fb056678c32532978a8da9241ad05f82f83b6252a188bbd0bb5"
+    },
+    "gsd-config": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-config/SKILL.md",
+      "computedHash": "abd113c71a1a74f66744335ff1005be49f11f38759c2648c2ca204ff362cc1ca"
+    },
+    "gsd-debug": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-debug/SKILL.md",
+      "computedHash": "196e6bbfe7bc374f134b8f60ff467400953b8db905315ddf774a4fc95a9ccafe"
+    },
+    "gsd-discuss-phase": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-discuss-phase/SKILL.md",
+      "computedHash": "fb897cbae23ed66e0d8abf7fc6f5e2ffccee4f40b5f8544e1ca6a9a681d4dda2"
+    },
+    "gsd-docs-update": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-docs-update/SKILL.md",
+      "computedHash": "14965ebff34f5521536ce177bdaba8b33a05e998962af8e9d25b2e04115204a9"
+    },
+    "gsd-eval-review": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-eval-review/SKILL.md",
+      "computedHash": "205a652413d5869b3add4b7a585a43a6ac5d5ac1f3e1f37700543d05179dd453"
+    },
+    "gsd-execute-phase": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-execute-phase/SKILL.md",
+      "computedHash": "aea25f77e8b85a91c989cf6bfd9e69dedec5bf10333e541349211138fb16b1cd"
+    },
+    "gsd-explore": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-explore/SKILL.md",
+      "computedHash": "ab3d027ec1e9f2aae4f6c43416634d737b7fd392d5a6d125b405442a60c76df4"
+    },
+    "gsd-extract-learnings": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-extract-learnings/SKILL.md",
+      "computedHash": "4d9380ef1f98fcdea52881e2678aff2725ec395c31c6de71ccaf54b9b36dc044"
+    },
+    "gsd-fast": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-fast/SKILL.md",
+      "computedHash": "be9590193bad853687ae0972db2847c695fafb2865cb2c8552e7408d3e144607"
+    },
+    "gsd-forensics": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-forensics/SKILL.md",
+      "computedHash": "4cb981dad1963c623511a2f405afcd51a8efbba5ca979d2aa1970d66f036c921"
+    },
+    "gsd-graphify": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-graphify/SKILL.md",
+      "computedHash": "252488747472a7feea75ced6e19dbe9de2b7946150e970aba5cf499a2d2d5390"
+    },
+    "gsd-health": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-health/SKILL.md",
+      "computedHash": "5bfcd7de0ffe59384fe64f3547eeb894be677fd23a69341323f233d10e3db88d"
+    },
+    "gsd-help": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-help/SKILL.md",
+      "computedHash": "7cd42fa3ee55026e538814aad5aeb4c85ca919b5cd127f430a5f49ffcb76a186"
+    },
+    "gsd-import": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-import/SKILL.md",
+      "computedHash": "f6a4bb1d9c210d129509410f81ea09be829df074b958b5e860b099f8511e70d6"
+    },
+    "gsd-inbox": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-inbox/SKILL.md",
+      "computedHash": "dd8e79baadd4caf00c2c95015140353c85ec306e6a67640b51cb85608df3f8a3"
+    },
+    "gsd-ingest-docs": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-ingest-docs/SKILL.md",
+      "computedHash": "51d561f756bda23fda466a40121015b6607112ccd0cd8d330379be831e8403e9"
+    },
+    "gsd-manager": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-manager/SKILL.md",
+      "computedHash": "0deb98355989b2b432589f0f911093bb4269832768c5e64e0a519a802d127e0e"
+    },
+    "gsd-map-codebase": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-map-codebase/SKILL.md",
+      "computedHash": "f93b409f7460bb813f26a1254f4e67959a0851ceab73ebbaebed0be7132e1225"
+    },
+    "gsd-mempalace-capture": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-mempalace-capture/SKILL.md",
+      "computedHash": "26582dafe77920c1e6cd887cac62a719cb6c8ac5c4847a931728adc9911129e7"
+    },
+    "gsd-mempalace-recall": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-mempalace-recall/SKILL.md",
+      "computedHash": "cfae30a08678239d464ccaa631211b64ee112f9ea3bfb37aa586df1da6e77821"
+    },
+    "gsd-milestone-summary": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-milestone-summary/SKILL.md",
+      "computedHash": "983ea48ded982811922829db38a7c4e35e2bc960b6c559fada1dff02551415a6"
+    },
+    "gsd-mvp-phase": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-mvp-phase/SKILL.md",
+      "computedHash": "19b7ac87a7bf18809380d992ebfc5420195d4abfb213ba343f76b36f7a3d1c33"
+    },
+    "gsd-new-milestone": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-new-milestone/SKILL.md",
+      "computedHash": "55ab82074f741d400f1495ba030d369217d521e6a3677a92cb5a2dd6faa8f02b"
+    },
+    "gsd-new-project": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-new-project/SKILL.md",
+      "computedHash": "a0ca27fbc8af67f15c37e62c1a2ceed4814fe0850342053fc077ed107d2a6f5e"
+    },
+    "gsd-next": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-next/SKILL.md",
+      "computedHash": "c0678f229af0a1cea1048e9f8128b2849094b5a1d55ad3f8567525a023ccbf0f"
+    },
+    "gsd-ns-context": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-ns-context/SKILL.md",
+      "computedHash": "3e6100870551df3e4416d95c37470587fac8185f2d9a04535413b9f782c633ed"
+    },
+    "gsd-ns-ideate": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-ns-ideate/SKILL.md",
+      "computedHash": "38e884cc6f3f29121746a1e0e9985e875bfc7924677331ec2aa7fe28a754e5e6"
+    },
+    "gsd-ns-manage": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-ns-manage/SKILL.md",
+      "computedHash": "2aeabc1ab6d6e30ef5ccd25af60adcba772516c64c22d8d8a73aa83fe3acb4cb"
+    },
+    "gsd-ns-project": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-ns-project/SKILL.md",
+      "computedHash": "d867c201c891200fc2f188c89cb1cb63c34c6bf7a064364908a550723e3f5ceb"
+    },
+    "gsd-ns-review": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-ns-review/SKILL.md",
+      "computedHash": "093573802341cc37617f062daa5438bd3c653b20b7518904215c05bd1c9c8995"
+    },
+    "gsd-ns-workflow": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-ns-workflow/SKILL.md",
+      "computedHash": "b9a93ae16b00fca024944faedfbcbbc52f74fca74ac58b017e30934978d92f13"
+    },
+    "gsd-onboard": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-onboard/SKILL.md",
+      "computedHash": "79fa4086a0dde52aedd7ae4d65a6b4a23e3557f19dc533f5683c6b826f7d9718"
+    },
+    "gsd-pause-work": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-pause-work/SKILL.md",
+      "computedHash": "602e5bf22511dfc360314d5d98ab4043375c799abde58ba468201114003fee1c"
+    },
+    "gsd-phase": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-phase/SKILL.md",
+      "computedHash": "0fe7b6e68fcc911c58f6961802b75227dfdaf82176f3738722d1a82b3bab0e55"
+    },
+    "gsd-plan-phase": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-plan-phase/SKILL.md",
+      "computedHash": "efa764e0bbd58b96cebe147d514ecea2ea99ba41592ad159dd7a453d19213c96"
+    },
+    "gsd-plan-review-convergence": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-plan-review-convergence/SKILL.md",
+      "computedHash": "d7eba380c0f25552c2897bddee537944194985d8c3a6d8c4fdb145fb4b1d01ed"
+    },
+    "gsd-pr-branch": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-pr-branch/SKILL.md",
+      "computedHash": "cc0cf20617f70d431406a08cdebd905ed8e7446d4f4ccc7ab8b9b61dcee7c7cb"
+    },
+    "gsd-profile-user": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-profile-user/SKILL.md",
+      "computedHash": "6196762c6cf89454708043d4e430a3a384687f4a68611362272737ea752dd43d"
+    },
+    "gsd-progress": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-progress/SKILL.md",
+      "computedHash": "515cacd5103491b660734ca00a3dbcb5ee55742a0cb3dccb6b1bc805d2adb923"
+    },
+    "gsd-quick": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-quick/SKILL.md",
+      "computedHash": "216a6ddf9e66c564378051e5e737636f5440097914ee362f96a2cd940bd76130"
+    },
+    "gsd-quick-batch": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-quick-batch/SKILL.md",
+      "computedHash": "23e8c7ea6b6f4dd6d688c9ef6353ce1ef36b22d63525022344bdbe78c1fa7854"
+    },
+    "gsd-resume-work": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-resume-work/SKILL.md",
+      "computedHash": "924d95dd3d468e71d8e6ac78db847bfeb4269521d476e1f0874b6905b9793be5"
+    },
+    "gsd-review": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-review/SKILL.md",
+      "computedHash": "815dfe81ae7287ed2e86c0a3e4d827371fb5fd82ce021dd0495753d852e0abb9"
+    },
+    "gsd-review-backlog": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-review-backlog/SKILL.md",
+      "computedHash": "9fd5ef006be46e9061f90fdc5d552eb25c2857219efbada9951c01be28724572"
+    },
+    "gsd-secure-phase": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-secure-phase/SKILL.md",
+      "computedHash": "325b4bde5d2a6c8ebdec1760c356497f9eb1435a6baa399d540477bfe7e8f153"
+    },
+    "gsd-settings": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-settings/SKILL.md",
+      "computedHash": "ff4bd50c2030397189c9264c4ee48bbb2be953e38711a49e8b082a395878f6e0"
+    },
+    "gsd-ship": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-ship/SKILL.md",
+      "computedHash": "896fcb3423151c696439f75decf403dc3778592b5ee6a2bac2dc618f05ed8547"
+    },
+    "gsd-sketch": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-sketch/SKILL.md",
+      "computedHash": "4ac35225140da746618bf9f9329bbdb00192455c00eed4a20e8b8928d4c0480a"
+    },
+    "gsd-spec-phase": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-spec-phase/SKILL.md",
+      "computedHash": "5b50685c15b714d7e8e1bc5e8f42d94dad9a3584e0fe735f53c9e4b022133e25"
+    },
+    "gsd-spike": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-spike/SKILL.md",
+      "computedHash": "47e5db472da646fae43e6f1d3b0a66ac942ee0db6a62b0311dc201388f8156b2"
+    },
+    "gsd-stats": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-stats/SKILL.md",
+      "computedHash": "3d12265db08c75723d5f3c58bd3d7fe095820e1ae53650dd50278677ea3655ba"
+    },
+    "gsd-surface": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-surface/SKILL.md",
+      "computedHash": "4d0875f566c07fa418f362800502d7ebb0c109a020f07c2b815da11a0c7bf33c"
+    },
+    "gsd-thread": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-thread/SKILL.md",
+      "computedHash": "484f4e1791638fedfd4753f8fa96ae1faf72510190a6e67d1106fc337204e894"
+    },
+    "gsd-ui-phase": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-ui-phase/SKILL.md",
+      "computedHash": "2a544494f25e50de761b6c129cd99d593bc2057b6500546d26073e977c629b13"
+    },
+    "gsd-ui-review": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-ui-review/SKILL.md",
+      "computedHash": "2392db4c1116f6ded54ffeb17d6369eba8d8f458cf8b06d10843405a7e86838b"
+    },
+    "gsd-ultraplan-phase": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-ultraplan-phase/SKILL.md",
+      "computedHash": "7a66803de5b90050160b6270969c2bca102aeac5c0fe98a09bc4f37e1059a987"
+    },
+    "gsd-undo": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-undo/SKILL.md",
+      "computedHash": "0930298b472a13df9d293242f3247baa890bf4e08c00dad8d61f9f1a4ef21432"
+    },
+    "gsd-update": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-update/SKILL.md",
+      "computedHash": "abe9947cbfa99e9290dc9423559aab4b3d85ef278e0f0c90ed7e22bc6f048982"
+    },
+    "gsd-validate-phase": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-validate-phase/SKILL.md",
+      "computedHash": "3cfd336adaa212b41c4847de691ffef5af0afeb8f0684d14f91e6b7faa5aaac5"
+    },
+    "gsd-verify-work": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-verify-work/SKILL.md",
+      "computedHash": "e22ac3c60e7c6591b9e14180b9fa95f5c99e78ca9a5b8ceef8f4033a17e29a42"
+    },
+    "gsd-workspace": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-workspace/SKILL.md",
+      "computedHash": "f120b2834667052fe5931eac645da83983c36fea71dcb196e5439822120e8bcd"
+    },
+    "gsd-workstreams": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-workstreams/SKILL.md",
+      "computedHash": "ea7744fc489c665ed27e8defa1826a0a4e2573979fc6ffd58d7aa6172af3df07"
+    },
     "impeccable": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",

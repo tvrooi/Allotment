@@ -1,0 +1,6 @@
+bundles:
+  - core
+  - gsd-admin
+  - gsd-context
+  - gsd-quality
+  - gsd-workflow
