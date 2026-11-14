@@ -53,7 +53,7 @@ Plans:
 - [ ] 01-07-PLAN.md — Guide steps, docs, WAVES.md note (D-10) and changelog; the full gate on Node 24
 - [ ] 01-08-PLAN.md — Screenshots, release version check, push to PR #273 and its body (no merge)
 
-Notes: client only, no server change. Files from the `/settings`, `/accounts`, `/budget` and `/goals`
+Notes: client only, except one server message string (accountDeletion.ts, owner D-09, 15 Nov 2026). Files from the `/settings`, `/accounts`, `/budget` and `/goals`
 rows of docs/ui/MAP.md; `client/src/pages/Settings.tsx` holds the ten tabs in `?tab=` URLs. Mind the
 critique decision that Ready to assign is green while its figure holds, and that zero amounts show in
 normal colour (GLOSSARY.md).
