@@ -38,14 +38,15 @@ test.describe('where Settings sections live (#244)', () => {
   }) => {
     await api.createAccount('Checking', 0);
     await open(page, '/settings?tab=connections');
-    await expect(page).toHaveURL(/#\/accounts$/);
-    const banks = page.getByRole('region', { name: 'Connected banks' });
-    await expect(banks.getByRole('button', { name: 'Up', exact: true })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    await expect(page).toHaveURL(/#\/accounts\/connections$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Connected banks' })).toBeVisible();
+    await expect(
+      page
+        .getByRole('group', { name: 'Bank connection provider' })
+        .getByRole('button', { name: 'Up', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true');
     // Up's own panel (Connect Up, or the connection when one is left from another test)
-    await expect(banks.getByRole('link', { name: 'How connecting Up works' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'How connecting Up works' })).toBeVisible();
 
     await open(page, '/settings?tab=categories');
     await expect(page).toHaveURL(/#\/budget\?view=categories$/);

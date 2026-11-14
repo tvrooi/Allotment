@@ -211,8 +211,8 @@ test('tab bars scroll sideways only, never up and down', async ({ page, api }) =
   await api.createAccount('Everyday', 100_000);
   for (const route of [
     '/settings',
-    // The bank provider switch, now on the Accounts page (#244)
-    '/accounts',
+    // The bank provider switch, on the Connected banks page under Accounts (#244)
+    '/accounts/connections',
     '/transactions',
     '/forecast',
     '/tax',

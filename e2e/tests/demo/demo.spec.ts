@@ -40,7 +40,7 @@ test('the demo opens on a finished budget, and every page works', async ({ page 
   const strip = page.getByRole('region', { name: 'Budget status' });
   await expect(strip.getByRole('link', { name: /^Synced from Up / })).toHaveAttribute(
     'href',
-    '#/accounts?banks=up',
+    '#/accounts/connections',
   );
   await expect(strip.getByRole('listitem')).toHaveCount(1);
   await expect(
@@ -132,11 +132,11 @@ test('changes stay in the tab, and "Start over" brings the demo budget back', as
 });
 
 test("bank connections can't be set up in the demo", async ({ page }) => {
-  await openDemo(page, '/accounts');
+  await openDemo(page, '/accounts/connections');
   await expect(page.getByText('Not available in the demo')).toBeVisible();
   await expect(page.getByRole('textbox')).toHaveCount(0);
 
-  // The sidebar's add menu (Accounts, where banks now live, has its own Add account too)
+  // The sidebar's add menu, scoped to the sidebar as a guard: Accounts has its own Add account
   await page.getByRole('complementary').getByRole('button', { name: 'Add account' }).click();
   await page.getByRole('button', { name: 'Connect via SimpleFIN' }).click();
   const dialog = page.getByRole('dialog', { name: 'Connect a bank' });
