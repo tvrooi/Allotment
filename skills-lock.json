@@ -434,10 +434,10 @@
       "computedHash": "ea7744fc489c665ed27e8defa1826a0a4e2573979fc6ffd58d7aa6172af3df07"
     },
     "impeccable": {
-      "source": "pbakaus/impeccable",
+      "source": "tvrooi/agent-skills",
       "sourceType": "github",
-      "skillPath": ".agents/skills/impeccable/SKILL.md",
-      "computedHash": "b79e42080422abc5f2c0420bc6719524a5e7071b3f30980abeb57496e9271a53"
+      "skillPath": "skills/impeccable/SKILL.md",
+      "computedHash": "ef1e9622479e7f466d26f7ed499441fbd8472221e094997752c06beffbd8997f"
     }
   }
 }

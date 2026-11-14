@@ -1,5 +1,6 @@
 bundles:
   - core
+  - design
   - gsd-admin
   - gsd-context
   - gsd-quality
