@@ -55,22 +55,23 @@ Non-exhaustive list of the components this phase reaches for. Anything else in `
 
 ## Spacing Scale
 
-Tailwind's 4 px base, as the project uses it (DESIGN.md "Layout"). New markup in this phase uses only these values:
+Tailwind's 4 px base, as the project uses it (DESIGN.md "Layout"). New markup in this phase uses only these values from the standard set:
 
 | Token | Value | Usage in this phase |
 |-------|-------|---------------------|
 | xs | 4px (`gap-1`, `mt-1`) | Breadcrumb chevron gaps, subtitle offset under the title |
-| sm | 8px (`gap-2`) | Bar-to-plant gap, header button gap, glyph-to-label gap in the hero |
-| 12 | 12px (`gap-3`, `px-3`) | Title-to-pill gap in the Accounts header (existing) |
-| md | 16px (`PAGE_GUTTER` on phones, `py-4`) | Header vertical padding, phone gutter |
+| sm | 8px (`gap-2`, `gap-x-2`) | Bar-to-plant column gap, header button gap, glyph-to-label gap in the hero, Accounts header row gap when it wraps (`gap-y-2`) |
+| md | 16px (`PAGE_GUTTER` on phones, `py-4`, `gap-x-4`) | Header vertical padding, phone gutter, breadcrumb hit-area padding on phones, Accounts header column gap |
 | lg | 24px (`PAGE_GUTTER` from `md`, `py-6`) | Desktop gutter, content top/bottom padding on the new pages |
 | xl | 32px | Not used new |
-| 2xl | 40px (`space-y-10`) | CategoryManager section gap (existing, unchanged) |
-| 28 | 28px (`pr-7`) | Goal label row right inset = 20 px plant + 8 px gap, so the % sits under the bar's end |
+| 2xl | 48px | Not used new |
+| 3xl | 64px | Not used new |
+
+Existing values left alone (not new markup, not restyled): 12 px (`gap-3` title-to-pill in the Accounts header), 40 px (`space-y-10` in `CategoryManager`), 20 px (`px-5` goal row), and the 6 px values (`h-1.5` bar, `mt-1.5` under the bar, `gap-1.5`).
 
 Exceptions:
-- Touch targets: every new link or button is at least 44 px tall below 768 px (`max-md:min-h-11`; `Button`/`ButtonLink` already meet this on phones). Breadcrumb links get a 44 px hit area with `max-md:py-3 max-md:-my-3` so the row does not grow.
-- Existing 6 px values (`h-1.5` bar, `mt-1.5`, `gap-1.5`) in untouched markup stay. New markup does not add 2 px-step spacing.
+- Touch targets: every new link or button is at least 44 px tall below 768 px (`max-md:min-h-11`; `Button`/`ButtonLink` already meet this on phones). Breadcrumb links get a 48 px hit area (16 px line + 16 px above and below) with `max-md:py-4 max-md:-my-4`, so the row does not grow.
+- The goal label row needs no inset: a two-column grid aligns it with the bar's end (§4).
 - Plant box: 20 × 20 px on goal rows, 16 × 16 px in the hero (icon sizes, not spacing).
 
 ---
@@ -115,6 +116,20 @@ Ready to assign colour rules (critique decision + GLOSSARY.md "zero amounts"):
 ---
 
 ## Screens and interaction contract
+
+### Focal points
+
+Each changed screen has one primary focal point. Nothing new competes with it: no second filled button, no extra accent colour, and no new icon larger than 20 px.
+
+| Screen | Primary focal point | Why |
+|--------|---------------------|-----|
+| `/accounts` | The account list (net worth on wide screens), as today. The new "Connected banks" link is secondary and sits beside the primary "Add account" | An entry point, not a new destination on the page |
+| `/accounts/connections` | The provider toggle (Up first), directly under the page header | Two clicks to Up depends on finding it at once |
+| `/budget` | The Ready to assign hero figure, as today. The "Categories" link is secondary | Unchanged hierarchy |
+| `/budget/categories` | The Expenses section's group list (most edits happen there), under Unused categories | Same order as in Settings today |
+| Ready to assign hero at $0 | The figure; then the status label ("Every dollar has a job" or the caveat) | The figure stays the anchor; the label qualifies it |
+| `/goals` | The bar together with the plant at its end, one unit per row; reached goals get the flower | The plant marks where the bar is heading |
+| `/settings` | The tab row, now eight tabs | Shorter row, same pattern |
 
 ### 1. Connected banks under Accounts (WAVF-01)
 
@@ -185,15 +200,13 @@ Status (paused, retired, completed by hand) and overdue do not change the stage 
 
 **Placement on the goal row** (replaces `Goals.tsx` ~225-245; the bar stays as today's progress record):
 ```
-<div className="mt-3 pl-12">                         // unchanged wrapper
-  <div className="flex items-center gap-2">
-    <div className="flex-1 h-1.5 rounded-full bg-surface-alt overflow-hidden">…existing fill…</div>
-    <Plant stage={stage} className="shrink-0" data-testid="goal-plant" data-stage={stage} />
-  </div>
-  <div className="flex items-center justify-between mt-1.5 text-xs pr-7">…existing label and %…</div>
+<div className="mt-3 pl-12 grid grid-cols-[1fr_auto] items-center gap-x-2">   // wrapper: was a block
+  <div className="h-1.5 rounded-full bg-surface-alt overflow-hidden">…existing fill…</div>   // col 1, row 1
+  <Plant stage={stage} data-testid="goal-plant" data-stage={stage} />                       // col 2, row 1
+  <div className="flex items-center justify-between mt-1.5 text-xs">…existing label and %…</div> // col 1, row 2
 </div>
 ```
-At 390 px the bar still has about 240 px of track; the plant never wraps or shrinks.
+One grid holds the bar and the label row in the same `1fr` column, and the plant sits alone in an `auto` column. The % therefore ends exactly under the bar's end with no padding value, and row 2's column 2 stays empty under the plant. The grid has no row gap. The label row keeps its existing classes, `mt-1.5` included. At 390 px the bar still has about 240 px of track; the plant never wraps or shrinks.
 
 **Drawing** (viewBox `0 0 20 20`, rendered at `size` px; colours by Tailwind `fill-*` / `stroke-*` utilities from `@theme` tokens only). The seedling is the brand mark's own sprout path (`client/public/logo.svg`), so the plant and the logo share one leaf shape. Reference geometry; the executor may adjust by ≤ 1 unit after the visual check, keeping the four silhouettes distinct at 100% zoom:
 
