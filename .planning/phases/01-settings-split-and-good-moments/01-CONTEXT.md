@@ -15,8 +15,13 @@ Wave F (#244, #241), one PR to `redesign`, client only, no server change:
    (WAVF-04), and a $0 Ready to assign gets a brief brand-voice acknowledgement that is never an
    unqualified "Fully budgeted" while caveats remain (WAVF-05).
 
-No money figure, server route or token allowlist changes. Animation of the plant is not in this
-phase (see D-07).
+No money figure, server route or token allowlist changes. The plant's CSS animation is in this
+phase (D-03); a three.js version is not.
+
+**Delivery (D-07):** this phase revises the open PR #273 (branch `wave-f`, worktree
+`/Users/tristanvanrooyen/wt-f`, base `redesign`), which implemented Wave F on 13 Nov with a
+different design. The owner chose on 14 Nov to keep the branch and its tests and change it to the
+decisions below, rather than close it or merge it as it is.
 
 </domain>
 
@@ -31,8 +36,12 @@ phase (see D-07).
   `complete` rule in `client/src/pages/Goals.tsx:92` (`remaining === 0 && targetAmount > 0 &&
   fundingComplete !== false`). A goal marked completed by hand short of its target keeps the stage
   its money has reached.
-- **D-03:** Phase 1 ships the stages and the flower as static inline SVG: no new package, no
-  animation. "Goal reached" stays as text, so the status never depends on the picture; the SVG is
+- **D-03:** Phase 1 ships the stages and the flower as inline SVG with no new package. The
+  plant animates with plain CSS only, as PR #273 already does (owner, 14 Nov 2026, after seeing
+  #273): it grows in place when its stage changes while the page is open, and the flower blooms
+  once per goal per device (`flybudget:goals-bloomed` in localStorage; without storage the plant
+  is shown still). Arriving on the page plays nothing else. Every animation token is `none` under
+  reduced motion, so the static end state shows. "Goal reached" stays as text, so the status never depends on the picture; the SVG is
   decorative (`aria-hidden`) or carries a matching label, not a second announcement.
 - **D-04:** The plant honours Safe mode the same way the goal bar does today (it shows progress,
   never an amount), and works in light and dark and at 390 px.
@@ -49,6 +58,20 @@ phase (see D-07).
   the new routes.
 - **D-06:** Settings no longer shows Connected banks or Categories tabs, and its default tab (today
   `categories`) becomes the first remaining tab.
+
+### Delivery and the revision of PR #273
+- **D-07:** Revise PR #273 on `wave-f` in `/Users/tristanvanrooyen/wt-f`; do not open a second
+  Wave F branch. Where #273 differs from D-01 to D-08 or the approved UI-SPEC, the UI-SPEC wins:
+  separate pages `/accounts/connections` and `/budget/categories` instead of the Accounts section
+  and `?view=categories`; Settings defaults to `accounts`, not Preferences; four plant stages per
+  the UI-SPEC instead of five; "Fully budgeted" removed. Keep what fits: the CSS animation (D-03),
+  its reduced-motion tokens, the one-module redirect helper (`utils/movedSections.ts`) and the e2e
+  work, re-pointed. Rerun every check on Node 24 (`/opt/homebrew/opt/node@24/bin`); #273 ran on
+  22.19. #273 already takes `0.2.0-up.174`; keep it unless `redesign` moved on.
+  — **Reversibility:** costly — the branch's e2e expectations and redirects are rewritten.
+- **D-08:** Each bank pill and link opens its own provider: an allowlisted `?provider=` on
+  `/accounts/connections` (up, plaid, simplefin, enablebanking), so the Up pill opens Up and a Plaid
+  pill opens Plaid. This resolves the open Codex P1 on #273, which applies to this design too.
 
 ### Claude's Discretion
 - **Where Connected banks lives on Accounts:** a sub-page or section reached from the Accounts
@@ -130,12 +153,11 @@ phase (see D-07).
 <deferred>
 ## Deferred Ideas
 
-- **three.js bloom animation (owner choice, moved to Phase 2):** when a goal is reached, a 1-3 s
-  3D bloom plays once per goal, remembered per device. three.js is lazy-loaded through a dynamic
-  import into one shared canvas (not one WebGL context per row), with a still fallback for reduced
-  motion and no-WebGL. It waits for Phase 2's dependency decision (Wave G decision 1). The SVG stages
-  from D-01 stay. Phase 2's roadmap entry does not list it yet; add it there (or as a decimal phase)
-  when Phase 2 is planned.
+- **three.js bloom (optional, Phase 2 or later):** the owner first chose a 3D bloom; after seeing
+  #273's CSS bloom it was kept for Phase 1 (D-03). A three.js version stays an idea only, to raise
+  with Wave G's dependency decision if the owner still wants it. Not on the roadmap.
+- **Server message (not client-only):** `accountDeletion.ts:83` still says "Settings → Connections
+  → Up". It needs a server change; ask the owner whether to fix it in a later wave.
 - **Open, not decided here:** whether docs/ui/WAVES.md is deleted when Wave F merges (as it says)
   or kept until Wave G ends (STATE.md blocker). Ask the owner before closing Phase 1.
 
