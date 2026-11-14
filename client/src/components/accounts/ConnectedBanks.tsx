@@ -1,4 +1,4 @@
-import { useState, type ReactNode, type Ref } from 'react';
+import { useState } from 'react';
 import { RefreshCw, Plus, Loader2 } from 'lucide-react';
 import { usePlaidStatus, usePlaidItems, useSyncAll } from '../../hooks/usePlaid';
 import { useSimplefinConnections, useSyncAllSimplefin } from '../../hooks/useSimplefin';
@@ -25,65 +25,31 @@ import { DeletedBankImports } from '../settings/DeletedBankImports';
 import { useUpConnection } from '../../hooks/useUp';
 import { formatDistanceToNow } from 'date-fns';
 import { CommunitySupportedNote } from '../banks/CommunitySupported';
-
-export type BankProvider = 'plaid' | 'simplefin' | 'enablebanking' | 'up';
+import type { BankProvider } from '../../utils/movedSections';
 
 interface ConnectedBanksProps {
-  /** The provider whose setup is open, or none: the section stays short on the Accounts page */
-  provider: BankProvider | null;
+  /** The provider whose setup is open */
+  provider: BankProvider;
   onProvider: (provider: BankProvider) => void;
-  /** The heading, so a link that opens the section can move focus to it */
-  headingRef?: Ref<HTMLHeadingElement>;
 }
 
 /**
- * Connected banks, a section of the Accounts page (#244; it was a Settings tab): Up first,
- * then the community-supported connections, each opened in place.
+ * Connected banks, the body of its page under Accounts (#244; it was a Settings tab): Up first,
+ * then the community-supported connections, each opened in place. The page header carries the
+ * title and the intro.
  */
 export function ConnectedBanks(props: ConnectedBanksProps) {
-  return IS_DEMO ? <ConnectedBanksDemo {...props} /> : <ConnectedBanksSetup {...props} />;
-}
-
-const HEADING_ID = 'connected-banks-heading';
-
-function BanksSection({
-  headingRef,
-  description,
-  children,
-}: {
-  headingRef?: Ref<HTMLHeadingElement>;
-  description: string;
-  children: ReactNode;
-}) {
-  return (
-    <section aria-labelledby={HEADING_ID} className="space-y-5">
-      <div>
-        <h2
-          id={HEADING_ID}
-          ref={headingRef}
-          tabIndex={-1}
-          className="text-base font-semibold text-text focus:outline-none"
-        >
-          Connected banks
-        </h2>
-        <p className="text-sm text-text-secondary mt-0.5">{description}</p>
-      </div>
-      {children}
-    </section>
-  );
+  return IS_DEMO ? <ConnectedBanksDemo /> : <ConnectedBanksSetup {...props} />;
 }
 
 /**
  * The demo's sample budget came from Up: its (pretend) connection, and Connect Up shown but
  * switched off, since the demo can't connect banks
  */
-function ConnectedBanksDemo({ headingRef }: ConnectedBanksProps) {
+function ConnectedBanksDemo() {
   const { data: up } = useUpConnection();
   return (
-    <BanksSection
-      headingRef={headingRef}
-      description="Automatically import transactions from your financial institutions."
-    >
+    <div className="space-y-5">
       {up && (
         <div className="rounded-lg border border-border bg-surface p-4 space-y-2">
           <p className="text-sm font-medium text-text">Up</p>
@@ -108,11 +74,11 @@ function ConnectedBanksDemo({ headingRef }: ConnectedBanksProps) {
         </span>
       </div>
       <NotInDemo />
-    </BanksSection>
+    </div>
   );
 }
 
-function ConnectedBanksSetup({ provider, onProvider, headingRef }: ConnectedBanksProps) {
+function ConnectedBanksSetup({ provider, onProvider }: ConnectedBanksProps) {
   const { data: status, isLoading: statusLoading } = usePlaidStatus();
   const { data: items = [], isLoading: itemsLoading } = usePlaidItems();
   const { data: sfConnections = [], isLoading: sfLoading } = useSimplefinConnections();
@@ -132,19 +98,14 @@ function ConnectedBanksSetup({ provider, onProvider, headingRef }: ConnectedBank
 
   if (isLoading) {
     return (
-      <BanksSection headingRef={headingRef} description="Checking your bank connections…">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 size={24} className="animate-spin text-text-tertiary" aria-hidden />
-        </div>
-      </BanksSection>
+      <div className="flex items-center justify-center py-12">
+        <Loader2 size={24} className="animate-spin text-text-tertiary" aria-hidden />
+      </div>
     );
   }
 
   return (
-    <BanksSection
-      headingRef={headingRef}
-      description="Automatically import transactions from your financial institutions. Any other bank: import its CSV files from the account's page."
-    >
+    <div className="space-y-5">
       {/* Provider toggle: one row that scrolls sideways when it's wider than the screen */}
       <div
         role="group"
@@ -196,7 +157,7 @@ function ConnectedBanksSetup({ provider, onProvider, headingRef }: ConnectedBank
         ))}
       </div>
 
-      {provider !== null && provider !== 'up' && <CommunitySupportedNote />}
+      {provider !== 'up' && <CommunitySupportedNote />}
 
       {/* Plaid content */}
       {provider === 'up' && <UpSettings />}
@@ -399,6 +360,6 @@ function ConnectedBanksSetup({ provider, onProvider, headingRef }: ConnectedBank
         initialSetupResult={sfSetupResult}
       />
       <DeletedBankImports />
-    </BanksSection>
+    </div>
   );
 }

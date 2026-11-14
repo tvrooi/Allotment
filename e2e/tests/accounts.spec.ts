@@ -192,26 +192,34 @@ test.describe('accounts', () => {
   });
 });
 
-test('the Up connection is two clicks from the sidebar (#244)', async ({ page, api }) => {
+test('the Up connection is two clicks from Accounts (#244)', async ({ page, api }) => {
   await api.createAccount('Everyday', 0);
-  await open(page, '/dashboard');
-  await page
-    .getByRole('complementary')
-    .getByRole('link', { name: 'Accounts', exact: true })
-    .click();
-  const banks = page.getByRole('region', { name: 'Connected banks' });
-  await banks.getByRole('button', { name: 'Up', exact: true }).click();
+  await open(page, '/accounts');
+  const main = page.getByRole('main');
+  // Click 1: the header link opens the Connected banks page
+  await main.getByRole('link', { name: 'Connected banks' }).click();
+  await expect(page).toHaveURL(/#\/accounts\/connections$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Connected banks');
+  // Click 2: Up in the provider toggle
+  const up = page
+    .getByRole('group', { name: 'Bank connection provider' })
+    .getByRole('button', { name: 'Up', exact: true });
+  await up.click();
+  await expect(up).toHaveAttribute('aria-pressed', 'true');
   // Up's own panel (Connect Up, or the connection when one is left from another test)
-  await expect(banks.getByRole('link', { name: 'How connecting Up works' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'How connecting Up works' })).toBeVisible();
+  // The breadcrumb goes back to Accounts
+  await main.getByRole('link', { name: 'Accounts', exact: true }).click();
+  await expect(page).toHaveURL(/#\/accounts$/);
 });
 
 test('a budget with no accounts yet can connect a bank from Accounts (#244)', async ({ page }) => {
   await open(page, '/accounts');
-  await page.getByRole('button', { name: 'Connect a bank' }).click();
-  const banks = page.getByRole('region', { name: 'Connected banks' });
-  await expect(banks.getByRole('button', { name: 'Up', exact: true })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
-  await expect(banks.getByRole('link', { name: 'How connecting Up works' })).toBeInViewport();
+  await page.getByRole('link', { name: 'Connect a bank' }).click();
+  await expect(page).toHaveURL(/#\/accounts\/connections$/);
+  await expect(
+    page
+      .getByRole('group', { name: 'Bank connection provider' })
+      .getByRole('button', { name: 'Up', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
 });
