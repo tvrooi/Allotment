@@ -40,8 +40,18 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Every old way in still lands on the moved section: `/settings?tab=connections` and `?tab=categories` links, the sidebar, palette and Welcome entries, and guide steps, with guide and tip ids unchanged.
   4. When a goal reaches its target (the demo's "New laptop"), the user sees a small sprout-tick style moment instead of only a plain green bar. It shows in light and dark, at 390 px and in Safe mode without revealing hidden amounts.
   5. When Ready to assign reaches exactly $0, the user sees a brief acknowledgement that never reads as "Fully budgeted" while uncategorised spending, overspending or a missing exchange rate remains.
-**Plans**: TBD (WAVES.md plans Wave F as one PR)
+**Plans**: 8 plans, one per wave, all delivered by revising PR #273 (WAVES.md plans Wave F as one PR)
 **UI hint**: yes
+
+Plans:
+- [ ] 01-01-PLAN.md — Repair the wave-f worktree; Connected banks becomes the page /accounts/connections, opened from Accounts
+- [ ] 01-02-PLAN.md — Each bank pill and link opens its own provider (D-08, the Codex P1 on #273)
+- [ ] 01-03-PLAN.md — Categories becomes the page /budget/categories; Settings has eight tabs, opens on Accounts and redirects the old tabs
+- [ ] 01-04-PLAN.md — The search palette opens both pages; in-app help names the new places
+- [ ] 01-05-PLAN.md — The goal plant: four stages at the end of the bar, a flower when reached
+- [ ] 01-06-PLAN.md — $0 Ready to assign: "Every dollar has a job" or the named caveat; the old label retired
+- [ ] 01-07-PLAN.md — Guide steps, docs and changelog; the full gate on Node 24
+- [ ] 01-08-PLAN.md — Screenshots, release version check, push to PR #273 and its body (no merge)
 
 Notes: client only, no server change. Files from the `/settings`, `/accounts`, `/budget` and `/goals`
 rows of docs/ui/MAP.md; `client/src/pages/Settings.tsx` holds the ten tabs in `?tab=` URLs. Mind the
@@ -111,7 +121,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Settings split and good moments | 0/TBD | Not started | - |
+| 1. Settings split and good moments | 0/8 | Planned | - |
 | 2. Shared form controls | 0/TBD | Not started | - |
 | 3. Screens on shared controls | 0/TBD | Not started | - |
 | 4. Remaining screens and the guard | 0/TBD | Not started | - |

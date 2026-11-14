@@ -40,24 +40,26 @@ created: "2026-11-14"
 
 ## Per-Task Verification Map
 
-Task IDs are filled in by the planner; rows are keyed by requirement until then.
+Task IDs filled in by the planner on 15 November 2026 (plans 01-01 to 01-08; one plan per wave, because the work tree and the e2e ports are shared). Commands run from `/Users/tristanvanrooyen/wt-f`.
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD | TBD | TBD | WAVF-01 | — | `?provider=` accepts only the allowlist (up, plaid, simplefin, enablebanking); anything else falls back to the default | unit | `npm test --prefix client -- src/utils/movedSections.test.ts` | check #273 | ⬜ pending |
-| TBD | TBD | TBD | WAVF-01 | — | N/A | e2e | `cd e2e && npm test -- --project=desktop tests/accounts.spec.ts tests/up.spec.ts` | ✅ (re-point, add) | ⬜ pending |
-| TBD | TBD | TBD | WAVF-01 | — | N/A | e2e phone | `cd e2e && npm test -- --project=phone tests/phone/phone.spec.ts tests/phone/page-gutter.spec.ts tests/phone/polish-phone.spec.ts` | ✅ (add routes) | ⬜ pending |
-| TBD | TBD | TBD | WAVF-02 | — | N/A | e2e | `cd e2e && npm test -- --project=desktop tests/settings.spec.ts tests/menus.spec.ts tests/accessibility.spec.ts tests/budget.spec.ts` | ✅ (re-point, add) | ⬜ pending |
-| TBD | TBD | TBD | WAVF-02 | — | N/A | e2e phone | `cd e2e && npm test -- --project=phone tests/phone/targets-phone.spec.ts` | ✅ (add) | ⬜ pending |
-| TBD | TBD | TBD | WAVF-03 | — | Redirect is a replace; other query parameters kept, `tab` dropped | unit | `npm test --prefix client -- src/utils/movedSections.test.ts src/utils/guides.test.ts` | check #273 | ⬜ pending |
-| TBD | TBD | TBD | WAVF-03 | — | N/A | e2e | `cd e2e && npm test -- --project=desktop tests/settings.spec.ts tests/navigation.spec.ts tests/command-palette.spec.ts` | ✅ (add) | ⬜ pending |
-| TBD | TBD | TBD | WAVF-03 | — | N/A | e2e demo | `cd e2e && npm test -- --project=demo tests/demo/demo.spec.ts` | ✅ (update) | ⬜ pending |
-| TBD | TBD | TBD | WAVF-04 | — | Plant has no amount; hidden with the list in Safe mode | unit | `npm test --prefix client -- src/components/ui/Plant.test.ts` | ❌ W0 (or adapt #273's growth-stage test) | ⬜ pending |
-| TBD | TBD | TBD | WAVF-04 | — | N/A | e2e demo | `cd e2e && npm test -- --project=demo tests/demo/category-goals.spec.ts` | ✅ (add) | ⬜ pending |
-| TBD | TBD | TBD | WAVF-04 | — | Safe mode hides goal rows and plants | e2e | `cd e2e && npm test -- --project=desktop tests/safe-mode.spec.ts` | ✅ (add assertion) | ⬜ pending |
-| TBD | TBD | TBD | WAVF-05 | — | $0 label reveals no amount | unit | `npm test --prefix client -- src/utils/fundingStatus.test.ts` | ✅ (extend) | ⬜ pending |
-| TBD | TBD | TBD | WAVF-05 | — | N/A | unit (lint terms) | `cd lint && npm test` | ✅ (add RETIRED row) | ⬜ pending |
-| TBD | TBD | TBD | WAVF-05 | — | N/A | e2e | `cd e2e && npm test -- --project=desktop tests/budget.spec.ts` | ✅ (update :45, :303, add) | ⬜ pending |
+| 01-01-T1, 01-02-T1 | 01, 02 | 1, 2 | WAVF-01 | T-01-01, T-01-05 | `?provider=` accepts only the allowlist (up, plaid, simplefin, enablebanking); anything else falls back to Up; an unknown feed label gets no parameter | unit | `npm --prefix client test -- src/utils/movedSections.test.ts` | ✅ (#273, revised) | ⬜ pending |
+| 01-01-T1, 01-01-T2, 01-02-T1 | 01, 02 | 1, 2 | WAVF-01 | T-01-06 | A pill opens its own bank | e2e | `npm --prefix e2e test -- --project=desktop tests/accounts.spec.ts tests/up.spec.ts` | ✅ (re-point, add) | ⬜ pending |
+| 01-01-T2, 01-01-T3 | 01 | 1 | WAVF-01 | — | N/A | e2e phone | `npm --prefix e2e test -- --project=phone tests/phone/phone.spec.ts tests/phone/page-gutter.spec.ts tests/phone/polish-phone.spec.ts tests/phone/targets-phone.spec.ts` | ✅ (add routes) | ⬜ pending |
+| 01-03-T1, 01-03-T2, 01-03-T3 | 03 | 3 | WAVF-02 | — | N/A | e2e | `npm --prefix e2e test -- --project=desktop tests/settings.spec.ts tests/menus.spec.ts tests/accessibility.spec.ts tests/budget.spec.ts` | ✅ (re-point, add) | ⬜ pending |
+| 01-03-T2 | 03 | 3 | WAVF-02 | — | N/A | e2e phone | `npm --prefix e2e test -- --project=phone tests/phone/targets-phone.spec.ts` | ✅ (add) | ⬜ pending |
+| 01-03-T1, 01-02-T2, 01-07-T1 | 03, 02, 07 | 3, 2, 7 | WAVF-03 | T-01-07, T-01-08, T-01-18 | Redirect is a replace; other query parameters kept, `tab` dropped; paths spelled in one module; guide ids unchanged | unit | `npm --prefix client test -- src/utils/movedSections.test.ts src/utils/guides.test.ts` | ✅ (#273, revised) | ⬜ pending |
+| 01-03-T1, 01-04-T1, 01-07-T1 | 03, 04, 07 | 3, 4, 7 | WAVF-03 | T-01-09, T-01-11 | N/A | e2e | `npm --prefix e2e test -- --project=desktop tests/settings.spec.ts tests/navigation.spec.ts tests/command-palette.spec.ts tests/guides.spec.ts` | ✅ (add) | ⬜ pending |
+| 01-01-T2, 01-02-T1, 01-03-T3 | 01, 02, 03 | 1, 2, 3 | WAVF-03 | — | N/A | e2e demo | `npm --prefix e2e test -- --project=demo tests/demo/demo.spec.ts` | ✅ (update) | ⬜ pending |
+| 01-05-T1 | 05 | 5 | WAVF-04 | T-01-12, T-01-13 | Plant has no amount; bloom memory survives bad storage | unit | `npm --prefix client test -- src/components/ui/Plant.test.ts src/components/goals/growth.test.ts` | ❌ created in 01-05-T1 (growth.test.ts exists) | ⬜ pending |
+| 01-05-T1, 01-05-T2 | 05 | 5 | WAVF-04 | — | N/A | e2e, e2e demo | `npm --prefix e2e test -- --project=desktop tests/category-goals.spec.ts` and `--project=demo tests/demo/category-goals.spec.ts` | ✅ (rewrite, add) | ⬜ pending |
+| 01-05-T2 | 05 | 5 | WAVF-04 | T-01-12 | Safe mode hides goal rows and plants | e2e | `npm --prefix e2e test -- --project=desktop tests/safe-mode.spec.ts` | ✅ (add test) | ⬜ pending |
+| 01-06-T1 | 06 | 6 | WAVF-05 | T-01-15, T-01-16, T-01-17 | $0 label reveals no amount; no praise without a resolved summary | unit | `npm --prefix client test -- src/utils/fundingStatus.test.ts` | ✅ (extend) | ⬜ pending |
+| 01-06-T2 | 06 | 6 | WAVF-05 | — | N/A | unit (lint terms) | `npm --prefix lint test` | ✅ (add RETIRED row) | ⬜ pending |
+| 01-06-T1, 01-06-T2 | 06 | 6 | WAVF-05 | T-01-15 | N/A | e2e | `npm --prefix e2e test -- --project=desktop tests/budget.spec.ts` | ✅ (update, add) | ⬜ pending |
+| 01-07-T3 | 07 | 7 | WAVF-01 to 05 | T-01-20 | No test skipped or slept; no server or dependency change | full gate | the full suite command above, plus `iphone-webkit` and `multi-user` | ✅ | ⬜ pending |
+| 01-08-T1, 01-08-T2 | 08 | 8 | WAVF-01 to 05 | T-01-21, T-01-22, T-01-23 | Evidence from demo and disposable budgets only; plain push; no merge, tag or release | evidence, delivery | `find .ui-evidence/2026-11-14-wave-f -name '*.png'`; `gh pr checks 273 --repo tvrooi/Allotment` | — | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
