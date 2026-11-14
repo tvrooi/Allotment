@@ -1,7 +1,8 @@
 ---
 phase: "1"
 slug: "settings-split-and-good-moments"
-status: draft
+status: approved
+reviewed_at: "2026-11-14"
 shadcn_initialized: false
 preset: none
 created: "2026-11-14"
@@ -153,7 +154,7 @@ Each changed screen has one primary focal point. Nothing new competes with it: n
 
 **Accounts header at 390 px:** the header row becomes `flex flex-wrap items-center justify-between gap-x-4 gap-y-2`. Below 768 px the title and Up pill hold the first line, and the action group (`flex items-center gap-2`) wraps to the second line, left-aligned, both buttons 44 px tall. No sideways scroll. At 768 px and up, one row as today.
 
-**Back navigation:** the "Accounts" breadcrumb link (44 px phone hit area) and browser Back; scroll on return comes from `useScrollMemory`.
+**Back navigation:** the "Accounts" breadcrumb link (48 px phone hit area) and browser Back; scroll on return comes from `useScrollMemory`.
 
 ### 2. Categories under Budget (WAVF-02)
 
@@ -292,26 +293,66 @@ Guide, help and in-app wording sweep (ids unchanged):
 
 ## UI Considerations
 
-Applicable state considerations resolved: 11 covered, 3 backstop, 0 unresolved.
+Probe run 2026-11-14 on 8 surfaces (E1-E8) after checker approval. Kinds added at confirmation: E1 also a list (empty), E7 also a status display (partial, error, empty). 54 considerations: 32 resolved (explicit), 5 resolved (backstop), 17 dismissed, 0 unresolved. Copy for empty and error states lives in the Copywriting Contract; this table covers state coverage only.
 
-| Category | Element(s) | Status | Resolution / Reason |
-|----------|------------|--------|---------------------|
-| empty | Accounts with no accounts | ✅ covered | Empty state's "Connect a bank" opens `/accounts/connections` (copy table) |
-| empty | Budget with no category groups | ✅ covered | "No categories yet." + "Set up your categories" link opens `/budget/categories` |
-| empty | Connected banks with no connections | ✅ covered | `ConnectedAccounts` shows its provider toggle and connect actions as it does in Settings today |
-| loading | Connected banks, Categories pages | ✅ covered | The panels' own loading states (spinner in `ConnectedAccounts`), unchanged; lazy route uses the app's existing suspense fallback |
-| error | Connected banks, Categories pages | ✅ covered | The panels' existing error handling moves with them; no new error surface |
-| populated | Goal list | ✅ covered | Every goal row shows its bar, its plant at the stage from the stage table, and its text status |
-| zero-one-many | Goal plant stages | 🧪 backstop | Unit test of `plantStage` at 0, 32.99, 33, 65.99, 66, 100 with `complete` false (bud), and `complete` true (flower); e2e on the demo's "New laptop" finds `goal-plant` with `data-stage="flower"` and the text "Goal reached" |
-| partial | Goal at 100% with `fundingComplete === false`, or completed by hand short of target | ✅ covered | Stage is `bud`, never `flower` (D-02) |
-| partial | Ready to assign at $0 with caveats | 🧪 backstop | Unit test per caveat row: label is the caveat copy, never "Fully budgeted"; the clean case is "Every dollar has a job"; the missing-rate case stays "Incomplete: missing exchange rates"; `grep -r "Fully budgeted" client/src` is empty |
-| overflow | Settings tab row (8 tabs) | ✅ covered | Existing `ScrollCue` sideways scroll inside its own row; page has no sideways scroll |
-| overflow | Accounts header at 390 px | ✅ covered | Header wraps: title + Up pill on line 1, "Connected banks" + "Add account" on line 2 |
-| overflow | Budget header 768-1024 px | ✅ covered | Existing `flex-wrap` action group; the "Categories" link wraps with the month controls |
-| long-text | $0 caveat label on phones | ✅ covered | `min-w-0` label column, `text-pretty`, wraps to two lines; figure `whitespace-nowrap` |
-| long-text | Old links and redirects | 🧪 backstop | e2e: `/settings?tab=connections` lands on `/accounts/connections` (heading "Connected banks"), `?tab=categories` on `/budget/categories` (heading "Categories"); Back does not return to the old URL; Settings' tablist has no "Connected banks" or "Categories" tab |
+| Element | Category | Status | Resolution / Reason |
+|---------|----------|--------|---------------------|
+| E1 Connected banks page | empty | ✅ resolved | No connections: `ConnectedAccounts` shows its provider toggle and connect actions, as in Settings today |
+| E1 | loading | ✅ resolved | The panel's own spinner, unchanged; the lazy route uses the app's existing suspense fallback |
+| E1 | error | ✅ resolved | The panel's existing per-provider error handling moves with it; no new error surface |
+| E1 | overflow | ✅ resolved | `max-w-2xl` column inside `PAGE_GUTTER`; no sideways scroll at 390 px |
+| E1 | long-text | ✅ resolved | Provider and account names wrap as in Settings today |
+| E2 Categories page | empty | ✅ resolved | `CategoryManager`'s existing empty groups state, unchanged |
+| E2 | loading | ✅ resolved | Unchanged panel behaviour; lazy route suspense fallback |
+| E2 | error | ✅ resolved | Unchanged panel error handling |
+| E2 | populated | ✅ resolved | Unused categories, Income, Expenses in the order Settings uses today |
+| E2 | partial | ➖ dismissed | No partial data shape: the manager loads all categories in one query |
+| E2 | overflow | ✅ resolved | Long lists scroll the page column; position kept by `useScrollMemory('budget-categories')` |
+| E2 | zero-one-many | 🧪 backstop | `{ statement: "Existing category e2e (add, edit, reorder, delete) re-pointed at /budget/categories pass unchanged", verification: backstop }` |
+| E2 | long-text | ✅ resolved | Category and group names wrap as today |
+| E3 Accounts header | loading | ➖ dismissed | Static link; the page's account loading is unchanged |
+| E3 | error | ➖ dismissed | Static link; the page's `QueryProblem` is unchanged |
+| E3 | long-text | ✅ resolved | At 390 px the header wraps: title and Up pill on line 1, "Connected banks" and "Add account" on line 2 |
+| E4 Budget header | empty | ✅ resolved | No category groups: "No categories yet." and "Set up your categories" opens `/budget/categories` |
+| E4 | loading | ➖ dismissed | Static link; Budget's loading is unchanged |
+| E4 | error | ➖ dismissed | Static link; Budget's error handling is unchanged |
+| E4 | populated | ✅ resolved | "Categories" link after `AssignMenu` (768 px and up); second item in the phone menu |
+| E4 | partial | ➖ dismissed | A link has no partial state |
+| E4 | overflow | ✅ resolved | Existing `flex-wrap` action group wraps at 768-1024 px; phones use the menu item |
+| E4 | zero-one-many | ➖ dismissed | One fixed link |
+| E4 | long-text | ➖ dismissed | Fixed one-word label |
+| E5 Settings and redirects | empty | ➖ dismissed | No data on the tab row |
+| E5 | loading | ➖ dismissed | The redirect is synchronous (`<Navigate replace>`) before any tab renders |
+| E5 | error | ➖ dismissed | No fetch in the redirect path |
+| E5 | populated | ✅ resolved | Eight tabs in their existing order; default `accounts` |
+| E5 | partial | ✅ resolved | Unknown or missing `?tab=` falls back to `accounts` |
+| E5 | overflow | ✅ resolved | Existing `ScrollCue` scroll inside the tab row; the page has no sideways scroll |
+| E5 | zero-one-many | ➖ dismissed | Fixed tab set |
+| E5 | long-text | 🧪 backstop | `{ statement: "e2e: /settings?tab=connections lands on /accounts/connections (heading Connected banks) and ?tab=categories on /budget/categories (heading Categories), other query parameters kept, Back skips the old URL, and the Settings tablist has neither tab", verification: backstop }` |
+| E6 Goal row | empty | ✅ resolved | No goals: the existing Goals empty state, unchanged; no plant shown |
+| E6 | loading | ✅ resolved | Existing Goals loading, unchanged |
+| E6 | error | ✅ resolved | Existing Goals error handling, unchanged |
+| E6 | populated | ✅ resolved | Each row shows its bar, its plant at the stage-table stage, and its text status |
+| E6 | partial | ✅ resolved | 100% with `fundingComplete === false`, or completed by hand short of target, shows `bud`, never `flower` (D-02) |
+| E6 | overflow | ✅ resolved | About 240 px of track at 390 px; the plant's `auto` column never wraps or shrinks |
+| E6 | zero-one-many | 🧪 backstop | `{ statement: "Unit test plantStage at 0, 32.99, 33, 65.99, 66 and 100 with complete false (seed, seed, seedling, seedling, bud, bud) and complete true (flower)", verification: backstop }` |
+| E6 | long-text | ✅ resolved | Long goal names wrap in the existing title row; the plant column is unaffected |
+| E6 | populated (demo) | 🧪 backstop | `{ statement: "e2e on the demo: the New laptop row has goal-plant with data-stage=flower and the text Goal reached", verification: backstop }` |
+| E7 Ready to assign hero at $0 | empty | ✅ resolved | New budget with no money: "Nothing to assign yet", unchanged |
+| E7 | partial | 🧪 backstop | `{ statement: "Unit test per caveat row: the label is the caveat copy and never Fully budgeted; the clean case is Every dollar has a job; grep -r 'Fully budgeted' client/src is empty", verification: backstop }` |
+| E7 | error | ✅ resolved | Missing exchange rate stays "Incomplete: missing exchange rates"; account issues stay "Check balances" |
+| E7 | overflow | ✅ resolved | Figure `whitespace-nowrap`; the label column is `min-w-0` |
+| E7 | long-text | ✅ resolved | Caveat labels wrap to two lines on phones with `text-pretty` |
+| E8 Palette and guide | empty | ➖ dismissed | Static entries |
+| E8 | loading | ➖ dismissed | Static entries |
+| E8 | error | ➖ dismissed | Static entries |
+| E8 | populated | ✅ resolved | Two palette-only page results, "Connected banks" and "Categories"; guide steps point at the new routes with unchanged ids |
+| E8 | partial | ➖ dismissed | No partial state |
+| E8 | overflow | ➖ dismissed | The existing palette result list handles length |
+| E8 | zero-one-many | ✅ resolved | Exactly two new entries; no new sidebar rows |
+| E8 | long-text | ✅ resolved | Short fixed labels; guide wording in the Copywriting Contract |
 
-Open considerations (domain, prose-owned): dark mode and 390 px screenshots of Goals ("New laptop"), Budget hero at $0 (clean and caveat), both new pages and Settings go in `.ui-evidence/2026-11-14-wave-f/`. Reduced motion is not affected: nothing in this phase moves.
+Open considerations (domain, prose-owned): screenshots in light and dark at 1280 and 390 px of Goals ("New laptop"), the Budget hero at $0 (clean and caveat), both new pages and Settings go in `.ui-evidence/2026-11-14-wave-f/`. Reduced motion is not affected: nothing in this phase moves.
 
 ---
 
@@ -325,12 +366,12 @@ Open considerations (domain, prose-owned): dark mode and 390 px screenshots of G
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
-- [ ] Dimension 7 Inventory Provenance: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
+- [x] Dimension 7 Inventory Provenance: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-11-14 (gsd-ui-checker, after revision 1)
