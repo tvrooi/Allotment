@@ -5,11 +5,11 @@ milestone_name: Redesign finish
 current_phase: 1
 current_phase_name: Settings split and good moments
 status: planning
-stopped_at: Phase 1 context gathered
-last_updated: "2026-11-14T10:29:18.298Z"
+stopped_at: Phase 1 UI-SPEC approved
+last_updated: "2026-11-14T10:52:53.325Z"
 last_activity: 2026-11-14
 last_activity_desc: Project initialised from the docs ingest; roadmap created
-state_head: 5d064a8b3e21e5ca72ceee23044e3304ca719175
+state_head: 9564d498e85459ab6d3ccb750a35c68540b96925
 progress:
   total_phases: 4
   completed_phases: 0
@@ -92,6 +92,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-14T10:29:18.275Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-settings-split-and-good-moments/01-CONTEXT.md
+Last session: 2026-11-14T10:52:53.299Z
+Stopped at: Phase 1 UI-SPEC approved
+Resume file: .planning/phases/01-settings-split-and-good-moments/01-UI-SPEC.md
