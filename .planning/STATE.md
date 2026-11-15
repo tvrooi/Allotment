@@ -5,16 +5,16 @@ milestone_name: Redesign finish
 current_phase: 01
 current_phase_name: Settings split and good moments
 status: executing
-stopped_at: Completed 01-05-PLAN.md
-last_updated: "2026-11-15T04:17:05.223Z"
+stopped_at: Completed 01-06-PLAN.md
+last_updated: "2026-11-15T04:28:09.747Z"
 last_activity: 2026-11-15
 last_activity_desc: Phase 01 execution started
-state_head: 25800a7bb11813075cdddcfe24756b19e57ed54c
+state_head: a266aa9020aa42e5aba9a52050cf0d80617da3b4
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 8
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-14)
 ## Current Position
 
 Phase: 01 (Settings split and good moments) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
 Last activity: 2026-11-15 — Phase 01 execution started
 
@@ -64,6 +64,7 @@ Branch: `redesign` at 0.2.0-up.173, ahead of `main`; latest tag v0.2.0-up.153; u
 | Phase 01 P03 | 11 min | 3 tasks | 16 files |
 | Phase 01 P04 | 6 min | 3 tasks | 10 files |
 | Phase 01 P05 | 10 min | 2 tasks | 10 files |
+| Phase 01 P06 | 25min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,8 @@ Decisions are logged in PROJECT.md Key Decisions (`<decisions>` block). Recent o
 - [Phase 01]: Goal plant: ui/Plant.tsx plantStage is the client's only stage rule (seed <33, seedling <66, bud, flower only when complete); growth.ts keeps only the bloom memory
 - [Phase 01]: Partial-funding browser test is unreachable (server nulls fundedAmount when fundingComplete is false); plantStage(100,false)=bud is covered by unit test
 - [Phase 01]: No UI-SPEC plant coordinate adjusted after the rendered check
+- [Phase 01]: 01-06: readyToAssignStatus is the Ready to assign hero's one pure state; an absent summary shows no label (deviation from UI-SPEC 'resolved (or absent)', RESEARCH Pitfall 5); in-doubt helper is figureInDoubt
+- [Phase 01]: 01-06: unresolvedCauses is the one cause list feeding both the todo line and the $0 caveat label; the old $0 label is a RETIRED term in lint/terms
 
 ### Pending Todos
 
@@ -115,6 +118,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-15T04:17:05.198Z
-Stopped at: Completed 01-05-PLAN.md
+Last session: 2026-11-15T04:28:09.715Z
+Stopped at: Completed 01-06-PLAN.md
 Resume file: None
