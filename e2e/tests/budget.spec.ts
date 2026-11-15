@@ -744,3 +744,56 @@ test('reaching $0 Ready to assign says every dollar has a job, in normal colour 
     await expect(ready.getByText('$0', { exact: true })).toHaveClass(/(^|\s)text-text(\s|$)/);
   }
 });
+
+test('at $0 with an overspent envelope the label names it instead of praising (#241)', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Checking', 0);
+  const paychecks = await api.category('Paychecks');
+  const groceries = await api.category('Groceries');
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: 50_000,
+    payeeName: 'Employer',
+    categoryId: paychecks.id,
+  });
+  await open(page, '/budget');
+  await plan(page, 'Groceries', '500');
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: -60_000,
+    payeeName: 'Supermarket',
+    categoryId: groceries.id,
+  });
+  await page.reload();
+
+  const ready = toBeBudgeted(page);
+  const label = ready.getByText('All assigned, but envelopes are overspent', { exact: true });
+  await expect(ready.getByText('$0', { exact: true })).toBeVisible();
+  await expect(label).toBeVisible();
+  await expect(ready).not.toContainText('Every dollar has a job');
+  await expect(ready.getByTestId('ready-glyph')).toHaveCount(0);
+  // The hero names the job; the line under it gives the one next step
+  const todo = page.getByText('Resolve overspent envelopes.', { exact: true });
+  await expect(todo).toBeVisible();
+  await expect(
+    page.locator('p').filter({ has: todo }).getByRole('link', { name: 'Review' }),
+  ).toBeVisible();
+
+  // On a phone the label wraps beside a figure that stays on one line, with no sideways scroll
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await expect(label).toBeVisible();
+  const figure = ready.getByText('$0', { exact: true });
+  expect(
+    await figure.evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size;
+    }),
+  ).toBe(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

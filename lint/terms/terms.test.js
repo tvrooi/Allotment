@@ -16,6 +16,7 @@ const RETIRED = [
   [/Left to assign/i, 'Ready to assign'],
   [/To Be Budgeted|To be budgeted/, 'Ready to assign'],
   [/Search merchants|Your merchants|No merchants found|Create new merchant/, 'payee'],
+  [/Fully budgeted/, 'Every dollar has a job'],
 ];
 
 function* sources(dir) {
