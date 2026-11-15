@@ -82,9 +82,9 @@ test('buttons show the pointer, but not when disabled, and drag handles show a h
   api,
 }) => {
   await api.createAccount('Checking', 100_000);
-  // The category manager moved from a Settings tab to the Budget page (#244), so a plain
-  // button there stands in for the Settings tab this used to check
-  await open(page, '/budget?view=categories');
+  // The category manager is the Budget area's Categories page (#244), so a plain button there
+  // stands in for the Settings tab this used to check
+  await open(page, '/budget/categories');
   const handle = page.getByRole('button', { name: /^Drag to reorder / }).first();
   await expect(handle).toHaveCSS('cursor', 'grab');
   await expect(page.getByRole('button', { name: 'Create group' }).first()).toHaveCSS(

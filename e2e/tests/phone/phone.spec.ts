@@ -48,6 +48,7 @@ test('every page fits a phone screen', async ({ page, api }, testInfo) => {
     ['reconcile', `/accounts/${checking.id}/reconcile`],
     ['transactions', '/transactions'],
     ['budget', '/budget'],
+    ['budget-categories', '/budget/categories'],
     ['budget-category', `/budget/category/${groceries.id}`],
     ['budget-year', '/budget/year'],
     ['recurring', '/recurring'],

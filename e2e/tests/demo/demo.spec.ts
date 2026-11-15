@@ -60,8 +60,10 @@ test('the demo opens on a finished budget, and every page works', async ({ page 
     ['/goals', 'Emergency fund'],
     ['/payees', 'Daily Grind Coffee'],
     ['/rules', 'Rename payee to Daily Grind Coffee'],
-    ['/settings', 'Theme'],
-    ['/budget?view=categories', 'Pay'],
+    // Settings opens on its Accounts tab
+    ['/settings', 'Account order'],
+    ['/budget/categories', 'Pay'],
+    ['/accounts/connections', 'Not available in the demo'],
   ] as const) {
     await page.evaluate((r) => (location.hash = `#${r}`), route);
     await expect(page.getByText(text).first(), route).toBeVisible();
