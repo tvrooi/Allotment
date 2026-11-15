@@ -11,14 +11,14 @@ route, allowlist, `/api/assistant/do` or MCP change.
 
 ### Wave F: Settings split (#244)
 
-- [x] **WAVF-01**: From the Accounts page, the user can open Connected banks (Up and the other bank connections) and reach the Up connection in fewer clicks than today's three (Settings, then Connected banks, then Up).
-- [x] **WAVF-02**: The user manages categories from the Budget area instead of a Settings tab.
-- [x] **WAVF-03**: Settings shows only the tabs that remain, and every existing way into a moved section still lands on it: `/settings?tab=connections` and `/settings?tab=categories` links, sidebar, palette and Welcome entries, and guide steps (guide and tip ids unchanged).
+- [ ] **WAVF-01**: From the Accounts page, the user can open Connected banks (Up and the other bank connections) and reach the Up connection in fewer clicks than today's three (Settings, then Connected banks, then Up).
+- [ ] **WAVF-02**: The user manages categories from the Budget area instead of a Settings tab.
+- [ ] **WAVF-03**: Settings shows only the tabs that remain, and every existing way into a moved section still lands on it: `/settings?tab=connections` and `/settings?tab=categories` links, sidebar, palette and Welcome entries, and guide steps (guide and tip ids unchanged).
 
 ### Wave F: good moments (#241)
 
-- [x] **WAVF-04**: When a goal reaches its target (for example the demo's "New laptop"), the user sees a small brand-voice acknowledgement (for example a sprout tick, docs/BRAND.md) instead of only a plain green bar.
-- [x] **WAVF-05**: When Ready to assign reaches exactly $0, the user sees a brief brand-voice acknowledgement. It never reads as an unqualified "Fully budgeted" while uncategorised spending, overspending or a missing exchange rate remains (phase 6A rule), and zero still shows in normal colour (GLOSSARY.md).
+- [ ] **WAVF-04**: When a goal reaches its target (for example the demo's "New laptop"), the user sees a small brand-voice acknowledgement (for example a sprout tick, docs/BRAND.md) instead of only a plain green bar.
+- [ ] **WAVF-05**: When Ready to assign reaches exactly $0, the user sees a brief brand-voice acknowledgement. It never reads as an unqualified "Fully budgeted" while uncategorised spending, overspending or a missing exchange rate remains (phase 6A rule), and zero still shows in normal colour (GLOSSARY.md).
 
 ### Wave G: the shared control set (#267 G0, G1)
 
@@ -171,11 +171,11 @@ Acknowledged, not in the current roadmap. The owner placed these after milestone
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| WAVF-01 | Phase 1 | Complete |
-| WAVF-02 | Phase 1 | Complete |
-| WAVF-03 | Phase 1 | Complete |
-| WAVF-04 | Phase 1 | Complete |
-| WAVF-05 | Phase 1 | Complete |
+| WAVF-01 | Phase 1 | Gaps Found |
+| WAVF-02 | Phase 1 | Gaps Found |
+| WAVF-03 | Phase 1 | Gaps Found |
+| WAVF-04 | Phase 1 | Gaps Found |
+| WAVF-05 | Phase 1 | Gaps Found |
 | WAVG-01 | Phase 2 | Pending |
 | WAVG-02 | Phase 2 | Pending |
 | WAVG-03 | Phase 2 | Pending |
