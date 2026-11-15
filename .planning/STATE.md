@@ -5,16 +5,16 @@ milestone_name: Redesign finish
 current_phase: 01
 current_phase_name: Settings split and good moments
 status: executing
-stopped_at: Completed 01-04-PLAN.md
-last_updated: "2026-11-15T04:09:03.508Z"
+stopped_at: Completed 01-05-PLAN.md
+last_updated: "2026-11-15T04:17:05.223Z"
 last_activity: 2026-11-15
 last_activity_desc: Phase 01 execution started
-state_head: e0a92c4273e4f3976e2338c3d5e310577190e028
+state_head: 25800a7bb11813075cdddcfe24756b19e57ed54c
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 8
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-14)
 ## Current Position
 
 Phase: 01 (Settings split and good moments) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
 Last activity: 2026-11-15 — Phase 01 execution started
 
@@ -63,6 +63,7 @@ Branch: `redesign` at 0.2.0-up.173, ahead of `main`; latest tag v0.2.0-up.153; u
 | Phase 01 P02 | 4 min | 2 tasks | 10 files |
 | Phase 01 P03 | 11 min | 3 tasks | 16 files |
 | Phase 01 P04 | 6 min | 3 tasks | 10 files |
+| Phase 01 P05 | 10 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,9 @@ Decisions are logged in PROJECT.md Key Decisions (`<decisions>` block). Recent o
 - [Phase 01]: 01-03: movedSettingsTab takes the whole URLSearchParams, keeps other parameters and drops tab; Settings opens on Accounts
 - [Phase 01]: Palette-only pages live in PALETTE_PAGES beside NAV_PAGES (sidebar reads only NAV_PAGES); palette recents resolve through both lists so a moved page shows its own name and icon
 - [Phase 01]: D-09 landed: the bank-linked delete 409 says Unlink it first: Accounts → Connected banks → {feed}; server diff is one string and one test expectation
+- [Phase 01]: Goal plant: ui/Plant.tsx plantStage is the client's only stage rule (seed <33, seedling <66, bud, flower only when complete); growth.ts keeps only the bloom memory
+- [Phase 01]: Partial-funding browser test is unreachable (server nulls fundedAmount when fundingComplete is false); plantStage(100,false)=bud is covered by unit test
+- [Phase 01]: No UI-SPEC plant coordinate adjusted after the rendered check
 
 ### Pending Todos
 
@@ -111,6 +115,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-15T04:09:03.480Z
-Stopped at: Completed 01-04-PLAN.md
+Last session: 2026-11-15T04:17:05.198Z
+Stopped at: Completed 01-05-PLAN.md
 Resume file: None
