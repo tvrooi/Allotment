@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ChevronDown,
   Eye,
+  Layers,
   Lightbulb,
   MoreHorizontal,
   Search,
@@ -29,7 +30,7 @@ import { assignmentToInput, readAmountExpression } from '../utils/amountExpressi
 import { BudgetInspector } from '../components/budget/BudgetInspector';
 import { BudgetSummaryWidget } from '../components/budget/BudgetSummaryWidget';
 import { BudgetEditPopover } from '../components/budget/BudgetEditPopover';
-import { Button } from '../components/ui/Button';
+import { Button, ButtonLink } from '../components/ui/Button';
 import { targetLabel } from '../utils/targets';
 import { FundTargets } from '../components/budget/FundTargets';
 import { AutoAssign } from '../components/budget/AutoAssign';
@@ -1027,6 +1028,15 @@ export default function BudgetPage() {
                     onAutoAssign={() => autoAssignRef.current?.open()}
                     onFundTargets={() => fundTargetsRef.current?.open()}
                   />
+                  {/* Not budget.categories: that marks the envelope list, which guides target */}
+                  <ButtonLink
+                    variant="secondary"
+                    size="sm"
+                    to={CATEGORIES_PATH}
+                    data-guide="budget.manage-categories"
+                  >
+                    <Layers size={14} aria-hidden /> Categories
+                  </ButtonLink>
                 </>
               )}
               <AutoAssign ref={autoAssignRef} month={selectedMonth} hideButton />
@@ -1080,6 +1090,13 @@ export default function BudgetPage() {
                           className="flex items-center min-h-11 px-4 text-sm text-text hover:bg-hover"
                         >
                           Year
+                        </Link>
+                        <Link
+                          role="menuitem"
+                          to={CATEGORIES_PATH}
+                          className="flex items-center min-h-11 px-4 text-sm text-text hover:bg-hover"
+                        >
+                          Categories
                         </Link>
                         <button
                           role="menuitem"

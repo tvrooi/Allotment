@@ -28,10 +28,11 @@ export function PageHeader({ title, subtitle, actions, tabs, breadcrumbs, childr
             {breadcrumbs.map((crumb, i) => (
               <span key={i} className="flex items-center gap-1">
                 {i > 0 && <ChevronRight size={12} aria-hidden />}
+                {/* 48 px tall and at least 44 px wide on phones, a short label included */}
                 {crumb.to ? (
                   <Link
                     to={crumb.to}
-                    className="max-md:py-4 max-md:-my-4 hover:text-text-secondary transition-colors"
+                    className="max-md:py-4 max-md:-my-4 max-md:min-w-11 hover:text-text-secondary transition-colors"
                   >
                     {crumb.label}
                   </Link>

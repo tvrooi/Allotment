@@ -73,7 +73,12 @@ describe('moved sections (#244)', () => {
     );
     expect(files.length).toBeGreaterThan(50);
     for (const file of files) {
-      for (const address of ['/accounts/connections', 'tab=connections', 'tab=categories']) {
+      for (const address of [
+        '/accounts/connections',
+        '/budget/categories',
+        'tab=connections',
+        'tab=categories',
+      ]) {
         expect(sources[file], `${file} spells ${address}`).not.toContain(address);
       }
     }

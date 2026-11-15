@@ -12,7 +12,7 @@ import { formatCurrency } from '../../utils/currency';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Input';
-import { connectedBanksLink, MANAGE_CATEGORIES_LINK } from '../../utils/movedSections';
+import { CATEGORIES_PATH, connectedBanksLink } from '../../utils/movedSections';
 
 // Review → Tidy up: setup problems that quietly make a budget less useful. Each one is fixed
 // here in one step, or links to where it is fixed. Nothing changes until you act.
@@ -90,7 +90,7 @@ export function Housekeeping() {
                 {unusedCategories} {unusedCategories === 1 ? 'category was' : 'categories were'}{' '}
                 never used
               </p>
-              <Link to={MANAGE_CATEGORIES_LINK} className="text-brand-700 underline">
+              <Link to={CATEGORIES_PATH} className="text-brand-700 underline">
                 Hide unused categories
               </Link>
             </div>

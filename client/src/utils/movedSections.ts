@@ -41,9 +41,6 @@ export function bankFeedLink(feedLabel: string): string {
 /** Categories, their own page under Budget */
 export const CATEGORIES_PATH = '/budget/categories';
 
-/** The old name of CATEGORIES_PATH, until Review's housekeeping link is re-pointed */
-export const MANAGE_CATEGORIES_LINK = CATEGORIES_PATH;
-
 /** The old Settings tabs and where each went */
 const MOVED_SETTINGS_TABS: Readonly<Record<string, string>> = {
   connections: CONNECTED_BANKS_PATH,

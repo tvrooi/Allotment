@@ -20,12 +20,16 @@ async function undersized(locators: Locator[]) {
   return small;
 }
 
-test('the category list on the Budget page has full-size buttons', async ({ page, api }) => {
+test('the category list on the Categories page has full-size buttons', async ({ page, api }) => {
   await api.createAccount('Checking', 0);
-  await open(page, '/budget?view=categories');
+  await open(page, '/budget/categories');
   await expect(page.getByRole('button', { name: 'Create category' }).first()).toBeVisible();
   expect(
     await undersized([
+      page
+        .getByRole('main')
+        .getByRole('navigation', { name: 'Breadcrumb' })
+        .getByRole('link', { name: 'Budget', exact: true }),
       page.getByRole('button', { name: 'Create category' }),
       page.getByRole('button', { name: /^Delete group / }),
       page.getByRole('button', { name: 'Edit', exact: true }),
@@ -34,6 +38,17 @@ test('the category list on the Budget page has full-size buttons', async ({ page
       page.getByRole('button', { name: 'Edit Groceries' }),
     ]),
   ).toEqual([]);
+});
+
+test('the Budget menu opens Categories on a phone (#244)', async ({ page, api }) => {
+  await api.createAccount('Checking', 0);
+  await open(page, '/budget');
+  await page.getByRole('button', { name: 'More budget actions' }).click();
+  const items = page.getByRole('menu', { name: 'More budget actions' }).getByRole('menuitem');
+  await expect(items.nth(0)).toHaveText('Year');
+  await expect(items.nth(1)).toHaveText('Categories');
+  await items.nth(1).click();
+  await expect(page).toHaveURL(/#\/budget\/categories$/);
 });
 
 test('the Connected banks page has a full-size way back and full-size header buttons (#244)', async ({

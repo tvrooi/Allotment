@@ -696,26 +696,25 @@ test('the next funding gap separates bills due by the deadline from later bills'
   }
 });
 
-test('Manage categories opens the category manager in place of the envelopes (#244)', async ({
+test('Categories opens the category page from Budget, and the breadcrumb returns (#244)', async ({
   page,
   api,
 }) => {
   await api.createAccount('Checking', 0);
   await open(page, '/budget');
   await expect(toBeBudgeted(page)).toBeVisible();
-  await page.getByRole('link', { name: 'Manage categories' }).click();
-  await expect(page).toHaveURL(/view=categories/);
+  const main = page.getByRole('main');
+  await main.getByRole('link', { name: 'Categories', exact: true }).click();
+  await expect(page).toHaveURL(/#\/budget\/categories$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Categories' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Edit Groceries' })).toBeVisible();
-  // The envelopes are not under the manager: it is a view of its own
-  await expect(toBeBudgeted(page)).toHaveCount(0);
 
-  await page.getByRole('link', { name: 'Back to budget' }).click();
+  await main
+    .getByRole('navigation', { name: 'Breadcrumb' })
+    .getByRole('link', { name: 'Budget', exact: true })
+    .click();
   await expect(toBeBudgeted(page)).toBeVisible();
-  await expect(page).not.toHaveURL(/view=categories/);
-  // Browser Back returns to the manager it came from
-  await page.goBack();
-  await expect(page.getByRole('heading', { level: 1, name: 'Categories' })).toBeVisible();
+  await expect(page).toHaveURL(/#\/budget$/);
 });
 
 test('reaching $0 ready to assign is marked with a sprout tick (#241)', async ({ page, api }) => {
