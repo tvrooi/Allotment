@@ -1,0 +1,51 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-11-15T05:19:49.743Z",
+  "phase": "01",
+  "phase_name": "Settings split and good moments",
+  "phase_dir": ".planning/phases/01-settings-split-and-good-moments",
+  "plan": 8,
+  "task": 0,
+  "total_tasks": 0,
+  "status": "paused",
+  "paused_at_step": "execute-phase: after execute_waves (all 8 plans summarized), before aggregate_results / verify_phase_goal",
+  "completed_tasks": [
+    {"id": "01-01", "name": "Connected banks under Accounts (/accounts/connections)", "status": "done", "commit": "0c482d1", "summary_commit": "c3e4b1c"},
+    {"id": "01-02", "name": "Bank links open their own provider (bankFeedLink)", "status": "done", "commit": "6267de4", "summary_commit": "73aa6d5"},
+    {"id": "01-03", "name": "Categories under Budget (/budget/categories); Settings opens on Accounts", "status": "done", "commit": "90af5e4", "summary_commit": "0ca5a88"},
+    {"id": "01-04", "name": "Palette entries, guide wording, D-09 server message", "status": "done", "commit": "dd6fe29", "summary_commit": "e0a92c4"},
+    {"id": "01-05", "name": "Four-stage goal plant (Plant.tsx, GoalPlant.tsx)", "status": "done", "commit": "5064d5e", "summary_commit": "25800a7"},
+    {"id": "01-06", "name": "$0 Ready to assign line (readyToAssignStatus)", "status": "done", "commit": "6d0bb8e", "summary_commit": "a266aa9"},
+    {"id": "01-07", "name": "Guides, docs, changelog, full Node 24 gate", "status": "done", "commit": "575c3ea", "summary_commit": "25f7dcb"},
+    {"id": "01-08", "name": "Screenshots, version check, push to PR #273, CI", "status": "done", "commit": "575c3ea (pushed; no new commits)", "summary_commit": "2bdbe4b"}
+  ],
+  "remaining_tasks": [
+    {"id": "aggregate_results", "name": "Aggregate the 8 SUMMARYs into the phase execution report", "status": "not_started"},
+    {"id": "code_review_gate", "name": "Code review of the phase diff (workflow.code_review=true, depth standard). Review the wave-f diff in /Users/tristanvanrooyen/wt-f (git diff origin/redesign..wave-f), NOT the planning checkout", "status": "not_started"},
+    {"id": "verify_phase_goal", "name": "gsd-verifier against WAVF-01..05; writes 01-VERIFICATION.md", "status": "not_started"},
+    {"id": "update_roadmap", "name": "phase.complete 01 (only if verification passes)", "status": "not_started"},
+    {"id": "transition", "name": "Post-completion transition (evolve_project .. offer_next_phase)", "status": "not_started"}
+  ],
+  "blockers": [],
+  "async_jobs": [],
+  "human_actions_pending": [
+    {"action": "Look at the 32 screenshots in /Users/tristanvanrooyen/wt-f/.ui-evidence/2026-11-14-wave-f/ (the three manual checks in 01-VALIDATION.md), incl. the plant on a row's hover colour, which was not photographed", "context": "Plan 08 human-check; evidence is attached to PRs, never committed", "blocking": false},
+    {"action": "Attach the screenshots to PR #273 as a comment", "context": "Repository rule: attach evidence, never commit it", "blocking": false},
+    {"action": "Wait for or request Codex's review of 575c3ea and resolve the old P1 thread on UpSyncBadge.tsx (fixed in code by 01-02)", "context": "Codex had not reviewed 575c3ea by 05:18Z", "blocking": false},
+    {"action": "Merge PR #273, then close #244 and #241 by hand; release 0.2.0-up.174 only after that", "context": "Owner asked for the phase to stop before merge/tag/release", "blocking": true}
+  ],
+  "decisions": [
+    {"decision": "Ran all 8 waves sequentially on the main tree (ISOLATION=none)", "rationale": "worktree.base-check: redesign HEAD diverged from origin/HEAD, so GSD auto-degraded; every wave had one plan anyway", "phase": "01"},
+    {"decision": "Executors used two orchestrator-bound root-pin guards: one for /Users/tristanvanrooyen/wt-f (code commits), one for the planning checkout (SUMMARY/STATE/ROADMAP)", "rationale": "Plans deliberately split code (wave-f in wt-f) from .planning (redesign) per D-07", "phase": "01"},
+    {"decision": "Execution context files were passed as Read instructions rather than inlined", "rationale": "~128 KB per prompt; executors have the Read tool", "phase": "01"},
+    {"decision": "Version stays 0.2.0-up.174", "rationale": "origin/redesign still at up.173 and no v0.2.0-up.174 tag exists", "phase": "01"},
+    {"decision": "Stopped before verification at the owner's request, to hand the rest to another agent swarm", "rationale": "Owner instruction 2026-11-15", "phase": "01"}
+  ],
+  "uncommitted_files": [
+    " M .planning/config.json",
+    "?? .planning/state.json"
+  ],
+  "uncommitted_files_note": "Both pre-date this run and were deliberately left alone. wt-f has only the untracked .omc/ (ignored tool folder).",
+  "next_action": "Run /gsd-execute-phase 01. verification status route=execute-phase (status missing): it skips the 8 summarized plans and resumes at aggregate_results -> verify_phase_goal (code review, verifier) -> update_roadmap. Point code review and the verifier at the code in /Users/tristanvanrooyen/wt-f (wave-f), not the planning checkout's client/.",
+  "context_notes": "All code for phase 01 lives on branch wave-f in /Users/tristanvanrooyen/wt-f, pushed at 575c3ea to PR #273 (base redesign), CI green on every check. The planning checkout /Users/tristanvanrooyen/Github/Allotment (branch redesign) holds only .planning commits, not pushed; its client/ is the old redesign version. Server diff vs origin/redesign is exactly the two D-09 files. WAVF-01..05 are marked complete in REQUIREMENTS.md; STATE.md status is verifying."
+}
