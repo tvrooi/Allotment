@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { connectedBanksLink, movedSettingsTab, parseProvider } from './movedSections';
+import { bankFeedLink, connectedBanksLink, movedSettingsTab, parseProvider } from './movedSections';
 
 describe('movedSettingsTab (#244)', () => {
   it('sends the old Connected banks and Categories tabs to their new pages', () => {
@@ -34,5 +34,20 @@ describe('connectedBanksLink (#244)', () => {
   it('opens Connected banks, on a provider when one is named', () => {
     expect(connectedBanksLink()).toBe('/accounts/connections');
     expect(connectedBanksLink('plaid')).toBe('/accounts/connections?provider=plaid');
+  });
+});
+
+describe('bankFeedLink (#244)', () => {
+  it("opens Connected banks on the feed's own bank", () => {
+    expect(bankFeedLink('Up')).toBe('/accounts/connections?provider=up');
+    expect(bankFeedLink('Plaid')).toBe('/accounts/connections?provider=plaid');
+    expect(bankFeedLink('SimpleFIN')).toBe('/accounts/connections?provider=simplefin');
+    expect(bankFeedLink('Enable Banking')).toBe('/accounts/connections?provider=enablebanking');
+  });
+
+  it('opens the page with no provider for a label it does not know', () => {
+    for (const label of ['Monzo', 'constructor', 'up', '']) {
+      expect(bankFeedLink(label)).toBe('/accounts/connections');
+    }
   });
 });

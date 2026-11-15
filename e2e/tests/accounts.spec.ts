@@ -223,3 +223,21 @@ test('a budget with no accounts yet can connect a bank from Accounts (#244)', as
       .getByRole('button', { name: 'Up', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
 });
+
+test('a link to Connected banks opens the provider it names (#244)', async ({ page }) => {
+  const providers = page.getByRole('group', { name: 'Bank connection provider' });
+  const button = (name: string) => providers.getByRole('button', { name, exact: true });
+
+  await open(page, '/accounts/connections?provider=plaid');
+  await expect(button('Plaid')).toHaveAttribute('aria-pressed', 'true');
+  await expect(button('Up')).toHaveAttribute('aria-pressed', 'false');
+
+  // A provider the page does not know opens Up
+  await open(page, '/accounts/connections?provider=bogus');
+  await expect(button('Up')).toHaveAttribute('aria-pressed', 'true');
+
+  // Choosing a bank keeps it in the address, so the page can be linked back to
+  await button('SimpleFIN').click();
+  await expect(page).toHaveURL(/\?provider=simplefin$/);
+  await expect(button('SimpleFIN')).toHaveAttribute('aria-pressed', 'true');
+});

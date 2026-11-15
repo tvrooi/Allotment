@@ -40,7 +40,7 @@ test('the demo opens on a finished budget, and every page works', async ({ page 
   const strip = page.getByRole('region', { name: 'Budget status' });
   await expect(strip.getByRole('link', { name: /^Synced from Up / })).toHaveAttribute(
     'href',
-    '#/accounts/connections',
+    '#/accounts/connections?provider=up',
   );
   await expect(strip.getByRole('listitem')).toHaveCount(1);
   await expect(
