@@ -1,23 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { BLOOMED_KEY, firstBloom, growthStage } from './growth';
-
-describe('growthStage (#241)', () => {
-  it('grows from a seed through a sprout, leaves and a bud as the goal fills', () => {
-    expect(growthStage(0, false)).toBe('seed');
-    expect(growthStage(9.9, false)).toBe('seed');
-    expect(growthStage(10, false)).toBe('sprout');
-    expect(growthStage(25, false)).toBe('sprout');
-    expect(growthStage(40, false)).toBe('leaf');
-    expect(growthStage(69, false)).toBe('leaf');
-    expect(growthStage(70, false)).toBe('bud');
-    expect(growthStage(75, false)).toBe('bud');
-  });
-
-  it('flowers only when the goal is reached, not at a rounded 100%', () => {
-    expect(growthStage(100, false)).toBe('bud');
-    expect(growthStage(100, true)).toBe('flower');
-  });
-});
+import { BLOOMED_KEY, firstBloom } from './growth';
 
 describe('firstBloom (#241)', () => {
   let store: Map<string, string>;

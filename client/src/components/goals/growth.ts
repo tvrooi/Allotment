@@ -1,15 +1,5 @@
-// A goal's progress bar grows a plant (#241): a seed, a sprout, leaves, a bud, then a flower
-// when the goal is reached. The thresholds are the only place the stages are decided.
-
-export type GrowthStage = 'seed' | 'sprout' | 'leaf' | 'bud' | 'flower';
-
-export function growthStage(pct: number, complete: boolean): GrowthStage {
-  if (complete) return 'flower';
-  if (pct < 10) return 'seed';
-  if (pct < 40) return 'sprout';
-  if (pct < 70) return 'leaf';
-  return 'bud';
-}
+// The goal plant's bloom memory (#241): a reached goal's flower opens once per goal on this
+// device, then stays still. The stages themselves are decided by plantStage (ui/Plant.tsx).
 
 /** Goals whose flower has opened on this device, so each blooms once and then stays still */
 export const BLOOMED_KEY = 'flybudget:goals-bloomed';
