@@ -98,6 +98,8 @@ Decisions are logged in PROJECT.md Key Decisions (`<decisions>` block). Recent o
 - [Phase 01]: npm run format:check fails locally only on the untracked, git-excluded .impeccable/hook.cache.json; the tracked-file Prettier check passes and CI is unaffected
 - [Phase 01]: 01-08: version stays 0.2.0-up.174 (redesign at up.173, no tag); wave-f pushed fast-forward to 575c3ea, CI green; PR #273 open, not merged
 
+- [Phase 01]: Owner approved the visual checks on 15 Nov 2026 (32 screenshots, plant on hover colour, live bloom in the demo at 127.0.0.1:5199). Verification gaps WR-01 (GoalPlant bloom on mount) and WR-04 (lowercase 'fully budgeted', case-sensitive terms rule) to be fixed: owner chose gap closure
+
 ### Pending Todos
 
 None yet.
@@ -124,5 +126,5 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-11-15T10:03:48Z
-Stopped at: Phase 01 gates run; verification gaps_found (13/15: WR-01 GoalPlant bloom on mount, WR-04 lowercase 'fully budgeted'); next /gsd-plan-phase 01 --gaps
+Stopped at: Phase 01 gates run; verification gaps_found (13/15: WR-01 GoalPlant bloom on mount, WR-04 lowercase 'fully budgeted'); owner approved visual checks; running /gsd-plan-phase 01 --gaps
 Resume file: .planning/phases/01-settings-split-and-good-moments/01-VERIFICATION.md
