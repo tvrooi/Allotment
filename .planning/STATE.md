@@ -5,16 +5,16 @@ milestone_name: Redesign finish
 current_phase: 01
 current_phase_name: Settings split and good moments
 status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-11-15T03:46:52.248Z"
+stopped_at: Completed 01-03-PLAN.md
+last_updated: "2026-11-15T04:00:38.385Z"
 last_activity: 2026-11-15
 last_activity_desc: Phase 01 execution started
-state_head: 73aa6d5897610885925c9ba1c190b0a790c6d01d
+state_head: 0ca5a882098070d5d81554e7be456ac087757d27
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 8
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-14)
 ## Current Position
 
 Phase: 01 (Settings split and good moments) — EXECUTING
-Plan: 3 of 8
+Plan: 4 of 8
 Status: Ready to execute
 Last activity: 2026-11-15 — Phase 01 execution started
 
@@ -61,6 +61,7 @@ Branch: `redesign` at 0.2.0-up.173, ahead of `main`; latest tag v0.2.0-up.153; u
 |------|----------|-------|-------|
 | Phase 01 P01 | 15 min | 3 tasks | 19 files |
 | Phase 01 P02 | 4 min | 2 tasks | 10 files |
+| Phase 01 P03 | 11 min | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,9 @@ Decisions are logged in PROJECT.md Key Decisions (`<decisions>` block). Recent o
 - [Phase 01]: CONNECTED_BANKS_LINK kept as an alias of CONNECTED_BANKS_PATH until plan 02 re-points its six importers
 - [Phase 01]: bankFeedLink maps a feed label to ?provider= through a fixed Object.hasOwn map; an unknown label opens /accounts/connections plainly (Up). Closes the Codex P1 on #273
 - [Phase 01]: CONNECTED_BANKS_LINK removed; a unit guard keeps /accounts/connections, tab=connections and tab=categories in utils/movedSections.ts only
+- [Phase 01]: 01-03: The Budget header Categories link uses data-guide budget.manage-categories so budget.categories still marks only the envelope list that guides target
+- [Phase 01]: 01-03: Phone breadcrumb links get max-md:min-w-11 so a short label like Budget is a 44 px target
+- [Phase 01]: 01-03: movedSettingsTab takes the whole URLSearchParams, keeps other parameters and drops tab; Settings opens on Accounts
 
 ### Pending Todos
 
@@ -104,6 +108,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-15T03:46:52.223Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-11-15T04:00:38.361Z
+Stopped at: Completed 01-03-PLAN.md
 Resume file: None
