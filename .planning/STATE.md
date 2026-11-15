@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: Redesign finish
 current_phase: 01
 current_phase_name: Settings split and good moments
-status: executing
-stopped_at: Completed 01-07-PLAN.md
-last_updated: "2026-11-15T05:00:17.591Z"
+status: verifying
+stopped_at: Completed 01-08-PLAN.md
+last_updated: "2026-11-15T05:19:03.558Z"
 last_activity: 2026-11-15
 last_activity_desc: Phase 01 execution started
-state_head: 25f7dcb47f124191971d30e1e700ff514865887f
+state_head: 2bdbe4bfd84c2b5efc718273f3818cab2f8f493d
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-14)
 
 Phase: 01 (Settings split and good moments) — EXECUTING
 Plan: 8 of 8
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-15 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -66,6 +66,7 @@ Branch: `redesign` at 0.2.0-up.173, ahead of `main`; latest tag v0.2.0-up.153; u
 | Phase 01 P05 | 10 min | 2 tasks | 10 files |
 | Phase 01 P06 | 25min | 2 tasks | 9 files |
 | Phase 01 P07 | 29 min | 3 tasks | 8 files |
+| Phase 01 P08 | 17min | 2 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,7 @@ Decisions are logged in PROJECT.md Key Decisions (`<decisions>` block). Recent o
 - [Phase 01]: 01-06: unresolvedCauses is the one cause list feeding both the todo line and the $0 caveat label; the old $0 label is a RETIRED term in lint/terms
 - [Phase 01]: accountsGuide raised to version 2 so people who took it are offered it again as Updated guide (RESEARCH A3); settingsGuide stays at 2 with Connect Up restored on CONNECTED_BANKS_PATH
 - [Phase 01]: npm run format:check fails locally only on the untracked, git-excluded .impeccable/hook.cache.json; the tracked-file Prettier check passes and CI is unaffected
+- [Phase 01]: 01-08: version stays 0.2.0-up.174 (redesign at up.173, no tag); wave-f pushed fast-forward to 575c3ea, CI green; PR #273 open, not merged
 
 ### Pending Todos
 
@@ -121,6 +123,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-15T05:00:17.564Z
-Stopped at: Completed 01-07-PLAN.md
+Last session: 2026-11-15T05:19:03.527Z
+Stopped at: Completed 01-08-PLAN.md
 Resume file: None
