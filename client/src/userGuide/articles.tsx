@@ -133,11 +133,11 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         heading: 'Keeping it up to date',
         body: (
           <p>
-            Allotment syncs when it starts and when you choose <b>Sync Now</b> under Connected banks
-            on the Accounts page. You can also turn on background sync there. Each sync fetches
-            recent transactions; all of Up's history is checked once a week, or straight away with{' '}
-            <b>Check all history</b>. Your token is stored encrypted and is never included in
-            backups or exports.
+            Allotment syncs every time it starts, and whenever you choose <b>Sync Now</b> in
+            Accounts → Connected banks, where you can also turn on background sync. Each sync
+            fetches recent transactions; all of Up's history is checked once a week, or straight
+            away with <b>Check all history</b>. Your token is stored encrypted and is never included
+            in backups or exports.
           </p>
         ),
       },
@@ -234,8 +234,8 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
               until the bank books them.
             </li>
             <li>
-              Banks give access for a few months at most (180 days under the rules). Connected
-              banks, on the Accounts page, says when it ends; choose <b>Reconnect</b> and log in
+              Banks give access for a few months at most (180 days under the rules), and the
+              Accounts → Connected banks page says when it ends; choose <b>Reconnect</b> and log in
               again. Your accounts and history stay as they are.
             </li>
             <li>
@@ -388,7 +388,7 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
           <p>
             Normally an envelope that ends the month overspent starts the next one at $0, and the
             money you spent comes out of Ready to assign. For spending someone will pay back, such
-            as a work expense, open the category (<b>Budget → Manage categories → Edit</b>) and tick{' '}
+            as a work expense, open the category (<b>Budget → Categories → Edit</b>) and tick{' '}
             <b>Keep overspending</b>. Its deficit then carries into the next month and Ready to
             assign isn’t reduced. When the repayment arrives and you give it that category, the
             envelope is back to $0. Review still lists it as overspent, marked as kept until repaid.

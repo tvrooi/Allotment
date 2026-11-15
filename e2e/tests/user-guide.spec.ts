@@ -17,6 +17,13 @@ test('the contents list the articles, and an article links to a related one', as
   await expect(page).toHaveURL(/\/guide\/payday-plans$/);
 });
 
+test('the guide names where bank connections live now (#244)', async ({ page }) => {
+  await open(page, '/guide');
+  await page.getByRole('link', { name: /^Connecting Up/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Connecting Up' })).toBeVisible();
+  await expect(page.getByRole('main')).toContainText('Sync Now in Accounts → Connected banks');
+});
+
 test('each page links to its guide article', async ({ page, api }) => {
   test.setTimeout(90_000);
   // A credit card shows the budget's Card payments panel
