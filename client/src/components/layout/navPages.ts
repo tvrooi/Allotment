@@ -7,7 +7,9 @@ import {
   FolderOpen,
   House,
   Landmark,
+  Layers,
   LayoutDashboard,
+  Link2,
   Receipt,
   Repeat,
   Settings,
@@ -22,6 +24,7 @@ import {
 import type { NavFeature } from '../../api/guides';
 import type { NavGroup } from '../../store/preferencesStore';
 import { NAV_FEATURES } from '../../utils/navFeatures';
+import { CATEGORIES_PATH, CONNECTED_BANKS_PATH } from '../../utils/movedSections';
 
 // The app's pages, in menu order: the sidebar (Sidebar.tsx) and the search palette
 // (CommandPalette.tsx) both list these, so a page added here appears in both.
@@ -61,6 +64,15 @@ export const NAV_PAGES: NavPage[] = [
   { path: '/rules', label: 'Rules', icon: Zap, section: 'tools' },
   featurePage('files', FolderOpen, 'tools'),
   { path: '/settings', label: 'Settings', icon: Settings, section: 'footer' },
+];
+
+/**
+ * Pages with no sidebar row of their own (#244): Connected banks opens from Accounts and
+ * Categories from Budget, so only the search palette lists them.
+ */
+export const PALETTE_PAGES: Pick<NavPage, 'path' | 'label' | 'icon'>[] = [
+  { path: CONNECTED_BANKS_PATH, label: 'Connected banks', icon: Link2 },
+  { path: CATEGORIES_PATH, label: 'Categories', icon: Layers },
 ];
 
 /** Where the sidebar's "More features" goes: the Sidebar setting, which turns features on */

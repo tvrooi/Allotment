@@ -199,6 +199,35 @@ test('places visited from it come back as recents', async ({ page }) => {
   expect(JSON.parse(stored!).items).toHaveLength(2);
 });
 
+test('Connected banks and Categories are found by search, and are not sidebar rows (#244)', async ({
+  page,
+}) => {
+  await open(page, '/dashboard');
+  await openPalette(page);
+  await searchBox(page).fill('connected');
+  await expect(option(page, 'Connected banks')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(palette(page)).toBeHidden();
+  await expect(page).toHaveURL(/#\/accounts\/connections$/);
+
+  await openPalette(page);
+  await searchBox(page).fill('categories');
+  await option(page, /^Categories$/).click();
+  await expect(palette(page)).toBeHidden();
+  await expect(page).toHaveURL(/#\/budget\/categories$/);
+
+  // Palette-only: the sidebar keeps its rows
+  const sidebar = page.getByRole('complementary');
+  await expect(sidebar.getByRole('link', { name: 'Connected banks' })).toHaveCount(0);
+  await expect(sidebar.getByRole('link', { name: 'Categories', exact: true })).toHaveCount(0);
+
+  // Both are remembered under their own names, not as a section of their parent page
+  await openPalette(page);
+  const recent = palette(page).getByRole('group', { name: 'Recent' });
+  await expect(recent.getByRole('option', { name: 'Categories', exact: true })).toBeVisible();
+  await expect(recent.getByRole('option', { name: 'Connected banks', exact: true })).toBeVisible();
+});
+
 test('the shortcuts are listed with the guides', async ({ page }) => {
   await open(page, '/dashboard');
   await page.getByRole('heading', { level: 1 }).first().click();

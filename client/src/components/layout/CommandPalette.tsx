@@ -46,7 +46,7 @@ import {
 } from '../../utils/commandPalette';
 import { readRecents, rememberRecent } from '../../utils/paletteRecents';
 import { transactionsLink } from '../../utils/transactionFilters';
-import { MORE_FEATURES_LINK, NAV_PAGES } from './navPages';
+import { MORE_FEATURES_LINK, NAV_PAGES, PALETTE_PAGES } from './navPages';
 
 // Cached destinations work offline; server search is read-only and stays in this lazy chunk.
 
@@ -68,9 +68,12 @@ interface Result extends PaletteEntry {
   run?: () => void;
 }
 
+/** Every page the palette lists: the sidebar's, then those only it lists */
+const ALL_PAGES = [...NAV_PAGES, ...PALETTE_PAGES];
+
 /** The page a path belongs to (longest match), to show where a recent goes */
 const pageFor = (path: string) =>
-  NAV_PAGES.filter(
+  ALL_PAGES.filter(
     (p) => path === p.path || path.startsWith(`${p.path}/`) || path.startsWith(`${p.path}?`),
   ).sort((a, b) => b.path.length - a.path.length)[0];
 
@@ -138,6 +141,15 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
             remember: true,
           };
     });
+    for (const p of PALETTE_PAGES)
+      pages.push({
+        id: `page:${p.path}`,
+        group: 'pages',
+        label: p.label,
+        icon: p.icon,
+        to: p.path,
+        remember: true,
+      });
     const actions: Result[] = [
       {
         id: 'action:add',
