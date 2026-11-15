@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Plant, plantStage } from '../ui/Plant';
-import { firstBloom } from './growth';
+import { nextBloom } from './growth';
 
 /**
  * The plant at the end of a goal's bar (#241). A reached goal blooms once, the first time this
- * device sees it; the plant grows in place when its stage changes while you watch. Arriving on
- * the page plays nothing else, and reduced motion shows each stage still (index.css).
+ * device sees it reached, whether the row opens reached or the goal is reached while you watch;
+ * the plant grows in place when its stage changes while you watch. Arriving on the page plays
+ * nothing else, and reduced motion shows each stage still (index.css).
  */
 export function GoalPlant({
   goalId,
@@ -17,8 +18,17 @@ export function GoalPlant({
   complete: boolean;
 }) {
   const stage = plantStage(pct, complete);
-  // Decided once per mount, so a re-render never replays it
-  const [bloom] = useState(() => complete && firstBloom(goalId));
+  // Follows `complete` while the row is on the page, still once per goal per device. Decided in a
+  // layout effect, never during render or in an updater: StrictMode runs those twice, and the
+  // second firstBloom answers false. The ref makes a repeated run with the same `complete` a no-op,
+  // and the layout effect lets the flower's first paint already carry the bloom.
+  const [bloom, setBloom] = useState(() => nextBloom(goalId, false, complete, false));
+  const seen = useRef({ complete, bloom });
+  useLayoutEffect(() => {
+    const next = nextBloom(goalId, seen.current.complete, complete, seen.current.bloom);
+    seen.current = { complete, bloom: next };
+    setBloom(next);
+  }, [goalId, complete]);
   // A stage reached while the page is open grows in; the stage it opened on does not
   const [shown, setShown] = useState(stage);
   const [grew, setGrew] = useState(false);
