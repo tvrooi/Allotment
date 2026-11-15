@@ -1,6 +1,6 @@
 import type { BudgetSummary } from '../../types';
 import { CashBridge } from './CashBridge';
-import { unresolvedReason } from '../../utils/fundingStatus';
+import { figureInDoubt, readyToAssignStatus, unresolvedReason } from '../../utils/fundingStatus';
 import { useState } from 'react';
 import { CategoryPicker } from '../transactions/CategoryPicker';
 import { HelpTip } from '../ui/HelpTip';
@@ -12,8 +12,7 @@ import { useIsPhone } from '../../hooks/useIsPhone';
 import { HoldMoney } from './HoldMoney';
 import { Button } from '../ui/Button';
 import { AlertCircle, ChevronRight } from 'lucide-react';
-import { SproutTick } from './SproutTick';
-import { reachedZeroNow, type ReadySeen } from './readyReached';
+import { Plant } from '../ui/Plant';
 
 interface ExpenseBreakdown {
   planned: number;
@@ -60,24 +59,6 @@ function PhoneCollapsed({ label, children }: { label: string; children: React.Re
       {children}
     </details>
   );
-}
-
-function getHeroStyle(tbb: number, incomePlanned: number, hasMoney: boolean) {
-  // A new budget: no money yet is nothing to praise
-  if (tbb === 0 && !hasMoney)
-    return { bg: 'bg-surface-alt', text: 'text-text-secondary', label: 'Nothing to assign yet' };
-  if (tbb < 0)
-    return {
-      bg: 'bg-negative-subtle',
-      text: 'text-negative',
-      label: 'Assigned more than you have',
-    };
-  if (tbb === 0)
-    return { bg: 'bg-positive-subtle', text: 'text-positive', label: 'Fully budgeted' };
-  const threshold = Math.max(incomePlanned * 0.02, 500);
-  if (tbb <= threshold)
-    return { bg: 'bg-caution-subtle', text: 'text-caution', label: 'Almost budgeted' };
-  return { bg: 'bg-positive-subtle', text: 'text-positive', label: 'Give every dollar a job' };
 }
 
 function getBarColor(actual: number, planned: number, type: 'income' | 'expenses' | 'savings') {
@@ -188,33 +169,22 @@ export function BudgetSummaryWidget({
   // Only balances that disagree with the bank or missing rates make the figure itself doubtful.
   // Overspending, uncategorised spending and card shortfalls are jobs to do beside a figure that
   // holds, so they get their own line instead of turning the whole of Ready to assign yellow.
-  const doubtful = !!funding?.accountIssues?.length || funding?.complete === false;
-  const hasMoney =
-    !funding || funding.resources !== 0 || (funding.envelopes ?? funding.reserved) !== 0;
-  const hero =
-    funding && doubtful
-      ? {
-          bg: 'bg-caution-subtle',
-          text: 'text-caution',
-          label: unresolvedReason(funding),
-        }
-      : getHeroStyle(toBeBudgeted, incomePlanned, hasMoney);
-  // $0 with money in the budget: every dollar has a job (#241). Unknown until the summary is in.
-  const fullyBudgeted = !!funding && !doubtful && toBeBudgeted === 0 && hasMoney;
-  // The tick grows in when you bring this month there, and is still when you arrive at it
-  const [seen, setSeen] = useState<ReadySeen | null>(null);
-  const [celebrate, setCelebrate] = useState(false);
-  if (funding && (seen?.month !== funding.month || seen.full !== fullyBudgeted)) {
-    setCelebrate(reachedZeroNow(seen, funding.month, fullyBudgeted));
-    setSeen({ month: funding.month, full: fullyBudgeted });
-  }
-  const heroLabel = fullyBudgeted ? (
-    <span className="inline-flex items-center gap-1.5">
-      <SproutTick animate={celebrate} />
-      {hero.label}
+  const doubtful = !!funding && figureInDoubt(funding);
+  // Every label, colour and the $0 seedling come from one tested function (#241)
+  const status = readyToAssignStatus(toBeBudgeted, incomePlanned, funding);
+  const statusLabel = status.glyph ? (
+    <span className="inline-flex items-center gap-2">
+      <Plant
+        stage="seedling"
+        size={16}
+        ground={false}
+        className="shrink-0"
+        data-testid="ready-glyph"
+      />
+      {status.label}
     </span>
   ) : (
-    hero.label
+    status.label
   );
   // A negative figure already says "Assigned more than you have", so it isn't repeated here
   const todo =
@@ -298,18 +268,20 @@ export function BudgetSummaryWidget({
             role="status"
             aria-label="Ready to assign"
             data-guide="budget.ready"
-            className={`${hero.bg} rounded-lg px-3 py-2 flex items-center justify-between gap-3`}
+            className={`${status.bg} rounded-lg px-3 py-2 flex items-center justify-between gap-3`}
           >
-            <div className={`min-w-0 text-left text-nav ${hero.text}`}>
+            <div className={`min-w-0 text-left text-nav ${status.text}`}>
               <p className="font-medium">
                 Ready to assign
                 <HelpTip label="What is Ready to assign?" inline>
                   {READY_HELP}
                 </HelpTip>
               </p>
-              <p>{heroLabel}</p>
+              {status.label !== null && <p className={status.labelClass}>{statusLabel}</p>}
             </div>
-            <p className={`text-lg font-semibold tabular-nums whitespace-nowrap ${hero.text}`}>
+            <p
+              className={`text-lg font-semibold tabular-nums whitespace-nowrap ${status.figureClass}`}
+            >
               {readyAmount}
             </p>
           </div>
@@ -318,24 +290,24 @@ export function BudgetSummaryWidget({
             role="status"
             aria-label="Ready to assign"
             data-guide="budget.ready"
-            className={`${hero.bg} rounded-lg px-4 pt-3 pb-3.5`}
+            className={`${status.bg} rounded-lg px-4 pt-3 pb-3.5`}
           >
-            <p className={`text-sm font-medium ${hero.text}`}>
+            <p className={`text-sm font-medium ${status.text}`}>
               Ready to assign
               <HelpTip label="What is Ready to assign?" inline>
                 {READY_HELP}
               </HelpTip>
             </p>
             <p
-              className={`mt-0.5 text-title font-semibold tracking-tight tabular-nums ${hero.text}`}
+              className={`mt-0.5 text-title font-semibold tracking-tight tabular-nums ${status.figureClass}`}
             >
               {readyAmount}
             </p>
-            <p className={`text-sm font-medium ${hero.text}`}>{heroLabel}</p>
-            <p className={`text-nav text-pretty ${hero.text} mt-1`}>
-              {fullyBudgeted
-                ? 'Every dollar has a job.'
-                : "Money you have that isn't in a category yet."}
+            {status.label !== null && (
+              <p className={`text-sm font-medium ${status.labelClass}`}>{statusLabel}</p>
+            )}
+            <p className={`text-nav text-pretty ${status.text} mt-1`}>
+              Money you have that isn't in a category yet.
             </p>
           </div>
         )}

@@ -42,7 +42,7 @@ test.describe('budget', () => {
     await expect(toBeBudgeted(page)).toContainText('$2,600');
     await plan(page, 'Rent / Mortgage', '2600');
     await expect(toBeBudgeted(page)).toContainText('$0');
-    await expect(toBeBudgeted(page)).toContainText('Fully budgeted');
+    await expect(toBeBudgeted(page)).toContainText('Every dollar has a job');
 
     const summary = await api.call('GET', `/budget/${thisMonth()}/summary`);
     expect(summary).toMatchObject({ income: 300_000, totalBudgeted: 300_000, toBeBudgeted: 0 });
@@ -300,7 +300,7 @@ test.describe('budget', () => {
     await expect(toBeBudgeted(page)).toContainText('$700');
     // Held money can't be given to an envelope, but the rest can: the month is fully budgeted
     await plan(page, 'Groceries', '700');
-    await expect(toBeBudgeted(page)).toContainText('Fully budgeted');
+    await expect(toBeBudgeted(page)).toContainText('Every dollar has a job');
     const refused = await api.request.put(`/api/budget/${thisMonth()}/${groceries.id}`, {
       data: { budgeted: 70_100 },
     });
@@ -717,7 +717,10 @@ test('Categories opens the category page from Budget, and the breadcrumb returns
   await expect(page).toHaveURL(/#\/budget$/);
 });
 
-test('reaching $0 ready to assign is marked with a sprout tick (#241)', async ({ page, api }) => {
+test('reaching $0 Ready to assign says every dollar has a job, in normal colour (#241)', async ({
+  page,
+  api,
+}) => {
   const checking = await api.createAccount('Checking', 0);
   const paychecks = await api.category('Paychecks');
   await api.createTransaction({
@@ -728,38 +731,16 @@ test('reaching $0 ready to assign is marked with a sprout tick (#241)', async ({
     categoryId: paychecks.id,
   });
   await open(page, '/budget');
-  await expect(toBeBudgeted(page)).toContainText('$500');
-  await expect(toBeBudgeted(page).getByTestId('sprout-tick')).toHaveCount(0);
+  const ready = toBeBudgeted(page);
+  await expect(ready).toContainText('$500');
+  await expect(ready).not.toContainText('Every dollar has a job');
 
   await plan(page, 'Groceries', '500');
-  await expect(toBeBudgeted(page)).toContainText('Fully budgeted');
-  await expect(toBeBudgeted(page)).toContainText('Every dollar has a job.');
-  const tick = toBeBudgeted(page).getByTestId('sprout-tick');
-  await expect(tick).toBeVisible();
-  // Reached while you watched, so it grows in once
-  await expect(tick).toHaveAttribute('data-animate', 'true');
-
-  // Opening a month that is already at $0 shows the tick still, with no fuss
-  await page.reload();
-  await expect(tick).toBeVisible();
-  await expect(tick).toHaveAttribute('data-animate', 'false');
-});
-
-test('with reduced motion the sprout tick is shown still (#241)', async ({ page, api }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  const checking = await api.createAccount('Checking', 0);
-  const paychecks = await api.category('Paychecks');
-  await api.createTransaction({
-    accountId: checking.id,
-    date: isoDay(),
-    amount: 20_000,
-    payeeName: 'Employer',
-    categoryId: paychecks.id,
-  });
-  await open(page, '/budget');
-  await plan(page, 'Groceries', '200');
-  const tick = toBeBudgeted(page).getByTestId('sprout-tick');
-  await expect(tick).toBeVisible();
-  for (const part of await tick.locator('[data-motion]').all())
-    await expect(part).toHaveCSS('animation-name', 'none');
+  for (const reload of [false, true]) {
+    if (reload) await page.reload();
+    await expect(ready).toContainText('Every dollar has a job');
+    await expect(ready.getByTestId('ready-glyph')).toBeVisible();
+    // Zero is said plainly, in the normal text colour (GLOSSARY.md)
+    await expect(ready.getByText('$0', { exact: true })).toHaveClass(/(^|\s)text-text(\s|$)/);
+  }
 });
