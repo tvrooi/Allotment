@@ -5,16 +5,16 @@ milestone_name: Redesign finish
 current_phase: 01
 current_phase_name: Settings split and good moments
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-11-14T23:21:23.809Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-11-15T03:46:52.248Z"
 last_activity: 2026-11-15
 last_activity_desc: Phase 01 execution started
-state_head: c3e4b1c1406f91aa43a32c27778a606e3eea6522
+state_head: 73aa6d5897610885925c9ba1c190b0a790c6d01d
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 8
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-14)
 ## Current Position
 
 Phase: 01 (Settings split and good moments) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-11-15 — Phase 01 execution started
 
@@ -60,6 +60,7 @@ Branch: `redesign` at 0.2.0-up.173, ahead of `main`; latest tag v0.2.0-up.153; u
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 01 P01 | 15 min | 3 tasks | 19 files |
+| Phase 01 P02 | 4 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,8 @@ Decisions are logged in PROJECT.md Key Decisions (`<decisions>` block). Recent o
 - [Phase 01]: The provider lives only in the URL (?provider=, replace: true), so a pill clicked while /accounts/connections is open still switches it
 - [Phase 01]: origin/redesign was already an ancestor of wave-f at 1627cae: no merge; wave-f holds no .planning file
 - [Phase 01]: CONNECTED_BANKS_LINK kept as an alias of CONNECTED_BANKS_PATH until plan 02 re-points its six importers
+- [Phase 01]: bankFeedLink maps a feed label to ?provider= through a fixed Object.hasOwn map; an unknown label opens /accounts/connections plainly (Up). Closes the Codex P1 on #273
+- [Phase 01]: CONNECTED_BANKS_LINK removed; a unit guard keeps /accounts/connections, tab=connections and tab=categories in utils/movedSections.ts only
 
 ### Pending Todos
 
@@ -101,6 +104,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-14T23:21:23.782Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-11-15T03:46:52.223Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None
