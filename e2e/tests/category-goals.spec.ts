@@ -1,3 +1,5 @@
+import type { Page } from '@playwright/test';
+import { typeAmount, type Api } from './fixtures';
 import { test, expect, open, thisMonth } from './fixtures';
 for (const phone of [false, true]) {
   test(`category goal progress and manual compatibility${phone ? ' on phone' : ''}`, async ({
@@ -148,6 +150,66 @@ test('a reached goal blooms once on this device (#241)', async ({ page, api }) =
   await page.reload();
   await expect(plant).toHaveAttribute('data-bloom', 'false');
   await expect(plant).toHaveAttribute('data-stage', 'flower');
+});
+
+// A paused goal stays in the Paused group whatever its amount, so its row stays on the page
+// while the goal changes: the path where the bloom must follow the goal without a reload
+async function pausedGoal(api: Api, name: string, currentAmount: number) {
+  const goal = await api.call('POST', '/goals', { name, targetAmount: 10_000, currentAmount });
+  await api.call('POST', `/goals/${goal.id}/status`, {
+    status: 'paused',
+    expectedUpdatedAt: goal.updatedAt,
+  });
+  const rows = await api.call<{ name: string; status: string }[]>('GET', '/goals');
+  expect(rows.find((g) => g.name === name)?.status).toBe('paused');
+}
+
+async function saveSaved(page: Page, name: string, from: string, to: string) {
+  await page.getByRole('button', { name: `Edit ${name}` }).click();
+  const dialog = page.getByRole('dialog');
+  const saved = dialog.getByLabel('Saved so far');
+  // The dialog fills in the goal after it opens: typing before that would be overwritten
+  await expect(saved).toHaveValue(`$${from}`);
+  await typeAmount(saved, to);
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(dialog).toBeHidden();
+}
+
+test('a goal reached while the page is open grows and blooms in place (#241)', async ({
+  page,
+  api,
+}) => {
+  await pausedGoal(api, 'Tent', 2_000);
+  await open(page, '/goals');
+  const row = page.getByTestId('goal-row').filter({ hasText: 'Tent' });
+  const plant = row.getByTestId('goal-plant');
+  await expect(plant).toHaveAttribute('data-stage', 'seed');
+  await expect(plant).toHaveAttribute('data-bloom', 'false');
+  await expect(plant).not.toHaveAttribute('data-motion');
+  await saveSaved(page, 'Tent', '20', '40');
+  await expect(plant).toHaveAttribute('data-stage', 'seedling');
+  await expect(plant).toHaveAttribute('data-motion', 'true');
+  await saveSaved(page, 'Tent', '40', '100');
+  await expect(plant).toHaveAttribute('data-stage', 'flower');
+  await expect(plant).toHaveAttribute('data-bloom', 'true');
+  await expect(row).toContainText('Goal reached');
+  await page.reload();
+  await expect(plant).toHaveAttribute('data-stage', 'flower');
+  await expect(plant).toHaveAttribute('data-bloom', 'false');
+});
+
+test('a reached goal that dips and returns does not bloom again (#241)', async ({ page, api }) => {
+  await pausedGoal(api, 'Kayak', 10_000);
+  await open(page, '/goals');
+  const plant = page.getByTestId('goal-row').filter({ hasText: 'Kayak' }).getByTestId('goal-plant');
+  await expect(plant).toHaveAttribute('data-stage', 'flower');
+  await expect(plant).toHaveAttribute('data-bloom', 'true');
+  await saveSaved(page, 'Kayak', '100', '75');
+  await expect(plant).toHaveAttribute('data-stage', 'bud');
+  await expect(plant).toHaveAttribute('data-bloom', 'false');
+  await saveSaved(page, 'Kayak', '75', '100');
+  await expect(plant).toHaveAttribute('data-stage', 'flower');
+  await expect(plant).toHaveAttribute('data-bloom', 'false');
 });
 
 test("with reduced motion a goal's plant is shown still (#241)", async ({ page, api }) => {
