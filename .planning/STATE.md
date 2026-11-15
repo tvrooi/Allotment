@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: Redesign finish
 current_phase: 01
 current_phase_name: Settings split and good moments
-status: executing
-stopped_at: Completed 01-08-PLAN.md
-last_updated: "2026-11-15T10:37:28.632Z"
+status: verifying
+stopped_at: Completed 01-09-PLAN.md
+last_updated: "2026-11-15T11:49:06.506Z"
 last_activity: 2026-11-15
 last_activity_desc: Phase 01 execution started
-state_head: 17011c6e53a92266890fcb0c4649a5b7ed940cb5
+state_head: 6db8ad71e04769f9abfaa737589335bd271c3f31
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-14)
 
 ## Current Position
 
-Phase: 01 (Settings split and good moments) — READY TO EXECUTE
-Plan: 8 of 8
-Status: Ready to execute
+Phase: 01 (Settings split and good moments) — EXECUTING
+Plan: 9 of 9
+Status: Phase complete — ready for verification
 Last activity: 2026-11-15 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -67,6 +67,7 @@ Branch: `redesign` at 0.2.0-up.173, ahead of `main`; latest tag v0.2.0-up.153; u
 | Phase 01 P06 | 25min | 2 tasks | 9 files |
 | Phase 01 P07 | 29 min | 3 tasks | 8 files |
 | Phase 01 P08 | 17min | 2 tasks | 0 files |
+| Phase 01 P09 | 29 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,7 @@ Decisions are logged in PROJECT.md Key Decisions (`<decisions>` block). Recent o
 - [Phase 01]: 01-08: version stays 0.2.0-up.174 (redesign at up.173, no tag); wave-f pushed fast-forward to 575c3ea, CI green; PR #273 open, not merged
 
 - [Phase 01]: Owner approved the visual checks on 15 Nov 2026 (32 screenshots, plant on hover colour, live bloom in the demo at 127.0.0.1:5199). Verification gaps WR-01 (GoalPlant bloom on mount) and WR-04 (lowercase 'fully budgeted', case-sensitive terms rule) to be fixed: owner chose gap closure
+- [Phase 01]: 01-09: ran inline in wt-f (dispatcher accepts only worktree-agent-* writers; plan D-07 forbids a new worktree); e2e amount edits use typeAmount — Owner choice at the Herdr dispatch checkpoint
 
 ### Pending Todos
 
@@ -125,6 +127,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-15T10:03:48Z
-Stopped at: Phase 01 gates run; verification gaps_found (13/15: WR-01 GoalPlant bloom on mount, WR-04 lowercase 'fully budgeted'); owner approved visual checks; running /gsd-plan-phase 01 --gaps
-Resume file: .planning/phases/01-settings-split-and-good-moments/01-VERIFICATION.md
+Last session: 2026-11-15T11:49:06.474Z
+Stopped at: Completed 01-09-PLAN.md
+Resume file: None

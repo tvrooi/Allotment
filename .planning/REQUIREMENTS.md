@@ -17,8 +17,8 @@ route, allowlist, `/api/assistant/do` or MCP change.
 
 ### Wave F: good moments (#241)
 
-- [ ] **WAVF-04**: When a goal reaches its target (for example the demo's "New laptop"), the user sees a small brand-voice acknowledgement (for example a sprout tick, docs/BRAND.md) instead of only a plain green bar.
-- [ ] **WAVF-05**: When Ready to assign reaches exactly $0, the user sees a brief brand-voice acknowledgement. It never reads as an unqualified "Fully budgeted" while uncategorised spending, overspending or a missing exchange rate remains (phase 6A rule), and zero still shows in normal colour (GLOSSARY.md).
+- [x] **WAVF-04**: When a goal reaches its target (for example the demo's "New laptop"), the user sees a small brand-voice acknowledgement (for example a sprout tick, docs/BRAND.md) instead of only a plain green bar.
+- [x] **WAVF-05**: When Ready to assign reaches exactly $0, the user sees a brief brand-voice acknowledgement. It never reads as an unqualified "Fully budgeted" while uncategorised spending, overspending or a missing exchange rate remains (phase 6A rule), and zero still shows in normal colour (GLOSSARY.md).
 
 ### Wave G: the shared control set (#267 G0, G1)
 
@@ -174,8 +174,8 @@ Acknowledged, not in the current roadmap. The owner placed these after milestone
 | WAVF-01 | Phase 1 | Gaps Found |
 | WAVF-02 | Phase 1 | Gaps Found |
 | WAVF-03 | Phase 1 | Gaps Found |
-| WAVF-04 | Phase 1 | Gaps Found |
-| WAVF-05 | Phase 1 | Gaps Found |
+| WAVF-04 | Phase 1 | Complete |
+| WAVF-05 | Phase 1 | Complete |
 | WAVG-01 | Phase 2 | Pending |
 | WAVG-02 | Phase 2 | Pending |
 | WAVG-03 | Phase 2 | Pending |
