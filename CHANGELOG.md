@@ -2,8 +2,8 @@
 
 ## 0.2.0-up.174
 
-- **Banks with your accounts, categories with your budget.** Connected banks is now a section of the Accounts page, so Up is two clicks from the sidebar: Accounts, then Up. Categories are managed from the Budget page with Manage categories (in the ⋯ menu on a phone), which opens the category manager in place of the envelopes, and Back to budget returns. Settings keeps eight tabs and opens on Preferences. Old links to Settings' Connected banks and Categories tabs open the new places.
-- **Good moments are marked.** A goal's progress bar grows a little plant as it fills, from a sprout to leaves to a bud, and it flowers when the goal is reached, opening once the first time you see it. When Ready to assign reaches $0 a sprout tick appears beside Fully budgeted, with "Every dollar has a job." It grows in only when you get there, not every time you open the month, and stays still when your device asks for reduced motion.
+- **Banks under Accounts, categories under Budget.** Connected banks is its own page under Accounts: open it with Connected banks at the top of the Accounts page, and Up is at most two clicks away. A bank's status opens that bank's own connection. Categories have their own page under Budget, opened with Categories in the Budget header (in the ⋯ menu on a phone). Settings has eight tabs and opens on Accounts. Old links to Settings' Connected banks and Categories tabs still work, and Search finds both pages. The message that stops you deleting an account linked to a bank now says to unlink it under Accounts → Connected banks.
+- **Good moments are marked.** Each goal has a small plant at the end of its bar that grows from a seed to a seedling to a bud as the money comes in, and flowers when the goal is reached, opening once the first time you see it. When Ready to assign is $0 and nothing is left to sort out, it says "Every dollar has a job"; when something is, such as an overspent envelope or spending with no category, it names that instead. Animations stay still when your device asks for reduced motion.
 
 ## 0.2.0-up.173
 
