@@ -135,3 +135,55 @@ test("a goal's plant grows from a seed to a flower as it fills (#241)", async ({
   await expect(row('Laptop')).toContainText('Goal reached');
   await expect(row('Holiday')).not.toContainText('Goal reached');
 });
+
+test('a reached goal blooms once on this device (#241)', async ({ page, api }) => {
+  await api.call('POST', '/goals', { name: 'Laptop', targetAmount: 10_000, currentAmount: 10_000 });
+  await open(page, '/goals');
+  const plant = page
+    .getByTestId('goal-row')
+    .filter({ hasText: 'Laptop' })
+    .getByTestId('goal-plant');
+  await expect(plant).toHaveAttribute('data-bloom', 'true');
+  // Seen once, it stays a still flower
+  await page.reload();
+  await expect(plant).toHaveAttribute('data-bloom', 'false');
+  await expect(plant).toHaveAttribute('data-stage', 'flower');
+});
+
+test("with reduced motion a goal's plant is shown still (#241)", async ({ page, api }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await api.call('POST', '/goals', { name: 'Laptop', targetAmount: 10_000, currentAmount: 10_000 });
+  await open(page, '/goals');
+  const plant = page
+    .getByTestId('goal-row')
+    .filter({ hasText: 'Laptop' })
+    .getByTestId('goal-plant');
+  await expect(plant).toBeVisible();
+  await expect(plant).toHaveAttribute('data-stage', 'flower');
+  // Its first sight would bloom: five petals and a ring, none of them moving
+  await expect(plant).toHaveAttribute('data-bloom', 'true');
+  const parts = plant.locator('[data-motion]');
+  await expect(parts).toHaveCount(6);
+  for (const part of await parts.all()) await expect(part).toHaveCSS('animation-name', 'none');
+});
+
+test('on a phone the plant sits at the end of the bar and keeps its size (#241)', async ({
+  page,
+  api,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await api.call('POST', '/goals', { name: 'Bike', targetAmount: 10_000, currentAmount: 4_000 });
+  await open(page, '/goals');
+  const plant = page.getByTestId('goal-row').filter({ hasText: 'Bike' }).getByTestId('goal-plant');
+  await expect(plant).toHaveAttribute('data-stage', 'seedling');
+  const bar = plant.locator('xpath=preceding-sibling::div[1]');
+  const plantBox = (await plant.boundingBox())!;
+  const barBox = (await bar.boundingBox())!;
+  expect(plantBox.width).toBe(20);
+  expect(plantBox.height).toBe(20);
+  expect(plantBox.x).toBeGreaterThanOrEqual(barBox.x + barBox.width);
+  expect(barBox.width).toBeGreaterThanOrEqual(200);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+});
