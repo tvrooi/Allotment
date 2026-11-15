@@ -1,3 +1,4 @@
+import { CONNECTED_BANKS_PATH } from '../utils/movedSections';
 import type { Guide } from './types';
 
 // One short guide per page, offered the first time the page is opened (once the welcome tour
@@ -6,7 +7,8 @@ import type { Guide } from './types';
 
 export const accountsGuide: Guide = {
   id: 'accounts',
-  version: 1,
+  // 2: Connected banks is its own page under Accounts, opened from this page's header (#244)
+  version: 2,
   title: 'Accounts',
   summary: 'Adding accounts, net worth, and opening an account to import or reconcile.',
   page: '/accounts',
@@ -31,8 +33,9 @@ export const accountsGuide: Guide = {
     },
     {
       title: 'Bring in transactions automatically',
-      body: 'Connect Up under Connected banks, below your accounts, and its settled transactions are imported for you.',
+      body: 'Open Connected banks at the top of this page and connect Up: its settled transactions are imported for you.',
       route: '/accounts',
+      target: 'accounts.connections',
     },
   ],
 };
@@ -368,17 +371,22 @@ export const reportsGuide: Guide = {
 
 export const settingsGuide: Guide = {
   id: 'settings',
-  // 2: Connected banks moved to Accounts and Categories to Budget (#244)
+  // 2: Connected banks moved under Accounts and Categories under Budget (#244)
   version: 2,
   title: 'Settings',
-  summary: 'Preferences, account order, backups and the rest.',
+  summary: 'Account order, tags, currencies, backups and preferences.',
   page: '/settings',
   steps: [
     {
       title: 'Everything in tabs',
-      body: 'Preferences, account order, when your budget starts, tags, currencies, priorities, data and the server each have a tab. Connected banks are on the Accounts page, and categories on the Budget page.',
+      body: 'Account order, when your budget starts, tags, currencies, data and preferences each have a tab. Connected banks are under Accounts, and categories under Budget.',
       route: '/settings',
       target: 'settings.tabs',
+    },
+    {
+      title: 'Connect Up',
+      body: 'Connected banks is under Accounts now. Connect Up there and its settled transactions are imported for you, without duplicates. Your token is stored encrypted.',
+      route: CONNECTED_BANKS_PATH,
     },
     {
       title: 'Back up and preferences',
