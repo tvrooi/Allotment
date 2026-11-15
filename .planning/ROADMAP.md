@@ -40,7 +40,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Every old way in still lands on the moved section: `/settings?tab=connections` and `?tab=categories` links, the sidebar, palette and Welcome entries, and guide steps, with guide and tip ids unchanged.
   4. When a goal reaches its target (the demo's "New laptop"), the user sees a small sprout-tick style moment instead of only a plain green bar. It shows in light and dark, at 390 px and in Safe mode without revealing hidden amounts.
   5. When Ready to assign reaches exactly $0, the user sees a brief acknowledgement that never reads as "Fully budgeted" while uncategorised spending, overspending or a missing exchange rate remains.
-**Plans**: 6/8 plans executed, one per wave, all delivered by revising PR #273 (WAVES.md plans Wave F as one PR)
+**Plans**: 7/8 plans executed, one per wave, all delivered by revising PR #273 (WAVES.md plans Wave F as one PR)
 **UI hint**: yes
 
 Plans:
@@ -63,7 +63,7 @@ Plans:
 - [x] 01-06-PLAN.md — $0 Ready to assign: "Every dollar has a job" or the named caveat; the old label retired
 
 **Wave 7** *(blocked on Wave 6 completion)*
-- [ ] 01-07-PLAN.md — Guide steps, docs, WAVES.md note (D-10) and changelog; the full gate on Node 24
+- [x] 01-07-PLAN.md — Guide steps, docs, WAVES.md note (D-10) and changelog; the full gate on Node 24
 
 **Wave 8** *(blocked on Wave 7 completion)*
 - [ ] 01-08-PLAN.md — Screenshots, release version check, push to PR #273 and its body (no merge)
@@ -136,7 +136,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Settings split and good moments | 6/8 | In Progress | - |
+| 1. Settings split and good moments | 7/8 | In Progress | - |
 | 2. Shared form controls | 0/TBD | Not started | - |
 | 3. Screens on shared controls | 0/TBD | Not started | - |
 | 4. Remaining screens and the guard | 0/TBD | Not started | - |
