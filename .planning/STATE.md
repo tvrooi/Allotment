@@ -123,6 +123,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-15T09:29:31Z
-Stopped at: Session resumed, proceeding to /gsd-execute-phase 01 (aggregate_results → verify_phase_goal)
-Resume file: .planning/phases/01-settings-split-and-good-moments/.continue-here.md
+Last session: 2026-11-15T10:03:48Z
+Stopped at: Phase 01 gates run; verification gaps_found (13/15: WR-01 GoalPlant bloom on mount, WR-04 lowercase 'fully budgeted'); next /gsd-plan-phase 01 --gaps
+Resume file: .planning/phases/01-settings-split-and-good-moments/01-VERIFICATION.md
