@@ -40,7 +40,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Every old way in still lands on the moved section: `/settings?tab=connections` and `?tab=categories` links, the sidebar, palette and Welcome entries, and guide steps, with guide and tip ids unchanged.
   4. When a goal reaches its target (the demo's "New laptop"), the user sees a small sprout-tick style moment instead of only a plain green bar. It shows in light and dark, at 390 px and in Safe mode without revealing hidden amounts.
   5. When Ready to assign reaches exactly $0, the user sees a brief acknowledgement that never reads as "Fully budgeted" while uncategorised spending, overspending or a missing exchange rate remains.
-**Plans**: 8/8 plans executed, one per wave, all delivered by revising PR #273 (WAVES.md plans Wave F as one PR)
+**Plans**: 8/9 plans executed (01-09 is gap closure from verification, 15 Nov 2026), one per wave, all delivered by revising PR #273 (WAVES.md plans Wave F as one PR)
 **UI hint**: yes
 
 Plans:
@@ -67,6 +67,9 @@ Plans:
 
 **Wave 8** *(blocked on Wave 7 completion)*
 - [x] 01-08-PLAN.md — Screenshots, release version check, push to PR #273 and its body (no merge)
+
+**Wave 9** *(blocked on Wave 8 completion)*
+- [ ] 01-09-PLAN.md — Gap closure: the goal plant blooms when a goal is reached in place (WR-01); the guide drops "fully budgeted" and the retired-term guard ignores case (WR-04)
 
 Notes: client only, except one server message string (accountDeletion.ts, owner D-09, 15 Nov 2026). Files from the `/settings`, `/accounts`, `/budget` and `/goals`
 rows of docs/ui/MAP.md; `client/src/pages/Settings.tsx` holds the ten tabs in `?tab=` URLs. Mind the
