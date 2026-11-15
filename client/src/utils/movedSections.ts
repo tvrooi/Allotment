@@ -38,16 +38,28 @@ export function bankFeedLink(feedLabel: string): string {
   );
 }
 
-/** The category manager, a view of the Budget page */
-export const MANAGE_CATEGORIES_LINK = '/budget?view=categories';
+/** Categories, their own page under Budget */
+export const CATEGORIES_PATH = '/budget/categories';
+
+/** The old name of CATEGORIES_PATH, until Review's housekeeping link is re-pointed */
+export const MANAGE_CATEGORIES_LINK = CATEGORIES_PATH;
 
 /** The old Settings tabs and where each went */
 const MOVED_SETTINGS_TABS: Readonly<Record<string, string>> = {
   connections: CONNECTED_BANKS_PATH,
-  categories: MANAGE_CATEGORIES_LINK,
+  categories: CATEGORIES_PATH,
 };
 
-/** Where a Settings ?tab= value now lives, or null when it is still a Settings tab */
-export function movedSettingsTab(tab: string | null): string | null {
-  return tab && Object.hasOwn(MOVED_SETTINGS_TABS, tab) ? MOVED_SETTINGS_TABS[tab] : null;
+/**
+ * Where an old Settings ?tab= address now lives, with its other query parameters kept and the
+ * tab dropped, or null when the tab is still in Settings. The destination is always one of the
+ * paths above: the tab is only looked up, never written into the result.
+ */
+export function movedSettingsTab(params: URLSearchParams): string | null {
+  const tab = params.get('tab');
+  if (!tab || !Object.hasOwn(MOVED_SETTINGS_TABS, tab)) return null;
+  const rest = new URLSearchParams(params);
+  rest.delete('tab');
+  const query = rest.toString();
+  return query ? `${MOVED_SETTINGS_TABS[tab]}?${query}` : MOVED_SETTINGS_TABS[tab];
 }

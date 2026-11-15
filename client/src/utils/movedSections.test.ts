@@ -2,16 +2,23 @@ import { describe, expect, it } from 'vitest';
 import { bankFeedLink, connectedBanksLink, movedSettingsTab, parseProvider } from './movedSections';
 
 describe('movedSettingsTab (#244)', () => {
+  const moved = (query: string) => movedSettingsTab(new URLSearchParams(query));
+
   it('sends the old Connected banks and Categories tabs to their new pages', () => {
-    expect(movedSettingsTab('connections')).toBe('/accounts/connections');
-    expect(movedSettingsTab('categories')).toBe('/budget?view=categories');
+    expect(moved('tab=connections')).toBe('/accounts/connections');
+    expect(moved('tab=categories')).toBe('/budget/categories');
+  });
+
+  it('keeps every other query parameter and drops the tab', () => {
+    expect(moved('tab=connections&x=1')).toBe('/accounts/connections?x=1');
+    expect(moved('x=1&tab=categories&y=2')).toBe('/budget/categories?x=1&y=2');
+    expect(moved('tab=connections&provider=plaid')).toBe('/accounts/connections?provider=plaid');
   });
 
   it('leaves the remaining tabs, no tab and inherited names alone', () => {
-    expect(movedSettingsTab('preferences')).toBeNull();
-    expect(movedSettingsTab(null)).toBeNull();
-    expect(movedSettingsTab('constructor')).toBeNull();
-    expect(movedSettingsTab('toString')).toBeNull();
+    for (const query of ['tab=preferences', '', 'tab=constructor', 'tab=toString']) {
+      expect(moved(query)).toBeNull();
+    }
   });
 });
 

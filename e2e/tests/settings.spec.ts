@@ -2,8 +2,8 @@ import type { Page } from '@playwright/test';
 import fs from 'fs';
 import { test, expect, open, isoDay } from './fixtures';
 
-// Settings: preferences and the other sections, plus managing categories and groups, which
-// moved to the Budget page (#244).
+// Settings: preferences and the other sections. Categories and groups are managed on the Budget
+// area's Categories page (/budget/categories, #244); its tests live here with the rest.
 
 async function pickIcon(page: Page, name: string) {
   const picker = page.getByRole('dialog', { name: 'Choose an icon' });
@@ -12,33 +12,41 @@ async function pickIcon(page: Page, name: string) {
 }
 
 test.describe('where Settings sections live (#244)', () => {
-  test('Settings has eight tabs and opens on Preferences', async ({ page, api }) => {
+  test('Settings has eight tabs and opens on Accounts', async ({ page, api }) => {
     await api.createAccount('Checking', 0);
     await open(page, '/settings');
     const list = page.getByRole('tablist', { name: 'Settings sections' });
     await expect(list.getByRole('tab')).toHaveText([
-      'Preferences',
       'Accounts',
       'Budget',
       'Tags',
       'Currencies',
       'Priorities',
       'Data',
+      'Preferences',
       'Server',
     ]);
-    await expect(list.getByRole('tab', { name: 'Preferences' })).toHaveAttribute(
+    await expect(list.getByRole('tab', { name: 'Accounts' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+
+    // A tab Settings does not have opens the first one
+    await open(page, '/settings?tab=nonsense');
+    await expect(list.getByRole('tab', { name: 'Accounts' })).toHaveAttribute(
       'aria-selected',
       'true',
     );
   });
 
-  test('old links to Connected banks and Categories open their new homes', async ({
+  test('old links to Connected banks and Categories open their new pages, keep their parameters and leave no trace in history', async ({
     page,
     api,
   }) => {
     await api.createAccount('Checking', 0);
-    await open(page, '/settings?tab=connections');
-    await expect(page).toHaveURL(/#\/accounts\/connections$/);
+    await open(page, '/accounts');
+    await open(page, '/settings?tab=connections&from=test');
+    await expect(page).toHaveURL(/#\/accounts\/connections\?from=test$/);
     await expect(page.getByRole('heading', { level: 1, name: 'Connected banks' })).toBeVisible();
     await expect(
       page
@@ -47,19 +55,25 @@ test.describe('where Settings sections live (#244)', () => {
     ).toHaveAttribute('aria-pressed', 'true');
     // Up's own panel (Connect Up, or the connection when one is left from another test)
     await expect(page.getByRole('link', { name: 'How connecting Up works' })).toBeVisible();
+    // The redirect replaced the old address, so Back skips it
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/accounts$/);
 
-    await open(page, '/settings?tab=categories');
-    await expect(page).toHaveURL(/#\/budget\?view=categories$/);
+    await open(page, '/budget');
+    await open(page, '/settings?tab=categories&from=test');
+    await expect(page).toHaveURL(/#\/budget\/categories\?from=test$/);
     await expect(page.getByRole('heading', { level: 1, name: 'Categories' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Edit Groceries' })).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/budget$/);
   });
 });
 
-// The category manager now opens from the Budget page (#244)
+// The category manager is the Budget area's Categories page (#244)
 test.describe('categories', () => {
   test.beforeEach(async ({ api, page }) => {
     await api.createAccount('Checking', 0);
-    await open(page, '/budget?view=categories');
+    await open(page, '/budget/categories');
   });
 
   test('creates a group and a category in it', async ({ page, api }) => {

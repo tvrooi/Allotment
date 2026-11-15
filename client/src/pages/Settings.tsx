@@ -24,8 +24,6 @@ import { onTabListKeyDown, tabIds as tabPanelIds } from '../components/ui/tabLis
 import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 const tabs = [
-  // The theme, Safe mode, the sidebar and guides: what most visits come for, so it opens first
-  { id: 'preferences', label: 'Preferences', icon: SlidersHorizontal },
   { id: 'accounts', label: 'Accounts', icon: ArrowUpDown },
   // When the envelope budget starts counting
   { id: 'budget', label: 'Budget', icon: CalendarRange },
@@ -36,6 +34,7 @@ const tabs = [
   // Optional financial priorities and category purposes (phase 7A)
   { id: 'priorities', label: 'Priorities', icon: Compass },
   { id: 'data', label: 'Data', icon: Download },
+  { id: 'preferences', label: 'Preferences', icon: SlidersHorizontal },
   // Where the data lives; on a self-hosted server also security, devices and password
   { id: 'server', label: 'Server', icon: Server },
 ] as const;
@@ -49,10 +48,11 @@ export default function SettingsPage() {
   // can open it
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const activeTab: TabId = tabParam && tabIds.has(tabParam) ? (tabParam as TabId) : 'preferences';
+  const activeTab: TabId = tabParam && tabIds.has(tabParam) ? (tabParam as TabId) : 'accounts';
   const setActiveTab = (tab: TabId) => setSearchParams({ tab }, { replace: true });
-  // Connected banks and Categories moved to Accounts and Budget (#244); old links still arrive
-  const movedTo = movedSettingsTab(tabParam);
+  // Connected banks and Categories moved to Accounts and Budget (#244); old links still arrive.
+  // After the hooks above, as the rules of hooks require
+  const movedTo = movedSettingsTab(searchParams);
   if (movedTo) return <Navigate to={movedTo} replace />;
 
   return (
