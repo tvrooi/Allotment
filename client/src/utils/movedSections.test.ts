@@ -51,3 +51,24 @@ describe('bankFeedLink (#244)', () => {
     }
   });
 });
+
+describe('moved sections (#244)', () => {
+  it("the moved sections' addresses are written in one place", () => {
+    // Every client source file, as text (as guides.test.ts reads them), apart from this module
+    // and the tests: a link written out by hand would miss the next move or a ?provider=
+    const sources = import.meta.glob<string>('../**/*.{ts,tsx}', {
+      query: '?raw',
+      import: 'default',
+      eager: true,
+    });
+    const files = Object.keys(sources).filter(
+      (file) => file !== './movedSections.ts' && !/\.test\.tsx?$/.test(file),
+    );
+    expect(files.length).toBeGreaterThan(50);
+    for (const file of files) {
+      for (const address of ['/accounts/connections', 'tab=connections', 'tab=categories']) {
+        expect(sources[file], `${file} spells ${address}`).not.toContain(address);
+      }
+    }
+  });
+});

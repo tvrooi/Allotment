@@ -12,7 +12,7 @@ import { formatCurrency } from '../../utils/currency';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Input';
-import { CONNECTED_BANKS_LINK, MANAGE_CATEGORIES_LINK } from '../../utils/movedSections';
+import { connectedBanksLink, MANAGE_CATEGORIES_LINK } from '../../utils/movedSections';
 
 // Review → Tidy up: setup problems that quietly make a budget less useful. Each one is fixed
 // here in one step, or links to where it is fixed. Nothing changes until you act.
@@ -53,7 +53,7 @@ export function Housekeeping() {
                 {r.count} round-up {r.count === 1 ? 'debit' : 'debits'} that never imported.
                 Spending looks smaller than it is until they're added.
               </p>
-              <Link to={CONNECTED_BANKS_LINK} className="text-brand-700 underline text-sm">
+              <Link to={connectedBanksLink('up')} className="text-brand-700 underline text-sm">
                 Check round-ups in Up settings
               </Link>
             </div>

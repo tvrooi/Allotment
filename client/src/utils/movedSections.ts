@@ -38,9 +38,6 @@ export function bankFeedLink(feedLabel: string): string {
   );
 }
 
-/** The old name of the Connected banks link, kept until each link site uses connectedBanksLink */
-export const CONNECTED_BANKS_LINK = CONNECTED_BANKS_PATH;
-
 /** The category manager, a view of the Budget page */
 export const MANAGE_CATEGORIES_LINK = '/budget?view=categories';
 
