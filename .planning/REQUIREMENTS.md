@@ -11,9 +11,9 @@ route, allowlist, `/api/assistant/do` or MCP change.
 
 ### Wave F: Settings split (#244)
 
-- [ ] **WAVF-01**: From the Accounts page, the user can open Connected banks (Up and the other bank connections) and reach the Up connection in fewer clicks than today's three (Settings, then Connected banks, then Up).
-- [ ] **WAVF-02**: The user manages categories from the Budget area instead of a Settings tab.
-- [ ] **WAVF-03**: Settings shows only the tabs that remain, and every existing way into a moved section still lands on it: `/settings?tab=connections` and `/settings?tab=categories` links, sidebar, palette and Welcome entries, and guide steps (guide and tip ids unchanged).
+- [x] **WAVF-01**: From the Accounts page, the user can open Connected banks (Up and the other bank connections) and reach the Up connection in fewer clicks than today's three (Settings, then Connected banks, then Up).
+- [x] **WAVF-02**: The user manages categories from the Budget area instead of a Settings tab.
+- [x] **WAVF-03**: Settings shows only the tabs that remain, and every existing way into a moved section still lands on it: `/settings?tab=connections` and `/settings?tab=categories` links, sidebar, palette and Welcome entries, and guide steps (guide and tip ids unchanged).
 
 ### Wave F: good moments (#241)
 
@@ -171,9 +171,9 @@ Acknowledged, not in the current roadmap. The owner placed these after milestone
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| WAVF-01 | Phase 1 | Gaps Found |
-| WAVF-02 | Phase 1 | Gaps Found |
-| WAVF-03 | Phase 1 | Gaps Found |
+| WAVF-01 | Phase 1 | Complete |
+| WAVF-02 | Phase 1 | Complete |
+| WAVF-03 | Phase 1 | Complete |
 | WAVF-04 | Phase 1 | Complete |
 | WAVF-05 | Phase 1 | Complete |
 | WAVG-01 | Phase 2 | Pending |

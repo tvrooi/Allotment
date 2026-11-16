@@ -23,7 +23,7 @@ GSD milestone numbers are separate from the app's release numbers (`0.2.0-up.N`)
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Settings split and good moments** - Wave F: Connected banks on Accounts, Categories on Budget, a brand-voice moment for a completed goal and a $0 Ready to assign (#244, #241)
+- [x] **Phase 1: Settings split and good moments** - Wave F: Connected banks on Accounts, Categories on Budget, a brand-voice moment for a completed goal and a $0 Ready to assign (#244, #241) (completed 2026-11-16)
 - [ ] **Phase 2: Shared form controls** - Wave G G0-G1: audit every field, build one accessible component set from `@theme` tokens, with a gallery and screenshot test (#267, #264)
 - [ ] **Phase 3: Screens on shared controls** - Wave G G2-G3: everyday money screens, then planning, reports and files, move onto the set with no behaviour change (#267)
 - [ ] **Phase 4: Remaining screens and the guard** - Wave G G4-G5: Settings, banks and the shelved pages swapped, no money in `type="number"`, a lint rule, old controls removed (#267)
@@ -40,7 +40,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Every old way in still lands on the moved section: `/settings?tab=connections` and `?tab=categories` links, the sidebar, palette and Welcome entries, and guide steps, with guide and tip ids unchanged.
   4. When a goal reaches its target (the demo's "New laptop"), the user sees a small sprout-tick style moment instead of only a plain green bar. It shows in light and dark, at 390 px and in Safe mode without revealing hidden amounts.
   5. When Ready to assign reaches exactly $0, the user sees a brief acknowledgement that never reads as "Fully budgeted" while uncategorised spending, overspending or a missing exchange rate remains.
-**Plans**: 9/9 plans executed (01-09 is gap closure from verification, 15 Nov 2026), one per wave, all delivered by revising PR #273 (WAVES.md plans Wave F as one PR)
+**Plans**: 9/9 plans complete (01-09 is gap closure from verification, 15 Nov 2026), one per wave, all delivered by revising PR #273 (WAVES.md plans Wave F as one PR)
 **UI hint**: yes
 
 Plans:
@@ -139,7 +139,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Settings split and good moments | 9/9 | In Progress | - |
+| 1. Settings split and good moments | 9/9 | Complete    | 2026-11-16 |
 | 2. Shared form controls | 0/TBD | Not started | - |
 | 3. Screens on shared controls | 0/TBD | Not started | - |
 | 4. Remaining screens and the guard | 0/TBD | Not started | - |
