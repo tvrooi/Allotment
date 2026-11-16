@@ -28,7 +28,7 @@ saves a comparison snapshot; unresolved work remains open.
 A category set to **Keep overspending** (for spending that will be paid back) stays in the
 overspent list, marked `kept`, until its deficit is covered or repaid; see
 [the overspending rule](ENVELOPE-FUNDING.md#the-overspending-rule). Money held for next month
-(ACT-03) is not ready to assign, so a month with a hold can read fully budgeted; see
+(ACT-03) is not ready to assign, so a month with a hold can read "Every dollar has a job"; see
 [holding money](ENVELOPE-FUNDING.md#holding-money-for-next-month).
 
 The queue uses the shared searchable category picker, grouped by expense category group.

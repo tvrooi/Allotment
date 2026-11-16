@@ -191,3 +191,53 @@ test.describe('accounts', () => {
     await expect(main).toContainText(/Loans\s*-\$12,000/);
   });
 });
+
+test('the Up connection is two clicks from Accounts (#244)', async ({ page, api }) => {
+  await api.createAccount('Everyday', 0);
+  await open(page, '/accounts');
+  const main = page.getByRole('main');
+  // Click 1: the header link opens the Connected banks page
+  await main.getByRole('link', { name: 'Connected banks' }).click();
+  await expect(page).toHaveURL(/#\/accounts\/connections$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Connected banks');
+  // Click 2: Up in the provider toggle
+  const up = page
+    .getByRole('group', { name: 'Bank connection provider' })
+    .getByRole('button', { name: 'Up', exact: true });
+  await up.click();
+  await expect(up).toHaveAttribute('aria-pressed', 'true');
+  // Up's own panel (Connect Up, or the connection when one is left from another test)
+  await expect(page.getByRole('link', { name: 'How connecting Up works' })).toBeVisible();
+  // The breadcrumb goes back to Accounts
+  await main.getByRole('link', { name: 'Accounts', exact: true }).click();
+  await expect(page).toHaveURL(/#\/accounts$/);
+});
+
+test('a budget with no accounts yet can connect a bank from Accounts (#244)', async ({ page }) => {
+  await open(page, '/accounts');
+  await page.getByRole('link', { name: 'Connect a bank' }).click();
+  await expect(page).toHaveURL(/#\/accounts\/connections$/);
+  await expect(
+    page
+      .getByRole('group', { name: 'Bank connection provider' })
+      .getByRole('button', { name: 'Up', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('a link to Connected banks opens the provider it names (#244)', async ({ page }) => {
+  const providers = page.getByRole('group', { name: 'Bank connection provider' });
+  const button = (name: string) => providers.getByRole('button', { name, exact: true });
+
+  await open(page, '/accounts/connections?provider=plaid');
+  await expect(button('Plaid')).toHaveAttribute('aria-pressed', 'true');
+  await expect(button('Up')).toHaveAttribute('aria-pressed', 'false');
+
+  // A provider the page does not know opens Up
+  await open(page, '/accounts/connections?provider=bogus');
+  await expect(button('Up')).toHaveAttribute('aria-pressed', 'true');
+
+  // Choosing a bank keeps it in the address, so the page can be linked back to
+  await button('SimpleFIN').click();
+  await expect(page).toHaveURL(/\?provider=simplefin$/);
+  await expect(button('SimpleFIN')).toHaveAttribute('aria-pressed', 'true');
+});

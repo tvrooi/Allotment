@@ -8,7 +8,7 @@ making the token.
 
 1. Create a personal access token at [Up's developer portal](https://api.up.com.au/).
    [Start here](docs/START-HERE.md#make-an-up-token) has the three short steps.
-2. In Allotment choose **Connect Up** on the welcome screen, or **Settings → Connected banks → Up →
+2. In Allotment choose **Connect Up** on the welcome screen, or **Accounts → Connected banks → Up →
    Connect Up**.
 3. Paste the token and select **Connect**. Do not put it in a GitHub issue or send it in chat.
 4. For each Up account choose **Create a new account**, link an AUD account you already have, or skip it.
@@ -25,7 +25,7 @@ therefore differs from Up's available balance while holds exist. Cashback is sep
 
 Sync reports whether Up could be reached and its transactions imported, and **Last synced** moves on
 with every successful import. A register that differs from Up's settled balance doesn't fail the
-sync. The account shows "Up says $X" beside its balance, and **Settings → Connected banks → Up →
+sync. The account shows "Up says $X" beside its balance, and **Accounts → Connected banks → Up →
 Round-up accounting check** explains the difference (for example round-ups Up doesn't list) or links
 to **Reconcile**. Allotment never adjusts the balance by itself.
 
@@ -41,7 +41,7 @@ to **Reconcile**. Allotment never adjusts the balance by itself.
   **Possible transfers → Review**, and only with a row in the account Up named; you tick and
   link each one.
 - Round-ups: Up attaches round-up details to a purchase, but does not link it to the Saver credit.
-  **Round-up accounting check** (Settings → Connected banks → Up) compares each account's register
+  **Round-up accounting check** (Accounts → Connected banks → Up) compares each account's register
   with Up's settled balance. When the register is higher by exactly the round-ups settled since
   the first sync, you can choose **Add round-up debits**. That adds one uncategorized
   "Up round-up" debit per purchase (boost included) and keeps adding them on later syncs. As in
@@ -62,7 +62,7 @@ to **Reconcile**. Allotment never adjusts the balance by itself.
 - Existing imported transactions are preserved, including edits, splits and reconciled rows.
   Later bank corrections or deletions of a settled transaction are not applied automatically.
 - A transaction you delete in Allotment stays deleted: Up still returns it, but syncs leave it
-  out. **Settings → Connected banks → Up → Deleted here, still at Up** lists them with **Restore**,
+  out. **Accounts → Connected banks → Up → Deleted here, still at Up** lists them with **Restore**,
   which imports it again as Up reports it now. While one is deleted, the register can differ from
   Up's balance. Deleted transactions are kept in JSON backups, so a restore doesn't bring them back.
 - An Up transaction stays in the account Up reported it in; it can't be moved to another account.

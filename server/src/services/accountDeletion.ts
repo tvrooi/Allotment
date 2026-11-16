@@ -80,7 +80,7 @@ function blockers(accountId: string, name: string) {
   const feed = bankFeed(accountId);
   if (feed)
     reasons.push(
-      `${name} is linked to ${feed}. Unlink it first: Settings → Connections → ${feed}, then disconnect ${feed} (its transactions stay) and try again.`,
+      `${name} is linked to ${feed}. Unlink it first: Accounts → Connected banks → ${feed}, then disconnect ${feed} (its transactions stay) and try again.`,
     );
   if (
     db.select().from(householdGroups).where(eq(householdGroups.accountId, accountId)).get() ||

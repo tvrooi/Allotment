@@ -12,6 +12,7 @@ import { formatCurrency } from '../../utils/currency';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Input';
+import { CATEGORIES_PATH, connectedBanksLink } from '../../utils/movedSections';
 
 // Review → Tidy up: setup problems that quietly make a budget less useful. Each one is fixed
 // here in one step, or links to where it is fixed. Nothing changes until you act.
@@ -52,7 +53,7 @@ export function Housekeeping() {
                 {r.count} round-up {r.count === 1 ? 'debit' : 'debits'} that never imported.
                 Spending looks smaller than it is until they're added.
               </p>
-              <Link to="/settings?tab=connections" className="text-brand-700 underline text-sm">
+              <Link to={connectedBanksLink('up')} className="text-brand-700 underline text-sm">
                 Check round-ups in Up settings
               </Link>
             </div>
@@ -89,7 +90,7 @@ export function Housekeeping() {
                 {unusedCategories} {unusedCategories === 1 ? 'category was' : 'categories were'}{' '}
                 never used
               </p>
-              <Link to="/settings?tab=categories" className="text-brand-700 underline">
+              <Link to={CATEGORIES_PATH} className="text-brand-700 underline">
                 Hide unused categories
               </Link>
             </div>

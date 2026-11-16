@@ -1,11 +1,35 @@
 # UI handover
 
-Overwritten at the end of each UI session, never appended. Wave E entry written 13 November 2026
-(branch `feat/wave-e-navigation`, up.173); Wave D and palette entries updated 12 November 2026
+Overwritten at the end of each UI session, never appended. Wave F entry rewritten 15 November 2026
+for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 November 2026 (branch `feat/wave-e-navigation`, up.173); Wave D and palette entries updated 12 November 2026
 (PRs #262 and #259). Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Older detail: grep `docs/handover/ARCHIVE.md`.
 
 ## Done this session
 
+- Wave F settings split and good moments (up.174, branch `wave-f`, PR #273 revised to the owner's
+  14 November decisions): #244 Connected banks is its own page, `/accounts/connections`
+  (`pages/AccountConnections.tsx` around `components/accounts/ConnectedBanks.tsx`), opened from
+  the Accounts header link (`accounts.connections`) and the empty state's Connect a bank. An
+  allowlisted `?provider=` (up, plaid, simplefin, enablebanking; Up when missing) holds the open
+  bank in the URL, and each status pill opens its own bank through `bankFeedLink` (D-08), so Up is
+  at most two clicks away. Categories is its own page, `/budget/categories`
+  (`pages/BudgetCategories.tsx` around `settings/CategoryManager.tsx`), opened from the Budget
+  header's Categories link, the phone ⋯ menu and the empty budget's Set up your categories.
+  Settings has eight tabs and opens on Accounts; `?tab=connections` and `?tab=categories` redirect
+  (replace) to the new pages and keep the other parameters (`movedSettingsTab`). The paths,
+  provider allowlist and link builders live in `utils/movedSections.ts`, and a unit test there fails
+  if either path is spelled in another client file. Search lists both pages (`PALETTE_PAGES`,
+  palette only, not the sidebar). The Accounts and Settings guides are version 2. The
+  account-deletion message in `server/src/services/accountDeletion.ts` now names Accounts →
+  Connected banks (D-09: the phase's one server change, message text only). #241 each goal row
+  ends in a plant (`components/goals/GoalPlant.tsx`, drawn by `components/ui/Plant.tsx`): four
+  stages, seed, seedling, bud and flower, from `plantStage`; the flower only when the goal's money
+  reaches its target. It grows in place when its stage changes and blooms once per goal per device
+  (`firstBloom`, `flybudget:goals-bloomed`). At $0 the Ready to assign label comes from
+  `readyToAssignStatus` (`utils/fundingStatus.ts`): "Every dollar has a job" with a still seedling
+  only when the server says nothing is left to sort out, otherwise it names what is left; the figure
+  is in normal colour. `lint/terms` guards the retired $0 label. Motion tokens `--animate-grow-in`,
+  `bloom` and `bloom-ring` in `index.css` are `none` under reduced motion.
 - Wave E navigation depth (up.173, branch `feat/wave-e-navigation`): #235 a payee page
   (`/payees/:id`, `pages/PayeeDetail.tsx`: spending by month and total, default category, the
   rules naming it via `ruleMentionsPayee`, its transactions), opened from the Payees list, a
@@ -83,7 +107,7 @@ Overwritten at the end of each UI session, never appended. Wave E entry written 
 - #217 Review queue redesign; #218 Cash flow personal share; #219 Household screens by type.
 - #220 sidebar item count (UX review item 7).
 - P2: #263 Review checklist in place of guide banners (rest of #239, needs an owner decision);
-  #264 disabled switch looks enabled; #241 delight moments; #244 split Settings tabs.
+  #264 disabled switch looks enabled.
 
 ## Decisions
 
@@ -91,6 +115,14 @@ Overwritten at the end of each UI session, never appended. Wave E entry written 
 - Budget work lives on `redesign`, beside the pre-redesign app on `main`; PR #209 was closed
   unmerged and is reconciled later.
 - Goal in-progress bars use one brand colour, reached goals green; `goal.color` only tints the dot.
+  A goal's plant (14 November 2026, #241) grows seed, seedling, bud and flowers only when the
+  goal's money reaches its target (Goals.tsx's `complete` rule); a goal completed by hand short of
+  it keeps its stage. Plain CSS motion, no package; "Goal reached" stays as text.
+- Connected banks and Categories are pages, `/accounts/connections` and `/budget/categories`, not
+  Settings tabs and not sections of another page; Settings opens on Accounts (14 November 2026,
+  #244). Every bank link opens its own provider.
+- A $0 Ready to assign never says an unqualified "all done" while a caveat remains: the label names
+  the caveat, and the figure keeps the normal text colour (14 November 2026, #241).
 - Long-range forecast amounts use `formatWholeCurrency`; forecasts are dotted with a ring at today.
 - Pickers: a category is always chosen with the searchable `CategoryPicker`; a short fixed list
   uses the one shared styled `Select` (`components/ui/Input.tsx`) (#240, 13 November 2026).
@@ -103,6 +135,14 @@ Overwritten at the end of each UI session, never appended. Wave E entry written 
   announce again after a push, and never add an inline Undo beside the toast's.
 
 ## Traps
+
+- Settings' moved tabs: a moved section is a row of `MOVED_SETTINGS_TABS` (`utils/movedSections.ts`).
+  Link through `CONNECTED_BANKS_PATH`, `connectedBanksLink`, `bankFeedLink` and `CATEGORIES_PATH`,
+  never a hand-typed path or `?tab=`: `movedSections.test.ts` fails on a spelled-out path.
+- Guide markers on Budget: `budget.categories` marks the envelope list (two guides target it); the
+  header's Categories link is `budget.manage-categories`.
+- `docs/ui/WAVES.md` is kept until Wave G merges (owner, 15 November 2026); update its Status and
+  Open PRs when a wave PR opens, merges or is sent back.
 
 - Scroll memory is keyed by the router's history key: a hand-typed hash URL gets the key
   `default`, like the first page load. A page-level scroll container must use `useScrollMemory`

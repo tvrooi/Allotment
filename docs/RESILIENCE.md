@@ -78,7 +78,7 @@ explicit move, and the unique category link still prevents two goals sharing mon
 
 The Review page ends with **Resume budgeting**: days since the last completed review,
 transactions dated since, uncategorised spending, accounts to reconcile and, with Up connected,
-bank changes waiting in Settings → Connected banks. Today's budget is always available first.
+bank changes waiting in Accounts → Connected banks. Today's budget is always available first.
 
 **Record today’s review** stores the date and a snapshot of the reserve and unfunded figures. It
 reconciles nothing, acknowledges no bank change and moves no money. With a reminder cadence, a

@@ -20,12 +20,16 @@ async function undersized(locators: Locator[]) {
   return small;
 }
 
-test('the category list in Settings has full-size buttons', async ({ page, api }) => {
+test('the category list on the Categories page has full-size buttons', async ({ page, api }) => {
   await api.createAccount('Checking', 0);
-  await open(page, '/settings');
+  await open(page, '/budget/categories');
   await expect(page.getByRole('button', { name: 'Create category' }).first()).toBeVisible();
   expect(
     await undersized([
+      page
+        .getByRole('main')
+        .getByRole('navigation', { name: 'Breadcrumb' })
+        .getByRole('link', { name: 'Budget', exact: true }),
       page.getByRole('button', { name: 'Create category' }),
       page.getByRole('button', { name: /^Delete group / }),
       page.getByRole('button', { name: 'Edit', exact: true }),
@@ -34,6 +38,41 @@ test('the category list in Settings has full-size buttons', async ({ page, api }
       page.getByRole('button', { name: 'Edit Groceries' }),
     ]),
   ).toEqual([]);
+});
+
+test('the Budget menu opens Categories on a phone (#244)', async ({ page, api }) => {
+  await api.createAccount('Checking', 0);
+  await open(page, '/budget');
+  await page.getByRole('button', { name: 'More budget actions' }).click();
+  const items = page.getByRole('menu', { name: 'More budget actions' }).getByRole('menuitem');
+  await expect(items.nth(0)).toHaveText('Year');
+  await expect(items.nth(1)).toHaveText('Categories');
+  await items.nth(1).click();
+  await expect(page).toHaveURL(/#\/budget\/categories$/);
+});
+
+test('the Connected banks page has a full-size way back and full-size header buttons (#244)', async ({
+  page,
+  api,
+}) => {
+  await open(page, '/accounts/connections');
+  const main = page.getByRole('main');
+  const back = main
+    .getByRole('navigation', { name: 'Breadcrumb' })
+    .getByRole('link', { name: 'Accounts', exact: true });
+  await expect(back).toBeVisible();
+  expect(await undersized([back])).toEqual([]);
+
+  await api.createAccount('Checking', 0);
+  await open(page, '/accounts');
+  const banks = main.getByRole('link', { name: 'Connected banks' });
+  const add = main.getByRole('button', { name: 'Add account' });
+  await expect(banks).toBeVisible();
+  expect(await undersized([banks, add])).toEqual([]);
+  // The title holds the first line and the two buttons wrap to the second
+  const title = await main.getByRole('heading', { level: 1, name: 'Accounts' }).boundingBox();
+  const link = await banks.boundingBox();
+  expect(link!.y).toBeGreaterThanOrEqual(title!.y + title!.height);
 });
 
 test('the dashboard lists recent transactions as cards, with full-size links', async ({

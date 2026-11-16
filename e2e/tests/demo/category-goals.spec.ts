@@ -37,3 +37,10 @@ test('category-funded goals use shared accounting and survive demo backup restor
   await page.getByRole('link', { name: 'Goals', exact: true }).click();
   await expect(page.getByText('Category demo', { exact: true })).toBeVisible();
 });
+
+test("the demo's reached goal has flowered (#241)", async ({ page }) => {
+  await page.goto('/demo/#/goals');
+  const row = page.getByTestId('goal-row').filter({ hasText: 'New laptop' });
+  await expect(row.getByTestId('goal-plant')).toHaveAttribute('data-stage', 'flower');
+  await expect(row).toContainText('Goal reached');
+});
