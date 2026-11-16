@@ -6,7 +6,7 @@ findings:
   - id: WR-01
     severity: warning
     disposition: open
-    title: "`GoalPlant` evaluates bloom eligibility only on mount"
+    title: "Initial bloom history is still consumed before the row commits"
   - id: WR-02
     severity: warning
     disposition: open
@@ -25,7 +25,7 @@ findings:
     title: "`docs/DEVELOPMENT.md` route table and `StatusStrip.tsx` doc comment still reference old Settings tabs"
 open: 5
 total: 5
-recorded: 2026-11-15T09:55:10.480Z
+recorded: 2026-11-16T06:45:13.131Z
 ---
 
 # Phase 01: Code Review Disposition
@@ -33,10 +33,10 @@ recorded: 2026-11-15T09:55:10.480Z
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
 | WR-01 | warning | open | - |
-| WR-02 | warning | open | - |
-| WR-03 | warning | open | - |
-| WR-04 | warning | open | - |
-| IN-01 | info | open | - |
+| WR-02 | warning | open | - (not in the current review) |
+| WR-03 | warning | open | - (not in the current review) |
+| WR-04 | warning | open | - (not in the current review) |
+| IN-01 | info | open | - (not in the current review) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
