@@ -3,8 +3,8 @@
 How the design re-review backlog (issues #222 to #245) is being worked through on `redesign`, and
 where to pick up. Read after [README.md](README.md) and [HANDOVER-UI.md](HANDOVER-UI.md). Update
 the **Status** and **Open PRs** sections whenever a wave PR opens, merges or is sent back; delete
-this file when Wave G has merged (owner, 15 November 2026). Last written 15 November 2026, when
-Wave F's PR #273 was revised to the owner's decisions.
+this file when Wave G has merged (owner, 15 November 2026). Last written 16 November 2026, after
+Wave F's PR #273 merged.
 
 ## Roles
 
@@ -22,17 +22,17 @@ Wave F's PR #273 was revised to the owner's decisions.
 
 ## Status
 
-| Wave                | Issues                                   | State                                                                                         |
-| ------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------- |
-| A shell             | #222, #223, #225                         | Merged, PR #247, up.167. Issues closed.                                                       |
-| A palette part 1    | #224 (part)                              | Merged, PR #253, up.169. #224 stays open.                                                     |
-| A palette part 2    | #224 (rest)                              | Merged, PR #259, up.171. #224 closed.                                                         |
-| B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.                                                       |
-| C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.                                                       |
-| D discoverability   | #226, #237, #239, #236                   | Merged, PR #262, up.172. Issues closed.                                                       |
-| E navigation depth  | #235, #243, #245, #240                   | Merged, PR #266, up.173. Issues closed.                                                       |
-| F settings, delight | #244, #241                               | PR #273 open, revised 15 November 2026 to the owner's decisions, up.174 prepared, not merged. |
-| G form controls     | #267                                     | Not started. Needs owner decisions.                                                           |
+| Wave                | Issues                                   | State                                                                    |
+| ------------------- | ---------------------------------------- | ------------------------------------------------------------------------ |
+| A shell             | #222, #223, #225                         | Merged, PR #247, up.167. Issues closed.                                  |
+| A palette part 1    | #224 (part)                              | Merged, PR #253, up.169. #224 stays open.                                |
+| A palette part 2    | #224 (rest)                              | Merged, PR #259, up.171. #224 closed.                                    |
+| B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.                                  |
+| C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.                                  |
+| D discoverability   | #226, #237, #239, #236                   | Merged, PR #262, up.172. Issues closed.                                  |
+| E navigation depth  | #235, #243, #245, #240                   | Merged, PR #266, up.173. Issues closed.                                  |
+| F settings, delight | #244, #241                               | Merged, PR #273 (`6520896`), up.174 prepared, not tagged. Issues closed. |
+| G form controls     | #267                                     | Not started. Needs owner decisions.                                      |
 
 Also merged: PR #256, test-only fixes for date- and timing-dependent Household specs.
 
@@ -59,9 +59,9 @@ Not in any wave:
 
 ## Open PRs
 
-- PR #273, Wave F (#244, #241), base `redesign`: open, revised 15 November 2026 to the owner's
-  decisions (Connected banks and Categories as pages, the goal plant, the $0 label), up.174
-  prepared, not merged.
+- None. Wave F (PR #273) was squash-merged into `redesign` on 16 November 2026 as `6520896`,
+  after a gap-closure round (plan 01-09) and a review follow-up, CI green on `ad26903`; the owner
+  passed the four visual checks on a live demo of that head. #244 and #241 are closed.
 - Wave E (PR #266) merged after three fix rounds. Rounds 1 and 2 were reviewed by
   Antigravity and the GitHub Codex review (no major issue on the round-2 commit); round 3 was
   merged on green CI alone, on the owner's instruction, so it has had no second review. Its five
@@ -79,7 +79,8 @@ Not in any wave:
 
 ## What to do next, in order
 
-1. Wave F (#244, #241), one PR. Then Wave G (#267) once the owner has made its five decisions.
+1. Wave G (#267) once the owner has made its five decisions. It is phase 2 ("Shared form
+   controls") of the GSD milestone in `.planning/ROADMAP.md`.
 2. Triage the `needs-triage` issues above with the owner or by the routine in
    [docs/agents/triage-labels.md](../agents/triage-labels.md).
 
@@ -110,7 +111,16 @@ Not in any wave:
   searchable `CategoryPicker`, short lists the shared styled `Select` (Wave G would change the
   second half on desktop). The HIGH tier was not used: gutters are set per page, not in the shell.
 - **#244:** the Settings split is endorsed.
-- **Release:** undecided. `redesign` carries up.154 to up.171 prepared and untagged. The
+- **Wave F, 14 to 16 November:** the UI-SPEC wins where PR #273 differed (D-07); Connected banks
+  and Categories are pages; the goal plant has four stages and blooms once per goal per device;
+  $0 reads "Every dollar has a job" only when nothing is unresolved. After verification the owner
+  chose to fix WR-01 (bloom while a row stays on the page, and a discarded first render no longer
+  uses up the bloom) and WR-04 (the guide's $0 label, a case-insensitive guard). Deferred, not
+  filed as issues: WR-02 (the Connected banks loading state has no status text for screen
+  readers), WR-03 (Enable Banking server messages still name `Settings → Connected banks`) and
+  IN-01 (`docs/DEVELOPMENT.md` routes and a `StatusStrip.tsx` comment name old Settings tabs);
+  see `.planning/phases/01-settings-split-and-good-moments/01-REVIEW-DISPOSITION.md`.
+- **Release:** undecided. `redesign` carries up.154 to up.174 prepared and untagged. The
   orchestrator's recommendation is one release from `redesign` soon, because the Safe mode chart
   fix (#246) is a privacy fix; it and the menu fix must appear in the release notes. Do not tag,
   publish or update the live app until the owner decides.
@@ -199,5 +209,16 @@ Not in any wave:
   there fails all four shards with no test run. Put it in the coder's checks.
 - **Making a shared call do more** (Wave E made the undo store's `push` announce): search every
   caller. Callers that already announced, or had their own inline Undo, doubled up in six places.
+- **Two checkouts (Wave F):** code on `wave-f` in a separate worktree, `.planning/` on
+  `redesign` in the main checkout. Review and verify against the code worktree, never the
+  planning checkout's older `client/`; GSD's default "files changed on this branch" scope finds
+  only planning commits there.
+- **Typing into an amount field in e2e:** `fill()` on a `CurrencyInput` that already holds an
+  amount is lost (the dialog saves the old value). Use `typeAmount` from `e2e/tests/fixtures.ts`,
+  after asserting the field shows the current amount.
+- **Herdr dispatcher (Wave F):** it accepts writing workers only in GSD-created `worktree-agent-*`
+  worktrees, so a plan bound to an existing worktree runs inline; reviewers and verifiers run as
+  read-only jobs. Editing a worker's artifact after `job collect` makes `job accept` refuse it:
+  collect again. A Codex incremental review of eight files took about an hour.
 - **Usage limits:** coder sessions stop mid-task at the five-hour limit. Their work is saved;
   resume the same session with a message telling it to check `git status` and leftover processes.

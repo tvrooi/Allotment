@@ -1,7 +1,8 @@
 # UI handover
 
 Overwritten at the end of each UI session, never appended. Wave F entry rewritten 15 November 2026
-for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 November 2026 (branch `feat/wave-e-navigation`, up.173); Wave D and palette entries updated 12 November 2026
+for the revised PR #273 (branch `wave-f`, up.174), merged into `redesign` 16 November 2026 as `6520896`
+with the gap closure below; Wave E entry 13 November 2026 (branch `feat/wave-e-navigation`, up.173); Wave D and palette entries updated 12 November 2026
 (PRs #262 and #259). Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Older detail: grep `docs/handover/ARCHIVE.md`.
 
 ## Done this session
@@ -30,6 +31,10 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
   only when the server says nothing is left to sort out, otherwise it names what is left; the figure
   is in normal colour. `lint/terms` guards the retired $0 label. Motion tokens `--animate-grow-in`,
   `bloom` and `bloom-ring` in `index.css` are `none` under reduced motion.
+  Gap closure before the merge (15 and 16 November): the bloom follows the goal while its row
+  stays on the page (`nextBloom` in `goals/growth.ts`, decided only in `GoalPlant`'s layout effect,
+  so a discarded first render records nothing), and the Budgeting guide and `lint/terms` (now
+  case-insensitive) name the current $0 label. Merged as `6520896`; #244 and #241 closed.
 - Wave E navigation depth (up.173, branch `feat/wave-e-navigation`): #235 a payee page
   (`/payees/:id`, `pages/PayeeDetail.tsx`: spending by month and total, default category, the
   rules naming it via `ruleMentionsPayee`, its transactions), opened from the Payees list, a
@@ -98,7 +103,7 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 
 ## In progress
 
-- None committed half-done. `redesign` is ahead of `main`; up.154 to up.172 are prepared, not tagged.
+- None committed half-done. `redesign` is ahead of `main`; up.154 to up.174 are prepared, not tagged.
 
 ## Next up (issues)
 
