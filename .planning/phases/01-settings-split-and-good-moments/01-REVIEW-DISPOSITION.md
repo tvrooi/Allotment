@@ -5,7 +5,7 @@ titles: json
 findings:
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Initial bloom history is still consumed before the row commits"
   - id: WR-02
     severity: warning
@@ -23,7 +23,7 @@ findings:
     severity: info
     disposition: deferred
     title: "`docs/DEVELOPMENT.md` route table and `StatusStrip.tsx` doc comment still reference old Settings tabs"
-open: 1
+open: 0
 total: 5
 recorded: 2026-11-16T06:45:13.131Z
 ---
@@ -32,7 +32,7 @@ recorded: 2026-11-16T06:45:13.131Z
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | open | Residual of the old WR-01 (fixed in 01-09 for rows that stay mounted): the mount-time initializer still writes bloom history during render; awaiting owner decision |
+| WR-01 | warning | fixed | wave-f 9149547 (test, failed first) and ad26903 (initial bloom decided in the layout effect); owner-approved 16 November 2026 |
 | WR-02 | warning | deferred | Out of scope for gap closure 01-09 by the owner's choice, 15 November 2026 (01-09-PLAN objective) |
 | WR-03 | warning | deferred | Out of scope for gap closure 01-09 by the owner's choice, 15 November 2026 (01-09-PLAN objective) |
 | WR-04 | warning | fixed | 01-09: wave-f 22c5e94 (guard /i) and 1b6f5f6 (guide and docs); confirmed by the incremental review of 575c3ea..1b6f5f6 |

@@ -22,6 +22,7 @@ actuals:
   commits: 4
 plan_head_before: 575c3ea48bd32f791a1417762140a1a7bd482c0a
 plan_head_after: 1b6f5f6941799b5ead62808b3f18551a552391d7
+review_followup_head: ad26903
 
 tech-stack:
   added: []
@@ -30,7 +31,8 @@ tech-stack:
     - "e2e: type into amount fields with the typeAmount fixture, after asserting the dialog has loaded the current amount"
 
 key-files:
-  created: []
+  created:
+    - client/src/components/goals/GoalPlant.test.ts
   modified:
     - client/src/components/goals/growth.ts
     - client/src/components/goals/growth.test.ts
@@ -217,6 +219,15 @@ None beyond the deviation above.
 ## User Setup Required
 
 None.
+
+## Follow-up from the code review (16 November 2026, owner-approved)
+
+The incremental code review of `575c3ea..1b6f5f6` (`01-REVIEW.md`, WR-01) confirmed both fixes. It found one residual: the mount-time initializer `useState(() => nextBloom(goalId, false, complete, false))` called `firstBloom` during render, so a render React discards (a suspended mount) used up a goal's one bloom. My comment above it also said the bloom was never decided during render. The owner chose to fix it now.
+
+- `9149547` test(ui): a goal plant that is never shown uses up no bloom (#241). New `GoalPlant.test.ts` renders a reached goal with `renderToStaticMarkup`, which runs no effects, and expects nothing stored. Before the fix: `AssertionError: expected 1 to be +0`.
+- `ad26903` fix(ui): a goal's bloom is remembered only once its plant is shown (#241). `bloom` starts `false` and the ref starts `{ complete: false, bloom: false }`, so the existing layout effect decides on mount too, before the first paint. The comment now says so.
+- Checks at `ad26903`: goals and Plant unit tests 26/26; e2e desktop `category-goals.spec.ts` 10 passed (first sight, reload and reduced motion unedited); client 617/617 in 76 files; build passed; `lint/terms` 86/86; lint 0 errors, 128 warnings; e2e `tsc` clean; e2e desktop goals + budget 33 passed; demo 2 passed.
+- Plain push `1b6f5f6..ad26903`; the PR body's gap-closure section has a follow-up paragraph. CI result: see the phase verification.
 
 ## Next
 
