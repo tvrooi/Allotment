@@ -42,7 +42,7 @@ test.describe('budget', () => {
     await expect(toBeBudgeted(page)).toContainText('$2,600');
     await plan(page, 'Rent / Mortgage', '2600');
     await expect(toBeBudgeted(page)).toContainText('$0');
-    await expect(toBeBudgeted(page)).toContainText('Fully budgeted');
+    await expect(toBeBudgeted(page)).toContainText('Every dollar has a job');
 
     const summary = await api.call('GET', `/budget/${thisMonth()}/summary`);
     expect(summary).toMatchObject({ income: 300_000, totalBudgeted: 300_000, toBeBudgeted: 0 });
@@ -300,7 +300,7 @@ test.describe('budget', () => {
     await expect(toBeBudgeted(page)).toContainText('$700');
     // Held money can't be given to an envelope, but the rest can: the month is fully budgeted
     await plan(page, 'Groceries', '700');
-    await expect(toBeBudgeted(page)).toContainText('Fully budgeted');
+    await expect(toBeBudgeted(page)).toContainText('Every dollar has a job');
     const refused = await api.request.put(`/api/budget/${thisMonth()}/${groceries.id}`, {
       data: { budgeted: 70_100 },
     });
@@ -694,4 +694,106 @@ test('the next funding gap separates bills due by the deadline from later bills'
     await dialog.getByRole('button', { name: 'Close expected bills' }).click();
     await expect(dialog).toBeHidden();
   }
+});
+
+test('Categories opens the category page from Budget, and the breadcrumb returns (#244)', async ({
+  page,
+  api,
+}) => {
+  await api.createAccount('Checking', 0);
+  await open(page, '/budget');
+  await expect(toBeBudgeted(page)).toBeVisible();
+  const main = page.getByRole('main');
+  await main.getByRole('link', { name: 'Categories', exact: true }).click();
+  await expect(page).toHaveURL(/#\/budget\/categories$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Categories' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit Groceries' })).toBeVisible();
+
+  await main
+    .getByRole('navigation', { name: 'Breadcrumb' })
+    .getByRole('link', { name: 'Budget', exact: true })
+    .click();
+  await expect(toBeBudgeted(page)).toBeVisible();
+  await expect(page).toHaveURL(/#\/budget$/);
+});
+
+test('reaching $0 Ready to assign says every dollar has a job, in normal colour (#241)', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Checking', 0);
+  const paychecks = await api.category('Paychecks');
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: 50_000,
+    payeeName: 'Employer',
+    categoryId: paychecks.id,
+  });
+  await open(page, '/budget');
+  const ready = toBeBudgeted(page);
+  await expect(ready).toContainText('$500');
+  await expect(ready).not.toContainText('Every dollar has a job');
+
+  await plan(page, 'Groceries', '500');
+  for (const reload of [false, true]) {
+    if (reload) await page.reload();
+    await expect(ready).toContainText('Every dollar has a job');
+    await expect(ready.getByTestId('ready-glyph')).toBeVisible();
+    // Zero is said plainly, in the normal text colour (GLOSSARY.md)
+    await expect(ready.getByText('$0', { exact: true })).toHaveClass(/(^|\s)text-text(\s|$)/);
+  }
+});
+
+test('at $0 with an overspent envelope the label names it instead of praising (#241)', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Checking', 0);
+  const paychecks = await api.category('Paychecks');
+  const groceries = await api.category('Groceries');
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: 50_000,
+    payeeName: 'Employer',
+    categoryId: paychecks.id,
+  });
+  await open(page, '/budget');
+  await plan(page, 'Groceries', '500');
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: -60_000,
+    payeeName: 'Supermarket',
+    categoryId: groceries.id,
+  });
+  await page.reload();
+
+  const ready = toBeBudgeted(page);
+  const label = ready.getByText('All assigned, but envelopes are overspent', { exact: true });
+  await expect(ready.getByText('$0', { exact: true })).toBeVisible();
+  await expect(label).toBeVisible();
+  await expect(ready).not.toContainText('Every dollar has a job');
+  await expect(ready.getByTestId('ready-glyph')).toHaveCount(0);
+  // The hero names the job; the line under it gives the one next step
+  const todo = page.getByText('Resolve overspent envelopes.', { exact: true });
+  await expect(todo).toBeVisible();
+  await expect(
+    page.locator('p').filter({ has: todo }).getByRole('link', { name: 'Review' }),
+  ).toBeVisible();
+
+  // On a phone the label wraps beside a figure that stays on one line, with no sideways scroll
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await expect(label).toBeVisible();
+  const figure = ready.getByText('$0', { exact: true });
+  expect(
+    await figure.evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size;
+    }),
+  ).toBe(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

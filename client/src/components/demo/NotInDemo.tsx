@@ -8,7 +8,7 @@ const TEXT =
   'bank. In the app, Up brings in your settled transactions, Savers and 2Up included, and other ' +
   'banks connect through Plaid, SimpleFIN, Enable Banking or CSV files.';
 
-/** Shown in the demo instead of bank connection setup (see ConnectedAccounts). */
+/** Shown in the demo instead of bank connection setup (see accounts/ConnectedBanks). */
 export function NotInDemo() {
   return (
     <div className="flex items-start gap-3 p-4 rounded-lg border border-border-light bg-surface-alt">

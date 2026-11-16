@@ -101,6 +101,20 @@ test.describe('Safe mode', () => {
     }
   });
 
+  test('Goals: the list and its plants are hidden (#241)', async ({ page, api }) => {
+    await api.call('POST', '/goals', {
+      name: 'Laptop',
+      targetAmount: 10_000,
+      currentAmount: 10_000,
+    });
+    await open(page, '/goals');
+    await expect(page.getByTestId('goal-plant')).toHaveCount(1);
+    await page.getByRole('complementary').getByRole('button', { name: 'Safe mode' }).click();
+    await expect(page.getByText('Goals are hidden in Safe mode', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('goal-row')).toHaveCount(0);
+    await expect(page.getByTestId('goal-plant')).toHaveCount(0);
+  });
+
   test('stays on after a reload and is off again in a new session', async ({ page }) => {
     await open(page, '/accounts');
     await expect(page.getByRole('complementary').getByText('$104,321.08')).toBeVisible();

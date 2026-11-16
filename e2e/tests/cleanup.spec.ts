@@ -91,7 +91,7 @@ test('an account linked to Up cannot be deleted, and says how to unlink it', asy
   await page.getByRole('button', { name: 'Delete…' }).click();
   const dialog = page.getByRole('dialog', { name: 'Delete account and its transactions' });
   await expect(dialog.getByRole('alert')).toContainText('is linked to Up. Unlink it first');
-  await expect(dialog.getByRole('alert')).toContainText('Settings → Connections');
+  await expect(dialog.getByRole('alert')).toContainText('Accounts → Connected banks → Up');
   await expect(dialog.getByRole('button', { name: 'Delete account' })).toBeDisabled();
   expect((await api.accounts()).some((a) => a.id === bank.id)).toBe(true);
   await api.call('DELETE', '/up/connection');

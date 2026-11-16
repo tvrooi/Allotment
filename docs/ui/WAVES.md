@@ -3,7 +3,8 @@
 How the design re-review backlog (issues #222 to #245) is being worked through on `redesign`, and
 where to pick up. Read after [README.md](README.md) and [HANDOVER-UI.md](HANDOVER-UI.md). Update
 the **Status** and **Open PRs** sections whenever a wave PR opens, merges or is sent back; delete
-this file when Wave F has merged. Last written 13 November 2026 after Wave E merged (PR #266).
+this file when Wave G has merged (owner, 15 November 2026). Last written 15 November 2026, when
+Wave F's PR #273 was revised to the owner's decisions.
 
 ## Roles
 
@@ -21,17 +22,17 @@ this file when Wave F has merged. Last written 13 November 2026 after Wave E mer
 
 ## Status
 
-| Wave                | Issues                                   | State                                     |
-| ------------------- | ---------------------------------------- | ----------------------------------------- |
-| A shell             | #222, #223, #225                         | Merged, PR #247, up.167. Issues closed.   |
-| A palette part 1    | #224 (part)                              | Merged, PR #253, up.169. #224 stays open. |
-| A palette part 2    | #224 (rest)                              | Merged, PR #259, up.171. #224 closed.     |
-| B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.   |
-| C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.   |
-| D discoverability   | #226, #237, #239, #236                   | Merged, PR #262, up.172. Issues closed.   |
-| E navigation depth  | #235, #243, #245, #240                   | Merged, PR #266, up.173. Issues closed.   |
-| F settings, delight | #244, #241                               | Not started.                              |
-| G form controls     | #267                                     | Not started. Needs owner decisions.       |
+| Wave                | Issues                                   | State                                                                                         |
+| ------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------- |
+| A shell             | #222, #223, #225                         | Merged, PR #247, up.167. Issues closed.                                                       |
+| A palette part 1    | #224 (part)                              | Merged, PR #253, up.169. #224 stays open.                                                     |
+| A palette part 2    | #224 (rest)                              | Merged, PR #259, up.171. #224 closed.                                                         |
+| B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.                                                       |
+| C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.                                                       |
+| D discoverability   | #226, #237, #239, #236                   | Merged, PR #262, up.172. Issues closed.                                                       |
+| E navigation depth  | #235, #243, #245, #240                   | Merged, PR #266, up.173. Issues closed.                                                       |
+| F settings, delight | #244, #241                               | PR #273 open, revised 15 November 2026 to the owner's decisions, up.174 prepared, not merged. |
+| G form controls     | #267                                     | Not started. Needs owner decisions.                                                           |
 
 Also merged: PR #256, test-only fixes for date- and timing-dependent Household specs.
 
@@ -58,7 +59,10 @@ Not in any wave:
 
 ## Open PRs
 
-- None. Wave E (PR #266) merged after three fix rounds. Rounds 1 and 2 were reviewed by
+- PR #273, Wave F (#244, #241), base `redesign`: open, revised 15 November 2026 to the owner's
+  decisions (Connected banks and Categories as pages, the goal plant, the $0 label), up.174
+  prepared, not merged.
+- Wave E (PR #266) merged after three fix rounds. Rounds 1 and 2 were reviewed by
   Antigravity and the GitHub Codex review (no major issue on the round-2 commit); round 3 was
   merged on green CI alone, on the owner's instruction, so it has had no second review. Its five
   items: scroll moves by itself only on Back/Forward; category and payee pages hide their own

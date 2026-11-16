@@ -34,6 +34,7 @@ import { AccountIcon } from '../components/accounts/AccountIcon';
 import { accountTypeInfo, accountTypeLabel } from '../utils/accountTypes';
 import { useScrollMemory } from '../hooks/useScrollMemory';
 import { PAGE_GUTTER } from '../components/ui/pageGutter';
+import { CONNECTED_BANKS_PATH } from '../utils/movedSections';
 
 function groupAccountsByType(accounts: Account[]) {
   const groups = new Map<AccountGroup, Account[]>();
@@ -194,7 +195,7 @@ export default function AccountsPage() {
   return (
     <div className="flex flex-col h-full bg-surface">
       <div
-        className={`py-4 border-b border-border shrink-0 flex items-center justify-between ${PAGE_GUTTER}`}
+        className={`py-4 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 ${PAGE_GUTTER}`}
       >
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
@@ -202,9 +203,19 @@ export default function AccountsPage() {
           </h1>
           <UpSyncBadge />
         </div>
-        <Button size="sm" onClick={() => setAddOpen(true)} data-guide="accounts.add">
-          <Plus size={14} /> Add account
-        </Button>
+        <div className="flex items-center gap-2">
+          <ButtonLink
+            variant="secondary"
+            size="sm"
+            to={CONNECTED_BANKS_PATH}
+            data-guide="accounts.connections"
+          >
+            <Link2 size={14} aria-hidden /> Connected banks
+          </ButtonLink>
+          <Button size="sm" onClick={() => setAddOpen(true)} data-guide="accounts.add">
+            <Plus size={14} /> Add account
+          </Button>
+        </div>
       </div>
 
       {accountsQuery.isError && (
@@ -222,7 +233,7 @@ export default function AccountsPage() {
                 <Button onClick={() => setAddOpen(true)}>
                   <Plus size={14} /> Add your first account
                 </Button>
-                <ButtonLink variant="secondary" to="/settings?tab=connections">
+                <ButtonLink variant="secondary" to={CONNECTED_BANKS_PATH}>
                   <Link2 size={14} /> Connect a bank
                 </ButtonLink>
               </>

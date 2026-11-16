@@ -1,39 +1,34 @@
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import {
-  Layers,
   ArrowUpDown,
   Coins,
   Download,
   SlidersHorizontal,
-  Link2,
   Server,
   Compass,
   Tag,
   CalendarRange,
 } from 'lucide-react';
 import { ServerSettings } from '../components/settings/ServerSettings';
-import { CategoryManager } from '../components/settings/CategoryManager';
 import { AccountReorder } from '../components/settings/AccountReorder';
 import { DataExport } from '../components/settings/DataExport';
 import { PreferencesPanel } from '../components/settings/PreferencesPanel';
 import { CurrencySettings } from '../components/settings/CurrencySettings';
-import { ConnectedAccounts } from '../components/settings/ConnectedAccounts';
 import { PrioritiesSettings } from '../components/settings/PrioritiesSettings';
 import { TagManager } from '../components/settings/TagManager';
 import { BudgetStartSettings } from '../components/settings/BudgetStartSettings';
+import { movedSettingsTab } from '../utils/movedSections';
 import { LICENSE_URL, SOURCE_CODE_URL } from '../utils/project';
 import { ScrollCue } from '../components/ui/ScrollCue';
 import { onTabListKeyDown, tabIds as tabPanelIds } from '../components/ui/tabList';
 import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 const tabs = [
-  { id: 'categories', label: 'Categories', icon: Layers },
   { id: 'accounts', label: 'Accounts', icon: ArrowUpDown },
   // When the envelope budget starts counting
   { id: 'budget', label: 'Budget', icon: CalendarRange },
   // Phase 9 transaction tags
   { id: 'tags', label: 'Tags', icon: Tag },
-  { id: 'connections', label: 'Connected banks', icon: Link2 },
   // The budget's currency, exchange rates and how each currency is written
   { id: 'currencies', label: 'Currencies', icon: Coins },
   // Optional financial priorities and category purposes (phase 7A)
@@ -53,8 +48,12 @@ export default function SettingsPage() {
   // can open it
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const activeTab: TabId = tabParam && tabIds.has(tabParam) ? (tabParam as TabId) : 'categories';
+  const activeTab: TabId = tabParam && tabIds.has(tabParam) ? (tabParam as TabId) : 'accounts';
   const setActiveTab = (tab: TabId) => setSearchParams({ tab }, { replace: true });
+  // Connected banks and Categories moved to Accounts and Budget (#244); old links still arrive.
+  // After the hooks above, as the rules of hooks require
+  const movedTo = movedSettingsTab(searchParams);
+  if (movedTo) return <Navigate to={movedTo} replace />;
 
   return (
     <div className="flex flex-col h-full bg-surface">
@@ -111,11 +110,9 @@ export default function SettingsPage() {
           id={tabPanelIds('settings', activeTab).panel}
           aria-labelledby={tabPanelIds('settings', activeTab).tab}
         >
-          {activeTab === 'categories' && <CategoryManager />}
           {activeTab === 'accounts' && <AccountReorder />}
           {activeTab === 'tags' && <TagManager />}
           {activeTab === 'budget' && <BudgetStartSettings />}
-          {activeTab === 'connections' && <ConnectedAccounts />}
           {activeTab === 'currencies' && <CurrencySettings />}
           {activeTab === 'priorities' && <PrioritiesSettings />}
           {activeTab === 'data' && <DataExport />}

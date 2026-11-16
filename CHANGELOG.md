@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.174
+
+- **Banks under Accounts, categories under Budget.** Connected banks is its own page under Accounts: open it with Connected banks at the top of the Accounts page, and Up is at most two clicks away. A bank's status opens that bank's own connection. Categories have their own page under Budget, opened with Categories in the Budget header (in the ⋯ menu on a phone). Settings has eight tabs and opens on Accounts. Old links to Settings' Connected banks and Categories tabs still work, and Search finds both pages. The message that stops you deleting an account linked to a bank now says to unlink it under Accounts → Connected banks.
+- **Good moments are marked.** Each goal has a small plant at the end of its bar that grows from a seed to a seedling to a bud as the money comes in, and flowers when the goal is reached, opening once the first time you see it. When Ready to assign is $0 and nothing is left to sort out, it says "Every dollar has a job"; when something is, such as an overspent envelope or spending with no category, it names that instead. Animations stay still when your device asks for reduced motion.
+
 ## 0.2.0-up.173
 
 - **Payees and goals lead somewhere.** Each payee has its own page: its spending by month and in total, its default category, the rules that name it and its transactions. Open it from the Payees list, from a transaction's details or from Search. A goal funded by a category opens that category; every goal has an Edit button. Payees are renamed with a visible button, and a default category is chosen with the same searchable picker as everywhere else.

@@ -21,31 +21,35 @@ import type { SimplefinSetupResult } from '../../types';
 import { IS_DEMO } from '../../demo/demoApi';
 import { NotInDemo } from '../demo/NotInDemo';
 import { UpSettings } from '../up/UpSettings';
-import { DeletedBankImports } from './DeletedBankImports';
+import { DeletedBankImports } from '../settings/DeletedBankImports';
 import { useUpConnection } from '../../hooks/useUp';
 import { formatDistanceToNow } from 'date-fns';
 import { CommunitySupportedNote } from '../banks/CommunitySupported';
+import type { BankProvider } from '../../utils/movedSections';
 
-type Provider = 'plaid' | 'simplefin' | 'enablebanking' | 'up';
+interface ConnectedBanksProps {
+  /** The provider whose setup is open */
+  provider: BankProvider;
+  onProvider: (provider: BankProvider) => void;
+}
 
-export function ConnectedAccounts() {
-  return IS_DEMO ? <ConnectedAccountsDemo /> : <ConnectedAccountsSettings />;
+/**
+ * Connected banks, the body of its page under Accounts (#244; it was a Settings tab): Up first,
+ * then the community-supported connections, each opened in place. The page header carries the
+ * title and the intro.
+ */
+export function ConnectedBanks(props: ConnectedBanksProps) {
+  return IS_DEMO ? <ConnectedBanksDemo /> : <ConnectedBanksSetup {...props} />;
 }
 
 /**
  * The demo's sample budget came from Up: its (pretend) connection, and Connect Up shown but
  * switched off, since the demo can't connect banks
  */
-function ConnectedAccountsDemo() {
+function ConnectedBanksDemo() {
   const { data: up } = useUpConnection();
   return (
-    <div className="space-y-5 max-w-xl">
-      <div>
-        <h2 className="text-sm font-semibold text-text">Connected banks</h2>
-        <p className="text-xs text-text-tertiary mt-0.5">
-          Automatically import transactions from your financial institutions.
-        </p>
-      </div>
+    <div className="space-y-5">
       {up && (
         <div className="rounded-lg border border-border bg-surface p-4 space-y-2">
           <p className="text-sm font-medium text-text">Up</p>
@@ -74,7 +78,7 @@ function ConnectedAccountsDemo() {
   );
 }
 
-function ConnectedAccountsSettings() {
+function ConnectedBanksSetup({ provider, onProvider }: ConnectedBanksProps) {
   const { data: status, isLoading: statusLoading } = usePlaidStatus();
   const { data: items = [], isLoading: itemsLoading } = usePlaidItems();
   const { data: sfConnections = [], isLoading: sfLoading } = useSimplefinConnections();
@@ -84,7 +88,6 @@ function ConnectedAccountsSettings() {
   const syncAllSf = useSyncAllSimplefin();
   const syncAllEb = useSyncAllEnableBanking();
   const [showEnableBanking, setShowEnableBanking] = useState(false);
-  const [provider, setProvider] = useState<Provider>('plaid');
   const [showConnect, setShowConnect] = useState(false);
   const [showSimplefin, setShowSimplefin] = useState(false);
   const [sfSetupResult, setSfSetupResult] = useState<SimplefinSetupResult | undefined>();
@@ -96,21 +99,13 @@ function ConnectedAccountsSettings() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 size={24} className="animate-spin text-text-tertiary" />
+        <Loader2 size={24} className="animate-spin text-text-tertiary" aria-hidden />
       </div>
     );
   }
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-sm font-semibold text-text">Connected banks</h2>
-        <p className="text-xs text-text-tertiary mt-0.5">
-          Automatically import transactions from your financial institutions. Any other bank: import
-          its CSV files from the account's page.
-        </p>
-      </div>
-
       {/* Provider toggle: one row that scrolls sideways when it's wider than the screen */}
       <div
         role="group"
@@ -143,7 +138,7 @@ function ConnectedAccountsSettings() {
           <button
             key={p.id}
             type="button"
-            onClick={() => setProvider(p.id)}
+            onClick={() => onProvider(p.id)}
             title={p.title}
             aria-pressed={provider === p.id}
             className={`flex items-center shrink-0 px-4 py-1.5 max-md:min-h-11 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${

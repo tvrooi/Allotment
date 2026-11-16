@@ -69,8 +69,10 @@ test('no button, link or select on the main pages is nameless', async ({ page, a
   for (const route of [
     '/dashboard',
     '/budget',
+    '/budget/categories',
     '/transactions',
     '/accounts',
+    '/accounts/connections',
     '/payees',
     '/rules',
     '/reports',
@@ -181,7 +183,7 @@ test('every label in the account, goal, recurring and category forms points at i
   await expect(recurring.getByRole('group', { name: 'Type' })).toBeVisible();
   await page.keyboard.press('Escape');
 
-  await open(page, '/settings');
+  await open(page, '/budget/categories');
   await page.getByRole('button', { name: 'Edit Parking' }).click();
   const category = page.getByRole('dialog', { name: 'Edit category' });
   expect(await strayLabels(category)).toEqual([]);

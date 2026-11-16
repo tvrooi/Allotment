@@ -83,7 +83,7 @@ Ready to assign, in the current month only (`PUT /budget/:month/hold`, `setHold`
 `services/budgetHolds.ts`, table `budget_holds` with one row per month, owner only: no access
 token reaches it). A hold is not an assignment: it touches no envelope and no account. In the month
 it was held in and every month before it, `fundingState` subtracts it from Ready to assign
-(`held`, on top of `laterDeduction`), so that month can reach $0 and read fully budgeted; from the
+(`held`, on top of `laterDeduction`), so that month can reach $0 and read "Every dollar has a job"; from the
 next month it no longer applies, so the money is ready to assign again there. While held it can't
 be assigned, even to a later month's envelope: `assignable` in `budgetMoves.ts` checks every month
 against `unassignedBeforeLater − futureAssigned − held`, so the one funded-write guard refuses it.
