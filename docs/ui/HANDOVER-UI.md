@@ -99,6 +99,12 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 ## In progress
 
 - None committed half-done. `redesign` is ahead of `main`; up.154 to up.172 are prepared, not tagged.
+- Wave G shared form controls (#267): G0, the audit, is
+  [FORM-CONTROLS-AUDIT.md](FORM-CONTROLS-AUDIT.md): every field and selector in `client/src` with
+  its file and line, what it becomes and the phase that moves it, plus the lists, focus, number,
+  date, stays-native and screenshot sections and the questions for the owner. G1, the component
+  set, waits for the owner to read the audit and say go (D-10). Until G1 to G5 land, the Wave E rule
+  under Decisions still stands in code: a short fixed list uses the native styled `Select`.
 
 ## Next up (issues)
 
