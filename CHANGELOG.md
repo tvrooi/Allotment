@@ -1,5 +1,13 @@
 # Changes
 
+## 0.2.0-up.175
+
+- **One set of form controls.** Text fields, selects, searchable lists, checkboxes, radio buttons, switches, and date and month fields now share one look and one set of states (help text, errors, disabled, read-only), with keyboard support throughout. Phones keep their own select, date and month pickers. Screens move onto the set over the next releases; this one changes only the pickers below (#267).
+- **Clearer states.** A switch that is turned off for editing now looks disabled (#264). Placeholder text is easier to read, and a field shows one focus mark instead of two when you tab to it.
+- **Today in one press.** The date field has a Today shortcut beside its calendar.
+- **Category and payee pickers.** Both now run on the shared searchable list. The payee suggestions can be chosen with the arrow keys, and Escape closes only the suggestions, so a form on a phone stays open. If creating a category fails, the picker says so.
+- **Month range picker rebuilt.** The month range on Reports, the report builder and Cash flow uses the same month grid as the month field. On a phone it is two plain From and To month fields. The ranges you can pick are unchanged.
+
 ## 0.2.0-up.174
 
 - **Banks under Accounts, categories under Budget.** Connected banks is its own page under Accounts: open it with Connected banks at the top of the Accounts page, and Up is at most two clicks away. A bank's status opens that bank's own connection. Categories have their own page under Budget, opened with Categories in the Budget header (in the ⋯ menu on a phone). Settings has eight tabs and opens on Accounts. Old links to Settings' Connected banks and Categories tabs still work, and Search finds both pages. The message that stops you deleting an account linked to a bank now says to unlink it under Accounts → Connected banks.

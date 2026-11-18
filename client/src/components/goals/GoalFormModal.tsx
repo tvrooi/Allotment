@@ -212,6 +212,7 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
 
         <DatePicker
           label="Target date (optional)"
+          errorLabel="target date"
           value={targetDate}
           onChange={setTargetDate}
           optional

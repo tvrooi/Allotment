@@ -100,11 +100,31 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 
 - None committed half-done. `redesign` is ahead of `main`; up.154 to up.172 are prepared, not tagged.
 - Wave G shared form controls (#267): G0, the audit, is
-  [FORM-CONTROLS-AUDIT.md](FORM-CONTROLS-AUDIT.md): every field and selector in `client/src` with
-  its file and line, what it becomes and the phase that moves it, plus the lists, focus, number,
-  date, stays-native and screenshot sections and the questions for the owner. G1, the component
-  set, waits for the owner to read the audit and say go (D-10). Until G1 to G5 land, the Wave E rule
-  under Decisions still stands in code: a short fixed list uses the native styled `Select`.
+  [FORM-CONTROLS-AUDIT.md](FORM-CONTROLS-AUDIT.md) (PR #275): every field and selector in
+  `client/src` with its file and line, what it becomes and the phase that moves it.
+- G1, the shared control set (in its PR into `redesign`, with #264): `client/src/components/ui/`
+  has `Input`, `Textarea`, `Select`, `Combobox`, `Checkbox`, `RadioGroup`, `Switch`,
+  `DatePicker`, `MonthPicker`, `Label` and `Field`, on `react-aria-components` (already a
+  dependency; no new package). Their class strings live in one place, `ui/fieldClasses.ts`;
+  default messages and the control's subject in `ui/fieldMessages.ts`. Phones get native select,
+  date and month controls. Fixes: the disabled Switch reads as disabled (#264), placeholders
+  meet 4.5:1, and a field shows one focus mark. The DatePicker gains a Today shortcut.
+- The gallery: a development-only page at `/dev/controls` (the dev server, or a
+  `vite build --mode gallery` build); every other build swaps it for a stub, and
+  `e2e/tests/gallery-absent.spec.ts` checks that. Its Playwright project is `gallery`; the
+  screenshot test compares committed Linux baselines in `e2e/tests/gallery/__screenshots__/`,
+  checked with `bash e2e/gallery-baselines.sh` and remade with `--update` (Playwright's Linux
+  container; macOS skips the pixel tests). Look at every changed image before committing it.
+  Specs drive the controls through `chooseOption`, `categoryOption`, `fillDate` and `fillMonth`
+  in `e2e/tests/fixtures.ts`.
+- `MonthRangePicker` was rebuilt in this phase, at the owner's request (D-11, 17 November 2026),
+  on MonthPicker's `MonthGrid` inside React Aria's dialog, with two native month inputs (From and
+  To) on phones and its props unchanged. Its three users are `reports/DateRangeControl.tsx`,
+  `reports/ReportBuilderSidebar.tsx` and `pages/CashFlow.tsx`.
+- What has not moved yet: screens still use the native `Select` from `ui/Input.tsx` and their own
+  fields until Phases 3 and 4 (G2 to G4) move them; Phase 4 (G5) removes the native `Select`. The only
+  screens touched by G1 are those using `CategoryPicker` and `PayeeCombobox` (now wrappers over
+  the shared Combobox) and the three range picker users.
 
 ## Next up (issues)
 
@@ -113,7 +133,7 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 - #217 Review queue redesign; #218 Cash flow personal share; #219 Household screens by type.
 - #220 sidebar item count (UX review item 7).
 - P2: #263 Review checklist in place of guide banners (rest of #239, needs an owner decision);
-  #264 disabled switch looks enabled.
+  #264 disabled switch looks enabled (fixed in the G1 PR; closed by hand after it merges).
 
 ## Decisions
 
@@ -130,8 +150,10 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 - A $0 Ready to assign never says an unqualified "all done" while a caveat remains: the label names
   the caveat, and the figure keeps the normal text colour (14 November 2026, #241).
 - Long-range forecast amounts use `formatWholeCurrency`; forecasts are dotted with a ring at today.
-- Pickers: a category is always chosen with the searchable `CategoryPicker`; a short fixed list
-  uses the one shared styled `Select` (`components/ui/Input.tsx`) (#240, 13 November 2026).
+- Pickers (Wave G1, #267, replacing Wave E's short-list rule): categories use `CategoryPicker`,
+  payees use `PayeeCombobox`, a fixed list uses `Select` (`components/ui/Select.tsx`), and a list
+  the user grows uses `Combobox`; phones get native select, date and month controls. Screens move
+  onto this in Phases 3 and 4; until a screen moves it keeps the native `Select` in `ui/Input.tsx`.
 - Gutter: page title rows and the content under them use `PAGE_GUTTER`
   (`components/ui/pageGutter.ts`): 16 px on phones, 24 px from `md`; `e2e/tests/phone/page-gutter.spec.ts`
   checks every route (#240).
@@ -164,7 +186,14 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 - The dashboard's status strip and the Household band share `balanceHeadline`; the strip's
   bank pills and the Accounts page's Up badge share `bankSyncLabel`: change wording there once.
 - `E2E_SKIP_BUILD=1` reuses the last client build; run once without it after changing UI text.
-- Global CSS in `index.css` must sit in an `@layer`, or it beats every Tailwind utility.
+- Global CSS in `index.css` must sit in an `@layer`, or it beats every Tailwind utility. The
+  global `:focus-visible` outline is in `@layer base`, so a control's own ring wins; a control
+  without one (ContextMenu, ServerStatus, a bare CategorySelect) must draw its own.
+- A label over a group of controls (radio group, date segments) must be a `span`, not a `label`:
+  a `label` element names only one control.
+- `CategoryPicker` and `PayeeCombobox` are wrappers over `ui/Combobox.tsx`: change list keyboard
+  or popover behaviour there, not in the wrapper. Their rows are `option`s and the payee field is
+  a `combobox`; specs reach category rows through `categoryOption`.
 
 ## Verify
 

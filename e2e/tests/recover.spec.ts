@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay } from './fixtures';
+import { test, expect, open, isoDay, categoryOption } from './fixtures';
 
 // Phase 2 "let people recover": a reconciliation can be undone, one locked row unlocked, and a
 // reconciled row still takes a category.
@@ -44,8 +44,7 @@ test('a reconciled transaction can still be categorised, but its amount stays lo
   await expect(panel.getByRole('textbox', { name: 'Date' })).toBeDisabled();
   await panel.getByRole('button', { name: 'Uncategorised' }).click();
   await page.getByPlaceholder('Search categories...').fill('grocer');
-  await page
-    .getByRole('button', { name: /Groceries/ })
+  await categoryOption(page, /Groceries/)
     .first()
     .click();
   const groceries = await api.category('Groceries');

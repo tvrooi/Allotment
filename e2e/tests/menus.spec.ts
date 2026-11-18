@@ -1,4 +1,4 @@
-import { test, expect, open } from './fixtures';
+import { test, expect, open, isoDay } from './fixtures';
 
 // Menus, tab bars and buttons behave like a desktop app's: keyboard, Escape, outside clicks,
 // a mouse wheel over a tab bar, and the right pointer.
@@ -44,6 +44,34 @@ test('the Views menu closes on Escape or a click outside, and its ⋮ menu still
   await actions.click();
   await page.getByRole('menuitem', { name: 'Rename' }).click();
   await expect(page.getByRole('dialog', { name: 'Rename view' })).toBeVisible();
+});
+
+// The menu removes the outline from its items, so each draws its own brand ring on keyboard focus
+test('a context menu item shows a focus ring from the keyboard', async ({ page, api }) => {
+  const acct = await api.createAccount('Checking', 100_000);
+  await api.createTransaction({
+    accountId: acct.id,
+    date: isoDay(0),
+    amount: -1_500,
+    payeeName: 'Mock Grocer',
+  });
+  await open(page, `/accounts/${acct.id}`);
+  const row = page.getByTestId('transaction-row').filter({ hasText: 'Mock Grocer' });
+  const menu = page.getByRole('menu', { name: 'Actions for Mock Grocer' });
+  const ring = () =>
+    page.evaluate(() => getComputedStyle(document.activeElement as Element).boxShadow);
+
+  for (const dark of [false, true]) {
+    await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark);
+    await row.focus();
+    await page.keyboard.press('Shift+F10');
+    await expect(menu.getByRole('menuitem', { name: 'Open details' })).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(menu.getByRole('menuitem').nth(1)).toBeFocused();
+    expect(await ring()).not.toBe('none');
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+  }
 });
 
 test('tab bars move with the arrow keys', async ({ page, api }) => {

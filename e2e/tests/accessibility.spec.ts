@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { test, expect, open, isoDay } from './fixtures';
 
 // Accessibility fixes from the audit (F-15): every page has a heading, icon-only controls have
@@ -233,6 +233,113 @@ test('a chart shows the keyboard focus ring, but not after a click', async ({ pa
   await page.keyboard.press('Shift+Tab');
   await expect(chart).toBeFocused();
   expect(await outline()).not.toBe('none');
+});
+
+// One focus ring (02-UI-SPEC D-03): the global outline sits in the base layer, so a field's own
+// focus utility wins and it shows only its own ring; a Button has none and keeps the global one
+test('a field shows one focus mark and a button keeps the global one', async ({ page, api }) => {
+  await api.createAccount('Checking', 100_000);
+  await open(page, '/goals');
+  await page.getByRole('button', { name: 'Add goal' }).first().click();
+  const goal = page.getByRole('dialog', { name: 'Add goal' });
+  const name = goal.getByLabel('Name', { exact: true });
+  await expect(name).toBeFocused();
+
+  // The shared Select (the Input's classes) is next in the Tab order after the name
+  const source = goal.getByLabel('Progress source');
+  await page.keyboard.press('Tab');
+  await expect(source).toBeFocused();
+  const field = await source.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { outline: s.outlineStyle, shadow: s.boxShadow };
+  });
+  expect(field.outline).toBe('none');
+  expect(field.shadow).not.toBe('none');
+
+  const cancel = goal.getByRole('button', { name: 'Cancel' });
+  await cancel.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(cancel).toBeFocused();
+  const button = await cancel.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { style: s.outlineStyle, width: s.outlineWidth, offset: s.outlineOffset };
+  });
+  expect(button).toEqual({ style: 'solid', width: '2px', offset: '3px' });
+});
+
+// The focused element's box-shadow and the brand-600 token resolved to the same colour form
+async function focusRing(page: Page) {
+  return page.evaluate(() => {
+    const probe = document.createElement('span');
+    probe.style.color = getComputedStyle(document.documentElement).getPropertyValue(
+      '--color-brand-600',
+    );
+    document.body.append(probe);
+    const brand = getComputedStyle(probe).color;
+    probe.remove();
+    return { brand, shadow: getComputedStyle(document.activeElement as Element).boxShadow };
+  });
+}
+
+test("the rule editor's fields show a brand focus ring", async ({ page, api }) => {
+  await api.createAccount('Checking', 100_000);
+  await api.call('POST', '/rules', {
+    actions: [{ type: 'set_notes', value: 'x' }],
+    conditions: [{ field: 'payee_name', op: 'contains', value: 'first' }],
+  });
+  await open(page, '/rules');
+  await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Edit rule' });
+
+  // A condition field, reached by the keyboard
+  const field = dialog.getByLabel('Field', { exact: true }).first();
+  await field.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(field).toBeFocused();
+  let ring = await focusRing(page);
+  expect(ring.shadow).toContain(ring.brand);
+
+  // An account condition picks from a list: the option picker's trigger
+  await field.selectOption('account');
+  const trigger = dialog.getByRole('button', { name: 'Choose…' });
+  await expect(trigger).toBeVisible();
+  await trigger.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(trigger).toBeFocused();
+  ring = await focusRing(page);
+  expect(ring.shadow).toContain(ring.brand);
+});
+
+test('the server menu items and a bare category select show a brand focus ring', async ({
+  page,
+  api,
+}) => {
+  await api.createAccount('Everyday', 100_000);
+  await open(page, '/dashboard');
+  const status = page.getByRole('button', { name: /^Server status: Online/ });
+  await status.focus();
+  await page.keyboard.press('Enter');
+  const menu = page.getByRole('menu', { name: 'Server' });
+  await expect(menu.getByRole('menuitem').first()).toBeFocused();
+  let ring = await focusRing(page);
+  expect(ring.shadow).toContain(ring.brand);
+  await page.keyboard.press('Escape');
+
+  // The purchase form's category select has no caller focus classes of its own
+  await open(page, '/payment-plans');
+  await page.getByRole('button', { name: 'Set up Afterpay' }).click();
+  await page.getByRole('button', { name: 'Add a purchase' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Add a purchase' });
+  const category = dialog.getByLabel('What it was for');
+  await category.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(category).toBeFocused();
+  ring = await focusRing(page);
+  expect(ring.shadow).toContain(ring.brand);
 });
 
 test('the row-end arrow and the hide-balances button have names and room to press', async ({

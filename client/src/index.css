@@ -359,10 +359,16 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Consistent keyboard focus without changing mouse or touch interactions. */
-:focus-visible {
-  outline: 2px solid var(--color-brand-600);
-  outline-offset: 3px;
+/* Consistent keyboard focus without changing mouse or touch interactions. In the base layer so
+   a component's own focus utility (a field's outline-none and 1px ring) wins and the field shows
+   one ring, not two; a control with no focus utility (a Button, a link) keeps this outline.
+   Two rules stay unlayered on purpose so they still beat utilities: `.scroll-row :focus-visible`
+   (a clipping tab row draws focus inside) and the chart rule below (no box after a click). */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-brand-600);
+    outline-offset: 3px;
+  }
 }
 
 /* Scrollbar. In the base layer so a utility on one element (a tab row hiding its own

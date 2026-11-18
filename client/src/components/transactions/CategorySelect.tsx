@@ -36,7 +36,7 @@ export function CategorySelect({
       onChange={(e) => onChange(e.target.value || null)}
       className={
         fieldClassName ??
-        `block w-full bg-transparent text-sm text-text focus:outline-none ${className}`
+        `block w-full bg-transparent text-sm text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 ${className}`
       }
     >
       <option value="">Uncategorised</option>

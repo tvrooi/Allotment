@@ -285,7 +285,9 @@ test.describe('preferences', () => {
     ] as const) {
       await page.getByRole('button', { name: 'Add Transaction' }).click();
       const form = page.getByRole('form', { name: 'New transaction' });
-      await form.getByRole('textbox', { name: 'Payee' }).fill(`Bäckerei ${typed}`);
+      await form.getByRole('combobox', { name: 'Payee' }).fill(`Bäckerei ${typed}`);
+      // React Aria hide-outside: Tab closes the list (02-19 checkpoint decision, option 1)
+      await form.getByRole('combobox', { name: 'Payee' }).press('Tab');
       await form.getByRole('textbox', { name: 'Outflow' }).fill(typed);
       await form.getByRole('button', { name: 'Save' }).click();
       await expect(register).toContainText(`Bäckerei ${typed}`);

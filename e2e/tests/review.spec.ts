@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay } from './fixtures';
+import { test, expect, open, isoDay, categoryOption } from './fixtures';
 
 for (const phone of [false, true])
   test(`the review resolves items in place and agrees with the budget${phone ? ' on a phone' : ''}`, async ({
@@ -45,15 +45,15 @@ for (const phone of [false, true])
     expect(bottom!.y + bottom!.height).toBeLessThanOrEqual(page.viewportSize()!.height - 7);
     if (phone) {
       await expect(search).toHaveCSS('font-size', '16px');
-      const option = page.getByRole('button', { name: 'Groceries', exact: true });
+      const option = categoryOption(page, 'Groceries', { exact: true });
       // The menu scales in; measure its target after the entrance reaches full size.
       await expect
         .poll(async () => (await option.boundingBox())?.height ?? 0)
         .toBeGreaterThanOrEqual(44);
     }
     await search.fill('gRoCeR');
-    await expect(page.getByRole('button', { name: 'Groceries', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Rent', exact: true })).toHaveCount(0);
+    await expect(categoryOption(page, 'Groceries', { exact: true })).toBeVisible();
+    await expect(categoryOption(page, 'Rent', { exact: true })).toHaveCount(0);
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
     await expect(attention).toBeHidden();
@@ -172,7 +172,7 @@ for (const phone of [false, true])
     await page.unroute(`**/api/transactions/${transaction.id}`);
     await retry.click();
     await search.fill('Groceries');
-    await page.getByRole('button', { name: 'Groceries', exact: true }).click();
+    await categoryOption(page, 'Groceries', { exact: true }).click();
     await expect(retry).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Category for Next shop/ })).toBeFocused();
     await expect(page.getByRole('alert')).toHaveCount(0);

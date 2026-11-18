@@ -176,7 +176,7 @@ test('adding a transaction works on a phone', async ({ page, api }) => {
   await open(page, `/accounts/${account.id}`);
   await page.getByRole('button', { name: 'Add Transaction' }).click();
   const form = page.getByRole('form', { name: 'New transaction' });
-  await form.getByRole('textbox', { name: 'Payee' }).fill('Corner Grocery');
+  await form.getByRole('combobox', { name: 'Payee' }).fill('Corner Grocery');
   await form.getByRole('textbox', { name: 'Outflow' }).fill('12.34');
   await form.getByRole('button', { name: 'Save' }).click();
   await expect(

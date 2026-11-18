@@ -1,5 +1,14 @@
 import type { Locator, Page } from '@playwright/test';
-import { test, expect, open, isoDay, thisMonth, otherDayThisMonth, type Api } from '../fixtures';
+import {
+  test,
+  expect,
+  open,
+  isoDay,
+  thisMonth,
+  otherDayThisMonth,
+  categoryOption,
+  type Api,
+} from '../fixtures';
 
 // Phone-native layouts (390×844, the "phone" project): the register, budget, payees and
 // rules as cards, dialogs as bottom sheets, transaction details full screen, and touch
@@ -75,7 +84,7 @@ test.describe('register', () => {
 
     await details.getByRole('button', { name: 'Uncategorised' }).click();
     await page.getByPlaceholder('Search categories...').fill('stream');
-    await page.getByRole('button', { name: /Streaming Services/ }).click();
+    await categoryOption(page, /Streaming Services/).click();
     const streaming = await api.category('Streaming Services');
     await expect
       .poll(
@@ -168,11 +177,11 @@ test.describe('register', () => {
     const form = sheet.getByRole('form', { name: 'New transaction' });
     // 16px text, so iOS doesn't zoom in when a field is focused
     const fontSize = await form
-      .getByRole('textbox', { name: 'Payee' })
+      .getByRole('combobox', { name: 'Payee' })
       .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
     expect(fontSize).toBeGreaterThanOrEqual(16);
 
-    await form.getByRole('textbox', { name: 'Payee' }).fill('Big Box Store');
+    await form.getByRole('combobox', { name: 'Payee' }).fill('Big Box Store');
     // A decimal keypad, and a decimal comma works as well as a point
     const outflow = form.getByRole('textbox', { name: 'Outflow' });
     await expect(outflow).toHaveAttribute('inputmode', 'decimal');
@@ -400,23 +409,22 @@ test.describe('dialogs and touch targets', () => {
   });
 });
 
-test('the month picker fits the screen and is easy to tap', async ({ page, api }) => {
+// Phones get the native month inputs instead of the grid popover (D-04, plan 02-14)
+test('the month range fits the screen and is easy to tap', async ({ page, api }) => {
   await seedAccount(api);
   await open(page, '/reports');
   await page.getByRole('main').getByRole('button', { name: 'Frozen' }).click();
-  const picker = page.getByRole('dialog', { name: 'Choose months' });
-  await expect(picker).toBeVisible();
-  await picker.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
-  const box = (await picker.boundingBox())!;
+  await expect(page.getByRole('dialog', { name: 'Choose months' })).toHaveCount(0);
+  const months = page.getByRole('group', { name: 'Months', exact: true });
   const viewport = page.viewportSize()!;
-  expect(box.x).toBeGreaterThanOrEqual(0);
-  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
-  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
-  const from = picker.getByRole('group', { name: 'From' });
-  await expectTouchSize(from.getByRole('button', { name: 'Previous year' }));
-  await expectTouchSize(from.getByRole('button', { name: /^January / }));
-  await expectTouchSize(picker.getByRole('button', { name: 'Done' }));
-  await expectTouchSize(picker.getByRole('button', { name: 'Cancel' }));
+  for (const name of ['From', 'To']) {
+    const input = months.getByLabel(name, { exact: true });
+    await expect(input).toBeVisible();
+    const box = (await input.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+    expect(Math.round(box.height)).toBeGreaterThanOrEqual(TOUCH);
+  }
 });
 
 test('report summary figures fit their card', async ({ page, api }) => {
@@ -551,5 +559,104 @@ test.describe('cash flow', () => {
       return box.scrollWidth > box.clientWidth;
     });
     expect(scrolls).toBe(true);
+  });
+});
+
+// A month range on a phone is two native month inputs, From and To (D-04): the phone's own
+// picker is the draft, and every change goes through the same rule as the desktop grids
+test.describe('month ranges', () => {
+  /** A local Date's month, as the page's presets work it out */
+  const monthOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  const shifted = (months: number) => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + months);
+    return monthOf(d);
+  };
+
+  async function seedGroceries(api: Api) {
+    const account = await api.createAccount('Checking');
+    const grocery = await api.category('Groceries');
+    for (const tx of [
+      { date: isoDay(), amount: -1_000, payeeName: 'Current groceries' },
+      { date: `${shifted(-1)}-01`, amount: -2_000, payeeName: 'Previous groceries' },
+    ])
+      await api.createTransaction({ accountId: account.id, categoryId: grocery.id, ...tx });
+  }
+
+  /** The two native inputs of the range control, checked to be native month inputs */
+  async function rangeInputs(page: Page) {
+    const months = page.getByRole('group', { name: 'Months', exact: true });
+    const from = months.getByLabel('From', { exact: true });
+    const to = months.getByLabel('To', { exact: true });
+    for (const input of [from, to]) {
+      await expect(input).toHaveJSProperty('tagName', 'INPUT');
+      await expect(input).toHaveAttribute('type', 'month');
+      expect((await size(input)).height).toBeGreaterThanOrEqual(TOUCH);
+    }
+    return { from, to };
+  }
+
+  async function exportName(page: Page) {
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Export CSV' }).click();
+    return (await download).suggestedFilename();
+  }
+
+  test('cash flow Custom is two native months that keep the range in order', async ({
+    page,
+    api,
+  }) => {
+    await seedGroceries(api);
+    const lastMonth = shifted(-1);
+    const current = thisMonth();
+    await open(page, '/cash-flow');
+    await page.getByRole('button', { name: '1M', exact: true }).click();
+    await page.getByRole('button', { name: 'Custom', exact: true }).click();
+    const { from, to } = await rangeInputs(page);
+    await expect(from).toHaveValue(current);
+    await expect(to).toHaveValue(current);
+
+    await from.fill(lastMonth);
+    const list = page.locator('section', { hasText: 'Where it went' });
+    await list.getByRole('button', { expanded: false }).first().click();
+    await list.getByRole('button', { name: /Groceries/ }).click();
+    await expect(page.getByText('Previous groceries').first()).toBeVisible();
+    await expect(page.getByText('Current groceries').first()).toBeVisible();
+    expect(await exportName(page)).toBe(`cash-flow-${lastMonth}-${current}.csv`);
+
+    // Cash flow's max is this month, where To starts: To goes below it first, so a From
+    // after To can be picked, and moves To up to it
+    await to.fill(lastMonth);
+    await expect(from).toHaveValue(lastMonth);
+    await expect(to).toHaveValue(lastMonth);
+    await from.fill(current);
+    await expect(from).toHaveValue(current);
+    await expect(to).toHaveValue(current);
+    expect(await exportName(page)).toBe(`cash-flow-${current}-${current}.csv`);
+
+    // A From after max is refused: both inputs and the export keep the saved range
+    await from.fill(shifted(1));
+    await expect(from).toHaveValue(current);
+    await expect(to).toHaveValue(current);
+    expect(await exportName(page)).toBe(`cash-flow-${current}-${current}.csv`);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      390,
+    );
+  });
+
+  test('freezing the reports dashboard saves the months typed into the native inputs', async ({
+    page,
+    api,
+  }) => {
+    await seedGroceries(api);
+    await open(page, '/reports');
+    await page.getByRole('main').getByRole('button', { name: 'Frozen' }).click();
+    const { from } = await rangeInputs(page);
+    const january = `${Number(thisMonth().slice(0, 4)) - 1}-01`;
+    await from.fill(january);
+    await expect
+      .poll(async () => (await api.call<any[]>('GET', '/dashboards'))[0].dateRange)
+      .toEqual({ preset: 'custom', from: january, to: thisMonth() });
   });
 });

@@ -253,16 +253,11 @@ export default function WelcomePage() {
                 {SETUP_FEATURES.map((feature) => {
                   const label = NAV_FEATURES.find((f) => f.key === feature)!.label;
                   return (
-                    <label
-                      key={feature}
-                      className="flex min-h-11 items-center justify-between gap-4 py-3 text-sm text-text-secondary"
-                    >
-                      <span>
-                        {FEATURE_PROMPTS[feature]}{' '}
-                        <span className="text-text-tertiary">({label})</span>
-                      </span>
+                    // The Switch draws its own label around this text, so the row is a div
+                    <div key={feature} className="py-3 text-sm text-text-secondary">
                       <Switch
-                        aria-label={FEATURE_PROMPTS[feature] + ' (' + label + ')'}
+                        labelSide="start"
+                        className="w-full justify-between"
                         checked={progress?.navFeatures?.[feature] === 'shown'}
                         disabled={!progress || !canSave}
                         onCheckedChange={(checked) =>
@@ -270,8 +265,11 @@ export default function WelcomePage() {
                             navFeatures: { [feature]: checked ? 'shown' : 'auto' },
                           })
                         }
-                      />
-                    </label>
+                      >
+                        {FEATURE_PROMPTS[feature]}{' '}
+                        <span className="text-text-tertiary">({label})</span>
+                      </Switch>
+                    </div>
                   );
                 })}
               </div>

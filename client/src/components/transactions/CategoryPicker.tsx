@@ -1,10 +1,68 @@
-import { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { CategoryIcon } from '../ui/CategoryIcon';
-import { createPortal } from 'react-dom';
-import { Search, Check, Plus, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useCreateCategory } from '../../hooks/useCategories';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import type { BudgetType, CategoryGroup } from '../../types';
+import { Button } from '../ui/Button';
+import { CategoryIcon } from '../ui/CategoryIcon';
+import { SearchList, type SearchListPinned, type SearchListSection } from '../ui/Combobox';
+import { errorClass } from '../ui/fieldClasses';
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
+
+/** The value a "Transfer: name" row picks */
+const transferValue = (accountId: string) => `transfer:${accountId}`;
+
+/**
+ * The category list's sections for a search, in SearchList's section shape: each group that has
+ * a match, in the order given, then a "Transfer" section of "Transfer: name" rows when one
+ * matches. Matching is a lower-cased substring of the category's name or of "Transfer: name".
+ * Hidden categories are left out, except the chosen one.
+ */
+export function categorySections(
+  groups: readonly CategoryGroup[],
+  transferAccounts: readonly { id: string; name: string }[],
+  query: string,
+  value: string | null | undefined,
+): SearchListSection[] {
+  const text = query.toLowerCase();
+  const sections: SearchListSection[] = groups
+    .map((g) => ({
+      id: g.id,
+      heading: g.name,
+      options: g.categories
+        .filter((c) => (!c.hidden || c.id === value) && c.name.toLowerCase().includes(text))
+        .map((c) => ({ value: c.id, label: c.name })),
+    }))
+    .filter((section) => section.options.length > 0);
+  const transfers = transferAccounts
+    .map((a) => ({ value: transferValue(a.id), label: `Transfer: ${a.name}` }))
+    .filter((o) => o.label.toLowerCase().includes(text));
+  return transfers.length > 0
+    ? [...sections, { id: 'transfers', heading: 'Transfer', options: transfers }]
+    : sections;
+}
+
+/**
+ * Everything the arrow keys walk, in the order listed: the no-category row (null) only when it
+ * is offered and nothing is typed, then every category, then every transfer. While searching
+ * the no-category row still shows, but out of this order, so Enter on a search never picks it.
+ */
+export function categoryKeyboardOrder(
+  sections: readonly SearchListSection[],
+  query: string,
+  allowNone: boolean,
+): (string | null)[] {
+  return [
+    ...(allowNone && !query ? [null] : []),
+    ...sections.flatMap((section) => section.options.map((o) => o.value)),
+  ];
+}
+
+/** Whether "No categories found" shows: no category and no transfer matches */
+export function categoryListEmpty(sections: readonly SearchListSection[]): boolean {
+  return sections.every((section) => section.options.length === 0);
+}
 
 interface Props {
   value?: string | null;
@@ -24,6 +82,211 @@ interface Props {
   noneLabel?: string;
 }
 
+/**
+ * What the picker hands SearchList for a search: the sections from categorySections (with each
+ * category's icon when the preference shows them), the no-category row, in the keys only when
+ * categoryKeyboardOrder puts it there, and the empty line when categoryListEmpty says so
+ */
+export function categoryList({
+  groups,
+  transferAccounts,
+  query,
+  value,
+  allowNone,
+  noneLabel,
+  showIcons,
+  onChange,
+}: {
+  groups: readonly CategoryGroup[];
+  transferAccounts: readonly { id: string; name: string }[];
+  query: string;
+  value: string | null | undefined;
+  allowNone: boolean;
+  noneLabel: string;
+  showIcons: boolean;
+  onChange: (id: string | null) => void;
+}): {
+  sections: SearchListSection[];
+  pinned: SearchListPinned | undefined;
+  emptyText: string | null;
+  onPick: (id: string) => void;
+} {
+  const found = categorySections(groups, transferAccounts, query, value);
+  const iconOf = new Map(groups.flatMap((g) => g.categories.map((c) => [c.id, c.icon])));
+  const sections = showIcons
+    ? found.map((section) => ({
+        ...section,
+        options: section.options.map((o) => {
+          const icon = iconOf.get(o.value);
+          return icon ? { ...o, icon: <CategoryIcon icon={icon} size={16} /> } : o;
+        }),
+      }))
+    : found;
+  return {
+    sections,
+    pinned: allowNone
+      ? {
+          label: noneLabel,
+          isSelected: value === null,
+          onPick: () => onChange(null),
+          inKeyboardOrder: categoryKeyboardOrder(found, query, allowNone)[0] === null,
+        }
+      : undefined,
+    emptyText: categoryListEmpty(found) ? 'No categories found' : null,
+    onPick: onChange,
+  };
+}
+
+const BUDGET_TYPES: [BudgetType, string][] = [
+  ['fixed', 'Fixed'],
+  ['flexible', 'Flexible'],
+  ['non_monthly', 'Non-Monthly'],
+];
+
+/**
+ * The list's footer: "Create new category", which opens a form for the group, the budget type
+ * (not for an income group) and the name. A created category is picked; a failed create keeps
+ * the form and its name, with an error line.
+ */
+function CreateCategoryForm({
+  groups,
+  onCreated,
+}: {
+  groups: readonly CategoryGroup[];
+  onCreated: (id: string) => void;
+}) {
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newGroupId, setNewGroupId] = useState(groups[0]?.id ?? '');
+  const [newBudgetType, setNewBudgetType] = useState<BudgetType>('flexible');
+  const nameRef = useRef<HTMLInputElement>(null);
+  const createCategory = useCreateCategory();
+
+  useEffect(() => {
+    if (showCreate) nameRef.current?.focus();
+  }, [showCreate]);
+
+  const isIncomeGroup = groups.find((g) => g.id === newGroupId)?.isIncome === 1;
+
+  function handleCreate() {
+    if (!newName.trim() || !newGroupId || createCategory.isPending) return;
+    createCategory.mutate(
+      {
+        groupId: newGroupId,
+        name: newName.trim(),
+        budgetType: isIncomeGroup ? null : newBudgetType,
+      },
+      {
+        onSuccess: (created: { id: string }) => {
+          onCreated(created.id);
+        },
+      },
+    );
+  }
+
+  if (!showCreate)
+    return (
+      <div className="p-1">
+        <Button
+          variant="ghost"
+          className="w-full text-brand-600"
+          onClick={() => setShowCreate(true)}
+        >
+          <Plus size={14} aria-hidden="true" />
+          Create new category
+        </Button>
+      </div>
+    );
+
+  return (
+    <div className="space-y-2 p-3">
+      <Select
+        aria-label="New category group"
+        fieldSize="sm"
+        value={newGroupId}
+        onChange={setNewGroupId}
+        options={groups.map((g) => ({ value: g.id, label: g.name }))}
+      />
+      {!isIncomeGroup && (
+        <div className="flex flex-wrap gap-1">
+          {BUDGET_TYPES.map(([key, label]) => (
+            <Button
+              key={key}
+              size="sm"
+              variant={newBudgetType === key ? 'primary' : 'secondary'}
+              aria-pressed={newBudgetType === key}
+              className="flex-1"
+              onClick={() => setNewBudgetType(key)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+      )}
+      <Input
+        ref={nameRef}
+        type="text"
+        fieldSize="sm"
+        value={newName}
+        onChange={(e) => setNewName(e.target.value)}
+        placeholder="Category name"
+        aria-label="New category name"
+        isInvalid={createCategory.isError}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleCreate();
+          }
+        }}
+      />
+      {createCategory.isError && (
+        <p role="alert" className={errorClass}>
+          Couldn&apos;t create the category. Try again.
+        </p>
+      )}
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          className="flex-1"
+          onClick={handleCreate}
+          disabled={!newName.trim() || createCategory.isPending}
+        >
+          {createCategory.isPending ? 'Creating...' : 'Create'}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label="Cancel new category"
+          onClick={() => {
+            setShowCreate(false);
+            setNewName('');
+            createCategory.reset();
+          }}
+        >
+          <X size={14} aria-hidden="true" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Anchored: at least 16rem and at least the anchor's width (popoverClass caps it at the screen
+ * less 16 px)
+ */
+const ANCHORED_WIDTH = 'w-[max(var(--trigger-width),16rem)]';
+
+/**
+ * The category picker (D-05): the shared searchable list with the category rules above and the
+ * create form as its footer. Rendering it means it is open; it calls onClose on Escape or a
+ * click outside, and onChange with the picked id (null for the no-category row).
+ *
+ * With `anchor` the list floats beside that element (drawn at the end of the page, so a
+ * scrolling parent can't clip it) and React Aria flips it above when there is little room
+ * below. Without one it opens in the caller's relative wrapper, below or above per `position`:
+ * a zero-height box there is the list's trigger and holds its portal, so the list stays in the
+ * caller's dialog, row or form, 16rem wide, or the wrapper's width on phones with `fullWidth`.
+ */
 export function CategoryPicker({
   value,
   onChange,
@@ -37,322 +300,48 @@ export function CategoryPicker({
   noneLabel = 'Uncategorised',
 }: Props) {
   const [query, setQuery] = useState('');
-  // The option the keyboard is on. With a search typed it starts on the first match, so Enter
-  // picks it; with nothing typed it starts on nothing, so Enter never picks "Uncategorised" by accident.
-  const [active, setActive] = useState(-1);
-  const [floatPos, setFloatPos] = useState<{
-    top?: number;
-    bottom?: number;
-    left: number;
-    width: number;
-    maxHeight: number;
-  } | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newGroupId, setNewGroupId] = useState(groups[0]?.id ?? '');
-  const [newBudgetType, setNewBudgetType] = useState<BudgetType>('flexible');
-  const containerRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
-  const createCategory = useCreateCategory();
-  const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
+  const [spot, setSpot] = useState<HTMLDivElement | null>(null);
+  const anchorRef = useMemo(() => ({ current: anchor }), [anchor]);
+  const spotRef = useMemo(() => ({ current: spot }), [spot]);
+  const showIcons = usePreferencesStore((s) => s.showCategoryIcons);
 
-  // A floating list draws one render later, once it knows where to go
-  const placed = !anchor || floatPos !== null;
-  useEffect(() => {
-    if (placed) searchRef.current?.focus();
-  }, [placed]);
+  const list = {
+    // The raised card the picker has always had, over the list popover's lighter one
+    className: 'shadow-lg!',
+    searchLabel: 'Search categories',
+    searchPlaceholder: 'Search categories...',
+    query,
+    onQueryChange: setQuery,
+    value: value ?? null,
+    onClose,
+    footer: <CreateCategoryForm groups={groups} onCreated={onChange} />,
+    ...categoryList({
+      groups,
+      transferAccounts,
+      query,
+      value,
+      allowNone,
+      noneLabel,
+      showIcons,
+      onChange,
+    }),
+  };
 
-  useLayoutEffect(() => {
-    if (!anchor) return;
-    const place = () => {
-      const r = anchor.getBoundingClientRect();
-      const width = Math.min(Math.max(r.width, 256), window.innerWidth - 16);
-      const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
-      const below = window.innerHeight - r.bottom;
-      setFloatPos(
-        below < 340 && r.top > below
-          ? {
-              bottom: window.innerHeight - r.top + 4,
-              left,
-              width,
-              maxHeight: Math.max(0, r.top - 12),
-            }
-          : { top: r.bottom + 4, left, width, maxHeight: Math.max(0, below - 12) },
-      );
-    };
-    place();
-    window.addEventListener('resize', place);
-    return () => window.removeEventListener('resize', place);
-  }, [anchor]);
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    }
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    document.addEventListener('mousedown', handleClick);
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('keydown', handleKey);
-    };
-  }, [onClose]);
-
-  const filtered = groups
-    .map((g) => ({
-      ...g,
-      // Hidden categories stay out of the list, except the one already chosen
-      categories: g.categories.filter(
-        (c) => (!c.hidden || c.id === value) && c.name.toLowerCase().includes(query.toLowerCase()),
-      ),
-    }))
-    .filter((g) => g.categories.length > 0);
-  const filteredTransfers = transferAccounts.filter((a) =>
-    `Transfer: ${a.name}`.toLowerCase().includes(query.toLowerCase()),
-  );
-
-  // Everything the keyboard can land on, in the order it is listed
-  const options: (string | null)[] = [
-    ...(allowNone && !query ? [null] : []),
-    ...filtered.flatMap((g) => g.categories.map((c) => c.id)),
-    ...filteredTransfers.map((a) => `transfer:${a.id}`),
-  ];
-  const optionIndex = (id: string | null) => options.indexOf(id);
-
-  // Typing a filter highlights its first match without any arrow key, so Enter alone picks it.
-  // (Derived, not set from an effect, so it is right on the very render the filter changes.)
-  const activeIndex = Math.min(active >= 0 ? active : query ? 0 : -1, options.length - 1);
-
-  useEffect(() => {
-    setActive(-1);
-  }, [query]);
-  useEffect(() => {
-    containerRef.current
-      ?.querySelector('[data-active="true"]')
-      ?.scrollIntoView?.({ block: 'nearest' });
-  }, [activeIndex]);
-
-  function handleSearchKey(e: React.KeyboardEvent) {
-    if (e.key === 'Escape') {
-      // Close the list only, not the dialog or sheet it opened from
-      e.stopPropagation();
-      onClose();
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setActive(Math.min(options.length - 1, activeIndex + 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setActive(Math.max(0, activeIndex - 1));
-    } else if (e.key === 'Enter' && activeIndex >= 0) {
-      e.preventDefault();
-      onChange(options[activeIndex]);
-    }
-  }
-  const rowCls = (id: string | null) =>
-    `${optionIndex(id) === activeIndex ? 'bg-hover ' : ''}${value === id ? 'bg-brand-50 text-brand-700' : 'text-text'}`;
-
-  const selectedGroup = groups.find((g) => g.id === newGroupId);
-  const isIncomeGroup = selectedGroup?.isIncome === 1;
-
-  function handleCreate() {
-    if (!newName.trim() || !newGroupId) return;
-    createCategory.mutate(
-      {
-        groupId: newGroupId,
-        name: newName.trim(),
-        budgetType: isIncomeGroup ? null : newBudgetType,
-      },
-      {
-        onSuccess: (created: { id: string }) => {
-          onChange(created.id);
-        },
-      },
-    );
-  }
-
-  if (anchor && !floatPos) return null;
-  const picker = (
+  if (anchor) return <SearchList {...list} triggerRef={anchorRef} width={ANCHORED_WIDTH} />;
+  return (
     <div
-      ref={containerRef}
-      style={anchor && floatPos ? { position: 'fixed', ...floatPos } : undefined}
-      className={`z-50 flex flex-col overflow-y-auto bg-surface border border-border rounded-lg shadow-lg animate-menu-in ${
-        anchor
-          ? ''
-          : `absolute left-0 ${fullWidth ? 'w-64 max-md:w-full' : 'w-64'} ${position === 'above' ? 'bottom-full mb-1 origin-bottom-left' : 'top-full mt-1 origin-top-left'}`
-      }`}
-      onClick={(e) => e.stopPropagation()}
+      ref={setSpot}
+      className={`absolute left-0 h-0 ${fullWidth ? 'w-64 max-md:w-full' : 'w-64'} ${position === 'above' ? 'bottom-full' : 'top-full'}`}
     >
-      <div className="p-2 border-b border-border-light shrink-0">
-        <div className="relative">
-          <Search
-            size={14}
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none"
-          />
-          <input
-            ref={searchRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleSearchKey}
-            placeholder="Search categories..."
-            aria-label="Search categories"
-            className="w-full pl-8 pr-3 py-1.5 text-sm max-md:text-base max-md:min-h-11 border border-border rounded-md bg-surface text-text focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
-          />
-        </div>
-      </div>
-
-      <div className="overflow-y-auto max-h-72 min-h-0">
-        {allowNone && (
-          <button
-            type="button"
-            onClick={() => onChange(null)}
-            data-active={optionIndex(null) === activeIndex}
-            className={`w-full text-left px-3 py-2 text-sm max-md:min-h-11 flex items-center justify-between hover:bg-hover ${optionIndex(null) === activeIndex ? 'bg-hover ' : ''}${value === null ? 'bg-brand-50 text-brand-700' : 'text-text-secondary'}`}
-          >
-            <span className="italic">{noneLabel}</span>
-            {value === null && <Check size={14} className="text-brand-600 shrink-0" />}
-          </button>
-        )}
-
-        {filtered.map((group) => (
-          <div key={group.id}>
-            <div className="px-3 py-1.5 text-xs font-medium text-text-tertiary bg-surface-alt">
-              {group.name}
-            </div>
-            {group.categories.map((cat) => (
-              <button
-                type="button"
-                key={cat.id}
-                onClick={() => onChange(cat.id)}
-                data-active={optionIndex(cat.id) === activeIndex}
-                className={`w-full text-left px-3 py-2 text-sm max-md:min-h-11 flex items-center gap-2 hover:bg-hover ${rowCls(cat.id)}`}
-              >
-                {showCategoryIcons && cat.icon && <CategoryIcon icon={cat.icon} size={16} />}
-                <span className="truncate flex-1">{cat.name}</span>
-                {value === cat.id && <Check size={14} className="text-brand-600 shrink-0" />}
-              </button>
-            ))}
-          </div>
-        ))}
-
-        {filteredTransfers.length > 0 && (
-          <div>
-            <div className="px-3 py-1.5 text-xs font-medium text-text-tertiary bg-surface-alt">
-              Transfer
-            </div>
-            {filteredTransfers.map((a) => {
-              const id = `transfer:${a.id}`;
-              return (
-                <button
-                  type="button"
-                  key={a.id}
-                  onClick={() => onChange(id)}
-                  data-active={optionIndex(id) === activeIndex}
-                  className={`w-full text-left px-3 py-2 text-sm max-md:min-h-11 flex items-center gap-2 hover:bg-hover ${rowCls(id)}`}
-                >
-                  <span className="truncate flex-1">Transfer: {a.name}</span>
-                  {value === id && <Check size={14} className="text-brand-600 shrink-0" />}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {filtered.length === 0 && filteredTransfers.length === 0 && (
-          <div className="px-3 py-4 text-sm text-text-tertiary text-center">
-            No categories found
-          </div>
-        )}
-      </div>
-
-      <div className="border-t border-border-light shrink-0">
-        {showCreate ? (
-          <div className="p-3 space-y-2">
-            <select
-              value={newGroupId}
-              onChange={(e) => setNewGroupId(e.target.value)}
-              className="w-full text-sm border border-border rounded px-2 py-1.5 bg-surface text-text focus:border-brand-600 focus:outline-none"
-            >
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
-            {!isIncomeGroup && (
-              <div className="flex gap-1">
-                {(
-                  [
-                    ['fixed', 'Fixed'],
-                    ['flexible', 'Flexible'],
-                    ['non_monthly', 'Non-Monthly'],
-                  ] as [BudgetType, string][]
-                ).map(([key, label]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setNewBudgetType(key)}
-                    className={`flex-1 text-xs py-1 rounded border transition-colors ${
-                      newBudgetType === key
-                        ? 'bg-brand-600 text-brand-contrast border-brand-600'
-                        : 'bg-surface text-text-secondary border-border hover:border-brand-400'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="Category name"
-              aria-label="New category name"
-              className="w-full text-sm border border-border rounded px-2 py-1.5 bg-surface text-text focus:border-brand-600 focus:outline-none"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleCreate();
-              }}
-              autoFocus
-            />
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleCreate}
-                disabled={!newName.trim() || createCategory.isPending}
-                className="flex-1 text-xs font-medium text-brand-contrast bg-brand-600 hover:bg-brand-700 rounded px-2 py-1.5 disabled:opacity-50"
-              >
-                {createCategory.isPending ? 'Creating...' : 'Create'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCreate(false);
-                  setNewName('');
-                }}
-                aria-label="Cancel new category"
-                className="p-1.5 text-text-tertiary hover:text-text-secondary"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowCreate(true)}
-            className="w-full px-3 py-2.5 text-sm text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1.5 hover:bg-hover"
-          >
-            <Plus size={14} />
-            Create new category
-          </button>
-        )}
-      </div>
+      {spot && (
+        <SearchList
+          {...list}
+          triggerRef={spotRef}
+          portalContainer={spot}
+          placement={position === 'above' ? 'top start' : 'bottom start'}
+          width="w-[var(--trigger-width)]"
+        />
+      )}
     </div>
   );
-  return anchor ? createPortal(picker, document.body) : picker;
 }

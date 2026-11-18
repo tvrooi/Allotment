@@ -171,7 +171,7 @@ export function ContextMenu({ items, at, onClose, label }: Props) {
               close();
               item.onSelect?.();
             }}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 max-md:py-3 text-left text-sm cursor-pointer outline-none transition-colors disabled:cursor-default ${
+            className={`w-full flex items-center gap-2.5 px-3 py-2 max-md:py-3 text-left text-sm cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 transition-colors disabled:cursor-default ${
               item.disabled
                 ? 'text-text-disabled'
                 : item.danger
@@ -220,7 +220,7 @@ export function ContextMenu({ items, at, onClose, label }: Props) {
                 type="button"
                 role="menuitem"
                 onClick={backToRoot}
-                className="w-full flex items-center gap-2 px-3 py-3 text-left text-sm text-text-secondary hover:bg-hover focus:bg-hover outline-none cursor-pointer"
+                className="w-full flex items-center gap-2 px-3 py-3 text-left text-sm text-text-secondary hover:bg-hover focus:bg-hover outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 cursor-pointer"
               >
                 <ChevronLeft size={14} aria-hidden /> Back
               </button>

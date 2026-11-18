@@ -14,6 +14,8 @@ import {
   dayBounds,
   formatDateRange,
   formatMonth,
+  formatMonthRange,
+  pickRangeMonth,
   isMonth,
 } from './dateRange';
 import type { DatePresetCustom, ReportDateRange } from '../types';
@@ -214,5 +216,77 @@ describe('the Last Month preset', () => {
       from: '2025-12',
       to: '2025-12',
     });
+  });
+});
+
+describe('a month range never ends before it starts (property-based)', () => {
+  // A saved range and its max: from <= to <= max, as the picker receives them
+  const arbRange = fc
+    .tuple(arbMonth, arbMonth, arbMonth)
+    .map((months) => months.sort())
+    .map(([from, to, max]) => ({ range: { from, to }, max }));
+  const arbSide = fc.constantFrom('from' as const, 'to' as const);
+  // Real months, and text that is not one: half-typed, empty, a day, anything
+  const arbPick = fc.oneof(
+    arbMonth,
+    arbMonth.map((m) => m.slice(0, -1)),
+    arbMonth.map((m) => `${m}-01`),
+    fc.constant(''),
+    fc.string({ maxLength: 10 }),
+  );
+
+  it('the result runs forwards, holds real months and stays on or before max', () => {
+    fc.assert(
+      fc.property(arbRange, arbSide, arbPick, ({ range, max }, side, month) => {
+        const next = pickRangeMonth(range, side, month, max);
+        expect(isMonth(next.from) && isMonth(next.to)).toBe(true);
+        expect(next.from <= next.to).toBe(true);
+        expect(next.to <= max).toBe(true);
+      }),
+    );
+  });
+
+  it('a real month on or before max lands on the chosen side; the other side follows', () => {
+    fc.assert(
+      fc.property(arbRange, arbSide, arbMonth, ({ range, max }, side, month) => {
+        fc.pre(month <= max);
+        const next = pickRangeMonth(range, side, month, max);
+        expect(next[side]).toBe(month);
+        if (side === 'from') expect(next.to).toBe(range.to < month ? month : range.to);
+        else expect(next.from).toBe(range.from > month ? month : range.from);
+      }),
+    );
+  });
+
+  it('a month after max, or text that is not a month, leaves the range as it was', () => {
+    fc.assert(
+      fc.property(arbRange, arbSide, arbPick, ({ range, max }, side, month) => {
+        fc.pre(!isMonth(month) || month > max);
+        expect(pickRangeMonth(range, side, month, max)).toBe(range);
+      }),
+    );
+  });
+
+  it('one month is a range (E-02 adjacency), and so is a To equal to max', () => {
+    fc.assert(
+      fc.property(arbRange, arbSide, ({ range, max }, side) => {
+        const month = range[side];
+        expect(pickRangeMonth({ from: month, to: month }, side, month, max)).toEqual({
+          from: month,
+          to: month,
+        });
+        expect(pickRangeMonth(range, 'to', max, max)).toEqual({ from: range.from, to: max });
+      }),
+    );
+  });
+
+  it('formatMonthRange writes one month alone and two with an en dash; frozen ranges use it', () => {
+    expect(formatMonthRange('2026-11', '2026-11')).toBe('Nov 2026');
+    expect(formatMonthRange('2025-01', '2026-11')).toBe('Jan 2025 – Nov 2026');
+    fc.assert(
+      fc.property(arbFrozen, (range) => {
+        expect(formatDateRange(range)).toBe(formatMonthRange(range.from, range.to));
+      }),
+    );
   });
 });

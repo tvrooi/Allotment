@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay, thisMonth, typeAmount } from './fixtures';
+import { test, expect, open, isoDay, thisMonth, typeAmount, categoryOption } from './fixtures';
 import type { Api } from './fixtures';
 
 // Multiple currencies: the budget has one, accounts can each have their own, and the budget
@@ -83,7 +83,7 @@ test('money moved between currencies keeps both amounts and the budget unchanged
   await dialog.getByRole('button', { name: /Select account/ }).click();
   await dialog.getByRole('button', { name: /Girokonto/ }).click();
   await dialog.getByRole('button', { name: /^Category:/ }).click();
-  await dialog.getByRole('button', { name: 'Transfer: US checking' }).click();
+  await categoryOption(dialog, 'Transfer: US checking').click();
 
   // What arrives is filled in at the day's rate, and can be typed over (the bank's own rate)
   const arrived = dialog.getByRole('textbox', { name: 'Amount in USD' });

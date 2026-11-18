@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay, type Api } from './fixtures';
+import { test, expect, open, isoDay, categoryOption, type Api } from './fixtures';
 import { UP_TEST_TOKEN } from '../mockUp';
 import { UP_MOCK_PORT } from '../ports';
 import { freshUpWindow } from './upWindow';
@@ -88,7 +88,7 @@ test('the first Up import arrives categorised, and the rest is sorted a payee at
   await expect(page.getByRole('textbox', { name: 'Search categories' })).toHaveCount(0);
   await expect(dialog).toBeVisible();
   await sort.getByLabel('Category for ATM Withdrawal Westpac').click();
-  await page.getByRole('button', { name: 'Miscellaneous' }).click();
+  await categoryOption(page, 'Miscellaneous').click();
   await expect(sort.getByLabel('Category for ATM Withdrawal Westpac')).toHaveCount(0);
   const atm = (await api.transactions()).filter((t) => t.payeeName === 'ATM Withdrawal Westpac');
   expect(atm.length).toBeGreaterThan(0);

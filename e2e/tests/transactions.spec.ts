@@ -1,5 +1,14 @@
 import type { Page } from '@playwright/test';
-import { test, expect, open, isoDay, otherDayThisMonth, typeAmount, type Api } from './fixtures';
+import {
+  test,
+  expect,
+  open,
+  isoDay,
+  otherDayThisMonth,
+  typeAmount,
+  categoryOption,
+  type Api,
+} from './fixtures';
 
 // Entering and editing transactions in an account register, checking both what the
 // page shows and what the server stored.
@@ -24,7 +33,12 @@ async function fillNewTransaction(
 ) {
   await page.getByRole('button', { name: 'Add Transaction' }).click();
   const form = newForm(page);
-  if (fields.payee) await form.getByRole('textbox', { name: 'Payee' }).fill(fields.payee);
+  if (fields.payee) {
+    const payee = form.getByRole('combobox', { name: 'Payee' });
+    await payee.fill(fields.payee);
+    // React Aria hide-outside: Tab closes the list (02-19 checkpoint decision, option 1)
+    await payee.press('Tab');
+  }
   if (fields.category) {
     await form.getByRole('combobox', { name: 'Category' }).selectOption({ label: fields.category });
   }
@@ -176,7 +190,7 @@ test.describe('account register', () => {
     // Category via the searchable picker
     await panel.getByRole('button', { name: 'Uncategorised' }).click();
     await page.getByPlaceholder('Search categories...').fill('stream');
-    await page.getByRole('button', { name: /Streaming Services/ }).click();
+    await categoryOption(page, /Streaming Services/).click();
 
     await panel.getByRole('textbox', { name: 'Notes' }).fill('family plan');
     await panel.getByRole('textbox', { name: 'Notes' }).blur();
@@ -478,7 +492,7 @@ test('the Add transaction dialog makes transfers too', async ({ page, api }) => 
   await dialog.getByRole('button', { name: /Select account/ }).click();
   await dialog.getByRole('button', { name: /Everyday Checking/ }).click();
   await dialog.getByRole('button', { name: /^Category:/ }).click();
-  await dialog.getByRole('button', { name: 'Transfer: Rainy Day Savings' }).click();
+  await categoryOption(dialog, 'Transfer: Rainy Day Savings').click();
 
   // A transfer is named after the other account, so it needs no payee
   await expect(dialog.getByText('Payee *')).toBeHidden();
@@ -503,7 +517,7 @@ test('the Add transaction dialog lists transfers before an account is chosen (#8
   await typeAmount(dialog.getByLabel('Amount', { exact: true }), '200');
   // The category list ends with every account as "Transfer: name", as the guide says
   await dialog.getByRole('button', { name: /^Category:/ }).click();
-  await dialog.getByRole('button', { name: 'Transfer: Rainy Day Savings' }).click();
+  await categoryOption(dialog, 'Transfer: Rainy Day Savings').click();
 
   // A debit transfer asks where the money comes from, and can't come from the same account
   await expect(dialog.getByText('From account *')).toBeVisible();
@@ -558,7 +572,7 @@ test.describe('transfers between existing transactions (#89)', () => {
 
     await panel.getByRole('button', { name: 'Uncategorised' }).click();
     await page.getByPlaceholder('Search categories...').fill('transfer');
-    await page.getByRole('button', { name: 'Transfer: Rainy Day Savings' }).click();
+    await categoryOption(page, 'Transfer: Rainy Day Savings').click();
 
     // Nothing matched in savings, so the other side was created there
     await expect(panel.getByRole('button', { name: 'Not a transfer' })).toBeVisible();
@@ -632,7 +646,7 @@ test('categorises a transfer across the budget boundary without changing either 
   await expect(panel.getByText(/Transfer across the budget boundary/)).toBeVisible();
   await panel.getByRole('button', { name: 'Uncategorised', exact: true }).click();
   await page.getByPlaceholder('Search categories...').fill('Savings');
-  await page.getByRole('button', { name: /Savings$/ }).click();
+  await categoryOption(page, /Savings$/).click();
   await expect(panel.getByRole('button', { name: /Savings$/ })).toBeVisible();
   const [reviewed] = await api.transactions(`?account_id=${checking.id}`);
   expect(reviewed).toMatchObject({
@@ -1084,4 +1098,261 @@ test("a category's and a payee's page don't offer their own dimension as a filte
   await page.getByRole('button', { name: 'Filters', exact: true }).click();
   await expect(panelTabs().filter({ hasText: 'Categories' })).toBeVisible();
   await expect(panelTabs().filter({ hasText: 'Payees' })).toHaveCount(0);
+});
+
+// The payee field's behaviour, pinned before it moved onto the shared Combobox (#267): these
+// tests must pass unchanged on both, apart from the field's role in their selectors. A
+// suggestion is found by its text, whatever element draws it.
+test.describe('the payee field', () => {
+  const suggestion = (page: Page, name: string) => page.getByText(name, { exact: true });
+
+  /** Payees known from another account, so their names are not register rows here */
+  async function seedPayees(api: Api, accountId: string, names: string[]) {
+    for (const payeeName of names) {
+      await api.createTransaction({ accountId, date: isoDay(), amount: -100, payeeName });
+    }
+  }
+
+  test('suggests payees on focus, names a new one, and keeps a typed or picked name', async ({
+    page,
+    api,
+  }) => {
+    const { checking, savings } = await setup(api);
+    await seedPayees(api, savings.id, ['Corner Grocery', 'Corner Bakery', 'Fuel Stop']);
+    const bakery = (await api.call<{ id: string; name: string }[]>('GET', '/payees')).find(
+      (p) => p.name === 'Corner Bakery',
+    )!;
+    await open(page, `/accounts/${checking.id}`);
+    await page.getByRole('button', { name: 'Add Transaction' }).click();
+    const form = newForm(page);
+    const field = form.getByRole('combobox', { name: 'Payee' });
+
+    await field.click();
+    await expect(suggestion(page, 'Fuel Stop')).toBeVisible();
+
+    // Typing narrows the list (letter case ignored) and names the new payee
+    await field.fill('corner');
+    await expect(suggestion(page, 'Corner Grocery')).toBeVisible();
+    await expect(suggestion(page, 'Fuel Stop')).toBeHidden();
+    await expect(page.getByText('New payee: "corner"')).toBeVisible();
+    // An exact match in any letter case is not a new payee
+    await field.fill('CORNER GROCERY');
+    await expect(page.getByText(/^New payee:/)).toBeHidden();
+    // The hint shows even when nothing matches
+    await field.fill('Night Market');
+    await expect(page.getByText('New payee: "Night Market"')).toBeVisible();
+
+    // Enter in the field saves nothing and keeps the row open with the typed name
+    await field.press('Enter');
+    await expect(form).toBeVisible();
+    await expect(field).toHaveValue('Night Market');
+    expect(await api.transactions(`?account_id=${checking.id}`)).toHaveLength(0);
+
+    // Escape with suggestions open keeps the row and the typed text
+    await field.fill('Corner');
+    await expect(suggestion(page, 'Corner Bakery')).toBeVisible();
+    await field.press('Escape');
+    await expect(form).toBeVisible();
+    await expect(field).toHaveValue('Corner');
+
+    // Clicking a suggestion sets that payee
+    await field.fill('Corner B');
+    await suggestion(page, 'Corner Bakery').click();
+    await expect(field).toHaveValue('Corner Bakery');
+    await form.getByRole('textbox', { name: 'Outflow' }).fill('5');
+    await form.getByRole('button', { name: 'Save' }).click();
+    await expect(row(page, 'Corner Bakery')).toBeVisible();
+    const [tx] = await api.transactions(`?account_id=${checking.id}`);
+    expect(tx).toMatchObject({ payeeId: bakery.id, payeeName: 'Corner Bakery' });
+  });
+
+  test('in the detail panel, Enter keeps the typed name and a suggestion saves at once', async ({
+    page,
+    api,
+  }) => {
+    const { checking, savings } = await setup(api);
+    await seedPayees(api, savings.id, ['Corner Grocery']);
+    const tx = await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: -1_999,
+      payeeName: 'Streamflix',
+    });
+    await open(page, `/accounts/${checking.id}`);
+    await row(page, 'Streamflix').click();
+    const panel = page.getByRole('complementary', { name: 'Transaction details' });
+    const field = panel.getByRole('combobox', { name: 'Payee' });
+
+    await field.fill('Night Market');
+    await field.press('Enter');
+    await expect(panel).toBeVisible();
+    await expect(field).toHaveValue('Night Market');
+
+    await field.fill('corner');
+    await suggestion(page, 'Corner Grocery').click();
+    await expect(field).toHaveValue('Corner Grocery');
+    await expect
+      .poll(async () => (await api.transactions(`?account_id=${checking.id}`))[0])
+      .toMatchObject({ id: tx.id, payeeName: 'Corner Grocery' });
+  });
+
+  test('in the detail panel, Escape with suggestions open closes the panel', async ({
+    page,
+    api,
+  }) => {
+    const { checking, savings } = await setup(api);
+    await seedPayees(api, savings.id, ['Corner Grocery']);
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: -1_999,
+      payeeName: 'Streamflix',
+    });
+    await open(page, `/accounts/${checking.id}`);
+    await row(page, 'Streamflix').click();
+    const panel = page.getByRole('complementary', { name: 'Transaction details' });
+    const field = panel.getByRole('combobox', { name: 'Payee' });
+    // The field holds the payee's own name, so the list shows only that payee until typing
+    await field.fill('corner');
+    await expect(suggestion(page, 'Corner Grocery')).toBeVisible();
+    await field.press('Escape');
+    await expect(panel).toBeHidden();
+  });
+
+  // D-12, owner-approved 17 Nov 2026: before the shared Combobox this Escape closed the sheet
+  // with the list, losing what was typed; now it closes only the list, and a second Escape
+  // closes the sheet
+  test('in the phone sheet, Escape with suggestions open closes only the list', async ({
+    page,
+    api,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const { checking, savings } = await setup(api);
+    await seedPayees(api, savings.id, ['Corner Grocery']);
+    await open(page, `/accounts/${checking.id}`);
+    await page.getByRole('button', { name: 'Add Transaction' }).click();
+    const sheet = page.getByRole('dialog', { name: 'New transaction' });
+    const field = sheet.getByRole('combobox', { name: 'Payee' });
+    // Clicked first, as a person taps it: the click waits for the sheet to finish sliding in.
+    // A list closes when the sheet scrolls under it, which filling a field still moving does
+    await field.click();
+    await field.fill('Corner');
+    await expect(suggestion(page, 'Corner Grocery')).toBeVisible();
+    await expect(field).toHaveAttribute('aria-expanded', 'true');
+    await field.press('Escape');
+    await expect(suggestion(page, 'Corner Grocery')).toBeHidden();
+    // The sheet is still open, not fading out, and saves what was typed in it
+    await sheet.getByRole('textbox', { name: 'Outflow' }).fill('5');
+    await sheet.getByRole('button', { name: 'Save' }).click();
+    await expect(sheet).toBeHidden();
+    const [tx] = await api.transactions(`?account_id=${checking.id}`);
+    expect(tx).toMatchObject({ amount: -500, payeeName: 'Corner' });
+
+    // With the list closed, Escape closes the sheet
+    await page.getByRole('button', { name: 'Add Transaction' }).click();
+    await field.click();
+    await expect(field).toHaveAttribute('aria-expanded', 'true');
+    await field.press('Escape');
+    await expect(field).toHaveAttribute('aria-expanded', 'false');
+    await field.press('Escape');
+    await expect(sheet).toBeHidden();
+  });
+
+  test('ArrowDown then Enter picks the first suggestion', async ({ page, api }) => {
+    const { checking, savings } = await setup(api);
+    await seedPayees(api, savings.id, ['Corner Grocery', 'Corner Bakery']);
+    await open(page, `/accounts/${checking.id}`);
+    await page.getByRole('button', { name: 'Add Transaction' }).click();
+    const field = newForm(page).getByRole('combobox', { name: 'Payee' });
+    await field.fill('corner');
+    await field.press('ArrowDown');
+    await field.press('Enter');
+    await expect(field).toHaveValue('Corner Grocery');
+    await expect(newForm(page)).toBeVisible();
+  });
+});
+
+// Today's category picker, pinned before it moves onto the shared searchable list (#267, plan
+// 02-10). Each test is a rule the other suites do not assert; plan 02-18's wrapper must pass them.
+test.describe('category picker', () => {
+  /** Opens the detail panel of a Groceries transaction and its category picker */
+  async function openPicker(page: Page, api: Api) {
+    const { checking } = await setup(api);
+    const groceries = await api.category('Groceries');
+    const tx = await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: -1_250,
+      payeeName: 'Mock Bakery',
+      categoryId: groceries.id,
+    });
+    await open(page, `/accounts/${checking.id}`);
+    await row(page, 'Mock Bakery').click();
+    const panel = page.getByRole('complementary', { name: 'Transaction details' });
+    await panel.getByRole('button', { name: 'Groceries', exact: true }).click();
+    const search = page.getByRole('textbox', { name: 'Search categories' });
+    await expect(search).toBeFocused();
+    const categoryId = async () =>
+      (await api.transactions(`?account_id=${checking.id}`)).find((t) => t.id === tx.id)
+        ?.categoryId;
+    return { panel, search, categoryId, groceries };
+  }
+
+  test('Enter with nothing typed picks nothing and leaves the picker open', async ({
+    page,
+    api,
+  }) => {
+    const { search, categoryId, groceries } = await openPicker(page, api);
+    await page.keyboard.press('Enter');
+    await expect(search).toBeVisible();
+    await expect(search).toBeFocused();
+    expect(await categoryId()).toBe(groceries.id);
+  });
+
+  test('with a search typed the no-category row still shows, and clicking it clears the category', async ({
+    page,
+    api,
+  }) => {
+    const { panel, search, categoryId } = await openPicker(page, api);
+    await search.fill('gro');
+    // The search filters the categories (the panel's own field is also named Groceries)
+    await expect(categoryOption(panel, /Streaming Services/)).toHaveCount(0);
+    const none = categoryOption(panel, 'Uncategorised', { exact: true });
+    await expect(none).toBeVisible();
+    await none.click();
+    await expect.poll(categoryId).toBeNull();
+  });
+
+  test('ArrowDown from an empty search lands on the no-category row, and Enter picks it', async ({
+    page,
+    api,
+  }) => {
+    // Only the no-category row clears it, so the outcome shows where ArrowDown landed, with no
+    // reliance on how the picker marks its highlighted row
+    const { categoryId } = await openPicker(page, api);
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect.poll(categoryId).toBeNull();
+  });
+
+  test('a click outside closes the picker with no change', async ({ page, api }) => {
+    const { panel, search, categoryId, groceries } = await openPicker(page, api);
+    await panel.getByText('Transaction details', { exact: true }).click();
+    await expect(search).toHaveCount(0);
+    await expect(panel).toBeVisible();
+    expect(await categoryId()).toBe(groceries.id);
+  });
+
+  test('Escape inside the Add transaction dialog closes only the picker', async ({ page, api }) => {
+    await setup(api);
+    await open(page, '/transactions?add=1');
+    const dialog = page.getByRole('dialog', { name: 'Add transaction' });
+    await dialog.getByRole('button', { name: /^Category:/ }).click();
+    const search = dialog.getByRole('textbox', { name: 'Search categories' });
+    await expect(search).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(search).toHaveCount(0);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /^Category:/ })).toBeVisible();
+  });
 });

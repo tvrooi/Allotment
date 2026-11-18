@@ -434,7 +434,9 @@ test('with the server unreachable, the app opens with the offline copy and keeps
   // A new transaction waits on the device, even across a reload
   await owner.getByRole('button', { name: 'Add Transaction' }).click();
   const form = owner.getByRole('form', { name: 'New transaction' });
-  await form.getByRole('textbox', { name: 'Payee' }).fill('Coffee Cart');
+  await form.getByRole('combobox', { name: 'Payee' }).fill('Coffee Cart');
+  // React Aria hide-outside: Tab closes the list (02-19 checkpoint decision, option 1)
+  await form.getByRole('combobox', { name: 'Payee' }).press('Tab');
   await form.getByRole('textbox', { name: 'Outflow' }).fill('4.75');
   await form.getByRole('button', { name: 'Save' }).click();
   const waiting = owner.getByRole('region', { name: 'Saved on this device' });

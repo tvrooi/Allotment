@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, open, isoDay, typeAmount, type Api } from './fixtures';
+import { test, expect, open, isoDay, typeAmount, categoryOption, type Api } from './fixtures';
 
 // Recurring bills and income: create one, see it in the month, mark it paid, pause it,
 // and let "Find recurring" discover one from history.
@@ -231,7 +231,7 @@ test.describe('recurring', () => {
       .filter({ hasText: 'Gym' })
       .getByRole('button', { name: /^Category:/ })
       .click();
-    await page.getByRole('button', { name: 'Power', exact: true }).click();
+    await categoryOption(page, 'Power', { exact: true }).click();
     await expect(list.getByRole('listitem')).toHaveCount(1);
     const after = await api.call<any>('GET', `/schedules/${gym.id}`);
     expect(after).toMatchObject({ categoryId: power.id, amount: before.amount });

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, open, isoDay, type Api } from './fixtures';
+import { test, expect, open, isoDay, categoryOption, type Api } from './fixtures';
 
 // Rules: build one in the editor, preview and apply it to existing transactions, and
 // check it runs on new ones.
@@ -41,7 +41,7 @@ async function buildCoffeeRule(page: Page, expectedMatches: number) {
   );
   await dialog.getByRole('button', { name: 'Choose a category…' }).click();
   await page.getByPlaceholder('Search categories...').fill('coffee');
-  await page.getByRole('button', { name: /Coffee Shops/ }).click();
+  await categoryOption(page, /Coffee Shops/).click();
   return dialog;
 }
 
@@ -82,7 +82,9 @@ test.describe('rules', () => {
     await open(page, `/accounts/${checking.id}`);
     await page.getByRole('button', { name: 'Add Transaction' }).click();
     const form = page.getByRole('form', { name: 'New transaction' });
-    await form.getByRole('textbox', { name: 'Payee' }).fill('Corner Coffee Co');
+    await form.getByRole('combobox', { name: 'Payee' }).fill('Corner Coffee Co');
+    // React Aria hide-outside: Tab closes the list (02-19 checkpoint decision, option 1)
+    await form.getByRole('combobox', { name: 'Payee' }).press('Tab');
     await form.getByRole('textbox', { name: 'Outflow' }).fill('3.75');
     await form.getByRole('button', { name: 'Save' }).click();
     await expect(

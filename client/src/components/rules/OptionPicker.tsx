@@ -17,7 +17,7 @@ type Props = {
 );
 
 const buttonClass =
-  'w-full flex items-center gap-2 text-left text-sm border border-border rounded-lg px-2 py-1.5 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-400 cursor-pointer';
+  'w-full flex items-center gap-2 text-left text-sm border border-border rounded-lg px-2 py-1.5 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 cursor-pointer';
 
 /** Searchable dropdown for picking one or several payees, accounts or categories */
 export function OptionPicker(props: Props) {
@@ -95,7 +95,7 @@ export function OptionPicker(props: Props) {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search…"
-                className="w-full pl-7 pr-2 py-1 text-sm border border-border rounded-md bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-400"
+                className="w-full pl-7 pr-2 py-1 text-sm border border-border rounded-md bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600"
               />
             </div>
           </div>

@@ -3,8 +3,8 @@
 How the design re-review backlog (issues #222 to #245) is being worked through on `redesign`, and
 where to pick up. Read after [README.md](README.md) and [HANDOVER-UI.md](HANDOVER-UI.md). Update
 the **Status** and **Open PRs** sections whenever a wave PR opens, merges or is sent back; delete
-this file when Wave G has merged (owner, 15 November 2026). Last written 15 November 2026, when
-Wave F's PR #273 was revised to the owner's decisions.
+this file when Wave G has merged (owner, 15 November 2026). Last written 18 November 2026, when
+Wave G1's PR opened.
 
 ## Roles
 
@@ -22,17 +22,18 @@ Wave F's PR #273 was revised to the owner's decisions.
 
 ## Status
 
-| Wave                | Issues                                   | State                                                                                         |
-| ------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------- |
-| A shell             | #222, #223, #225                         | Merged, PR #247, up.167. Issues closed.                                                       |
-| A palette part 1    | #224 (part)                              | Merged, PR #253, up.169. #224 stays open.                                                     |
-| A palette part 2    | #224 (rest)                              | Merged, PR #259, up.171. #224 closed.                                                         |
-| B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.                                                       |
-| C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.                                                       |
-| D discoverability   | #226, #237, #239, #236                   | Merged, PR #262, up.172. Issues closed.                                                       |
-| E navigation depth  | #235, #243, #245, #240                   | Merged, PR #266, up.173. Issues closed.                                                       |
-| F settings, delight | #244, #241                               | PR #273 open, revised 15 November 2026 to the owner's decisions, up.174 prepared, not merged. |
-| G form controls     | #267                                     | Not started. Needs owner decisions.                                                           |
+| Wave                | Issues                                   | State                                                      |
+| ------------------- | ---------------------------------------- | ---------------------------------------------------------- |
+| A shell             | #222, #223, #225                         | Merged, PR #247, up.167. Issues closed.                    |
+| A palette part 1    | #224 (part)                              | Merged, PR #253, up.169. #224 stays open.                  |
+| A palette part 2    | #224 (rest)                              | Merged, PR #259, up.171. #224 closed.                      |
+| B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.                    |
+| C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.                    |
+| D discoverability   | #226, #237, #239, #236                   | Merged, PR #262, up.172. Issues closed.                    |
+| E navigation depth  | #235, #243, #245, #240                   | Merged, PR #266, up.173. Issues closed.                    |
+| F settings, delight | #244, #241                               | Merged, PR #273, up.174.                                   |
+| G0 controls audit   | #267 (part)                              | Merged, PR #275 (docs only). #267 stays open.              |
+| G1 control set      | #267 (part), #264                        | PR #277 open into `redesign`, up.175 prepared, not merged. |
 
 Also merged: PR #256, test-only fixes for date- and timing-dependent Household specs.
 
@@ -53,15 +54,15 @@ Not in any wave:
   a deleted row, #270 the register summary shows totals at the "Balances and totals" Safe mode
   level (privacy), #271 a phone details sheet covers the toasts.
 - #267 Wave G (owner-requested 13 November): one set of shared field and selector components
-  (shadcn) on desktop in place of native fields. The issue holds the counts, a five-step plan and
-  five decisions the owner must make first (new dependencies, phones, scope, dates, and that it
-  replaces Wave E's "short lists use the styled native Select" rule on desktop).
+  on `react-aria-components` in place of native fields on desktop. The picker rule for desktop
+  replaces Wave E's short-list rule: categories use `CategoryPicker`, payees use `PayeeCombobox`,
+  a fixed list uses `Select` (`ui/Select.tsx`) and a list the user grows uses `Combobox`; phones
+  keep native select, date and month controls. Screens move onto it in Phases 3 and 4.
 
 ## Open PRs
 
-- PR #273, Wave F (#244, #241), base `redesign`: open, revised 15 November 2026 to the owner's
-  decisions (Connected banks and Categories as pages, the goal plant, the $0 label), up.174
-  prepared, not merged.
+- PR #277, Wave G1 (#267, #264), base `redesign`: open, up.175 prepared, not merged. Waits for
+  the HIGH-tier review that #267 asks for shared components.
 - Wave E (PR #266) merged after three fix rounds. Rounds 1 and 2 were reviewed by
   Antigravity and the GitHub Codex review (no major issue on the round-2 commit); round 3 was
   merged on green CI alone, on the owner's instruction, so it has had no second review. Its five
@@ -79,7 +80,7 @@ Not in any wave:
 
 ## What to do next, in order
 
-1. Wave F (#244, #241), one PR. Then Wave G (#267) once the owner has made its five decisions.
+1. Wave G1 (#267, #264): the HIGH-tier review and merge of its PR. Then G2 to G5 (Phases 3 and 4).
 2. Triage the `needs-triage` issues above with the owner or by the routine in
    [docs/agents/triage-labels.md](../agents/triage-labels.md).
 
@@ -107,8 +108,8 @@ Not in any wave:
   announces itself (onboarding sorting stays quiet); a toast offering Undo stays 8 seconds and
   holds while hovered or focused; Back/Forward restores filters and scroll, a fresh visit starts
   at the top. #240 16 px title gutter on phones, 24 px from `md`; categories always use the
-  searchable `CategoryPicker`, short lists the shared styled `Select` (Wave G would change the
-  second half on desktop). The HIGH tier was not used: gutters are set per page, not in the shell.
+  searchable `CategoryPicker`, short lists the shared styled `Select` (Wave G1 replaced the
+  second half on desktop; see HANDOVER-UI.md Decisions). The HIGH tier was not used: gutters are set per page, not in the shell.
 - **#244:** the Settings split is endorsed.
 - **Release:** undecided. `redesign` carries up.154 to up.171 prepared and untagged. The
   orchestrator's recommendation is one release from `redesign` soon, because the Safe mode chart

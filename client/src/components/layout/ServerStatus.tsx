@@ -101,7 +101,7 @@ export function ServerStatus({ collapsed }: { collapsed: boolean }) {
     />
   );
   const itemClass =
-    'flex items-center gap-2 w-full px-3 py-1.5 text-left text-nav text-text-secondary hover:bg-hover hover:text-text focus:bg-hover focus:text-text focus:outline-none cursor-pointer';
+    'flex items-center gap-2 w-full px-3 py-1.5 text-left text-nav text-text-secondary hover:bg-hover hover:text-text focus:bg-hover focus:text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 cursor-pointer';
 
   return (
     <>
