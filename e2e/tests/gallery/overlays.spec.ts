@@ -154,6 +154,9 @@ for (const { control, open } of IN_DIALOG)
       await page.keyboard.press('Tab');
       expect(await focusAboveThePage(page)).toBe(true);
     }
+    // The Tab pass crosses the payee field, whose list opens on focus and fades out after it:
+    // every list has closed before the next one opens (plan 02-12; chooseOption waits the same way)
+    await expect(page.getByRole('listbox')).toHaveCount(0);
     // Open, Tab keeps to the popover or the dialog, also when Tab is what closes the list
     list = await open(dialog);
     await expect(list).toBeVisible();

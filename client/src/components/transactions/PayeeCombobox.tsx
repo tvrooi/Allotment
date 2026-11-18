@@ -37,9 +37,13 @@ export function isNewPayee(payees: readonly Payee[], query: string): boolean {
   return q !== '' && !payees.some((p) => p.name.toLowerCase() === q);
 }
 
-/** The field's own look when the caller gives none: bare in its cell, as in the register row */
+/**
+ * The field's own look when the caller gives none: bare in its cell, as in the register row. The
+ * global focus outline sits under utilities (`@layer base`), so the bare field draws its own ring,
+ * as CategorySelect's bare button does
+ */
 const bareField =
-  'block w-full bg-transparent text-sm text-text placeholder-text-tertiary focus:outline-none';
+  'block w-full bg-transparent text-sm text-text placeholder-text-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600';
 
 /**
  * The payee field: the shared Combobox with the payee rules. The list opens on focus with the

@@ -106,4 +106,13 @@ describe('PayeeCombobox', () => {
     const sheet = attr(input(render({ fieldClassName: 'w-full text-base border' })), 'class');
     expect(sheet?.split(' ')).toEqual(['min-w-0', 'flex-1', 'w-full', 'text-base', 'border']);
   });
+
+  // The global focus outline is in @layer base, so focus:outline-none wins over it: the bare field
+  // in the register row and the detail panel must draw its own focus mark (plan 02-12)
+  it('the bare field shows a focus ring of its own, in the row and the panel', () => {
+    for (const html of [render(), render({ className: 'border rounded-lg px-3 py-2' })])
+      expect(attr(input(html), 'class')?.split(' ')).toEqual(
+        expect.arrayContaining(['focus-visible:ring-2', 'focus-visible:ring-brand-600']),
+      );
+  });
 });
