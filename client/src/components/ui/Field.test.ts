@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { Field } from './Field';
+import { describedByIds, Field, FieldLines } from './Field';
 import { Input } from './Input';
 
 type Props = Parameters<typeof Field>[0];
@@ -110,5 +110,32 @@ describe('Field', () => {
 
   it('an invalid Field that is not required shows no default line', () => {
     expect(render({ isInvalid: true })).not.toContain('to continue');
+  });
+});
+
+// The native and month-grid branches all draw their lines and describedby with these (02-REVIEW WR-06)
+describe('FieldLines and describedByIds', () => {
+  const lines = (description: unknown, error: unknown) =>
+    renderToStaticMarkup(
+      createElement(FieldLines, {
+        id: 'f',
+        description: description as string,
+        error: error as string,
+      }),
+    );
+
+  it('draws each line with the id describedByIds names', () => {
+    const html = lines('Help', 'Wrong');
+    expect(html).toMatch(/<p id="f-description" class="[^"]*break-words[^"]*">Help<\/p>/);
+    expect(html).toMatch(/<p id="f-error" class="[^"]*break-words[^"]*">Wrong<\/p>/);
+    expect(describedByIds('f', 'Help', 'Wrong')).toBe('f-description f-error');
+  });
+
+  it('an absent line is neither drawn nor named', () => {
+    for (const absent of [undefined, null, '', false]) {
+      expect(lines(absent, absent)).toBe('');
+      expect(describedByIds('f', absent as string, absent as string)).toBeUndefined();
+    }
+    expect(describedByIds('f', undefined, 'Wrong')).toBe('f-error');
   });
 });

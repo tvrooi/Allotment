@@ -120,7 +120,8 @@ test('a click on an option picks it', async ({ page }) => {
 
 // The category picker (client/src/components/transactions/CategoryPicker.tsx) on the shared
 // searchable list (#267, plan 02-18), floating beside its button and inside its button's own
-// wrapper. The gallery has no server: each create test answers POST /api/categories itself.
+// wrapper. The gallery has no server and fetches nothing (T-02-10): its create waits half a
+// second, then adds the category to the specimen, or refuses a name its group already has.
 
 type PickerState = 'Anchored' | 'Inline';
 const pickerRow = (page: Page, state: PickerState) => specimen(page, 'Category picker', state);
@@ -146,15 +147,14 @@ async function openCreate(page: Page, state: PickerState = 'Anchored') {
   return name;
 }
 
-const CREATED = {
-  id: 'fitness',
-  groupId: 'everyday',
-  name: 'Fitness',
-  icon: null,
-  budgetType: 'flexible',
-  sortOrder: 9,
-  createdAt: '2026-11-18T00:00:00.000Z',
-};
+/** Every request the page makes to the app's API; the gallery must make none */
+function apiRequests(page: Page) {
+  const urls: string[] = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname.startsWith('/api/')) urls.push(request.url());
+  });
+  return urls;
+}
 
 for (const state of ['Anchored', 'Inline'] as const) {
   test(`${state}: the rows are listbox options, filtered by a search in any letter case`, async ({
@@ -220,43 +220,34 @@ for (const state of ['Anchored', 'Inline'] as const) {
 test('while a create is pending its button is disabled and reads "Creating..."', async ({
   page,
 }) => {
-  let release = () => {};
-  await page.route('**/api/categories', async (route) => {
-    await new Promise<void>((resolve) => (release = resolve));
-    await route.fulfill({ status: 201, json: CREATED });
-  });
+  // The page's timers are held, so the gallery's create stays pending until the clock moves
+  await page.clock.install();
   const name = await openCreate(page);
   await name.fill('Fitness');
   await page.getByRole('button', { name: 'Create', exact: true }).click();
   const creating = page.getByRole('button', { name: 'Creating...' });
   await expect(creating).toBeDisabled();
-  release();
+  await page.clock.runFor(1_000);
   await expect(pickerReadout(page, 'Anchored')).toHaveText('Chosen: fitness');
 });
 
 test('a failed create keeps the form open with an error line and the typed name', async ({
   page,
 }) => {
-  await page.route('**/api/categories', (route) =>
-    route.fulfill({ status: 422, json: { error: 'Could not create' } }),
-  );
   const name = await openCreate(page, 'Inline');
-  await name.fill('Fitness');
+  // Everyday already has Groceries, so the gallery refuses it, as a failed request would be
+  await name.fill('groceries');
   await page.getByRole('button', { name: 'Create', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText("Couldn't create the category. Try again.");
-  await expect(name).toHaveValue('Fitness');
+  await expect(name).toHaveValue('groceries');
   await expect(page.getByRole('button', { name: 'Create', exact: true })).toBeEnabled();
   await expect(pickerReadout(page, 'Inline')).toHaveText('Chosen: none');
 });
 
-test('a successful create sends the group, budget type and name, and picks the new category', async ({
+test('a successful create gives the group, budget type and name, picks the new category and fetches nothing', async ({
   page,
 }) => {
-  let sent: unknown = null;
-  await page.route('**/api/categories', async (route) => {
-    sent = route.request().postDataJSON();
-    await route.fulfill({ status: 201, json: CREATED });
-  });
+  const requests = apiRequests(page);
   const name = await openCreate(page);
   await expect(page.getByRole('button', { name: 'Create', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'Fixed', exact: true }).click();
@@ -265,7 +256,16 @@ test('a successful create sends the group, budget type and name, and picks the n
   await name.press('Enter');
   await expect(categorySearch(page)).toHaveCount(0);
   await expect(pickerReadout(page, 'Anchored')).toHaveText('Chosen: fitness');
-  expect(sent).toEqual({ groupId: 'everyday', name: 'Fitness', budgetType: 'fixed' });
+  await expect(page.getByTestId('category-picker-readout-anchored-created')).toHaveText(
+    'Created: Fitness in Everyday, fixed',
+  );
+  // The new category is listed with the others the next time the picker opens
+  await openPicker(page, 'Anchored');
+  await expect(categoryList(page).getByRole('option', { name: 'Fitness' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  expect(requests).toEqual([]);
 });
 
 test('an income group hides the budget types; cancel returns to the create button and clears the name', async ({

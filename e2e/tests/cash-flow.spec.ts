@@ -92,19 +92,21 @@ const shortMonth = (ym: string) =>
 /** "October 2026", a month button's name in the grid */
 const longMonth = (ym: string) => `${MONTH_NAMES[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`;
 
+// The browser's clock is pinned, so "this month" is a known one: January 2026, whose previous
+// month is in the year before, so the grid's year step is always taken (02-REVIEW IN-05)
+const JANUARY_TODAY = new Date(2026, 0, 15, 10, 0, 0);
+
 test('Cash flow Custom range picks months, scopes the list and names the export', async ({
   page,
   api,
 }) => {
+  await page.clock.setFixedTime(JANUARY_TODAY);
   const account = await api.createAccount('Checking');
   const grocery = await api.category('Groceries');
-  const prior = new Date();
-  prior.setDate(1);
-  prior.setMonth(prior.getMonth() - 1);
-  const lastMonth = monthOf(prior);
-  const current = monthOf(new Date());
+  const current = monthOf(JANUARY_TODAY);
+  const lastMonth = '2025-12';
   for (const tx of [
-    { date: isoDay(), amount: -1_000, payeeName: 'Current groceries' },
+    { date: `${current}-15`, amount: -1_000, payeeName: 'Current groceries' },
     { date: `${lastMonth}-01`, amount: -2_000, payeeName: 'Previous groceries' },
   ])
     await api.createTransaction({ accountId: account.id, categoryId: grocery.id, ...tx });
@@ -115,9 +117,8 @@ test('Cash flow Custom range picks months, scopes the list and names the export'
   const picker = page.getByRole('dialog', { name: 'Choose months' });
   await expect(picker).toBeVisible();
   const from = picker.getByRole('group', { name: 'From' });
-  // Last month is in last year's grid when this month is January
-  if (lastMonth.slice(0, 4) !== current.slice(0, 4))
-    await from.getByRole('button', { name: 'Previous year' }).click();
+  // Last month is in last year's grid, as this month is January
+  await from.getByRole('button', { name: 'Previous year' }).click();
   await from.getByRole('button', { name: longMonth(lastMonth) }).click();
   await picker.getByRole('button', { name: 'Done' }).click();
   await expect(picker).toBeHidden();
@@ -134,9 +135,10 @@ test('Cash flow Custom range picks months, scopes the list and names the export'
   await page.getByRole('button', { name: 'Export CSV' }).click();
   expect((await download).suggestedFilename()).toBe(`cash-flow-${lastMonth}-${current}.csv`);
 
-  // Cancel discards a changed draft
+  // Cancel discards a changed draft. From opens on December's year, so this month is a year on
   await trigger.click();
   await expect(picker).toBeVisible();
+  await from.getByRole('button', { name: 'Next year' }).click();
   await from.getByRole('button', { name: longMonth(current) }).click();
   await picker.getByRole('button', { name: 'Cancel' }).click();
   await expect(picker).toBeHidden();

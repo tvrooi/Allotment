@@ -53,7 +53,8 @@ for (const phone of [false, true])
     }
     await search.fill('gRoCeR');
     await expect(categoryOption(page, 'Groceries', { exact: true })).toBeVisible();
-    await expect(categoryOption(page, 'Rent', { exact: true })).toHaveCount(0);
+    // A category the e2e budget has, so the check fails if the search stops filtering (T-02-44)
+    await expect(categoryOption(page, 'Rent / Mortgage', { exact: true })).toHaveCount(0);
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
     await expect(attention).toBeHidden();

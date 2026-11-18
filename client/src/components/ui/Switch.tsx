@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { SwitchButton, SwitchField } from 'react-aria-components';
 import { FieldDescription, FieldErrorText } from './Field';
 import { toggleDisabled, toggleFocusRing, toggleInvalid, toggleReadOnly } from './fieldClasses';
-import { fieldSubject, requiredMessage, toggleNames, type ToggleNames } from './fieldMessages';
+import { errorLine, present, toggleNames, type ToggleNames } from './fieldMessages';
 
 type Common = {
   checked: boolean;
@@ -26,9 +26,6 @@ type Common = {
  * whose only name is a React node passes `errorLabel` for its default line (ToggleNames).
  */
 type Props = Common & ToggleNames;
-
-/** Whether there is something to show: an absent part renders nothing, so it leaves no gap */
-const present = (node: ReactNode) => node != null && node !== false && node !== '';
 
 const track =
   'relative block h-6 w-10 shrink-0 rounded-full transition-colors motion-reduce:transition-none';
@@ -56,10 +53,11 @@ export function Switch(props: Props) {
     children,
     'aria-label': ariaLabel,
   } = props;
-  const errorMessage =
-    present(props.errorMessage) || !isRequired
-      ? props.errorMessage
-      : requiredMessage('toggle', fieldSubject(toggleNames(props)));
+  const errorMessage = errorLine(props.errorMessage, {
+    isRequired,
+    kind: 'toggle',
+    names: toggleNames(props),
+  });
   const showError = isInvalid && present(errorMessage);
   const lines = present(description) || showError;
   const fill = disabled
@@ -79,7 +77,9 @@ export function Switch(props: Props) {
         ? 'bg-brand-contrast'
         : 'bg-surface';
   const cursor = disabled ? 'cursor-not-allowed' : readOnly ? 'cursor-default' : 'cursor-pointer';
-  const label = children != null ? <span className="min-w-0">{children}</span> : null;
+  // 2 px above and below its 20 px line, so the first line sits level with the 24 px track
+  const label =
+    children != null ? <span className="min-w-0 break-words py-0.5">{children}</span> : null;
   return (
     <SwitchField
       isSelected={checked}
@@ -93,8 +93,11 @@ export function Switch(props: Props) {
     >
       {/* relative: React Aria's hidden input is absolutely placed; without a positioned label it
           sits against the page and makes the whole document taller (the phone welcome screen) */}
+      {/* Labelled as Checkbox and Radio are: 14 px, text-disabled when disabled, and the track
+          level with the first line of a label that wraps; py-2.5 keeps a one-line switch in the
+          middle of its 44 px target */}
       <SwitchButton
-        className={`group relative inline-flex min-h-11 min-w-11 items-center gap-2 [&_input]:outline-none ${label ? '' : 'justify-center'} ${cursor} ${className}`}
+        className={`group relative inline-flex min-h-11 min-w-11 items-start gap-2 py-2.5 text-sm ${disabled ? 'text-text-disabled' : 'text-text'} [&_input]:outline-none ${label ? '' : 'justify-center'} ${cursor} ${className}`}
       >
         {labelSide === 'start' && label}
         <span aria-hidden="true" className={`${track} ${fill} ${toggleFocusRing}`}>

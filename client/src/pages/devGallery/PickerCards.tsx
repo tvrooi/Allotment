@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
-import { CategoryPicker } from '../../components/transactions/CategoryPicker';
+import { CategoryPicker, type NewCategory } from '../../components/transactions/CategoryPicker';
 import { Button } from '../../components/ui/Button';
 import { SearchList, type SearchListSection } from '../../components/ui/Combobox';
-import type { Category, CategoryGroup } from '../../types';
+import type { BudgetType, Category, CategoryGroup } from '../../types';
 import { GalleryCard, Specimen } from './Specimen';
 
 /** Two sample sections, in the order they are listed */
@@ -133,21 +133,51 @@ export const TRANSFER_ACCOUNTS = [
   { id: 'card', name: 'Credit card' },
 ];
 
+/** How long the gallery's create takes, as a request does, so "Creating..." can be seen */
+export const GALLERY_CREATE_MS = 500;
+
+/** A new category's id in the gallery: its name, lower-cased, words joined by hyphens */
+const slug = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
 /**
  * The category picker as its callers open it: floating beside its button (`anchor`, as the
  * payee, Review and budget screens do), or in the button's own relative wrapper (as the
- * transaction row and the category button do). The gallery has no server, so a create fails
- * unless a spec answers the request.
+ * transaction row and the category button do). The gallery has no server and fetches nothing
+ * (T-02-10): its create waits GALLERY_CREATE_MS, then adds the category to this specimen's own
+ * groups, or refuses a name its group already has, as a failed request would, so the error line
+ * shows. The line under the button names the last category created.
  */
 function CategoryPickerSpecimen({ anchored }: { anchored: boolean }) {
   const [opener, setOpener] = useState<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState<string | null>(null);
+  const [groups, setGroups] = useState(GROUPS);
+  const [created, setCreated] = useState<string | null>(null);
   const testId = `category-picker-readout-${anchored ? 'anchored' : 'inline'}`;
+  const create = ({ groupId, name, budgetType = null }: NewCategory) =>
+    new Promise<{ id: string }>((resolve, reject) => {
+      setTimeout(() => {
+        const group = groups.find((g) => g.id === groupId);
+        const taken = group?.categories.some((c) => c.name.toLowerCase() === name.toLowerCase());
+        if (!group || taken) return reject(new Error('A category with that name exists'));
+        const id = slug(name);
+        const added = category(id, name, { groupId, budgetType: budgetType as BudgetType | null });
+        setGroups((all) =>
+          all.map((g) => (g.id === groupId ? { ...g, categories: [...g.categories, added] } : g)),
+        );
+        setCreated(`${name} in ${group.name}, ${budgetType ?? 'no budget type'}`);
+        resolve({ id });
+      }, GALLERY_CREATE_MS);
+    });
   const picker = open && (
     <CategoryPicker
       value={value}
-      groups={GROUPS}
+      groups={groups}
+      onCreate={create}
       transferAccounts={TRANSFER_ACCOUNTS}
       anchor={anchored ? opener : null}
       fullWidth={!anchored}
@@ -170,6 +200,11 @@ function CategoryPickerSpecimen({ anchored }: { anchored: boolean }) {
       <p data-testid={testId} className="mt-1 text-xs text-text-tertiary">
         Chosen: {value ?? 'none'}
       </p>
+      {created && (
+        <p data-testid={`${testId}-created`} className="text-xs text-text-tertiary">
+          Created: {created}
+        </p>
+      )}
     </div>
   );
 }

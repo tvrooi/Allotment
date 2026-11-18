@@ -5,11 +5,8 @@ import {
   ComboBox as AriaComboBox,
   Dialog,
   Group,
-  Header,
   Input as AriaInput,
   ListBox,
-  ListBoxItem,
-  ListBoxSection,
   Popover,
   useFilter,
 } from 'react-aria-components';
@@ -23,14 +20,12 @@ import {
   optionClass,
   popoverClass,
 } from './fieldClasses';
-import { fieldSubject, requiredMessage, type FieldNames } from './fieldMessages';
+import { errorLine, fieldSubject, namesOf, present, type LabelNames } from './fieldMessages';
 import { Label } from './Label';
+import { listItems } from './listItems';
 import type { SelectGroup, SelectOption } from './Select';
 
-/** A visible label, or an aria-label when there is none: a Combobox is never left unnamed */
-type Names = { label: string; 'aria-label'?: string } | { label?: undefined; 'aria-label': string };
-
-type Props = Names & {
+type Props = LabelNames & {
   /** Flat options, headed groups, or both, in the order given (the Select's option shapes) */
   items: readonly (SelectOption | SelectGroup)[];
   /** The chosen option's value, or '' for none */
@@ -84,8 +79,6 @@ type Props = Names & {
   id?: string;
 };
 
-const isGroup = (item: SelectOption | SelectGroup): item is SelectGroup => 'options' in item;
-
 /** The focused field's ring on the group, which holds the input and its buttons */
 const groupFocus =
   'focus-within:border-brand-600 focus-within:ring-1 focus-within:ring-brand-600 data-[invalid]:focus-within:border-negative data-[invalid]:focus-within:ring-negative';
@@ -102,24 +95,6 @@ function NoMatches() {
         Type a different search term or clear the filter to see all choices.
       </p>
     </div>
-  );
-}
-
-function OptionItem({ option }: { option: SelectOption }) {
-  return (
-    <ListBoxItem
-      id={option.value}
-      textValue={option.label}
-      isDisabled={option.isDisabled}
-      className={optionClass}
-    >
-      {({ isSelected }) => (
-        <>
-          <span className="min-w-0 truncate">{option.label}</span>
-          {isSelected && <Check size={16} aria-hidden="true" className="shrink-0" />}
-        </>
-      )}
-    </ListBoxItem>
   );
 }
 
@@ -150,7 +125,6 @@ export function Combobox(props: Props) {
     placeholder,
     description,
     errorMessage,
-    errorLabel,
     isDisabled = false,
     isInvalid = false,
     isReadOnly = false,
@@ -164,12 +138,9 @@ export function Combobox(props: Props) {
   // D-12: whether the list was open when a key came in, read before React Aria handles the key
   const isOpen = useRef(false);
   const wasOpen = useRef(false);
-  const names: FieldNames =
-    props.label !== undefined
-      ? { errorLabel, label: props.label }
-      : { errorLabel, ariaLabel: props['aria-label'] };
+  const names = namesOf(props);
   const subject = fieldSubject(names);
-  const error = errorMessage ?? (isRequired ? requiredMessage('choice', subject) : undefined);
+  const error = errorLine(errorMessage, { isRequired, kind: 'choice', names });
   const canClear =
     optional && !isDisabled && !isReadOnly && (value !== '' || (inputValue ?? '') !== '');
   const ownField = fieldClassName !== undefined;
@@ -253,27 +224,14 @@ export function Combobox(props: Props) {
           )}
         </span>
       </Group>
-      {description != null && <FieldDescription>{description}</FieldDescription>}
-      {error != null && <FieldErrorText>{error}</FieldErrorText>}
+      {present(description) && <FieldDescription>{description}</FieldDescription>}
+      {present(error) && <FieldErrorText>{error}</FieldErrorText>}
       <Popover offset={4} className={`${popoverClass} ${popoverClassName}`}>
         <ListBox
           className={listClass}
           renderEmptyState={() => (emptyState === undefined ? <NoMatches /> : emptyState)}
         >
-          {items.map((item) =>
-            isGroup(item) ? (
-              <ListBoxSection key={`group:${item.label}`} id={`group:${item.label}`}>
-                <Header className="px-3 pt-2 pb-1 text-xs font-medium text-text-tertiary">
-                  {item.label}
-                </Header>
-                {item.options.map((option) => (
-                  <OptionItem key={option.value} option={option} />
-                ))}
-              </ListBoxSection>
-            ) : (
-              <OptionItem key={item.value} option={item} />
-            ),
-          )}
+          {listItems(items)}
         </ListBox>
         {footer != null && <div className="border-t border-border-light">{footer}</div>}
       </Popover>

@@ -81,7 +81,7 @@ export function PayeeCombobox({
 
   return (
     // D-12 (owner-approved 17 Nov 2026): Escape with the list open closes only the list, so the
-    // phone sheet stays open; the shared Combobox marks that Escape handled
+    // phone sheet and the detail panel stay open; the shared Combobox marks that Escape handled
     <div className="relative">
       <Combobox
         aria-label="Payee"

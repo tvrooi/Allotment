@@ -6,10 +6,13 @@ import { MonthGrid, MonthPicker } from './MonthPicker';
 
 // useIsPhone reads matchMedia, which server rendering has not got: it reports desktop unless a
 // test says it is a phone
-const screen = vi.hoisted(() => ({ phone: false }));
+const screen = vi.hoisted(() => ({ phone: false, nativeMonth: true }));
 vi.mock('../../hooks/useIsPhone', () => ({ useIsPhone: () => screen.phone }));
+// Whether the browser has a native month input; Firefox has not (02-REVIEW WR-02)
+vi.mock('./nativeInput', () => ({ supportsMonthInput: () => screen.nativeMonth }));
 afterEach(() => {
   screen.phone = false;
+  screen.nativeMonth = true;
 });
 
 type Props = Parameters<typeof MonthPicker>[0];
@@ -93,9 +96,19 @@ describe('MonthPicker on phones', () => {
     expect(input(phone({ isReadOnly: true }))).toMatch(/ readOnly=""/);
     expect(input(phone({ isRequired: true }))).toMatch(/ required=""/);
   });
+
+  it('without a native month input, it is the month grid trigger, never a text box', () => {
+    screen.nativeMonth = false;
+    const html = phone({ value: '2026-11' });
+    expect(html).not.toContain('<input');
+    expect(trigger(html)).toBeTruthy();
+    expect(html).toContain(`>${formatMonth('2026-11')}<`);
+  });
 });
 
 describe('MonthGrid', () => {
+  afterEach(() => vi.useRealTimers());
+
   const grid = (props: Partial<Parameters<typeof MonthGrid>[0]> = {}) =>
     renderToStaticMarkup(
       createElement(MonthGrid, {
@@ -115,6 +128,14 @@ describe('MonthGrid', () => {
     expect(html.match(/aria-pressed="/g)).toHaveLength(12);
     expect(html).toMatch(/aria-pressed="true"[^>]*aria-label="November 2026"/);
     expect(html).toContain('aria-label="Select this month"');
+  });
+
+  it("marks this month from the device's today (thisMonthIso), and opens on its year", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2031, 2, 10, 12));
+    const html = grid({ value: '' });
+    expect(html).toMatch(/aria-label="March 2031" data-this-month="true"/);
+    expect(html.match(/data-this-month=/g)).toHaveLength(1);
   });
 
   it('stops at the year 2000, or at a later floor', () => {

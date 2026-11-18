@@ -1,5 +1,7 @@
+import { useMutation } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { createCategory as createCategoryRequest } from '../../api/categories';
 import { useCreateCategory } from '../../hooks/useCategories';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import type { BudgetType, CategoryGroup } from '../../types';
@@ -80,7 +82,17 @@ interface Props {
   allowNone?: boolean;
   /** What the no-category choice says (a payee's default: "No default category") */
   noneLabel?: string;
+  /**
+   * Creates the category in place of the app's POST /api/categories, resolving to its id: for the
+   * dev gallery, which has no server and fetches nothing (T-02-10)
+   */
+  onCreate?: CreateCategory;
 }
+
+/** The group, name and budget type the create form gives */
+export type NewCategory = Parameters<typeof createCategoryRequest>[0];
+/** Creates a category and resolves to its id; a rejection shows the form's error line */
+export type CreateCategory = (category: NewCategory) => Promise<{ id: string }>;
 
 /**
  * What the picker hands SearchList for a search: the sections from categorySections (with each
@@ -151,16 +163,24 @@ const BUDGET_TYPES: [BudgetType, string][] = [
 function CreateCategoryForm({
   groups,
   onCreated,
+  onCreate,
 }: {
   groups: readonly CategoryGroup[];
   onCreated: (id: string) => void;
+  onCreate?: CreateCategory;
 }) {
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [newGroupId, setNewGroupId] = useState(groups[0]?.id ?? '');
   const [newBudgetType, setNewBudgetType] = useState<BudgetType>('flexible');
   const nameRef = useRef<HTMLInputElement>(null);
-  const createCategory = useCreateCategory();
+  const appCreate = useCreateCategory();
+  // The app's create (its request, cache refresh and undo), or a caller's own (the gallery's),
+  // through the same pending and error states
+  const createCategory = useMutation({
+    mutationFn: (category: NewCategory) =>
+      onCreate ? onCreate(category) : appCreate.mutateAsync(category),
+  });
 
   useEffect(() => {
     if (showCreate) nameRef.current?.focus();
@@ -298,6 +318,7 @@ export function CategoryPicker({
   anchor = null,
   allowNone = true,
   noneLabel = 'Uncategorised',
+  onCreate,
 }: Props) {
   const [query, setQuery] = useState('');
   const [spot, setSpot] = useState<HTMLDivElement | null>(null);
@@ -314,7 +335,7 @@ export function CategoryPicker({
     onQueryChange: setQuery,
     value: value ?? null,
     onClose,
-    footer: <CreateCategoryForm groups={groups} onCreated={onChange} />,
+    footer: <CreateCategoryForm groups={groups} onCreated={onChange} onCreate={onCreate} />,
     ...categoryList({
       groups,
       transferAccounts,

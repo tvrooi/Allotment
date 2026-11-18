@@ -59,6 +59,13 @@ describe('Select on desktop', () => {
     expect(html).toMatch(/<span[^>]*class="[^"]*text-text-tertiary[^"]*"[^>]*>Choose how often/);
   });
 
+  // Never React Aria's own "Select an item" (02-UI-REVIEW top fix 3)
+  it('with no placeholder given, an unset Select shows "Select one" in the tertiary colour', () => {
+    const html = render();
+    expect(html).toMatch(/<span[^>]*class="[^"]*text-text-tertiary[^"]*"[^>]*>Select one</);
+    expect(html).not.toContain('Select an item');
+  });
+
   it('shows the chosen label, not the placeholder', () => {
     const html = render({ value: 'monthly', placeholder: 'Choose how often' });
     expect(html).toContain('Monthly');
@@ -119,6 +126,30 @@ describe('Select on desktop', () => {
     expect(html).not.toContain('to continue');
   });
 
+  // The same rule as Field and the toggles (02-REVIEW WR-05): an empty message counts as none,
+  // so it neither hides the default line nor leaves an empty error element and its gap
+  it.each(['', false] as const)(
+    'a required, invalid Select given errorMessage %j shows the default line',
+    (errorMessage) => {
+      const html = render({
+        label: 'Account type',
+        isRequired: true,
+        isInvalid: true,
+        errorMessage,
+      });
+      expect(html).toContain('Select Account type to continue');
+    },
+  );
+
+  it.each(['', false] as const)(
+    'an optional Select given errorMessage %j has no error element',
+    (errorMessage) => {
+      const html = render({ isInvalid: true, errorMessage });
+      expect(html).not.toContain('slot="errorMessage"');
+      expect(html).not.toContain('FieldError');
+    },
+  );
+
   it('the description sits under the trigger and describes it', () => {
     const html = render({ description: 'How often it repeats' });
     const id = html.match(/id="([^"]*)"[^>]*>How often it repeats/)?.[1];
@@ -142,6 +173,12 @@ describe('Select on phones', () => {
     expect(classes(select(html))).toEqual(
       expect.arrayContaining(['min-h-11', 'text-base', 'rounded-md', 'border', 'w-full']),
     );
+  });
+
+  it('with no placeholder given, its unset first option reads "Select one"', () => {
+    const [first] = optionTags(phone());
+    expect(first[1]).toMatch(/ value=""/);
+    expect(first[2]).toBe('Select one');
   });
 
   it('shows the placeholder as a first, empty-valued option, and groups as optgroups', () => {

@@ -2,7 +2,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DateFormatOption } from '../../store/preferencesStore';
-import { DatePicker } from './DatePicker';
+import { DatePicker, nativeValue } from './DatePicker';
 
 // useIsPhone reads matchMedia, which server rendering has not got: it reports desktop unless a
 // test says it is a phone
@@ -159,5 +159,21 @@ describe('DatePicker on phones', () => {
     const errorId = html.match(/id="([^"]*)"[^>]*>Select Paid on to continue/)?.[1];
     expect(errorId).toBeTruthy();
     expect(tag).toMatch(new RegExp(` aria-describedby="[^"]*${errorId}`));
+  });
+});
+
+// A browser without a native control leaves a text box, whose text never becomes a value
+describe('nativeValue', () => {
+  it('passes a real month or day through', () => {
+    expect(nativeValue('month', '2026-11')).toBe('2026-11');
+    expect(nativeValue('date', '2026-11-16')).toBe('2026-11-16');
+    expect(nativeValue('month', '')).toBe('');
+  });
+
+  it('gives empty for typed text, a day in a month input or an impossible date', () => {
+    for (const raw of ['Nov 2026', '11/2026', '2026-13', '2026-1', '2026-11-16'])
+      expect(nativeValue('month', raw)).toBe('');
+    for (const raw of ['16/11/2026', '2026-02-30', '2026-11'])
+      expect(nativeValue('date', raw)).toBe('');
   });
 });

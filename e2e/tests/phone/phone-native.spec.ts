@@ -400,6 +400,30 @@ test.describe('dialogs and touch targets', () => {
     }
   });
 
+  // The bare PayeeCombobox (the register row's look) is about 23px tall at 390px, so the phone
+  // sheet must give it a full-size field of its own (WAVG-03, 02-11 SUMMARY)
+  test('the Payee field of the new-transaction sheet is 44px tall', async ({ page, api }) => {
+    const { checking } = await seedAccount(api);
+    await open(page, `/accounts/${checking.id}`);
+    await page.getByRole('button', { name: 'Add Transaction' }).click();
+    const sheet = page.getByRole('dialog', { name: 'New transaction' });
+    await expectBottomSheet(page, sheet);
+    const payee = sheet.getByRole('combobox', { name: 'Payee' });
+    await expect(payee).toBeVisible();
+    expect((await size(payee)).height).toBeGreaterThanOrEqual(TOUCH);
+    // Its placeholder is its only prompt, so it is text-tertiary (4.5:1), not text-disabled
+    // (3.34:1; WAVG-02, 02-UI-REVIEW top fix 1)
+    const colours = await payee.evaluate((el) => {
+      const tertiary = document.createElement('span');
+      tertiary.className = 'text-text-tertiary';
+      document.body.append(tertiary);
+      const want = getComputedStyle(tertiary).color;
+      tertiary.remove();
+      return { placeholder: getComputedStyle(el, '::placeholder').color, want };
+    });
+    expect(colours.placeholder).toBe(colours.want);
+  });
+
   test('the hide-balances eye is named and 44px', async ({ page, api }) => {
     await seedAccount(api);
     await open(page, '/dashboard');
@@ -425,6 +449,56 @@ test('the month range fits the screen and is easy to tap', async ({ page, api })
     expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
     expect(Math.round(box.height)).toBeGreaterThanOrEqual(TOUCH);
   }
+});
+
+// A phone browser without a native month input (Firefox) keeps the month grids, stacked to fit
+// the screen, rather than a text box that takes only an exact YYYY-MM (02-REVIEW WR-02)
+test('without a native month input, the month range is the grids and fits the screen', async ({
+  page,
+  api,
+}) => {
+  await page.addInitScript(() => {
+    // As in Firefox: setting an input type the browser lacks leaves it "text"
+    const type = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'type')!;
+    Object.defineProperty(HTMLInputElement.prototype, 'type', {
+      ...type,
+      set(this: HTMLInputElement, value: string) {
+        type.set!.call(this, value === 'month' ? 'text' : value);
+      },
+    });
+  });
+  await seedAccount(api);
+  await open(page, '/reports');
+  await page.getByRole('main').getByRole('button', { name: 'Frozen' }).click();
+  const picker = page.getByRole('dialog', { name: 'Choose months' });
+  await expect(picker).toBeVisible();
+  await expect(page.locator('input[type="month"]')).toHaveCount(0);
+  // The popover around the dialog plays the entrance, so wait for its animations too
+  await picker.evaluate((el) =>
+    Promise.all((el.parentElement ?? el).getAnimations({ subtree: true }).map((a) => a.finished)),
+  );
+  const box = (await picker.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+  const from = picker.getByRole('group', { name: 'From' });
+  await expectTouchSize(from.getByRole('button', { name: 'Previous year' }));
+  await expectTouchSize(from.getByRole('button', { name: 'Next year' }));
+  const january = from.getByRole('button', { name: /^January \d{4}$/ });
+  await expectTouchSize(january);
+  await expectTouchSize(picker.getByRole('button', { name: 'Done' }));
+  await expectTouchSize(picker.getByRole('button', { name: 'Cancel' }));
+
+  const year = (await january.getAttribute('aria-label'))!.split(' ')[1];
+  await january.click();
+  await picker.getByRole('button', { name: 'Done' }).click();
+  await expect
+    .poll(async () => (await api.call<any[]>('GET', '/dashboards'))[0].dateRange.from)
+    .toBe(`${year}-01`);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+    viewport.width,
+  );
 });
 
 test('report summary figures fit their card', async ({ page, api }) => {

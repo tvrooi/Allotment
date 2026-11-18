@@ -2,13 +2,10 @@ import type { ReactNode } from 'react';
 import { RadioButton, RadioField, RadioGroup as AriaRadioGroup } from 'react-aria-components';
 import { FieldDescription, FieldErrorText } from './Field';
 import { toggleDisabled, toggleFocusRing, toggleInvalid, toggleReadOnly } from './fieldClasses';
-import { fieldSubject, requiredMessage, type FieldNames } from './fieldMessages';
+import { errorLine, namesOf, present, type LabelNames } from './fieldMessages';
 import { Label } from './Label';
 
-/** A visible label, or an aria-label when there is none: a group is never left unnamed */
-type Names = { label: string; 'aria-label'?: string } | { label?: undefined; 'aria-label': string };
-
-type Props = Names & {
+type Props = LabelNames & {
   /** The chosen Radio's value, or '' for none */
   value: string;
   onChange: (value: string) => void;
@@ -30,9 +27,6 @@ type Props = Names & {
   children: ReactNode;
 };
 
-/** Whether there is something to show: an absent part renders nothing, so it leaves no gap */
-const present = (node: ReactNode) => node != null && node !== false && node !== '';
-
 /**
  * The shared radio group on React Aria's RadioGroup: one choice from a short list, moved and
  * chosen with the arrow keys (WAI-ARIA radio group), one Tab stop for the whole group. Its label
@@ -49,18 +43,14 @@ export function RadioGroup(props: Props) {
     isInvalid = false,
     isRequired = false,
     description,
-    errorLabel,
     className = '',
     children,
   } = props;
-  const names: FieldNames =
-    props.label !== undefined
-      ? { errorLabel, label: props.label }
-      : { errorLabel, ariaLabel: props['aria-label'] };
-  const errorMessage =
-    present(props.errorMessage) || !isRequired
-      ? props.errorMessage
-      : requiredMessage('choice', fieldSubject(names));
+  const errorMessage = errorLine(props.errorMessage, {
+    isRequired,
+    kind: 'choice',
+    names: namesOf(props),
+  });
   return (
     <AriaRadioGroup
       // React Aria treats '' as a chosen value of its own; null is none

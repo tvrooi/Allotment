@@ -115,6 +115,9 @@ export function TransactionDetailPanel({
     function handleKey(e: KeyboardEvent) {
       // Escape in the ⋮ menu closes only the menu
       if ((e.target as Element | null)?.closest?.('[role="menu"]')) return;
+      // An Escape a control already handled (the payee list closing, D-12) leaves the panel
+      // open, the same contract as Modal.tsx
+      if (e.defaultPrevented) return;
       if (
         e.key === 'Escape' &&
         !showCategoryPicker &&

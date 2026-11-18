@@ -1,21 +1,16 @@
 import { useId, useRef, useState, type ReactNode } from 'react';
-import { format } from 'date-fns';
 import { CalendarRange } from 'lucide-react';
 import { Button as AriaButton, Dialog, DialogTrigger, Group, Popover } from 'react-aria-components';
 import { useIsPhone } from '../../hooks/useIsPhone';
+import { thisMonthIso } from '../../utils/calendarDay';
 import { formatMonthRange, pickRangeMonth, type MonthRange } from '../../utils/dateRange';
 import { Button } from './Button';
 import { pickerGroupClass, pickerPopoverClass } from './DatePicker';
-import {
-  errorClass,
-  fieldBase,
-  fieldHeights,
-  fieldStates,
-  helpClass,
-  labelClass,
-} from './fieldClasses';
+import { describedByIds, FieldLines } from './Field';
+import { fieldBase, fieldHeights, fieldStates } from './fieldClasses';
 import { Label } from './Label';
 import { MonthGrid } from './MonthPicker';
+import { supportsMonthInput } from './nativeInput';
 
 interface Props {
   /** 'yyyy-MM' */
@@ -51,44 +46,19 @@ const rangeGroupClass = [
   fieldHeights.sm,
 ].join(' ');
 
-/** The help line, and the error line while invalid, under either form */
-function Lines({
-  ids,
-  description,
-  error,
-}: {
-  ids: string;
-  description: ReactNode;
-  error: ReactNode;
-}) {
-  return (
-    <>
-      {description != null && (
-        <p id={`${ids}-description`} className={`${helpClass} break-words`}>
-          {description}
-        </p>
-      )}
-      {error != null && (
-        <p id={`${ids}-error`} className={`${errorClass} break-words`}>
-          {error}
-        </p>
-      )}
-    </>
-  );
-}
-
 /**
  * A month range (02-UI-SPEC.md, per-control item 11; D-04, D-11). On desktop, a compact
  * "Jan 2025 – Nov 2026" trigger opening two of MonthPicker's month grids, From and To, so the two
  * controls cannot drift apart; picks are a draft until Done. On phones (under 768 px), two native
- * month inputs, where the phone's own picker is the draft. Every pick goes through
+ * month inputs, where the phone's own picker is the draft; a browser without a native month input
+ * (supportsMonthInput) keeps the grids, stacked to fit the phone. Every pick goes through
  * pickRangeMonth, so the range never ends before it starts and never passes max.
  */
 export function MonthRangePicker({
   from,
   to,
   onChange,
-  max = format(new Date(), 'yyyy-MM'),
+  max = thisMonthIso(),
   defaultOpen = false,
   label,
   description,
@@ -106,13 +76,11 @@ export function MonthRangePicker({
   const dialogRef = useRef<HTMLElement>(null);
   const ids = useId();
   const error = isInvalid ? errorMessage : undefined;
-  const describedBy =
-    [description != null ? `${ids}-description` : '', error != null ? `${ids}-error` : '']
-      .filter(Boolean)
-      .join(' ') || undefined;
+  const describedBy = describedByIds(ids, description, error);
   const labelId = `${ids}-label`;
 
-  if (isPhone) {
+  // A browser with no native month input keeps the grids on phones too (02-REVIEW WR-02)
+  if (isPhone && supportsMonthInput()) {
     // A cleared or half-typed month reads as '', which pickRangeMonth refuses: the inputs stay
     // on the saved range
     const change = (side: 'from' | 'to', month: string) => {
@@ -121,7 +89,7 @@ export function MonthRangePicker({
     };
     const input = (side: 'from' | 'to', name: string) => (
       <label className="flex flex-1 min-w-0 flex-col gap-1">
-        <span className={labelClass}>{name}</span>
+        <Label elementType="span">{name}</Label>
         <input
           type="month"
           id={side === 'from' ? id : undefined}
@@ -140,9 +108,9 @@ export function MonthRangePicker({
     return (
       <div className={`flex flex-col gap-1 w-full ${className}`}>
         {label && (
-          <span id={labelId} className={`${labelClass} break-words`}>
+          <Label elementType="span" id={labelId}>
             {label}
-          </span>
+          </Label>
         )}
         <div
           role="group"
@@ -153,7 +121,7 @@ export function MonthRangePicker({
           {input('from', 'From')}
           {input('to', 'To')}
         </div>
-        <Lines ids={ids} description={description} error={error} />
+        <FieldLines id={ids} description={description} error={error} />
       </div>
     );
   }
@@ -211,9 +179,14 @@ export function MonthRangePicker({
               {formatMonthRange(from, to)}
             </span>
           </AriaButton>
-          <Popover placement="bottom start" offset={4} className={pickerPopoverClass}>
+          <Popover
+            placement="bottom start"
+            offset={4}
+            className={`${pickerPopoverClass} max-md:overflow-y-auto`}
+          >
             <Dialog ref={dialogRef} aria-label="Choose months" className="p-3 outline-none">
-              <div className="flex gap-4">
+              {/* Stacked on a phone, which shows the grids only without a native month input */}
+              <div className="flex gap-4 max-md:flex-col">
                 <div className="w-[200px]">
                   <MonthGrid
                     label="From"
@@ -249,7 +222,7 @@ export function MonthRangePicker({
           </Popover>
         </DialogTrigger>
       </Group>
-      <Lines ids={ids} description={description} error={error} />
+      <FieldLines id={ids} description={description} error={error} />
     </div>
   );
 }

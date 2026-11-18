@@ -1,46 +1,32 @@
-import { Check, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { useId, type ReactNode } from 'react';
 import {
   Button as AriaButton,
-  Header,
   ListBox,
-  ListBoxItem,
-  ListBoxSection,
   Popover,
   Select as AriaSelect,
   SelectValue,
 } from 'react-aria-components';
 import { useIsPhone } from '../../hooks/useIsPhone';
-import { FieldDescription, FieldErrorText } from './Field';
-import {
-  fieldBase,
-  fieldHeights,
-  fieldStates,
-  errorClass,
-  helpClass,
-  labelClass,
-  listClass,
-  optionClass,
-  popoverClass,
-} from './fieldClasses';
-import { fieldSubject, requiredMessage, type FieldNames } from './fieldMessages';
+import { describedByIds, FieldDescription, FieldErrorText, FieldLines } from './Field';
+import { fieldBase, fieldHeights, fieldStates, listClass, popoverClass } from './fieldClasses';
+import { errorLine, namesOf, present, SELECT_PLACEHOLDER, type LabelNames } from './fieldMessages';
 import { Label } from './Label';
+import { isGroup, listItems } from './listItems';
 
 /** One choice: `value` is what onChange receives, `label` what the person reads */
 export type SelectOption = { value: string; label: string; isDisabled?: boolean };
 /** A headed group of choices (a native optgroup on phones) */
 export type SelectGroup = { label: string; options: SelectOption[] };
 
-/** A visible label, or an aria-label when there is none: a Select is never left unnamed */
-type Names = { label: string; 'aria-label'?: string } | { label?: undefined; 'aria-label': string };
-
-type Props = Names & {
+type Props = LabelNames & {
   /** The chosen option's value, or '' for none */
   value: string;
   /** Always one of the options' own values, or '' only if the caller clears it */
   onChange: (value: string) => void;
   /** Flat options, headed groups, or both, shown in the order given */
   options: readonly (SelectOption | SelectGroup)[];
+  /** What the unset field shows; "Select one" (SELECT_PLACEHOLDER) unless given */
   placeholder?: string;
   description?: ReactNode;
   errorMessage?: ReactNode;
@@ -59,31 +45,11 @@ type Props = Names & {
   name?: string;
 };
 
-const isGroup = (item: SelectOption | SelectGroup): item is SelectGroup => 'options' in item;
-
 /** Whether `value` is one of the options, so a stale or unknown value shows as unset */
 const hasOption = (items: Props['options'], value: string) =>
   items.some((item) =>
     isGroup(item) ? item.options.some((o) => o.value === value) : item.value === value,
   );
-
-function OptionItem({ option }: { option: SelectOption }) {
-  return (
-    <ListBoxItem
-      id={option.value}
-      textValue={option.label}
-      isDisabled={option.isDisabled}
-      className={optionClass}
-    >
-      {({ isSelected }) => (
-        <>
-          <span className="min-w-0 truncate">{option.label}</span>
-          {isSelected && <Check size={16} aria-hidden="true" className="shrink-0" />}
-        </>
-      )}
-    </ListBoxItem>
-  );
-}
 
 /**
  * The shared Select (02-UI-SPEC.md, per-control item 5). On desktop it is React Aria's Select: a
@@ -100,7 +66,6 @@ export function Select(props: Props) {
     placeholder,
     description,
     errorMessage,
-    errorLabel,
     isDisabled = false,
     isInvalid = false,
     isReadOnly = false,
@@ -111,12 +76,7 @@ export function Select(props: Props) {
     name,
   } = props;
   const isPhone = useIsPhone();
-  const names: FieldNames =
-    props.label !== undefined
-      ? { errorLabel, label: props.label }
-      : { errorLabel, ariaLabel: props['aria-label'] };
-  const error =
-    errorMessage ?? (isRequired ? requiredMessage('choice', fieldSubject(names)) : undefined);
+  const error = errorLine(errorMessage, { isRequired, kind: 'choice', names: namesOf(props) });
 
   if (isPhone)
     return <NativeSelect {...props} className={className} error={isInvalid ? error : undefined} />;
@@ -131,7 +91,7 @@ export function Select(props: Props) {
       onChange={(key) => {
         if (!isReadOnly) onChange(key == null ? '' : String(key));
       }}
-      placeholder={placeholder}
+      placeholder={placeholder ?? SELECT_PLACEHOLDER}
       isDisabled={isDisabled}
       isInvalid={isInvalid}
       isRequired={isRequired}
@@ -162,8 +122,8 @@ export function Select(props: Props) {
           <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-text-tertiary" />
         </span>
       </AriaButton>
-      {description != null && <FieldDescription>{description}</FieldDescription>}
-      {error != null && <FieldErrorText>{error}</FieldErrorText>}
+      {present(description) && <FieldDescription>{description}</FieldDescription>}
+      {present(error) && <FieldErrorText>{error}</FieldErrorText>}
       <Popover offset={4} className={popoverClass}>
         <ListBox
           className={listClass}
@@ -171,20 +131,7 @@ export function Select(props: Props) {
             <p className="px-3 py-2 text-sm text-text-tertiary">No matching options</p>
           )}
         >
-          {options.map((item) =>
-            isGroup(item) ? (
-              <ListBoxSection key={`group:${item.label}`} id={`group:${item.label}`}>
-                <Header className="px-3 pt-2 pb-1 text-xs font-medium text-text-tertiary">
-                  {item.label}
-                </Header>
-                {item.options.map((option) => (
-                  <OptionItem key={option.value} option={option} />
-                ))}
-              </ListBoxSection>
-            ) : (
-              <OptionItem key={item.value} option={item} />
-            ),
-          )}
+          {listItems(options)}
         </ListBox>
       </Popover>
     </AriaSelect>
@@ -214,10 +161,6 @@ function NativeSelect({
 }: Props & { error: ReactNode }) {
   const lineId = useId();
   const chosen = hasOption(options, value) ? value : '';
-  const describedBy = [
-    description != null ? `${lineId}-description` : '',
-    error != null ? `${lineId}-error` : '',
-  ].filter(Boolean);
   const option = (o: SelectOption) => (
     <option
       key={o.value}
@@ -232,7 +175,7 @@ function NativeSelect({
       id={id}
       name={name}
       aria-label={names.label === undefined ? names['aria-label'] : undefined}
-      aria-describedby={describedBy.length ? describedBy.join(' ') : undefined}
+      aria-describedby={describedByIds(lineId, description, error)}
       value={chosen}
       onChange={(e) => {
         if (!isReadOnly) onChange(e.target.value);
@@ -247,7 +190,7 @@ function NativeSelect({
       {/* Unset shows the placeholder; it cannot be chosen back, as on desktop */}
       {(placeholder !== undefined || chosen === '') && (
         <option value="" disabled>
-          {placeholder ?? ''}
+          {placeholder ?? SELECT_PLACEHOLDER}
         </option>
       )}
       {options.map((item) =>
@@ -265,29 +208,15 @@ function NativeSelect({
     <div className={`flex flex-col gap-1 ${className}`}>
       {names.label !== undefined ? (
         <label className="flex flex-col gap-1">
-          <span className={`${labelClass} break-words`}>
+          <Label elementType="span" isRequired={isRequired}>
             {names.label}
-            {isRequired && (
-              <span aria-hidden="true" className="ml-1 text-negative">
-                *
-              </span>
-            )}
-          </span>
+          </Label>
           {select}
         </label>
       ) : (
         select
       )}
-      {description != null && (
-        <p id={`${lineId}-description`} className={`${helpClass} break-words`}>
-          {description}
-        </p>
-      )}
-      {error != null && (
-        <p id={`${lineId}-error`} className={`${errorClass} break-words`}>
-          {error}
-        </p>
-      )}
+      <FieldLines id={lineId} description={description} error={error} />
     </div>
   );
 }

@@ -1,8 +1,8 @@
-import { getLocalTimeZone, today } from '@internationalized/date';
 import { CalendarRange, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Button as AriaButton, Dialog, DialogTrigger, Group, Popover } from 'react-aria-components';
 import { useIsPhone } from '../../hooks/useIsPhone';
+import { thisMonthIso } from '../../utils/calendarDay';
 import { formatMonth, isMonth } from '../../utils/dateRange';
 import {
   NativePicker,
@@ -12,9 +12,10 @@ import {
   pickerPopoverClass,
   pickerShortcutClass,
 } from './DatePicker';
-import { errorClass, helpClass } from './fieldClasses';
-import { fieldSubject, monthRangeMessage, requiredMessage } from './fieldMessages';
+import { describedByIds, FieldLines } from './Field';
+import { errorLine, fieldSubject, monthRangeMessage } from './fieldMessages';
 import { Label } from './Label';
+import { supportsMonthInput } from './nativeInput';
 
 const SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const FULL = [
@@ -50,12 +51,6 @@ const toMonth = (year: number, month: number) =>
 /** A month as a count of months, so two months compare as numbers */
 const ordinal = (m: { year: number; month: number }) => m.year * 12 + m.month - 1;
 
-/** The current month on this device, from the calendar library as the DatePicker's today is */
-function currentMonth(): string {
-  const now = today(getLocalTimeZone());
-  return toMonth(now.year, now.month);
-}
-
 /** Whether `month` lies outside the inclusive bounds: a month equal to either is allowed */
 function outside(month: string, min: string | undefined, max: string | undefined): boolean {
   const m = parts(month);
@@ -73,6 +68,9 @@ function rangeLine(min: string | undefined, max: string | undefined): string | u
   if (hi !== undefined) return monthRangeMessage(undefined, hi);
   return undefined;
 }
+
+/** The year steppers: the picker's icon button, a 44 px target where a phone shows the grid */
+const stepperButton = `${pickerIconButton} max-md:min-h-11 max-md:min-w-11`;
 
 /** How far each arrow key moves along the month grid's rows of three */
 const STEPS: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -3, ArrowDown: 3 };
@@ -104,7 +102,7 @@ export function MonthGrid({
   focusOnOpen = false,
   minYear,
 }: MonthGridProps) {
-  const thisMonth = currentMonth();
+  const thisMonth = thisMonthIso();
   const floor = Math.max(MIN_YEAR, minYear ?? MIN_YEAR);
   const start = parts(value) ?? parts(thisMonth);
   const [year, setYear] = useState(() => Math.max(floor, start?.year ?? floor));
@@ -139,7 +137,7 @@ export function MonthGrid({
           slot={null}
           isDisabled={year <= floor}
           onPress={() => setYear(year - 1)}
-          className={pickerIconButton}
+          className={stepperButton}
         >
           <ChevronLeft size={16} aria-hidden />
         </AriaButton>
@@ -148,7 +146,7 @@ export function MonthGrid({
           aria-label="Next year"
           slot={null}
           onPress={() => setYear(year + 1)}
-          className={pickerIconButton}
+          className={stepperButton}
         >
           <ChevronRight size={16} aria-hidden />
         </AriaButton>
@@ -225,7 +223,8 @@ interface Props {
 /**
  * The shared MonthPicker (02-UI-SPEC.md, per-control item 11; D-04, D-11). On desktop, the grid
  * form the owner chose: a trigger showing the month, or "Select month", opening a year stepper
- * and a twelve-month grid. On phones (under 768 px) it is the native month input. Both take and
+ * and a twelve-month grid. On phones (under 768 px) it is the native month input, where the
+ * browser has one (supportsMonthInput); elsewhere the grid, which fits a phone. Both take and
  * give a YYYY-MM string, '' for none, with DatePicker's states and lines.
  */
 export function MonthPicker(props: Props) {
@@ -252,25 +251,21 @@ export function MonthPicker(props: Props) {
   const subject = fieldSubject({ errorLabel, label });
   const outOfRange = isMonth(value) && outside(value, minValue, maxValue);
   // A caller's message always wins; then the range line, then the required line
-  const error =
-    errorMessage ??
-    (outOfRange
-      ? rangeLine(minValue, maxValue)
-      : isRequired
-        ? requiredMessage('choice', subject)
-        : undefined);
+  const error = errorLine(errorMessage, {
+    isRequired,
+    kind: 'choice',
+    names: { errorLabel, label },
+    own: outOfRange ? rangeLine(minValue, maxValue) : undefined,
+  });
   const invalid = isInvalid || outOfRange;
   const shownError = invalid ? error : undefined;
 
-  if (isPhone)
+  // A browser with no native month input keeps the grid on phones too (02-REVIEW WR-02)
+  if (isPhone && supportsMonthInput())
     return <NativePicker {...props} type="month" className={className} error={shownError} />;
 
   const labelId = `${ids}-label`;
   const valueId = `${ids}-value`;
-  const describedBy = [
-    description != null ? `${ids}-description` : '',
-    shownError != null ? `${ids}-error` : '',
-  ].filter(Boolean);
   const minYear = parts(minValue)?.year;
 
   return (
@@ -293,7 +288,7 @@ export function MonthPicker(props: Props) {
             id={id}
             // "{Label} Nov 2026" or "{Label} Select month": the visible label is in the name
             aria-labelledby={`${labelId} ${valueId}`}
-            aria-describedby={describedBy.length ? describedBy.join(' ') : undefined}
+            aria-describedby={describedByIds(ids, description, shownError)}
             isDisabled={isDisabled}
             className="flex flex-1 min-w-0 h-full items-center justify-between gap-2 text-left outline-none disabled:cursor-not-allowed"
           >
@@ -329,16 +324,7 @@ export function MonthPicker(props: Props) {
           </AriaButton>
         )}
       </Group>
-      {description != null && (
-        <p id={`${ids}-description`} className={`${helpClass} break-words`}>
-          {description}
-        </p>
-      )}
-      {shownError != null && (
-        <p id={`${ids}-error`} className={`${errorClass} break-words`}>
-          {shownError}
-        </p>
-      )}
+      <FieldLines id={ids} description={description} error={shownError} />
     </div>
   );
 }

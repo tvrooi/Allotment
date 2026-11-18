@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { CheckboxButton, CheckboxField } from 'react-aria-components';
 import { FieldDescription, FieldErrorText } from './Field';
 import { toggleDisabled, toggleFocusRing, toggleInvalid, toggleReadOnly } from './fieldClasses';
-import { fieldSubject, requiredMessage, toggleNames, type ToggleNames } from './fieldMessages';
+import { errorLine, present, toggleNames, type ToggleNames } from './fieldMessages';
 
 type Props = ToggleNames & {
   checked: boolean;
@@ -21,9 +21,6 @@ type Props = ToggleNames & {
   /** Added to the label, the target that holds the box and any visible text */
   className?: string;
 };
-
-/** Whether there is something to show: an absent part renders nothing, so it leaves no gap */
-const present = (node: ReactNode) => node != null && node !== false && node !== '';
 
 /**
  * The shared checkbox on React Aria's CheckboxField and CheckboxButton: a hidden native checkbox
@@ -47,10 +44,11 @@ export function Checkbox(props: Props) {
     className = '',
     children,
   } = props;
-  const errorMessage =
-    present(props.errorMessage) || !isRequired
-      ? props.errorMessage
-      : requiredMessage('toggle', fieldSubject(toggleNames(props)));
+  const errorMessage = errorLine(props.errorMessage, {
+    isRequired,
+    kind: 'toggle',
+    names: toggleNames(props),
+  });
   const showError = isInvalid && present(errorMessage);
   const lines = present(description) || showError;
   const marked = checked || isIndeterminate;

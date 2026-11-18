@@ -1196,7 +1196,9 @@ test.describe('the payee field', () => {
       .toMatchObject({ id: tx.id, payeeName: 'Corner Grocery' });
   });
 
-  test('in the detail panel, Escape with suggestions open closes the panel', async ({
+  // D-12: Escape with the list open closes only the list, as in the add row and the phone
+  // sheet; a second Escape, with the list closed, closes the panel
+  test('in the detail panel, Escape with suggestions open closes only the list', async ({
     page,
     api,
   }) => {
@@ -1212,9 +1214,18 @@ test.describe('the payee field', () => {
     await row(page, 'Streamflix').click();
     const panel = page.getByRole('complementary', { name: 'Transaction details' });
     const field = panel.getByRole('combobox', { name: 'Payee' });
+    // Clicked first, as a person does: the click waits for the panel to finish sliding in. A
+    // list closes when the panel moves under it, which filling a field still moving does
+    await field.click();
     // The field holds the payee's own name, so the list shows only that payee until typing
     await field.fill('corner');
     await expect(suggestion(page, 'Corner Grocery')).toBeVisible();
+    await expect(field).toHaveAttribute('aria-expanded', 'true');
+    await field.press('Escape');
+    await expect(field).toHaveAttribute('aria-expanded', 'false');
+    await expect(panel).toBeVisible();
+    await expect(field).toBeFocused();
+    await expect(field).toHaveValue('corner');
     await field.press('Escape');
     await expect(panel).toBeHidden();
   });

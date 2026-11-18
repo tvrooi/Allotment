@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { FieldError, Text, TextField } from 'react-aria-components';
 import { errorClass, helpClass } from './fieldClasses';
-import { fieldSubject, requiredMessage } from './fieldMessages';
+import { errorLine, present } from './fieldMessages';
 import { Label } from './Label';
 
 /** Help text under a control, tied to it through aria-describedby by the surrounding field */
@@ -18,8 +18,51 @@ export function FieldErrorText({ children }: { children: ReactNode }) {
   return <FieldError className={`${errorClass} break-words`}>{children}</FieldError>;
 }
 
-/** Whether there is something to show: an absent part renders nothing, so it leaves no gap */
-const present = (node: ReactNode) => node != null && node !== false && node !== '';
+/**
+ * The aria-describedby of a hand-built field (a native or month-grid branch, outside a React Aria
+ * field): the ids FieldLines gives its help and error lines, for whichever there is
+ */
+export function describedByIds(
+  id: string,
+  description: ReactNode,
+  error: ReactNode,
+): string | undefined {
+  const ids = [
+    present(description) ? `${id}-description` : '',
+    present(error) ? `${id}-error` : '',
+  ].filter(Boolean);
+  return ids.length ? ids.join(' ') : undefined;
+}
+
+/**
+ * A hand-built field's help line and error line, each only when there is one, with the ids
+ * describedByIds names: FieldDescription and FieldErrorText for a control outside React Aria's
+ * fields. `error` is given only while the control is invalid.
+ */
+export function FieldLines({
+  id,
+  description,
+  error,
+}: {
+  id: string;
+  description: ReactNode;
+  error: ReactNode;
+}) {
+  return (
+    <>
+      {present(description) && (
+        <p id={`${id}-description`} className={`${helpClass} break-words`}>
+          {description}
+        </p>
+      )}
+      {present(error) && (
+        <p id={`${id}-error`} className={`${errorClass} break-words`}>
+          {error}
+        </p>
+      )}
+    </>
+  );
+}
 
 /**
  * Required: a Field always names its control with a visible label (E-03). `errorLabel` names it
@@ -59,10 +102,7 @@ export function Field(props: Props) {
     children,
   } = props;
   const { isInvalid = present(props.errorMessage) } = props;
-  const errorMessage =
-    present(props.errorMessage) || !isRequired
-      ? props.errorMessage
-      : requiredMessage('text', fieldSubject(props));
+  const errorMessage = errorLine(props.errorMessage, { isRequired, kind: 'text', names: props });
   return (
     <TextField
       isRequired={isRequired}

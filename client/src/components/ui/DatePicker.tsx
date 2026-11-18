@@ -1,4 +1,4 @@
-import { getLocalTimeZone, parseDate, today, type CalendarDate } from '@internationalized/date';
+import { parseDate, type CalendarDate } from '@internationalized/date';
 import { ChevronLeft, ChevronRight, CalendarDays, X } from 'lucide-react';
 import { useId, useRef, useState, type ReactNode } from 'react';
 import {
@@ -20,15 +20,17 @@ import {
 } from 'react-aria-components';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { usePreferencesStore } from '../../store/preferencesStore';
-import { todayIso } from '../../utils/calendarDay';
+import { isIsoDay, todayIso } from '../../utils/calendarDay';
+import { isMonth } from '../../utils/dateRange';
 import { dateExample, segmentLocale } from './dateSegments';
-import { FieldDescription, FieldErrorText } from './Field';
-import { errorClass, fieldBase, fieldStates, helpClass, labelClass } from './fieldClasses';
+import { describedByIds, FieldDescription, FieldErrorText, FieldLines } from './Field';
+import { fieldBase, fieldStates } from './fieldClasses';
 import {
   dateRangeMessage,
+  errorLine,
   fieldSubject,
   incompleteDateMessage,
-  requiredMessage,
+  present,
 } from './fieldMessages';
 import { Label } from './Label';
 
@@ -151,18 +153,20 @@ export function DatePicker(props: Props) {
   const incomplete = halfTyped && isRequired && !isPhone;
   const outOfRange = day !== null && outside(day, min, max);
   // A caller's message always wins; then the half-typed line, the range line, the required line
-  const error =
-    errorMessage ??
-    (incomplete
+  const error = errorLine(errorMessage, {
+    isRequired,
+    kind: 'choice',
+    names: { errorLabel, label },
+    own: incomplete
       ? incompleteDateMessage(dateExample(format))
       : outOfRange
         ? rangeLine(min, max)
-        : isRequired
-          ? requiredMessage('choice', subject)
-          : undefined);
+        : undefined,
+  });
   const invalid = isInvalid || incomplete || outOfRange;
-  // Today for the range check comes from the calendar library; the value set is todayIso()
-  const todayAllowed = !outside(today(getLocalTimeZone()), min, max);
+  // The same today the Today button sets (todayIso), so the gate and the value cannot disagree
+  const todayDay = toCalendarDate(todayIso());
+  const todayAllowed = todayDay !== null && !outside(todayDay, min, max);
 
   if (isPhone)
     return (
@@ -230,8 +234,8 @@ export function DatePicker(props: Props) {
             <CalendarDays size={16} aria-hidden />
           </AriaButton>
         </Group>
-        {description != null && <FieldDescription>{description}</FieldDescription>}
-        {error != null && <FieldErrorText>{error}</FieldErrorText>}
+        {present(description) && <FieldDescription>{description}</FieldDescription>}
+        {present(error) && <FieldErrorText>{error}</FieldErrorText>}
         <Popover placement="bottom end" offset={4} className={pickerPopoverClass}>
           <Dialog className="p-3 outline-none">
             {({ close }) => (
@@ -316,6 +320,15 @@ type NativeProps = Pick<
 };
 
 /**
+ * What a native input's value gives the caller: a real YYYY-MM-DD day or YYYY-MM month, else ''.
+ * A browser without the native control (Firefox has no month input) leaves a free-text box,
+ * whose text must never reach a caller as a value.
+ */
+export function nativeValue(type: 'date' | 'month', raw: string): string {
+  return (type === 'month' ? isMonth(raw) : isIsoDay(raw)) ? raw : '';
+}
+
+/**
  * The phone branch of DatePicker and MonthPicker (D-04): a native date or month input inside its
  * label, so tapping either opens the phone's own picker, 44 px tall with 16 px text. Help and
  * error lines are tied to it by id, as a Field ties them.
@@ -337,47 +350,29 @@ export function NativePicker({
   className,
 }: NativeProps) {
   const lineId = useId();
-  const describedBy = [
-    description != null ? `${lineId}-description` : '',
-    error != null ? `${lineId}-error` : '',
-  ].filter(Boolean);
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
       <label className="flex flex-col gap-1">
-        <span className={`${labelClass} break-words`}>
+        <Label elementType="span" isRequired={isRequired}>
           {label}
-          {isRequired && (
-            <span aria-hidden="true" className="ml-1 text-negative">
-              *
-            </span>
-          )}
-        </span>
+        </Label>
         <input
           type={type}
           id={id}
           value={value}
           min={minValue}
           max={maxValue}
-          // A cleared or unfinished native value reads as '', the same as on desktop
-          onChange={(e) => onChange(e.target.value)}
+          // A cleared, unfinished or free-typed value reads as '', the same as on desktop
+          onChange={(e) => onChange(nativeValue(type, e.target.value))}
           disabled={isDisabled}
           readOnly={isReadOnly}
           required={isRequired}
-          aria-invalid={isInvalid || error != null || undefined}
-          aria-describedby={describedBy.length ? describedBy.join(' ') : undefined}
+          aria-invalid={isInvalid || present(error) || undefined}
+          aria-describedby={describedByIds(lineId, description, error)}
           className={`${fieldBase} ${fieldStates} w-full min-h-11 text-base`}
         />
       </label>
-      {description != null && (
-        <p id={`${lineId}-description`} className={`${helpClass} break-words`}>
-          {description}
-        </p>
-      )}
-      {error != null && (
-        <p id={`${lineId}-error`} className={`${errorClass} break-words`}>
-          {error}
-        </p>
-      )}
+      <FieldLines id={lineId} description={description} error={error} />
     </div>
   );
 }

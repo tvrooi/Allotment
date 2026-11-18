@@ -6,10 +6,13 @@ import { MonthRangePicker } from './MonthRangePicker';
 
 // useIsPhone reads matchMedia, which server rendering has not got: it reports desktop unless a
 // test says it is a phone
-const screen = vi.hoisted(() => ({ phone: false }));
+const screen = vi.hoisted(() => ({ phone: false, nativeMonth: true }));
 vi.mock('../../hooks/useIsPhone', () => ({ useIsPhone: () => screen.phone }));
+// Whether the browser has a native month input; Firefox has not (02-REVIEW WR-02)
+vi.mock('./nativeInput', () => ({ supportsMonthInput: () => screen.nativeMonth }));
 afterEach(() => {
   screen.phone = false;
+  screen.nativeMonth = true;
 });
 
 type Props = Parameters<typeof MonthRangePicker>[0];
@@ -68,6 +71,18 @@ describe('MonthRangePicker on desktop', () => {
 });
 
 describe('MonthRangePicker on phones', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("without a max, the latest month is this month on the device's today", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2031, 2, 10, 12));
+    screen.phone = true;
+    const html = renderToStaticMarkup(
+      createElement(MonthRangePicker, { from: '2031-01', to: '2031-02', onChange: noop }),
+    );
+    for (const [, tag] of html.matchAll(/<input([^>]*)>/g)) expect(tag).toMatch(/ max="2031-03"/);
+  });
+
   const phone = (props: Partial<Props> = {}) => {
     screen.phone = true;
     return render(props);
@@ -103,5 +118,13 @@ describe('MonthRangePicker on phones', () => {
     expect(phone({ isInvalid: true, errorMessage: 'Choose a full year' })).toContain(
       'Choose a full year',
     );
+  });
+
+  it('without a native month input, it is the grid trigger, never a text box', () => {
+    screen.nativeMonth = false;
+    const html = phone();
+    expect(html).not.toContain('<input');
+    expect(html).toMatch(/<button[^>]*aria-haspopup="dialog"/);
+    expect(html).toContain(formatMonthRange('2026-06', '2026-11'));
   });
 });

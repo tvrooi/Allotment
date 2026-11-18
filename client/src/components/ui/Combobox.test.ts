@@ -164,6 +164,16 @@ describe('Combobox clearing and messages', () => {
     expect(html).not.toContain('to continue');
   });
 
+  // The same rule as Field and the toggles (02-REVIEW WR-05): an empty message counts as none
+  it.each(['', false] as const)(
+    'a required, invalid Combobox given errorMessage %j shows the default line',
+    (errorMessage) => {
+      expect(render({ isRequired: true, isInvalid: true, errorMessage })).toContain(
+        'Select Account to continue',
+      );
+    },
+  );
+
   it("fieldClassName replaces the field's box and buttons with the caller's input classes", () => {
     const html = render({ fieldClassName: 'block w-full bg-transparent text-sm' });
     expect(classes(group(html))).toEqual(['w-full']);

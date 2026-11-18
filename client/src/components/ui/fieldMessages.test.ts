@@ -5,7 +5,10 @@ import {
   dateRangeMessage,
   fieldSubject,
   incompleteDateMessage,
+  errorLine,
   monthRangeMessage,
+  namesOf,
+  present,
   requiredMessage,
 } from './fieldMessages';
 
@@ -55,6 +58,56 @@ describe('monthRangeMessage', () => {
     );
     expect(monthRangeMessage('2026-01', undefined)).toBe('Choose a month on or after Jan 2026');
     expect(monthRangeMessage(undefined, '2026-10')).toBe('Choose a month on or before Oct 2026');
+  });
+});
+
+// Every shared control picks its error line here (02-REVIEW WR-05)
+describe('errorLine', () => {
+  const names = { label: 'Account type' };
+
+  it("the caller's message wins over the control's own line and the required line", () => {
+    expect(errorLine('Pick one', { isRequired: true, kind: 'choice', names, own: 'Range' })).toBe(
+      'Pick one',
+    );
+  });
+
+  it("then the control's own line, then the required line", () => {
+    expect(errorLine(undefined, { isRequired: true, kind: 'choice', names, own: 'Range' })).toBe(
+      'Range',
+    );
+    expect(errorLine(undefined, { isRequired: true, kind: 'choice', names })).toBe(
+      'Select Account type to continue',
+    );
+    expect(errorLine(undefined, { isRequired: true, kind: 'text', names })).toBe(
+      'Enter Account type to continue',
+    );
+  });
+
+  it('an empty message counts as none, for every control alike', () => {
+    for (const empty of ['', false, null, undefined]) {
+      expect(errorLine(empty, { isRequired: true, kind: 'choice', names })).toBe(
+        'Select Account type to continue',
+      );
+      expect(present(errorLine(empty, { isRequired: false, kind: 'choice', names }))).toBe(false);
+    }
+  });
+});
+
+// Select, Combobox and RadioGroup map their props through this one helper (02-REVIEW WR-04)
+describe('namesOf', () => {
+  it('a visible label is the subject, and errorLabel wins over it', () => {
+    expect(fieldSubject(namesOf({ label: 'Account type' }))).toBe('Account type');
+    expect(fieldSubject(namesOf({ label: 'Account type', errorLabel: 'an account type' }))).toBe(
+      'an account type',
+    );
+  });
+
+  it('without a label the aria-label is the subject, not the label', () => {
+    expect(namesOf({ 'aria-label': 'Payee' })).toEqual({
+      errorLabel: undefined,
+      ariaLabel: 'Payee',
+    });
+    expect(fieldSubject(namesOf({ 'aria-label': 'Payee', errorLabel: 'a payee' }))).toBe('a payee');
   });
 });
 

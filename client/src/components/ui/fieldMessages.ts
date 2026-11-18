@@ -1,6 +1,7 @@
 // The one place the shared controls' default error messages and the subject they name are written
-// (02-UI-SPEC.md, "Copywriting Contract"). Controls import these; none repeats the wording or the
-// `errorLabel ?? label` fallback, which is undefined for a control named only by aria-label.
+// (02-UI-SPEC.md, "Copywriting Contract"). Controls import these; none repeats the wording, the
+// `errorLabel ?? label` fallback (undefined for a control named only by aria-label), or the rule
+// for when a message counts as given (`present`, `errorLine`).
 // Bounds are shown through formatDay and formatMonth: no date arithmetic or slicing here.
 import type { ReactNode } from 'react';
 import { formatMonth } from '../../utils/dateRange';
@@ -15,6 +16,13 @@ const ASK: Record<RequiredKind, string> = { text: 'Enter', choice: 'Select', tog
 export function requiredMessage(kind: RequiredKind, subject: string): string {
   return `${ASK[kind]} ${subject} to continue`;
 }
+
+/**
+ * What an unset Select shows when its caller gives no placeholder, in place of React Aria's own
+ * "Select an item" (02-UI-REVIEW top fix 3). Fixed words, so a label's capitals never land
+ * mid-sentence; the same verb as MonthPicker's "Select month".
+ */
+export const SELECT_PLACEHOLDER = 'Select one';
 
 /** "Enter the full date, like 16/11/2026", the example in the picker's segment order */
 export function incompleteDateMessage(example: string): string {
@@ -39,6 +47,36 @@ export function monthRangeMessage(...[min, max]: Bounds): string {
 }
 
 /**
+ * Whether a help or error line has something to show. An absent one (undefined, null, '', or the
+ * false of a caller's `cond && 'text'`) renders nothing, so it leaves no gap.
+ */
+export const present = (node: ReactNode): boolean => node != null && node !== false && node !== '';
+
+/**
+ * The error line a control shows while invalid: the caller's message when it gave one; else the
+ * control's own line (a date's half-typed or range line); else, for a required control, the
+ * default required line naming `names`' subject; else nothing.
+ */
+export function errorLine(
+  errorMessage: ReactNode,
+  {
+    isRequired,
+    kind,
+    names,
+    own,
+  }: {
+    isRequired: boolean;
+    kind: RequiredKind;
+    names: FieldNames;
+    own?: ReactNode;
+  },
+): ReactNode {
+  if (present(errorMessage)) return errorMessage;
+  if (present(own)) return own;
+  return isRequired ? requiredMessage(kind, fieldSubject(names)) : undefined;
+}
+
+/**
  * A control's names, mapped from its own props: `errorLabel`, the visible `label` (a toggle's
  * `children`) and `aria-label` as `ariaLabel`. Each shape makes one of them a string, so a call
  * that could leave the subject undefined (no name, or only a React node label) does not compile.
@@ -47,6 +85,20 @@ export type FieldNames =
   | { errorLabel: string; label?: ReactNode; ariaLabel?: string }
   | { errorLabel?: string; label: string; ariaLabel?: string }
   | { errorLabel?: string; label?: ReactNode; ariaLabel: string };
+
+/**
+ * How a Select, Combobox or RadioGroup is named: a visible label, or an aria-label when there is
+ * none, so the control is never left unnamed
+ */
+export type LabelNames =
+  { label: string; 'aria-label'?: string } | { label?: undefined; 'aria-label': string };
+
+/** Those controls' own props (LabelNames and `errorLabel`) mapped onto fieldSubject's names */
+export function namesOf(props: LabelNames & { errorLabel?: string }): FieldNames {
+  return props.label !== undefined
+    ? { errorLabel: props.errorLabel, label: props.label }
+    : { errorLabel: props.errorLabel, ariaLabel: props['aria-label'] };
+}
 
 /**
  * The subject of a default message or a Clear button: `errorLabel` when it is a non-empty string,
