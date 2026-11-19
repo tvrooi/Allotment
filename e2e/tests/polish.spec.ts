@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay, thisMonth } from './fixtures';
+import { test, expect, open, isoDay, thisMonth, categoryOption } from './fixtures';
 import { UP_TEST_TOKEN } from '../mockUp';
 import { UP_MOCK_PORT } from '../ports';
 import { freshUpWindow } from './upWindow';
@@ -190,7 +190,7 @@ test.describe('the budget page', () => {
     const search = page.getByRole('textbox', { name: 'Search categories' });
     await expect(search).toBeFocused();
     // No "Uncategorised" here: the money has to go somewhere
-    await expect(page.getByRole('button', { name: 'Uncategorised' })).toHaveCount(0);
+    await expect(categoryOption(page, 'Uncategorised')).toHaveCount(0);
     await search.fill('Groceries');
     await page.keyboard.press('Enter');
 

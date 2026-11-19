@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { test, expect, open } from './fixtures';
 
 /** Guide progress isn't reset between tests: a new budget's tour offer may still be there */
@@ -9,6 +9,13 @@ async function skipTourIfOffered(page: Page) {
   ).toBeVisible();
   if (await skip.isVisible()) await skip.click();
 }
+
+/**
+ * The label a person clicks or taps to flip a welcome switch. The switch's input is visually
+ * hidden inside its label (React Aria), so the label, not the 1 px input, takes the click and is
+ * the 44 px target.
+ */
+const switchTarget = (control: Locator) => control.locator('xpath=ancestor::label[1]');
 
 // What a new user sees: a getting started checklist on the dashboard, and empty cards
 // and pages that say what goes there with a button to add the first one.
@@ -87,7 +94,7 @@ for (const width of [1280, 390])
     const household = page.getByRole('switch', {
       name: 'Sharing costs with a partner or housemates (Household)',
     });
-    await household.click();
+    await switchTarget(household).click();
     await expect(household).toBeChecked();
     await expect
       .poll(async () => (await api.call('GET', '/guides')).navFeatures.household)
@@ -111,10 +118,10 @@ test('Wave D: switching a welcome feature off restores its default setup row', a
   const files = page.getByRole('switch', {
     name: 'Keeping receipts, warranties and documents (Files)',
   });
-  await files.click();
+  await switchTarget(files).click();
   await expect(files).toBeChecked();
   await expect.poll(async () => (await api.call('GET', '/guides')).navFeatures.files).toBe('shown');
-  await files.click();
+  await switchTarget(files).click();
   await expect(files).not.toBeChecked();
   await expect
     .poll(async () => (await api.call('GET', '/guides')).navFeatures.files)
@@ -131,7 +138,7 @@ test('Fix round 1: welcome switches have full touch targets', async ({ page }) =
   await expect(controls).toHaveCount(3);
   for (const control of await controls.all()) {
     await expect(control).toBeEnabled();
-    const box = (await control.boundingBox())!;
+    const box = (await switchTarget(control).boundingBox())!;
     expect(box.width).toBeGreaterThanOrEqual(44);
     expect(box.height).toBeGreaterThanOrEqual(44);
   }
@@ -166,10 +173,10 @@ test('Fix round 1: two welcome choices save while the first request is pending',
     const files = page.getByRole('switch', {
       name: 'Keeping receipts, warranties and documents (Files)',
     });
-    await household.click();
+    await switchTarget(household).click();
     await firstStarted;
     await expect(files).toBeEnabled();
-    await files.click();
+    await switchTarget(files).click();
     await expect(files).toBeChecked();
     release();
     await expect

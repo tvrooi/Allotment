@@ -37,6 +37,10 @@ const ReviewPage = lazy(() => import('./pages/Review'));
 const GuidePage = lazy(() => import('./pages/Guide'));
 const CashFlowPage = lazy(() => import('./pages/CashFlow'));
 const CategoryDetailPage = lazy(() => import('./pages/CategoryDetail'));
+// Development only: the dev server and the gallery build (vite.config.ts swaps it for an empty
+// stub in every other build, and this flag is false there too)
+const DevControlsGallery = lazy(() => import('./pages/DevControlsGallery'));
+const GALLERY_ENABLED = import.meta.env.DEV || import.meta.env.MODE === 'gallery';
 
 function PageLoading() {
   return (
@@ -63,6 +67,14 @@ export default function App() {
   // Safe mode hiding every amount does it in the money formatters: drawing the routes again
   // re-renders every page with them, without remounting (unsaved edits stay)
   useSafeMode();
+  // The controls gallery needs no sign-in, server or budget, so it sits outside them all
+  if (GALLERY_ENABLED && window.location.pathname === '/dev/controls') {
+    return (
+      <Suspense fallback={<PageLoading />}>
+        <DevControlsGallery />
+      </Suspense>
+    );
+  }
   return (
     <AuthGate>
       <Router>

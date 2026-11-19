@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay, type Api } from './fixtures';
+import { test, expect, open, isoDay, categoryOption, type Api } from './fixtures';
 
 async function seed(api: Api) {
   const checking = await api.createAccount('Checking', 100_000);
@@ -151,7 +151,7 @@ test.describe('payees', () => {
       .toMatchObject({ defaultCategoryId: groceries.id });
     // And back to no default
     await page.getByRole('button', { name: 'Default category for Amazon: Groceries' }).click();
-    await page.getByRole('button', { name: 'No default category' }).click();
+    await categoryOption(page, 'No default category').click();
     await expect
       .poll(async () => (await api.call<any[]>('GET', '/payees')).find((p) => p.name === 'Amazon'))
       .toMatchObject({ defaultCategoryId: null });

@@ -106,11 +106,34 @@ function withoutDemoWorker(): Plugin {
   };
 }
 
-export default defineConfig(({ mode }) => ({
+/**
+ * Every build except the gallery build (`vite build --mode gallery`, which the e2e gallery
+ * project tests): swap the development-only controls gallery for an empty stub, so no build
+ * people install or open has the gallery, its /dev/controls page or its specimens. The dev
+ * server keeps the real page.
+ */
+function withoutDevGallery(): Plugin {
+  const real = normalizePath(path.resolve(import.meta.dirname, 'src/pages/DevControlsGallery.tsx'));
+  const stub = normalizePath(
+    path.resolve(import.meta.dirname, 'src/pages/DevControlsGallery.stub.ts'),
+  );
+  return {
+    name: 'flybudget-without-dev-gallery',
+    enforce: 'pre',
+    async resolveId(source, importer, options) {
+      if (!source.endsWith('DevControlsGallery')) return null;
+      const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
+      return resolved && normalizePath(resolved.id) === real ? stub : null;
+    },
+  };
+}
+
+export default defineConfig(({ command, mode }) => ({
   plugins: [
     react(),
     tailwindcss(),
     ...(mode === 'demo' ? [demoServerModules(), demoPage()] : [withoutDemoWorker()]),
+    ...(command === 'build' && mode !== 'gallery' ? [withoutDevGallery()] : []),
   ],
   // The desktop app loads files from disk and the demo lives under /demo/ on its host,
   // so both use relative paths

@@ -28,6 +28,8 @@ DESIGN.md describes them; it does not define them. Add or change a token there, 
 Screenshots and captures go in the git-ignored `.ui-evidence/<date>-<screen>/` (for example
 `.ui-evidence/2026-11-11-budget/`). Never commit them; attach them to the PR or issue.
 The committed `docs/ux-ui-evidence/` belongs to the 7 November audit; leave it as it is.
+The controls gallery's baselines under `e2e/tests/gallery/__screenshots__/` are committed test
+fixtures, updated with `e2e/gallery-baselines.sh` (`--update`); they are not evidence screenshots.
 
 ## Backlog rule
 

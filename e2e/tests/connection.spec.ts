@@ -82,7 +82,9 @@ test('mid-session the app keeps what it loaded, keeps new transactions, and reco
     // A new transaction is kept on this device until the server is back
     await page.getByRole('button', { name: 'Add Transaction' }).click();
     const form = page.getByRole('form', { name: 'New transaction' });
-    await form.getByRole('textbox', { name: 'Payee' }).fill('Coffee Cart');
+    await form.getByRole('combobox', { name: 'Payee' }).fill('Coffee Cart');
+    // React Aria hide-outside: Tab closes the list (02-19 checkpoint decision, option 1)
+    await form.getByRole('combobox', { name: 'Payee' }).press('Tab');
     await form.getByRole('textbox', { name: 'Outflow' }).fill('4.75');
     await form.getByRole('button', { name: 'Save' }).click();
     await expect(form).toBeHidden();

@@ -174,8 +174,8 @@ export function TransactionFormRow({
 
   // Sheet: 16px text, so phones don't zoom into the field, and taller touch targets
   const inputCls = sheet
-    ? 'w-full bg-surface text-base text-text placeholder-text-disabled border border-border rounded-md px-3 py-2.5 focus:outline-none focus:border-brand-600 focus:ring-1 focus:ring-brand-600'
-    : 'w-full bg-surface text-sm text-text placeholder-text-disabled border border-border rounded px-2 py-1.5 focus:outline-none focus:border-brand-600 focus:ring-1 focus:ring-brand-600';
+    ? 'w-full bg-surface text-base text-text placeholder:text-text-tertiary border border-border rounded-md px-3 py-2.5 focus:outline-none focus:border-brand-600 focus:ring-1 focus:ring-brand-600'
+    : 'w-full bg-surface text-sm text-text placeholder:text-text-tertiary border border-border rounded px-2 py-1.5 focus:outline-none focus:border-brand-600 focus:ring-1 focus:ring-brand-600';
   const labelCls = sheet
     ? 'text-sm font-medium text-text-secondary mb-1 block'
     : 'text-xs text-text-tertiary mb-1 block';

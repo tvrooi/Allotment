@@ -207,3 +207,131 @@ export async function typeAmount(field: Locator, amount: string) {
   await page.keyboard.type(amount);
   await page.keyboard.press('Tab');
 }
+
+/**
+ * The one way specs choose from the shared Select (client/src/components/ui/Select.tsx), at any
+ * width. `field` is the Select's control: its native select on phones, its trigger button on
+ * desktop. A native select picks the option by its label; the trigger opens the listbox and
+ * clicks the option with exactly that name. A desktop spec moving off `selectOption` (D-05)
+ * changes this call, not its logic.
+ */
+export async function chooseOption(field: Locator, name: string) {
+  if (await field.evaluate((el) => el.tagName === 'SELECT')) {
+    await field.selectOption({ label: name });
+    return;
+  }
+  await field.click();
+  const list = field.page().getByRole('listbox');
+  await list.getByRole('option', { name, exact: true }).click();
+  await expect(list).toHaveCount(0);
+}
+
+/**
+ * The one way specs locate a row of the category picker's list
+ * (client/src/components/transactions/CategoryPicker.tsx): the no-category row, a category, or a
+ * "Transfer: name" row, in `scope` (the page, or a dialog or panel holding the picker). The
+ * picker is the shared searchable list (SearchList), so every row, the no-category row
+ * included, is a listbox option. It needs no `api`, so the demo spec can use it.
+ */
+export function categoryOption(
+  scope: Page | Locator,
+  name: string | RegExp,
+  options: { exact?: boolean } = {},
+) {
+  return scope.getByRole('option', { name, exact: options.exact });
+}
+
+/** A date or month field's scope: the page, or a dialog, form or row holding the field */
+type Scope = Page | Locator;
+
+/**
+ * The native `<input type>` in `scope` whose accessible name is `name`, or null. The name is
+ * its aria-label, else its label's text without aria-hidden parts (a required mark), the way a
+ * screen reader reads it; getByLabel would keep the mark. React Aria's own hidden inputs have no
+ * label, so they never match.
+ */
+async function nativeField(scope: Scope, type: 'date' | 'month', name: string) {
+  const inputs = scope.locator(`input[type="${type}"]`);
+  const index = await inputs.evaluateAll(
+    (els, wanted) =>
+      els.findIndex((el) => {
+        const own = el.getAttribute('aria-label');
+        if (own !== null) return own.trim() === wanted;
+        const label = (el as HTMLInputElement).labels?.[0];
+        if (!label) return false;
+        const copy = label.cloneNode(true) as HTMLElement;
+        copy.querySelectorAll('[aria-hidden="true"], input').forEach((part) => part.remove());
+        return copy.textContent?.trim() === wanted;
+      }),
+    name,
+  );
+  return index < 0 ? null : inputs.nth(index);
+}
+
+/**
+ * The one way specs enter a date (D-07), into the shared DatePicker
+ * (client/src/components/ui/DatePicker.tsx) at any width, and into the native date fields that
+ * have not moved onto it yet. `name` is the field's accessible name and `iso` a YYYY-MM-DD day.
+ * A native date input (a phone's DatePicker, or an older field) is filled with the day as it is.
+ * Otherwise it finds the date group by role and name and types the year, then the month, then
+ * the day into the segments marked with those `data-type`s, so it works in every Date format
+ * preference's segment order (the day last, so a short month never clips it).
+ */
+export async function fillDate(scope: Scope, name: string, iso: string) {
+  const native = await nativeField(scope, 'date', name);
+  if (native) {
+    await native.fill(iso);
+    return;
+  }
+  const [year, month, day] = iso.split('-');
+  const group = scope.getByRole('group', { name, exact: true });
+  for (const [type, digits] of [
+    ['year', year],
+    ['month', month],
+    ['day', day],
+  ] as const) {
+    const segment = group.locator(`[data-type="${type}"]`);
+    await segment.click();
+    await expect(segment).toBeFocused();
+    await segment.page().keyboard.type(digits);
+  }
+}
+
+/** A regular expression matching `text` literally */
+const literally = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * The one way specs enter a month, the counterpart of fillDate, into the shared MonthPicker
+ * (client/src/components/ui/MonthPicker.tsx) at any width and the native month fields that have
+ * not moved onto it. `name` is the field's label and `month` a YYYY-MM month. A native month
+ * input is filled as it is. Otherwise it opens the trigger (named by the label, then the shown
+ * month), steps the year to the month's, and presses the button named by the full month and
+ * year, which closes the grid.
+ */
+export async function fillMonth(scope: Scope, name: string, month: string) {
+  const native = await nativeField(scope, 'month', name);
+  if (native) {
+    await native.fill(month);
+    return;
+  }
+  const [year, number] = month.split('-').map(Number);
+  const page = 'page' in scope ? scope.page() : scope;
+  await scope.getByRole('button', { name: new RegExp(`^${literally(name)} `) }).click();
+  const dialog = page.getByRole('dialog', { name: 'Choose a month' });
+  await expect(dialog).toBeVisible();
+  const monthName = new Date(Date.UTC(year, number - 1, 1)).toLocaleString('en-US', {
+    month: 'long',
+    timeZone: 'UTC',
+  });
+  // The shown year is the year in the grid's month names ("January 2026")
+  for (let step = 0; step < 100; step++) {
+    const first = await dialog.locator('button[aria-pressed]').first().getAttribute('aria-label');
+    const shown = Number(first?.split(' ')[1]);
+    if (shown === year) break;
+    await dialog
+      .getByRole('button', { name: shown < year ? 'Next year' : 'Previous year' })
+      .click();
+  }
+  await dialog.getByRole('button', { name: `${monthName} ${year}`, exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+}

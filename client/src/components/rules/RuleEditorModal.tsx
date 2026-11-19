@@ -39,7 +39,7 @@ import type {
 import { formatDay } from '../../utils/dates';
 
 const fieldClass =
-  'text-sm border border-border rounded-lg px-2 py-1.5 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-400';
+  'text-sm border border-border rounded-lg px-2 py-1.5 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600';
 
 interface Props {
   isOpen: boolean;
@@ -343,7 +343,7 @@ function TagInput({ value, onChange }: { value: string[]; onChange: (v: string[]
   };
   return (
     <div
-      className={`${fieldClass} w-full flex flex-wrap items-center gap-1 py-1 focus-within:ring-1 focus-within:ring-brand-400`}
+      className={`${fieldClass} w-full flex flex-wrap items-center gap-1 py-1 focus-within:ring-1 focus-within:ring-brand-600`}
     >
       {value.map((v) => (
         <span

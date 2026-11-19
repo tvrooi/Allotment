@@ -308,7 +308,7 @@ Desktop dialogs are centered at the shared sm/md/lg/xl widths (384/448/512/768px
 
 Backdrops fade in 150ms and out 120ms. Dialogs enter in 160ms with a small rise and scale; menus enter in 110ms. Sheets enter in 220ms. Reduced-motion mode replaces movement with fades. General color transitions use Tailwind transition-colors; sidebar width transitions use 200ms.
 
-Global keyboard focus uses a 2px brand-600 outline offset by 3px; horizontally clipped tab rows draw focus inside. Fields have their own focus treatment.
+Global keyboard focus is a 2px brand-600 outline offset by 3px, kept in the CSS base layer so a component's own focus utility wins: fields show only their own ring, and controls without one (a Button, a link) keep the outline. Horizontally clipped tab rows still draw focus inside.
 
 ## Do's and Don'ts
 

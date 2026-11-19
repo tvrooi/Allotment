@@ -106,7 +106,7 @@ export function CurrencyInput({
         aria-label={ariaLabel}
         aria-invalid={invalid || undefined}
         aria-describedby={invalid ? hintId : undefined}
-        className={`block w-full rounded-md border px-3 py-2 text-sm text-text placeholder-text-disabled focus:outline-none focus:ring-1 ${
+        className={`block w-full rounded-md border px-3 py-2 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 ${
           invalid
             ? 'border-negative focus:border-negative focus:ring-negative'
             : 'border-border focus:border-brand-600 focus:ring-brand-600'

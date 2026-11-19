@@ -101,29 +101,57 @@ unsaved-drafts, phone/phone, phone/polish-phone, phone/iphone-webapp, phone/amou
 - `Button.tsx`: `Button`, `ButtonLink`; variants and sizes, 44px on phones.
 - `Card.tsx`: `Card`, the surface container.
 - `CategoryIcon.tsx`: `CategoryIcon`, a category's icon or dot.
+- `Checkbox.tsx`: `Checkbox`, the shared checkbox on React Aria, with help text and an error line.
+- `Combobox.tsx`: `Combobox`, a searchable list the user can add to (custom values, Clear, empty state, footer); `SearchList` and its parts, the searchable list under `CategoryPicker`.
 - `ConfirmModal.tsx`: `ConfirmModal`, confirm or cancel a destructive action.
 - `ContextMenu.tsx`: `ContextMenu`, `useMenuTrigger`; right-click / Shift+F10 menu with flyouts.
 - `CurrencyInput.tsx`: `CurrencyInput`, the only money input (`type="text" inputMode="decimal"`).
-- `DatePicker.tsx`: `DatePicker`.
+- `dateSegments.ts`: `segmentLocale`, `dateExample`; the DatePicker's segment order from the Date format preference.
+- `DatePicker.tsx`: `DatePicker`, typed day, month and year segments, a calendar and a Today shortcut; native date input on phones.
 - `DiscardPrompt.tsx`: `DiscardPrompt`, asks before dropping an unsaved draft.
 - `EmptyState.tsx`: `EmptyState`, message plus actions when a list is empty.
 - `ExternalLink.tsx`: `ExternalLink`, a link out with optional arrow icon.
+- `Field.tsx`: `Field`, `FieldDescription`, `FieldErrorText`; a label, help text and error line around a text field.
+- `fieldClasses.ts`: the one place for the shared controls' class strings (field, states, label, help, error, popover, list, option, toggles).
+- `fieldMessages.ts`: `requiredMessage`, `fieldSubject` and the other default field messages, written once.
 - `HelpTip.tsx`: `HelpTip`, an inline help popover.
 - `IconPickerPopover.tsx`: `IconPickerPopover`, anchored icon chooser.
-- `Input.tsx`: `Input`, `Select` (40px, 44px on phones).
+- `Input.tsx`: `Input`, the shared text field on React Aria; and the native `Select` (40px, 44px on phones) that screens still use until Phase 4.
+- `Label.tsx`: `Label`, the shared field label.
 - `Modal.tsx`: `Modal`, `useModalValue`; dialog with focus handling.
-- `MonthRangePicker.tsx`: `MonthRangePicker`.
+- `MonthPicker.tsx`: `MonthPicker`, a year stepper and twelve-month grid (`MonthGrid`); native month input on phones.
+- `MonthRangePicker.tsx`: `MonthRangePicker`, built on `MonthGrid` from `MonthPicker.tsx` in React Aria's dialog; native From and To month inputs on phones (Reports, the report builder, Cash flow).
 - `PageHeader.tsx`: `PageHeader`, page title row; its breadcrumbs are a labelled landmark with 48 px links on phones.
 - `Plant.tsx`: `Plant`, the goal plant (seed, seedling, bud, flower; `plantStage`), `aria-hidden`, motion opt-in (`grew`, `bloom`); also the still seedling beside a clean $0 Ready to assign.
 - `Private.tsx`: `Private`, `HiddenAmount`, `PrivateChart`; Safe mode blurring.
+- `RadioGroup.tsx`: `RadioGroup`, `Radio`; the shared radio group.
 - `QueryProblem.tsx`: `QueryProblem`, `loadFailed`; unavailable or stale data with Retry.
 - `RowMenu.tsx`: `RowMenu`, a row's overflow actions menu.
+- `Select.tsx`: `Select`, `SelectOption`, `SelectGroup`; the shared fixed-list select, a listbox popover on desktop and the phone's own picker under 768 px.
 - `SegmentedControl.tsx`: `SegmentedControl`, a named group of `aria-pressed` buttons for one choice (Reports' date range, the dashboard charts' ranges).
 - `ScrollCue.tsx`: `ScrollCue`, a hint that a strip scrolls sideways.
 - `Slider.tsx`: `Slider`, range input with value bubble (adapted from shadcn).
-- `Switch.tsx`: a switch with a 44 px target, token colours and reduced-motion support (Welcome).
+- `Switch.tsx`: `Switch` on React Aria, with a 44 px target, help text, an error line and distinct disabled, read-only and invalid looks (Welcome).
+- `Textarea.tsx`: `Textarea`, the shared multi-line field, matching `Input` in every state.
 - `StatCard.tsx`: `StatCard` (optional `footer`), `StatGrid`.
 - `StatusPill.tsx`: `StatusPill`, a small rounded status link with an optional dot (bank sync, household balance).
 - `tabList.tsx`: `TabList`, `tabIds`, `onTabListKeyDown`; accessible tabs.
 - `Toasts.tsx`: `Toasts`, the toast stack.
 - `UndoToast.tsx`: `UndoToast`, a notice with Undo and Redo.
+
+Shared form controls (Wave G1, #267): the field and selector files above are built on
+`react-aria-components`, styled from `fieldClasses.ts`. Picker rule: categories use
+`CategoryPicker`, payees use `PayeeCombobox` (both wrappers over `ui/Combobox.tsx`), a fixed list
+uses `Select` from `components/ui/Select.tsx`, a list the user grows uses `Combobox`; phones get native
+select, date and month controls. Screens still use the native `Select` in `ui/Input.tsx` until
+Phases 3 and 4 move them; only the category and payee pickers and `MonthRangePicker`'s three
+users have moved.
+
+- `pages/DevControlsGallery.tsx` and `pages/devGallery/`: the development-only gallery at
+  `/dev/controls` (dev server, or a `vite build --mode gallery` build); every other build gets
+  `DevControlsGallery.stub.ts` (`client/vite.config.ts`).
+- Specs: `e2e/tests/gallery/` (Playwright project `gallery`); its committed Linux baselines in
+  `e2e/tests/gallery/__screenshots__/`, checked or remade with `bash e2e/gallery-baselines.sh`
+  (`--update`). `gallery-absent.spec.ts` checks no other build has the route. Specs choose and
+  fill the shared controls through `chooseOption`, `categoryOption`, `fillDate` and `fillMonth`
+  in `e2e/tests/fixtures.ts`.

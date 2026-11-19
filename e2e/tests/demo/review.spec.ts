@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { categoryOption } from '../fixtures';
 
 test('the budget review, buffer and guided setup run in the offline demo', async ({ page }) => {
   const errors: string[] = [];
@@ -21,7 +22,7 @@ test('the budget review, buffer and guided setup run in the offline demo', async
   const search = page.getByRole('textbox', { name: 'Search categories' });
   await expect(search).toBeFocused();
   await search.fill('Groceries');
-  await expect(page.getByRole('button', { name: 'Groceries', exact: true })).toBeVisible();
+  await expect(categoryOption(page, 'Groceries', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(category).toBeFocused();
   await category.click();
