@@ -1,5 +1,14 @@
 # Changes
 
+## 0.2.0-up.176
+
+- **Everyday money screens on the shared controls.** Transactions (the register, its filters and marks, Add transaction, the details panel, bulk edit, split and transfer suggestions), Accounts (add, edit, delete and reconcile), Budget (the table, the phone sheet, moves, targets, card payments, auto-assign, the payday plan and notes), Categories, Payees, Rules, Recurring and receipts now use the shared fields, lists, checkboxes and date pickers, so they look and behave the same everywhere. Labels, placeholders, choices and saved values are unchanged (#267).
+- **Numbers say when they are out of range.** These fields used to snap a wrong number to the nearest allowed one without a word. They now keep what you typed, say what they accept under the field, and hold Save until it is fixed: a rule's split percentage (0% to 100%, decimals allowed), a recurring transaction's date flexibility (a whole number from 0 to 14 days), a custom upcoming length (a whole number of 1 or more), a target's Repeats every (1 to 60 months) and a payday plan rule's percent (0 to 100).
+- **Amounts read the same in every field.** The budget amount on a phone, card payment funding, Move money, a target amount, the payday plan's pay and rule amounts, a split part, the new transaction row's outflow, inflow and split amounts, and the register's At least and At most all use the one money field. An amount shows as money once you leave it ($60, not 60, and the phone budget sheet turns a sum like 20\*3 into $60), and text that isn't an amount stays in the field with a line under it saying so. A typed 0 in At least or At most is still a bound.
+- **A picked date saves at once.** In a transaction's details, choosing a day from the calendar or pressing Today saves it straight away; a typed date still saves when you leave the field. A half-typed date holds Save instead of saving an empty date.
+- **Clearer pickers.** Category fields open the searchable category picker. The account in Add transaction can be typed to filter. The register's From and To dates have a Clear button and warn when From is after To.
+- **Short month names on phones.** The month range's From and To fields on Reports, the report builder and Cash flow show months as Nov 2026, so the whole month fits on a phone.
+
 ## 0.2.0-up.175
 
 - **One set of form controls.** Text fields, selects, searchable lists, checkboxes, radio buttons, switches, and date and month fields now share one look and one set of states (help text, errors, disabled, read-only), with keyboard support throughout. Phones keep their own select, date and month pickers. Screens move onto the set over the next releases; this one changes only the pickers below (#267).

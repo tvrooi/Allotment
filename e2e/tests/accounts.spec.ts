@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay, typeAmount } from './fixtures';
+import { test, expect, open, isoDay, typeAmount, chooseOption } from './fixtures';
 
 test.describe('accounts', () => {
   test('a new user adds their first account from the welcome screen', async ({ page, api }) => {
@@ -8,7 +8,7 @@ test.describe('accounts', () => {
 
     const dialog = page.getByRole('dialog', { name: 'Add account' });
     await dialog.getByRole('textbox', { name: 'Account name' }).fill('Chase Checking');
-    await dialog.getByRole('combobox', { name: 'Account type' }).selectOption('checking');
+    await chooseOption(dialog.getByRole('button', { name: 'Account type' }), 'Everyday');
     await dialog.getByRole('textbox', { name: 'Current balance' }).fill('1234.56');
     await dialog.getByRole('button', { name: 'Add account' }).click();
 
@@ -58,7 +58,7 @@ test.describe('accounts', () => {
     await page.getByRole('main').getByRole('button', { name: 'Add account' }).click();
     const dialog = page.getByRole('dialog', { name: 'Add account' });
     await dialog.getByRole('textbox', { name: 'Account name' }).fill('Home');
-    await dialog.getByRole('combobox', { name: 'Account type' }).selectOption('real_estate');
+    await chooseOption(dialog.getByRole('button', { name: 'Account type' }), 'Real estate');
     await expect(dialog.getByRole('checkbox', { name: /Off budget/ })).toBeChecked();
     await dialog.getByRole('textbox', { name: 'Current value' }).fill('350000');
     await dialog.getByRole('button', { name: 'Add account' }).click();

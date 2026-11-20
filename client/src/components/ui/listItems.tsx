@@ -1,15 +1,22 @@
 // The options of a Select or a Combobox list, drawn once for both (02-REVIEW WR-04): a change to
 // how an option or a group heading looks is made here, so the two lists cannot drift apart.
+import type { ReactNode } from 'react';
 import { Check } from 'lucide-react';
 import { Header, ListBoxItem, ListBoxSection } from 'react-aria-components';
 import { optionClass } from './fieldClasses';
-import type { SelectGroup, SelectOption } from './Select';
+import type { SelectOption } from './Select';
+
+/** An option in a Select or Combobox list, with optional leading icon and trailing metadata */
+export type ListOption = SelectOption & { icon?: ReactNode; trailing?: ReactNode };
+/** A headed group of ListOptions */
+export type ListGroup = { label: string; options: readonly ListOption[] };
 
 /** Whether an item is a headed group of options rather than one option */
-export const isGroup = (item: SelectOption | SelectGroup): item is SelectGroup => 'options' in item;
+export const isGroup = <T extends ListOption | ListGroup>(item: T): item is Extract<T, ListGroup> =>
+  'options' in item;
 
 /** One option: its label cut off with an ellipsis when long, and a tick while chosen */
-function OptionItem({ option }: { option: SelectOption }) {
+function OptionItem({ option }: { option: ListOption }) {
   return (
     <ListBoxItem
       id={option.value}
@@ -19,7 +26,15 @@ function OptionItem({ option }: { option: SelectOption }) {
     >
       {({ isSelected }) => (
         <>
-          <span className="min-w-0 truncate">{option.label}</span>
+          {option.icon ? (
+            <span className="flex min-w-0 flex-1 items-center gap-2.5">
+              {option.icon}
+              <span className="min-w-0 truncate">{option.label}</span>
+            </span>
+          ) : (
+            <span className="min-w-0 truncate">{option.label}</span>
+          )}
+          {option.trailing}
           {isSelected && <Check size={16} aria-hidden="true" className="shrink-0" />}
         </>
       )}
@@ -28,7 +43,7 @@ function OptionItem({ option }: { option: SelectOption }) {
 }
 
 /** A ListBox's children: flat options and headed groups, in the order given */
-export function listItems(items: readonly (SelectOption | SelectGroup)[]) {
+export function listItems(items: readonly (ListOption | ListGroup)[]) {
   return items.map((item) =>
     isGroup(item) ? (
       <ListBoxSection key={`group:${item.label}`} id={`group:${item.label}`}>

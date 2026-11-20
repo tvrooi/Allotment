@@ -144,6 +144,20 @@ const slug = (name: string) =>
     .replace(/^-|-$/g, '');
 
 /**
+ * Derives a category id that is non-empty and unique across every group in the gallery
+ * (02-REVIEW-2 IN-02): uses a fallback stem when the name has no Latin letters or digits, and
+ * appends a numeric suffix while the candidate is already taken in any group.
+ */
+function uniqueCategoryId(name: string, groups: CategoryGroup[]): string {
+  const stem = slug(name) || 'category';
+  const used = new Set(groups.flatMap((g) => g.categories.map((c) => c.id)));
+  if (!used.has(stem)) return stem;
+  let suffix = 2;
+  while (used.has(`${stem}-${suffix}`)) suffix += 1;
+  return `${stem}-${suffix}`;
+}
+
+/**
  * The category picker as its callers open it: floating beside its button (`anchor`, as the
  * payee, Review and budget screens do), or in the button's own relative wrapper (as the
  * transaction row and the category button do). The gallery has no server and fetches nothing
@@ -156,19 +170,24 @@ function CategoryPickerSpecimen({ anchored }: { anchored: boolean }) {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState<string | null>(null);
   const [groups, setGroups] = useState(GROUPS);
+  const groupsRef = useRef(groups);
+  groupsRef.current = groups;
   const [created, setCreated] = useState<string | null>(null);
   const testId = `category-picker-readout-${anchored ? 'anchored' : 'inline'}`;
   const create = ({ groupId, name, budgetType = null }: NewCategory) =>
     new Promise<{ id: string }>((resolve, reject) => {
       setTimeout(() => {
-        const group = groups.find((g) => g.id === groupId);
+        const current = groupsRef.current;
+        const group = current.find((g) => g.id === groupId);
         const taken = group?.categories.some((c) => c.name.toLowerCase() === name.toLowerCase());
         if (!group || taken) return reject(new Error('A category with that name exists'));
-        const id = slug(name);
+        const id = uniqueCategoryId(name, current);
         const added = category(id, name, { groupId, budgetType: budgetType as BudgetType | null });
-        setGroups((all) =>
-          all.map((g) => (g.id === groupId ? { ...g, categories: [...g.categories, added] } : g)),
+        const nextGroups = current.map((g) =>
+          g.id === groupId ? { ...g, categories: [...g.categories, added] } : g,
         );
+        groupsRef.current = nextGroups;
+        setGroups(nextGroups);
         setCreated(`${name} in ${group.name}, ${budgetType ?? 'no budget type'}`);
         resolve({ id });
       }, GALLERY_CREATE_MS);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { deleteAccountPermanently, getAccountDeletion } from '../../api/accounts';
@@ -6,6 +6,8 @@ import { useCanSave } from '../../hooks/useConnection';
 import { useFormReset } from '../../hooks/useFormReset';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { Input } from '../ui/Input';
+import { Label } from '../ui/Label';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import type { Account } from '../../types';
 
@@ -21,6 +23,7 @@ interface Props {
  * will go, and refuses (with how to fix it) while a bank feed supplies the account.
  */
 export function DeleteAccountModal({ account, onClose, onDeleted }: Props) {
+  const confirmId = useId();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const canSave = useCanSave();
@@ -79,17 +82,19 @@ export function DeleteAccountModal({ account, onClose, onDeleted }: Props) {
           </div>
         )}
         {data && !blocked && (
-          <label className="block text-sm font-medium text-text-secondary">
-            Type the account name <span className="font-mono">{data.name}</span> to confirm
-            <input
+          <div className="flex flex-col gap-1">
+            <Label htmlFor={confirmId}>
+              Type the account name <span className="font-mono">{data.name}</span> to confirm
+            </Label>
+            <Input
+              id={confirmId}
               aria-label="Type the account name to confirm"
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
               autoComplete="off"
               spellCheck={false}
-              className="mt-1 w-full text-sm border border-border rounded-lg px-3 py-2 bg-surface text-text focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
             />
-          </label>
+          </div>
         )}
         {(preview.error || remove.error) && (
           <p role="alert" className="text-sm text-negative">

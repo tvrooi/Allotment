@@ -1,9 +1,12 @@
-import { useId, useState } from 'react';
+import { useCallback, useId, useRef, useState } from 'react';
+import { AmountFields, useAmountValidity } from '../../components/ui/amountValidity';
+import { Button } from '../../components/ui/Button';
 import { CurrencyInput } from '../../components/ui/CurrencyInput';
 import { Field } from '../../components/ui/Field';
 import { errorClass } from '../../components/ui/fieldClasses';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
+import { NumberField } from '../../components/ui/NumberField';
 import { Textarea } from '../../components/ui/Textarea';
 import { GalleryCard, Specimen } from './Specimen';
 
@@ -173,12 +176,16 @@ function InputCard() {
   );
 }
 
-/** Textarea in each state, bare and inside a Field, plus a long note that scrolls inside it */
+/**
+ * Textarea in each state, bare and inside a Field, a long note that scrolls inside it, and the
+ * two-row size a budget note uses (no 80 px floor)
+ */
 function TextareaCard() {
   const def = useText();
   const focus = useText();
   const invalid = useText('x');
   const long = useText(LONG_NOTE);
+  const twoRows = useText();
   const errorId = useId();
   return (
     <GalleryCard title="Textarea">
@@ -214,30 +221,598 @@ function TextareaCard() {
           <Textarea {...long} />
         </Field>
       </Specimen>
+      <Specimen control="Textarea" state="Two rows">
+        <Field label="Month note">
+          <Textarea rows={2} placeholder="Add a note" {...twoRows} />
+        </Field>
+      </Specimen>
     </GalleryCard>
   );
 }
 
-/**
- * CurrencyInput is the only amount field and is not rebuilt on Input; it is here so its
- * placeholder's contrast is checked alongside the set's.
- */
+/** Shared bounded NumberField in each state: valid, invalid, optional blank, disabled and sm % */
+function NumberFieldCard() {
+  const [valid, setValid] = useState<number | null>(12);
+  const [invalid, setInvalid] = useState<number | null>(61);
+  const [optional, setOptional] = useState<number | null>(null);
+  const [small, setSmall] = useState<number | null>(33.5);
+  return (
+    <GalleryCard title="Number field">
+      <Specimen control="NumberField" state="Valid">
+        <NumberField
+          label="Repeats every (months)"
+          value={valid}
+          onChange={setValid}
+          min={1}
+          max={60}
+        />
+      </Specimen>
+      <Specimen control="NumberField" state="Invalid">
+        <NumberField
+          label="Billing cycle (months)"
+          value={invalid}
+          onChange={setInvalid}
+          min={1}
+          max={60}
+        />
+      </Specimen>
+      <Specimen control="NumberField" state="Optional">
+        <NumberField
+          label="Last year"
+          value={optional}
+          onChange={setOptional}
+          min={1900}
+          max={2300}
+          optional
+        />
+      </Specimen>
+      <Specimen control="NumberField" state="Disabled">
+        <NumberField
+          label="Minimum payments"
+          value={12}
+          onChange={() => {}}
+          min={1}
+          max={60}
+          isDisabled
+        />
+      </Specimen>
+      <Specimen control="NumberField" state="Small">
+        <NumberField
+          label="Split percentage"
+          value={small}
+          onChange={setSmall}
+          min={0}
+          max={100}
+          allowDecimal
+          fieldSize="sm"
+          suffix="%"
+        />
+      </Specimen>
+    </GalleryCard>
+  );
+}
+
+/** CurrencyInput at md and sm, plus arithmetic expression support */
 function MoneyCard() {
   const [empty, setEmpty] = useState(0);
   const [filled, setFilled] = useState(12345);
+  const [small, setSmall] = useState(4250);
+  const [expression, setExpression] = useState(15000);
   return (
-    <GalleryCard title="Money entry (not part of the set)">
+    <GalleryCard title="Money field">
       <Specimen control="CurrencyInput" state="Empty">
         <CurrencyInput aria-label="Amount" value={empty} onChange={setEmpty} />
       </Specimen>
       <Specimen control="CurrencyInput" state="Filled">
         <CurrencyInput aria-label="Opening balance" value={filled} onChange={setFilled} />
       </Specimen>
+      <Specimen control="CurrencyInput" state="Small">
+        <CurrencyInput aria-label="Cell amount" value={small} onChange={setSmall} fieldSize="sm" />
+      </Specimen>
+      <Specimen control="CurrencyInput" state="Expression">
+        <CurrencyInput
+          aria-label="Budget expression"
+          value={expression}
+          onChange={setExpression}
+          expression
+        />
+      </Specimen>
     </GalleryCard>
   );
 }
 
-/** The text foundation of the shared set: Label, Field, Input and Textarea (02-UI-SPEC.md items 1 to 4) */
+/** Keep focus inside the input when clicking a probe control button */
+const keepFocus = (e: React.MouseEvent) => e.preventDefault();
+
+/**
+ * Mounted React interaction probes for NumberField and CurrencyInput (rendered only on
+ * /dev/controls?probe=fields for e2e/tests/gallery/text-fields.spec.ts, replacing the emulated
+ * Vitest hook harness from 03-02 WR-03).
+ */
+export function FieldProbes() {
+  return (
+    <div className="space-y-6">
+      <ProbeSameValueExternalReset />
+      <ProbeUnfocusedBoundRelaxIgnore />
+      <ProbeRoundedAck />
+      <ProbeDeferredRounding />
+      <ProbeAsyncInOrderAcks />
+      <ProbeUntouchedAndEditedDecimals />
+      <ProbeBoundRelaxAndDisabled />
+      <ProbeTightenRoundedBound />
+      <ProbeDisabledOutOfRange />
+      <ProbeReadOnlyMoney />
+      <ProbeExplicitCommitMoney />
+      <ProbeExplicitCommitFocusedReset />
+      <ProbeCurrencyRefs />
+    </div>
+  );
+}
+
+function ProbeSameValueExternalReset() {
+  const [value, setValue] = useState<number | null>(5);
+  const { allValid, report } = useAmountValidity();
+  return (
+    <section data-testid="probe-r3-cr-01" className="bg-surface rounded-lg p-4 space-y-2">
+      <AmountFields report={report}>
+        <NumberField
+          label="Same-value external reset"
+          value={value}
+          onChange={setValue}
+          min={1}
+          max={60}
+        />
+      </AmountFields>
+      <div className="flex gap-2 items-center">
+        <Button size="sm" onMouseDown={keepFocus} onClick={() => setValue(7)}>
+          Set external 7
+        </Button>
+        <output data-testid="saved">{String(value)}</output>
+        <output data-testid="valid">{String(allValid)}</output>
+      </div>
+    </section>
+  );
+}
+
+function ProbeUnfocusedBoundRelaxIgnore() {
+  const [value, setValue] = useState<number | null>(12);
+  const [max, setMax] = useState(60);
+  return (
+    <section data-testid="probe-r3-cr-01-unfocused" className="bg-surface rounded-lg p-4 space-y-2">
+      <NumberField
+        label="Unfocused bound relax"
+        value={value}
+        onChange={() => {}}
+        min={1}
+        max={max}
+      />
+      <div className="flex gap-2">
+        <Button size="sm" onClick={() => setMax(100)}>
+          Set max 100
+        </Button>
+        <Button size="sm" onClick={() => setValue(20)}>
+          Set external 20
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+function ProbeRoundedAck() {
+  const [bps, setBps] = useState(314);
+  const { allValid, report } = useAmountValidity();
+  return (
+    <section data-testid="probe-cr-02" className="bg-surface rounded-lg p-4 space-y-2">
+      <AmountFields report={report}>
+        <NumberField
+          label="Rounded basis points"
+          value={bps / 100}
+          onChange={(next) => {
+            if (next !== null) setBps(Math.round(next * 100));
+          }}
+          min={-100}
+          max={50}
+          allowDecimal
+          precision={2}
+        />
+      </AmountFields>
+      <div className="flex gap-2 items-center">
+        <Button size="sm" onMouseDown={keepFocus} onClick={() => setBps(650)}>
+          Reset 6.5
+        </Button>
+        <output data-testid="bps">{bps}</output>
+        <output data-testid="valid">{String(allValid)}</output>
+      </div>
+    </section>
+  );
+}
+
+function ProbeDeferredRounding() {
+  const [bps, setBps] = useState(314);
+  const [deferredBps, setDeferredBps] = useState<number | null>(null);
+  const [resetKey, setResetKey] = useState(0);
+  const { allValid, report } = useAmountValidity();
+  return (
+    <section data-testid="probe-r2-cr-02" className="bg-surface rounded-lg p-4 space-y-2">
+      <AmountFields report={report}>
+        <NumberField
+          label="Deferred rounding"
+          value={bps / 100}
+          onChange={(next) => {
+            if (next !== null) setDeferredBps(Math.round(next * 100));
+          }}
+          min={-100}
+          max={50}
+          allowDecimal
+          precision={2}
+          resetKey={resetKey}
+        />
+      </AmountFields>
+      <div className="flex flex-wrap gap-2 items-center">
+        <Button
+          size="sm"
+          onMouseDown={keepFocus}
+          onClick={() => {
+            if (deferredBps !== null) setBps(deferredBps);
+          }}
+        >
+          Flush deferred
+        </Button>
+        <Button size="sm" onMouseDown={keepFocus} onClick={() => setBps(650)}>
+          Set 6.5
+        </Button>
+        <Button size="sm" onMouseDown={keepFocus} onClick={() => setResetKey((k) => k + 1)}>
+          Bump resetKey
+        </Button>
+        <Button size="sm" onClick={() => setBps(700)}>
+          Set 7
+        </Button>
+        <output data-testid="deferred">{String(deferredBps)}</output>
+        <output data-testid="valid">{String(allValid)}</output>
+      </div>
+    </section>
+  );
+}
+
+function ProbeAsyncInOrderAcks() {
+  const [value, setValue] = useState<number | null>(3);
+  const [emitted, setEmitted] = useState<Array<number | null>>([]);
+  return (
+    <section data-testid="probe-r3-wr-01" className="bg-surface rounded-lg p-4 space-y-2">
+      <NumberField
+        label="In-order async acks"
+        value={value}
+        onChange={(next) => setEmitted((prev) => [...prev, next])}
+        min={-100}
+        max={50}
+        allowDecimal
+        precision={2}
+      />
+      <div className="flex flex-wrap gap-2 items-center">
+        <Button size="sm" onMouseDown={keepFocus} onClick={() => setValue(3.1)}>
+          Deliver 3.1
+        </Button>
+        <Button size="sm" onMouseDown={keepFocus} onClick={() => setValue(3.14)}>
+          Deliver 3.14
+        </Button>
+        <Button size="sm" onMouseDown={keepFocus} onClick={() => setValue(3.15)}>
+          Deliver 3.15
+        </Button>
+        <Button size="sm" onMouseDown={keepFocus} onClick={() => setValue(6.5)}>
+          Deliver 6.5
+        </Button>
+        <output data-testid="emitted">{JSON.stringify(emitted)}</output>
+      </div>
+    </section>
+  );
+}
+
+function ProbeUntouchedAndEditedDecimals() {
+  const [untouched, setUntouched] = useState<number | null>(3.14);
+  const [edited, setEdited] = useState<number | null>(0);
+  return (
+    <section data-testid="probe-r4-cr-01" className="bg-surface rounded-lg p-4 space-y-3">
+      <div data-testid="untouched" className="space-y-2">
+        <NumberField
+          label="Untouched decimal"
+          value={untouched}
+          onChange={() => {}}
+          min={-100}
+          max={50}
+          allowDecimal
+        />
+        <div className="flex gap-2">
+          <Button size="sm" onClick={() => setUntouched(3.1)}>
+            Set 3.1
+          </Button>
+          <Button size="sm" onClick={() => setUntouched(3.05)}>
+            Set 3.05
+          </Button>
+          <Button size="sm" onClick={() => setUntouched(3)}>
+            Set 3
+          </Button>
+        </div>
+      </div>
+      <div data-testid="edited" className="space-y-2">
+        <NumberField
+          label="Edited decimal"
+          value={edited}
+          onChange={setEdited}
+          min={-100}
+          max={50}
+          allowDecimal
+          precision={2}
+        />
+        <div className="flex gap-2 items-center">
+          <Button size="sm" onClick={() => setEdited(3.1)}>
+            Reset edited 3.1
+          </Button>
+          <output data-testid="saved">{String(edited)}</output>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProbeBoundRelaxAndDisabled() {
+  const [instance, setInstance] = useState(0);
+  return <ProbeBoundRelaxCase key={instance} onReset={() => setInstance((n) => n + 1)} />;
+}
+
+function ProbeBoundRelaxCase({ onReset }: { onReset: () => void }) {
+  const [value, setValue] = useState<number | null>(12);
+  const [max, setMax] = useState(60);
+  const [isDisabled, setIsDisabled] = useState(false);
+  const [calls, setCalls] = useState(0);
+  const { allValid, report } = useAmountValidity();
+  return (
+    <section data-testid="probe-bound-disabled" className="bg-surface rounded-lg p-4 space-y-2">
+      <AmountFields report={report}>
+        <NumberField
+          label="Bound and disabled"
+          value={value}
+          onChange={(next) => {
+            setCalls((c) => c + 1);
+            setValue(next);
+          }}
+          min={1}
+          max={max}
+          isDisabled={isDisabled}
+        />
+      </AmountFields>
+      <div className="flex flex-wrap gap-2 items-center">
+        <Button size="sm" onClick={() => setIsDisabled((d) => !d)}>
+          Toggle disabled
+        </Button>
+        <Button size="sm" onClick={() => setMax(100)}>
+          Set max 100
+        </Button>
+        <Button size="sm" onClick={() => setMax(50)}>
+          Set max 50
+        </Button>
+        <Button size="sm" onClick={onReset}>
+          Reset probe
+        </Button>
+        <output data-testid="calls">{calls}</output>
+        <output data-testid="saved">{String(value)}</output>
+        <output data-testid="valid">{String(allValid)}</output>
+      </div>
+    </section>
+  );
+}
+
+function ProbeTightenRoundedBound() {
+  const [bps, setBps] = useState(314);
+  const [max, setMax] = useState(50);
+  const { allValid, report } = useAmountValidity();
+  return (
+    <section data-testid="probe-r2-cr-03" className="bg-surface rounded-lg p-4 space-y-2">
+      <AmountFields report={report}>
+        <NumberField
+          label="Tighten rounded bound"
+          value={bps / 100}
+          onChange={(next) => {
+            if (next !== null) setBps(Math.round(next * 100));
+          }}
+          min={-100}
+          max={max}
+          allowDecimal
+          precision={2}
+        />
+      </AmountFields>
+      <div className="flex gap-2 items-center">
+        <Button size="sm" onClick={() => setMax(3.147)}>
+          Set max 3.147
+        </Button>
+        <Button size="sm" onClick={() => setMax(3.15)}>
+          Set max 3.15
+        </Button>
+        <output data-testid="bps">{bps}</output>
+        <output data-testid="valid">{String(allValid)}</output>
+      </div>
+    </section>
+  );
+}
+
+function ProbeDisabledOutOfRange() {
+  const initialValidity = useAmountValidity();
+  const tightenedValidity = useAmountValidity();
+  const [max, setMax] = useState(50);
+  return (
+    <section data-testid="probe-r4-wr-01" className="bg-surface rounded-lg p-4 space-y-3">
+      <div data-testid="initial" className="space-y-2">
+        <AmountFields report={initialValidity.report}>
+          <NumberField
+            label="Disabled initial out of range"
+            value={100}
+            onChange={() => {}}
+            min={1}
+            max={60}
+            isDisabled
+          />
+        </AmountFields>
+        <output data-testid="valid">{String(initialValidity.allValid)}</output>
+      </div>
+      <div data-testid="tightened" className="space-y-2">
+        <AmountFields report={tightenedValidity.report}>
+          <NumberField
+            label="Disabled tightened"
+            value={3.15}
+            onChange={() => {}}
+            min={-100}
+            max={max}
+            allowDecimal
+            isDisabled
+          />
+        </AmountFields>
+        <div className="flex gap-2 items-center">
+          <Button size="sm" onClick={() => setMax(3.147)}>
+            Tighten to 3.147
+          </Button>
+          <output data-testid="valid">{String(tightenedValidity.allValid)}</output>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProbeReadOnlyMoney() {
+  const [changes, setChanges] = useState(0);
+  const [blurs, setBlurs] = useState(0);
+  return (
+    <section data-testid="probe-cr-04" className="bg-surface rounded-lg p-4 space-y-2">
+      <CurrencyInput
+        aria-label="Read-only balance"
+        value={-1250}
+        onChange={() => setChanges((c) => c + 1)}
+        onBlur={() => setBlurs((b) => b + 1)}
+        readOnly
+      />
+      <div className="flex gap-2">
+        <output data-testid="changes">{changes}</output>
+        <output data-testid="blurs">{blurs}</output>
+      </div>
+    </section>
+  );
+}
+
+function ProbeExplicitCommitMoney() {
+  const [mounted, setMounted] = useState(true);
+  const [changes, setChanges] = useState(0);
+  const [blurs, setBlurs] = useState(0);
+  const [lastText, setLastText] = useState<string>('unset');
+  const { allValid, report } = useAmountValidity();
+  return (
+    <section data-testid="probe-cr-01" className="bg-surface rounded-lg p-4 space-y-2">
+      <AmountFields report={report}>
+        {mounted && (
+          <CurrencyInput
+            aria-label="Explicit commit money"
+            value={1200}
+            onChange={() => setChanges((c) => c + 1)}
+            onTextChange={(cents) => setLastText(String(cents))}
+            onBlur={() => setBlurs((b) => b + 1)}
+            expression
+            commitOnBlur={false}
+          />
+        )}
+      </AmountFields>
+      <div className="flex flex-wrap gap-2 items-center">
+        <Button size="sm" onClick={() => setMounted((m) => !m)}>
+          Toggle mount
+        </Button>
+        <output data-testid="changes">{changes}</output>
+        <output data-testid="blurs">{blurs}</output>
+        <output data-testid="text">{lastText}</output>
+        <output data-testid="valid">{String(allValid)}</output>
+      </div>
+    </section>
+  );
+}
+
+function ProbeExplicitCommitFocusedReset() {
+  const [value, setValue] = useState(1200);
+  const { allValid, report } = useAmountValidity();
+  return (
+    <section data-testid="probe-r2-cr-01" className="bg-surface rounded-lg p-4 space-y-2">
+      <AmountFields report={report}>
+        <CurrencyInput
+          aria-label="Explicit commit reset"
+          value={value}
+          onChange={() => {}}
+          expression
+          commitOnBlur={false}
+        />
+      </AmountFields>
+      <div className="flex gap-2 items-center">
+        <Button size="sm" onMouseDown={keepFocus} onClick={() => setValue(2000)}>
+          Set 2000
+        </Button>
+        <Button size="sm" onMouseDown={keepFocus} onClick={() => setValue(3500)}>
+          Set 3500
+        </Button>
+        <output data-testid="valid">{String(allValid)}</output>
+      </div>
+    </section>
+  );
+}
+
+function ProbeCurrencyRefs() {
+  const [mounted, setMounted] = useState(true);
+  const [snapshot, setSnapshot] = useState('');
+  const objRef = useRef<HTMLInputElement>(null);
+  const logRef = useRef({
+    cleanupMounts: 0,
+    cleanupNulls: 0,
+    cleanupsRun: 0,
+    classicMounts: 0,
+    classicNulls: 0,
+  });
+
+  const cleanupRef = useCallback((node: HTMLInputElement | null) => {
+    if (node) logRef.current.cleanupMounts += 1;
+    else logRef.current.cleanupNulls += 1;
+    return () => {
+      logRef.current.cleanupsRun += 1;
+    };
+  }, []);
+
+  const classicRef = useCallback((node: HTMLInputElement | null) => {
+    if (node) logRef.current.classicMounts += 1;
+    else logRef.current.classicNulls += 1;
+  }, []);
+
+  const read = () =>
+    setSnapshot(
+      JSON.stringify({
+        ...logRef.current,
+        objTag: objRef.current ? objRef.current.tagName : null,
+      }),
+    );
+
+  return (
+    <section data-testid="probe-wr-02" className="bg-surface rounded-lg p-4 space-y-2">
+      {mounted && (
+        <div className="space-y-2">
+          <CurrencyInput ref={cleanupRef} aria-label="Ref cleanup" value={0} onChange={() => {}} />
+          <CurrencyInput ref={classicRef} aria-label="Ref classic" value={0} onChange={() => {}} />
+          <CurrencyInput ref={objRef} aria-label="Ref object" value={0} onChange={() => {}} />
+        </div>
+      )}
+      <div className="flex gap-2 items-center">
+        <Button size="sm" onClick={() => setMounted((m) => !m)}>
+          Toggle refs
+        </Button>
+        <Button size="sm" onClick={read}>
+          Read refs
+        </Button>
+        <output data-testid="refs">{snapshot}</output>
+      </div>
+    </section>
+  );
+}
+
+/** The text foundation of the shared set: Label, Field, Input, Textarea, NumberField and CurrencyInput */
 export function TextFieldCards() {
   return (
     <>
@@ -245,6 +820,7 @@ export function TextFieldCards() {
       <FieldCard />
       <InputCard />
       <TextareaCard />
+      <NumberFieldCard />
       <MoneyCard />
     </>
   );

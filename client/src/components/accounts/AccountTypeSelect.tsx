@@ -1,6 +1,14 @@
-import { useId } from 'react';
 import { ACCOUNT_GROUPS, ACCOUNT_TYPES, type AccountType } from '../../types';
 import { accountTypeInfo } from '../../utils/accountTypes';
+import { Select, type SelectGroup } from '../ui/Select';
+
+const ACCOUNT_TYPE_OPTIONS: SelectGroup[] = ACCOUNT_GROUPS.map((g) => ({
+  label: g.label,
+  options: ACCOUNT_TYPES.filter((t) => t.group === g.value).map((t) => ({
+    value: t.value,
+    label: t.label,
+  })),
+}));
 
 interface Props {
   value: AccountType;
@@ -9,33 +17,15 @@ interface Props {
 
 /** Account type picker grouped into Cash, Credit, Investments, Property, Loans and Other */
 export function AccountTypeSelect({ value, onChange }: Props) {
-  const fieldId = useId();
   return (
-    <div>
-      <label
-        htmlFor={`${fieldId}-account-type`}
-        className="block text-sm font-medium text-text-secondary mb-1"
-      >
-        Account type
-      </label>
-      <select
-        id={`${fieldId}-account-type`}
-        aria-label="Account type"
-        value={value}
-        onChange={(e) => onChange(e.target.value as AccountType)}
-        className="block w-full rounded-lg border border-border px-3 py-2 text-sm bg-surface text-text focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-      >
-        {ACCOUNT_GROUPS.map((g) => (
-          <optgroup key={g.value} label={g.label}>
-            {ACCOUNT_TYPES.filter((t) => t.group === g.value).map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
-      <p className="mt-1 text-xs text-text-tertiary">{accountTypeInfo(value).hint}</p>
-    </div>
+    <Select
+      label="Account type"
+      value={value}
+      onChange={(next) => {
+        if (next) onChange(next as AccountType);
+      }}
+      options={ACCOUNT_TYPE_OPTIONS}
+      description={accountTypeInfo(value).hint}
+    />
   );
 }

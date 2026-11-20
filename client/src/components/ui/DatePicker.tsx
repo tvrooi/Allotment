@@ -1,6 +1,6 @@
 import { parseDate, type CalendarDate } from '@internationalized/date';
 import { ChevronLeft, ChevronRight, CalendarDays, X } from 'lucide-react';
-import { useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import {
   Button as AriaButton,
   Calendar,
@@ -22,9 +22,24 @@ import { useIsPhone } from '../../hooks/useIsPhone';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { isIsoDay, todayIso } from '../../utils/calendarDay';
 import { isMonth } from '../../utils/dateRange';
+import { useReportAmountValidity } from './amountValidity';
 import { dateExample, segmentLocale } from './dateSegments';
 import { describedByIds, FieldDescription, FieldErrorText, FieldLines } from './Field';
-import { fieldBase, fieldStates } from './fieldClasses';
+import {
+  fieldBase,
+  fieldHeights,
+  fieldStates,
+  pickerFooterClass,
+  pickerGroupBase,
+  pickerGroupHeight,
+  pickerGroupPadding,
+  pickerGroupText,
+  pickerGroupWidth,
+  pickerIconButton,
+  pickerIconButtonSm,
+  pickerPopoverClass,
+  pickerShortcutClass,
+} from './fieldClasses';
 import {
   dateRangeMessage,
   errorLine,
@@ -72,6 +87,8 @@ interface Props {
   label: string;
   /** Clearing is offered when the date is optional */
   optional?: boolean;
+  /** Shows a muted "(optional)" hint beside the label without changing the accessible name */
+  optionalHint?: boolean;
   /** Earliest allowed day, YYYY-MM-DD, itself allowed */
   minValue?: string;
   /** Latest allowed day, YYYY-MM-DD, itself allowed */
@@ -86,35 +103,13 @@ interface Props {
   /** Focusable and announced, but the value cannot change and the calendar does not open */
   isReadOnly?: boolean;
   isRequired?: boolean;
+  /** md (40 px) beside a md Button, sm (32 px) beside a sm one; 44 px on phones either way */
+  fieldSize?: keyof typeof fieldHeights;
+  /** Keeps the accessible name while visually hiding the label in compact rows */
+  hideLabel?: boolean;
   /** Added to the field's outer box; full width unless the caller gives its own */
   className?: string;
 }
-
-/** A picker's icon button: Clear, the calendar button and the steppers (32 px, 2 px ring) */
-export const pickerIconButton =
-  'flex size-8 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:text-text hover:bg-hover outline-none focus-visible:ring-2 focus-visible:ring-brand-600 disabled:text-text-disabled disabled:hover:bg-transparent disabled:cursor-not-allowed';
-
-/**
- * The trigger group: a field's box (02-UI-SPEC.md, per-control item 10), with 4 px after the
- * trailing buttons, the ring on focus-within and the shared disabled, read-only and invalid looks
- */
-export const pickerGroupClass = `${fieldStates} flex items-center gap-1 w-full h-10 pl-3 pr-1 rounded-md border border-border bg-surface text-sm text-text outline-none transition-colors focus-within:border-brand-600 focus-within:ring-1 focus-within:ring-brand-600 data-[invalid]:focus-within:border-negative data-[invalid]:focus-within:ring-negative`;
-
-/**
- * A calendar or month grid's popover: the card surface with the menu entrance. Unlike a list's
- * popoverClass it is not stretched to the trigger's width: the calendar and the month grid are a
- * fixed size.
- */
-export const pickerPopoverClass =
-  'rounded-lg border border-border-light bg-surface shadow-card outline-none data-[entering]:animate-menu-in max-w-[calc(100vw-16px)]';
-
-/** The bar under a calendar or month grid holding its shortcut: a top border, 8 px either side */
-export const pickerFooterClass =
-  'mt-2 pt-2 border-t border-border-light flex items-center justify-end';
-
-/** The Today and This month shortcuts: small brand text, text-disabled when out of range */
-export const pickerShortcutClass =
-  'rounded-sm px-1 text-xs font-medium text-brand-600 hover:text-brand-700 outline-none focus-visible:ring-2 focus-visible:ring-brand-600 disabled:text-text-disabled disabled:hover:text-text-disabled disabled:cursor-not-allowed';
 
 /**
  * The shared DatePicker (02-UI-SPEC.md, per-control item 10; D-04, D-07, D-08). On desktop it is
@@ -129,6 +124,7 @@ export function DatePicker(props: Props) {
     onChange,
     label,
     optional,
+    optionalHint = false,
     minValue,
     maxValue,
     id,
@@ -139,18 +135,44 @@ export function DatePicker(props: Props) {
     isInvalid = false,
     isReadOnly = false,
     isRequired = false,
+    fieldSize = 'md',
+    hideLabel = false,
     className = 'w-full',
   } = props;
   const isPhone = useIsPhone();
   const format = usePreferencesStore((s) => s.dateFormat);
   const groupRef = useRef<HTMLDivElement>(null);
-  // Set when a required field is left half-typed; a complete date or the next blur re-checks it
+  // Set when the field is left half-typed; a complete date or the next blur re-checks it
   const [halfTyped, setHalfTyped] = useState(false);
+  // The same check as each segment is edited. React Aria gives no value for a half-typed date,
+  // so the caller still holds the last whole one; an enclosing AmountFields learns the field holds
+  // no date and keeps its save unavailable until the date is whole or empty again. The line
+  // above still waits for the field to be left.
+  const [draftHalf, setDraftHalf] = useState(false);
+  const recheckDraft = () => setDraftHalf(isHalfTyped(groupRef.current));
+  // A caller-driven change (Clear, a reset, another payday) re-checks both, so a line named for
+  // a half-typed date does not outlive it
+  useEffect(() => {
+    const half = isHalfTyped(groupRef.current);
+    setDraftHalf(half);
+    if (!half) setHalfTyped(false);
+  }, [value]);
+  useReportAmountValidity(isPhone || !draftHalf);
   const subject = fieldSubject({ errorLabel, label });
   const min = toCalendarDate(minValue);
   const max = toCalendarDate(maxValue);
-  const day = toCalendarDate(value);
-  const incomplete = halfTyped && isRequired && !isPhone;
+  // One CalendarDate per value: React Aria compares it by identity, and a new one on every render
+  // reads as a new value, putting back the last whole date over segments being typed. A pick
+  // (calendar or Today) sets a fresh one, so picking the day already held still refills the
+  // segments when the caller's value does not change. It is keyed on the value string it was made
+  // for, not its own toString(): a stored day that does not round-trip (year 0000 reads as 0001)
+  // would otherwise never match and re-render forever.
+  const [held, setHeld] = useState(() => ({ value, day: toCalendarDate(value) }));
+  if (held.value !== value) setHeld({ value, day: toCalendarDate(value) });
+  const day = held.value === value ? held.day : toCalendarDate(value);
+  const hold = (iso: string) => setHeld({ value: iso, day: toCalendarDate(iso) });
+  // Named whether required or not: a half-typed date holds an enclosing form up either way
+  const incomplete = halfTyped && !isPhone;
   const outOfRange = day !== null && outside(day, min, max);
   // A caller's message always wins; then the half-typed line, the range line, the required line
   const error = errorLine(errorMessage, {
@@ -182,15 +204,22 @@ export function DatePicker(props: Props) {
     <I18nProvider locale={segmentLocale(format)}>
       <AriaDatePicker
         id={id}
-        value={toCalendarDate(value)}
+        value={day}
         // A CalendarDate writes itself as a real YYYY-MM-DD day; a cleared one is null
         onChange={(d) => {
-          if (d) setHalfTyped(false);
+          if (d) {
+            setHalfTyped(false);
+            setDraftHalf(false);
+            hold(d.toString());
+          }
           onChange(d ? d.toString() : '');
         }}
         // Leaving the field is when a half-typed date is named (the "partial" state)
         onFocusChange={(focused) => {
-          if (!focused) setHalfTyped(isHalfTyped(groupRef.current));
+          if (!focused) {
+            setHalfTyped(isHalfTyped(groupRef.current));
+            recheckDraft();
+          }
         }}
         minValue={min ?? undefined}
         maxValue={max ?? undefined}
@@ -202,14 +231,21 @@ export function DatePicker(props: Props) {
         validationBehavior="aria"
         className={`group flex flex-col gap-1 ${className}`}
       >
-        <Label elementType="span" isRequired={isRequired}>
+        <Label elementType="span" isRequired={isRequired} className={hideLabel ? 'sr-only' : ''}>
           {label}
+          {optionalHint && !isRequired && (
+            <span aria-hidden="true" className="ml-1 font-normal text-text-tertiary">
+              (optional)
+            </span>
+          )}
         </Label>
         <Group
           ref={groupRef}
+          // A typed or cleared segment has reached the DOM by key-up
+          onKeyUp={recheckDraft}
           isDisabled={isDisabled}
           isReadOnly={isReadOnly}
-          className={pickerGroupClass}
+          className={`${pickerGroupBase} ${pickerGroupWidth} ${fieldSize === 'sm' ? fieldHeights.sm : pickerGroupHeight} ${pickerGroupPadding} ${pickerGroupText}`}
         >
           <DateInput className="flex flex-1 min-w-0 tabular-nums">
             {(segment) => (
@@ -225,12 +261,15 @@ export function DatePicker(props: Props) {
               // Not a calendar slot: it empties the field instead of opening the calendar
               slot={null}
               onPress={() => onChange('')}
-              className={pickerIconButton}
+              className={fieldSize === 'sm' ? pickerIconButtonSm : pickerIconButton}
             >
               <X size={14} aria-hidden />
             </AriaButton>
           )}
-          <AriaButton aria-label="Choose from a calendar" className={pickerIconButton}>
+          <AriaButton
+            aria-label="Choose from a calendar"
+            className={fieldSize === 'sm' ? pickerIconButtonSm : pickerIconButton}
+          >
             <CalendarDays size={16} aria-hidden />
           </AriaButton>
         </Group>
@@ -280,6 +319,8 @@ export function DatePicker(props: Props) {
                     isDisabled={!todayAllowed}
                     onPress={() => {
                       setHalfTyped(false);
+                      setDraftHalf(false);
+                      hold(todayIso());
                       onChange(todayIso());
                       close();
                     }}
@@ -303,6 +344,7 @@ type NativeProps = Pick<
   | 'value'
   | 'onChange'
   | 'label'
+  | 'optionalHint'
   | 'minValue'
   | 'maxValue'
   | 'id'
@@ -311,6 +353,7 @@ type NativeProps = Pick<
   | 'isInvalid'
   | 'isReadOnly'
   | 'isRequired'
+  | 'hideLabel'
   | 'className'
 > & {
   /** A day (YYYY-MM-DD) or a month (YYYY-MM) */
@@ -338,6 +381,7 @@ export function NativePicker({
   value,
   onChange,
   label,
+  optionalHint = false,
   minValue,
   maxValue,
   id,
@@ -347,14 +391,20 @@ export function NativePicker({
   isInvalid,
   isReadOnly,
   isRequired,
+  hideLabel = false,
   className,
 }: NativeProps) {
   const lineId = useId();
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
       <label className="flex flex-col gap-1">
-        <Label elementType="span" isRequired={isRequired}>
+        <Label elementType="span" isRequired={isRequired} className={hideLabel ? 'sr-only' : ''}>
           {label}
+          {optionalHint && !isRequired && (
+            <span aria-hidden="true" className="ml-1 font-normal text-text-tertiary">
+              (optional)
+            </span>
+          )}
         </Label>
         <input
           type={type}

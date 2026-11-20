@@ -3,11 +3,15 @@ import { CalendarRange } from 'lucide-react';
 import { Button as AriaButton, Dialog, DialogTrigger, Group, Popover } from 'react-aria-components';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { thisMonthIso } from '../../utils/calendarDay';
-import { formatMonthRange, pickRangeMonth, type MonthRange } from '../../utils/dateRange';
+import {
+  formatMonth,
+  formatMonthRange,
+  pickRangeMonth,
+  type MonthRange,
+} from '../../utils/dateRange';
 import { Button } from './Button';
-import { pickerGroupClass, pickerPopoverClass } from './DatePicker';
 import { describedByIds, FieldLines } from './Field';
-import { fieldBase, fieldHeights, fieldStates } from './fieldClasses';
+import { fieldHeights, pickerGroupBase, pickerPopoverClass } from './fieldClasses';
 import { Label } from './Label';
 import { MonthGrid } from './MonthPicker';
 import { supportsMonthInput } from './nativeInput';
@@ -41,10 +45,13 @@ interface Props {
  * three users sit in toolbars, so it is as wide as its text rather than the whole row
  */
 const rangeGroupClass = [
-  ...pickerGroupClass.split(' ').filter((c) => !['w-full', 'h-10', 'pr-1', 'text-sm'].includes(c)),
-  'w-fit max-w-full pr-3 text-xs',
+  pickerGroupBase,
+  'w-fit max-w-full pl-3 pr-3 text-xs',
   fieldHeights.sm,
 ].join(' ');
+
+/** Phone From/To box: shows short month text behind a full-size transparent native month input */
+const phoneBoxClass = `${pickerGroupBase} relative w-full min-w-0 min-h-11 px-3 justify-between text-base`;
 
 /**
  * A month range (02-UI-SPEC.md, per-control item 11; D-04, D-11). On desktop, a compact
@@ -87,24 +94,51 @@ export function MonthRangePicker({
       const next = pickRangeMonth({ from, to }, side, month, max);
       if (next.from !== from || next.to !== to) onChange(next.from, next.to);
     };
-    const input = (side: 'from' | 'to', name: string) => (
-      <label className="flex flex-1 min-w-0 flex-col gap-1">
-        <Label elementType="span">{name}</Label>
-        <input
-          type="month"
-          id={side === 'from' ? id : undefined}
-          value={side === 'from' ? from : to}
-          min={side === 'to' ? from : undefined}
-          max={max}
-          onChange={(e) => change(side, e.target.value)}
-          disabled={isDisabled}
-          readOnly={isReadOnly}
-          aria-invalid={isInvalid || undefined}
-          aria-describedby={describedBy}
-          className={`${fieldBase} ${fieldStates} w-full min-w-0 min-h-11 text-base`}
-        />
-      </label>
-    );
+    const input = (side: 'from' | 'to', name: string) => {
+      const inputId = side === 'from' && id ? id : `${ids}-${side}`;
+      const value = side === 'from' ? from : to;
+      const formatted = value ? formatMonth(value) : '';
+      return (
+        <div className="flex flex-1 min-w-0 flex-col gap-1">
+          <Label htmlFor={inputId}>{name}</Label>
+          <div
+            data-disabled={isDisabled || undefined}
+            data-invalid={isInvalid || undefined}
+            data-readonly={isReadOnly || undefined}
+            className={phoneBoxClass}
+          >
+            {/* Input comes first with `peer` so keyboard focus shows native segment editing and hides the display span (WR-03) */}
+            <input
+              type="month"
+              id={inputId}
+              value={value}
+              min={side === 'to' ? from : undefined}
+              max={max}
+              onChange={(e) => change(side, e.target.value)}
+              disabled={isDisabled}
+              readOnly={isReadOnly}
+              aria-invalid={isInvalid || undefined}
+              aria-describedby={describedBy}
+              className={`peer absolute inset-0 z-10 h-full w-full min-h-11 rounded-md bg-transparent px-3 text-base text-text outline-none opacity-0 focus-visible:opacity-100 ${
+                isDisabled ? 'cursor-not-allowed' : isReadOnly ? 'cursor-default' : 'cursor-pointer'
+              }`}
+            />
+            <span
+              aria-hidden="true"
+              data-month-display={side}
+              className={`min-w-0 truncate tabular-nums peer-focus-visible:invisible ${formatted ? '' : 'text-text-tertiary'}`}
+            >
+              {formatted || 'Select month'}
+            </span>
+            <CalendarRange
+              size={16}
+              aria-hidden="true"
+              className={`shrink-0 peer-focus-visible:invisible ${isDisabled ? 'text-text-disabled' : 'text-text-tertiary'}`}
+            />
+          </div>
+        </div>
+      );
+    };
     return (
       <div className={`flex flex-col gap-1 w-full ${className}`}>
         {label && (

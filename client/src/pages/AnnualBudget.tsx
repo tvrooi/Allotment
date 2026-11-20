@@ -7,7 +7,7 @@ import { getAnnualOverview, type AnnualOverview } from '../api/budget';
 import { useAppStore } from '../store/appStore';
 import { formatCurrency } from '../utils/currency';
 import { Button } from '../components/ui/Button';
-import { Select } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
 import { StatCard } from '../components/ui/StatCard';
 import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
@@ -239,21 +239,16 @@ export default function AnnualBudget() {
               </section>
             )}
 
-            <label className="md:hidden mt-6 flex items-center gap-2 text-xs font-medium text-text-secondary">
-              Jump to month
-              <Select
-                value={shownMonth}
-                onChange={(e) => scrollToMonth(e.target.value)}
-                className="flex-1"
-              >
-                {data.months.map((m) => (
-                  <option key={m.month} value={m.month}>
-                    {format(parseISO(`${m.month}-01`), 'MMMM')}
-                    {m.month === current ? ' (this month)' : ''}
-                  </option>
-                ))}
-              </Select>
-            </label>
+            <Select
+              label="Jump to month"
+              value={shownMonth}
+              onChange={scrollToMonth}
+              options={data.months.map((m) => ({
+                value: m.month,
+                label: `${format(parseISO(`${m.month}-01`), 'MMMM')}${m.month === current ? ' (this month)' : ''}`,
+              }))}
+              className="md:hidden mt-6"
+            />
             <div className="relative mt-6 max-md:mt-3">
               <div
                 ref={scroller}

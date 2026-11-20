@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay } from './fixtures';
+import { test, expect, open, isoDay, fillDate } from './fixtures';
 
 for (const width of [1400, 390]) {
   test(`advanced filters keep the ledger visible at ${width}px`, async ({ page, api }) => {
@@ -76,10 +76,63 @@ for (const width of [1400, 390]) {
     const custom = page.getByRole('button', { name: 'Custom', exact: true });
     await custom.click();
     await expect(custom).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByLabel('From', { exact: true })).toBeVisible();
-    await expect(page.getByLabel('To', { exact: true })).toBeVisible();
-    await page.getByLabel('From', { exact: true }).fill('2026-11-01');
-    await expect(page.getByLabel('From', { exact: true })).toHaveValue('2026-11-01');
+    // The shared DatePicker: typed segments in a group on desktop, the native date input on
+    // phones, so the field is found by its group or its label and its day read from the URL
+    const field = (name: string) =>
+      width < 768
+        ? page.getByLabel(name, { exact: true })
+        : page.getByRole('group', { name, exact: true });
+    await expect(field('From')).toBeVisible();
+    await expect(field('To')).toBeVisible();
+    await fillDate(page, 'From', '2026-11-01');
+    await expect(page).toHaveURL(/[?&]from=2026-11-01(&|$)/);
     await expect(custom).toHaveAttribute('aria-pressed', 'true');
+    // Desktop's DatePicker has a Clear button (the phone's native input has none): it drops the
+    // day from the link and keeps Custom chosen (03-24 review WR-03)
+    if (width >= 768) {
+      await page.getByRole('button', { name: 'Clear From', exact: true }).click();
+      await expect(page).not.toHaveURL(/[?&]from=/);
+      await expect(custom).toHaveAttribute('aria-pressed', 'true');
+    }
   });
 }
+
+// 0 is a bound of its own: "At most 0" lists only the zero-amount rows and keeps max_amount=0 in
+// the link, while an emptied field is no bound at all (03-24 review WR-01)
+test('At most 0 lists only zero-amount rows, and emptying it lifts the bound', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Everyday');
+  await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: 0,
+    payeeName: 'Fee waived',
+  });
+  await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: 2500,
+    payeeName: 'Refund',
+  });
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await open(page, '/transactions');
+  const rows = page.getByTestId('transaction-row');
+  await expect(rows).toHaveCount(2);
+  await page.getByRole('button', { name: /^Filters/ }).click();
+  await page.getByRole('tab', { name: 'Money', exact: true }).click();
+  const atMost = page.getByLabel('At most');
+  await atMost.fill('0');
+  await atMost.press('Enter');
+  await expect(page).toHaveURL(/[?&]max_amount=0(&|$)/);
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('Fee waived');
+  // Back in the field, the bound is still 0, not emptied
+  await atMost.click();
+  await expect(atMost).toHaveValue('0');
+  await atMost.fill('');
+  await atMost.press('Enter');
+  await expect(page).not.toHaveURL(/[?&]max_amount=/);
+  await expect(rows).toHaveCount(2);
+});

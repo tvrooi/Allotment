@@ -109,6 +109,18 @@ describe('DatePicker on desktop', () => {
     expect(render()).not.toMatch(/>\*</);
   });
 
+  it('optionalHint shows a muted "(optional)" hint kept out of the accessible name (WR-05)', () => {
+    const html = render({ label: 'End date', optional: true, optionalHint: true });
+    expect(html).toMatch(
+      />End date<span aria-hidden="true" class="ml-1 font-normal text-text-tertiary">\(optional\)<\/span><\/span>/,
+    );
+    expect(html).toContain('aria-label="Clear End date"');
+    expect(render({ label: 'End date', optional: true })).not.toContain('(optional)');
+    expect(render({ label: 'End date', isRequired: true, optionalHint: true })).not.toContain(
+      '(optional)',
+    );
+  });
+
   it('a required, invalid one names its subject in the default line; a message wins', () => {
     expect(render({ isRequired: true, isInvalid: true, value: '' })).toContain(
       'Select Paid on to continue',
@@ -116,6 +128,13 @@ describe('DatePicker on desktop', () => {
     const html = render({ isInvalid: true, errorMessage: 'Pick a weekday' });
     expect(html).toContain('Pick a weekday');
     expect(html).not.toContain('to continue');
+  });
+
+  it('renders a stored day that does not round-trip, without re-rendering forever (review-3 CR-01)', () => {
+    // A rule condition is checked for shape only, so 0000-01-01 can be stored; CalendarDate
+    // reads year 0 as 1, so the held day never writes back the same string
+    expect(() => render({ value: '0000-01-01' })).not.toThrow();
+    expect(() => render({ value: '2026-02-30' })).not.toThrow();
   });
 
   it('uses no hex colour, no opacity dimming and no semibold weight', () => {
@@ -159,6 +178,24 @@ describe('DatePicker on phones', () => {
     const errorId = html.match(/id="([^"]*)"[^>]*>Select Paid on to continue/)?.[1];
     expect(errorId).toBeTruthy();
     expect(tag).toMatch(new RegExp(` aria-describedby="[^"]*${errorId}`));
+  });
+
+  it('optionalHint shows a muted "(optional)" hint excluded from the native label name (WR-05)', () => {
+    const html = phone({ label: 'End date', optional: true, optionalHint: true });
+    expect(html).toMatch(
+      /<label[^>]*><span[^>]*>End date<span aria-hidden="true" class="ml-1 font-normal text-text-tertiary">\(optional\)<\/span><\/span><input[^>]*type="date"/,
+    );
+  });
+
+  it('supports fieldSize sm and hideLabel on desktop and phone (WR-03)', () => {
+    const desktopSm = render({ fieldSize: 'sm', hideLabel: true });
+    expect(group(desktopSm)).toMatch(/\bh-8\b/);
+    expect(group(desktopSm)).not.toMatch(/\bh-10\b/);
+    expect(desktopSm).toMatch(/<span[^>]*class="[^"]*\bsr-only\b[^"]*"[^>]*>Paid on/);
+
+    const phoneHidden = phone({ fieldSize: 'sm', hideLabel: true });
+    expect(input(phoneHidden)).toMatch(/\bmin-h-11\b/);
+    expect(phoneHidden).toMatch(/<span[^>]*class="[^"]*\bsr-only\b[^"]*"[^>]*>Paid on/);
   });
 });
 

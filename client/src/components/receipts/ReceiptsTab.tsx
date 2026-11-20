@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Camera, RefreshCw, Settings } from 'lucide-react';
-import type { Receipt } from '../../api/tax';
+import type { Receipt, ServerModel } from '../../api/tax';
 import {
   useMatchReceiptsNow,
   useReaderModels,
@@ -17,8 +17,11 @@ import { formatCurrency } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { ReceiptDrop, ReceiptThumb, receiptFiles } from '../tax/ReceiptsSection';
 import { Button } from '../ui/Button';
-import { Input, Select } from '../ui/Input';
+import { Checkbox } from '../ui/Checkbox';
+import { Combobox } from '../ui/Combobox';
+import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
+import { Select } from '../ui/Select';
 import { ReceiptEditor } from './ReceiptEditor';
 
 const FILTERS = [
@@ -227,21 +230,18 @@ function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
   const [s, setS] = useState(data);
   useEffect(() => setS(data), [data]);
   const toggle = (key: 'autoSplit' | 'addNotes' | 'addTag', label: string, hint: string) => (
-    <label className="flex items-start gap-2 text-sm">
-      <input
-        type="checkbox"
-        className="mt-1"
-        checked={!!s?.[key]}
-        onChange={(e) => {
-          if (s) setS({ ...s, [key]: e.target.checked });
-          set.mutate({ [key]: e.target.checked });
-        }}
-      />
+    <Checkbox
+      checked={!!s?.[key]}
+      onCheckedChange={(checked) => {
+        if (s) setS({ ...s, [key]: checked });
+        set.mutate({ [key]: checked });
+      }}
+    >
       <span>
         {label}
         <span className="block text-xs text-text-tertiary">{hint}</span>
       </span>
-    </label>
+    </Checkbox>
   );
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Receipt settings">
@@ -264,6 +264,32 @@ function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       </div>
     </Modal>
   );
+}
+
+/**
+ * The local model list's "no model" choice. The Combobox reads '' as no selection, and emptying
+ * its text to search sends '' too, so the choice needs a value of its own
+ */
+export const NO_MODEL = '__none__';
+
+/** The local model choices: "Choose a model…" (unsets it), then the server's models as given */
+export function localModelItems(models: readonly ServerModel[]) {
+  return [
+    { value: NO_MODEL, label: 'Choose a model…' },
+    ...models.map((m) => ({
+      value: m.name,
+      label: `${m.name}${m.vision === true ? ' (reads images)' : m.vision === false ? ' (text only)' : ''}`,
+    })),
+  ];
+}
+
+/**
+ * What a change of the local model field saves: a model's name, null for "Choose a model…", or
+ * undefined for '' (the text emptied to search, which is not a choice)
+ */
+export function localModelPick(value: string): string | null | undefined {
+  if (!value) return undefined;
+  return value === NO_MODEL ? null : value;
 }
 
 const CLOUD: Record<'anthropic' | 'openai', { name: string; model: string; keys: string }> = {
@@ -325,26 +351,24 @@ function ReaderSettingsSection() {
           matched as usual. Fields you typed are never replaced. Photos only, not PDFs.
         </p>
       </div>
-      <div className="block text-xs font-medium text-text-secondary space-y-1">
-        <span className="block">Who reads them</span>
-        <Select
-          aria-label="Who reads them"
-          value={provider}
-          onChange={(e) => {
-            const next = e.target.value as typeof provider;
-            setOn(false);
-            void apply({
-              provider: next,
-              enabled: false,
-              model: next === 'local' ? null : CLOUD[next].model,
-            });
-          }}
-        >
-          <option value="local">A model server on your own network</option>
-          <option value="anthropic">{CLOUD.anthropic.name}</option>
-          <option value="openai">{CLOUD.openai.name}</option>
-        </Select>
-      </div>
+      <Select
+        label="Who reads them"
+        value={provider}
+        options={[
+          { value: 'local', label: 'A model server on your own network' },
+          { value: 'anthropic', label: CLOUD.anthropic.name },
+          { value: 'openai', label: CLOUD.openai.name },
+        ]}
+        onChange={(value) => {
+          const next = value as typeof provider;
+          setOn(false);
+          void apply({
+            provider: next,
+            enabled: false,
+            model: next === 'local' ? null : CLOUD[next].model,
+          });
+        }}
+      />
       {cloud ? (
         <>
           <p className="text-xs text-caution">
@@ -439,29 +463,18 @@ function ReaderSettingsSection() {
           </div>
           <p className="text-xs text-text-tertiary">The photo goes only to this address.</p>
           {found.length > 0 && (
-            <label className="block text-xs font-medium text-text-secondary space-y-1">
-              <span className="block">Model</span>
-              <Select
-                aria-label="Model"
-                value={model}
-                onChange={(e) => {
-                  setModel(e.target.value);
-                  void apply({ model: e.target.value || null });
-                }}
-              >
-                <option value="">Choose a model…</option>
-                {choices.map((m) => (
-                  <option key={m.name} value={m.name}>
-                    {m.name}
-                    {m.vision === true
-                      ? ' (reads images)'
-                      : m.vision === false
-                        ? ' (text only)'
-                        : ''}
-                  </option>
-                ))}
-              </Select>
-            </label>
+            <Combobox
+              label="Model"
+              placeholder="Choose a model…"
+              items={localModelItems(choices)}
+              value={model || NO_MODEL}
+              onChange={(value) => {
+                const picked = localModelPick(value);
+                if (picked === undefined) return;
+                setModel(picked ?? '');
+                void apply({ model: picked });
+              }}
+            />
           )}
           {models.isSuccess && !found.some((m) => m.vision) && (
             <p className="text-xs text-caution">
@@ -474,31 +487,27 @@ function ReaderSettingsSection() {
         </>
       )}
       {ready && <SampleCheck onError={setError} />}
-      <label className="flex items-start gap-2 text-sm">
-        <input
-          type="checkbox"
-          className="mt-1"
-          checked={on}
-          disabled={!on && !ready}
-          onChange={async (e) => {
-            const enabled = e.target.checked;
-            setOn(enabled);
-            setError(null);
-            try {
-              await save.mutateAsync({ enabled });
-            } catch (err) {
-              setOn(!enabled);
-              setError((err as Error).message);
-            }
-          }}
-        />
+      <Checkbox
+        checked={on}
+        disabled={!on && !ready}
+        onCheckedChange={async (enabled) => {
+          setOn(enabled);
+          setError(null);
+          try {
+            await save.mutateAsync({ enabled });
+          } catch (err) {
+            setOn(!enabled);
+            setError((err as Error).message);
+          }
+        }}
+      >
         <span>
           Read new photos when they are added
           <span className="block text-xs text-text-tertiary">
             One at a time in the background; on a small server each can take a minute or two.
           </span>
         </span>
-      </label>
+      </Checkbox>
       {error && (
         <p role="alert" className="text-xs text-negative">
           {error}

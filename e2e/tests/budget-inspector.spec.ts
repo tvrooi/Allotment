@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, open, isoDay, thisMonth } from './fixtures';
+import { test, expect, open, isoDay, thisMonth, setToggle } from './fixtures';
 
 // BUD-05 and BUD-10: typing assignments from the keyboard, sums, the inspector and notes
 // (docs/ENVELOPE-FUNDING.md, "Typing assignments" and "The inspector and notes").
@@ -169,6 +169,8 @@ test.describe('budget keyboard and inspector', () => {
     await expect(total).toContainText('$1,900');
     await expect(inspector.locator('dd').nth(1)).toHaveText('$1,900');
     const monthNote = inspector.getByRole('textbox', { name: 'Note for this month' });
+    // Two rows tall, as before the move to the shared Textarea (no 80 px floor; D-15)
+    expect((await monthNote.boundingBox())!.height).toBeLessThanOrEqual(60);
     await monthNote.fill('Bonus lands mid-month 🎉');
     await monthNote.blur();
     await expect(inspector.getByText('Note saved.')).toBeVisible();
@@ -177,14 +179,14 @@ test.describe('budget keyboard and inspector', () => {
     // The ticks stay hidden until Select is turned on
     await expect(page.getByRole('checkbox', { name: 'Select Groceries' })).toHaveCount(0);
     await page.getByRole('button', { name: 'Select', exact: true }).click();
-    await page.getByRole('checkbox', { name: 'Select Groceries' }).check();
+    await setToggle(page.getByRole('checkbox', { name: 'Select Groceries' }), true);
     await expect(inspector.getByRole('heading', { name: 'Groceries' })).toBeVisible();
     await expect(inspector).toContainText('Activity-$125');
     await expect(inspector).toContainText('Available$275');
     const catNote = inspector.getByRole('textbox', { name: 'Note for Groceries' });
     await catNote.fill('Costco every other week');
     // Ticking another envelope saves the note being typed
-    await page.getByRole('checkbox', { name: 'Select Rent / Mortgage' }).check();
+    await setToggle(page.getByRole('checkbox', { name: 'Select Rent / Mortgage' }), true);
     await expect(inspector.getByRole('heading', { name: '2 envelopes selected' })).toBeVisible();
     await expect(inspector).toContainText('Assigned$1,900');
     await expect(inspector).toContainText('Available$1,775');
@@ -203,7 +205,7 @@ test.describe('budget keyboard and inspector', () => {
       }),
     ).toHaveValue('Bonus lands mid-month 🎉');
     await page.getByRole('button', { name: 'Select', exact: true }).click();
-    await page.getByRole('checkbox', { name: 'Select Groceries' }).check();
+    await setToggle(page.getByRole('checkbox', { name: 'Select Groceries' }), true);
     await expect(
       page.getByRole('region', { name: 'Inspector' }).getByRole('textbox', {
         name: 'Note for Groceries',
@@ -218,7 +220,7 @@ test.describe('budget keyboard and inspector', () => {
       await api.call('PUT', `/budget/category/${c.id}/target`, { type: 'monthly', amount: 20000 });
     await open(page, '/budget');
     await page.getByRole('button', { name: 'Select', exact: true }).click();
-    await page.getByRole('checkbox', { name: 'Select Groceries' }).check();
+    await setToggle(page.getByRole('checkbox', { name: 'Select Groceries' }), true);
     await page
       .getByRole('region', { name: 'Inspector' })
       .getByRole('button', { name: 'Fund target' })

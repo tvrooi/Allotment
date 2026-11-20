@@ -32,6 +32,7 @@ import { useIsPhone } from '../../hooks/useIsPhone';
 import { TransactionDetailPanel } from './TransactionDetailPanel';
 import { ImportModal } from './ImportModal';
 import { Button, ButtonLink } from '../ui/Button';
+import { Checkbox } from '../ui/Checkbox';
 import { EmptyState } from '../ui/EmptyState';
 import { useOpenFromLink } from '../../hooks/useOpenFromLink';
 import { useScrollMemory } from '../../hooks/useScrollMemory';
@@ -41,6 +42,7 @@ import { transactionValue } from '../../utils/accountMoney';
 import { formatMoney } from '../../utils/currency';
 import { useAccountCurrency, useBudgetCurrency } from '../../hooks/useCurrency';
 import type { CategoryGroup, Transaction } from '../../types';
+import { transferTargets } from '../../utils/addTransaction';
 import type { CreateTransactionData } from '../../api/transactions';
 import { formatDay, formatDayLong } from '../../utils/dates';
 import { connectedBanksLink } from '../../utils/movedSections';
@@ -216,7 +218,7 @@ export function TransactionTable({
   }, [groups]);
 
   // Offered as "Transfer: name" when categorizing a transaction
-  const transferAccounts = useMemo(() => accounts.filter((a) => !a.closedAt), [accounts]);
+  const transferAccounts = useMemo(() => transferTargets(accounts), [accounts]);
 
   const accountInfoMap = useMemo(
     () => new Map(accounts.map((a) => [a.id, { name: a.name, type: a.type, logo: a.logo }])),
@@ -349,16 +351,14 @@ export function TransactionTable({
   const withPick = (tx: (typeof transactions)[number], row: React.ReactNode) =>
     picked ? (
       <div key={tx.id} className="flex items-stretch">
-        <label className="flex items-center pl-3 border-b border-border-light bg-surface">
-          <input
-            type="checkbox"
-            className="h-4 w-4"
+        <div className="flex items-center pl-3 border-b border-border-light bg-surface">
+          <Checkbox
             aria-label={`Pick ${tx.payeeName ?? 'payment'} ${formatCurrency(Math.abs(tx.amount))}`}
             disabled={!shareable(tx)}
             checked={picked.has(tx.id)}
-            onChange={() => togglePick(tx.id)}
+            onCheckedChange={() => togglePick(tx.id)}
           />
-        </label>
+        </div>
         <div className="flex-1 min-w-0">{row}</div>
       </div>
     ) : (

@@ -2,6 +2,8 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { Combobox, SearchListBody } from './Combobox';
+import comboboxSource from './Combobox.tsx?raw';
+import type { ListGroup, ListOption } from './listItems';
 
 type Props = Parameters<typeof Combobox>[0];
 const noop = () => {};
@@ -91,6 +93,20 @@ describe('Combobox', () => {
 
   it('takes extra classes on the input, for a wrapper with its own text size', () => {
     expect(classes(input(render({ inputClassName: 'text-base' })))).toContain('text-base');
+  });
+
+  it('uses ListOption and ListGroup from listItems without duplicate Combobox option types (WR-03)', () => {
+    const iconOption: ListOption = {
+      value: 'p1',
+      label: 'Corner Grocery',
+      icon: createElement('span', null, 'icon'),
+      trailing: createElement('span', null, '3'),
+    };
+    const grouped: ListGroup = { label: 'Common', options: [iconOption] };
+    expect(attr(input(render({ items: [grouped], value: 'p1' })), 'value')).toBe('Corner Grocery');
+
+    expect(comboboxSource).not.toMatch(/\bComboboxOption\b|\bComboboxGroup\b/);
+    expect(comboboxSource).toMatch(/from '\.\/listItems'/);
   });
 });
 

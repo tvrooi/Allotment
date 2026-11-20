@@ -4,14 +4,12 @@ import { useCategories } from '../../hooks/useCategories';
 import { usePayees } from '../../hooks/usePayees';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useTags } from '../../hooks/useTags';
-import {
-  amountToInput,
-  formatCurrency,
-  readTypedAmount,
-  useAmountStyle,
-  UNREADABLE_AMOUNT,
-} from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
+import { Checkbox } from '../ui/Checkbox';
+import { CurrencyInput } from '../ui/CurrencyInput';
+import { DatePicker } from '../ui/DatePicker';
+import { Input } from '../ui/Input';
 import { ScrollCue } from '../ui/ScrollCue';
 import { TabList, tabIds } from '../ui/tabList';
 import {
@@ -175,51 +173,46 @@ function CheckList({
         )}
       </legend>
       {options.length > 8 && (
-        <input
+        <Input
           type="search"
+          fieldSize="sm"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={`Find ${label.toLowerCase()}…`}
           aria-label={`Find ${label.toLowerCase()}`}
-          className="w-full max-w-sm mb-1 px-2 py-1 text-xs max-md:text-base max-md:min-h-11 border border-border rounded bg-surface text-text placeholder:text-text-tertiary focus:border-brand-600 focus:outline-none"
+          className="w-full max-w-sm mb-1"
         />
       )}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-0.5 pr-1">
         {special && (
-          <label className="flex items-center gap-2 py-0.5 max-md:min-h-11 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={special.checked}
-              onChange={special.onToggle}
-              className="rounded border-border text-brand-600 focus:ring-brand-600"
-            />
-            <span className="text-sm text-text font-medium truncate">{special.label}</span>
-          </label>
+          <Checkbox
+            checked={special.checked}
+            onCheckedChange={special.onToggle}
+            className="min-w-0 py-0.5 font-medium"
+          >
+            <span className="block truncate">{special.label}</span>
+          </Checkbox>
         )}
         {shown.map((o) => (
-          <label
+          <Checkbox
             key={o.id}
-            className="flex items-center gap-2 py-0.5 max-md:min-h-11 cursor-pointer"
+            checked={selected.includes(o.id)}
+            onCheckedChange={() =>
+              onChange(
+                selected.includes(o.id)
+                  ? selected.filter((id) => id !== o.id)
+                  : [...selected, o.id],
+              )
+            }
+            className="min-w-0 py-0.5"
           >
-            <input
-              type="checkbox"
-              checked={selected.includes(o.id)}
-              onChange={() =>
-                onChange(
-                  selected.includes(o.id)
-                    ? selected.filter((id) => id !== o.id)
-                    : [...selected, o.id],
-                )
-              }
-              className="rounded border-border text-brand-600 focus:ring-brand-600"
-            />
-            <span className="flex min-w-0 text-sm text-text-secondary">
+            <span className="flex min-w-0 text-text-secondary">
               <span className="truncate">{o.name}</span>
               {o.group && (
                 <span className="text-text-tertiary truncate shrink-[2]"> · {o.group}</span>
               )}
             </span>
-          </label>
+          </Checkbox>
         ))}
         {shown.length === 0 && <p className="text-xs text-text-tertiary py-1">None found</p>}
       </div>
@@ -227,7 +220,11 @@ function CheckList({
   );
 }
 
-/** An amount bound typed as an amount, kept as a magnitude in minor units */
+/**
+ * An amount bound typed as an amount, kept as a magnitude in minor units. An empty field is no
+ * bound: CurrencyInput shows 0 as empty and reads empty text as 0, so 0 and null meet here.
+ * Text that is not an amount stays in the field, marked, and is not applied.
+ */
 function AmountBound({
   label,
   value,
@@ -237,39 +234,26 @@ function AmountBound({
   value: number | null;
   onChange: (v: number | null) => void;
 }) {
-  const style = useAmountStyle();
-  const [raw, setRaw] = useState(value === null ? '' : amountToInput(value, style));
-  // Follow the committed value (cleared by a chip, or read from a link), not every render:
-  // the amount style is a new object each time
-  const shown = useRef(value);
-  useEffect(() => {
-    if (shown.current === value) return;
-    shown.current = value;
-    setRaw(value === null ? '' : amountToInput(value, style));
-  }, [value, style]);
-  const read = raw.trim() === '' ? null : readTypedAmount(raw, style);
-  const invalid = raw.trim() !== '' && read === null;
+  const id = useId();
   return (
-    <label className="flex flex-col gap-0.5 min-w-0">
-      <span className="text-xs text-text-tertiary">{label}</span>
-      <input
-        inputMode="decimal"
-        value={raw}
-        onChange={(e) => setRaw(e.target.value)}
-        onBlur={() => {
-          if (invalid) return;
-          const next = read === null ? null : Math.abs(read);
-          shown.current = next;
-          onChange(next);
-        }}
+    <div className="flex flex-col gap-0.5 min-w-0">
+      <label htmlFor={id} className="text-xs text-text-tertiary">
+        {label}
+      </label>
+      <CurrencyInput
+        id={id}
+        fieldSize="sm"
+        // 0 is a bound of its own ("At most 0" lists only zero-amount rows); empty is none
+        nullable
+        value={value}
+        onChange={onChange}
+        placeholder=""
         onKeyDown={(e) => {
-          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          if (e.key === 'Enter') e.currentTarget.blur();
         }}
-        aria-invalid={invalid || undefined}
-        title={invalid ? UNREADABLE_AMOUNT : undefined}
-        className={`w-full px-2 py-1 text-sm max-md:text-base max-md:min-h-11 border rounded bg-surface text-text tabular-nums focus:outline-none focus:border-brand-600 ${invalid ? 'border-negative' : 'border-border'}`}
+        className="bg-surface tabular-nums max-md:text-base"
       />
-    </label>
+    </div>
   );
 }
 
@@ -382,13 +366,14 @@ export function TransactionFilters({
       <div className="flex items-center gap-3 px-6 max-md:px-4 py-3 flex-wrap">
         <div className="relative flex items-center flex-1 min-w-40">
           <Search size={14} className="absolute left-2.5 text-text-tertiary pointer-events-none" />
-          <input
+          <Input
             type="text"
+            fieldSize="sm"
             value={rawSearch}
             onChange={handleSearchChange}
             aria-label="Search payee or notes"
             placeholder="Search payee or notes…"
-            className="w-full pl-8 pr-3 py-1.5 text-sm max-md:text-base max-md:min-h-11 border border-border rounded-lg bg-surface text-text placeholder:text-text-tertiary focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+            className="w-full pl-8 pr-8"
           />
           {rawSearch && (
             <button
@@ -450,22 +435,26 @@ export function TransactionFilters({
 
         {!externalRange && !externalMonth && state.datePreset === 'custom' && (
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-text-secondary">
-            <input
-              type="date"
-              aria-label="From"
+            <DatePicker
+              label="From"
+              hideLabel
+              optional
+              fieldSize="sm"
               value={state.from}
-              max={state.to || undefined}
-              onChange={(e) => set({ from: e.target.value })}
-              className="min-w-0 px-2 py-1 max-md:min-h-11 max-md:text-base border border-border rounded bg-surface text-text"
+              maxValue={state.to || undefined}
+              onChange={(from) => set({ from })}
+              className="w-auto min-w-0"
             />
             <span>to</span>
-            <input
-              type="date"
-              aria-label="To"
+            <DatePicker
+              label="To"
+              hideLabel
+              optional
+              fieldSize="sm"
               value={state.to}
-              min={state.from || undefined}
-              onChange={(e) => set({ to: e.target.value })}
-              className="min-w-0 px-2 py-1 max-md:min-h-11 max-md:text-base border border-border rounded bg-surface text-text"
+              minValue={state.from || undefined}
+              onChange={(to) => set({ to })}
+              className="w-auto min-w-0"
             />
           </div>
         )}
@@ -608,15 +597,13 @@ export function TransactionFilters({
                   />
                 </div>
               </fieldset>
-              <label className="flex items-center gap-2 cursor-pointer min-h-11">
-                <input
-                  type="checkbox"
-                  checked={state.excludeTransfers}
-                  onChange={(e) => set({ excludeTransfers: e.target.checked })}
-                  className="rounded border-border text-brand-600 focus:ring-brand-600"
-                />
-                <span className="text-sm text-text-secondary">Hide transfers</span>
-              </label>
+              <Checkbox
+                checked={state.excludeTransfers}
+                onCheckedChange={(excludeTransfers) => set({ excludeTransfers })}
+                className="self-center"
+              >
+                <span className="text-text-secondary">Hide transfers</span>
+              </Checkbox>
             </div>
           </FilterGroup>
           <FilterGroup id="status" name="Status" active={activeSection} prefix={prefix}>

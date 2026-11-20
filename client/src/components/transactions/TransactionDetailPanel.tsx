@@ -7,7 +7,7 @@ import { CategoryIcon } from '../ui/CategoryIcon';
 import { HouseholdIcon } from '../household/HouseholdIcon';
 import { useHouseholds } from '../../hooks/useHouseholds';
 import { Link, useNavigate } from 'react-router-dom';
-import { useState, useEffect, useId } from 'react';
+import { useState, useEffect, useId, useRef } from 'react';
 import { X, Lock, Repeat, Unlink, Wand2, Split, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   useUpdateTransaction,
@@ -22,6 +22,8 @@ import { CategoryPicker } from './CategoryPicker';
 import { categoriseEdit } from './categoriseEdit';
 import { PayeeCombobox } from './PayeeCombobox';
 import { Button } from '../ui/Button';
+import { DatePicker } from '../ui/DatePicker';
+import { Textarea } from '../ui/Textarea';
 import RowMenu from '../ui/RowMenu';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { useModalValue } from '../ui/Modal';
@@ -44,6 +46,7 @@ import { FilesSection } from '../files/FilesSection';
 import { InvestmentMoney } from '../investments/InvestmentMoney';
 import { SplitTransactionModal } from './SplitTransactionModal';
 import type { Transaction, CategoryGroup, Payee, Account, RuleInput } from '../../types';
+import { transferTargets } from '../../utils/addTransaction';
 
 interface Props {
   transaction: Transaction;
@@ -104,6 +107,12 @@ export function TransactionDetailPanel({
   // Each field follows only its own saved value: a refetch after one edit must not wipe
   // another field that's being typed but not saved yet
   useEffect(() => setLocalDate(tx.date), [tx.id, tx.date]);
+  // The day last sent, so leaving the field after a pick does not send (and undo) it again
+  const sentDate = useRef(tx.date);
+  useEffect(() => {
+    sentDate.current = tx.date;
+  }, [tx.id, tx.date]);
+  const dateField = useRef<HTMLDivElement>(null);
   useEffect(() => setLocalNotes(tx.notes ?? ''), [tx.id, tx.notes]);
   useEffect(
     () => setLocalPayee({ id: tx.payeeId, name: tx.payeeName ?? '' }),
@@ -160,14 +169,31 @@ export function TransactionDetailPanel({
   // balance correction can't be a transfer
   const canSave = useCanSave();
   const transferAccounts =
-    canSave && !isTransfer && !tx.isAdjustment
-      ? accounts.filter((a) => a.id !== tx.accountId && !a.closedAt)
-      : [];
+    canSave && !isTransfer && !tx.isAdjustment ? transferTargets(accounts, tx.accountId) : [];
 
-  function saveDate() {
-    if (localDate !== tx.date) {
-      updateTx.mutate({ id: tx.id, data: { date: localDate } });
+  /** Sends a whole day that differs from the saved one; a cleared or half-typed date is '' */
+  function saveDate(day: string) {
+    if (day && day !== sentDate.current) {
+      sentDate.current = day;
+      updateTx.mutate(
+        { id: tx.id, data: { date: day } },
+        {
+          // Not saved: show the saved day again, and let the same day be sent again
+          onError: () => {
+            sentDate.current = tx.date;
+            setLocalDate(tx.date);
+          },
+        },
+      );
     }
+  }
+
+  // A day picked from the calendar or Today saves at once: focus is in the calendar then, and
+  // goes back to the field, so there is no blur to wait for (03-RESEARCH Pitfall 2). A typed
+  // day changes with each digit (year 2, 20, 202, 2026), so it saves once the field is left.
+  function handleDateChange(day: string) {
+    setLocalDate(day);
+    if (!dateField.current?.contains(document.activeElement)) saveDate(day);
   }
 
   function saveNotes() {
@@ -363,22 +389,24 @@ export function TransactionDetailPanel({
           </>
         )}
 
-        <div>
-          <label
-            htmlFor={`${fieldId}-date`}
-            className="text-xs font-medium text-text-secondary mb-1.5 block"
-          >
+        <div
+          ref={dateField}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget)) saveDate(localDate);
+          }}
+        >
+          {/* The panel's own label look; the picker names itself with its hidden label, and a
+              <label> would point at its group, which is no field */}
+          <span aria-hidden="true" className="text-xs font-medium text-text-secondary mb-1.5 block">
             Date
-          </label>
-          <input
+          </span>
+          <DatePicker
             id={`${fieldId}-date`}
-            type="date"
-            aria-label="Date"
+            label="Date"
+            hideLabel
             value={localDate}
-            onChange={(e) => setLocalDate(e.target.value)}
-            onBlur={saveDate}
-            disabled={isReconciled}
-            className={inputCls}
+            onChange={handleDateChange}
+            isDisabled={isReconciled}
           />
         </div>
 
@@ -533,7 +561,8 @@ export function TransactionDetailPanel({
                 value={localPayee}
                 onChange={handlePayeeChange}
                 payees={payees}
-                className={`border border-border rounded-lg px-3 py-2 focus:border-brand-600 focus:ring-1 focus:ring-brand-600`}
+                // 44 px with 16px text on phones, as every shared field there (03-UI-SPEC §6)
+                className="border border-border rounded-lg px-3 py-2 max-md:min-h-11 max-md:text-base focus:border-brand-600 focus:ring-1 focus:ring-brand-600"
               />
             </div>
           </div>
@@ -546,7 +575,7 @@ export function TransactionDetailPanel({
           >
             Notes
           </label>
-          <textarea
+          <Textarea
             id={`${fieldId}-notes`}
             value={localNotes}
             onChange={(e) => setLocalNotes(e.target.value)}
@@ -554,7 +583,8 @@ export function TransactionDetailPanel({
             placeholder="Add notes to this transaction..."
             aria-label="Notes"
             rows={3}
-            className={`${inputCls} resize-none`}
+            // As it was: a fixed three rows (the shared Textarea resizes vertically otherwise)
+            className="w-full resize-none!"
           />
         </div>
 

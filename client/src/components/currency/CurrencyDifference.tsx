@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
+import { CategorySelectButton } from '../transactions/CategorySelectButton';
 import { useCanSave } from '../../hooks/useConnection';
 import { useCategories } from '../../hooks/useCategories';
 import { recordCurrencyDifference } from '../../api/currency';
@@ -40,7 +41,7 @@ function RecordModal({ account, onClose }: { account: Account; onClose: () => vo
   const { data: groups = [] } = useCategories();
   // A gain is income; a loss is spending
   const choices = groups.filter((g) => (g.isIncome === 1) === gain);
-  const [categoryId, setCategoryId] = useState('');
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const canSave = useCanSave();
   const qc = useQueryClient();
   const record = useMutation({
@@ -80,23 +81,17 @@ function RecordModal({ account, onClose }: { account: Account; onClose: () => vo
           >
             Category
           </label>
-          <select
+          <CategorySelectButton
             id="difference-category"
+            label="Category"
             value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            className="block w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-          >
-            <option value="">No category (net worth only)</option>
-            {choices.map((g) => (
-              <optgroup key={g.id} label={g.name}>
-                {g.categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
+            onChange={setCategoryId}
+            groups={choices}
+            allowNone
+            noneLabel="No category (net worth only)"
+            allowCreate={false}
+            includeHidden
+          />
           <p className="mt-1 text-xs text-text-tertiary">
             Without a category it stays out of income and spending, like other balance corrections.
           </p>

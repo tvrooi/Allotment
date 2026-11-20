@@ -1,11 +1,36 @@
 # UI handover
 
-Overwritten at the end of each UI session, never appended. Wave F entry rewritten 15 November 2026
+Overwritten at the end of each UI session, never appended. Wave G2 entry written 20 November 2026
+(branch `feat/wave-g2-screens`, up.176, PR into `redesign`, not merged). Wave F entry rewritten 15 November 2026
 for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 November 2026 (branch `feat/wave-e-navigation`, up.173); Wave D and palette entries updated 12 November 2026
 (PRs #262 and #259). Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Older detail: grep `docs/handover/ARCHIVE.md`.
 
 ## Done this session
 
+- Wave G2 (#267, WAVG-05; up.176, branch `feat/wave-g2-screens`, not merged): the everyday money
+  screens use only the shared controls. Transactions (`TransactionFormRow`, `TransactionDetailPanel`,
+  `AddTransactionModal`, `BulkEditModal`, `BulkDeleteModal`, `SplitTransactionModal`,
+  `TransferSuggestions`, the register's pick-to-share boxes, `TransactionFilters`,
+  `TransactionMarks`), Accounts (`AccountTypeSelect`, add, edit and delete dialogs,
+  `ReconcilePage`), Budget (the table's amount cell, `BudgetAmountSheet`, `CardPayments`,
+  `MoneyMoves`, `TargetCard`, `PaydayPlan`, `AutoAssign`, `FundingRows`, `NoteField`,
+  `AnnualBudget`), Categories (`CategoryManager`, `EditCategoryModal`, `DeleteCategoryModal`),
+  Payees, Rules (`RuleEditorModal`, `OptionPicker`, `ApplyRulesModal`), Recurring
+  (`RecurringFormModal`, `UpcomingLengthModal`, `AllTab`, `DiscoverSchedulesModal`,
+  `OccurrenceMatchModal`), receipts (`ReceiptEditor`, receipt settings) and
+  `CurrencySelect`/`CurrencyDifference`. The leftover gate in 03-15-PLAN.md prints 0 over these files.
+  Added to the set: `ui/NumberField.tsx` (bounded whole or decimal numbers, D-14: keeps the typed
+  text, shows its range line under the field, holds an `AmountFields` save; text helpers in
+  `ui/numberText.ts`, messages in `fieldMessages.ts`); `CurrencyInput` options `fieldSize`,
+  `expression`, `onTextChange`, `commitOnBlur`, `nullable` (empty is null, a typed 0 is a bound) and
+  a forwarded ref; `DatePicker` options `fieldSize`, `hideLabel` and `optionalHint`.
+  `MerchantSelect` is a wrapper over the shared Combobox (same sort, footer and Escape rule);
+  `CategoryPicker`/`CategorySelectButton` gained `extraItem` (a pinned choice such as Ready to
+  assign), `hint`, `allowCreate`, `includeHidden`, `allowNone`/`noneLabel` and `label`, and a
+  button is named `<label>: <shown>`. `MonthRangePicker` shows short months (Nov 2026) on phones
+  (owner, 19 November 2026). Stays native (D-17): the three file inputs (account logo, payee logo,
+  receipt scan photo) and `IconPickerPopover`. Every behaviour change and changed selector is in the
+  G2 PR body and `CHANGELOG.md`.
 - Wave F settings split and good moments (up.174, branch `wave-f`, PR #273 revised to the owner's
   14 November decisions): #244 Connected banks is its own page, `/accounts/connections`
   (`pages/AccountConnections.tsx` around `components/accounts/ConnectedBanks.tsx`), opened from
@@ -98,11 +123,11 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 
 ## In progress
 
-- None committed half-done. `redesign` is ahead of `main`; up.154 to up.172 are prepared, not tagged.
+- None committed half-done. `redesign` is ahead of `main`; up.154 to up.176 are prepared, not tagged.
 - Wave G shared form controls (#267): G0, the audit, is
   [FORM-CONTROLS-AUDIT.md](FORM-CONTROLS-AUDIT.md) (PR #275): every field and selector in
   `client/src` with its file and line, what it becomes and the phase that moves it.
-- G1, the shared control set (in its PR into `redesign`, with #264): `client/src/components/ui/`
+- G1, the shared control set (merged into `redesign` as #277, with #264): `client/src/components/ui/`
   has `Input`, `Textarea`, `Select`, `Combobox`, `Checkbox`, `RadioGroup`, `Switch`,
   `DatePicker`, `MonthPicker`, `Label` and `Field`, on `react-aria-components` (already a
   dependency; no new package). Their class strings live in one place, `ui/fieldClasses.ts`;
@@ -121,10 +146,13 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
   on MonthPicker's `MonthGrid` inside React Aria's dialog, with two native month inputs (From and
   To) on phones and its props unchanged. Its three users are `reports/DateRangeControl.tsx`,
   `reports/ReportBuilderSidebar.tsx` and `pages/CashFlow.tsx`.
-- What has not moved yet: screens still use the native `Select` from `ui/Input.tsx` and their own
-  fields until Phases 3 and 4 (G2 to G4) move them; Phase 4 (G5) removes the native `Select`. The only
-  screens touched by G1 are those using `CategoryPicker` and `PayeeCombobox` (now wrappers over
-  the shared Combobox) and the three range picker users.
+- What has not moved yet: G3 (WAVG-06) is next, after the owner merges G2: Goals, Forecast and
+  long-term forecast, Investments, Reports and the report builder, Files, and the import dialogs
+  (`ImportModal`, `YnabImportModal`, `ImportCategories`, `ImportHistory`; exports are download
+  buttons, and `settings/DataExport.tsx` moves with Settings). Phase 4 (G4) moves Settings, the
+  bank connection sections (`ConnectedBanks`) and the shelved and split-candidate pages (Review,
+  Cash flow, Household, Tax); G5 adds the lint rule and removes the native `Select` in
+  `ui/Input.tsx`. `CategorySelect.tsx` stays until Payment plans move.
 
 ## Next up (issues)
 
@@ -152,8 +180,9 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 - Long-range forecast amounts use `formatWholeCurrency`; forecasts are dotted with a ring at today.
 - Pickers (Wave G1, #267, replacing Wave E's short-list rule): categories use `CategoryPicker`,
   payees use `PayeeCombobox`, a fixed list uses `Select` (`components/ui/Select.tsx`), and a list
-  the user grows uses `Combobox`; phones get native select, date and month controls. Screens move
-  onto this in Phases 3 and 4; until a screen moves it keeps the native `Select` in `ui/Input.tsx`.
+  the user grows uses `Combobox`; phones get native select, date and month controls. A bounded
+  number uses `NumberField`, money `CurrencyInput` (D-14). The G2 screens are on this; the rest
+  move in G3 and Phase 4, and until a screen moves it keeps the native `Select` in `ui/Input.tsx`.
 - Gutter: page title rows and the content under them use `PAGE_GUTTER`
   (`components/ui/pageGutter.ts`): 16 px on phones, 24 px from `md`; `e2e/tests/phone/page-gutter.spec.ts`
   checks every route (#240).

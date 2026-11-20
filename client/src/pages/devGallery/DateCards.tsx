@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DatePicker } from '../../components/ui/DatePicker';
 import { MonthPicker } from '../../components/ui/MonthPicker';
 import { MonthRangePicker } from '../../components/ui/MonthRangePicker';
+import { AmountFields, useAmountValidity } from '../../components/ui/amountValidity';
 import { formatDay } from '../../utils/dates';
 import { GalleryCard, Specimen } from './Specimen';
 
@@ -38,16 +39,22 @@ function ShownMonth({ value }: { value: string }) {
 /**
  * The shared DatePicker in its five states, an empty optional one, ranged ones (both bounds, a
  * floor only, and a ceiling that leaves today out), a required empty one and a required, invalid
- * empty one (02-UI-SPEC.md, per-control item 10). Each starts on or near the pinned day.
+ * empty one, the small, label-hidden size a rule condition row uses (02-UI-SPEC.md, per-control
+ * item 10), and one inside a form whose save waits while the date is half-typed. Each starts on
+ * or near the pinned day.
  */
 export function DatePickerCard() {
   const def = useDay(DAY);
   const focus = useDay(DAY);
   const optional = useDay();
+  const optionalHint = useDay();
   const ranged = useDay(DAY);
   const fromNovember = useDay(DAY);
   const required = useDay();
   const beforeToday = useDay('2026-10-16');
+  const small = useDay(DAY);
+  const inForm = useDay(DAY);
+  const form = useAmountValidity();
   return (
     <GalleryCard title="DatePicker">
       <Specimen control="DatePicker" state="Default">
@@ -82,6 +89,10 @@ export function DatePickerCard() {
         />
         <Shown value={optional.value} />
       </Specimen>
+      <Specimen control="DatePicker" state="Optional hint">
+        <DatePicker label="End date" optional optionalHint {...optionalHint} />
+        <Shown value={optionalHint.value} />
+      </Specimen>
       <Specimen control="DatePicker" state="Ranged">
         <DatePicker
           label="Start date"
@@ -106,6 +117,21 @@ export function DatePickerCard() {
       <Specimen control="DatePicker" state="Before today">
         <DatePicker label="Closed on" maxValue="2026-10-31" {...beforeToday} />
         <Shown value={beforeToday.value} />
+      </Specimen>
+      <Specimen control="DatePicker" state="Small">
+        <DatePicker label="Applies from" hideLabel fieldSize="sm" {...small} />
+        <Shown value={small.value} />
+      </Specimen>
+      <Specimen control="DatePicker" state="Half-typed in a form">
+        {/* Clearing one segment leaves the caller's last whole day, so the form is told instead */}
+        <AmountFields report={form.report}>
+          <DatePicker label="Pay date" isRequired {...inForm} />
+        </AmountFields>
+        <Shown value={inForm.value} />
+        <p className="mt-1 text-xs text-text-tertiary">
+          Save:{' '}
+          <output data-testid="save-state">{form.allValid ? 'available' : 'unavailable'}</output>
+        </p>
       </Specimen>
     </GalleryCard>
   );

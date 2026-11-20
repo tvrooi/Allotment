@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { Input } from '../ui/Input';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { useCanSave } from '../../hooks/useConnection';
 import { useFormReset } from '../../hooks/useFormReset';
@@ -121,13 +122,13 @@ export function BulkDeleteModal({ params, isOpen, onClose }: Props) {
               ) : (
                 <label className="block text-sm font-medium text-text-secondary">
                   Type <span className="font-mono">{CONFIRM_WORD}</span> to confirm
-                  <input
+                  <Input
                     aria-label={`Type ${CONFIRM_WORD} to confirm`}
                     value={typed}
                     onChange={(e) => setTyped(e.target.value)}
                     autoComplete="off"
                     spellCheck={false}
-                    className="mt-1 w-full text-sm border border-border rounded-lg px-3 py-2 bg-surface text-text focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                    className="mt-1 w-full"
                   />
                 </label>
               )}

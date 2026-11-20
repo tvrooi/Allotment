@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, open, isoDay, typeAmount } from './fixtures';
+import { test, expect, open, isoDay, setToggle, typeAmount } from './fixtures';
 
 /**
  * The page groups its sections in tabs (da18c99): Overview (balances, recording), Bills,
@@ -474,8 +474,8 @@ test('right-clicking one of several picked payments shares all of them', async (
   });
   await open(page, `/accounts/${account.id}`);
   await page.getByRole('button', { name: 'Pick to share' }).click();
-  await page.getByRole('checkbox', { name: /^Pick Mock Fuel/ }).check();
-  await page.getByRole('checkbox', { name: /^Pick Mock Dinner/ }).check();
+  await setToggle(page.getByRole('checkbox', { name: /^Pick Mock Fuel/ }));
+  await setToggle(page.getByRole('checkbox', { name: /^Pick Mock Dinner/ }));
   await page
     .getByTestId('transaction-row')
     .filter({ hasText: 'Mock Fuel' })
@@ -526,8 +526,8 @@ test('picks payments in the register and shares just those, split equally', asyn
   await open(page, `/accounts/${account.id}`);
   await page.getByRole('button', { name: 'Pick to share' }).click();
   const bar = page.getByRole('region', { name: 'Picked payments' });
-  await page.getByLabel(/^Pick Dinner for two/).check();
-  await page.getByLabel(/^Pick Road trip fuel/).check();
+  await setToggle(page.getByRole('checkbox', { name: /^Pick Dinner for two/ }));
+  await setToggle(page.getByRole('checkbox', { name: /^Pick Road trip fuel/ }));
   await expect(bar).toContainText('2 picked');
   await bar.getByRole('button', { name: 'Share 2 picked with household' }).click();
   const dialog = page.getByRole('dialog', { name: 'Share with household' });

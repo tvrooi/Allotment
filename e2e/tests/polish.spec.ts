@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay, thisMonth, categoryOption } from './fixtures';
+import { test, expect, open, isoDay, thisMonth, categoryOption, setToggle } from './fixtures';
 import { UP_TEST_TOKEN } from '../mockUp';
 import { UP_MOCK_PORT } from '../ports';
 import { freshUpWindow } from './upWindow';
@@ -47,7 +47,7 @@ test.describe('not categorised yet', () => {
     await expect(categories.getByRole('checkbox').first()).toHaveAccessibleName(
       'Not categorised yet',
     );
-    await categories.getByRole('checkbox', { name: 'Not categorised yet' }).check();
+    await setToggle(categories.getByRole('checkbox', { name: 'Not categorised yet' }));
 
     const summary = await api.call<{
       uncategorisedSpendingCount: number;
@@ -62,7 +62,7 @@ test.describe('not categorised yet', () => {
     await page.reload();
     await expect(page.getByText('4 transactions', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Filters' }).click();
-    await page.getByRole('checkbox', { name: 'Groceries' }).check();
+    await setToggle(page.getByRole('checkbox', { name: 'Groceries' }));
     await expect(page.getByText('1 transaction', { exact: true })).toBeVisible();
   });
 
@@ -222,7 +222,7 @@ test.describe('the budget page', () => {
 
     await page.getByRole('button', { name: 'Until next payday' }).click();
     await page.getByRole('button', { name: 'New payday plan' }).click();
-    await expect(page.getByLabel('Anchor payday')).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Anchor payday', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'How to choose the payday date' }).click();
     await expect(page.getByRole('note')).toContainText('Pick any one day you were paid');
     await page.getByRole('button', { name: 'What is a funding rule?' }).click();

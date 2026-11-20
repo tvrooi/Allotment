@@ -14,7 +14,9 @@ test('records a priced holding without touching the balance until asked', async 
   await dialog.getByRole('button', { name: "Add a security that isn't listed" }).click();
   dialog = page.getByRole('dialog', { name: 'Add security' });
   await dialog.getByLabel('Code').fill('mock');
-  await dialog.getByLabel('Name').fill('Mock index fund');
+  // exact: the currency Select's hidden native list is labelled by its options, and a
+  // substring 'Name' matches "Vietnamese Dong"
+  await dialog.getByLabel('Name', { exact: true }).fill('Mock index fund');
   await dialog.getByRole('button', { name: 'Save' }).click();
   dialog = page.getByRole('dialog', { name: 'Add holding' });
   await expect(dialog.getByLabel('Security')).toContainText('MOCK · Mock index fund');

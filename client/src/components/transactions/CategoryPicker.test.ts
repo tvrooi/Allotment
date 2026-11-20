@@ -1,15 +1,33 @@
-import { describe, expect, it, vi } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Category, CategoryGroup } from '../../types';
 import {
+  CreateCategoryForm,
   categoryKeyboardOrder,
   categoryList,
   categoryListEmpty,
   categorySections,
 } from './CategoryPicker';
+import { CategorySelectButton, categoryButtonPickerProps } from './CategorySelectButton';
 
 // The picker's module also holds the component, whose create-category hook reaches the API
 // client, which reads window at import; these rules need neither
-vi.mock('../../hooks/useCategories', () => ({ useCreateCategory: () => ({}) }));
+vi.mock('../../hooks/useCategories', () => ({
+  useCategories: () => ({ data: GROUPS }),
+  useCreateCategory: () => ({}),
+}));
+const connection = vi.hoisted(() => ({ canSave: true }));
+vi.mock('../../hooks/useConnection', () => ({
+  useCanSave: () => connection.canSave,
+}));
+vi.mock('../../hooks/useOffline', () => ({
+  useCanAddTransaction: () => ({ allowed: true, onDevice: false }),
+}));
+afterEach(() => {
+  connection.canSave = true;
+});
 
 // The category picker's list rules as pure functions (#267, plan 02-10): which rows show, in
 // which sections, and the order the arrow keys walk. The hand-rolled picker reads them today and
@@ -73,6 +91,16 @@ describe('categorySections', () => {
   it('leaves hidden categories out unless one is the chosen value', () => {
     expect(values(categorySections(GROUPS, [], 'gym', null))).toEqual([]);
     expect(values(categorySections(GROUPS, [], 'gym', 'old'))).toEqual([['Everyday', ['old']]]);
+  });
+
+  it('includes hidden categories when includeHidden is true (WR-04)', () => {
+    expect(values(categorySections(GROUPS, [], '', null, undefined, true))).toEqual([
+      ['Everyday', ['groceries', 'dining', 'old']],
+      ['Bills', ['rent', 'power']],
+    ]);
+    expect(values(categorySections(GROUPS, [], 'gym', null, undefined, true))).toEqual([
+      ['Everyday', ['old']],
+    ]);
   });
 
   it('matches a lower-cased substring, letter case ignored on both sides (E-02 encoding)', () => {
@@ -202,5 +230,221 @@ describe('categoryList', () => {
       categoryList({ ...base, groups, query: '', showIcons }).sections[0].options[0].icon;
     expect(icon(false)).toBeUndefined();
     expect(icon(true)).toBeTruthy();
+  });
+
+  it('pins extraItem ahead of categories when allowNone is off, and picking it passes its value', () => {
+    const picked: (string | null)[] = [];
+    const list = categoryList({
+      ...base,
+      allowNone: false,
+      query: '',
+      value: 'ready-to-assign',
+      extraItem: { value: 'ready-to-assign', label: 'Ready to assign' },
+      onChange: (id) => picked.push(id),
+    });
+    expect(list.pinned).toMatchObject({
+      label: 'Ready to assign',
+      isSelected: true,
+      inKeyboardOrder: true,
+    });
+    list.pinned!.onPick();
+    expect(picked).toEqual(['ready-to-assign']);
+  });
+
+  it('keeps both allowNone and extraItem when both are enabled, with extraItem ahead of groups', () => {
+    const picked: (string | null)[] = [];
+    const list = categoryList({
+      ...base,
+      allowNone: true,
+      noneLabel: 'Uncategorised',
+      query: '',
+      extraItem: { value: '__new', label: 'Create “Coffee” as new' },
+      onChange: (id) => picked.push(id),
+    });
+    expect(list.pinned?.label).toBe('Uncategorised');
+    expect(list.sections[0]).toEqual({
+      id: 'extra',
+      options: [{ value: '__new', label: 'Create “Coffee” as new' }],
+    });
+    list.onPick('__new');
+    list.pinned!.onPick();
+    expect(picked).toEqual(['__new', null]);
+  });
+
+  it('appends hint text after each category name without changing transfers', () => {
+    const list = categoryList({
+      ...base,
+      query: '',
+      hint: (id) => (id === 'groceries' ? '($12.00 available)' : ''),
+    });
+    expect(list.sections[0].options[0]).toMatchObject({
+      value: 'groceries',
+      label: 'Groceries ($12.00 available)',
+    });
+    expect(list.sections[0].options[1]).toMatchObject({
+      value: 'dining',
+      label: 'Dining out',
+    });
+    expect(list.sections[2].options[0]).toMatchObject({
+      value: 'transfer:sav',
+      label: 'Transfer: Rainy Day Savings',
+    });
+  });
+});
+
+describe('CategorySelectButton', () => {
+  const renderButton = (props: Partial<Parameters<typeof CategorySelectButton>[0]> = {}) =>
+    renderToStaticMarkup(
+      createElement(CategorySelectButton, {
+        value: 'groceries',
+        onChange: () => {},
+        ...props,
+      }),
+    );
+  const ariaLabel = (html: string) => html.match(/aria-label="([^"]*)"/)?.[1];
+
+  it('uses label prop for its accessible name and defaults to Category', () => {
+    expect(ariaLabel(renderButton({ label: 'Split 1 category', value: 'groceries' }))).toBe(
+      'Split 1 category: Groceries',
+    );
+    expect(ariaLabel(renderButton({ value: 'groceries' }))).toBe('Category: Groceries');
+  });
+
+  it('shows extraItem label when value matches extraItem.value', () => {
+    const html = renderButton({
+      label: 'Move to',
+      value: 'ready-to-assign',
+      extraItem: { value: 'ready-to-assign', label: 'Ready to assign' },
+    });
+    expect(ariaLabel(html)).toBe('Move to: Ready to assign');
+    expect(html).toContain('Ready to assign');
+  });
+
+  it('shows noneLabel when allowNone is true and value is null, and keeps placeholder when omitted', () => {
+    const withNone = renderButton({
+      value: null,
+      allowNone: true,
+      noneLabel: 'Uncategorised',
+    });
+    expect(ariaLabel(withNone)).toBe('Category: Uncategorised');
+    expect(withNone).toContain('Uncategorised');
+
+    const defaultNull = renderButton({ value: null });
+    expect(ariaLabel(defaultNull)).toBe('Category: Search categories...');
+  });
+
+  it('resolves shown name from groups prop instead of useCategories when given', () => {
+    const billsOnly = [GROUPS[1]];
+    expect(ariaLabel(renderButton({ groups: billsOnly, value: 'rent' }))).toBe('Category: Rent');
+    // Groceries is in useCategories() mock, not in billsOnly, so it must not resolve
+    expect(ariaLabel(renderButton({ groups: billsOnly, value: 'groceries' }))).toBe(
+      'Category: Search categories...',
+    );
+  });
+
+  it('forwards groups prop to CategoryPicker instead of useCategories() so only those groups appear (WR-05)', () => {
+    const billsOnly = [GROUPS[1]];
+    const picker = categoryButtonPickerProps(
+      {
+        value: null,
+        groups: billsOnly,
+        allowNone: true,
+        noneLabel: 'No category (net worth only)',
+        allowCreate: false,
+        includeHidden: true,
+      },
+      GROUPS,
+    );
+    expect(picker.groups).toBe(billsOnly);
+    expect(picker.allowCreate).toBe(false);
+    expect(picker.includeHidden).toBe(true);
+
+    const list = categoryList({
+      groups: picker.groups,
+      transferAccounts: picker.transferAccounts ?? [],
+      value: picker.value,
+      allowNone: picker.allowNone ?? true,
+      noneLabel: picker.noneLabel ?? 'Uncategorised',
+      extraItem: picker.extraItem,
+      hint: picker.hint,
+      includeHidden: picker.includeHidden,
+      query: '',
+      showIcons: false,
+      onChange: () => {},
+    });
+    expect(list.pinned?.label).toBe('No category (net worth only)');
+    expect(values(list.sections)).toEqual([['Bills', ['rent', 'power']]]);
+
+    // Without optional props, groups falls back to fetchedGroups and picker defaults are NOT restated (R2-WR-01)
+    const fallback = categoryButtonPickerProps({ value: null }, GROUPS);
+    expect(fallback.groups).toBe(GROUPS);
+    expect(fallback.allowNone).toBeUndefined();
+    expect(fallback.noneLabel).toBeUndefined();
+    expect(fallback.allowCreate).toBeUndefined();
+    expect(fallback.includeHidden).toBeUndefined();
+    expect(fallback.transferAccounts).toBeUndefined();
+  });
+});
+
+describe('categoryButtonPickerProps categoryIds (03-10 WR-01)', () => {
+  it('keeps only the given categories, in their groups and order, and drops emptied groups', () => {
+    const picker = categoryButtonPickerProps(
+      { value: null, categoryIds: ['power', 'old', 'groceries'] },
+      GROUPS,
+    );
+    expect(picker.groups.map((g) => [g.name, g.categories.map((c) => c.id)])).toEqual([
+      ['Everyday', ['groceries', 'old']],
+      ['Bills', ['power']],
+    ]);
+    // A screen's own subset is not a picker prop
+    expect('categoryIds' in picker).toBe(false);
+  });
+
+  it('filters the groups prop too, and drops a group with none left', () => {
+    const picker = categoryButtonPickerProps(
+      { value: null, groups: GROUPS, categoryIds: ['rent'] },
+      [],
+    );
+    expect(picker.groups.map((g) => [g.name, g.categories.map((c) => c.id)])).toEqual([
+      ['Bills', ['rent']],
+    ]);
+  });
+
+  it('offers nothing for an empty subset', () => {
+    expect(categoryButtonPickerProps({ value: null, categoryIds: [] }, GROUPS).groups).toEqual([]);
+  });
+});
+
+describe('CreateCategoryForm paused saving (WR-04)', () => {
+  const renderForm = (onCreate?: Parameters<typeof CreateCategoryForm>[0]['onCreate']) =>
+    renderToStaticMarkup(
+      createElement(
+        QueryClientProvider,
+        { client: new QueryClient() },
+        createElement(CreateCategoryForm, {
+          groups: GROUPS,
+          onCreated: () => {},
+          onCreate,
+        }),
+      ),
+    );
+
+  it('disables Create new category and shows SavingPausedHint while saving is paused', () => {
+    connection.canSave = false;
+    const html = renderForm();
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>.*Create new category/);
+    expect(html).toContain('Saving is paused until Allotment reconnects.');
+  });
+
+  it('keeps Create new category enabled when saving is allowed or a local onCreate is supplied', () => {
+    connection.canSave = true;
+    const allowed = renderForm();
+    expect(allowed).not.toMatch(/<button[^>]*disabled=""/);
+    expect(allowed).not.toContain('Saving is paused');
+
+    connection.canSave = false;
+    const gallery = renderForm(async () => ({ id: 'local' }));
+    expect(gallery).not.toMatch(/<button[^>]*disabled=""/);
+    expect(gallery).not.toContain('Saving is paused');
   });
 });

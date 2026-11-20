@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { CategorySelectButton } from '../transactions/CategorySelectButton';
 import type { CategoryGroup } from '../../types';
 
 interface Props {
@@ -26,9 +27,18 @@ export function DeleteCategoryModal({
   groups,
 }: Props) {
   const [reassignTo, setReassignTo] = useState('');
-  // Income and expense categories only merge within their own kind
-  const sourceIsIncome =
-    groups.find((g) => g.categories.some((c) => c.id === categoryId))?.isIncome ?? 0;
+  // Income and expense categories only merge within their own kind, never into themselves
+  const filteredGroups = useMemo(() => {
+    const sourceIsIncome =
+      groups.find((g) => g.categories.some((c) => c.id === categoryId))?.isIncome ?? 0;
+    return groups
+      .filter((g) => g.isIncome === sourceIsIncome)
+      .map((g) => ({
+        ...g,
+        categories: g.categories.filter((c) => c.id !== categoryId),
+      }))
+      .filter((g) => g.categories.length > 0);
+  }, [groups, categoryId]);
 
   function handleConfirm() {
     if (!reassignTo) return;
@@ -57,27 +67,16 @@ export function DeleteCategoryModal({
             so none of it is lost.
           </p>
         )}
-        <select
-          aria-label="Merge into"
-          value={reassignTo}
-          onChange={(e) => setReassignTo(e.target.value)}
-          className="block w-full text-sm border border-border rounded-md px-3 py-2 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
-        >
-          <option value="">Select a category...</option>
-          {groups
-            .filter((g) => g.isIncome === sourceIsIncome)
-            .map((g) => (
-              <optgroup key={g.id} label={g.name}>
-                {g.categories
-                  .filter((c) => c.id !== categoryId)
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-              </optgroup>
-            ))}
-        </select>
+        <CategorySelectButton
+          label="Merge into"
+          placeholder="Select a category…"
+          value={reassignTo || null}
+          onChange={(id) => setReassignTo(id ?? '')}
+          groups={filteredGroups}
+          allowNone={false}
+          allowCreate={false}
+          includeHidden
+        />
       </div>
       <div className="flex justify-end gap-3 mt-6">
         <Button variant="secondary" onClick={onClose}>

@@ -198,3 +198,51 @@ test('while saving is paused, Payees offers no rename, logo or default-category 
     await startDesktopServer();
   }
 });
+
+test('while saving is paused, Apply rules disables Apply and shows the hint, then re-enables on reconnect', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Everyday Checking', 150_000);
+  const groceries = await api.category('Groceries');
+  await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -4_250,
+    payeeName: 'Corner Grocery',
+  });
+  await api.call('POST', '/rules', {
+    conditions: [{ field: 'payee_name', op: 'contains', value: 'Corner' }],
+    actions: [{ type: 'set_category', value: groceries.id }],
+  });
+
+  await open(page, '/rules');
+  await page.getByRole('button', { name: 'Run rules' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Run rules' });
+  const applyButton = dialog.getByRole('button', { name: 'Apply to 1 transaction' });
+  const hint = dialog.getByText('Saving is paused until Allotment reconnects.');
+
+  // Allowed case while connected
+  await expect(applyButton).toBeEnabled();
+  await expect(hint).toHaveCount(0);
+
+  await stopDesktopServer();
+  try {
+    // Trigger TanStack Query's visibilitychange refetch against the stopped server while keeping preview rows loaded
+    await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')));
+    await expect(page.getByRole('status', { name: 'Connection' })).toContainText(
+      "Can't reach Allotment",
+    );
+    // Refused case while saving is paused
+    await expect(applyButton).toBeDisabled();
+    await expect(hint).toBeVisible();
+  } finally {
+    await startDesktopServer();
+  }
+
+  // Reconnects on its own and re-enables Apply
+  await expect(applyButton).toBeEnabled({ timeout: 15_000 });
+  await expect(hint).toHaveCount(0);
+  await applyButton.click();
+  await expect(dialog).toContainText('Updated 1 transaction.');
+});

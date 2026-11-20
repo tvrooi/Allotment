@@ -78,6 +78,7 @@ export default function OccurrenceMatchModal({ isOpen, onClose, occurrence }: Pr
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Filter by payee or notes…"
+          aria-label="Filter by payee or notes"
         />
 
         <div className="max-h-80 overflow-y-auto">

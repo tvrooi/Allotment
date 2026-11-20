@@ -241,6 +241,29 @@ export function categoryOption(
   return scope.getByRole('option', { name, exact: options.exact });
 }
 
+/**
+ * The label a person clicks or taps to toggle a shared Checkbox, Radio or Switch
+ * (client/src/components/ui/Checkbox.tsx, RadioGroup.tsx, Switch.tsx). React Aria hides the 1 px
+ * native input inside its wrapping label, so the label takes the click and is the 44 px phone
+ * target.
+ */
+export const toggleTarget = (control: Locator) => control.locator('xpath=ancestor::label[1]');
+
+/**
+ * The one way specs check or uncheck a shared Checkbox, Radio or Switch: clicks its wrapping label
+ * when its checked state differs from `checked` (avoiding pointer interception on React Aria's
+ * hidden 1 px input) and asserts the resulting state.
+ */
+export async function setToggle(control: Locator, checked = true) {
+  const target = toggleTarget(control);
+  await expect(target).toBeVisible();
+  if ((await control.isChecked()) !== checked) {
+    await target.click();
+  }
+  if (checked) await expect(control).toBeChecked();
+  else await expect(control).not.toBeChecked();
+}
+
 /** A date or month field's scope: the page, or a dialog, form or row holding the field */
 type Scope = Page | Locator;
 

@@ -8,8 +8,11 @@ import {
   errorLine,
   monthRangeMessage,
   namesOf,
+  percentRangeMessage,
   present,
   requiredMessage,
+  wholeNumberMinMessage,
+  wholeNumberRangeMessage,
 } from './fieldMessages';
 
 // The bounds are formatted in the Date Format preference, so the tests pin it rather than
@@ -58,6 +61,15 @@ describe('monthRangeMessage', () => {
     );
     expect(monthRangeMessage('2026-01', undefined)).toBe('Choose a month on or after Jan 2026');
     expect(monthRangeMessage(undefined, '2026-10')).toBe('Choose a month on or before Oct 2026');
+  });
+});
+
+describe('numeric range messages', () => {
+  it('formats whole number and percent bounds with the D-14 copy', () => {
+    expect(wholeNumberRangeMessage(1, 60)).toBe('Enter a whole number from 1 to 60.');
+    expect(wholeNumberMinMessage(1)).toBe('Enter a whole number of 1 or more.');
+    expect(percentRangeMessage(0, 100)).toBe('Enter a percentage from 0% to 100%.');
+    expect(percentRangeMessage(-100, 50)).toBe('Enter a percentage from -100% to 50%.');
   });
 });
 

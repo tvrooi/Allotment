@@ -1,14 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../../api/client';
 import { useCanSave } from '../../hooks/useConnection';
-import { centsToInput, formatCurrency, parseCents, isUnreadableAmount } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 import { useMoveRequest } from '../../store/moveRequestStore';
 import type { BudgetCategory } from '../../types';
 import { availability } from '../../utils/budgetFigures';
 import { Button } from '../ui/Button';
 import { GuideLink } from '../guide/GuideLink';
-import { Input, Select } from '../ui/Input';
+import { AmountFields, useAmountValidity } from '../ui/amountValidity';
+import { CurrencyInput } from '../ui/CurrencyInput';
+import { Label } from '../ui/Label';
+import { CategorySelectButton } from '../transactions/CategorySelectButton';
 
 /** Where money goes when it is given back to Ready to assign: not a category, and the server
  * refuses it as a source (`READY_TO_ASSIGN` in server/src/services/budgetMoves.ts) */
@@ -54,7 +57,8 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
   const [open, setOpen] = useState(false);
   const [sourceId, setSource] = useState('');
   const [destinationId, setDestination] = useState('');
-  const [amount, setAmount] = useState('');
+  /** Minor units; 0 until an amount is typed */
+  const [amount, setAmount] = useState(0);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [message, setMessage] = useState('');
   const qc = useQueryClient();
@@ -74,11 +78,11 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
     if (request.mode === 'cover') {
       setSource('');
       setDestination(request.categoryId);
-      setAmount(centsToInput(request.amount));
+      setAmount(request.amount);
     } else {
       setSource(request.categoryId);
       setDestination('');
-      setAmount('');
+      setAmount(0);
     }
   }
   useEffect(() => {
@@ -116,8 +120,7 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
         refresh();
         return;
       }
-      if (isUnreadableAmount(amount) || parseCents(amount) <= 0)
-        throw new Error('Enter a positive amount.');
+      if (amount <= 0) throw new Error('Enter a positive amount.');
       const result = await apiFetch<Preview>(
         `/budget/${month}/moves${action === 'preview' ? '/preview' : ''}`,
         {
@@ -125,7 +128,7 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
           body: JSON.stringify({
             sourceId,
             destinationId,
-            amount: parseCents(amount),
+            amount,
             revision: preview?.revision,
           }),
         },
@@ -148,7 +151,18 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
     id === READY_TO_ASSIGN
       ? READY_LABEL
       : (categories.find((c) => c.id === id)?.name ?? 'Removed category');
-  const label = 'grid gap-1 text-xs font-medium text-text-secondary';
+  // The pickers offer exactly the categories this panel was given (the budget's expense
+  // envelopes, hidden ones included), in their groups, each with its available figure
+  const categoryIds = useMemo(() => categories.map((c) => c.id), [categories]);
+  const available = (id: string) => {
+    const c = categories.find((cat) => cat.id === id);
+    return c ? `(${formatCurrency(c.balance)} available)` : '';
+  };
+  const { allValid, report } = useAmountValidity();
+  const fromId = useId();
+  const toId = useId();
+  const amountId = useId();
+  const field = 'grid gap-1';
   // The button names the job there is: covering only when an envelope is actually overspent
   const anyOverspent = categories.some((c) => availability(c, false).kind === 'overspent');
   return (
@@ -180,60 +194,63 @@ export function MoneyMoves({ month, categories }: { month: string; categories: B
               How moving money works
             </GuideLink>
           </p>
-          <label className={label}>
-            From
-            <Select
-              aria-label="Move from"
-              value={sourceId}
-              onChange={(e) => {
-                setSource(e.target.value);
+          <div className={field}>
+            <Label htmlFor={fromId}>From</Label>
+            <CategorySelectButton
+              id={fromId}
+              label="Move from"
+              placeholder="Choose category"
+              value={sourceId || null}
+              onChange={(id) => {
+                setSource(id ?? '');
                 setPreview(null);
               }}
-            >
-              <option value="">Choose category</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({formatCurrency(c.balance)} available)
-                </option>
-              ))}
-            </Select>
-          </label>
-          <label className={label}>
-            To
-            <Select
-              aria-label="Move to"
-              value={destinationId}
-              onChange={(e) => {
-                setDestination(e.target.value);
-                setPreview(null);
-              }}
-            >
-              <option value="">Choose category</option>
-              <option value={READY_TO_ASSIGN}>{READY_LABEL}</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({formatCurrency(c.balance)} available)
-                </option>
-              ))}
-            </Select>
-          </label>
-          <label className={label}>
-            Amount
-            <Input
-              ref={amountField}
-              aria-label="Move amount"
-              inputMode="decimal"
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => {
-                setAmount(e.target.value);
-                setPreview(null);
-              }}
+              categoryIds={categoryIds}
+              hint={available}
+              allowNone={false}
+              allowCreate={false}
+              includeHidden
             />
-          </label>
+          </div>
+          <div className={field}>
+            <Label htmlFor={toId}>To</Label>
+            <CategorySelectButton
+              id={toId}
+              label="Move to"
+              placeholder="Choose category"
+              value={destinationId || null}
+              onChange={(id) => {
+                setDestination(id ?? '');
+                setPreview(null);
+              }}
+              categoryIds={categoryIds}
+              hint={available}
+              extraItem={{ value: READY_TO_ASSIGN, label: READY_LABEL }}
+              allowNone={false}
+              allowCreate={false}
+              includeHidden
+            />
+          </div>
+          <AmountFields report={report}>
+            <div className={field}>
+              <Label htmlFor={amountId}>Amount</Label>
+              <CurrencyInput
+                ref={amountField}
+                id={amountId}
+                aria-label="Move amount"
+                // Signed, so a typed negative meets the positive-amount check instead of becoming positive
+                allowNegative
+                value={amount}
+                // Leaving the field commits the amount even when it is unchanged, so only an edit
+                // (each keystroke) retires the preview
+                onChange={setAmount}
+                onTextChange={() => setPreview(null)}
+              />
+            </div>
+          </AmountFields>
           <Button
             size="sm"
-            disabled={!canSave || mutation.isPending || !sourceId || !destinationId}
+            disabled={!canSave || !allValid || mutation.isPending || !sourceId || !destinationId}
             onClick={() => mutation.mutate('preview')}
           >
             Preview move

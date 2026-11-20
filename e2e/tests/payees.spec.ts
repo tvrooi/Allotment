@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay, categoryOption, type Api } from './fixtures';
+import { test, expect, open, isoDay, categoryOption, setToggle, type Api } from './fixtures';
 
 async function seed(api: Api) {
   const checking = await api.createAccount('Checking', 100_000);
@@ -50,12 +50,17 @@ test.describe('payees', () => {
   test('merges payees and moves their transactions', async ({ page, api }) => {
     await seed(api);
     await open(page, '/payees');
-    await page.getByRole('checkbox', { name: 'Select AMZN Mktp' }).check();
-    await page.getByRole('checkbox', { name: 'Select Amazon' }).check();
+    await setToggle(page.getByRole('checkbox', { name: 'Select AMZN Mktp' }), true);
+    await expect(page.getByRole('checkbox', { name: 'Select all payees' })).toHaveJSProperty(
+      'indeterminate',
+      true,
+    );
+    await setToggle(page.getByRole('checkbox', { name: 'Select Amazon' }), true);
     await page.getByRole('button', { name: 'Merge 2 payees' }).click();
 
     const dialog = page.getByRole('dialog', { name: 'Merge payees' });
-    await dialog.getByRole('radio', { name: /Amazon/ }).check();
+    const keepGroup = dialog.getByRole('radiogroup', { name: 'Payee to keep' });
+    await setToggle(keepGroup.getByRole('radio', { name: /Amazon/ }), true);
     await dialog.getByRole('button', { name: 'Merge' }).click();
 
     await expect(row(page, 'AMZN Mktp')).toBeHidden();
@@ -93,6 +98,26 @@ test.describe('payees', () => {
     await open(page, '/payees');
     await page.getByRole('button', { name: 'Rename AMZN Mktp' }).click();
     const input = page.getByRole('textbox', { name: 'Rename AMZN Mktp' });
+    await expect(input).toBeFocused();
+    // Escape cancels without saving: no PUT request and server keeps the original name
+    let renameRequests = 0;
+    const onRequest = (req: import('@playwright/test').Request) => {
+      if (req.method() === 'PUT' && /\/api\/payees\/[^/]+$/.test(new URL(req.url()).pathname)) {
+        renameRequests += 1;
+      }
+    };
+    page.on('request', onRequest);
+    await input.fill('Should Not Save');
+    await input.press('Escape');
+    await expect(input).toBeHidden();
+    expect(
+      (await api.call<{ name: string }[]>('GET', '/payees')).map((p) => p.name).sort(),
+    ).toEqual(['AMZN Mktp', 'Amazon']);
+    expect(renameRequests).toBe(0);
+    page.off('request', onRequest);
+    await expect(row(page, 'AMZN Mktp')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Rename AMZN Mktp' }).click();
     await input.fill('Amazon Marketplace');
     await input.press('Enter');
     await expect(row(page, 'Amazon Marketplace')).toBeVisible();

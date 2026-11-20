@@ -238,7 +238,9 @@ test('a failed create keeps the form open with an error line and the typed name'
   // Everyday already has Groceries, so the gallery refuses it, as a failed request would be
   await name.fill('groceries');
   await page.getByRole('button', { name: 'Create', exact: true }).click();
-  await expect(page.getByRole('alert')).toHaveText("Couldn't create the category. Try again.");
+  await expect(pickerRow(page, 'Inline').getByRole('alert')).toHaveText(
+    "Couldn't create the category. Try again.",
+  );
   await expect(name).toHaveValue('groceries');
   await expect(page.getByRole('button', { name: 'Create', exact: true })).toBeEnabled();
   await expect(pickerReadout(page, 'Inline')).toHaveText('Chosen: none');

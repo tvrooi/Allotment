@@ -1,4 +1,4 @@
-import { test, expect, open } from './fixtures';
+import { test, expect, open, setToggle } from './fixtures';
 import { UP_TEST_TOKEN } from '../mockUp';
 import { UP_MOCK_PORT } from '../ports';
 import { freshUpWindow } from './upWindow';
@@ -48,10 +48,10 @@ test('lists the transfers Up reported for review, and links only what the owner 
 
   // The owner unticks all but the first reported pair, then links it
   const boxes = upList.getByRole('checkbox');
-  for (let i = 1; i < reported.length; i++) await boxes.nth(i).uncheck();
+  for (let i = 1; i < reported.length; i++) await setToggle(boxes.nth(i), false);
   const others = dialog.getByRole('region', { name: 'Other possible transfers' });
   if (await others.count()) {
-    for (const box of await others.getByRole('checkbox').all()) await box.uncheck();
+    for (const box of await others.getByRole('checkbox').all()) await setToggle(box, false);
   }
   await dialog.getByRole('button', { name: 'Link 1 transfer' }).click();
   await expect(dialog).toBeHidden();

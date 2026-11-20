@@ -1,5 +1,14 @@
 import type { Page } from '@playwright/test';
-import { test, expect, open, isoDay, thisMonth } from './fixtures';
+import {
+  test,
+  expect,
+  open,
+  isoDay,
+  thisMonth,
+  chooseOption,
+  setToggle,
+  typeAmount,
+} from './fixtures';
 
 // The zero-based budget: To Be Budgeted = income + carry-over − planned.
 
@@ -92,12 +101,17 @@ test.describe('budget', () => {
     while (!(await restaurants.isVisible()) && (await showInactive.count()) > 0) {
       await showInactive.first().click();
     }
+    const restaurantsRow = page.getByRole('row').filter({ hasText: 'Restaurants' });
+    const idleHeight = (await restaurantsRow.boundingBox())!.height;
     await restaurants.click();
     const input = page.getByRole('textbox', { name: 'Assigned to Restaurants' });
     await input.fill('50');
     await input.press('Enter');
     await expect(page.getByText('Saving…')).toBeVisible();
     await expect(input).toHaveAttribute('readonly', '');
+    // Saving… must not grow the h-14 row while the save is in flight
+    const savingHeight = (await restaurantsRow.boundingBox())!.height;
+    expect(Math.abs(savingHeight - idleHeight)).toBeLessThanOrEqual(1);
 
     // Refused: the amount is still there to correct, with the reason beside it
     await expect(page.getByText(/^Not saved\./)).toBeVisible();
@@ -530,7 +544,7 @@ test('a quick fill can leave envelopes out, and Replace or Set to zero takes mon
     await held;
     await route.continue();
   });
-  await page.getByRole('checkbox', { name: 'Include Groceries' }).uncheck();
+  await setToggle(page.getByRole('checkbox', { name: 'Include Groceries' }), false);
   await expect(page.getByRole('button', { name: /^Assign \$/ })).toBeDisabled();
   release();
   await expect(preview.getByText('left out')).toBeVisible();
@@ -547,12 +561,79 @@ test('a quick fill can leave envelopes out, and Replace or Set to zero takes mon
 
   // Set to zero takes the $80 back, and says so
   await openAutoAssign(page);
-  await page.getByRole('radio', { name: /Set to zero/ }).check();
+  await setToggle(page.getByRole('radio', { name: /Set to zero/ }), true);
   await expect(preview).toContainText('take back $80');
   await expect(preview).toContainText('will be overspent');
   await page.getByRole('button', { name: 'Take back $80' }).click();
   await expect(preview).toBeHidden();
   await expect.poll(() => budgeted('Electric')).toBe(0);
+});
+
+test('Auto-assign Months to average Select and How to apply Replace RadioGroup send chosen options and apply', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Checking', 200_000);
+  const groceries = await api.category('Groceries');
+  const d = new Date(`${thisMonth()}-15T12:00:00`);
+  d.setMonth(d.getMonth() - 1);
+  const lastMonthDay = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-15`;
+  await api.createTransaction({
+    accountId: checking.id,
+    date: lastMonthDay,
+    amount: -60_000,
+    payeeName: 'Supermarket',
+    categoryId: groceries.id,
+  });
+  await api.call('PUT', `/budget/${thisMonth()}/${groceries.id}`, { budgeted: 40_000 });
+
+  const previewBodies: Array<{ strategy: string; months?: number; mode?: string }> = [];
+  page.on('request', (req) => {
+    if (req.method() === 'POST' && req.url().includes('/auto-assign/preview')) {
+      previewBodies.push(req.postDataJSON());
+    }
+  });
+
+  await open(page, '/budget');
+  await openAutoAssign(page);
+  const dialog = page.getByRole('dialog', { name: 'Auto-assign' });
+  const preview = dialog.getByRole('region', { name: 'Auto-assign preview' });
+
+  await setToggle(
+    dialog
+      .getByRole('radiogroup', { name: 'Auto-assign option' })
+      .getByRole('radio', { name: /Average spent/ }),
+    true,
+  );
+  await chooseOption(dialog.getByRole('button', { name: /Months to average/ }), '6 months');
+  await expect(dialog).toContainText('Last 6 months’ average spending');
+  await expect
+    .poll(() => previewBodies.at(-1))
+    .toMatchObject({ strategy: 'average_spent', months: 6, mode: 'add' });
+
+  // Switch How to apply to Replace: $400 assigned drops to the 6-month average ($100), taking back $300
+  await setToggle(
+    dialog
+      .getByRole('radiogroup', { name: 'How to apply' })
+      .getByRole('radio', { name: /Replace/ }),
+    true,
+  );
+  await expect
+    .poll(() => previewBodies.at(-1))
+    .toMatchObject({ strategy: 'average_spent', months: 6, mode: 'replace' });
+  await expect(preview).toContainText('Money taken back becomes ready to assign.');
+  await expect(preview).toContainText('take back $300');
+  await dialog.getByRole('button', { name: 'Take back $300' }).click();
+  await expect(dialog).toBeHidden();
+
+  await expect
+    .poll(async () => {
+      const groups = await api.call('GET', `/budget/${thisMonth()}`);
+      return groups
+        .flatMap((g: { categories: { name: string; budgeted: number }[] }) => g.categories)
+        .find((c: { name: string }) => c.name === 'Groceries')?.budgeted;
+    })
+    .toBe(10_000);
 });
 
 test('a recurring bill shows as expected in its category before it is debited', async ({
@@ -796,4 +877,99 @@ test('at $0 with an overspent envelope the label names it instead of praising (#
     }),
   ).toBe(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('phone budget sheet formats sums on blur and marks unreadable text on blur', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Checking', 0);
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: 100_000,
+    payeeName: 'Employer',
+    categoryId: (await api.category('Paychecks')).id,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, '/budget');
+  const card = page.getByTestId('budget-card').filter({ hasText: 'Groceries' });
+  await card.getByRole('button', { name: /^Assigned to Groceries/ }).click();
+  const sheet = page.getByRole('dialog', { name: 'Plan Groceries' });
+  const amount = sheet.getByRole('textbox', { name: 'Assigned to Groceries' });
+
+  // Leaving after a sum formats the result in place
+  await typeAmount(amount, '20*3');
+  await expect(amount).toHaveValue('$60');
+
+  // Leaving unreadable text keeps it, marks invalid with the amount hint, and refuses to save
+  await typeAmount(amount, 'abc');
+  await expect(amount).toHaveValue('abc');
+  await expect(amount).toHaveAttribute('aria-invalid', 'true');
+  await expect(sheet.getByRole('alert')).toContainText("That isn't an amount.");
+  await sheet.getByRole('button', { name: 'Save' }).click();
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByRole('alert')).toHaveCount(1);
+
+  // Fixing the text clears the error and saves the sum
+  await typeAmount(amount, '20*3');
+  await expect(amount).toHaveValue('$60');
+  await sheet.getByRole('button', { name: 'Save' }).click();
+  await expect(sheet).toBeHidden();
+  await expect(card.getByRole('button', { name: 'Assigned to Groceries: $60' })).toBeVisible();
+});
+
+test('tapping a suggestion on the phone budget sheet fills the formatted amount without focusing the input', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Checking', 100_000);
+  const groceries = await api.category('Groceries');
+  const d = new Date(`${thisMonth()}-15T12:00:00`);
+  d.setMonth(d.getMonth() - 1);
+  const lastMonthDay = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-15`;
+  await api.createTransaction({
+    accountId: checking.id,
+    date: lastMonthDay,
+    amount: -7_500,
+    payeeName: 'Market',
+    categoryId: groceries.id,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, '/budget');
+  const card = page.getByTestId('budget-card').filter({ hasText: 'Groceries' });
+  await card.getByRole('button', { name: /^Assigned to Groceries/ }).click();
+  const sheet = page.getByRole('dialog', { name: 'Plan Groceries' });
+  const amount = sheet.getByRole('textbox', { name: 'Assigned to Groceries' });
+  await expect(amount).toBeFocused();
+
+  await sheet.getByRole('button', { name: /Spent last month/ }).click();
+  await expect(amount).toHaveValue('$75');
+  await expect(amount).not.toBeFocused();
+});
+
+test('pressing Enter on unreadable text in the phone budget sheet shows an alert without blurring', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Checking', 100_000);
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: 50_000,
+    payeeName: 'Employer',
+    categoryId: (await api.category('Paychecks')).id,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, '/budget');
+  const card = page.getByTestId('budget-card').filter({ hasText: 'Groceries' });
+  await card.getByRole('button', { name: /^Assigned to Groceries/ }).click();
+  const sheet = page.getByRole('dialog', { name: 'Plan Groceries' });
+  const amount = sheet.getByRole('textbox', { name: 'Assigned to Groceries' });
+  await expect(amount).toBeFocused();
+
+  await page.keyboard.type('abc');
+  await amount.press('Enter');
+  await expect(sheet.getByRole('alert')).toContainText("That isn't an amount.");
+  await expect(sheet).toBeVisible();
 });

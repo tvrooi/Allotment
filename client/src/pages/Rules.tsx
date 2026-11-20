@@ -24,6 +24,7 @@ import { useRuleLookups } from '../components/rules/useRuleLookups';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { useModalValue } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
 import { EmptyState } from '../components/ui/EmptyState';
 import { QueryProblem, loadFailed } from '../components/ui/QueryProblem';
 import { useOpenFromLink } from '../hooks/useOpenFromLink';
@@ -289,13 +290,16 @@ export default function RulesPage() {
               <div className="relative max-md:w-full">
                 <Search
                   size={14}
-                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
                 />
-                <input
+                <Input
+                  fieldSize="sm"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search rules…"
-                  className="w-44 max-md:w-full pl-8 pr-3 py-1.5 text-sm border border-border rounded-full bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
+                  aria-label="Search rules"
+                  className="w-44 max-md:w-full pl-8"
                 />
               </div>
             )}

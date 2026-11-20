@@ -17,6 +17,17 @@ export function defaultAddAccount(
   return usable(pageAccountId) ?? usable(lastUsedId) ?? '';
 }
 
+/**
+ * The accounts a transaction can be a transfer to ("Transfer: name"): every open account other
+ * than its own. With no account given (a register over several accounts), every open account.
+ */
+export function transferTargets<A extends Pick<Account, 'id' | 'closedAt'>>(
+  accounts: A[] | undefined,
+  fromAccountId?: string | null,
+): A[] {
+  return (accounts ?? []).filter((a) => a.id !== fromAccountId && !a.closedAt);
+}
+
 export function readLastAddAccount(): string | null {
   try {
     return localStorage.getItem(LAST_ADD_ACCOUNT_KEY);
