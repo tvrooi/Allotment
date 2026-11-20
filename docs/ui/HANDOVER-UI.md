@@ -1,13 +1,13 @@
 # UI handover
 
 Overwritten at the end of each UI session, never appended. Wave G2 entry written 20 November 2026
-(branch `feat/wave-g2-screens`, up.176, PR into `redesign`, not merged). Wave F entry rewritten 15 November 2026
+(PR #278 from `feat/wave-g2-screens`, up.176, not merged). Wave F entry rewritten 15 November 2026
 for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 November 2026 (branch `feat/wave-e-navigation`, up.173); Wave D and palette entries updated 12 November 2026
 (PRs #262 and #259). Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Older detail: grep `docs/handover/ARCHIVE.md`.
 
 ## Done this session
 
-- Wave G2 (#267, WAVG-05; up.176, branch `feat/wave-g2-screens`, not merged): the everyday money
+- Wave G2 (#267, WAVG-05; up.176, PR #278 from `feat/wave-g2-screens`, not merged): the everyday money
   screens use only the shared controls. Transactions (`TransactionFormRow`, `TransactionDetailPanel`,
   `AddTransactionModal`, `BulkEditModal`, `BulkDeleteModal`, `SplitTransactionModal`,
   `TransferSuggestions`, the register's pick-to-share boxes, `TransactionFilters`,
@@ -30,7 +30,7 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
   button is named `<label>: <shown>`. `MonthRangePicker` shows short months (Nov 2026) on phones
   (owner, 19 November 2026). Stays native (D-17): the three file inputs (account logo, payee logo,
   receipt scan photo) and `IconPickerPopover`. Every behaviour change and changed selector is in the
-  G2 PR body and `CHANGELOG.md`.
+  body of PR #278 and `CHANGELOG.md`.
 - Wave F settings split and good moments (up.174, branch `wave-f`, PR #273 revised to the owner's
   14 November decisions): #244 Connected banks is its own page, `/accounts/connections`
   (`pages/AccountConnections.tsx` around `components/accounts/ConnectedBanks.tsx`), opened from

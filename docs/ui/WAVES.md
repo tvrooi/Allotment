@@ -22,19 +22,19 @@ Wave G2's PR opened.
 
 ## Status
 
-| Wave                | Issues                                   | State                                                 |
-| ------------------- | ---------------------------------------- | ----------------------------------------------------- |
-| A shell             | #222, #223, #225                         | Merged, PR #247, up.167. Issues closed.               |
-| A palette part 1    | #224 (part)                              | Merged, PR #253, up.169. #224 stays open.             |
-| A palette part 2    | #224 (rest)                              | Merged, PR #259, up.171. #224 closed.                 |
-| B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.               |
-| C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.               |
-| D discoverability   | #226, #237, #239, #236                   | Merged, PR #262, up.172. Issues closed.               |
-| E navigation depth  | #235, #243, #245, #240                   | Merged, PR #266, up.173. Issues closed.               |
-| F settings, delight | #244, #241                               | Merged, PR #273, up.174.                              |
-| G0 controls audit   | #267 (part)                              | Merged, PR #275 (docs only). #267 stays open.         |
-| G1 control set      | #267 (part), #264                        | Merged, PR #277, up.175. #267 stays open.             |
-| G2 money screens    | #267 (part)                              | PR open into `redesign`, up.176 prepared, not merged. |
+| Wave                | Issues                                   | State                                                      |
+| ------------------- | ---------------------------------------- | ---------------------------------------------------------- |
+| A shell             | #222, #223, #225                         | Merged, PR #247, up.167. Issues closed.                    |
+| A palette part 1    | #224 (part)                              | Merged, PR #253, up.169. #224 stays open.                  |
+| A palette part 2    | #224 (rest)                              | Merged, PR #259, up.171. #224 closed.                      |
+| B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.                    |
+| C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.                    |
+| D discoverability   | #226, #237, #239, #236                   | Merged, PR #262, up.172. Issues closed.                    |
+| E navigation depth  | #235, #243, #245, #240                   | Merged, PR #266, up.173. Issues closed.                    |
+| F settings, delight | #244, #241                               | Merged, PR #273, up.174.                                   |
+| G0 controls audit   | #267 (part)                              | Merged, PR #275 (docs only). #267 stays open.              |
+| G1 control set      | #267 (part), #264                        | Merged, PR #277, up.175. #267 stays open.                  |
+| G2 money screens    | #267 (part)                              | PR #278 open into `redesign`, up.176 prepared, not merged. |
 
 Also merged: PR #256, test-only fixes for date- and timing-dependent Household specs.
 
@@ -62,7 +62,7 @@ Not in any wave:
 
 ## Open PRs
 
-- Wave G2 PR (#267), base `redesign`: open, up.176 prepared, not merged. The everyday money
+- PR #278, Wave G2 (#267), base `redesign`: open, up.176 prepared, not merged. The everyday money
   screens on the shared controls; its body lists every behaviour change, changed selector and
   finding for the owner. The owner merges it before G3 starts (D-12).
 - Wave E (PR #266) merged after three fix rounds. Rounds 1 and 2 were reviewed by
