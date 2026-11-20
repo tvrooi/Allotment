@@ -1,14 +1,14 @@
 # UI handover
 
 Overwritten at the end of each UI session, never appended. Wave G3 entry written 21 November 2026
-(PR from `feat/wave-g3-screens`, up.177, not merged); Wave G2 entry 20 November 2026 (PR #278,
+(PR #279 from `feat/wave-g3-screens`, up.177, not merged); Wave G2 entry 20 November 2026 (PR #278,
 up.176, merged into `redesign`). Wave F entry rewritten 15 November 2026
 for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 November 2026 (branch `feat/wave-e-navigation`, up.173); Wave D and palette entries updated 12 November 2026
 (PRs #262 and #259). Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Older detail: grep `docs/handover/ARCHIVE.md`.
 
 ## Done this session
 
-- Wave G3 (#267, WAVG-06; up.177, PR from `feat/wave-g3-screens`, not merged): the planning,
+- Wave G3 (#267, WAVG-06; up.177, PR #279 from `feat/wave-g3-screens`, not merged): the planning,
   reports, files and import screens use only the shared controls. Goals (`GoalFormModal`,
   `GoalStatusModal`), Investments (`IncomeModals`, `InvestmentModals`, `SaleModals`,
   `SplitModals`), Forecast (`CashRunway`), the long-term forecast (`fields.tsx`, `EventEditor`,
@@ -25,7 +25,7 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
   IN-03). Files keeps From and To in page state beside the URL (`useUrlHeldDay`, see Traps).
   Stays native (D-17): the Files drop zone and the CSV and YNAB file inputs. Exports are download
   buttons; `settings/DataExport.tsx` moves with Settings in Phase 4 (owner, 19 November 2026).
-  Every behaviour change and changed selector is in the G3 PR's body and `CHANGELOG.md`.
+  Every behaviour change and changed selector is in the body of PR #279 and `CHANGELOG.md`.
 - Wave G2 (#267, WAVG-05; up.176, PR #278 from `feat/wave-g2-screens`, merged into `redesign`): the everyday money
   screens use only the shared controls. Transactions (`TransactionFormRow`, `TransactionDetailPanel`,
   `AddTransactionModal`, `BulkEditModal`, `BulkDeleteModal`, `SplitTransactionModal`,

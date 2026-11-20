@@ -18,7 +18,7 @@ Last updated: 21 November 2026 (Wave G3 of the design re-review waves on `redesi
 - Design re-review waves (issues #222 to #245) are in progress on `redesign`: status, open PRs and
   the routine are in `docs/ui/WAVES.md`.
 - Wave G2 (#267, up.176, PR #278) is merged into `redesign`. Wave G3 (#267, up.177): Goals, Forecast,
-  Investments, Reports, Files and the import dialogs on the shared controls are in a PR from
+  Investments, Reports, Files and the import dialogs on the shared controls are in PR #279 from
   `feat/wave-g3-screens` into `redesign`, open for the owner's review and merge; Phase 4 (Settings,
   bank connections, the shelved pages, the lint rule) starts after it merges (`docs/ui/HANDOVER-UI.md`).
 - `redesign` holds the design passes: Budget (up.154), Dashboard (up.154, made the Dashboard in up.166).
