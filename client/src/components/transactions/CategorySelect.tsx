@@ -1,4 +1,5 @@
 import type { Account, CategoryGroup } from '../../types';
+import { transferTargets } from '../../utils/addTransaction';
 
 interface Props {
   value: string | null;
@@ -26,7 +27,7 @@ export function CategorySelect({
   label = 'Category',
   id,
 }: Props) {
-  const transferAccounts = accounts?.filter((a) => a.id !== currentAccountId && !a.closedAt) ?? [];
+  const transferAccounts = transferTargets(accounts, currentAccountId);
 
   return (
     <select

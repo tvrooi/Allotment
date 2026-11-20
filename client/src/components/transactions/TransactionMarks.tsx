@@ -10,6 +10,8 @@ import {
   useTags,
 } from '../../hooks/useTags';
 import type { Tag, Transaction } from '../../types';
+import { Checkbox } from '../ui/Checkbox';
+import { Input } from '../ui/Input';
 
 // Phase 9 marks in the transaction details: Reviewed, Hide from reports and tags. They live on
 // the whole transaction (a split's parts share them) and change no amounts, so they stay
@@ -153,7 +155,8 @@ function TagPicker({ tx }: { tx: Transaction }) {
       </div>
       {open && (
         <div className="mt-2 rounded-md border border-border bg-surface p-2 space-y-1">
-          <input
+          <Input
+            fieldSize="sm"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -166,7 +169,6 @@ function TagPicker({ tx }: { tx: Transaction }) {
             placeholder="Find or create a tag…"
             aria-label="Find or create a tag"
             maxLength={60}
-            className="w-full px-2 py-1 text-sm border border-border rounded bg-surface text-text focus:border-brand-600 focus:outline-none"
           />
           <div className="max-h-36 overflow-y-auto">
             {matches.map((t) => (
@@ -223,42 +225,27 @@ export function TransactionMarks({ tx }: { tx: Transaction }) {
     );
   };
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       <div>
         <span className="text-xs font-medium text-text-secondary mb-1.5 flex items-center gap-1">
           <TagIcon size={12} aria-hidden /> Tags
         </span>
         <TagPicker tx={tx} />
       </div>
-      <label className="flex items-start gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={reviewed}
-          onChange={(e) => toggle({ reviewed: e.target.checked })}
-          className="mt-0.5 rounded border-border text-brand-600 focus:ring-brand-600"
-        />
-        <span className="text-sm text-text">
-          Reviewed
-          <span className="block text-xs text-text-tertiary">
-            Your own checklist mark. It does not reconcile anything.
-          </span>
+      {/* The help line stays inside the label, so each box keeps its whole old name */}
+      <Checkbox checked={reviewed} onCheckedChange={(next) => toggle({ reviewed: next })}>
+        Reviewed
+        <span className="block text-xs text-text-tertiary">
+          Your own checklist mark. It does not reconcile anything.
         </span>
-      </label>
-      <label className="flex items-start gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={hidden}
-          onChange={(e) => toggle({ hiddenFromReports: e.target.checked })}
-          className="mt-0.5 rounded border-border text-brand-600 focus:ring-brand-600"
-        />
-        <span className="text-sm text-text">
-          Hide from reports
-          <span className="block text-xs text-text-tertiary">
-            Leaves it out of Cash flow, spending and income reports and the savings rate. Your
-            balances and budget still count it.
-          </span>
+      </Checkbox>
+      <Checkbox checked={hidden} onCheckedChange={(next) => toggle({ hiddenFromReports: next })}>
+        Hide from reports
+        <span className="block text-xs text-text-tertiary">
+          Leaves it out of Cash flow, spending and income reports and the savings rate. Your
+          balances and budget still count it.
         </span>
-      </label>
+      </Checkbox>
       {flags.error && (
         <p role="alert" className="text-xs text-negative">
           {flags.error.message}

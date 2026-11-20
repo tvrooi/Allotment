@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { CURRENCY_CODES } from '../../utils/currencies';
 import { currencyName } from '../../utils/currency';
+import { Select, type SelectGroup } from '../ui/Select';
 
 /** Asked for most: shown first, after the ones already in use */
 const COMMON = ['EUR', 'USD', 'GBP', 'CHF', 'PLN', 'SEK', 'NOK', 'DKK', 'CZK', 'CAD', 'AUD', 'JPY'];
@@ -31,40 +32,39 @@ export function CurrencySelect({
   // Callers pass a new array each render: keyed on its contents, so ~150 names are looked up
   // and sorted once
   const firstKey = first.join(',');
-  const groups = useMemo(() => {
+  const options = useMemo((): SelectGroup[] => {
     const top = [...new Set([...firstKey.split(',').filter(Boolean), ...COMMON])].filter((c) =>
       CURRENCY_CODES.includes(c),
     );
     const rest = CURRENCY_CODES.filter((c) => !top.includes(c))
       .map((code) => ({ code, name: currencyName(code) }))
       .sort((a, b) => a.name.localeCompare(b.name));
-    return { top: top.map((code) => ({ code, name: currencyName(code) })), rest };
+    return [
+      {
+        label: 'Common',
+        options: top.map((code) => ({ value: code, label: `${code} · ${currencyName(code)}` })),
+      },
+      {
+        label: 'All currencies',
+        options: rest.map((c) => ({ value: c.code, label: `${c.code} · ${c.name}` })),
+      },
+    ];
   }, [firstKey]);
 
+  const widthClass = className
+    ? `${/(^|\s)w-/.test(className) ? '' : 'w-full '}${className}`
+    : 'w-full';
+
   return (
-    <select
+    <Select
       id={id}
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={disabled}
+      onChange={onChange}
+      options={options}
+      isDisabled={disabled}
       aria-label={ariaLabel}
       aria-describedby={describedBy}
-      className={`block w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 ${className}`}
-    >
-      <optgroup label="Common">
-        {groups.top.map((c) => (
-          <option key={c.code} value={c.code}>
-            {c.code} · {c.name}
-          </option>
-        ))}
-      </optgroup>
-      <optgroup label="All currencies">
-        {groups.rest.map((c) => (
-          <option key={c.code} value={c.code}>
-            {c.code} · {c.name}
-          </option>
-        ))}
-      </optgroup>
-    </select>
+      className={widthClass}
+    />
   );
 }

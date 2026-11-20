@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { openGallery, specimen } from './gallery';
+import { openGallery, specimen, tabTo } from './gallery';
 
 // The shared MonthRangePicker in the controls gallery: two of MonthPicker's month grids, From
 // and To, in a "Choose months" dialog on desktop, and two native month inputs under 768 px
@@ -143,10 +143,23 @@ test('on a phone it is two native month inputs that keep the range in order', as
   await expect(to).toHaveAttribute('min', '2026-06');
   await expect(to).toHaveAttribute('max', '2026-12');
 
+  // Short month text shows whole at 390 px without clipping (MonthRangePicker phone: short)
+  const fromDisplay = row.locator('[data-month-display="from"]');
+  const toDisplay = row.locator('[data-month-display="to"]');
+  await expect(fromDisplay).toHaveText('Jun 2026');
+  await expect(toDisplay).toHaveText('Nov 2026');
+
+  await from.fill('2026-11');
+  await expect(fromDisplay).toHaveText('Nov 2026');
+  expect(await fromDisplay.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await expect(shown(page, 'Default')).toHaveText('2026-11 to 2026-11');
+
   // A From after To moves To up to it
   await from.fill('2026-12');
   await expect(shown(page, 'Default')).toHaveText('2026-12 to 2026-12');
   await expect(to).toHaveValue('2026-12');
+  await expect(fromDisplay).toHaveText('Dec 2026');
+  await expect(toDisplay).toHaveText('Dec 2026');
   // A From after max changes nothing
   await from.fill('2027-01');
   await expect(from).toHaveValue('2026-12');
@@ -163,4 +176,37 @@ test('on a phone it is two native month inputs that keep the range in order', as
     specimen(page, 'MonthRangePicker', 'Read-only').locator('input').first(),
   ).toHaveAttribute('readonly', '');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test('at 767 px tabbing into From reveals the native month input for keyboard editing (WR-03)', async ({
+  page,
+}) => {
+  await openGallery(page, { width: 767 });
+  const prev = specimen(page, 'MonthPicker', 'Before this month').locator('input[type="month"]');
+  const row = specimen(page, 'MonthRangePicker', 'Default');
+  const from = row.getByLabel('From', { exact: true });
+  const fromDisplay = row.locator('[data-month-display="from"]');
+
+  await expect(from).toHaveCSS('opacity', '0');
+  await expect(fromDisplay).toHaveCSS('visibility', 'visible');
+  await expect(fromDisplay).toHaveText('Jun 2026');
+
+  await prev.focus();
+  await tabTo(page, from, 10);
+  await expect(from).toBeFocused();
+  await expect(from).toHaveCSS('opacity', '1');
+  await expect(fromDisplay).toHaveCSS('visibility', 'hidden');
+
+  // Typing 'n' on the month segment picks November and keeps the native input visible while editing
+  await page.keyboard.press('n');
+  await expect(from).toHaveValue('2026-11');
+  await expect(from).toHaveCSS('opacity', '1');
+  await expect(fromDisplay).toHaveCSS('visibility', 'hidden');
+  await expect(shown(page, 'Default')).toHaveText('2026-11 to 2026-11');
+
+  // Leaving the field restores the short month display showing the edited month
+  await from.blur();
+  await expect(from).toHaveCSS('opacity', '0');
+  await expect(fromDisplay).toHaveCSS('visibility', 'visible');
+  await expect(fromDisplay).toHaveText('Nov 2026');
 });

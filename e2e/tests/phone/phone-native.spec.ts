@@ -7,6 +7,8 @@ import {
   thisMonth,
   otherDayThisMonth,
   categoryOption,
+  setToggle,
+  typeAmount,
   type Api,
 } from '../fixtures';
 
@@ -81,6 +83,14 @@ test.describe('register', () => {
     const box = (await details.boundingBox())!;
     expect(Math.round(box.width)).toBe(page.viewportSize()!.width);
     await expectTouchSize(details.getByRole('button', { name: 'Close details' }));
+    // The payee field is 44px tall with 16px text, as every field on a phone (it was 41px,
+    // 02-UI-REVIEW); the date is the phone's own date input at the shared size
+    const payee = details.getByRole('combobox', { name: 'Payee' });
+    expect((await size(payee)).height).toBeGreaterThanOrEqual(TOUCH);
+    expect(await payee.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBe(16);
+    expect((await size(details.getByLabel('Date', { exact: true }))).height).toBeGreaterThanOrEqual(
+      TOUCH,
+    );
 
     await details.getByRole('button', { name: 'Uncategorised' }).click();
     await page.getByPlaceholder('Search categories...').fill('stream');
@@ -187,9 +197,9 @@ test.describe('register', () => {
     await expect(outflow).toHaveAttribute('inputmode', 'decimal');
     await outflow.fill('100');
     await form.getByRole('button', { name: 'Split transaction' }).click();
-    await form
-      .getByRole('combobox', { name: 'Split 1 category' })
-      .selectOption({ label: 'Groceries' });
+    // Categories open the CategoryPicker on phones too (D-05), not a native list
+    await form.getByRole('button', { name: /^Split 1 category:/ }).click();
+    await categoryOption(form, 'Groceries', { exact: true }).click();
     await form.getByRole('textbox', { name: 'Split 1 amount' }).fill('60,50');
     await form.getByRole('textbox', { name: 'Split 2 amount' }).fill('39.50');
     await expect(form.getByText('Balanced')).toBeVisible();
@@ -225,16 +235,22 @@ test.describe('budget', () => {
     await planned.click();
     const sheet = page.getByRole('dialog', { name: 'Plan Groceries' });
     await expectBottomSheet(page, sheet);
-    await sheet.getByRole('textbox', { name: 'Assigned to Groceries' }).fill('425');
+    await typeAmount(sheet.getByRole('textbox', { name: 'Assigned to Groceries' }), '425');
     await sheet.getByRole('button', { name: 'Save' }).click();
     await expect(sheet).toBeHidden();
     await expect(card).toContainText('$382.50 available');
 
     // Enter saves too; the next 12 months are only overwritten after reviewing their preview
     await card.getByRole('button', { name: /^Assigned to Groceries/ }).click();
-    await sheet.getByRole('checkbox', { name: 'Use this amount for the next 12 months' }).check();
+    await setToggle(
+      sheet.getByRole('checkbox', { name: 'Use this amount for the next 12 months' }),
+      true,
+    );
     const input = sheet.getByRole('textbox', { name: 'Assigned to Groceries' });
-    await input.fill('30');
+    await input.click();
+    await expect(input).toBeFocused();
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.keyboard.type('30');
     await input.press('Enter');
     const review = sheet.getByRole('region', { name: 'Next 12 months preview' });
     await expect(review).toContainText('12 of 12 months change');
@@ -306,12 +322,17 @@ test.describe('payees', () => {
       .toMatchObject({ defaultCategoryId: groceries.id });
 
     // Merge two
-    await page.getByRole('checkbox', { name: 'Select Corner Grocery' }).check();
-    await page.getByRole('checkbox', { name: 'Select Streamflix Premium' }).check();
+    await setToggle(page.getByRole('checkbox', { name: 'Select Corner Grocery' }), true);
+    await setToggle(page.getByRole('checkbox', { name: 'Select Streamflix Premium' }), true);
     await page.getByRole('button', { name: 'Merge 2 payees' }).click();
     const merge = page.getByRole('dialog', { name: 'Merge payees' });
     await expectBottomSheet(page, merge);
-    await merge.getByRole('radio', { name: /Corner Grocery/ }).check();
+    await setToggle(
+      merge.getByRole('radiogroup', { name: 'Payee to keep' }).getByRole('radio', {
+        name: /Corner Grocery/,
+      }),
+      true,
+    );
     await merge.getByRole('button', { name: 'Merge' }).click();
     await expect(cards).toHaveCount(1);
     await expect(cards).toContainText('2 transactions');

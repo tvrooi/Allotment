@@ -4,6 +4,7 @@ import {
   defaultAddAccount,
   readLastAddAccount,
   rememberAddAccount,
+  transferTargets,
 } from './addTransaction';
 
 const open = (id: string) => ({ id, closedAt: null });
@@ -61,5 +62,21 @@ describe('the last account used', () => {
     });
     expect(() => rememberAddAccount('saver')).not.toThrow();
     expect(readLastAddAccount()).toBeNull();
+  });
+});
+
+describe('transferTargets', () => {
+  const accounts = [open('a'), open('b'), closed('c')];
+
+  it('offers every other open account', () => {
+    expect(transferTargets(accounts, 'a').map((a) => a.id)).toEqual(['b']);
+  });
+
+  it('offers every open account when no account is given', () => {
+    expect(transferTargets(accounts).map((a) => a.id)).toEqual(['a', 'b']);
+  });
+
+  it('offers nothing before the accounts load', () => {
+    expect(transferTargets(undefined, 'a')).toEqual([]);
   });
 });

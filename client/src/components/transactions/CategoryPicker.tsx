@@ -3,8 +3,10 @@ import { Plus, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { createCategory as createCategoryRequest } from '../../api/categories';
 import { useCreateCategory } from '../../hooks/useCategories';
+import { useCanSave } from '../../hooks/useConnection';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import type { BudgetType, CategoryGroup } from '../../types';
+import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { Button } from '../ui/Button';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import { SearchList, type SearchListPinned, type SearchListSection } from '../ui/Combobox';
@@ -12,8 +14,17 @@ import { errorClass } from '../ui/fieldClasses';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 
+/** Default label for the no-category row (shared with CategorySelectButton) */
+export const DEFAULT_NONE_LABEL = 'Uncategorised';
+
 /** The value a "Transfer: name" row picks */
 const transferValue = (accountId: string) => `transfer:${accountId}`;
+
+/** An extra non-category choice pinned ahead of the categories (e.g. Ready to assign) */
+export interface CategoryExtraItem {
+  value: string;
+  label: string;
+}
 
 /**
  * The category list's sections for a search, in SearchList's section shape: each group that has
@@ -26,6 +37,8 @@ export function categorySections(
   transferAccounts: readonly { id: string; name: string }[],
   query: string,
   value: string | null | undefined,
+  hint?: (categoryId: string) => string,
+  includeHidden = false,
 ): SearchListSection[] {
   const text = query.toLowerCase();
   const sections: SearchListSection[] = groups
@@ -33,8 +46,14 @@ export function categorySections(
       id: g.id,
       heading: g.name,
       options: g.categories
-        .filter((c) => (!c.hidden || c.id === value) && c.name.toLowerCase().includes(text))
-        .map((c) => ({ value: c.id, label: c.name })),
+        .filter(
+          (c) =>
+            (includeHidden || !c.hidden || c.id === value) && c.name.toLowerCase().includes(text),
+        )
+        .map((c) => {
+          const suffix = hint?.(c.id);
+          return { value: c.id, label: suffix ? `${c.name} ${suffix}` : c.name };
+        }),
     }))
     .filter((section) => section.options.length > 0);
   const transfers = transferAccounts
@@ -82,6 +101,14 @@ interface Props {
   allowNone?: boolean;
   /** What the no-category choice says (a payee's default: "No default category") */
   noneLabel?: string;
+  /** Optional extra non-category item pinned ahead of the categories (off by default) */
+  extraItem?: CategoryExtraItem;
+  /** Optional per-category suffix appended after each category name (off by default) */
+  hint?: (categoryId: string) => string;
+  /** Offer the "Create new category" footer (default true). Set false for read-only lists. */
+  allowCreate?: boolean;
+  /** Keep hidden categories selectable even when not currently chosen (default false). */
+  includeHidden?: boolean;
   /**
    * Creates the category in place of the app's POST /api/categories, resolving to its id: for the
    * dev gallery, which has no server and fetches nothing (T-02-10)
@@ -96,8 +123,8 @@ export type CreateCategory = (category: NewCategory) => Promise<{ id: string }>;
 
 /**
  * What the picker hands SearchList for a search: the sections from categorySections (with each
- * category's icon when the preference shows them), the no-category row, in the keys only when
- * categoryKeyboardOrder puts it there, and the empty line when categoryListEmpty says so
+ * category's icon when the preference shows them), the pinned row (allowNone or extraItem), in
+ * the keys only when appropriate, and the empty line when categoryListEmpty says so
  */
 export function categoryList({
   groups,
@@ -106,6 +133,9 @@ export function categoryList({
   value,
   allowNone,
   noneLabel,
+  extraItem,
+  hint,
+  includeHidden = false,
   showIcons,
   onChange,
 }: {
@@ -115,6 +145,9 @@ export function categoryList({
   value: string | null | undefined;
   allowNone: boolean;
   noneLabel: string;
+  extraItem?: CategoryExtraItem;
+  hint?: (categoryId: string) => string;
+  includeHidden?: boolean;
   showIcons: boolean;
   onChange: (id: string | null) => void;
 }): {
@@ -123,9 +156,9 @@ export function categoryList({
   emptyText: string | null;
   onPick: (id: string) => void;
 } {
-  const found = categorySections(groups, transferAccounts, query, value);
+  const found = categorySections(groups, transferAccounts, query, value, hint, includeHidden);
   const iconOf = new Map(groups.flatMap((g) => g.categories.map((c) => [c.id, c.icon])));
-  const sections = showIcons
+  const baseSections = showIcons
     ? found.map((section) => ({
         ...section,
         options: section.options.map((o) => {
@@ -134,17 +167,42 @@ export function categoryList({
         }),
       }))
     : found;
+
+  const text = query.toLowerCase();
+  const extraMatchesQuery = Boolean(extraItem && extraItem.label.toLowerCase().includes(text));
+  // Reuse SearchListPinned for extraItem when allowNone is off; when both are on (e.g.
+  // ImportCategories offering Uncategorised plus "Create … as new"), allowNone keeps the pinned
+  // slot and extraItem leads the sections ahead of the category groups.
+  const sections: SearchListSection[] =
+    allowNone && extraItem && extraMatchesQuery
+      ? [
+          { id: 'extra', options: [{ value: extraItem.value, label: extraItem.label }] },
+          ...baseSections,
+        ]
+      : baseSections;
+
+  const pinned: SearchListPinned | undefined = allowNone
+    ? {
+        label: noneLabel,
+        isSelected: value === null,
+        onPick: () => onChange(null),
+        inKeyboardOrder: categoryKeyboardOrder(found, query, allowNone)[0] === null,
+      }
+    : extraItem
+      ? {
+          label: extraItem.label,
+          isSelected: value === extraItem.value,
+          onPick: () => onChange(extraItem.value),
+          inKeyboardOrder: !query || extraMatchesQuery,
+        }
+      : undefined;
+
+  const pinnedExtraMatchedSearch = Boolean(!allowNone && extraItem && query && extraMatchesQuery);
   return {
     sections,
-    pinned: allowNone
-      ? {
-          label: noneLabel,
-          isSelected: value === null,
-          onPick: () => onChange(null),
-          inKeyboardOrder: categoryKeyboardOrder(found, query, allowNone)[0] === null,
-        }
-      : undefined,
-    emptyText: categoryListEmpty(found) ? 'No categories found' : null,
+    pinned,
+    emptyText:
+      categoryListEmpty(sections) && !pinnedExtraMatchedSearch ? 'No categories found' : null,
     onPick: onChange,
   };
 }
@@ -160,7 +218,7 @@ const BUDGET_TYPES: [BudgetType, string][] = [
  * (not for an income group) and the name. A created category is picked; a failed create keeps
  * the form and its name, with an error line.
  */
-function CreateCategoryForm({
+export function CreateCategoryForm({
   groups,
   onCreated,
   onCreate,
@@ -175,6 +233,9 @@ function CreateCategoryForm({
   const [newBudgetType, setNewBudgetType] = useState<BudgetType>('flexible');
   const nameRef = useRef<HTMLInputElement>(null);
   const appCreate = useCreateCategory();
+  const appCanSave = useCanSave();
+  // Local gallery callbacks write nothing to the server; real server writes respect useCanSave()
+  const canSave = onCreate ? true : appCanSave;
   // The app's create (its request, cache refresh and undo), or a caller's own (the gallery's),
   // through the same pending and error states
   const createCategory = useMutation({
@@ -189,7 +250,7 @@ function CreateCategoryForm({
   const isIncomeGroup = groups.find((g) => g.id === newGroupId)?.isIncome === 1;
 
   function handleCreate() {
-    if (!newName.trim() || !newGroupId || createCategory.isPending) return;
+    if (!canSave || !newName.trim() || !newGroupId || createCategory.isPending) return;
     createCategory.mutate(
       {
         groupId: newGroupId,
@@ -210,11 +271,13 @@ function CreateCategoryForm({
         <Button
           variant="ghost"
           className="w-full text-brand-600"
+          disabled={!canSave}
           onClick={() => setShowCreate(true)}
         >
           <Plus size={14} aria-hidden="true" />
           Create new category
         </Button>
+        {!canSave && <SavingPausedHint className="px-2 pb-1 text-center" />}
       </div>
     );
 
@@ -264,12 +327,13 @@ function CreateCategoryForm({
           Couldn&apos;t create the category. Try again.
         </p>
       )}
+      {!canSave && <SavingPausedHint />}
       <div className="flex items-center gap-2">
         <Button
           size="sm"
           className="flex-1"
           onClick={handleCreate}
-          disabled={!newName.trim() || createCategory.isPending}
+          disabled={!canSave || !newName.trim() || createCategory.isPending}
         >
           {createCategory.isPending ? 'Creating...' : 'Create'}
         </Button>
@@ -317,7 +381,11 @@ export function CategoryPicker({
   fullWidth = false,
   anchor = null,
   allowNone = true,
-  noneLabel = 'Uncategorised',
+  noneLabel = DEFAULT_NONE_LABEL,
+  extraItem,
+  hint,
+  allowCreate = true,
+  includeHidden = false,
   onCreate,
 }: Props) {
   const [query, setQuery] = useState('');
@@ -335,7 +403,9 @@ export function CategoryPicker({
     onQueryChange: setQuery,
     value: value ?? null,
     onClose,
-    footer: <CreateCategoryForm groups={groups} onCreated={onChange} onCreate={onCreate} />,
+    footer: allowCreate ? (
+      <CreateCategoryForm groups={groups} onCreated={onChange} onCreate={onCreate} />
+    ) : undefined,
     ...categoryList({
       groups,
       transferAccounts,
@@ -343,6 +413,9 @@ export function CategoryPicker({
       value,
       allowNone,
       noneLabel,
+      extraItem,
+      hint,
+      includeHidden,
       showIcons,
       onChange,
     }),

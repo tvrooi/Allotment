@@ -5,6 +5,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { Checkbox } from '../components/ui/Checkbox';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { AmountFields, useAmountValidity } from '../components/ui/amountValidity';
 import { formatMoney } from '../utils/currency';
@@ -87,6 +88,7 @@ export default function ReconcilePage() {
     .filter((t) => checkedIds.has(t.id))
     .reduce((sum, t) => sum + t.amount, 0);
   const allChecked = checkedIds.size === unreconciledTxns.length;
+  const someChecked = checkedIds.size > 0 && checkedIds.size < unreconciledTxns.length;
   const registerToday = reconciledBase + unreconciledTxns.reduce((sum, t) => sum + t.amount, 0);
 
   const selectedBalance = reconciledBase + checkedSum;
@@ -231,15 +233,16 @@ export default function ReconcilePage() {
                   Amount
                 </th>
                 <th className="px-4 py-2 text-center text-xs font-medium text-text-tertiary w-12">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     aria-label="Select all current transactions"
                     checked={allChecked}
-                    onChange={() =>
+                    isIndeterminate={someChecked}
+                    onCheckedChange={() =>
                       setCheckedIds(
                         allChecked ? new Set() : new Set(unreconciledTxns.map((t) => t.id)),
                       )
                     }
+                    className="align-middle"
                   />
                 </th>
               </tr>
@@ -277,13 +280,17 @@ export default function ReconcilePage() {
                       >
                         {formatMoney(tx.amount, account.currency)}
                       </td>
-                      <td className="px-4 py-2 text-center">
-                        <input
-                          type="checkbox"
+                      <td
+                        className="px-4 py-2 text-center"
+                        onClick={(e) => {
+                          if ((e.target as HTMLElement).closest('label')) e.stopPropagation();
+                        }}
+                      >
+                        <Checkbox
                           checked={checked}
+                          onCheckedChange={() => toggleRow(tx)}
                           aria-label={`Select transaction ${tx.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={() => toggleRow(tx)}
+                          className="align-middle"
                         />
                       </td>
                     </tr>

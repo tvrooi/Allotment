@@ -1,16 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { PageHeader } from '../components/ui/PageHeader';
 import { PAGE_GUTTER } from '../components/ui/pageGutter';
-import { usePreferencesStore } from '../store/preferencesStore';
 import { ComboboxCard } from './devGallery/ComboboxCard';
 import { DialogCard } from './devGallery/DialogCard';
 import { DatePickerCard, MonthPickerCard, MonthRangePickerCard } from './devGallery/DateCards';
 import { PickerCards } from './devGallery/PickerCards';
 import { SelectCard } from './devGallery/SelectCard';
 import { SwitchCard } from './devGallery/SwitchCard';
-import { TextFieldCards } from './devGallery/TextFieldCards';
+import { FieldProbes, TextFieldCards } from './devGallery/TextFieldCards';
 import { CheckboxCard, RadioGroupCard } from './devGallery/ToggleCards';
 
 /**
@@ -22,11 +21,20 @@ import { CheckboxCard, RadioGroupCard } from './devGallery/ToggleCards';
  */
 export default function DevControlsGallery() {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
-  // The theme goes through the app's own preference, so applyTheme draws it as the app does
+  // Toggle dark locally on <html> and restore on unmount so the gallery never writes the app's
+  // saved theme preference (02-REVIEW IN-04)
+  useEffect(() => {
+    const initial = document.documentElement.classList.contains('dark');
+    return () => {
+      document.documentElement.classList.toggle('dark', initial);
+    };
+  }, []);
   const switchTheme = () => {
-    usePreferencesStore.getState().setTheme(dark ? 'light' : 'dark');
-    setDark(!dark);
+    const next = !dark;
+    document.documentElement.classList.toggle('dark', next);
+    setDark(next);
   };
+  const fieldProbes = new URLSearchParams(window.location.search).get('probe') === 'fields';
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-page text-text">
@@ -39,17 +47,23 @@ export default function DevControlsGallery() {
           }
         />
         <main className={`${PAGE_GUTTER} pt-6 pb-16 space-y-8`}>
-          <TextFieldCards />
-          <SelectCard />
-          <ComboboxCard />
-          <PickerCards />
-          <DatePickerCard />
-          <MonthPickerCard />
-          <MonthRangePickerCard />
-          <CheckboxCard />
-          <RadioGroupCard />
-          <SwitchCard />
-          <DialogCard />
+          {fieldProbes ? (
+            <FieldProbes />
+          ) : (
+            <>
+              <TextFieldCards />
+              <SelectCard />
+              <ComboboxCard />
+              <PickerCards />
+              <DatePickerCard />
+              <MonthPickerCard />
+              <MonthRangePickerCard />
+              <CheckboxCard />
+              <RadioGroupCard />
+              <SwitchCard />
+              <DialogCard />
+            </>
+          )}
         </main>
       </div>
     </BrowserRouter>

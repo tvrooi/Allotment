@@ -1,6 +1,9 @@
 import { useState, useRef, useId } from 'react';
 import { useFormReset } from '../../hooks/useFormReset';
 import { Modal } from '../ui/Modal';
+import { Checkbox } from '../ui/Checkbox';
+import { Field } from '../ui/Field';
+import { Input } from '../ui/Input';
 import { useCanSave } from '../../hooks/useConnection';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { ConfirmModal } from '../ui/ConfirmModal';
@@ -164,23 +167,9 @@ export function EditAccountModal({ account, onClose }: Props) {
             </div>
           </div>
 
-          <div>
-            <label
-              htmlFor={`${fieldId}-name`}
-              className="block text-sm font-medium text-text-secondary mb-1"
-            >
-              Account name
-            </label>
-            <input
-              id={`${fieldId}-name`}
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              aria-label="Account name"
-              autoFocus
-              className="block w-full rounded-lg border border-border px-3 py-2 text-sm bg-surface text-text focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-            />
-          </div>
+          <Field label="Account name">
+            <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+          </Field>
 
           <AccountTypeSelect value={type} onChange={setType} />
 
@@ -228,34 +217,18 @@ export function EditAccountModal({ account, onClose }: Props) {
             />
           </div>
 
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isOffBudget}
-              onChange={(e) => setIsOffBudget(e.target.checked)}
-              className="h-4 w-4 rounded border-border text-brand-600 focus:ring-brand-500"
-            />
-            <span className="text-sm text-text-secondary">
-              Off budget (excluded from budgeting)
-            </span>
-          </label>
+          <Checkbox checked={isOffBudget} onCheckedChange={setIsOffBudget}>
+            Off budget (excluded from budgeting)
+          </Checkbox>
 
           {poolable && (
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={assignPool}
-                onChange={(e) => setAssignPool(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-border text-brand-600 focus:ring-brand-500"
-              />
-              <span className="text-sm text-text-secondary">
-                Own Ready to assign for the bills paid from this account
-                <span className="block text-xs text-text-tertiary">
-                  Money moved here is assigned only to the categories of bills paid from it (an
-                  Essentials account, say), not from the main Ready to assign.
-                </span>
-              </span>
-            </label>
+            <Checkbox
+              checked={assignPool}
+              onCheckedChange={setAssignPool}
+              description="Money moved here is assigned only to the categories of bills paid from it (an Essentials account, say), not from the main Ready to assign."
+            >
+              Own Ready to assign for the bills paid from this account
+            </Checkbox>
           )}
           {saveError && (
             <p role="alert" className="text-sm text-negative">

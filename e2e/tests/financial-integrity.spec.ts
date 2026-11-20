@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay, typeAmount } from './fixtures';
+import { test, expect, open, isoDay, typeAmount, setToggle, toggleTarget } from './fixtures';
 
 test('reconciliation selects the full register and cannot adjust unchecked transactions', async ({
   page,
@@ -23,10 +23,19 @@ test('reconciliation selects the full register and cannot adjust unchecked trans
   await page.getByRole('button', { name: 'Start Reconciliation' }).click();
   const all = page.getByRole('checkbox', { name: 'Select all current transactions', exact: true });
   await expect(all).toBeChecked();
-  await all.uncheck();
+  await setToggle(all, false);
   await expect(page.getByRole('button', { name: 'Create Adjustment' })).toBeDisabled();
   await expect(page.getByText(/Unchecked entries are not missing money/)).toBeVisible();
-  await all.check();
+  // Clicking one row's checkbox toggles it once (never flipped a second time by the row click)
+  const selectedBalance = page.getByText('Selected balance').locator('..');
+  await expect(selectedBalance).toContainText('$1,000');
+  const employerBox = page.getByRole('row', { name: /Employer/ }).getByRole('checkbox');
+  await expect(employerBox).not.toBeChecked();
+  await toggleTarget(employerBox).click();
+  await expect(employerBox).toBeChecked();
+  await expect(all).toHaveJSProperty('indeterminate', true);
+  await expect(selectedBalance).toContainText('$1,200');
+  await setToggle(all, true);
   await expect(page.getByText(/Adds a -\$20 balance correction/)).toBeVisible();
   await page.getByRole('button', { name: 'Create Adjustment' }).click();
   await expect.poll(() => api.balance(account.id)).toBe(113000);

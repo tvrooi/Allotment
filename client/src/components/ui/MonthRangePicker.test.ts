@@ -29,6 +29,24 @@ const render = (props: Partial<Props> = {}) =>
   );
 const group = (html: string) => html.match(/<div([^>]*role="group"[^>]*)>/)?.[1] ?? '';
 
+const FULL_MONTHS =
+  /\b(January|February|March|April|June|July|August|September|October|November|December)\b/;
+
+const SHORT_BY_MONTH = [
+  ['2026-01', 'Jan 2026'],
+  ['2026-02', 'Feb 2026'],
+  ['2026-03', 'Mar 2026'],
+  ['2026-04', 'Apr 2026'],
+  ['2026-05', 'May 2026'],
+  ['2026-06', 'Jun 2026'],
+  ['2026-07', 'Jul 2026'],
+  ['2026-08', 'Aug 2026'],
+  ['2026-09', 'Sep 2026'],
+  ['2026-10', 'Oct 2026'],
+  ['2026-11', 'Nov 2026'],
+  ['2026-12', 'Dec 2026'],
+] as const;
+
 describe('MonthRangePicker on desktop', () => {
   it('is a dialog trigger showing the range, with no native month input', () => {
     const html = render();
@@ -36,7 +54,17 @@ describe('MonthRangePicker on desktop', () => {
     expect(trigger).toMatch(/ aria-haspopup="dialog"/);
     expect(trigger).toMatch(/ aria-expanded="false"/);
     expect(html).toContain(`>${formatMonthRange('2026-06', '2026-11')}<`);
+    expect(html).toContain('Nov 2026');
+    expect(html).not.toMatch(FULL_MONTHS);
     expect(html).not.toContain('<input');
+  });
+
+  it('formats every month as a short month name and year with no full month name', () => {
+    for (const [iso, short] of SHORT_BY_MONTH) {
+      const html = render({ from: iso, to: iso, max: '2026-12' });
+      expect(html).toContain(`>${short}<`);
+      expect(html).not.toMatch(FULL_MONTHS);
+    }
   });
 
   it('without a label the range text alone names the trigger', () => {
@@ -89,20 +117,50 @@ describe('MonthRangePicker on phones', () => {
   };
   const inputs = (html: string) => [...html.matchAll(/<input([^>]*)>/g)].map((m) => m[1]);
 
-  it('is a group of two native month inputs, From and To, inside their labels', () => {
+  it('is a group of two native month inputs with short month text (MonthRangePicker phone: short)', () => {
     const html = phone();
     expect(group(html)).toMatch(/ aria-label="Months"/);
-    expect(html).toMatch(/<label[^>]*><span[^>]*>From<\/span><input[^>]*type="month"/);
-    expect(html).toMatch(/<label[^>]*><span[^>]*>To<\/span><input[^>]*type="month"/);
+    const fromId = html.match(/<label[^>]*for="([^"]*)"[^>]*>From<\/label>/)?.[1];
+    const toId = html.match(/<label[^>]*for="([^"]*)"[^>]*>To<\/label>/)?.[1];
+    expect(fromId).toBeTruthy();
+    expect(toId).toBeTruthy();
+    expect(html).toContain('>Jun 2026<');
+    expect(html).toContain('>Nov 2026<');
+    expect(html).not.toMatch(FULL_MONTHS);
     expect(html).not.toContain('<button');
     const [from, to] = inputs(html);
+    expect(from).toContain(`id="${fromId}"`);
+    expect(from).toMatch(/ type="month"/);
     expect(from).toMatch(/ value="2026-06"/);
     expect(from).toMatch(/ max="2026-12"/);
+    expect(to).toContain(`id="${toId}"`);
+    expect(to).toMatch(/ type="month"/);
     expect(to).toMatch(/ value="2026-11"/);
     expect(to).toMatch(/ min="2026-06"/);
     expect(to).toMatch(/ max="2026-12"/);
     for (const tag of [from, to])
       expect(tag).toMatch(/class="[^"]*min-h-11[^"]*text-base|class="[^"]*text-base[^"]*min-h-11/);
+  });
+
+  it('formats every month on phones as a short month name and year, and shows placeholder when empty', () => {
+    for (const [iso, short] of SHORT_BY_MONTH) {
+      const html = phone({ from: iso, to: iso, max: '2026-12' });
+      expect(html).toContain(`>${short}<`);
+      expect(html).not.toMatch(FULL_MONTHS);
+    }
+    const emptyHtml = phone({ from: '', to: '' });
+    expect(emptyHtml).toContain('>Select month<');
+  });
+
+  it('reveals the native month input and hides the display span on keyboard focus (WR-03)', () => {
+    const html = phone();
+    for (const tag of inputs(html)) {
+      expect(tag).toMatch(/\bpeer\b/);
+      expect(tag).toContain('focus-visible:opacity-100');
+    }
+    expect(html.indexOf('<input')).toBeLessThan(html.indexOf('data-month-display="from"'));
+    expect(html).toMatch(/data-month-display="from"[^>]*peer-focus-visible:invisible/);
+    expect(html).toMatch(/data-month-display="to"[^>]*peer-focus-visible:invisible/);
   });
 
   it('a label names the group instead of Months', () => {

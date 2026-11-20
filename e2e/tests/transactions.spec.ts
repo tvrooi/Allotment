@@ -7,6 +7,9 @@ import {
   otherDayThisMonth,
   typeAmount,
   categoryOption,
+  chooseOption,
+  fillDate,
+  setToggle,
   type Api,
 } from './fixtures';
 
@@ -40,7 +43,9 @@ async function fillNewTransaction(
     await payee.press('Tab');
   }
   if (fields.category) {
-    await form.getByRole('combobox', { name: 'Category' }).selectOption({ label: fields.category });
+    // The category button opens the searchable picker (D-05)
+    await form.getByRole('button', { name: /^Category:/ }).click();
+    await categoryOption(form, fields.category, { exact: true }).click();
   }
   if (fields.notes) await form.getByRole('textbox', { name: 'Notes' }).fill(fields.notes);
   if (fields.outflow) await form.getByRole('textbox', { name: 'Outflow' }).fill(fields.outflow);
@@ -117,7 +122,8 @@ test.describe('account register', () => {
     const form = newForm(page);
     await form.getByRole('textbox', { name: 'Outflow' }).press('Tab');
     await expect(form.getByRole('textbox', { name: 'Inflow' })).toBeFocused();
-    await expect(form.getByRole('textbox', { name: 'Outflow' })).toHaveValue('12.34');
+    // The shared CurrencyInput formats an amount once it is left
+    await expect(form.getByRole('textbox', { name: 'Outflow' })).toHaveValue('$12.34');
     // Typing an inflow still replaces the outflow
     await page.keyboard.type('5');
     await expect(form.getByRole('textbox', { name: 'Outflow' })).toHaveValue('');
@@ -133,14 +139,12 @@ test.describe('account register', () => {
     await fillNewTransaction(page, { payee: 'Big Box Store', outflow: '100' });
     const form = newForm(page);
     await form.getByRole('button', { name: 'Split transaction' }).click();
-    await form
-      .getByRole('combobox', { name: 'Split 1 category' })
-      .selectOption({ label: 'Groceries' });
+    await form.getByRole('button', { name: /^Split 1 category:/ }).click();
+    await categoryOption(form, 'Groceries', { exact: true }).click();
     await form.getByRole('textbox', { name: 'Split 1 amount' }).fill('60');
     await expect(form.getByText('$40 remaining')).toBeVisible();
-    await form
-      .getByRole('combobox', { name: 'Split 2 category' })
-      .selectOption({ label: 'Rent / Mortgage' });
+    await form.getByRole('button', { name: /^Split 2 category:/ }).click();
+    await categoryOption(form, 'Rent / Mortgage', { exact: true }).click();
     await form.getByRole('textbox', { name: 'Split 2 amount' }).fill('40');
     await expect(form.getByText('Balanced')).toBeVisible();
     await newForm(page).getByRole('button', { name: 'Save' }).click();
@@ -194,8 +198,10 @@ test.describe('account register', () => {
 
     await panel.getByRole('textbox', { name: 'Notes' }).fill('family plan');
     await panel.getByRole('textbox', { name: 'Notes' }).blur();
-    await panel.getByRole('textbox', { name: 'Date' }).fill(otherDayThisMonth());
-    await panel.getByRole('textbox', { name: 'Date' }).blur();
+    // The date is the shared DatePicker (D-07): typed into its segments, saved once it is left
+    await fillDate(panel, 'Date', otherDayThisMonth());
+    // Leave it: the segment holding focus depends on the Date format's order
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 
     await expect
       .poll(async () => (await api.transactions(`?account_id=${checking.id}`))[0])
@@ -207,6 +213,102 @@ test.describe('account register', () => {
       });
     await page.getByRole('button', { name: 'Close details' }).click();
     await expect(page.getByText('Transaction details')).toBeHidden();
+  });
+
+  // D-07 / 03-RESEARCH Pitfall 2: a day picked from the calendar, or Today, saves at once. The
+  // field keeps focus after a pick, so a save that waited for it to be left would never come
+  test('a day picked in the detail panel saves at once, without leaving the field', async ({
+    page,
+    api,
+  }) => {
+    const { checking } = await setup(api);
+    const tx = await api.createTransaction({
+      accountId: checking.id,
+      date: otherDayThisMonth(),
+      amount: -1_999,
+      payeeName: 'Streamflix',
+    });
+    await open(page, `/accounts/${checking.id}`);
+    await row(page, 'Streamflix').click();
+    const panel = page.getByRole('complementary', { name: 'Transaction details' });
+    const saved = async () =>
+      (await api.transactions(`?account_id=${checking.id}`)).find((t) => t.id === tx.id)?.date;
+    // The register heads each day with its long date (en-US: "19 November 2026")
+    const dayHeading = (iso: string) =>
+      page.getByText(
+        new Date(`${iso}T12:00:00`).toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        }),
+        { exact: true },
+      );
+
+    // Today, from the calendar's footer
+    await panel.getByRole('button', { name: 'Choose from a calendar' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Select today' }).click();
+    await expect.poll(saved).toBe(isoDay());
+    await expect(dayHeading(isoDay())).toBeVisible();
+    await expect(row(page, 'Streamflix')).toBeVisible();
+
+    // A day from the grid, by the keyboard: the calendar opens on the chosen day
+    await panel.getByRole('button', { name: 'Choose from a calendar' }).click();
+    const calendar = page.getByRole('dialog').filter({ has: page.getByRole('grid') });
+    await expect(calendar.locator('[role="gridcell"] [data-focused]')).toBeVisible();
+    await page.keyboard.press(otherDayThisMonth() < isoDay() ? 'ArrowLeft' : 'ArrowRight');
+    await page.keyboard.press('Enter');
+    await expect(calendar).toHaveCount(0);
+    await expect.poll(saved).toBe(otherDayThisMonth());
+    await expect(dayHeading(otherDayThisMonth())).toBeVisible();
+    // Nothing was left: the panel is open and focus is back in the date field
+    await expect(panel).toBeVisible();
+    expect(
+      await panel
+        .getByRole('group', { name: 'Date', exact: true })
+        .evaluate((el) => el.contains(document.activeElement)),
+    ).toBe(true);
+  });
+
+  // 03-13 review WR-01: a day whose save failed is not counted as sent, so choosing it again retries
+  test('a picked day whose save failed is sent again when picked again', async ({ page, api }) => {
+    const { checking } = await setup(api);
+    const tx = await api.createTransaction({
+      accountId: checking.id,
+      date: otherDayThisMonth(),
+      amount: -1_999,
+      payeeName: 'Streamflix',
+    });
+    await open(page, `/accounts/${checking.id}`);
+    await row(page, 'Streamflix').click();
+    const panel = page.getByRole('complementary', { name: 'Transaction details' });
+    const saved = async () =>
+      (await api.transactions(`?account_id=${checking.id}`)).find((t) => t.id === tx.id)?.date;
+
+    // The first save is refused
+    let puts = 0;
+    await page.route(new RegExp(`/api/transactions/${tx.id}$`), async (route) => {
+      if (route.request().method() !== 'PUT') return route.continue();
+      puts += 1;
+      if (puts === 1)
+        return route.fulfill({
+          status: 422,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'Refused for the test' }),
+        });
+      return route.continue();
+    });
+
+    const pickToday = async () => {
+      await panel.getByRole('button', { name: 'Choose from a calendar' }).click();
+      await page.getByRole('dialog').getByRole('button', { name: 'Select today' }).click();
+    };
+    await pickToday();
+    await expect.poll(() => puts).toBe(1);
+    expect(await saved()).toBe(otherDayThisMonth());
+
+    await pickToday();
+    await expect.poll(() => puts).toBe(2);
+    await expect.poll(saved).toBe(isoDay());
   });
 
   test('steps through the listed rows from the detail panel, keeping edits', async ({
@@ -455,7 +557,9 @@ test.describe('account register', () => {
     await open(page, '/transactions');
     await page.getByRole('button', { name: 'Filters' }).click();
     await page.getByRole('tab', { name: 'Accounts', exact: true }).click();
-    await page.getByRole('checkbox', { name: 'Everyday Checking' }).check();
+    // setToggle, not .check(): the shared Checkbox's visual box covers React Aria's 1 px input
+    // once the register filters move onto it (03-24); it clicks the label, as before
+    await setToggle(page.getByRole('checkbox', { name: 'Everyday Checking' }));
     await page.getByRole('tab', { name: 'Money', exact: true }).click();
     await page.getByRole('button', { name: 'Money out', exact: true }).click();
     await page.getByLabel('At least').fill('100.01');
@@ -489,8 +593,8 @@ test('the Add transaction dialog makes transfers too', async ({ page, api }) => 
 
   await dialog.getByRole('button', { name: 'Credit' }).click();
   await typeAmount(dialog.getByLabel('Amount', { exact: true }), '300');
-  await dialog.getByRole('button', { name: /Select account/ }).click();
-  await dialog.getByRole('button', { name: /Everyday Checking/ }).click();
+  await dialog.getByRole('combobox', { name: 'Account' }).click();
+  await dialog.getByRole('option', { name: /Everyday Checking/ }).click();
   await dialog.getByRole('button', { name: /^Category:/ }).click();
   await categoryOption(dialog, 'Transfer: Rainy Day Savings').click();
 
@@ -521,9 +625,10 @@ test('the Add transaction dialog lists transfers before an account is chosen (#8
 
   // A debit transfer asks where the money comes from, and can't come from the same account
   await expect(dialog.getByText('From account *')).toBeVisible();
-  await dialog.getByRole('button', { name: /Select account/ }).click();
-  await expect(dialog.getByRole('button', { name: /Rainy Day Savings/ })).toHaveCount(1);
-  await dialog.getByRole('button', { name: /Everyday Checking/ }).click();
+  await dialog.getByRole('combobox', { name: 'From account' }).click();
+  await expect(dialog.getByRole('option', { name: /Everyday Checking/ })).toBeVisible();
+  await expect(dialog.getByRole('option', { name: /Rainy Day Savings/ })).toHaveCount(0);
+  await dialog.getByRole('option', { name: /Everyday Checking/ }).click();
   await dialog.getByRole('button', { name: 'Add transaction' }).click();
   await expect(dialog).toBeHidden();
 
@@ -799,7 +904,9 @@ test.describe('Add transaction from any page (#222, #223)', () => {
     await open(page, `/accounts/${savings.id}`);
     await sidebarAdd(page).click();
     await expect(amount).toBeFocused();
-    await expect(dialog.getByRole('button', { name: /Rainy Day Savings/ })).toBeVisible();
+    await expect(dialog.getByRole('combobox', { name: 'Account' })).toHaveValue(
+      'Rainy Day Savings',
+    );
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
 
@@ -810,8 +917,8 @@ test.describe('Add transaction from any page (#222, #223)', () => {
     await page.keyboard.type('12.50');
     await dialog.getByPlaceholder('Search payees...').fill('Corner cafe');
     await dialog.getByRole('button', { name: /Create new payee/ }).click();
-    await dialog.getByRole('button', { name: /Select account/ }).click();
-    await dialog.getByRole('button', { name: /Everyday Checking/ }).click();
+    await dialog.getByRole('combobox', { name: 'Account' }).click();
+    await dialog.getByRole('option', { name: /Everyday Checking/ }).click();
     await dialog.getByRole('button', { name: 'Add transaction' }).click();
     await expect(dialog).toBeHidden();
     await expect.poll(() => api.balance(checking.id)).toBe(100_000 - 1_250);
@@ -823,7 +930,9 @@ test.describe('Add transaction from any page (#222, #223)', () => {
     await expect(amount).toBeFocused();
     // A fresh form: not the amount typed last time
     await expect(amount).toHaveValue('');
-    await expect(dialog.getByRole('button', { name: /Everyday Checking/ })).toBeVisible();
+    await expect(dialog.getByRole('combobox', { name: 'Account' })).toHaveValue(
+      'Everyday Checking',
+    );
   });
 
   test('a closed account is never chosen for you', async ({ page, api }) => {
@@ -834,7 +943,7 @@ test.describe('Add transaction from any page (#222, #223)', () => {
     await open(page, `/accounts/${old.id}`);
     await sidebarAdd(page).click();
     const dialog = page.getByRole('dialog', { name: 'Add transaction' });
-    await expect(dialog.getByRole('button', { name: /Select account/ })).toBeVisible();
+    await expect(dialog.getByRole('combobox', { name: 'Account' })).toHaveValue('');
   });
 });
 
@@ -1230,6 +1339,39 @@ test.describe('the payee field', () => {
     await expect(panel).toBeHidden();
   });
 
+  // 02-REVIEW-DISPOSITION residual: a new payee typed in the panel, then Escape for the list and
+  // Escape again for the panel, is kept
+  test('in the detail panel, a typed payee is kept when two Escapes close the panel', async ({
+    page,
+    api,
+  }) => {
+    const { checking, savings } = await setup(api);
+    await seedPayees(api, savings.id, ['Corner Grocery']);
+    const tx = await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: -1_999,
+      payeeName: 'Streamflix',
+    });
+    await open(page, `/accounts/${checking.id}`);
+    await row(page, 'Streamflix').click();
+    const panel = page.getByRole('complementary', { name: 'Transaction details' });
+    const field = panel.getByRole('combobox', { name: 'Payee' });
+    await field.click();
+    await field.fill('Night Market');
+    await expect(field).toHaveAttribute('aria-expanded', 'true');
+    await field.press('Escape');
+    await expect(field).toHaveAttribute('aria-expanded', 'false');
+    await field.press('Escape');
+    await expect(panel).toBeHidden();
+
+    await row(page, 'Night Market').click();
+    await expect(panel.getByRole('combobox', { name: 'Payee' })).toHaveValue('Night Market');
+    expect(
+      (await api.transactions(`?account_id=${checking.id}`)).find((t) => t.id === tx.id),
+    ).toMatchObject({ payeeName: 'Night Market' });
+  });
+
   // D-12, owner-approved 17 Nov 2026: before the shared Combobox this Escape closed the sheet
   // with the list, losing what was typed; now it closes only the list, and a second Escape
   // closes the sheet
@@ -1366,4 +1508,144 @@ test.describe('category picker', () => {
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('button', { name: /^Category:/ })).toBeVisible();
   });
+});
+
+test.describe('the Split transaction dialog', () => {
+  async function openSplit(page: Page, api: Api) {
+    const { checking } = await setup(api);
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: -10_000,
+      payeeName: 'Big Box Store',
+    });
+    await open(page, `/accounts/${checking.id}`);
+    await row(page, 'Big Box Store').click();
+    const panel = page.getByRole('complementary', { name: 'Transaction details' });
+    await panel.getByRole('button', { name: 'Split across categories' }).click();
+    return { checking, panel, dialog: page.getByRole('dialog', { name: 'Split transaction' }) };
+  }
+
+  test('a part amount formats when left, and text that is not an amount is marked', async ({
+    page,
+    api,
+  }) => {
+    const { dialog } = await openSplit(page, api);
+    const first = dialog.getByRole('textbox', { name: 'Part 1 amount' });
+    await first.fill('60');
+    await first.blur();
+    await expect(first).toHaveValue('$60');
+    await expect(dialog.getByRole('button', { name: 'Left to split: $40' })).toBeVisible();
+
+    const second = dialog.getByRole('textbox', { name: 'Part 2 amount' });
+    await second.fill('abc');
+    await second.blur();
+    await expect(second).toHaveValue('abc');
+    await expect(second).toHaveAttribute('aria-invalid', 'true');
+    await expect(dialog.getByRole('alert')).toContainText("That isn't an amount.");
+    await expect(dialog.getByRole('button', { name: 'Split into 2' })).toBeDisabled();
+  });
+
+  test('splits by amount with the category buttons, then changes the parts by percent', async ({
+    page,
+    api,
+  }) => {
+    const { checking, panel, dialog } = await openSplit(page, api);
+    await dialog.getByRole('button', { name: 'Part 1 category: Uncategorised' }).click();
+    await categoryOption(dialog, 'Groceries').click();
+    await typeAmount(dialog.getByRole('textbox', { name: 'Part 1 amount' }), '60');
+    await dialog.getByRole('button', { name: 'Part 2 category: Uncategorised' }).click();
+    await categoryOption(dialog, 'Rent / Mortgage').click();
+    await typeAmount(dialog.getByRole('textbox', { name: 'Part 2 amount' }), '40');
+    await dialog.getByRole('textbox', { name: 'Part 2 notes' }).fill('half the rent');
+    await expect(dialog.getByText('Fully split')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Split into 2' }).click();
+    await expect(dialog).toBeHidden();
+
+    const groceries = await api.category('Groceries');
+    const rent = await api.category('Rent / Mortgage');
+    const parts = async () => {
+      const [parent] = await api.transactions(`?account_id=${checking.id}`);
+      return parent.children
+        .map((c: { amount: number; categoryId: string; notes: string | null }) => [
+          c.amount,
+          c.categoryId,
+          c.notes,
+        ])
+        .sort((a: [number], b: [number]) => a[0] - b[0]);
+    };
+    expect(await parts()).toEqual([
+      [-6_000, groceries.id, null],
+      [-4_000, rent.id, 'half the rent'],
+    ]);
+
+    // By percent the complete parts carry across, and a typed percentage that isn't one is marked
+    await panel.getByRole('button', { name: 'Edit split' }).click();
+    await dialog.getByRole('button', { name: 'By percent' }).click();
+    const first = dialog.getByRole('textbox', { name: 'Part 1 percentage' });
+    const second = dialog.getByRole('textbox', { name: 'Part 2 percentage' });
+    await expect(first).toHaveValue('60');
+    await expect(second).toHaveValue('40');
+    await first.fill('7x');
+    await expect(first).toHaveAttribute('aria-invalid', 'true');
+    await expect(dialog.getByRole('button', { name: 'Save parts' })).toBeDisabled();
+    await first.fill('75');
+    await second.fill('25');
+    await dialog.getByRole('button', { name: 'Save parts' }).click();
+    await expect(dialog).toBeHidden();
+    await expect
+      .poll(async () => (await parts()).map((p: [number]) => p[0]))
+      .toEqual([-7_500, -2_500]);
+  });
+});
+
+test('bulk edit sets the category, notes, payee and report visibility on the whole list', async ({
+  page,
+  api,
+}) => {
+  const { checking } = await setup(api);
+  for (const [payeeName, amount] of [
+    ['Corner Grocery', -2_500],
+    ['Big Box Store', -7_000],
+  ] as const) {
+    await api.createTransaction({ accountId: checking.id, date: isoDay(), amount, payeeName });
+  }
+  await open(page, `/accounts/${checking.id}`);
+  await page.getByRole('button', { name: 'Select all 2' }).click();
+  await page.getByRole('button', { name: 'Edit 2' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toHaveAccessibleName('Edit 2 transactions');
+
+  await chooseOption(dialog.getByRole('button', { name: /Category change$/ }), 'Set to');
+  await dialog.getByRole('button', { name: 'New category: Choose a category…' }).click();
+  await categoryOption(dialog, 'Groceries').click();
+  await dialog.getByRole('textbox', { name: 'Payee' }).fill('Corner Shop');
+  await chooseOption(dialog.getByRole('button', { name: /Notes change$/ }), 'Replace with');
+  await dialog.getByRole('textbox', { name: 'New notes' }).fill('weekly shop');
+  await chooseOption(dialog.getByRole('button', { name: /Reports$/ }), 'Hide from reports');
+  await dialog.getByRole('button', { name: 'Review changes' }).click();
+
+  await expect(dialog).toHaveAccessibleName('Does this look right?');
+  for (const line of [
+    'Category → Groceries',
+    'Payee → Corner Shop',
+    'Notes → weekly shop',
+    'Hide from reports',
+  ]) {
+    await expect(dialog.getByRole('listitem').filter({ hasText: line })).toHaveCount(1);
+  }
+  await dialog.getByRole('button', { name: 'Apply to 2' }).click();
+  await expect(dialog).toBeHidden();
+
+  const groceries = await api.category('Groceries');
+  const rows = await api.transactions(`?account_id=${checking.id}`);
+  expect(rows).toHaveLength(2);
+  for (const tx of rows) {
+    expect(tx).toMatchObject({
+      categoryId: groceries.id,
+      payeeName: 'Corner Shop',
+      notes: 'weekly shop',
+      hiddenFromReports: 1,
+    });
+  }
 });

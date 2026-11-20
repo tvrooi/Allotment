@@ -1,6 +1,6 @@
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { test, expect, open, isoDay } from './fixtures';
+import { test, expect, open, isoDay, setToggle } from './fixtures';
 import { SAMPLE_RECEIPT_PNG } from '../../server/src/services/receiptSample';
 
 // Reading receipts with a model server (docs/RECEIPTS-AND-TAX.md §5), against a mock
@@ -80,11 +80,23 @@ test('a photo is read by the local model, filled in and matched', async ({ page,
   await settings.getByLabel('Server address').fill(`${base}/`);
   await settings.getByRole('button', { name: 'Check' }).click();
   await expect(settings.getByLabel('Server address')).toHaveValue(base);
-  await settings.getByLabel('Model').selectOption('qwen3-vl:4b-instruct');
-  await expect(settings.getByRole('option', { name: 'qwen2.5:3b (text only)' })).toBeAttached();
+  // The local model is a Combobox over the models the server reports: open its list, see both
+  // models (the text-only one marked), then pick the one that reads images
+  const modelBox = settings.getByRole('combobox', { name: 'Model' });
+  await modelBox.fill('qwen');
+  const models = page.getByRole('listbox');
+  await expect(models.getByRole('option', { name: 'qwen2.5:3b (text only)' })).toBeVisible();
+  await models.getByRole('option', { name: /^qwen3-vl:4b-instruct/ }).click();
   await expect(reading).toBeEnabled();
-  await reading.check();
-  await expect(reading).toBeChecked();
+  // "Choose a model…" unsets it, as the old select's empty option did, and reading can't be on
+  await modelBox.fill('Choose');
+  await models.getByRole('option', { name: 'Choose a model…', exact: true }).click();
+  await expect.poll(async () => (await api.call('GET', '/receipts/reader')).model).toBeNull();
+  await expect(reading).toBeDisabled();
+  await modelBox.fill('qwen');
+  await models.getByRole('option', { name: /^qwen3-vl:4b-instruct/ }).click();
+  await expect(reading).toBeEnabled();
+  await setToggle(reading, true);
   await expect.poll(async () => (await api.call('GET', '/receipts/reader')).enabled).toBe(true);
 
   // The sample receipt: read without touching the budget
@@ -100,7 +112,12 @@ test('a photo is read by the local model, filled in and matched', async ({ page,
   const dialog = page.getByRole('dialog', { name: 'Receipt' });
   await expect(dialog.getByText('coles.png', { exact: true })).toBeVisible();
   await expect(dialog.getByLabel('Merchant')).toHaveValue('Coles', { timeout: 15_000 });
-  await expect(dialog.getByLabel('Date', { exact: true })).toHaveValue(isoDay());
+  // The date is a DatePicker: each segment holds its part of the day as a number
+  const [year, month, day] = isoDay().split('-').map(Number);
+  const date = dialog.getByRole('group', { name: 'Date', exact: true });
+  await expect(date.locator('[data-type="year"]')).toHaveAttribute('aria-valuenow', String(year));
+  await expect(date.locator('[data-type="month"]')).toHaveAttribute('aria-valuenow', String(month));
+  await expect(date.locator('[data-type="day"]')).toHaveAttribute('aria-valuenow', String(day));
   await expect(dialog.getByLabel('Item 2', { exact: true })).toHaveValue('Light globes');
   await expect(dialog.getByRole('region', { name: 'Matched transaction' })).toBeVisible();
   await expect(

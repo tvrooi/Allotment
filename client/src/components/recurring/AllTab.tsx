@@ -28,6 +28,7 @@ import {
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
+import { Input } from '../ui/Input';
 import type { Schedule, ScheduleOccurrence } from '../../types';
 import { formatDay } from '../../utils/dates';
 import { HouseholdIcon } from '../household/HouseholdIcon';
@@ -320,13 +321,16 @@ export default function AllTab({
         <div className="relative w-72 max-md:w-full">
           <Search
             size={14}
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none"
+            aria-hidden="true"
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
           />
-          <input
+          <Input
+            fieldSize="sm"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter recurring…"
-            className="w-full text-sm border border-border rounded-md pl-8 pr-3 py-1.5 bg-surface text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
+            aria-label="Filter recurring"
+            className="w-full pl-8"
           />
         </div>
       </div>

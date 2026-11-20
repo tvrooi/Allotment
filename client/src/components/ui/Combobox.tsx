@@ -10,7 +10,6 @@ import {
   Popover,
   useFilter,
 } from 'react-aria-components';
-import { pickerIconButton } from './DatePicker';
 import { FieldDescription, FieldErrorText } from './Field';
 import {
   fieldBase,
@@ -18,16 +17,16 @@ import {
   fieldStates,
   listClass,
   optionClass,
+  pickerIconButton,
   popoverClass,
 } from './fieldClasses';
 import { errorLine, fieldSubject, namesOf, present, type LabelNames } from './fieldMessages';
 import { Label } from './Label';
-import { listItems } from './listItems';
-import type { SelectGroup, SelectOption } from './Select';
+import { listItems, type ListGroup, type ListOption } from './listItems';
 
 type Props = LabelNames & {
   /** Flat options, headed groups, or both, in the order given (the Select's option shapes) */
-  items: readonly (SelectOption | SelectGroup)[];
+  items: readonly (ListOption | ListGroup)[];
   /** The chosen option's value, or '' for none */
   value: string;
   /** An option's own value, or '' when the field is emptied */
@@ -62,6 +61,11 @@ type Props = LabelNames & {
   fieldClassName?: string;
   /** Added to the popover, for a wrapper that fixes its width */
   popoverClassName?: string;
+  /**
+   * Where the popover is drawn instead of the end of the page: an element in the caller's own
+   * markup, so the list and footer stay inside the dialog or form it opened from
+   */
+  portalContainer?: Element;
   placeholder?: string;
   description?: ReactNode;
   errorMessage?: ReactNode;
@@ -122,6 +126,7 @@ export function Combobox(props: Props) {
     inputClassName = '',
     fieldClassName,
     popoverClassName = '',
+    portalContainer,
     placeholder,
     description,
     errorMessage,
@@ -226,7 +231,11 @@ export function Combobox(props: Props) {
       </Group>
       {present(description) && <FieldDescription>{description}</FieldDescription>}
       {present(error) && <FieldErrorText>{error}</FieldErrorText>}
-      <Popover offset={4} className={`${popoverClass} ${popoverClassName}`}>
+      <Popover
+        offset={4}
+        UNSTABLE_portalContainer={portalContainer}
+        className={`${popoverClass} ${popoverClassName}`}
+      >
         <ListBox
           className={listClass}
           renderEmptyState={() => (emptyState === undefined ? <NoMatches /> : emptyState)}
@@ -239,8 +248,8 @@ export function Combobox(props: Props) {
   );
 }
 
-/** One choice in a SearchList: the Select's option shape, with an optional leading icon */
-export type SearchListOption = SelectOption & { icon?: ReactNode };
+/** One choice in a SearchList: the shared list option shape without trailing metadata */
+export type SearchListOption = Omit<ListOption, 'trailing'>;
 
 /** A run of SearchList choices, under a heading when it has one */
 export type SearchListSection = { id: string; heading?: string; options: SearchListOption[] };

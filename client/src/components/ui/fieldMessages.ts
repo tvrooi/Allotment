@@ -46,6 +46,21 @@ export function monthRangeMessage(...[min, max]: Bounds): string {
   return `Choose a month between ${formatMonth(min)} and ${formatMonth(max)}`;
 }
 
+/** A whole-number count outside [min, max] (03-UI-SPEC.md §3) */
+export function wholeNumberRangeMessage(min: number, max: number): string {
+  return `Enter a whole number from ${min} to ${max}.`;
+}
+
+/** A whole-number count below its lower bound with no upper cap (03-UI-SPEC.md §3) */
+export function wholeNumberMinMessage(min: number): string {
+  return `Enter a whole number of ${min} or more.`;
+}
+
+/** A decimal percentage outside [min, max] (03-UI-SPEC.md §3) */
+export function percentRangeMessage(min: number, max: number): string {
+  return `Enter a percentage from ${min}% to ${max}%.`;
+}
+
 /**
  * Whether a help or error line has something to show. An absent one (undefined, null, '', or the
  * false of a caller's `cond && 'text'`) renders nothing, so it leaves no gap.

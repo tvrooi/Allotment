@@ -43,6 +43,8 @@ type Props = LabelNames & {
   className?: string;
   id?: string;
   name?: string;
+  /** External description id(s) merged with description/error ids on both desktop and phone */
+  'aria-describedby'?: string;
 };
 
 /** Whether `value` is one of the options, so a stale or unknown value shows as unset */
@@ -86,6 +88,7 @@ export function Select(props: Props) {
       id={id}
       name={name}
       aria-label={props['aria-label']}
+      aria-describedby={props['aria-describedby']}
       value={value === '' ? null : value}
       // Read-only: the trigger still takes focus, but typeahead on it must not change the value
       onChange={(key) => {
@@ -170,12 +173,16 @@ function NativeSelect({
       {o.label}
     </option>
   );
+  const describedBy =
+    [describedByIds(lineId, description, error), names['aria-describedby']]
+      .filter(Boolean)
+      .join(' ') || undefined;
   const select = (
     <select
       id={id}
       name={name}
       aria-label={names.label === undefined ? names['aria-label'] : undefined}
-      aria-describedby={describedByIds(lineId, description, error)}
+      aria-describedby={describedBy}
       value={chosen}
       onChange={(e) => {
         if (!isReadOnly) onChange(e.target.value);

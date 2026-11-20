@@ -41,6 +41,11 @@ describe('Textarea', () => {
     );
   });
 
+  it('fewer than three rows drops the 80 px floor; three or more keep it (03-09 review-2 WR-01)', () => {
+    expect(classes(render({ rows: 2 }))).not.toContain('min-h-20');
+    expect(classes(render({ rows: 6 }))).toContain('min-h-20');
+  });
+
   it('a caller can set the rows and add a class', () => {
     const html = render({ rows: 6, className: 'w-64' });
     expect(attr(textarea(html), 'rows')).toBe('6');

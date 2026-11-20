@@ -1,10 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Trash2, GitMerge, Pencil, Search, Store } from 'lucide-react';
 import { usePayees, useUpdatePayee, useDeletePayee, useMergePayees } from '../hooks/usePayees';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Modal, useModalValue } from '../components/ui/Modal';
 import { Button, ButtonLink } from '../components/ui/Button';
+import { Checkbox } from '../components/ui/Checkbox';
+import { Input } from '../components/ui/Input';
+import { Radio, RadioGroup } from '../components/ui/RadioGroup';
 import { EmptyState } from '../components/ui/EmptyState';
 import { QueryProblem, loadFailed } from '../components/ui/QueryProblem';
 import { PayeeIcon } from '../components/payees/PayeeIcon';
@@ -40,30 +43,33 @@ function MergeModal({
         <p className="text-sm text-text-secondary">
           Choose which payee name to keep. All transactions will be moved to the selected payee.
         </p>
-        <div className="space-y-2">
+        <RadioGroup
+          aria-label="Payee to keep"
+          value={keepId}
+          onChange={setKeepId}
+          className="w-full [&>div]:w-full"
+        >
           {selectedPayees.map((p) => (
-            <label
+            <div
               key={p.id}
-              className={`flex items-center gap-3 p-3 rounded-md border cursor-pointer transition-colors ${keepId === p.id ? 'border-brand-500 bg-brand-50' : 'border-border hover:bg-hover'}`}
+              className={`rounded-lg border transition-colors [&_label]:flex [&_label]:w-full [&_label]:items-center [&_label]:gap-3 [&_label]:p-3 ${
+                keepId === p.id ? 'border-brand-600 bg-brand-50' : 'border-border hover:bg-hover'
+              }`}
             >
-              <input
-                type="radio"
-                name="keepId"
-                value={p.id}
-                checked={keepId === p.id}
-                onChange={() => setKeepId(p.id)}
-                className="accent-brand-600"
-              />
-              <PayeeIcon name={p.name} logo={p.logo} size="md" force />
-              <div>
-                <p className="text-sm font-medium text-text">{p.name}</p>
-                <p className="text-xs text-text-tertiary">
-                  {p.transactionCount} transaction{p.transactionCount !== 1 ? 's' : ''}
-                </p>
-              </div>
-            </label>
+              <Radio value={p.id}>
+                <span className="flex items-center gap-3">
+                  <PayeeIcon name={p.name} logo={p.logo} size="md" force />
+                  <span>
+                    <span className="block text-sm font-medium text-text">{p.name}</span>
+                    <span className="block text-xs text-text-tertiary">
+                      {p.transactionCount} transaction{p.transactionCount !== 1 ? 's' : ''}
+                    </span>
+                  </span>
+                </span>
+              </Radio>
+            </div>
           ))}
-        </div>
+        </RadioGroup>
         <div className="flex justify-end gap-3 pt-1">
           <Button variant="secondary" onClick={onClose}>
             Cancel
@@ -118,6 +124,12 @@ export default function PayeesPage() {
     () => payees.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())),
     [payees, search],
   );
+  const selectedInView = useMemo(
+    () => filtered.filter((p) => selected.has(p.id)).length,
+    [filtered, selected],
+  );
+  const allSelected = filtered.length > 0 && selectedInView === filtered.length;
+  const someSelected = selectedInView > 0 && selectedInView < filtered.length;
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -166,13 +178,16 @@ export default function PayeesPage() {
             <div className="relative min-w-0" data-guide="payees.search">
               <Search
                 size={14}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
+                aria-hidden="true"
+                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
               />
-              <input
+              <Input
+                fieldSize="sm"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search payees…"
-                className="w-full min-w-0 pl-8 pr-3 py-1.5 text-sm border border-border rounded-full bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
+                aria-label="Search payees"
+                className="w-full min-w-0 pl-8"
               />
             </div>
           </div>
@@ -217,18 +232,17 @@ export default function PayeesPage() {
           // double-click on a touch screen), and ticking two or more offers "Merge"
           <ul aria-label="Payees" data-guide="payees.list">
             <li className="flex items-center min-h-11 px-4 border-b border-border-light bg-surface-alt">
-              <label className="flex items-center gap-3 min-h-11 text-sm text-text-secondary">
-                <input
-                  type="checkbox"
-                  aria-label="Select all payees"
-                  checked={selected.size === filtered.length && filtered.length > 0}
-                  onChange={(e) =>
-                    setSelected(e.target.checked ? new Set(filtered.map((p) => p.id)) : new Set())
-                  }
-                  className="h-5 w-5 accent-brand-600"
-                />
+              <Checkbox
+                aria-label="Select all payees"
+                checked={allSelected}
+                isIndeterminate={someSelected}
+                onCheckedChange={(checked) =>
+                  setSelected(checked ? new Set(filtered.map((p) => p.id)) : new Set())
+                }
+                className="gap-3 text-text-secondary"
+              >
                 Select all
-              </label>
+              </Checkbox>
             </li>
             {filtered.map((p) => (
               <li
@@ -237,15 +251,12 @@ export default function PayeesPage() {
                 className={`grid gap-2 px-4 py-3 border-b border-border-light ${selected.has(p.id) ? 'bg-brand-50' : 'bg-surface'}`}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <label className="flex items-center justify-center min-w-11 min-h-11 -ml-3">
-                    <input
-                      type="checkbox"
-                      aria-label={`Select ${p.name}`}
-                      checked={selected.has(p.id)}
-                      onChange={() => toggleSelect(p.id)}
-                      className="h-5 w-5 accent-brand-600"
-                    />
-                  </label>
+                  <Checkbox
+                    aria-label={`Select ${p.name}`}
+                    checked={selected.has(p.id)}
+                    onCheckedChange={() => toggleSelect(p.id)}
+                    className="-ml-3"
+                  />
                   <PayeeIcon
                     name={p.name}
                     logo={p.logo}
@@ -256,8 +267,9 @@ export default function PayeesPage() {
                     }
                   />
                   {editingId === p.id ? (
-                    <input
+                    <Input
                       autoFocus
+                      fieldSize="sm"
                       aria-label={`Rename ${p.name}`}
                       value={editingName}
                       onChange={(e) => setEditingName(e.target.value)}
@@ -266,7 +278,7 @@ export default function PayeesPage() {
                         if (e.key === 'Enter') commitEditName(p.id);
                         if (e.key === 'Escape') setEditingId(null);
                       }}
-                      className="flex-1 min-w-0 border border-brand-500 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                      className="flex-1 min-w-0"
                     />
                   ) : (
                     <span className="flex-1 min-w-0 grid">
@@ -299,16 +311,14 @@ export default function PayeesPage() {
               <thead className="sticky top-0 bg-surface-alt border-b border-border z-10">
                 <tr>
                   <th className="w-10 px-4 py-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       aria-label="Select all payees"
-                      checked={selected.size === filtered.length && filtered.length > 0}
-                      onChange={(e) =>
-                        setSelected(
-                          e.target.checked ? new Set(filtered.map((p) => p.id)) : new Set(),
-                        )
+                      checked={allSelected}
+                      isIndeterminate={someSelected}
+                      onCheckedChange={(checked) =>
+                        setSelected(checked ? new Set(filtered.map((p) => p.id)) : new Set())
                       }
-                      className="accent-brand-600"
+                      className="align-middle"
                     />
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-text-tertiary">
@@ -335,12 +345,11 @@ export default function PayeesPage() {
                     className={`group hover:bg-hover transition-colors ${selected.has(p.id) ? 'bg-brand-50' : ''}`}
                   >
                     <td className="px-4 py-2">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         aria-label={`Select ${p.name}`}
                         checked={selected.has(p.id)}
-                        onChange={() => toggleSelect(p.id)}
-                        className="accent-brand-600"
+                        onCheckedChange={() => toggleSelect(p.id)}
+                        className="align-middle"
                       />
                     </td>
                     <td className="px-4 py-2">
@@ -355,8 +364,9 @@ export default function PayeesPage() {
                           }
                         />
                         {editingId === p.id ? (
-                          <input
+                          <Input
                             autoFocus
+                            fieldSize="sm"
                             aria-label={`Rename ${p.name}`}
                             value={editingName}
                             onChange={(e) => setEditingName(e.target.value)}
@@ -365,7 +375,7 @@ export default function PayeesPage() {
                               if (e.key === 'Enter') commitEditName(p.id);
                               if (e.key === 'Escape') setEditingId(null);
                             }}
-                            className="text-sm border border-brand-500 rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-brand-600 w-full max-w-xs"
+                            className="w-full max-w-xs"
                           />
                         ) : (
                           <Link

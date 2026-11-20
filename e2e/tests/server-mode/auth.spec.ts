@@ -174,7 +174,7 @@ test('bill reminders say they need Home Assistant, and a schedule cannot ask for
 
   await owner.goto(`${baseURL}/recurring`);
   await owner.getByRole('main').getByRole('button', { name: 'Add recurring' }).first().click();
-  const lead = owner.getByLabel('Remind me');
+  const lead = owner.getByRole('button', { name: 'Remind me' });
   await expect(lead).toBeDisabled();
   await expect(owner.getByRole('dialog')).toContainText(
     'Reminders need Allotment to run as a Home Assistant app',

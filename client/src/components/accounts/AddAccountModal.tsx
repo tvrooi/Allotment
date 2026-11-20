@@ -1,5 +1,8 @@
 import { useState, useId } from 'react';
 import { Modal } from '../ui/Modal';
+import { Checkbox } from '../ui/Checkbox';
+import { Field } from '../ui/Field';
+import { Input } from '../ui/Input';
 import { useCanSave } from '../../hooks/useConnection';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { CurrencyInput } from '../ui/CurrencyInput';
@@ -85,26 +88,16 @@ export function AddAccountModal({ isOpen, onClose }: Props) {
     <Modal isOpen={isOpen} onClose={handleClose} title="Add account" size="sm">
       <AmountFields report={report}>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label
-              htmlFor={`${fieldId}-name`}
-              className="block text-sm font-medium text-text-secondary mb-1"
-            >
-              Account name
-            </label>
-            <input
-              id={`${fieldId}-name`}
-              type="text"
+          <Field label="Account name">
+            <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              aria-label="Account name"
               placeholder={
                 info.group === 'property' ? 'e.g. 2021 Honda Civic' : 'e.g. Chase Checking'
               }
               autoFocus
-              className="block w-full rounded-lg border border-border px-3 py-2 text-sm bg-surface text-text placeholder-text-tertiary focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
-          </div>
+          </Field>
 
           <AccountTypeSelect value={type} onChange={handleTypeChange} />
 
@@ -162,21 +155,13 @@ export function AddAccountModal({ isOpen, onClose }: Props) {
             <p className="mt-1 text-xs text-text-secondary">{amountHint}</p>
           </div>
 
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isOffBudget}
-              onChange={(e) => setIsOffBudget(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-border text-brand-600 focus:ring-brand-500"
-            />
-            <span className="text-sm text-text-secondary">
-              Off budget
-              <span className="block text-xs text-text-tertiary">
-                Counts toward net worth but not your budget. Recommended for investments, property
-                and loans.
-              </span>
-            </span>
-          </label>
+          <Checkbox
+            checked={isOffBudget}
+            onCheckedChange={setIsOffBudget}
+            description="Counts toward net worth but not your budget. Recommended for investments, property and loans."
+          >
+            Off budget
+          </Checkbox>
 
           <SavingPausedHint className="text-right" />
           <div className="flex justify-end gap-3 pt-2">

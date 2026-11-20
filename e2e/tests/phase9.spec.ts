@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, open, isoDay } from './fixtures';
+import { test, expect, open, isoDay, setToggle } from './fixtures';
 
 // Phase 9 (docs/PHASE-9-DEVELOPMENT-PHASE.md): tags, review, hiding from reports and saved
 // views, on mock data.
@@ -38,7 +38,7 @@ test('tags a transaction, filters by the tag and manages it in Settings', async 
 
   await page.getByRole('button', { name: 'Filters' }).click();
   await page.getByRole('tab', { name: 'Tags', exact: true }).click();
-  await page.getByRole('checkbox', { name: 'Holiday' }).check();
+  await setToggle(page.getByRole('checkbox', { name: 'Holiday' }));
   await expect(page.getByText('1 transaction', { exact: true })).toBeVisible();
   await expect(row(page, 'Mock cafe')).toHaveCount(0);
 
@@ -69,7 +69,7 @@ test('hiding a transaction changes reports, not balances', async ({ page, api })
 
   await open(page, '/transactions');
   const panel = await openDetails(page, 'Mock laptop');
-  await panel.getByRole('checkbox', { name: /Hide from reports/ }).check();
+  await setToggle(panel.getByRole('checkbox', { name: /Hide from reports/ }));
   await expect(
     row(page, 'Mock laptop').getByRole('img', { name: 'Hidden from reports' }),
   ).toBeVisible();

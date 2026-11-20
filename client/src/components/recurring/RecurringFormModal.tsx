@@ -2,8 +2,16 @@ import { useState, useEffect, useRef, useId } from 'react';
 import { useReminderSettings } from '../../hooks/useReminders';
 import { useFormReset } from '../../hooks/useFormReset';
 import { Modal } from '../ui/Modal';
-import { Input, Select } from '../ui/Input';
+import { AmountFields, useAmountValidity } from '../ui/amountValidity';
+import { Checkbox } from '../ui/Checkbox';
+import { Combobox } from '../ui/Combobox';
 import { CurrencyInput } from '../ui/CurrencyInput';
+import { DatePicker } from '../ui/DatePicker';
+import { Field } from '../ui/Field';
+import { Input } from '../ui/Input';
+import { Label } from '../ui/Label';
+import { NumberField } from '../ui/NumberField';
+import { Select } from '../ui/Select';
 import { MerchantSelect } from '../transactions/MerchantSelect';
 import { CategorySelectButton } from '../transactions/CategorySelectButton';
 import { useAccounts } from '../../hooks/useAccounts';
@@ -29,6 +37,13 @@ interface Props {
   draft?: ScheduleDraft | null;
 }
 
+const NONE_ACCOUNT = '__none__';
+const NO_REMINDER = '__none__';
+
+/** Advanced stays open while Date flexibility is invalid so its error remains visible (WR-06). */
+export const nextAdvancedOpen = (open: boolean, advancedInvalid: boolean) =>
+  advancedInvalid ? true : !open;
+
 /** How many days ahead a reminder can be asked for from the form (the server allows up to 30) */
 const REMINDER_LEADS = [0, 1, 3, 7];
 const leadLabel = (days: number) =>
@@ -52,6 +67,8 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
   const { data: accounts = [] } = useAccounts();
   const { data: payees = [] } = usePayees();
   const canSave = useCanSave();
+  const amounts = useAmountValidity();
+  const advancedAmounts = useAmountValidity();
 
   const [name, setName] = useState('');
   const [amount, setAmount] = useState(0);
@@ -162,8 +179,21 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
     );
   }, [isOpen, editItem, payees]);
 
+  const advancedInvalid = !advancedAmounts.allValid;
+  const advancedOpen = showAdvanced || advancedInvalid;
+  const endBeforeStart = Boolean(endDate && startDate && endDate < startDate);
+  const canSubmit =
+    Boolean(name) &&
+    amount !== 0 &&
+    Boolean(startDate) &&
+    !endBeforeStart &&
+    canSave &&
+    amounts.allValid &&
+    advancedAmounts.allValid;
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!canSubmit) return;
     const signedAmount = isExpense ? -Math.abs(amount) : Math.abs(amount);
     onSave({
       name,
@@ -193,362 +223,278 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
       title={editItem ? 'Edit recurring' : 'Add recurring'}
       size="lg"
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label
-            htmlFor={`${fieldId}-name`}
-            className="block text-sm font-medium text-text-secondary mb-1"
-          >
-            Name
-          </label>
-          <Input
-            id={`${fieldId}-name`}
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            aria-label="Name"
-            placeholder="e.g. Netflix, Rent, Pay…"
-            required
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label
-              htmlFor={`${fieldId}-amount`}
-              className="block text-sm font-medium text-text-secondary mb-1"
-            >
-              {amountType === 'variable' ? 'Estimated amount' : 'Amount'}
-            </label>
-            <CurrencyInput
-              id={`${fieldId}-amount`}
-              value={amount}
-              onChange={setAmount}
-              aria-label="Amount"
-            />
-          </div>
-          <div>
-            <span
-              id={`${fieldId}-type`}
-              className="block text-sm font-medium text-text-secondary mb-1"
-            >
-              Type
-            </span>
-            <div role="group" aria-labelledby={`${fieldId}-type`} className="flex gap-1 mt-1">
-              <button
-                type="button"
-                onClick={() => setIsExpense(true)}
-                aria-pressed={isExpense}
-                className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
-                  isExpense
-                    ? 'bg-negative-subtle text-negative ring-1 ring-negative/20'
-                    : 'text-text-tertiary hover:bg-hover'
-                }`}
-              >
-                Expense
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsExpense(false)}
-                aria-pressed={!isExpense}
-                className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
-                  !isExpense
-                    ? 'bg-positive-subtle text-positive ring-1 ring-positive/20'
-                    : 'text-text-tertiary hover:bg-hover'
-                }`}
-              >
-                Income
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <span
-            id={`${fieldId}-precision`}
-            className="block text-sm font-medium text-text-secondary mb-1"
-          >
-            Amount precision
-          </span>
-          <div role="group" aria-labelledby={`${fieldId}-precision`} className="flex gap-1">
-            {AMOUNT_TYPE_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setAmountType(opt.value)}
-                aria-pressed={amountType === opt.value}
-                className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
-                  amountType === opt.value
-                    ? 'bg-brand-50 text-brand-600 ring-1 ring-brand-600/20'
-                    : 'text-text-tertiary hover:bg-hover'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-          {amountType === 'variable' && (
-            <p className="text-xs text-text-tertiary mt-1">
-              Amount is estimated — used for forecasting and matching, not an exact expectation.
-            </p>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label
-              htmlFor={`${fieldId}-frequency`}
-              className="block text-sm font-medium text-text-secondary mb-1"
-            >
-              Frequency
-            </label>
-            <Select
-              id={`${fieldId}-frequency`}
-              aria-label="Frequency"
-              value={recurrenceType}
-              onChange={(e) => setRecurrenceType(e.target.value as RecurrenceType)}
-            >
-              {RECURRENCE_TYPE_LABELS.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <label
-              htmlFor={`${fieldId}-account`}
-              className="block text-sm font-medium text-text-secondary mb-1"
-            >
-              Account
-            </label>
-            <Select
-              id={`${fieldId}-account`}
-              aria-label="Account"
-              value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-            >
-              <option value="">No account</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label
-              htmlFor={`${fieldId}-start-date`}
-              className="block text-sm font-medium text-text-secondary mb-1"
-            >
-              Start date
-            </label>
+      <AmountFields report={amounts.report}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Field label="Name">
             <Input
-              id={`${fieldId}-start-date`}
-              type="date"
-              aria-label="Start date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Netflix, Rent, Pay…"
               required
             />
-          </div>
-          <div>
-            <label
-              htmlFor={`${fieldId}-end-date`}
-              className="block text-sm font-medium text-text-secondary mb-1"
-            >
-              End Date <span className="text-text-tertiary font-normal">(optional)</span>
-            </label>
-            <Input
-              id={`${fieldId}-end-date`}
-              type="date"
-              aria-label="End date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              min={startDate}
-            />
-          </div>
-        </div>
+          </Field>
 
-        <div>
-          <label
-            htmlFor={`${fieldId}-payee`}
-            className="block text-sm font-medium text-text-secondary mb-1"
-          >
-            Payee <span className="text-text-tertiary font-normal">(optional)</span>
-          </label>
-          <MerchantSelect
-            id={`${fieldId}-payee`}
-            key={resets}
-            value={payeeValue}
-            onChange={setPayeeValue}
-            label="Payee"
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor={`${fieldId}-category`}
-            className="block text-sm font-medium text-text-secondary mb-1"
-          >
-            Category
-          </label>
-          <CategorySelectButton
-            id={`${fieldId}-category`}
-            value={categoryId || null}
-            onChange={(id) => setCategoryId(id ?? '')}
-            position="above"
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor={`${fieldId}-notes`}
-            className="block text-sm font-medium text-text-secondary mb-1"
-          >
-            Notes <span className="text-text-tertiary font-normal">(optional)</span>
-          </label>
-          <Input
-            id={`${fieldId}-notes`}
-            type="text"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Optional notes…"
-            aria-label="Notes"
-          />
-        </div>
-
-        <div className="flex items-center gap-6 pt-1">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={autoCreate}
-              onChange={(e) => setAutoCreate(e.target.checked)}
-              className="rounded border-border text-brand-600 focus:ring-brand-600"
-            />
-            <span className="text-sm text-text-secondary">Auto-create transactions</span>
-          </label>
-        </div>
-
-        <div>
-          <label
-            htmlFor="schedule-reminder"
-            className="block text-sm font-medium text-text-secondary mb-1"
-          >
-            Remind me
-          </label>
-          <select
-            id="schedule-reminder"
-            value={reminderDays ?? ''}
-            onChange={(e) => setReminderDays(e.target.value === '' ? null : Number(e.target.value))}
-            // Off, or a reminder that could never be sent: the choice is kept but not offered
-            disabled={!reminders?.available || !reminders.enabled}
-            className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface text-text focus:border-brand-600 focus:outline-none disabled:opacity-60"
-          >
-            <option value="">Don't remind me</option>
-            {REMINDER_LEADS.map((d) => (
-              <option key={d} value={d}>
-                {leadLabel(d)}
-              </option>
-            ))}
-            {reminderDays !== null && !REMINDER_LEADS.includes(reminderDays) && (
-              <option value={reminderDays}>{leadLabel(reminderDays)}</option>
-            )}
-          </select>
-          {(!reminders?.available || !reminders.enabled) && (
-            <p className="text-xs text-text-tertiary mt-1">
-              {!reminders?.available
-                ? 'Reminders need Allotment to run as a Home Assistant app.'
-                : reminders.viaGateway
-                  ? 'Turn reminders on in Settings, Server, Reminders first.'
-                  : 'Choose a notify service in Settings, Server, Reminders first.'}
-            </p>
-          )}
-        </div>
-
-        <p className="text-xs text-text-tertiary">
-          On bank-connected accounts, income waits for the imported receipt even when auto-create is
-          enabled. Closed accounts never auto-create transactions.
-        </p>
-
-        {/* Advanced settings */}
-        <div>
-          <button
-            type="button"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-xs font-medium text-text-tertiary hover:text-text-secondary"
-          >
-            {showAdvanced ? '▾ Advanced' : '▸ Advanced'}
-          </button>
-          {showAdvanced && (
-            <div className="mt-2 space-y-3 pl-2 border-l-2 border-border-light">
-              {showWeekendAdjust && (
-                <div>
-                  <label
-                    htmlFor={`${fieldId}-weekend`}
-                    className="block text-xs font-medium text-text-secondary mb-1"
-                  >
-                    Weekend adjustment
-                  </label>
-                  <Select
-                    id={`${fieldId}-weekend`}
-                    aria-label="Weekend adjustment"
-                    value={weekendAdjust}
-                    onChange={(e) => setWeekendAdjust(e.target.value as WeekendAdjust)}
-                  >
-                    {WEEKEND_ADJUST_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-              )}
-              <div>
-                <label
-                  htmlFor={`${fieldId}-date-flexibility`}
-                  className="block text-xs font-medium text-text-secondary mb-1"
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor={`${fieldId}-amount`}
+                className="block text-sm font-medium text-text-secondary mb-1"
+              >
+                {amountType === 'variable' ? 'Estimated amount' : 'Amount'}
+              </label>
+              <CurrencyInput
+                id={`${fieldId}-amount`}
+                value={amount}
+                onChange={setAmount}
+                aria-label="Amount"
+              />
+            </div>
+            <div>
+              <span
+                id={`${fieldId}-type`}
+                className="block text-sm font-medium text-text-secondary mb-1"
+              >
+                Type
+              </span>
+              <div role="group" aria-labelledby={`${fieldId}-type`} className="flex gap-1 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsExpense(true)}
+                  aria-pressed={isExpense}
+                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                    isExpense
+                      ? 'bg-negative-subtle text-negative ring-1 ring-negative/20'
+                      : 'text-text-tertiary hover:bg-hover'
+                  }`}
                 >
-                  Date Flexibility{' '}
-                  <span className="text-text-tertiary font-normal">(± days for matching)</span>
-                </label>
-                <Input
-                  id={`${fieldId}-date-flexibility`}
-                  type="number"
-                  aria-label="Date flexibility"
-                  value={dateFlexibility}
-                  onChange={(e) =>
-                    setDateFlexibility(Math.max(0, Math.min(14, parseInt(e.target.value) || 0)))
-                  }
-                  min={0}
-                  max={14}
-                />
+                  Expense
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsExpense(false)}
+                  aria-pressed={!isExpense}
+                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                    !isExpense
+                      ? 'bg-positive-subtle text-positive ring-1 ring-positive/20'
+                      : 'text-text-tertiary hover:bg-hover'
+                  }`}
+                >
+                  Income
+                </button>
               </div>
             </div>
-          )}
-        </div>
+          </div>
 
-        <SavingPausedHint className="text-right" />
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-text-secondary bg-surface border border-border rounded-md hover:bg-surface-alt transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={!name || amount === 0 || !canSave}
-            className="px-4 py-2 text-sm font-medium text-brand-contrast bg-brand-600 rounded-md hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {editItem ? 'Save changes' : 'Add recurring'}
-          </button>
-        </div>
-      </form>
+          <div>
+            <span
+              id={`${fieldId}-precision`}
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
+              Amount precision
+            </span>
+            <div role="group" aria-labelledby={`${fieldId}-precision`} className="flex gap-1">
+              {AMOUNT_TYPE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setAmountType(opt.value)}
+                  aria-pressed={amountType === opt.value}
+                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                    amountType === opt.value
+                      ? 'bg-brand-50 text-brand-600 ring-1 ring-brand-600/20'
+                      : 'text-text-tertiary hover:bg-hover'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {amountType === 'variable' && (
+              <p className="text-xs text-text-tertiary mt-1">
+                Amount is estimated — used for forecasting and matching, not an exact expectation.
+              </p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Frequency"
+              value={recurrenceType}
+              onChange={(v) => setRecurrenceType(v as RecurrenceType)}
+              options={RECURRENCE_TYPE_LABELS}
+            />
+            <Combobox
+              label="Account"
+              items={[
+                { value: NONE_ACCOUNT, label: 'No account' },
+                ...accounts.map((a) => ({ value: a.id, label: a.name })),
+              ]}
+              value={accountId || NONE_ACCOUNT}
+              onChange={(v) => {
+                if (v) setAccountId(v === NONE_ACCOUNT ? '' : v);
+              }}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <DatePicker
+              label="Start date"
+              value={startDate}
+              onChange={setStartDate}
+              maxValue={endDate || undefined}
+              isRequired
+              isInvalid={!startDate}
+            />
+            <DatePicker
+              label="End date"
+              optional
+              optionalHint
+              value={endDate}
+              onChange={setEndDate}
+              minValue={startDate || undefined}
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor={`${fieldId}-payee`}
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
+              Payee <span className="text-text-tertiary font-normal">(optional)</span>
+            </label>
+            <MerchantSelect
+              id={`${fieldId}-payee`}
+              key={resets}
+              value={payeeValue}
+              onChange={setPayeeValue}
+              label="Payee"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor={`${fieldId}-category`}
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
+              Category
+            </label>
+            <CategorySelectButton
+              id={`${fieldId}-category`}
+              value={categoryId || null}
+              onChange={(id) => setCategoryId(id ?? '')}
+              position="above"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label htmlFor={`${fieldId}-notes`}>
+              Notes <span className="text-text-tertiary font-normal">(optional)</span>
+            </Label>
+            <Input
+              id={`${fieldId}-notes`}
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional notes…"
+              aria-label="Notes"
+            />
+          </div>
+
+          <div className="pt-1">
+            <Checkbox checked={autoCreate} onCheckedChange={setAutoCreate}>
+              Auto-create transactions
+            </Checkbox>
+          </div>
+
+          <Select
+            id="schedule-reminder"
+            label="Remind me"
+            value={reminderDays === null ? NO_REMINDER : String(reminderDays)}
+            onChange={(v) => setReminderDays(v === '' || v === NO_REMINDER ? null : Number(v))}
+            options={[
+              { value: NO_REMINDER, label: "Don't remind me" },
+              ...REMINDER_LEADS.map((d) => ({ value: String(d), label: leadLabel(d) })),
+              ...(reminderDays !== null && !REMINDER_LEADS.includes(reminderDays)
+                ? [{ value: String(reminderDays), label: leadLabel(reminderDays) }]
+                : []),
+            ]}
+            // Off, or a reminder that could never be sent: the choice is kept but not offered
+            isDisabled={!reminders?.available || !reminders.enabled}
+            description={
+              !reminders?.available || !reminders.enabled
+                ? !reminders?.available
+                  ? 'Reminders need Allotment to run as a Home Assistant app.'
+                  : reminders.viaGateway
+                    ? 'Turn reminders on in Settings, Server, Reminders first.'
+                    : 'Choose a notify service in Settings, Server, Reminders first.'
+                : undefined
+            }
+          />
+
+          <p className="text-xs text-text-tertiary">
+            On bank-connected accounts, income waits for the imported receipt even when auto-create
+            is enabled. Closed accounts never auto-create transactions.
+          </p>
+
+          {/* Advanced settings — kept mounted and open while Date flexibility is invalid so the
+              error stays visible and Save stays disabled (WR-02, WR-06) */}
+          <div>
+            <button
+              type="button"
+              aria-expanded={advancedOpen}
+              onClick={() => setShowAdvanced((open) => nextAdvancedOpen(open, advancedInvalid))}
+              className="text-xs font-medium text-text-tertiary hover:text-text-secondary"
+            >
+              {advancedOpen ? '▾ Advanced' : '▸ Advanced'}
+            </button>
+            <div
+              hidden={!advancedOpen}
+              className="mt-2 space-y-3 pl-2 border-l-2 border-border-light"
+            >
+              <AmountFields report={advancedAmounts.report}>
+                {showWeekendAdjust && (
+                  <Select
+                    label="Weekend adjustment"
+                    value={weekendAdjust}
+                    onChange={(v) => setWeekendAdjust(v as WeekendAdjust)}
+                    options={WEEKEND_ADJUST_OPTIONS}
+                  />
+                )}
+                <NumberField
+                  label="Date flexibility"
+                  description="± days for matching"
+                  value={dateFlexibility}
+                  onChange={(v) => {
+                    if (v !== null) setDateFlexibility(v);
+                  }}
+                  min={0}
+                  max={14}
+                  resetKey={resets}
+                />
+              </AmountFields>
+            </div>
+          </div>
+
+          <SavingPausedHint className="text-right" />
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-text-secondary bg-surface border border-border rounded-md hover:bg-surface-alt transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!canSubmit}
+              className="px-4 py-2 text-sm font-medium text-brand-contrast bg-brand-600 rounded-md hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {editItem ? 'Save changes' : 'Add recurring'}
+            </button>
+          </div>
+        </form>
+      </AmountFields>
     </Modal>
   );
 }

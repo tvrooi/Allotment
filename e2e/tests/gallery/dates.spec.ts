@@ -367,3 +367,80 @@ for (const width of [1280, 390] as const)
     await fillMonth(specimen(page, 'MonthPicker', 'Default'), 'Budget month', '2025-07');
     await expect(monthShown(page, 'Default')).toHaveText('2025-07');
   });
+
+// A half-typed date holds no day: the caller keeps its last whole one, so the field tells an
+// enclosing form (AmountFields) as each segment is edited, and again once it is whole
+test('a half-typed date keeps its form unavailable until it is whole again', async ({ page }) => {
+  await openGallery(page);
+  const row = specimen(page, 'DatePicker', 'Half-typed in a form');
+  const save = row.getByTestId('save-state');
+  const day = row
+    .getByRole('group', { name: 'Pay date', exact: true })
+    .locator('[data-type="day"]');
+  await expect(save).toHaveText('available');
+  await day.click();
+  await expect(day).toBeFocused();
+  for (let i = 0; i < 4 && (await day.getAttribute('data-placeholder')) === null; i++)
+    await day.press('Backspace');
+  await expect(day).toHaveAttribute('data-placeholder', 'true');
+  await expect(save).toHaveText('unavailable');
+  // The form re-rendered to say so; the half-typed segments stay as typed, not the last whole day
+  await expect(day).toHaveAttribute('data-placeholder', 'true');
+  await expect(row.getByRole('group', { name: 'Pay date', exact: true })).not.toContainText(
+    '01/11/2026',
+  );
+  // The caller still holds the last whole day (16, then 1 after the first Backspace); the form
+  // is what knows the field no longer shows one
+  await expect(row.locator('output').first()).toHaveText('1 Nov 2026');
+  await page.keyboard.type('20');
+  await expect(save).toHaveText('available');
+  await expect(row.locator('output').first()).toHaveText('20 Nov 2026');
+});
+
+// Picking the day the field already holds fills its half-typed segments again: the caller's
+// value does not change, so the picker itself has to put the whole date back
+test('picking the held day refills a half-typed date', async ({ page }) => {
+  await openGallery(page);
+  const row = specimen(page, 'DatePicker', 'Half-typed in a form');
+  const save = row.getByTestId('save-state');
+  const group = row.getByRole('group', { name: 'Pay date', exact: true });
+  const day = group.locator('[data-type="day"]');
+  await day.click();
+  for (let i = 0; i < 4 && (await day.getAttribute('data-placeholder')) === null; i++)
+    await day.press('Backspace');
+  await expect(save).toHaveText('unavailable');
+  const held = await row.locator('output').first().textContent();
+  await group.getByRole('button', { name: 'Choose from a calendar' }).click();
+  await page.getByRole('dialog').locator('[role="gridcell"] [data-selected]').click();
+  await expect(day).not.toHaveAttribute('data-placeholder');
+  await expect(save).toHaveText('available');
+  await leaveField(page);
+  await expect(day).not.toHaveAttribute('data-placeholder');
+  await expect(row.getByText(/^Enter the full date/)).toHaveCount(0);
+  await expect(save).toHaveText('available');
+  await expect(row.locator('output').first()).toHaveText(held!);
+});
+
+// Clearing an optional date drops a line named for its half-typed state: the field is empty, not
+// half-typed, and focus has already left with the Clear button, so no blur re-checks it (review-3 WR-01)
+test('Clear drops the full-date line of a half-typed optional date', async ({ page }) => {
+  await page.clock.setFixedTime(TODAY);
+  await openGallery(page);
+  const row = specimen(page, 'DatePicker', 'Optional');
+  const group = dateGroup(page, 'Optional');
+  await calendarButton(page, 'Optional').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Select today' }).click();
+  await expect(shown(page, 'Optional')).toHaveText('20 Nov 2026');
+  const day = group.locator('[data-type="day"]');
+  await day.click();
+  for (let i = 0; i < 4 && (await day.getAttribute('data-placeholder')) === null; i++)
+    await day.press('Backspace');
+  await leaveField(page);
+  await expect(row.getByText(/^Enter the full date/)).toBeVisible();
+  await expect(group).toHaveAttribute('data-invalid', 'true');
+  await row.getByRole('button', { name: /^Clear / }).click();
+  await expect(shown(page, 'Optional')).toHaveText('none');
+  await leaveField(page);
+  await expect(row.getByText(/^Enter the full date/)).toHaveCount(0);
+  await expect(group).not.toHaveAttribute('data-invalid');
+});

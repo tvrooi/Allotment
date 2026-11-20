@@ -31,6 +31,8 @@ import { BudgetInspector } from '../components/budget/BudgetInspector';
 import { BudgetSummaryWidget } from '../components/budget/BudgetSummaryWidget';
 import { BudgetEditPopover } from '../components/budget/BudgetEditPopover';
 import { Button, ButtonLink } from '../components/ui/Button';
+import { Checkbox } from '../components/ui/Checkbox';
+import { Input } from '../components/ui/Input';
 import { targetLabel } from '../utils/targets';
 import { FundTargets } from '../components/budget/FundTargets';
 import { AutoAssign } from '../components/budget/AutoAssign';
@@ -95,6 +97,10 @@ function AmountInput({
   const [raw, setRaw] = useState(assignmentToInput(cents));
   const [invalid, setInvalid] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  // Move focus into the inline editor when it opens (BUD-05); onFocus selects the text
+  useEffect(() => {
+    input.current?.focus();
+  }, []);
   useEffect(() => {
     if (picked) {
       setRaw(assignmentToInput(picked.cents));
@@ -118,9 +124,10 @@ function AmountInput({
 
   return (
     <>
-      <input
+      <Input
         ref={input}
-        autoFocus
+        fieldSize="sm"
+        isInvalid={invalid || !!error}
         readOnly={saving}
         aria-busy={saving || undefined}
         aria-label={label}
@@ -132,7 +139,6 @@ function AmountInput({
           setInvalid(false);
           onDraft(readAmountExpression(e.target.value));
         }}
-        aria-invalid={invalid || !!error || undefined}
         aria-describedby={error ? 'planned-save-error' : undefined}
         title={invalid ? UNREADABLE_AMOUNT : undefined}
         // Select the amount so typing replaces it
@@ -175,10 +181,13 @@ function AmountInput({
           if (closed.current || !document.hasFocus()) return;
           onCancel();
         }}
-        className={`w-28 text-right tabular-nums text-sm bg-surface border rounded-md px-2 py-0.5 focus:outline-none focus:ring-1 read-only:opacity-60 ${invalid || error ? 'border-negative focus:ring-negative' : 'border-brand-500 focus:ring-brand-600'}`}
+        className="w-28 text-right tabular-nums"
       />
       {saving && (
-        <span role="status" className="block text-xs text-text-tertiary mt-0.5">
+        <span
+          role="status"
+          className="absolute right-0 top-full mt-0.5 whitespace-nowrap text-xs text-text-tertiary"
+        >
           Saving…
         </span>
       )}
@@ -331,13 +340,13 @@ function CategoryRow({
           them for the bar, the expected debit and the notes, so rows keep one rhythm */}
       <td className="relative h-14 py-1.5 pl-10 pr-3 align-top">
         {onToggleSelect && (
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={() => onToggleSelect(cat.id)}
-            aria-label={`Select ${cat.name}`}
-            className="absolute left-4 top-3 h-3.5 w-3.5 accent-brand-600"
-          />
+          <span className="absolute left-2.5 top-2">
+            <Checkbox
+              checked={selected}
+              onCheckedChange={() => onToggleSelect(cat.id)}
+              aria-label={`Select ${cat.name}`}
+            />
+          </span>
         )}
         <div className="flex w-[90%] flex-wrap items-baseline justify-between gap-x-3 py-0.5 text-sm text-text">
           <span className="min-w-0">
@@ -1139,26 +1148,27 @@ export default function BudgetPage() {
               )}
             </div>
           </div>
-          <div className="relative mt-3 max-md:mt-2">
+          <div className="relative mt-3 max-md:mt-2 w-full max-w-sm max-md:max-w-none">
             <Search
               size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
               aria-hidden
             />
-            <input
+            <Input
               type="search"
+              fieldSize="sm"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Find a category"
               aria-label="Find a category"
-              className="w-full max-w-sm max-md:max-w-none text-sm border border-border rounded-lg pl-8 pr-8 py-1.5 max-md:min-h-11 bg-surface text-text placeholder:text-text-tertiary focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600 [&::-webkit-search-cancel-button]:hidden"
+              className="w-full pl-8 pr-8 max-md:pr-11 [&::-webkit-search-cancel-button]:hidden"
             />
             {query && (
               <button
                 type="button"
                 onClick={() => setQuery('')}
                 aria-label="Clear category search"
-                className="absolute right-1 top-1/2 -translate-y-1/2 min-w-8 min-h-8 flex items-center justify-center text-text-tertiary hover:text-text-secondary"
+                className="absolute right-0 top-1/2 -translate-y-1/2 min-w-8 min-h-8 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center text-text-tertiary hover:text-text-secondary"
               >
                 <X size={14} />
               </button>

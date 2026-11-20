@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import fs from 'fs';
-import { test, expect, open, isoDay } from './fixtures';
+import { test, expect, open, isoDay, categoryOption, setToggle } from './fixtures';
 
 // Settings: preferences and the other sections. Categories and groups are managed on the Budget
 // area's Categories page (/budget/categories, #244); its tests live here with the rest.
@@ -134,7 +134,7 @@ test.describe('categories', () => {
     const dialog = page.getByRole('dialog', { name: 'Edit category' });
     const keep = dialog.getByRole('checkbox', { name: /Keep overspending/ });
     await expect(keep).not.toBeChecked();
-    await keep.check();
+    await setToggle(keep, true);
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(dialog).toBeHidden();
     await expect.poll(async () => (await api.category('Parking'))?.keepOverspending).toBe(1);
@@ -142,7 +142,7 @@ test.describe('categories', () => {
     // It is still on when the dialog is opened again, and can be turned off
     await page.getByRole('button', { name: 'Edit Parking' }).click();
     await expect(keep).toBeChecked();
-    await keep.uncheck();
+    await setToggle(keep, false);
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect.poll(async () => (await api.category('Parking'))?.keepOverspending).toBe(0);
 
@@ -159,6 +159,89 @@ test.describe('categories', () => {
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('button', { name: 'Edit Parking & Tolls' })).toBeVisible();
     await expect.poll(() => api.category('Parking & Tolls')).toBeTruthy();
+  });
+
+  test('renames a group inline and edits group, budget type and accounts in the editor', async ({
+    page,
+    api,
+  }) => {
+    const saver = await api.createAccount('Holiday Saver', 0, 'savings');
+    const pool = await api.createAccount('Bills Pool', 0, 'checking');
+    await api.call('PUT', `/accounts/${pool.id}`, { assignPool: 1 });
+    const motor = await api.call('POST', '/categories/groups', { name: 'Motor', isIncome: 0 });
+    await page.reload();
+
+    // Inline rename selects on focus, Escape cancels, and Enter commits
+    const motorCard = page
+      .locator('div')
+      .filter({ has: page.getByText('Motor', { exact: true }) })
+      .filter({ has: page.getByRole('button', { name: 'Delete group Motor' }) })
+      .last();
+    await motorCard.getByRole('button', { name: 'Edit', exact: true }).click();
+    const rename = page.getByRole('textbox', { name: 'Group name' });
+    await expect(rename).toBeFocused();
+    await page.keyboard.type('Cancelled Name');
+    await page.keyboard.press('Escape');
+    await expect(page.getByText('Motor', { exact: true })).toBeVisible();
+
+    await motorCard.getByRole('button', { name: 'Edit', exact: true }).click();
+    await page.keyboard.type('Transport & Auto');
+    await page.keyboard.press('Enter');
+    await expect(page.getByText('Transport & Auto', { exact: true })).toBeVisible();
+
+    // Edit category uses shared Comboboxes and RadioGroup
+    await page.getByRole('button', { name: 'Edit Parking' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Edit category' });
+
+    const groupBox = dialog.getByRole('combobox', { name: 'Group' });
+    await groupBox.fill('Transport');
+    await page.getByRole('listbox').getByRole('option', { name: 'Transport & Auto' }).click();
+
+    const budgetType = dialog.getByRole('radiogroup', { name: 'Budget type' });
+    await setToggle(budgetType.getByRole('radio', { name: /^Fixed\b/ }), true);
+
+    const follows = dialog.getByRole('combobox', { name: 'Follows the account' });
+    await expect(follows).toHaveValue('No account');
+    await follows.fill('Holiday');
+    await page.getByRole('listbox').getByRole('option', { name: 'Holiday Saver' }).click();
+
+    const poolBox = dialog.getByRole('combobox', { name: 'Ready to assign from' });
+    await expect(poolBox).toHaveValue('The main Ready to assign');
+
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(dialog).toBeHidden();
+    await expect
+      .poll(async () => await api.category('Parking'))
+      .toMatchObject({
+        groupId: motor.id,
+        budgetType: 'fixed',
+        linkedAccountId: saver.id,
+        poolAccountId: null,
+      });
+
+    // Clear linked account back to "No account" first, then fund from the pool account
+    await page.getByRole('button', { name: 'Edit Parking' }).click();
+    await follows.fill('No acc');
+    await page.getByRole('listbox').getByRole('option', { name: 'No account' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(dialog).toBeHidden();
+    await expect
+      .poll(async () => await api.category('Parking'))
+      .toMatchObject({
+        linkedAccountId: null,
+      });
+
+    await page.getByRole('button', { name: 'Edit Parking' }).click();
+    await poolBox.fill('Bills');
+    await page.getByRole('listbox').getByRole('option', { name: 'Bills Pool’s own' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(dialog).toBeHidden();
+    await expect
+      .poll(async () => await api.category('Parking'))
+      .toMatchObject({
+        linkedAccountId: null,
+        poolAccountId: pool.id,
+      });
   });
 
   test('deleting a used category moves its transactions first', async ({ page, api }) => {
@@ -181,7 +264,12 @@ test.describe('categories', () => {
     const dialog = page.getByRole('dialog', { name: 'Merge into another category' });
     await expect(dialog).toContainText('Parking has 1 transaction');
     await expect(dialog.getByRole('button', { name: 'Merge & remove' })).toBeDisabled();
-    await dialog.getByRole('combobox', { name: 'Merge into' }).selectOption(transit.id);
+    await dialog.getByRole('button', { name: 'Merge into: Select a category…' }).click();
+    const list = page.getByRole('listbox', { name: 'Search categories' });
+    await expect(categoryOption(list, 'Transit')).toBeVisible();
+    await expect(categoryOption(list, 'Parking', { exact: true })).toHaveCount(0);
+    await expect(categoryOption(list, 'Paychecks', { exact: true })).toHaveCount(0);
+    await categoryOption(list, 'Transit').click();
     await dialog.getByRole('button', { name: 'Merge & remove' }).click();
 
     await expect(page.getByRole('button', { name: 'Edit Parking' })).toBeHidden();

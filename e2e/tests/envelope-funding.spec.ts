@@ -1,4 +1,18 @@
-import { test, expect, open, isoDay, thisMonth } from './fixtures';
+import type { Page } from '@playwright/test';
+import { test, expect, open, isoDay, thisMonth, categoryOption, typeAmount } from './fixtures';
+
+/** Move money's From or To: a category button (named "Move from: <shown>") over the picker */
+const moveField = (page: Page, side: 'from' | 'to') =>
+  page.getByRole('button', { name: new RegExp(`^Move ${side}: `) });
+/** Opens that button and picks the row whose name starts with `name` */
+async function pickMove(page: Page, side: 'from' | 'to', name: string) {
+  await moveField(page, side).click();
+  await categoryOption(
+    page,
+    new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}`),
+  ).click();
+  await expect(moveField(page, side)).toHaveAccessibleName(`Move ${side}: ${name}`);
+}
 for (const phone of [false, true]) {
   test(`rollover, refunds, cover and undo${phone ? ' on phone' : ''}`, async ({ page, api }) => {
     if (phone) await page.setViewportSize({ width: 390, height: 844 });
@@ -55,8 +69,8 @@ for (const phone of [false, true]) {
     await page
       .getByRole('button', { name: /^(Cover overspending|Move between envelopes)$/ })
       .click();
-    await page.getByLabel('Move from').selectOption(food.id);
-    await page.getByLabel('Move to').selectOption(rent.id);
+    await pickMove(page, 'from', 'Groceries');
+    await pickMove(page, 'to', 'Rent / Mortgage');
     await page.getByLabel('Move amount').fill('50');
     await page.getByRole('button', { name: 'Preview move' }).click();
     await expect(page.getByRole('region', { name: 'Money move preview' })).toContainText(
@@ -114,9 +128,9 @@ for (const phone of [false, true]) {
 
     // Cover Rent: the panel opens with Rent as the destination and its deficit as the amount
     await page.getByRole('button', { name: 'Cover Rent / Mortgage: $50 overspent' }).click();
-    await expect(page.getByLabel('Move to')).toHaveValue(rent.id);
-    await expect(page.getByLabel('Move amount')).toHaveValue(/^50(\.00)?$/);
-    await page.getByLabel('Move from').selectOption(food.id);
+    await expect(moveField(page, 'to')).toHaveAccessibleName('Move to: Rent / Mortgage');
+    await expect(page.getByLabel('Move amount')).toHaveValue('$50');
+    await pickMove(page, 'from', 'Groceries');
     await page.getByRole('button', { name: 'Preview move' }).click();
     await expect(preview).toContainText('From available after move: $350');
     await expect(preview).toContainText('To available after move: $0');
@@ -135,15 +149,15 @@ for (const phone of [false, true]) {
     if (phone) {
       await page.getByLabel('Find a category').fill('Grocer');
       await page.getByRole('button', { name: 'Move money from Groceries: $350 available' }).click();
-      await expect(page.getByLabel('Move from')).toHaveValue(food.id);
+      await expect(moveField(page, 'from')).toHaveAccessibleName('Move from: Groceries');
       await page.getByLabel('Find a category').fill('');
     }
 
     // Give $10 back from Groceries: the preview, a cancel that writes nothing, then the move
     const before = await ready();
     await page.getByRole('button', { name: 'Move money from Groceries: $350 available' }).click();
-    await expect(page.getByLabel('Move from')).toHaveValue(food.id);
-    await page.getByLabel('Move to').selectOption({ label: 'Ready to assign' });
+    await expect(moveField(page, 'from')).toHaveAccessibleName('Move from: Groceries');
+    await pickMove(page, 'to', 'Ready to assign');
     await page.getByLabel('Move amount').fill('10');
     await page.getByRole('button', { name: 'Preview move' }).click();
     await expect(preview).toContainText('From available after move: $340');
@@ -213,3 +227,48 @@ for (const phone of [false, true]) {
     await expect(row.getByRole('button', { name: /^Assigned to Rent/ })).toHaveCount(0);
   });
 }
+
+// A typed negative amount is refused before any preview, as the old field did
+test('a negative move amount is refused', async ({ page, api }) => {
+  await api.category('Groceries');
+  await api.category('Rent / Mortgage');
+  await open(page, '/budget');
+  await page.getByRole('button', { name: /^(Cover overspending|Move between envelopes)$/ }).click();
+  await pickMove(page, 'from', 'Groceries');
+  await pickMove(page, 'to', 'Rent / Mortgage');
+  await typeAmount(page.getByLabel('Move amount'), '-50');
+  await page.getByRole('button', { name: 'Preview move' }).click();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Enter a positive amount.' }),
+  ).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Money move preview' })).toHaveCount(0);
+});
+
+// Passing through the amount without editing it keeps the preview; an edit retires it
+test('tabbing through an unchanged move amount keeps the preview', async ({ page, api }) => {
+  const account = await api.createAccount('Cash', 0);
+  const food = await api.category('Groceries');
+  await api.category('Rent / Mortgage');
+  await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: 100000,
+    categoryId: (await api.category('Paychecks')).id,
+  });
+  await api.call('PUT', `/budget/${thisMonth()}/${food.id}`, { budgeted: 40000 });
+  await open(page, '/budget');
+  await page.getByRole('button', { name: /^(Cover overspending|Move between envelopes)$/ }).click();
+  await pickMove(page, 'from', 'Groceries');
+  await pickMove(page, 'to', 'Rent / Mortgage');
+  const amount = page.getByLabel('Move amount');
+  await typeAmount(amount, '50');
+  await page.getByRole('button', { name: 'Preview move' }).click();
+  const apply = page.getByRole('button', { name: 'Apply move' });
+  await expect(apply).toBeVisible();
+  await amount.focus();
+  await expect(amount).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(apply).toBeVisible();
+  await typeAmount(amount, '60');
+  await expect(apply).toHaveCount(0);
+});

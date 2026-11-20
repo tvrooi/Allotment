@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { test, expect, open, isoDay } from './fixtures';
+import { test, expect, open, isoDay, chooseOption } from './fixtures';
 
 // Accessibility fixes from the audit (F-15): every page has a heading, icon-only controls have
 // names, and unlabelled fields are labelled. The lint rule allotment/icon-only-control and the
@@ -156,7 +156,7 @@ test('every label in the account, goal, recurring and category forms points at i
   const add = page.getByRole('dialog', { name: 'Add account' });
   expect(await strayLabels(add)).toEqual([]);
   await add.getByText('Account type', { exact: true }).click();
-  await expect(add.getByRole('combobox', { name: 'Account type' })).toBeFocused();
+  await expect(add.getByRole('button', { name: 'Account type' })).toBeFocused();
   await page.keyboard.press('Escape');
 
   await open(page, `/accounts/${acct.id}`);
@@ -178,8 +178,10 @@ test('every label in the account, goal, recurring and category forms points at i
   await page.getByRole('main').getByRole('button', { name: 'Add recurring' }).first().click();
   const recurring = page.getByRole('dialog', { name: 'Add recurring' });
   expect(await strayLabels(recurring)).toEqual([]);
-  await recurring.getByText('Start date', { exact: true }).click();
-  await expect(recurring.getByLabel('Start date')).toBeFocused();
+  await recurring.getByText('Start date*', { exact: true }).click();
+  await expect(
+    recurring.getByRole('group', { name: 'Start date' }).getByRole('spinbutton').first(),
+  ).toBeFocused();
   await expect(recurring.getByRole('group', { name: 'Type' })).toBeVisible();
   await page.keyboard.press('Escape');
 
@@ -187,7 +189,7 @@ test('every label in the account, goal, recurring and category forms points at i
   await page.getByRole('button', { name: 'Edit Parking' }).click();
   const category = page.getByRole('dialog', { name: 'Edit category' });
   expect(await strayLabels(category)).toEqual([]);
-  await expect(category.getByRole('group', { name: 'Budget type' })).toBeVisible();
+  await expect(category.getByRole('radiogroup', { name: 'Budget type' })).toBeVisible();
 });
 
 test('a disabled rule says so in words, and is not faded', async ({ page, api }) => {
@@ -293,7 +295,7 @@ test("the rule editor's fields show a brand focus ring", async ({ page, api }) =
   const dialog = page.getByRole('dialog', { name: 'Edit rule' });
 
   // A condition field, reached by the keyboard
-  const field = dialog.getByLabel('Field', { exact: true }).first();
+  const field = dialog.getByRole('button', { name: /Field$/ }).first();
   await field.focus();
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Tab');
@@ -301,9 +303,21 @@ test("the rule editor's fields show a brand focus ring", async ({ page, api }) =
   let ring = await focusRing(page);
   expect(ring.shadow).toContain(ring.brand);
 
-  // An account condition picks from a list: the option picker's trigger
-  await field.selectOption('account');
-  const trigger = dialog.getByRole('button', { name: 'Choose…' });
+  // An account condition picks from a list: single-value Combobox group and multi-value OptionPicker trigger
+  await chooseOption(field, 'Account');
+  const accountCombo = dialog.getByRole('combobox', { name: 'Account' });
+  await expect(accountCombo).toBeVisible();
+  await accountCombo.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(accountCombo).toBeFocused();
+  const groupShadow = await accountCombo.evaluate(
+    (el) => getComputedStyle(el.closest('[role="group"]')!).boxShadow,
+  );
+  expect(groupShadow).toContain(ring.brand);
+
+  await chooseOption(dialog.getByRole('button', { name: /Operator$/ }).first(), 'is one of');
+  const trigger = dialog.getByRole('button', { name: 'Account: Choose one or more…' });
   await expect(trigger).toBeVisible();
   await trigger.focus();
   await page.keyboard.press('Shift+Tab');
@@ -311,6 +325,7 @@ test("the rule editor's fields show a brand focus ring", async ({ page, api }) =
   await expect(trigger).toBeFocused();
   ring = await focusRing(page);
   expect(ring.shadow).toContain(ring.brand);
+  expect(await strayLabels(dialog)).toEqual([]);
 });
 
 test('the server menu items and a bare category select show a brand focus ring', async ({

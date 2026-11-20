@@ -42,6 +42,35 @@ Dashboard, Budget and Transactions are in the main bundle; every other page is `
 | `/review`                                | Review.tsx (792)                         | review, budget, transactions, plans                            | useBudget, useCategories, useConnection, useTransactions                           | review, review-payees, review-undo, demo/review                              |
 | `/guide`, `/guide/:page`                 | Guide.tsx (81)                           | guide                                                          | none                                                                               | user-guide, guides                                                           |
 
+Shared controls on the Wave G2 screens (#267; every field and list on these is from `components/ui`
+or a picker wrapper, and the leftover gate in 03-15-PLAN.md prints 0 over their files):
+
+- `/transactions`, `/accounts/:id`, `/budget/category/:id`, `/payees/:id` (the register): form row
+  `DatePicker` (sm), `PayeeCombobox`, `CategorySelectButton`, `CurrencyInput`, `Input`; details panel
+  `DatePicker` (a pick saves at once), `Textarea`; filters `Input`, `Checkbox`, `CurrencyInput`
+  (`nullable`), `DatePicker` (sm, Clear); marks `Input`, `Checkbox`; Add transaction `Combobox`
+  (account), `DatePicker`, `CurrencyInput`, `Input`; bulk edit `Select`, `CategorySelectButton`,
+  `Input`; bulk delete `Input`; split `CategorySelectButton`, `CurrencyInput`, `Input`; transfer
+  suggestions and pick-to-share `Checkbox`; receipts `DatePicker`, `CategorySelectButton`,
+  `Combobox`, `Checkbox`, `Select`.
+- `/accounts`: `Select` (account type, `CurrencySelect`), `Field` and `Input`, `Checkbox`,
+  `CurrencyInput`; delete confirmation `Input`. `/accounts/:id/reconcile`: `Checkbox`.
+- `/budget`: amount cell and search `Input`, row `Checkbox`; phone sheet `CurrencyInput`
+  (`expression`) and `Checkbox`; moves `CategorySelectButton` (Ready to assign as `extraItem`) and
+  `CurrencyInput`; target `Select`, `CurrencyInput`, `DatePicker`, `NumberField` (1-60); card
+  payments `CurrencyInput`; payday plan `CurrencyInput`, `CategorySelectButton`, `Select`,
+  `Combobox`, `DatePicker`, `Checkbox`, `NumberField` (0-100); auto-assign `RadioGroup`, `Select`;
+  funding rows `Checkbox`; notes `Textarea`. `/budget/year`: `Select`.
+- `/budget/categories`: `Input`; edit `Input`, `Combobox`, `RadioGroup`, `Checkbox`; delete
+  `CategorySelectButton`. `IconPickerPopover` stays.
+- `/payees`: `Input`, `Checkbox`, `RadioGroup` (merge).
+- `/rules`: search `Input`; editor `Select`, `Combobox`, `DatePicker` (sm), `Input`,
+  `CurrencyInput`, `NumberField` (split percent), `Checkbox`, and `OptionPicker` over
+  `CategorySelectButton`, `MerchantSelect` or `Combobox`; apply `Checkbox`.
+- `/recurring`: `Select`, `Combobox`, `DatePicker`, `Input`, `NumberField` (date flexibility,
+  upcoming length), `Checkbox`, `MerchantSelect`.
+- Native by decision (D-17): the account logo, payee logo and receipt photo file inputs.
+
 Every page also uses `components/ui`, and most use `components/guide` for the page guide.
 Cross-cutting specs: accessibility, dialog-focus, load-errors, menus, navigation, tabs,
 unsaved-drafts, phone/phone, phone/polish-phone, phone/iphone-webapp, phone/amounts-phone.
@@ -105,9 +134,9 @@ unsaved-drafts, phone/phone, phone/polish-phone, phone/iphone-webapp, phone/amou
 - `Combobox.tsx`: `Combobox`, a searchable list the user can add to (custom values, Clear, empty state, footer); `SearchList` and its parts, the searchable list under `CategoryPicker`.
 - `ConfirmModal.tsx`: `ConfirmModal`, confirm or cancel a destructive action.
 - `ContextMenu.tsx`: `ContextMenu`, `useMenuTrigger`; right-click / Shift+F10 menu with flyouts.
-- `CurrencyInput.tsx`: `CurrencyInput`, the only money input (`type="text" inputMode="decimal"`).
+- `CurrencyInput.tsx`: `CurrencyInput`, the only money input (`type="text" inputMode="decimal"`), formatted when left; options `fieldSize`, `expression` (sums), `onTextChange`, `commitOnBlur`, `nullable` (empty is null, a typed 0 is 0) and a forwarded ref; `readMoneyText`.
 - `dateSegments.ts`: `segmentLocale`, `dateExample`; the DatePicker's segment order from the Date format preference.
-- `DatePicker.tsx`: `DatePicker`, typed day, month and year segments, a calendar and a Today shortcut; native date input on phones.
+- `DatePicker.tsx`: `DatePicker`, typed day, month and year segments, a calendar and a Today shortcut; native date input on phones. Options `fieldSize` (sm for rows), `hideLabel` and `optionalHint`.
 - `DiscardPrompt.tsx`: `DiscardPrompt`, asks before dropping an unsaved draft.
 - `EmptyState.tsx`: `EmptyState`, message plus actions when a list is empty.
 - `ExternalLink.tsx`: `ExternalLink`, a link out with optional arrow icon.
@@ -119,8 +148,9 @@ unsaved-drafts, phone/phone, phone/polish-phone, phone/iphone-webapp, phone/amou
 - `Input.tsx`: `Input`, the shared text field on React Aria; and the native `Select` (40px, 44px on phones) that screens still use until Phase 4.
 - `Label.tsx`: `Label`, the shared field label.
 - `Modal.tsx`: `Modal`, `useModalValue`; dialog with focus handling.
+- `NumberField.tsx`: `NumberField`, a bounded whole or decimal number (D-14) built from `Field` and `Input`: keeps the typed text, shows its range line under the field and holds an `AmountFields` save; never `type="number"`. Text readers in `numberText.ts` (`readWholeNumber`, `readDecimal`), range messages in `fieldMessages.ts`.
 - `MonthPicker.tsx`: `MonthPicker`, a year stepper and twelve-month grid (`MonthGrid`); native month input on phones.
-- `MonthRangePicker.tsx`: `MonthRangePicker`, built on `MonthGrid` from `MonthPicker.tsx` in React Aria's dialog; native From and To month inputs on phones (Reports, the report builder, Cash flow).
+- `MonthRangePicker.tsx`: `MonthRangePicker`, built on `MonthGrid` from `MonthPicker.tsx` in React Aria's dialog; native From and To month inputs on phones, shown as short months (Nov 2026) (Reports, the report builder, Cash flow).
 - `PageHeader.tsx`: `PageHeader`, page title row; its breadcrumbs are a labelled landmark with 48 px links on phones.
 - `Plant.tsx`: `Plant`, the goal plant (seed, seedling, bud, flower; `plantStage`), `aria-hidden`, motion opt-in (`grew`, `bloom`); also the still seedling beside a clean $0 Ready to assign.
 - `Private.tsx`: `Private`, `HiddenAmount`, `PrivateChart`; Safe mode blurring.
@@ -143,9 +173,11 @@ Shared form controls (Wave G1, #267): the field and selector files above are bui
 `react-aria-components`, styled from `fieldClasses.ts`. Picker rule: categories use
 `CategoryPicker`, payees use `PayeeCombobox` (both wrappers over `ui/Combobox.tsx`), a fixed list
 uses `Select` from `components/ui/Select.tsx`, a list the user grows uses `Combobox`; phones get native
-select, date and month controls. Screens still use the native `Select` in `ui/Input.tsx` until
-Phases 3 and 4 move them; only the category and payee pickers and `MonthRangePicker`'s three
-users have moved.
+select, date and month controls. A bounded number uses `NumberField`, money `CurrencyInput`. The
+Wave G2 screens (listed under the routes table) have moved; the rest keep the native `Select` in
+`ui/Input.tsx` until G3 and Phase 4 move them. `MerchantSelect` (rules and recurring payees) is a
+wrapper over the shared Combobox; `CategorySelectButton` opens `CategoryPicker` and is named
+`<label>: <shown>`.
 
 - `pages/DevControlsGallery.tsx` and `pages/devGallery/`: the development-only gallery at
   `/dev/controls` (dev server, or a `vite build --mode gallery` build); every other build gets

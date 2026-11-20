@@ -146,7 +146,8 @@ describe('Select on desktop', () => {
     (errorMessage) => {
       const html = render({ isInvalid: true, errorMessage });
       expect(html).not.toContain('slot="errorMessage"');
-      expect(html).not.toContain('FieldError');
+      const afterTrigger = html.slice(html.indexOf('</button>'));
+      expect(afterTrigger).not.toContain('text-negative');
     },
   );
 

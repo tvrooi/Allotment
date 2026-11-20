@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { Checkbox } from '../ui/Checkbox';
 import { useDiscoverSchedules, useCreateDiscoveredSchedules } from '../../hooks/useSchedules';
 import { discoveredHouseholdLabel, formatScheduleAmount } from './scheduleFormat';
 import { nearMissReason } from '../../utils/nearMiss';
@@ -44,6 +45,7 @@ export default function DiscoverSchedulesModal({ isOpen, onClose, onAddAnyway }:
   const createMut = useCreateDiscoveredSchedules();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [lastClicked, setLastClicked] = useState<number | null>(null);
+  const shiftRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -54,6 +56,7 @@ export default function DiscoverSchedulesModal({ isOpen, onClose, onAddAnyway }:
 
   const loading = isLoading || isFetching;
   const allSelected = found.length > 0 && selected.size === found.length;
+  const someSelected = selected.size > 0 && !allSelected;
   const selectedItems = useMemo(() => found.filter((f) => selected.has(f.id)), [found, selected]);
 
   // Click toggles; shift+click selects a range, like Actual's useSelected
@@ -96,13 +99,14 @@ export default function DiscoverSchedulesModal({ isOpen, onClose, onAddAnyway }:
         <div
           className={`${cols} px-3 py-2 bg-surface-alt border-b border-border-light text-xs font-medium text-text-tertiary`}
         >
-          <input
-            type="checkbox"
+          <Checkbox
             aria-label="Select all"
             disabled={loading || found.length === 0}
             checked={allSelected}
-            onChange={() => setSelected(allSelected ? new Set() : new Set(found.map((f) => f.id)))}
-            className="accent-brand-600 cursor-pointer"
+            isIndeterminate={someSelected}
+            onCheckedChange={(checked) =>
+              setSelected(checked ? new Set(found.map((f) => f.id)) : new Set())
+            }
           />
           <span>Payee</span>
           <span>Account</span>
@@ -130,19 +134,25 @@ export default function DiscoverSchedulesModal({ isOpen, onClose, onAddAnyway }:
               return (
                 <div
                   key={item.id}
-                  onClick={(e) => toggle(idx, e.shiftKey)}
+                  onPointerDownCapture={(e) => {
+                    shiftRef.current = e.shiftKey;
+                  }}
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest('label')) return;
+                    shiftRef.current = false;
+                    toggle(idx, e.shiftKey);
+                  }}
                   className={`${cols} px-3 py-2.5 border-b border-border-light last:border-b-0 cursor-pointer select-none transition-colors ${
                     isSel ? 'bg-brand-50' : 'hover:bg-hover'
                   }`}
                 >
-                  {/* Focusable so the list works from the keyboard: Space clicks it, and the
-                      click reaches the row's handler */}
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     aria-label={`Track ${item.payeeName}`}
                     checked={isSel}
-                    readOnly
-                    className="accent-brand-600 cursor-pointer"
+                    onCheckedChange={() => {
+                      toggle(idx, shiftRef.current);
+                      shiftRef.current = false;
+                    }}
                   />
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-text truncate">{item.payeeName}</p>

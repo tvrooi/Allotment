@@ -3,8 +3,8 @@
 How the design re-review backlog (issues #222 to #245) is being worked through on `redesign`, and
 where to pick up. Read after [README.md](README.md) and [HANDOVER-UI.md](HANDOVER-UI.md). Update
 the **Status** and **Open PRs** sections whenever a wave PR opens, merges or is sent back; delete
-this file when Wave G has merged (owner, 15 November 2026). Last written 18 November 2026, when
-Wave G1's PR opened.
+this file when Wave G has merged (owner, 15 November 2026). Last written 20 November 2026, when
+Wave G2's PR opened.
 
 ## Roles
 
@@ -33,7 +33,8 @@ Wave G1's PR opened.
 | E navigation depth  | #235, #243, #245, #240                   | Merged, PR #266, up.173. Issues closed.                    |
 | F settings, delight | #244, #241                               | Merged, PR #273, up.174.                                   |
 | G0 controls audit   | #267 (part)                              | Merged, PR #275 (docs only). #267 stays open.              |
-| G1 control set      | #267 (part), #264                        | PR #277 open into `redesign`, up.175 prepared, not merged. |
+| G1 control set      | #267 (part), #264                        | Merged, PR #277, up.175. #267 stays open.                  |
+| G2 money screens    | #267 (part)                              | PR #278 open into `redesign`, up.176 prepared, not merged. |
 
 Also merged: PR #256, test-only fixes for date- and timing-dependent Household specs.
 
@@ -61,8 +62,9 @@ Not in any wave:
 
 ## Open PRs
 
-- PR #277, Wave G1 (#267, #264), base `redesign`: open, up.175 prepared, not merged. Waits for
-  the HIGH-tier review that #267 asks for shared components.
+- PR #278, Wave G2 (#267), base `redesign`: open, up.176 prepared, not merged. The everyday money
+  screens on the shared controls; its body lists every behaviour change, changed selector and
+  finding for the owner. The owner merges it before G3 starts (D-12).
 - Wave E (PR #266) merged after three fix rounds. Rounds 1 and 2 were reviewed by
   Antigravity and the GitHub Codex review (no major issue on the round-2 commit); round 3 was
   merged on green CI alone, on the owner's instruction, so it has had no second review. Its five
@@ -80,7 +82,7 @@ Not in any wave:
 
 ## What to do next, in order
 
-1. Wave G1 (#267, #264): the HIGH-tier review and merge of its PR. Then G2 to G5 (Phases 3 and 4).
+1. Wave G2 (#267): the owner's review and merge of its PR. Then G3 (Phase 3), G4 and G5 (Phase 4).
 2. Triage the `needs-triage` issues above with the owner or by the routine in
    [docs/agents/triage-labels.md](../agents/triage-labels.md).
 

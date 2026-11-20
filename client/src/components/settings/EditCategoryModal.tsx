@@ -1,13 +1,23 @@
-import { useState, useRef, useId } from 'react';
+import { useId, useState, useRef } from 'react';
 import { useFormReset } from '../../hooks/useFormReset';
+import { useCanSave } from '../../hooks/useConnection';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { Checkbox } from '../ui/Checkbox';
+import { Combobox } from '../ui/Combobox';
+import { Input } from '../ui/Input';
+import { Label } from '../ui/Label';
+import { Radio, RadioGroup } from '../ui/RadioGroup';
 import { IconPickerPopover } from '../ui/IconPickerPopover';
 import { CategoryIcon } from '../ui/CategoryIcon';
+import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { useUpdateCategory } from '../../hooks/useCategories';
 import { useAccounts } from '../../hooks/useAccounts';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import type { BudgetType, Category, CategoryGroup } from '../../types';
+
+// Combobox treats '' as unselected, so account "none" options use a non-empty sentinel key
+const NONE_ACCOUNT = '__none__';
 
 const BUDGET_TYPE_OPTIONS: { value: BudgetType; label: string; description: string }[] = [
   { value: 'fixed', label: 'Fixed', description: 'Consistent, predictable monthly amount' },
@@ -33,7 +43,8 @@ interface Props {
 }
 
 export function EditCategoryModal({ category, groups, isIncome, onClose, onDelete }: Props) {
-  const fieldId = useId();
+  const nameId = useId();
+  const canSave = useCanSave();
   const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
   const updateCategory = useUpdateCategory();
   const [name, setName] = useState('');
@@ -79,7 +90,7 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!category || !name.trim()) return;
+    if (!category || !name.trim() || !canSave) return;
 
     const data: Record<string, unknown> = {};
     if (name.trim() !== category.name) data.name = name.trim();
@@ -108,10 +119,8 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
   return (
     <Modal isOpen={!!category} onClose={onClose} title="Edit category" size="sm">
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div>
-          <label htmlFor={`${fieldId}-name`} className="block text-sm font-medium text-text mb-1.5">
-            Icon & Name
-          </label>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={nameId}>Icon & Name</Label>
           <div className="flex items-center gap-3">
             {showCategoryIcons && (
               <div className="relative shrink-0">
@@ -133,148 +142,89 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
                 )}
               </div>
             )}
-            <input
-              id={`${fieldId}-name`}
+            <Input
+              id={nameId}
+              aria-label="Category name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="block w-full rounded-lg border border-border px-3 py-2 text-sm bg-surface text-text focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
               placeholder="Category name"
-              aria-label="Category name"
             />
           </div>
         </div>
 
-        <div>
-          <label
-            htmlFor={`${fieldId}-group`}
-            className="block text-sm font-medium text-text mb-1.5"
-          >
-            Group
-          </label>
-          <select
-            id={`${fieldId}-group`}
-            aria-label="Group"
-            value={groupId}
-            onChange={(e) => setGroupId(e.target.value)}
-            disabled={groupLocked}
-            className={`block w-full rounded-lg border border-border px-3 py-2 text-sm bg-surface text-text focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 ${
-              groupLocked ? 'opacity-60 cursor-not-allowed bg-surface-alt' : ''
-            }`}
-          >
-            {applicableGroups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Combobox
+          label="Group"
+          items={applicableGroups.map((g) => ({ value: g.id, label: g.name }))}
+          value={groupId}
+          onChange={(v) => {
+            if (v) setGroupId(v);
+          }}
+          isDisabled={groupLocked}
+        />
 
         {!isIncome && (
-          <div>
-            <span
-              id={`${fieldId}-budget-type`}
-              className="block text-sm font-medium text-text mb-2"
-            >
-              Budget type
-            </span>
-            <div role="group" aria-labelledby={`${fieldId}-budget-type`} className="space-y-2">
-              {BUDGET_TYPE_OPTIONS.map((opt) => (
-                <label
-                  key={opt.value}
-                  className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    budgetType === opt.value
-                      ? 'border-brand-500 bg-brand-50'
-                      : 'border-border hover:bg-hover'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="budgetType"
-                    value={opt.value}
-                    checked={budgetType === opt.value}
-                    onChange={() => setBudgetType(opt.value)}
-                    className="mt-0.5 accent-brand-600"
-                  />
-                  <div>
-                    <div className="text-sm font-medium text-text">{opt.label}</div>
-                    <div className="text-xs text-text-tertiary">{opt.description}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
+          <RadioGroup
+            label="Budget type"
+            value={budgetType}
+            onChange={(v) => setBudgetType(v as BudgetType)}
+            className="w-full [&>div]:w-full"
+          >
+            {BUDGET_TYPE_OPTIONS.map((opt) => (
+              <div
+                key={opt.value}
+                className={`rounded-lg border transition-colors [&_label]:flex [&_label]:w-full [&_label]:items-start [&_label]:gap-3 [&_label]:p-3 ${
+                  budgetType === opt.value
+                    ? 'border-brand-600 bg-brand-50'
+                    : 'border-border hover:bg-hover'
+                }`}
+              >
+                <Radio value={opt.value}>
+                  <span className="block text-sm font-medium text-text">{opt.label}</span>
+                  <span className="block text-xs text-text-tertiary">{opt.description}</span>
+                </Radio>
+              </div>
+            ))}
+          </RadioGroup>
         )}
 
         {!isIncome && (
-          <div>
-            <label htmlFor="linked-account" className="block text-sm font-medium text-text mb-1.5">
-              Follows the account
-            </label>
-            <select
-              id="linked-account"
-              value={linkedAccountId}
-              onChange={(e) => setLinkedAccountId(e.target.value)}
-              className="block w-full rounded-lg border border-border px-3 py-2 text-sm bg-surface text-text focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-            >
-              <option value="">No account</option>
-              {linkable.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-text-tertiary">
-              This envelope holds exactly what the account holds. Fund it by transferring money into
-              the account; you can&rsquo;t assign to it. Interest that lands and is forwarded on
-              passes straight through.
-            </p>
-          </div>
+          <Combobox
+            label="Follows the account"
+            items={[
+              { value: NONE_ACCOUNT, label: 'No account' },
+              ...linkable.map((a) => ({ value: a.id, label: a.name })),
+            ]}
+            value={linkedAccountId || NONE_ACCOUNT}
+            onChange={(v) => {
+              if (v) setLinkedAccountId(v === NONE_ACCOUNT ? '' : v);
+            }}
+            description="This envelope holds exactly what the account holds. Fund it by transferring money into the account; you can’t assign to it. Interest that lands and is forwarded on passes straight through."
+          />
         )}
 
         {!isIncome && (pools.length > 0 || category.poolAccountId) && (
-          <div>
-            <label htmlFor="pool-account" className="block text-sm font-medium text-text mb-1.5">
-              Ready to assign from
-            </label>
-            <select
-              id="pool-account"
-              value={poolAccountId}
-              onChange={(e) => setPoolAccountId(e.target.value)}
-              className="block w-full rounded-lg border border-border px-3 py-2 text-sm bg-surface text-text focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-            >
-              <option value="">The main Ready to assign</option>
-              {pools.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}’s own
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-text-tertiary">
-              For a bill paid from that account: it is funded from the money moved there.
-            </p>
-          </div>
+          <Combobox
+            label="Ready to assign from"
+            items={[
+              { value: NONE_ACCOUNT, label: 'The main Ready to assign' },
+              ...pools.map((a) => ({ value: a.id, label: `${a.name}’s own` })),
+            ]}
+            value={poolAccountId || NONE_ACCOUNT}
+            onChange={(v) => {
+              if (v) setPoolAccountId(v === NONE_ACCOUNT ? '' : v);
+            }}
+            description="For a bill paid from that account: it is funded from the money moved there."
+          />
         )}
 
         {!isIncome && (
-          <div className="flex items-start gap-3 text-sm">
-            <input
-              id="keep-overspending"
-              type="checkbox"
-              checked={keepOverspending}
-              onChange={(e) => setKeepOverspending(e.target.checked)}
-              className="mt-0.5 accent-brand-600"
-            />
-            <div>
-              <label htmlFor="keep-overspending" className="block font-medium text-text">
-                Keep overspending
-              </label>
-              <p className="text-xs text-text-tertiary">
-                For spending that will be paid back. An overspent month carries into the next
-                instead of starting at zero, and Ready to assign is not reduced until you assign
-                money to cover it or the repayment arrives.
-              </p>
-            </div>
-          </div>
+          <Checkbox
+            checked={keepOverspending}
+            onCheckedChange={setKeepOverspending}
+            description="For spending that will be paid back. An overspent month carries into the next instead of starting at zero, and Ready to assign is not reduced until you assign money to cover it or the repayment arrives."
+          >
+            <span className="font-medium">Keep overspending</span>
+          </Checkbox>
         )}
 
         {error && (
@@ -282,6 +232,8 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
             {error}
           </p>
         )}
+
+        <SavingPausedHint className="text-right" />
 
         <div className="flex items-center justify-between pt-2">
           <Button
@@ -298,7 +250,7 @@ export function EditCategoryModal({ category, groups, isIncome, onClose, onDelet
             <Button type="button" variant="secondary" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!name.trim() || updateCategory.isPending}>
+            <Button type="submit" disabled={!canSave || !name.trim() || updateCategory.isPending}>
               {updateCategory.isPending ? 'Saving...' : 'Save'}
             </Button>
           </div>

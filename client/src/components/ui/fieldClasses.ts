@@ -77,3 +77,53 @@ export const listClass = 'max-h-72 overflow-y-auto p-1 outline-none';
  */
 export const optionClass =
   'flex items-center justify-between gap-2 min-h-9 max-md:min-h-11 px-3 py-2 rounded-sm text-sm text-text cursor-default outline-none hover:bg-hover data-[focused]:bg-hover data-[focus-visible]:ring-2 data-[focus-visible]:ring-inset data-[focus-visible]:ring-brand-600 data-[selected]:bg-brand-50 data-[selected]:text-brand-700 data-[disabled]:text-text-disabled';
+
+// Pickers (DatePicker, MonthPicker, MonthRangePicker; Combobox also uses pickerIconButton).
+
+const pickerIconButtonBase =
+  'flex shrink-0 items-center justify-center rounded-md text-text-tertiary hover:text-text hover:bg-hover outline-none focus-visible:ring-2 focus-visible:ring-brand-600 disabled:text-text-disabled disabled:hover:bg-transparent disabled:cursor-not-allowed';
+
+/** A picker's icon button: Clear, the calendar button and the steppers (32 px, 2 px ring) */
+export const pickerIconButton = `${pickerIconButtonBase} size-8`;
+
+/** The same icon button in a small (fieldSize sm) picker: 28 px */
+export const pickerIconButtonSm = `${pickerIconButtonBase} size-7`;
+
+/**
+ * Shared parts of a picker trigger group (02-REVIEW IN-01): base chrome, default width, height,
+ * padding and text size. MonthRangePicker composes its compact toolbar trigger from pickerGroupBase
+ * instead of splitting and filtering pickerGroupClass.
+ */
+export const pickerGroupBase = `${fieldStates} flex items-center gap-1 rounded-md border border-border bg-surface text-text outline-none transition-colors focus-within:border-brand-600 focus-within:ring-1 focus-within:ring-brand-600 data-[invalid]:focus-within:border-negative data-[invalid]:focus-within:ring-negative`;
+export const pickerGroupWidth = 'w-full';
+export const pickerGroupHeight = 'h-10';
+export const pickerGroupPadding = 'pl-3 pr-1';
+export const pickerGroupText = 'text-sm';
+
+/**
+ * The trigger group: a field's box (02-UI-SPEC.md, per-control item 10), with 4 px after the
+ * trailing buttons, the ring on focus-within and the shared disabled, read-only and invalid looks
+ */
+export const pickerGroupClass = [
+  pickerGroupBase,
+  pickerGroupWidth,
+  pickerGroupHeight,
+  pickerGroupPadding,
+  pickerGroupText,
+].join(' ');
+
+/**
+ * A calendar or month grid's popover: the card surface with the menu entrance. Unlike a list's
+ * popoverClass it is not stretched to the trigger's width: the calendar and the month grid are a
+ * fixed size.
+ */
+export const pickerPopoverClass =
+  'rounded-lg border border-border-light bg-surface shadow-card outline-none data-[entering]:animate-menu-in max-w-[calc(100vw-16px)]';
+
+/** The bar under a calendar or month grid holding its shortcut: a top border, 8 px either side */
+export const pickerFooterClass =
+  'mt-2 pt-2 border-t border-border-light flex items-center justify-end';
+
+/** The Today and This month shortcuts: small brand text, text-disabled when out of range */
+export const pickerShortcutClass =
+  'rounded-sm px-1 text-xs font-medium text-brand-600 hover:text-brand-700 outline-none focus-visible:ring-2 focus-visible:ring-brand-600 disabled:text-text-disabled disabled:hover:text-text-disabled disabled:cursor-not-allowed';

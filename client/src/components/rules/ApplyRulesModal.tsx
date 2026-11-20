@@ -3,7 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowRight } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { Checkbox } from '../ui/Checkbox';
+import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { previewRules } from '../../api/rules';
+import { useCanSave } from '../../hooks/useConnection';
 import { useApplyRules } from '../../hooks/useRules';
 import { useRuleLookups } from './useRuleLookups';
 import { formatCurrency } from '../../utils/currency';
@@ -37,6 +40,7 @@ export function ApplyRulesModal({
   const [done, setDone] = useState<number | null>(null);
   const apply = useApplyRules();
   const { lookups } = useRuleLookups();
+  const canSave = useCanSave();
 
   const { data: items, isLoading } = useQuery({
     queryKey: ['rules', 'preview', ruleIds ?? 'all', scope],
@@ -52,6 +56,7 @@ export function ApplyRulesModal({
     [items, excluded],
   );
   const allOn = !!items?.length && excluded.size === 0;
+  const someOn = !!items?.length && excluded.size > 0 && excluded.size < items.length;
 
   function toggle(id: string) {
     setExcluded((prev) => {
@@ -129,16 +134,16 @@ export function ApplyRulesModal({
                   <thead className="sticky top-0 bg-surface-alt border-b border-border-light">
                     <tr className="text-left text-text-tertiary">
                       <th className="w-8 px-3 py-2">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={allOn}
-                          onChange={() =>
+                          isIndeterminate={someOn}
+                          onCheckedChange={(checked) =>
                             setExcluded(
-                              allOn ? new Set(items.map((i) => i.transactionId)) : new Set(),
+                              checked ? new Set() : new Set(items.map((i) => i.transactionId)),
                             )
                           }
-                          className="accent-brand-600"
                           aria-label="Select all"
+                          className="align-middle"
                         />
                       </th>
                       <th className="px-2 py-2 font-medium">Date</th>
@@ -154,14 +159,17 @@ export function ApplyRulesModal({
                         onClick={() => toggle(item.transactionId)}
                         className={`cursor-pointer hover:bg-hover ${excluded.has(item.transactionId) ? 'opacity-50' : ''}`}
                       >
-                        <td className="px-3 py-2">
-                          <input
-                            type="checkbox"
+                        <td
+                          className="px-3 py-2"
+                          onClick={(e) => {
+                            if ((e.target as HTMLElement).closest('label')) e.stopPropagation();
+                          }}
+                        >
+                          <Checkbox
                             checked={!excluded.has(item.transactionId)}
-                            onChange={() => toggle(item.transactionId)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="accent-brand-600"
+                            onCheckedChange={() => toggle(item.transactionId)}
                             aria-label="Include this transaction"
+                            className="align-middle"
                           />
                         </td>
                         <td className="px-2 py-2 text-text-tertiary whitespace-nowrap">
@@ -184,11 +192,15 @@ export function ApplyRulesModal({
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-1">
+          <div className="flex items-center justify-end gap-3 pt-1">
+            <SavingPausedHint />
             <Button variant="secondary" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={handleApply} disabled={!selected.length || apply.isPending}>
+            <Button
+              onClick={handleApply}
+              disabled={!canSave || !selected.length || apply.isPending}
+            >
               {apply.isPending
                 ? 'Applying…'
                 : `Apply to ${selected.length.toLocaleString()} transaction${selected.length === 1 ? '' : 's'}`}

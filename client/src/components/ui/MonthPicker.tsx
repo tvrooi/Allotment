@@ -4,15 +4,15 @@ import { Button as AriaButton, Dialog, DialogTrigger, Group, Popover } from 'rea
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { thisMonthIso } from '../../utils/calendarDay';
 import { formatMonth, isMonth } from '../../utils/dateRange';
+import { NativePicker } from './DatePicker';
+import { describedByIds, FieldLines } from './Field';
 import {
-  NativePicker,
   pickerFooterClass,
   pickerGroupClass,
   pickerIconButton,
   pickerPopoverClass,
   pickerShortcutClass,
-} from './DatePicker';
-import { describedByIds, FieldLines } from './Field';
+} from './fieldClasses';
 import { errorLine, fieldSubject, monthRangeMessage } from './fieldMessages';
 import { Label } from './Label';
 import { supportsMonthInput } from './nativeInput';

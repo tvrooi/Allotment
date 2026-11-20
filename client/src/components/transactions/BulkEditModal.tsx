@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { CategorySelect } from './CategorySelect';
+import { CategorySelectButton } from './CategorySelectButton';
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { useCanSave } from '../../hooks/useConnection';
 import { useCategories } from '../../hooks/useCategories';
@@ -43,8 +45,8 @@ const EMPTY: Draft = {
 };
 
 const NO_GROUPS: CategoryGroup[] = [];
-const inputCls =
-  'w-full text-sm border border-border rounded-lg px-3 py-2 bg-surface text-text focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600';
+/** A mode list beside its field: wide enough for its longest choice, so it never jumps */
+const modeCls = 'w-40';
 const labelCls = 'text-xs font-medium text-text-secondary mb-1.5 block';
 
 /** "2 reconciled transactions", "1 split transaction (change its parts instead)" */
@@ -138,23 +140,20 @@ export function BulkEditModal({ params, count, isOpen, onClose }: Props) {
       <label className={labelCls} htmlFor={`bulk-${label.toLowerCase().replace(/\W+/g, '-')}`}>
         {label}
       </label>
-      <select
+      <Select
         id={`bulk-${label.toLowerCase().replace(/\W+/g, '-')}`}
         aria-label={label}
-        className={inputCls}
-        value={choice.set ? options.findIndex((o) => o.value === choice.value) : -1}
-        onChange={(e) => {
-          const i = Number(e.target.value);
+        value={String(choice.set ? options.findIndex((o) => o.value === choice.value) : -1)}
+        onChange={(v) => {
+          if (!v) return;
+          const i = Number(v);
           onChange(i < 0 ? NO_CHANGE : { set: true, value: options[i].value });
         }}
-      >
-        <option value={-1}>No change</option>
-        {options.map((o, i) => (
-          <option key={o.label} value={i}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+        options={[
+          { value: '-1', label: 'No change' },
+          ...options.map((o, i) => ({ value: String(i), label: o.label })),
+        ]}
+      />
     </div>
   );
 
@@ -214,29 +213,36 @@ export function BulkEditModal({ params, count, isOpen, onClose }: Props) {
               Category
             </label>
             <div className="grid grid-cols-[auto_1fr] gap-2">
-              <select
+              <Select
                 id="bulk-category"
                 aria-label="Category change"
-                className={`${inputCls} w-auto`}
+                className={modeCls}
                 value={draft.category.mode}
-                onChange={(e) =>
+                onChange={(mode) => {
+                  if (!mode) return;
                   setDraft((d) => ({
                     ...d,
-                    category: { ...d.category, mode: e.target.value as Draft['category']['mode'] },
-                  }))
-                }
-              >
-                <option value="keep">No change</option>
-                <option value="set">Set to</option>
-                <option value="clear">Uncategorised</option>
-              </select>
+                    category: { ...d.category, mode: mode as Draft['category']['mode'] },
+                  }));
+                }}
+                options={[
+                  { value: 'keep', label: 'No change' },
+                  { value: 'set', label: 'Set to' },
+                  { value: 'clear', label: 'Uncategorised' },
+                ]}
+              />
               {draft.category.mode === 'set' && (
-                <CategorySelect
+                // As the list it replaces: every category, hidden ones too, and no new ones here;
+                // "Uncategorised" is the mode list's own choice
+                <CategorySelectButton
                   value={draft.category.id}
                   onChange={(id) => setDraft((d) => ({ ...d, category: { mode: 'set', id } }))}
                   groups={groups}
                   label="New category"
-                  fieldClassName={inputCls}
+                  placeholder="Choose a category…"
+                  allowNone={false}
+                  allowCreate={false}
+                  includeHidden
                 />
               )}
             </div>
@@ -246,9 +252,8 @@ export function BulkEditModal({ params, count, isOpen, onClose }: Props) {
             <label className={labelCls} htmlFor="bulk-payee">
               Payee
             </label>
-            <input
+            <Input
               id="bulk-payee"
-              className={inputCls}
               placeholder="No change"
               value={draft.payee.set ? draft.payee.value : ''}
               onChange={(e) =>
@@ -265,29 +270,30 @@ export function BulkEditModal({ params, count, isOpen, onClose }: Props) {
               Notes
             </label>
             <div className="grid grid-cols-[auto_1fr] gap-2">
-              <select
+              <Select
                 id="bulk-notes"
                 aria-label="Notes change"
-                className={`${inputCls} w-auto`}
+                className={modeCls}
                 value={!draft.notes.set ? 'keep' : draft.notes.value === null ? 'clear' : 'set'}
-                onChange={(e) =>
+                onChange={(mode) => {
+                  if (!mode) return;
                   setDraft((d) => ({
                     ...d,
                     notes:
-                      e.target.value === 'keep'
+                      mode === 'keep'
                         ? NO_CHANGE
-                        : { set: true, value: e.target.value === 'clear' ? null : '' },
-                  }))
-                }
-              >
-                <option value="keep">No change</option>
-                <option value="set">Replace with</option>
-                <option value="clear">Remove notes</option>
-              </select>
+                        : { set: true, value: mode === 'clear' ? null : '' },
+                  }));
+                }}
+                options={[
+                  { value: 'keep', label: 'No change' },
+                  { value: 'set', label: 'Replace with' },
+                  { value: 'clear', label: 'Remove notes' },
+                ]}
+              />
               {draft.notes.set && draft.notes.value !== null && (
-                <input
+                <Input
                   aria-label="New notes"
-                  className={inputCls}
                   value={draft.notes.value}
                   onChange={(e) =>
                     setDraft((d) => ({ ...d, notes: { set: true, value: e.target.value } }))

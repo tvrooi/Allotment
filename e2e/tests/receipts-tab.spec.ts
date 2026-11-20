@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay } from './fixtures';
+import { test, expect, open, isoDay, fillDate, categoryOption, setToggle } from './fixtures';
 
 // The Receipts tab on Transactions, after Monarch's (docs/RECEIPTS-AND-TAX.md §6). Made-up
 // files and mock data only.
@@ -40,21 +40,23 @@ test('receipts are matched automatically and split by category, found, or made i
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('region', { name: 'Match' })).toContainText('Unmatched');
   await dialog.getByLabel('Merchant').fill('Coles');
-  await dialog.getByLabel('Date', { exact: true }).fill(isoDay());
+  await fillDate(dialog, 'Date', isoDay());
   await dialog.getByLabel('Amount', { exact: true }).fill('58.00');
   await dialog.getByLabel('Tax', { exact: true }).fill('5.00');
   await dialog.getByLabel('Tip and fees').fill('3.00');
   for (const [i, [name, amount, category]] of (
     [
-      ['Milk', '15.00', groceries.id],
-      ['Bread', '15.00', groceries.id],
-      ['Detergent', '20.00', home.id],
+      ['Milk', '15.00', groceries],
+      ['Bread', '15.00', groceries],
+      ['Detergent', '20.00', home],
     ] as const
   ).entries()) {
     await dialog.getByRole('button', { name: 'Add item' }).click();
     await dialog.getByLabel(`Item ${i + 1}`, { exact: true }).fill(name);
     await dialog.getByLabel(`Item ${i + 1} amount`).fill(amount);
-    await dialog.getByLabel(`Item ${i + 1} category`).selectOption(category);
+    // A category button opening the searchable picker, named `Item N category: <shown>`
+    await dialog.getByRole('button', { name: new RegExp(`^Item ${i + 1} category: `) }).click();
+    await categoryOption(dialog, category.name, { exact: true }).click();
   }
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog.getByRole('status')).toContainText(
@@ -74,7 +76,7 @@ test('receipts are matched automatically and split by category, found, or made i
   await page.getByLabel('Upload receipts: choose files').setInputFiles(pdf('cafe.pdf'));
   await expect(dialog.getByText('cafe.pdf', { exact: true })).toBeVisible();
   await dialog.getByLabel('Merchant').fill('Corner Cafe');
-  await dialog.getByLabel('Date', { exact: true }).fill(isoDay());
+  await fillDate(dialog, 'Date', isoDay());
   await dialog.getByLabel('Amount', { exact: true }).fill('6.50');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog.getByRole('status')).toHaveText('Saved.');
@@ -95,11 +97,34 @@ test('receipts are matched automatically and split by category, found, or made i
   await page.getByLabel('Upload receipts: choose files').setInputFiles(pdf('market.pdf'));
   await expect(dialog.getByText('market.pdf', { exact: true })).toBeVisible();
   await dialog.getByLabel('Merchant').fill('Farmers market');
-  await dialog.getByLabel('Date', { exact: true }).fill(isoDay());
+  await fillDate(dialog, 'Date', isoDay());
   await dialog.getByLabel('Amount', { exact: true }).fill('12.00');
+  // Removing an item moves the next one up with its own description, amount and category
+  for (const [i, [name, amount]] of (
+    [
+      ['Apples', '4.00'],
+      ['Pears', '8.00'],
+    ] as const
+  ).entries()) {
+    await dialog.getByRole('button', { name: 'Add item' }).click();
+    await dialog.getByLabel(`Item ${i + 1}`, { exact: true }).fill(name);
+    await dialog.getByLabel(`Item ${i + 1} amount`).fill(amount);
+  }
+  await dialog.getByRole('button', { name: /^Item 2 category: / }).click();
+  await categoryOption(dialog, home.name, { exact: true }).click();
+  await dialog.getByRole('button', { name: 'Remove item 1' }).click();
+  await expect(dialog.getByLabel('Item 1', { exact: true })).toHaveValue('Pears');
+  await expect(dialog.getByLabel('Item 1 amount')).toHaveValue('$8');
+  await expect(
+    dialog.getByRole('button', { name: `Item 1 category: ${home.name}`, exact: true }),
+  ).toHaveText(home.name);
+  await expect(dialog.getByLabel('Item 2', { exact: true })).toHaveCount(0);
+  await expect(dialog.getByRole('listbox')).toHaveCount(0);
   // Not saved yet: Create transaction saves what was typed first
   await dialog.getByRole('button', { name: 'Add transaction' }).click();
-  await dialog.getByLabel('Account').selectOption(card.id);
+  // The account is a Combobox over the open accounts: type to filter, then pick
+  await dialog.getByRole('combobox', { name: 'Account' }).fill('Card');
+  await page.getByRole('listbox').getByRole('option', { name: 'Card', exact: true }).click();
   await dialog.getByRole('button', { name: 'Create transaction' }).click();
   await expect(dialog.getByRole('region', { name: 'Matched transaction' })).toContainText(
     'made from this receipt',
@@ -117,11 +142,12 @@ test('receipt settings turn autosplit, notes and the tag off', async ({ page, ap
   await open(page, '/transactions?view=receipts');
   await page.getByRole('button', { name: 'Receipt settings' }).click();
   const settings = page.getByRole('dialog', { name: 'Receipt settings' });
-  await settings.getByLabel(/Autosplit by category/).uncheck();
+  // Shared Checkboxes: setToggle clicks the wrapping label, not React Aria's hidden input
+  await setToggle(settings.getByLabel(/Autosplit by category/), false);
   await expect
     .poll(async () => (await api.call('GET', '/receipts/settings')).autoSplit)
     .toBe(false);
-  await settings.getByLabel(/Tag "Receipt"/).uncheck();
+  await setToggle(settings.getByLabel(/Tag "Receipt"/), false);
   await expect.poll(async () => (await api.call('GET', '/receipts/settings')).addTag).toBe(false);
 });
 
@@ -144,18 +170,20 @@ test('a categorised transaction is split only when asked, with Split by items', 
   const dialog = page.getByRole('dialog', { name: 'Receipt' });
   await expect(dialog.getByText('woolies.pdf', { exact: true })).toBeVisible();
   await dialog.getByLabel('Merchant').fill('Woolworths');
-  await dialog.getByLabel('Date', { exact: true }).fill(isoDay());
+  await fillDate(dialog, 'Date', isoDay());
   await dialog.getByLabel('Amount', { exact: true }).fill('30.00');
   for (const [i, [name, amount, category]] of (
     [
-      ['Fruit', '10.00', groceries.id],
-      ['Light globes', '20.00', home.id],
+      ['Fruit', '10.00', groceries],
+      ['Light globes', '20.00', home],
     ] as const
   ).entries()) {
     await dialog.getByRole('button', { name: 'Add item' }).click();
     await dialog.getByLabel(`Item ${i + 1}`, { exact: true }).fill(name);
     await dialog.getByLabel(`Item ${i + 1} amount`).fill(amount);
-    await dialog.getByLabel(`Item ${i + 1} category`).selectOption(category);
+    // A category button opening the searchable picker, named `Item N category: <shown>`
+    await dialog.getByRole('button', { name: new RegExp(`^Item ${i + 1} category: `) }).click();
+    await categoryOption(dialog, category.name, { exact: true }).click();
   }
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog.getByRole('status')).toContainText('already has a category');
