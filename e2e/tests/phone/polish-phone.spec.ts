@@ -319,10 +319,14 @@ test('a long category name in the import mapping stays in its own column', async
   await page.getByRole('button', { name: 'Import CSV' }).click();
   const dialog = page.getByRole('dialog', { name: 'Import transactions' });
   const day = (n: number) => isoDay(n).split('-').reverse().join('/');
+  // Days from the 13th, so the file reads only as day/month: two days that could be either
+  // (11/10 and 12/10) make the import ask for the date format instead of offering Preview
+  let start = -40;
+  while (!/-(1[3-9]|2[0-7])$/.test(isoDay(start))) start--;
   const file =
     'Date,Payee,Category,Memo,Outflow,Inflow\n' +
-    `${day(-40)},Telco,Telecommunications,,$60.00,\n` +
-    `${day(-39)},Telco,Telecommunications,,$60.00,\n`;
+    `${day(start)},Telco,Telecommunications,,$60.00,\n` +
+    `${day(start + 1)},Telco,Telecommunications,,$60.00,\n`;
   await dialog.getByLabel('Bank file').setInputFiles({
     name: 'register.csv',
     mimeType: 'text/csv',
